@@ -1,0 +1,384 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..f0d7c3d 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,46 @@
+ declare global {
++  type WebMcpJsonSchemaProperty = {
++    type: 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object' | 'null';
++    description: string;
++    minLength?: number;
++    items?: WebMcpJsonSchemaProperty;
++    properties?: Record<string, WebMcpJsonSchemaProperty>;
++    required?: string[];
++  };
++
++  type WebMcpTool = {
++    name: string;
++    description: string;
++    inputSchema?: {
++      type: 'object';
++      properties: Record<string, WebMcpJsonSchemaProperty>;
++      required?: string[];
++      additionalProperties?: boolean;
++    };
++    execute: (input?: Record<string, unknown>) => unknown | Promise<unknown>;
++    annotations?: {
++      readOnlyHint?: boolean;
++      consequentialHint?: boolean;
++      untrustedContentHint?: boolean;
++    };
++  };
++
++  interface Document {
++    modelContext?: {
++      registerTool: (tool: WebMcpTool, options: { signal: AbortSignal }) => void;
++    };
++  }
++
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++declare module 'react' {
++  interface FormHTMLAttributes<T> {
++    toolname?: string;
++    tooldescription?: string;
++  }
++}
++
++export {};
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..1154b59 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -7,9 +7,32 @@ interface Props {
+   initialIsBookmarked: boolean;
+ }
+ 
++type ReadingListChangedEvent = CustomEvent<{
++  waitUntil?: (promise: Promise<unknown>) => void;
++}>;
++
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  const refreshBookmarkState = async () => {
++    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
++    const data = await response.json();
++    setIsBookmarked(data.readingList.includes(slug));
++  };
++
++  useEffect(() => {
++    const handleReadingListChanged = (event: Event) => {
++      const refresh = refreshBookmarkState();
++      (event as ReadingListChangedEvent).detail?.waitUntil?.(refresh);
++      void refresh;
++    };
++
++    window.addEventListener('reading-list:changed', handleReadingListChanged);
++    return () => {
++      window.removeEventListener('reading-list:changed', handleReadingListChanged);
++    };
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+@@ -20,6 +43,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+     });
+     const data = await response.json();
+     setIsBookmarked(data.readingList.includes(slug));
++    window.dispatchEvent(new CustomEvent('reading-list:changed'));
+   };
+ 
+   return (
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..60a3daf 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -13,6 +13,10 @@ interface Props {
+   onClose: () => void;
+ }
+ 
++type ReadingListChangedEvent = CustomEvent<{
++  waitUntil?: (promise: Promise<unknown>) => void;
++}>;
++
+ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   const [readingList, setReadingList] = useState<string[]>([]);
+ 
+@@ -25,14 +29,22 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   useEffect(() => {
+     fetchReadingList();
+ 
++    const handleReadingListChanged = (event: Event) => {
++      const refresh = fetchReadingList();
++      (event as ReadingListChangedEvent).detail?.waitUntil?.(refresh);
++      void refresh;
++    };
++
+     const handleKeyDown = (event: KeyboardEvent) => {
+       if (event.key === 'Escape') {
+         onClose();
+       }
+     };
++    window.addEventListener('reading-list:changed', handleReadingListChanged);
+     window.addEventListener('keydown', handleKeyDown);
+ 
+     return () => {
++      window.removeEventListener('reading-list:changed', handleReadingListChanged);
+       window.removeEventListener('keydown', handleKeyDown);
+     };
+   }, [onClose]);
+@@ -46,6 +58,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+       body: JSON.stringify({ slug }),
+     });
+     fetchReadingList();
++    window.dispatchEvent(new CustomEvent('reading-list:changed'));
+   };
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..5720007 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -55,7 +55,12 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        onSubmit={handleSubmit}
++        className="space-y-4"
++        toolname="sign-in"
++        tooldescription="Submit the sign-in form with a username and password."
++      >
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..0d8ecb3 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -56,7 +56,12 @@ export default function SignUpForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        onSubmit={handleSubmit}
++        className="space-y-4"
++        toolname="sign-up"
++        tooldescription="Submit the sign-up form with a username and password."
++      >
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..a8e8f36 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/webmcp";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/scripts/webmcp.ts b/src/scripts/webmcp.ts
+new file mode 100644
+index 0000000..edd339a
+--- /dev/null
++++ b/src/scripts/webmcp.ts
+@@ -0,0 +1,184 @@
++const baseUrl = import.meta.env.BASE_URL;
++
++type Article = {
++  slug: string;
++  title: string;
++  summary: string;
++  image?: string;
++};
++
++type ReadingListResponse = {
++  readingList: string[];
++};
++
++type ReadingListChangedDetail = {
++  waitUntil: (promise: Promise<unknown>) => void;
++};
++
++let activeController: AbortController | null = null;
++
++const apiUrl = (path: string) => `${baseUrl}${path}`;
++
++const waitForUiRefresh = () =>
++  new Promise<void>((resolve) => {
++    requestAnimationFrame(() => resolve());
++  });
++
++const fetchArticles = async () => {
++  const response = await fetch(apiUrl('api/articles.json'));
++  if (!response.ok) {
++    throw new Error('Unable to load articles.');
++  }
++  return (await response.json()) as Article[];
++};
++
++const fetchReadingList = async () => {
++  const response = await fetch(apiUrl('api/reading-list.json'));
++  if (!response.ok) {
++    throw new Error('Unable to load the reading list.');
++  }
++  return (await response.json()) as ReadingListResponse;
++};
++
++const notifyReadingListChanged = async () => {
++  const refreshes: Promise<unknown>[] = [];
++
++  window.dispatchEvent(
++    new CustomEvent<ReadingListChangedDetail>('reading-list:changed', {
++      detail: {
++        waitUntil: (promise) => {
++          refreshes.push(promise);
++        },
++      },
++    }),
++  );
++
++  await Promise.allSettled(refreshes);
++  await waitForUiRefresh();
++};
++
++const registerWebMcpTools = () => {
++  activeController?.abort();
++  activeController = null;
++
++  if (!document.modelContext) {
++    return;
++  }
++
++  const controller = new AbortController();
++  activeController = controller;
++  const options = { signal: controller.signal };
++
++  document.modelContext.registerTool(
++    {
++      name: 'search-devtools-times-articles',
++      description: 'Search The DevTools Times article catalog by title or summary.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          query: {
++            type: 'string',
++            description: 'Search text to match against article titles and summaries.',
++            minLength: 1,
++          },
++        },
++        required: ['query'],
++        additionalProperties: false,
++      },
++      execute: async (input = {}) => {
++        const query = String(input.query ?? '').trim().toLowerCase();
++        if (!query) {
++          throw new Error('A non-empty query is required.');
++        }
++
++        const articles = await fetchArticles();
++        return articles
++          .filter(
++            (article) =>
++              article.title.toLowerCase().includes(query) ||
++              article.summary.toLowerCase().includes(query),
++          )
++          .map(({ slug, title, summary }) => ({ slug, title, summary }));
++      },
++      annotations: { readOnlyHint: true },
++    },
++    options,
++  );
++
++  document.modelContext.registerTool(
++    {
++      name: 'get-reading-list',
++      description: 'Get the current session reading list with article titles and summaries.',
++      execute: async () => {
++        const [{ readingList }, articles] = await Promise.all([fetchReadingList(), fetchArticles()]);
++        const articleBySlug = new Map(articles.map((article) => [article.slug, article]));
++
++        return readingList.map((slug) => {
++          const article = articleBySlug.get(slug);
++          return {
++            slug,
++            title: article?.title ?? slug,
++            summary: article?.summary ?? '',
++          };
++        });
++      },
++      annotations: { readOnlyHint: true },
++    },
++    options,
++  );
++
++  document.modelContext.registerTool(
++    {
++      name: 'toggle-reading-list-item',
++      description: 'Add an article to the reading list, or remove it if it is already saved.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          slug: {
++            type: 'string',
++            description: 'The article slug to add to or remove from the reading list.',
++            minLength: 1,
++          },
++        },
++        required: ['slug'],
++        additionalProperties: false,
++      },
++      execute: async (input = {}) => {
++        const slug = String(input.slug ?? '').trim();
++        if (!slug) {
++          throw new Error('An article slug is required.');
++        }
++
++        const response = await fetch(apiUrl('api/reading-list.json'), {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++          },
++          body: JSON.stringify({ slug }),
++        });
++
++        if (!response.ok) {
++          throw new Error('Unable to update the reading list.');
++        }
++
++        const data = (await response.json()) as ReadingListResponse;
++        await notifyReadingListChanged();
++
++        return {
++          slug,
++          saved: data.readingList.includes(slug),
++          readingList: data.readingList,
++        };
++      },
++    },
++    options,
++  );
++};
++
++document.addEventListener('astro:page-load', registerWebMcpTools);
++document.addEventListener('astro:before-swap', () => {
++  activeController?.abort();
++  activeController = null;
++});
++
++registerWebMcpTools();
