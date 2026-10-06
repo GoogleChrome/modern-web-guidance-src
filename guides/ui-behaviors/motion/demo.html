@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modern Web Motion Demo</title>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface-muted: #f1f5f9;
+        --text: #0f172a;
+        --text-secondary: #475569;
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --border: #e2e8f0;
+        --radius: 12px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        margin: 0;
+        padding: 2rem;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+
+      main {
+        max-width: 880px;
+        margin: 0 auto;
+        display: grid;
+        gap: 2rem;
+      }
+
+      header h1 {
+        margin: 0 0 0.5rem;
+      }
+
+      header p {
+        margin: 0;
+        color: var(--text-secondary);
+      }
+
+      .demo-section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgb(15 23 42 / 6%);
+      }
+
+      .demo-section h2 {
+        margin-top: 0;
+        font-size: 1.25rem;
+      }
+
+      .demo-section p {
+        color: var(--text-secondary);
+        margin-top: 0;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      button {
+        font: inherit;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        cursor: pointer;
+        /* Compositor-friendly individual transform and opacity transitions */
+        transition:
+          background-color 0.2s ease-out,
+          translate 0.2s ease-out,
+          scale 0.2s ease-out;
+      }
+
+      button.primary {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #ffffff;
+      }
+
+      button.primary:hover {
+        background: var(--primary-hover);
+      }
+
+      button:hover {
+        translate: 0 -1px;
+      }
+
+      button:active {
+        scale: 0.98;
+      }
+
+      button:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+
+      /* ==========================================================================
+         1. Discrete Entry/Exit Animations ([popover] & <dialog>) + clip-path reveal
+         ========================================================================== */
+      .popover-reveal {
+        position: fixed;
+        inset: auto 1.5rem 1.5rem auto;
+        margin: 0;
+        padding: 1.25rem;
+        max-width: 320px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: 0 12px 32px rgb(15 23 42 / 15%);
+
+        /* Closed state */
+        opacity: 0;
+        translate: 0 12px;
+        clip-path: inset(10% 10% 10% 10% round 12px);
+
+        /* Transition discrete display and top-layer overlay alongside opacity & transform */
+        transition:
+          opacity 0.25s ease-out,
+          translate 0.25s ease-out,
+          clip-path 0.25s ease-out,
+          display 0.25s,
+          overlay 0.25s;
+        transition-behavior: allow-discrete;
+      }
+
+      .popover-reveal:popover-open {
+        opacity: 1;
+        translate: 0 0;
+        clip-path: inset(0% 0% 0% 0% round 12px);
+
+        @starting-style {
+          opacity: 0;
+          translate: 0 12px;
+          clip-path: inset(10% 10% 10% 10% round 12px);
+        }
+      }
+
+      dialog.modal-reveal {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        max-width: 420px;
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: 0 20px 40px rgb(15 23 42 / 20%);
+
+        opacity: 0;
+        scale: 0.95;
+        transition:
+          opacity 0.25s ease-out,
+          scale 0.25s ease-out,
+          display 0.25s,
+          overlay 0.25s;
+        transition-behavior: allow-discrete;
+      }
+
+      dialog.modal-reveal[open] {
+        opacity: 1;
+        scale: 1;
+
+        @starting-style {
+          opacity: 0;
+          scale: 0.95;
+        }
+      }
+
+      dialog.modal-reveal::backdrop {
+        background-color: rgb(15 23 42 / 0%);
+        transition:
+          background-color 0.25s ease-out,
+          display 0.25s,
+          overlay 0.25s;
+        transition-behavior: allow-discrete;
+      }
+
+      dialog.modal-reveal[open]::backdrop {
+        background-color: rgb(15 23 42 / 45%);
+
+        @starting-style {
+          background-color: rgb(15 23 42 / 0%);
+        }
+      }
+
+      /* ==========================================================================
+         2. View Transitions for Layout State Changes
+         ========================================================================== */
+      .cards-layout {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+      }
+
+      .cards-layout[data-layout="list"] {
+        grid-template-columns: 1fr;
+      }
+
+      .motion-card {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+        transition:
+          translate 0.2s ease-out,
+          opacity 0.2s ease-out;
+      }
+
+      .motion-card:hover {
+        translate: 0 -2px;
+      }
+
+      .motion-card h3 {
+        margin: 0 0 0.25rem;
+        font-size: 1rem;
+      }
+
+      .motion-card p {
+        margin: 0;
+        font-size: 0.875rem;
+      }
+
+      /* ==========================================================================
+         3. Scroll-Driven Animations & Mask Fade-Out
+         ========================================================================== */
+      .scroll-box-wrapper {
+        position: relative;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: clip;
+      }
+
+      .scroll-progress {
+        height: 4px;
+        background: var(--primary);
+        transform-origin: 0 50%;
+        scale: 0 1;
+      }
+
+      .scroll-box {
+        max-height: 160px;
+        overflow-y: auto;
+        padding: 1rem;
+        background: var(--surface-muted);
+        /* Smooth top/bottom fade-out using mask-image */
+        mask-image: linear-gradient(
+          to bottom,
+          transparent,
+          black 16px,
+          black calc(100% - 16px),
+          transparent
+        );
+      }
+
+      @keyframes fill-progress {
+        from {
+          scale: 0 1;
+        }
+        to {
+          scale: 1 1;
+        }
+      }
+
+      @supports (animation-timeline: scroll()) {
+        .scroll-box-wrapper {
+          timeline-scope: --box-scroll;
+        }
+
+        .scroll-box {
+          scroll-timeline-name: --box-scroll;
+        }
+
+        .scroll-progress {
+          animation: fill-progress linear both;
+          --animation-reduced: fill-progress linear both;
+          animation-timeline: --box-scroll !important;
+        }
+      }
+
+      /* ==========================================================================
+         4. Accessibility: Reduced Motion & Pause Control
+         ========================================================================== */
+      @property --animation-reduced {
+        syntax: "*";
+        inherits: false;
+        initial-value: none;
+      }
+
+      @keyframes spin {
+        to {
+          rotate: 360deg;
+        }
+      }
+
+      @keyframes slide {
+        from {
+          translate: -100% 0;
+        }
+        to {
+          translate: 250% 0;
+        }
+      }
+
+      .status-row {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1rem;
+        background: var(--surface-muted);
+        border-radius: 8px;
+      }
+
+      .spinner {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        animation: spin 1s linear infinite;
+        flex-shrink: 0;
+      }
+
+      .progress-track {
+        flex: 1;
+        height: 10px;
+        background: var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .progress-bar {
+        width: 40%;
+        height: 100%;
+        background: var(--primary);
+        border-radius: 999px;
+        animation: slide 1.5s infinite linear;
+        --animation-reduced: slide 20s infinite linear;
+      }
+
+      /* Respect reduced-motion preferences without a jarring 0.01ms blanket reset */
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: var(--animation-reduced) !important;
+        }
+
+        .spinner {
+          animation: none;
+          opacity: 0.5;
+        }
+
+        button,
+        .motion-card {
+          transition: none;
+        }
+
+        .popover-reveal,
+        dialog.modal-reveal {
+          translate: none;
+          scale: none;
+          clip-path: none;
+          transition-duration: 0.1s;
+        }
+
+        @starting-style {
+          .popover-reveal:popover-open,
+          dialog.modal-reveal[open] {
+            translate: none;
+            scale: none;
+            clip-path: none;
+          }
+        }
+
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+          animation: none !important;
+        }
+      }
+
+      /* Pause mechanism for persistent animations (uses !important to override the reduced-motion shorthand) */
+      .status-row[data-paused="true"] .spinner,
+      .status-row[data-paused="true"] .progress-bar {
+        animation-play-state: paused !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Modern Web Motion</h1>
+        <p>
+          Compositor-friendly animations, discrete top-layer transitions, view
+          transitions, scroll-driven animations, and accessible reduced-motion
+          controls.
+        </p>
+      </header>
+
+      <!-- Section 1: Discrete Entry & Exit -->
+      <section class="demo-section">
+        <h2>1. Discrete Entry &amp; Exit (<code>allow-discrete</code> &amp; <code>@starting-style</code>)</h2>
+        <p>
+          Animate top-layer elements (<code>[popover]</code> and
+          <code>&lt;dialog&gt;</code>) on and off screen using
+          <code>transition-behavior: allow-discrete</code>,
+          <code>@starting-style</code>, <code>overlay</code>, and
+          <code>clip-path</code>.
+        </p>
+        <div class="controls">
+          <button type="button" class="primary" popovertarget="demo-popover">
+            Toggle Popover
+          </button>
+          <button type="button" id="open-dialog-btn">Open Dialog</button>
+        </div>
+
+        <div id="demo-popover" popover class="popover-reveal">
+          <strong>Notification Popover</strong>
+          <p style="margin: 0.5rem 0 0">
+            This popover animates <code>opacity</code>, <code>translate</code>,
+            <code>clip-path</code>, <code>display</code>, and
+            <code>overlay</code>.
+          </p>
+        </div>
+
+        <dialog id="demo-dialog" class="modal-reveal">
+          <h3 style="margin-top: 0">Animated Dialog</h3>
+          <p>
+            Both the dialog and its <code>::backdrop</code> smoothly transition
+            into and out of the top layer.
+          </p>
+          <button type="button" class="primary" id="close-dialog-btn">
+            Close
+          </button>
+        </dialog>
+      </section>
+
+      <!-- Section 2: View Transitions -->
+      <section class="demo-section">
+        <h2>2. Seamless Layout Changes (View Transitions)</h2>
+        <p>
+          Switch between grid and list layouts using
+          <code>document.startViewTransition()</code> and individual transform
+          properties.
+        </p>
+        <div class="controls">
+          <button type="button" id="toggle-layout-btn" aria-pressed="false">
+            Switch to List View
+          </button>
+        </div>
+        <div class="cards-layout" id="cards-container" data-layout="grid">
+          <article class="motion-card" style="view-transition-name: card-1">
+            <h3>Compositor First</h3>
+            <p>Animates opacity and individual transforms.</p>
+          </article>
+          <article class="motion-card" style="view-transition-name: card-2">
+            <h3>Discrete States</h3>
+            <p>Smoothly enters and exits the top layer.</p>
+          </article>
+          <article class="motion-card" style="view-transition-name: card-3">
+            <h3>Reduced Motion</h3>
+            <p>Dampens heavy spin and movement when requested.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Section 3: Scroll-Driven Animations & Masks -->
+      <section class="demo-section">
+        <h2>3. Scroll-Driven Progress &amp; <code>mask-image</code> Fade</h2>
+        <p>
+          Scroll the container below to drive the progress bar on the compositor
+          thread via <code>animation-timeline: scroll()</code>.
+        </p>
+        <div class="scroll-box-wrapper">
+          <div class="scroll-progress" aria-hidden="true"></div>
+          <div class="scroll-box" tabindex="0" aria-label="Scrollable notes">
+            <p>
+              <strong>1. Scroll-Driven Animations:</strong> Bind animation
+              progress directly to a scroll container using
+              <code>scroll-timeline-name</code> and
+              <code>animation-timeline</code> without JavaScript scroll
+              listeners.
+            </p>
+            <p>
+              <strong>2. Compositor Performance:</strong> Animating
+              <code>scale</code> on the progress bar ensures the scroll
+              indicator runs entirely on the compositor thread.
+            </p>
+            <p>
+              <strong>3. Soft Edge Masking:</strong> Using
+              <code>mask-image</code> with a linear gradient softens the top and
+              bottom edges as content scrolls underneath.
+            </p>
+            <p>
+              <strong>4. Timeline Scope:</strong> Lifting the timeline with
+              <code>timeline-scope: --box-scroll</code> on the wrapper lets a
+              sibling element track the scroller's progress.
+            </p>
+            <p>
+              <strong>5. Discrete Transitions:</strong> Combine
+              <code>transition-behavior: allow-discrete</code> and
+              <code>@starting-style</code> to animate elements to and from
+              <code>display: none</code>.
+            </p>
+            <p>
+              <strong>6. Top Layer Overlay:</strong> Include
+              <code>overlay</code> in the transition list so
+              <code>&lt;dialog&gt;</code> and <code>[popover]</code> elements
+              remain in the top layer until their exit transition completes.
+            </p>
+            <p style="margin-bottom: 0">
+              <strong>7. End of Scroll Area:</strong> The progress indicator
+              above reaches 100% when you reach this final item.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Accessible Persistent Motion & Pause Mechanism -->
+      <section class="demo-section">
+        <h2>4. Accessible Persistent Motion &amp; Pause Control</h2>
+        <p>
+          Persistent animations provide an explicit pause control and use
+          <code>@property --animation-reduced</code> or targeted
+          <code>prefers-reduced-motion</code> rules instead of a global
+          <code>0.01ms</code> duration hack.
+        </p>
+        <div class="controls">
+          <button type="button" id="pause-motion-btn" aria-pressed="false">
+            Pause Animations
+          </button>
+        </div>
+        <div class="status-row" id="status-row" data-paused="false">
+          <div class="spinner" role="status" aria-label="Syncing data"></div>
+          <div class="progress-track" aria-hidden="true">
+            <div class="progress-bar"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      const dialog = document.getElementById('demo-dialog');
+      const openDialogBtn = document.getElementById('open-dialog-btn');
+      const closeDialogBtn = document.getElementById('close-dialog-btn');
+
+      openDialogBtn.addEventListener('click', () => {
+        dialog.showModal();
+      });
+
+      closeDialogBtn.addEventListener('click', () => {
+        dialog.close();
+      });
+
+      const toggleLayoutBtn = document.getElementById('toggle-layout-btn');
+      const cardsContainer = document.getElementById('cards-container');
+      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      toggleLayoutBtn.addEventListener('click', () => {
+        const updateLayout = () => {
+          const isGrid = cardsContainer.dataset.layout === 'grid';
+          cardsContainer.dataset.layout = isGrid ? 'list' : 'grid';
+          toggleLayoutBtn.setAttribute('aria-pressed', String(isGrid));
+          toggleLayoutBtn.textContent = isGrid
+            ? 'Switch to Grid View'
+            : 'Switch to List View';
+        };
+
+        if (!document.startViewTransition || reducedMotionQuery.matches) {
+          updateLayout();
+          return;
+        }
+
+        document.startViewTransition(updateLayout);
+      });
+
+      const pauseMotionBtn = document.getElementById('pause-motion-btn');
+      const statusRow = document.getElementById('status-row');
+
+      pauseMotionBtn.addEventListener('click', () => {
+        const isPaused = statusRow.dataset.paused === 'true';
+        const nextPaused = !isPaused;
+        statusRow.dataset.paused = String(nextPaused);
+        pauseMotionBtn.setAttribute('aria-pressed', String(nextPaused));
+        pauseMotionBtn.textContent = nextPaused
+          ? 'Resume Animations'
+          : 'Pause Animations';
+      });
+    </script>
+  </body>
+</html>
