@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { getCssStyleSheet, getHtmlDocuments, getJsProject } from './test-fixture.ts';
-import { CSSStyleRule } from 'cssomnom';
+import { CSSPropertyRule, CSSStyleRule } from 'cssomnom';
 import { SyntaxKind } from 'ts-morph';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -60,6 +60,54 @@ describe('test-fixture helpers', () => {
     }
   });
 
+  test('getCssStyleSheet ignores Astro JSX style={...} expressions without corrupting top-level @property rules in subsequent .css files', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-astro-css-test-'));
+    try {
+      const astroFile = path.join(tempDir, 'ProgressRing.astro');
+      fs.writeFileSync(
+        astroFile,
+        `---
+const { value = 75, resolvedSize = 150, thickness = "16px" } = Astro.props;
+---
+<div
+  class:list={["progress-ring-wrapper", extraClass]}
+  style={{ "--size": resolvedSize, "--thickness": thickness }}
+>
+  <progress
+    class="progress-ring"
+    value={value}
+    max="100"
+    style={\`width: \${resolvedSize}px; height: \${resolvedSize}px;\`}
+  ></progress>
+</div>
+`,
+        'utf8'
+      );
+
+      const globalCssFile = path.join(tempDir, 'global.css');
+      fs.writeFileSync(
+        globalCssFile,
+        `@property --value {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+progress.progress-ring {
+  transition: --value 0.4s ease-in-out;
+}`,
+        'utf8'
+      );
+
+      const stylesheet = getCssStyleSheet([astroFile, globalCssFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      const propRule = rules.find((r): r is CSSPropertyRule => r instanceof CSSPropertyRule && r.name === '--value');
+      assert.ok(propRule, 'Should preserve top-level @property --value rule in global.css after Astro inline styles');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   test('getCssStyleSheet handles empty file lists gracefully', () => {
     const stylesheet = getCssStyleSheet([]);
     assert.ok(stylesheet);
@@ -79,6 +127,41 @@ describe('test-fixture helpers', () => {
       const pEl = docs[0].document.querySelector('.container p');
       assert.ok(pEl);
       assert.strictEqual(pEl.textContent, 'Hello');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('getHtmlDocuments normalizes Astro class:list, dynamic class expressions, and frontmatter', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-astro-html-test-'));
+    try {
+      const astroFile = path.join(tempDir, 'ProgressRing.astro');
+      fs.writeFileSync(
+        astroFile,
+        `---
+const { value = 75, contentClass = '' } = Astro.props;
+const isComplete = value < 100;
+---
+<div class:list={['progress-ring-wrapper', { 'is-complete': isComplete }]}>
+  <progress class={\`progress-ring \${contentClass}\`} value={value} max="100" aria-label="Progress"></progress>
+  <div class="base-content" class:list={['progress-ring-content', contentClass]}>
+    <span>{value}%</span>
+  </div>
+</div>
+`,
+        'utf8'
+      );
+
+      const docs = getHtmlDocuments([astroFile]);
+      assert.strictEqual(docs.length, 1);
+      const doc = docs[0].document;
+
+      assert.ok(doc.querySelector('.progress-ring-wrapper'), 'Should find wrapper via class:list');
+      assert.ok(doc.querySelector('.is-complete'), 'Should find nested object key in class:list');
+      assert.ok(doc.querySelector('progress.progress-ring'), 'Should find progress via template literal class');
+      const contentEl = doc.querySelector('.progress-ring-content');
+      assert.ok(contentEl, 'Should find content element via class:list');
+      assert.ok(contentEl.classList.contains('base-content'), 'Should retain static class when merged with class:list');
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
