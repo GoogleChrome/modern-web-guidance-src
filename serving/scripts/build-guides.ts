@@ -4,6 +4,7 @@ import zlib from "zlib";
 import matter from "gray-matter";
 import { marked } from "marked";
 import { parseArgs } from "node:util";
+import { fileURLToPath } from "node:url";
 
 export interface StoreUseCase {
   id: string;
@@ -67,10 +68,31 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
   };
 }
 
+function getTransformersVersion(): string {
+  try {
+    const entry = fileURLToPath(import.meta.resolve("@huggingface/transformers"));
+    let dir = path.dirname(entry);
+    while (dir !== path.dirname(dir)) {
+      const pkgPath = path.join(dir, "package.json");
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+        if (pkg.name === "@huggingface/transformers" && typeof pkg.version === "string") {
+          return pkg.version;
+        }
+      }
+      dir = path.dirname(dir);
+    }
+    throw new Error("Could not find package.json with name '@huggingface/transformers'");
+  } catch (err) {
+    throw new Error(`Failed to extract @huggingface/transformers version for pipeline hash: ${(err as Error).message}`);
+  }
+}
+
 async function computePipelineHash(
   guides: GuideInventory[],
   target: string,
-  noChunking: boolean
+  noChunking: boolean,
+  modelName?: string
 ): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
@@ -88,6 +110,14 @@ async function computePipelineHash(
 
   hash.update(target);
   hash.update(noChunking.toString());
+
+  if (target !== 'static-site') {
+    const rawModel = modelName || "Xenova/all-MiniLM-L6-v2";
+    const [modelId, dtype = "q8"] = rawModel.split("@");
+    hash.update(getTransformersVersion());
+    hash.update(modelId);
+    hash.update(dtype);
+  }
 
   for (const inv of guides) {
     const guidePath = getGuideMarkdownPath(inv);
@@ -163,7 +193,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     const excluded = config.monoskill.excludeFromBundling || [];
     return inv.isPublished && !excluded.includes(inv.category) && !excluded.includes(inv.name);
   });
-  const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
+  const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING, modelName);
 
   // 3. Cache Evaluation
   const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides);
