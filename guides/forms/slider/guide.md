@@ -59,6 +59,11 @@ input[type="range"] {
   --slider-thumb-color: var(--slider-fill-color);
   --slider-direction: to right;
 
+  /* reverse gradient direction for right-to-left layouts */
+  &:dir(rtl) {
+    --slider-direction: to left;
+  }
+
   /* Mirror the input's min, max, and value; kept in sync by the script below. */
   --attr-min: 0;
   --attr-max: 100;
@@ -151,16 +156,6 @@ function syncSliderProperties() {
 
 syncSliderProperties();
 slider.addEventListener('input', syncSliderProperties);
-```
-
-## Support right-to-left layouts
-
-Do not hard-code a left-to-right fill. Set the gradient direction from the document direction for horizontal sliders:
-
-```css
-input[type="range"]:dir(rtl) {
-  --slider-direction: to left;
-}
 ```
 
 ## Limitations
