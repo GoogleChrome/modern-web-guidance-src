@@ -117,8 +117,7 @@ test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_
   // 1. Without GD_DEV_USE_JETSKI (default Antigravity CLI mode)
   delete process.env.GD_DEV_USE_JETSKI;
   delete process.env.JETSKI_DIR;
-  const agyWorkDir = setupGuideDevWorkDir('test-dev-agy');
-  const agyTempHome = path.dirname(agyWorkDir);
+  const { tempHome: agyTempHome } = setupGuideDevWorkDir('test-dev-agy');
 
   assert.ok(fs.existsSync(path.join(agyTempHome, '.gemini', 'antigravity-cli', 'settings.json')), 'Antigravity CLI settings should be written');
   assert.ok(fs.existsSync(path.join(agyTempHome, '.gemini', 'antigravity-cli', 'antigravity-oauth-token')), 'Antigravity CLI token should be copied');
@@ -133,8 +132,7 @@ test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_
   // 2. With GD_DEV_USE_JETSKI=1 (Jetski CLI mode)
   process.env.GD_DEV_USE_JETSKI = '1';
   delete process.env.JETSKI_DIR;
-  const jetskiWorkDir = setupGuideDevWorkDir('test-dev-jetski');
-  const jetskiTempHome = path.dirname(jetskiWorkDir);
+  const { tempHome: jetskiTempHome } = setupGuideDevWorkDir('test-dev-jetski');
 
   assert.ok(fs.existsSync(path.join(jetskiTempHome, '.gemini', 'jetski', 'installation_id')), 'Jetski credentials should be copied');
   assert.strictEqual(fs.existsSync(path.join(jetskiTempHome, '.gemini', 'antigravity-cli', 'settings.json')), false, 'Antigravity CLI settings should not be written');

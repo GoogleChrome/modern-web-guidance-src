@@ -157,7 +157,7 @@ export async function runDevReport(
   const initialReportContent = buildInitialDevReport(targetDir, summaries, guideInfo);
 
   const agent = getDefaultSolutionAgent();
-  const workDir = setupGuideDevWorkDir('report');
+  const { workDir, tempHome } = setupGuideDevWorkDir('report');
 
   try {
     // Copy guide.md, expectations.md, targets, and results to report sandbox
@@ -185,11 +185,11 @@ export async function runDevReport(
     });
 
     console.log(cCyan(`Invoking ${agent} to perform qualitative evaluation report...`));
-    await runAgent(agent, reportPrompt, workDir);
+    await runAgent(agent, reportPrompt, workDir, { homeDir: tempHome });
 
     fs.copyFileSync(workReportPath, finalReportPath);
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+    fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
   }
 
   // Print console report summary
