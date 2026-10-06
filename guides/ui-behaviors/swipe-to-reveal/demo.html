@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swipe to reveal demo</title>
+  <style>
+    @layer base {
+      :root {
+        color-scheme: light dark;
+        --bg: light-dark(#f8fafc, #0f172a);
+        --surface: light-dark(#ffffff, #1e293b);
+        --surface-alt: light-dark(#f1f5f9, #334155);
+        --border: light-dark(#e2e8f0, #334155);
+        --text: light-dark(#0f172a, #f8fafc);
+        --text-muted: light-dark(#475569, #94a3b8);
+        --pin-bg: hsl(215 75% 48%);
+        --archive-bg: hsl(150 55% 36%);
+        --delete-bg: hsl(0 68% 50%);
+        --menu-bg: light-dark(#1e293b, #020617);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font: 1rem/1.5 system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-block-size: 180dvh;
+        padding: 2rem 1rem 6rem;
+      }
+
+      main {
+        max-inline-size: 42rem;
+        margin-inline: auto;
+        display: grid;
+        gap: 2.5rem;
+      }
+
+      header {
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      header p,
+      section > p {
+        color: var(--text-muted);
+      }
+
+      section {
+        display: grid;
+        gap: 0.875rem;
+      }
+
+      .status-log {
+        font-size: 0.9rem;
+        padding: 0.625rem 0.875rem;
+        border-radius: 0.5rem;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+      }
+    }
+
+    @layer demo {
+      /* Example 1: Swipe-to-reveal action buttons on list items */
+      .SwipeRevealList {
+        list-style: none;
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        overflow: clip;
+        background: var(--surface);
+      }
+
+      .SwipeRevealList-item + .SwipeRevealList-item {
+        border-block-start: 1px solid var(--border);
+      }
+
+      .SwipeRevealList-track {
+        display: grid;
+        grid-template-columns: 100% max-content;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+        overscroll-behavior-x: none;
+        overscroll-behavior-y: auto;
+        overscroll-behavior-y: chain;
+      }
+
+      .SwipeRevealList-track::-webkit-scrollbar {
+        display: none;
+      }
+
+      .SwipeRevealList-content {
+        scroll-snap-align: start;
+        background: var(--surface);
+        padding: 1rem 1.25rem;
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .SwipeRevealList-content p {
+        color: var(--text-muted);
+        font-size: 0.925rem;
+      }
+
+      .SwipeRevealList-actions {
+        scroll-snap-align: end;
+        display: flex;
+        align-items: stretch;
+      }
+
+      .SwipeRevealList-actions button {
+        border: 0;
+        padding-inline: 1.15rem;
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .SwipeRevealList-actions button:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: -5px;
+      }
+
+      .action-pin {
+        background: var(--pin-bg);
+      }
+
+      .action-archive {
+        background: var(--archive-bg);
+      }
+
+      .action-delete {
+        background: var(--delete-bg);
+      }
+
+      /* Example 2: Swipe-to-reveal side menu around a scrollable container */
+      .MenuReveal {
+        display: grid;
+        grid-template-columns: 100% max-content;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+        overscroll-behavior-x: none;
+        overscroll-behavior-y: auto;
+        overscroll-behavior-y: chain;
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        background: var(--menu-bg);
+      }
+
+      .MenuReveal::-webkit-scrollbar {
+        display: none;
+      }
+
+      .MenuReveal-content {
+        scroll-snap-align: start;
+        block-size: 16rem;
+        overflow: auto;
+        overscroll-behavior: auto;
+        overscroll-behavior: chain;
+        background: var(--surface);
+        padding: 1.25rem;
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .MenuReveal-content:focus-visible {
+        outline: 2px solid var(--pin-bg);
+        outline-offset: -2px;
+      }
+
+      .MenuReveal-menu {
+        scroll-snap-align: end;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1.25rem 1.5rem;
+        min-inline-size: 11rem;
+        background: var(--menu-bg);
+        color: #f8fafc;
+      }
+
+      .MenuReveal-menu a {
+        color: inherit;
+        text-decoration: none;
+        font-weight: 500;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+      }
+
+      .MenuReveal-menu a:hover,
+      .MenuReveal-menu a:focus-visible {
+        background: rgb(255 255 255 / 14%);
+        outline: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <header>
+      <h1>Swipe to reveal</h1>
+      <p>Swipe left (or scroll horizontally) on any item below to reveal contextual actions or a side menu without automatically triggering an action.</p>
+    </header>
+
+    <section aria-labelledby="actions-heading">
+      <h2 id="actions-heading">1. Swipe-to-reveal row actions</h2>
+      <p>Swiping snaps the action buttons into view without committing them. Tap or click a revealed button to run its action, or swipe right to close.</p>
+      <output class="status-log" id="statusLog" aria-live="polite">Last action: None (swipe a row to reveal buttons)</output>
+
+      <ul class="SwipeRevealList">
+        <li class="SwipeRevealList-item" data-title="Q3 Architecture RFC">
+          <div class="SwipeRevealList-track">
+            <div class="SwipeRevealList-content">
+              <strong>Q3 Architecture RFC</strong>
+              <p>Review comments on nested scroll container handoff.</p>
+            </div>
+            <div class="SwipeRevealList-actions" role="group" aria-label="Actions for Q3 Architecture RFC">
+              <button type="button" class="action-pin" data-action="Pinned">Pin</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
+            </div>
+          </div>
+        </li>
+
+        <li class="SwipeRevealList-item" data-title="Release v2.14 Checklist">
+          <div class="SwipeRevealList-track">
+            <div class="SwipeRevealList-content">
+              <strong>Release v2.14 Checklist</strong>
+              <p>All smoke tests and accessibility checks passed.</p>
+            </div>
+            <div class="SwipeRevealList-actions" role="group" aria-label="Actions for Release v2.14 Checklist">
+              <button type="button" class="action-pin" data-action="Pinned">Pin</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
+            </div>
+          </div>
+        </li>
+
+        <li class="SwipeRevealList-item" data-title="Design Token Audit">
+          <div class="SwipeRevealList-track">
+            <div class="SwipeRevealList-content">
+              <strong>Design Token Audit</strong>
+              <p>Verify contrast ratios for dark mode action surfaces.</p>
+            </div>
+            <div class="SwipeRevealList-actions" role="group" aria-label="Actions for Design Token Audit">
+              <button type="button" class="action-pin" data-action="Pinned">Pin</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="menu-heading">
+      <h2 id="menu-heading">2. Swipe-to-reveal side menu on a scrollable pane</h2>
+      <p>The inner pane scrolls vertically and uses <code>overscroll-behavior: chain</code>. Vertical scroll at the top or bottom chains to the page without local rubber-banding, and horizontal swipes chain to the outer wrapper to reveal the side menu.</p>
+
+      <div class="MenuReveal" role="region" aria-labelledby="menu-heading">
+        <div class="MenuReveal-content" tabindex="0">
+          <h3>Scrollable Article Preview</h3>
+          <p>Scroll up and down inside this pane, or swipe from the right to reveal the contextual side menu.</p>
+          <p>Because the inner scroll container sets <code>overscroll-behavior: chain</code>, reaching its scroll boundary does not trigger a local rubber-band stretch that would pull the surface away from its edge or cause a double bounce.</p>
+          <p>Instead, excess horizontal scroll chains directly to the outer <code>.MenuReveal</code> scroll-snap container to open the menu, and excess vertical scroll chains directly to the document.</p>
+          <p>In browsers that do not yet support the <code>chain</code> keyword, the property falls back to its initial <code>auto</code> value as a progressive enhancement, preserving scroll chaining across all engines.</p>
+        </div>
+        <nav class="MenuReveal-menu" aria-label="Article actions">
+          <a href="#share" data-menu-item="Share article">Share article</a>
+          <a href="#bookmark" data-menu-item="Bookmark">Bookmark</a>
+          <a href="#export" data-menu-item="Export PDF">Export PDF</a>
+        </nav>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    const statusLog = document.getElementById('statusLog');
+
+    document.querySelector('.SwipeRevealList').addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+
+      const item = button.closest('.SwipeRevealList-item');
+      const track = item.querySelector('.SwipeRevealList-track');
+      const title = item.dataset.title;
+      const action = button.dataset.action;
+
+      statusLog.textContent = `Last action: ${action} "${title}"`;
+      track.scrollTo({ left: 0, behavior: 'smooth' });
+    });
+
+    document.querySelector('.MenuReveal-menu').addEventListener('click', (event) => {
+      const link = event.target.closest('a[data-menu-item]');
+      if (!link) return;
+      event.preventDefault();
+      statusLog.textContent = `Last action: Selected "${link.dataset.menuItem}" from side menu`;
+    });
+  </script>
+</body>
+
+</html>
