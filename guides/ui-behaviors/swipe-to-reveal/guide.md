@@ -160,12 +160,30 @@ When wrapping a scrollable content container inside a horizontal scroll-snap con
 }
 ```
 
+Because `.MenuReveal-content` spans `100%` of the outer container's width, most of it remains visible inside the scrollport even when the side menu is snapped open. Consequently, tabbing into `.MenuReveal-menu` automatically scrolls the menu into view, but pressing `Shift+Tab` to move focus back onto `.MenuReveal-content` will not automatically scroll the track back to `0`.
+
+To snap `.MenuReveal-content` fully back into view on keyboard focus—without interfering with pointer clicks or touch drags that also focus the element—listen for `focus` and gate `scrollIntoView()` with `.matches(':focus-visible')`:
+
+```js
+for (const content of document.querySelectorAll('.MenuReveal-content')) {
+  content.addEventListener('focus', () => {
+    if (content.matches(':focus-visible')) {
+      content.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'start',
+      });
+    }
+  });
+}
+```
+
 ## Best practices and pitfalls
 
 - **DO** use `scroll-snap-type: x mandatory` rather than `proximity`. With `proximity`, a light swipe can leave the action buttons or side menu partially exposed at rest.
 - **DO** set `overscroll-behavior: chain` on nested scroll containers inside a swipe-to-reveal wrapper so excess scroll hands off cleanly to the swipe track or page without a local rubber-band bounce.
 - **DO** set `overscroll-behavior-x: none` on the outermost horizontal swipe container so horizontal overswipes do not trigger browser back/forward navigation or elastic edge peeking.
-- **DO** implement revealed actions and side-menu items as real focusable DOM controls (`<button>`, `<a>`). Native scroll containers automatically scroll focused descendants into view when users navigate via `Tab`.
+- **DO** implement revealed actions and side-menu items as real focusable DOM controls (`<button>`, `<a>`). When a focusable full-width content pane precedes the focusable DOM controls, pair a `focus` listener with `.matches(':focus-visible')` to call `scrollIntoView({ block: 'nearest', inline: 'start' })` so tabbing back onto the content pane closes the side panel without affecting pointer interactions.
 - **DO NOT** intercept `wheel`, `touchmove`, or `pointermove` events in JavaScript to manually translate the content or emulate scroll chaining. Main-thread gesture interception blocks compositor-driven scrolling, breaks native scroll momentum, and degrades responsiveness.
 
 ## Progressive enhancement

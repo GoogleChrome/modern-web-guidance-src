@@ -4,6 +4,7 @@
 - The outermost horizontal swipe-to-reveal container MUST set `overscroll-behavior-x: none` (or `overscroll-behavior-inline: none`) to prevent horizontal overswipes from triggering browser back/forward navigation or elastic edge peeking.
 - Nested scrollable containers inside a swipe-to-reveal wrapper (and/or the vertical axis of the swipe track via `overscroll-behavior-y: chain`) MUST apply `overscroll-behavior: chain` (or the matching axis longhand) so local rubber-band bounce is suppressed while excess scroll chains to the ancestor scroller.
 - Revealed action controls or side-menu items MUST be real focusable DOM elements (such as `<button>` or `<a>`) inside the scroll container so keyboard `Tab` navigation scrolls them into view.
+- When the foreground content pane is a focusable scroll container (`tabindex="0"`), receiving keyboard focus (`focus` paired with `:focus-visible`) MUST scroll the content pane back to the inline start (`scrollIntoView({ block: 'nearest', inline: 'start' })`) without triggering on pointer focus.
 
 ## Must fail
 

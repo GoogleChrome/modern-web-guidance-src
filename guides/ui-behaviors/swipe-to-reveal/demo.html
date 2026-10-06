@@ -307,6 +307,18 @@
       event.preventDefault();
       statusLog.textContent = `Last action: Selected "${link.dataset.menuItem}" from side menu`;
     });
+
+    for (const content of document.querySelectorAll('.MenuReveal-content')) {
+      content.addEventListener('focus', () => {
+        if (content.matches(':focus-visible')) {
+          content.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'start',
+          });
+        }
+      });
+    }
   </script>
 </body>
 
