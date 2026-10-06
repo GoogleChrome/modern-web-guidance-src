@@ -108,7 +108,8 @@
       const toUrl = new URL(to.url);
       const toPage = toUrl.searchParams.get("page");
       if (!toPage || !fromPage) return;
-      return toPage > fromPage ? "next" : "previous";
+      const isForward = Number(toPage) > Number(fromPage);
+      return isForward ? "next" : "previous";
     };
     window.addEventListener("pagereveal", async (e) => {
       if (e.viewTransition && window.navigation?.activation) {
