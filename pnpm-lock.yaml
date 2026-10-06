@@ -41,8 +41,8 @@ importers:
         specifier: ^0.4.17
         version: 0.4.17
       web-features:
-        specifier: ^3.39.0
-        version: 3.39.0
+        specifier: ^3.40.0
+        version: 3.40.0
     devDependencies:
       '@types/node':
         specifier: ^25.6.0
@@ -120,8 +120,8 @@ importers:
         specifier: ^27.0.2
         version: 27.0.2
       web-features:
-        specifier: ^3.39.0
-        version: 3.39.0
+        specifier: ^3.40.0
+        version: 3.40.0
 
   harness:
     dependencies:
@@ -184,8 +184,8 @@ importers:
         specifier: ^18.0.3
         version: 18.0.3
       web-features:
-        specifier: ^3.39.0
-        version: 3.39.0
+        specifier: ^3.40.0
+        version: 3.40.0
     devDependencies:
       '@types/gh-pages':
         specifier: ^6.1.0
@@ -3183,8 +3183,8 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  web-features@3.39.0:
-    resolution: {integrity: sha512-4DgSV2sNjlLMZg1XqaKceUhbKfdUPOXQ63v9XdKOv0EOB4zBIfNh16tvrxlTFAL21HIOxtk2/e+49uBK9WF+xg==}
+  web-features@3.40.0:
+    resolution: {integrity: sha512-3AzfKxVv7hWTRZSubYBVu1LHk62mdGg+vIpVAf6+nNC3pC7g455nKSry5OlwsaSYMzuzL2DxSTwlyb5z0+XZdQ==}
 
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
@@ -6423,7 +6423,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  web-features@3.39.0: {}
+  web-features@3.40.0: {}
 
   web-streams-polyfill@3.3.3: {}
 

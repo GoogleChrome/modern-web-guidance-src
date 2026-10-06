@@ -8,4 +8,5 @@ web-feature-ids:
   - abs-sign
   - color-mix
   - light-dark
+  - tmp-revert-rule
 ---
