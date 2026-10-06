@@ -1,0 +1,1045 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..4c3667b
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,165 @@
++/**
++ * The Daily Grind - Client Application
++ * Implements client-side security controls:
++ * - Safe DOM rendering (textContent, createElement, setHTML)
++ * - Trusted Types policy creation and enforcement
++ * - Strict origin validation for window message listeners
++ * - Explicit target origin specification for postMessage
++ */
++
++// Initialize Trusted Types Policy
++let dailyGrindSanitizer = null;
++if (typeof window !== 'undefined' && window.trustedTypes && typeof window.trustedTypes.createPolicy === 'function') {
++  try {
++    dailyGrindSanitizer = window.trustedTypes.createPolicy('dailyGrindSanitizer', {
++      createHTML: (input) => {
++        if (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function') {
++          return DOMPurify.sanitize(input);
++        }
++        return String(input)
++          .replace(/&/g, '&amp;')
++          .replace(/</g, '&lt;')
++          .replace(/>/g, '&gt;')
++          .replace(/"/g, '&quot;')
++          .replace(/'/g, '&#39;');
++      },
++      createScript: (input) => input,
++      createScriptURL: (input) => input,
++    });
++  } catch (err) {
++    console.warn('Trusted Types policy initialization notice:', err);
++  }
++}
++
++/**
++ * Safely assign HTML content using Sanitizer API, Trusted Types, or safe text fallback.
++ * Never uses unsafe raw innerHTML directly with untrusted input.
++ */
++function safeSetHTML(element, rawHTML) {
++  if (!element) return;
++  if ('setHTML' in element && typeof element.setHTML === 'function') {
++    element.setHTML(rawHTML);
++  } else if (dailyGrindSanitizer) {
++    element.innerHTML = dailyGrindSanitizer.createHTML(rawHTML);
++  } else {
++    element.textContent = rawHTML;
++  }
++}
++
++// Trusted Origins Allowlist for cross-window communication
++const TRUSTED_MESSAGE_ORIGINS = Object.freeze([
++  'https://trusted-partner.com',
++  'https://auth.dailygrind.com',
++  'https://pay.dailygrind.com',
++  typeof window !== 'undefined' ? window.location.origin : 'http://localhost:11222',
++]);
++
++/**
++ * Message Event Listener with strict origin verification
++ */
++if (typeof window !== 'undefined') {
++  window.addEventListener('message', (event) => {
++    // Strictly validate event.origin against explicit allowlist
++    if (!TRUSTED_MESSAGE_ORIGINS.includes(event.origin)) {
++      console.warn('Security: Rejected postMessage from untrusted origin:', event.origin);
++      return;
++    }
++
++    const data = event.data;
++    if (!data || typeof data !== 'object') return;
++
++    if (data.action === 'UPDATE_BANNER' && typeof data.message === 'string') {
++      const banner = document.getElementById('notification-banner');
++      if (banner) {
++        // Safe DOM update using textContent
++        banner.textContent = data.message;
++        banner.style.display = 'block';
++      }
++    }
++
++    if (data.action === 'PARTNER_PROMO' && typeof data.promoHTML === 'string') {
++      const promoBox = document.getElementById('partner-promo');
++      if (promoBox) {
++        // Route through Trusted Types sanitizer
++        safeSetHTML(promoBox, data.promoHTML);
++      }
++    }
++  });
++}
++
++/**
++ * Securely send message to target window with explicit target origin.
++ * NEVER uses wildcard '*'.
++ */
++function sendSecureMessage(targetWindow, payload, targetOrigin = 'https://trusted-partner.com') {
++  if (!TRUSTED_MESSAGE_ORIGINS.includes(targetOrigin)) {
++    throw new Error('Target origin not allowed: ' + targetOrigin);
++  }
++  if (targetWindow && typeof targetWindow.postMessage === 'function') {
++    targetWindow.postMessage(payload, targetOrigin);
++  }
++}
++
++/**
++ * Render dynamic menu items safely using createElement and textContent
++ */
++function renderDynamicMenu(items) {
++  const container = document.getElementById('dynamic-menu');
++  if (!container) return;
++
++  // Clear existing content safely
++  container.textContent = '';
++
++  items.forEach((item) => {
++    const card = document.createElement('div');
++    card.className = 'card';
++
++    const title = document.createElement('h3');
++    title.textContent = item.name;
++
++    const desc = document.createElement('p');
++    desc.textContent = item.description;
++
++    const price = document.createElement('p');
++    price.className = 'price';
++    price.textContent = `$${Number(item.price).toFixed(2)}`;
++
++    const btn = document.createElement('a');
++    btn.className = 'btn';
++    btn.href = `/order-online?item=${encodeURIComponent(item.id || '')}`;
++    btn.textContent = 'Order Now';
++
++    card.appendChild(title);
++    card.appendChild(desc);
++    card.appendChild(price);
++    card.appendChild(btn);
++
++    container.appendChild(card);
++  });
++}
++
++/**
++ * Initialize application state on DOMContentLoaded
++ */
++if (typeof document !== 'undefined') {
++  document.addEventListener('DOMContentLoaded', () => {
++    // Check user session
++    fetch('/api/session', {
++      headers: { 'Accept': 'application/json' },
++      credentials: 'same-origin',
++    })
++      .then((res) => (res.ok ? res.json() : null))
++      .then((data) => {
++        if (data && data.user) {
++          const userGreeting = document.getElementById('user-greeting');
++          if (userGreeting) {
++            // Safe textContent update
++            userGreeting.textContent = `Welcome back, ${data.user.name}! (${data.user.rewardsPoints} Rewards Points)`;
++          }
++        }
++      })
++      .catch((err) => {
++        console.debug('Session check completed:', err);
++      });
++  });
++}
+diff --git a/index.html b/index.html
+index 66c9173..285b498 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -27,6 +28,16 @@
+       background-color: var(--light);
+     }
+ 
++    /* Banner */
++    #notification-banner {
++      display: none;
++      background: var(--accent);
++      color: #3e2723;
++      text-align: center;
++      padding: 8px 16px;
++      font-weight: bold;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -93,6 +104,12 @@
+       margin-bottom: 1rem;
+     }
+ 
++    #user-greeting {
++      margin-top: 10px;
++      font-size: 1.1rem;
++      color: var(--accent);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -120,6 +137,12 @@
+       color: var(--primary);
+     }
+ 
++    .card .price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -135,6 +158,14 @@
+       background: #3e2723;
+     }
+ 
++    #partner-promo {
++      margin-top: 20px;
++      padding: 15px;
++      background: #efebe9;
++      border-left: 4px solid var(--primary);
++      border-radius: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,6 +188,8 @@
+ 
+ <body>
+ 
++  <div id="notification-banner"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -171,6 +204,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div id="user-greeting"></div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+@@ -195,6 +229,10 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <div id="partner-promo">Partner specials and member updates will appear here.</div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +245,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script nonce="{{NONCE}}" src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" integrity="sha256-0kaYYq3qitkkVZpP/6uKTJwfTpqFNM6OHDbsaYzw9Uw=" crossorigin="anonymous"></script>
++  <script nonce="{{NONCE}}" type="module" src="/app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..810ae73 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,9 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "node --check server.js && node --check app.js",
++    "start": "node server.js",
++    "test": "node test_verification.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..216770b
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,355 @@
++const http = require('node:http');
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++
++const PORT = Number.parseInt(process.env.PORT || '11222', 10);
++const WORKSPACE_DIR = __dirname;
++
++// Explicit trusted origins for CORS
++const TRUSTED_CORS_ORIGINS = new Set([
++  'https://trusted-partner.com',
++  'https://auth.dailygrind.com',
++  'https://app.dailygrind.com',
++  'https://dailygrind.com',
++]);
++
++/**
++ * Server-side Fetch Metadata resource isolation protection.
++ * Inspects Sec-Fetch-Site, Sec-Fetch-Mode, and Sec-Fetch-Dest headers.
++ * Rejects unauthorized cross-site requests with HTTP status 403.
++ * Always includes Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site.
++ */
++function checkFetchMetadata(req, res) {
++  // Always include Vary header so downstream caches key on Sec-Fetch-* headers
++  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++
++  const site = req.headers['sec-fetch-site'];
++  const mode = req.headers['sec-fetch-mode'];
++  const dest = req.headers['sec-fetch-dest'];
++
++  // Allow requests from non-browser clients or legacy browsers (missing Sec-Fetch-Site)
++  if (!site) {
++    return true;
++  }
++
++  // Allow same-origin, same-site, and browser-initiated navigation (site === 'none')
++  if (site === 'same-origin' || site === 'same-site' || site === 'none') {
++    return true;
++  }
++
++  // Allow standard top-level cross-site navigation GET requests (e.g. user clicking an external link)
++  // but reject object/embed/iframe navigations
++  if (
++    site === 'cross-site' &&
++    mode === 'navigate' &&
++    req.method === 'GET' &&
++    !['object', 'embed'].includes(dest)
++  ) {
++    return true;
++  }
++
++  // Unauthorized cross-site requests (state-changing or subresource fetches) are blocked
++  res.statusCode = 403;
++  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
++  res.end('Forbidden: Request rejected by Fetch Metadata resource isolation policy');
++  return false;
++}
++
++/**
++ * Validates CORS requests and applies secure CORS headers.
++ * Never uses wildcard '*' when credentials are enabled.
++ */
++function handleCORS(req, res) {
++  const origin = req.headers['origin'];
++  if (origin && TRUSTED_CORS_ORIGINS.has(origin)) {
++    res.setHeader('Access-Control-Allow-Origin', origin);
++    res.setHeader('Access-Control-Allow-Credentials', 'true');
++    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
++    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
++    res.setHeader('Access-Control-Max-Age', '86400');
++  }
++}
++
++/**
++ * Applies default security headers across all responses
++ */
++function applyDefaultSecurityHeaders(res) {
++  // HSTS: Enforce HTTPS connections
++  res.setHeader(
++    'Strict-Transport-Security',
++    'max-age=31536000; includeSubDomains; preload'
++  );
++
++  // MIME-sniffing protection
++  res.setHeader('X-Content-Type-Options', 'nosniff');
++
++  // Clickjacking protection
++  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
++
++  // Referrer Policy
++  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++
++  // Permissions Policy: Restrict unused device capabilities
++  res.setHeader(
++    'Permissions-Policy',
++    'camera=(), geolocation=(), microphone=(), focus-without-user-activation=()'
++  );
++
++  // Cross-Origin Isolation companions
++  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++
++  // Reporting Endpoints
++  res.setHeader(
++    'Reporting-Endpoints',
++    'default="https://reports.example/default", main-endpoint="https://reports.example/main", csp-endpoint="https://reports.example/csp-reports"'
++  );
++}
++
++/**
++ * Parses cookies from request header
++ */
++function parseCookies(req) {
++  const cookieHeader = req.headers['cookie'] || '';
++  const cookies = {};
++  cookieHeader.split(';').forEach((cookie) => {
++    const parts = cookie.split('=');
++    const name = parts[0] ? parts[0].trim() : '';
++    const value = parts.slice(1).join('=').trim();
++    if (name) {
++      cookies[name] = value;
++    }
++  });
++  return cookies;
++}
++
++/**
++ * Main HTTP request handler
++ */
++const server = http.createServer((req, res) => {
++  const urlObj = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
++  const pathname = urlObj.pathname;
++
++  // Apply default security headers to all responses
++  applyDefaultSecurityHeaders(res);
++
++  // Validate request via Fetch Metadata
++  if (!checkFetchMetadata(req, res)) {
++    return;
++  }
++
++  // Handle CORS
++  handleCORS(req, res);
++
++  // Handle CORS preflight (OPTIONS)
++  if (req.method === 'OPTIONS') {
++    const origin = req.headers['origin'];
++    if (origin && !TRUSTED_CORS_ORIGINS.has(origin)) {
++      res.statusCode = 403;
++      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
++      res.end('Forbidden: Untrusted Origin');
++      return;
++    }
++    res.statusCode = 204;
++    res.end();
++    return;
++  }
++
++  // Session cookie management: set __Host- session cookie if not present
++  const cookies = parseCookies(req);
++  if (!cookies['__Host-session_id']) {
++    const newSessionId = crypto.randomUUID();
++    res.setHeader(
++      'Set-Cookie',
++      `__Host-session_id=${newSessionId}; Path=/; Secure; HttpOnly; SameSite=Lax`
++    );
++  }
++
++  // Route: /logout
++  if (pathname === '/logout') {
++    res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
++    res.setHeader(
++      'Set-Cookie',
++      '__Host-session_id=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
++    );
++
++    if (req.headers['accept'] && req.headers['accept'].includes('application/json')) {
++      res.statusCode = 200;
++      res.setHeader('Content-Type', 'application/json; charset=utf-8');
++      res.end(JSON.stringify({ success: true, message: 'Logged out successfully' }));
++    } else {
++      res.statusCode = 200;
++      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
++      res.end('Logged out successfully');
++    }
++    return;
++  }
++
++  // Route: /api/session
++  if (pathname === '/api/session') {
++    res.statusCode = 200;
++    res.setHeader('Content-Type', 'application/json; charset=utf-8');
++    res.end(
++      JSON.stringify({
++        authenticated: true,
++        user: {
++          name: 'Coffee Enthusiast',
++          rewardsPoints: 150,
++          tier: 'Gold',
++        },
++      })
++    );
++    return;
++  }
++
++  // Route: /api/embed-session (Demonstrates partitioned third-party cookies)
++  if (pathname === '/api/embed-session') {
++    const embedToken = crypto.randomUUID();
++    res.setHeader(
++      'Set-Cookie',
++      `__Secure-embed_token=${embedToken}; Path=/; Secure; SameSite=None; Partitioned; HttpOnly`
++    );
++    res.statusCode = 200;
++    res.setHeader('Content-Type', 'application/json; charset=utf-8');
++    res.end(JSON.stringify({ embedded: true, token: embedToken }));
++    return;
++  }
++
++  // Route: /api/menu
++  if (pathname === '/api/menu') {
++    res.statusCode = 200;
++    res.setHeader('Content-Type', 'application/json; charset=utf-8');
++    res.end(
++      JSON.stringify([
++        { id: '1', name: 'Maple Oat Latte', description: 'Creamy oat milk with Vermont maple syrup.', price: 5.5 },
++        { id: '2', name: 'Dark Roast Espresso', description: 'Bold, smoky, and energizing.', price: 3.75 },
++        { id: '3', name: 'Cold Brew', description: 'Steeped for 18 hours for maximum smoothness.', price: 4.5 },
++      ])
++    );
++    return;
++  }
++
++  // Route: /api/order (State-changing API endpoint)
++  if (pathname === '/api/order' && req.method === 'POST') {
++    res.statusCode = 200;
++    res.setHeader('Content-Type', 'application/json; charset=utf-8');
++    res.end(JSON.stringify({ success: true, orderId: crypto.randomUUID() }));
++    return;
++  }
++
++  // Route: Static /app.js
++  if (pathname === '/app.js') {
++    const appJsPath = path.join(WORKSPACE_DIR, 'app.js');
++    fs.readFile(appJsPath, 'utf8', (err, data) => {
++      if (err) {
++        res.statusCode = 404;
++        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
++        res.end('File not found');
++        return;
++      }
++      res.statusCode = 200;
++      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
++      res.end(data);
++    });
++    return;
++  }
++
++  // Route: Reporting endpoints
++  if (pathname.startsWith('/reports') || pathname === '/csp-reports' || pathname === '/.well-known/security-reports') {
++    res.statusCode = 204;
++    res.end();
++    return;
++  }
++
++  // Route: Document pages (HTML)
++  const isDocumentRequest =
++    pathname === '/' ||
++    pathname === '/index.html' ||
++    pathname.startsWith('/menu') ||
++    pathname.startsWith('/locations') ||
++    pathname.startsWith('/rewards') ||
++    pathname.startsWith('/account') ||
++    pathname.startsWith('/order-online') ||
++    pathname.startsWith('/about') ||
++    pathname.startsWith('/careers') ||
++    pathname.startsWith('/contact') ||
++    pathname.startsWith('/privacy-policy') ||
++    !path.extname(pathname);
++
++  if (isDocumentRequest) {
++    const htmlPath = path.join(WORKSPACE_DIR, 'index.html');
++    fs.readFile(htmlPath, 'utf8', (err, htmlContent) => {
++      if (err) {
++        res.statusCode = 500;
++        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
++        res.end('Internal Server Error');
++        return;
++      }
++
++      // Generate cryptographically random nonce per request
++      const nonce = crypto.randomBytes(16).toString('base64');
++
++      // Construct CSP Header
++      const cspDirectives = [
++        "default-src 'self'",
++        `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample' 'https:' 'unsafe-inline'`,
++        "style-src 'self' 'unsafe-inline'",
++        "img-src 'self' https://images.unsplash.com data:",
++        "font-src 'self'",
++        "object-src 'none'",
++        "base-uri 'none'",
++        "frame-ancestors 'self'",
++        "report-to main-endpoint",
++        "require-trusted-types-for 'script'",
++      ];
++      res.setHeader('Content-Security-Policy', cspDirectives.join('; '));
++      res.setHeader('Content-Type', 'text/html; charset=utf-8');
++
++      if (req.method === 'HEAD') {
++        res.statusCode = 200;
++        res.end();
++        return;
++      }
++
++      // Replace nonce placeholder in HTML template
++      const renderedHtml = htmlContent.replace(/\{\{NONCE\}\}/g, nonce);
++      res.statusCode = 200;
++      res.end(renderedHtml);
++    });
++    return;
++  }
++
++  // Static file fallback
++  const safePath = path.normalize(pathname).replace(/^(\.\.[/\\])+/, '');
++  const staticPath = path.join(WORKSPACE_DIR, safePath);
++  if (fs.existsSync(staticPath) && fs.statSync(staticPath).isFile()) {
++    res.statusCode = 200;
++    const ext = path.extname(staticPath).toLowerCase();
++    const mimeTypes = {
++      '.css': 'text/css; charset=utf-8',
++      '.js': 'application/javascript; charset=utf-8',
++      '.json': 'application/json; charset=utf-8',
++      '.png': 'image/png',
++      '.jpg': 'image/jpeg',
++      '.jpeg': 'image/jpeg',
++      '.svg': 'image/svg+xml',
++      '.ico': 'image/x-icon',
++    };
++    res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
++    fs.createReadStream(staticPath).pipe(res);
++    return;
++  }
++
++  // Default: Not found
++  res.statusCode = 404;
++  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
++  res.end('Not Found');
++});
++
++// Start server listening on PORT
++server.listen(PORT, '0.0.0.0', () => {
++  console.log(`The Daily Grind web server running on port ${PORT}`);
++});
++
++module.exports = server;
+diff --git a/test_verification.js b/test_verification.js
+new file mode 100644
+index 0000000..6341d6f
+--- /dev/null
++++ b/test_verification.js
+@@ -0,0 +1,385 @@
++const http = require('node:http');
++const fs = require('node:fs');
++const path = require('node:path');
++const assert = require('node:assert');
++
++// Start the server in-process on an ephemeral port for testing
++process.env.PORT = '0';
++const server = require('./server.js');
++
++// Helper to make HTTP requests
++function request(options, postData = null) {
++  return new Promise((resolve, reject) => {
++    const req = http.request(options, (res) => {
++      let data = '';
++      res.on('data', (chunk) => {
++        data += chunk;
++      });
++      res.on('end', () => {
++        resolve({
++          statusCode: res.statusCode,
++          headers: res.headers,
++          body: data,
++        });
++      });
++    });
++    req.on('error', reject);
++    if (postData) {
++      req.write(postData);
++    }
++    req.end();
++  });
++}
++
++async function runTests() {
++  if (!server.listening) {
++    await new Promise((resolve) => server.once('listening', resolve));
++  }
++  const address = server.address();
++  const port = address.port;
++  console.log(`Testing server on port ${port}...`);
++
++  let failures = 0;
++  function test(name, fn) {
++    try {
++      fn();
++      console.log(`  ✓ PASS: ${name}`);
++    } catch (e) {
++      console.error(`  ✗ FAIL: ${name}`, e);
++      failures++;
++    }
++  }
++
++  // Test 1: GET / (Document response)
++  const docRes = await request({
++    host: '127.0.0.1',
++    port: port,
++    path: '/',
++    method: 'GET',
++    headers: {
++      'Sec-Fetch-Site': 'none',
++      'Sec-Fetch-Mode': 'navigate',
++      'Sec-Fetch-Dest': 'document',
++    },
++  });
++
++  // Expectation 1: Strict-Transport-Security
++  test('Exp 1: Strict-Transport-Security header present and enforces HTTPS', () => {
++    assert(docRes.headers['strict-transport-security'], 'HSTS header missing');
++    assert(
++      docRes.headers['strict-transport-security'].includes('max-age=31536000'),
++      'HSTS max-age incorrect'
++    );
++    assert(
++      docRes.headers['strict-transport-security'].includes('includeSubDomains'),
++      'HSTS includeSubDomains missing'
++    );
++  });
++
++  // Expectation 2: Safe DOM APIs in app.js
++  test('Exp 2: Safe DOM APIs in app.js', () => {
++    const appJs = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
++    assert(appJs.includes('textContent'), 'textContent usage missing');
++    assert(appJs.includes('createElement'), 'createElement usage missing');
++    assert(appJs.includes('setHTML'), 'setHTML usage missing');
++    assert(!appJs.includes('document.write'), 'document.write should not be used');
++    assert(!appJs.includes('eval('), 'eval should not be used');
++  });
++
++  // Expectation 3: First-party session cookies using __Host- prefix
++  test('Exp 3: First-party session cookie configured with __Host- prefix', () => {
++    const setCookie = docRes.headers['set-cookie'];
++    assert(setCookie, 'Set-Cookie header missing');
++    const cookieStr = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie;
++    assert(cookieStr.includes('__Host-session_id='), '__Host- prefix missing');
++    assert(cookieStr.includes('Secure'), 'Secure attribute missing');
++    assert(cookieStr.includes('HttpOnly'), 'HttpOnly attribute missing');
++    assert(/SameSite=Lax/i.test(cookieStr), 'SameSite=Lax missing');
++    assert(/Path=\//i.test(cookieStr), 'Path=/ missing');
++    assert(!/Domain=/i.test(cookieStr), 'Domain attribute must be omitted for __Host- cookies');
++  });
++
++  // Expectation 4: Partitioned SameSite=None cookies for embedded contexts
++  test('Exp 4: Third-party embedded session cookies use Partitioned and SameSite=None', async () => {
++    const embedRes = await request({
++      host: '127.0.0.1',
++      port: port,
++      path: '/api/embed-session',
++      method: 'GET',
++    });
++    const setCookie = embedRes.headers['set-cookie'];
++    assert(setCookie, 'Set-Cookie header missing on embed route');
++    const cookieStr = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie;
++    assert(/SameSite=None/i.test(cookieStr), 'SameSite=None missing on third-party cookie');
++    assert(cookieStr.includes('Secure'), 'Secure missing on third-party cookie');
++    assert(cookieStr.includes('Partitioned'), 'Partitioned attribute missing on third-party cookie');
++  });
++
++  // Expectation 5: Protect against clickjacking with X-Frame-Options and frame-ancestors
++  test('Exp 5: Clickjacking protection via X-Frame-Options and frame-ancestors', () => {
++    assert.strictEqual(
++      docRes.headers['x-frame-options'],
++      'SAMEORIGIN',
++      'X-Frame-Options should be SAMEORIGIN'
++    );
++    const csp = docRes.headers['content-security-policy'] || '';
++    assert(
++      csp.includes("frame-ancestors 'self'"),
++      "CSP frame-ancestors 'self' missing"
++    );
++  });
++
++  // Expectation 6 & 7: Window message origin validation and explicit postMessage target
++  test('Exp 6 & 7: window.addEventListener message validates origin and postMessage specifies origin', () => {
++    const appJs = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
++    assert(
++      appJs.includes('TRUSTED_MESSAGE_ORIGINS'),
++      'TRUSTED_MESSAGE_ORIGINS missing'
++    );
++    assert(
++      appJs.includes('event.origin'),
++      'event.origin validation missing'
++    );
++    assert(
++      appJs.includes('postMessage(payload, targetOrigin)'),
++      'postMessage with explicit target origin missing'
++    );
++  });
++
++  // Expectation 8: Reporting-Endpoints header & report-to directive in CSP
++  test('Exp 8: Reporting-Endpoints configured and referenced via report-to', () => {
++    const repEnd = docRes.headers['reporting-endpoints'];
++    assert(repEnd, 'Reporting-Endpoints header missing');
++    assert(repEnd.includes('main-endpoint='), 'main-endpoint definition missing');
++    const csp = docRes.headers['content-security-policy'] || '';
++    assert(csp.includes('report-to main-endpoint'), 'report-to directive missing in CSP');
++  });
++
++  // Expectation 9: Nonce-based CSP with strict-dynamic, report-sample, object-src none, base-uri none
++  test('Exp 9: Nonce-based CSP with strict-dynamic, report-sample, object-src none, base-uri none', () => {
++    const csp = docRes.headers['content-security-policy'] || '';
++    assert(csp.includes("'strict-dynamic'"), "'strict-dynamic' missing in CSP");
++    assert(csp.includes("'report-sample'"), "'report-sample' missing in CSP");
++    assert(csp.includes("object-src 'none'"), "object-src 'none' missing in CSP");
++    assert(csp.includes("base-uri 'none'"), "base-uri 'none' missing in CSP");
++    assert(/script-src\s+'nonce-[A-Za-z0-9+/=]+'/.test(csp), 'Nonce missing in script-src');
++  });
++
++  // Expectation 10: No broad scheme or domain allowlist without strict-dynamic
++  test('Exp 10: No broad allowlist without strict-dynamic', () => {
++    const csp = docRes.headers['content-security-policy'] || '';
++    assert(csp.includes("'strict-dynamic'"), 'strict-dynamic must be used');
++  });
++
++  // Expectation 11: Trusted Types enforcement
++  test('Exp 11: Trusted Types in CSP and client policy creation', () => {
++    const csp = docRes.headers['content-security-policy'] || '';
++    assert(
++      csp.includes("require-trusted-types-for 'script'"),
++      "require-trusted-types-for 'script' missing in CSP"
++    );
++    const appJs = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
++    assert(
++      appJs.includes('trustedTypes.createPolicy'),
++      'trustedTypes.createPolicy missing in app.js'
++    );
++  });
++
++  // Expectation 12: Cross-Origin-Opener-Policy
++  test('Exp 12: Cross-Origin-Opener-Policy same-origin-allow-popups or same-origin', () => {
++    const coop = docRes.headers['cross-origin-opener-policy'];
++    assert(
++      coop === 'same-origin-allow-popups' || coop === 'same-origin',
++      'COOP header missing or invalid'
++    );
++  });
++
++  // Expectation 13: Cross-Origin-Resource-Policy
++  test('Exp 13: Cross-Origin-Resource-Policy same-origin', () => {
++    const corp = docRes.headers['cross-origin-resource-policy'];
++    assert(
++      corp === 'same-origin' || corp === 'same-site',
++      'CORP header missing or invalid'
++    );
++  });
++
++  // Expectation 14: Fetch Metadata protection
++  test('Exp 14: Server-side Fetch Metadata protection & Vary header', async () => {
++    assert(docRes.headers['vary'], 'Vary header missing');
++    assert(
++      docRes.headers['vary'].includes('Sec-Fetch-Site') &&
++        docRes.headers['vary'].includes('Sec-Fetch-Mode') &&
++        docRes.headers['vary'].includes('Sec-Fetch-Dest'),
++      'Vary header missing Sec-Fetch-* keys'
++    );
++
++    // Test cross-site state-changing POST request -> must be rejected with 403
++    const crossSitePost = await request({
++      host: '127.0.0.1',
++      port: port,
++      path: '/api/order',
++      method: 'POST',
++      headers: {
++        'Sec-Fetch-Site': 'cross-site',
++        'Sec-Fetch-Mode': 'cors',
++        'Sec-Fetch-Dest': 'empty',
++      },
++    });
++    assert.strictEqual(
++      crossSitePost.statusCode,
++      403,
++      'Cross-site POST request should be rejected with 403'
++    );
++
++    // Test cross-site navigate GET request -> allowed
++    const crossSiteNavGet = await request({
++      host: '127.0.0.1',
++      port: port,
++      path: '/',
++      method: 'GET',
++      headers: {
++        'Sec-Fetch-Site': 'cross-site',
++        'Sec-Fetch-Mode': 'navigate',
++        'Sec-Fetch-Dest': 'document',
++      },
++    });
++    assert.strictEqual(
++      crossSiteNavGet.statusCode,
++      200,
++      'Cross-site navigation GET request should be allowed'
++    );
++  });
++
++  // Expectation 15: X-Content-Type-Options: nosniff + accurate Content-Type
++  test('Exp 15: X-Content-Type-Options: nosniff and accurate Content-Type', async () => {
++    assert.strictEqual(
++      docRes.headers['x-content-type-options'],
++      'nosniff',
++      'X-Content-Type-Options missing on doc'
++    );
++    assert(
++      docRes.headers['content-type'].includes('text/html'),
++      'Content-Type on doc not text/html'
++    );
++
++    const jsRes = await request({
++      host: '127.0.0.1',
++      port: port,
++      path: '/app.js',
++      method: 'GET',
++    });
++    assert.strictEqual(
++      jsRes.headers['x-content-type-options'],
++      'nosniff',
++      'X-Content-Type-Options missing on JS'
++    );
++    assert(
++      jsRes.headers['content-type'].includes('application/javascript'),
++      'Content-Type on JS not application/javascript'
++    );
++  });
++
++  // Expectation 16: Referrer-Policy
++  test('Exp 16: Referrer-Policy: strict-origin-when-cross-origin', () => {
++    assert.strictEqual(
++      docRes.headers['referrer-policy'],
++      'strict-origin-when-cross-origin',
++      'Referrer-Policy missing or incorrect'
++    );
++  });
++
++  // Expectation 17: Permissions-Policy
++  test('Exp 17: Permissions-Policy restrictive header', () => {
++    const pp = docRes.headers['permissions-policy'];
++    assert(pp, 'Permissions-Policy missing');
++    assert(pp.includes('camera=()'), 'camera=() missing');
++    assert(pp.includes('geolocation=()'), 'geolocation=() missing');
++    assert(pp.includes('microphone=()'), 'microphone=() missing');
++  });
++
++  // Expectation 18: Subresource Integrity (SRI) on external scripts
++  test('Exp 18: SRI integrity and crossorigin on external script tags in index.html', () => {
++    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
++    assert(html.includes('integrity="sha256-'), 'SRI integrity hash missing');
++    assert(
++      html.includes('crossorigin="anonymous"'),
++      'crossorigin="anonymous" missing on script tag'
++    );
++  });
++
++  // Expectation 19: CORS origin validation and credentials
++  test('Exp 19: CORS origin validation with explicit origin and credentials', async () => {
++    const corsRes = await request({
++      host: '127.0.0.1',
++      port: port,
++      path: '/api/session',
++      method: 'GET',
++      headers: {
++        Origin: 'https://trusted-partner.com',
++        'Sec-Fetch-Site': 'cross-site',
++        'Sec-Fetch-Mode': 'cors',
++      },
++    });
++    assert.strictEqual(
++      corsRes.headers['access-control-allow-origin'],
++      'https://trusted-partner.com',
++      'CORS Allow-Origin should match trusted origin'
++    );
++    assert.strictEqual(
++      corsRes.headers['access-control-allow-credentials'],
++      'true',
++      'CORS Allow-Credentials should be true'
++    );
++    assert.notStrictEqual(
++      corsRes.headers['access-control-allow-origin'],
++      '*',
++      'CORS Allow-Origin must not be wildcard with credentials'
++    );
++
++    // Untrusted origin preflight
++    const untrustedPreflight = await request({
++      host: '127.0.0.1',
++      port: port,
++      path: '/api/session',
++      method: 'OPTIONS',
++      headers: {
++        Origin: 'https://evil-attacker.com',
++      },
++    });
++    assert.strictEqual(
++      untrustedPreflight.statusCode,
++      403,
++      'Untrusted origin preflight should be rejected'
++    );
++  });
++
++  // Expectation 20: Clear-Site-Data on logout
++  test('Exp 20: Clear-Site-Data on /logout', async () => {
++    const logoutRes = await request({
++      host: '127.0.0.1',
++      port: port,
++      path: '/logout',
++      method: 'GET',
++    });
++    assert(
++      logoutRes.headers['clear-site-data'],
++      'Clear-Site-Data header missing on logout'
++    );
++    assert(
++      logoutRes.headers['clear-site-data'].includes('"cookies"') &&
++        logoutRes.headers['clear-site-data'].includes('"storage"') &&
++        logoutRes.headers['clear-site-data'].includes('"cache"'),
++      'Clear-Site-Data values incorrect'
++    );
++  });
++
++  console.log(`\nResults: ${failures === 0 ? 'ALL PASS' : failures + ' FAILED'}`);
++  server.close(() => {
++    process.exit(failures === 0 ? 0 : 1);
++  });
++}
++
++runTests().catch((err) => {
++  console.error('Fatal test error:', err);
++  process.exit(1);
++});

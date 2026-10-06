@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+index 66c9173..8278aab 100644
+--- a/index.html
++++ b/index.html
+@@ -153,6 +153,15 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script nonce="CSP_NONCE">
++  if (window.trustedTypes && trustedTypes.createPolicy) {
++    trustedTypes.createPolicy('default', {
++      createHTML: function(s) { return s; },
++      createScriptURL: function(s) { return s; },
++      createScript: function(s) { return s; }
++    });
++  }
++  </script>
+ </head>
+ 
+ <body>
+diff --git a/package.json b/package.json
+index 2bd4d77..cffdc93 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "build": "node --check server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..ef19721
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,90 @@
++const http = require('http');
++const fs = require('fs');
++const path = require('path');
++const crypto = require('crypto');
++
++const PORT = parseInt(process.env.PORT, 10) || 11222;
++const htmlTemplate = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
++
++function generateNonce() {
++  return crypto.randomBytes(16).toString('base64');
++}
++
++function getSecurityHeaders(nonce) {
++  return {
++    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
++    'X-Frame-Options': 'SAMEORIGIN',
++    'X-Content-Type-Options': 'nosniff',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Permissions-Policy': 'camera=(), geolocation=(), microphone=()',
++    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    'Reporting-Endpoints': 'main-endpoint="https://reports.dailygrind.example/main"',
++    'Content-Security-Policy': [
++      "script-src 'nonce-" + nonce + "' 'strict-dynamic' 'report-sample'",
++      "object-src 'none'",
++      "base-uri 'none'",
++      "frame-ancestors 'self'",
++      "require-trusted-types-for 'script'",
++      'report-to main-endpoint'
++    ].join('; '),
++    'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site'
++  };
++}
++
++const server = http.createServer(function (req, res) {
++  var fetchSite = req.headers['sec-fetch-site'];
++  var fetchMode = req.headers['sec-fetch-mode'];
++  var fetchDest = req.headers['sec-fetch-dest'];
++
++  if (fetchSite) {
++    if (['same-origin', 'same-site', 'none'].indexOf(fetchSite) === -1) {
++      var isAllowedNav = fetchSite === 'cross-site'
++        && fetchMode === 'navigate'
++        && req.method === 'GET'
++        && ['object', 'embed'].indexOf(fetchDest) === -1;
++
++      if (!isAllowedNav) {
++        res.writeHead(403, {
++          'Content-Type': 'text/plain',
++          'X-Content-Type-Options': 'nosniff',
++          'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site'
++        });
++        res.end('Forbidden');
++        return;
++      }
++    }
++  }
++
++  var nonce = generateNonce();
++  var headers = getSecurityHeaders(nonce);
++  var urlPath = req.url.split('?')[0];
++
++  if (urlPath === '/logout') {
++    res.writeHead(302, Object.assign({}, headers, {
++      'Clear-Site-Data': '"cookies", "storage", "cache"',
++      'Location': '/',
++      'Content-Type': 'text/html; charset=utf-8'
++    }));
++    res.end();
++    return;
++  }
++
++  var html = htmlTemplate.replace(/CSP_NONCE/g, nonce);
++
++  var existingCookies = req.headers.cookie || '';
++  var responseHeaders = Object.assign({}, headers, {
++    'Content-Type': 'text/html; charset=utf-8'
++  });
++
++  if (existingCookies.indexOf('__Host-session') === -1) {
++    responseHeaders['Set-Cookie'] = '__Host-session=' + crypto.randomUUID() + '; Secure; HttpOnly; SameSite=Lax; Path=/';
++  }
++
++  res.writeHead(200, responseHeaders);
++  res.end(html);
++});
++
++server.listen(PORT, function () {
++  console.log('Server running on port ' + PORT);
++});

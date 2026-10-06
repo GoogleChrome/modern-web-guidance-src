@@ -1,0 +1,315 @@
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..3c79cbf 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -10,6 +10,15 @@ export default defineConfig({
+   site: 'https://astro-news-pytrpecapa-uc.a.run.app/',
+   base: 'devtools-times/',
+   integrations: [react()],
++  session: {
++    cookie: {
++      name: '__Host-astro-session',
++      httpOnly: true,
++      path: '/',
++      sameSite: 'lax',
++      secure: true,
++    },
++  },
+   vite: {
+     plugins: [tailwindcss()],
+   },
+@@ -44,4 +53,4 @@ export default defineConfig({
+       }
+     ]
+   }
+-});
+\ No newline at end of file
++});
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..32576d2 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,13 @@
+ declare global {
++  namespace App {
++    interface Locals {
++      cspNonce: string;
++    }
++  }
++
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/content/articles/coastal-pulse.md b/src/content/articles/coastal-pulse.md
+index 6ebd777..3341e61 100644
+--- a/src/content/articles/coastal-pulse.md
++++ b/src/content/articles/coastal-pulse.md
+@@ -23,16 +23,3 @@ The air at the coast is rich in negative ions, which are thought to improve oxyg
+ 
+ ### Explore
+ While the salt air can be corrosive to infrastructure, the trade-off is a front-row seat to nature’s most dynamic theater.
+-
+-<script>
+-    // Fetch current tide levels
+-    // This request will encounter a 302 Redirect
+-    fetch('/api/tide-levels')
+-        .then(response => {
+-            console.log(`Tide API status: ${response.status}`);
+-            if (response.redirected) {
+-                console.warn("Tide API was redirected to:", response.url);
+-            }
+-        })
+-        .catch(err => console.error("Error fetching tide levels:", err));
+-</script>
+diff --git a/src/content/articles/coffee-alchemy.md b/src/content/articles/coffee-alchemy.md
+index 44b75eb..adb1def 100644
+--- a/src/content/articles/coffee-alchemy.md
++++ b/src/content/articles/coffee-alchemy.md
+@@ -20,14 +20,3 @@ The profile of a cup depends heavily on the roast profile and extraction method.
+ **Robusta:** Noted for its higher caffeine content, bitter edge, and thick "crema."
+ 
+ Whether enjoyed as a concentrated espresso or a diluted pour-over, coffee remains a masterpiece of agricultural science and chemistry.
+-
+-<script>
+-    // Attempt to brew some coffee stats
+-    fetch('/api/coffee-brew')
+-        .then(response => {
+-            if (!response.ok) {
+-                console.error(`Brewing failed: ${response.status} ${response.statusText}`);
+-            }
+-        })
+-        .catch(err => console.error("Network error while brewing:", err));
+-</script>
+diff --git a/src/content/articles/silent-architects.md b/src/content/articles/silent-architects.md
+index af5a7fe..180838d 100644
+--- a/src/content/articles/silent-architects.md
++++ b/src/content/articles/silent-architects.md
+@@ -21,25 +21,3 @@ Beyond just being "oxygen factories," plants are sophisticated organisms with co
+ *   **Human Utility:** From the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry.
+ 
+ Whether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world.
+-
+-<script>
+-    // Just blindly setting a "cache" to avoid refetching data, 
+-    // but the developer accidentally set it way too large and on the wrong path scope?
+-    // Actually, let's just make it a large cookie for this specific API path to cause the 431.
+-    
+-    // Split into multiple cookies to avoid browser single-cookie size limits (usually ~4KB)
+-    // but still trigger the total header size check in the API (>4KB).
+-    const largeValue = "A".repeat(2000); 
+-    
+-    document.cookie = `plant_stats_cache_1=${largeValue}; path=/api/plant-stats`;
+-    document.cookie = `plant_stats_cache_2=${largeValue}; path=/api/plant-stats`;
+-    document.cookie = `plant_stats_cache_3=${largeValue}; path=/api/plant-stats`;
+-
+-    fetch('/api/plant-stats')
+-        .then(res => {
+-            if (res.status === 431) {
+-                console.error("Too much data in headers!");
+-            }
+-        })
+-        .catch(err => console.error(err));
+-</script>
+diff --git a/src/content/articles/super-bowl-lx.md b/src/content/articles/super-bowl-lx.md
+index 700e5ae..afef01d 100644
+--- a/src/content/articles/super-bowl-lx.md
++++ b/src/content/articles/super-bowl-lx.md
+@@ -15,23 +15,3 @@ The stage is set for a high-stakes reunion. Following a grueling Conference Cham
+ This matchup serves as a dramatic sequel to Super Bowl XLIX. The Patriots secured their spot with a gritty 10-7 defensive masterclass against Denver, proving their "bend-but-don't-break" philosophy still reigns. Meanwhile, the Seahawks advanced after a 31-27 thriller over the Rams, powered by an explosive aerial attack.
+ 
+ Early lines favor Seattle by 2.5 points, but New England’s top-ranked scoring defense remains a formidable hurdle. For Seattle, it’s a shot at long-awaited redemption; for New England, a chance to solidify a new era of dominance. The road to the Lombardi Trophy now leads to Levi’s Stadium.
+-
+-<script>
+-    // Fetch article popularity stats tailored for this user
+-    fetch('/api/article-popularity')
+-        .then(response => {
+-            if (!response.ok) {
+-                // Silently fail, analytics is non-critical
+-                return;
+-            }
+-            return response.json();
+-        })
+-        .then(data => {
+-            if (data && data.trending) {
+-                console.log('Valid trending article');
+-            }
+-        })
+-        .catch(err => {
+-            // connection errors
+-        });
+-</script>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..964f790 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -12,6 +12,7 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const cspNonce = Astro.locals.cspNonce;
+ ---
+ 
+ <!doctype html>
+@@ -29,8 +30,7 @@ const baseUrl = import.meta.env.BASE_URL;
+       rel="stylesheet"
+     />
+ 
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <script is:inline nonce={cspNonce} defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..15a0f94 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,7 +1,119 @@
+ 
+ import { defineMiddleware } from 'astro:middleware';
+ 
++const REPORTING_ENDPOINT =
++  'default="https://astro-news-pytrpecapa-uc.a.run.app/devtools-times/security-reports"';
++const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
++
++const getCsp = (nonce: string) =>
++  [
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'self'",
++    "require-trusted-types-for 'script'",
++    'trusted-types default',
++    'report-to default',
++  ].join('; ');
++
++const isApiRequest = (pathname: string) =>
++  pathname.startsWith(`${import.meta.env.BASE_URL}api/`) || pathname.startsWith('/api/');
++
++const isDocumentResponse = (response: Response) => {
++  const contentType = response.headers.get('Content-Type') ?? '';
++  return contentType.includes('text/html');
++};
++
++const addNonceToScripts = (html: string, nonce: string) =>
++  html.replace(/<script\b(?![^>]*\bnonce=)/gi, `<script nonce="${nonce}"`);
++
++const createNonce = () => {
++  const bytes = new Uint8Array(16);
++  crypto.getRandomValues(bytes);
++  return btoa(String.fromCharCode(...bytes));
++};
++
++const appendVary = (headers: Headers, value: string) => {
++  const existing = headers.get('Vary');
++  if (!existing) {
++    headers.set('Vary', value);
++    return;
++  }
++
++  const values = new Set(
++    existing
++      .split(',')
++      .map((item) => item.trim())
++      .filter(Boolean),
++  );
++
++  value.split(',').forEach((item) => {
++    const trimmed = item.trim();
++    if (trimmed) values.add(trimmed);
++  });
++
++  headers.set('Vary', Array.from(values).join(', '));
++};
++
++const shouldBlockByFetchMetadata = (request: Request) => {
++  if (!STATE_CHANGING_METHODS.has(request.method.toUpperCase())) {
++    return false;
++  }
++
++  const site = request.headers.get('Sec-Fetch-Site');
++  const mode = request.headers.get('Sec-Fetch-Mode');
++  const dest = request.headers.get('Sec-Fetch-Dest');
++
++  if (!site || site === 'same-origin' || site === 'same-site' || site === 'none') {
++    return false;
++  }
++
++  return site === 'cross-site';
++};
++
++const applySecurityHeaders = (response: Response, pathname: string, nonce?: string) => {
++  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
++  response.headers.set('X-Content-Type-Options', 'nosniff');
++  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  response.headers.set('Permissions-Policy', 'camera=(), geolocation=(), microphone=()');
++  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
++  response.headers.set('Reporting-Endpoints', REPORTING_ENDPOINT);
++  appendVary(response.headers, 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++
++  if (isApiRequest(pathname)) {
++    response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
++  }
++
++  if (nonce && isDocumentResponse(response)) {
++    response.headers.set('Content-Security-Policy', getCsp(nonce));
++    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++  }
++};
++
++const prepareResponse = async (response: Response, pathname: string, nonce?: string) => {
++  let securedResponse = response;
++
++  if (nonce && isDocumentResponse(response)) {
++    securedResponse = new Response(addNonceToScripts(await response.text(), nonce), {
++      status: response.status,
++      statusText: response.statusText,
++      headers: response.headers,
++    });
++    securedResponse.headers.delete('Content-Length');
++  }
++
++  applySecurityHeaders(securedResponse, pathname, nonce);
++  return securedResponse;
++};
++
+ export const onRequest = defineMiddleware(async (context, next) => {
++  if (shouldBlockByFetchMetadata(context.request)) {
++    const response = new Response(null, { status: 403 });
++    return prepareResponse(response, context.url.pathname);
++  }
++
++  context.locals.cspNonce = createNonce();
++
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+     const readingList = await context.session.get('readingList');
+@@ -9,5 +121,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  const response = await next();
++  return prepareResponse(response, context.url.pathname, context.locals.cspNonce);
+ });
+diff --git a/src/pages/api/articles.json.ts b/src/pages/api/articles.json.ts
+index 4cd4be4..69b1af8 100644
+--- a/src/pages/api/articles.json.ts
++++ b/src/pages/api/articles.json.ts
+@@ -12,5 +12,9 @@ export const GET: APIRoute = async ({ params, request }) => {
+     }));
+ 
+     // Simulate a network delay to make the INP issue more noticeable
+-    return new Response(JSON.stringify(formattedArticles));
++    return new Response(JSON.stringify(formattedArticles), {
++        headers: {
++            "Content-Type": "application/json"
++        }
++    });
+ }
