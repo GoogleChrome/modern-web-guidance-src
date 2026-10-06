@@ -97,7 +97,8 @@ function removeItem(listEl, itemEl) {
   const hadFocus = itemEl.contains(document.activeElement);
   const nextFocusTarget =
     itemEl.nextElementSibling?.querySelector('button') ??
-    itemEl.previousElementSibling?.querySelector('button');
+    itemEl.previousElementSibling?.querySelector('button') ??
+    listEl.closest('.card')?.querySelector('button');
 
   // Assign an explicit name before removal so the outgoing snapshot animates out cleanly
   itemEl.style.viewTransitionName = `removing-${itemEl.dataset.id}`;
