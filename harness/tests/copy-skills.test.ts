@@ -45,14 +45,6 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         assert.ok(fs.existsSync(guidesDir), 'guides/ should be inside the skill directory');
         assert.ok(fs.existsSync(vectorFile), 'use-cases.vectors.gen.json.gz should be inside the skill directory');
 
-        // 3.5 Run pnpm install in the skill directory to resolve dependencies (like @lancedb/lancedb)
-        // This simulates what a real installer or environment would do.
-        console.log(`Running pnpm install in ${skillDir}...`);
-        execSync('pnpm install --no-lockfile', { 
-            cwd: skillDir,
-            stdio: 'inherit'
-        });
-
         // 4. Run the CLI to search
         // We need to extend PATH to make sure node is available if needed, but it should be
         const cmd = `node ${mjsPath} search "address form"`;

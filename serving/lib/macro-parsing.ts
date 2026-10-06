@@ -23,6 +23,7 @@ const LINE_COMMENT_PATTERN = new RegExp(`(?:^[ \\t]*${COMMENT_SOURCE}[ \\t]*(?:\
 const INLINE_COMMENT_PATTERN = new RegExp(`([ \\t]*)${COMMENT_SOURCE}(?:[ \\t]*${COMMENT_SOURCE})*([ \\t]*)`, 'g');
 const CODE_BLOCK_PATTERN = /(```[\s\S]*?```|~~~[\s\S]*?~~~)/g;
 const INLINE_CODE_PATTERN = /(`+)([\s\S]*?)\1/g;
+// eslint-disable-next-line no-control-regex
 const RESTORE_CODE_PATTERN = /\x00CODE_(\d+)\x00/g;
 
 /**
@@ -99,7 +100,7 @@ export function stripComments(content: string): string {
 
       if (leading.length > 0 || trailing.length > 0) {
         // If opening or closing brackets/parens, or followed by punctuation like , ; : . ! ?
-        if (/[\(\[\{]/.test(prevChar) || /[\)\]\},;:!?.]/.test(nextChar)) {
+        if (/[([{]/.test(prevChar) || /[)\]},;:!?.]/.test(nextChar)) {
           return "";
         }
         return " ";

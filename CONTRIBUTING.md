@@ -183,12 +183,11 @@ All evaluation and environment configuration is centralized in [`harness/config.
 
 ### API Keys & Environment Setup
 
-For setup of core guide development workflows (`gd dev`), configure your Gemini API key and model in your environment or `.env` file:
+For setup of core guide development workflows (`gd dev`), install and sign in to Antigravity CLI (the default `gd dev` agent; see [EVALS.md](./EVALS.md#antigravity-cli)). Optionally configure your environment or `.env` file:
 
 ```bash
-GEMINI_API_KEY='your_api_key_here'
-GEMINI_MODEL='gemini-3-flash-preview'
-GD_DEV_USE_GEMINI=1 # Required to use Gemini CLI for 'gd dev'
+# ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID> # Optional: only if you use agy through a GCP project
+# GD_DEV_USE_JETSKI=1 # Optional: use Jetski CLI instead of Antigravity CLI for 'gd dev'
 ```
 
 ### Runtime Configuration Overrides

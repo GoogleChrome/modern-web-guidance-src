@@ -25,7 +25,8 @@
     "canvas-html": "ewewraw",
     "container-scroll-state-queries": "bramus",
     "tmp-cross-origin-storage": "tomayac",
-    "prefers-reduced-motion": "bramus"
+    "prefers-reduced-motion": "bramus",
+    "web-otp": "agektmr"
   },
   "web_features_groups": {
     "css": "LeaVerou",

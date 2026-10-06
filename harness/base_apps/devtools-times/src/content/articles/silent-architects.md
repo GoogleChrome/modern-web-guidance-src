@@ -6,8 +6,7 @@ author: "Eco Watch"
 category: "science"
 readingTime: 5
 date: 2026-01-29
-prompt_comment: "Prompt: Why is this network request failing?\n    Request:plant-stats\n
-Explanation: Cookie header size too large"
+prompt_comment: "Prompt: Why is this network request failing?\n    Request:plant-stats\nExplanation: Cookie header size too large"
 ---
 
 Plants are the quiet powerhouses of our planet, serving as the literal foundation for almost all life on Earth. Through the remarkable process of photosynthesis, they capture solar energy and convert it into chemical energy, releasing the oxygen we breathe as a vital byproduct.

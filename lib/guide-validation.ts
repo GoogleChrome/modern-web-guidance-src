@@ -4,7 +4,9 @@ import matter from 'gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from '../serving/lib/macros.ts';
-import { validateFeature } from '../serving/lib/baseline.ts';
+import { validateFeature, resolveFeatureId } from '../serving/lib/baseline.ts';
+import { features } from 'web-features';
+import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
 
@@ -35,10 +37,17 @@ export const DISCIPLINE_GUIDES = new Set([
   'webmcp',
 
   // Named orientation guides
+  'browser-ui-theming',
+  'color',
   'cpp-on-the-web',
   'css-conditionals',
   'css-layout',
+  'motion',
   'passkeys',
+  'responsive-design',
+  'selector-atrule-combinations',
+  'typography',
+  'visual-effects',
 ]);
 
 /**
@@ -54,7 +63,87 @@ export interface PreparedGuide {
   featureIds: string[];
   relativeSubdir: string;
   statusName: ProjectStatus | null;
+  originTrials?: OriginTrialMetadata[];
 }
+
+export interface OriginTrialMetadata {
+  id?: string;
+  name?: string;
+  chromestatus_url?: string;
+}
+
+const ORIGIN_TRIALS_FILE = path.join(REPO_ROOT, 'features', 'origin-trials.json');
+let cachedOriginTrials: Record<string, OriginTrialMetadata> | null = null;
+
+export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
+  if (!cachedOriginTrials) {
+    try {
+      const raw = fs.readFileSync(ORIGIN_TRIALS_FILE, 'utf8');
+      cachedOriginTrials = JSON.parse(raw);
+    } catch (e: unknown) {
+      if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: unknown }).code === 'ENOENT') {
+        cachedOriginTrials = {};
+      } else {
+        throw new Error(`Failed to parse Origin Trials registry at ${ORIGIN_TRIALS_FILE}: ${(e as Error).message}`);
+      }
+    }
+  }
+  return cachedOriginTrials!;
+}
+
+export function getOriginTrialMetadata(featureId: string): OriginTrialMetadata | undefined {
+  const registry = getOriginTrialsRegistry();
+  const entry = registry[featureId];
+  return entry ? { ...entry, id: featureId } : undefined;
+}
+
+export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[] {
+  const registry = getOriginTrialsRegistry();
+  const found: OriginTrialMetadata[] = [];
+  for (const id of featureIds) {
+    if (registry[id]) {
+      found.push({ ...registry[id], id });
+    }
+  }
+  return found;
+}
+
+export interface GraduatedOriginTrial {
+  featureId: string;
+  supportedBrowsers: string[];
+}
+
+/**
+ * Checks all features in the Origin Trials registry against the web-features package.
+ * Returns any Origin Trial feature that now has browser support in web-features.
+ */
+export function checkOriginTrialGraduations(
+  registry: Record<string, OriginTrialMetadata> = getOriginTrialsRegistry()
+): GraduatedOriginTrial[] {
+  const graduated: GraduatedOriginTrial[] = [];
+  for (const featureId of Object.keys(registry)) {
+    const resolvedIds = resolveFeatureId(featureId);
+    const supportedBrowsers: string[] = [];
+    for (const id of resolvedIds) {
+      const f = (features as Record<string, any>)[id];
+      if (f?.status?.support) {
+        for (const [browser, version] of Object.entries(f.status.support)) {
+          if (version && version !== '-') {
+            supportedBrowsers.push(`${browser} ${version}`);
+          }
+        }
+      }
+    }
+    if (supportedBrowsers.length > 0) {
+      graduated.push({
+        featureId,
+        supportedBrowsers,
+      });
+    }
+  }
+  return graduated;
+}
+
 
 export interface GuideInventoryResult {
   errors: string[];
@@ -76,6 +165,11 @@ interface GuideData {
 
 /** String `draft` values interpreted as not-a-draft (a quoted/typed-out boolean). */
 const FALSY_DRAFT = new Set(['', 'false', 'no', 'off', '0']);
+
+/** Returns true when frontmatter `draft` is explicitly set to `"stub"` (case-insensitive). */
+export function isDraftStub(draft: unknown): boolean {
+  return typeof draft === 'string' && draft.trim().toLowerCase() === 'stub';
+}
 
 interface ValidationResult {
   errors: string[];
@@ -160,7 +254,7 @@ export function validateGuide(filePath: string): ValidationResult {
   errors.push(...validateMacros(maskedBody, relativePath));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
-  errors.push(...validateBaselineClaims(maskedBody, relativePath));
+  errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
   return { errors, data, body, filePath };
 }
@@ -272,8 +366,9 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
-      featuresWithAnyUseCases.add(id);
-      if (isActive) featuresWithActiveUseCases.add(id);
+      const normalizedId = stripTmpPrefix(id);
+      featuresWithAnyUseCases.add(normalizedId);
+      if (isActive) featuresWithActiveUseCases.add(normalizedId);
     }
 
     if (isIncomplete) {
@@ -289,6 +384,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       featureIds,
       relativeSubdir,
       statusName,
+      originTrials: getGuideOriginTrials(featureIds),
     });
   }
 
@@ -321,24 +417,30 @@ export const PATCHES_DIR = 'patches';
 export const TEST_APP_RESULTS_DIR = 'test-app-results';
 
 export type SolutionAgent =
-  | typeof Agents.GEMINI_CLI
+  | typeof Agents.ANTIGRAVITY_CLI
   | typeof Agents.JETSKI_CLI
   | typeof Agents.CLAUDE_CODE
   | typeof Agents.CODEX_CLI;
 
-export function getDefaultSolutionAgent(): SolutionAgent {
-  return process.env.GD_DEV_USE_GEMINI === '1' ? Agents.GEMINI_CLI : Agents.JETSKI_CLI;
+export function getDefaultSolutionAgent(): typeof Agents.ANTIGRAVITY_CLI | typeof Agents.JETSKI_CLI {
+  return process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : Agents.ANTIGRAVITY_CLI;
+}
+
+/** Returns the primary solution agent whose patch already exists in targetDir, preferring the default agent. */
+function findExistingPrimarySolutionAgent(targetDir?: string): SolutionAgent | undefined {
+  if (!targetDir) return undefined;
+  const defaultAgent = getDefaultSolutionAgent();
+  const fallbackAgent = defaultAgent === Agents.ANTIGRAVITY_CLI ? Agents.JETSKI_CLI : Agents.ANTIGRAVITY_CLI;
+  return [defaultAgent, fallbackAgent].find(agent => fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[agent])));
 }
 
 export function getActiveSolutionAgents(targetDir?: string): SolutionAgent[] {
-  const hasGemini = Boolean(targetDir && fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.GEMINI_CLI])));
-  const hasJetski = Boolean(targetDir && fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.JETSKI_CLI])));
-  const primary: SolutionAgent = hasGemini ? Agents.GEMINI_CLI : (hasJetski ? Agents.JETSKI_CLI : getDefaultSolutionAgent());
+  const primary: SolutionAgent = findExistingPrimarySolutionAgent(targetDir) ?? getDefaultSolutionAgent();
   return [primary, Agents.CLAUDE_CODE, Agents.CODEX_CLI];
 }
 
 export const SOLUTION_PATCH_FILES: Record<SolutionAgent, string> = {
-  [Agents.GEMINI_CLI]: path.join(PATCHES_DIR, 'gemini-solution.patch'),
+  [Agents.ANTIGRAVITY_CLI]: path.join(PATCHES_DIR, 'antigravity-solution.patch'),
   [Agents.JETSKI_CLI]: path.join(PATCHES_DIR, 'jetski-solution.patch'),
   [Agents.CLAUDE_CODE]: path.join(PATCHES_DIR, 'claude-solution.patch'),
   [Agents.CODEX_CLI]: path.join(PATCHES_DIR, 'codex-solution.patch'),
@@ -491,8 +593,6 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
   const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
   const hasContent = stripAllComments(content).trim().length > 0;
-  const isStub = hasFrontmatter && !hasContent;
-  const hasGuide = hasContent;
 
   // Any truthy `draft` withholds the guide, but treat explicitly falsy-looking
   // strings (e.g. `draft: "false"`, `draft: no`) as not-draft — quoting a
@@ -500,6 +600,8 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   const draft = typeof data.draft === 'string' && FALSY_DRAFT.has(data.draft.trim().toLowerCase())
     ? false
     : data.draft ?? false;
+  const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
+  const hasGuide = hasContent && !isDraftStub(draft);
   const isPublished = hasGuide && !draft;
 
   const targetsDir = path.join(dir, TARGETS_DIR);
@@ -527,9 +629,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     for (const baseApp of appsToInventory) {
       const targetDir = path.join(targetsDir, baseApp);
       const exists = fs.existsSync(targetDir) && fs.statSync(targetDir).isDirectory();
-      const hasPrimarySolution =
-        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.GEMINI_CLI])) ||
-        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.JETSKI_CLI]));
+      const hasPrimarySolution = findExistingPrimarySolutionAgent(targetDir) !== undefined;
       const appInv: TargetInventory = {
         name: baseApp,
         dir: targetDir,
@@ -789,7 +889,7 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
  */
 export function validateGuideTitle(body: string, relativePath: string, data?: GuideData, options?: { requireTitle?: boolean }): string[] {
   const errors = validateHeadings(body, relativePath, data);
-  const isStub = stripAllComments(body).trim().length === 0;
+  const isStub = stripAllComments(body).trim().length === 0 || isDraftStub(data?.draft);
 
   if (options?.requireTitle && !isStub) {
     const hasH1 = Boolean(extractH1Heading(body));
@@ -842,7 +942,12 @@ export const LEGITIMATE_BASELINE_EXCLUSIONS = [
  * Validates that guide markdown does not contain hardcoded Baseline availability claims,
  * ensuring authors use {{ BASELINE_STATUS("feature-id") }} macros instead.
  */
-export function validateBaselineClaims(body: string, relativePath: string): string[] {
+export function validateBaselineClaims(body: string, relativePath: string, data?: GuideData): string[] {
+  const isStub = stripAllComments(body).trim().length === 0 || isDraftStub(data?.draft);
+  if (isStub) {
+    return [];
+  }
+
   const errors: string[] = [];
   const lines = body.split('\n');
   let inCodeBlock = false;
