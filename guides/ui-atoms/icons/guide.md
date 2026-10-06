@@ -32,12 +32,12 @@ Use this decision tree to select the appropriate icon technique for your use cas
 
 ### Comparison at a glance
 
-| Technique                     | Color Control        | Multi-color |    Animatable    | Extra HTML Markup | Cachable |
-| :---------------------------- | :------------------- | :---------: | :--------------: | :---------------: | :------: |
-| **CSS-Driven Engine (Masks)** | Full (currentColor)  |      ❌      | ✅ (Tints/Sizing) |       None        |    ✅     |
-| **Inline SVG**                | Full (CSS/DOM)       |      ✅      | ✅ (Vector paths) |       High        |    ❌     |
-| **`<img>` + CSS Filter**      | Partial (Color math) | ⚠️ (Limited) |   ✅ (Filters)    |       None        |    ✅     |
-| **Plain `<img>`**             | None                 |      ❌      |        ❌         |       None        |    ✅     |
+| Technique                     | Color Control        | Multi-color |    Animatable    | DOM Overhead | Cachable |
+| :---------------------------- | :------------------- | :---------: | :--------------: | :----------: | :------: |
+| **CSS-Driven Engine (Masks)** | Full (currentColor)  |      ❌      | ✅ (Tints/Sizing) |   0 Nodes    |    ✅     |
+| **Inline SVG**                | Full (CSS/DOM)       |      ✅      | ✅ (Vector paths) |     High     |    ❌     |
+| **`<img>` + CSS Filter**      | Partial (Color math) | ⚠️ (Limited) |   ✅ (Filters)    |    1 Node    |    ✅     |
+| **Plain `<img>`**             | None                 |      ❌      |        ❌         |    1 Node    |    ✅     |
 
 ## Primary Approach: CSS-Driven Icon Engine
 
