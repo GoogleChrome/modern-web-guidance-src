@@ -1,0 +1,5 @@
+- The custom element exposes its default semantic role in the accessibility tree via `ElementInternals` (`attachInternals().role`) without setting a `role` attribute on the host element.
+- The custom element exposes its initial ARIA state (such as `ariaChecked`, `ariaPressed`, or `ariaExpanded`) in the accessibility tree via `ElementInternals` without setting a corresponding `aria-*` state attribute on the host element.
+- The custom element is keyboard-focusable, either by attaching a shadow root with `delegatesFocus: true` around an internal focusable control or by setting `tabIndex = 0` on the host element.
+- Activating the custom element via click or keyboard (`Space` or `Enter`) updates its ARIA state in the accessibility tree without adding an `aria-*` state attribute to the host element.
+- Every `id` referenced by `aria-labelledby`, `aria-describedby`, or `aria-controls` resolves to an element within the same document or shadow root as the referencing element (or cross-root references use reflected element properties such as `ariaLabelledByElements`), giving the custom element a non-empty accessible name or description in the accessibility tree.

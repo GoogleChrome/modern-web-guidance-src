@@ -1,0 +1,5 @@
+- Autonomous custom elements are registered via `customElements.define()` with a hyphenated kebab-case tag name and upgrade in the document without constructor errors as `HTMLElement` instances matching `:defined`.
+- The stylesheet includes a `:not(:defined)` rule for the custom element to prevent a flash of unstyled content before registration and upgrade.
+- A custom element with observed attributes reads any initial attribute values already present in markup upon upgrade and renders the corresponding initial state in the DOM.
+- Mutating an observed attribute on the custom element via `setAttribute()` triggers `attributeChangedCallback` (configured via `static observedAttributes` at registration time) and updates the component's rendered DOM without entering an infinite reflection loop.
+- Reflected JavaScript properties and HTML attributes stay synchronized with appropriate type coercion (such as coercing numeric or boolean attributes rather than returning raw strings or setting `"false"`), so updating either the property or the attribute updates the other and re-renders the component.

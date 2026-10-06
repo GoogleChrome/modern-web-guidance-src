@@ -1,0 +1,4 @@
+- The component's shadow stylesheet uses `:host` to style the host element (such as setting `display: block`) so the host renders with the expected computed layout box, and does not use `:host-context()`.
+- The shadow stylesheet themes internal elements using inherited CSS custom properties with `var()` fallback values without defining the public custom properties directly on `:host`, so custom properties set on a Light DOM ancestor cascade across the shadow boundary and update the internal elements' computed styles.
+- The shadow tree exposes designated internal elements via the `part` attribute, and the outer stylesheet styles them across the shadow boundary using the `::part()` pseudo-element to change their computed styles.
+- The component declares `container-type: inline-size` on `:host` (or an internal container) and uses a `@container` query in its shadow stylesheet so its internal computed layout adapts when the component's inline size changes.
