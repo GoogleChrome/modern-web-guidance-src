@@ -18,8 +18,6 @@ Modern CSS provides two approaches to styling checkboxes: customise the native a
 
 For simple, brand-consistent styling that retains native rendering, keyboard behaviour, validation, and operating-system focus indicators, use `accent-color`.
 
-Choose an accent colour with sufficient contrast against the checkbox’s background and avoid very light colours. Although some browsers automatically select a contrasting checkmark colour, Safari may retain a light checkmark over a light accent colour. If the design requires a light accent colour or reliable control over the checkmark and other visual states, use the fully custom approach instead.
-
 ```css
 .checkbox-native {
   accent-color: #1a73e8;
