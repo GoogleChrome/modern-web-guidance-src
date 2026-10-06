@@ -31,10 +31,15 @@ By default, `dialog::backdrop` has `overflow: visible`, which means it is **not*
 
 ```css
 dialog:modal {
+  /* MANDATORY: Prevent scroll gestures inside the modal (even when its content
+     does not overflow) from chaining to the underlying page. */
   overscroll-behavior: contain;
 }
 
 dialog::backdrop {
+  /* MANDATORY: ::backdrop defaults to overflow: visible (not a scroll container).
+     Set overflow: hidden so it becomes a non-scrollable scroll container that
+     honors overscroll-behavior. */
   overflow: hidden;
   overscroll-behavior: contain;
 }
