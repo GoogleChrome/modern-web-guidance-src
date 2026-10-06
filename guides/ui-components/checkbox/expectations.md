@@ -1,8 +1,8 @@
-- **MANDATORY**: Checkboxes are implemented using the native semantic `<input type="checkbox">` element to preserve native form submission, accessibility, and keyboard focus.
-- **MANDATORY**: Native-styled checkboxes utilize the CSS `accent-color` property to style their checked and active states.
-- **MANDATORY**: Fully custom-designed checkboxes apply `appearance: none` (or `-webkit-appearance: none`) directly on the `<input type="checkbox">` element to avoid verbose un-semantic wrapper divs.
-- **MANDATORY**: Custom checkboxes provide a visible focus indicator for keyboard users using the `:focus-visible` pseudo-class.
-- **MANDATORY**: Custom checkmark icons are rendered using CSS pseudo-elements (`::before` or `::after`) on the `<input type="checkbox">` element, styled using the `:checked` pseudo-class.
-- **MANDATORY**: Both native and custom checkboxes support the indeterminate state, styled using the `:indeterminate` pseudo-class.
-- **MANDATORY**: Labels are properly associated with all checkbox elements (either via `for`/`id` association or by nesting the `<input>` inside a `<label>`).
-- **OPTIONAL**: Check/uncheck animations are implemented smoothly using CSS `transition` or `animation` (such as transition of `transform: scale()`).
+- Checkboxes are implemented using the native semantic `<input type="checkbox">` element to preserve native form submission, accessibility, and keyboard focus.
+- Every checkbox is associated with a `<label>` element (either via matching `for` and `id` attributes or by nesting the `<input>` inside the `<label>`).
+- Native-styled checkboxes (if present) use the CSS `accent-color` property to style their checked and indeterminate states.
+- Custom-styled checkboxes apply `appearance: none` directly on the `<input type="checkbox">` element with explicit relative dimensions (`inline-size` and `aspect-ratio: 1`) rather than hiding the input and recreating a fake control with wrapper elements.
+- Custom-styled checkboxes render their checkmark icon via a CSS pseudo-element (`::before` or `::after`) on the `<input type="checkbox">` element using `mask` and `currentColor` when `:checked`.
+- Custom-styled checkboxes style the `:indeterminate` pseudo-class with a dash icon that is visually distinct from both the unchecked and `:checked` states.
+- Custom-styled checkboxes provide a visible focus indicator for keyboard users using `:focus-visible` without removing focus outlines.
+- Custom-styled checkboxes animate check, uncheck, and indeterminate indicator transitions using the `scale` property when `prefers-reduced-motion: no-preference` is active.
