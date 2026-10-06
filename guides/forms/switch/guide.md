@@ -36,11 +36,7 @@ CSS cannot detect support for the `switch` attribute, so detect it in JavaScript
 
 ```html
 <script>
-  const supportsNativeSwitch = 'switch' in HTMLInputElement.prototype;
-  const root = document.documentElement;
-
-  root.classList.toggle('native-switch', supportsNativeSwitch);
-  root.classList.toggle('no-native-switch', !supportsNativeSwitch);
+  root.classList.toggle('no-native-switch', !('switch' in HTMLInputElement.prototype));
 </script>
 ```
 
