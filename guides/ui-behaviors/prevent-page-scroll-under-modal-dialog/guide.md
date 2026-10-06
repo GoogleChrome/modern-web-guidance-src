@@ -54,7 +54,7 @@ dialog::backdrop {
 
 ## Fallback Strategies
 
-{{ BASELINE_STATUS("css.properties.overscroll-behavior") }}
+{{ BASELINE_STATUS("overscroll-behavior") }}
 
 While the `overscroll-behavior` CSS property is supported across all major browsers for scroll containers that have overflowing content, respecting `overscroll-behavior` on **non-scrollable** scroll containers is a newer specification that cannot be feature detected.
 
