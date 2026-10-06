@@ -195,7 +195,7 @@ Safari has two bugs affecting icons (WebKit #301609, #320220): icons don't rende
 }
 ```
 
-The `@supports` query targets Safari only, and `@layer` prevents animation conflicts.
+The `@supports` query targets Safari only, and `@layer` reduces animation conflicts.
 
 ## Fallback Strategies
 
