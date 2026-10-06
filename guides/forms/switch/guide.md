@@ -8,13 +8,13 @@ web-feature-ids:
 
 # Build Accessible Switch Controls
 
-Use the native HTML `switch` attribute when supported, with a CSS polyfill fallback for browsers that don't render it natively.
+Use the native HTML `switch` attribute when supported, with a polyfill fallback for browsers that don't render it natively.
 
 An accessible switch implementation requires:
 
 1. **Semantic Foundation:** A standard `<input type="checkbox" role="switch" switch>` with an associated `<label>`, preserving form submission, keyboard navigation, and screen reader semantics (see {{ GUIDE_REF("checkbox") }} and {{ GUIDE_REF("forms") }}).
-2. **Early Feature Detection:** A one-line JavaScript check in `<head>` that detects native switch support before first paint.
-3. **Polyfill Fallback:** A concise CSS stylesheet that restyles the checkbox itself (`appearance: none` plus a `::before` thumb) in browsers lacking native support.
+2. **Early Feature Detection:** A lightweight JavaScript check in `<head>` that detects native switch support before first paint.
+3. **Polyfill Fallback:** The `input-switch-polyfill` package dynamically imported only when native support is missing.
 
 ## Markup
 
@@ -64,59 +64,34 @@ input[type="checkbox"][switch]:focus-visible {
 
 ## Polyfill Fallback
 
-For browsers without native switch support, restyle the checkbox itself when the `no-native-switch` class is present. With `appearance: none`, a checkbox accepts a `::before` pseudo-element, which is used for the thumb. The input stays the single visible, focusable control, so the shared `:focus-visible` rule above applies, and it works with any label arrangement.
+Always conditionally load the polyfill only when native support is missing. Do not load the polyfill unconditionally.
 
-```css
-html.no-native-switch input[type="checkbox"][switch] {
-  --switch-block-size: 1.75rem;
-  --switch-inline-size: 3rem;
-  --switch-border-size: 2px;
-  --switch-thumb-size: calc(
-    var(--switch-block-size) - (2 * var(--switch-border-size))
-  );
+For browsers without native switch support, dynamically import `input-switch-polyfill`. It progressively enhances checkboxes with the `switch` attribute by applying switch styling, managing states, and providing pointer drag support.
 
-  appearance: none;
-  position: relative;
-  box-sizing: border-box;
-  inline-size: var(--switch-inline-size);
-  block-size: var(--switch-block-size);
-  margin: 0;
-  border: var(--switch-border-size) solid var(--border-color, #808080);
-  border-radius: 999em;
-  background-color: var(--track-off, #e5e5e5);
-  cursor: pointer;
-  transition: background-color 150ms ease, border-color 150ms ease;
+Combine feature detection with dynamic import in `<head>`:
+
+**Option 1: Using a bundler**
+
+Install the polyfill via npm (`npm install input-switch-polyfill`). Conditionally import it in your application entry or head script:
+
+```javascript
+if (!('switch' in HTMLInputElement.prototype)) {
+  document.documentElement.classList.add('no-native-switch');
+  import('input-switch-polyfill');
 }
+```
 
-/* The thumb. Logical offsets keep it correct in right-to-left layouts. */
-html.no-native-switch input[type="checkbox"][switch]::before {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  inline-size: var(--switch-thumb-size);
-  block-size: var(--switch-thumb-size);
-  border-radius: 50%;
-  background-color: Canvas;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
-  content: "";
-  transition: inset-inline-start 150ms ease;
-}
+**Option 2: Using a CDN**
 
-html.no-native-switch input[type="checkbox"][switch]:checked {
-  background-color: var(--accent-color, #1769e0);
-  border-color: var(--accent-color, #1769e0);
-}
+For standalone setups without a build pipeline, conditionally import from a CDN:
 
-html.no-native-switch input[type="checkbox"][switch]:checked::before {
-  inset-inline-start: calc(100% - var(--switch-thumb-size));
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html.no-native-switch input[type="checkbox"][switch],
-  html.no-native-switch input[type="checkbox"][switch]::before {
-    transition: none;
+```html
+<script>
+  if (!('switch' in HTMLInputElement.prototype)) {
+    document.documentElement.classList.add('no-native-switch');
+    import('https://unpkg.com/input-switch-polyfill');
   }
-}
+</script>
 ```
 
 ## Fallbacks & Browser Support

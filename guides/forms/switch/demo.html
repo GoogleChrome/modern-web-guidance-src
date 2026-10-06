@@ -7,10 +7,10 @@
     <title>Switch demo</title>
 
     <script>
-        document.documentElement.classList.toggle(
-            'no-native-switch',
-            !('switch' in HTMLInputElement.prototype)
-        );
+        if (!('switch' in HTMLInputElement.prototype)) {
+            document.documentElement.classList.add('no-native-switch');
+            import('https://unpkg.com/input-switch-polyfill');
+        }
     </script>
 
     <style>
@@ -24,6 +24,7 @@
             --track-off: #e5e5e5;
             --accent-color: #1769e0;
             --focus-color: #ff8c00;
+            accent-color: var(--accent-color);
         }
 
         * {
@@ -82,58 +83,6 @@
             outline: 3px solid var(--focus-color);
             outline-offset: 4px;
         }
-
-        /* Polyfill: restyle the checkbox itself when native switch is unsupported */
-        html.no-native-switch input[type="checkbox"][switch] {
-            --switch-block-size: 1.75rem;
-            --switch-inline-size: 3rem;
-            --switch-border-size: 2px;
-            --switch-thumb-size: calc(
-                var(--switch-block-size) - (2 * var(--switch-border-size))
-            );
-
-            appearance: none;
-            position: relative;
-            flex: none;
-            box-sizing: border-box;
-            inline-size: var(--switch-inline-size);
-            block-size: var(--switch-block-size);
-            margin: 0;
-            border: var(--switch-border-size) solid var(--border-color);
-            border-radius: 999em;
-            background-color: var(--track-off);
-            cursor: pointer;
-            transition: background-color 150ms ease, border-color 150ms ease;
-        }
-
-        html.no-native-switch input[type="checkbox"][switch]::before {
-            position: absolute;
-            inset-block-start: 0;
-            inset-inline-start: 0;
-            inline-size: var(--switch-thumb-size);
-            block-size: var(--switch-thumb-size);
-            border-radius: 50%;
-            background-color: Canvas;
-            box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
-            content: "";
-            transition: inset-inline-start 150ms ease;
-        }
-
-        html.no-native-switch input[type="checkbox"][switch]:checked {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-        }
-
-        html.no-native-switch input[type="checkbox"][switch]:checked::before {
-            inset-inline-start: calc(100% - var(--switch-thumb-size));
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            html.no-native-switch input[type="checkbox"][switch],
-            html.no-native-switch input[type="checkbox"][switch]::before {
-                transition: none;
-            }
-        }
     </style>
 </head>
 <body>
@@ -142,7 +91,7 @@
 
         <p class="intro">
             This example uses a standard checkbox with the HTML <code>switch</code> attribute,
-            JavaScript feature detection, and a concise CSS polyfill for browsers lacking native support.
+            JavaScript feature detection, and a conditionally loaded polyfill for browsers lacking native support.
         </p>
 
         <section class="switches" aria-labelledby="switches-heading">
