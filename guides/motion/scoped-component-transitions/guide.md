@@ -22,7 +22,7 @@ Call `element.startViewTransition()` on the component's root container element i
 
 Assign a `view-transition-name` to child elements inside the scope that should animate. You can use `view-transition-name: match-element` on dynamic list items to automatically derive each element's transition name from its DOM node identity, or assign explicit names (which only need to be unique within that scope).
 
-You don’t need to worry about the `view-transition-name` values being reused across components, as the scope prevents name collision. However, when starting an outer transition (on a parent or ancestor), make sure that an inner scope element won’t accidentally match an element in the outer view tree by assigning a unique `view-transition-scope: all` to the inner scope element.
+Names are isolated within each scope, preventing collisions across components in different parts of the DOM. However, `view-transition-name`s can collide with names in nested scoped view transitions. To prevent this, add `view-transition-scope: all` to the child scope element.
 
 ### 3. Self-Participation and Overflow Clipping
 
