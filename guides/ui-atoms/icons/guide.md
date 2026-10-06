@@ -181,10 +181,10 @@ If you need multi-color icons or arbitrary path-level animations, use Inline SVG
 
 ### For Browsers Without Container Style Queries
 
-Use the `@supports not (container-name: style(any))` directive with style attribute substring selectors to inject icons when `--icon-start` or `--icon-end` are set inline:
+Use the `@supports not (container-name: container)` directive with style attribute substring selectors to inject icons when `--icon-start` or `--icon-end` are set inline:
 
 ```css
-@supports not (container-name: style(any)) {
+@supports not (container-name: container) {
   [style*="--icon-start"]::before {
     content: "";
     display: inline-block;
