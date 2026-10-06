@@ -287,20 +287,13 @@
 
         .scroll-progress {
           animation: fill-progress linear both;
-          --animation-reduced: fill-progress linear both;
-          animation-timeline: --box-scroll !important;
+          animation-timeline: --box-scroll;
         }
       }
 
       /* ==========================================================================
          4. Accessibility: Reduced Motion & Pause Control
          ========================================================================== */
-      @property --animation-reduced {
-        syntax: "*";
-        inherits: false;
-        initial-value: none;
-      }
-
       @keyframes spin {
         to {
           rotate: 360deg;
@@ -333,6 +326,10 @@
         border-top-color: var(--primary);
         animation: spin 1s linear infinite;
         flex-shrink: 0;
+        @media (prefers-reduced-motion: reduce) {
+          animation: none;
+          opacity: 0.5;
+        }
       }
 
       .progress-track {
@@ -349,20 +346,19 @@
         background: var(--primary);
         border-radius: 999px;
         animation: slide 1.5s infinite linear;
-        --animation-reduced: slide 20s infinite linear;
+        @media (prefers-reduced-motion: reduce) {
+          animation-duration: 20s;
+        }
+      }
+
+      /* Pause mechanism for persistent animations */
+      .status-row[data-paused="true"] .spinner,
+      .status-row[data-paused="true"] .progress-bar {
+        animation-play-state: paused;
       }
 
       /* Respect reduced-motion preferences without a jarring 0.01ms blanket reset */
       @media (prefers-reduced-motion: reduce) {
-        * {
-          animation: var(--animation-reduced) !important;
-        }
-
-        .spinner {
-          animation: none;
-          opacity: 0.5;
-        }
-
         button,
         .motion-card {
           transition: none;
@@ -390,12 +386,6 @@
         ::view-transition-new(*) {
           animation: none !important;
         }
-      }
-
-      /* Pause mechanism for persistent animations (uses !important to override the reduced-motion shorthand) */
-      .status-row[data-paused="true"] .spinner,
-      .status-row[data-paused="true"] .progress-bar {
-        animation-play-state: paused !important;
       }
     </style>
   </head>
@@ -533,10 +523,10 @@
       <section class="demo-section">
         <h2>4. Accessible Persistent Motion &amp; Pause Control</h2>
         <p>
-          Persistent animations provide an explicit pause control and use
-          <code>@property --animation-reduced</code> or targeted
-          <code>prefers-reduced-motion</code> rules instead of a global
-          <code>0.01ms</code> duration hack.
+          Persistent animations provide an explicit pause control and nest
+          <code>@media (prefers-reduced-motion: reduce)</code> rules on a
+          case-by-case basis instead of a global <code>0.01ms</code> duration
+          hack.
         </p>
         <div class="controls">
           <button type="button" id="pause-motion-btn" aria-pressed="false">
