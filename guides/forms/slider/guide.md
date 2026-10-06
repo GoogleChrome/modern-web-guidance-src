@@ -127,7 +127,7 @@ input[type="range"]::-moz-range-thumb {
 }
 ```
 
-Always provide a visible keyboard focus indicator after removing the native appearance. Do not use colour alone:
+Always provide a visible keyboard focus indicator after removing the native appearance. Do not use color alone:
 
 ```css
 input[type="range"]:focus-visible {
