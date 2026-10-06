@@ -284,7 +284,7 @@ setTimeout(() => {}, 10000);
     generateTransientPackage(tempDir, agentScript, 'dummy prompt', 'guided', tempDir, 'test-task', 'test-guide', graderPath);
     patchRunnerDelay(tempDir);
     const runMjsPath = path.join(tempDir, 'run.mjs');
-    fs.writeFileSync(runMjsPath, fs.readFileSync(runMjsPath, 'utf8').replace('timeout: 600000', 'timeout: 500'));
+    fs.writeFileSync(runMjsPath, fs.readFileSync(runMjsPath, 'utf8').replace('timeout: 600000', 'timeout: 50'));
 
     const runResult = spawnSync(process.execPath, ['run.mjs'], { cwd: tempDir, encoding: 'utf8' });
     assert.strictEqual(runResult.status, 1, 'Timed-out run.mjs should exit with 1, not 0');
