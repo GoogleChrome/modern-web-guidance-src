@@ -167,4 +167,8 @@ slider.addEventListener('input', syncSliderProperties);
 
 ## Future standard pseudo-elements
 
-CSS Forms Level 1 defines standard `::slider-thumb`, `::slider-track`, and `::slider-fill` pseudo-elements. When they are sufficiently supported, prefer them in the primary implementation and move the vendor-prefixed selectors into this fallback section.
+CSS Forms Level 1 specifies standard `::slider-track`, `::slider-thumb`, and
+`::slider-fill` pseudo-elements, alongside the `control-value()` function to
+query live slider values directly in CSS without JavaScript syncing. When
+browser support matures, prefer these native primitives over vendor
+pseudo-elements and script-driven CSS custom properties.
