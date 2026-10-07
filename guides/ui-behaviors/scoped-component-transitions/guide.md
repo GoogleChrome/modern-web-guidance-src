@@ -26,9 +26,25 @@ Names are isolated within each scope, preventing collisions across components in
 
 ### 3. Self-Participation and Overflow Clipping
 
-The user-agent stylesheet automatically applies `view-transition-name: root` and `view-transition-group: contain` to the scope element.
+The user-agent stylesheet automatically applies `view-transition-name: root` and `view-transition-group: contain` to the scope element. Scoping the transition to the outer component container (such as a `.card` rather than an inner `<ul>`) ensures the component container itself participates in the transition and smoothly animates its own geometry changes when items are added or removed.
 
 When the scope clips its overflow (`overflow: hidden`, `scroll`, or `clip`), `::view-transition-group-children(root)` automatically applies `overflow: clip`, preventing transitioning children from bleeding outside the component bounds.
+
+> **Note:** Automatic overflow clipping only applies to the scope element itself (`root`). If a captured element inside the scope clips its own overflow and contains other nested captured elements (for example, a scrollable or clipped `<ul>` inside a `.card`), use Nested View Transition Groups so those nested elements stay clipped to their outer captured container:
+>
+> ```css
+> .card ul {
+>   height: 200px;
+>   overflow-y: auto;
+>   view-transition-name: match-element;
+>   view-transition-group: contain;
+>   view-transition-class: list;
+> }
+>
+> ::view-transition-group-children(.list) {
+>   overflow: clip;
+> }
+> ```
 
 ### 4. Concurrent and Nested Transitions
 
@@ -40,16 +56,16 @@ If an outer transition needs to move a component while its inner transition is a
 
 ```css
 /* 1. Configure the component scope */
-.card ul {
+.card {
   /* No CSS is needed for this. The scope is determined by you calling startViewTransition on the element instead of document */
 }
 
-/* 2. Name participating child items within the scope */
+/* 2. Name participating child items */
 .card ul li {
   view-transition-name: match-element;
 }
 
-/* 3. Customize transition timing (300ms is an example duration) */
+/* 3. OPTIONAL: Customize transition timing (300ms is an example duration) */
 ::view-transition-group(*) {
   animation-duration: 300ms;
   animation-timing-function: ease-in-out;
@@ -79,12 +95,12 @@ function runScopedTransition(scopeEl, updateDOM) {
 }
 
 // 2. Reorder items by moving existing DOM nodes (required for `match-element`)
-function reorderItems(listEl, orderedIds) {
+function reorderItems(scopeEl, listEl, orderedIds) {
   const existing = new Map(
     Array.from(listEl.children, (li) => [li.dataset.id, li]),
   );
 
-  runScopedTransition(listEl, () => {
+  runScopedTransition(scopeEl, () => {
     for (const id of orderedIds) {
       const li = existing.get(id);
       if (li) listEl.appendChild(li);
@@ -93,17 +109,14 @@ function reorderItems(listEl, orderedIds) {
 }
 
 // 3. Remove an item while preserving exit animation and keyboard focus
-function removeItem(listEl, itemEl) {
+function removeItem(scopeEl, itemEl) {
   const hadFocus = itemEl.contains(document.activeElement);
   const nextFocusTarget =
     itemEl.nextElementSibling?.querySelector('button') ??
     itemEl.previousElementSibling?.querySelector('button') ??
-    listEl.closest('.card')?.querySelector('button');
+    scopeEl.querySelector('button');
 
-  // Assign an explicit name before removal so the outgoing snapshot animates out cleanly
-  itemEl.style.viewTransitionName = `removing-${itemEl.dataset.id}`;
-
-  runScopedTransition(listEl, () => {
+  runScopedTransition(scopeEl, () => {
     itemEl.remove();
     if (hadFocus) {
       nextFocusTarget?.focus();
@@ -120,18 +133,22 @@ To prevent this from happening, wrap the scope element in a separate wrapper ele
 
 ```html
 <div class="page" id="page">
-  <section class="card" id="left">
-    <h2>Card A</h2>
-    <ul id="left-list">
-      <li>…</li>
-    </ul>
-  </section>
-  <section class="card" id="right">
-    <h2>Card B</h2>
-    <ul id="right-list">
-      <li>…</li>
-    </ul>
-  </section>
+  <div class="card-wrapper">
+    <section class="card" id="left">
+      <h2>Card A</h2>
+      <ul id="left-list">
+        <li>…</li>
+      </ul>
+    </section>
+  </div>
+  <div class="card-wrapper">
+    <section class="card" id="right">
+      <h2>Card B</h2>
+      <ul id="right-list">
+        <li>…</li>
+      </ul>
+    </section>
+  </div>
 </div>
 ```
 
@@ -143,12 +160,12 @@ document.querySelector('#page').startViewTransition(() => {
 
 ```css
 /* Apply a view-transition-name on the wrapper */
-.card {
+.card-wrapper {
   view-transition-name: match-element;
 }
 
-/* Prevent the contents of the ul being captured by an outer transition */
-.card ul {
+/* Prevent the contents of the card being captured by an outer transition */
+.card {
   view-transition-scope: all;
 }
 
@@ -160,15 +177,15 @@ document.querySelector('#page').startViewTransition(() => {
 Alternatively, you can allow the outer transition to capture the children. In order to retain clipping effects, resort to using Nested View Transition Groups to clip the captured children at the boundaries of their wrapper. In that case, though, you need to manually apply the `clip` onto the resulting `::view-transition-group-children()` pseudo.
 
 ```css
-.card ul {
+.card-wrapper {
   overflow: clip;
   view-transition-name: match-element; /* Capture me as part of the outer VT */
   view-transition-group: contain; /* Nest children that also have a view-transition-name */
-  view-transition-class: list; /* For targeting purposes */
+  view-transition-class: card; /* For targeting purposes */
 }
 
 /* Manually copy back the clip onto the ::view-transition-group-children pseudo */
-::view-transition-group-children(.list) {
+::view-transition-group-children(.card) {
   overflow: clip;
 }
 
@@ -183,6 +200,7 @@ Alternatively, you can allow the outer transition to capture the children. In or
 - **MANDATORY**: Preserve and move existing DOM nodes (rather than recreating them with `innerHTML`) when using `view-transition-name: match-element`, as `match-element` tracks DOM node identity.
 - **MANDATORY**: Respect user preferences for reduced motion using `@media (prefers-reduced-motion: reduce)` by setting `animation: none !important` on `::view-transition-group(*)`, `::view-transition-old(*)`, and `::view-transition-new(*)`.
 - **MANDATORY**: Preserve keyboard focus when removing a focused element during a transition by shifting focus to an adjacent item or control inside the update callback.
+- **DO**: Use Nested View Transition Groups (`view-transition-group: contain` and `overflow: clip` on `::view-transition-group-children()`) when a captured element inside the scope clips its own overflow and contains nested captured elements.
 - **DO**: Attach `transition.ready.catch(() => {})` when rapid interactions can re-trigger `element.startViewTransition()` on the same scope element.
 - **DO**: Wrap an inner scope element in a separate named wrapper element if an outer transition needs to animate the component's position while an inner transition is running.
 - **DO NOT**: Set `view-transition-name: none` on a scope element that clips its overflow (`overflow: hidden`, `scroll`, or `clip`) or changes its own geometry, as opting out of self-participation disables automatic overflow clipping.
