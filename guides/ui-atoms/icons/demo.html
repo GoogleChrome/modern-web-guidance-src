@@ -140,57 +140,56 @@
     /* --------------------------------------------------
      ROBUST COMPATIBILITY FALLBACK (Style Queries Lack of Support)
      -------------------------------------------------- */
-    @supports not (container-name: style(any)) {
+    /* Injection fallback for start icons using inline style attribute matching */
+    [style*="--icon-start"]::before {
+      --icon-start: inherit;
+      content: "";
+      display: inline-block;
+      width: var(--icon-size);
+      height: var(--icon-size);
+      background-color: currentColor;
+      mask: var(--icon-start) no-repeat center / contain;
+      opacity: 0.85;
+      pointer-events: none;
+      vertical-align: middle;
+      transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+    }
 
-      /* Injection fallback for start icons using inline style attribute matching */
-      [style*="--icon-start"]::before {
-        content: "";
-        display: inline-block;
-        width: var(--icon-size);
-        height: var(--icon-size);
-        background-color: currentColor;
-        mask: var(--icon-start) no-repeat center / contain;
-        opacity: 0.85;
-        pointer-events: none;
-        vertical-align: middle;
-        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
-      }
+    [style*="--icon-start"]:not(.icon, :empty)::before {
+      margin-inline-end: 0.4em;
+    }
 
-      [style*="--icon-start"]:not(.icon, :empty)::before {
-        margin-inline-end: 0.4em;
-      }
+    /* Injection fallback for end icons */
+    [style*="--icon-end"]::after {
+      --icon-end: inherit;
+      content: "";
+      display: inline-block;
+      width: var(--icon-size);
+      height: var(--icon-size);
+      background-color: currentColor;
+      mask: var(--icon-end) no-repeat center / contain;
+      opacity: 0.85;
+      pointer-events: none;
+      vertical-align: middle;
+      transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+    }
 
-      /* Injection fallback for end icons */
-      [style*="--icon-end"]::after {
-        content: "";
-        display: inline-block;
-        width: var(--icon-size);
-        height: var(--icon-size);
-        background-color: currentColor;
-        mask: var(--icon-end) no-repeat center / contain;
-        opacity: 0.85;
-        pointer-events: none;
-        vertical-align: middle;
-        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
-      }
+    [style*="--icon-end"]:not(.icon, :empty)::after {
+      margin-inline-start: 0.4em;
+    }
 
-      [style*="--icon-end"]:not(.icon, :empty)::after {
-        margin-inline-start: 0.4em;
-      }
-
-      /* Standalone empty icon forwarding logic fallback */
-      .icon:empty[style*="--icon"]::before {
-        content: "";
-        display: inline-block;
-        width: var(--icon-size);
-        height: var(--icon-size);
-        background-color: currentColor;
-        mask: var(--icon) no-repeat center / contain;
-        opacity: 0.85;
-        pointer-events: none;
-        vertical-align: middle;
-        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
-      }
+    /* Standalone empty icon forwarding logic fallback */
+    .icon:empty[style*="--icon"]::before {
+      content: "";
+      display: inline-block;
+      width: var(--icon-size);
+      height: var(--icon-size);
+      background-color: currentColor;
+      mask: var(--icon) no-repeat center / contain;
+      opacity: 0.85;
+      pointer-events: none;
+      vertical-align: middle;
+      transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
     }
   </style>
 </head>
