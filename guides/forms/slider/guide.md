@@ -141,19 +141,17 @@ input[type="range"]:focus-visible {
 
 ## Style the active track
 
-The Firefox `::-moz-range-progress` pseudo-element exposes the filled portion of the track. WebKit/Blink do not provide an equivalent interoperable pseudo-element, so expose the control's `min`, `max`, and value as the `--attr-min`, `--attr-max`, and `--control-value` custom properties declared in the CSS above. The CSS derives `--slider-progress` from them, so the fill follows the control's actual range rather than assuming 0–100. Keep this enhancement small:
+When the filled portion of the track is styled differently from the unfilled track, Firefox exposes it via `::-moz-range-progress`. WebKit/Blink do not provide an equivalent pseudo-element, so sync the live input value to `--control-value` on `input` events:
 
 ```js
 const slider = document.querySelector('#range-slider');
 
-function syncSliderProperties() {
-  slider.style.setProperty('--attr-min', slider.min || 0);
-  slider.style.setProperty('--attr-max', slider.max || 100);
+function syncSliderValue() {
   slider.style.setProperty('--control-value', slider.value);
 }
 
-syncSliderProperties();
-slider.addEventListener('input', syncSliderProperties);
+syncSliderValue();
+slider.addEventListener('input', syncSliderValue);
 ```
 
 ## Limitations
