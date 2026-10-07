@@ -14,14 +14,13 @@ Supported agents are defined in the `Agents` object within [`harness/config.ts`]
 
 ### Gemini CLI
 
-Gemini CLI (`gemini_cli`) is supported for evaluation harness runs and can be used in `gd dev` via the `GD_DEV_USE_GEMINI` flag.
+Gemini CLI (`gemini_cli`) is supported for evaluation harness runs.
 
 **Configuration:**
 Set your API key and preferred model in your environment or `.env` file at the repository root:
 ```bash
 GEMINI_API_KEY='your_api_key_here'
 GEMINI_MODEL='gemini-3-flash-preview'
-GD_DEV_USE_GEMINI=1  # Required to use Gemini CLI for 'gd dev'
 ```
 
 ---
@@ -65,11 +64,36 @@ harness/node_modules/.bin/codex
 
 ### Jetski CLI
 
-Jetski CLI (`jetski_cli`) is the default agent used by the guide development workflows (`gd dev`).
+Jetski CLI (`jetski_cli`) can be used by the guide development workflows (`gd dev`) via the `GD_DEV_USE_JETSKI` flag.
 
 **Configuration:**
 Configure the preferred model for Jetski CLI agent runs:
 ```bash
 # Model selection for Jetski CLI agent runs
 JETSKI_MODEL='Gemini 3.8 Flash (Medium)'
+GD_DEV_USE_JETSKI=1  # Required to use Jetski CLI for 'gd dev'
+```
+
+---
+
+### Antigravity CLI
+
+Antigravity CLI (`antigravity_cli`) is the default agent used by the guide development workflows (`gd dev`).
+
+**Installation:**
+Antigravity CLI (`agy`) must be installed first:
+```bash
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+```
+Then run `agy` once interactively to sign in.
+
+**Configuration:**
+All settings are optional. If you sign in with a personal Antigravity account, no GCP project is needed. If you use agy through a GCP project, set it in `~/.gemini/antigravity-cli/settings.json` (`gcp.project`), or override it in your `.env` file:
+```bash
+# Optional: GCP project (only for GCP-project auth)
+ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID>
+# Optional: path to the agy binary if it is not on your PATH (e.g. under cron)
+ANTIGRAVITY_CLI_BIN=/home/<you>/.local/bin/agy
+# Optional: model override for Antigravity CLI agent runs
+ANTIGRAVITY_MODEL=gemini-3.8-flash-medium
 ```

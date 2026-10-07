@@ -69,6 +69,10 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 | `targets/<base_app>/task.md` | Generated (`gd dev`) | Task frontmatter (`base_app`) and developer prompt instructions fed to evaluation agents. |
 | `test-app-results/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations. |
 
+### Discipline guides
+
+Most guides are task-based use cases. Discipline guides are the orientation "hubs" for a category and link to its use-case guides via `{{ GUIDE_REF("guide-slug") }}`. A guide is a discipline guide if it is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements, and are reported as bundled core guides by `serving/scripts/audit-build.ts`.
+
 ### Guide Development Stages
 
 A guide progresses through three main stages:
@@ -112,6 +116,7 @@ pnpm link --global && gd setup-completion
 | `gd dev <dir>` | The main pipeline command. Takes a guide from "has guide.md + demo.html + expectations.md" through target generation, calibration, agent tests, and report creation. |
 | `gd dev <dir> --test-grader` | Run calibration check across target apps (golden patches should pass 100%, zero-passrate should fail 100%). |
 | `gd pr <dir>` | Opens a GitHub Pull Request with auto-labeled classification and `report.md` body. |
+| `gd dev-gap` | Runs `gd dev` + `gd pr` for each open "Evals missing" eval-gap issue that has no PR yet (`--dry-run`, `--limit <n>`). |
 | `gd dev-all` | Batch process all incomplete guides. |
 
 **Evaluation:**
@@ -152,7 +157,7 @@ In parallel across `SUPPORTED_BASE_APPS` (`daily-grind`, `devtools-times`):
 - Runs the qualitative evaluator agent to synthesize test results, diagnose failure modes, and write `test-app-results/report.md`.
 
 ### Generation Mechanics
-All agent invocations use isolated work directories (`setupGuideDevWorkDir()`) and clean credential isolation. The default agent is `Agents.JETSKI_CLI`, switchable to `Agents.GEMINI_CLI` via `GD_DEV_USE_GEMINI=1`.
+All agent invocations use isolated work directories (`setupGuideDevWorkDir()`) and clean credential isolation. The default agent is `Agents.ANTIGRAVITY_CLI`, switchable to `Agents.JETSKI_CLI` via `GD_DEV_USE_JETSKI=1`.
 
 ---
 
@@ -176,8 +181,9 @@ The eval harness measures whether guides actually improve agent output.
 
 Configured in `harness/config.ts` and `.env`:
 
-- **Jetski CLI** (default for `gd dev`): Local/cloud Jetski CLI agent (`jetski_cli`).
-- **Gemini CLI**: Uses `GEMINI_API_KEY` and `GEMINI_MODEL` (`GD_DEV_USE_GEMINI=1` in `gd dev`).
+- **Antigravity CLI** (default for `gd dev`): Antigravity CLI agent (`antigravity_cli`, `agy` binary).
+- **Jetski CLI**: Local/cloud Jetski CLI agent (`jetski_cli`; `GD_DEV_USE_JETSKI=1` in `gd dev`).
+- **Gemini CLI**: Uses `GEMINI_API_KEY` and `GEMINI_MODEL` (`gemini_cli`).
 - **Claude Code**: Vertex AI backed (`claude_code`).
 - **Codex CLI**: OpenAI/Codex backed (`codex_cli`).
 - **Pi**: Additional experimental agent harness.
@@ -323,7 +329,8 @@ All runtime configuration lives in `harness/config.ts` and environment variables
 # .env (at repo root)
 GEMINI_API_KEY='your_api_key_here'
 GEMINI_MODEL='gemini-3.6-flash'
-GD_DEV_USE_GEMINI=1 # Required to use Gemini CLI for 'gd dev'
+# ANTIGRAVITY_GCP_PROJECT=<project-id> # Optional: only if agy (default 'gd dev' agent) uses a GCP project
+GD_DEV_USE_JETSKI=1 # Optional: use Jetski CLI instead for 'gd dev'
 
 # For Claude Code (optional)
 CLAUDE_CODE_USE_VERTEX=1

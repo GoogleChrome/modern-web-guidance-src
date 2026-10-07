@@ -121,6 +121,7 @@ If no model env var is set:
 - **Pi**: Uses the model from `~/.pi/agent/settings.json` (`defaultModel`)
 - **Gemini CLI**: Uses the model from `~/.gemini/settings.json` or prompts
 - **Codex CLI**: Uses default model (configurable via `codex settings`)
+- **Antigravity CLI**: Uses agy's default model (override with `ANTIGRAVITY_MODEL`)
 - **Jetski CLI**: Uses default model from Jetski config
 - **Claude Code**: Uses model from Vertex AI project config
 
@@ -180,6 +181,7 @@ Each agent has different auth file locations:
 | Pi | `auth.json`, `settings.json`, `trust.json` | `~/.pi/agent/` |
 | Claude Code | GCP credentials via env | `gcloud` config |
 | Codex CLI | OAuth via login flow | `~/.codex/` |
+| Jetski CLI | `installation_id`, `user_settings.pb`; on macOS the OAuth token lives in the login Keychain, so `~/Library/Keychains` is symlinked into the isolated HOME | `~/.gemini/jetski/` |
 
 Example for Pi:
 ```typescript
@@ -277,6 +279,23 @@ The grader reads this to distinguish:
 - **Early failures**: Agent crashed, no output generated
 - **Grader failures**: Agent generated code, but tests failed
 
+### 7. Filesystem Sandbox
+
+An isolated HOME alone doesn't stop an agent from finding this repo (e.g. via `$PATH` or `find /`) and reading `guides/`, `expectations.md` and `grader.ts`. `runCliAgentCommand()` therefore wraps every agent in an OS-level sandbox (`harness/lib/sandbox.ts`) that hides the repo root:
+
+- **Linux**: `bwrap` (bubblewrap) mounts an empty tmpfs over the repo root. Requires `sudo apt install bubblewrap`.
+- **macOS**: `sandbox-exec` denies file access under the repo root.
+
+Only these paths are re-exposed:
+
+| Path | Access | Why |
+|------|--------|-----|
+| `node_modules`, `harness/node_modules` | read-only | Agent CLI binaries |
+| `dist/skills-cli` | read-only, guided only | The npx/pnpx shim runs the local skills CLI |
+| per-run `targetDir` | writable | npx shim, `modern-web.log` |
+
+If no sandbox tool is available the run fails loudly. Set `GD_UNSAFE_NO_SANDBOX=1` to bypass for local debugging only. If an agent hits `EPERM`/`Operation not permitted` on a repo path the harness legitimately needs, add it to `buildSandboxPolicy()` rather than disabling the sandbox.
+
 ## Adding a New Agent
 
 ### Step 1: Create Agent Harness
@@ -323,7 +342,8 @@ async function run() {
     userPrompt
   ];
   
-  await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent');
+  // runType ('guided' | 'unguided') controls what the filesystem sandbox exposes
+  await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent', runType);
   
   // Export trajectories
   const sessionsDir = path.join(path.dirname(workDir), '.my-agent', 'sessions');
@@ -373,15 +393,12 @@ export interface EnvironmentConfig {
 
 ### Step 3: Wire Up Integrations
 
-**run_suite.ts** - Agent script mapping:
+**run_suite.ts** - Agent script mapping (unknown agents throw):
 ```typescript
-function getAgentScript(agent: string): string {
-  return path.join(harnessDir, 'agents',
-    agent === Agents.MY_AGENT ? 'my-agent.ts' :
-    // ... other agents
-    'gemini-cli-agent.ts'
-  );
-}
+const AGENT_SCRIPTS: Record<string, string> = {
+  // ... other agents
+  [Agents.MY_AGENT]: 'my-agent.ts',
+};
 ```
 
 **lib/collection.ts** - Model and token extraction:
@@ -679,7 +696,7 @@ test('collectPiGuidesFromTrajectory extracts guide reads', async () => {
 The `gd` CLI provides a convenient wrapper around the eval harness:
 
 ```bash
-# Run with default agent (Gemini CLI)
+# Run with default agent (Antigravity CLI)
 gd eval <task-name>
 
 # Run with Pi agent

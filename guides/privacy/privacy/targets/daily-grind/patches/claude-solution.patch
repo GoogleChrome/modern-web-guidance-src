@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+index 66c9173..240b763 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+diff --git a/package.json b/package.json
+index 2bd4d77..10f0792 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..7d4bbfd
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,63 @@
++const http = require('http');
++const fs = require('fs');
++const path = require('path');
++
++const PORT = parseInt(process.env.PORT || '11222', 10);
++
++const PRIVACY_HEADERS = {
++  'Permissions-Policy': 'geolocation=(), camera=(), microphone=(), accelerometer=()',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++};
++
++const MIME_TYPES = {
++  '.html': 'text/html',
++  '.css': 'text/css',
++  '.js': 'application/javascript',
++  '.json': 'application/json',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.gif': 'image/gif',
++  '.svg': 'image/svg+xml',
++  '.ico': 'image/x-icon',
++};
++
++const server = http.createServer((req, res) => {
++  const url = new URL(req.url, `http://localhost:${PORT}`);
++
++  if (url.pathname === '/logout') {
++    res.writeHead(200, {
++      ...PRIVACY_HEADERS,
++      'Content-Type': 'text/html',
++      'Clear-Site-Data': '"cookies", "storage", "cache"',
++    });
++    res.end('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta http-equiv="refresh" content="0;url=/"><title>Logging out</title></head><body><p>Logging out&hellip;</p></body></html>');
++    return;
++  }
++
++  let filePath = url.pathname === '/' ? '/index.html' : url.pathname;
++  filePath = path.join(__dirname, filePath);
++
++  const ext = path.extname(filePath);
++  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
++
++  fs.readFile(filePath, (err, content) => {
++    if (err) {
++      fs.readFile(path.join(__dirname, 'index.html'), (err2, fallback) => {
++        if (err2) {
++          res.writeHead(500, PRIVACY_HEADERS);
++          res.end('Server Error');
++          return;
++        }
++        res.writeHead(200, { ...PRIVACY_HEADERS, 'Content-Type': 'text/html' });
++        res.end(fallback);
++      });
++      return;
++    }
++    res.writeHead(200, { ...PRIVACY_HEADERS, 'Content-Type': contentType });
++    res.end(content);
++  });
++});
++
++server.listen(PORT, () => {
++  console.log(`Server running on port ${PORT}`);
++});

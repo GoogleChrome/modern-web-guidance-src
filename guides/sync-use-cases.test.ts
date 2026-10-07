@@ -5,6 +5,7 @@ import fs from 'fs';
 import os from 'os';
 import { getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, buildRequiredFilesChecklist } from './sync-use-cases.ts';
 import { ProjectStatus, validateGuide, getStatusName, processGuideInventory, type GuideInventory } from '../lib/guide-validation.ts';
+import { pendingFeatures } from '../serving/lib/baseline.ts';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'sync-use-cases-test-'));
@@ -286,6 +287,12 @@ describe('getStatusName', () => {
     assert.strictEqual(getStatusName('Some content.', false, false, false, false), ProjectStatus.NeedsGuidance);
     assert.strictEqual(getStatusName('Some content.', true, true, false, false), ProjectStatus.NeedsGuidance);
   });
+
+  test('accepts a precomputed has-guidance flag in place of the body', () => {
+    assert.strictEqual(getStatusName(true, true, true), null);
+    assert.strictEqual(getStatusName(true, false, true), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getStatusName(false, true, true), ProjectStatus.NeedsGuidance);
+  });
 });
 
 describe('getIssueStateChanges', () => {
@@ -410,6 +417,27 @@ describe('buildFeatureToIssueMap', () => {
     const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: ['P2', 'new-feature'], state: 'open' }];
     const map = buildFeatureToIssueMap(issues);
     assert.strictEqual(map.get('my-feature')?.priorityLabel, 'P2');
+  });
+
+  test('strips tmp- prefix from feature IDs extracted from issue bodies', () => {
+    const issues = [{ number: 1265, body: '### web-feature-id\n\ntmp-scroll-axis-lock', labels: ['P0', 'new-feature'], state: 'open' }];
+    const map = buildFeatureToIssueMap(issues);
+    assert.strictEqual(map.get('scroll-axis-lock')?.number, 1265);
+    assert.strictEqual(map.get('tmp-scroll-axis-lock'), undefined);
+  });
+
+  test('prefers open issue over closed duplicate matching the same stripped feature ID', () => {
+    const issuesFirstOpen = [
+      { number: 100, body: '### web-feature-id\n\nscroll-axis-lock', labels: [], state: 'open' },
+      { number: 101, body: '### web-feature-id\n\ntmp-scroll-axis-lock', labels: [], state: 'closed' },
+    ];
+    assert.strictEqual(buildFeatureToIssueMap(issuesFirstOpen).get('scroll-axis-lock')?.number, 100);
+
+    const issuesSecondOpen = [
+      { number: 101, body: '### web-feature-id\n\ntmp-scroll-axis-lock', labels: [], state: 'closed' },
+      { number: 100, body: '### web-feature-id\n\nscroll-axis-lock', labels: [], state: 'open' },
+    ];
+    assert.strictEqual(buildFeatureToIssueMap(issuesSecondOpen).get('scroll-axis-lock')?.number, 100);
   });
 });
 
@@ -602,6 +630,15 @@ describe('buildIssueContent', () => {
     assert.strictEqual(milestoneNumber, 2);
   });
 
+  test('strips tmp- prefix when matching guide feature IDs to feature issues and generating webstatus links', () => {
+    const featureMap = new Map([['scroll-axis-lock', { number: 1265, priorityLabel: 'P0', milestoneNumber: 3, state: 'open', body: '' }]]);
+    const { issueBody, priorityLabel, milestoneNumber } = buildIssueContent('diagonal-panning', 'desc', ['tmp-scroll-axis-lock'], 'guides/ui-behaviors/diagonal-panning', featureMap, makeInventory());
+    assert.ok(issueBody.includes('Related features: #1265'));
+    assert.ok(issueBody.includes('Affected web-feature IDs: [scroll-axis-lock](https://webstatus.dev/features/scroll-axis-lock)'));
+    assert.strictEqual(priorityLabel, 'P0');
+    assert.strictEqual(milestoneNumber, 3);
+  });
+
   test('uses priority label from first matched feature only', () => {
     const featureMap = new Map([
       ['feature-a', { number: 1, priorityLabel: 'P1', milestoneNumber: 1, state: 'open', body: '' }],
@@ -731,6 +768,13 @@ describe('getFeaturesNeedingSync', () => {
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].closeReason, null);
     assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsInvestigation);
+  });
+
+  test('matches feature sets symmetrically regardless of tmp- prefix on map key or set entry', () => {
+    const featureMap = makeFeatureMap([['tmp-scroll-axis-lock', { number: 1265, state: 'open' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(['scroll-axis-lock']), new Set(['scroll-axis-lock']));
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsEvals);
   });
 });
 
@@ -865,5 +909,31 @@ Body content.
     assert.strictEqual(result.errors.length, 0);
     assert.strictEqual(result.hasError, false);
     assert.strictEqual(result.preparedGuides.length, 1);
+  });
+
+  test('strips tmp- prefix from featuresWithAnyUseCases and featuresWithActiveUseCases', () => {
+    pendingFeatures['tmp-mock-feature'] = {
+      issue: 'https://github.com/web-platform-dx/web-features/issues/99999'
+    };
+    try {
+      fs.writeFileSync(path.join(tempDir, 'my-use-case', 'guide.md'), `---
+name: my-use-case
+description: A description
+web-feature-ids:
+  - tmp-mock-feature
+---
+
+# My Use Case
+
+Body content.
+`);
+      const result = processGuideInventory([makeInventory()]);
+      assert.strictEqual(result.errors.length, 0);
+      assert.ok(result.featuresWithAnyUseCases.has('mock-feature'));
+      assert.ok(result.featuresWithActiveUseCases.has('mock-feature'));
+      assert.ok(!result.featuresWithAnyUseCases.has('tmp-mock-feature'));
+    } finally {
+      delete pendingFeatures['tmp-mock-feature'];
+    }
   });
 });

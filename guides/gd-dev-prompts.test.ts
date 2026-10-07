@@ -83,16 +83,62 @@ test('buildTargetGraderPrompt formats failure context correctly when provided', 
   assert.ok(prompt.includes('Golden test failed on assertion getComputedStyle'));
 });
 
+test('buildTargetGraderPrompt includes discipline scoping only for discipline guides', () => {
+  const baseOpts = {
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
+    graderFile: 'grader.ts',
+    baseApp: 'devtools-times',
+    templateFile: 'template.grader.ts',
+  };
+
+  const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(disciplinePrompt.includes('discipline guide'));
+  assert.ok(disciplinePrompt.includes('you do NOT need to write a test for every expectation'));
+
+  const standardPrompt = buildTargetGraderPrompt(baseOpts);
+  assert.ok(!standardPrompt.includes('discipline guide'));
+});
+
+test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping only for discipline guides', () => {
+  const baseOpts = {
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    workDir: '/tmp/test-sandbox',
+  };
+
+  const disciplineSolutionPrompt = buildSolutionPrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(disciplineSolutionPrompt.includes('discipline guide'));
+  assert.ok(disciplineSolutionPrompt.includes('you do NOT need to satisfy every expectation'));
+  assert.ok(!buildSolutionPrompt(baseOpts).includes('discipline guide'));
+
+  const disciplineZeroPassratePrompt = buildZeroPassratePrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(disciplineZeroPassratePrompt.includes('discipline guide'));
+  assert.ok(disciplineZeroPassratePrompt.includes('you do NOT need to fail every expectation'));
+  assert.ok(!buildZeroPassratePrompt(baseOpts).includes('discipline guide'));
+});
+
 test('buildTargetTaskPrompt creates clean developer prompt instructions', () => {
-  const prompt = buildTargetTaskPrompt({
+  const baseOpts = {
     guideFile: 'guide.md',
     taskFile: 'task.md',
     baseApp: 'daily-grind',
-  });
+  };
+  const prompt = buildTargetTaskPrompt(baseOpts);
   assert.ok(prompt.includes('task.md'));
   assert.ok(prompt.includes('codebase files'));
+  assert.ok(prompt.includes('understand the use case'));
   assert.ok(prompt.includes('Do NOT name the guide itself'));
   assert.ok(prompt.includes('Write the prompt as a developer talking'));
+
+  const disciplinePrompt = buildTargetTaskPrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(disciplinePrompt.includes('understand the discipline guidance'));
+  assert.ok(disciplinePrompt.includes('apply the discipline guidance'));
+  assert.ok(!disciplinePrompt.includes('understand the use case'));
 });
 
 test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags and inputs', () => {

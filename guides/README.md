@@ -50,8 +50,22 @@ This will automatically:
 3. Push your feature branch to `origin`.
 4. Analyze `report.md` to automatically detect and apply PR labels:
    - **`gd-dev-content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
-   - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`.
-5. Open a new draft Pull Request (or update the existing PR description and sync labels if a PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description.
+   - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`. When the PR is marked ready for review, the ATL triage bot requests review from `EVAL_PR_REVIEWER` in `guides/atl-triage.ts`.
+5. Open a new draft Pull Request (or update the existing PR description and sync labels if an open PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
+
+### Fixing Open Eval Gaps: `gd dev-gap`
+
+`eval-gap-watch` files an "Evals missing for the \<guide-name\> guide" issue (label `eval-gap`) for each guide that needs evals. `gd dev-gap` works through those issues, running `gd dev` and `gd pr` for each guide in turn. It doesn't handle "Expectations changed" issues yet.
+
+```bash
+gd dev-gap --dry-run   # show which guides would run and why the rest are skipped
+gd dev-gap --limit 1   # process at most one guide
+gd dev-gap             # process all of them
+```
+
+Run it from a clean, up-to-date `main`. For each guide it runs `gd dev`, opens a PR from a fresh `gd-dev/<guide-name>` branch, then returns to `main` and deletes the local branch. If a guide fails, its changes are discarded and the batch moves on; it stops only if it can't get back to a clean `main`. The issue closes on its own once the PR merges.
+
+It skips guides that already have an open `grader updates: <guide-name>` PR and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` (delete the branch to retry).
 
 ### Checking Status: `gd audit`
 
@@ -122,7 +136,7 @@ gd dev <path/to/guide_dir>
 
 This runs the following pipeline after the grader calibrates successfully:
 
-1. **Generate `tasks/task.md`** if missing — uses the default solution agent (Jetski CLI, or Gemini CLI with `GD_DEV_USE_GEMINI=1`) to create a set of developer-facing prompts derived from the guide and adds `base_app: daily-grind` frontmatter.
+1. **Generate `tasks/task.md`** if missing — uses the default solution agent (Antigravity CLI, or Jetski CLI with `GD_DEV_USE_JETSKI=1`) to create a set of developer-facing prompts derived from the guide and adds `base_app: daily-grind` frontmatter.
 2. **Grade the base app as-is** (pre-score) — establishes a baseline before any agent runs
 3. **Run the agent** in both `unguided` (no guide access) and `guided` (with guidance access) modes against the base app
 4. **Grade both outputs** and print a comparison:

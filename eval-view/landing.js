@@ -316,7 +316,7 @@ function renderAll() {
 
 async function loadLocalTests() {
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return; // Avoid 404s by skipping local network fetches when hosted on Github Pages
+        return; // Avoid 404s by skipping local network fetches when hosted on GitHub Pages
     }
     
     try {
@@ -782,7 +782,7 @@ function formatSuiteLabel(testInfo) {
  */
 function getAgentBadge(agentName) {
     const name = (agentName || '').toLowerCase();
-    if (name.includes('gemini') || name.includes('jetski')) {
+    if (name.includes('gemini') || name.includes('jetski') || name.includes('antigravity')) {
         return '<span class="agent-badge gemini">✦</span>';
     }
     if (name.includes('codex') || name.includes('openai')) {
@@ -872,13 +872,9 @@ function renderPivotInsights() {
 
         const suiteGuides = testInfo.guides || {};
         Object.keys(suiteGuides).forEach(guide => {
-            const gG = suiteGuides[guide].guided || { passed: 0, total: 0 };
-            const uG = suiteGuides[guide].unguided || { passed: 0, total: 0 };
-            const gG_rate = gG.total > 0 ? Math.round((gG.passed / gG.total) * 100) : 0;
-            const uG_rate = uG.total > 0 ? Math.round((uG.passed / uG.total) * 100) : 0;
-            const uG_uplift = gG_rate - uG_rate;
+            const { guidedRate = 0, unguidedRate = 0, uplift = 0 } = suiteGuides[guide];
             if (!grouped.guide[guide]) grouped.guide[guide] = [];
-            grouped.guide[guide].push({ uplift: uG_uplift, uRate: uG_rate, gRate: gG_rate });
+            grouped.guide[guide].push({ uplift, uRate: unguidedRate, gRate: guidedRate });
         });
     });
 

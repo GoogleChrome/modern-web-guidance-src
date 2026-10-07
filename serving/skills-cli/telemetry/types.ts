@@ -50,6 +50,7 @@ export interface ChromeModernWebGuidance {
   os?: OsType;
   version?: string;
   skill_version?: string;
+  agent?: string;
   latency_ms?: number;
   success?: boolean;
 }

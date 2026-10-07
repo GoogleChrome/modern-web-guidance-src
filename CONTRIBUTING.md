@@ -29,7 +29,7 @@ To foster an open-source contributor environment while maintaining a stable, cle
 
 # How to contribute
 We want to encourage contributions while maintaining high standards. Our policy is:
-* **Proposal first**: For non-trivial changes, contributors need to to [open an issue first](https://github.com/GoogleChrome/modern-web-guidance-src/issues) to align on design before coding.
+* **Proposal first**: For non-trivial changes, contributors need to [open an issue first](https://github.com/GoogleChrome/modern-web-guidance-src/issues) to align on design before coding.
 
 ## Project Roles
 
@@ -63,7 +63,7 @@ Content ATLs are responsible for the overall quality, completeness, and health o
   * Align all guidance and expectations with a **Baseline Widely available** target. If a recommended feature is not yet widely available, the guide **must** specify (and the expectations/grader **must** test for) proper fallback strategies and progressive enhancement.
 * **Discipline Guide Decomposition**:
   * Ensure discipline-level guides (e.g., CSS, JS) are broken up into modular "subguides" (i.e., smaller, focused guides) rather than structured as a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously.
-  * The primary discipline-level guide (e.g., `guides/css/css/guide.md` or `guides/performance/performance/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for how to approach the discipline, explaining when and how to reference each granular subguide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
+  * The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for how to approach the discipline, explaining when and how to reference each granular subguide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
 
 ### Infrastructure Engineers
 Infrastructure engineers focus on the tooling, CLI, test harness reliability, LLM generation pipelines, and dashboard interfaces. They ensure that the evaluation runner is stable, calibration retries function correctly, and maintain the Skills CLI distribution path.
@@ -183,12 +183,11 @@ All evaluation and environment configuration is centralized in [`harness/config.
 
 ### API Keys & Environment Setup
 
-For setup of core guide development workflows (`gd dev`), configure your Gemini API key and model in your environment or `.env` file:
+For setup of core guide development workflows (`gd dev`), install and sign in to Antigravity CLI (the default `gd dev` agent; see [EVALS.md](./EVALS.md#antigravity-cli)). Optionally configure your environment or `.env` file:
 
 ```bash
-GEMINI_API_KEY='your_api_key_here'
-GEMINI_MODEL='gemini-3-flash-preview'
-GD_DEV_USE_GEMINI=1 # Required to use Gemini CLI for 'gd dev'
+# ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID> # Optional: only if you use agy through a GCP project
+# GD_DEV_USE_JETSKI=1 # Optional: use Jetski CLI instead of Antigravity CLI for 'gd dev'
 ```
 
 ### Runtime Configuration Overrides

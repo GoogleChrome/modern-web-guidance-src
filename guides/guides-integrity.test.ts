@@ -119,7 +119,8 @@ describe('Guides Validation (Single Source of Truth)', () => {
     const targetsDir = path.join(guide.dir, 'targets');
     const expectationsPath = path.join(guide.dir, 'expectations.md');
 
-    if (fs.existsSync(targetsDir) && fs.existsSync(expectationsPath)) {
+    // Discipline guide graders only cover the expectations relevant to each target app.
+    if (!guide.isDisciplineGuide && fs.existsSync(targetsDir) && fs.existsSync(expectationsPath)) {
       const targetApps = fs.readdirSync(targetsDir, { withFileTypes: true })
         .filter(e => e.isDirectory() && !e.name.startsWith('.'))
         .map(e => e.name);
@@ -180,6 +181,38 @@ describe('Guides Validation (Single Source of Truth)', () => {
         assert.fail(`Feature ID "${fid}" in guides/atls.json is invalid: ${res.errorMessage}`);
       }
     }
+  });
+
+  it('validates that pending temporary feature groups and compat_features are valid', async () => {
+    const { groups } = await import('web-features');
+    const pendingPath = path.join(REPO_ROOT, 'features', 'pending-web-features.json');
+    const pending = JSON.parse(fs.readFileSync(pendingPath, 'utf8'));
+
+    for (const [fid, entry] of Object.entries<{ group?: string | string[]; compat_features?: string | string[] }>(pending)) {
+      const entryGroups = entry.group === undefined ? [] : [entry.group].flat();
+      for (const group of entryGroups) {
+        if (!(group in groups)) {
+          assert.fail(`Feature ID "${fid}" in features/pending-web-features.json has unknown group "${group}"`);
+        }
+      }
+
+      const compatKeys = entry.compat_features === undefined ? [] : [entry.compat_features].flat();
+      for (const bcdKey of compatKeys) {
+        assert.ok(
+          typeof bcdKey === 'string' && bcdKey.trim().length > 0 && bcdKey.includes('.'),
+          `Feature ID "${fid}" in features/pending-web-features.json has invalid compat_features entry "${bcdKey}"`
+        );
+      }
+    }
+  });
+
+  it('ensures feature-to-groups.generated.json is synchronized with guides/atls.json', async () => {
+    const { buildFeatureToGroupsJson, FEATURE_TO_GROUPS_PATH } = await import('./generate-feature-to-groups.ts');
+    assert.strictEqual(
+      fs.readFileSync(FEATURE_TO_GROUPS_PATH, 'utf8'),
+      buildFeatureToGroupsJson(),
+      'guides/feature-to-groups.generated.json is out of date. Run: node --experimental-strip-types guides/generate-feature-to-groups.ts'
+    );
   });
 
   it('validates that all features/tmp-*.md files are registered in features/pending-web-features.json', async () => {

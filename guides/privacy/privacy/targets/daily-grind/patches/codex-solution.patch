@@ -1,0 +1,38 @@
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..caa8eea
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,8 @@
++/*
++  Permissions-Policy: geolocation=(), camera=(), microphone=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=()
++  Referrer-Policy: strict-origin-when-cross-origin
++
++/logout
++  Clear-Site-Data: "cookies", "storage", "cache"
++  Permissions-Policy: geolocation=(), camera=(), microphone=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=()
++  Referrer-Policy: strict-origin-when-cross-origin
+diff --git a/index.html b/index.html
+index 66c9173..240b763 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+diff --git a/package.json b/package.json
+index 2bd4d77..a565ae1 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"const fs=require('fs'); JSON.parse(fs.readFileSync('package.json', 'utf8')); for (const file of ['index.html', '_headers']) fs.accessSync(file, fs.constants.R_OK);\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

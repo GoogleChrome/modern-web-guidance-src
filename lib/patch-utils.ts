@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
+const MAX_BUFFER = 50 * 1024 * 1024; // 50MB buffer to handle large diffs/assets
+
 /**
  * Extracts target modified file paths directly from unified diff headers (+++ b/<path>).
  * Ignores deleted files (/dev/null).
@@ -38,11 +40,11 @@ export function applyPatchSync(targetDir: string, patchPath: string): PatchResul
   }
 
   try {
-    execSync(`patch -p1 --no-backup-if-mismatch -i "${absPatchPath}"`, { cwd: absTargetDir, stdio: 'pipe' });
+    execSync(`patch -p1 --no-backup-if-mismatch -i "${absPatchPath}"`, { cwd: absTargetDir, stdio: 'pipe', maxBuffer: MAX_BUFFER });
     return { success: true };
   } catch (patchErr: any) {
     try {
-      execSync(`git apply --whitespace=nowarn --unsafe-paths "${absPatchPath}"`, { cwd: absTargetDir, stdio: 'pipe' });
+      execSync(`git apply --whitespace=nowarn --unsafe-paths "${absPatchPath}"`, { cwd: absTargetDir, stdio: 'pipe', maxBuffer: MAX_BUFFER });
       return { success: true };
     } catch (gitErr: any) {
       const errorMsg = patchErr?.stderr?.toString() || gitErr?.stderr?.toString() || patchErr?.message || gitErr?.message || 'Unknown error applying patch';
@@ -68,8 +70,8 @@ export function capturePatchFromGit(
     execSync(`git add -N --ignore-removal ${targetPath}`, { cwd: workDir, stdio: 'ignore' });
 
     // Diff against the initial root commit to include any commits made by the agent
-    const rootCommit = execSync('git rev-list --max-parents=0 HEAD', { cwd: workDir, encoding: 'utf8' }).trim();
-    const diff = execSync(`git diff ${rootCommit}${relFlag} -- ${targetPath}`, { cwd: workDir, encoding: 'utf8' });
+    const rootCommit = execSync('git rev-list --max-parents=0 HEAD', { cwd: workDir, encoding: 'utf8', maxBuffer: MAX_BUFFER }).trim();
+    const diff = execSync(`git diff ${rootCommit}${relFlag} -- ${targetPath}`, { cwd: workDir, encoding: 'utf8', maxBuffer: MAX_BUFFER });
 
     if (!diff.trim()) {
       return { success: false, diff: '' };

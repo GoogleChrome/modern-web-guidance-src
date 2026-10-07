@@ -3,8 +3,9 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, isDraftStub, checkOriginTrialGraduations } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
+import { maskComments } from '../serving/lib/macros.ts';
 
 describe('extractH1Heading and extractAllH1Headings', () => {
   test('extracts standard ATX H1 heading', () => {
@@ -176,6 +177,35 @@ Line 4: duplicate unescaped <dialog>.
     assert.ok(errors[0].includes('Unescaped HTML tag <dialog> found on line 1'));
     assert.ok(errors[1].includes('Unescaped HTML tag <dialog> found on line 4'));
   });
+
+  test('reports true line numbers when unescaped HTML tag is preceded by comment macros', () => {
+    const body = `Line 1: normal text.
+
+{#
+Line 4: Multi-line comment
+Line 5: still comment
+#}
+
+Line 8: unescaped <dialog>.
+`;
+    const errors = validateHtmlTags(maskComments(body), 'test.md');
+    assert.strictEqual(errors.length, 1);
+    assert.ok(errors[0].includes('Unescaped HTML tag <dialog> found on line 8'));
+  });
+
+  test('still flags an unescaped HTML tag that follows a comment on the same line', () => {
+    const body = `Intro.
+
+{# reviewer note #} <dialog> is here.
+
+{# a
+longer note #} <dialog> is here.
+`;
+    const errors = validateHtmlTags(maskComments(body), 'test.md');
+    assert.strictEqual(errors.length, 2);
+    assert.ok(errors[0].includes('<dialog> is here." found on line 3'));
+    assert.ok(errors[1].includes('<dialog> is here." found on line 6'));
+  });
 });
 
 describe('validateHeadings and validateGuideTitle', () => {
@@ -345,6 +375,19 @@ Setup instructions.
     assert.deepStrictEqual(errors, []);
   });
 
+  test('validateGuideTitle allows draft: stub guide with author notes in body and no H1 or title', () => {
+    const notesBody = `## Notes for guide authors\n\n- Core guidance: use \`background-clip: border-area\`\n`;
+    const errors = validateGuideTitle(notesBody, 'test.md', { draft: 'stub' }, { requireTitle: true });
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('validateGuideTitle still validates H1 headings on draft: stub guides if present', () => {
+    const vagueStubBody = `# Overview\n\n## Notes for guide authors\n`;
+    const errors = validateGuideTitle(vagueStubBody, 'test.md', { draft: 'stub' }, { requireTitle: true });
+    assert.strictEqual(errors.length, 1);
+    assert.ok(errors[0].includes('Vague H1 heading "# Overview"'));
+  });
+
   test('validateGuide integrates heading validation', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-val-test-'));
     const guideDir = path.join(tmpDir, 'test-guide');
@@ -408,6 +451,32 @@ web-feature-ids: []
 ---
 
 <!-- stub guide -->
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      assert.strictEqual(result.errors.length, 0);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('validateGuide allows draft: stub guides with author notes and no H1 heading', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-val-draft-stub-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+draft: stub
+web-feature-ids: []
+---
+
+## Implementation notes for guide authors
+
+- Core guidance: \`background-clip: border-area\`
 `);
 
     try {
@@ -571,8 +640,74 @@ describe('guide draft flag (publish control)', () => {
     const inv = inventory('---\nname: g\n---\n');
     assert.strictEqual(inv.isPublished, false);
     assert.strictEqual(inv.isStub, true);
+    assert.strictEqual(classifyGuide(inv), 'stub');
+  });
+
+  test('a guide whose only body content is a comment is considered a stub and not published', () => {
+    const invSingleLine = inventory('---\nname: g\n---\n{# TODO: write guidance #}\n');
+    assert.strictEqual(invSingleLine.isPublished, false);
+    assert.strictEqual(invSingleLine.isStub, true);
+    assert.strictEqual(invSingleLine.hasGuide, false);
+    assert.strictEqual(classifyGuide(invSingleLine), 'stub');
+
+    const invMultiLine = inventory('---\nname: g\n---\n{#\nTODO: write guidance\nmore details\n#}\n');
+    assert.strictEqual(invMultiLine.isPublished, false);
+    assert.strictEqual(invMultiLine.isStub, true);
+    assert.strictEqual(invMultiLine.hasGuide, false);
+    assert.strictEqual(classifyGuide(invMultiLine), 'stub');
+  });
+
+  test('a guide with draft: stub is considered a stub even when its body contains author notes', () => {
+    const inv = inventory('---\nname: g\ndraft: stub\n---\n# G\n\n## Notes for guide authors\n\n- Use modern CSS\n');
+    assert.strictEqual(inv.draft, 'stub');
+    assert.strictEqual(inv.isPublished, false);
+    assert.strictEqual(inv.isStub, true);
+    assert.strictEqual(inv.hasGuide, false);
+    assert.strictEqual(classifyGuide(inv), 'stub');
+
+    const invCaseInsensitive = inventory('---\nname: g\ndraft: " STUB "\n---\n## Notes for guide authors\n');
+    assert.strictEqual(invCaseInsensitive.isPublished, false);
+    assert.strictEqual(invCaseInsensitive.isStub, true);
+    assert.strictEqual(invCaseInsensitive.hasGuide, false);
+    assert.strictEqual(classifyGuide(invCaseInsensitive), 'stub');
+  });
+
+  test('isDraftStub matches only stub draft values', () => {
+    assert.strictEqual(isDraftStub('stub'), true);
+    assert.strictEqual(isDraftStub('STUB'), true);
+    assert.strictEqual(isDraftStub('  stub  '), true);
+    assert.strictEqual(isDraftStub(true), false);
+    assert.strictEqual(isDraftStub(false), false);
+    assert.strictEqual(isDraftStub('future'), false);
+    assert.strictEqual(isDraftStub('blocked'), false);
+    assert.strictEqual(isDraftStub(undefined), false);
   });
 });
+
+describe('stripAllComments', () => {
+  test('strips HTML comments', () => {
+    assert.strictEqual(stripAllComments('<!-- TODO: write this -->'), '');
+    assert.strictEqual(stripAllComments('Before <!-- comment --> after'), 'Before  after');
+  });
+
+  test('strips {# ... #} macro comments', () => {
+    assert.strictEqual(stripAllComments('{# TODO: write guidance #}'), '');
+    assert.strictEqual(stripAllComments('Before {# comment #} after'), 'Before after');
+  });
+
+  test('strips a mix of HTML and macro comments', () => {
+    assert.strictEqual(stripAllComments('<!-- HTML comment -->\n\n{# Macro comment #}').trim(), '');
+  });
+
+  test('preserves actual body content', () => {
+    assert.strictEqual(stripAllComments('# Title\n\nActual guidance content'), '# Title\n\nActual guidance content');
+    assert.strictEqual(stripAllComments('{# Comment #}\nActual content'), 'Actual content');
+    assert.strictEqual(stripAllComments('<!-- Comment -->\nActual content'), '\nActual content');
+  });
+});
+
+
+
 
 describe('getSupportedBaseApps', () => {
   test('returns the exact list of supported base applications', () => {
@@ -672,6 +807,12 @@ The <details> element is Baseline Widely available.
     assert.deepStrictEqual(errors, []);
   });
 
+  test('skips baseline claim validation for draft: stub guides', () => {
+    const body = '## Notes for guide authors\n\n- Mention that `<details>` is Baseline Widely available.\n';
+    const errors = validateBaselineClaims(body, 'guides/test/guide.md', { draft: 'stub' });
+    assert.deepStrictEqual(errors, []);
+  });
+
   test('validateGuide integrates baseline claims validation', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-baseline-test-'));
     const guideDir = path.join(tmpDir, 'test-guide');
@@ -696,6 +837,116 @@ The \`<details>\` element is Baseline Widely available.
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('validateGuide ignores macros, baseline claims, and html tags inside {# ... #} comments', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-comment-macro-test-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+web-feature-ids: []
+---
+
+# Test Overview
+
+Valid guide content.
+
+{# # Overview #}
+{# {{ BASELINE_STATUS("non-existent-feature-xyz") }} #}
+{# <dialog>invalid html</dialog> #}
+{# The <details> element is Baseline Widely available. #}
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      assert.deepStrictEqual(result.errors, []);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('validateGuide reports accurate line numbers when errors are preceded by comments', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-line-reporting-test-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    // Body lines (after frontmatter):
+    // 1: empty line
+    // 2: # Test Details
+    // 3: empty line
+    // 4: {#
+    // 5: Multi-line comment
+    // 6: #}
+    // 7: empty line
+    // 8: Unescaped <dialog> on line 8 of body.
+    // 9: empty line
+    // 10: Baseline widely available on line 10 of body.
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+web-feature-ids: []
+---
+
+# Test Details
+
+{#
+Multi-line comment
+#}
+
+Unescaped <dialog> on line 8.
+
+The feature is Baseline widely available on line 10.
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      const htmlError = result.errors.find(e => e.includes('Unescaped HTML tag <dialog>'));
+      assert.ok(htmlError, 'Expected HTML error');
+      assert.ok(
+        htmlError.includes('on line 8'),
+        `Expected error to be reported on line 8, but got: ${htmlError}`
+      );
+
+      const baselineError = result.errors.find(e => e.includes('Hardcoded Baseline availability claim'));
+      assert.ok(baselineError, 'Expected baseline claim error');
+      assert.ok(
+        baselineError.includes('on line 10'),
+        `Expected error to be reported on line 10, but got: ${baselineError}`
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
+
+describe('checkOriginTrialGraduations', () => {
+  test('asserts no graduated features linger in features/origin-trials.json', () => {
+    const graduated = checkOriginTrialGraduations();
+    assert.deepStrictEqual(
+      graduated,
+      [],
+      `Graduated Origin Trial features still registered in features/origin-trials.json: ${JSON.stringify(graduated)}`
+    );
+  });
+
+  test('detects graduated feature when present in custom registry', () => {
+    // "fetch-priority" is widely supported and has browser support in web-features
+    const mockRegistry = {
+      'fetch-priority': {
+        name: 'Fetch Priority',
+        chromestatus_url: 'https://chromestatus.com/feature/5273474901803008',
+      },
+    };
+    const graduated = checkOriginTrialGraduations(mockRegistry);
+    assert.strictEqual(graduated.length, 1);
+    assert.strictEqual(graduated[0].featureId, 'fetch-priority');
+    assert.ok(graduated[0].supportedBrowsers.length > 0);
+  });
+});
+
 
 

@@ -6,6 +6,8 @@ on:
     - cron: '0 20 * * 1'
   workflow_dispatch: {}
 
+permissions: {}
+
 concurrency:
   group: publish-skills
   cancel-in-progress: false
@@ -15,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
       id-token: write # Required for npm OIDC provenance when enabled
 
     steps:
@@ -27,13 +30,16 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }},modern-web-guidance
           permission-contents: write
+          permission-issues: write
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
+        with: # zizmor: ignore[artipacked] publish-skills.ts pushes the release commit and tag using this persisted App token
+          ref: main
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
       - name: Check for changes since last release
+        id: check-changes
         run: |
           if git describe --exact-match --match "v*" HEAD >/dev/null 2>&1; then
             echo "Error: The latest commit already has a version tag. No new changes to publish."
@@ -44,7 +50,7 @@ jobs:
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
       - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: 'pnpm'
@@ -102,3 +108,14 @@ jobs:
         run: |
           cd dist/skills-cli
           npm publish --provenance --access public --registry https://registry.npmjs.org/
+
+      - name: Notify on failure
+        if: failure() && steps.check-changes.outcome != 'failure'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh issue create \
+            --title "Publish Skills workflow failed (run #$GITHUB_RUN_NUMBER)" \
+            --assignee "TravenReese,micahjo7,paulirish" \
+            --body "The [Publish Skills workflow run]($RUN_URL) failed."$'\n\n'"cc @TravenReese @micahjo7 @paulirish"
