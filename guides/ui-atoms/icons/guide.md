@@ -183,53 +183,61 @@ If you need multi-color icons or arbitrary path-level animations, use Inline SVG
 
 ## Fallback Strategies
 
-{{ FEATURE_FALLBACKS("masks") }}
-{{ FEATURE_FALLBACKS("container-style-queries") }}
-{{ FEATURE_FALLBACKS("registered-custom-properties") }}
+### CSS Masks
 
-### For Browsers Without Container Style Queries
+{{ BASELINE_STATUS("masks") }}
 
-Use the `@supports not (container-name: container)` directive with style attribute substring selectors to inject icons when `--icon-start` or `--icon-end` are set inline:
+### Registered Custom Properties
+
+{{ BASELINE_STATUS("registered-custom-properties") }}
+
+If your Baseline target includes browsers without `@property` support, `--icon-start` and `--icon-end` will inherit into child elements by default. Reset them on descendants inside the style query (`* { --icon-start: initial; --icon-end: initial; }`) so nested elements do not render duplicate icons.
+
+### Container Style Queries
+
+{{ BASELINE_STATUS("container-style-queries") }}
+
+To support browsers without Container Style Queries, pair the `@container style(...)` rules with style attribute substring selectors so icons still render when `--icon-start`, `--icon-end`, or `--icon` are set inline:
 
 ```css
-@supports not (container-name: container) {
-  [style*="--icon-start"]::before {
-    content: "";
-    display: inline-block;
-    width: var(--icon-size);
-    height: var(--icon-size);
-    background-color: currentColor;
-    mask: var(--icon-start) no-repeat center / contain;
-    vertical-align: middle;
-  }
+[style*="--icon-start"]::before {
+  --icon-start: inherit;
+  content: "";
+  display: inline-block;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  background-color: currentColor;
+  mask: var(--icon-start) no-repeat center / contain;
+  vertical-align: middle;
+}
 
-  [style*="--icon-start"]:not(.icon, :empty)::before {
-    margin-inline-end: 0.4em;
-  }
+[style*="--icon-start"]:not(.icon, :empty)::before {
+  margin-inline-end: 0.4em;
+}
 
-  [style*="--icon-end"]::after {
-    content: "";
-    display: inline-block;
-    width: var(--icon-size);
-    height: var(--icon-size);
-    background-color: currentColor;
-    mask: var(--icon-end) no-repeat center / contain;
-    vertical-align: middle;
-  }
+[style*="--icon-end"]::after {
+  --icon-end: inherit;
+  content: "";
+  display: inline-block;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  background-color: currentColor;
+  mask: var(--icon-end) no-repeat center / contain;
+  vertical-align: middle;
+}
 
-  [style*="--icon-end"]:not(.icon, :empty)::after {
-    margin-inline-start: 0.4em;
-  }
+[style*="--icon-end"]:not(.icon, :empty)::after {
+  margin-inline-start: 0.4em;
+}
 
-  .icon:empty[style*="--icon"]::before {
-    content: "";
-    display: inline-block;
-    width: var(--icon-size);
-    height: var(--icon-size);
-    background-color: currentColor;
-    mask: var(--icon) no-repeat center / contain;
-    vertical-align: middle;
-  }
+.icon:empty[style*="--icon"]::before {
+  content: "";
+  display: inline-block;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  background-color: currentColor;
+  mask: var(--icon) no-repeat center / contain;
+  vertical-align: middle;
 }
 ```
 
