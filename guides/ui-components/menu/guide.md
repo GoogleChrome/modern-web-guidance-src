@@ -120,8 +120,8 @@ Light-dismiss fires `pointerdown` before `click`. Ignore that following click, o
 ```js
 let suppressNextClick = false;
 trigger.addEventListener('pointerdown', event => {
-  if (!menu.matches(':popover-open')) return;
-  event.preventDefault();
+  event.preventDefault(); // Prevent mousedown focus from starting a preview mid-click
+  if (!menu.matches(':popover-open') || previewedMenus.has(menu)) return;
   suppressNextClick = true;
   closeMenu(menu, true);
 });
@@ -132,8 +132,8 @@ trigger.addEventListener('click', event => {
     suppressNextClick = false;
     return;
   }
-  if (menu.matches(':popover-open')) closeMenu(menu, true);
-  else openMenu(menu, trigger);
+  if (previewedMenus.has(menu) || !menu.matches(':popover-open')) openMenu(menu, trigger);
+  else closeMenu(menu, true);
 });
 ```
 
