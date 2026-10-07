@@ -13,9 +13,7 @@ guides:
 
 Build a site navigation bar that uses one semantic navigation tree at every size, presents a native popover on narrow containers, becomes an inline navigation on wide containers, and identifies the current page.
 
-This guide describes site-navigation integration. It does not define application-menu behaviour. For reusable responsive disclosure behaviour, see {{ GUIDE_REF("responsive-disclosure") }}. For the decorative chevron, see {{ GUIDE_REF("icons") }}.
-
-For component-driven layouts, fluid sizing, and typographic line-wrapping, see {{ GUIDE_REF("size-aware-styling") }}, {{ GUIDE_REF("fluid-scaling") }}, and {{ GUIDE_REF("improve-text-layout-and-legibility") }}.
+This guide covers destination links in a `<nav>` landmark navigated with `Tab`. For application command menus with a single tab stop and arrow-key navigation, see {{ GUIDE_REF("menu") }}. For general responsive disclosure patterns beyond site navigation, see {{ GUIDE_REF("responsive-disclosure") }}.
 
 ---
 
