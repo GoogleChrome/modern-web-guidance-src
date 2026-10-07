@@ -244,6 +244,7 @@ function currentIndex() {
 }
 
 function goTo(index) {
+  // CSS enables smooth scrolling only when reduced motion is not requested.
   slides[index]?.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
 }
 
