@@ -45,7 +45,6 @@ Set explicit relative sizes for `--checkbox-size` and `--checkbox-icon-size` bec
   --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
 }
 
-```css
 /* Custom checkbox */
 .checkbox-custom {
   --checkbox-size: 1.25em;
