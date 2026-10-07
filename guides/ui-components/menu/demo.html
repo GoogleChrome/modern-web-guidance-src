@@ -444,15 +444,16 @@
         }
         previewMenu(menu, trigger);
       });
-      trigger.addEventListener('blur', () => {
+      trigger.addEventListener('blur', event => {
         if (previewedMenus.has(menu)) {
-          closeMenu(menu);
+          if (menu.contains(event.relatedTarget)) previewedMenus.delete(menu);
+          else closeMenu(menu);
         }
       });
 
       trigger.addEventListener('pointerdown', event => {
-        if (!menu.matches(':popover-open') || previewedMenus.has(menu)) return;
         event.preventDefault();
+        if (!menu.matches(':popover-open') || previewedMenus.has(menu)) return;
         suppressNextClick = true;
         closeMenu(menu, true);
       });
