@@ -53,8 +53,8 @@ input[type="range"] {
   --slider-thumb-size: 1.25rem;
   --slider-track-radius: 999px;
   --slider-thumb-radius: 50%;
-  --slider-track-color: light-dark(#d9d9d9, #404040);
-  --slider-fill-color: light-dark(#06c, #66b3ff);
+  --slider-track-color: #d9d9d9;
+  --slider-fill-color: #06c;
   --slider-thumb-color: var(--slider-fill-color);
   --slider-direction: to right;
 
