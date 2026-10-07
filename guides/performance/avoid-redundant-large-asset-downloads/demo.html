@@ -20,7 +20,7 @@
     // navigator.crossOriginStorage is undefined in browsers with no COS
     // implementation. Guard every access with optional chaining so the
     // page falls back to plain network loading instead of throwing.
-    const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
+    const supportsCOS = !!navigator.crossOriginStorage?.getFileHandle;
     if (!supportsCOS) {
       statusEl.textContent = 'Cross-Origin Storage is unavailable here -- loading over the network as normal.';
     }
@@ -63,7 +63,7 @@
         try {
           // Check COS first. If another origin already stored this exact
           // hash, this resolves with no network request at all.
-          const handle = await navigator.crossOriginStorage.requestFileHandle(hash);
+          const handle = await navigator.crossOriginStorage.getFileHandle(hash);
           statusEl.textContent = 'Found in Cross-Origin Storage -- no download needed.';
           return await handle.getFile();
         } catch (err) {
@@ -86,7 +86,7 @@
       if (supportsCOS && !blocked) {
         // Store the file for the next origin that requests the same hash.
         try {
-          const handle = await navigator.crossOriginStorage.requestFileHandle(hash, {
+          const handle = await navigator.crossOriginStorage.getFileHandle(hash, {
             create: true,
             // Only pass `origins` when the caller chose a scope, so omitting it
             // keeps the same-site-only default.

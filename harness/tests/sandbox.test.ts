@@ -24,7 +24,7 @@ test('buildSandboxPolicy exposes dist only for guided runs and the target dir as
     assert.strictEqual(guided.hiddenDir, repo);
     assert.ok(guided.readOnlyPaths.includes(distDir));
     assert.ok(guided.readOnlyPaths.includes(path.join(repo, 'node_modules')));
-    assert.deepStrictEqual(guided.writablePaths, [targetDir, path.join(distDir, 'skills', '.cache')]);
+    assert.deepStrictEqual(guided.writablePaths, [targetDir]);
 
     const unguided = buildSandboxPolicy(targetDir, 'unguided', repo, []);
     assert.ok(!unguided.readOnlyPaths.includes(distDir));
