@@ -691,7 +691,9 @@ window.__featuresMapping = {
   ],
   "checkbox": [
     "accent-color",
-    "indeterminate"
+    "indeterminate",
+    "individual-transforms",
+    "masks"
   ],
   "checkbox-group": [
     "subgrid",
