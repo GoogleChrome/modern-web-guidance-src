@@ -8,8 +8,8 @@ web-feature-ids:
 guides:
   - installable-web-app-metadata
   - install-web-app
-  - offline-caching-and-updates
-  - offline-data-sync
+  - offline-loading-and-updates
+  - background-sync-and-transfers
   - custom-window-title-bar
   - os-content-sharing
   - os-launch-and-file-handling
