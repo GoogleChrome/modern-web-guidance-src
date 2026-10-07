@@ -43,7 +43,7 @@ Use this decision tree to select the appropriate icon technique for your use cas
 
 The engine uses three CSS capabilities to render icons:
 
-1. **Registered Custom Properties (`@property`)**: Register `--icon-start` and `--icon-end` with `<image>` syntax and `inherits: false` for type safety.
+1. **Registered Custom Properties (`@property`)**: Register `--icon-start` and `--icon-end` with `"*"` syntax and `inherits: false` so icon variables do not inherit into child elements.
 2. **Container Style Queries (`@container style(...)`)**: Automatically detects and renders when custom properties are set.
 3. **CSS Masks & `currentColor`**: Icons render as pseudo-elements using masks, with sizing in relative units (`em`) and colors via `currentColor`.
 
