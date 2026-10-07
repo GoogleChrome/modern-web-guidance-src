@@ -24,28 +24,13 @@ Add the boolean `switch` attribute and `role="switch"` to a standard checkbox in
 - The label can wrap the input or be associated with `for`/`id`. All styling targets the input, so it doesn't depend on the label structure.
 - When checked, the input submits its standard checkbox value. In JavaScript, listen for `change` (or `input`) events and read `.checked` rather than `.value`.
 
-## Feature Detection
+## Styling
 
-CSS cannot detect support for the `switch` attribute, so detect it with an inline script in `<head>`. Assume native support by default, adding the `no-native-switch` class to the root element only when unsupported to avoid a flash of unstyled content before first paint:
-
-```html
-<script>
-  document.documentElement.classList.toggle(
-    'no-native-switch',
-    !('switch' in HTMLInputElement.prototype)
-  );
-</script>
-```
-
-## Native Styling
-
-Style the native switch by default when `.no-native-switch` is absent. Customize the control's highlight color using `accent-color` (see {{ GUIDE_REF("brand-consistent-forms") }}) and ensure visible focus styling:
+Customize the control's highlight color using `accent-color` (see {{ GUIDE_REF("brand-consistent-forms") }}) and ensure visible focus styling:
 
 ```css
-html:where(:not(.no-native-switch)) input[type="checkbox"][switch] {
+input[type="checkbox"][switch] {
   accent-color: var(--accent-color, #1769e0);
-  inline-size: 3rem;
-  block-size: 1.75rem;
   margin: 0;
   cursor: pointer;
 }
