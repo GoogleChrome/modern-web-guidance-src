@@ -201,6 +201,8 @@ Each button spans all three columns and inherits the parent's grid via `subgrid`
 
 ## Progressive enhancement and fallbacks
 
+{{ FEATURE_FALLBACKS("focusgroup") }}
+
 Keep `focusgroup="menu no-memory"` in the markup. If `'focusgroup' in HTMLElement.prototype` is false, install Up, Down, Home, and End navigation and set `role="menu"` on each menu container and `role="menuitem"` on its command buttons. Do not install that fallback when native focusgroup is present. Left, Right, preview, open, and close are author script either way.
 
 ```js
@@ -219,6 +221,7 @@ if (!('focusgroup' in HTMLElement.prototype)) {
       const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 :
         (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
       event.preventDefault();
+      event.stopImmediatePropagation();
       items[next < 0 ? 0 : next].focus({ preventScroll: true });
     }, true);
   });
@@ -229,4 +232,4 @@ if (!('focusgroup' in HTMLElement.prototype)) {
 
 {{ FEATURE_FALLBACKS("anchor-positioning") }}
 
-{{ FEATURE_FALLBACKS("focusgroup") }}
+In browsers without CSS Anchor Positioning, guard `inset: auto` (and any `margin: 0` reset on `[popover]`) inside `@supports (position-area: block-end)` so popovers fall back to centered viewport placement instead of stacking at the top-left corner, or position the menu from `getBoundingClientRect()`.
