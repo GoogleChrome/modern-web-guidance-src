@@ -1,0 +1,15 @@
+- The implementation MUST NOT use the WAI-ARIA tabs pattern when the “tabs” cause page navigation.
+- The implementation SHOULD use `focusgroup` with its `tablist` behaviour which applies the `tablist` and `tab` semantics, as well as, `tablist` focus behaviour.
+- The implementation SHOULD use the `@microsoft/focusgroup-polyfill` instead of manually implementing a roving tab index pattern and the tablist/tab semantics.
+- The implementation MUST ensure any `<button>` elements that are tabs are not also form submitters (e.g. when nested in a form or as a reusable component, use `type=button`).
+- The implementation MUST associate a tab with its corresponding tab panel using `aria-controls` on the tab and `aria-labelledby` on the tab panel.
+- The implementation MUST set `role=tabpanel` for the tab panels.
+- The implementation MUST apply `aria-selected` semantics to the tabs and sync the visibility of the associated tab panel.
+- The implementation MUST ensure the `nomemory` behaviour is not used for the `focusgroup` when the tab selection should follow focus.
+- The implementation SHOULD NOT use `nomemory` if the tabpanel contents are lazy loaded.
+- The implementation MUST provide an accessible name for the `focusgroup=tablist` element using `aria-label` or `aria-labelledby`.
+- The implementation SHOULD set `tabindex=0` on the current `role=tabpanel` if it does not contain any focusable elements.
+- The implementation SHOULD use the ARIAMixin `ariaLabelledByElements` and `ariaControlsElements` properties instead of IDRefs if 
+- The implementation SHOULD only use `hidden=until-found` when the tab panel contents should be searchable with browser find-in-page.
+- When `hidden=until-found` is used for tab panel visibility, the implementation MUST listen for the `beforematch` event to reapply `hidden=until-found` to other tab panels, to sync the `aria-selected` state on the tabs accordingly, and, if selection follows focus, to set `focusgroupstart` on the selected tab.
+- When `hidden=until-found` is used for tab panel visibility, the implementation MUST `tabindex=0` from any tab panels that are not visible, so that they do not appear in the focus order.
