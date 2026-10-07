@@ -22,26 +22,22 @@ guides:
 
 Build a small, usable carousel for a finite set of related items. Prefer native scrolling and CSS scroll snap; enhance it with native CSS scroll controls where supported. Keep the content available and usable without JavaScript.
 
-## Structure and semantics
+## Structure and accessibility
 
-- Use a labeled `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Give it a concise accessible name.
-- Represent the items as a list. Give each slide `role="group"`, `aria-roledescription="slide"`, and a concise accessible name that identifies its position, such as “2 of 4”. Keep the slide’s actual content available to assistive technology.
-- Use native buttons for scripted previous/next and marker fallbacks. Give controls clear accessible names; do not rely on chevron characters alone.
-- Provide a visually hidden polite status message (`role="status"` or `aria-live="polite"`) that announces the current slide position after scrolling settles. Because focus remains on the activated control and scroll-snapping does not mutate DOM elements, screen reader users otherwise have no indication that the visible content has changed. Keep it synchronized whether navigation uses native CSS controls, fallback controls, or direct scrolling.
+- Use a named `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Mark up slides as a list; give each slide `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (for example, “2 of 4”). Keep slide content available to assistive technology.
+- Give every control a clear accessible name. Native scroll buttons need alternative text in `content`; fallback controls should be native buttons, not chevrons without labels.
+- Announce the current slide in a visually hidden polite status region after scrolling settles. Update it for native controls, fallback controls, and direct scrolling so assistive technology receives feedback when the visible slide changes.
 
-## Layout and interaction
+## Scrolling and controls
 
-- Make the track natively scrollable and apply `scroll-snap-type` on its scrolling axis. Give each slide a matching `scroll-snap-align` value.
-- For a horizontal carousel, lay slides out in a row and use the inline axis for snapping, controls, current-slide calculation, and scrolling to a slide.
-- For a vertical carousel, lay slides out in a column and use the block axis for those same behaviors.
-- Use `::scroll-button()` for previous/next controls and `::scroll-marker` for direct slide navigation when supported. Set `scroll-marker-group: after` so the marker group follows the slides in keyboard focus order. Give native scroll buttons accessible names using the alternative-text form of `content`, for example `content: "›" / "Next slide"`.
-- Keep controls visibly identifiable, large enough to operate, and clearly focused with `:focus-visible`. Disabled previous/next controls must not move beyond the first or last slide.
-- Keep navigation controls keyboard reachable and operable with their native button behavior. Do not intercept arrow keys from focused links, form fields, scroll buttons, or markers; native scrolling and controls provide keyboard interaction. Add custom keyboard handling only when the carousel’s interaction specifically requires it, and scope it so it does not override keys used by nested controls.
-- Provide feedback for the current slide: visually distinguish its marker with `:target-current` and announce its position politely after movement settles.
-- To highlight or style the active slide element itself using scroll-state container queries without JavaScript, see {{ GUIDE_REF("carousel-snap-highlights") }}.
-- If your design requires a continuous scroll progress indicator rather than discrete pagination markers, see {{ GUIDE_REF("scroll-progress-indicator") }}.
-- For entrance, exit, or scaling animations driven by scroll position, see {{ GUIDE_REF("carousel-slide-effects") }}.
-- To synchronize state or UI panels using native browser snap events, see {{ GUIDE_REF("scroll-snap-state-sync") }}.
+- Make the track natively scrollable and snap slides on its scrolling axis. For horizontal carousels, arrange slides in a row and use the inline axis; for vertical carousels, use a column and the block axis.
+- Where supported, use `::scroll-button()` for previous/next controls and `::scroll-marker` for direct navigation. Set `scroll-marker-group: after` to place markers after the slides in focus order, and use `:target-current` to distinguish the current marker.
+- Keep controls visible, operable, and clearly focused with `:focus-visible`. Disable previous/next controls at the ends. Preserve native keyboard behavior; do not intercept keys from links, form fields, scroll buttons, or markers. Add custom key handling only for a defined interaction need, and avoid overriding nested controls.
+
+## Related patterns
+
+- For styling the active slide itself, see {{ GUIDE_REF("carousel-snap-highlights") }}. For a continuous progress indicator instead of discrete markers, see {{ GUIDE_REF("scroll-progress-indicator") }}.
+- For scroll-driven slide effects, see {{ GUIDE_REF("carousel-slide-effects") }}. For synchronizing other UI with snap events, see {{ GUIDE_REF("scroll-snap-state-sync") }}.
 
 ## Minimal implementation pattern
 
