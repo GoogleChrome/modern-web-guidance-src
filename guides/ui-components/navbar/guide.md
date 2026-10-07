@@ -130,15 +130,15 @@ On wide containers, hide the narrow-layout trigger and reset the popover present
 }
 ```
 
-CSS changes the presentation, but JavaScript must also synchronise the `popover` attribute with the header's container-query state. Keep the navigation as a popover only in the narrow layout; remove the attribute in the wide layout. Removing it closes an open popover, while restoring it leaves the menu closed until the trigger opens it. Use one shared layout-state function for the initial state and subsequent `ResizeObserver` updates; do not infer the layout from a hidden trigger or maintain a second breakpoint check.
+CSS changes the presentation, but JavaScript must also synchronize the `popover` attribute with the header's container-query state. Keep the navigation as a popover only in the narrow layout; remove the attribute in the wide layout. Removing it closes an open popover, while restoring it leaves the menu closed until the trigger opens it. Use one shared layout-state function for the initial state and subsequent `ResizeObserver` updates; do not infer the layout from a hidden trigger or maintain a second breakpoint check.
 
 ---
 
 ## Nested Site Navigation
 
-Use `<details>` and `<summary>` for nested site navigation, with the submenu represented by a nested list. Keep the submenu inline inside the narrow navigation popover. If the wide layout requires a floating submenu, promote that list to a native `popover="auto"` and synchronise it with the disclosure; keep the reusable disclosure behaviour in {{ GUIDE_REF("responsive-disclosure") }}.
+Use `<details>` and `<summary>` for nested site navigation, with the submenu represented by a nested list. Keep the submenu inline inside the narrow navigation popover. If the wide layout requires a floating submenu, promote that list to a native `popover="auto"` and synchronize it with the disclosure.
 
-Synchronise the `popover` attributes across the container breakpoint and bind the submenu disclosure state:
+Synchronize the `popover` attributes across the container breakpoint and bind the submenu disclosure state:
 
 ```js
 const header = document.querySelector(".site-header");
