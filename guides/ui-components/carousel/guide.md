@@ -24,16 +24,16 @@ Build a small, usable carousel for a finite set of related items. Prefer native 
 
 ## Structure and semantics
 
-- Use a labelled `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Give it a concise accessible name.
+- Use a labeled `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Give it a concise accessible name.
 - Represent the items as a list. Give each slide `role="group"`, `aria-roledescription="slide"`, and a concise accessible name that identifies its position, such as “2 of 4”. Keep the slide’s actual content available to assistive technology.
 - Use native buttons for scripted previous/next and marker fallbacks. Give controls clear accessible names; do not rely on chevron characters alone.
-- Provide a visually hidden polite status message (`role="status"` or `aria-live="polite"`) that announces the current slide position after scrolling settles. Because focus remains on the activated control and scroll-snapping does not mutate DOM elements, screen reader users otherwise have no indication that the visible content has changed. Keep it synchronised whether navigation uses native CSS controls, fallback controls, or direct scrolling.
+- Provide a visually hidden polite status message (`role="status"` or `aria-live="polite"`) that announces the current slide position after scrolling settles. Because focus remains on the activated control and scroll-snapping does not mutate DOM elements, screen reader users otherwise have no indication that the visible content has changed. Keep it synchronized whether navigation uses native CSS controls, fallback controls, or direct scrolling.
 
 ## Layout and interaction
 
 - Make the track natively scrollable and apply `scroll-snap-type` on its scrolling axis. Give each slide a matching `scroll-snap-align` value.
 - For a horizontal carousel, lay slides out in a row and use the inline axis for snapping, controls, current-slide calculation, and scrolling to a slide.
-- For a vertical carousel, lay slides out in a column and use the block axis for those same behaviours.
+- For a vertical carousel, lay slides out in a column and use the block axis for those same behaviors.
 - Use `::scroll-button()` for previous/next controls and `::scroll-marker` for direct slide navigation when supported. Set `scroll-marker-group: after` so the marker group follows the slides in keyboard focus order. Give native scroll buttons accessible names using the alternative-text form of `content`, for example `content: "›" / "Next slide"`.
 - Keep controls visibly identifiable, large enough to operate, and clearly focused with `:focus-visible`. Disabled previous/next controls must not move beyond the first or last slide.
 - Keep navigation controls keyboard reachable and operable with their native button behavior. Do not intercept arrow keys from focused links, form fields, scroll buttons, or markers; native scrolling and controls provide keyboard interaction. Add custom keyboard handling only when the carousel’s interaction specifically requires it, and scope it so it does not override keys used by nested controls.
@@ -48,7 +48,7 @@ Build a small, usable carousel for a finite set of related items. Prefer native 
 Use this as a starting point and adapt labels and content. Every marker needs a useful accessible name identifying its destination slide.
 
 ```html
-<!-- MANDATORY: Expose container as an accessible carousel region -->
+<!-- The region label names this carousel in landmark navigation. -->
 <section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
   <!-- Keep fallback buttons before the track so they precede any native marker group in focus order. -->
   <div class="fallback-controls" hidden>
@@ -56,7 +56,7 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
     <button type="button" data-direction="next">Next slide</button>
   </div>
 
-  <!-- MANDATORY: Use an unordered list with tabindex=0 so keyboard users can focus the track -->
+  <!-- tabindex makes the scrollable list itself reachable for keyboard scrolling. -->
   <ul class="carousel-track" tabindex="0" aria-label="Slides">
     <li class="carousel-slide" role="group" aria-roledescription="slide" aria-label="1 of 3"
         data-marker-name="Go to slide 1">
@@ -72,7 +72,7 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
     </li>
   </ul>
 
-  <!-- MANDATORY: Polite live region announces settled slide position to screen readers -->
+  <!-- Announce the new slide after scrolling settles without interrupting current speech. -->
   <p class="visually-hidden" role="status" aria-live="polite"></p>
 
   <!-- Fallback markers container: revealed only when native ::scroll-marker is unsupported -->
@@ -85,9 +85,9 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
   /* Anchor name to anchor ::scroll-button controls to this track */
   anchor-name: --carousel-track;
   display: flex;
-  gap: 1rem; /* Example spacing between slides */
+  gap: 1rem; /* Example-only spacing; adapt to the surrounding layout. */
   overflow-x: auto;
-  /* MANDATORY: Enable scroll snapping on the scrolling axis */
+  /* Snap on the horizontal axis so scrolling settles on a slide. */
   scroll-snap-type: x mandatory;
   list-style: none;
   margin: 0;
@@ -95,7 +95,7 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
 }
 
 .carousel-slide {
-  /* MANDATORY: Take full viewport width and snap to center */
+  /* Example full-width slides; adjust the basis if several slides should peek into view. */
   flex: 0 0 100%;
   scroll-snap-align: center;
 }
@@ -103,15 +103,15 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
 /* Native scroll buttons (Chrome 135+) */
 @supports selector(::scroll-button(*)) {
   .carousel-track::scroll-button(inline-start) {
-    /* MANDATORY: Provide accessible alternative text in the content property */
+    /* The slash alternative supplies this control's accessible name. */
     content: "‹" / "Previous slide";
-    inset-inline-start: calc(anchor(start) + 0.5rem);
+    inset-inline-start: calc(anchor(start) + 0.5rem); /* Example-only inset; adjust for the control design. */
   }
 
   .carousel-track::scroll-button(inline-end) {
-    /* MANDATORY: Provide accessible alternative text in the content property */
+    /* The slash alternative supplies this control's accessible name. */
     content: "›" / "Next slide";
-    inset-inline-end: calc(anchor(end) + 0.5rem);
+    inset-inline-end: calc(anchor(end) + 0.5rem); /* Example-only inset; adjust for the control design. */
   }
 
   .carousel-track::scroll-button(*) {
@@ -119,17 +119,17 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
     position-anchor: --carousel-track;
     inset-block-start: anchor(center);
     translate: 0 -50%;
-    inline-size: 2.5rem; /* Example touch target dimension */
+    inline-size: 2.5rem; /* Example-only target dimensions; adapt to the design and usability needs. */
     block-size: 2.5rem;
     border-radius: 50%;
-    border: 1px solid #888;
+    border: 1px solid #888; /* Example-only border and color; choose a contrasting style. */
     background: Canvas;
     color: CanvasText;
     cursor: pointer;
   }
 
   .carousel-track::scroll-button(*):disabled {
-    opacity: 0.3;
+    opacity: 0.3; /* Example disabled-state treatment; keep the disabled state perceivable. */
     cursor: default;
   }
 }
@@ -137,39 +137,39 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
 /* Native scroll markers (Chrome 135+) */
 @supports selector(::scroll-marker) {
   .carousel-track {
-    /* MANDATORY: Place generated marker group after slides in DOM focus order */
+    /* Keep marker navigation after the slide content in focus order. */
     scroll-marker-group: after;
   }
 
   .carousel-track::scroll-marker-group {
     display: flex;
     justify-content: center;
-    gap: 0.5rem; /* Example marker dot spacing */
-    margin-block-start: 0.75rem;
+    gap: 0.5rem; /* Example-only marker spacing; adapt to the layout. */
+    margin-block-start: 0.75rem; /* Example-only spacing; adapt to the layout. */
   }
 
   .carousel-slide::scroll-marker {
-    /* Use empty visual content with alt-text attribute to supply accessible name without rendering link text */
+    /* Keep the marker visually compact while providing a destination-specific accessible name. */
     content: "" / attr(data-marker-name);
-    inline-size: 1rem; /* Example marker dot size */
+    inline-size: 1rem; /* Example-only marker size; adapt for visibility and target size. */
     block-size: 1rem;
     border-radius: 50%;
-    background: #888;
+    background: #888; /* Example marker color; ensure it contrasts with the background. */
     cursor: pointer;
   }
 
-  /* MANDATORY: Visually distinguish the marker for the currently active slide */
+  /* Distinguish the current destination from the other markers. */
   .carousel-slide::scroll-marker:target-current {
-    background: #0a5;
+    background: #0a5; /* Example current-marker color; ensure sufficient contrast. */
   }
 }
 
-/* MANDATORY: Provide visible focus rings for keyboard users across all controls */
+/* A visible focus indicator makes keyboard position easy to track. */
 .carousel-track::scroll-button(*):focus-visible,
 .carousel-slide::scroll-marker:focus-visible,
 button:focus-visible {
-  outline: 0.2rem solid #f90;
-  outline-offset: 0.15rem;
+  outline: 0.2rem solid #f90; /* Example-only focus styling; use a visible, contrasting indicator. */
+  outline-offset: 0.15rem; /* Example-only offset. */
 }
 
 /* Ensure hidden attribute takes precedence over display property */
@@ -191,7 +191,7 @@ button:focus-visible {
 
 @media (prefers-reduced-motion: no-preference) {
   .carousel-track {
-    scroll-behavior: smooth;
+    scroll-behavior: smooth; /* Enabled only when reduced motion is not requested. */
   }
 }
 ```
@@ -274,7 +274,7 @@ if (!hasMarkers) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = String(index + 1);
-    // MANDATORY: Give every marker an accessible name identifying its destination
+    // Name each marker for its destination so users can choose the intended slide.
     button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${index + 1}`);
     button.addEventListener("click", () => goTo(index));
     markerNav.append(button);
@@ -288,7 +288,7 @@ function sync() {
   markers.forEach((marker, i) => marker.setAttribute("aria-current", String(i === index)));
 
   if (!hasButtons) {
-    // MANDATORY: Disable boundary buttons at track ends
+    // Disable navigation beyond the first or last slide.
     controls.querySelector('[data-direction="previous"]').disabled = index === 0;
     controls.querySelector('[data-direction="next"]').disabled = index === slides.length - 1;
   }
@@ -298,7 +298,7 @@ function sync() {
 track.addEventListener("scrollend", sync);
 track.addEventListener("scroll", () => {
   clearTimeout(timer);
-  timer = setTimeout(sync, 150);
+  timer = setTimeout(sync, 150); // Example debounce interval; tune for the interaction.
 }, { passive: true });
 
 // Initialize status and fallback control state.
@@ -308,6 +308,6 @@ sync();
 ## Progressive enhancement and performance
 
 - Detect support for `::scroll-button()` and `::scroll-marker` separately. When either feature is missing, reveal only the corresponding HTML fallback controls; do not render duplicate controls for the same function.
-- Use a small script only for fallback control behaviour and synchronising slide status/marker state. Keep native touch, trackpad, pointer, and keyboard scrolling available independently of JavaScript.
+- Use a small script only for fallback control behavior and synchronizing slide status/marker state. Keep native touch, trackpad, pointer, and keyboard scrolling available independently of JavaScript.
 - Avoid autoplay, unnecessary event polling, and per-frame layout work. If tracking the current slide with JavaScript, update after scrolling settles and measure only the relevant axis.
 - Optional scroll-driven visual effects must be progressive enhancements and run only under `@media (prefers-reduced-motion: no-preference)`.
