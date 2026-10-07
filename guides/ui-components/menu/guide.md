@@ -81,8 +81,12 @@ trigger.addEventListener('focus', () => {
   trigger.setAttribute('aria-expanded', 'true');
 });
 
-trigger.addEventListener('blur', () => {
+trigger.addEventListener('blur', event => {
   if (previewedMenus.has(menu)) {
+    if (menu.contains(event.relatedTarget)) {
+      previewedMenus.delete(menu); // Pointer moved focus into the menu
+      return;
+    }
     menu.hidePopover(); // Close preview on blur
     previewedMenus.delete(menu);
     trigger.setAttribute('aria-expanded', 'false');
@@ -90,24 +94,24 @@ trigger.addEventListener('blur', () => {
 });
 
 trigger.addEventListener('keydown', event => {
-  if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
-    event.preventDefault();
-    if (previewedMenus.has(menu)) {
-      previewedMenus.delete(menu); // Convert preview to open
-    } else if (menu.matches(':popover-open')) {
-      menu.hidePopover(); // Close already-open menu
-      trigger.setAttribute('aria-expanded', 'false');
+  if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  if (previewedMenus.has(menu)) {
+    if (event.key !== 'ArrowDown') {
+      closeMenu(menu); // Enter or Space dismisses a preview
       return;
-    } else {
-      menu.showPopover(); // Open from closed
     }
-    if (menu.matches(':popover-open')) {
-      trigger.setAttribute('aria-hidden', 'true'); // One frame only
-      trigger.setAttribute('aria-expanded', 'true');
-      focusFirst(menu);
-      requestAnimationFrame(() => trigger.removeAttribute('aria-hidden'));
-    }
+    previewedMenus.delete(menu); // ArrowDown converts preview to open
+  } else if (menu.matches(':popover-open')) {
+    closeMenu(menu, true);
+    return;
+  } else {
+    menu.showPopover(); // Open from closed
   }
+  trigger.setAttribute('aria-hidden', 'true'); // One frame only
+  trigger.setAttribute('aria-expanded', 'true');
+  focusFirst(menu);
+  requestAnimationFrame(() => trigger.removeAttribute('aria-hidden'));
 });
 ```
 
