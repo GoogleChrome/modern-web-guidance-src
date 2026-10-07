@@ -81,7 +81,8 @@ On narrow containers, keep `popover="auto"` on the navigation list. Anchor the f
     inset: auto;
     inset-block-start: 4.75rem; /* fallback */
     inset-block-start: anchor(--menu-button bottom);
-    inset-inline-end: 1rem;
+    inset-inline-end: 1rem; /* fallback */
+    inset-inline-end: anchor(--menu-button end);
     inline-size: 80dvw;
     max-inline-size: calc(100dvw - 2rem);
     block-size: fit-content;
