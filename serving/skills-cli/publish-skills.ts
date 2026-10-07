@@ -39,15 +39,19 @@ const getLatestGitTag = (target = 'HEAD') => {
   return output.split('\n')[0].trim();
 };
 
-function gitTagExists(version: string, targetRepo = 'origin'): boolean {
+const DIST_REPO_URL = 'https://github.com/GoogleChrome/modern-web-guidance.git';
+
+function gitTagExists(version: string, targetRepos = ['origin', DIST_REPO_URL]): boolean {
   const localCheck = execSync(`git tag -l "v${version}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
   if (localCheck) return true;
 
-  try {
-    const remoteCheck = execSync(`git ls-remote --tags ${targetRepo} "refs/tags/v${version}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-    if (remoteCheck) return true;
-  } catch (err) {
-    console.log(`Warning: Failed to check remote tags on ${targetRepo}:`, err instanceof Error ? err.message : err);
+  for (const targetRepo of targetRepos) {
+    try {
+      const remoteCheck = execSync(`git ls-remote --tags ${targetRepo} "refs/tags/v${version}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+      if (remoteCheck) return true;
+    } catch (err) {
+      console.log(`Warning: Failed to check remote tags on ${targetRepo}:`, err instanceof Error ? err.message : err);
+    }
   }
 
   return false;
@@ -153,7 +157,7 @@ async function main() {
   const latestTag = getLatestGitTag();
   let newVersion = await getNextVersion();
 
-  // Self-healing loop: ensure the version tag doesn't exist locally or on remote origin
+  // Self-healing loop: ensure the version tag doesn't exist locally or on remote repos
   while (gitTagExists(newVersion)) {
     console.log(`⚠️ Version v${newVersion} has already been tagged! Bumping version to next patch...`);
     newVersion = incrementVersion(newVersion);
@@ -217,6 +221,8 @@ async function main() {
       execSync('git add README.md serving/skills-cli/eval-results-summary.json', { stdio: 'inherit', cwd: ROOT_DIR });
       execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
       const ref = process.env.GITHUB_REF || 'main';
+      const branch = ref.replace(/^refs\/heads\//, '');
+      execSync(`git pull --rebase origin "${branch}"`, { stdio: 'inherit', cwd: ROOT_DIR });
       execSync(`git push origin HEAD:"${ref}"`, { stdio: 'inherit', cwd: ROOT_DIR });
     }
 
