@@ -12,11 +12,11 @@ web-feature-ids:
 
 Use semantic, accessible HTML with each checkbox associated with its label, either by nesting the `<input>` inside the `<label>` or by matching the label’s `for` attribute to the input’s `id`.
 
-Modern CSS provides two approaches to styling checkboxes: customise the native appearance with `accent-color`, or override the default presentation with `appearance: none` on the `<input type="checkbox">` element.
+Modern CSS provides two approaches to styling checkboxes: customize the native appearance with `accent-color`, or override the default presentation with `appearance: none` on the `<input type="checkbox">` element.
 
-## Native customisation with `accent-color`
+## Native customization with `accent-color`
 
-For simple, brand-consistent styling that retains native rendering, keyboard behaviour, validation, and operating-system focus indicators, use `accent-color`.
+For simple, brand-consistent styling that retains native rendering, keyboard behavior, validation, and operating-system focus indicators, use `accent-color`.
 
 ```css
 .checkbox-native {
