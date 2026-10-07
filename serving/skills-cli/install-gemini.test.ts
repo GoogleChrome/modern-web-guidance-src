@@ -6,6 +6,8 @@ import { execSync } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
 import { parseGeminiStreamOutput } from '../../harness/agents/gemini-cli-agent.ts';
 
+process.env.DISABLE_TELEMETRY = '1';
+
 test('Gemini CLI verifies extension install capability', { skip: !process.env.FULL }, async () => {
     let homeDir = '';
     try {

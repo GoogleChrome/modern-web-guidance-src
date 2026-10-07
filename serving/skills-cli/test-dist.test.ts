@@ -5,6 +5,8 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import matter from 'gray-matter';
 
+process.env.DISABLE_TELEMETRY = '1';
+
 export function assertSearchResults(output: string) {
     const results = JSON.parse(output);
     assert.ok(Array.isArray(results), 'Output should be a JSON array');

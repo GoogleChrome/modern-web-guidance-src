@@ -6,6 +6,8 @@ import { execSync } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
 import { parseGeminiStreamOutput } from '../../harness/agents/gemini-cli-agent.ts';
 
+process.env.DISABLE_TELEMETRY = '1';
+
 test('npx skills add from local path', { skip: !process.env.FULL }, async () => {
     let homeDir = '';
     try {

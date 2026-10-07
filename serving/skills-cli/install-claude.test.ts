@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 
+process.env.DISABLE_TELEMETRY = '1';
+
 test('Claude Code loads plugin from local dist directory', { skip: !process.env.FULL }, async () => {
     const distDir = path.resolve(import.meta.dirname, '../../dist/skills-cli');
         

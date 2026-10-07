@@ -12,6 +12,9 @@ concurrency:
   group: publish-skills
   cancel-in-progress: false
 
+env:
+  DISABLE_TELEMETRY: '1'
+
 jobs:
   publish:
     runs-on: ubuntu-latest
