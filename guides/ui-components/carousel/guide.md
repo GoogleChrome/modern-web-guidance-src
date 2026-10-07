@@ -227,7 +227,7 @@ The fallback experience operates on feature detection:
 - When either feature is missing, the corresponding HTML fallback controls are unhidden and wired up with click handlers.
 - Both native and fallback implementations share the same accessible `<p role="status" aria-live="polite">` element to announce the active slide position when scrolling settles.
 
-The same script handles fallback controls and synchronizes status/marker state for native scrolling. It also initializes the status and updates it after scrolling settles.
+The same script handles fallback controls and synchronizes status/marker state for native scrolling. It also initializes the status and updates it after scrolling settles. Place it in a `<script type="module">` element; module scripts run after the document has been parsed, so the selectors can find the carousel markup.
 
 ```javascript
 const track = document.querySelector(".carousel-track");
