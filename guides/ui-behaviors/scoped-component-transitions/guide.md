@@ -41,7 +41,7 @@ If an outer transition needs to move a component while its inner transition is a
 ```css
 /* 1. Configure the component scope */
 .card ul {
-  /* No CSS is needed for this. The scope is determined by you calling startViewTransition on the elmement instead of document */
+  /* No CSS is needed for this. The scope is determined by you calling startViewTransition on the element instead of document */
 }
 
 /* 2. Name participating child items within the scope */
