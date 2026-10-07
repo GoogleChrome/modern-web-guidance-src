@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick sign-ins with immediate UI mode demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      color: #1f1f1f;
+      background-color: #f8fafd;
+    }
+
+    body {
+      max-width: 48rem;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-block-end: 1rem;
+      margin-block-end: 1.5rem;
+      border-block-end: 1px solid #dadce0;
+    }
+
+    header h1 {
+      font-size: 1.375rem;
+      margin: 0;
+    }
+
+    .user-status {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.9375rem;
+    }
+
+    .badge {
+      padding: 0.25rem 0.625rem;
+      border-radius: 999px;
+      font-weight: 600;
+      background-color: #e8eaed;
+      color: #3c4043;
+    }
+
+    .badge.authenticated {
+      background-color: #e6f4ea;
+      color: #137333;
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+      gap: 1rem;
+    }
+
+    .product-card {
+      background: #ffffff;
+      border: 1px solid #c4c7c5;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 1rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .product-title {
+      font-size: 1.0625rem;
+      font-weight: 600;
+      margin: 0 0 0.25rem;
+    }
+
+    .product-price {
+      color: #444746;
+      margin: 0;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    button,
+    .btn-link {
+      min-height: 44px;
+      padding: 0.5rem 1rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      border: 1px solid #747775;
+      background-color: #ffffff;
+      color: #1f1f1f;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375rem;
+    }
+
+    button:focus-visible,
+    .btn-link:focus-visible,
+    input:focus-visible {
+      outline: 3px solid #0b57d0;
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      background-color: #0b57d0;
+      border-color: #0b57d0;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background-color: #0842a0;
+    }
+
+    .favorite-btn[aria-pressed="true"] {
+      background-color: #fce8e6;
+      border-color: #c5221f;
+      color: #c5221f;
+    }
+
+    .status-banner {
+      margin-block-start: 1.25rem;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      background-color: #e8f0fe;
+      color: #174ea6;
+      font-weight: 500;
+    }
+
+    .status-banner:empty {
+      display: none;
+    }
+
+    .fallback-panel {
+      margin-block-start: 1.5rem;
+      padding: 1.25rem;
+      background: #ffffff;
+      border: 1px solid #c4c7c5;
+      border-radius: 0.75rem;
+    }
+
+    .fallback-panel h2 {
+      margin-block: 0 0.5rem;
+      font-size: 1.125rem;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      margin-block-end: 1rem;
+    }
+
+    .form-field label {
+      font-weight: 600;
+      margin-block-end: 0.25rem;
+    }
+
+    .form-field input {
+      min-height: 44px;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #747775;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body data-signed-in="false">
+  <header>
+    <h1>Sesame Sneakers</h1>
+    <nav aria-label="Account">
+      <div class="user-status">
+        <span id="session-badge" class="badge" data-testid="session-badge">Signed out</span>
+        <a
+          href="/signin"
+          id="header-signin-link"
+          class="btn-link btn-primary"
+          data-testid="header-signin-link">
+          Sign in
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section aria-labelledby="catalog-heading">
+      <h2 id="catalog-heading">Featured sneakers</h2>
+      <p>Click <strong>Save to favorites</strong> or <strong>Sign in</strong> to trigger a contextual quick sign-in with Immediate UI mode.</p>
+
+      <div id="product-grid" class="product-grid">
+        <article class="product-card">
+          <div>
+            <h3 class="product-title">Multicolor Sneakers</h3>
+            <p class="product-price">\$149.99</p>
+          </div>
+          <div class="card-actions">
+            <button
+              type="button"
+              class="favorite-btn"
+              data-product-id="sneaker-1"
+              data-testid="favorite-button"
+              aria-pressed="false"
+              aria-label="Save Multicolor Sneakers to favorites">
+              ♥ Save to favorites
+            </button>
+          </div>
+        </article>
+
+        <article class="product-card">
+          <div>
+            <h3 class="product-title">Classic White Runners</h3>
+            <p class="product-price">\$129.99</p>
+          </div>
+          <div class="card-actions">
+            <button
+              type="button"
+              class="favorite-btn"
+              data-product-id="sneaker-2"
+              aria-pressed="false"
+              aria-label="Save Classic White Runners to favorites">
+              ♥ Save to favorites
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <div id="auth-status" class="status-banner" role="status" aria-live="polite" data-testid="auth-status"></div>
+
+    <!-- Fallback sign-in UI revealed when Immediate UI mode throws NotAllowedError or is unsupported -->
+    <section id="fallback-signin" class="fallback-panel" data-testid="fallback-signin" hidden aria-labelledby="fallback-heading">
+      <h2 id="fallback-heading">Sign in to continue</h2>
+      <p>No local passkey or saved password was immediately available on this device. Sign in with your account below.</p>
+      <form id="fallback-signin-form" action="/api/login/password" method="POST">
+        <div class="form-field">
+          <label for="fallback-username">Username</label>
+          <input
+            type="text"
+            id="fallback-username"
+            name="username"
+            autocomplete="username webauthn"
+            required>
+        </div>
+        <div class="form-field">
+          <label for="fallback-password">Password</label>
+          <input
+            type="password"
+            id="fallback-password"
+            name="password"
+            autocomplete="current-password"
+            required>
+        </div>
+        <button type="submit" class="btn-primary" data-testid="fallback-submit">Sign in</button>
+      </form>
+    </section>
+  </main>
+
+  <script type="module">
+    if (window.PublicKeyCredential && !PublicKeyCredential.parseRequestOptionsFromJSON) {
+      await import('https://unpkg.com/webauthn-polyfills');
+    }
+
+    const statusEl = document.getElementById('auth-status');
+    const badgeEl = document.getElementById('session-badge');
+    const headerSignInLink = document.getElementById('header-signin-link');
+    const fallbackSection = document.getElementById('fallback-signin');
+    const fallbackForm = document.getElementById('fallback-signin-form');
+
+    let isAuthenticating = false;
+    let pendingFavoriteButton = null;
+
+    async function isImmediateUiSupported() {
+      if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
+        return false;
+      }
+      try {
+        const capabilities = await PublicKeyCredential.getClientCapabilities();
+        return Boolean(capabilities?.immediateGet);
+      } catch {
+        return false;
+      }
+    }
+
+    function completeSignInUi(username, triggerButton) {
+      document.body.dataset.signedIn = 'true';
+      badgeEl.textContent = `Signed in as ${username}`;
+      badgeEl.classList.add('authenticated');
+      headerSignInLink.hidden = true;
+      fallbackSection.hidden = true;
+
+      if (triggerButton) {
+        triggerButton.setAttribute('aria-pressed', 'true');
+        statusEl.textContent = `Signed in as ${username} and saved item to favorites.`;
+      } else {
+        statusEl.textContent = `Signed in as ${username} in place.`;
+      }
+    }
+
+    function showFallbackSignIn(triggerButton) {
+      pendingFavoriteButton = triggerButton || null;
+      fallbackSection.hidden = false;
+      statusEl.textContent = 'Immediate credentials unavailable; showing fallback sign-in form.';
+      document.getElementById('fallback-username')?.focus();
+    }
+
+    async function authenticateWithImmediateUi() {
+      const supported = await isImmediateUiSupported();
+      if (!supported) {
+        throw new DOMException('Immediate UI mode is not supported in this browser.', 'NotAllowedError');
+      }
+
+      const optionsResponse = await fetch('/api/login/options', { method: 'POST' });
+      if (!optionsResponse.ok) {
+        throw new Error('Failed to fetch login options');
+      }
+      const optionsJSON = await optionsResponse.json();
+      const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
+
+      const cred = await navigator.credentials.get({
+        password: true,
+        publicKey,
+        uiMode: 'immediate',
+      });
+
+      if (!cred) {
+        throw new DOMException('No credential selected.', 'NotAllowedError');
+      }
+
+      if (cred.type === 'public-key') {
+        const encoded = cred.toJSON();
+        const verifyResponse = await fetch('/api/login/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(encoded),
+        });
+
+        if (verifyResponse.status === 404) {
+          if (PublicKeyCredential.signalUnknownCredential) {
+            await PublicKeyCredential.signalUnknownCredential({
+              rpId: publicKey.rpId || window.location.hostname,
+              credentialId: encoded.id,
+            });
+          }
+          throw new Error('Passkey credential is unknown to the server.');
+        }
+
+        if (!verifyResponse.ok) {
+          throw new Error('Passkey assertion verification failed.');
+        }
+
+        const data = await verifyResponse.json();
+        return data.username || 'passkey-user';
+      }
+
+      if (cred.type === 'password') {
+        const verifyResponse = await fetch('/api/login/password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: cred.id,
+            password: cred.password,
+          }),
+        });
+
+        if (!verifyResponse.ok) {
+          throw new Error('Password verification failed.');
+        }
+
+        const data = await verifyResponse.json();
+        return data.username || cred.id;
+      }
+
+      throw new Error(`Unsupported credential type: ${cred.type}`);
+    }
+
+    async function handleContextualSignIn(triggerButton = null) {
+      if (isAuthenticating) return;
+      isAuthenticating = true;
+
+      try {
+        const username = await authenticateWithImmediateUi();
+        completeSignInUi(username, triggerButton);
+      } catch (err) {
+        if (err && err.name === 'NotAllowedError') {
+          showFallbackSignIn(triggerButton);
+          return;
+        }
+        statusEl.textContent = `Error: ${err.message}`;
+      } finally {
+        isAuthenticating = false;
+      }
+    }
+
+    headerSignInLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      if (document.body.dataset.signedIn === 'true') return;
+      handleContextualSignIn(null);
+    });
+
+    document.getElementById('product-grid').addEventListener('click', (event) => {
+      const button = event.target.closest('.favorite-btn');
+      if (!button) return;
+
+      if (document.body.dataset.signedIn === 'true') {
+        const nextPressed = button.getAttribute('aria-pressed') !== 'true';
+        button.setAttribute('aria-pressed', String(nextPressed));
+        statusEl.textContent = nextPressed
+          ? 'Added item to favorites.'
+          : 'Removed item from favorites.';
+        return;
+      }
+
+      handleContextualSignIn(button);
+    });
+
+    fallbackForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const formData = new FormData(fallbackForm);
+      const username = String(formData.get('username') || 'user');
+      completeSignInUi(username, pendingFavoriteButton);
+      pendingFavoriteButton = null;
+    });
+  </script>
+</body>
+</html>

@@ -24,6 +24,8 @@
   "web_features": {
     "canvas-html": "ewewraw",
     "container-scroll-state-queries": "bramus",
+    "credential-management": "agektmr",
+    "password-credentials": "agektmr",
     "tmp-cross-origin-storage": "tomayac",
     "prefers-reduced-motion": "bramus"
   },
