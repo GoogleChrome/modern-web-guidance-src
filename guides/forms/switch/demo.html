@@ -8,7 +8,6 @@
 
     <script>
         if (!('switch' in HTMLInputElement.prototype)) {
-            document.documentElement.classList.add('no-native-switch');
             import('https://unpkg.com/input-switch-polyfill');
         }
     </script>
