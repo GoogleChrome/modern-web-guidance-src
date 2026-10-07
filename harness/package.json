@@ -14,17 +14,17 @@
   },
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
-    "@anthropic-ai/vertex-sdk": "^0.16.0",
-    "@google-cloud/storage": "^7.19.0",
+    "@anthropic-ai/vertex-sdk": "^0.20.2",
+    "@google-cloud/storage": "^7.22.0",
     "@google/gemini-cli": "latest",
-    "@openai/codex": "0.160.0",
+    "@openai/codex": "0.160.1",
     "cheerio": "^1.2.0",
     "colors": "^1.4.0",
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3"
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "^2.1.289",
+    "@anthropic-ai/claude-code": "^2.1.292",
     "@google/gemini-cli-core": "latest",
     "serving": "workspace:*"
   }
