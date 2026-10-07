@@ -6,8 +6,8 @@
 - A previewed menu does not show a menu item as focused.
 - Blurring a trigger that is only previewing closes that menu.
 - Focusing a trigger sets its `aria-expanded` to true for both preview and open states.
-- Pressing Enter on a previewed trigger converts it to open and moves focus to the first item.
-- Pressing Space on a previewed trigger converts it to open and moves focus to the first item.
+- Pressing Enter on a previewed trigger closes that menu without moving focus from the trigger.
+- Pressing Space on a previewed trigger closes that menu without moving focus from the trigger.
 - Pressing ArrowDown on a previewed top-level trigger converts it to open and moves focus to the first item in the same turn.
 - Pressing ArrowUp and ArrowDown moves focus between enabled items.
 - Pressing Home moves focus to the first enabled item.
