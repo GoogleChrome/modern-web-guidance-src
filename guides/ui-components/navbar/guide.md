@@ -222,6 +222,8 @@ Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh`
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+### Fallbacks & browser support for Anchor positioning
 
-For the mobile menu, put the absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid.
+{{ BASELINE_STATUS("anchor-positioning") }}
+
+For the narrow menu, put the fixed fallback declarations (`inset-block-start: 4.75rem; inset-inline-end: 1rem;`) before the `anchor()` declarations. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid. For the wide submenu, keeping `position: absolute; inset: auto` without self-alignment overrides (`place-self: start`) allows browsers without `position-area` support to fall back to the static position below `<summary>`, or you can position the submenu from `summary.getBoundingClientRect()`.
