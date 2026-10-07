@@ -123,15 +123,22 @@ test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping
 });
 
 test('buildTargetTaskPrompt creates clean developer prompt instructions', () => {
-  const prompt = buildTargetTaskPrompt({
+  const baseOpts = {
     guideFile: 'guide.md',
     taskFile: 'task.md',
     baseApp: 'daily-grind',
-  });
+  };
+  const prompt = buildTargetTaskPrompt(baseOpts);
   assert.ok(prompt.includes('task.md'));
   assert.ok(prompt.includes('codebase files'));
+  assert.ok(prompt.includes('understand the use case'));
   assert.ok(prompt.includes('Do NOT name the guide itself'));
   assert.ok(prompt.includes('Write the prompt as a developer talking'));
+
+  const disciplinePrompt = buildTargetTaskPrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(disciplinePrompt.includes('understand the discipline guidance'));
+  assert.ok(disciplinePrompt.includes('apply the discipline guidance'));
+  assert.ok(!disciplinePrompt.includes('understand the use case'));
 });
 
 test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags and inputs', () => {

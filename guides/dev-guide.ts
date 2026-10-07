@@ -264,6 +264,7 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       guideFile: GUIDE_FILE,
       taskFile: TASK_FILE,
       baseApp,
+      isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
     });
 
     await runAgent(getDefaultSolutionAgent(), prompt, workDir);
