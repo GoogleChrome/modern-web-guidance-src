@@ -177,7 +177,6 @@ If you need multi-color icons or arbitrary path-level animations, use Inline SVG
 ## Common Pitfalls
 
 - **Missing or Malformed `viewBox`**: SVG assets must have a valid `viewBox` attribute (e.g., `viewBox="0 0 24 24"`) to render correctly when used as masks or backgrounds. Omitting it causes scale distortion and layout issues.
-- **Cursor Interaction Requirement (Safari)**: Without the workaround above, Safari requires user interaction before rendering icons.
 
 {{ FEATURE_ISSUES("masks") }}
 {{ FEATURE_ISSUES("container-style-queries") }}
