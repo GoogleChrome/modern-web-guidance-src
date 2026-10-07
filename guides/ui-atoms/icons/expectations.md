@@ -1,12 +1,12 @@
-- **MANDATORY**: Custom properties `--icon-start` and `--icon-end` are registered using `@property` with a `<image>` syntax and `inherits: false`.
-- **MANDATORY**: CSS Container Style Queries (`@container style(...)`) are used to dynamically detect and render `--icon-start` and `--icon-end` custom properties.
-- **MANDATORY**: A robust compatibility fallback (such as via `@supports not (container-name: style(any))` combined with inline style attribute substring matching) is provided to ensure icons render correctly in environments lacking CSS Container Style Queries support.
-- **MANDATORY**: Safari bug workaround (WebKit #301609, #320220) is implemented via an empty keyframe animation (`@keyframes webkit-301609 {}`) applied to `::before` and `::after` within a Safari-specific `@supports (-webkit-nbsp-mode: normal) and (content-visibility: auto)` query. This forces icons to render immediately on load rather than only after user interaction.
-- **MANDATORY**: Icons are rendered using CSS masks (`mask` or `-webkit-mask`) inside the container style query blocks on pseudo-elements (`::before` and `::after`).
-- **MANDATORY**: Icons are colored using `currentColor` (via `background-color: currentColor` on the pseudo-element) to ensure they automatically inherit and transition with the parent element's text color.
-- **MANDATORY**: Standalone or empty `.icon` elements forward a generic `--icon` property to `--icon-start` when they are empty (`.icon:empty`).
-- **MANDATORY**: Spacing (such as `margin-inline-start` or `margin-inline-end`) is automatically applied to pseudo-element icons only if the parent element has non-empty text content (using `:not(:empty)` or similar relational selectors).
-- **MANDATORY**: No inline `<svg>` markup inside buttons, plain static `<img>` tags, or external icon fonts are loaded or used for decorative icons.
-- **MANDATORY**: Interactive icon-only controls (such as buttons without adjacent text) provide a valid accessible name (such as via `aria-label`).
-- **MANDATORY**: Standalone non-interactive empty `.icon` elements use `aria-hidden="true"` or are marked with `role="img"` and a valid accessible name.
-- **OPTIONAL**: Sizing of icon pseudo-elements is controlled using relative CSS units (such as `em` or `rem`) rather than hardcoded absolute pixel dimensions.
+- Custom properties `--icon-start` and `--icon-end` are registered using `@property` with `syntax: "*"` and `inherits: false`.
+- CSS Container Style Queries (`@container style(...)`) are used to dynamically detect and render `--icon-start` and `--icon-end` custom properties.
+- A compatibility fallback using inline style attribute substring matching (`[style*="--icon-start"]`, `[style*="--icon-end"]`, and `.icon:empty[style*="--icon"]`) is provided so icons render in environments lacking CSS Container Style Queries support.
+- The Safari rendering workaround (WebKit #301609, #320220) applies a zero-duration `@keyframes` animation (e.g., `@keyframes webkit-301609 {}`) to `::before` and `::after` inside `@supports (-webkit-nbsp-mode: normal) and (content-visibility: auto)` so icons render immediately on load.
+- Icons are rendered using CSS `mask` inside the container style query blocks on pseudo-elements (`::before` and `::after`).
+- Icons are colored using `currentColor` (via `background-color: currentColor` on the pseudo-element) so they automatically inherit and transition with the parent element's text color.
+- Standalone or empty `.icon` elements forward a generic `--icon` property to `--icon-start` when they are empty (`.icon:empty`).
+- Spacing (`margin-inline-start` or `margin-inline-end`) is automatically applied to pseudo-element icons only when the parent element has non-empty content (using `:not(.icon, :empty)` or equivalent selectors).
+- Single-color decorative icons are rendered via CSS custom properties (`--icon-start`, `--icon-end`, or `--icon`) rather than inline `<svg>` markup inside buttons, `<img>` tags, or external icon fonts.
+- Interactive icon-only controls (such as buttons without visible text) provide a valid accessible name (such as via `aria-label`).
+- Standalone non-interactive empty `.icon` elements use `aria-hidden="true"` when decorative, or `role="img"` with a valid accessible name when informative.
+- Sizing of icon pseudo-elements uses relative CSS units (such as `em`, `rem`, or `lh`) rather than hardcoded pixel dimensions.
