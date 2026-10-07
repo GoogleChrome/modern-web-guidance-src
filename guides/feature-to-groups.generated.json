@@ -1097,6 +1097,9 @@
   "tmp-display-state": [
     "css"
   ],
+  "tmp-email-verification": [
+    "security"
+  ],
   "tmp-navigation-source": [
     "css"
   ],
