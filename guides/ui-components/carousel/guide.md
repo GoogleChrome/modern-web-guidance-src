@@ -205,6 +205,12 @@ If your Baseline target does not support CSS scroll buttons (`::scroll-button()`
 
 {{ FEATURE_FALLBACKS("scroll-markers") }}
 
+### Fallback for scroll marker targets
+
+{{ BASELINE_STATUS("scroll-marker-targets") }}
+
+If `:target-current` is unsupported, omit native marker highlighting or use the existing script’s current-slide calculation to style the active marker. For fallback HTML markers, set `aria-current="true"` on the current button so the active destination is still conveyed to assistive technology.
+
 ### Fallback for anchor positioning
 
 {{ FEATURE_FALLBACKS("anchor-positioning") }}
