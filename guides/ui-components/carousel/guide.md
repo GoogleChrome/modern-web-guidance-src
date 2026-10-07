@@ -33,7 +33,7 @@ Build a small, usable carousel for a finite set of related items. Prefer native 
 - For a vertical carousel, lay slides out in a column and use the block axis for those same behaviours.
 - Use `::scroll-button()` for previous/next controls and `::scroll-marker` for direct slide navigation when supported. Set `scroll-marker-group: after` so the marker group follows the slides in keyboard focus order. Give native scroll buttons accessible names using the alternative-text form of `content`, for example `content: "›" / "Next slide"`.
 - Keep controls visibly identifiable, large enough to operate, and clearly focused with `:focus-visible`. Disabled previous/next controls must not move beyond the first or last slide.
-- Enable arrow key navigation (`ArrowLeft`/`ArrowRight` for horizontal, `ArrowUp`/`ArrowDown` for vertical) so users can step through slides from any focused carousel element. Ensure keyboard users can `Tab` through controls sequentially (`Previous` → `Next` → `Markers`) without encountering keyboard traps, and activate controls using `Enter` or `Space`.
+- Keep navigation controls keyboard reachable and operable with their native button behavior. Do not intercept arrow keys from focused links, form fields, scroll buttons, or markers; native scrolling and controls provide keyboard interaction.
 - Provide feedback for the current slide: visually distinguish its marker with `:target-current` and announce its position politely after movement settles.
 - To highlight or style the active slide element itself using scroll-state container queries without JavaScript, see {{ GUIDE_REF("carousel-snap-highlights") }}.
 - If your design requires a continuous scroll progress indicator rather than discrete pagination markers, see {{ GUIDE_REF("scroll-progress-indicator") }}.
@@ -193,61 +193,6 @@ button:focus-visible {
 }
 ```
 
-### Polite status announcement
-
-In CSS scroll-snap carousels, all slides remain in the DOM simultaneously. Activating a scroll button or marker merely shifts the scroll offset without adding or removing elements, meaning screen readers receive no automatic mutation notification. Updating the text content of a dedicated `<p role="status" aria-live="polite">` after scrolling settles provides the necessary feedback:
-
-```javascript
-const track = document.querySelector(".carousel-track");
-const slides = [...track.children];
-const status = document.querySelector('[role="status"]');
-let timer;
-
-function currentIndex() {
-  const center = track.getBoundingClientRect().left + track.clientWidth / 2;
-  return slides.reduce((best, slide, index) => {
-    const rect = slide.getBoundingClientRect();
-    const distance = Math.abs(rect.left + rect.width / 2 - center);
-    return distance < best.distance ? { index, distance } : best;
-  }, { index: 0, distance: Infinity }).index;
-}
-
-function updateStatus() {
-  const index = currentIndex();
-  status.textContent = `Slide ${index + 1} of ${slides.length}`;
-}
-
-// Update status after scrolling settles
-track.addEventListener("scrollend", updateStatus);
-track.addEventListener("scroll", () => {
-  clearTimeout(timer);
-  timer = setTimeout(updateStatus, 150); // Fallback debounce for browsers lacking scrollend
-}, { passive: true });
-
-// Initial announcement on load
-updateStatus();
-
-// MANDATORY: Step through slides with Arrow keys, Home, and End
-const carousel = document.querySelector(".carousel");
-carousel.addEventListener("keydown", (event) => {
-  if (event.key === "ArrowLeft") {
-    event.preventDefault();
-    slides[Math.max(0, currentIndex() - 1)]?.scrollIntoView({ behavior: "smooth", inline: "center" });
-  } else if (event.key === "ArrowRight") {
-    event.preventDefault();
-    slides[Math.min(slides.length - 1, currentIndex() + 1)]?.scrollIntoView({ behavior: "smooth", inline: "center" });
-  } else if (event.key === "Home") {
-    event.preventDefault();
-    slides[0]?.scrollIntoView({ behavior: "smooth", inline: "center" });
-  } else if (event.key === "End") {
-    event.preventDefault();
-    slides[slides.length - 1]?.scrollIntoView({ behavior: "smooth", inline: "center" });
-  }
-});
-```
-
-For vertical carousels, use column layout, `overflow-y: auto`, `scroll-snap-type: y mandatory`, `block-start`/`block-end` scroll buttons, `rect.top`/`rect.height` with `track.clientHeight / 2` in `currentIndex()`, and `block: "center"` when scrolling to a slide.
-
 ## Fallback strategies
 
 If your Baseline target does not support CSS scroll buttons (`::scroll-button()`) or CSS scroll markers (`::scroll-marker`), provide accessible HTML button controls and a navigation element that only render when native support is missing.
@@ -273,6 +218,8 @@ The fallback experience operates on feature detection:
 - When either feature is missing, the corresponding HTML fallback controls are unhidden and wired up with click handlers.
 - Both native and fallback implementations share the same accessible `<p role="status" aria-live="polite">` element to announce the active slide position when scrolling settles.
 
+The same script handles fallback controls and synchronizes status/marker state for native scrolling. It also initializes the status and updates it after scrolling settles.
+
 ```javascript
 const track = document.querySelector(".carousel-track");
 const slides = [...track.children];
@@ -280,9 +227,10 @@ const status = document.querySelector('[role="status"]');
 const controls = document.querySelector(".fallback-controls");
 const markerNav = document.querySelector(".fallback-markers");
 
-// MANDATORY: Independently detect selector support for buttons and markers
+// Detect each native control independently so partial support gets only its missing fallback.
 const hasButtons = CSS.supports("selector(::scroll-button(*))");
 const hasMarkers = CSS.supports("selector(::scroll-marker)");
+
 let markers = [];
 let timer;
 
@@ -296,7 +244,7 @@ function currentIndex() {
 }
 
 function goTo(index) {
-  slides[index]?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  slides[index]?.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
 }
 
 // Reveal and wire previous/next buttons only if native scroll buttons are unsupported
@@ -343,25 +291,7 @@ track.addEventListener("scroll", () => {
   timer = setTimeout(sync, 150);
 }, { passive: true });
 
-// MANDATORY: Step through slides with Arrow keys, Home, and End
-const carousel = document.querySelector(".carousel");
-carousel.addEventListener("keydown", (event) => {
-  if (event.key === "ArrowLeft") {
-    event.preventDefault();
-    goTo(Math.max(0, currentIndex() - 1));
-  } else if (event.key === "ArrowRight") {
-    event.preventDefault();
-    goTo(Math.min(slides.length - 1, currentIndex() + 1));
-  } else if (event.key === "Home") {
-    event.preventDefault();
-    goTo(0);
-  } else if (event.key === "End") {
-    event.preventDefault();
-    goTo(slides.length - 1);
-  }
-});
-
-// Initial sync
+// Initialize status and fallback control state.
 sync();
 ```
 
