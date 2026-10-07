@@ -379,11 +379,10 @@
 
     if (!CSS.supports('scroll-initial-target', 'nearest')) {
       window.addEventListener('load', () => {
-        for (const content of document.querySelectorAll('.SwipeReveal-content')) {
-          content.scrollIntoView({
+        for (const content of document.querySelectorAll('.SwipeReveal-content:not(:first-child)')) {
+          content.parentElement.scrollTo({
+            left: content.previousElementSibling.offsetWidth,
             behavior: 'instant',
-            block: 'nearest',
-            inline: 'start',
           });
         }
       });

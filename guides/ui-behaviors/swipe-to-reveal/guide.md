@@ -150,21 +150,8 @@ for (const content of document.querySelectorAll('.SwipeReveal-content')) {
 
 When a `.SwipeReveal` container places a `.SwipeReveal-panel` on the left (`inline-start`) side before `.SwipeReveal-content`, browsers that do not support `scroll-initial-target: nearest` will initially render at scroll offset `0` with the leading panel exposed.
 
-If your Baseline target does not support `scroll-initial-target`, detect support with `CSS.supports('scroll-initial-target', 'nearest')` and call `scrollIntoView()` with `behavior: 'instant'` on `load` so the container jumps straight to `.SwipeReveal-content` without smooth scrolling:
+If your Baseline target does not support `scroll-initial-target`, detect support with `CSS.supports('scroll-initial-target', 'nearest')` and call `scrollTo()` with `behavior: 'instant'` on `load` so containers with a leading panel jump straight to `.SwipeReveal-content` without scrolling the page:
 
-```js
-if (!CSS.supports('scroll-initial-target', 'nearest')) {
-  window.addEventListener('load', () => {
-    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
-      content.scrollIntoView({
-        behavior: 'instant',
-        block: 'nearest',
-        inline: 'start',
-      });
-    }
-  });
-}
-```
 
 ## Progressive enhancement
 
