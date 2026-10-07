@@ -50,9 +50,20 @@ When reordering is supplementary, keep the collection readable and usable in its
 
 ## Browser support and fallback strategies
 
-{{ FEATURE_FALLBACKS("move-before") }}
+### `moveBefore()`
 
-When `moveBefore()` is unavailable, use `insertBefore()` as a fallback while preserving the same destination and existing item node. This fallback keeps the item in the DOM rather than recreating it, but may not preserve all state that `moveBefore()` retains.
+{{ BASELINE_STATUS("move-before") }}
 
+If your Baseline target does not support `moveBefore()`, feature-detect with `'moveBefore' in Element.prototype` and fall back to `insertBefore()` with the same destination and existing item node. Because `insertBefore()` removes and reinserts the node, it drops active pointer capture (so register `pointermove`, `pointerup`, and `pointercancel` on `document` during the drag rather than relying on `setPointerCapture()`) and blurs focused descendants (so explicitly call `.focus()` on the active handle or movement button after moving, and slightly delay or debounce the live-region update if focus re-announcement collides with the position announcement).
 
-{{ FEATURE_FALLBACKS("user-select") }}
+### `reading-flow`
+
+{{ BASELINE_STATUS("reading-flow") }}
+
+In browsers that do not support `reading-flow`, sequential focus navigation follows DOM source order. Structure each item's DOM order so interactive controls appear in a logical reading and tab sequence without relying on CSS visual reordering.
+
+### `user-select`
+
+{{ BASELINE_STATUS("user-select") }}
+
+Include `-webkit-user-select: none` before `user-select: none` on the drag handle so text selection stays suppressed during dragging in Safari.
