@@ -75,17 +75,20 @@
     input[type="range"] {
       --slider-track-size: 0.5rem;
       --slider-thumb-size: 1.25rem;
+      --slider-track-radius: 999px;
+      --slider-thumb-radius: 50%;
       --slider-track-color: var(--track-bg);
       --slider-fill-color: var(--brand-color);
       --slider-thumb-color: var(--slider-fill-color);
       --slider-direction: to right;
 
-      /* Mirror the input's min, max, and value; kept in sync by the script below. */
-      --attr-min: 0;
-      --attr-max: 100;
-      --control-value: 50;
-      --slider-progress: calc((var(--control-value) - var(--attr-min)) /
-          (var(--attr-max) - var(--attr-min)) * 100%);
+      /* Read min and max from attributes; --control-value is synced by the script below. */
+      --attr-min: attr(min type(<number>), 0);
+      --attr-max: attr(max type(<number>), 100);
+      --control-value: attr(value type(<number>), 50);
+      --slider-progress: calc(
+        progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%
+      );
 
       appearance: none;
       inline-size: 100%;
@@ -94,17 +97,28 @@
       padding: 0;
       border: 0;
       border-radius: 0;
-      background: linear-gradient(var(--slider-direction),
-          var(--slider-fill-color) var(--slider-progress),
-          var(--slider-track-color) var(--slider-progress)) center / 100% var(--slider-track-size) no-repeat;
+      background: transparent;
       cursor: pointer;
+    }
+
+    @supports not (opacity: progress(1, 0, 100)) {
+      input[type="range"] {
+        --slider-progress: calc(
+          (var(--control-value) - var(--attr-min)) /
+          (var(--attr-max) - var(--attr-min)) * 100%
+        );
+      }
     }
 
     input[type="range"]::-webkit-slider-runnable-track {
       block-size: var(--slider-track-size);
       border: 0;
-      border-radius: 999px;
-      background: transparent;
+      border-radius: var(--slider-track-radius);
+      background: linear-gradient(
+        var(--slider-direction),
+        var(--slider-fill-color) var(--slider-progress),
+        var(--slider-track-color) var(--slider-progress)
+      );
     }
 
     input[type="range"]::-webkit-slider-thumb {
@@ -114,20 +128,20 @@
       block-size: var(--slider-thumb-size);
       margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
       border: 0;
-      border-radius: 50%;
+      border-radius: var(--slider-thumb-radius);
       background: var(--slider-thumb-color);
     }
 
     input[type="range"]::-moz-range-track {
       block-size: var(--slider-track-size);
       border: 0;
-      border-radius: 999px;
-      background: transparent;
+      border-radius: var(--slider-track-radius);
+      background: var(--slider-track-color);
     }
 
     input[type="range"]::-moz-range-progress {
       block-size: var(--slider-track-size);
-      border-radius: 999px;
+      border-radius: var(--slider-track-radius);
       background: var(--slider-fill-color);
     }
 
@@ -135,7 +149,7 @@
       inline-size: var(--slider-thumb-size);
       block-size: var(--slider-thumb-size);
       border: 0;
-      border-radius: 50%;
+      border-radius: var(--slider-thumb-radius);
       background: var(--slider-thumb-color);
     }
 
