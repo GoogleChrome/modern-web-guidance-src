@@ -1,0 +1,26 @@
+# Expectations
+
+- The carousel track has `overflow-x: auto` (or `overflow: auto`) and uses `scroll-snap-type: x mandatory` (or `inline mandatory`) on its scrolling axis.
+- Every carousel slide has `scroll-snap-align: center` (or start) applied so it acts as a snap target.
+- The carousel container is exposed as a labeled region with `aria-roledescription="carousel"` and an accessible name.
+- Slides are structured within a list and exposed as groups with `role="group"`, `aria-roledescription="slide"`, and a position in their accessible name (such as "2 of 4").
+- Native `::scroll-button()` controls have an accessible name defined using the alternative-text form of CSS `content` (e.g. `content: "‹" / "Previous slide"`).
+- Native `::scroll-marker` controls navigate to their corresponding slides when activated.
+- The active slide's native scroll marker is visually distinguished using the `:target-current` pseudo-class.
+- The native marker group follows the slides in keyboard focus order using `scroll-marker-group: after`.
+- Boundary previous/next controls at the ends of the carousel are disabled to prevent scrolling past limits.
+- Interactive carousel controls, markers, and fallback buttons have a visible `:focus-visible` indicator.
+- A polite live region (`role="status"` or `aria-live="polite"`) announces the current slide position after scrolling settles.
+- The polite live status is announced on initial load to reflect the first visible slide.
+- The carousel track remains scrollable via touch, pointer, and native keyboard scrolling without requiring JavaScript.
+- Native controls retain their keyboard behavior; custom key handling does not intercept keys from focused links, form fields, scroll buttons, or markers.
+- Keyboard users can Tab sequentially through controls without encountering a keyboard trap.
+- Support for `::scroll-button()` and `::scroll-marker` is detected independently using `CSS.supports`.
+- Fallback HTML controls are revealed only when their corresponding native feature is absent, without rendering duplicate controls when support is partial.
+- Fallback previous/next buttons precede the track in DOM order, so in mixed-support browsers they come before any native marker group in sequential focus order.
+- Activating fallback previous/next buttons moves the carousel to the adjacent slide.
+- Activating a fallback marker button navigates to its corresponding slide.
+- Every fallback marker button has an accessible name identifying its destination slide.
+- Fallback markers update `aria-current="true"` to reflect the currently active slide.
+- Optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.
+- The carousel does not autoplay slides or continuously poll scroll positions on every animation frame.
