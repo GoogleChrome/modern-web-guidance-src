@@ -34,7 +34,7 @@
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
     "marked": "^18.0.3",
-    "web-features": "^3.39.0"
+    "web-features": "^3.40.0"
   },
   "devDependencies": {
     "@types/gh-pages": "^6.1.0",
