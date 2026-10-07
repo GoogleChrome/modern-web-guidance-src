@@ -33,7 +33,7 @@ If the value requires a formatted label or unit, expose it in ordinary DOM conte
 
 ## Choose the styling approach
 
-For simple colour customisation, use {{ GUIDE_REF("brand-consistent-forms") }} and retain the browser’s native rendering:
+For simple color customization, use {{ GUIDE_REF("brand-consistent-forms") }} and retain the browser’s native rendering:
 
 ```css
 input[type="range"] {
