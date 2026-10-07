@@ -135,8 +135,11 @@
       }
       previewMenu(rootMenu, rootTrigger);
     });
-    rootTrigger.addEventListener('blur', () => {
-      if (previewedMenus.has(rootMenu)) closeMenu(rootMenu);
+    rootTrigger.addEventListener('blur', event => {
+      if (previewedMenus.has(rootMenu)) {
+        if (rootMenu.contains(event.relatedTarget)) previewedMenus.delete(rootMenu);
+        else closeMenu(rootMenu);
+      }
     });
     subTrigger.addEventListener('focus', () => {
       if (skipPreviewFocus.has(subTrigger)) {
@@ -146,8 +149,18 @@
       }
       previewMenu(subMenu, subTrigger);
     });
-    subTrigger.addEventListener('blur', () => {
-      if (previewedMenus.has(subMenu)) closeMenu(subMenu);
+    subTrigger.addEventListener('blur', event => {
+      if (previewedMenus.has(subMenu)) {
+        if (subMenu.contains(event.relatedTarget)) previewedMenus.delete(subMenu);
+        else closeMenu(subMenu);
+      }
+    });
+    let suppressNextClick = false;
+    rootTrigger.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      if (!rootMenu.matches(':popover-open') || previewedMenus.has(rootMenu)) return;
+      suppressNextClick = true;
+      closeMenu(rootMenu, true);
     });
     rootTrigger.addEventListener('keydown', event => {
       if (event.key === 'ArrowDown') {
@@ -163,11 +176,15 @@
         event.preventDefault();
         if (previewedMenus.has(rootMenu)) closeMenu(rootMenu);
         else if (rootMenu.matches(':popover-open')) closeMenu(rootMenu, true);
-        else previewMenu(rootMenu, rootTrigger);
+        else openMenu(rootMenu, rootTrigger);
       }
     });
     rootTrigger.addEventListener('click', event => {
       event.preventDefault();
+      if (suppressNextClick) {
+        suppressNextClick = false;
+        return;
+      }
       if (previewedMenus.has(rootMenu)) openMenu(rootMenu, rootTrigger);
       else if (rootMenu.matches(':popover-open')) closeMenu(rootMenu, true);
       else openMenu(rootMenu, rootTrigger);
