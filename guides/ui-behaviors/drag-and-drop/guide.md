@@ -47,7 +47,7 @@ For complex layouts where visual and DOM order cannot naturally align, use the *
 ```
 
 ### Disable boundaries and safeguard focus
-Prevent movement past the first and last items. For a keyboard-operable handle, ignore or prevent the corresponding arrow key at each boundary.
+Keep moves within valid destinations. If items can move between containers, make those destinations available to keyboard users too. At the boundary of a container, prevent further movement only when there is no valid destination in that direction.
 
 After moving an item, keep focus on its handle. If the implementation uses separate movement buttons instead, keep focus on the activated button or shift it to the alternative movement control on the same item when the activated control becomes disabled.
 
