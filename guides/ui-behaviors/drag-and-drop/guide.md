@@ -13,15 +13,15 @@ guides:
 
 # Rearrange Items with Drag and Drop
 
-Add reordering to an existing list, grid, or other collection. Reorder the real children in the DOM so visual, keyboard, and reading order stay aligned. For why CSS `order` is not a substitute for reordering interactive content, see {{ GUIDE_REF("css-layout") }}.
+Add reordering to an existing list, grid, or board. Reorder the real children in the DOM (not via CSS `order` or `flex-direction: *-reverse`) so visual, keyboard, and reading order stay aligned. For free-form 2D repositioning of a floating element such as a dialog or toolbar, see {{ GUIDE_REF("drag") }}.
 
-When appropriate, provide a dedicated drag handle rather than making the entire item draggable. For choosing a drag handle, preserving the pointer offset, and applying handle-scoped `touch-action` and `user-select`, see {{ GUIDE_REF("drag") }}.
+When items contain interactive controls or selectable text, provide a dedicated drag handle rather than making the entire item draggable. Start pointer drags only for the primary button (`event.button === 0`), record the initial pointer offset (`event.clientX - rect.left`, `event.clientY - rect.top`), and apply `cursor: grab`/`grabbing`, `touch-action: none`, and `user-select: none` to the handle so item text remains selectable and page scrolling works outside the handle.
 
 ## Keep movement active while reordering
 
-A drag implementation that moves the dragged item in the DOM can lose pointer capture when the item is removed and reinserted. Register `pointermove`, `pointerup`, and `pointercancel` on `document` for the active drag, and remove them when it ends.
+Keep the drag active after the pointer leaves the handle with `handle.setPointerCapture(event.pointerId)` on `pointerdown`, and clean up on `lostpointercapture`. Because pointer capture redirects `pointermove` `event.target` to the capturing handle, find the destination item or container beneath the pointer with `document.elementFromPoint(event.clientX, event.clientY)`.
 
-Determine the destination from the pointer's position over the remaining items. Move the actual item when its destination changes rather than recreating it. To preserve item state (such as focused controls, scroll position, media, or custom element instances), use `moveBefore()` to move elements atomically; see {{ GUIDE_REF("move-dom-element-without-losing-state") }}. If the design calls for a faded copy that follows the pointer, clone the item for that feedback; otherwise, move the original item without creating a clone.
+When the destination changes, move the existing item node atomically with `container.moveBefore(item, referenceNode)` rather than recreating it so internal state (such as focused controls, input values, scroll position, media, or custom element instances) and active pointer capture are preserved. If the design calls for a faded copy that follows the pointer, clone the item with `pointer-events: none`, `aria-hidden="true"`, and `inert` so it does not block hit-testing or expose duplicate content to assistive technology; otherwise, move the original item without creating a clone.
 
 ## Support keyboard reordering
 
