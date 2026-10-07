@@ -215,16 +215,18 @@
     render(document.getElementById('right-list'), rightItems);
 
     document.getElementById('left-rotate').addEventListener('click', () => {
+      const listEl = document.getElementById('left-list');
       leftItems = runWithTransition(
-        document.getElementById('left'),
-        document.getElementById('left-list'),
+        listEl,
+        listEl,
         rotate(leftItems),
       );
     });
     document.getElementById('right-rotate').addEventListener('click', () => {
+      const listEl = document.getElementById('right-list');
       rightItems = runWithTransition(
-        document.getElementById('right'),
-        document.getElementById('right-list'),
+        listEl,
+        listEl,
         rotate(rightItems),
       );
     });
@@ -264,14 +266,16 @@
     // Both scoped transitions animate at the same time; a second
     // document-level startViewTransition call would skip the first instead
     document.getElementById('rotate-both').addEventListener('click', () => {
+      const leftListEl = document.getElementById('left-list');
+      const rightListEl = document.getElementById('right-list');
       leftItems = runWithTransition(
-        document.getElementById('left'),
-        document.getElementById('left-list'),
+        leftListEl,
+        leftListEl,
         rotate(leftItems),
       );
       rightItems = runWithTransition(
-        document.getElementById('right'),
-        document.getElementById('right-list'),
+        rightListEl,
+        rightListEl,
         rotate(rightItems),
       );
     });

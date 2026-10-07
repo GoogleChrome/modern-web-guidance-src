@@ -56,7 +56,8 @@ If an outer transition needs to move a component while its inner transition is a
 
 ```css
 /* 1. Configure the component scope */
-.card {
+.card,
+.card ul {
   /* No CSS is needed for this. The scope is determined by you calling startViewTransition on the element instead of document */
 }
 
@@ -95,12 +96,13 @@ function runScopedTransition(scopeEl, updateDOM) {
 }
 
 // 2. Reorder items by moving existing DOM nodes (required for `match-element`)
-function reorderItems(scopeEl, listEl, orderedIds) {
+// Scope to `listEl` since only the list order changes, keeping controls outside `listEl` interactive
+function reorderItems(listEl, orderedIds) {
   const existing = new Map(
     Array.from(listEl.children, (li) => [li.dataset.id, li]),
   );
 
-  runScopedTransition(scopeEl, () => {
+  runScopedTransition(listEl, () => {
     for (const id of orderedIds) {
       const li = existing.get(id);
       if (li) listEl.appendChild(li);
@@ -109,14 +111,15 @@ function reorderItems(scopeEl, listEl, orderedIds) {
 }
 
 // 3. Remove an item while preserving exit animation and keyboard focus
-function removeItem(scopeEl, itemEl) {
+// Scope to the outer `cardEl` so the card itself also transitions its height change
+function removeItem(cardEl, itemEl) {
   const hadFocus = itemEl.contains(document.activeElement);
   const nextFocusTarget =
     itemEl.nextElementSibling?.querySelector('button') ??
     itemEl.previousElementSibling?.querySelector('button') ??
-    scopeEl.querySelector('button');
+    cardEl.querySelector('button');
 
-  runScopedTransition(scopeEl, () => {
+  runScopedTransition(cardEl, () => {
     itemEl.remove();
     if (hadFocus) {
       nextFocusTarget?.focus();
