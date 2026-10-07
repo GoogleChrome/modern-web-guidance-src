@@ -53,12 +53,12 @@ The engine uses three CSS capabilities to render icons:
 
 ```css
 @property --icon-start {
-  syntax: "<image>";
+  syntax: "*";
   inherits: false;
 }
 
 @property --icon-end {
-  syntax: "<image>";
+  syntax: "*";
   inherits: false;
 }
 ```
