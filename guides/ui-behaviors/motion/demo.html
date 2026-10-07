@@ -365,26 +365,19 @@
         }
 
         .popover-reveal,
-        dialog.modal-reveal {
+        .popover-reveal:popover-open,
+        dialog.modal-reveal,
+        dialog.modal-reveal[open] {
           translate: none;
           scale: none;
           clip-path: none;
           transition-duration: 0.1s;
-        }
 
-        @starting-style {
-          .popover-reveal:popover-open,
-          dialog.modal-reveal[open] {
+          @starting-style {
             translate: none;
             scale: none;
             clip-path: none;
           }
-        }
-
-        ::view-transition-group(*),
-        ::view-transition-old(*),
-        ::view-transition-new(*) {
-          animation: none !important;
         }
       }
     </style>
