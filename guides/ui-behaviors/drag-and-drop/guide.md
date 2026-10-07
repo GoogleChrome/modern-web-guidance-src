@@ -25,10 +25,17 @@ When the destination changes, move the existing item node atomically with `conta
 
 ## Support keyboard reordering
 
-Avoid using a separate "grab-and-drag" keyboard mode (for example, Space to grab followed by arrow keys to move). Instead, make the drag handle keyboard-focusable and give it an accessible name that communicates its reordering function. When the handle has focus, support `ArrowUp` and `ArrowDown` to move the item, and announce the item's new position. A keyboard-operable handle avoids requiring permanently visible movement buttons or a separate interaction mode. The reordering action must remain available to keyboard and screen-reader users.
+Provide a keyboard-accessible alternative to pointer reordering. Choose an interaction that fits how frequently users reorder items and how easily they need to discover it:
+
+- **Visible movement controls or an actions menu**: Best default for discoverability and screen-reader compatibility, because activating standard buttons works in screen-reader browse modes without intercepting arrow keys. Use an actions menu when persistent inline buttons add too much visual clutter.
+- **Direct arrow keys (or modifier + arrow keys, such as `Alt` + arrow keys) on a focusable handle or item**: Suits frequent reordering with minimal UI chrome. Give the handle an accessible name that identifies both the item and the reorder action, and note that screen-reader browse modes may intercept bare arrow keys on a `<button>` handle unless paired with explicit movement controls or modifier keys.
+- **Grab–move–drop mode (`Space` or `Enter` to pick up, arrow keys to move, `Space` or `Enter` to drop, `Escape` to cancel)**: Useful when reordering is infrequent and persistent controls are undesirable. Expose or announce the grabbed state and available keys on pickup, restore the item to its original DOM position on `Escape`, and verify how screen-reader browse modes interact with the arrow keys.
+
+For any approach, announce the item and its new position in a polite live region.
 
 ### Align reading order with visual layout
-Keep the DOM order logical: place each item's accessible context before its keyboard-operable drag handle, and keep the handle's focus order consistent with the DOM. Choose the handle's visual position to suit the layout, including its writing direction, without changing the logical order.
+
+Keep the DOM and keyboard focus order understandable in relation to the visual layout. If reordering is provided through separate controls, ensure the item's context is available before or alongside those controls. If the drag handle is focusable, give it an accessible name that identifies the item and its reordering function. Position controls to suit the layout and writing direction without making the resulting reading or focus order confusing.
 
 For complex layouts where visual and DOM order cannot naturally align, use the **`reading-flow`** CSS property inside grid/flex containers to instruct the browser's tab order to follow visual coordinates rather than DOM source order:
 ```css
