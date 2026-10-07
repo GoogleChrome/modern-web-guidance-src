@@ -7,6 +7,9 @@ web-feature-ids:
   - scroll-markers
   - scroll-marker-targets
   - anchor-positioning
+  - scroll-behavior
+  - scrollend
+  - scroll-snap-events
   - scroll-driven-animations
 guides:
   - carousel-slide-effects
@@ -197,23 +200,23 @@ button:focus-visible {
 
 If your Baseline target does not support CSS scroll buttons (`::scroll-button()`) or CSS scroll markers (`::scroll-marker`), provide accessible HTML button controls and a navigation element that only render when native support is missing.
 
-### Fallback for scroll buttons
-
-{{ FEATURE_FALLBACKS("scroll-buttons") }}
-
-### Fallback for scroll markers
-
-{{ FEATURE_FALLBACKS("scroll-markers") }}
-
 ### Fallback for scroll marker targets
 
 {{ BASELINE_STATUS("scroll-marker-targets") }}
 
 If `:target-current` is unsupported, omit native marker highlighting or use the existing script’s current-slide calculation to style the active marker. For fallback HTML markers, set `aria-current="true"` on the current button so the active destination is still conveyed to assistive technology.
 
-### Fallback for anchor positioning
+### Scroll completion and snap event fallbacks
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+{{ BASELINE_STATUS("scroll-behavior") }}
+
+{{ BASELINE_STATUS("scrollend") }}
+
+If `scrollend` is unavailable, use the debounced `scroll` listener shown in the script to update the current slide after scrolling settles.
+
+{{ BASELINE_STATUS("scroll-snap-events") }}
+
+The carousel does not depend on scroll snap events. If they are unavailable, use the same settled-scroll tracking shown below; use `scrollsnapchange` only when synchronizing additional UI specifically to the browser-selected snap target.
 
 ### Progressive enhancement and fallback implementation
 
