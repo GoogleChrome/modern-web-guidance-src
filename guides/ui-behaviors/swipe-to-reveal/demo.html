@@ -77,6 +77,11 @@
         overscroll-behavior: chain;
       }
 
+      @media (prefers-reduced-motion: no-preference) {
+        .SwipeReveal {
+          scroll-behavior: smooth;
+        }
+      }
       .SwipeReveal::-webkit-scrollbar {
         display: none;
       }
