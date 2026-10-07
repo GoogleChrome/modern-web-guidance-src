@@ -151,12 +151,16 @@ Attach an icon to a button or other element by setting `--icon-start` or `--icon
 
 ### Icon-Only Controls
 
-For standalone icons or icon-only buttons, use an empty `.icon` element with an accessible name on the container:
+For icon-only buttons, mark the empty `.icon` element with `aria-hidden="true"` and place `aria-label` on the button. For standalone informative icons, expose the `.icon` element with `role="img"` and `aria-label`:
 
 ```html
+<!-- Icon-only interactive control -->
 <button aria-label="Delete item">
   <span class="icon" style="--icon: var(--icon-trash);" aria-hidden="true"></span>
 </button>
+
+<!-- Standalone informative icon -->
+<span class="icon" style="--icon: var(--icon-favorite);" role="img" aria-label="Favorite"></span>
 ```
 
 ## When to Use Inline SVG Instead
