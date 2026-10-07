@@ -20,7 +20,7 @@ guides:
 
 # Build a carousel
 
-Build a small, usable carousel for a finite set of related items. Prefer native scrolling and CSS scroll snap; enhance it with native CSS scroll controls where supported. Keep the content available and usable without JavaScript.
+Build a carousel for a finite set of related items. Use native scrolling and CSS scroll snap as the foundation; add CSS scroll controls where supported and JavaScript only for missing controls or status updates. This keeps content and basic scrolling usable without JavaScript.
 
 ## Structure and accessibility
 
@@ -39,20 +39,17 @@ Build a small, usable carousel for a finite set of related items. Prefer native 
 - For styling the active slide itself, see {{ GUIDE_REF("carousel-snap-highlights") }}. For a continuous progress indicator instead of discrete markers, see {{ GUIDE_REF("scroll-progress-indicator") }}.
 - For scroll-driven slide effects, see {{ GUIDE_REF("carousel-slide-effects") }}. For synchronizing other UI with snap events, see {{ GUIDE_REF("scroll-snap-state-sync") }}.
 
-## Minimal implementation pattern
+## Example: horizontal carousel
 
-Use this as a starting point and adapt labels and content. Every marker needs a useful accessible name identifying its destination slide.
+This example uses full-width horizontal slides. Adapt the slide sizing for a peek layout or use the block axis for a vertical carousel. Give each marker a name that identifies its destination. The dimensions, spacing, colors, and debounce interval are examples; adapt them to the design and interaction.
 
 ```html
-<!-- The region label names this carousel in landmark navigation. -->
 <section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
-  <!-- Keep fallback buttons before the track so they precede any native marker group in focus order. -->
   <div class="fallback-controls" hidden>
     <button type="button" data-direction="previous">Previous slide</button>
     <button type="button" data-direction="next">Next slide</button>
   </div>
 
-  <!-- tabindex makes the scrollable list itself reachable for keyboard scrolling. -->
   <ul class="carousel-track" tabindex="0" aria-label="Slides">
     <li class="carousel-slide" role="group" aria-roledescription="slide" aria-label="1 of 3"
         data-marker-name="Go to slide 1">
@@ -68,22 +65,18 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
     </li>
   </ul>
 
-  <!-- Announce the new slide after scrolling settles without interrupting current speech. -->
   <p class="visually-hidden" role="status" aria-live="polite"></p>
 
-  <!-- Fallback markers container: revealed only when native ::scroll-marker is unsupported -->
   <nav class="fallback-markers" aria-label="Choose a slide" hidden></nav>
 </section>
 ```
 
 ```css
 .carousel-track {
-  /* Anchor name to anchor ::scroll-button controls to this track */
   anchor-name: --carousel-track;
   display: flex;
-  gap: 1rem; /* Example-only spacing; adapt to the surrounding layout. */
+  gap: 1rem;
   overflow-x: auto;
-  /* Snap on the horizontal axis so scrolling settles on a slide. */
   scroll-snap-type: x mandatory;
   list-style: none;
   margin: 0;
@@ -91,23 +84,18 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
 }
 
 .carousel-slide {
-  /* Example full-width slides; adjust the basis if several slides should peek into view. */
   flex: 0 0 100%;
   scroll-snap-align: center;
 }
-
-/* Native scroll buttons (Chrome 135+) */
 @supports selector(::scroll-button(*)) {
   .carousel-track::scroll-button(inline-start) {
-    /* The slash alternative supplies this control's accessible name. */
     content: "‹" / "Previous slide";
-    inset-inline-start: calc(anchor(start) + 0.5rem); /* Example-only inset; adjust for the control design. */
+    inset-inline-start: calc(anchor(start) + 0.5rem);
   }
 
   .carousel-track::scroll-button(inline-end) {
-    /* The slash alternative supplies this control's accessible name. */
     content: "›" / "Next slide";
-    inset-inline-end: calc(anchor(end) + 0.5rem); /* Example-only inset; adjust for the control design. */
+    inset-inline-end: calc(anchor(end) + 0.5rem);
   }
 
   .carousel-track::scroll-button(*) {
@@ -115,66 +103,59 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
     position-anchor: --carousel-track;
     inset-block-start: anchor(center);
     translate: 0 -50%;
-    inline-size: 2.5rem; /* Example-only target dimensions; adapt to the design and usability needs. */
+    inline-size: 2.5rem;
     block-size: 2.5rem;
     border-radius: 50%;
-    border: 1px solid #888; /* Example-only border and color; choose a contrasting style. */
+    border: 1px solid #888;
     background: Canvas;
     color: CanvasText;
     cursor: pointer;
   }
 
   .carousel-track::scroll-button(*):disabled {
-    opacity: 0.3; /* Example disabled-state treatment; keep the disabled state perceivable. */
+    opacity: 0.3;
     cursor: default;
   }
 }
-
-/* Native scroll markers (Chrome 135+) */
+@supports selector(::scroll-button(*)) and not (anchor-name: --carousel-track) {
+  .carousel-track::scroll-button(*) {
+    display: none;
+  }
+}
 @supports selector(::scroll-marker) {
   .carousel-track {
-    /* Keep marker navigation after the slide content in focus order. */
     scroll-marker-group: after;
   }
 
   .carousel-track::scroll-marker-group {
     display: flex;
     justify-content: center;
-    gap: 0.5rem; /* Example-only marker spacing; adapt to the layout. */
-    margin-block-start: 0.75rem; /* Example-only spacing; adapt to the layout. */
+    gap: 0.5rem;
+    margin-block-start: 0.75rem;
   }
 
   .carousel-slide::scroll-marker {
-    /* Keep the marker visually compact while providing a destination-specific accessible name. */
     content: "" / attr(data-marker-name);
-    inline-size: 1rem; /* Example-only marker size; adapt for visibility and target size. */
+    inline-size: 1rem;
     block-size: 1rem;
     border-radius: 50%;
-    background: #888; /* Example marker color; ensure it contrasts with the background. */
+    background: #888;
     cursor: pointer;
   }
-
-  /* Distinguish the current destination from the other markers. */
   .carousel-slide::scroll-marker:target-current {
-    background: #0a5; /* Example current-marker color; ensure sufficient contrast. */
+    background: #0a5;
   }
 }
-
-/* A visible focus indicator makes keyboard position easy to track. */
 .carousel-track::scroll-button(*):focus-visible,
 .carousel-slide::scroll-marker:focus-visible,
 button:focus-visible {
-  outline: 0.2rem solid #f90; /* Example-only focus styling; use a visible, contrasting indicator. */
-  outline-offset: 0.15rem; /* Example-only offset. */
+  outline: 0.2rem solid #f90;
+  outline-offset: 0.15rem;
 }
-
-/* Ensure hidden attribute takes precedence over display property */
 .fallback-controls[hidden],
 .fallback-markers[hidden] {
   display: none;
 }
-
-/* Visually hidden utility for screen reader announcement text */
 .visually-hidden {
   position: absolute;
   inline-size: 1px;
@@ -187,43 +168,66 @@ button:focus-visible {
 
 @media (prefers-reduced-motion: no-preference) {
   .carousel-track {
-    scroll-behavior: smooth; /* Enabled only when reduced motion is not requested. */
+    scroll-behavior: smooth;
   }
 }
 ```
 
-## Fallback strategies
+## Fallbacks
 
-If your Baseline target does not support CSS scroll buttons (`::scroll-button()`) or CSS scroll markers (`::scroll-marker`), provide accessible HTML button controls and a navigation element that only render when native support is missing.
+The fallback is robust: scrolling and snap behavior remain native, while small amounts of script add only controls or status updates that the browser does not provide. Detect each control feature separately, and expose HTML controls only for missing features so partial support never creates duplicates.
 
-### Fallback for scroll marker targets
+### Scroll buttons
+
+{{ BASELINE_STATUS("scroll-buttons") }}
+
+When `::scroll-button()` is unavailable, reveal the HTML Previous and Next buttons and wire them to scroll to adjacent slides. Keep them before the track in DOM order so they precede any native marker group in mixed-support browsers.
+
+### Scroll markers
+
+{{ BASELINE_STATUS("scroll-markers") }}
+
+When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named button per slide. Update `aria-current="true"` on the active button.
+
+### Marker state
 
 {{ BASELINE_STATUS("scroll-marker-targets") }}
 
-If `:target-current` is unsupported, omit native marker highlighting or use the existing script’s current-slide calculation to style the active marker. For fallback HTML markers, set `aria-current="true"` on the current button so the active destination is still conveyed to assistive technology.
+If `:target-current` is unavailable, omit native marker highlighting or style the active fallback marker using the script's current-slide calculation.
 
-### Scroll completion and snap event fallbacks
+### Anchor positioning
+
+{{ BASELINE_STATUS("anchor-positioning") }}
+
+Anchor positioning only places native scroll buttons; it does not provide their navigation behavior. The example hides native buttons when anchor positioning is unavailable and reveals the HTML Previous and Next controls instead.
+
+### Scrolling and completion
 
 {{ BASELINE_STATUS("scroll-behavior") }}
 
+Smooth scrolling is optional. The example enables it only when reduced motion is not requested.
+
 {{ BASELINE_STATUS("scrollend") }}
 
-If `scrollend` is unavailable, use the debounced `scroll` listener shown in the script to update the current slide after scrolling settles.
+If `scrollend` is unavailable, use the debounced `scroll` listener in the example to update status after scrolling settles.
 
 {{ BASELINE_STATUS("scroll-snap-events") }}
 
-The carousel does not depend on scroll snap events. If they are unavailable, use the same settled-scroll tracking shown below; use `scrollsnapchange` only when synchronizing additional UI specifically to the browser-selected snap target.
+The carousel does not depend on snap events. If they are unavailable, use settled-scroll tracking for status; use `scrollsnapchange` only when other UI must follow the browser-selected snap target.
 
-### Progressive enhancement and fallback implementation
+### Scroll snap
 
-This fallback approach is robust: because CSS scroll snap (`scroll-snap-type` and `scroll-snap-align`) is widely supported ({{ BASELINE_STATUS("scroll-snap") }}), the underlying touch, trackpad, and keyboard scrolling remains 100% native and performant without JavaScript. The JavaScript fallback only provides the click-to-scroll controls and syncs the live status and active marker state in under 50 lines of code without any third-party dependencies or polyfills.
+{{ BASELINE_STATUS("scroll-snap") }}
 
-The fallback experience operates on feature detection:
-- In browsers supporting `::scroll-button()` and `::scroll-marker`, the native controls are rendered by the browser engine with zero JavaScript required for navigation.
-- When either feature is missing, the corresponding HTML fallback controls are unhidden and wired up with click handlers.
-- Both native and fallback implementations share the same accessible `<p role="status" aria-live="polite">` element to announce the active slide position when scrolling settles.
+The track remains natively scrollable with touch, pointer, and keyboard input. JavaScript adds fallback controls and announcements without replacing basic scrolling. Place the script in a `<script type="module">` element so it runs after the document has been parsed.
 
-The same script handles fallback controls and synchronizes status/marker state for native scrolling. It also initializes the status and updates it after scrolling settles. Place it in a `<script type="module">` element; module scripts run after the document has been parsed, so the selectors can find the carousel markup.
+### Scroll-driven effects
+
+{{ BASELINE_STATUS("scroll-driven-animations") }}
+
+Treat slide effects as optional enhancements and keep them inside `@media (prefers-reduced-motion: no-preference)`. The carousel's navigation and current-slide feedback must not depend on them.
+
+Update slide state after scrolling settles rather than on every animation frame, and measure only the carousel's scrolling axis.
 
 ```javascript
 const track = document.querySelector(".carousel-track");
@@ -231,9 +235,8 @@ const slides = [...track.children];
 const status = document.querySelector('[role="status"]');
 const controls = document.querySelector(".fallback-controls");
 const markerNav = document.querySelector(".fallback-markers");
-
-// Detect each native control independently so partial support gets only its missing fallback.
-const hasButtons = CSS.supports("selector(::scroll-button(*))");
+const hasButtons = CSS.supports("selector(::scroll-button(*))") &&
+  CSS.supports("anchor-name: --carousel-track");
 const hasMarkers = CSS.supports("selector(::scroll-marker)");
 
 let markers = [];
@@ -249,11 +252,8 @@ function currentIndex() {
 }
 
 function goTo(index) {
-  // CSS enables smooth scrolling only when reduced motion is not requested.
   slides[index]?.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
 }
-
-// Reveal and wire previous/next buttons only if native scroll buttons are unsupported
 if (!hasButtons) {
   controls.hidden = false;
   const prevBtn = controls.querySelector('[data-direction="previous"]');
@@ -262,15 +262,12 @@ if (!hasButtons) {
   prevBtn.addEventListener("click", () => goTo(Math.max(0, currentIndex() - 1)));
   nextBtn.addEventListener("click", () => goTo(Math.min(slides.length - 1, currentIndex() + 1)));
 }
-
-// Reveal and generate marker buttons only if native scroll markers are unsupported
 if (!hasMarkers) {
   markerNav.hidden = false;
   markers = slides.map((slide, index) => {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = String(index + 1);
-    // Name each marker for its destination so users can choose the intended slide.
     button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${index + 1}`);
     button.addEventListener("click", () => goTo(index));
     markerNav.append(button);
@@ -284,26 +281,14 @@ function sync() {
   markers.forEach((marker, i) => marker.setAttribute("aria-current", String(i === index)));
 
   if (!hasButtons) {
-    // Disable navigation beyond the first or last slide.
     controls.querySelector('[data-direction="previous"]').disabled = index === 0;
     controls.querySelector('[data-direction="next"]').disabled = index === slides.length - 1;
   }
 }
-
-// Listen for scrollend or debounced scroll to update status and markers
 track.addEventListener("scrollend", sync);
 track.addEventListener("scroll", () => {
   clearTimeout(timer);
-  timer = setTimeout(sync, 150); // Example debounce interval; tune for the interaction.
+  timer = setTimeout(sync, 150);
 }, { passive: true });
-
-// Initialize status and fallback control state.
 sync();
 ```
-
-## Progressive enhancement and performance
-
-- Detect support for `::scroll-button()` and `::scroll-marker` separately. When either feature is missing, reveal only the corresponding HTML fallback controls; do not render duplicate controls for the same function.
-- Use a small script only for fallback control behavior and synchronizing slide status/marker state. Keep native touch, trackpad, pointer, and keyboard scrolling available independently of JavaScript.
-- Avoid autoplay, unnecessary event polling, and per-frame layout work. If tracking the current slide with JavaScript, update after scrolling settles and measure only the relevant axis.
-- Optional scroll-driven visual effects must be progressive enhancements and run only under `@media (prefers-reduced-motion: no-preference)`.
