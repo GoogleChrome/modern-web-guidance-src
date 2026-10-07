@@ -41,40 +41,36 @@ input[type="checkbox"][switch]:focus-visible {
 }
 ```
 
-## Polyfill Fallback
+## Fallback strategies
 
-Always conditionally load the polyfill only when native support is missing. Do not load the polyfill unconditionally.
+### Fallbacks & browser support for switch-control
 
-For browsers without native switch support, dynamically import `input-switch-polyfill`. It progressively enhances checkboxes with the `switch` attribute by applying switch styling, managing states, and providing pointer drag support.
+{{ BASELINE_STATUS("switch-control") }}
 
-Combine feature detection with dynamic import in `<head>`:
+If your Baseline target does not support `<input type="checkbox" switch>`, conditionally load `input-switch-polyfill` only when `'switch' in HTMLInputElement.prototype` is `false`. Do not load the polyfill unconditionally.
+
+For browsers without native switch support, dynamically import `input-switch-polyfill` in `<head>` or your application entry. It progressively enhances checkboxes with the `switch` attribute by applying switch styling (`appearance: none`), syncing computed `accent-color`, and providing pointer drag support.
 
 **Option 1: Using a bundler**
 
-Install the polyfill via npm (`npm install input-switch-polyfill`). Conditionally import it in your application entry or head script:
+Install the polyfill via npm (`npm install input-switch-polyfill`). Conditionally import it in your application entry or `<head>` script:
 
 ```javascript
 if (!('switch' in HTMLInputElement.prototype)) {
-  document.documentElement.classList.add('no-native-switch');
   import('input-switch-polyfill');
 }
 ```
 
 **Option 2: Using a CDN**
 
-For standalone setups without a build pipeline, conditionally import from a CDN:
+For standalone setups without a build pipeline, conditionally import from a CDN in `<head>`:
 
 ```html
-<script>
+<script type="module">
   if (!('switch' in HTMLInputElement.prototype)) {
-    document.documentElement.classList.add('no-native-switch');
     import('https://unpkg.com/input-switch-polyfill');
   }
 </script>
 ```
 
-## Fallbacks & Browser Support
-
-{{ BASELINE_STATUS("switch-control") }}
-
-{{ BASELINE_STATUS("accent-color") }}
+{{ FEATURE_FALLBACKS("accent-color") }}
