@@ -35,7 +35,7 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
         console.log(`\nRunning skills add...`);
         execSync(cmd, { 
             stdio: 'inherit', 
-            env: { ...process.env, HOME: homeDir }
+            env: { ...process.env, HOME: homeDir, DISABLE_TELEMETRY: '1' }
         });
 
         if (!fs.existsSync(geminiBin)) {
@@ -51,6 +51,8 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
         console.log(`\nVerifying Gemini can use the added skill...`);
         const promptCmd = `${geminiBin} -p "use the modern-web-guidance skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
         const env: Record<string, string | undefined> = { ...process.env, HOME: homeDir };
+        // Prevent gemini-cli strict env sanitization in GitHub Actions from stripping NODE_TEST_CONTEXT
+        delete env.GITHUB_SHA;
         if (!env.GEMINI_MODEL) {
             env.GEMINI_MODEL = 'gemini-3-flash-preview';
         }
