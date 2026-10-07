@@ -233,10 +233,6 @@
         li.nextElementSibling?.dataset.label ??
         li.previousElementSibling?.dataset.label;
 
-      // Chrome 151 aborts a scoped transition when a match-element participant
-      // is removed, so name the outgoing item explicitly to keep its exit
-      // animation
-      li.style.viewTransitionName = `removing-${li.dataset.label}`;
       return runWithTransition(
         scopeEl,
         items.filter((label) => label !== li.dataset.label),
