@@ -63,13 +63,12 @@ input[type="range"] {
     --slider-direction: to left;
   }
 
-  /* Mirror the input's min, max, and value; kept in sync by the script below. */
-  --attr-min: 0;
-  --attr-max: 100;
-  --control-value: 50;
+  /* Read min and max from attributes; --control-value is synced by the script below. */
+  --attr-min: attr(min type(<number>), 0);
+  --attr-max: attr(max type(<number>), 100);
+  --control-value: attr(value type(<number>), 50);
   --slider-progress: calc(
-    (var(--control-value) - var(--attr-min)) /
-    (var(--attr-max) - var(--attr-min)) * 100%
+    progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%
   );
 
   appearance: none;
