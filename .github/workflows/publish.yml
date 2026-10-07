@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
       id-token: write # Required for npm OIDC provenance when enabled
 
     steps:
@@ -29,9 +30,11 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }},modern-web-guidance
           permission-contents: write
+          permission-issues: write
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: # zizmor: ignore[artipacked] publish-skills.ts pushes the release commit and tag using this persisted App token
+          ref: main
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
@@ -104,3 +107,14 @@ jobs:
         run: |
           cd dist/skills-cli
           npm publish --provenance --access public --registry https://registry.npmjs.org/
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh issue create \
+            --title "Publish Skills workflow failed (run #$GITHUB_RUN_NUMBER)" \
+            --assignee "TravenReese,micahjo7,paulirish" \
+            --body "The [Publish Skills workflow run]($RUN_URL) failed."$'\n\n'"cc @TravenReese @micahjo7 @paulirish"
