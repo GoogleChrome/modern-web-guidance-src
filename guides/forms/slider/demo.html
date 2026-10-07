@@ -171,7 +171,7 @@
       <output id="value-display" class="value-display" for="volume-slider">70%</output>
     </div>
 
-    <input type="range" id="volume-slider" aria-labelledby="volume-label" min="0" max="100" value="70" step="1" />
+    <input type="range" id="volume-slider" value="70" />
   </main>
 
   <script>
@@ -185,7 +185,6 @@
       slider.style.setProperty('--attr-max', slider.max || 100);
       slider.style.setProperty('--control-value', slider.value);
       valueDisplay.value = formattedValue;
-      valueDisplay.textContent = formattedValue;
       slider.setAttribute('aria-valuetext', formattedValue);
     }
 
