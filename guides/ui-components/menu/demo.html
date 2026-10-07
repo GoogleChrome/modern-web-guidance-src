@@ -390,10 +390,9 @@
     }
 
     function openMenu(menu, trigger) {
-      if (menu.matches(':popover-open')) {
-        if (!previewedMenus.has(menu)) return;
-        previewedMenus.delete(menu);
-      } else {
+      if (menu.matches(':popover-open') && !previewedMenus.has(menu)) return;
+      previewedMenus.delete(menu);
+      if (!menu.matches(':popover-open')) {
         if (!menu.parentElement.closest('[popover]')) closeAllMenus(false, menu);
         else closeSiblingMenus(menu);
         menu.showPopover();
