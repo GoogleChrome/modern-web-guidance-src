@@ -1,10 +1,7 @@
-- Each switch control MUST be represented by a standard HTML `<input type="checkbox">` element that explicitly utilizes the standard `switch` attribute and has `role="switch"`.
-- The switch input MUST be associated with a semantic `<label>` element.
-- The page MUST run an inline feature-detection script within `<head>` checking for native switch support via `'switch' in HTMLInputElement.prototype`.
-- When native switch is not supported, the script MUST append a helper class (e.g., `no-native-switch`) to the document root element before the initial paint.
-- When native switch support is missing (or `no-native-switch` is present on the root), the checkbox input itself MUST use `appearance: none` to render custom toggle switch styles and MUST remain visible (not visually hidden or clipped).
-- When native switch support is missing, the switch thumb MUST be rendered by a `::before` or `::after` pseudo-element on the checkbox input itself, not on the label.
-- When native switch support is missing, checking the switch input MUST slide its thumb using CSS transitions or transforms.
-- When native switch support is missing, checking the switch input MUST change its track background color to the active accent color.
-- The switch input MUST define the CSS `accent-color` property for native rendering in supported browsers.
-- The switch input MUST specify a visible `:focus-visible` outline for keyboard navigation, applied to the input itself.
+- Each switch control is a standard HTML `<input type="checkbox">` element with the `switch` attribute and `role="switch"`.
+- Each switch input is associated with a `<label>` element (either by wrapping the `<input>` inside the `<label>` or via matching `for` and `id` attributes).
+- Native switch support is feature-detected via `'switch' in HTMLInputElement.prototype`, and `input-switch-polyfill` is conditionally loaded only when native support is missing.
+- When native switch support is missing, the checkbox input uses `appearance: none` to render switch styling while remaining visible and interactive (not visually hidden or clipped).
+- Toggling the switch updates its `checked` state and visually updates the control's track styling between its unchecked and checked states.
+- The switch input sets a custom `accent-color` that applies to both native switch rendering and the polyfilled switch's active state.
+- Focusing the switch input via keyboard navigation (`:focus-visible`) displays a visible focus outline on the input itself.
