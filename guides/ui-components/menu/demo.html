@@ -506,6 +506,12 @@
           }
           previewMenu(submenu, item);
         });
+        item.addEventListener('blur', event => {
+          if (previewedMenus.has(submenu)) {
+            if (submenu.contains(event.relatedTarget)) previewedMenus.delete(submenu);
+            else closeMenu(submenu);
+          }
+        });
       });
 
       menu.addEventListener('keydown', event => {
