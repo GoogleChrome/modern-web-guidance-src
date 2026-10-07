@@ -4,6 +4,8 @@ description: Build a site navigation bar that adapts across screen sizes and ind
 web-feature-ids:
   - popover
   - anchor-positioning
+  - container-queries
+# - local-link
 guides:
   - responsive-disclosure
   - icons
@@ -13,7 +15,9 @@ guides:
 
 Build a site navigation bar that uses one semantic navigation tree at every size, presents a native popover on narrow containers, becomes an inline navigation on wide containers, and identifies the current page.
 
-This guide covers destination links in a `<nav>` landmark navigated with `Tab`. For application command menus with a single tab stop and arrow-key navigation, see {{ GUIDE_REF("menu") }}. For general responsive disclosure patterns beyond site navigation, see {{ GUIDE_REF("responsive-disclosure") }}.
+This guide describes site-navigation integration. It does not define application-menu behaviour. For reusable responsive disclosure behaviour, see {{ GUIDE_REF("responsive-disclosure") }}. For the decorative chevron, see {{ GUIDE_REF("icons") }}.
+
+For component-driven layouts, fluid sizing, and typographic line-wrapping, see {{ GUIDE_REF("size-aware-styling") }}, {{ GUIDE_REF("fluid-scaling") }}, and {{ GUIDE_REF("improve-text-layout-and-legibility") }}.
 
 ---
 
@@ -81,8 +85,7 @@ On narrow containers, keep `popover="auto"` on the navigation list. Anchor the f
     inset: auto;
     inset-block-start: 4.75rem; /* fallback */
     inset-block-start: anchor(--menu-button bottom);
-    inset-inline-end: 1rem; /* fallback */
-    inset-inline-end: anchor(--menu-button end);
+    inset-inline-end: 1rem;
     inline-size: 80dvw;
     max-inline-size: calc(100dvw - 2rem);
     block-size: fit-content;
@@ -130,15 +133,15 @@ On wide containers, hide the narrow-layout trigger and reset the popover present
 }
 ```
 
-CSS changes the presentation, but JavaScript must also synchronize the `popover` attribute with the header's container-query state. Keep the navigation as a popover only in the narrow layout; remove the attribute in the wide layout. Removing it closes an open popover, while restoring it leaves the menu closed until the trigger opens it. Use one shared layout-state function for the initial state and subsequent `ResizeObserver` updates; do not infer the layout from a hidden trigger or maintain a second breakpoint check.
+CSS changes the presentation, but JavaScript must also synchronise the `popover` attribute with the header's container-query state. Keep the navigation as a popover only in the narrow layout; remove the attribute in the wide layout. Removing it closes an open popover, while restoring it leaves the menu closed until the trigger opens it. Use one shared layout-state function for the initial state and subsequent `ResizeObserver` updates; do not infer the layout from a hidden trigger or maintain a second breakpoint check.
 
 ---
 
 ## Nested Site Navigation
 
-Use `<details>` and `<summary>` for nested site navigation, with the submenu represented by a nested list. Keep the submenu inline inside the narrow navigation popover. If the wide layout requires a floating submenu, promote that list to a native `popover="auto"` and synchronize it with the disclosure.
+Use `<details>` and `<summary>` for nested site navigation, with the submenu represented by a nested list. Keep the submenu inline inside the narrow navigation popover. If the wide layout requires a floating submenu, promote that list to a native `popover="auto"` and synchronise it with the disclosure; keep the reusable disclosure behaviour in {{ GUIDE_REF("responsive-disclosure") }}.
 
-Synchronize the `popover` attributes across the container breakpoint and bind the submenu disclosure state:
+Synchronise the `popover` attributes across the container breakpoint and bind the submenu disclosure state:
 
 ```js
 const header = document.querySelector(".site-header");
@@ -180,7 +183,7 @@ const layoutObserver = new ResizeObserver(([entry]) => {
 layoutObserver.observe(header);
 ```
 
-Do not add document-level click-outside, Escape, focus-restoration, or expanded-state handlers. Native disclosure and popover behavior provide those interactions. Let `<details>` own the summary click: intercepting it can reopen a submenu that light dismiss is trying to close. The `source: summary` option supplies the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
+Do not add document-level click-outside, Escape, focus-restoration, or expanded-state handlers. Native disclosure and popover behaviour provide those interactions. Let `<details>` own the summary click: intercepting it can reopen a submenu that light dismiss is trying to close. The `source: summary` option supplies the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
 
 For collision-aware submenu positioning, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }}. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 
@@ -222,8 +225,6 @@ Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh`
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-### Fallbacks & browser support for Anchor positioning
+{{ FEATURE_FALLBACKS("anchor-positioning") }}
 
-{{ BASELINE_STATUS("anchor-positioning") }}
-
-For the narrow menu, put the fixed fallback declarations (`inset-block-start: 4.75rem; inset-inline-end: 1rem;`) before the `anchor()` declarations. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid. For the wide submenu, keeping `position: absolute; inset: auto` without self-alignment overrides (`place-self: start`) allows browsers without `position-area` support to fall back to the static position below `<summary>`, or you can position the submenu from `summary.getBoundingClientRect()`.
+For the mobile menu, put the absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid.
