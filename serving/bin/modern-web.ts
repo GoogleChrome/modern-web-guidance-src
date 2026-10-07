@@ -9,6 +9,7 @@ import { ClearcutLogger } from "../skills-cli/telemetry/ClearcutLogger.ts";
 import { CommandType } from "../skills-cli/telemetry/types.ts";
 import { getVersion } from "../lib/version.ts";
 import { getSkillUpdateLevel } from "../lib/skill-version.ts";
+import { buildSkillsInstallNpxArgs } from "../lib/skills-install-args.ts";
 import { USE_CASES } from "../lib/use-cases.gen.ts";
 
 const { values, positionals } = parseArgs({
@@ -139,9 +140,7 @@ async function main() {
     }
   } else if (command === "install") {
     const startTime = Date.now();
-    const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
-      .split(" ")
-      .filter(Boolean);
+    const installArgs = buildSkillsInstallNpxArgs({ choose: Boolean(values.choose) });
 
     const result = spawnSync("npx", installArgs, { stdio: "inherit", shell: process.platform === "win32" });
 
