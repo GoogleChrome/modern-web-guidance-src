@@ -18,7 +18,7 @@ guides:
 
 ## Use the native range input
 
-Use a labelled `<input type="range">` rather than recreating a slider with `<div>` elements or custom pointer handlers. The native control preserves keyboard and pointer interaction, touch behaviour, and accessibility support. Configure `min`, `max`, `step`, and `value` for the use case.
+Use a labeled `<input type="range">` rather than recreating a slider with `<div>` elements or custom pointer handlers. The native control preserves keyboard and pointer interaction, touch behavior, and accessibility support. Configure `min`, `max`, `step`, and `value` for the use case.
 
 ```html
 <label for="range-slider">Volume</label>
