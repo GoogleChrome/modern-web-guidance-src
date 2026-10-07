@@ -133,7 +133,7 @@ importers:
         version: 7.19.0(encoding@0.1.13)
       '@google/gemini-cli':
         specifier: latest
-        version: 0.61.0
+        version: 0.63.0
       '@openai/codex':
         specifier: 0.160.0
         version: 0.160.0
@@ -155,7 +155,7 @@ importers:
         version: 2.1.289
       '@google/gemini-cli-core':
         specifier: latest
-        version: 0.61.0(encoding@0.1.13)(express@5.2.1)
+        version: 0.63.0(encoding@0.1.13)(express@5.2.1)
       serving:
         specifier: workspace:*
         version: link:../serving
@@ -523,12 +523,12 @@ packages:
     resolution: {integrity: sha512-n2FjE7NAOYyshogdc7KQOl/VZb4sneqPjWouSyia9CMDdMhRX5+RIbqalNmC7LOLzuLAN89VlF2HvG8na9G+zQ==}
     engines: {node: '>=14'}
 
-  '@google/gemini-cli-core@0.61.0':
-    resolution: {integrity: sha512-3H09+26TzD+HIuUV0KHeAp4Ag0iK3SiRB8H+NehOpsupbfZcEeprSN/85uzjTMQxcWJkzrNe/AY/y0ovFkSZ0A==}
+  '@google/gemini-cli-core@0.63.0':
+    resolution: {integrity: sha512-++GvYfkFP5bYttOqLkjoE4kX/WULB8THMVjYJ46MlGDFjkZTGpMeXuBDdZvK7bYBR/r4DVx+rBKGd5L+e4zfpQ==}
     engines: {node: '>=20'}
 
-  '@google/gemini-cli@0.61.0':
-    resolution: {integrity: sha512-dbQ9A0qBtFJNi6XBkHvfZ6Azpn6PNgH/P8h2MZ67RLlX8hSAVjup39CRWqdRxZv7YXIuhrFaytr8y0jKnkoxnQ==}
+  '@google/gemini-cli@0.63.0':
+    resolution: {integrity: sha512-mmhqMmAdsoplCzrLQQC4yJBqr4uSKXghnrLspgUU6N9drmsaq7pi7oF09skRYzEq2dYK6eMT4UpFQP6rG2o/ew==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -2959,8 +2959,8 @@ packages:
     resolution: {integrity: sha512-e0VyvkVTwVYViNovRkZ9aodhxVlyoMn7eJhVUPxZ+eK9P/7CBkxvvsBOHqFPEH416726W8tLXXXjKwqgTErrCQ==}
     engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
 
-  source-map-js@1.2.1:
-    resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
+  source-map-js@1.2.2:
+    resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
 
   source-map@0.6.1:
@@ -3563,7 +3563,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@google/gemini-cli-core@0.61.0(encoding@0.1.13)(express@5.2.1)':
+  '@google/gemini-cli-core@0.63.0(encoding@0.1.13)(express@5.2.1)':
     dependencies:
       '@a2a-js/sdk': 0.3.11(@bufbuild/protobuf@2.11.0)(@grpc/grpc-js@1.14.3)(express@5.2.1)
       '@bufbuild/protobuf': 2.11.0
@@ -3656,7 +3656,7 @@ snapshots:
       - tree-sitter
       - utf-8-validate
 
-  '@google/gemini-cli@0.61.0':
+  '@google/gemini-cli@0.63.0':
     dependencies:
       semver: 7.7.4
     optionalDependencies:
@@ -4706,7 +4706,7 @@ snapshots:
   css-tree@3.2.1:
     dependencies:
       mdn-data: 2.27.1
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   css-what@6.2.2: {}
 
@@ -6212,7 +6212,7 @@ snapshots:
       ip-address: 10.7.2
       smart-buffer: 4.2.0
 
-  source-map-js@1.2.1: {}
+  source-map-js@1.2.2: {}
 
   source-map@0.6.1:
     optional: true
