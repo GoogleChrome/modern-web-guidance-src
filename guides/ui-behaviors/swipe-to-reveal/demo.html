@@ -16,6 +16,8 @@
         --text: light-dark(#0f172a, #f8fafc);
         --text-muted: light-dark(#475569, #94a3b8);
         --pin-bg: hsl(215 75% 48%);
+        --read-bg: hsl(199 84% 38%);
+        --star-bg: hsl(38 88% 44%);
         --archive-bg: hsl(150 55% 36%);
         --delete-bg: hsl(0 68% 50%);
         --menu-bg: light-dark(#1e293b, #020617);
@@ -77,6 +79,14 @@
         overscroll-behavior: chain;
       }
 
+      .SwipeReveal:has(> .SwipeReveal-panel:first-child) {
+        grid-template-columns: max-content 100%;
+      }
+
+      .SwipeReveal:has(> .SwipeReveal-panel:first-child):has(> .SwipeReveal-panel:last-child) {
+        grid-template-columns: max-content 100% max-content;
+      }
+
       @media (prefers-reduced-motion: no-preference) {
         .SwipeReveal {
           scroll-behavior: smooth;
@@ -88,6 +98,7 @@
 
       .SwipeReveal-content {
         scroll-snap-align: start;
+        scroll-initial-target: nearest;
         background: var(--surface);
         padding: 1rem 1.25rem;
         display: grid;
@@ -109,9 +120,13 @@
       .SwipeReveal-panel {
         scroll-snap-align: end;
         display: flex;
+
+        &:first-child {
+          scroll-snap-align: start;
+        }
       }
 
-      /* Example 1 styling: List with revealable action buttons */
+      /* Example 1 & 2 styling: Lists with revealable action buttons */
       .SwipeRevealList {
         list-style: none;
         border: 1px solid var(--border);
@@ -153,6 +168,14 @@
         background: var(--pin-bg);
       }
 
+      .action-read {
+        background: var(--read-bg);
+      }
+
+      .action-star {
+        background: var(--star-bg);
+      }
+
       .action-archive {
         background: var(--archive-bg);
       }
@@ -161,7 +184,7 @@
         background: var(--delete-bg);
       }
 
-      /* Example 2 styling: Scrollable pane with revealable side menu */
+      /* Example 3 styling: Scrollable pane with revealable side menu */
       .SwipeReveal--menu {
         border: 1px solid var(--border);
         border-radius: 0.75rem;
@@ -199,13 +222,14 @@
   <main>
     <header>
       <h1>Swipe to reveal</h1>
-      <p>Swipe left (or scroll horizontally) on any item below to reveal contextual actions or a side menu without automatically triggering an action.</p>
+      <p>Swipe horizontally on any item below to reveal contextual actions or a side menu without automatically triggering an action.</p>
     </header>
 
+    <output class="status-log" id="statusLog" aria-live="polite">Last action: None (swipe a row to reveal buttons)</output>
+
     <section aria-labelledby="actions-heading">
-      <h2 id="actions-heading">1. Swipe-to-reveal row actions</h2>
-      <p>Swiping snaps the action buttons into view without committing them. Tap or click a revealed button to run its action, or swipe right to close.</p>
-      <output class="status-log" id="statusLog" aria-live="polite">Last action: None (swipe a row to reveal buttons)</output>
+      <h2 id="actions-heading">1. Swipe-to-reveal row actions (trailing side)</h2>
+      <p>Swiping left snaps the action buttons into view without committing them. Tap or click a revealed button to run its action, or swipe right to close.</p>
 
       <ul class="SwipeRevealList">
         <li class="SwipeRevealList-item" data-title="Q3 Architecture RFC">
@@ -252,8 +276,49 @@
       </ul>
     </section>
 
+    <section aria-labelledby="leading-actions-heading">
+      <h2 id="leading-actions-heading">2. Swipe-to-reveal with overflow actions on the left</h2>
+      <p>These rows place a <code>.SwipeReveal-panel</code> before <code>.SwipeReveal-content</code> (as well as after it). Applying <code>scroll-initial-target: nearest</code> to <code>.SwipeReveal-content</code> ensures the scroll container initially rests on the main content column with the left-side actions hidden off-screen.</p>
+
+      <ul class="SwipeRevealList">
+        <li class="SwipeRevealList-item" data-title="Weekly Sync Notes">
+          <div class="SwipeReveal">
+            <div class="SwipeReveal-panel" role="group" aria-label="Leading actions for Weekly Sync Notes">
+              <button type="button" class="action-read" data-action="Marked read">Mark read</button>
+              <button type="button" class="action-star" data-action="Starred">Star</button>
+            </div>
+            <div class="SwipeReveal-content">
+              <strong><a href="#">Weekly Sync Notes</a></strong>
+              <p>Swipe right to reveal leading actions on the left, or swipe left for trailing actions.</p>
+            </div>
+            <div class="SwipeReveal-panel" role="group" aria-label="Trailing actions for Weekly Sync Notes">
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
+            </div>
+          </div>
+        </li>
+
+        <li class="SwipeRevealList-item" data-title="Customer Feedback Digest">
+          <div class="SwipeReveal">
+            <div class="SwipeReveal-panel" role="group" aria-label="Leading actions for Customer Feedback Digest">
+              <button type="button" class="action-read" data-action="Marked read">Mark read</button>
+              <button type="button" class="action-star" data-action="Starred">Star</button>
+            </div>
+            <div class="SwipeReveal-content">
+              <strong><a href="#">Customer Feedback Digest</a></strong>
+              <p>Top feature requests and usability notes from the beta cohort.</p>
+            </div>
+            <div class="SwipeReveal-panel" role="group" aria-label="Trailing actions for Customer Feedback Digest">
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </section>
+
     <section aria-labelledby="menu-heading">
-      <h2 id="menu-heading">2. Swipe-to-reveal side menu on a scrollable pane</h2>
+      <h2 id="menu-heading">3. Swipe-to-reveal side menu on a scrollable pane</h2>
       <p>The outer horizontal wrapper (<code>.SwipeReveal</code>) uses <code>overscroll-behavior: chain</code> so scroll chains into the parent scroller (the document) without the menu bouncing, while the inner content pane keeps the default <code>auto</code> behavior so its own vertical bounce still happens.</p>
 
       <div class="SwipeReveal SwipeReveal--menu" role="region" aria-labelledby="menu-heading">
@@ -276,18 +341,23 @@
   <script type="module">
     const statusLog = document.getElementById('statusLog');
 
-    document.querySelector('.SwipeRevealList').addEventListener('click', (event) => {
-      const button = event.target.closest('button[data-action]');
-      if (!button) return;
+    for (const list of document.querySelectorAll('.SwipeRevealList')) {
+      list.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
 
-      const item = button.closest('.SwipeRevealList-item');
-      const track = item.querySelector('.SwipeReveal');
-      const title = item.dataset.title;
-      const action = button.dataset.action;
+        const item = button.closest('.SwipeRevealList-item');
+        const content = item.querySelector('.SwipeReveal-content');
+        const title = item.dataset.title;
+        const action = button.dataset.action;
 
-      statusLog.textContent = `Last action: ${action} "${title}"`;
-      track.scrollTo({ left: 0 });
-    });
+        statusLog.textContent = `Last action: ${action} "${title}"`;
+        content.scrollIntoView({
+          block: 'nearest',
+          inline: 'start',
+        });
+      });
+    }
 
     document.querySelector('.SwipeReveal--menu .SwipeReveal-panel').addEventListener('click', (event) => {
       const link = event.target.closest('a[data-menu-item]');
@@ -300,6 +370,18 @@
       content.addEventListener('focusin', (event) => {
         if (event.target.matches(':focus-visible')) {
           content.scrollIntoView({
+            block: 'nearest',
+            inline: 'start',
+          });
+        }
+      });
+    }
+
+    if (!CSS.supports('scroll-initial-target', 'nearest')) {
+      window.addEventListener('load', () => {
+        for (const content of document.querySelectorAll('.SwipeReveal-content')) {
+          content.scrollIntoView({
+            behavior: 'instant',
             block: 'nearest',
             inline: 'start',
           });

@@ -3,6 +3,7 @@ name: swipe-to-reveal
 description: Let users swipe horizontally on a list item or content pane to reveal contextual action buttons or a side menu without automatically triggering an action.
 web-feature-ids:
   - overscroll-behavior
+  - scroll-initial-target
   - scroll-snap
   - scrollbar-width
 ---
@@ -86,6 +87,7 @@ Make `.SwipeReveal` a two-column grid (`grid-template-columns: 100% max-content`
 
 .SwipeReveal-content {
   scroll-snap-align: start;
+  scroll-initial-target: nearest;
   background: Canvas;
 }
 
@@ -102,14 +104,18 @@ Make `.SwipeReveal` a two-column grid (`grid-template-columns: 100% max-content`
 }
 
 .SwipeReveal-panel {
-  /* Snapping the panel to `end` brings all controls fully into view while
-     keeping the trailing edge of the content visible on the left. */
+  /* Snapping a trailing panel to `end` (or a leading panel to `start`) brings
+     all controls fully into view while keeping the adjacent edge of the content visible. */
   scroll-snap-align: end;
   display: flex;
+
+  &:first-child {
+    scroll-snap-align: start;
+  }
 }
 ```
 
-> If you also want to reveal controls on the left (`inline-start`) side using three columns (`grid-template-columns: max-content 100% max-content`), apply `scroll-initial-target: nearest` to `.SwipeReveal-content` so the scroll container initially rests on the middle content column rather than the leading panel.
+> If you also want to reveal controls on the left (`inline-start`) side using three columns (`grid-template-columns: max-content 100% max-content`) or two columns (`max-content 100%`), place the leading `.SwipeReveal-panel` before `.SwipeReveal-content`. Because `.SwipeReveal-content` has `scroll-initial-target: nearest`, the scroll container initially rests on the content column rather than the leading panel.
 
 ### Step 3: Snap focusable content panes back into view on keyboard focus
 
@@ -137,6 +143,28 @@ for (const content of document.querySelectorAll('.SwipeReveal-content')) {
 - **DO** leave `overscroll-behavior: auto` (the default) on inner scrollable content panes (`.SwipeReveal-content.is-scrollable`) where you want normal bounce feedback to happen while still chaining horizontal swipes to the outer swipe scroller.
 - **DO** implement revealed actions and side-menu items as real focusable DOM controls (`<button>`, `<a>`). When `.SwipeReveal-content` is focusable or contains focusable controls, pair a `focusin` listener with `event.target.matches(':focus-visible')` to call `scrollIntoView({ block: 'nearest', inline: 'start' })` so tabbing back into the content pane closes the side panel without affecting pointer interactions.
 - **DO NOT** intercept `wheel`, `touchmove`, or `pointermove` events in JavaScript to manually translate the content or emulate scroll chaining. Main-thread gesture interception blocks compositor-driven scrolling, breaks native scroll momentum, and degrades responsiveness.
+
+## Fallback
+
+{{ BASELINE_STATUS("scroll-initial-target") }}
+
+When a `.SwipeReveal` container places a `.SwipeReveal-panel` on the left (`inline-start`) side before `.SwipeReveal-content`, browsers that do not support `scroll-initial-target: nearest` will initially render at scroll offset `0` with the leading panel exposed.
+
+If your Baseline target does not support `scroll-initial-target`, detect support with `CSS.supports('scroll-initial-target', 'nearest')` and call `scrollIntoView()` with `behavior: 'instant'` on `load` so the container jumps straight to `.SwipeReveal-content` without smooth scrolling:
+
+```js
+if (!CSS.supports('scroll-initial-target', 'nearest')) {
+  window.addEventListener('load', () => {
+    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
+      content.scrollIntoView({
+        behavior: 'instant',
+        block: 'nearest',
+        inline: 'start',
+      });
+    }
+  });
+}
+```
 
 ## Progressive enhancement
 
