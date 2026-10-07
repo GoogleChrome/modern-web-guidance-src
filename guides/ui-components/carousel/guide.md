@@ -47,6 +47,12 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
 ```html
 <!-- MANDATORY: Expose container as an accessible carousel region -->
 <section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
+  <!-- Keep fallback buttons before the track so they precede any native marker group in focus order. -->
+  <div class="fallback-controls" hidden>
+    <button type="button" data-direction="previous">Previous slide</button>
+    <button type="button" data-direction="next">Next slide</button>
+  </div>
+
   <!-- MANDATORY: Use an unordered list with tabindex=0 so keyboard users can focus the track -->
   <ul class="carousel-track" tabindex="0" aria-label="Slides">
     <li class="carousel-slide" role="group" aria-roledescription="slide" aria-label="1 of 3"
@@ -65,12 +71,6 @@ Use this as a starting point and adapt labels and content. Every marker needs a 
 
   <!-- MANDATORY: Polite live region announces settled slide position to screen readers -->
   <p class="visually-hidden" role="status" aria-live="polite"></p>
-
-  <!-- Fallback controls container: revealed only when native ::scroll-button() is unsupported -->
-  <div class="fallback-controls" hidden>
-    <button type="button" data-direction="previous">Previous slide</button>
-    <button type="button" data-direction="next">Next slide</button>
-  </div>
 
   <!-- Fallback markers container: revealed only when native ::scroll-marker is unsupported -->
   <nav class="fallback-markers" aria-label="Choose a slide" hidden></nav>

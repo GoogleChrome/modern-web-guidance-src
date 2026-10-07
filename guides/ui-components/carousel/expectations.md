@@ -16,7 +16,8 @@
 - Users can navigate between slides using keyboard arrow keys (Left/Right on horizontal, Up/Down on vertical).
 - Keyboard users can Tab sequentially through controls without encountering a keyboard trap.
 - Support for `::scroll-button()` and `::scroll-marker` is detected independently using `CSS.supports`.
-- Fallback HTML controls are revealed only when native support is absent, without rendering duplicate controls.
+- Fallback HTML controls are revealed only when their corresponding native feature is absent, without rendering duplicate controls when support is partial.
+- Fallback previous/next buttons precede the track in DOM order, so in mixed-support browsers they come before any native marker group in sequential focus order.
 - Activating fallback previous/next buttons moves the carousel to the adjacent slide.
 - Activating a fallback marker button navigates to its corresponding slide.
 - Every fallback marker button has an accessible name identifying its destination slide.
