@@ -113,16 +113,15 @@ Make `.SwipeReveal` a two-column grid (`grid-template-columns: 100% max-content`
 
 ### Step 3: Snap focusable content panes back into view on keyboard focus
 
-Because the buttons or links inside `.SwipeReveal-panel` are off-screen at rest, tabbing into them with a keyboard automatically scrolls `.SwipeReveal` to reveal the focused control. However, when `.SwipeReveal-content` is itself a focusable scroll container (`tabindex="0"`), it spans `100%` of the outer container's width and remains partially visible in the scrollport even while the side panel is open—so pressing `Shift+Tab` to move focus back onto `.SwipeReveal-content` will not automatically scroll the track back to `0`.
+Because the buttons or links inside `.SwipeReveal-panel` are off-screen at rest, tabbing into them with a keyboard automatically scrolls `.SwipeReveal` to reveal the focused control. However, because `.SwipeReveal-content` spans `100%` of the outer container's width, most of it remains inside the scrollport even while the side panel is open—so pressing `Shift+Tab` to move focus back onto `.SwipeReveal-content` (or onto a focusable element inside it) will not automatically scroll the track back to `0`.
 
-Listen for `focus` on focusable `.SwipeReveal-content` elements and gate `scrollIntoView()` with `.matches(':focus-visible')` so keyboard focus snaps the content pane fully back into view without interfering with pointer clicks or touch drags:
+Listen for `focusin` on `.SwipeReveal-content` and check `event.target.matches(':focus-visible')` so keyboard focus on the pane or any descendant snaps `.SwipeReveal-content` back to the start without interfering with pointer clicks or touch drags:
 
 ```js
-for (const content of document.querySelectorAll('.SwipeReveal-content[tabindex]')) {
-  content.addEventListener('focus', () => {
-    if (content.matches(':focus-visible')) {
+for (const content of document.querySelectorAll('.SwipeReveal-content')) {
+  content.addEventListener('focusin', (event) => {
+    if (event.target.matches(':focus-visible')) {
       content.scrollIntoView({
-        behavior: 'smooth',
         block: 'nearest',
         inline: 'start',
       });
