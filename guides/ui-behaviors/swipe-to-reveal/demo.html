@@ -281,7 +281,7 @@
       const action = button.dataset.action;
 
       statusLog.textContent = `Last action: ${action} "${title}"`;
-      track.scrollTo({ left: 0, behavior: 'smooth' });
+      track.scrollTo({ left: 0 });
     });
 
     document.querySelector('.SwipeReveal--menu .SwipeReveal-panel').addEventListener('click', (event) => {
@@ -291,11 +291,10 @@
       statusLog.textContent = `Last action: Selected "${link.dataset.menuItem}" from side menu`;
     });
 
-    for (const content of document.querySelectorAll('.SwipeReveal-content[tabindex]')) {
-      content.addEventListener('focus', () => {
-        if (content.matches(':focus-visible')) {
+    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
+      content.addEventListener('focusin', (event) => {
+        if (event.target.matches(':focus-visible')) {
           content.scrollIntoView({
-            behavior: 'smooth',
             block: 'nearest',
             inline: 'start',
           });
