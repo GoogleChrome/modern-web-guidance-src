@@ -168,9 +168,9 @@ Permissions-Policy: local-network=(self "https://setup.partner.example.com"), lo
 
 ## Fallback Strategies
 
-{{ FEATURE_FALLBACKS("local-network-access") }}
+{{ BASELINE_STATUS("local-network-access") }}
 
-Because Local Network Access permissions and `targetAddressSpace` options are not yet supported across all browsers, implement **feature detection with progressive fallback**:
+If your Baseline target does not support Local Network Access permissions and `targetAddressSpace` options, implement **feature detection with progressive fallback**:
 
 1. **Permission Query Fallback**: Wrap `navigator.permissions.query({ name: permissionName })` in a `try / catch`. If the browser throws a `TypeError` because `'local-network'` or `'loopback-network'` is an unrecognized `PermissionName`, treat the state as `'prompt'` so the request still runs on an explicit user click (the connection attempt itself triggers the browser prompt where LNA is supported).
 2. **DO NOT** query the legacy combined permission name `{ name: 'local-network-access' }`. In older Chrome versions this query crashes the renderer process, and `try / catch` cannot prevent it. Newer Chrome versions treat `'local-network-access'` only as a legacy alias for the granular permissions.
