@@ -8,17 +8,11 @@ web-feature-ids:
 
 # Build Accessible Switch Controls
 
-Use the native HTML `switch` attribute when supported, with a polyfill fallback for browsers that don't render it natively.
-
-An accessible switch implementation requires:
-
-1. **Semantic Foundation:** A standard `<input type="checkbox" role="switch" switch>` with an associated `<label>`, preserving form submission, keyboard navigation, and screen reader semantics (see {{ GUIDE_REF("checkbox") }} and {{ GUIDE_REF("forms") }}).
-2. **Early Feature Detection:** A lightweight JavaScript check in `<head>` that detects native switch support before first paint.
-3. **Polyfill Fallback:** The `input-switch-polyfill` package dynamically imported only when native support is missing.
+Use the HTML `switch` attribute on `<input type="checkbox" role="switch" switch>` with an associated `<label>` to build a binary on/off toggle that preserves native form submission, keyboard navigation, and screen reader semantics (see {{ GUIDE_REF("checkbox") }} and {{ GUIDE_REF("forms") }}).
 
 ## Markup
 
-Add the boolean `switch` attribute and `role="switch"` to a standard checkbox input. The role exposes switch semantics in browsers that don't implement `switch` yet.
+Add the boolean `switch` attribute and `role="switch"` to a standard checkbox input:
 
 ```html
 <label>
