@@ -37,7 +37,7 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
         console.log(`\nRunning skills add...`);
         execSync(cmd, { 
             stdio: 'inherit', 
-            env: { ...process.env, HOME: homeDir, DISABLE_TELEMETRY: '1' }
+            env: { ...process.env, HOME: homeDir }
         });
 
         if (!fs.existsSync(geminiBin)) {

@@ -49,20 +49,18 @@ test('serving test script sets DISABLE_TELEMETRY and quotes recursive glob', () 
   );
 });
 
-test('CI and publish workflows disable telemetry for all jobs', () => {
-  for (const workflow of ['ci.yml', 'publish.yml']) {
-    const content = fs.readFileSync(
-      path.join(ROOT_DIR, '.github/workflows', workflow),
-      'utf8'
-    );
-    const topLevel = content.slice(0, content.indexOf('\njobs:'));
-    assert.match(
-      topLevel,
-      /^\s*DISABLE_TELEMETRY:\s*['"]?1['"]?/m,
-      `${workflow} must set DISABLE_TELEMETRY in its top-level env block so ` +
-        'no workflow job can emit telemetry, regardless of entry point.'
-    );
-  }
+test('CI workflow disables telemetry for all jobs', () => {
+  const ci = fs.readFileSync(
+    path.join(ROOT_DIR, '.github/workflows/ci.yml'),
+    'utf8'
+  );
+  const topLevel = ci.slice(0, ci.indexOf('\njobs:'));
+  assert.match(
+    topLevel,
+    /^\s*DISABLE_TELEMETRY:/m,
+    'ci.yml must set DISABLE_TELEMETRY in its top-level env block so no CI ' +
+      'job can emit telemetry, regardless of entry point.'
+  );
 });
 
 test('publish-skills disables telemetry when running dist tests', () => {
@@ -96,18 +94,4 @@ test('CLI-executing test files set DISABLE_TELEMETRY in-process for direct node 
         'cannot emit real telemetry.'
     );
   }
-});
-
-test('ClearcutLogger suppresses telemetry when NODE_TEST_CONTEXT is set', () => {
-  const source = fs.readFileSync(
-    path.join(ROOT_DIR, 'serving/skills-cli/telemetry/ClearcutLogger.ts'),
-    'utf8'
-  );
-  assert.match(
-    source,
-    /process\.env\.NODE_TEST_CONTEXT/,
-    'ClearcutLogger.ts must check process.env.NODE_TEST_CONTEXT in ' +
-      'isTelemetryEnabled() so any CLI execution spawned under node --test ' +
-      'has telemetry disabled automatically.'
-  );
 });

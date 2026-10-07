@@ -21,9 +21,6 @@ function isTelemetryEnabled(): boolean {
   if (optOutSetting === '1' || optOutSetting === 'true') {
     return false;
   }
-  if (process.env.NODE_TEST_CONTEXT) {
-    return false;
-  }
   return true; // Enabled by default!
 }
 

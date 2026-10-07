@@ -38,13 +38,10 @@ describe('bucketizeLatency', () => {
 
 describe('ClearcutLogger', () => {
   let savedDisableTelemetry: string | undefined;
-  let savedNodeTestContext: string | undefined;
 
   beforeEach(() => {
     savedDisableTelemetry = process.env.DISABLE_TELEMETRY;
-    savedNodeTestContext = process.env.NODE_TEST_CONTEXT;
     delete process.env.DISABLE_TELEMETRY;
-    delete process.env.NODE_TEST_CONTEXT;
   });
 
   afterEach(() => {
@@ -52,11 +49,6 @@ describe('ClearcutLogger', () => {
       process.env.DISABLE_TELEMETRY = savedDisableTelemetry;
     } else {
       delete process.env.DISABLE_TELEMETRY;
-    }
-    if (savedNodeTestContext !== undefined) {
-      process.env.NODE_TEST_CONTEXT = savedNodeTestContext;
-    } else {
-      delete process.env.NODE_TEST_CONTEXT;
     }
   });
 
@@ -68,19 +60,6 @@ describe('ClearcutLogger', () => {
       const logger = new ClearcutLogger();
       await logger.logToolCommand(120, true, CommandType.INSTALL);
       assert.strictEqual(sendMock.mock.calls.length, 0, 'WatchdogClient.send should not be called when telemetry is disabled');
-    } finally {
-      sendMock.mock.restore();
-    }
-  });
-
-  it('disables telemetry automatically when NODE_TEST_CONTEXT is set', async () => {
-    const sendMock = mock.method(WatchdogClient.prototype, 'send', () => {});
-
-    try {
-      process.env.NODE_TEST_CONTEXT = 'child-v8';
-      const logger = new ClearcutLogger();
-      await logger.logToolCommand(120, true, CommandType.INSTALL);
-      assert.strictEqual(sendMock.mock.calls.length, 0, 'WatchdogClient.send should not be called inside node --test context');
     } finally {
       sendMock.mock.restore();
     }
