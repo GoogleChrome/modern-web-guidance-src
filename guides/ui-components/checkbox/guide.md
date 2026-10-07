@@ -133,5 +133,6 @@ selectAll.indeterminate = true;
 ## Fallback strategies
 
 {{ FEATURE_FALLBACKS("accent-color") }}
-{{ FEATURE_FALLBACKS("indeterminate") }}
-{{ FEATURE_FALLBACKS("masks") }}
+### CSS Masks
+
+{{ BASELINE_STATUS("masks") }}
