@@ -189,33 +189,6 @@ function syncSliderValue() {
 }
 ```
 
-### Fallbacks & browser support for `progress()` and `attr()`
-
-{{ BASELINE_STATUS("progress-function") }}
-
-{{ BASELINE_STATUS("attr") }}
-
-For browsers that do not support `progress()` or `attr()`, compute `--slider-progress` with `calc()` inside `@supports not` and sync `--attr-min` and `--attr-max` in JavaScript:
-
-```css
-@supports not (opacity: progress(1, 0, 100)) {
-  input[type="range"] {
-    --slider-progress: calc(
-      (var(--control-value) - var(--attr-min)) /
-      (var(--attr-max) - var(--attr-min)) * 100%
-    );
-  }
-}
-```
-
-```js
-function syncSliderValue() {
-  slider.style.setProperty('--attr-min', slider.min || 0);
-  slider.style.setProperty('--attr-max', slider.max || 100);
-  slider.style.setProperty('--control-value', slider.value);
-}
-```
-
 ## Future standard pseudo-elements
 
 CSS Forms Level 1 specifies standard `::slider-track`, `::slider-thumb`, and
