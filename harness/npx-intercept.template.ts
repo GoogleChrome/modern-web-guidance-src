@@ -9,7 +9,7 @@
  * All other `npx` calls fall back to the real system `npx`.
  */
 
-import { spawnSync } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -53,6 +53,33 @@ if (env.PATH) {
   env.PATH = pathDirs.filter(d => d !== currentDir).join(path.delimiter);
 }
 
-const result = spawnSync(realBin, args, { stdio: 'inherit', env });
-process.exit(result.status ?? 0);
+const child = spawn(realBin, args, {
+  stdio: [process.stdin.isTTY ? 'ignore' : 'inherit', 'inherit', 'inherit'],
+  env,
+  detached: true
+});
 
+const killGroup = () => {
+  try {
+    if (child.pid) process.kill(-child.pid, 'SIGKILL');
+  } catch {
+    // Process group already exited
+  }
+};
+
+for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+  process.on(sig, () => {
+    killGroup();
+    process.exit(1);
+  });
+}
+
+child.on('error', (err) => {
+  console.error(err);
+  process.exit(1);
+});
+
+child.on('exit', (code, signal) => {
+  killGroup();
+  process.exit(code ?? (signal ? 1 : 0));
+});

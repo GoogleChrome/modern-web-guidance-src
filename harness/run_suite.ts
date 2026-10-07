@@ -454,11 +454,15 @@ while (attempts < maxAttempts) {
   // wrapper before its own cleanup runs.
   const isolatedHome = '/tmp/ghh-' + ${JSON.stringify(path.basename(agentScript).replace(/-agent\.ts$/, ''))} + '-' + randomUUID().slice(0, 8);
   result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env: { ...env, ${ISOLATED_HOME_ENV}: isolatedHome } });
-  fs.rmSync(isolatedHome, { recursive: true, force: true });
+  try {
+    fs.rmSync(isolatedHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  } catch (cleanupErr) {
+    console.warn('Failed to cleanup isolated HOME ' + isolatedHome + ':', cleanupErr);
+  }
   if (result.status === 0) break;
 
   // Check if this is a rate limit error (429)
-  const isRateLimit = result.status === 1 || (result.stderr && result.stderr.toString().includes('429'));
+  const isRateLimit = result.error?.code !== 'ETIMEDOUT' && (result.status === 1 || (result.stderr && result.stderr.toString().includes('429')));
 
   if (attempts < maxAttempts) {
     // Exponential backoff: 15s, 30s (with some jitter)

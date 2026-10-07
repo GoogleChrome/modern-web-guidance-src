@@ -67,6 +67,32 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
     assert.strictEqual(resultFallback.status, 0, 'Fallback command should succeed');
     assert.ok(!fs.existsSync(calledFile), 'Dummy CLI should NOT have been called for fallback');
 
+    // Verify killing a backgrounded shim (`pnpm ... & PID=$!; kill $PID`) kills grandchild processes
+    const pidFile = path.join(tempDir, 'grandchild.pid');
+    const fakeRealBinDir = path.join(tempDir, 'real-bin');
+    fs.mkdirSync(fakeRealBinDir, { recursive: true });
+    const fakeRealPnpm = path.join(fakeRealBinDir, 'pnpm');
+    fs.writeFileSync(fakeRealPnpm, `#!/usr/bin/env node
+const { spawn } = require('child_process');
+const fs = require('fs');
+const srv = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'inherit' });
+fs.writeFileSync(${JSON.stringify(pidFile)}, String(srv.pid));
+srv.on('exit', (c) => process.exit(c ?? 0));
+`, { mode: 0o755 });
+
+    const bgResult = spawnSync('/bin/sh', [
+      '-c',
+      `"${path.join(tempDir, 'pnpm')}" start & PID=$!; for i in $(seq 1 30); do [ -s "${pidFile}" ] && break; sleep 0.1; done; kill $PID; wait $PID 2>/dev/null || true`
+    ], {
+      cwd: tempDir,
+      env: { ...process.env, PATH: `${tempDir}:${fakeRealBinDir}:${process.env.PATH}` },
+      timeout: 5000,
+    });
+    assert.strictEqual(bgResult.status, 0, 'Backgrounded shim command should exit cleanly after kill');
+    const grandchildPid = Number(fs.readFileSync(pidFile, 'utf8'));
+    assert.ok(grandchildPid > 0, 'Grandchild PID should have been recorded');
+    assert.throws(() => process.kill(grandchildPid, 0), /ESRCH/, 'Grandchild server process must not remain alive after killing shim');
+
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }

@@ -198,7 +198,7 @@ export function cleanupIsolatedHome(homeDir: string): void {
   if (homeDir && fs.existsSync(homeDir)) {
     console.log(`\nCleaning up isolated HOME.`);
     try {
-      fs.rmSync(homeDir, { recursive: true, force: true });
+      fs.rmSync(homeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     } catch (cleanupErr) {
       console.error('Failed to cleanup isolated HOME:', cleanupErr);
     }
@@ -588,11 +588,43 @@ export async function runCliAgentCommand(
   const child = spawn(sandboxed.command, sandboxed.commandArgs, {
     cwd: workDir,
     env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
-    stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively
+    stdio: ['ignore', 'pipe', 'pipe'], // 'pipe' captures output for log files but does NOT print to terminal natively
+    detached: true
   });
 
   let stdoutData = '';
   let stderrData = '';
+  let timedOut = false;
+  let recordedExit = -1;
+
+  const killChildGroup = (sig: NodeJS.Signals = 'SIGKILL') => {
+    try {
+      if (child.pid) process.kill(-child.pid, sig);
+    } catch {
+      // Process group already exited
+    }
+  };
+
+  let killEscalationTimer: ReturnType<typeof setTimeout> | null = null;
+  const terminateChildGroup = () => {
+    killChildGroup('SIGTERM');
+    if (!killEscalationTimer) {
+      killEscalationTimer = setTimeout(() => {
+        killChildGroup('SIGKILL');
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+      }, 150);
+      killEscalationTimer.unref();
+    }
+  };
+
+  // Catch SIGTERM from run.mjs's spawnSync timeout so the caller's finally block
+  // (trajectory export + isolatedHome cleanup) runs instead of dying immediately.
+  const onSigTerm = () => {
+    timedOut = true;
+    terminateChildGroup();
+  };
+  process.on('SIGTERM', onSigTerm);
 
   child.stdout?.on('data', (data) => {
     const chunk = data.toString();
@@ -608,9 +640,16 @@ export async function runCliAgentCommand(
 
   try {
     const exitCode = await new Promise<number>((resolve, reject) => {
-      child.on('close', (code) => resolve(code ?? 1));
+      let exitedCode: number | null = null;
+      child.on('exit', (code) => {
+        exitedCode = code ?? 1;
+        terminateChildGroup();
+      });
+      child.on('close', (code) => resolve(code ?? exitedCode ?? 1));
       child.on('error', (err) => reject(err));
     });
+
+    recordedExit = exitCode;
 
     // Save output to chat_log.txt
     const chatLogPath = path.join(targetDir, 'chat_log.txt');
@@ -630,27 +669,22 @@ export async function runCliAgentCommand(
       console.error(`Failed to copy results from ${workDir} to ${targetDir}:`, e);
     }
 
-    if (exitCode !== 0) {
-      const failureFile = path.join(targetDir, 'generation_failed.json');
-      fs.writeFileSync(failureFile, JSON.stringify({
-        agentName,
-        exitCode,
-        stderr: stderrData,
-        stdout: stdoutData
-      }, null, 2));
-      console.log(`Saved generation failure info to: ${failureFile}`);
-      throw new Error(`${agentName} exited with code ${exitCode}`);
+    if (timedOut || exitCode !== 0) {
+      throw new Error(`${agentName} exited with code ${timedOut ? 'TIMEOUT (10m)' : exitCode}`);
     }
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
+    const finalExitCode = timedOut ? 'TIMEOUT (10m)' : recordedExit;
     
     // Save generation failure info so results collector registers early failure
     try {
       const failureFile = path.join(targetDir, 'generation_failed.json');
       fs.writeFileSync(failureFile, JSON.stringify({
         agentName,
-        exitCode: -1,
-        stderr: stderrData || err.message || String(err),
+        exitCode: finalExitCode,
+        stderr: (timedOut && !stderrData)
+          ? 'Agent timed out after 10 minutes'
+          : (stderrData || err.message || String(err)),
         stdout: stdoutData
       }, null, 2));
       console.log(`Saved generation failure info to: ${failureFile}`);
@@ -668,6 +702,8 @@ export async function runCliAgentCommand(
     console.log(`Saved fallback error log to: ${stderrLogPath}`);
     
     throw err; // Re-throw to propagate failure
+  } finally {
+    process.off('SIGTERM', onSigTerm);
   }
 }
 
