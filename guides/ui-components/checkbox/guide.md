@@ -66,23 +66,26 @@ Set explicit relative sizes for `--checkbox-size` and `--checkbox-icon-size` bec
     background-color: currentColor;
     mask: var(--checkbox-icon) no-repeat center / contain;
     scale: 0;
-    transition: scale 150ms ease;
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: scale 150ms ease;
+    }
+
+    @media (forced-colors: active) {
+      background-color: CanvasText;
+    }
   }
 
   &:checked {
     --checkbox-icon: var(--icon-check);
-
-    &::before {
-      scale: 1;
-    }
   }
 
   &:indeterminate {
     --checkbox-icon: var(--icon-dash);
+  }
 
-    &::before {
-      scale: 1;
-    }
+  &:is(:checked, :indeterminate)::before {
+    scale: 1;
   }
 
   &:focus-visible {
