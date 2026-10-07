@@ -439,6 +439,9 @@ window.__featuresMapping = {
   "validate-origins": [
     "origin"
   ],
+  "verify-email-ownership": [
+    "tmp-email-verification"
+  ],
   "carousel-slide-effects": [
     "scroll-driven-animations",
     "scroll-snap"
