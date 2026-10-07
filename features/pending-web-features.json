@@ -8,6 +8,11 @@
     "group": "scrolling",
     "compat_features": "css.properties.scroll-axis-lock"
   },
+  "tmp-email-verification": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4439",
+    "group": "security",
+    "compat_features": "html.elements.input.autocomplete.email-verification-token"
+  },
   "tmp-aria-actions": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4108",
     "compat_features": "api.Element.ariaActionsElements"
