@@ -78,9 +78,20 @@ Make `.SwipeReveal` a two-column grid (`grid-template-columns: 100% max-content`
   overscroll-behavior: chain;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .SwipeReveal {
+    scroll-behavior: smooth;
+  }
+}
+
 .SwipeReveal-content {
   scroll-snap-align: start;
   background: Canvas;
+}
+
+.SwipeReveal-content:focus-visible {
+  outline: auto;
+  outline-offset: -2px;
 }
 
 .SwipeReveal-content.is-scrollable {
