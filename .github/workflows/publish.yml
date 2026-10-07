@@ -39,6 +39,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check for changes since last release
+        id: check-changes
         run: |
           if git describe --exact-match --match "v*" HEAD >/dev/null 2>&1; then
             echo "Error: The latest commit already has a version tag. No new changes to publish."
@@ -109,7 +110,7 @@ jobs:
           npm publish --provenance --access public --registry https://registry.npmjs.org/
 
       - name: Notify on failure
-        if: failure()
+        if: failure() && steps.check-changes.outcome != 'failure'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
         run: |

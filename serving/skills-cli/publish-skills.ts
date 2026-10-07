@@ -207,6 +207,10 @@ async function main() {
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
 
+    const ref = process.env.GITHUB_REF || 'main';
+    const branch = ref.replace(/^refs\/heads\//, '');
+    execSync(`git pull --rebase --autostash origin "${branch}"`, { stdio: 'inherit', cwd: ROOT_DIR });
+
     // Update both the distribution bundle README and the source repo README
     const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases([ROOT_DIR, publishCliDir]);
 
@@ -220,8 +224,6 @@ async function main() {
       console.log("Changes found in README.md or eval-results-summary.json, committing...");
       execSync('git add README.md serving/skills-cli/eval-results-summary.json', { stdio: 'inherit', cwd: ROOT_DIR });
       execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
-      const ref = process.env.GITHUB_REF || 'main';
-      const branch = ref.replace(/^refs\/heads\//, '');
       execSync(`git pull --rebase origin "${branch}"`, { stdio: 'inherit', cwd: ROOT_DIR });
       execSync(`git push origin HEAD:"${ref}"`, { stdio: 'inherit', cwd: ROOT_DIR });
     }
