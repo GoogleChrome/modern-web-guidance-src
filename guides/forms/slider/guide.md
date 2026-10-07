@@ -5,7 +5,7 @@ web-feature-ids:
   - accent-color
   - input-range
   - appearance
-  - progress
+  - progress-function
   - attr
   - dir-pseudo
 # later: ::slider-thumb, ::slider-track, ::slider-fill
