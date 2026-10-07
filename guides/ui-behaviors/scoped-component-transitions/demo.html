@@ -204,7 +204,7 @@
       // A skipped transition rejects `ready`, and Chrome 151 leaves that
       // rejection unhandled for scoped transitions, so overlapping clicks
       // would log uncaught errors. The DOM update still applies.
-      transition.ready.catch(() => {});
+      transition.ready.catch(console.error);
       return next;
     }
 
