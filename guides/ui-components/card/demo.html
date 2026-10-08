@@ -130,7 +130,7 @@
     }
 
     /* Target direct visual media elements */
-    .card> :is(img, picture, svg) {
+    .card> :is(img, picture, video, svg) {
       width: 100%;
       height: 140px;
       object-fit: cover;
@@ -178,8 +178,8 @@
       inset: 0;
     }
 
-    /* Target description text paragraphs */
-    .card>p {
+    /* Target paragraphs within the body-content wrapper */
+    .card>.content p {
       margin: 0;
       font-size: 0.875rem;
       line-height: 1.55;
@@ -225,13 +225,13 @@
     @container (min-width: 32rem) {
 
       /* Automatically shift to sidebar grid ONLY if an image/media element is present */
-      .card:has(> :is(img, picture, svg)) {
+      .card:has(> :is(img, picture, video, svg)) {
         grid-template-columns: 140px 1fr;
         grid-template-rows: auto 1fr auto;
         gap: 0.5rem 1.25rem;
       }
 
-      .card:has(> :is(img, picture, svg))> :is(img, picture, svg) {
+      .card:has(> :is(img, picture, video, svg))> :is(img, picture, video, svg) {
         grid-column: 1;
         grid-row: 1 / -1;
         align-self: start;
@@ -239,7 +239,7 @@
         min-height: 140px;
       }
 
-      .card:has(> :is(img, picture, svg))> :not(:is(img, picture, svg)) {
+      .card:has(> :is(img, picture, video, svg))> :not(:is(img, picture, video, svg)) {
         grid-column: 2;
       }
     }
@@ -294,7 +294,9 @@
             <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
             <p>Breakfast Special</p>
           </hgroup>
-          <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
+          <div class="content">
+            <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
+          </div>
           <footer>
             <button type="button">Favorite</button>
             <a href="#cart">Add to Cart</a>
@@ -320,7 +322,9 @@
             <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
             <p>Breakfast Special</p>
           </hgroup>
-          <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
+          <div class="content">
+            <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
+          </div>
           <footer>
             <button type="button">Favorite</button>
             <a href="#cart">Add to Cart</a>
@@ -346,7 +350,9 @@
             <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
             <p>Breakfast Special</p>
           </hgroup>
-          <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
+          <div class="content">
+            <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
+          </div>
           <footer>
             <button type="button">Favorite</button>
             <a href="#cart">Add to Cart</a>
@@ -370,8 +376,10 @@
             <h3><a href="#philosophy">Culinary Philosophy</a></h3>
             <p>Crafted with Passion</p>
           </hgroup>
-          <p>Sourcing exclusively local, organic ingredients supports sustainable agriculture, and serving handcrafted
-            meals cooked from scratch every single day.</p>
+          <div class="content">
+            <p>Sourcing exclusively local, organic ingredients supports sustainable agriculture, and serving handcrafted
+              meals cooked from scratch every single day.</p>
+          </div>
           <footer>
             <button type="button">Learn More</button>
           </footer>
