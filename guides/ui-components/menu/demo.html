@@ -379,23 +379,24 @@
     function moveToRootTrigger(from, direction, enterAdjacentMenu = false) {
       const closingMenus = menus.filter(menu => menu.matches(':popover-open'));
       const closed = Promise.all(closingMenus.map(waitForPopoverToClose));
-      suppressMenuPreview = true;
-      closeAllMenus();
       const next = rootTriggers[(rootTriggers.indexOf(from) + direction + rootTriggers.length) % rootTriggers.length];
       rootTriggers.forEach(item => { item.tabIndex = item === next ? 0 : -1; });
+      suppressMenuPreview = true;
+      // Move focus out of the open popovers first, preventing hidePopover() from restoring
+      // focus through intermediate parent items as the menu hierarchy closes.
+      next.focus();
+      closeAllMenus();
       closed.then(() => {
-        requestAnimationFrame(() => requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
           if (enterAdjacentMenu) {
             suppressMenuPreview = false;
             // APG menubar navigation switches menus and places focus on the new menu's first item.
             openMenu(menuForTrigger(next), next);
           } else {
-            // Focus the next trigger without previewing until the old popovers have fully closed.
-            next.focus();
             suppressMenuPreview = false;
             previewMenu(menuForTrigger(next), next);
           }
-        }));
+        });
       });
     }
 
