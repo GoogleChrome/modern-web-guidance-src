@@ -60,13 +60,10 @@ export function determineAgent(
   if (env.AI_AGENT) {
     const name = env.AI_AGENT.trim();
     if (name) {
-      if (name === 'github-copilot-cli') {
-        return {
-          isAgent: true,
-          agent: { name: KNOWN_AGENTS.GITHUB_COPILOT },
-        };
-      }
-      const known = Object.values(KNOWN_AGENTS).find((a) => a === name);
+      const normalized = name.toLowerCase().replaceAll('_', '-');
+      const known = Object.values(KNOWN_AGENTS)
+        .sort((a, b) => b.length - a.length)
+        .find((a) => normalized.startsWith(a));
       return {
         isAgent: true,
         agent: { name: known ?? name },
