@@ -223,6 +223,8 @@ The track remains natively scrollable with touch, pointer, and keyboard input. J
 
 Treat slide effects as optional enhancements and keep them inside `@media (prefers-reduced-motion: no-preference)`. The carousel's navigation and current-slide feedback must not depend on them.
 
+### Status updates and fallback controls
+
 Update slide state after scrolling settles rather than on every animation frame, and measure only the carousel's scrolling axis.
 
 ```javascript
