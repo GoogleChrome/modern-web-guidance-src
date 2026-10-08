@@ -25,7 +25,8 @@
 - Clicking an open trigger closes it.
 - Clicking outside closes every open menu level.
 - Closing a menu does not leave focus inside hidden content.
-- An open top-level menu is positioned against its trigger.
+- Each menu is shown with its trigger passed as the `source` option to `showPopover()`, establishing an implicit anchor without per-menu anchor declarations.
+- An open top-level menu is positioned below its trigger.
 - An open submenu is positioned beside its trigger.
 - Activating a command closes the open menus.
 - A closed trigger has `aria-expanded="false"`.

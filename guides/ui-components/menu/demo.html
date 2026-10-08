@@ -69,6 +69,12 @@
       cursor: pointer;
     }
 
+    .trigger[aria-expanded="true"],
+    [focusgroup~="menu"]>button[aria-expanded="true"] {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+    }
+
     .trigger:hover,
     .trigger:focus-visible,
     [focusgroup~="menu"]>button:hover,
@@ -275,6 +281,7 @@
     const previewedMenus = new WeakSet();
     const skipPreviewFocus = new WeakSet();
     const returnFocusTo = new WeakMap();
+    let suppressMenuPreview = false;
     const menuItems = menu => [...menu.querySelector(':scope > [focusgroup~="menu"]')
       .querySelectorAll(':scope > button')]
       .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
@@ -360,16 +367,36 @@
       closeAllMenus(true);
     }
 
+    function waitForPopoverToClose(menu) {
+      if (!menu.matches(':popover-open')) return Promise.resolve();
+      return new Promise(resolve => {
+        menu.addEventListener('toggle', event => {
+          if (event.newState === 'closed') resolve();
+        }, { once: true });
+      });
+    }
+
     function moveToRootTrigger(from, direction, enterAdjacentMenu = false) {
+      const closingMenus = menus.filter(menu => menu.matches(':popover-open'));
+      const closed = Promise.all(closingMenus.map(waitForPopoverToClose));
+      suppressMenuPreview = true;
       closeAllMenus();
       const next = rootTriggers[(rootTriggers.indexOf(from) + direction + rootTriggers.length) % rootTriggers.length];
       rootTriggers.forEach(item => { item.tabIndex = item === next ? 0 : -1; });
-      if (enterAdjacentMenu) {
-        // APG menubar navigation switches menus and places focus on the new menu's first item.
-        openMenu(menuForTrigger(next), next);
-      } else {
-        next.focus();
-      }
+      closed.then(() => {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (enterAdjacentMenu) {
+            suppressMenuPreview = false;
+            // APG menubar navigation switches menus and places focus on the new menu's first item.
+            openMenu(menuForTrigger(next), next);
+          } else {
+            // Focus the next trigger without previewing until the old popovers have fully closed.
+            next.focus();
+            suppressMenuPreview = false;
+            previewMenu(menuForTrigger(next), next);
+          }
+        }));
+      });
     }
 
     rootTriggers.forEach((trigger, index) => {
@@ -378,6 +405,7 @@
       let suppressNextClick = false;
 
       trigger.addEventListener('focus', () => {
+        if (suppressMenuPreview) return;
         if (skipPreviewFocus.has(trigger)) {
           skipPreviewFocus.delete(trigger);
           closeMenu(returnFocusTo.get(trigger));
@@ -440,6 +468,7 @@
         const submenu = submenuTrigger(item) && menuForTrigger(item);
         if (!submenu) return;
         item.addEventListener('focus', () => {
+          if (suppressMenuPreview) return;
           if (skipPreviewFocus.has(item)) {
             skipPreviewFocus.delete(item);
             closeMenu(returnFocusTo.get(item));

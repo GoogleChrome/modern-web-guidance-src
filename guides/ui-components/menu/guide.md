@@ -6,6 +6,7 @@ web-feature-ids:
   - subgrid
   - anchor-positioning
   - focusgroup
+  - color-mix
 guides:
   - resilient-context-menus-and-nested-dropdowns
 ---
@@ -38,7 +39,7 @@ Nest the focusgroup inside the popover. Putting `focusgroup` on the `[popover]` 
 </div>
 ```
 
-Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative submenu indicators in CSS, or add `aria-hidden="true"`. Put `role="menubar"` on the element that contains the top-level triggers, not on a menu popover.
+Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative submenu indicators in CSS, or add `aria-hidden="true"`. Put `role="menubar"` on the element that contains the top-level triggers, not on a menu popover. Give triggers with `aria-expanded="true"` a visible active style so users can tell which menu is open or previewed.
 
 ### Position the menu with CSS Anchor Positioning
 
