@@ -626,6 +626,10 @@ window.__featuresMapping = {
     "view-transitions-element-scoped",
     "view-transitions"
   ],
+  "scroll-completion-effects": [
+    "scroll-promises",
+    "scroll-into-view"
+  ],
   "scroll-entry-exit-effects": [
     "scroll-driven-animations"
   ],
