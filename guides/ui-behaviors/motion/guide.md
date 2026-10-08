@@ -1,12 +1,13 @@
 ---
 name: motion
-description: Animate UI with CSS transitions, animations, scroll-driven animations, and view transitions while keeping motion on the compositor and respecting reduced-motion preferences.
+description: Animate UI with CSS transitions, animations, scroll-driven animations, scroll-triggered animations, and view transitions while keeping motion on the compositor and respecting reduced-motion preferences.
 web-feature-ids:
   - transitions
   - animations-css
   - clip-path
   - masks
   - scroll-driven-animations
+  - tmp-scroll-triggered-animations
   - view-transitions
   - individual-transforms
   - transition-behavior

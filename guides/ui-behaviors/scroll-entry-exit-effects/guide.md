@@ -1,6 +1,6 @@
 ---
 name: scroll-entry-exit-effects
-description: Create fade-in, scale-up, or other complex reveal-type effects on elements as they enter and exit the scrollport (or viewport) while the user is scrolling.
+description: Continuously scrub fade-in, scale-up, or other entry and exit effects on elements in proportion to their scroll progress as they enter and exit the scrollport.
 web-feature-ids:
   - scroll-driven-animations
 ---
