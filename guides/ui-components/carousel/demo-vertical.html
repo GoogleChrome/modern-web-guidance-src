@@ -217,21 +217,21 @@
 
 <body>
   <section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
-    <ul class="carousel-track" tabindex="0" aria-label="Slides">
-      <li class="carousel-item" role="group" aria-roledescription="slide" aria-label="1 of 4" data-marker-name="Go to slide 1">Slide 1</li>
-      <li class="carousel-item" role="group" aria-roledescription="slide" aria-label="2 of 4" data-marker-name="Go to slide 2">Slide 2</li>
-      <li class="carousel-item" role="group" aria-roledescription="slide" aria-label="3 of 4" data-marker-name="Go to slide 3">Slide 3</li>
-      <li class="carousel-item" role="group" aria-roledescription="slide" aria-label="4 of 4" data-marker-name="Go to slide 4">Slide 4</li>
-    </ul>
-
-    <!-- MANDATORY: announces the current slide regardless of which control moved the carousel -->
-    <p class="visually-hidden" role="status" aria-live="polite"></p>
-
     <!-- Rendered only when the browser lacks native ::scroll-button() support -->
     <div class="fallback-controls" hidden>
       <button type="button" class="carousel-prev" data-direction="previous" aria-label="Previous slide">‹</button>
       <button type="button" class="carousel-next" data-direction="next" aria-label="Next slide">›</button>
     </div>
+
+    <div class="carousel-track" tabindex="0" role="group" aria-label="Slides">
+      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="1 of 4" data-marker-name="Go to slide 1">Slide 1</div>
+      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="2 of 4" data-marker-name="Go to slide 2">Slide 2</div>
+      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="3 of 4" data-marker-name="Go to slide 3">Slide 3</div>
+      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="4 of 4" data-marker-name="Go to slide 4">Slide 4</div>
+    </div>
+
+    <!-- MANDATORY: announces the current slide regardless of which control moved the carousel -->
+    <p class="visually-hidden" role="status" aria-live="polite"></p>
 
     <!-- Rendered only when the browser lacks native ::scroll-marker support -->
     <nav class="fallback-markers" aria-label="Slides" hidden></nav>
