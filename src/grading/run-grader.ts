@@ -9,7 +9,7 @@ import { rootDir, guidesDir, outDir } from '../core/paths.ts';
 import { cRed, cYellow, cCyan } from '../core/colors.ts';
 import { TARGETS_DIR, getActiveSolutionAgents, SOLUTION_PATCH_FILES, type SolutionAgent, ZERO_PASSRATE_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../core/guide-validation.ts';
 import { copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
-import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome } from '../harness/lib/agent-shared.ts';
 import { applyPatchSync } from '../core/patch-utils.ts';
 
 export interface PlaywrightOptions {

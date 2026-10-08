@@ -6,7 +6,7 @@ import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
-import { resolveSuiteConfig } from '../harness/config.ts';
+import { resolveSuiteConfig } from '../src/harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir } from '../src/core/paths.ts';
 import { getTaskMap } from '../src/core/guide-validation.ts';
 
@@ -296,13 +296,13 @@ async function main() {
 
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
-      const { runSingleTask } = await import('../harness/run_suite.ts');
+      const { runSingleTask } = await import('../src/harness/run-suite.ts');
       await runSingleTask(tmpl, prompt, mergedSuiteConfig);
       break;
     }
 
     case 'dashboard': {
-      await import('../eval-view/server.js');
+      await import('../src/dashboard/server.js');
       break;
     }
 
@@ -315,11 +315,11 @@ async function main() {
 
       if (values['ui']) {
         process.env.LAUNCH_UI = 'true';
-        await import('../eval-view/server.js');
+        await import('../src/dashboard/server.js');
         break;
       }
 
-      const { runSuite } = await import('../harness/run_suite.ts');
+      const { runSuite } = await import('../src/harness/run-suite.ts');
 
       const runOptions: any = { suiteConfig: mergedSuiteConfig }; // Pass the merged config
       if (tasks.length > 0) runOptions.tasks = tasks;
@@ -335,7 +335,7 @@ async function main() {
     }
 
     case 'backfill': {
-      const { runBackfill } = await import('../harness/backfill.ts');
+      const { runBackfill } = await import('../src/harness/backfill.ts');
       await runBackfill();
       break;
     }

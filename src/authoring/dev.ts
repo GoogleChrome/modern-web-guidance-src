@@ -3,9 +3,9 @@ import path from 'path';
 import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
-import { spawnAsync } from '../../harness/lib/agent-shared.ts';
-import { Agents, type SuiteConfig } from '../../harness/config.ts';
-import { collectGuidesUsed } from '../../harness/lib/guidance_validation.ts';
+import { spawnAsync } from '../harness/lib/agent-shared.ts';
+import { Agents, type SuiteConfig } from '../harness/config.ts';
+import { collectGuidesUsed } from '../harness/lib/guide-usage.ts';
 import { setupGuideDevWorkDir, runAgent, copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
 import {
   buildSolutionPrompt,
@@ -344,7 +344,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       if (preResults) results['pre'] = preResults;
 
       // 2. Run agent suite
-      const { runSuite } = await import('../../harness/run_suite.ts');
+      const { runSuite } = await import('../harness/run-suite.ts');
       const testOutputDir = path.join(guideResultsDir, baseApp);
       const agent = getDefaultSolutionAgent();
       await runSuite({

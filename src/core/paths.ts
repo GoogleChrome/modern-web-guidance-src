@@ -15,13 +15,11 @@ export const rootDir = path.resolve(import.meta.dirname, '../..');
 
 export const guidesDir = path.join(rootDir, 'guides');
 export const featuresDir = path.join(rootDir, 'features');
-export const harnessDir = path.join(rootDir, 'harness');
-export const baseAppsDir = path.join(rootDir, 'harness/base_apps');
+export const baseAppsDir = path.join(rootDir, 'src/harness/base-apps');
 export const outDir = path.join(rootDir, 'out');
 export const resultsDir = path.join(rootDir, 'results');
 export const suitesDir = path.join(resultsDir, 'suites');
-export const dashboardDir = path.join(rootDir, 'eval-view');
-export const evalViewDir = dashboardDir;
+export const dashboardDir = path.join(rootDir, 'src/dashboard');
 
 export interface GuideResultsInventory {
   category: string;

@@ -8,7 +8,7 @@ import { validateFeature, resolveFeatureId } from './baseline.ts';
 import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
-import { Agents } from '../../harness/config.ts';
+import { Agents } from '../harness/config.ts';
 
 const REPO_ROOT = rootDir;
 

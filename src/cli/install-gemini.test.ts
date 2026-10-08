@@ -3,8 +3,8 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
-import { parseGeminiStreamOutput } from '../../harness/agents/gemini-cli-agent.ts';
+import { createIsolatedHome, cleanupIsolatedHome } from '../harness/lib/agent-shared.ts';
+import { parseGeminiStreamOutput } from '../harness/agents/gemini-cli-agent.ts';
 import { rootDir } from '../core/paths.ts';
 
 test('Gemini CLI verifies extension install capability', { skip: !process.env.FULL }, async () => {

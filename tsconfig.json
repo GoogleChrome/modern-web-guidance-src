@@ -24,10 +24,9 @@
     "**/node_modules",
     "**/dist",
     "**/build",
-    "harness/results/",
-    "**/eval-view",
-    "**/eval-view/**/*",
-    "harness/base_apps/devtools-times/",
+    "src/dashboard",
+    "src/dashboard/**/*",
+    "src/harness/base-apps/devtools-times/",
     "src/grading/template.grader.ts",
     "out",
     "results"

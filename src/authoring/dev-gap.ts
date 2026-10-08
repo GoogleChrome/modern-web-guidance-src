@@ -22,7 +22,7 @@ import {
   type GuideInventory,
 } from '../core/guide-validation.ts';
 import { rootDir, getGuideResultsDir } from '../core/paths.ts';
-import type { SuiteConfig } from '../../harness/config.ts';
+import type { SuiteConfig } from '../harness/config.ts';
 import { devPrBranch, devPrTitle, runDevPr } from './pr.ts';
 
 export const EVAL_OWNERS = ['micahjo7', 'TravenReese'];
