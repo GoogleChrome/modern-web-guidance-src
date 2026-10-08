@@ -43,7 +43,17 @@ Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative s
 
 ### Position the menu with CSS Anchor Positioning
 
-Position with CSS anchor positioning, not JavaScript coordinates. When calling `showPopover()`, pass the menu's trigger as the `source` option to establish an implicit anchor. This avoids a separate anchor name and positioning rule for each menu. Opening, closing, and keyboard behavior must not depend on anchor positioning.
+Use CSS anchor positioning, not JavaScript coordinates. Pass the trigger to `showPopover({ source: trigger })` for an implicit anchor. Where unsupported, detect `ToggleEvent.source` and use explicit anchors instead. Menu behaviour must not depend on anchor positioning.
+
+Add this inline script in `<head>` to set the fallback class before first paint:
+
+```html
+<script>
+  if (!('ToggleEvent' in window && 'source' in ToggleEvent.prototype)) {
+    document.documentElement.classList.add('no-popover-source');
+  }
+</script>
+```
 
 ```css
 /* Apply to each top-level menu; source supplies its implicit anchor. */
@@ -57,6 +67,20 @@ Position with CSS anchor positioning, not JavaScript coordinates. When calling `
   position-area: inline-end span-block-end;
   position-try-fallbacks: flip-inline, flip-block;
   inset: auto;
+}
+
+/* Explicit-anchor fallback; repeat for each trigger/menu pair. */
+.no-popover-source #file-trigger {
+  anchor-name: --file-trigger;
+}
+.no-popover-source #file-menu {
+  position-anchor: --file-trigger;
+}
+.no-popover-source #preferences-trigger {
+  anchor-name: --preferences-trigger;
+}
+.no-popover-source #preferences-menu {
+  position-anchor: --preferences-trigger;
 }
 ```
 

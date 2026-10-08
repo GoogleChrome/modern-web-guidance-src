@@ -5,6 +5,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Accessible application command menu</title>
+  <script>
+    if (!('ToggleEvent' in window && 'source' in ToggleEvent.prototype)) {
+      document.documentElement.classList.add('no-popover-source');
+    }
+  </script>
   <style>
     :root {
       color-scheme: light dark;
@@ -111,6 +116,23 @@
       position-try-fallbacks: flip-inline, flip-block;
       inset: auto;
     }
+
+    /* Explicit-anchor fallback for browsers without showPopover({ source }). */
+    .no-popover-source #file-trigger { anchor-name: --file-trigger; }
+    .no-popover-source #edit-trigger { anchor-name: --edit-trigger; }
+    .no-popover-source #view-trigger { anchor-name: --view-trigger; }
+    .no-popover-source #help-trigger { anchor-name: --help-trigger; }
+    .no-popover-source #open-recent-trigger { anchor-name: --open-recent-trigger; }
+    .no-popover-source #export-trigger { anchor-name: --export-trigger; }
+    .no-popover-source #appearance-trigger { anchor-name: --appearance-trigger; }
+
+    .no-popover-source #file-menu { position-anchor: --file-trigger; }
+    .no-popover-source #edit-menu { position-anchor: --edit-trigger; }
+    .no-popover-source #view-menu { position-anchor: --view-trigger; }
+    .no-popover-source #help-menu { position-anchor: --help-trigger; }
+    .no-popover-source #open-recent-menu { position-anchor: --open-recent-trigger; }
+    .no-popover-source #export-menu { position-anchor: --export-trigger; }
+    .no-popover-source #appearance-menu { position-anchor: --appearance-trigger; }
 
     @media (max-width: 40rem) {
 
