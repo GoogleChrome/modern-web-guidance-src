@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { rootDir } from '../core/paths.ts';
 
 export default defineConfig({
-  testDir: './',
+  testDir: import.meta.dirname,
   testMatch: '*.spec.js',
   fullyParallel: false, // Run tests sequentially to avoid port conflicts if we were doing it manually
   forbidOnly: !!process.env.CI,
@@ -19,7 +20,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'PORT=11432 NO_OPEN=true USE_MOCK_RESULTS=true node server.js --local',
+    command: 'PORT=11432 NO_OPEN=true USE_MOCK_RESULTS=true node src/dashboard/server.js --local',
+    cwd: rootDir,
     url: 'http://localhost:11432',
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',

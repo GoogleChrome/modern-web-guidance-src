@@ -1,7 +1,7 @@
 import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
-import { loadStabilityTrend } from './stability_trend.js';
+import { loadStabilityTrend } from './stability-trend.js';
 
 /**
  * @typedef {Object} CurrentDetails

@@ -2,277 +2,462 @@
   "guides": {
     "accessibility": {
       "accessible-error-announcement": [
-        "task",
-        "negative"
+        "task"
+      ]
+    },
+    "built-in-ai": {
+      "language-detection": [
+        "task"
+      ],
+      "language-model": [
+        "task"
+      ],
+      "summarizer": [
+        "task"
+      ],
+      "translator": [
+        "daily-grind",
+        "devtools-times"
+      ]
+    },
+    "css": {
+      "animate-to-intrinsic-sizes": [
+        "task"
+      ],
+      "calculate-with-intrinsic-sizes": [
+        "task"
+      ],
+      "child-state-based-styling": [
+        "task"
+      ],
+      "content-based-styling": [
+        "task"
+      ],
+      "design-token-reactivity": [
+        "task"
+      ],
+      "dynamic-sibling-styling": [
+        "task"
+      ],
+      "fluid-scaling": [
+        "task"
+      ],
+      "individual-transform-properties": [
+        "task"
+      ],
+      "overflow-clipping-control": [
+        "task"
+      ],
+      "reduce-style-repetition": [
+        "task"
+      ],
+      "size-aware-styling": [
+        "daily-grind",
+        "devtools-times"
+      ],
+      "style-parent-with-has": [
+        "task"
       ]
     },
     "forms": {
       "animated-select-picker": [
-        "task",
-        "negative"
+        "task"
       ],
       "autofill-address-form": [
-        "task",
-        "negative"
+        "task"
       ],
       "autofill-highlight-inputs": [
-        "task",
-        "negative"
+        "task"
       ],
       "autofill-payment-form": [
-        "task",
-        "negative"
+        "task"
       ],
       "autofill-sign-in-form": [
-        "task",
-        "negative"
+        "task"
       ],
       "autofill-sign-up-form": [
-        "task",
-        "negative"
+        "task"
+      ],
+      "brand-consistent-forms": [
+        "task"
       ],
       "branded-select-styling": [
-        "task",
-        "negative"
+        "task"
       ],
       "custom-select-picker-layouts": [
-        "task",
-        "negative"
+        "task"
       ],
       "form-fields-automatically-fit-contents": [
-        "task",
-        "negative"
+        "task"
+      ],
+      "forms": [
+        "task"
+      ],
+      "ime-safe-enter-submit": [
+        "task"
       ],
       "required-field-feedback": [
-        "task",
-        "negative"
+        "task"
       ],
       "rich-media-picker": [
-        "task",
-        "negative"
+        "task"
       ],
       "select-menu-interaction": [
-        "task",
-        "negative"
+        "task"
+      ],
+      "sms-otp-form": [
+        "daily-grind",
+        "devtools-times"
       ],
       "validate-input-after-interaction": [
-        "task",
-        "negative"
+        "task"
+      ]
+    },
+    "html": {
+      "html": [
+        "daily-grind",
+        "devtools-times"
+      ]
+    },
+    "js": {
+      "calculate-event-differentials": [
+        "task"
+      ],
+      "capture-location-agnostic-data": [
+        "task"
+      ],
+      "coordinate-global-events": [
+        "task"
+      ],
+      "format-human-readable-durations": [
+        "task"
+      ],
+      "manage-recurring-intervals": [
+        "task"
+      ],
+      "model-partial-time-concepts": [
+        "task"
+      ],
+      "stabilize-reactive-state": [
+        "task"
+      ],
+      "support-global-calendar-systems": [
+        "task"
       ]
     },
     "performance": {
       "batch-analytics-events": [
-        "task",
-        "negative"
+        "task"
+      ],
+      "break-up-long-tasks": [
+        "task"
+      ],
+      "calculate-total-foreground-time": [
+        "task"
+      ],
+      "conditional-async-dependencies": [
+        "task"
       ],
       "defer-rendering-heavy-content": [
-        "task",
-        "negative"
+        "task"
+      ],
+      "defer-work-until-scroll-ends": [
+        "task"
+      ],
+      "deliver-optimized-decorative-images": [
+        "task"
       ],
       "deprioritize-background-fetches": [
-        "task",
-        "negative"
+        "task"
       ],
-      "full-session-analytics": [
-        "task",
-        "negative"
+      "detect-initial-visibility-state": [
+        "task"
       ],
-      "identify-heavy-scripts": [
-        "task",
-        "negative"
+      "efficient-background-processing": [
+        "task"
       ],
-      "identify-inp-causes": [
-        "task",
-        "negative"
-      ],
-      "improve-next-page-load-performance": [
-        "task",
-        "negative"
-      ],
-      "optimize-image-priority": [
-        "task",
-        "negative"
-      ],
-      "optimize-preload-priority": [
-        "task",
-        "negative"
-      ],
-      "optimize-script-priority": [
-        "task",
-        "negative"
-      ],
-      "sequence-distributed-events": [
-        "task",
-        "negative"
-      ]
-    },
-    "user-experience": {
-      "adapt-scrollbar-to-contrast-preferences": [
-        "task",
-        "negative"
-      ],
-      "adapt-scrollbar-to-light-dark-preferences": [
-        "task",
-        "negative"
-      ],
-      "anchor-positioning-tab-underline": [
-        "task",
-        "negative"
-      ],
-      "animate-element-entry-exit": [
-        "task",
-        "negative"
-      ],
-      "animate-to-intrinsic-sizes": [
-        "task",
-        "negative"
-      ],
-      "calculate-event-differentials": [
-        "task",
-        "negative"
-      ],
-      "capture-location-agnostic-data": [
-        "task",
-        "negative"
-      ],
-      "carousel-slide-effects": [
-        "task",
-        "negative"
-      ],
-      "child-state-based-styling": [
-        "task",
-        "negative"
-      ],
-      "consistent-cross-document-transitions": [
-        "task",
-        "negative"
-      ],
-      "content-based-styling": [
-        "task",
-        "negative"
-      ],
-      "customize-scrollbar-color-and-thickness": [
-        "task",
-        "negative"
-      ],
-      "declarative-button-actions": [
-        "task",
-        "negative"
-      ],
-      "declarative-dialog-popover-control": [
-        "task",
-        "negative"
-      ],
-      "dynamic-sibling-animations": [
-        "task",
-        "negative"
-      ],
-      "dynamic-sibling-styling": [
-        "task",
-        "negative"
+      "faster-spa-view-transitions": [
+        "daily-grind",
+        "devtools-times"
       ],
       "flicker-free-client-side-ab-testing": [
-        "task",
-        "negative"
+        "task"
       ],
-      "improve-body-text-layout-and-legibility": [
-        "task",
-        "negative"
+      "full-session-analytics": [
+        "task"
       ],
-      "improve-heading-text-layout-and-legibility": [
-        "task",
-        "negative"
+      "identify-heavy-scripts": [
+        "task"
       ],
-      "interest-triggered-tooltips": [
-        "task",
-        "negative"
+      "identify-inp-causes": [
+        "task"
       ],
-      "light-dismiss-a-dialog": [
-        "task",
-        "negative"
+      "improve-next-page-load-performance": [
+        "task"
       ],
-      "light-dismiss-content-overlay": [
-        "task",
-        "negative"
+      "interactions-in-complex-layouts": [
+        "task"
       ],
-      "model-partial-time-concepts": [
-        "task",
-        "negative"
+      "optimize-image-priority": [
+        "task"
       ],
-      "move-dom-element-without-losing-state": [
-        "task",
-        "negative"
+      "optimize-preload-priority": [
+        "task"
       ],
-      "parallax-scroll-effects": [
-        "task",
-        "negative"
+      "optimize-script-priority": [
+        "task"
       ],
-      "persistent-app-tours": [
-        "task",
-        "negative"
+      "performance": [
+        "task"
       ],
-      "persistent-toast-notifications": [
-        "task",
-        "negative"
+      "resolution-optimized-pseudo-elements": [
+        "task"
       ],
-      "precise-text-alignment": [
-        "task",
-        "negative"
+      "schedule-tasks-by-priority": [
+        "task"
       ],
-      "prevent-text-wrapping": [
-        "task",
-        "negative"
+      "sequence-distributed-events": [
+        "task"
+      ]
+    },
+    "privacy": {
+      "privacy": [
+        "daily-grind",
+        "devtools-times"
+      ]
+    },
+    "security": {
+      "local-network-access": [
+        "daily-grind",
+        "devtools-times"
+      ],
+      "passkey-authentication": [
+        "task"
+      ],
+      "passkey-conditional-create": [
+        "task"
+      ],
+      "passkey-management": [
+        "daily-grind",
+        "devtools-times"
+      ],
+      "passkey-reauthentication": [
+        "task"
+      ],
+      "passkey-registration": [
+        "task"
+      ],
+      "passkeys": [
+        "daily-grind",
+        "devtools-times"
+      ]
+    },
+    "ui-atoms": {
+      "carousel-slide-effects": [
+        "task"
+      ],
+      "component-specific-light-dark-theme": [
+        "task"
+      ],
+      "position-aware-tooltips": [
+        "task"
       ],
       "pull-to-reveal": [
-        "task",
-        "negative"
+        "task"
       ],
-      "scroll-entry-exit-effects": [
-        "task",
-        "negative"
+      "resilient-context-menus-and-nested-dropdowns": [
+        "task"
+      ],
+      "scroll-position-aware-elements": [
+        "task"
       ],
       "scroll-progress-indicator": [
-        "task",
-        "negative"
+        "task"
       ],
-      "scroll-target-on-load": [
-        "task",
-        "negative"
-      ],
-      "scrollytelling": [
-        "task",
-        "negative"
-      ],
-      "search-hidden-content": [
-        "task",
-        "negative"
+      "scrollability-affordance-hints": [
+        "task"
       ],
       "shrinking-header-on-scroll": [
-        "task",
-        "negative"
+        "task"
       ],
-      "style-parent-with-has": [
-        "task",
-        "negative"
+      "state-aware-sticky-headers": [
+        "task"
+      ]
+    },
+    "ui-behaviors": {
+      "anchor-positioning-tab-underline": [
+        "task"
+      ],
+      "animate-element-entry-exit": [
+        "task"
+      ],
+      "animate-to-from-top-layer": [
+        "task"
+      ],
+      "carousel-snap-highlights": [
+        "task"
+      ],
+      "consistent-cross-document-transitions": [
+        "daily-grind",
+        "devtools-times"
+      ],
+      "cross-document-transitions": [
+        "task"
+      ],
+      "custom-button-actions": [
+        "task"
+      ],
+      "declarative-dialog-popover-control": [
+        "task"
+      ],
+      "directional-navigation-transitions": [
+        "daily-grind",
+        "devtools-times"
+      ],
+      "dynamic-sibling-animations": [
+        "task"
+      ],
+      "group-element-transitions": [
+        "task"
+      ],
+      "highlight-text-ranges": [
+        "task"
+      ],
+      "interactive-content-reveal": [
+        "task"
+      ],
+      "interest-triggered-action-previews": [
+        "task"
+      ],
+      "interest-triggered-tooltips": [
+        "task"
+      ],
+      "light-dismiss-a-dialog": [
+        "task"
+      ],
+      "move-dom-element-without-losing-state": [
+        "task"
+      ],
+      "parallax-scroll-effects": [
+        "task"
+      ],
+      "persistent-top-layer-ui": [
+        "task"
+      ],
+      "physics-based-easing": [
+        "task"
+      ],
+      "platform-controls-dismiss-dialog": [
+        "task"
+      ],
+      "same-document-transitions": [
+        "task"
+      ],
+      "scroll-entry-exit-effects": [
+        "task"
+      ],
+      "scroll-snap-realtime-feedback": [
+        "task"
+      ],
+      "scroll-snap-state-sync": [
+        "task"
+      ],
+      "scroll-target-on-load": [
+        "task"
+      ],
+      "scrollytelling": [
+        "task"
+      ],
+      "search-hidden-content": [
+        "task"
+      ],
+      "swipe-to-remove": [
+        "task"
+      ]
+    },
+    "ui-components": {
+      "navigation-drawer": [
+        "task"
+      ],
+      "persistent-app-tours": [
+        "task"
+      ],
+      "persistent-toast-notifications": [
+        "task"
+      ],
+      "scrollspy": [
+        "daily-grind",
+        "devtools-times"
+      ],
+      "stack-drill-down": [
+        "task"
+      ]
+    },
+    "visual-design": {
+      "adapt-scrollbar-to-contrast-preferences": [
+        "task"
+      ],
+      "apply-webgl-shaders": [
+        "task"
+      ],
+      "complex-shapes": [
+        "task"
+      ],
+      "customize-scrollbar-color-and-thickness": [
+        "task"
+      ],
+      "dark-mode": [
+        "task"
+      ],
+      "export-html-media-from-canvas": [
+        "task"
+      ],
+      "expose-canvas-content-to-browser-features": [
+        "task"
+      ],
+      "improve-text-layout-and-legibility": [
+        "task"
+      ],
+      "interactive-content-in-3d-scenes": [
+        "task"
+      ],
+      "precise-text-alignment": [
+        "task"
+      ],
+      "shaped-cutouts": [
+        "task"
+      ],
+      "soft-edge-content-fade": [
+        "task"
       ],
       "visually-stable-font-fallbacks": [
-        "task",
-        "negative"
+        "task"
       ],
       "visually-stable-mixed-fonts": [
-        "task",
-        "negative"
+        "task"
+      ],
+      "visually-texture-content": [
+        "task"
+      ]
+    },
+    "wasm": {
+      "cpp-on-the-web": [
+        "daily-grind",
+        "devtools-times"
+      ]
+    },
+    "webmcp": {
+      "agentic-forms": [
+        "daily-grind",
+        "devtools-times"
+      ],
+      "agentic-javascript-tools": [
+        "task"
+      ],
+      "webmcp": [
+        "daily-grind",
+        "devtools-times"
       ]
     }
-  },
-  "disciplines": {
-    "forms": [
-      "task",
-      "negative"
-    ],
-    "performance": [
-      "task",
-      "negative"
-    ]
   }
 }

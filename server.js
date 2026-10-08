@@ -1,5 +1,3 @@
-
-
 import * as http from "http";
 import * as https from "https";
 import fs from 'fs';
@@ -8,7 +6,16 @@ import os from 'os';
 import { exec, spawn } from 'child_process';
 import { runAllManifests } from './generate-manifests.js';
 import { extractSuiteSummary } from './summary-extractor.js';
-import { parseBooleanEnv } from '../lib/env.ts';
+import { parseBooleanEnv } from '../core/env.ts';
+import {
+  rootDir,
+  guidesDir,
+  outDir,
+  resultsDir,
+  suitesDir,
+  baseAppsDir,
+  dashboardDir,
+} from '../core/paths.ts';
 
 const PORT = process.env.PORT || 8081;
 const STATIC = parseBooleanEnv(process.env.STATIC, false);
@@ -16,18 +23,18 @@ const STATIC = parseBooleanEnv(process.env.STATIC, false);
 if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
   
-  const distDir = path.resolve('../dist/dashboard');
+  const distDir = path.join(rootDir, 'dist/dashboard');
 
   if (fs.existsSync(distDir)) {
     fs.rmSync(distDir, { recursive: true, force: true });
   }
   fs.mkdirSync(distDir, { recursive: true });
 
-  const sourceFiles = fs.readdirSync('.').filter(f => f !== 'dist' && f !== 'node_modules' && !f.startsWith('.'));
+  const sourceFiles = fs.readdirSync(dashboardDir).filter(f => f !== 'dist' && f !== 'node_modules' && !f.startsWith('.'));
   for (const f of sourceFiles) {
     const destPath = path.join(distDir, f);
     try {
-      fs.symlinkSync(`../../eval-view/${f}`, destPath);
+      fs.symlinkSync(path.join(dashboardDir, f), destPath);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error(`Failed to create symlink for ${f}:`, message);
@@ -35,9 +42,8 @@ if (STATIC) {
   }
 
   const links = [
-    { target: '../../harness/results', name: 'results' },
-    { target: '../../harness/tasks', name: 'tasks' },
-    { target: '../../harness/base_apps', name: 'base_apps' }
+    { target: suitesDir, name: 'results' },
+    { target: baseAppsDir, name: 'base_apps' }
   ];
 
   for (const link of links) {
@@ -53,8 +59,8 @@ if (STATIC) {
   console.log('🔄 Generating manifests for static mode...');
   await runAllManifests({ outputDir: distDir });
 
-  console.log(`🚀 Spawning statikk on port ${PORT} serving ../dist/dashboard...`);
-  const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), '../dist/dashboard'], { stdio: 'inherit' });
+  console.log(`🚀 Spawning statikk on port ${PORT} serving ${distDir}...`);
+  const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), distDir], { stdio: 'inherit' });
   
   const url = `http://localhost:${PORT}/?source=static`;
   console.log(`Server running at ${url}`);
@@ -232,15 +238,15 @@ const server = http.createServer(async (req, res) => {
     let suitesList = [];
 
     // Local
-    const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
+    const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
     try {
-      if (fs.existsSync(resultsDir)) {
-        const dirs = fs.readdirSync(resultsDir, { withFileTypes: true })
+      if (fs.existsSync(localSuitesDir)) {
+        const dirs = fs.readdirSync(localSuitesDir, { withFileTypes: true })
           .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
         
         dirs.forEach(d => {
-          const suiteDir = path.join(resultsDir, d);
+          const suiteDir = path.join(localSuitesDir, d);
           const evalsJsonPath = path.join(suiteDir, 'evals.json');
           let timestamp = null;
           try {
@@ -274,16 +280,16 @@ const server = http.createServer(async (req, res) => {
   // --- /api/grouped-tasks : lists tasks grouped per guide ---
   if (decodedPath === '/api/grouped-tasks') {
     try {
-      const { getTaskMap } = await import('../lib/guide-validation.ts');
-      const { USE_CASES } = await import('../serving/lib/practices.ts');
+      const { getTaskMap } = await import('../core/guide-validation.ts');
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
       
-      for (const key of taskMap.keys()) {
+      for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
-        const useCase = USE_CASES.find(u => u.id === guide);
-        const category = useCase ? useCase.category : 'Uncategorized';
+        const category = (info && info.guideDir)
+          ? path.basename(path.dirname(info.guideDir))
+          : 'Uncategorized';
         if (!grouped[category]) grouped[category] = {};
         if (!grouped[category][guide]) grouped[category][guide] = [];
         grouped[category][guide].push(task);
@@ -302,7 +308,6 @@ const server = http.createServer(async (req, res) => {
   // --- /api/available-skills : lists folders with SKILL.md ---
   if (decodedPath === '/api/available-skills') {
     try {
-      const guidesDir = path.resolve('../guides');
       const skills = [];
       if (fs.existsSync(guidesDir)) {
         const candidates = fs.readdirSync(guidesDir, { withFileTypes: true })
@@ -355,7 +360,7 @@ const server = http.createServer(async (req, res) => {
           ...options.tasks
         ], {
           stdio: 'inherit',
-          cwd: path.resolve('..'), // Run from root to resolve paths correctly
+          cwd: rootDir, // Run from root to resolve paths correctly
           detached: false
         });
 
@@ -390,8 +395,8 @@ const server = http.createServer(async (req, res) => {
     /** @type {string[]} */
     let files = [];
     if (source === 'local') {
-      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-      const targetDir = path.join(resultsDir, relativePath);
+      const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+      const targetDir = path.join(localSuitesDir, relativePath);
       try {
         if (fs.existsSync(targetDir)) {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
@@ -429,23 +434,26 @@ const server = http.createServer(async (req, res) => {
     }
 
     let filePath;
-    if (checkPath.startsWith('base_apps/')) {
-      filePath = path.join('../harness/base_apps', checkPath.substring(10));
-    } else if (checkPath.startsWith('tasks/')) {
-      filePath = path.join('../harness/tasks', checkPath.substring(6));
+    if (checkPath === 'features-mapping.gen.js' || checkPath === 'features_mapping.gen.js' || checkPath === 'grouped-tasks.gen.json' || checkPath === 'suites.gen.json') {
+      const canonicalCheckPath = checkPath === 'features_mapping.gen.js' ? 'features-mapping.gen.js' : checkPath;
+      filePath = path.join(outDir, 'dashboard', canonicalCheckPath);
+    } else if (checkPath.startsWith('base_apps/')) {
+      filePath = path.join(baseAppsDir, checkPath.substring(10));
     } else {
-      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-      filePath = path.join(resultsDir, checkPath);
+      const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+      filePath = path.join(localSuitesDir, checkPath);
     }
 
     const absolutePath = path.resolve(filePath);
-    const evalViewRoot = path.resolve('.');
-    const harnessRoot = path.resolve('../harness');
-    const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
+    const harnessRoot = path.join(rootDir, 'src/harness');
+    const isInsideDashboard = absolutePath === dashboardDir || absolutePath.startsWith(dashboardDir + path.sep);
     const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
+    const isInsideGuides = absolutePath === guidesDir || absolutePath.startsWith(guidesDir + path.sep);
+    const isInsideOut = absolutePath === outDir || absolutePath.startsWith(outDir + path.sep);
+    const isInsideResults = absolutePath === resultsDir || absolutePath.startsWith(resultsDir + path.sep);
 
     let exists = false;
-    if (isInsideEvalView || isInsideHarness) {
+    if (isInsideDashboard || isInsideHarness || isInsideGuides || isInsideOut || isInsideResults) {
         exists = fs.existsSync(absolutePath);
     }
     
@@ -455,22 +463,23 @@ const server = http.createServer(async (req, res) => {
   }
 
   let filePath;
-  // Map results and setup to the harness directory
-  if (decodedPath.startsWith('/base_apps/')) {
-    filePath = path.join('../harness/base_apps', decodedPath.substring(11));
-  } else if (decodedPath.startsWith('/tasks/')) {
-    filePath = path.join('../harness/tasks', decodedPath.substring(7));
+  // Serve generated manifests from out/dashboard
+  if (decodedPath === '/features-mapping.gen.js' || decodedPath === '/features_mapping.gen.js' || decodedPath === '/grouped-tasks.gen.json' || decodedPath === '/suites.gen.json') {
+    const canonicalName = decodedPath === '/features_mapping.gen.js' ? 'features-mapping.gen.js' : decodedPath.substring(1);
+    filePath = path.join(outDir, 'dashboard', canonicalName);
+  } else if (decodedPath.startsWith('/base_apps/')) {
+    filePath = path.join(baseAppsDir, decodedPath.substring(11));
   } else if (decodedPath.startsWith('/guides/')) {
-    filePath = path.join('../guides', decodedPath.substring(8));
+    filePath = path.join(guidesDir, decodedPath.substring(8));
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
-    let localEvalViewPath = path.join('.', relativePath);
+    let localEvalViewPath = path.join(dashboardDir, relativePath);
     if (decodedPath === '/' || decodedPath === '') {
-      localEvalViewPath = './index.html';
+      localEvalViewPath = path.join(dashboardDir, 'index.html');
     }
 
     // If the file exists in eval-view, serve it.
-    // Otherwise, assume it's a test result file in ../harness/results
+    // Otherwise, assume it's a test result file in suitesDir
     if (fs.existsSync(localEvalViewPath)) {
         filePath = localEvalViewPath;
     } else {
@@ -506,23 +515,24 @@ const server = http.createServer(async (req, res) => {
             }
         }
 
-        const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-        filePath = path.join(resultsDir, finalRelativePath);
+        const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+        filePath = path.join(localSuitesDir, finalRelativePath);
     }
   }
 
   // Final check: Resolve the absolute path and ensure it's within allowed directories
   const absolutePath = path.resolve(filePath);
-  const evalViewRoot = path.resolve('.');
-  const harnessRoot = path.resolve('../harness');
-  const guidesRoot = path.resolve('../guides');
+  const harnessRoot = path.join(rootDir, 'src/harness');
+  const guidesRoot = guidesDir;
 
   // Use path.sep to ensure we match whole directory names
-  const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
+  const isInsideDashboard = absolutePath === dashboardDir || absolutePath.startsWith(dashboardDir + path.sep);
   const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
   const isInsideGuides = absolutePath === guidesRoot || absolutePath.startsWith(guidesRoot + path.sep);
+  const isInsideOut = absolutePath === outDir || absolutePath.startsWith(outDir + path.sep);
+  const isInsideResults = absolutePath === resultsDir || absolutePath.startsWith(resultsDir + path.sep);
 
-  if (!isInsideEvalView && !isInsideHarness && !isInsideGuides) {
+  if (!isInsideDashboard && !isInsideHarness && !isInsideGuides && !isInsideOut && !isInsideResults) {
     console.log(`403 Forbidden: Access outside allowed directories - ${req.method} ${reqUrl} -> ${absolutePath}`);
     res.writeHead(403);
     res.end('403 Forbidden: Access outside allowed directories is not allowed');
