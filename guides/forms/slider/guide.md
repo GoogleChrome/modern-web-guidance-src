@@ -22,11 +22,7 @@ Use a labeled `<input type="range">` rather than recreating a slider with `<div>
 
 ```html
 <label for="range-slider">Volume</label>
-<input
-  type="range"
-  id="range-slider"
-  value="70"
-/>
+<input type="range" id="range-slider" value="70"/>
 ```
 
 If the value requires a formatted label or unit, expose it in ordinary DOM content and update `aria-valuetext` when changed. Do not use `::before` or `::after` on slider pseudo-elements, as generated content on form controls is not interoperable. If a tooltip that follows the thumb is required, use the {{ GUIDE_REF("slider-tooltip") }} guide.
@@ -166,9 +162,7 @@ slider.addEventListener('input', syncSliderValue);
 
 {{ BASELINE_STATUS("progress-function") }}
 
-{{ BASELINE_STATUS("attr") }}
-
-For browsers that do not support `progress()` or `attr()`, compute `--slider-progress` with `calc()` inside `@supports not` and sync `--attr-min` and `--attr-max` in JavaScript:
+When `progress()` is unsupported, compute `--slider-progress` with `calc()`:
 
 ```css
 @supports not (opacity: progress(1, 0, 100)) {
@@ -180,6 +174,10 @@ For browsers that do not support `progress()` or `attr()`, compute `--slider-pro
   }
 }
 ```
+
+{{ BASELINE_STATUS("attr") }}
+
+When typed `attr()` is unsupported, sync `--attr-min` and `--attr-max` from the input's `min` and `max` attributes in JavaScript:
 
 ```js
 function syncSliderValue() {
