@@ -60,7 +60,7 @@ export function determineAgent(
   if (env.AI_AGENT) {
     const name = env.AI_AGENT.trim();
     if (name) {
-      if (name.startsWith('github-copilot') || name.startsWith('github_copilot')) {
+      if (name.startsWith('github_copilot')) {
         return {
           isAgent: true,
           agent: { name: KNOWN_AGENTS.GITHUB_COPILOT },
