@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import config, { Agents } from '../config.ts';
-import { parseBooleanEnv } from '../../lib/env.ts';
+import { parseBooleanEnv } from '../../src/core/env.ts';
 import {
   cleanupIsolatedHome,
   copyFileIfExists,
@@ -15,7 +15,7 @@ import {
   setupIsolatedWorkDir,
   type GuideUsage
 } from '../lib/agent-shared.ts';
-import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import { MODERN_WEB_LOG_FILE } from '../../src/core/constants.ts';
 import {
   type StandardizedStep,
   type SubagentMetadata,

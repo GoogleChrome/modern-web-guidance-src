@@ -5,7 +5,7 @@ import path from 'path';
 import { defaultSuiteConfig, Agents } from '../config.ts';
 import { collectResults } from '../lib/collection.ts';
 import { generateNormalizedTrajectory } from '../lib/trajectory-normalizer.ts';
-import { guidesDir } from '../../lib/paths.ts';
+import { guidesDir } from '../../src/core/paths.ts';
 
 const testDir = import.meta.dirname;
 

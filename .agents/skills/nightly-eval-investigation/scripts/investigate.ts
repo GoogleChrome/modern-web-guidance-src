@@ -2,7 +2,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-import { guidesDir as libGuidesDir, outDir, rootDir, suitesDir } from '../../../../lib/paths.ts';
+import { guidesDir as libGuidesDir, outDir, rootDir, suitesDir } from '../../../../src/core/paths.ts';
 
 const BUCKET_NAME = 'guidance-evals';
 

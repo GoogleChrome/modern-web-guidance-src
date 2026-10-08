@@ -3,7 +3,7 @@ import path from 'path';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert';
 import { generateSuitesManifest } from './generate-manifests.js';
-import { suitesDir } from '../lib/paths.ts';
+import { suitesDir } from '../src/core/paths.ts';
 
 const mockResultsDir = path.resolve('./test-mock-results');
 let targetResultsDir = suitesDir;

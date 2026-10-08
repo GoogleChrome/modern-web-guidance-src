@@ -4,11 +4,11 @@ import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
-import { harnessDir, baseAppsDir, suitesDir } from '../lib/paths.ts';
-import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../lib/guide-validation.ts';
-import { applyPatchSync, initGitRepo } from '../lib/patch-utils.ts';
+import { harnessDir, baseAppsDir, suitesDir } from '../src/core/paths.ts';
+import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../src/core/guide-validation.ts';
+import { applyPatchSync, initGitRepo } from '../src/core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
-import { copyBaseAppToWorkspace } from '../guides/lib/utils.ts';
+import { copyBaseAppToWorkspace } from '../src/harness/lib/utils.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import config, { Agents } from '../config.ts';
 import { cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import type { ConversationRecord } from '@google/gemini-cli-core';
-import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import { MODERN_WEB_LOG_FILE } from '../../src/core/constants.ts';
 import {
   type StandardizedStep,
   type SubagentMetadata,

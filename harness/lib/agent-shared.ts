@@ -2,9 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents, type SuiteConfig } from '../config.ts';
-import { ZERO_PASSRATE_PATCH_FILE } from '../../lib/guide-validation.ts';
-import { rootDir, guidesDir } from '../../lib/paths.ts';
-import { capturePatchFromGit, initGitRepo } from '../../lib/patch-utils.ts';
+import { ZERO_PASSRATE_PATCH_FILE } from '../../src/core/guide-validation.ts';
+import { rootDir, guidesDir } from '../../src/core/paths.ts';
+import { capturePatchFromGit, initGitRepo } from '../../src/core/patch-utils.ts';
 import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
 
 import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
@@ -795,7 +795,7 @@ export function getGraderScriptContent(
   graderPath: string,
   guideName: string
 ): string {
-  const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
+  const runGraderModulePath = path.join(rootDir, 'src/grading/run-grader.ts');
   const targetFile = path.join(targetDir, 'index.html');
   const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);

@@ -18,7 +18,7 @@ import path from 'path';
 import fs from 'fs';
 import 'colors';
 import { evaluateSuite } from './evaluate.ts';
-import { suitesDir } from '../lib/paths.ts';
+import { suitesDir } from '../src/core/paths.ts';
 
 export function resolveResultsDir(argv: string[], defaultDir: string): string {
   const arg = argv[2];

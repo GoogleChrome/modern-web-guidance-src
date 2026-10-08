@@ -1,5 +1,5 @@
 harness/results/**
 harness/base_apps/devtools-times/**
-guides/template.grader.ts
+src/grading/template.grader.ts
 out/**
 results/**

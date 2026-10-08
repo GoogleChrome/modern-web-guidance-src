@@ -4,7 +4,7 @@ import os from 'os';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from './config.ts';
-import { applyPatchSync } from '../lib/patch-utils.ts';
+import { applyPatchSync } from '../src/core/patch-utils.ts';
 
 /**
  * Maps agent names to their harness file and default configuration.
