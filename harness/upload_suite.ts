@@ -1,8 +1,8 @@
 import { Storage } from '@google-cloud/storage';
 import path from 'path';
 import fs from 'fs';
-import { cRed, cGreen, cCyan, cBold } from '../lib/colors.ts';
-import { suitesDir as baseResultsDir } from '../lib/paths.ts';
+import { cRed, cGreen, cCyan, cBold } from '../src/core/colors.ts';
+import { suitesDir as baseResultsDir } from '../src/core/paths.ts';
 import { extractSuiteSummary } from '../eval-view/summary-extractor.js';
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';

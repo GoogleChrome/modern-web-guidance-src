@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
 
-import { outDir, suitesDir, guidesDir } from '../lib/paths.ts';
+import { outDir, suitesDir, guidesDir } from '../src/core/paths.ts';
 
 const defaultOutputDir = path.join(outDir, 'dashboard');
 
@@ -94,8 +94,8 @@ export async function generateSuitesManifest(outputDir = defaultOutputDir, resul
  */
 export async function generateGroupedTasksManifest(outputDir = defaultOutputDir) {
     fs.mkdirSync(outputDir, { recursive: true });
-    const { getTaskMap } = await import('../lib/guide-validation.ts');
-    const { USE_CASES } = await import('../serving/lib/practices.ts');
+    const { getTaskMap } = await import('../src/core/guide-validation.ts');
+    const { USE_CASES } = await import('../src/rag/guides.ts');
     const taskMap = getTaskMap();
     /** @type {Record<string, Record<string, string[]>>} */
     const grouped = {};

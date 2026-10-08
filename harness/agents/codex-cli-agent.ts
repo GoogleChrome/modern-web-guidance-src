@@ -13,7 +13,7 @@ import {
   type GuideUsage
 } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
-import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import { MODERN_WEB_LOG_FILE } from '../../src/core/constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
 import {
   type StandardizedStep,

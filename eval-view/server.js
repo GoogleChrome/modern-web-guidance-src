@@ -6,7 +6,7 @@ import os from 'os';
 import { exec, spawn } from 'child_process';
 import { runAllManifests } from './generate-manifests.js';
 import { extractSuiteSummary } from './summary-extractor.js';
-import { parseBooleanEnv } from '../lib/env.ts';
+import { parseBooleanEnv } from '../src/core/env.ts';
 import {
   rootDir,
   guidesDir,
@@ -15,7 +15,7 @@ import {
   suitesDir,
   baseAppsDir,
   dashboardDir,
-} from '../lib/paths.ts';
+} from '../src/core/paths.ts';
 
 const PORT = process.env.PORT || 8081;
 const STATIC = parseBooleanEnv(process.env.STATIC, false);
@@ -281,8 +281,8 @@ const server = http.createServer(async (req, res) => {
   // --- /api/grouped-tasks : lists tasks grouped per guide ---
   if (decodedPath === '/api/grouped-tasks') {
     try {
-      const { getTaskMap } = await import('../lib/guide-validation.ts');
-      const { USE_CASES } = await import('../serving/lib/practices.ts');
+      const { getTaskMap } = await import('../src/core/guide-validation.ts');
+      const { USE_CASES } = await import('../src/rag/guides.ts');
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]

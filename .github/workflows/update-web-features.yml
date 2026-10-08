@@ -75,12 +75,12 @@ jobs:
           pnpm update web-features
 
       - name: Regenerate feature-to-groups cache for ATL triage
-        run: node guides/generate-feature-to-groups.ts
+        run: node src/ci/generate-feature-to-groups.ts
 
       - name: Validate repository guide impact after web-features bump
         id: validate-web-feature-update
         continue-on-error: true
-        run: node guides/validate-after-web-feature-update.ts
+        run: node src/ci/validate-after-web-feature-update.ts
 
       - name: Generate GitHub App token
         if: ${{ vars.GH_APP_ID != '' }}

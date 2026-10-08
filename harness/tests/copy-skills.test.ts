@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 import { createIsolatedHome, copySkills, cleanupIsolatedHome } from '../lib/agent-shared.ts';
 import { Agents } from '../config.ts';
 import { parseGeminiStreamOutput } from '../agents/gemini-cli-agent.ts';
-import { rootDir } from '../../lib/paths.ts';
+import { rootDir } from '../../src/core/paths.ts';
 function assertSearchResults(output: string) {
     const results = JSON.parse(output);
     assert.ok(Array.isArray(results), 'Output should be a JSON array');

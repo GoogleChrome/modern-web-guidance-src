@@ -25,7 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { rootDir } from '../../lib/paths.ts';
+import { rootDir } from '../../src/core/paths.ts';
 
 const ROOT_DIR = rootDir;
 const HARNESS_DIR = path.join(rootDir, 'harness');

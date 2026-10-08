@@ -58,6 +58,8 @@ serving/benchmarks/data/eval-queries.gen.json
 # ML Models
 serving/lib/tfjs_model_minilm/tfjs_model*/
 serving/lib/tfjs_model_minilm/saved_model*/
+src/rag/tfjs-model-minilm/tfjs_model*/
+src/rag/tfjs-model-minilm/saved_model*/
 
 # Caches
 **/.cache/

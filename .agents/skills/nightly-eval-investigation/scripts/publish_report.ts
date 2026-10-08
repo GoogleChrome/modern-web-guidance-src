@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { outDir } from '../../../../lib/paths.ts';
+import { outDir } from '../../../../src/core/paths.ts';
 
 const outputDir = path.join(outDir, 'nightly-investigation');
 const reportPath = path.join(outputDir, 'nightly_investigation_report.md');

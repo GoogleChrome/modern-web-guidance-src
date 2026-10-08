@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'node:os';
 import { spawnSync } from 'child_process';
-import { rootDir } from '../../lib/paths.ts';
+import { rootDir } from '../../src/core/paths.ts';
 
 test('npx interception via shim', async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npx-intercept-test-'));

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { execSync } from 'node:child_process';
 
 import os from 'node:os';
-import { baseAppsDir } from '../../lib/paths.ts';
+import { baseAppsDir } from '../../src/core/paths.ts';
 
 test('devtools-times base app builds successfully', () => {
   const appDir = path.join(baseAppsDir, 'devtools-times');

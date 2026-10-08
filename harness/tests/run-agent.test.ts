@@ -4,8 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import config from '../config.ts';
-import { runAgent } from '../../guides/lib/utils.ts';
-import { getDefaultSolutionAgent } from '../../lib/guide-validation.ts';
+import { runAgent } from '../../src/harness/lib/utils.ts';
+import { getDefaultSolutionAgent } from '../../src/core/guide-validation.ts';
 
 describe('runAgent routing and argument building', () => {
   let tempDir: string;

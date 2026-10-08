@@ -1,7 +1,7 @@
 import path from 'path';
 import os from 'os';
 import { pathToFileURL } from 'url';
-import { rootDir } from '../lib/paths.ts';
+import { rootDir } from '../src/core/paths.ts';
 
 // Disable telemetry for eval harness runs (`node --test` runs are covered
 // automatically via NODE_TEST_CONTEXT in ClearcutLogger).

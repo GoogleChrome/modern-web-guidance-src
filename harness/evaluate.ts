@@ -6,7 +6,7 @@ import 'colors';
 import { collectResults } from './lib/collection.ts';
 import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
-import { suitesDir } from '../lib/paths.ts';
+import { suitesDir } from '../src/core/paths.ts';
 
 import { type SuiteConfig } from './config.ts';
 

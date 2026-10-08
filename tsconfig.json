@@ -15,6 +15,11 @@
     "checkJs": true
   },
 
+  "include": [
+    "**/*",
+    ".agents/skills/coherence-auditor/scripts/coherence-audit.ts"
+  ],
+
   "exclude": [
     "**/node_modules",
     "**/dist",
@@ -23,7 +28,7 @@
     "**/eval-view",
     "**/eval-view/**/*",
     "harness/base_apps/devtools-times/",
-    "guides/template.grader.ts",
+    "src/grading/template.grader.ts",
     "out",
     "results"
   ]

@@ -12,7 +12,7 @@ import {
   setupIsolatedWorkDir,
   isEnoent
 } from '../lib/agent-shared.ts';
-import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import { MODERN_WEB_LOG_FILE } from '../../src/core/constants.ts';
 import {
   type TrajectorySummary,
   finalizeTrajectorySummary,

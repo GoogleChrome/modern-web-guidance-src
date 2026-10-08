@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { type SuiteConfig } from '../config.ts';
-import { getTaskMap } from '../../lib/guide-validation.ts';
+import { getTaskMap } from '../../src/core/guide-validation.ts';
 import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {

@@ -5,10 +5,10 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
-import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
+import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
 import { resolveSuiteConfig } from '../harness/config.ts';
-import { rootDir, guidesDir, baseAppsDir } from '../lib/paths.ts';
-import { getTaskMap } from '../lib/guide-validation.ts';
+import { rootDir, guidesDir, baseAppsDir } from '../src/core/paths.ts';
+import { getTaskMap } from '../src/core/guide-validation.ts';
 
 // Load environment variables (Node 20.12+)
 try {
@@ -239,7 +239,7 @@ async function main() {
         console.error(cRed(`gd dev-gap picks guides from open issues; don't pass a guide ('${positionals[1]}').`));
         process.exit(1);
       }
-      const { fixEvalGaps } = await import('../guides/eval-gap-fix.ts');
+      const { fixEvalGaps } = await import('../src/authoring/dev-gap.ts');
       const success = await fixEvalGaps({
         dryRun: !!values['dry-run'],
         limit: values.limit ? Number(values.limit) : undefined,
@@ -252,7 +252,7 @@ async function main() {
     case 'dev': {
       const dir = requireArg(positionals[1], 'gd dev <path/to/guide>');
       if (values.grade || values['test-grader']) {
-        const { testGrader } = await import('../guides/run-grader.ts');
+        const { testGrader } = await import('../src/grading/run-grader.ts');
         const res = await testGrader(dir);
         if (!res.success && res.errorDetails) {
           console.error(cRed(`\nCalibration Error:\n${res.errorDetails}`));
@@ -260,13 +260,13 @@ async function main() {
         process.exit(res.success ? 0 : 1);
       }
       if (values['gen-grader']) {
-        const { generateGrader } = await import('../guides/grader-gen.ts');
+        const { generateGrader } = await import('../src/grading/generate-grader.ts');
         await generateGrader(dir);
         break;
       }
 
       // Default dev-guide pipeline
-      const { devGuide } = await import('../guides/dev-guide.ts');
+      const { devGuide } = await import('../src/authoring/dev.ts');
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
       const success = await devGuide(dir, {
         guidedOnly: !!values.guided,
@@ -279,13 +279,13 @@ async function main() {
 
     // not documented because it's UBER-powerful.
     case 'dev-all': {
-      const { devAll } = await import('../guides/dev-guide.ts');
+      const { devAll } = await import('../src/authoring/dev.ts');
       await devAll({ verbose: !!values.verbose });
       break;
     }
 
     case 'audit': {
-      const { auditGuides } = await import('../guides/dev-guide.ts');
+      const { auditGuides } = await import('../src/authoring/dev.ts');
       auditGuides({ groupByUsecases: !!values.usecases });
       break;
     }
@@ -353,7 +353,7 @@ async function main() {
 
     case 'pr': {
       const dir = requireArg(positionals[1], 'gd pr <path/to/guide>');
-      const { runDevPr } = await import('../guides/lib/dev-pr.ts');
+      const { runDevPr } = await import('../src/authoring/pr.ts');
       const prUrl = await runDevPr(dir);
       process.exit(prUrl ? 0 : 1);
     }

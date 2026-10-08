@@ -18,7 +18,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawnSync } from 'child_process';
-import { rootDir, harnessDir } from '../../lib/paths.ts';
+import { rootDir, harnessDir } from '../../src/core/paths.ts';
 
 export const UNSAFE_NO_SANDBOX_ENV = 'GD_UNSAFE_NO_SANDBOX';
 
