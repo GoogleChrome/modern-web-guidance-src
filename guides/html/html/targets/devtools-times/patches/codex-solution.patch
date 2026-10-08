@@ -1,0 +1,952 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..6a363db 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -41,10 +41,12 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                     <Image 
+                         src={image} 
+-                        alt=""
++                        alt={article.data.title}
+                         width={800}
+                         height={533}
+                         format="webp"
++                        fetchpriority="high"
++                        sizes="(max-width: 1024px) 100vw, 800px"
+                         class="w-full h-auto object-cover"
+                     />
+                 </a>
+@@ -60,6 +62,8 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 width={400}
+                 height={225}
+                 format="webp"
++                loading="lazy"
++                sizes="(max-width: 768px) 100vw, 400px"
+                 class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+             />
+         </a>
+@@ -80,4 +84,4 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..9a8cd2a 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -23,8 +23,13 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    <button
++      type="button"
++      onClick={handleClick}
++      aria-label={isBookmarked ? 'Remove from reading list' : 'Save to reading list'}
++      className="p-1"
++    >
++      <BookmarkIcon aria-hidden="true" className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`} />
+     </button>
+   );
+ }
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..1fe170f 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useRef, useState } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
+ 
+ interface BottomNavProps {
+@@ -10,6 +10,7 @@ interface BottomNavProps {
+ 
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const menuRef = useRef<HTMLDivElement>(null);
+ 
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+@@ -22,6 +23,21 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         setActiveCategory(null);
+     };
+ 
++    useEffect(() => {
++        const menu = menuRef.current;
++        if (!menu) {
++            return;
++        }
++
++        if (activeCategory) {
++            if (!menu.matches(':popover-open')) {
++                menu.showPopover();
++            }
++        } else if (menu.matches(':popover-open')) {
++            menu.hidePopover();
++        }
++    }, [activeCategory]);
++
+     const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
+     const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+     const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
+@@ -37,26 +53,29 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                                 onMouseEnter={() => setActiveCategory(groupName)}
+                                 className="h-full flex items-center"
+                             >
+-                                <a 
+-                                    href="#" 
++                                <button
++                                    type="button"
++                                    popoverTarget="section-menu"
++                                    popoverTargetAction="show"
++                                    onClick={() => setActiveCategory(groupName)}
+                                     className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
+                                 >
+                                     <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
++                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+                                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                     </svg>
+-                                </a>
++                                </button>
+                             </div>
+                         );
+                     })}
+                 </nav>
+             </div>
+             <FlyoutMenu 
+-                isOpen={activeCategory !== null} 
+                 categories={activeSubCategories.filter(c => categories.includes(c))}
+                 articles={articles}
+                 reports={filteredReports}
+                 multimedia={filteredMultimedia}
++                menuRef={menuRef}
+             />
+         </div>
+     );
+diff --git a/src/components/CategoryNavItem.tsx b/src/components/CategoryNavItem.tsx
+index 847fef0..0869d57 100644
+--- a/src/components/CategoryNavItem.tsx
++++ b/src/components/CategoryNavItem.tsx
+@@ -17,15 +17,15 @@ const CategoryNavItem: React.FC<CategoryNavItemProps> = ({ groupName, subCategor
+             onMouseEnter={() => setIsFlyoutOpen(true)}
+             onMouseLeave={() => setIsFlyoutOpen(false)}
+         >
+-            <a 
+-                href="#" 
++            <button
++                type="button"
+                 className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap ${isActive ? 'text-amber-400' : ''}`}
+             >
+                 <span>{groupName}</span>
+-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
++                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                 </svg>
+-            </a>
++            </button>
+             {isFlyoutOpen && (
+                 <div className="absolute top-full left-0 bg-white border-b border-gray-300 shadow-sm z-10 mt-2 py-6 px-4">
+                     <div className="grid grid-cols-1 gap-x-8">
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..c036951 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -1,38 +1,29 @@
+ import React from 'react';
+ 
+ interface FlyoutMenuProps {
+-  isOpen: boolean;
+   categories: string[];
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
++  menuRef: React.RefObject<HTMLDivElement | null>;
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
+-  if (!isOpen) {
+-    return null;
+-  }
+-
+-  // Intentionally failing method to demonstrate debugging
+-  const calculateTrendingScore = (article: any) => {
+-    const getScore = article.getScore;
+-    return getScore();
+-  };
+-
+-  const topStories = articles.sort(() => 0.5 - Math.random()).slice(0, 3);
+-
+-  if (topStories.length > 0) {
+-    setTimeout(() => calculateTrendingScore(topStories[0]), 100);
+-  }
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ categories, articles, reports, multimedia, menuRef }) => {
++  const topStories = [...articles].sort(() => 0.5 - Math.random()).slice(0, 3);
+ 
+   return (
+-    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
++    <div
++      id="section-menu"
++      ref={menuRef}
++      {...{ popover: 'auto' }}
++      className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10 w-full max-w-none"
++    >
+       <div className="container mx-auto px-4 py-6">
+         <div className="grid grid-cols-4 gap-x-8">
+           
+           {/* Column 1: SECTIONS */}
+           <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h2>
+             <ul className="space-y-2 text-sm">
+               {categories.map(category => (
+                 <li key={category}>
+@@ -46,7 +37,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 2: TOP STORIES */}
+           <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
++            <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h2>
+             <ul className="space-y-2 text-sm">
+                 {topStories.map(article => (
+                     <li key={article.id}>
+@@ -58,7 +49,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 3: REPORTS */}
+           <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
++              <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h2>
+               <ul className="space-y-4 text-sm">
+                   {reports.map(report => (
+                       <li key={report.slug}>
+@@ -81,7 +72,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+           {/* Column 4: MULTIMEDIA */}
+           <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
++              <h2 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h2>
+               <ul className="space-y-4 text-sm">
+                     {multimedia.map(item => (
+                         <li key={item.slug}>
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..5f25c56 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -8,7 +8,12 @@ const baseUrl = import.meta.env.BASE_URL;
+         <a href={baseUrl}>
+             <img
+                 src=`${baseUrl}logo.svg`
++                srcset={`${baseUrl}logo.svg 872w`}
++                sizes="160px"
+                 alt="The DevTools Times"
++                width="872"
++                height="102"
++                loading="lazy"
+                 class="h-10"
+             />
+         </a>
+@@ -19,7 +24,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+         <!-- Column 1: NEWS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">News</h2>
+             <ul class="space-y-2">
+                 <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
+                 <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
+@@ -29,7 +34,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+         <!-- Column 2: ARTS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h2>
+             <ul class="space-y-2">
+                 <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
+                 <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
+@@ -38,7 +43,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+         <!-- Column 3: LIFESTYLE -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h2>
+             <ul class="space-y-2">
+                 <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
+                 <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
+@@ -48,7 +53,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+         <!-- Column 4: SCIENCE & TECH -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h2>
+             <ul class="space-y-2">
+                 <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
+             </ul>
+@@ -60,17 +65,17 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+         <!-- Column 7: ACCOUNT -->
+         <div class="col-span-2 sm:col-span-1">
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h2>
+             <ul class="space-y-2 mb-4">
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
++                    <a href=`${baseUrl}signup` class="flex items-center text-sm font-semibold hover:underline">
++                        <svg aria-hidden="true" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                         Subscribe
+                     </a>
+                 </li>
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
++                    <a href=`${baseUrl}signin` class="flex items-center text-sm font-semibold hover:underline">
++                        <svg aria-hidden="true" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+                 </li>
+@@ -78,7 +83,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             
+             <!-- Secondary Account Links -->
+             <ul class="space-y-2 text-xs text-gray-600">
+-                <li><a href="#" class="hover:underline">Email Newsletters</a></li>
++                <li><a href=`${baseUrl}signup` class="hover:underline">Email Newsletters</a></li>
+             </ul>
+         </div>
+ 
+@@ -89,8 +94,8 @@ const baseUrl = import.meta.env.BASE_URL;
+         <!-- Copyright and legal links -->
+         <div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
+             <span>© 2025 The DevTools Times Company</span>
+-            <a href="#" class="hover:underline">Contact Us</a>
+-            <a href="#" class="hover:underline">Work with us</a>
++            <a href="mailto:hello@example.com" class="hover:underline">Contact Us</a>
++            <a href=`${baseUrl}signup` class="hover:underline">Work with us</a>
+             <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+             <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+             <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
+@@ -98,7 +103,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <a href=`${baseUrl}legal/privacy` class="hover:underline">Manage Privacy Preferences</a>
+         </div>
+     </div>
+ 
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..5b36180 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -54,7 +54,15 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+         <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
++          <img
++            src=`${baseUrl}logo.svg`
++            srcset={`${baseUrl}logo.svg 872w`}
++            sizes="320px"
++            alt="The DevTools Times"
++            width="872"
++            height="102"
++            class="w-80 h-auto mx-auto"
++          />
+         </a>
+       </div>
+ 
+diff --git a/src/components/MenuButton.tsx b/src/components/MenuButton.tsx
+index 4e6592b..93a6067 100644
+--- a/src/components/MenuButton.tsx
++++ b/src/components/MenuButton.tsx
+@@ -18,8 +18,8 @@ export default function MenuButton({ categories }: Props) {
+ 
+   return (
+     <>
+-      <button className="text-gray-700 hover:text-amber-400" onClick={toggleMenu}>
+-        <svg className="w-7 h-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
++      <button type="button" aria-label="Toggle menu" className="text-gray-700 hover:text-amber-400" onClick={toggleMenu}>
++        <svg aria-hidden="true" className="w-7 h-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+         </svg>
+       </button>
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..4620bfd 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -24,8 +24,14 @@ export default function ReadingListButton() {
+ 
+   return (
+     <>
+-      <button onClick={() => setIsOpen(true)} className="p-1">
++      <button
++        type="button"
++        onClick={() => setIsOpen(true)}
++        aria-label="Open reading list"
++        className="p-1"
++      >
+         <svg
++          aria-hidden="true"
+           xmlns="http://www.w3.org/2000/svg"
+           className="h-6 w-6 text-gray-600"
+           fill="none"
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..77a6d99 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useEffect } from 'react';
++import React, { useState, useEffect, useRef } from 'react';
+ 
+ interface Article {
+   slug: string;
+@@ -15,6 +15,7 @@ interface Props {
+ 
+ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   const [readingList, setReadingList] = useState<string[]>([]);
++  const dialogRef = useRef<HTMLDialogElement>(null);
+ 
+   const fetchReadingList = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+@@ -25,15 +26,23 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   useEffect(() => {
+     fetchReadingList();
+ 
+-    const handleKeyDown = (event: KeyboardEvent) => {
+-      if (event.key === 'Escape') {
+-        onClose();
+-      }
+-    };
+-    window.addEventListener('keydown', handleKeyDown);
++    const dialog = dialogRef.current;
++    if (!dialog) {
++      return;
++    }
++
++    if (!dialog.open) {
++      dialog.showModal();
++    }
++
++    const handleClose = () => onClose();
++    dialog.addEventListener('close', handleClose);
+ 
+     return () => {
+-      window.removeEventListener('keydown', handleKeyDown);
++      dialog.removeEventListener('close', handleClose);
++      if (dialog.open) {
++        dialog.close();
++      }
+     };
+   }, [onClose]);
+ 
+@@ -50,16 +59,29 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
++  const handleDialogClick = (event: React.MouseEvent<HTMLDialogElement>) => {
++    if (event.target === event.currentTarget) {
++      event.currentTarget.close();
++    }
++  };
++
+   return (
+-    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-      <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-          </svg>
+-        </button>
++    <dialog
++      ref={dialogRef}
++      aria-labelledby="reading-list-title"
++      className="bg-transparent p-4 pt-[15vh] max-w-none max-h-none w-full h-full backdrop:bg-white/30 backdrop:backdrop-blur-sm"
++      onClick={handleDialogClick}
++    >
++      <div className="bg-white shadow-xl w-full max-w-2xl relative mx-auto" onClick={e => e.stopPropagation()}>
++        <form method="dialog">
++          <button type="submit" aria-label="Close reading list" className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
++            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
++            </svg>
++          </button>
++        </form>
+         <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++          <h2 id="reading-list-title" className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h2>
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+@@ -69,11 +91,11 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+             {readingListArticles.map(article => (
+               <li key={article.slug} className="flex items-center">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
+-                  <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                  <h3 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h3>
+                   <p className="text-sm text-gray-600">{article.summary}</p>
+                 </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                <button type="button" onClick={() => handleRemove(article.slug)} aria-label={`Remove ${article.title} from reading list`} className="p-2 text-gray-500 hover:text-amber-400">
++                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                     </svg>
+                 </button>
+@@ -82,6 +104,6 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+           </ul>
+         </div>
+       </div>
+-    </div>
++    </dialog>
+   );
+ }
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..240ed0b 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -17,6 +17,10 @@ export default function SearchButton() {
+         try {
+             setArticles([]);
+             setIsFlyoutOpen(true);
++            setIsLoading(true);
++            const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
++            const data = await response.json();
++            setArticles(data);
+         } catch (error) {
+             console.error('Failed to fetch articles:', error);
+         } finally {
+@@ -31,19 +35,21 @@ export default function SearchButton() {
+     return (
+         <>
+             <button
++                type="button"
+                 className="text-gray-700 hover:text-amber-400 w-6 h-6 flex items-center justify-center"
+                 onClick={openSearch}
+                 disabled={isLoading}
++                aria-label="Open search"
+             >
+                 {isLoading ? (
+                     <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                 ) : (
+-                    <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
++                    <svg aria-hidden="true" className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                         <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            {isFlyoutOpen && <SearchFlyout articles={articles} onClose={closeSearch} />}
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..6b26ba6 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useMemo, useEffect } from 'react';
++import React, { useState, useMemo, useEffect, useRef } from 'react';
+ 
+ interface Article {
+     slug: string;
+@@ -21,14 +21,20 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+ export default function SearchFlyout({ articles, onClose }: Props) {
+     const [searchTerm, setSearchTerm] = useState('');
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
++    const dialogRef = useRef<HTMLDialogElement>(null);
+ 
+     useEffect(() => {
+-        const handleKeyDown = (event: KeyboardEvent) => {
+-            if (event.key === 'Escape') {
+-                onClose();
+-            }
+-        };
+-        window.addEventListener('keydown', handleKeyDown);
++        const dialog = dialogRef.current;
++        if (!dialog) {
++            return;
++        }
++
++        if (!dialog.open) {
++            dialog.showModal();
++        }
++
++        const handleClose = () => onClose();
++        dialog.addEventListener('close', handleClose);
+         
+         // Bug: Redundant fetch for suggestions
+         const fetchSuggestions = async () => {
+@@ -44,7 +50,10 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         fetchSuggestions();
+ 
+         return () => {
+-            window.removeEventListener('keydown', handleKeyDown);
++            dialog.removeEventListener('close', handleClose);
++            if (dialog.open) {
++                dialog.close();
++            }
+         };
+     }, [onClose]);
+ 
+@@ -58,26 +67,40 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         );
+     }, [articles, searchTerm]);
+ 
++    const handleDialogClick = (event: React.MouseEvent<HTMLDialogElement>) => {
++        if (event.target === event.currentTarget) {
++            event.currentTarget.close();
++        }
++    };
++
+     return (
+-        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-            <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-                <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-                    </svg>
+-                </button>
++        <dialog
++            ref={dialogRef}
++            aria-labelledby="search-dialog-title"
++            className="bg-transparent p-4 pt-[15vh] max-w-none max-h-none w-full h-full backdrop:bg-white/30 backdrop:backdrop-blur-sm"
++            onClick={handleDialogClick}
++        >
++            <div className="bg-white shadow-xl w-full max-w-2xl relative mx-auto" onClick={e => e.stopPropagation()}>
++                <form method="dialog">
++                    <button type="submit" aria-label="Close search" className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
++                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
++                        </svg>
++                    </button>
++                </form>
+                 <div className="p-4">
+                     {!searchTerm && suggestions.length > 0 && (
+                         <div>
+-                            <h3 className="text-sm font-semibold text-gray-500 mb-3">Featured</h3>
++                            <h2 className="text-sm font-semibold text-gray-500 mb-3">Featured</h2>
+                             <ul className="grid grid-cols-3 gap-4 mb-4">
+                                 {suggestions.map(article => {
+                                     const imagePath = article.image ? article.image.replace(/^\//, '') : '';
++                                    const imageUrl = `${import.meta.env.BASE_URL}${imagePath}`;
+                                     return (
+                                         <li key={article.slug}>
+                                             <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+-                                                <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
+-                                                <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                                                <img src={imageUrl} srcSet={`${imageUrl} 400w`} sizes="(max-width: 768px) 30vw, 180px" alt={article.title} width="400" height="225" loading="lazy" className="w-full h-20 object-cover rounded-md mb-2" />
++                                                <h3 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h3>
+                                             </a>
+                                         </li>
+                                     );
+@@ -85,15 +108,18 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                             </ul>
+                         </div>
+                     )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
++                    <search>
++                        <label id="search-dialog-title" htmlFor="site-search" className="block text-sm font-semibold text-gray-500 mb-3">Search</label>
++                        <input
++                            id="site-search"
++                            type="search"
++                            placeholder="Search for articles..."
++                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
++                            value={searchTerm}
++                            onChange={e => setSearchTerm(e.target.value)}
++                            autoFocus
++                        />
++                    </search>
+                 </div>
+                 <div className="p-4 max-h-[60vh] overflow-y-auto">
+                     {searchTerm && filteredArticles.length === 0 && (
+@@ -104,7 +130,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                             {filteredArticles.map(article => (
+                                 <li key={article.slug}>
+                                     <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
+-                                        <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                                        <h2 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h2>
+                                         <p className="text-sm text-gray-600">{article.summary}</p>
+                                     </a>
+                                 </li>
+@@ -113,6 +139,6 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                     )}
+                 </div>
+             </div>
+-        </div>
++        </dialog>
+     );
+ }
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..d6b982a 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -41,7 +41,7 @@ export default function SignInForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h1>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -58,11 +58,14 @@ export default function SignInForm() {
+       <form onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
++            Email
+           </label>
+           <input
+-            type="text"
++            type="email"
++            inputMode="email"
++            autoComplete="email"
+             id="username"
++            name="email"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -76,7 +79,9 @@ export default function SignInForm() {
+           </label>
+           <input
+             type="password"
++            autoComplete="current-password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..b93977d 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -42,7 +42,7 @@ export default function SignUpForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h1>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -59,11 +59,14 @@ export default function SignUpForm() {
+       <form onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
++            Email
+           </label>
+           <input
+-            type="text"
++            type="email"
++            inputMode="email"
++            autoComplete="email"
+             id="username"
++            name="email"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,7 +80,9 @@ export default function SignUpForm() {
+           </label>
+           <input
+             type="password"
++            autoComplete="new-password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..92e0cfa 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -47,7 +47,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                     {topArticle.data.summary}
+                 </p>
+                 <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
++                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                     </svg>
+                     <span>{topArticle.data.readingTime} Min Read</span>
+@@ -55,7 +55,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             </div>
+             <div class="w-full order-first lg:order-last">
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} loading="lazy" sizes="(max-width: 1024px) 100vw, 560px" class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+                 </a>
+             </div>
+         </div>
+@@ -70,7 +70,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                 <div class="flex flex-col shadow-sm overflow-hidden h-full">
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} loading="lazy" sizes="(max-width: 768px) 100vw, 320px" class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..49d66be 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -14,10 +14,10 @@ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+-<!doctype html>
++<!DOCTYPE html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+@@ -37,14 +37,12 @@ const baseUrl = import.meta.env.BASE_URL;
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+-    <div class="mx-auto">
++    <div id="page-shell" class="mx-auto">
+       <AdSlotFireplace client:load />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
+-          <Header />
+-        </div>
++        <Header />
+         <main class="bg-white relative">
+           <slot />
+         </main>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..6065664 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -63,9 +63,12 @@ const isBookmarked = readingList.includes(article.slug);
+             {article.data.prompt_comment ? (
+                 <img 
+                     src={article.data.image}
++                    srcset={`${article.data.image} 1200w`}
++                    sizes="(max-width: 1200px) 100vw, 1200px"
+                     alt={article.data.title}
+                     width="1200"
+                     height="675"
++                    fetchpriority="high"
+                     class="w-full h-auto"
+                     crossorigin="use-credentials"
+                 />
+@@ -76,6 +79,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     width={1200}
+                     height={675}
+                     format="webp"
++                    fetchpriority="high"
++                    sizes="(max-width: 1200px) 100vw, 1200px"
+                     class="w-full h-auto"
+                 />
+             )}
+@@ -91,14 +96,14 @@ const isBookmarked = readingList.includes(article.slug);
+             <!-- Social Share Icons (Placeholders) -->
+             <div class="flex space-x-3 items-center">
+                 <span class="text-sm font-semibold text-gray-800">Share:</span>
+-                <a href="#" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
+-                </a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+-                </a>
++                <button type="button" aria-label="Share on Facebook" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</button>
++                <button type="button" aria-label="Share on X" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</button>
++                <button type="button" aria-label="Copy share link" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
++                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
++                </button>
++                <button type="button" aria-label="Share by email" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
++                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
++                </button>
+                 <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
+@@ -117,10 +122,11 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+     <!-- RELATED ARTICLES SECTION -->
+     <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++        <h2 class="sr-only">Related Articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..832248e 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -49,6 +49,8 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                     height={400}
+                     format="webp"
+                     quality={80}
++                    fetchpriority="high"
++                    sizes="(max-width: 1200px) 100vw, 1200px"
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+                 />
+             )}
+@@ -74,6 +76,8 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             width={1200}
+                             height={675}
+                             format="webp"
++                            loading="lazy"
++                            sizes="(max-width: 1200px) 100vw, 1200px"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+                         <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..0c42598 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -45,7 +45,7 @@ politicsArticles[2] = {
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            <p class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</p>
+                         </a>
+                         <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+                     </div>
+@@ -55,9 +55,9 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -81,4 +81,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

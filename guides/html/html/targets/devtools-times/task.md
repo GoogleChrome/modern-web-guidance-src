@@ -1,0 +1,1 @@
+- Refactor the application to follow modern HTML architecture and semantics, ensuring proper document structure, native dialog and popover overlays, focus management, form input autofill attributes, and optimized resource loading with responsive image sizing.
