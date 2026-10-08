@@ -139,6 +139,7 @@ async function main() {
     }
   } else if (command === "install") {
     const startTime = Date.now();
+    // We'll capture additional args and send them through to vercel skills CLI. (eg. --agent and -y)
     const extraArgs = process.argv.slice(3).filter(a => a !== "--choose");
     const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
