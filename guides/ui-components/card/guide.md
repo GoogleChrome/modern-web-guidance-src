@@ -17,11 +17,12 @@ A card groups one related piece of content or one choice. It is a visual pattern
 
 ## Guidelines
 
-Choose the card's semantics from what the card itself represents:
+Choose semantics for the content and its interaction separately:
 
-- an `article` when it is independently understandable content (any links and buttons inside it remain separate native controls);
-- one native link when the whole card is a single destination;
-- a radio button or checkbox with an associated `<label>`, or an `option` in a native `<select>`, when the card is a choice.
+- use an `article` for independently understandable content, whether or not it links to a destination;
+- use a native link for navigation. When the whole card is one destination, the link may wrap the `article` if the content merits article semantics and contains no other interactive elements;
+- keep links and buttons for independent actions as separate native controls;
+- use a radio button or checkbox with an associated `<label>`, or an `option` in a native `<select>`, when the card is a choice.
 
 Keep media, title, supporting content, and actions in meaningful source order; don't use CSS `order` to contradict it (see {{ GUIDE_REF("css-layout") }}).
 
@@ -136,12 +137,14 @@ Use an `<article>` for independently understandable card content. Keep links and
 
 ### Single-destination cards
 
-When the whole card is one destination and has no independent actions, make it one native link. Do not nest links, buttons, or form controls inside it:
+When the whole card is one destination and has no independent actions, use one native link. If the content is independently understandable, the link can wrap an `<article>`. Do not nest other links, buttons, or form controls inside the link:
 
 ```html
-<a class="card" href="/recipes/poached-eggs">
-  <h3>Poached eggs</h3>
-  <p>Two poached eggs served on toasted sourdough.</p>
+<a href="/recipes/poached-eggs">
+  <article class="card">
+    <h3>Poached eggs</h3>
+    <p>Two poached eggs served on toasted sourdough.</p>
+  </article>
 </a>
 ```
 
