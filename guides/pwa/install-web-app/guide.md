@@ -27,6 +27,8 @@ Decide to use either the HTML `<install>` element or the JavaScript
   * Pros:
     * The browser provides the install control, ensuring a consistent and
       trustworthy installation experience.
+    * Installing another app does not trigger a separate permission prompt before
+      the installation confirmation dialog.
     * The label in the `<install>` element changes to "Launch" if the target
       app is already installed.
     * No JavaScript is required to trigger the installation.
@@ -42,6 +44,8 @@ Decide to use either the HTML `<install>` element or the JavaScript
     * The number of installation UI elements is not limited by the browser.
   * Cons:
     * Requires JavaScript to trigger the installation.
+    * Installing another app triggers an initial `web-app-installation`
+      permission prompt before the installation confirmation dialog.
 
 ## Prepare the web app
 
@@ -121,25 +125,10 @@ Listen for the `installresult` event to handle installation success and errors
 and use the `event.result` property to determine the outcome:
 
 * `success`: the app was installed successfully.
-* `aborted`: the user cancelled the installation or a browser condition
+* `aborted`: the user canceled the installation or a browser condition
   prevented the installation from completing.
 * `invalid_data`: the `manifest` or `manifestId` attribute values are invalid.
 
-```javascript
-installButton.addEventListener('installresult', (event) => {
-  switch (event.result) {
-    case 'success':
-      console.log('Install succeeded.');
-      break;
-    case 'aborted':
-      console.log('Install aborted.');
-      break;
-    case 'invalid_data':
-      console.log('Install data invalid.');
-      break;
-  }
-});
-```
 
 ## Use the JavaScript `navigator.install()` method
 
