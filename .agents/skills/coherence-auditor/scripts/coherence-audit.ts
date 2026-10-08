@@ -6,7 +6,7 @@ import { config } from '../../../../src/core/skills-config.ts';
 import { rootDir } from '../../../../src/core/paths.ts';
 
 const REPO_ROOT = rootDir;
-const CANONICAL_ROOT_MD = new Set(['README.md', 'CONTEXT.md', 'CONTRIBUTING.md', 'EVALS.md', 'GEMINI.md', 'CODE_OF_CONDUCT.md']);
+const CANONICAL_ROOT_MD = new Set(['README.md', 'CONTRIBUTING.md', 'GEMINI.md', 'CODE_OF_CONDUCT.md']);
 
 const run = (cmd: string) => {
   try { return execSync(cmd, { cwd: REPO_ROOT, encoding: 'utf8' }).trim(); }
@@ -49,7 +49,7 @@ if (!broken) console.log('✅ All relative links are valid.');
 
 // 5. TODOs
 console.log('\n📝 Scanning for TODOs/TBDs...');
-const todos = run('git grep -n -I -E "TODO|TBD|FIXME|unresolved|decision needed" -- "guides/*.md" "skills-src/*.md" README.md CONTEXT.md CONTRIBUTING.md EVALS.md GEMINI.md CODE_OF_CONDUCT.md');
+const todos = run('git grep -n -I -E "TODO|TBD|FIXME|unresolved|decision needed" -- "guides/*.md" "skills-src/*.md" README.md docs/CONTEXT.md CONTRIBUTING.md docs/EVALS.md GEMINI.md CODE_OF_CONDUCT.md');
 if (todos) console.warn('⚠️  Found items needing attention:\n' + todos.split('\n').map(l => '    ' + l).join('\n'));
 else console.log('✅ No TODOs/TBDs found.');
 
@@ -69,8 +69,8 @@ if (fs.existsSync(path.join(REPO_ROOT, 'skills-src'))) {
 }
 
 // 7. Context Coherence
-console.log('\n🧠 Checking Coherence with CONTEXT.md...');
-if (fs.existsSync(path.join(REPO_ROOT, 'CONTEXT.md'))) {
+console.log('\n🧠 Checking Coherence with docs/CONTEXT.md...');
+if (fs.existsSync(path.join(REPO_ROOT, 'docs/CONTEXT.md'))) {
   console.log('ℹ️  Verify semantic alignment with project skills:');
   globSync('.agents/skills/project-*/SKILL.md', { cwd: REPO_ROOT }).forEach(s => console.log(`    - ${s}`));
 }

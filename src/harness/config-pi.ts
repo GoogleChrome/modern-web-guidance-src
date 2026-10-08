@@ -1,7 +1,7 @@
 /**
  * Pi Agent Configuration
  * 
- * Usage: gd eval --config harness/config-pi.ts <task-name>
+ * Usage: gd eval --config src/harness/config-pi.ts <task-name>
  * 
  * This configuration runs the evaluation suite with the Pi coding agent
  * instead of the default Antigravity CLI.

@@ -9,7 +9,7 @@
  * to re-process results, running grading only if missing, and updating the summary files.
  * 
  * Usage:
- * node harness/backfill.ts [custom_results_dir]
+ * node src/harness/backfill.ts [custom_results_dir]
  * 
  * If no argument is provided, it defaults to the project's standard results directory.
  */

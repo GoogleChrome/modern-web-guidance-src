@@ -26,7 +26,7 @@ This will automatically execute the 5-step pipeline:
 2. **Grader Generation**: Generates `grader.ts` Playwright tests based on `expectations.md` and your guide.
 3. **Grader Calibration**: Calibrates the grader (ensures golden patches pass 100% and zero-passrate baseline fails 100%).
 4. **Agent Evaluations**: Executes guided and unguided agent runs against the target apps to measure pass rates and guidance tool consumption.
-5. **Evaluation Report (`report.md`)**: Invokes an evaluator agent to analyze failed assertions, diagnose root causes, and output actionable recommendations into `<guide_dir>/test-app-results/report.md`.
+5. **Evaluation Report (`report.md`)**: Invokes an evaluator agent to analyze failed assertions, diagnose root causes, and output actionable recommendations into `results/guides/<category>/<slug>/report.md`.
 
 To skip agent evaluations and report generation after calibration, add `--no-test`:
 
@@ -36,7 +36,7 @@ gd dev <path/to/guide_dir> --no-test
 
 ### Submitting a Pull Request: `gd pr`
 
-Once `gd dev` completes and generates `test-app-results/report.md`, you can create a Pull Request directly from your terminal:
+Once `gd dev` completes and generates `results/guides/<category>/<slug>/report.md`, you can create a Pull Request directly from your terminal:
 
 ```bash
 gd pr <path/to/guide_dir>
@@ -50,7 +50,7 @@ This will automatically:
 3. Push your feature branch to `origin`.
 4. Analyze `report.md` to automatically detect and apply PR labels:
    - **`gd-dev-content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
-   - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`. When the PR is marked ready for review, the ATL triage bot requests review from `EVAL_PR_REVIEWER` in `guides/atl-triage.ts`.
+   - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`. When the PR is marked ready for review, the ATL triage bot requests review from `EVAL_PR_REVIEWER` in `src/ci/atl-triage.ts`.
 5. Open a new draft Pull Request (or update the existing PR description and sync labels if an open PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
 
 ### Fixing Open Eval Gaps: `gd dev-gap`
@@ -149,7 +149,7 @@ Agent test results:
   Guide impact:     +56% (vs unguided)
 ```
 
-The agent is selected from the `config.ts` if it exists (see [config.ts.example](../config.ts.example) for setup), otherwise uses the configured default in [harness config](../harness/config.ts) and `gd dev`.
+The agent is selected from the `config.ts` if it exists (see [config.ts.example](../config.ts.example) for setup), otherwise uses the configured default in [harness config](../src/harness/config.ts) and `gd dev`.
 The base app is selected from the generated `tasks/task.md` file (which defaults to `daily-grind`).
 
 ### Negative Evals
@@ -164,7 +164,7 @@ gd eval <guideName>/negative
 
 If you need more control, you can run each step individually:
 
-1. Configure the following settings for your run in the [harness config](../harness/config.ts):
+1. Configure the following settings for your run in the [harness config](../src/harness/config.ts):
 
 ```
 skillsToEnable: ['modern-web-guidance'],

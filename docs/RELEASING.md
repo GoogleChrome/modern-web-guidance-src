@@ -5,7 +5,7 @@ To release updates for our AI skills (Claude Code, Gemini CLI / Antigravity, VS 
 ## Automated CI/CD Publishing
 
 Releases are published automatically via GitHub Actions:
-* **Workflow**: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml)
+* **Workflow**: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)
 * **Schedule**: Runs every Monday at 20:00 UTC (12:00 PM PST / 1:00 PM PDT).
 * **Manual Trigger**: Can be triggered manually at any time via GitHub Actions **Run workflow** (`workflow_dispatch`).
 
@@ -36,10 +36,10 @@ You can generate and preview release notes for any tag or diff using the `genera
 
 ```bash
 # Preview notes comparing against the latest tag using Gemini
-node --env-file=.env serving/skills-cli/generate-release-notes.ts v0.0.185
+node --env-file=.env src/build/generate-release-notes.ts v0.0.185
 
 # Test deterministic fallback (without API key)
-node serving/skills-cli/generate-release-notes.ts v0.0.185
+node src/build/generate-release-notes.ts v0.0.185
 ```
 
 ### Release Notes Structure
@@ -57,7 +57,7 @@ The release notes automatically group changes into clear top-level sections:
 To build, install, and test the compiled package locally as a global CLI:
 
 ```bash
-cd "$(git rev-parse --show-cdup)" && node serving/skills-cli/build-dist.ts && cd dist/skills-cli && npm install --global .
+cd "$(git rev-parse --show-cdup)" && node src/build/build-dist.ts && cd dist/skills-cli && npm install --global .
 ```
 
 This registers the package globally and places the binaries (`modern-web`) in your `PATH`.

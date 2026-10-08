@@ -9,19 +9,24 @@ Each agent harness (e.g., `gemini-cli-agent.ts`, `pi-agent.ts`) is a wrapper tha
 ## Directory Structure
 
 ```
-harness/
+src/harness/
   agents/                    # Agent-specific runners
     gemini-cli-agent.ts
     claude-code-agent.ts
     codex-cli-agent.ts
     jetski-cli-agent.ts
     pi-agent.ts
+  base-apps/                 # Base applications that agents modify
+    daily-grind/
+    devtools-times/
   lib/
     agent-shared.ts          # Common utilities (isolation, skills setup, etc.)
     collection.ts            # Results aggregation
-    guidance_validation.ts   # Guide/tool usage extraction
+    guidance-validation.ts   # Guide/tool usage extraction
+    sandbox.ts               # Filesystem isolation sandbox
+  nightly/                   # Nightly cron automation scripts
   config.ts                  # Suite configuration
-  run_suite.ts               # Orchestrator
+  run-suite.ts               # Orchestrator
   evaluate.ts                # Evaluation reporting
 ```
 
@@ -29,7 +34,7 @@ harness/
 
 ```
 ┌─────────────────┐
-│  run_suite.ts   │  (orchestrator)
+│  run-suite.ts   │  (orchestrator)
 └────────┬────────┘
          │ spawns
          ▼
@@ -80,20 +85,20 @@ The harness does **not** centrally configure which model each agent uses. Instea
 
 ```bash
 # Run Pi withClaude Sonnet
-PI_MODEL=anthropic/claude-sonnet node harness/quick-smoke.ts pi
+PI_MODEL=anthropic/claude-sonnet node src/harness/quick-smoke.ts pi
 
 # Run Gemini CLI with Flash
-GEMINI_MODEL=gemini-2.5-flash node harness/quick-smoke.ts gemini-cli
+GEMINI_MODEL=gemini-2.5-flash node src/harness/quick-smoke.ts gemini-cli
 
 # Run Codex with GPT-5
-CODEX_MODEL=gpt-5 node harness/quick-smoke.ts codex-cli
+CODEX_MODEL=gpt-5 node src/harness/quick-smoke.ts codex-cli
 
 # Run Jetski CLI with specific model
-JETSKI_MODEL='Gemini 2.5 Flash' node harness/quick-smoke.ts jetski-cli
+JETSKI_MODEL='Gemini 2.5 Flash' node src/harness/quick-smoke.ts jetski-cli
 
 # Run full eval suite with Pi and specific model
 PI_MODEL=google/gemini-2.5-flash GD_SUITE_CONFIG='{"agent":"pi"}' \
-  node harness/run_suite.ts <task>
+  node src/harness/run-suite.ts <task>
 ```
 
 ### How It Works in the Harness
@@ -101,16 +106,16 @@ PI_MODEL=google/gemini-2.5-flash GD_SUITE_CONFIG='{"agent":"pi"}' \
 Each agent harness passes the model to the CLI binary:
 
 ```typescript
-// harness/agents/pi-agent.ts
+// src/harness/agents/pi-agent.ts
 const piModel = process.env.PI_MODEL || process.env.PROMPT_MODEL;
 const modelArg = piModel ? ['--model', piModel] : [];
 const commandArgs = ['-p', '--offline', ...modelArg, userPrompt];
 
-// harness/agents/codex-cli-agent.ts
+// src/harness/agents/codex-cli-agent.ts
 const model = process.env.CODEX_MODEL;
 const commandArgs = ['-p', ...(model ? ['--model', model] : []), userPrompt];
 
-// harness/agents/jetski-cli-agent.ts
+// src/harness/agents/jetski-cli-agent.ts
 const model = process.env.JETSKI_MODEL;
 const commandArgs = ['-p', ...(model ? ['--model', model] : []), userPrompt];
 ```
@@ -131,10 +136,10 @@ For development testing, use cheaper/faster models:
 
 ```bash
 # Use fast model for smoke tests
-PI_MODEL=qwen/qwen3.5-plus node harness/quick-smoke.ts pi
+PI_MODEL=qwen/qwen3.5-plus node src/harness/quick-smoke.ts pi
 
 # Use expensive model only for final evals
-PI_MODEL=anthropic/claude-opus GD_SUITE_CONFIG='...' node harness/run_suite.ts
+PI_MODEL=anthropic/claude-opus GD_SUITE_CONFIG='...' node src/harness/run-suite.ts
 ```
 
 ---
@@ -150,7 +155,7 @@ Each test run gets a fresh temp directory as HOME to prevent:
 - Shell profile interference
 
 ```typescript
-// harness/lib/agent-shared.ts
+// src/harness/lib/agent-shared.ts
 export function createIsolatedHome(prefix: string, targetDir?: string): string {
   const tempHome = `/tmp/${prefix}-${Math.random().toString(36).substring(7)}`;
   fs.mkdirSync(tempHome, { recursive: true });
@@ -185,7 +190,7 @@ Each agent has different auth file locations:
 
 Example for Pi:
 ```typescript
-// harness/agents/pi-agent.ts
+// src/harness/agents/pi-agent.ts
 const piDestAgent = path.join(tempHome, '.pi', 'agent');
 fs.mkdirSync(piDestAgent, { recursive: true });
 
@@ -217,7 +222,7 @@ Each agent outputs trajectory in different formats:
 
 Example extraction for Pi:
 ```typescript
-// harness/agents/pi-agent.ts
+// src/harness/agents/pi-agent.ts
 export function extractPiTokenUsage(dir: string) {
   const sessionFiles = fs.globSync('*.jsonl', { cwd: dir });
   let total = 0;
@@ -243,7 +248,7 @@ export function extractPiTokenUsage(dir: string) {
 The harness tracks which guides the agent retrieved/read:
 
 ```typescript
-// harness/lib/guidance_validation.ts
+// src/harness/lib/guide-usage.ts
 export async function collectGuidesUsed(
   dirPath: string
 ): Promise<GuideUsage> {
@@ -261,7 +266,7 @@ This scans trajectories for:
 Agents can fail at multiple stages. The harness captures failures for grading:
 
 ```typescript
-// harness/lib/agent-shared.ts
+// src/harness/lib/agent-shared.ts
 if (exitCode !== 0) {
   fs.writeFileSync(
     path.join(targetDir, 'generation_failed.json'),
@@ -281,7 +286,7 @@ The grader reads this to distinguish:
 
 ### 7. Filesystem Sandbox
 
-An isolated HOME alone doesn't stop an agent from finding this repo (e.g. via `$PATH` or `find /`) and reading `guides/`, `expectations.md` and `grader.ts`. `runCliAgentCommand()` therefore wraps every agent in an OS-level sandbox (`harness/lib/sandbox.ts`) that hides the repo root:
+An isolated HOME alone doesn't stop an agent from finding this repo (e.g. via `$PATH` or `find /`) and reading `guides/`, `expectations.md` and `grader.ts`. `runCliAgentCommand()` therefore wraps every agent in an OS-level sandbox (`src/harness/lib/sandbox.ts`) that hides the repo root:
 
 - **Linux**: `bwrap` (bubblewrap) mounts an empty tmpfs over the repo root. Requires `sudo apt install bubblewrap`.
 - **macOS**: `sandbox-exec` denies file access under the repo root.
@@ -290,7 +295,7 @@ Only these paths are re-exposed:
 
 | Path | Access | Why |
 |------|--------|-----|
-| `node_modules`, `harness/node_modules` | read-only | Agent CLI binaries |
+| `node_modules`, `src/harness/node_modules` | read-only | Agent CLI binaries |
 | `dist/skills-cli` | read-only, guided only | The npx/pnpx shim runs the local skills CLI |
 | per-run `targetDir` | writable | npx shim, `modern-web.log` |
 
@@ -303,7 +308,7 @@ If no sandbox tool is available the run fails loudly. Set `GD_UNSAFE_NO_SANDBOX=
 Copy an existing harness (e.g., `pi-agent.ts`) and update:
 
 ```typescript
-// harness/agents/my-agent.ts
+// src/harness/agents/my-agent.ts
 import config, { Agents } from '../config.ts';
 import { ... } from '../lib/agent-shared.ts';
 
@@ -374,7 +379,7 @@ if (isMain) {
 ### Step 2: Update Config
 
 ```typescript
-// harness/config.ts
+// src/harness/config.ts
 export const Agents = {
   // ... existing agents
   MY_AGENT: 'my_agent'
@@ -393,7 +398,7 @@ export interface EnvironmentConfig {
 
 ### Step 3: Wire Up Integrations
 
-**run_suite.ts** - Agent script mapping (unknown agents throw):
+**run-suite.ts** - Agent script mapping (unknown agents throw):
 ```typescript
 const AGENT_SCRIPTS: Record<string, string> = {
   // ... other agents
@@ -412,7 +417,7 @@ export function extractTokenUsageFromResults(resultsDir: string) {
 }
 ```
 
-**lib/guidance_validation.ts** - Guide/tool collection:
+**lib/guidance-validation.ts** - Guide/tool collection:
 ```typescript
 export async function collectGuidesUsed(dirPath: string) {
   // Reads retrieved and read guides from trajectory_summary.json
@@ -430,19 +435,19 @@ export async function collectGuidanceToolsUsed(dir: string) {
 The `quick-smoke.ts` script supports all registered agents:
 
 ```bash
-# Usage: node quick-smoke.ts [agent] [guided|unguided]
-node quick-smoke.ts pi unguided
-node quick-smoke.ts gemini-cli guided
-node quick-smoke.ts # defaults to pi
+# Usage: node src/harness/quick-smoke.ts [agent] [guided|unguided]
+node src/harness/quick-smoke.ts pi unguided
+node src/harness/quick-smoke.ts gemini-cli guided
+node src/harness/quick-smoke.ts # defaults to pi
 
 # Or via environment variable
-SMOKE_AGENT=claude-code node quick-smoke.ts
+SMOKE_AGENT=claude-code node src/harness/quick-smoke.ts
 ```
 
 **Option B: Create agent-specific smoke test** (if you need custom validation)
 
 ```typescript
-// harness/my-agent-smoke.ts
+// src/harness/my-agent-smoke.ts
 import { spawnSync } from 'child_process';
 
 export async function runMyAgentSmokeTest() {
@@ -477,9 +482,9 @@ export async function runMyAgentSmokeTest() {
 }
 ```
 
-### Step 5: Document in EVALS.md
+### Step 5: Document in docs/EVALS.md
 
-Add agent configuration instructions to `EVALS.md` under the **Agents** section.
+Add agent configuration instructions to `docs/EVALS.md` under the **Agents** section.
 
 ## Common Pitfalls
 
@@ -557,14 +562,14 @@ grep -o '"use_case_id":"[^"]*"' trajectory.jsonl
 
 ```bash
 # Run the skills CLI directly to verify it works
-node serving/bin/modern-web.ts search "address form"
+node src/cli/modern-web.ts search "address form"
 ```
 
 ### Check Guide Validation
 
 ```bash
 # Verify guides are "eval-ready" before running suite
-node lib/guide-validation.ts
+node src/core/guide-validation.ts
 ```
 
 ## Token Efficiency
@@ -575,7 +580,7 @@ For development/testing:
 2. **Use `--offline`** to disable update checks
 3. **Use cheaper models** via environment variables:
    ```bash
-   PI_MODEL=cheap/fast-model node pi-smoke.ts
+   PI_MODEL=cheap/fast-model node src/harness/quick-smoke.ts pi
    ```
 4. **Run smoke tests** instead of full suites
 5. **Limit `numRuns`** in suite config (default is 1 for smoke, 2+ for real evals)
@@ -588,29 +593,29 @@ Use the agent-agnostic smoke test for quick validation:
 
 ```bash
 # Test Pi (default)
-node quick-smoke.ts
+node src/harness/quick-smoke.ts
 
 # Test specific agent
-node quick-smoke.ts <agent> [guided|unguided]
+node src/harness/quick-smoke.ts <agent> [guided|unguided]
 
 # Available agents: jetski-cli, gemini-cli, claude-code, codex-cli, pi
-node quick-smoke.ts pi unguided
-node quick-smoke.ts gemini-cli guided
+node src/harness/quick-smoke.ts pi unguided
+node src/harness/quick-smoke.ts gemini-cli guided
 
 # Or via environment
 export SMOKE_AGENT=pi
-node quick-smoke.ts
+node src/harness/quick-smoke.ts
 ```
 
 ### Custom Smoke Tests
 
-For agent-specific validation logic, create `harness/<agent>-smoke.ts` following the pattern in existing smoke tests.
+For agent-specific validation logic, create `src/harness/<agent>-smoke.ts` following the pattern in existing smoke tests.
 
 ## Related Documentation
 
-- [EVALS.md](../EVALS.md) - Agent configuration and environment setup
-- [eval-results.md](./eval-results.md) - Results storage and GCS upload
-- [CONTEXT.md](../CONTEXT.md) - High-level architecture
+- [docs/EVALS.md](../../docs/EVALS.md) - Agent configuration and environment setup
+- [docs/eval-results.md](../../docs/eval-results.md) - Results storage and GCS upload
+- [docs/CONTEXT.md](../../docs/CONTEXT.md) - High-level architecture
 - [agent-shared.ts](./lib/agent-shared.ts) - Shared utility functions
 
 ## Testing the Pi Agent Harness
@@ -620,8 +625,7 @@ For agent-specific validation logic, create `harness/<agent>-smoke.ts` following
 Run the Pi trajectory parsing unit tests:
 
 ```bash
-cd harness
-node --test tests/pi-parsing.test.ts
+node --test src/harness/agents/pi-agent.test.ts
 ```
 
 Tests cover:
@@ -635,10 +639,10 @@ Tests cover:
 
 ```bash
 # Quick validation that Pi harness works end-to-end
-node quick-smoke.ts pi
+node src/harness/quick-smoke.ts pi
 
 # Or specify agent explicitly
-node quick-smoke.ts pi unguided
+node src/harness/quick-smoke.ts pi unguided
 ```
 
 ### Manual Trajectory Inspection
@@ -648,11 +652,11 @@ To inspect actual Pi trajectories from a run:
 ```bash
 # Run full eval suite with Pi (sessions enabled by default)
 GD_SUITE_CONFIG='{"agent":"pi"}' \
-  node harness/run_suite.ts <task>
+  node src/harness/run-suite.ts <task>
 
 # Sessions are saved to the isolated HOME, then exported to results dir
 # Inspect the JSONL format
-cat results/<suite>/<run>/<task>/guided/*.jsonl | head -100
+cat results/suites/<suite>/<run>/<task>/guided/*.jsonl | head -100
 ```
 
 ### Adding New Tests
@@ -699,20 +703,20 @@ The `gd` CLI provides a convenient wrapper around the eval harness:
 gd eval <task-name>
 
 # Run with Pi agent
-gd eval --config harness/config-pi.ts <task-name>
+gd eval --config src/harness/config-pi.ts <task-name>
 
 # Run with custom model
-PI_MODEL=anthropic/claude-sonnet gd eval --config harness/config-pi.ts <task-name>
+PI_MODEL=anthropic/claude-sonnet gd eval --config src/harness/config-pi.ts <task-name>
 
 # Run multiple specific tasks
-gd eval --config harness/config-pi.ts task1 task2 task3
+gd eval --config src/harness/config-pi.ts task1 task2 task3
 
 # Run full suite (all discovered tasks)
-gd eval --config harness/config-pi.ts
+gd eval --config src/harness/config-pi.ts
 ```
 
 The `--config` flag accepts either:
-- A path to a config file (e.g., `harness/config-pi.ts`)
+- A path to a config file (e.g., `src/harness/config-pi.ts`)
 - A JSON string via `GD_SUITE_CONFIG` environment variable (less convenient)
 
-See `harness/config-pi.ts` for an example configuration.
+See `src/harness/config-pi.ts` for an example configuration.

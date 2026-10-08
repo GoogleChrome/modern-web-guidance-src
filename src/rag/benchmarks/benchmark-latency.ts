@@ -1,6 +1,7 @@
 import { TfjsEmbedder } from "../tfjs-embedder.ts";
 import fs from "fs";
 import path from "path";
+import { rootDir } from "../../core/paths.ts";
 
 function median(values: number[]): number {
   if (values.length === 0) return 0;
@@ -10,8 +11,7 @@ function median(values: number[]): number {
 }
 
 async function run() {
-  const currentDir = import.meta.dirname;
-  const queriesFile = path.resolve(currentDir, "../../benchmarks/data/eval-queries-pool.json");
+  const queriesFile = path.join(rootDir, "src/rag/benchmarks/data/eval-queries-pool.json");
   console.log(`Loading queries from ${queriesFile}...`);
 
   const allQueries: Array<{ query: string }> = JSON.parse(fs.readFileSync(queriesFile, "utf-8"));
@@ -54,7 +54,7 @@ async function run() {
   console.log(`TFJS Warm Median: ${tfjsWarmMedian.toFixed(2)}ms`);
 
   // Record results
-  const resultsFile = path.resolve(currentDir, "../../benchmarks/data/eval-results-latency.json");
+  const resultsFile = path.join(rootDir, "src/rag/benchmarks/data/eval-results-latency.json");
   if (fs.existsSync(resultsFile)) {
     const results = JSON.parse(fs.readFileSync(resultsFile, "utf-8"));
     const timestamp = new Date().toISOString();

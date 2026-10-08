@@ -3,7 +3,7 @@
 Native TS execution (Node v24.11+) is enabled via **Erasable Syntax**. No `tsx` or build step required.
 
 ### Commands
-- **Run Skills CLI**: `node bin/modern-web.ts`
+- **Run Skills CLI**: `node src/cli/modern-web.ts`
 - **Run Scripts**: `node src/build/build-guides.ts`
 - **Type Check**: `pnpm run typecheck`
 

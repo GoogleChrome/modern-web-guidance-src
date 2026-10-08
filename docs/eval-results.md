@@ -4,7 +4,7 @@ This document covers how evaluation results are stored, uploaded to Google Cloud
 
 ## Storage Location
 Evaluation results are stored locally in:
-- `harness/results/` (default within the repo).
+- `results/suites/` (default within the repo).
 - Or a custom external directory (e.g., `~/guidance-evals`).
 
 Each suite has its own directory containing:
@@ -15,7 +15,7 @@ Each suite has its own directory containing:
 ---
 
 ## Uploading to GCS
-We use `harness/upload_suite.ts` to upload a suite to GCS.
+We use `src/harness/upload-suite.ts` to upload a suite to GCS.
 
 ### How it works
 1. Requires `evals.json` to exist in the suite directory (ensures evaluation was run).
@@ -28,7 +28,7 @@ We use `harness/upload_suite.ts` to upload a suite to GCS.
 pnpm upload <suite-name>
 
 # Upload with flags or from custom directory
-node harness/upload_suite.ts <suite-name> [--summary-only] [custom_results_dir]
+node src/harness/upload-suite.ts <suite-name> [--summary-only] [custom_results_dir]
 ```
 
 ---
@@ -57,10 +57,10 @@ When metrics reporting logic changes, you can backfill all suites in a directory
 
 ```bash
 # Backfill local repo results
-node harness/backfill.ts
+node src/harness/backfill.ts
 
 # Backfill a custom directory (e.g., synced from GCS)
-node harness/backfill.ts ~/guidance-evals
+node src/harness/backfill.ts ~/guidance-evals
 ```
 This updates `evals.json` and `evals.md` in each suite directory.
 
@@ -75,7 +75,7 @@ To upload **all** suites in bulk from a custom directory, you can use a simple s
 # Bulk upload ONLY summaries for all suites in ~/guidance-evals
 for d in ~/guidance-evals/*/ ; do
     suite=$(basename "$d")
-    node harness/upload_suite.ts "$suite" ~/guidance-evals --summary-only
+    node src/harness/upload-suite.ts "$suite" ~/guidance-evals --summary-only
 done
 ```
 
@@ -83,8 +83,8 @@ For a single suite:
 
 ```bash
 # Upload ONLY summaries from your custom directory
-node harness/upload_suite.ts <suite-name> ~/guidance-evals --summary-only
+node src/harness/upload-suite.ts <suite-name> ~/guidance-evals --summary-only
 
 # Upload EVERYTHING from your custom directory
-node harness/upload_suite.ts <suite-name> ~/guidance-evals
+node src/harness/upload-suite.ts <suite-name> ~/guidance-evals
 ```
