@@ -50,20 +50,20 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
     <button type="button" data-direction="next">Next slide</button>
   </div>
 
-  <ul class="carousel-track" tabindex="0" aria-label="Slides">
-    <li class="carousel-slide" role="group" aria-roledescription="slide" aria-label="1 of 3"
+  <div class="carousel-track" tabindex="0" role="group" aria-label="Slides">
+    <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="1 of 3"
         data-marker-name="Go to slide 1">
       <h3>Product one</h3>
-    </li>
-    <li class="carousel-slide" role="group" aria-roledescription="slide" aria-label="2 of 3"
+    </div>
+    <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="2 of 3"
         data-marker-name="Go to slide 2">
       <h3>Product two</h3>
-    </li>
-    <li class="carousel-slide" role="group" aria-roledescription="slide" aria-label="3 of 3"
+    </div>
+    <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="3 of 3"
         data-marker-name="Go to slide 3">
       <h3>Product three</h3>
-    </li>
-  </ul>
+    </div>
+  </div>
 
   <p class="visually-hidden" role="status" aria-live="polite"></p>
 
