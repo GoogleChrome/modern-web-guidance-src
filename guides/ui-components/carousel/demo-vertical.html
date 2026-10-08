@@ -62,6 +62,10 @@
     }
 
     @media (prefers-reduced-motion: no-preference) {
+      .carousel-track {
+        scroll-behavior: smooth;
+      }
+
       @supports (animation-timeline: view()) {
         .carousel-item {
           animation: fade-in linear both;
@@ -82,7 +86,7 @@
       }
     }
 
-    @supports selector(::scroll-button(*)) {
+    @supports selector(::scroll-button(*)) and (anchor-name: --carousel-track) {
       .carousel-track::scroll-button(block-start) {
         content: "‹" / "Previous slide";
         rotate: 90deg;
@@ -96,9 +100,8 @@
       }
 
       .carousel-track::scroll-button(*) {
-        /* Pull the buttons out of the flex flow and centre them on the track */
-        position: fixed;
-        position-anchor: --carousel-track;
+        /* Pull the buttons out of the flex flow and center them on the track */
+        position: absolute;
         inset-inline-start: anchor(center);
         translate: -50% 0;
         font-size: 1.5rem;
