@@ -47,30 +47,14 @@ input[type="checkbox"][switch]:focus-visible {
 
 {{ BASELINE_STATUS("switch-control") }}
 
-If your Baseline target does not support `<input type="checkbox" switch>`, conditionally load `input-switch-polyfill` only when `'switch' in HTMLInputElement.prototype` is `false`. Do not load the polyfill unconditionally.
+If your Baseline target does not support `<input type="checkbox" switch>`, load `input-switch-polyfill` only when `'switch' in HTMLInputElement.prototype` is `false`. Do not load the polyfill unconditionally. The polyfill enhances checkboxes with the `switch` attribute by applying switch styling (`appearance: none`), syncing computed `accent-color`, and providing pointer drag support.
 
-For browsers without native switch support, dynamically import `input-switch-polyfill` in `<head>` or your application entry. It progressively enhances checkboxes with the `switch` attribute by applying switch styling (`appearance: none`), syncing computed `accent-color`, and providing pointer drag support.
-
-**Option 1: Using a bundler**
-
-Install the polyfill via npm (`npm install input-switch-polyfill`). Conditionally import it in your application entry or `<head>` script:
+Use the package-loading approach appropriate to your project. The example below assumes your build setup can resolve the module specifier:
 
 ```javascript
 if (!('switch' in HTMLInputElement.prototype)) {
   import('input-switch-polyfill');
 }
-```
-
-**Option 2: Using a CDN**
-
-For standalone setups without a build pipeline, conditionally import from a CDN in `<head>`:
-
-```html
-<script type="module">
-  if (!('switch' in HTMLInputElement.prototype)) {
-    import('https://unpkg.com/input-switch-polyfill');
-  }
-</script>
 ```
 
 {{ FEATURE_FALLBACKS("accent-color") }}
