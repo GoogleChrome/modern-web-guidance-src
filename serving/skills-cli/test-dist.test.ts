@@ -308,4 +308,13 @@ test('bundled search handles linguistic and sequence edge cases with precise ker
   }
 });
 
+test('no build-machine rootDir path leak in bundled dist binaries', async () => {
+  const modernWebMjs = await fs.readFile(path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs'), 'utf8');
+  assert.strictEqual(modernWebMjs.includes(ROOT_DIR), false, 'modern-web.mjs should not contain build-machine rootDir');
+
+  const searchMjs = await fs.readFile(path.join(STAGING_DIR, 'skills/modern-web-guidance/search.mjs'), 'utf8');
+  assert.strictEqual(searchMjs.includes(ROOT_DIR), false, 'search.mjs should not contain build-machine rootDir');
+});
+
+
 

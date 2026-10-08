@@ -3,7 +3,7 @@ import path from "path";
 import { execSync } from "child_process";
 import { parseArgs } from "util";
 import { fileURLToPath } from "node:url";
-import { rootDir } from "../../lib/paths.ts";
+import { outDir } from "../../lib/paths.ts";
 
 // 1. Parse and resolve CLI / GHA environment inputs
 const { values } = parseArgs({
@@ -16,7 +16,7 @@ const { values } = parseArgs({
 
 const TARGET_REF = values["base-ref"] || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "origin/main");
 const BASELINE_DIR = values["baseline-dir"] || process.env.BASELINE_BUILD_DIR || "/tmp/guides-baseline";
-const BRANCH_DIR = path.join(rootDir, "serving/build/guides");
+const BRANCH_DIR = path.join(outDir, "build/skills-cli/guides");
 const OUTPUT_PATH = values["output-path"] || process.env.REPORT_OUTPUT_PATH || "";
 const TEMP_REPO_DIR = "/tmp/guides-baseline-repo";
 
@@ -50,14 +50,26 @@ function setupBaselineWorkspace() {
 
     console.log("Compiling baseline visual guides...");
     execSync("pnpm install --frozen-lockfile", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
-    execSync("pnpm --filter serving build", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
+    if (fs.existsSync(path.join(TEMP_REPO_DIR, "serving/package.json"))) {
+      execSync("pnpm --filter serving build", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
+    } else {
+      execSync("pnpm build", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
+    }
 
     fs.rmSync(BASELINE_DIR, { recursive: true, force: true });
     fs.mkdirSync(BASELINE_DIR, { recursive: true });
-    const baselineGuidesDir = path.join(TEMP_REPO_DIR, "serving/build/guides");
-    if (fs.existsSync(baselineGuidesDir)) {
-      fs.cpSync(baselineGuidesDir, BASELINE_DIR, { recursive: true });
+    const newGuidesDir = path.join(TEMP_REPO_DIR, "out/build/skills-cli/guides");
+    const oldGuidesDir = path.join(TEMP_REPO_DIR, "serving/build/guides");
+    const baselineGuidesDir = fs.existsSync(newGuidesDir)
+      ? newGuidesDir
+      : fs.existsSync(oldGuidesDir)
+      ? oldGuidesDir
+      : null;
+
+    if (!baselineGuidesDir) {
+      throw new Error(`Baseline guides not found in ${TEMP_REPO_DIR} (checked ${newGuidesDir} and ${oldGuidesDir})`);
     }
+    fs.cpSync(baselineGuidesDir, BASELINE_DIR, { recursive: true });
   } catch (err) {
     console.error("Fatal: Failed to bootstrap baseline comparison guide assets.", err);
     process.exit(1);

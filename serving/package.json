@@ -16,7 +16,7 @@
   "scripts": {
     "baselinestatus": "node cli/baseline-status.ts",
     "prepublishOnly": "pnpm run build",
-    "build": "node scripts/build-guides.ts && pnpm run build-dist",
+    "build": "node scripts/build-guides.ts --target=skills-cli && pnpm run build-dist",
     "build:static-site": "node scripts/build-guides.ts --target=static-site --output=dist/static-site-guides",
     "build-dist": "node --experimental-strip-types */build-dist.ts",
     "publish-skills": "node --experimental-strip-types skills-cli/publish-skills.ts",

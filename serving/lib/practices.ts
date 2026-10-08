@@ -1,24 +1,43 @@
-import { promises as fs } from "fs";
-import { existsSync } from "fs";
+import { promises as fs, readFileSync, existsSync } from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-// Get current directory in ESM
-import { USE_CASES } from "./use-cases.gen.ts";
+export interface UseCase {
+  id: string;
+  description: string;
+  category: string;
+  featuresUsed: string[];
+  tokenCount: number;
+}
 
+const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
+function resolveSkillsCliDataDir(): string {
+  // In the shipped bundle (dist/skills-cli/skills/modern-web-guidance/), guides.json and vectors sit next to modern-web.mjs / search.mjs
+  if (existsSync(path.join(BUNDLE_DIR, 'guides.json')) || existsSync(path.join(BUNDLE_DIR, 'use-cases.vectors.gen.json.gz'))) {
+    return BUNDLE_DIR;
+  }
+  // In repo source mode (serving/lib/ today, src/rag/ after Commit 4), walk up to repo root (where pnpm-lock.yaml lives) and use out/build/skills-cli
+  let dir = BUNDLE_DIR;
+  while (dir !== path.dirname(dir)) {
+    if (existsSync(path.join(dir, 'pnpm-lock.yaml'))) {
+      return path.join(dir, 'out/build/skills-cli');
+    }
+    dir = path.dirname(dir);
+  }
+  return BUNDLE_DIR;
+}
 
-import type { UseCase } from "./use-cases.gen.ts";
+function loadUseCases(): UseCase[] {
+  const dataDir = resolveSkillsCliDataDir();
+  const guidesJsonPath = path.join(dataDir, 'guides.json');
+  if (!existsSync(guidesJsonPath)) {
+    throw new Error(`guides.json not found at ${guidesJsonPath}. Run 'pnpm build' first.`);
+  }
+  return JSON.parse(readFileSync(guidesJsonPath, 'utf-8'));
+}
 
-
-
-
-
-
-
-export type { UseCase };
-
-// Re-export USE_CASES so other files can use it
-export { USE_CASES };
+export const USE_CASES: UseCase[] = loadUseCases();
 
 export function getUseCasesByCategory(category?: string): UseCase[] {
   if (!category) return USE_CASES;
@@ -28,10 +47,8 @@ export function getUseCasesByCategory(category?: string): UseCase[] {
 export async function getGuide(useCaseId: string): Promise<string | null> {
   const useCase = USE_CASES.find((u) => u.id === useCaseId);
   if (!useCase) return null;
-  const devGuidesDir = path.join(path.dirname(import.meta.dirname), "build/guides");
-  const prodGuidesDir = path.resolve(import.meta.dirname, "./guides");
-  const guidesDir = existsSync(devGuidesDir) ? devGuidesDir : prodGuidesDir;
-  const filePath = path.join(guidesDir, useCase.category, `${useCaseId}.md`);
+  const dataDir = resolveSkillsCliDataDir();
+  const filePath = path.join(dataDir, "guides", useCase.category, `${useCaseId}.md`);
 
   try {
     const content = await fs.readFile(filePath, "utf-8");
@@ -44,3 +61,4 @@ export async function getGuide(useCaseId: string): Promise<string | null> {
     throw error;
   }
 }
+

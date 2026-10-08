@@ -3,6 +3,7 @@ import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
+import { outDir } from "../../lib/paths.ts";
 import { searchUseCases, type UseCaseVector, type EmbedderLike } from "./search.ts";
 
 describe("searchUseCases", () => {
@@ -19,7 +20,7 @@ describe("searchUseCases", () => {
   });
 
   it("corpus vectors are all L2-normalized unit vectors (norm ~ 1.0)", () => {
-    const vectorsFile = path.join(import.meta.dirname, "use-cases.vectors.gen.json.gz");
+    const vectorsFile = path.join(outDir, "build/skills-cli/use-cases.vectors.gen.json.gz");
     const compressed = fs.readFileSync(vectorsFile);
     const items: UseCaseVector[] = JSON.parse(zlib.gunzipSync(compressed).toString("utf-8"));
     assert.ok(items.length > 0, "Corpus must have vector entries");
