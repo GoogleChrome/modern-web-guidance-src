@@ -102,6 +102,7 @@
       .carousel-track::scroll-button(*) {
         /* Pull the buttons out of the flex flow and center them on the track */
         position: absolute;
+        position-anchor: --carousel-track;
         inset-inline-start: anchor(center);
         translate: -50% 0;
         font-size: 1.5rem;
