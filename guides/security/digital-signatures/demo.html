@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Digital Signatures Demo (ML-DSA-65 &amp; Ed25519 Fallback)</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 1.5rem auto; padding: 0 1rem; line-height: 1.5; color: #1f2937; }
+      fieldset { border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; }
+      label { display: block; font-weight: 600; margin-top: 0.5rem; }
+      input, textarea { width: 100%; font: inherit; padding: 0.4rem; box-sizing: border-box; margin-top: 0.25rem; }
+      .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+      button { font: inherit; font-weight: 600; padding: 0.45rem 0.9rem; cursor: pointer; }
+      dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 0.75rem; margin: 0.5rem 0 0; }
+      dt { font-weight: 600; }
+      dd { margin: 0; font-family: ui-monospace, monospace; word-break: break-all; font-size: 0.9rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Post-Quantum &amp; Classical Digital Signatures</h1>
+      <p>
+        Signs and verifies artifacts using post-quantum <code>ML-DSA-65</code>
+        with domain-separation <code>context</code> (detected via
+        <code>SubtleCrypto.supports()</code>) and falls back to classical
+        <code>Ed25519</code> when unsupported.
+      </p>
+
+      <fieldset>
+        <legend>Payload &amp; Domain-Separation Context</legend>
+        <label for="payload-input">Artifact manifest payload</label>
+        <textarea id="payload-input" rows="2">{"artifact":"release-v2.4.0.tar.gz","sha256":"9f86d081884c7d659a2feaa0c55ad015"}</textarea>
+
+        <label for="context-input">Domain-separation context (0–255 bytes)</label>
+        <input id="context-input" type="text" value="release-manifest-v1" />
+
+        <div class="actions">
+          <button type="button" id="btn-sign-verify">Generate Keys, Sign &amp; Verify</button>
+          <button type="button" id="btn-tamper">Test Modified Payload Verification</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Signature Telemetry</legend>
+        <dl>
+          <dt>Active Signature Suite:</dt>
+          <dd id="suite-output">-</dd>
+          <dt>Public Key (format, size &amp; hex):</dt>
+          <dd id="pubkey-output">-</dd>
+          <dt>Signature (size &amp; hex):</dt>
+          <dd id="sig-preview-output">-</dd>
+          <dt>Domain Context:</dt>
+          <dd id="context-output">-</dd>
+          <dt>Verification Result:</dt>
+          <dd id="verify-output" role="status">-</dd>
+        </dl>
+      </fieldset>
+    </main>
+
+    <script type="module">
+      function toHex(bytes) {
+        return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      }
+
+      const ML_DSA_PUBLIC_KEY_ALGORITHMS = {
+        1312: 'ML-DSA-44',
+        1952: 'ML-DSA-65',
+        2592: 'ML-DSA-87',
+      };
+
+      export function supportsPostQuantumSignatures() {
+        return (
+          typeof globalThis.SubtleCrypto?.supports === 'function' &&
+          SubtleCrypto.supports('sign', 'ML-DSA-65')
+        );
+      }
+
+      export async function generateSigningKeyPair() {
+        if (supportsPostQuantumSignatures()) {
+          const keyPair = await crypto.subtle.generateKey('ML-DSA-65', false, ['sign', 'verify']);
+          const publicKeyBytes = new Uint8Array(
+            await crypto.subtle.exportKey('raw-public', keyPair.publicKey),
+          );
+          return {
+            suite: 'ML-DSA-65',
+            keyFormat: 'raw-public',
+            keyPair,
+            publicKeyBytes,
+          };
+        }
+
+        const keyPair = await crypto.subtle.generateKey('Ed25519', false, ['sign', 'verify']);
+        const publicKeyBytes = new Uint8Array(
+          await crypto.subtle.exportKey('raw', keyPair.publicKey),
+        );
+        return {
+          suite: 'Ed25519 (Fallback)',
+          keyFormat: 'raw',
+          keyPair,
+          publicKeyBytes,
+        };
+      }
+
+      function frameFallbackInput(payloadBytes, contextBytes) {
+        if (contextBytes.byteLength > 255) {
+          throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
+        }
+        const framed = new Uint8Array(1 + contextBytes.byteLength + payloadBytes.byteLength);
+        framed[0] = contextBytes.byteLength;
+        framed.set(contextBytes, 1);
+        framed.set(payloadBytes, 1 + contextBytes.byteLength);
+        return framed;
+      }
+
+      export async function signPayload(
+        privateKey,
+        payloadBytes,
+        contextBytes = new Uint8Array(0),
+      ) {
+        if (privateKey.algorithm.name.startsWith('ML-DSA')) {
+          const sig = await crypto.subtle.sign(
+            { name: privateKey.algorithm.name, context: contextBytes },
+            privateKey,
+            payloadBytes,
+          );
+          return new Uint8Array(sig);
+        }
+
+        const framed = frameFallbackInput(payloadBytes, contextBytes);
+        const sig = await crypto.subtle.sign('Ed25519', privateKey, framed);
+        return new Uint8Array(sig);
+      }
+
+      export async function verifyPayload(
+        publicKeyOrBytes,
+        signatureBytes,
+        payloadBytes,
+        contextBytes = new Uint8Array(0),
+      ) {
+        const publicKey =
+          publicKeyOrBytes instanceof CryptoKey
+            ? publicKeyOrBytes
+            : await (() => {
+                const bytes =
+                  publicKeyOrBytes instanceof Uint8Array
+                    ? publicKeyOrBytes
+                    : new Uint8Array(publicKeyOrBytes);
+                const mlDsaName = ML_DSA_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
+                return mlDsaName
+                  ? crypto.subtle.importKey('raw-public', bytes, mlDsaName, true, ['verify'])
+                  : crypto.subtle.importKey('raw', bytes, 'Ed25519', true, ['verify']);
+              })();
+
+        if (publicKey.algorithm.name.startsWith('ML-DSA')) {
+          return crypto.subtle.verify(
+            { name: publicKey.algorithm.name, context: contextBytes },
+            publicKey,
+            signatureBytes,
+            payloadBytes,
+          );
+        }
+
+        const framed = frameFallbackInput(payloadBytes, contextBytes);
+        return crypto.subtle.verify('Ed25519', publicKey, signatureBytes, framed);
+      }
+
+      const payloadInput = document.getElementById('payload-input');
+      const contextInput = document.getElementById('context-input');
+      const suiteOutput = document.getElementById('suite-output');
+      const pubkeyOutput = document.getElementById('pubkey-output');
+      const sigPreviewOutput = document.getElementById('sig-preview-output');
+      const contextOutput = document.getElementById('context-output');
+      const verifyOutput = document.getElementById('verify-output');
+
+      let lastSigned = null;
+
+      async function runSignVerifyFlow() {
+        const payloadBytes = new TextEncoder().encode(payloadInput.value);
+        const contextBytes = new TextEncoder().encode(contextInput.value);
+        const signer = await generateSigningKeyPair();
+        const signatureBytes = await signPayload(
+          signer.keyPair.privateKey,
+          payloadBytes,
+          contextBytes,
+        );
+        const isValid = await verifyPayload(
+          signer.publicKeyBytes,
+          signatureBytes,
+          payloadBytes,
+          contextBytes,
+        );
+
+        lastSigned = {
+          publicKeyBytes: signer.publicKeyBytes,
+          signatureBytes,
+          payloadText: payloadInput.value,
+          payloadBytes,
+          contextBytes,
+        };
+
+        suiteOutput.textContent = signer.suite;
+        pubkeyOutput.textContent = `${signer.keyFormat}, ${signer.publicKeyBytes.byteLength} bytes (${toHex(signer.publicKeyBytes.slice(0, 16))}...)`;
+        sigPreviewOutput.textContent = `${signatureBytes.byteLength} bytes (${toHex(signatureBytes.slice(0, 16))}...)`;
+        contextOutput.textContent = `${contextInput.value || '(empty)'} (${contextBytes.byteLength} bytes)`;
+        verifyOutput.textContent = isValid
+          ? 'Valid signature (verified: true)'
+          : 'Invalid signature (verified: false)';
+      }
+
+      document.getElementById('btn-sign-verify').addEventListener('click', runSignVerifyFlow);
+
+      document.getElementById('btn-tamper').addEventListener('click', async () => {
+        if (!lastSigned) {
+          await runSignVerifyFlow();
+        }
+        if (payloadInput.value === lastSigned.payloadText) {
+          payloadInput.value = payloadInput.value.endsWith(' TAMPERED')
+            ? payloadInput.value.slice(0, -' TAMPERED'.length)
+            : `${payloadInput.value} TAMPERED`;
+        }
+        const tamperedPayload = new TextEncoder().encode(payloadInput.value);
+        const isValid = await verifyPayload(
+          lastSigned.publicKeyBytes,
+          lastSigned.signatureBytes,
+          tamperedPayload,
+          lastSigned.contextBytes,
+        );
+        verifyOutput.textContent = isValid
+          ? 'Unexpected valid signature on tampered payload'
+          : 'Tampered payload rejected (verified: false)';
+      });
+
+      await runSignVerifyFlow();
+    </script>
+  </body>
+</html>
