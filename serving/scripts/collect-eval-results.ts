@@ -1,8 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { fileURLToPath } from 'url';
-import { resultsDir } from '../../lib/paths.ts';
+import { rootDir, suitesDir } from '../../lib/paths.ts';
 
 const ALLOWED_AGENTS = ['claude_code', 'codex_cli', 'gemini_cli', 'antigravity_cli'];
 
@@ -14,7 +13,7 @@ function isAgentAllowed(agent: string): boolean {
   return NORMALIZED_ALLOWED_AGENTS.has(normalizeAgent(agent));
 }
 
-const SERVING_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SERVING_DIR = path.join(rootDir, 'serving');
 const OUTPUT_PATH = path.join(SERVING_DIR, 'skills-cli', 'eval-results-summary.json');
 
 interface EvalsSummary {
@@ -33,8 +32,8 @@ interface EvalsSummary {
 
 function pullRecentGcsSuites(): string[] {
   console.log(`Querying GCS (gs://guidance-evals) for the latest nightly evaluation suites...`);
-  if (!fs.existsSync(resultsDir)) {
-    fs.mkdirSync(resultsDir, { recursive: true });
+  if (!fs.existsSync(suitesDir)) {
+    fs.mkdirSync(suitesDir, { recursive: true });
   }
 
   try {
@@ -57,7 +56,7 @@ function pullRecentGcsSuites(): string[] {
     console.log(`Discovered ${targetFolders.length} remote suites. Syncing evals.json for top ${topRecent.length} most recent suites...`);
 
     for (const folderName of topRecent) {
-      const localSuiteDir = path.join(resultsDir, folderName);
+      const localSuiteDir = path.join(suitesDir, folderName);
       const targetEvalsPath = path.join(localSuiteDir, 'evals.json');
 
       if (fs.existsSync(targetEvalsPath)) {
@@ -88,7 +87,7 @@ function collectResults() {
   const summaries: EvalsSummary[] = [];
 
   for (let folderName of targetSuites) {
-    const suiteDir = path.join(resultsDir, folderName);
+    const suiteDir = path.join(suitesDir, folderName);
     const evalsPath = path.join(suiteDir, 'evals.json');
 
     if (!fs.existsSync(evalsPath)) {

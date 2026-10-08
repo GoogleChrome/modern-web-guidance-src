@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { baseAppsDir } from '../lib/paths.ts';
+import { baseAppsDir, rootDir } from '../lib/paths.ts';
 import { setupGuideDevWorkDir, runAgent } from './lib/utils.ts';
 import { buildTargetGraderPrompt } from './gd-dev-prompts.ts';
 import {
@@ -22,7 +22,7 @@ import {
 import { cCyan, cGreen } from '../lib/colors.ts';
 
 export async function generateTargetGrader(guideDirAbs: string, baseApp: string, failureContext?: string): Promise<void> {
-  const repoRoot = path.resolve(import.meta.dirname, '..');
+  const repoRoot = rootDir;
   const relativeGuidePath = path.relative(repoRoot, guideDirAbs);
   const relativeWorkSubdir = path.join(relativeGuidePath, 'targets', baseApp);
 

@@ -4,8 +4,9 @@ import matter from 'gray-matter';
 import { globSync } from 'glob';
 import { config } from '../../lib/skills-config.ts';
 import { isDisciplineGuide } from '../../lib/guide-validation.ts';
+import { rootDir } from '../../lib/paths.ts';
 
-const repoRoot = path.resolve(import.meta.dirname, '../../');
+const repoRoot = rootDir;
 
 interface AuditRecord {
   filePath: string;

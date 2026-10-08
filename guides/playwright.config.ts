@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
+import { outDir } from '../lib/paths.ts';
 
 function shouldIncludeTrace(): boolean {
   const configEnv = process.env.GD_SUITE_CONFIG;
@@ -30,7 +31,7 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: 'list',
-  outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR || path.join(import.meta.dirname, 'test-results'),
+  outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR || path.join(outDir, 'test-results'),
   use: {
     trace: includeTrace ? 'retain-on-failure' : 'off',
   },

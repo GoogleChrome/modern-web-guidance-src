@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import child_process from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { extractFeatureIds, stripTmpPrefix } from '../lib/feature-parser.ts';
 import { getTranscludedFeatureIds } from '../serving/lib/macro-parsing.ts';
+
+import { guidesDir, rootDir } from '../lib/paths.ts';
 
 // Define content file name constants inline to avoid importing from 'lib/guide-validation.ts'
 // which would transitively require external packages (like 'gray-matter' and 'marked')
@@ -20,9 +21,7 @@ export const SME_CONTENT_FILENAMES = new Set([GUIDE_FILE, DEMO_FILE, EXPECTATION
 export const EVAL_PR_LABEL = 'gd-dev-eval';
 export const EVAL_PR_REVIEWER = 'paulirish';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DEFAULT_GUIDES_DIR = path.join(path.resolve(__dirname, '..'), 'guides');
+const DEFAULT_GUIDES_DIR = guidesDir;
 const NON_CATEGORY_DIRS = new Set(['lib', 'node_modules', 'modern-web-guidance']);
 
 function isCategoryDirectory(dirPath: string): boolean {
@@ -101,7 +100,7 @@ export const KNOWN_CATEGORIES = getKnownCategories();
 export function isSmeContentFile(file: string): boolean {
   let normalized = file.replace(/^\.[/\\]/, '');
   if (path.isAbsolute(normalized)) {
-    normalized = path.relative(path.resolve(__dirname, '..'), normalized);
+    normalized = path.relative(rootDir, normalized);
   }
   const parts = normalized.split(/[/\\]/);
   if (parts[0] === 'features' && parts.length === 2 && (file.endsWith('.md') || file.endsWith('.json'))) {
@@ -114,7 +113,7 @@ export function isSmeContentFile(file: string): boolean {
   return SME_CONTENT_FILENAMES.has(filename);
 }
 
-const ATL_CONFIG_PATH = path.join(__dirname, 'atls.json');
+const ATL_CONFIG_PATH = path.join(guidesDir, 'atls.json');
 
 export interface AtlConfig {
   default: Record<string, string | string[]>;
@@ -122,7 +121,7 @@ export interface AtlConfig {
   web_features_groups: Record<string, string | string[]>;
 }
 
-const FEATURE_GROUPS_PATH = path.join(__dirname, 'feature-to-groups.generated.json');
+const FEATURE_GROUPS_PATH = path.join(guidesDir, 'feature-to-groups.generated.json');
 export let featureGroups: Record<string, string[]> = {};
 try {
   if (fs.existsSync(FEATURE_GROUPS_PATH)) {
@@ -754,7 +753,7 @@ export interface TranscludedGuide {
 
 export function findGuidesTranscludingFeature(
   featureId: string,
-  guidesRootDir: string = path.join(path.resolve(__dirname, '..'), 'guides')
+  guidesRootDir: string = guidesDir
 ): TranscludedGuide[] {
   const matches: TranscludedGuide[] = [];
 
@@ -779,7 +778,7 @@ export function findGuidesTranscludingFeature(
           if (transcluded.some(t => stripTmpPrefix(t) === targetBaseId)) {
             matches.push({
               category,
-              relativePath: path.relative(path.resolve(__dirname, '..'), fullPath),
+              relativePath: path.relative(rootDir, fullPath),
               fullPath
             });
           }
@@ -804,7 +803,7 @@ export function handlePR(
   prAuthor: string,
   atlConfig: AtlConfig,
   mockFiles?: string[],
-  guidesRootDir: string = path.join(path.resolve(__dirname, '..'), 'guides'),
+  guidesRootDir: string = guidesDir,
   labels: string[] = [],
   options?: HandlePrOptions
 ) {
@@ -1148,6 +1147,6 @@ export function main() {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] === import.meta.filename) {
   main();
 }

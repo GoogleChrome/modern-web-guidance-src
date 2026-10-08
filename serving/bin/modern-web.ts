@@ -2,7 +2,7 @@
 
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
-import { join } from "node:path";
+import { join, dirname, basename } from "node:path";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 import { ClearcutLogger } from "../skills-cli/telemetry/ClearcutLogger.ts";
@@ -202,7 +202,10 @@ function getCLISkillVersion(): string | null {
 
 function getOurCLIAdjacentSkillIDs(): string[] {
   try {
-    const skillsPath = join(import.meta.dirname, "../../skills");
+    const parentDir = dirname(import.meta.dirname);
+    const skillsPath = basename(parentDir) === 'skills'
+      ? parentDir
+      : join(dirname(parentDir), 'skills');
     const listing = readdirSync(skillsPath);
     return listing.filter(name => existsSync(join(skillsPath, name, 'SKILL.md')));
   } catch (e) {

@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { replaceMacros, maskComments } from './macros.ts';
+import { replaceMacros, maskComments, MacroError } from './macros.ts';
 import { slugify } from './include.ts';
 import { rootDir } from '../../lib/paths.ts';
 
@@ -608,21 +608,25 @@ describe('INCLUDE', () => {
     });
   });
 
-  describe('silent miss', () => {
-    it('returns empty string for missing file', () => {
-      const result = replaceMacros(
-        'before {{ INCLUDE("features/does-not-exist-xyz.md") }} after',
-        'test.md'
+  describe('missing file or section', () => {
+    it('throws MacroError for missing file', () => {
+      assert.throws(
+        () => replaceMacros(
+          'before {{ INCLUDE("features/does-not-exist-xyz.md") }} after',
+          'test.md'
+        ),
+        MacroError
       );
-      assert.equal(result, 'before  after');
     });
 
-    it('returns empty string for missing section', () => {
-      const result = replaceMacros(
-        'before {{ INCLUDE("./multi-section.md#nonexistent-section-xyz") }} after',
-        FIXTURE_CALLER
+    it('throws MacroError for missing section', () => {
+      assert.throws(
+        () => replaceMacros(
+          'before {{ INCLUDE("./multi-section.md#nonexistent-section-xyz") }} after',
+          FIXTURE_CALLER
+        ),
+        MacroError
       );
-      assert.equal(result, 'before  after');
     });
   });
 

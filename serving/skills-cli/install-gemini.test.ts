@@ -5,17 +5,20 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
 import { parseGeminiStreamOutput } from '../../harness/agents/gemini-cli-agent.ts';
+import { rootDir } from '../../lib/paths.ts';
 
 test('Gemini CLI verifies extension install capability', { skip: !process.env.FULL }, async () => {
     let homeDir = '';
     try {
         homeDir = createIsolatedHome('test-install-gemini');
-        const distDir = path.resolve(import.meta.dirname, '../../dist/skills-cli');
+        const distDir = path.join(rootDir, 'dist/skills-cli');
+        if (!fs.existsSync(distDir)) {
+            assert.fail(`distDir not found at ${distDir}`);
+        }
         
-        const geminiBin = path.resolve(import.meta.dirname, '../../harness/node_modules/.bin/gemini');
+        const geminiBin = path.join(rootDir, 'harness/node_modules/.bin/gemini');
         if (!fs.existsSync(geminiBin)) {
-            test.skip('Gemini binary not found, skipping');
-            return;
+            assert.fail(`Gemini binary not found at ${geminiBin}`);
         }
 
         const helpOut = execSync(`${geminiBin} extensions --help`, { encoding: 'utf8' });

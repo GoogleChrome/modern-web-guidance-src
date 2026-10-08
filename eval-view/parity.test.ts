@@ -3,15 +3,15 @@ import path from 'path';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert';
 import { generateSuitesManifest } from './generate-manifests.js';
-import { resultsDir } from '../lib/paths.ts';
+import { suitesDir } from '../lib/paths.ts';
 
 const mockResultsDir = path.resolve('./test-mock-results');
-let targetResultsDir = resultsDir;
+let targetResultsDir = suitesDir;
 
 before(async () => {
     // Setup mock results dir if real results missing (e.g. in CI)
-    if (!fs.existsSync(resultsDir)) {
-        console.log('⚠️ harness/results missing. Creating mock results for test...');
+    if (!fs.existsSync(suitesDir)) {
+        console.log('⚠️ results/suites missing. Creating mock results for test...');
         targetResultsDir = mockResultsDir;
         fs.mkdirSync(path.join(mockResultsDir, 'mock-suite'), { recursive: true });
         fs.writeFileSync(path.join(mockResultsDir, 'mock-suite', 'evals.json'), JSON.stringify({ summary: {}, results: {} }));
@@ -54,7 +54,7 @@ test('Parity: evals.json should be valid in all completed suites', async () => {
     // Re-generate to ensure we have a valid file for this test if previous one was cleaned up
     await generateSuitesManifest('.', targetResultsDir);
     
-    if (!fs.existsSync(suitesPath)) return;
+    assert.ok(fs.existsSync(suitesPath), 'suites.gen.json should exist');
     
     const suitesData = JSON.parse(fs.readFileSync(suitesPath, 'utf8'));
     

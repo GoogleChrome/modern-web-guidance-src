@@ -198,7 +198,7 @@ function generateEvalsResultsTable(): string {
   let evalsMd = '';
   const evalsSummaryPath = path.join(SERVING_DIR, 'skills-cli', 'eval-results-summary.json');
   if (!fs.existsSync(evalsSummaryPath)) {
-    return '';
+    throw new Error(`Missing evals summary file: ${evalsSummaryPath}`);
   }
 
   try {

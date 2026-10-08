@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 import { createIsolatedHome, copySkills, cleanupIsolatedHome } from '../lib/agent-shared.ts';
 import { Agents } from '../config.ts';
 import { parseGeminiStreamOutput } from '../agents/gemini-cli-agent.ts';
+import { rootDir } from '../../lib/paths.ts';
 function assertSearchResults(output: string) {
     const results = JSON.parse(output);
     assert.ok(Array.isArray(results), 'Output should be a JSON array');
@@ -86,7 +87,7 @@ test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip:
             GD_SUITE_CONFIG: JSON.stringify(suiteConfig),
         };
 
-        const agentScript = path.resolve(import.meta.dirname, '../agents/gemini-cli-agent.ts');
+        const agentScript = path.join(rootDir, 'harness/agents/gemini-cli-agent.ts');
         const cmd = `node ${agentScript} "use modern-web-guidance to search for address form" guided "${targetDir}" "${templateDir}"`;
 
         execSync(cmd, { env, stdio: 'inherit' });

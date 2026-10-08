@@ -36,7 +36,9 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     if (!result.isValid) {
       throw new MacroError(`${result.errorMessage} (referenced in INCLUDE macro in ${filePath}).`);
     }
-    if (!result.content) return ""; // silent miss: file or section not found
+    if (result.content === undefined) {
+      throw new MacroError(`Transcluded file or section not found: "${rawArg}" in ${filePath}.`);
+    }
 
     // NOTE: no cycle detection. If files INCLUDE each other in a loop, this
     // will overflow the call stack. Add a visited set if it becomes a problem.
@@ -101,7 +103,16 @@ defineFeatureMacro("FEATURE", {
 defineFeatureMacro("FEATURE_FALLBACKS", {
   content: (args, filePath, options) => {
     const [featureId] = args;
-    const fallbacks = MACRO_HANDLERS.FEATURE([featureId, "fallbacks"], filePath, options);
+    let fallbacks = "";
+    try {
+      fallbacks = MACRO_HANDLERS.FEATURE([featureId, "fallbacks"], filePath, options);
+    } catch (e) {
+      if (e instanceof MacroError) {
+        fallbacks = "";
+      } else {
+        throw e;
+      }
+    }
     const baselineStatus = MACRO_HANDLERS.BASELINE_STATUS([featureId], filePath, options);
     if (!fallbacks) {
       return baselineStatus;
@@ -118,7 +129,16 @@ defineFeatureMacro("FEATURE_FALLBACKS", {
 defineFeatureMacro("FEATURE_ISSUES", {
   content: (args, filePath, options) => {
     const [featureId] = args;
-    const included = MACRO_HANDLERS.FEATURE([featureId, "issues"], filePath, options);
+    let included = "";
+    try {
+      included = MACRO_HANDLERS.FEATURE([featureId, "issues"], filePath, options);
+    } catch (e) {
+      if (e instanceof MacroError) {
+        included = "";
+      } else {
+        throw e;
+      }
+    }
     if (!included) return "";
     return [
       `### Issues to be aware of when using ${getFeatureName(featureId)}`,

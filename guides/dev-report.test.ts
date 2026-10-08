@@ -9,7 +9,7 @@ import {
   buildInitialDevReport,
   type TargetEvalSummary,
 } from './lib/dev-report.ts';
-import { TEST_APP_RESULTS_DIR } from '../lib/guide-validation.ts';
+import { getGuideResultsDir } from '../lib/paths.ts';
 
 test('computeDevReportFlag enforces strict priority ordering', () => {
   // 1. Infrastructure error takes top priority
@@ -72,7 +72,10 @@ test('computeDevReportFlag enforces strict priority ordering', () => {
 test('computeTargetSummary extracts metrics and flags from evals.json correctly', (t) => {
   const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-dev-report-'));
   const tmpDir = path.join(rootTmp, 'size-aware-styling');
-  const testResultsDir = path.join(tmpDir, TEST_APP_RESULTS_DIR, 'daily-grind');
+  const category = 'css';
+  const slug = 'size-aware-styling';
+  const guideResultsDir = getGuideResultsDir({ category, slug });
+  const testResultsDir = path.join(guideResultsDir, 'daily-grind');
   fs.mkdirSync(testResultsDir, { recursive: true });
 
   const mockEvalsJson = {
@@ -112,9 +115,10 @@ test('computeTargetSummary extracts metrics and flags from evals.json correctly'
 
   t.after(() => {
     fs.rmSync(rootTmp, { recursive: true, force: true });
+    fs.rmSync(guideResultsDir, { recursive: true, force: true });
   });
 
-  const summary = computeTargetSummary(tmpDir, 'daily-grind');
+  const summary = computeTargetSummary(tmpDir, 'daily-grind', { category, slug });
   assert.ok(summary !== null);
   assert.strictEqual(summary?.baseApp, 'daily-grind');
   assert.strictEqual(summary?.guidedPassRate, 50);
@@ -125,8 +129,11 @@ test('computeTargetSummary extracts metrics and flags from evals.json correctly'
 test('buildInitialDevReport builds interleaved report with evals and diagnostic placeholders', (t) => {
   const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-evals-interleaved-'));
   const tmpDir = path.join(rootTmp, 'size-aware-styling');
-  const dgDir = path.join(tmpDir, TEST_APP_RESULTS_DIR, 'daily-grind');
-  const dtDir = path.join(tmpDir, TEST_APP_RESULTS_DIR, 'devtools-times');
+  const category = 'css';
+  const slug = 'size-aware-styling';
+  const guideResultsDir = getGuideResultsDir({ category, slug });
+  const dgDir = path.join(guideResultsDir, 'daily-grind');
+  const dtDir = path.join(guideResultsDir, 'devtools-times');
   fs.mkdirSync(dgDir, { recursive: true });
   fs.mkdirSync(dtDir, { recursive: true });
 
@@ -135,6 +142,7 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
 
   t.after(() => {
     fs.rmSync(rootTmp, { recursive: true, force: true });
+    fs.rmSync(guideResultsDir, { recursive: true, force: true });
   });
 
   const summaries: TargetEvalSummary[] = [
@@ -154,7 +162,7 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
     },
   ];
 
-  const report = buildInitialDevReport(tmpDir, summaries);
+  const report = buildInitialDevReport(tmpDir, summaries, { category, slug });
   assert.ok(report.includes('# Evaluation Report: size-aware-styling'));
   assert.ok(report.includes('## Target: `daily-grind` (Status: `HEALTHY`)'));
   assert.ok(report.includes('### Evaluation Results'));

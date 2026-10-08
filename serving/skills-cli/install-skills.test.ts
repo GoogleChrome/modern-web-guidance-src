@@ -5,31 +5,33 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
 import { parseGeminiStreamOutput } from '../../harness/agents/gemini-cli-agent.ts';
+import { rootDir } from '../../lib/paths.ts';
 
 test('npx skills add from local path', { skip: !process.env.FULL }, async () => {
     let homeDir = '';
     try {
         homeDir = createIsolatedHome('test-install-skills');
-        const distDir = path.resolve(import.meta.dirname, '../../dist/skills-cli');
+        const distDir = path.join(rootDir, 'dist/skills-cli');
         
         if (!fs.existsSync(distDir)) {
-            test.skip('dist/skills-cli not found, skipping');
-            return;
+            assert.fail(`distDir not found at ${distDir}`);
         }
 
         const cmd = `npx skills add -y -g ${distDir}`;
         
-        const geminiBin = path.resolve(import.meta.dirname, '../../harness/node_modules/.bin/gemini');
-        if (fs.existsSync(geminiBin)) {
-            console.log(`\nEnsuring no extension conflict (uninstalling if present)...`);
-            try {
-                execSync(`${geminiBin} extensions uninstall googlechrome-skills`, {
-                    stdio: 'ignore', 
-                    env: { ...process.env, HOME: homeDir }
-                });
-            } catch {
-                // Ignore if not installed
-            }
+        const geminiBin = path.join(rootDir, 'harness/node_modules/.bin/gemini');
+        if (!fs.existsSync(geminiBin)) {
+            assert.fail(`Gemini binary not found at ${geminiBin}`);
+        }
+
+        console.log(`\nEnsuring no extension conflict (uninstalling if present)...`);
+        try {
+            execSync(`${geminiBin} extensions uninstall googlechrome-skills`, {
+                stdio: 'ignore', 
+                env: { ...process.env, HOME: homeDir }
+            });
+        } catch {
+            // Ignore if not installed
         }
 
         console.log(`\nRunning skills add...`);
@@ -37,10 +39,6 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
             stdio: 'inherit', 
             env: { ...process.env, HOME: homeDir, DISABLE_TELEMETRY: '1' }
         });
-
-        if (!fs.existsSync(geminiBin)) {
-            return;
-        }
 
         const hasGeminiAuth = process.env.GEMINI_API_KEY;
         if (!hasGeminiAuth) {

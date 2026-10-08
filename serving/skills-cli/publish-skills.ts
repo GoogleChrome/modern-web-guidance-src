@@ -7,8 +7,9 @@ import { updateReadmeWithFeaturesAndUseCases, getFeaturesAndUseCases } from './b
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 import { generateReleaseNotes } from './generate-release-notes.ts';
+import { rootDir } from '../../lib/paths.ts';
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // modern-web-guidance-src/
+const ROOT_DIR = rootDir; // modern-web-guidance-src/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 

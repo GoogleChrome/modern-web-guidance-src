@@ -4,10 +4,10 @@ import matter from "gray-matter";
 import { fileURLToPath } from "url";
 import { classifyGuide, scanAllGuides } from "../../../lib/guide-validation.ts";
 
+import { rootDir } from "../../../lib/paths.ts";
+
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, "../..");
-const DATA_DIR = path.join(ROOT_DIR, "benchmarks/data");
+const DATA_DIR = path.join(rootDir, "serving/benchmarks/data");
 const OUTPUT_FILE = path.join(DATA_DIR, "eval-queries-pool.json");
 
 // Define a type for our evaluation queries

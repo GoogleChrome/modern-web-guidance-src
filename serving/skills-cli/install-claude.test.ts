@@ -3,14 +3,14 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { rootDir } from '../../lib/paths.ts';
 
 test('Claude Code loads plugin from local dist directory', { skip: !process.env.FULL }, async () => {
-    const distDir = path.resolve(import.meta.dirname, '../../dist/skills-cli');
+    const distDir = path.join(rootDir, 'dist/skills-cli');
         
-        if (!fs.existsSync(distDir)) {
-            test.skip('dist/skills-cli not found, skipping');
-            return;
-        }
+    if (!fs.existsSync(distDir)) {
+        assert.fail(`distDir not found at ${distDir}`);
+    }
 
         const anthropicEnv: Record<string, string> = {};
         for (const [key, value] of Object.entries(process.env)) {

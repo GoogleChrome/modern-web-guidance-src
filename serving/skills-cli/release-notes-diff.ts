@@ -728,7 +728,9 @@ export type ClassifiedChangesWithEvals = ClassifiedChanges & {
  */
 export function getLatestEvalResultsSummary(): EvalSummaryItem[] {
   const summaryPath = path.join(rootDir, 'serving/skills-cli/eval-results-summary.json');
-  if (!fs.existsSync(summaryPath)) return [];
+  if (!fs.existsSync(summaryPath)) {
+    throw new Error(`Missing eval-results-summary.json at: ${summaryPath}`);
+  }
 
   try {
     const data = JSON.parse(fs.readFileSync(summaryPath, 'utf8')) as EvalSummaryItem[];

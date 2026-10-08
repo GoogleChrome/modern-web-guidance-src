@@ -1,9 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { rootDir } from "../../lib/paths.ts";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const workspaceRoot = path.resolve(__dirname, "../..");
+const workspaceRoot = rootDir;
 const distSkillsCliDir = path.join(workspaceRoot, "dist/skills-cli");
 
 interface FileInfo {

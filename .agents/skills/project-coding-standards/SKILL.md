@@ -54,7 +54,7 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 
 ### Keep Repository Clean of Generated Artifacts
 - **Ignore transient outputs:** Never commit test outputs, debug files, local caches, or working directories.
-- Store temporary data in standard output locations (e.g., `harness/results/`) and ensure `.gitignore` excludes transient files.
+- Store temporary data in standard output locations (e.g., `results/suites/`, `out/`) and ensure `.gitignore` excludes transient files.
 
 ---
 

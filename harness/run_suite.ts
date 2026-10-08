@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
-import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
+import { harnessDir, baseAppsDir, suitesDir } from '../lib/paths.ts';
 import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../lib/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../lib/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
@@ -79,8 +79,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   const suiteConfig = options.suiteConfig ? mergeSuiteConfig(options.suiteConfig) : defaultSuiteConfig;
 
   // Create results directory if it doesn't exist
-  if (!fs.existsSync(resultsDir)) {
-    fs.mkdirSync(resultsDir, { recursive: true });
+  if (!fs.existsSync(suitesDir)) {
+    fs.mkdirSync(suitesDir, { recursive: true });
   }
 
   const agent = suiteConfig.agent;
@@ -88,7 +88,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   // Generate a unique testID with timestamp or use custom name
   const timestamp = new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-');
   const testID = options.name || suiteConfig.name || `test-${timestamp}`;
-  const testDir = options.outputDir || path.join(resultsDir, testID);
+  const testDir = options.outputDir || path.join(suitesDir, testID);
 
   if (!fs.existsSync(testDir)) {
     fs.mkdirSync(testDir, { recursive: true });

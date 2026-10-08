@@ -18,7 +18,7 @@ import path from 'path';
 import fs from 'fs';
 import 'colors';
 import { evaluateSuite } from './evaluate.ts';
-import { resultsDir } from '../lib/paths.ts';
+import { suitesDir } from '../lib/paths.ts';
 
 export function resolveResultsDir(argv: string[], defaultDir: string): string {
   const arg = argv[2];
@@ -38,7 +38,7 @@ async function backfillSuite(suiteResultsDir: string, suiteName: string) {
 export async function runBackfill() {
   console.log('Starting Backfill of all results...'.cyan.bold);
 
-  let mainResultsDir = resolveResultsDir(process.argv, resultsDir);
+  let mainResultsDir = resolveResultsDir(process.argv, suitesDir);
 
   if (!fs.existsSync(mainResultsDir)) {
     console.error(`Results directory not found at ${mainResultsDir}!`.red);

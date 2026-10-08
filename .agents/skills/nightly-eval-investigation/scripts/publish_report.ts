@@ -1,11 +1,10 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { outDir } from '../../../../lib/paths.ts';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, '../../../../');
-const reportPath = path.join(repoRoot, '.agents', 'skills', 'nightly-eval-investigation', 'artifacts', 'nightly_investigation_report.md');
+const outputDir = path.join(outDir, 'nightly-investigation');
+const reportPath = path.join(outputDir, 'nightly_investigation_report.md');
 
 function getSlug(taskName: string): string {
   return taskName.toLowerCase().replace(/[^a-z0-9_-]/g, '').replace(/\s+/g, '-');
@@ -151,7 +150,7 @@ ${graderRec.detail}
 ${Object.entries(runDetails).map(([agent, details]) => `- **${agent}**: Guided Pass Rate: ${details.guided}, Unguided Pass Rate: ${details.unguided}, Guides Consumed: ${details.guides}`).join('\n')}`;
 
       console.log(`Creating Grader subissue: "${graderTitle}"...`);
-      const tempGraderPath = path.join(repoRoot, `.agents/skills/nightly-eval-investigation/artifacts/grader_subissue_${taskName}.tmp`);
+      const tempGraderPath = path.join(outputDir, `grader_subissue_${taskName}.tmp`);
       try {
         fs.writeFileSync(tempGraderPath, graderBody, 'utf-8');
         const graderIssueUrl = execSync(
@@ -186,7 +185,7 @@ ${guideRec ? `#### Recommended Guide Changes:\n${guideRec.detail}\n` : ''}
 ${Object.entries(runDetails).map(([agent, details]) => `- **${agent}**: Guided Pass Rate: ${details.guided}, Unguided Pass Rate: ${details.unguided}, Guides Consumed: ${details.guides}`).join('\n')}`;
 
       console.log(`Creating Devrel subissue: "${devrelTitle}"...`);
-      const tempDevrelPath = path.join(repoRoot, `.agents/skills/nightly-eval-investigation/artifacts/devrel_subissue_${taskName}.tmp`);
+      const tempDevrelPath = path.join(outputDir, `devrel_subissue_${taskName}.tmp`);
       try {
         fs.writeFileSync(tempDevrelPath, devrelBody, 'utf-8');
         const devrelIssueUrl = execSync(
