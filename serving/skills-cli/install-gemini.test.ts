@@ -38,6 +38,8 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
         console.log(`\nRunning Gemini prompt using the skill...`);
         const promptCmd = `${geminiBin} -p "use the modern-web-guidance skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
         const env: Record<string, string | undefined> = { ...process.env, HOME: homeDir };
+        // Prevent gemini-cli strict env sanitization in GitHub Actions from stripping NODE_TEST_CONTEXT
+        delete env.GITHUB_SHA;
         if (!env.GEMINI_MODEL) {
             env.GEMINI_MODEL = 'gemini-3-flash-preview';
         }

@@ -5,66 +5,59 @@
  */
 
 /**
- * Regression guards for the telemetry opt-out.
+ * Regression guards for test-suite telemetry suppression.
  *
- * Telemetry is enabled by default and is suppressed only by the
- * DISABLE_TELEMETRY env var. Coverage therefore depends on every process that
- * can reach the CLI having that var set. These tests pin the places that
- * provide it so the protection cannot be dropped silently.
+ * Every test run via `node --test` (whether through `pnpm test`, CI,
+ * `publish-skills.ts`, or a direct `node --test <file>` invocation) sets
+ * `NODE_TEST_CONTEXT` in the test process and any child processes it spawns.
+ * `ClearcutLogger` inspects `NODE_TEST_CONTEXT` so tests never emit product
+ * telemetry without requiring `DISABLE_TELEMETRY=1` across scripts or test files.
  */
 
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ClearcutLogger } from './ClearcutLogger.ts';
+import { WatchdogClient } from './WatchdogClient.ts';
+import { CommandType } from './types.ts';
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '../../..');
 
-test('serving test suite runs with telemetry disabled', () => {
-  assert.strictEqual(
-    process.env.DISABLE_TELEMETRY,
-    '1',
-    'DISABLE_TELEMETRY must be "1" while the serving tests run, otherwise any ' +
-      'test that executes the built CLI will emit real telemetry. Run the ' +
-      'suite via `pnpm test` (serving\'s test script sets this).'
+test('node --test sets NODE_TEST_CONTEXT and suppresses ClearcutLogger by default', async () => {
+  assert.ok(
+    process.env.NODE_TEST_CONTEXT !== undefined,
+    'NODE_TEST_CONTEXT must be set by node --test so ClearcutLogger suppresses telemetry automatically.'
   );
+
+  const savedDisableTelemetry = process.env.DISABLE_TELEMETRY;
+  const sendMock = mock.method(WatchdogClient.prototype, 'send', () => {});
+  try {
+    delete process.env.DISABLE_TELEMETRY;
+    const logger = new ClearcutLogger();
+    await logger.logToolCommand(50, true, CommandType.LIST);
+    assert.strictEqual(
+      sendMock.mock.calls.length,
+      0,
+      'ClearcutLogger must not send telemetry inside node --test even when DISABLE_TELEMETRY is unset.'
+    );
+  } finally {
+    sendMock.mock.restore();
+    if (savedDisableTelemetry !== undefined) {
+      process.env.DISABLE_TELEMETRY = savedDisableTelemetry;
+    }
+  }
 });
 
-test('serving test script sets DISABLE_TELEMETRY', () => {
+test('serving test script quotes recursive glob so nested telemetry tests run', () => {
   const pkg = JSON.parse(
     fs.readFileSync(path.join(ROOT_DIR, 'serving/package.json'), 'utf8')
   );
   assert.match(
     pkg.scripts.test,
-    /DISABLE_TELEMETRY=1/,
-    'serving/package.json test script must set DISABLE_TELEMETRY=1. This is ' +
-      'what protects every test file regardless of its import graph.'
-  );
-});
-
-test('CI workflow disables telemetry for all jobs', () => {
-  const ci = fs.readFileSync(
-    path.join(ROOT_DIR, '.github/workflows/ci.yml'),
-    'utf8'
-  );
-  const topLevel = ci.slice(0, ci.indexOf('\njobs:'));
-  assert.match(
-    topLevel,
-    /^\s*DISABLE_TELEMETRY:/m,
-    'ci.yml must set DISABLE_TELEMETRY in its top-level env block so no CI ' +
-      'job can emit telemetry, regardless of entry point.'
-  );
-});
-
-test('publish-skills disables telemetry when running dist tests', () => {
-  const source = fs.readFileSync(
-    path.join(ROOT_DIR, 'serving/skills-cli/publish-skills.ts'),
-    'utf8'
-  );
-  assert.match(
-    source,
-    /DISABLE_TELEMETRY:\s*'1'/,
-    'publish-skills.ts runs the dist tests via execSync outside the pnpm test ' +
-      'script, so it must pass DISABLE_TELEMETRY explicitly.'
+    /"\*\*\/\*\.test\.ts"|'\*\*\/\*\.test\.ts'/,
+    'serving/package.json test script must quote "**/*.test.ts" so /bin/sh ' +
+      'passes the recursive glob to node --test instead of expanding only ' +
+      'one directory level and skipping skills-cli/telemetry/*.test.ts.'
   );
 });

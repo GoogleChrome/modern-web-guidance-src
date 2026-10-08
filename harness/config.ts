@@ -3,8 +3,8 @@ import os from 'os';
 import { pathToFileURL } from 'url';
 import { rootDir, harnessDir } from '../lib/paths.ts';
 
-// Disable telemetry for eval harness runs. Only covers this process and its
-// children; test files that don't import this module set it themselves.
+// Disable telemetry for eval harness runs (`node --test` runs are covered
+// automatically via NODE_TEST_CONTEXT in ClearcutLogger).
 process.env.DISABLE_TELEMETRY = '1';
 
 try {

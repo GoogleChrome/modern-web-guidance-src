@@ -1,4 +1,4 @@
-import { describe, it, mock } from 'node:test';
+import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert';
 import { detectOS, bucketizeLatency, ClearcutLogger } from './ClearcutLogger.ts';
 import { OsType, CommandType } from './types.ts';
@@ -37,8 +37,30 @@ describe('bucketizeLatency', () => {
 });
 
 describe('ClearcutLogger', () => {
+  let savedDisableTelemetry: string | undefined;
+  let savedNodeTestContext: string | undefined;
+
+  beforeEach(() => {
+    savedDisableTelemetry = process.env.DISABLE_TELEMETRY;
+    savedNodeTestContext = process.env.NODE_TEST_CONTEXT;
+    delete process.env.DISABLE_TELEMETRY;
+    delete process.env.NODE_TEST_CONTEXT;
+  });
+
+  afterEach(() => {
+    if (savedDisableTelemetry !== undefined) {
+      process.env.DISABLE_TELEMETRY = savedDisableTelemetry;
+    } else {
+      delete process.env.DISABLE_TELEMETRY;
+    }
+    if (savedNodeTestContext !== undefined) {
+      process.env.NODE_TEST_CONTEXT = savedNodeTestContext;
+    } else {
+      delete process.env.NODE_TEST_CONTEXT;
+    }
+  });
+
   it('disables telemetry case-insensitively when DISABLE_TELEMETRY is set to True', async () => {
-    const originalEnv = process.env.DISABLE_TELEMETRY;
     const sendMock = mock.method(WatchdogClient.prototype, 'send', () => {});
 
     try {
@@ -48,11 +70,19 @@ describe('ClearcutLogger', () => {
       assert.strictEqual(sendMock.mock.calls.length, 0, 'WatchdogClient.send should not be called when telemetry is disabled');
     } finally {
       sendMock.mock.restore();
-      if (originalEnv !== undefined) {
-        process.env.DISABLE_TELEMETRY = originalEnv;
-      } else {
-        delete process.env.DISABLE_TELEMETRY;
-      }
+    }
+  });
+
+  it('disables telemetry automatically when NODE_TEST_CONTEXT is set', async () => {
+    const sendMock = mock.method(WatchdogClient.prototype, 'send', () => {});
+
+    try {
+      process.env.NODE_TEST_CONTEXT = 'child-v8';
+      const logger = new ClearcutLogger();
+      await logger.logToolCommand(120, true, CommandType.INSTALL);
+      assert.strictEqual(sendMock.mock.calls.length, 0, 'WatchdogClient.send should not be called inside node --test context');
+    } finally {
+      sendMock.mock.restore();
     }
   });
 
