@@ -24,7 +24,7 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 
 ## Structure and accessibility
 
-- Use a named `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Mark up slides as a list; give each slide `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (for example, “2 of 4”). Keep slide content available to assistive technology.
+- Use a named `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Give each slide `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (for example, "2 of 4"). Keep slide content available to assistive technology.
 - Give every control a clear accessible name. Native scroll buttons need alternative text in `content`; fallback controls should be native buttons, not chevrons without labels.
 - Announce the current slide in a visually hidden polite status region after scrolling settles. Update it for native controls, fallback controls, and direct scrolling so assistive technology receives feedback when the visible slide changes.
 
