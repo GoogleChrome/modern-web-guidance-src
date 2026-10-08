@@ -150,15 +150,21 @@ When the whole card is one destination and has no independent actions, make it o
 Style native controls and their labels as cards. Use radios for one choice and checkboxes for independent choices:
 
 ```html
-<fieldset class="option-cards">
+<fieldset>
   <legend>Choose a delivery method</legend>
-  <label class="option-card">
+  <label class="card">
     <input type="radio" name="delivery" value="standard">
-    <span>Standard delivery</span>
+    <span>
+      <strong>Standard delivery</strong>
+      <span>Arrives in 3–5 working days</span>
+    </span>
   </label>
-  <label class="option-card">
+  <label class="card">
     <input type="radio" name="delivery" value="express">
-    <span>Express delivery</span>
+    <span>
+      <strong>Express delivery</strong>
+      <span>Arrives the next working day</span>
+    </span>
   </label>
 </fieldset>
 ```
@@ -166,7 +172,7 @@ Style native controls and their labels as cards. Use radios for one choice and c
 Style the selected option card with `:has(:checked)` using more than color alone (such as border thickness or font weight):
 
 ```css
-.option-card:has(:checked) {
+.card:has(:checked) {
   /* Pair any color change with non-color indicators (example border width and weight) so selection is never conveyed by color alone */
   border-width: 2px;
   font-weight: 600;
