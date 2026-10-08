@@ -2,7 +2,29 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { cGreen, cCyan, cRed, cDim } from '../../lib/colors.ts';
-import { REPORT_FILE, TEST_APP_RESULTS_DIR } from '../../lib/guide-validation.ts';
+import { REPORT_FILE } from '../../lib/guide-validation.ts';
+import { getGuideResultsDir, guidesDir } from '../../lib/paths.ts';
+
+export function resolveGuideResultsDir(targetDir: string, guideInfo?: { category?: string; slug?: string }): string {
+  if (guideInfo?.category && guideInfo?.slug) {
+    return getGuideResultsDir({ category: guideInfo.category, slug: guideInfo.slug });
+  }
+  const resolvedTarget = path.resolve(targetDir);
+  const rel = path.relative(guidesDir, resolvedTarget);
+  if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+    const parts = rel.split(path.sep);
+    if (parts.length >= 2) {
+      return getGuideResultsDir({ category: parts[0], slug: parts[1] });
+    }
+    if (parts.length === 1) {
+      return getGuideResultsDir({ category: parts[0], slug: parts[0] });
+    }
+  }
+  const parts = resolvedTarget.split(path.sep);
+  const slug = parts[parts.length - 1];
+  const category = parts[parts.length - 2] || 'cat';
+  return getGuideResultsDir({ category, slug });
+}
 
 export type DevPrLabel = 'gd-dev-content' | 'gd-dev-eval';
 export const ALL_DEV_PR_LABELS: readonly DevPrLabel[] = ['gd-dev-content', 'gd-dev-eval'];
@@ -162,9 +184,10 @@ export function devPrTitle(guideName: string): string {
  * Orchestrates branch push, label determination, and GitHub PR creation or update.
  * Returns the PR URL, or null on failure.
  */
-export async function runDevPr(guideDir: string): Promise<string | null> {
+export async function runDevPr(guideDir: string, guideInfo?: { category?: string; slug?: string }): Promise<string | null> {
   const resolvedGuideDir = path.resolve(guideDir);
-  const reportPath = path.join(resolvedGuideDir, TEST_APP_RESULTS_DIR, REPORT_FILE);
+  const guideResultsDir = resolveGuideResultsDir(resolvedGuideDir, guideInfo);
+  const reportPath = path.join(guideResultsDir, REPORT_FILE);
 
   if (!fs.existsSync(reportPath)) {
     console.error(cRed(`❌ No evaluation report found at ${path.relative(process.cwd(), reportPath)}.`));

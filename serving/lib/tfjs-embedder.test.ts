@@ -7,6 +7,7 @@ import { memory } from "@tensorflow/tfjs-core";
 import { BertTokenizer } from "@huggingface/transformers";
 import { Tokenizer } from "@huggingface/tokenizers";
 import { TfjsEmbedder } from "./tfjs-embedder.ts";
+import { rootDir } from "../../lib/paths.ts";
 
 function cosineSimilarity(a: number[], b: number[]): number {
   let dot = 0;
@@ -118,7 +119,7 @@ describe("TfjsEmbedder", () => {
     const refTokenizer = new BertTokenizer(tokJson, tokCfg);
     const newTokenizer = new Tokenizer(tokJson, tokCfg);
 
-    const poolFile = path.resolve(import.meta.dirname, "../benchmarks/data/eval-queries-pool.json");
+    const poolFile = path.join(rootDir, "serving/benchmarks/data/eval-queries-pool.json");
     const poolData: Array<{ query: string }> = JSON.parse(fs.readFileSync(poolFile, "utf8"));
     const queries = poolData.map((q) => q.query);
 

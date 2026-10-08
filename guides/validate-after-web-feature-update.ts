@@ -1,14 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { features } from 'web-features';
 import { scanAllGuides, checkOriginTrialGraduations } from '../lib/guide-validation.ts';
+import { featuresDir, guidesDir, rootDir } from '../lib/paths.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const pendingPath = path.resolve(__dirname, '../features/pending-web-features.json');
-const featuresDir = path.resolve(__dirname, '../features');
-const atlsPath = path.resolve(__dirname, '../guides/atls.json');
+const pendingPath = path.join(featuresDir, 'pending-web-features.json');
+const atlsPath = path.join(guidesDir, 'atls.json');
 
 const pending = JSON.parse(fs.readFileSync(pendingPath, 'utf8')) as Record<string, unknown>;
 let hasError = false;
@@ -42,7 +39,7 @@ const recordLocation = (fid: string, location: string) => {
 
 const allGuides = scanAllGuides();
 for (const guide of allGuides) {
-  const relPath = path.relative(path.resolve(__dirname, '..'), guide.dir);
+  const relPath = path.relative(rootDir, guide.dir);
   const guideMd = path.join(guide.dir, 'guide.md');
   const fileToReport = fs.existsSync(guideMd) ? path.join(relPath, 'guide.md') : relPath;
   for (const fid of guide.featureIds) {

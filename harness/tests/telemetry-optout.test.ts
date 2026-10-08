@@ -25,9 +25,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { rootDir } from '../../lib/paths.ts';
 
-const HARNESS_DIR = path.resolve(import.meta.dirname, '..');
-const ROOT_DIR = path.resolve(HARNESS_DIR, '..');
+const ROOT_DIR = rootDir;
+const HARNESS_DIR = path.join(rootDir, 'harness');
 
 test('importing harness/config.ts disables telemetry', () => {
   // This must run in a child process with DISABLE_TELEMETRY explicitly

@@ -3,8 +3,9 @@ import assert from 'node:assert';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { rootDir } from '../../lib/paths.ts';
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // modern-web-guidance-src/
+const ROOT_DIR = rootDir; // modern-web-guidance-src/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
 
 const getLatestGitTag = (target = 'HEAD') => {

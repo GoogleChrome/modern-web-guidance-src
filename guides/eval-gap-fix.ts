@@ -19,13 +19,71 @@ import {
   getGuideStatus,
   ProjectStatus,
   REPORT_FILE,
-  TEST_APP_RESULTS_DIR,
   type GuideInventory,
 } from '../lib/guide-validation.ts';
-import { rootDir } from '../lib/paths.ts';
+import { rootDir, getGuideResultsDir } from '../lib/paths.ts';
 import type { SuiteConfig } from '../harness/config.ts';
-import { githubApi, parseMarker, type ExistingIssue } from './eval-gap-watch.ts';
 import { devPrBranch, devPrTitle, runDevPr } from './lib/dev-pr.ts';
+
+export const EVAL_OWNERS = ['micahjo7', 'TravenReese'];
+export const EVAL_GAP_LABEL = 'eval-gap';
+
+export type GapKind = 'missing-evals' | 'expectations-changed';
+
+/** An open issue carrying the eval-gap label. */
+export interface ExistingIssue {
+  number: number;
+  body: string;
+  title: string;
+}
+
+export function buildMarker(kind: GapKind, guidePath: string): string {
+  return `<!-- eval-gap-watch:${kind}:${guidePath} -->`;
+}
+
+export function parseMarker(body: string): { kind: GapKind; guidePath: string } | null {
+  const match = body.match(/<!--\s*eval-gap-watch:(missing-evals|expectations-changed):(\S+?)\s*-->/);
+  return match ? { kind: match[1] as GapKind, guidePath: match[2] } : null;
+}
+
+export const githubApi = {
+  ensureLabel(): void {
+    try {
+      child_process.execFileSync(
+        'gh',
+        ['label', 'create', EVAL_GAP_LABEL, '--description', 'Guide is missing evals or its expectations changed', '--color', 'B60205'],
+        { stdio: 'pipe' }
+      );
+    } catch {
+      // Label already exists, which is the common case.
+    }
+  },
+
+  listIssues(): ExistingIssue[] {
+    const output = child_process.execFileSync(
+      'gh',
+      ['issue', 'list', '--label', EVAL_GAP_LABEL, '--state', 'open', '--limit', '500', '--json', 'number,body,title'],
+      { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
+    );
+    return (JSON.parse(output) as ExistingIssue[]).map(i => ({ ...i, body: i.body ?? '' }));
+  },
+
+  createIssue(title: string, body: string): void {
+    child_process.execFileSync(
+      'gh',
+      ['issue', 'create', '--title', title, '--body', body, '--label', EVAL_GAP_LABEL, '--assignee', EVAL_OWNERS.join(',')],
+      { stdio: 'inherit' }
+    );
+  },
+
+  closeIssue(issueNumber: number): void {
+    child_process.execFileSync(
+      'gh',
+      ['issue', 'close', String(issueNumber), '--reason', 'completed', '--comment', 'Closing — this guide no longer has a missing-evals gap.'],
+      { stdio: 'inherit' }
+    );
+  },
+};
 
 export interface OpenPr {
   number: number;
@@ -144,9 +202,8 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
 
   let outcome: Outcome;
   try {
-    // test-app-results/ is gitignored and survives between runs. Clear it so the
-    // report can only come from this run.
-    const resultsDir = path.join(inv.dir, TEST_APP_RESULTS_DIR);
+    // Clear guide results so the report can only come from this run.
+    const resultsDir = getGuideResultsDir(inv);
     fs.rmSync(resultsDir, { recursive: true, force: true });
 
     const devOk = await evalGapFixCli.runDevGuide(inv, options);

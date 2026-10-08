@@ -9,7 +9,7 @@ import { buildSandboxPolicy, buildBwrapArgs, defaultExtraHiddenPaths, wrapComman
 function makeFakeRepo() {
   const repo = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'sandbox-repo-')));
   const guideDir = path.join(repo, 'guides', 'cat', 'some-guide');
-  const targetDir = path.join(repo, 'harness', 'results', 'suite', 'task', 'guided');
+  const targetDir = path.join(repo, 'results', 'suites', 'suite', 'task', 'guided');
   const distDir = path.join(repo, 'dist', 'skills-cli');
   for (const d of [guideDir, targetDir, distDir, path.join(repo, 'node_modules')]) fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(guideDir, 'guide.md'), 'SECRET GUIDE');
@@ -72,7 +72,7 @@ test('buildBwrapArgs hides the repo before re-binding exposed paths', () => {
     const args = buildBwrapArgs('agent', ['-p', 'hi'], {
       hiddenDir: '/repo',
       readOnlyPaths: ['/repo/node_modules'],
-      writablePaths: ['/repo/harness/results/x'],
+      writablePaths: ['/repo/results/suites/x'],
       extraHiddenPaths: ['/tmp'],
     }, fakeRun);
     const tmpfsIdx = args.indexOf('--tmpfs');

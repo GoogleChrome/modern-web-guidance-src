@@ -28,24 +28,31 @@ import {
   type GuideInventory,
 } from '../lib/guide-validation.ts';
 import { rootDir } from '../lib/paths.ts';
+import {
+  EVAL_OWNERS,
+  EVAL_GAP_LABEL,
+  type GapKind,
+  type ExistingIssue,
+  buildMarker,
+  parseMarker,
+  githubApi,
+} from './eval-gap-fix.ts';
 
-export const EVAL_OWNERS = ['micahjo7', 'TravenReese'];
-export const EVAL_GAP_LABEL = 'eval-gap';
-
-export type GapKind = 'missing-evals' | 'expectations-changed';
+export {
+  EVAL_OWNERS,
+  EVAL_GAP_LABEL,
+  type GapKind,
+  type ExistingIssue,
+  buildMarker,
+  parseMarker,
+  githubApi,
+};
 
 export interface Gap {
   kind: GapKind;
   /** Repo-relative guide directory, e.g. `guides/css/scrollspy`. */
   guidePath: string;
   guideName: string;
-}
-
-/** An open issue carrying the eval-gap label. */
-export interface ExistingIssue {
-  number: number;
-  body: string;
-  title: string;
 }
 
 // --- Detection ---
@@ -92,15 +99,6 @@ export function getChangedFiles(before: string): string[] {
 }
 
 // --- Issue content ---
-
-export function buildMarker(kind: GapKind, guidePath: string): string {
-  return `<!-- eval-gap-watch:${kind}:${guidePath} -->`;
-}
-
-export function parseMarker(body: string): { kind: GapKind; guidePath: string } | null {
-  const match = body.match(/<!--\s*eval-gap-watch:(missing-evals|expectations-changed):(\S+?)\s*-->/);
-  return match ? { kind: match[1] as GapKind, guidePath: match[2] } : null;
-}
 
 export function buildIssue(gap: Gap): { title: string; body: string } {
   const link = `[\`${gap.guidePath}\`](https://github.com/GoogleChrome/modern-web-guidance-src/tree/main/${gap.guidePath})`;
@@ -154,46 +152,7 @@ export function planIssues(gaps: Gap[], existing: ExistingIssue[]): { toCreate: 
   };
 }
 
-// --- GitHub API ---
 
-export const githubApi = {
-  ensureLabel(): void {
-    try {
-      child_process.execFileSync(
-        'gh',
-        ['label', 'create', EVAL_GAP_LABEL, '--description', 'Guide is missing evals or its expectations changed', '--color', 'B60205'],
-        { stdio: 'pipe' }
-      );
-    } catch {
-      // Label already exists, which is the common case.
-    }
-  },
-
-  listIssues(): ExistingIssue[] {
-    const output = child_process.execFileSync(
-      'gh',
-      ['issue', 'list', '--label', EVAL_GAP_LABEL, '--state', 'open', '--limit', '500', '--json', 'number,body,title'],
-      { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
-    );
-    return (JSON.parse(output) as ExistingIssue[]).map(i => ({ ...i, body: i.body ?? '' }));
-  },
-
-  createIssue(title: string, body: string): void {
-    child_process.execFileSync(
-      'gh',
-      ['issue', 'create', '--title', title, '--body', body, '--label', EVAL_GAP_LABEL, '--assignee', EVAL_OWNERS.join(',')],
-      { stdio: 'inherit' }
-    );
-  },
-
-  closeIssue(issueNumber: number): void {
-    child_process.execFileSync(
-      'gh',
-      ['issue', 'close', String(issueNumber), '--reason', 'completed', '--comment', 'Closing — this guide no longer has a missing-evals gap.'],
-      { stdio: 'inherit' }
-    );
-  },
-};
 
 // --- Main ---
 

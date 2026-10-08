@@ -1,12 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { fileURLToPath } from 'url';
+import { rootDir } from '../../../lib/paths.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const resultsPath = path.resolve(__dirname, '../data/eval-results.json');
-const outputPath = path.resolve(__dirname, '../data/eval-plot.html');
+const resultsPath = path.join(rootDir, 'serving/benchmarks/data/eval-results.json');
+const outputPath = path.join(rootDir, 'serving/benchmarks/data/eval-plot.html');
 
 if (!fs.existsSync(resultsPath)) {
   console.error(`Results file not found at ${resultsPath}`);

@@ -158,16 +158,16 @@ cleanup() {
   fi
 
   if [ "$EVAL_RAN" = "true" ] && [ "${NIGHTLY_GUIDANCE_RUN:-0}" != "1" ]; then
-    body="${body}\n\nLocal results path: ${REPO_ROOT}/harness/results/${SUITE_ID}"
+    body="${body}\n\nLocal results path: ${REPO_ROOT}/results/suites/${SUITE_ID}"
   fi
 
   if [ "${NIGHTLY_GUIDANCE_RUN:-0}" = "1" ]; then
     printf "%b\n\n----------------------------------------\n\n" "$body" >> "${SUMMARY_FILE:-$SCRIPT_DIR/${PREFIX}_summary.txt}"
     
     # Delete the local results to save disk space in nightly runs only if upload succeeded
-    if [ "$UPLOAD_EXIT_CODE" -eq 0 ] && [ -d "${REPO_ROOT}/harness/results/${SUITE_ID}" ]; then
+    if [ "$UPLOAD_EXIT_CODE" -eq 0 ] && [ -d "${REPO_ROOT}/results/suites/${SUITE_ID}" ]; then
       echo "Deleting ${PREFIX} local results directory ${SUITE_ID} to save disk space..."
-      rm -rf "${REPO_ROOT}/harness/results/${SUITE_ID}"
+      rm -rf "${REPO_ROOT}/results/suites/${SUITE_ID}"
     fi
   else
     printf "\n=== STANDALONE RUN SUMMARY ===\n%b\n==============================\n\n" "$body"
@@ -232,7 +232,7 @@ EVAL_EXIT_CODE=$?
 set -euo pipefail
 
 # Allow non-zero exit codes if evals.json was successfully generated (meaning tests ran but had failures/low scores)
-RESULTS_JSON="${REPO_ROOT}/harness/results/${SUITE_ID}/evals.json"
+RESULTS_JSON="${REPO_ROOT}/results/suites/${SUITE_ID}/evals.json"
 if [ "$EVAL_EXIT_CODE" -ne 0 ] && [ ! -f "$RESULTS_JSON" ]; then
   echo "Evaluation crashed catastrophically (exit code ${EVAL_EXIT_CODE}). Skipping upload step."
   FAIL_REASON="Evaluation crashed (exit code ${EVAL_EXIT_CODE}). Upload skipped."

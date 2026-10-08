@@ -1,12 +1,9 @@
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
+import { rootDir } from "../../../lib/paths.ts";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, "../..");
-const RESULTS_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-results.json");
-const LATENCY_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-results-latency.json");
+const RESULTS_FILE = path.join(rootDir, "serving/benchmarks/data/eval-results.json");
+const LATENCY_FILE = path.join(rootDir, "serving/benchmarks/data/eval-results-latency.json");
 
 interface EvalRun {
   timestamp: string;

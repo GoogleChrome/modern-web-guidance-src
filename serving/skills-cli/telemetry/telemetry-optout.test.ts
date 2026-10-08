@@ -21,8 +21,9 @@ import path from 'node:path';
 import { ClearcutLogger } from './ClearcutLogger.ts';
 import { WatchdogClient } from './WatchdogClient.ts';
 import { CommandType } from './types.ts';
+import { rootDir } from '../../../lib/paths.ts';
 
-const ROOT_DIR = path.resolve(import.meta.dirname, '../../..');
+const ROOT_DIR = rootDir;
 
 test('node --test sets NODE_TEST_CONTEXT and suppresses ClearcutLogger by default', async () => {
   assert.ok(

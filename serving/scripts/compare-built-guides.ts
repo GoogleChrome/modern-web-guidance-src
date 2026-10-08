@@ -3,6 +3,7 @@ import path from "path";
 import { execSync } from "child_process";
 import { parseArgs } from "util";
 import { fileURLToPath } from "node:url";
+import { rootDir } from "../../lib/paths.ts";
 
 // 1. Parse and resolve CLI / GHA environment inputs
 const { values } = parseArgs({
@@ -15,7 +16,7 @@ const { values } = parseArgs({
 
 const TARGET_REF = values["base-ref"] || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "origin/main");
 const BASELINE_DIR = values["baseline-dir"] || process.env.BASELINE_BUILD_DIR || "/tmp/guides-baseline";
-const BRANCH_DIR = path.resolve(import.meta.dirname, "../build/guides");
+const BRANCH_DIR = path.join(rootDir, "serving/build/guides");
 const OUTPUT_PATH = values["output-path"] || process.env.REPORT_OUTPUT_PATH || "";
 const TEMP_REPO_DIR = "/tmp/guides-baseline-repo";
 

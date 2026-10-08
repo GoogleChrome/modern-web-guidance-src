@@ -1,9 +1,31 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { cGreen, cYellow, cCyan, cBold } from '../../lib/colors.ts';
-import { SUPPORTED_BASE_APPS, getDefaultSolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, TARGETS_DIR, REPORT_FILE, TEST_APP_RESULTS_DIR } from '../../lib/guide-validation.ts';
+import { SUPPORTED_BASE_APPS, getDefaultSolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, TARGETS_DIR, REPORT_FILE } from '../../lib/guide-validation.ts';
+import { getGuideResultsDir, guidesDir } from '../../lib/paths.ts';
 import { setupGuideDevWorkDir, runAgent } from './utils.ts';
 import { buildDevReportPrompt } from '../gd-dev-prompts.ts';
+
+export function resolveGuideResultsDir(targetDir: string, guideInfo?: { category?: string; slug?: string }): string {
+  if (guideInfo?.category && guideInfo?.slug) {
+    return getGuideResultsDir({ category: guideInfo.category, slug: guideInfo.slug });
+  }
+  const resolvedTarget = path.resolve(targetDir);
+  const rel = path.relative(guidesDir, resolvedTarget);
+  if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+    const parts = rel.split(path.sep);
+    if (parts.length >= 2) {
+      return getGuideResultsDir({ category: parts[0], slug: parts[1] });
+    }
+    if (parts.length === 1) {
+      return getGuideResultsDir({ category: parts[0], slug: parts[0] });
+    }
+  }
+  const parts = resolvedTarget.split(path.sep);
+  const slug = parts[parts.length - 1];
+  const category = parts[parts.length - 2] || 'cat';
+  return getGuideResultsDir({ category, slug });
+}
 
 export type DevReportFlag =
   | 'INFRASTRUCTURE_ERROR'
@@ -73,8 +95,9 @@ export function computeDevReportFlag(input: {
 /**
  * Extracts and parses evaluation summary for a specific target base app.
  */
-export function computeTargetSummary(targetDir: string, baseApp: string): TargetEvalSummary | null {
-  const evalsJsonPath = path.join(targetDir, TEST_APP_RESULTS_DIR, baseApp, 'evals.json');
+export function computeTargetSummary(targetDir: string, baseApp: string, guideInfo?: { category?: string; slug?: string }): TargetEvalSummary | null {
+  const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
+  const evalsJsonPath = path.join(guideResultsDir, baseApp, 'evals.json');
   if (!fs.existsSync(evalsJsonPath)) {
     return null;
   }
@@ -111,14 +134,15 @@ export function computeTargetSummary(targetDir: string, baseApp: string): Target
 /**
  * Builds the initial report document with interleaved target evals and diagnostic placeholders.
  */
-export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSummary[]): string {
+export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSummary[], guideInfo?: { category?: string; slug?: string }): string {
   const guideName = path.basename(targetDir);
+  const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
   let content = `# Evaluation Report: ${guideName}\n\n`;
 
   for (const s of summaries) {
     content += `## Target: \`${s.baseApp}\` (Status: \`${s.flag}\`)\n\n`;
     content += `### Evaluation Results\n\n`;
-    const evalsMdPath = path.join(targetDir, TEST_APP_RESULTS_DIR, s.baseApp, 'evals.md');
+    const evalsMdPath = path.join(guideResultsDir, s.baseApp, 'evals.md');
     const rawEvals = fs.existsSync(evalsMdPath) ? fs.readFileSync(evalsMdPath, 'utf8').trim() : '';
     const nestedEvals = rawEvals.replaceAll(/^## /gm, '#### ').replaceAll(/^### /gm, '##### ');
     content += nestedEvals + '\n\n';
@@ -133,28 +157,27 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
 /**
  * Runs the agent-driven evaluation report generation phase across all targets for a guide.
  */
-export async function runDevReport(targetDir: string): Promise<void> {
+export async function runDevReport(targetDir: string, guideInfo?: { category?: string; slug?: string }): Promise<void> {
   console.log(cCyan(`\n--- Running Evaluation Report ---`));
 
+  const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
   const summaries = SUPPORTED_BASE_APPS
-    .map(baseApp => computeTargetSummary(targetDir, baseApp))
+    .map(baseApp => computeTargetSummary(targetDir, baseApp, guideInfo))
     .filter((s): s is TargetEvalSummary => s !== null);
 
   if (summaries.length === 0) {
-    console.log(cYellow(`No evaluation results found in ${path.join(targetDir, TEST_APP_RESULTS_DIR)}. Skipping report.`));
+    console.log(cYellow(`No evaluation results found in ${guideResultsDir}. Skipping report.`));
     return;
   }
 
-  const targetAppResultsDir = path.join(targetDir, TEST_APP_RESULTS_DIR);
-  const finalReportPath = path.join(targetAppResultsDir, REPORT_FILE);
-
-  const initialReportContent = buildInitialDevReport(targetDir, summaries);
+  const finalReportPath = path.join(guideResultsDir, REPORT_FILE);
+  const initialReportContent = buildInitialDevReport(targetDir, summaries, guideInfo);
 
   const agent = getDefaultSolutionAgent();
   const workDir = setupGuideDevWorkDir('report');
 
   try {
-    // Copy guide.md, expectations.md, targets, and test-app-results to report sandbox
+    // Copy guide.md, expectations.md, targets, and results to report sandbox
     if (fs.existsSync(path.join(targetDir, GUIDE_FILE))) {
       fs.copyFileSync(path.join(targetDir, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     }
@@ -164,8 +187,8 @@ export async function runDevReport(targetDir: string): Promise<void> {
     if (fs.existsSync(path.join(targetDir, TARGETS_DIR))) {
       fs.cpSync(path.join(targetDir, TARGETS_DIR), path.join(workDir, 'targets'), { recursive: true });
     }
-    if (fs.existsSync(targetAppResultsDir)) {
-      fs.cpSync(targetAppResultsDir, path.join(workDir, TEST_APP_RESULTS_DIR), { recursive: true });
+    if (fs.existsSync(guideResultsDir)) {
+      fs.cpSync(guideResultsDir, path.join(workDir, 'results'), { recursive: true });
     }
 
     // Seed report.md with initial interleaved content

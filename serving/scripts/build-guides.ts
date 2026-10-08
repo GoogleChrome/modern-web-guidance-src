@@ -21,9 +21,10 @@ import { replaceMacros, type BuildTarget, formatTitle } from "../lib/macros.ts";
 import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub } from "../../lib/guide-validation.ts";
 import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
+import { rootDir } from "../../lib/paths.ts";
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "..");
-const WORKSPACE_ROOT = path.resolve(ROOT_DIR, "..");
+const WORKSPACE_ROOT = rootDir;
+const ROOT_DIR = path.join(rootDir, "serving");
 const OUTPUT_FILE = path.join(ROOT_DIR, "lib/use-cases.gen.ts");
 
 interface UseCase {
@@ -99,9 +100,9 @@ async function computePipelineHash(
 
   const deps = [
     import.meta.filename,
-    path.resolve(import.meta.dirname, "../lib/macros.ts"),
-    path.resolve(import.meta.dirname, "../lib/transformers-embedder.ts"),
-    path.resolve(import.meta.dirname, "../../lib/guide-validation.ts"),
+    path.join(ROOT_DIR, "lib/macros.ts"),
+    path.join(ROOT_DIR, "lib/transformers-embedder.ts"),
+    path.join(rootDir, "lib/guide-validation.ts"),
   ];
 
   for (const dep of deps) {

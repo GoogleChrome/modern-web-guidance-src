@@ -82,10 +82,10 @@ To perform a nightly evaluation investigation, follow these steps:
 
 ### Step 2: Pull down Results
 1. For each of the selected 3 folders, create the directory locally:
-   `harness/results/<folder_name>`
+   `results/suites/<folder_name>`
 2. Sync the suite folder recursively while excluding heavy binaries (Playwright `trace.zip` and screenshots) to save bandwidth and disk space:
    ```bash
-   gcloud storage rsync gs://guidance-evals/<folder_name> harness/results/<folder_name> --recursive --exclude ".*\.zip$|.*\.png$"
+   gcloud storage rsync gs://guidance-evals/<folder_name> results/suites/<folder_name> --recursive --exclude ".*\.zip$|.*\.png$"
    ```
    *(Note: This is done automatically by the investigate script in Step 3, but can be run manually if needed.)*
 
@@ -95,9 +95,9 @@ Run the automated TypeScript analysis script:
 node --experimental-strip-types .agents/skills/nightly-eval-investigation/scripts/investigate.ts
 ```
 
-This script will automatically cross-examine the results, flag unhealthy tasks, and output the report and context helper artifacts to the skill's directory:
-- Markdown: `.agents/skills/nightly-eval-investigation/artifacts/nightly_investigation_report.md`
-- JSON Context: `.agents/skills/nightly-eval-investigation/artifacts/flagged_tasks_context.json` (contains extracted prompts, guide descriptions, and test headers for all flagged tasks to assist in diagnostics)
+This script will automatically cross-examine the results, flag unhealthy tasks, and output the report and context helper artifacts to the output directory:
+- Markdown: `out/nightly-investigation/nightly_investigation_report.md`
+- JSON Context: `out/nightly-investigation/flagged_tasks_context.json` (contains extracted prompts, guide descriptions, and test headers for all flagged tasks to assist in diagnostics)
 
 ### Step 4: Perform Qualitative Deep-Dives (Investigation Playbook)
 
@@ -146,7 +146,7 @@ Follow this linear playbook for each flagged task:
    - **Grader**: Detail the exact logic changes or assertions to modify/loosen.
 
 5. **Synthesize the Markdown Report**
-   Write the summary under the task's section in `.agents/skills/nightly-eval-investigation/artifacts/nightly_investigation_report.md` following the template below.
+   Write the summary under the task's section in `out/nightly-investigation/nightly_investigation_report.md` following the template below.
 
 ### Step 5: Inform the User of the Publishing Script
 Once the qualitative diagnostics and recommendations have been fully written and saved to the markdown report, present the final report to the user and inform them that they can run the automated publisher script to create the GitHub parent issue and the task-level engineering/devrel subissues.
@@ -160,7 +160,7 @@ node --experimental-strip-types .agents/skills/nightly-eval-investigation/script
 
 ### Step 6: Present and Link
 Present the final report to the user, providing a clickable link, and remind them of the publishing command:
-- Markdown Report: [nightly_investigation_report.md](file:///Users/micahjo/modern-web-guidance-src/.agents/skills/nightly-eval-investigation/artifacts/nightly_investigation_report.md)
+- Markdown Report: [nightly_investigation_report.md](file:///out/nightly-investigation/nightly_investigation_report.md)
 
 ---
 
@@ -168,7 +168,7 @@ Present the final report to the user, providing a clickable link, and remind the
 
 All investigation reports MUST strictly follow these templates to ensure downstream compatibility:
 
-### Markdown Standard (`artifacts/nightly_investigation_report.md`)
+### Markdown Standard (`out/nightly-investigation/nightly_investigation_report.md`)
 ```markdown
 # Nightly Evaluation Investigation Report
 

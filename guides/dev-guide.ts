@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { rootDir } from '../lib/paths.ts';
+import { rootDir, guidesDir, getGuideResultsDir } from '../lib/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
 import { generateTargetGrader } from './grader-gen.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
@@ -26,7 +25,6 @@ import {
   TASK_FILE,
   REPORT_FILE,
   TARGETS_DIR,
-  TEST_APP_RESULTS_DIR,
   SUPPORTED_BASE_APPS,
   getDefaultSolutionAgent,
   getActiveSolutionAgents,
@@ -207,7 +205,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 5: Run evaluation report (printed last)
   if (options.test !== false && overallSuccess) {
-    await runDevReport(targetDir);
+    await runDevReport(targetDir, currentInv);
   }
 
   return overallSuccess;
@@ -333,18 +331,21 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       const results: Record<string, { passed: number; total: number }> = {};
 
       // 1. Grade base app (with zero-passrate baseline applied)
+      const relGuidePath = path.relative(guidesDir, targetDir);
+      const [category, slug] = relGuidePath.split(path.sep);
+      const guideResultsDir = getGuideResultsDir({ category, slug: slug || guideName });
       const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
       const preResults = await gradeOutput(
         targetsDir,
         targetGraderPath,
-        path.join(targetDir, TEST_APP_RESULTS_DIR, baseApp, 'pre-grade-report'),
+        path.join(guideResultsDir, baseApp, 'pre-grade-report'),
         zeroPassratePatch
       );
       if (preResults) results['pre'] = preResults;
 
       // 2. Run agent suite
       const { runSuite } = await import('../harness/run_suite.ts');
-      const testOutputDir = path.join(targetDir, TEST_APP_RESULTS_DIR, baseApp);
+      const testOutputDir = path.join(guideResultsDir, baseApp);
       const agent = getDefaultSolutionAgent();
       await runSuite({
         name: `${guideName}-${baseApp}`,
@@ -499,7 +500,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
     }
   }
 
-  const evalReportPath = path.join(targetDir, TEST_APP_RESULTS_DIR, REPORT_FILE);
+  const evalReportPath = path.join(getGuideResultsDir(inv), REPORT_FILE);
   if (fs.existsSync(evalReportPath)) {
     console.log(`\n   ${cBold('Evaluation Report:')}`);
     console.log(`     ${REPORT_FILE.padEnd(28)} ${cGreen('✅')} generated`);
@@ -738,7 +739,7 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
   }
 }
 
-if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
+if (import.meta.url.startsWith('file:') && process.argv[1] === import.meta.filename) {
   const args = process.argv.slice(2);
   const dir = args.find(a => !a.startsWith('--'));
   const isTest = !args.includes('--no-test');

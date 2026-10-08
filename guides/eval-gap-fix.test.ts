@@ -6,8 +6,8 @@ import path from 'node:path';
 
 import { planFixes, fixEvalGaps, evalGapFixCli, type OpenPr, type FixEvalGapsOptions } from './eval-gap-fix.ts';
 import { buildIssue, type ExistingIssue, type Gap } from './eval-gap-watch.ts';
-import { rootDir } from '../lib/paths.ts';
-import { REPORT_FILE, TEST_APP_RESULTS_DIR, type GuideInventory } from '../lib/guide-validation.ts';
+import { rootDir, getGuideResultsDir } from '../lib/paths.ts';
+import { REPORT_FILE, type GuideInventory } from '../lib/guide-validation.ts';
 
 function makeGuide(name: string, overrides: Partial<GuideInventory> = {}): GuideInventory {
   return {
@@ -76,14 +76,14 @@ describe('fixEvalGaps', () => {
   let branch: string;
   let treeStatus: string;
 
-  /** A guide in a temp dir, so the test-app-results handling runs against a real filesystem. */
+  /** A guide in a temp dir, so the results handling runs against a real filesystem. */
   function tempGuide(name: string): GuideInventory {
     const dir = path.join(tempGuidesRoot, name);
     fs.mkdirSync(dir, { recursive: true });
     return makeGuide(name, { dir });
   }
 
-  const resultsDir = (inv: GuideInventory) => path.join(inv.dir, TEST_APP_RESULTS_DIR);
+  const resultsDir = (inv: GuideInventory) => getGuideResultsDir(inv);
 
   /** Stubs `gd dev`: guides in `passing` succeed and write a report, the rest fail. */
   function stubDev(passing: GuideInventory[]): void {
@@ -133,6 +133,9 @@ describe('fixEvalGaps', () => {
   afterEach(() => {
     Object.assign(evalGapFixCli, originalCli);
     fs.rmSync(tempGuidesRoot, { recursive: true, force: true });
+    for (const name of ['scrollspy', 'spinner', 'progress-ring']) {
+      fs.rmSync(getGuideResultsDir({ category: 'css', slug: name }), { recursive: true, force: true });
+    }
   });
 
   it('opens a PR on its own branch, returns to main, and deletes the branch', async () => {

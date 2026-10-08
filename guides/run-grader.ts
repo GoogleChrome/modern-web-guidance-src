@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { guidesDir } from '../lib/paths.ts';
+import { guidesDir, outDir } from '../lib/paths.ts';
 import { cRed, cYellow, cCyan } from '../lib/colors.ts';
 import { TARGETS_DIR, getActiveSolutionAgents, SOLUTION_PATCH_FILES, type SolutionAgent, ZERO_PASSRATE_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../lib/guide-validation.ts';
 import { copyBaseAppToWorkspace } from './lib/utils.ts';
@@ -17,6 +17,7 @@ export interface PlaywrightOptions {
   graderPath: string;
   reporters: string[];
   htmlOutputDir?: string;
+  testResultsDir?: string;
   jsonOutputName?: string;
   patchFile?: string;
   stdio?: 'inherit' | 'ignore' | 'pipe';
@@ -63,6 +64,11 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
 
   if (opts.htmlOutputDir) {
     env.PLAYWRIGHT_HTML_OUTPUT_DIR = opts.htmlOutputDir;
+  }
+
+  if (opts.testResultsDir) {
+    env.PLAYWRIGHT_OUTPUT_DIR = opts.testResultsDir;
+  } else if (opts.htmlOutputDir) {
     env.PLAYWRIGHT_OUTPUT_DIR = path.join(appDir, 'test-results');
   }
 
@@ -86,7 +92,8 @@ export async function runPlaywright(
   htmlOutputDir: string,
   stdio: 'inherit' | 'ignore' | 'pipe' = 'inherit',
   patchFile?: string,
-  zeroPassrateFile?: string
+  zeroPassrateFile?: string,
+  testResultsDir?: string
 ): Promise<any> {
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
 
@@ -108,6 +115,7 @@ export async function runPlaywright(
       graderPath,
       reporters: ['json', 'html'],
       htmlOutputDir,
+      testResultsDir,
       jsonOutputName: tmpJson,
       patchFile: patchFile,
       stdio: stdio === 'ignore' ? 'pipe' : stdio
@@ -122,8 +130,8 @@ export async function runPlaywright(
     await once(child, 'close');
 
     const effectiveAppDir = isDir ? effectiveTargetPath : path.dirname(effectiveTargetPath);
-    const testResultsDir = path.join(effectiveAppDir, 'test-results');
-    await fs.promises.rm(testResultsDir, { recursive: true, force: true }).catch(() => {});
+    const resolvedTestResultsDir = testResultsDir || path.join(effectiveAppDir, 'test-results');
+    await fs.promises.rm(resolvedTestResultsDir, { recursive: true, force: true }).catch(() => {});
 
     const content = await fs.promises.readFile(tmpJson, 'utf-8').catch(() => null);
     if (!content) {
@@ -146,9 +154,10 @@ async function runPlaywrightCalibration(
   outDir: string,
   patchFile: string,
   result: CalibrationResult,
-  zeroPassrateFile?: string
+  zeroPassrateFile?: string,
+  testResultsDir?: string
 ): Promise<any> {
-  const results = await runPlaywright(targetPathAbs, graderPath, outDir, 'ignore', patchFile, zeroPassrateFile)
+  const results = await runPlaywright(targetPathAbs, graderPath, outDir, 'ignore', patchFile, zeroPassrateFile, testResultsDir)
     .catch(err => {
       result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
       return null;
@@ -286,7 +295,15 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     return result;
   }
 
-  const zeroPassrateOutDir = path.join(targetDir, 'grade-report', 'zero-passrate');
+  const rel = path.relative(guidesDir, path.resolve(guideDirAbs));
+  const parts = rel.split(path.sep);
+  const category = parts[0];
+  const slug = parts[1] || parts[0];
+  const calibrationBase = path.join(outDir, 'guides', category, slug, baseApp);
+  const gradeReportDir = path.join(calibrationBase, 'grade-report');
+  const testResultsDir = path.join(calibrationBase, 'test-results');
+
+  const zeroPassrateOutDir = path.join(gradeReportDir, 'zero-passrate');
 
   // Golden calibration across active AI solution diffs + zero-passrate calibration in parallel
   const solutionStatus: Record<string, string> = {};
@@ -296,10 +313,10 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const solutionCalibrationTasks = activeAgents.map(async (agent) => {
     const solPatchFile = SOLUTION_PATCH_FILES[agent];
     const solutionPatch = path.join(targetDir, solPatchFile);
-    const solutionOutDir = path.join(targetDir, 'grade-report', `solution-${agent}`);
+    const solutionOutDir = path.join(gradeReportDir, `solution-${agent}`);
     let unexpected = 0;
     console.log(cYellow(`\nRunning against ${baseApp} with ${solPatchFile} (${agent})... (Expecting 100% pass)`));
-    const solutionResults = await runPlaywrightCalibration(targetDir, graderPath, solutionOutDir, solutionPatch, result);
+    const solutionResults = await runPlaywrightCalibration(targetDir, graderPath, solutionOutDir, solutionPatch, result, undefined, testResultsDir);
 
     if (!solutionResults) {
       allSolutionsPassed = false;
@@ -337,7 +354,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const zeroPassrateTask = (async () => {
     let passed = 0;
     console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
-    const zeroPassrateResults = await runPlaywrightCalibration(targetDir, graderPath, zeroPassrateOutDir, zeroPassratePatch, result);
+    const zeroPassrateResults = await runPlaywrightCalibration(targetDir, graderPath, zeroPassrateOutDir, zeroPassratePatch, result, undefined, testResultsDir);
 
     if (!zeroPassrateResults) {
       zeroPassrateFailed = true;

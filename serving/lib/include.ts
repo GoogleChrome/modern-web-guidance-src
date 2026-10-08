@@ -44,13 +44,26 @@ export function resolveInclude(rawArg: string, callerPath: string): IncludeResol
 
   const [rawPath, ...rest] = rawArg.split("#");
   const sectionId = rest.join("#");
+  const callerDir = path.isAbsolute(callerPath)
+    ? path.dirname(callerPath)
+    : path.resolve(rootDir, path.dirname(callerPath));
   const absolutePath = rawPath.startsWith("./") || rawPath.startsWith("../")
-    ? path.resolve(path.dirname(callerPath), rawPath)
+    ? path.resolve(callerDir, rawPath)
     : path.resolve(rootDir, rawPath);
 
+  if (!fs.existsSync(absolutePath)) {
+    return { isValid: false, errorMessage: `File not found: "${rawPath}" (resolved to "${absolutePath}")` };
+  }
+
   const file = loadFile(absolutePath);
-  const content = sectionId ? extractSection(file, sectionId) : file.body;
-  return { isValid: true, content, absolutePath };
+  if (sectionId) {
+    const section = extractSection(file, sectionId);
+    if (section === undefined) {
+      return { isValid: false, errorMessage: `Section "#${sectionId}" not found in "${rawPath}"` };
+    }
+    return { isValid: true, content: section, absolutePath };
+  }
+  return { isValid: true, content: file.body, absolutePath };
 }
 
 interface ParsedFile {
@@ -58,7 +71,7 @@ interface ParsedFile {
   body: string;
   /** Lexed body. Joined `.raw` is lossless, so sections slice cleanly. */
   tokens: Token[];
-  /** Memoized section bodies by id. "" for misses. */
+  /** Memoized section bodies by id. */
   sections: Map<string, string>;
 }
 
@@ -68,7 +81,10 @@ function loadFile(absolutePath: string): ParsedFile {
   let file = fileCache.get(absolutePath);
   if (file) return file;
 
-  const raw = fs.existsSync(absolutePath) ? fs.readFileSync(absolutePath, "utf-8") : "";
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`File not found: "${absolutePath}"`);
+  }
+  const raw = fs.readFileSync(absolutePath, "utf-8");
   // Strip frontmatter and a leading "# Title" line — redundant when transcluded.
   const body = matter(raw).content.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
   file = { body, tokens: marked.lexer(body), sections: new Map() };
@@ -115,20 +131,19 @@ function matchesHeading(heading: Tokens.Heading, sectionId: string): boolean {
  * when its `{#id}` suffix equals `sectionId` or its text slugifies to it.
  * Section ends at the next heading of equal or shallower depth.
  */
-function extractSection(file: ParsedFile, sectionId: string): string {
+function extractSection(file: ParsedFile, sectionId: string): string | undefined {
   let result = file.sections.get(sectionId);
   if (result !== undefined) return result;
 
   const { tokens } = file;
   const heading = tokens.find((t): t is Tokens.Heading => isHeading(t) && matchesHeading(t, sectionId));
   if (!heading) {
-    result = "";
-  } else {
-    const start = tokens.indexOf(heading);
-    const end = tokens.findIndex((t, i) => i > start && isHeading(t) && t.depth <= heading.depth);
-    const stop = end === -1 ? tokens.length : end;
-    result = tokens.slice(start + 1, stop).map(t => t.raw).join("").trim();
+    return undefined;
   }
+  const start = tokens.indexOf(heading);
+  const end = tokens.findIndex((t, i) => i > start && isHeading(t) && t.depth <= heading.depth);
+  const stop = end === -1 ? tokens.length : end;
+  result = tokens.slice(start + 1, stop).map(t => t.raw).join("").trim();
   file.sections.set(sectionId, result);
   return result;
 }

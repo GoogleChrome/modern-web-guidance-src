@@ -10,8 +10,9 @@ import { marked } from 'marked';
 import { scanAllGuides, processGuideInventory } from '../lib/guide-validation.ts';
 import { replaceMacros, MACRO_PATTERN } from '../serving/lib/macros.ts';
 import { validateGraderExpectationCoverage, formatCoverageFailureMessage } from '../lib/grader-coverage.ts';
+import { rootDir } from '../lib/paths.ts';
 
-const REPO_ROOT = path.resolve(import.meta.dirname, '..');
+const REPO_ROOT = rootDir;
 
 describe('Guides Validation (Single Source of Truth)', () => {
   const guides = scanAllGuides();

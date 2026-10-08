@@ -5,11 +5,11 @@ import { fileURLToPath } from "url";
 import { searchUseCases } from "../../lib/search.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";
 
+import { outDir, rootDir } from "../../../lib/paths.ts";
+
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, "../..");
-const EVAL_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-queries.gen.json");
-const RESULTS_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-results.json");
+const EVAL_FILE = path.join(outDir, "benchmarks/eval-queries.gen.json");
+const RESULTS_FILE = path.join(rootDir, "serving/benchmarks/data/eval-results.json");
 
 interface EvalRun {
   timestamp: string;
@@ -71,7 +71,7 @@ async function main() {
     await embedder.init();
   }
 
-  const vectorsFile = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
+  const vectorsFile = path.join(rootDir, "serving/lib/use-cases.vectors.gen.json.gz");
   let validGuideIds = new Set<string>();
   if (fs.existsSync(vectorsFile)) {
     const jsonContent = zlib.gunzipSync(fs.readFileSync(vectorsFile)).toString("utf-8");

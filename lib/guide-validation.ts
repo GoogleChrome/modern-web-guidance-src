@@ -414,7 +414,6 @@ export function getSupportedBaseApps(): string[] {
 
 export const TARGETS_DIR = 'targets';
 export const PATCHES_DIR = 'patches';
-export const TEST_APP_RESULTS_DIR = 'test-app-results';
 
 export type SolutionAgent =
   | typeof Agents.ANTIGRAVITY_CLI
@@ -714,7 +713,7 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
 
     // Scan subdirectories
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name.startsWith('.') || ['node_modules', TEST_APP_RESULTS_DIR, 'grade-report', 'test-results'].includes(entry.name)) continue;
+      if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name === 'node_modules') continue;
       guides.push(inventoryGuide(path.join(categoryDir, entry.name)));
     }
   }

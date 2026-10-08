@@ -22,7 +22,9 @@ export function assertSearchResults(output: string) {
     assert.ok(topResult.similarity, 'Top result should have a similarity');
 }
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // modern-web-guidance-src/
+import { rootDir } from '../../lib/paths.ts';
+
+const ROOT_DIR = rootDir; // modern-web-guidance-src/
 const STAGING_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
 

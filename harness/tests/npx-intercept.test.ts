@@ -4,10 +4,11 @@ import fs from 'fs';
 import path from 'path';
 import os from 'node:os';
 import { spawnSync } from 'child_process';
+import { rootDir } from '../../lib/paths.ts';
 
 test('npx interception via shim', async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npx-intercept-test-'));
-  const templatePath = path.resolve(import.meta.dirname, '..', 'npx-intercept.template.ts');
+  const templatePath = path.join(rootDir, 'harness', 'npx-intercept.template.ts');
 
   assert.ok(fs.existsSync(templatePath), 'Template should exist');
 
@@ -91,7 +92,20 @@ srv.on('exit', (c) => process.exit(c ?? 0));
     assert.strictEqual(bgResult.status, 0, 'Backgrounded shim command should exit cleanly after kill');
     const grandchildPid = Number(fs.readFileSync(pidFile, 'utf8'));
     assert.ok(grandchildPid > 0, 'Grandchild PID should have been recorded');
-    assert.throws(() => process.kill(grandchildPid, 0), /ESRCH/, 'Grandchild server process must not remain alive after killing shim');
+    let isDead = false;
+    for (let i = 0; i < 20; i++) {
+      try {
+        process.kill(grandchildPid, 0);
+        await new Promise(r => setTimeout(r, 50));
+      } catch (err: any) {
+        if (err.code === 'ESRCH') {
+          isDead = true;
+          break;
+        }
+        throw err;
+      }
+    }
+    assert.strictEqual(isDead, true, 'Grandchild server process must not remain alive after killing shim');
 
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });

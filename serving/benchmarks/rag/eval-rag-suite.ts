@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
+import { outDir } from '../../../lib/paths.ts';
 
 const ROOT = path.join(process.cwd());
 
@@ -82,7 +83,7 @@ async function main() {
   const runs = runsArg ? parseInt(runsArg.split('=')[1], 10) : 1;
   
   const poolPath = path.join(ROOT, 'benchmarks/data/eval-queries-pool.json');
-  const targetEvalsPath = path.join(ROOT, 'benchmarks/data/eval-queries.gen.json');
+  const targetEvalsPath = path.join(outDir, 'benchmarks/eval-queries.gen.json');
   const resultsPath = path.join(ROOT, 'benchmarks/data', 'eval-results.json');
 
   // Generate the pool once if it doesn't exist
@@ -123,6 +124,9 @@ async function main() {
       }
     }
 
+    if (!fs.existsSync(path.dirname(targetEvalsPath))) {
+      fs.mkdirSync(path.dirname(targetEvalsPath), { recursive: true });
+    }
     fs.writeFileSync(targetEvalsPath, JSON.stringify(subset, null, 2));
     if (isFullPool) {
       console.log(`Loaded ALL ${subset.length} master queries sequentially for testing.`);

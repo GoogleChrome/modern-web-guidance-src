@@ -6,7 +6,7 @@ import 'colors';
 import { collectResults } from './lib/collection.ts';
 import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
-import { resultsDir } from '../lib/paths.ts';
+import { suitesDir } from '../lib/paths.ts';
 
 import { type SuiteConfig } from './config.ts';
 
@@ -128,7 +128,7 @@ export async function evaluate() {
     process.exit(1);
   }
 
-  const suiteResultsDir = path.join(resultsDir, suiteName);
+  const suiteResultsDir = path.join(suitesDir, suiteName);
   await evaluateSuite(suiteResultsDir, suiteName);
 }
 
