@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diagonal Panning with CSS scroll-axis-lock</title>
+    <style>
+      :root {
+        font-family: system-ui, -apple-system, sans-serif;
+        color-scheme: light;
+      }
+
+      body {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        color: #1e293b;
+        background: #ffffff;
+      }
+
+      h1 {
+        margin-block: 0 0.75rem;
+      }
+
+      p {
+        line-height: 1.5;
+        color: #334155;
+      }
+
+      code {
+        background: #f1f5f9;
+        padding: 0.15em 0.35em;
+        border-radius: 4px;
+        font-size: 0.9em;
+      }
+
+      .support-warning {
+        display: none;
+        background-color: #fff3cd;
+        color: #664d03;
+        border: 1px solid #ffecb5;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+      }
+
+      @supports not (scroll-axis-lock: none) {
+        .support-warning {
+          display: block;
+        }
+
+        /* Disable native axis-locked touch scrolling when the fallback is active */
+        .scroller[data-axis-lock='none'] {
+          touch-action: none;
+        }
+      }
+
+      .dashboard {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+      }
+
+      .control-group {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        border: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .control-group legend {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #334155;
+        float: left;
+        margin-right: 0.5rem;
+      }
+
+      .control-group label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        cursor: pointer;
+        font-size: 0.95rem;
+      }
+
+      .status-panel {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+      }
+
+      .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+
+      .status-indicator.idle {
+        background: #e2e8f0;
+        color: #475569;
+      }
+
+      .status-indicator.free {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .status-indicator.locked {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .status-indicator.normal {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+
+      .debug-stats {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.8rem;
+        color: #475569;
+        line-height: 1.4;
+      }
+
+      /* 2D Scroll Container with scroll-axis-lock: none */
+      .scroller {
+        inline-size: 100%;
+        block-size: 480px;
+        overflow: auto;
+        scroll-axis-lock: none;
+        border: 2px solid #cbd5e1;
+        border-radius: 8px;
+        position: relative;
+        background: #f8fafc;
+      }
+
+      .scroller:focus-visible {
+        outline: 3px solid #0d6efd;
+        outline-offset: 2px;
+      }
+
+      .map-content {
+        inline-size: 3000px;
+        block-size: 3000px;
+        position: relative;
+        background-color: #f8fafc;
+        background-image:
+          linear-gradient(to right, #e2e8f0 1px, transparent 1px),
+          linear-gradient(to bottom, #e2e8f0 1px, transparent 1px),
+          linear-gradient(to right, #cbd5e1 2px, transparent 2px),
+          linear-gradient(to bottom, #cbd5e1 2px, transparent 2px);
+        background-size:
+          50px 50px,
+          50px 50px,
+          250px 250px,
+          250px 250px;
+      }
+
+      #traceSvg {
+        position: absolute;
+        inset: 0;
+        inline-size: 100%;
+        block-size: 100%;
+        pointer-events: none;
+      }
+
+      .map-center {
+        position: absolute;
+        top: 1500px;
+        left: 1500px;
+        translate: -50% -50%;
+        padding: 0.5rem 1rem;
+        background: #0f172a;
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 0.875rem;
+        border-radius: 999px;
+        box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+        pointer-events: none;
+        white-space: nowrap;
+      }
+
+      .legend {
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 0.75rem;
+        font-size: 0.875rem;
+        color: #475569;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .swatch-input {
+        inline-size: 24px;
+        block-size: 0;
+        border-top: 3px dashed #dc3545;
+      }
+
+      .swatch-scroll {
+        inline-size: 24px;
+        block-size: 0;
+        border-top: 4px solid #0d6efd;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Diagonal Panning with CSS <code>scroll-axis-lock: none</code></h1>
+
+      <p>
+        Pan or scroll the 2D surface below using a trackpad or touchscreen (for example, in a
+        diagonal or circular motion). With <code>scroll-axis-lock: none</code> enabled, the scroll
+        container immediately follows both horizontal and vertical deltas without locking to a
+        single axis.
+      </p>
+
+      <div class="support-warning" role="status">
+        <strong>Note:</strong> Your browser does not natively support
+        <code>scroll-axis-lock: none</code>. When <code>none</code> is selected below, this demo
+        activates the JavaScript fallback (applying raw <code>wheel</code> and
+        <code>pointermove</code> deltas to <code>scrollLeft</code> and <code>scrollTop</code>).
+      </div>
+
+      <div class="dashboard">
+        <fieldset class="control-group">
+          <legend><code>scroll-axis-lock</code>:</legend>
+          <label>
+            <input type="radio" name="axis-lock" value="none" checked />
+            <code>none</code>
+          </label>
+          <label>
+            <input type="radio" name="axis-lock" value="auto" />
+            <code>auto</code> (default)
+          </label>
+        </fieldset>
+
+        <div class="status-panel">
+          <div id="statusIndicator" class="status-indicator idle" aria-live="polite">
+            Waiting for scroll...
+          </div>
+          <div class="debug-stats">
+            Recent Input Δ: <span id="debugInput">0, 0</span><br />
+            Recent Scroll Δ: <span id="debugScroll">0, 0</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="scroller"
+        id="scrollContainer"
+        data-axis-lock="none"
+        tabindex="0"
+        role="region"
+        aria-label="Interactive 2D map surface"
+      >
+        <div class="map-content">
+          <svg id="traceSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3000 3000" aria-hidden="true">
+            <path
+              id="scrollPath"
+              fill="none"
+              stroke="#0d6efd"
+              stroke-width="8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              id="inputPath"
+              fill="none"
+              stroke="#dc3545"
+              stroke-width="4"
+              stroke-dasharray="12, 12"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+
+          <div class="map-center">Canvas Center (1500, 1500)</div>
+        </div>
+      </div>
+
+      <div class="legend" aria-hidden="true">
+        <div class="legend-item">
+          <div class="swatch-input"></div>
+          Raw Input Path
+        </div>
+        <div class="legend-item">
+          <div class="swatch-scroll"></div>
+          Actual Scroll Path
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      const scroller = document.getElementById('scrollContainer');
+      const radios = document.querySelectorAll('input[name="axis-lock"]');
+      const statusEl = document.getElementById('statusIndicator');
+      const debugInputEl = document.getElementById('debugInput');
+      const debugScrollEl = document.getElementById('debugScroll');
+      const scrollPathEl = document.getElementById('scrollPath');
+      const inputPathEl = document.getElementById('inputPath');
+
+      const supportsScrollAxisLock = CSS.supports('scroll-axis-lock', 'none');
+      let currentAxisLockMode = 'none';
+
+      // Center the 3000x3000 surface inside the viewport on load
+      scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
+      scroller.scrollTop = (scroller.scrollHeight - scroller.clientHeight) / 2;
+
+      radios.forEach((radio) => {
+        radio.addEventListener('change', (e) => {
+          currentAxisLockMode = e.target.value;
+          scroller.dataset.axisLock = currentAxisLockMode;
+          scroller.style.scrollAxisLock = currentAxisLockMode;
+        });
+      });
+
+      // Fallback for browsers that do not natively support `scroll-axis-lock: none`
+      if (!supportsScrollAxisLock) {
+        let fallbackPointer = null;
+
+        scroller.addEventListener(
+          'wheel',
+          (e) => {
+            if (currentAxisLockMode !== 'none') return;
+            e.preventDefault();
+            scroller.scrollLeft += e.deltaX;
+            scroller.scrollTop += e.deltaY;
+          },
+          { passive: false },
+        );
+
+        scroller.addEventListener('pointerdown', (e) => {
+          if (
+            currentAxisLockMode !== 'none' ||
+            !e.isPrimary ||
+            e.button !== 0 ||
+            e.offsetX >= scroller.clientWidth ||
+            e.offsetY >= scroller.clientHeight
+          ) {
+            return;
+          }
+          fallbackPointer = { x: e.clientX, y: e.clientY };
+          scroller.setPointerCapture(e.pointerId);
+        });
+
+        scroller.addEventListener('pointermove', (e) => {
+          if (!fallbackPointer || currentAxisLockMode !== 'none') return;
+          scroller.scrollLeft -= e.clientX - fallbackPointer.x;
+          scroller.scrollTop -= e.clientY - fallbackPointer.y;
+          fallbackPointer = { x: e.clientX, y: e.clientY };
+        });
+
+        const endFallbackPan = () => {
+          fallbackPointer = null;
+        };
+        scroller.addEventListener('pointerup', endFallbackPan);
+        scroller.addEventListener('pointercancel', endFallbackPan);
+      }
+
+      /* --- Trace & Delta Visualization Logic --- */
+
+      let sessionActive = false;
+      let sessionEndTimer = null;
+
+      let startMapX = 0;
+      let startMapY = 0;
+      let initialScrollLeft = 0;
+      let initialScrollTop = 0;
+
+      let scrollPoints = [];
+      let inputPoints = [];
+      let cumInputX = 0;
+      let cumInputY = 0;
+
+      const WINDOW_SIZE = 10;
+      let recentInputs = [];
+      let recentScrolls = [];
+
+      let lastScrollX = scroller.scrollLeft;
+      let lastScrollY = scroller.scrollTop;
+
+      let lastPointerX = null;
+      let lastPointerY = null;
+      let lastKnownClientX;
+      let lastKnownClientY;
+      let currentLockAxis = null;
+
+      function updateSVGPath(pathElement, pointsArray) {
+        if (pointsArray.length === 0) return;
+        const dString = pointsArray
+          .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
+          .join(' ');
+        pathElement.setAttribute('d', dString);
+      }
+
+      function addScrollPoint(x, y) {
+        scrollPoints.push({ x, y });
+        updateSVGPath(scrollPathEl, scrollPoints);
+      }
+
+      function addInputPoint(x, y) {
+        inputPoints.push({ x, y });
+        updateSVGPath(inputPathEl, inputPoints);
+      }
+
+      function startSessionIfNeeded(clientX, clientY) {
+        if (!sessionActive) {
+          sessionActive = true;
+          currentLockAxis = null;
+
+          cumInputX = 0;
+          cumInputY = 0;
+          recentInputs = [];
+          recentScrolls = [];
+          scrollPoints = [];
+          inputPoints = [];
+
+          const rect = scroller.getBoundingClientRect();
+          const cX = clientX !== undefined ? clientX : rect.left + rect.width / 2;
+          const cY = clientY !== undefined ? clientY : rect.top + rect.height / 2;
+
+          startMapX = cX - rect.left + scroller.scrollLeft;
+          startMapY = cY - rect.top + scroller.scrollTop;
+
+          initialScrollLeft = scroller.scrollLeft;
+          initialScrollTop = scroller.scrollTop;
+
+          addScrollPoint(startMapX, startMapY);
+          addInputPoint(startMapX, startMapY);
+        }
+
+        clearTimeout(sessionEndTimer);
+        sessionEndTimer = setTimeout(() => {
+          sessionActive = false;
+          currentLockAxis = null;
+          statusEl.textContent = 'Waiting for scroll...';
+          statusEl.className = 'status-indicator idle';
+          debugInputEl.textContent = '0, 0';
+          debugScrollEl.textContent = '0, 0';
+        }, 300);
+      }
+
+      scroller.addEventListener('pointerdown', (e) => {
+        if (e.offsetX >= scroller.clientWidth || e.offsetY >= scroller.clientHeight) return;
+        lastPointerX = e.clientX;
+        lastPointerY = e.clientY;
+        lastKnownClientX = e.clientX;
+        lastKnownClientY = e.clientY;
+      });
+
+      scroller.addEventListener('pointermove', (e) => {
+        lastKnownClientX = e.clientX;
+        lastKnownClientY = e.clientY;
+
+        if (lastPointerX !== null && (e.buttons > 0 || e.pointerType === 'touch')) {
+          startSessionIfNeeded(e.clientX, e.clientY);
+
+          const dx = e.clientX - lastPointerX;
+          const dy = e.clientY - lastPointerY;
+
+          cumInputX -= dx;
+          cumInputY -= dy;
+
+          recentInputs.push({ dx: Math.abs(dx), dy: Math.abs(dy) });
+          if (recentInputs.length > WINDOW_SIZE) recentInputs.shift();
+
+          addInputPoint(startMapX + cumInputX, startMapY + cumInputY);
+
+          lastPointerX = e.clientX;
+          lastPointerY = e.clientY;
+          updateDashboard();
+        }
+      });
+
+      window.addEventListener('pointerup', () => {
+        lastPointerX = null;
+      });
+      window.addEventListener('pointercancel', () => {
+        lastPointerX = null;
+      });
+
+      scroller.addEventListener(
+        'wheel',
+        (e) => {
+          lastKnownClientX = e.clientX;
+          lastKnownClientY = e.clientY;
+          startSessionIfNeeded(e.clientX, e.clientY);
+
+          cumInputX += e.deltaX;
+          cumInputY += e.deltaY;
+
+          recentInputs.push({ dx: Math.abs(e.deltaX), dy: Math.abs(e.deltaY) });
+          if (recentInputs.length > WINDOW_SIZE) recentInputs.shift();
+
+          addInputPoint(startMapX + cumInputX, startMapY + cumInputY);
+          updateDashboard();
+        },
+        { passive: true },
+      );
+
+      scroller.addEventListener('scroll', () => {
+        startSessionIfNeeded(lastKnownClientX, lastKnownClientY);
+
+        const dScrollX = Math.abs(scroller.scrollLeft - lastScrollX);
+        const dScrollY = Math.abs(scroller.scrollTop - lastScrollY);
+
+        recentScrolls.push({ dx: dScrollX, dy: dScrollY });
+        if (recentScrolls.length > WINDOW_SIZE) recentScrolls.shift();
+
+        lastScrollX = scroller.scrollLeft;
+        lastScrollY = scroller.scrollTop;
+
+        const currentMapX = startMapX + (scroller.scrollLeft - initialScrollLeft);
+        const currentMapY = startMapY + (scroller.scrollTop - initialScrollTop);
+
+        addScrollPoint(currentMapX, currentMapY);
+        updateDashboard();
+      });
+
+      function updateDashboard() {
+        const rInX = recentInputs.reduce((sum, val) => sum + val.dx, 0);
+        const rInY = recentInputs.reduce((sum, val) => sum + val.dy, 0);
+        const rScrX = recentScrolls.reduce((sum, val) => sum + val.dx, 0);
+        const rScrY = recentScrolls.reduce((sum, val) => sum + val.dy, 0);
+
+        debugInputEl.textContent = `${Math.round(rInX)}, ${Math.round(rInY)}`;
+        debugScrollEl.textContent = `${Math.round(rScrX)}, ${Math.round(rScrY)}`;
+
+        if (rInX < 3 && rInY < 3) return;
+
+        const hasDiagonalInput = rInX > 3 && rInY > 3;
+
+        let nextStatus = '';
+        let nextClass = '';
+        let newlyDetectedLock = null;
+
+        if (hasDiagonalInput) {
+          if (rScrX > 0 && rScrY === 0) {
+            nextStatus = 'Locked to X-axis (Y ignored)';
+            nextClass = 'status-indicator locked';
+            newlyDetectedLock = 'x';
+          } else if (rScrX === 0 && rScrY > 0) {
+            nextStatus = 'Locked to Y-axis (X ignored)';
+            nextClass = 'status-indicator locked';
+            newlyDetectedLock = 'y';
+          } else if (rScrX === 0 && rScrY === 0) {
+            nextStatus = 'Scroll Boundary Reached';
+            nextClass = 'status-indicator normal';
+          } else {
+            nextStatus = 'Diagonal Panning';
+            nextClass = 'status-indicator free';
+          }
+        } else {
+          nextStatus = '1D Scrolling';
+          nextClass = 'status-indicator normal';
+        }
+
+        if (newlyDetectedLock) {
+          currentLockAxis = newlyDetectedLock;
+        } else if (rScrX > 0 && rScrY > 0) {
+          currentLockAxis = null;
+        } else if (currentLockAxis === 'x' && rScrY > 0) {
+          currentLockAxis = null;
+        } else if (currentLockAxis === 'y' && rScrX > 0) {
+          currentLockAxis = null;
+        }
+
+        if (nextStatus === '1D Scrolling' && currentLockAxis !== null) {
+          if (currentLockAxis === 'x') {
+            nextStatus = 'Locked to X-axis (Y ignored)';
+            nextClass = 'status-indicator locked';
+          } else if (currentLockAxis === 'y') {
+            nextStatus = 'Locked to Y-axis (X ignored)';
+            nextClass = 'status-indicator locked';
+          }
+        }
+
+        statusEl.textContent = nextStatus;
+        statusEl.className = nextClass;
+      }
+    </script>
+  </body>
+</html>
