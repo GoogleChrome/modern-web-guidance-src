@@ -50,24 +50,13 @@ function setupBaselineWorkspace() {
 
     console.log("Compiling baseline visual guides...");
     execSync("pnpm install --frozen-lockfile", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
-    if (fs.existsSync(path.join(TEMP_REPO_DIR, "serving/package.json"))) {
-      execSync("pnpm --filter serving build", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
-    } else {
-      execSync("pnpm build", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
-    }
+    execSync("pnpm build", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
 
     fs.rmSync(BASELINE_DIR, { recursive: true, force: true });
     fs.mkdirSync(BASELINE_DIR, { recursive: true });
-    const newGuidesDir = path.join(TEMP_REPO_DIR, "out/build/skills-cli/guides");
-    const oldGuidesDir = path.join(TEMP_REPO_DIR, "serving/build/guides");
-    const baselineGuidesDir = fs.existsSync(newGuidesDir)
-      ? newGuidesDir
-      : fs.existsSync(oldGuidesDir)
-      ? oldGuidesDir
-      : null;
-
-    if (!baselineGuidesDir) {
-      throw new Error(`Baseline guides not found in ${TEMP_REPO_DIR} (checked ${newGuidesDir} and ${oldGuidesDir})`);
+    const baselineGuidesDir = path.join(TEMP_REPO_DIR, "out/build/skills-cli/guides");
+    if (!fs.existsSync(baselineGuidesDir)) {
+      throw new Error(`Baseline guides not found at ${baselineGuidesDir}`);
     }
     fs.cpSync(baselineGuidesDir, BASELINE_DIR, { recursive: true });
   } catch (err) {
