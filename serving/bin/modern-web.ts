@@ -139,9 +139,11 @@ async function main() {
     }
   } else if (command === "install") {
     const startTime = Date.now();
+    const extraArgs = process.argv.slice(3).filter(a => a !== "--choose");
     const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
-      .filter(Boolean);
+      .filter(Boolean)
+      .concat(extraArgs);
 
     const result = spawnSync("npx", installArgs, { stdio: "inherit", shell: process.platform === "win32" });
 
