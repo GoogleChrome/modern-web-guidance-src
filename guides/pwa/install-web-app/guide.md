@@ -208,7 +208,7 @@ await navigator.install({
 });
 ```
 
-The `manifestId` attribute can either be absolute or relative. Relative values
+The `manifestId` option can either be absolute or relative. Relative values
 are resolved against the document's base URL. The resulting URL must match the
 processed manifest ID.
 
@@ -218,7 +218,7 @@ The `navigator.install()` method returns a promise that resolves when the
 installation completes successfully.
 
 The promise rejects with the following errors if the installation fails or is
-cancelled:
+canceled:
 
 * `AbortError`:
   * The user aborted the installation.
@@ -280,12 +280,11 @@ browser-controlled install button inside the fallback content.
 
 {{ BASELINE_STATUS("navigator-install") }}
 
-For Chromium browsers without the Web Install API, use the
-`beforeinstallprompt` event as a fallback for installing the current app. This
-fallback cannot install a different app and is not supported by Firefox or
-Safari.
-
 {{ BASELINE_STATUS("beforeinstallprompt") }}
+
+When `navigator.install()` is unavailable, use the `beforeinstallprompt` event
+as a fallback for installing the current app. Unlike `navigator.install()`, this
+event cannot install a different app.
 
 Capture the event, prevent its automatic prompt, and reveal the custom install
 button only after the browser confirms that prompting is possible. Use one click
@@ -339,7 +338,7 @@ installButton.addEventListener("click", async () => {
   } catch (error) {
     if (error.name === "AbortError") {
       // Cancellation is an expected user choice, not an application error.
-      installStatus.textContent = "Installation canceled.";
+      installStatus.textContent = "Installation was canceled or could not complete.";
       installButton.hidden = true;
     } else {
       installStatus.textContent = "Installation could not start.";
