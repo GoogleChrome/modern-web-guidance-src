@@ -42,19 +42,20 @@ Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative s
 
 ### Position the menu with CSS Anchor Positioning
 
-Position with CSS anchor positioning, not JavaScript coordinates. Opening, closing, and keyboard behavior must not depend on anchor positioning.
+Position with CSS anchor positioning, not JavaScript coordinates. When calling `showPopover()`, pass the menu's trigger as the `source` option to establish an implicit anchor. This avoids a separate anchor name and positioning rule for each menu. Opening, closing, and keyboard behavior must not depend on anchor positioning.
 
 ```css
-/* Define the anchor name on the trigger button */
-#file-trigger {
-  anchor-name: --file-trigger;
+/* Apply to each top-level menu; source supplies its implicit anchor. */
+.menu:not(.submenu) {
+  position-area: block-end span-inline-end;
+  inset: auto;
 }
 
-/* Position the popover menu relative to its anchor trigger */
-#file-menu {
-  position-anchor: --file-trigger;
-  position-area: block-end span-inline-end; /* Places menu below the button, aligned to its starting edge */
-  inset: auto; /* Clear standard popover insets to let anchor positioning control layout */
+/* Place each submenu beside its trigger, flipping if it would overflow. */
+.submenu {
+  position-area: inline-end span-block-end;
+  position-try-fallbacks: flip-inline, flip-block;
+  inset: auto;
 }
 ```
 
@@ -75,7 +76,7 @@ const previewedMenus = new WeakSet(); // Track menus shown by focus, not by expl
 
 trigger.addEventListener('focus', () => {
   if (!menu.matches(':popover-open')) {
-    menu.showPopover();
+    menu.showPopover({ source: trigger });
     previewedMenus.add(menu); // Preview state
   }
   trigger.setAttribute('aria-expanded', 'true');
@@ -106,7 +107,7 @@ trigger.addEventListener('keydown', event => {
     closeMenu(menu, true);
     return;
   } else {
-    menu.showPopover(); // Open from closed
+    menu.showPopover({ source: trigger }); // Open from closed
   }
   trigger.setAttribute('aria-hidden', 'true'); // One frame only
   trigger.setAttribute('aria-expanded', 'true');
@@ -157,11 +158,7 @@ submenu.addEventListener('keydown', event => {
 Place the submenu beside its trigger. `position-try-fallbacks` flips it when that side does not fit; do not add a viewport breakpoint for that.
 
 ```css
-#preferences-trigger {
-  anchor-name: --preferences-trigger;
-}
-#preferences-menu {
-  position-anchor: --preferences-trigger;
+.submenu {
   position-area: inline-end span-block-end; /* Beside the parent item, not below the whole menu */
   position-try-fallbacks: flip-inline, flip-block;
   inset: auto;

@@ -93,67 +93,8 @@
       box-shadow: 0 .7rem 1.8rem #0004;
     }
 
-    #file-trigger {
-      anchor-name: --file-trigger;
-    }
-
-    #edit-trigger {
-      anchor-name: --edit-trigger;
-    }
-
-    #view-trigger {
-      anchor-name: --view-trigger;
-    }
-
-    #help-trigger {
-      anchor-name: --help-trigger;
-    }
-
-    #open-recent-trigger {
-      anchor-name: --open-recent-trigger;
-    }
-
-    #export-trigger {
-      anchor-name: --export-trigger;
-    }
-
-    #appearance-trigger {
-      anchor-name: --appearance-trigger;
-    }
-
-    #file-menu {
-      position-anchor: --file-trigger;
-    }
-
-    #edit-menu {
-      position-anchor: --edit-trigger;
-    }
-
-    #view-menu {
-      position-anchor: --view-trigger;
-    }
-
-    #help-menu {
-      position-anchor: --help-trigger;
-    }
-
-    #open-recent-menu {
-      position-anchor: --open-recent-trigger;
-    }
-
-    #export-menu {
-      position-anchor: --export-trigger;
-    }
-
-    #appearance-menu {
-      position-anchor: --appearance-trigger;
-    }
-
-    /* Place each top-level menu below its trigger, aligned to the trigger's start edge. */
-    #file-menu,
-    #edit-menu,
-    #view-menu,
-    #help-menu {
+    /* Place each top-level menu below its implicit trigger anchor. */
+    .menu:not(.submenu) {
       position-area: block-end span-inline-end;
       inset: auto;
     }
@@ -384,7 +325,7 @@
       if (menu.matches(':popover-open')) return;
       if (!menu.parentElement.closest('[popover]')) closeAllMenus(false, menu);
       else closeSiblingMenus(menu);
-      menu.showPopover();
+      menu.showPopover({ source: trigger });
       previewedMenus.add(menu);
       trigger.setAttribute('aria-expanded', 'true');
     }
@@ -395,7 +336,7 @@
       if (!menu.matches(':popover-open')) {
         if (!menu.parentElement.closest('[popover]')) closeAllMenus(false, menu);
         else closeSiblingMenus(menu);
-        menu.showPopover();
+        menu.showPopover({ source: trigger });
       }
 
       // Chrome can announce only the trigger's "expanded" state and skip the newly focused first item.
