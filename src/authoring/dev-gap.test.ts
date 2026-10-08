@@ -5,7 +5,6 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { planFixes, fixEvalGaps, evalGapFixCli, type OpenPr, type FixEvalGapsOptions } from './dev-gap.ts';
-import { buildIssue, type ExistingIssue, type Gap } from '../ci/eval-gap-watch.ts';
 import { rootDir, getGuideResultsDir } from '../core/paths.ts';
 import { REPORT_FILE, type GuideInventory } from '../core/guide-validation.ts';
 
@@ -24,48 +23,42 @@ function makeGuide(name: string, overrides: Partial<GuideInventory> = {}): Guide
   } as GuideInventory;
 }
 
-function issueFor(name: string, number: number, kind: Gap['kind'] = 'missing-evals', guidePath = `guides/css/${name}`): ExistingIssue {
-  const { title, body } = buildIssue({ kind, guidePath, guideName: name });
-  return { number, title, body };
-}
-
 const pr = (number: number, title: string): OpenPr => ({ number, title });
 
 describe('planFixes', () => {
-  it('queues a missing-evals issue whose guide still needs evals and has no PR', () => {
-    const { toFix, skipped } = planFixes([issueFor('scrollspy', 1)], [], [makeGuide('scrollspy')], new Set());
-    assert.deepStrictEqual(toFix.map(g => [g.issueNumber, g.guidePath]), [[1, 'guides/css/scrollspy']]);
+  it('queues a guide with guidance and expectations but no evals and no PR', () => {
+    const { toFix, skipped } = planFixes([makeGuide('scrollspy')], [], new Set());
+    assert.deepStrictEqual(toFix.map(g => g.guidePath), ['guides/css/scrollspy']);
+    assert.deepStrictEqual(skipped, []);
+  });
+
+  it('ignores drafts, incomplete guides, and complete guides', () => {
+    const guides = [
+      makeGuide('draft-bool', { draft: true }),
+      makeGuide('draft-str', { draft: 'blocked' }),
+      makeGuide('no-guide', { hasGuide: false }),
+      makeGuide('no-expectations', { hasExpectations: false }),
+      makeGuide('empty-expectations', { expectationsEmpty: true }),
+      makeGuide('complete', { hasGrader: true, hasTask: true }),
+      makeGuide('needs-evals'),
+      makeGuide('missing-task', { hasGrader: true, hasTask: false }),
+    ];
+    const { toFix, skipped } = planFixes(guides, [], new Set());
+    assert.deepStrictEqual(toFix.map(g => g.guidePath), ['guides/css/needs-evals', 'guides/css/missing-task']);
     assert.deepStrictEqual(skipped, []);
   });
 
   it('skips guides with an open gd pr PR, matching the exact title', () => {
     const openPrs = [pr(5, 'grader updates: spinner'), pr(6, 'grader updates: spinner-large'), pr(7, 'Fix scrollspy typo')];
-    const { toFix, skipped } = planFixes([issueFor('spinner', 1), issueFor('scrollspy', 2)], openPrs, [makeGuide('spinner'), makeGuide('scrollspy')], new Set());
-    assert.deepStrictEqual(skipped.map(s => [s.issueNumber, s.reason]), [[1, 'already has PR #5']]);
-    assert.deepStrictEqual(toFix.map(g => g.issueNumber), [2]);
+    const { toFix, skipped } = planFixes([makeGuide('spinner'), makeGuide('scrollspy')], openPrs, new Set());
+    assert.deepStrictEqual(skipped, [{ guidePath: 'guides/css/spinner', reason: 'already has PR #5' }]);
+    assert.deepStrictEqual(toFix.map(g => g.guidePath), ['guides/css/scrollspy']);
   });
 
   it('skips guides whose gd-dev branch already exists', () => {
-    const { toFix, skipped } = planFixes([issueFor('spinner', 1)], [], [makeGuide('spinner')], new Set(['gd-dev/spinner']));
+    const { toFix, skipped } = planFixes([makeGuide('spinner')], [], new Set(['gd-dev/spinner']));
     assert.deepStrictEqual(toFix, []);
-    assert.strictEqual(skipped[0].reason, 'branch gd-dev/spinner already exists (delete it to retry)');
-  });
-
-  it('skips expectations-changed issues, unmarked issues, and guides that no longer need evals', () => {
-    const issues = [
-      issueFor('a', 1, 'expectations-changed'),
-      { number: 2, title: 'Manual', body: 'no marker' },
-      issueFor('b', 3),
-      issueFor('missing', 4),
-    ];
-    const { toFix, skipped } = planFixes(issues, [], [makeGuide('a'), makeGuide('b', { hasGrader: true, hasTask: true })], new Set());
-    assert.deepStrictEqual(toFix, []);
-    assert.deepStrictEqual(skipped.map(s => s.reason), [
-      'expectations-changed issues are not handled',
-      'not filed by eval-gap-watch',
-      'guide no longer needs evals',
-      'guide not found',
-    ]);
+    assert.deepStrictEqual(skipped, [{ guidePath: 'guides/css/spinner', reason: 'branch gd-dev/spinner already exists (delete it to retry)' }]);
   });
 });
 
@@ -100,10 +93,8 @@ describe('fixEvalGaps', () => {
   /** Calls for one guide that reached `gd pr`. */
   const prCalls = (name: string) => [`branch gd-dev/${name}`, `pr ${name}`, `reset ${name}`, `delete gd-dev/${name}`];
 
-  /** Runs fixEvalGaps with one missing-evals issue per guide. */
+  /** Runs fixEvalGaps against the given guides on disk. */
   function run(guides: GuideInventory[], options: FixEvalGapsOptions = {}): Promise<boolean> {
-    // planFixes keys guides by repo-relative path, so point the issues at the temp dirs.
-    evalGapFixCli.listGapIssues = () => guides.map((g, i) => issueFor(g.name, i + 1, 'missing-evals', path.relative(rootDir, g.dir)));
     evalGapFixCli.scanGuides = () => guides;
     return fixEvalGaps(options);
   }
@@ -221,7 +212,7 @@ describe('fixEvalGaps', () => {
     assert.strictEqual(await run([first, second]), false);
     assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/scrollspy', 'pr scrollspy']);
     const output = log.mock.calls.map(c => String(c.arguments[0])).join('\n');
-    assert.match(output, /pr-opened.*#1 .*scrollspy.*cleanup failed: checkout failed/);
+    assert.match(output, /pr-opened.*scrollspy.*cleanup failed: checkout failed/);
   });
 
   it('stops the batch when the reset leaves files dirty', async () => {

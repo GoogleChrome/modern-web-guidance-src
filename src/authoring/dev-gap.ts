@@ -1,10 +1,11 @@
 /**
  * Eval gap fix. Backs `gd dev-gap`.
  *
- * Works through open `missing-evals` issues filed by `eval-gap-watch.ts`. For
- * each guide without an open `gd pr` PR or a leftover `gd-dev/` branch, runs
- * `gd dev`, opens a PR with `gd pr`, then returns to `main` and deletes the
- * local branch. eval-gap-watch closes the issue once the evals land.
+ * Scans guides on disk for non-draft guides that have populated `guide.md` and
+ * `expectations.md` but are missing evals (`grader.ts` or `task.md`, in legacy
+ * format or `targets/`). For each guide without an open `gd pr` PR or a
+ * leftover `gd-dev/` branch, runs `gd dev`, opens a PR with `gd pr`, then
+ * returns to `main` and deletes the local branch.
  *
  * Usage: gd dev-gap [--dry-run] [--limit <n>]
  */
@@ -25,80 +26,18 @@ import { rootDir, getGuideResultsDir } from '../core/paths.ts';
 import type { SuiteConfig } from '../harness/config.ts';
 import { devPrBranch, devPrTitle, runDevPr } from './pr.ts';
 
-export const EVAL_OWNERS = ['micahjo7', 'TravenReese'];
-export const EVAL_GAP_LABEL = 'eval-gap';
-
-export type GapKind = 'missing-evals' | 'expectations-changed';
-
-/** An open issue carrying the eval-gap label. */
-export interface ExistingIssue {
-  number: number;
-  body: string;
-  title: string;
-}
-
-export function buildMarker(kind: GapKind, guidePath: string): string {
-  return `<!-- eval-gap-watch:${kind}:${guidePath} -->`;
-}
-
-export function parseMarker(body: string): { kind: GapKind; guidePath: string } | null {
-  const match = body.match(/<!--\s*eval-gap-watch:(missing-evals|expectations-changed):(\S+?)\s*-->/);
-  return match ? { kind: match[1] as GapKind, guidePath: match[2] } : null;
-}
-
-export const githubApi = {
-  ensureLabel(): void {
-    try {
-      child_process.execFileSync(
-        'gh',
-        ['label', 'create', EVAL_GAP_LABEL, '--description', 'Guide is missing evals or its expectations changed', '--color', 'B60205'],
-        { stdio: 'pipe' }
-      );
-    } catch {
-      // Label already exists, which is the common case.
-    }
-  },
-
-  listIssues(): ExistingIssue[] {
-    const output = child_process.execFileSync(
-      'gh',
-      ['issue', 'list', '--label', EVAL_GAP_LABEL, '--state', 'open', '--limit', '500', '--json', 'number,body,title'],
-      { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
-    );
-    return (JSON.parse(output) as ExistingIssue[]).map(i => ({ ...i, body: i.body ?? '' }));
-  },
-
-  createIssue(title: string, body: string): void {
-    child_process.execFileSync(
-      'gh',
-      ['issue', 'create', '--title', title, '--body', body, '--label', EVAL_GAP_LABEL, '--assignee', EVAL_OWNERS.join(',')],
-      { stdio: 'inherit' }
-    );
-  },
-
-  closeIssue(issueNumber: number): void {
-    child_process.execFileSync(
-      'gh',
-      ['issue', 'close', String(issueNumber), '--reason', 'completed', '--comment', 'Closing — this guide no longer has a missing-evals gap.'],
-      { stdio: 'inherit' }
-    );
-  },
-};
-
 export interface OpenPr {
   number: number;
   title: string;
 }
 
 interface GapToFix {
-  issueNumber: number;
   guidePath: string;
   inv: GuideInventory;
 }
 
 interface SkippedGap {
-  issueNumber: number;
-  guidePath: string | null;
+  guidePath: string;
   reason: string;
 }
 
@@ -109,38 +48,35 @@ export interface FixEvalGapsOptions {
   suiteConfig?: SuiteConfig;
 }
 
-/** Decides which open eval-gap issues to work on, and why the rest are skipped. */
+/** Decides which guides missing evals to work on, and why any are skipped. */
 export function planFixes(
-  issues: ExistingIssue[],
-  openPrs: OpenPr[],
   guides: GuideInventory[],
+  openPrs: OpenPr[],
   existingBranches: Set<string>
 ): { toFix: GapToFix[]; skipped: SkippedGap[] } {
-  const guidesByPath = new Map(guides.map(inv => [path.relative(rootDir, inv.dir), inv]));
   const toFix: GapToFix[] = [];
   const skipped: SkippedGap[] = [];
 
-  for (const issue of issues) {
-    const marker = parseMarker(issue.body);
-    const skip = (reason: string) => skipped.push({ issueNumber: issue.number, guidePath: marker?.guidePath ?? null, reason });
-
-    if (!marker) { skip('not filed by eval-gap-watch'); continue; }
-    if (marker.kind !== 'missing-evals') { skip(`${marker.kind} issues are not handled`); continue; }
-
-    const inv = guidesByPath.get(marker.guidePath);
-    if (!inv) { skip('guide not found'); continue; }
-    if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) { skip('guide no longer needs evals'); continue; }
+  for (const inv of guides) {
+    if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) continue;
+    const guidePath = path.relative(rootDir, inv.dir);
 
     // `gd pr` titles its PR the same way whichever branch it runs from.
     const pr = openPrs.find(p => p.title === devPrTitle(inv.name));
-    if (pr) { skip(`already has PR #${pr.number}`); continue; }
+    if (pr) {
+      skipped.push({ guidePath, reason: `already has PR #${pr.number}` });
+      continue;
+    }
 
     // A leftover branch (e.g. from a PR closed without merging) would make the
     // push fail after a full `gd dev` run, so skip until someone deletes it.
     const branch = devPrBranch(inv.name);
-    if (existingBranches.has(branch)) { skip(`branch ${branch} already exists (delete it to retry)`); continue; }
+    if (existingBranches.has(branch)) {
+      skipped.push({ guidePath, reason: `branch ${branch} already exists (delete it to retry)` });
+      continue;
+    }
 
-    toFix.push({ issueNumber: issue.number, guidePath: marker.guidePath, inv });
+    toFix.push({ guidePath, inv });
   }
 
   return { toFix, skipped };
@@ -175,7 +111,6 @@ export const evalGapFixCli = {
     ['pr', 'list', '--state', 'open', '--limit', '500', '--json', 'number,title'],
     { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
   )),
-  listGapIssues: (): ExistingIssue[] => githubApi.listIssues(),
   scanGuides: (): GuideInventory[] => scanAllGuides(),
   runDevGuide: async (inv: GuideInventory, options: FixEvalGapsOptions): Promise<boolean> => {
     const { devGuide } = await import('./dev.ts');
@@ -246,16 +181,15 @@ export async function fixEvalGaps(options: FixEvalGapsOptions = {}): Promise<boo
   }
 
   const { toFix, skipped } = planFixes(
-    evalGapFixCli.listGapIssues(),
-    evalGapFixCli.listOpenPrs(),
     evalGapFixCli.scanGuides(),
+    evalGapFixCli.listOpenPrs(),
     evalGapFixCli.listDevBranches()
   );
   const queue = toFix.slice(0, options.limit);
 
-  console.log(cBold(`\nEval-gap issues: ${toFix.length} to fix, ${skipped.length} skipped\n`));
-  for (const s of skipped) console.log(cDim(`  skip #${s.issueNumber}${s.guidePath ? ` ${s.guidePath}` : ''} — ${s.reason}`));
-  for (const g of queue) console.log(`  ${cCyan('fix')}  #${g.issueNumber} ${g.guidePath}`);
+  console.log(cBold(`\nGuides missing evals: ${toFix.length} to fix, ${skipped.length} skipped\n`));
+  for (const s of skipped) console.log(cDim(`  skip ${s.guidePath} — ${s.reason}`));
+  for (const g of queue) console.log(`  ${cCyan('fix')}  ${g.guidePath}`);
   if (queue.length < toFix.length) console.log(cDim(`  (limited to ${queue.length} of ${toFix.length})`));
   console.log('');
 
@@ -266,7 +200,7 @@ export async function fixEvalGaps(options: FixEvalGapsOptions = {}): Promise<boo
 
   const outcomes: Outcome[] = [];
   for (const [i, gap] of queue.entries()) {
-    console.log(cBold(`\n[${i + 1}/${queue.length}] #${gap.issueNumber} ${gap.guidePath}`));
+    console.log(cBold(`\n[${i + 1}/${queue.length}] ${gap.guidePath}`));
     outcomes.push(await fixOne(gap, options));
 
     // Stop if cleanup left something behind; it would leak into the next guide's PR.
@@ -281,7 +215,7 @@ export async function fixEvalGaps(options: FixEvalGapsOptions = {}): Promise<boo
   console.log(cBold('\nSummary'));
   for (const o of outcomes) {
     const color = o.status === 'pr-opened' ? cGreen : cRed;
-    console.log(`  ${color(o.status.padEnd(10))} #${o.gap.issueNumber} ${o.gap.guidePath} ${cDim(`— ${o.detail}`)}`);
+    console.log(`  ${color(o.status.padEnd(10))} ${o.gap.guidePath} ${cDim(`— ${o.detail}`)}`);
   }
   const notRun = queue.length - outcomes.length;
   if (notRun > 0) console.log(cDim(`  ${notRun} guide(s) not attempted`));
