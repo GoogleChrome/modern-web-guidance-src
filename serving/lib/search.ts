@@ -1,5 +1,6 @@
-import fs from "fs";
+import fs, { existsSync } from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import zlib from "zlib";
 import { TfjsEmbedder } from "./tfjs-embedder.ts";
 import { logToolResult } from "./logger.ts";
@@ -28,6 +29,24 @@ export interface EmbedderLike {
 
 let cachedVectors: UseCaseVector[] | null = null;
 
+const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));
+
+function resolveSkillsCliDataDir(): string {
+  // In the shipped bundle (dist/skills-cli/skills/modern-web-guidance/), guides.json and vectors sit next to modern-web.mjs / search.mjs
+  if (existsSync(path.join(BUNDLE_DIR, 'guides.json')) || existsSync(path.join(BUNDLE_DIR, 'use-cases.vectors.gen.json.gz'))) {
+    return BUNDLE_DIR;
+  }
+  // In repo source mode (serving/lib/ today, src/rag/ after Commit 4), walk up to repo root (where pnpm-lock.yaml lives) and use out/build/skills-cli
+  let dir = BUNDLE_DIR;
+  while (dir !== path.dirname(dir)) {
+    if (existsSync(path.join(dir, 'pnpm-lock.yaml'))) {
+      return path.join(dir, 'out/build/skills-cli');
+    }
+    dir = path.dirname(dir);
+  }
+  return BUNDLE_DIR;
+}
+
 function dotProduct(a: number[], b: number[]): number {
   let sum = 0;
   for (let i = 0; i < a.length; i++) {
@@ -37,7 +56,10 @@ function dotProduct(a: number[], b: number[]): number {
 }
 
 function loadVectors(): UseCaseVector[] {
-  const VECTORS_FILE = path.join(import.meta.dirname, "use-cases.vectors.gen.json.gz");
+  const VECTORS_FILE = path.join(resolveSkillsCliDataDir(), "use-cases.vectors.gen.json.gz");
+  if (!fs.existsSync(VECTORS_FILE)) {
+    throw new Error(`Vectors file not found at ${VECTORS_FILE}. Run 'pnpm build' first.`);
+  }
   const compressed = fs.readFileSync(VECTORS_FILE);
   const jsonContent = zlib.gunzipSync(compressed).toString("utf-8");
   const items: UseCaseVector[] = JSON.parse(jsonContent);

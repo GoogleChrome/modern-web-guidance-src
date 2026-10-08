@@ -9,7 +9,7 @@ import { ClearcutLogger } from "../skills-cli/telemetry/ClearcutLogger.ts";
 import { CommandType } from "../skills-cli/telemetry/types.ts";
 import { getVersion } from "../lib/version.ts";
 import { getSkillUpdateLevel } from "../lib/skill-version.ts";
-import { USE_CASES } from "../lib/use-cases.gen.ts";
+import { USE_CASES } from "../lib/practices.ts";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),

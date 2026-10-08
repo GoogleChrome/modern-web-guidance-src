@@ -71,7 +71,7 @@ async function main() {
     await embedder.init();
   }
 
-  const vectorsFile = path.join(rootDir, "serving/lib/use-cases.vectors.gen.json.gz");
+  const vectorsFile = path.join(outDir, "build/skills-cli/use-cases.vectors.gen.json.gz");
   let validGuideIds = new Set<string>();
   if (fs.existsSync(vectorsFile)) {
     const jsonContent = zlib.gunzipSync(fs.readFileSync(vectorsFile)).toString("utf-8");

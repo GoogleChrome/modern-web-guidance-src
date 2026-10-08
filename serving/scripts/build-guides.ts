@@ -21,11 +21,10 @@ import { replaceMacros, type BuildTarget, formatTitle } from "../lib/macros.ts";
 import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub } from "../../lib/guide-validation.ts";
 import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
-import { rootDir } from "../../lib/paths.ts";
+import { rootDir, outDir } from "../../lib/paths.ts";
 
 const WORKSPACE_ROOT = rootDir;
 const ROOT_DIR = path.join(rootDir, "serving");
-const OUTPUT_FILE = path.join(ROOT_DIR, "lib/use-cases.gen.ts");
 
 interface UseCase {
   id: string;
@@ -47,23 +46,23 @@ export interface BuildOptions {
 // Global variables to be set by processGuides
 let BUILD_GUIDES_DIR: string;
 let IS_NO_CHUNKING = false;
-let TARGET: BuildTarget = 'local-dev';
+let TARGET: BuildTarget = 'skills-cli';
 
 
 interface CachePaths {
   cacheDir: string;
   cachedVectors: string;
-  cachedTs: string;
+  cachedGuidesJson: string;
   cachedManifest: string;
   cachedGuides: string;
 }
 
 function resolveCachePaths(target: BuildTarget): CachePaths {
-  const cacheDir = path.join(WORKSPACE_ROOT, `dist/.cache/${target}`);
+  const cacheDir = path.join(outDir, 'build', target);
   return {
     cacheDir,
     cachedVectors: path.join(cacheDir, "use-cases.vectors.gen.json.gz"),
-    cachedTs: path.join(cacheDir, "use-cases.gen.ts"),
+    cachedGuidesJson: path.join(cacheDir, "guides.json"),
     cachedManifest: path.join(cacheDir, "manifest.json"),
     cachedGuides: path.join(cacheDir, "guides"),
   };
@@ -130,8 +129,10 @@ async function computePipelineHash(
   return hash.digest("hex");
 }
 
-function evaluateCacheHit(paths: CachePaths, currentHash: string, expectedGuides: GuideInventory[]): boolean {
-  const cacheFiles = [paths.cachedTs, paths.cachedVectors, paths.cachedManifest, paths.cachedGuides];
+function evaluateCacheHit(paths: CachePaths, currentHash: string, expectedGuides: GuideInventory[], target: BuildTarget): boolean {
+  const cacheFiles = target === 'static-site'
+    ? [paths.cachedManifest, paths.cachedGuides]
+    : [paths.cachedGuidesJson, paths.cachedVectors, paths.cachedManifest, paths.cachedGuides];
   if (cacheFiles.some(file => !fs.existsSync(file))) {
     return false;
   }
@@ -152,22 +153,19 @@ function evaluateCacheHit(paths: CachePaths, currentHash: string, expectedGuides
   }
 }
 
-function restoreFromCache(paths: CachePaths, outputDir: string, target: string): void {
+function restoreFromCache(paths: CachePaths, outputDir: string, target: BuildTarget): void {
+  if (path.resolve(outputDir) === path.resolve(paths.cacheDir)) {
+    return;
+  }
   if (target === 'skills-cli') {
     fs.mkdirSync(outputDir, { recursive: true });
     fs.copyFileSync(paths.cachedVectors, path.join(outputDir, "use-cases.vectors.gen.json.gz"));
+    fs.copyFileSync(paths.cachedGuidesJson, path.join(outputDir, "guides.json"));
     fs.cpSync(paths.cachedGuides, path.join(outputDir, "guides"), { recursive: true });
-    fs.copyFileSync(paths.cachedTs, OUTPUT_FILE);
   } else if (target === 'static-site') {
     fs.rmSync(outputDir, { recursive: true, force: true });
     fs.mkdirSync(outputDir, { recursive: true });
     fs.cpSync(paths.cachedGuides, outputDir, { recursive: true });
-  } else {
-    fs.mkdirSync(path.join(ROOT_DIR, "lib"), { recursive: true });
-    fs.mkdirSync(path.join(ROOT_DIR, "build"), { recursive: true });
-    fs.copyFileSync(paths.cachedVectors, path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz"));
-    fs.copyFileSync(paths.cachedTs, OUTPUT_FILE);
-    fs.cpSync(paths.cachedGuides, path.join(ROOT_DIR, "build/guides"), { recursive: true });
   }
 }
 
@@ -182,7 +180,7 @@ function prepareCleanCacheDir(paths: CachePaths): void {
 export async function processGuides(opts: BuildOptions): Promise<boolean> {
   const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
 
-  TARGET = target || 'local-dev';
+  TARGET = target || 'skills-cli';
   IS_NO_CHUNKING = !!noChunking;
 
   // 1. Configuration & Paths
@@ -197,7 +195,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING, modelName);
 
   // 3. Cache Evaluation
-  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides);
+  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides, TARGET);
   if (isHit) {
     restoreFromCache(cachePaths, outputDir, TARGET);
     console.log("👌");
@@ -242,27 +240,14 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
   }
 
+  if (TARGET !== 'static-site') {
+    fs.writeFileSync(cachePaths.cachedGuidesJson, JSON.stringify(useCases, null, 2) + '\n');
+    console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, cachePaths.cachedGuidesJson)}`);
 
-  // Generate TypeScript file
-  const tsContent = `// This file is auto-generated by scripts/build-guides.ts
-export interface UseCase {
-  id: string;
-  description: string;
-  category: string;
-  featuresUsed: string[];
-  tokenCount: number;
-}
-
-export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
-`;
-
-  fs.writeFileSync(cachePaths.cachedTs, tsContent);
-  console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, cachePaths.cachedTs)}`);
-
-
-  const jsonContent = JSON.stringify(storeUseCases);
-  const compressed = zlib.gzipSync(jsonContent);
-  fs.writeFileSync(cachePaths.cachedVectors, compressed);
+    const jsonContent = JSON.stringify(storeUseCases);
+    const compressed = zlib.gzipSync(jsonContent);
+    fs.writeFileSync(cachePaths.cachedVectors, compressed);
+  }
 
   fs.writeFileSync(cachePaths.cachedManifest, JSON.stringify({ hash: currentHash }, null, 2));
 
@@ -395,11 +380,11 @@ if (process.argv[1] === import.meta.filename) {
   const force = values.force;
   const noChunking = values['no-chunking'];
   const modelName = values.model;
-  const target = values.target as BuildTarget | undefined;
+  const target = (values.target as BuildTarget | undefined) || 'skills-cli';
   const output = values.output;
 
   processGuides({
-    outputDir: output ? path.resolve(WORKSPACE_ROOT, output) : path.join(ROOT_DIR, "build"),
+    outputDir: output ? path.resolve(WORKSPACE_ROOT, output) : path.join(outDir, "build", target),
     target,
     force,
     targetGuidePath,
@@ -410,3 +395,4 @@ if (process.argv[1] === import.meta.filename) {
     process.exit(1);
   });
 }
+
