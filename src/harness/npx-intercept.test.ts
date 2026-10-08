@@ -91,20 +91,16 @@ srv.on('exit', (c) => process.exit(c ?? 0));
     assert.strictEqual(bgResult.status, 0, 'Backgrounded shim command should exit cleanly after kill');
     const grandchildPid = Number(fs.readFileSync(pidFile, 'utf8'));
     assert.ok(grandchildPid > 0, 'Grandchild PID should have been recorded');
-    let isDead = false;
-    for (let i = 0; i < 20; i++) {
+    const deadline = Date.now() + 1000;
+    while (Date.now() < deadline) {
       try {
         process.kill(grandchildPid, 0);
-        await new Promise(r => setTimeout(r, 50));
-      } catch (err: any) {
-        if (err.code === 'ESRCH') {
-          isDead = true;
-          break;
-        }
-        throw err;
+        await new Promise((r) => setTimeout(r, 20));
+      } catch {
+        break;
       }
     }
-    assert.strictEqual(isDead, true, 'Grandchild server process must not remain alive after killing shim');
+    assert.throws(() => process.kill(grandchildPid, 0), /ESRCH/, 'Grandchild server process must not remain alive after killing shim');
 
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
