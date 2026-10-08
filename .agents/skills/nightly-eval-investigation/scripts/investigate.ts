@@ -223,7 +223,7 @@ async function main() {
     }
   }
 
-  // Ensure harness/results directory exists
+  // Ensure results/suites directory exists
   fs.mkdirSync(resultsDir, { recursive: true });
 
   const activeAgents = Object.keys(latestByAgent).filter(agent => latestByAgent[agent as keyof typeof latestByAgent]) as ('claude_code' | 'codex_cli' | 'jetski_cli')[];

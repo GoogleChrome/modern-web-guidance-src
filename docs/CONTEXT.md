@@ -32,23 +32,23 @@ modern-web-guidance-src/
     accessibility/            # (empty so far)
     security/                 # (empty so far)
     AGENTS.md                 # Instructions for AI agents working in this repo
-    dev-guide.ts              # Core orchestration: gd dev pipeline
-    run-grader.ts             # Playwright-based grading engine
-    grader-gen.ts             # Target grader generation (Playwright)
-    feedback-handler.ts       # PR feedback synthesizer and auto-fixer
-  harness/                    # Eval harness for running agent tests
-    config.ts                 # Central configuration (agent selection, serving mode, etc.)
-    run_suite.ts              # Suite runner (discovers tasks, runs agents, grades output)
-    evaluate.ts               # Evaluation and reporting
-    base_apps/                # Base applications that agents modify (e.g. daily-grind, devtools-times)
-    agents/                   # Agent runner scripts (jetski_cli, gemini_cli, claude_code, codex_cli)
-    lib/                      # Shared utilities (isolation, credentials, file helpers)
-  serving/                    # Guidance serving infrastructure and skills distribution
-    skills-cli/               # Standalone skills CLI distribution
-    scripts/                  # Build scripts (build-guides, compare-built-guides)
-  eval-view/                  # Dashboard for visualizing evaluation results
+  features/                   # Feature definitions and snippets for transclusion
+  skills-src/                 # Source files for standalone Agent Skills
+  src/
+    authoring/                # Core orchestration (gd dev pipeline, guides integrity)
+    build/                    # Build scripts and release generators
+    ci/                       # CI validation and ATL triage scripts
+    cli/                      # Skills CLI implementation and telemetry
+    core/                     # Shared paths, config, and guide validation
+    dashboard/                # Evaluation dashboard and server
+    grading/                  # Playwright-based grading engine and grader generation
+    harness/                  # Eval harness, agent runners, base apps, nightly scripts
+    rag/                      # Semantic search, embedding, and vector store
   bin/gd.ts                   # The unified CLI entry point
-  lib/colors.ts               # Shared color/formatting helpers
+  docs/                       # Context, evaluation, and release documentation
+  dist/                       # Built distribution packages (gitignored)
+  out/                        # Transient build artifacts (gitignored)
+  results/                    # Guide and suite evaluation results (gitignored)
 ```
 
 ---
@@ -67,11 +67,11 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 | `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`jetski-solution.patch`, `gemini-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`). Used for grader calibration. |
 | `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated to pass golden patches 100% and zero-passrate baseline 0%. |
 | `targets/<base_app>/task.md` | Generated (`gd dev`) | Task frontmatter (`base_app`) and developer prompt instructions fed to evaluation agents. |
-| `test-app-results/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations. |
+| `results/guides/<category>/<slug>/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations. |
 
 ### Discipline guides
 
-Most guides are task-based use cases. Discipline guides are the orientation "hubs" for a category and link to its use-case guides via `{{ GUIDE_REF("guide-slug") }}`. A guide is a discipline guide if it is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements, and are reported as bundled core guides by `serving/scripts/audit-build.ts`.
+Most guides are task-based use cases. Discipline guides are the orientation "hubs" for a category and link to its use-case guides via `{{ GUIDE_REF("guide-slug") }}`. A guide is a discipline guide if it is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements, and are reported as bundled core guides by `src/build/audit-build.ts`.
 
 ### Guide Development Stages
 
@@ -89,7 +89,7 @@ A guide progresses through three main stages:
 
 3. **Stage 3: Evaluating guidance (Needs evals)**
    - **Goal**: Generate evaluation capsules, calibrate graders, run evaluations, and generate reports.
-   - **Artifacts**: `targets/<base_app>/`, `grader.ts`, `patches/`, `task.md`, and `test-app-results/report.md`.
+   - **Artifacts**: `targets/<base_app>/`, `grader.ts`, `patches/`, `task.md`, and `results/guides/<category>/<slug>/report.md`.
    - Handled automatically by `gd dev`.
 
 ---
@@ -125,13 +125,13 @@ pnpm link --global && gd setup-completion
 |---|---|
 | `gd eval` | Run the full evaluation suite (discovers all tasks in guide targets). |
 | `gd eval [task1] [task2]` | Run specific tasks only. |
-| `gd eval --config <custom_config>` | Run with config overrides (defaults to `config.ts` or `harness/config.ts`). |
-| `gd dashboard` | Start the eval results dashboard (eval-view). |
+| `gd eval --config <custom_config>` | Run with config overrides (defaults to `config.ts` or `src/harness/config.ts`). |
+| `gd dashboard` | Start the eval results dashboard (src/dashboard). |
 | `gd run <template> <prompt>` | Run an ad-hoc agent test. |
 
 ---
 
-## 4. The `gd dev` Pipeline (dev-guide.ts)
+## 4. The `gd dev` Pipeline (src/authoring/dev.ts)
 
 When an SME or engineer runs `gd dev guides/<discipline>/<feature>`, the pipeline executes the following stages:
 
@@ -154,7 +154,7 @@ In parallel across `SUPPORTED_BASE_APPS` (`daily-grind`, `devtools-times`):
 - Grades outputs and measures pass rate improvement and guidance tool consumption.
 
 ### Step 5: Diagnostic Report Generation
-- Runs the qualitative evaluator agent to synthesize test results, diagnose failure modes, and write `test-app-results/report.md`.
+- Runs the qualitative evaluator agent to synthesize test results, diagnose failure modes, and write `results/guides/<category>/<slug>/report.md`.
 
 ### Generation Mechanics
 All agent invocations use isolated work directories (`setupGuideDevWorkDir()`) and clean credential isolation. The default agent is `Agents.ANTIGRAVITY_CLI`, switchable to `Agents.JETSKI_CLI` via `GD_DEV_USE_JETSKI=1`.
@@ -179,7 +179,7 @@ The eval harness measures whether guides actually improve agent output.
 
 ### Agents
 
-Configured in `harness/config.ts` and `.env`:
+Configured in `src/harness/config.ts` and `.env`:
 
 - **Antigravity CLI** (default for `gd dev`): Antigravity CLI agent (`antigravity_cli`, `agy` binary).
 - **Jetski CLI**: Local/cloud Jetski CLI agent (`jetski_cli`; `GD_DEV_USE_JETSKI=1` in `gd dev`).
@@ -190,21 +190,21 @@ Configured in `harness/config.ts` and `.env`:
 
 ### Base apps
 
-Base apps live in `harness/base_apps/`:
+Base apps live in `src/harness/base-apps/`:
 - `daily-grind`: Standard blog/productivity web application.
 - `devtools-times`: News/media publication web application.
 
 ### Dashboard
 
-`gd dashboard` starts a local web server (`eval-view/`) that visualizes suite results, showing pass rates per guide in guided vs. unguided modes, trends across runs, and detailed per-check breakdowns.
+`gd dashboard` starts a local web server (`src/dashboard/`) that visualizes suite results, showing pass rates per guide in guided vs. unguided modes, trends across runs, and detailed per-check breakdowns.
 
 ---
 
-## 6. Guidance Serving Infrastructure (serving/)
+## 6. Guidance Serving Infrastructure (src/build/, src/cli/, src/rag/)
 
-The code in `serving/` provides standalone tools and skills distributions used by agents to locate and consume guidance.
+The code in `src/build/`, `src/cli/`, and `src/rag/` provides standalone tools and skills distributions used by agents to locate and consume guidance.
 
-- **Standalone Skills CLI** (`serving/bin/modern-web.ts`): A tool that searches and retrieves use cases, bundled into a standalone distribution for use as a skill. This is the only supported serving approach.
+- **Standalone Skills CLI** (`src/cli/modern-web.ts`): A tool that searches and retrieves use cases, bundled into a standalone distribution for use as a skill. This is the only supported serving approach.
 
 ### Build process
 
@@ -295,7 +295,7 @@ The architecture is designed so that each group can work independently without n
 
 **Subject Matter Experts (SMEs)** focus exclusively on technical accuracy: understanding edge cases of a web feature, writing clear guidance, building a canonical demo, and defining testable expectations. They are shielded from the underlying Playwright infrastructure and do not need to be functional test engineers. Their deliverables are `guide.md`, `expectations.md`, and `demo.html`.
 
-**Content Area Tech Leads (Content ATLs)** act as domain-level owners for entire categories (Performance, Layout, Forms, etc.). They ensure category health, research gaps, triage content quality/failures, author or review all guidance written in their area, and are responsible for ensuring that all guidance is eval-ready. Their full expectations and responsibilities are detailed in [CONTRIBUTING.md](./CONTRIBUTING.md).
+**Content Area Tech Leads (Content ATLs)** act as domain-level owners for entire categories (Performance, Layout, Forms, etc.). They ensure category health, research gaps, triage content quality/failures, author or review all guidance written in their area, and are responsible for ensuring that all guidance is eval-ready. Their full expectations and responsibilities are detailed in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 **Infrastructure Engineers** focus on the reliability of the `gd` CLI, the evaluation harness, LLM invocation stability, skills serving pipeline correctness, and diagnosing systemic issues (e.g., why guided vs. unguided pass rates show no delta for a particular category of guide).
 
@@ -314,7 +314,7 @@ Grader, solution, and evaluation artifact generation use CLI coding agents rathe
 Graders are Playwright test files because many expectations require browser rendering to verify (CSS properties, layout, visibility, animation behavior). However, graders can also include non-browser checks (string matching on file contents, DOM structure analysis on raw HTML) for simpler assertions.
 
 ### Why Skills CLI serving?
-Serving guidance via Agent Skills and the standalone Skills CLI (`skills_cli`) provides deterministic, portable, file-based tool and context access across all supported coding agents without reliance on external server protocols.
+Serving guidance via Agent Skills and the standalone Skills CLI (`dist/skills-cli`) provides deterministic, portable, file-based tool and context access across all supported coding agents without reliance on external server protocols.
 
 ### Why a retry loop for calibration?
 AI-generated graders frequently fail calibration on the first attempt — tests may be too strict, too lenient, or check the wrong thing. Feeding failure context back into regeneration significantly improves success rates. The retry loop (up to 3 total attempts) automates what was previously a tedious manual cycle.
@@ -323,7 +323,7 @@ AI-generated graders frequently fail calibration on the first attempt — tests 
 
 ## 12. Configuration Reference
 
-All runtime configuration lives in `harness/config.ts` and environment variables in `.env`:
+All runtime configuration lives in `src/harness/config.ts` and environment variables in `.env`:
 
 ```bash
 # .env (at repo root)
@@ -342,7 +342,7 @@ ANTHROPIC_MODEL=claude-sonnet-5
 CODEX_MODEL='gpt-5.5'
 ```
 
-Suite configuration in `harness/config.ts`:
+Suite configuration in `src/harness/config.ts`:
 - `numRuns`: Number of agent runs per task (default: 1-2)
 - `tasks`: Empty array = discover all tasks by scanning guide targets. Set explicitly to run a subset.
 - `skillsToEnable`: Which skills agents can access (`['modern-web-guidance']`, etc.)

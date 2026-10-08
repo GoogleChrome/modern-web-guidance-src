@@ -40,7 +40,7 @@ npm run benchmark:rag -- --random-subset
 The `plot-evals.ts` script generates an HTML canvas that dynamically executes a browser `fetch()` for the local JSON results.
 
 ```bash
-node benchmarks/rag/plot-evals.ts
+node src/rag/benchmarks/plot-evals.ts
 ```
 
 Because browsers aggressively block `file://` protocol network requests via CORS, you cannot simply double-click the output file. Instead, we have provided a clean local dev-server proxy:

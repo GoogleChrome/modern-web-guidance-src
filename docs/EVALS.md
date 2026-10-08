@@ -6,7 +6,7 @@ This document provides comprehensive instructions and configuration details for 
 
 The evaluation harness measures how effectively AI coding agents adopt modern web APIs. It runs automated benchmarks across various agent runners and validates their implementation against outcome-based Playwright assertions.
 
-Supported agents are defined in the `Agents` object within [`harness/config.ts`](./harness/config.ts).
+Supported agents are defined in the `Agents` object within [`src/harness/config.ts`](../src/harness/config.ts).
 
 ---
 
