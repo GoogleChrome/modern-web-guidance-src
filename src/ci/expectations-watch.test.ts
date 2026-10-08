@@ -4,8 +4,6 @@ import path from 'node:path';
 
 import {
   findChangedExpectations,
-  buildMarker,
-  parseMarker,
   buildIssue,
   planIssues,
   type ChangedExpectations,
@@ -35,8 +33,8 @@ function makeGap(overrides: Partial<ChangedExpectations> = {}): ChangedExpectati
 }
 
 function issueFor(gap: ChangedExpectations, overrides: Partial<ExistingIssue> = {}): ExistingIssue {
-  const { title, body } = buildIssue(gap);
-  return { number: 7, body, title, ...overrides };
+  const { title } = buildIssue(gap);
+  return { number: 7, title, ...overrides };
 }
 
 describe('findChangedExpectations', () => {
@@ -83,21 +81,6 @@ describe('findChangedExpectations', () => {
   });
 });
 
-describe('markers', () => {
-  it('round-trips the guide path', () => {
-    assert.strictEqual(parseMarker(buildMarker('guides/a/b')), 'guides/a/b');
-  });
-
-  it('returns null without a marker', () => {
-    assert.strictEqual(parseMarker('a normal issue body'), null);
-  });
-
-  it('is embedded in the issue body', () => {
-    const gap = makeGap();
-    assert.strictEqual(parseMarker(buildIssue(gap).body), gap.guidePath);
-  });
-});
-
 describe('planIssues', () => {
   const gap = makeGap();
 
@@ -109,7 +92,7 @@ describe('planIssues', () => {
     assert.deepStrictEqual(planIssues([gap], [issueFor(gap)]), []);
   });
 
-  it('ignores issues without a marker', () => {
-    assert.deepStrictEqual(planIssues([gap], [{ number: 99, body: 'unrelated', title: 'Other' }]), [gap]);
+  it('ignores issues for other guides', () => {
+    assert.deepStrictEqual(planIssues([gap], [{ number: 99, title: 'Expectations changed for the other-guide guide' }]), [gap]);
   });
 });

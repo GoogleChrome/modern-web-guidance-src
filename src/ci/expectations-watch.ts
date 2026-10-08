@@ -5,8 +5,6 @@
  * already has evals has its `expectations.md` edited in a push that didn't
  * also touch its evals, so they may be stale.
  *
- * Issues are keyed by a hidden marker comment so reruns don't file duplicates.
- *
  * Usage: node src/ci/expectations-watch.ts [--dry-run]
  */
 
@@ -36,7 +34,6 @@ export interface ChangedExpectations {
 /** An open issue carrying the expectations-changed label. */
 export interface ExistingIssue {
   number: number;
-  body: string;
   title: string;
 }
 
@@ -74,25 +71,19 @@ export function getChangedFiles(before: string): string[] {
 
 // --- Issue content ---
 
-export function buildMarker(guidePath: string): string {
-  return `<!-- expectations-watch:${guidePath} -->`;
-}
-
-export function parseMarker(body: string): string | null {
-  const match = body.match(/<!--\s*expectations-watch:(\S+?)\s*-->/);
-  return match ? match[1] : null;
+export function issueTitle(guideName: string): string {
+  return `Expectations changed for the ${guideName} guide`;
 }
 
 export function buildIssue(gap: ChangedExpectations): { title: string; body: string } {
   const link = `[\`${gap.guidePath}\`](https://github.com/GoogleChrome/modern-web-guidance-src/tree/main/${gap.guidePath})`;
-  const title = `Expectations changed for the ${gap.guideName} guide`;
+  const title = issueTitle(gap.guideName);
   const body = [
     `\`${EXPECTATIONS_FILE}\` in ${link} was edited, and this guide already has evals.`,
     '',
     `Run \`gd dev ${gap.guidePath}\` to update the evals.`,
     '',
     '<sub>Filed automatically by `src/ci/expectations-watch.ts`.</sub>',
-    buildMarker(gap.guidePath),
   ].join('\n');
 
   return { title, body };
@@ -102,12 +93,8 @@ export function buildIssue(gap: ChangedExpectations): { title: string; body: str
 
 /** Returns the gaps that do not already have an open expectations-changed issue. */
 export function planIssues(gaps: ChangedExpectations[], existing: ExistingIssue[]): ChangedExpectations[] {
-  const openGuides = new Set<string>();
-  for (const issue of existing) {
-    const guidePath = parseMarker(issue.body);
-    if (guidePath) openGuides.add(guidePath);
-  }
-  return gaps.filter(g => !openGuides.has(g.guidePath));
+  const openTitles = new Set(existing.map(i => i.title));
+  return gaps.filter(g => !openTitles.has(issueTitle(g.guideName)));
 }
 
 // --- GitHub API ---
@@ -128,10 +115,10 @@ export const githubApi = {
   listIssues(): ExistingIssue[] {
     const output = child_process.execFileSync(
       'gh',
-      ['issue', 'list', '--label', EXPECTATIONS_CHANGED_LABEL, '--state', 'open', '--limit', '500', '--json', 'number,body,title'],
+      ['issue', 'list', '--label', EXPECTATIONS_CHANGED_LABEL, '--state', 'open', '--limit', '500', '--json', 'number,title'],
       { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
     );
-    return (JSON.parse(output) as ExistingIssue[]).map(i => ({ ...i, body: i.body ?? '' }));
+    return JSON.parse(output) as ExistingIssue[];
   },
 
   createIssue(title: string, body: string): void {
