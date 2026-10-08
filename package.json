@@ -68,7 +68,7 @@
     }
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "^2.1.289",
+    "@anthropic-ai/claude-code": "^2.1.295",
     "@google/gemini-cli-core": "0.61.0",
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
@@ -88,13 +88,13 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@anthropic-ai/vertex-sdk": "^0.16.0",
+    "@anthropic-ai/vertex-sdk": "^0.20.4",
     "@google-cloud/storage": "^7.19.0",
     "@google/gemini-cli": "0.61.0",
     "@huggingface/tokenizers": "^0.2.0",
     "@huggingface/transformers": "^4.3.0",
     "@mdn/browser-compat-data": "^8.0.7",
-    "@openai/codex": "0.160.0",
+    "@openai/codex": "0.162.0",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
