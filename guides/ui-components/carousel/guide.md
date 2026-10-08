@@ -1,6 +1,6 @@
 ---
 name: carousel
-description: Build an accessible, responsive horizontal or vertical carousel using CSS scroll snap, native scroll controls, and progressive fallbacks.
+description: Build a carousel component that displays a set of items in a horizontal or vertical layout.
 web-feature-ids:
   - scroll-snap
   - scroll-buttons
