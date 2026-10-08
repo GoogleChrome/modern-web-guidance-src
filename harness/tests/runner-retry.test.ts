@@ -265,26 +265,20 @@ test('run.mjs: records TIMEOUT (10m) and exits non-zero when final attempt times
     const graderPath = path.join(tempDir, 'grader.ts');
     fs.writeFileSync(graderPath, '// mock grader');
 
-    // Attempt 1 writes a stale generation_failed.json and exits 1; attempts 2 and 3 hang until timeout.
+    // Pre-seed a stale generation_failed.json to verify run.mjs clears it on retry.
+    fs.writeFileSync(
+      path.join(tempDir, 'generation_failed.json'),
+      JSON.stringify({ agentName: 'mock-agent.js', exitCode: 1, stderr: 'stale', stdout: '' })
+    );
+
+    // Agent hangs on every attempt until killed by timeout.
     const agentScript = path.join(tempDir, 'mock-agent.js');
-    fs.writeFileSync(agentScript, `
-import fs from 'fs';
-import path from 'path';
-const targetDir = process.argv[4];
-const countFile = path.join(targetDir, 'count.txt');
-const attempt = fs.existsSync(countFile) ? Number(fs.readFileSync(countFile, 'utf8')) + 1 : 1;
-fs.writeFileSync(countFile, String(attempt));
-if (attempt === 1) {
-  fs.writeFileSync(path.join(targetDir, 'generation_failed.json'), JSON.stringify({ agentName: 'mock-agent.js', exitCode: 1, stderr: 'stale', stdout: '' }));
-  process.exit(1);
-}
-setTimeout(() => {}, 10000);
-`.trim(), 'utf8');
+    fs.writeFileSync(agentScript, 'setTimeout(() => {}, 60000);', 'utf8');
 
     generateTransientPackage(tempDir, agentScript, 'dummy prompt', 'guided', tempDir, 'test-task', 'test-guide', graderPath);
     patchRunnerDelay(tempDir);
     const runMjsPath = path.join(tempDir, 'run.mjs');
-    fs.writeFileSync(runMjsPath, fs.readFileSync(runMjsPath, 'utf8').replace('timeout: 600000', 'timeout: 50'));
+    fs.writeFileSync(runMjsPath, fs.readFileSync(runMjsPath, 'utf8').replace('timeout: 600000', 'timeout: 200'));
 
     const runResult = spawnSync(process.execPath, ['run.mjs'], { cwd: tempDir, encoding: 'utf8' });
     assert.strictEqual(runResult.status, 1, 'Timed-out run.mjs should exit with 1, not 0');

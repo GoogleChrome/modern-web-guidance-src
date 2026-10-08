@@ -1,7 +1,7 @@
 import { pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers";
 
 export class Embedder {
-  private static instance: Embedder;
+  private static instance: Embedder | null = null;
   private pipe: FeatureExtractionPipeline | null = null;
   public modelName = "Xenova/all-MiniLM-L6-v2";
 
@@ -18,11 +18,11 @@ export class Embedder {
     return Embedder.instance;
   }
 
-  public static clearInstance() {
-    Embedder.instance = null as any;
+  public static clearInstance(): void {
+    Embedder.instance = null;
   }
 
-  public async init() {
+  public async init(): Promise<void> {
     if (this.pipe) return;
     
     let repo = this.modelName;
@@ -46,12 +46,15 @@ export class Embedder {
 
   public async countTokens(text: string): Promise<number> {
     if (!this.pipe) await this.init();
-    if (!this.pipe || !(this.pipe as any).tokenizer) return Math.ceil(text.length / 4);
-    try {
-      const res = await (this.pipe as any).tokenizer(text, { add_special_tokens: false });
-      return res.input_ids.data.length;
-    } catch {
-      return Math.ceil(text.length / 4);
+    const tokenizer = (this.pipe as any)?.tokenizer;
+    if (!tokenizer) {
+      throw new Error("Embedding pipeline has no tokenizer available for countTokens");
     }
+    const res = await tokenizer(text, { add_special_tokens: false });
+    const count = res?.input_ids?.data?.length;
+    if (typeof count !== "number") {
+      throw new Error(`Tokenizer returned invalid token count for text: ${typeof count}`);
+    }
+    return count;
   }
 }

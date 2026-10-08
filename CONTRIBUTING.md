@@ -29,7 +29,7 @@ To foster an open-source contributor environment while maintaining a stable, cle
 
 # How to contribute
 We want to encourage contributions while maintaining high standards. Our policy is:
-* **Proposal first**: For non-trivial changes, contributors need to to [open an issue first](https://github.com/GoogleChrome/modern-web-guidance-src/issues) to align on design before coding.
+* **Proposal first**: For non-trivial changes, contributors need to [open an issue first](https://github.com/GoogleChrome/modern-web-guidance-src/issues) to align on design before coding.
 
 ## Project Roles
 
@@ -183,12 +183,11 @@ All evaluation and environment configuration is centralized in [`harness/config.
 
 ### API Keys & Environment Setup
 
-For setup of core guide development workflows (`gd dev`), configure your Gemini API key and model in your environment or `.env` file:
+For setup of core guide development workflows (`gd dev`), install and sign in to Antigravity CLI (the default `gd dev` agent; see [EVALS.md](./EVALS.md#antigravity-cli)). Optionally configure your environment or `.env` file:
 
 ```bash
-GEMINI_API_KEY='your_api_key_here'
-GEMINI_MODEL='gemini-3-flash-preview'
-GD_DEV_USE_GEMINI=1 # Required to use Gemini CLI for 'gd dev'
+# ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID> # Optional: only if you use agy through a GCP project
+# GD_DEV_USE_JETSKI=1 # Optional: use Jetski CLI instead of Antigravity CLI for 'gd dev'
 ```
 
 ### Runtime Configuration Overrides
