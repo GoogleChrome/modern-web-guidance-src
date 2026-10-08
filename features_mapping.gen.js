@@ -613,6 +613,12 @@ window.__featuresMapping = {
   "platform-controls-dismiss-dialog": [
     "dialog-closedby"
   ],
+  "prevent-page-scroll-under-modal-dialog": [
+    "overscroll-behavior",
+    "dialog",
+    "backdrop",
+    "modal"
+  ],
   "responsive-disclosure": [
     "popover",
     "dialog",
