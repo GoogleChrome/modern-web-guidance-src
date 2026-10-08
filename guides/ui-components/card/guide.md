@@ -21,13 +21,13 @@ Choose the card's semantics from what the card itself represents:
 
 - an `article` when it is independently understandable content (any links and buttons inside it remain separate native controls);
 - one native link when the whole card is a single destination;
-- a labeled radio or checkbox, or an `option` in a native `select`, when the card is a choice.
+- a radio button or checkbox with an associated `<label>`, or an `option` in a native `<select>`, when the card is a choice.
 
 Keep media, title, supporting content, and actions in meaningful source order; don't use CSS `order` to contradict it (see {{ GUIDE_REF("css-layout") }}).
 
 ## Implementation
 
-Put the query container on a wrapper around the card, because a card can't query its own size. For the container-query pattern, see {{ GUIDE_REF("size-aware-styling") }}.
+When a card’s layout should change with its available width—for example, switching from stacked media and content to a side-by-side layout—put the size-query container on a wrapper around the card. See {{ GUIDE_REF("size-aware-styling") }} for the container-query setup.
 
 ```html
 <div class="card-container">
@@ -37,7 +37,9 @@ Put the query container on a wrapper around the card, because a card can't query
       <h3><a href="/recipes/poached-eggs">Poached eggs</a></h3>
       <p>Breakfast special</p>
     </hgroup>
-    <p>Two poached eggs served on toasted sourdough.</p>
+    <div class="content">
+      <p>Two poached eggs served on toasted sourdough.</p>
+    </div>
     <footer>
       <button type="button">Favorite</button>
       <button type="button">Share</button>
@@ -79,7 +81,7 @@ Put the query container on a wrapper around the card, because a card can't query
 }
 ```
 
-Constrain media to an intentional size or aspect ratio and avoid distortion, for example with `aspect-ratio` and `object-fit: cover`. An informative image needs an appropriate text alternative; decorative media should use an empty alternative.
+For card images or video that should fill a fixed-ratio area, set `aspect-ratio` on the media or its container and use `object-fit: cover` to fill it without distortion (cropping may occur). Otherwise, preserve the media’s intrinsic ratio. Give informative images an appropriate text alternative; use `alt=""` for decorative images.
 
 ### Align cards in a grid
 
@@ -105,22 +107,15 @@ When cards need shared internal tracks, `subgrid` can align them without changin
 /* Assign each region to its track so omitting optional media or footer does not shift sibling tracks */
 .card > :is(img, picture, video, svg) { grid-row: 1; }
 .card > hgroup { grid-row: 2; }
-.card > p { grid-row: 3; }
+.card > .content { grid-row: 3; }
 .card > footer { grid-row: 4; }
 ```
 
 ## Interaction models
 
-When the card is one destination and has no independent actions, it may be one native link. Do not nest links, buttons, or form controls inside it:
+### Content cards
 
-```html
-<a class="card" href="/recipes/poached-eggs">
-  <h3>Poached eggs</h3>
-  <p>Two poached eggs served on toasted sourdough.</p>
-</a>
-```
-
-When a card has longer body copy or independent actions, do not wrap the whole card in `<a>`. Link the title to the primary destination, stretch its pointer hit area across the card with `::after`, and elevate secondary controls with `position: relative; z-index: 1` so each action remains independently operable:
+Use an `<article>` for independently understandable card content. Keep links and buttons as separate native controls. When the card also links to a primary destination, link its title and stretch the pointer hit area across the card with `::after`; elevate secondary controls with `position: relative; z-index: 1` so they remain operable:
 
 ```css
 .card {
@@ -139,7 +134,20 @@ When a card has longer body copy or independent actions, do not wrap the whole c
 }
 ```
 
-When cards represent choices, style their native controls and labels as cards. Use radios for one choice and checkboxes for independent choices:
+### Single-destination cards
+
+When the whole card is one destination and has no independent actions, make it one native link. Do not nest links, buttons, or form controls inside it:
+
+```html
+<a class="card" href="/recipes/poached-eggs">
+  <h3>Poached eggs</h3>
+  <p>Two poached eggs served on toasted sourdough.</p>
+</a>
+```
+
+### Choice cards
+
+Style native controls and their labels as cards. Use radios for one choice and checkboxes for independent choices:
 
 ```html
 <fieldset class="option-cards">
@@ -165,7 +173,7 @@ Style the selected option card with `:has(:checked)` using more than color alone
 }
 ```
 
-When choices belong in a dropdown picker whose options are laid out as cards, use a native `<select>` with `appearance: base-select` and style `::picker(select)` and `<option>` elements rather than replacing the select with `<div>` cards; see {{ GUIDE_REF("custom-select-picker-layouts") }}. Use `<button>` elements when selecting a card triggers an immediate action rather than setting form state.
+For choices in a dropdown picker, use a native `<select>` with `appearance: base-select` and style `::picker(select)` and `<option>` elements rather than replacing the select with `<div>` cards; see {{ GUIDE_REF("custom-select-picker-layouts") }}. Use a `<button>` when selecting a card triggers an immediate action rather than setting form state.
 
 ## Accessibility
 
