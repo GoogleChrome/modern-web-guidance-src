@@ -313,24 +313,6 @@
       announceTimeout = setTimeout(syncCurrentSlide, 150);
     }, { passive: true });
 
-    // Keyboard navigation: step through vertical slides with Arrow keys, Home, End
-    const carousel = document.querySelector('.carousel');
-    carousel.addEventListener('keydown', (event) => {
-      if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        scrollToIndex(Math.max(0, currentIndex() - 1));
-      } else if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        scrollToIndex(Math.min(items.length - 1, currentIndex() + 1));
-      } else if (event.key === 'Home') {
-        event.preventDefault();
-        scrollToIndex(0);
-      } else if (event.key === 'End') {
-        event.preventDefault();
-        scrollToIndex(items.length - 1);
-      }
-    });
-
     syncCurrentSlide();
   </script>
 </body>
