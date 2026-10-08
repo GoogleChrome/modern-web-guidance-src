@@ -187,6 +187,7 @@ function syncSliderValue() {
 }
 ```
 
+{#
 ## Future standard pseudo-elements
 
 CSS Forms Level 1 specifies standard `::slider-track`, `::slider-thumb`, and
@@ -194,3 +195,4 @@ CSS Forms Level 1 specifies standard `::slider-track`, `::slider-thumb`, and
 query live slider values directly in CSS without JavaScript syncing. When
 browser support matures, prefer these native primitives over vendor
 pseudo-elements and script-driven CSS custom properties.
+#}
