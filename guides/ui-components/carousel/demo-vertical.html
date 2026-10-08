@@ -241,7 +241,8 @@
     const track = document.querySelector('.carousel-track');
     const items = [...track.querySelectorAll('.carousel-item')];
     const status = document.querySelector('.carousel [role="status"]');
-    const hasNativeButtons = CSS.supports('selector(::scroll-button(*))');
+    const hasNativeButtons = CSS.supports('selector(::scroll-button(*))') &&
+      CSS.supports('anchor-name: --carousel-track');
     const hasNativeMarkers = CSS.supports('selector(::scroll-marker)');
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
