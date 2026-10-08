@@ -173,7 +173,7 @@ required transient user activation.
     } catch (error) {
       if (error.name === "AbortError") {
         // Cancellation is an expected user choice, not an application error.
-        installStatus.textContent = "Installation was cancelled or could not complete.";
+        installStatus.textContent = "Installation was canceled or could not complete.";
         installButton.hidden = true;
       } else {
         installStatus.textContent = "Installation could not start.";
