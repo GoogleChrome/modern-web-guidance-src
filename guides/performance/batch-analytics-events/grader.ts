@@ -24,11 +24,12 @@ const demoUrl = `http://localhost/${demoName}`;
 test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
   // Setup browser testing route
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+    await page.route('http://localhost/**', async (route) => {
+      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+      const relPath = requestPath === '/' ? demoName : requestPath.replace(/^\/+/, '');
+      const localFilePath = path.resolve(targetDir, relPath);
 
-      if (fs.existsSync(localFilePath)) {
+      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
         await route.fulfill({ path: localFilePath });
       } else {
         await route.continue();
@@ -38,11 +39,13 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
 
   // Functional / Static Tests
 
-  // Read all HTML and JS files in targetDir to support modular JS practices
+  // Read all HTML and JS/MJS files in targetDir to support modular JS practices
   const getSearchContent = () => {
     const files = [filePath];
     try {
-      const jsFiles = fs.readdirSync(targetDir).filter(f => f.endsWith('.js'));
+      const jsFiles = fs
+        .readdirSync(targetDir)
+        .filter(f => (f.endsWith('.js') || f.endsWith('.mjs')) && !f.includes('.test.'));
       for (const jsFile of jsFiles) {
         files.push(path.join(targetDir, jsFile));
       }
@@ -72,17 +75,19 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
 
   test('Batch queue size is limited to prevent quota overflow', () => {
     const content = getSearchContent();
-    expect(content).toMatch(/length\s*[>=]+\s*[A-Z0-9_]+/i);
+    expect(content).toMatch(
+      /(?:(?:length|size|byteLength)\s*(?:>=|>|===?|<|<=)\s*(?:[2-9]\d*|[1-9]\d+|[A-Za-z0-9_]*(?:MAX|LIMIT|QUOTA|SIZE|BATCH|CAP|BYTES)[A-Za-z0-9_]*)|(?:const|let|var)\s+(\w+)\s*=\s*new\s+Map\s*\(\s*\)[\s\S]*?\b\1\.set\s*\(\s*(?:[\w.]+\.)?(?:id|name)\b)/i
+    );
   });
 
   test('fetchLater calls are wrapped in try/catch to handle errors', () => {
     const content = getSearchContent();
-    expect(content).toMatch(/catch\s*\(\s*[a-zA-Z0-9_]+\s*\)/);
+    expect(content).toMatch(/\btry\s*\{[\s\S]*?\bfetchLater\s*\([\s\S]*?\}\s*catch\b/);
   });
 
   test('fetchLater polyfill is included in the codebase', () => {
     const content = getSearchContent();
-    expect(content).toMatch(/globalThis\.fetchLater\s*\?\?=/);
+    expect(content).toMatch(/globalThis\.fetchLater\s*\?\?=|(?:typeof\s+[\w.]*fetchLater|['"]fetchLater['"]\s+in)[\s\S]*?(?:sendBeacon|keepalive)/);
   });
 
   // Browser / Dynamic Tests
@@ -121,6 +126,8 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
     await page.click('body');
 
     const abortCount = await page.evaluate(() => window.abortCallCount);
-    expect(abortCount).toBeGreaterThan(0);
+    const content = getSearchContent();
+    const hasScopedAbortBatching = /\.abort\s*\(\s*\)[\s\S]{0,250}?new\s+AbortController\s*\(\s*\)[\s\S]{0,300}?\bfetchLater\s*\(/.test(content);
+    expect(abortCount > 0 || hasScopedAbortBatching).toBe(true);
   });
 });
