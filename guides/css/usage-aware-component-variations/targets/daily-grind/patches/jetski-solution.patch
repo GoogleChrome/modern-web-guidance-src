@@ -1,0 +1,285 @@
+diff --git a/index.html b/index.html
+index 66c9173..6c492cf 100644
+--- a/index.html
++++ b/index.html
+@@ -31,12 +31,13 @@
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding-block: 1rem;
++      padding-inline: 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+-      top: 0;
++      inset-block-start: 0;
+       z-index: 1000;
+     }
+ 
+@@ -52,7 +53,7 @@
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-inline-start: 20px;
+     }
+ 
+     nav a {
+@@ -68,13 +69,14 @@
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding-block: 5px;
++      padding-inline: 12px;
+       border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-block-size: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,69 +87,151 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding-inline: 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-block-end: 1rem;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-inline-size: 1100px;
++      margin-block: 40px;
++      margin-inline: auto;
++      padding-inline: 20px;
++    }
++
++    section {
++      margin-block-end: 40px;
+     }
+ 
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+-      margin-top: 20px;
++      margin-block-start: 20px;
+     }
+ 
++    /* 1. Context Containers: define semantic context flags */
++    .featured,
++    section.featured,
++    [data-surface="featured"] {
++      --surface: featured;
++    }
++
++    /* Card Component */
+     .card {
++      position: relative;
+       background: white;
+-      padding: 20px;
++      padding-block: 20px;
++      padding-inline: 20px;
+       border-radius: 8px;
++      border: 1px solid var(--secondary);
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-block-end: 10px;
+       color: var(--primary);
+     }
+ 
+-    .btn {
++    .badge {
++      display: none; /* Hidden by default */
++      position: absolute;
++      inset-block-start: -12px;
++      inset-inline-end: 1rem;
++      background: var(--accent);
++      color: var(--text);
++      padding-block: 0.25rem;
++      padding-inline: 0.75rem;
++      border-radius: 20px;
++      font-size: 0.75rem;
++      font-weight: bold;
++    }
++
++    .btn,
++    .button {
+       display: inline-block;
++      padding-block: 10px;
++      padding-inline: 20px;
++      border-radius: 5px;
++      margin-block-start: 15px;
++      text-decoration: none;
++      font-weight: 500;
++      transition: background 0.3s, color 0.3s, border-color 0.3s;
++      /* Default: Outlined informational style */
++      background: transparent;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .btn:hover,
++    .button:hover {
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    /* 2. Selector-based defaults using :where() for broad browser support */
++    :where(.featured) .card,
++    :where([data-surface="featured"]) .card {
++      border-color: var(--primary);
++      box-shadow: 0 4px 20px rgba(78, 52, 46, 0.15);
++    }
++
++    :where(.featured) .button,
++    :where(.featured) .btn,
++    :where([data-surface="featured"]) .button,
++    :where([data-surface="featured"]) .btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++    }
++
++    :where(.featured) .badge,
++    :where([data-surface="featured"]) .badge {
++      display: block;
++    }
++
++    /* 3. Progressive enhancement: container style queries override when supported */
++    @container style(--surface: featured) {
++      .card {
++        border-color: var(--primary);
++        box-shadow: 0 4px 20px rgba(78, 52, 46, 0.15);
++      }
++
++      .button,
++      .btn {
++        background: var(--primary);
++        color: white;
++        border: none;
++      }
++
++      .badge {
++        display: block;
++      }
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding-block: 40px;
++      padding-inline: 20px;
++      margin-block-start: 40px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-block-end: 20px;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin-inline: 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+@@ -171,27 +255,48 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn button">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="featured">
++      <h2 style="text-align: center;">Featured Specials</h2>
++      <div class="grid">
++        <div class="card">
++          <div class="badge">Featured</div>
++          <h3>Specialty Pour Over</h3>
++          <p>Single-origin Ethiopian Yirgacheffe with floral and citrus notes.</p>
++          <a href="/menu/pour-over" class="btn button">View Details</a>
++        </div>
++        <div class="card">
++          <div class="badge">Special Offer</div>
++          <h3>Caramel Macchiato</h3>
++          <p>Fresh espresso with vanilla and buttery caramel drizzle.</p>
++          <a href="/menu/macchiato" class="btn button">View Details</a>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="badge">Special Offer</div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn button">View Details</a>
+         </div>
+         <div class="card">
++          <div class="badge">Special Offer</div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn button">View Details</a>
+         </div>
+         <div class="card">
++          <div class="badge">Special Offer</div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn button">View Details</a>
+         </div>
+       </div>
+     </section>
+diff --git a/package.json b/package.json
+index 2bd4d77..b68d9f5 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "echo 'Build clean'"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []

@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { getCssStyleSheet, getHtmlDocuments, getJsProject } from './test-fixture.ts';
-import { CSSStyleRule } from 'cssomnom';
+import { CSSStyleRule, CSSContainerRule } from 'cssomnom';
 import { SyntaxKind } from 'ts-morph';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -55,6 +55,57 @@ describe('test-fixture helpers', () => {
       const footerRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.footer');
       assert.ok(footerRule, 'Should find .footer rule from TS file');
       assert.strictEqual(footerRule.style.getPropertyValue('margin-top'), '10px');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('getCssStyleSheet ignores unparsed JSX inline style expressions in .astro files without corrupting subsequent rules', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-astro-style-test-'));
+    try {
+      const astroFile = path.join(tempDir, 'ArticleTeaser.astro');
+      fs.writeFileSync(
+        astroFile,
+        [
+          '---',
+          'const explicitSurface = "featured";',
+          '---',
+          '<article style={explicitSurface ? `--surface: ${explicitSurface};` : undefined} class="teaser">',
+          '  <span class="badge">Featured</span>',
+          '</article>',
+          '<style>',
+          '  :global(:where([data-surface="featured"])) .badge { display: inline-flex; }',
+          '</style>',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const cssFile = path.join(tempDir, 'global.css');
+      fs.writeFileSync(
+        cssFile,
+        [
+          '.surface-featured { --surface: featured; }',
+          '@container style(--surface: featured) { .badge { display: block; } }',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const stylesheet = getCssStyleSheet([astroFile, cssFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      const whereRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes(':where(')
+      );
+      assert.ok(whereRule, 'Should unwrap :global() and parse :where() fallback rule in Astro <style>');
+
+      const surfaceRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.surface-featured'
+      );
+      assert.ok(surfaceRule, 'Should preserve top-level .surface-featured CSSStyleRule after Astro file');
+      assert.strictEqual(surfaceRule.style.getPropertyValue('--surface').trim(), 'featured');
+
+      const containerRule = rules.find((r): r is CSSContainerRule => r instanceof CSSContainerRule);
+      assert.ok(containerRule, 'Should preserve top-level @container rule after Astro file');
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
