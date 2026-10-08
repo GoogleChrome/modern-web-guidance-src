@@ -50,14 +50,14 @@ test('node --test sets NODE_TEST_CONTEXT and suppresses ClearcutLogger by defaul
   }
 });
 
-test('serving test script quotes recursive glob so nested telemetry tests run', () => {
+test('root test script quotes recursive glob so nested telemetry tests run', () => {
   const pkg = JSON.parse(
-    fs.readFileSync(path.join(ROOT_DIR, 'serving/package.json'), 'utf8')
+    fs.readFileSync(path.join(ROOT_DIR, 'package.json'), 'utf8')
   );
   assert.match(
     pkg.scripts.test,
-    /"\*\*\/\*\.test\.ts"|'\*\*\/\*\.test\.ts'/,
-    'serving/package.json test script must quote "**/*.test.ts" so /bin/sh ' +
+    /"[^"]*serving\/\*\*\/\*\.test\.ts"/,
+    'root package.json test script must quote recursive .test.ts globs so /bin/sh ' +
       'passes the recursive glob to node --test instead of expanding only ' +
       'one directory level and skipping skills-cli/telemetry/*.test.ts.'
   );

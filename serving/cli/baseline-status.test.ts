@@ -7,7 +7,7 @@ const scriptPath = path.resolve(import.meta.dirname, './baseline-status.ts');
 
 describe('baseline-status CLI', () => {
   const runCLI = (args: string[]) => {
-    const result = spawnSync('node', ['--experimental-strip-types', scriptPath, ...args], {
+    const result = spawnSync('node', [scriptPath, ...args], {
       encoding: 'utf8',
       env: { ...process.env, NO_COLOR: '1' } // Ensure no colors in tests
     });

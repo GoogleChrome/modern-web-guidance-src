@@ -1,7 +1,7 @@
 import path from 'path';
 import os from 'os';
 import { pathToFileURL } from 'url';
-import { rootDir, harnessDir } from '../lib/paths.ts';
+import { rootDir } from '../lib/paths.ts';
 
 // Disable telemetry for eval harness runs (`node --test` runs are covered
 // automatically via NODE_TEST_CONTEXT in ClearcutLogger).
@@ -33,15 +33,15 @@ export const environmentConfig: EnvironmentConfig = {
   jetskiCliBin: process.env.JETSKI_CLI_BIN || '/google/bin/releases/jetski-devs/tools/cli',
 
   // Gemini CLI Configuration
-  geminiCliBin: process.env.GEMINI_CLI_BIN || path.join(harnessDir, 'node_modules/.bin/gemini'),
+  geminiCliBin: process.env.GEMINI_CLI_BIN || path.join(rootDir, 'node_modules/.bin/gemini'),
   geminiDir: process.env.GEMINI_DIR || path.join(os.homedir(), '.gemini'),
 
   // Claude Code Configuration (through GCP Vertex AI)
-  claudeCodeCliBin: process.env.CLAUDE_CODE_CLI_BIN || path.join(harnessDir, 'node_modules/.bin/claude'),
+  claudeCodeCliBin: process.env.CLAUDE_CODE_CLI_BIN || path.join(rootDir, 'node_modules/.bin/claude'),
   gcpCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(os.homedir(), '.config/gcloud/application_default_credentials.json'),
 
   // Codex Configuration
-  codexCliBin: process.env.CODEX_CLI_BIN || path.join(harnessDir, 'node_modules/.bin/codex'),
+  codexCliBin: process.env.CODEX_CLI_BIN || path.join(rootDir, 'node_modules/.bin/codex'),
 
   // Pi Configuration
   piBin: process.env.PI_BIN || 'pi',

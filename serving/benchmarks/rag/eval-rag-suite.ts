@@ -89,7 +89,7 @@ async function main() {
   // Generate the pool once if it doesn't exist
   if (!fs.existsSync(poolPath)) {
      console.log('Generating master query pool (50 queries per guide)...');
-     run('node --experimental-strip-types benchmarks/rag/generate-eval-queries.ts');
+     run('node benchmarks/rag/generate-eval-queries.ts');
   }
 
   const pool = JSON.parse(fs.readFileSync(poolPath, 'utf-8'));
@@ -138,9 +138,9 @@ async function main() {
       console.log(`\nEvaluating ${model} (Iter ${iter})...`);
       // Rebuild the vector database table for the specific model before querying
       const corpusModel = model === 'tfjs' ? 'Xenova/all-MiniLM-L6-v2@q8' : model;
-      const buildCmd = `node --experimental-strip-types scripts/build-guides.ts --model=${corpusModel} --force${isNoChunking ? ' --no-chunking' : ''}`;
+      const buildCmd = `node scripts/build-guides.ts --model=${corpusModel} --force${isNoChunking ? ' --no-chunking' : ''}`;
       run(buildCmd);
-      run(`node --experimental-strip-types benchmarks/rag/eval-rag-search.ts --model=${model}`);
+      run(`node benchmarks/rag/eval-rag-search.ts --model=${model}`);
       
       if (fs.existsSync(resultsPath)) {
         const results = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'));

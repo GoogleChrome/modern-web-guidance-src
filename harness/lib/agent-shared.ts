@@ -297,9 +297,9 @@ export function copySkills(homeDir: string, agent: Agents, skillsToEnable: strin
     if (skillsToEnable.some(s => s.startsWith('modern-web'))) { // Add modern-web-guidance Skill (& resources) from skills-cli dist
       const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-guidance');
       if (!fs.existsSync(distSource)) {
-        console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter serving build-dist' automatically...`);
+        console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm run build-dist' automatically...`);
         try {
-          execSync('pnpm --filter serving build-dist', {
+          execSync('pnpm run build-dist', {
             cwd: rootDir,
             stdio: 'inherit'
           });

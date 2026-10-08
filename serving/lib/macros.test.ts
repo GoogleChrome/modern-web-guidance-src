@@ -60,7 +60,7 @@ describe('replaceMacros (Functional with real data)', () => {
       const result = replaceMacros(content, 'test.md');
       assert.strictEqual(
         result,
-        "Browser support for popover=\"hint\": Limited availability.\nSupported by: Chrome 151, Edge 151, and Firefox 153 (Jul 2026).\nUnsupported in: Safari."
+        "Browser support for popover=\"hint\": Limited availability.\nSupported by: Chrome 151 (Jul 2026), Edge 151 (Jul 2026), and Firefox 153 (Jul 2026).\nUnsupported in: Safari."
       );
     });
 

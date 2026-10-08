@@ -91,7 +91,6 @@ export async function runSmokeTest(options: SmokeTestOptions = {}): Promise<void
 
   try {
     const result = spawnSync('node', [
-      '--experimental-strip-types',
       path.join(import.meta.dirname, 'agents', agentConfig.file),
       prompt,
       runType,

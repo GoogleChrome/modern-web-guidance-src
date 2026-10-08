@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --experimental-strip-types
+#!/usr/bin/env node
 
 import { parseArgs } from 'util';
 import path from 'path';
@@ -7,7 +7,7 @@ import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
 import { resolveSuiteConfig } from '../harness/config.ts';
-import { rootDir, guidesDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
+import { rootDir, guidesDir, baseAppsDir } from '../lib/paths.ts';
 import { getTaskMap } from '../lib/guide-validation.ts';
 
 // Load environment variables (Node 20.12+)
@@ -302,7 +302,6 @@ async function main() {
     }
 
     case 'dashboard': {
-      process.chdir(evalViewDir);
       await import('../eval-view/server.js');
       break;
     }
@@ -311,12 +310,11 @@ async function main() {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
-      const buildCode = await runNpm(['--filter', 'serving', 'build-dist']);
+      const buildCode = await runNpm(['run', 'build-dist']);
       if (buildCode !== 0) process.exit(buildCode);
 
       if (values['ui']) {
         process.env.LAUNCH_UI = 'true';
-        process.chdir(evalViewDir);
         await import('../eval-view/server.js');
         break;
       }
@@ -362,32 +360,7 @@ async function main() {
 
 
     default: {
-      // Legacy fallbacks — guide namespace was flattened
-      if (command === 'guide') {
-        const action = positionals[1] || '';
-        const remap: Record<string, string> = {
-          'dev': 'dev', 'dev-all': 'dev-all', 'grade': 'grade',
-          'test-grader': 'test', 'gen-grader': 'gen grader', 'gen-negative': 'gen negative',
-        };
-        if (remap[action]) {
-          const rest = positionals.slice(2).join(' ');
-          console.error(cRed("gd guide " + action + " has moved.") + "  Run: " + cCyan("gd " + remap[action] + (rest ? " " + rest : "")) + "\n");
-        } else {
-          console.error(cRed("The 'guide' namespace has been removed.") + " Run " + cCyan("gd --help") + " for the new commands.\n");
-        }
-      } else if (['suite', 'task', 'smoke', 'report'].includes(command)) {
-        console.error(cRed("'gd " + command + "' has moved.") + "  Run: " + cCyan("gd eval " + command) + "\n");
-      } else if (command === 'agent') {
-        console.error(cRed("'gd agent' has moved.") + "  Run: " + cCyan("gd run <template> <prompt>") + "\n");
-      } else if (['grade'].includes(command)) {
-        console.error(cRed("'gd grade' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --grade") + "\n");
-      } else if (['test', 'test-grader'].includes(command)) {
-        console.error(cRed("'gd test' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --test-grader") + "\n");
-      } else if (['gen', 'gen-grader', 'gen:grader'].includes(command)) {
-        console.error(cRed("'gd " + command + "' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --gen-grader") + "\n");
-      } else {
-        console.error(cRed("Unknown command: " + command + ".") + " Run " + cCyan("gd --help") + " for usage.");
-      }
+      console.error(cRed("Unknown command: " + command + ".") + " Run " + cCyan("gd --help") + " for usage.");
       process.exit(1);
     }
   }

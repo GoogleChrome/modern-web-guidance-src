@@ -22,7 +22,7 @@ This skill allows you to run a comprehensive audit of the repository's documenta
 
   You should run the following command to execute the audit:
   ```bash
-  node --experimental-strip-types scripts/coherence-audit.ts
+  node scripts/coherence-audit.ts
   ```
 
   This script performs the following checks:
@@ -37,7 +37,7 @@ This skill allows you to run a comprehensive audit of the repository's documenta
 
   To run a full preflight check (build, typecheck, lint, and all tests), you can run:
   ```bash
-  node --experimental-strip-types scripts/coherence-audit.ts --preflight
+  node scripts/coherence-audit.ts --preflight
   ```
 
   Your instructions:

@@ -11,7 +11,7 @@
  * Issues are keyed by a hidden marker comment so reruns don't file duplicates.
  * `missing-evals` issues close themselves once evals land.
  *
- * Usage: node --experimental-strip-types guides/eval-gap-watch.ts [--dry-run]
+ * Usage: node guides/eval-gap-watch.ts [--dry-run]
  */
 
 import child_process from 'node:child_process';

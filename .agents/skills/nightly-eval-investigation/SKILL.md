@@ -92,7 +92,7 @@ To perform a nightly evaluation investigation, follow these steps:
 ### Step 3: Run the Flagging Script
 Run the automated TypeScript analysis script:
 ```bash
-node --experimental-strip-types .agents/skills/nightly-eval-investigation/scripts/investigate.ts
+node .agents/skills/nightly-eval-investigation/scripts/investigate.ts
 ```
 
 This script will automatically cross-examine the results, flag unhealthy tasks, and output the report and context helper artifacts to the output directory:
@@ -155,7 +155,7 @@ Once the qualitative diagnostics and recommendations have been fully written and
 > **DO NOT EXECUTE THE PUBLISHER SCRIPT YOURSELF:** The agent must never run the publisher script (`publish_report.ts`) or create/publish any GitHub issues itself. It must only inform the user of the command so they can verify the report first and execute it manually.
 
 ```bash
-node --experimental-strip-types .agents/skills/nightly-eval-investigation/scripts/publish_report.ts
+node .agents/skills/nightly-eval-investigation/scripts/publish_report.ts
 ```
 
 ### Step 6: Present and Link

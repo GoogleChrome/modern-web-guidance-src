@@ -5,7 +5,7 @@
 ```sh
 # With FULL=1 we do functional tests:
 
-env FULL=1 TEST_REPORTER=spec pnpm --filter serving test
+env FULL=1 TEST_REPORTER=spec pnpm test
 ```
 
 ## Manual Testing & Reset Procedures

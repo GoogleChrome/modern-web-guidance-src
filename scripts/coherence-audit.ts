@@ -90,7 +90,7 @@ if (fs.existsSync(path.join(REPO_ROOT, 'CONTEXT.md'))) {
 // 8. Guides Integrity
 console.log('\n🛡️  Running Guides Integrity Tests...');
 try {
-  execSync('node --experimental-strip-types --test guides/guides-integrity.test.ts', { cwd: REPO_ROOT, stdio: 'inherit' });
+  execSync('node --test guides/guides-integrity.test.ts', { cwd: REPO_ROOT, stdio: 'inherit' });
   console.log('✅ Guides integrity tests passed.');
 } catch {
   console.error('❌ Guides integrity tests failed.');

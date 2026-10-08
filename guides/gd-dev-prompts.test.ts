@@ -164,15 +164,17 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('ROOT-CAUSE DIAGNOSIS RULES'));
 });
 
+import { rootDir } from '../lib/paths.ts';
+
 test('all reference files and type definitions referenced in grader generation exist on disk', () => {
   const requiredSandboxFiles = [
     path.resolve(__dirname, 'template.grader.ts'),
     path.resolve(__dirname, 'test-fixture.ts'),
     path.resolve(__dirname, 'parser-pattern-library.test.ts'),
     path.resolve(__dirname, 'playwright-pattern-library.grader.ts'),
-    path.resolve(__dirname, 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
-    path.resolve(__dirname, 'node_modules', 'linkedom', 'types', 'index.d.ts'),
-    path.resolve(__dirname, 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
+    path.resolve(rootDir, 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
+    path.resolve(rootDir, 'node_modules', 'linkedom', 'types', 'index.d.ts'),
+    path.resolve(rootDir, 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
   ];
 
   for (const filePath of requiredSandboxFiles) {

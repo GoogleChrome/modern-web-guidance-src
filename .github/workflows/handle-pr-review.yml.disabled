@@ -43,4 +43,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          node --experimental-strip-types guides/feedback-handler.ts ${{ github.event.pull_request.number }}
+          node guides/feedback-handler.ts ${{ github.event.pull_request.number }}

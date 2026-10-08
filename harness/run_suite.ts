@@ -52,7 +52,6 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
     await runCommand('node', [
-      '--experimental-strip-types',
       agentScript,
       JSON.stringify(promptContent),
       'guided', // Default to guided for ad-hoc tool execution
@@ -426,7 +425,6 @@ import fs from 'fs';
 import path from 'path';
 
 const args = [
-'--experimental-strip-types',
 ...${JSON.stringify([
   agentScript,
   promptContent,
@@ -487,7 +485,7 @@ let graderStatus = null;
 if (result.status === 0) {
   const gradeStart = Date.now();
   const gradeEnv = { ...process.env, PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') };
-  const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)}, env: gradeEnv });
+  const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)}, env: gradeEnv });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status ?? 1;
 } else if (!fs.existsSync(failureFile)) {

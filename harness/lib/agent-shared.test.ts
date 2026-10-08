@@ -103,7 +103,7 @@ describe('runCliAgentCommand', () => {
       main();
     `);
 
-    const wrapper = spawn(process.execPath, ['--experimental-strip-types', wrapperScript], {
+    const wrapper = spawn(process.execPath, [wrapperScript], {
       env: { ...process.env, [UNSAFE_NO_SANDBOX_ENV]: '1' },
       stdio: 'inherit'
     });

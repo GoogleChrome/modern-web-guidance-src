@@ -104,7 +104,7 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 7: Validate the use case**
 
-  Run `pnpm --filter guides test` to validate the use case structure and target integrity.
+  Run `pnpm test` to validate the use case structure and target integrity.
 
 * **Step 8: Get the use case approved**
 
