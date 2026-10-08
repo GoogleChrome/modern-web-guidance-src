@@ -179,7 +179,7 @@ Style the selected option card with `:has(:checked)` using more than color alone
 }
 ```
 
-For choices in a dropdown picker, use a native `<select>` with `appearance: base-select` and style `::picker(select)` and `<option>` elements rather than replacing the select with `<div>` cards; see {{ GUIDE_REF("custom-select-picker-layouts") }}. Use a `<button>` when selecting a card triggers an immediate action rather than setting form state.
+When choices belong in a dropdown picker whose options are laid out as cards, use a native `<select>` with `appearance: base-select` and style `::picker(select)` and `<option>` elements rather than replacing the select with `<div>` cards; see {{ GUIDE_REF("custom-select-picker-layouts") }} for more details and fallbacks. Use `<button>` elements when selecting a card triggers an immediate action rather than setting form state.
 
 ## Accessibility
 
