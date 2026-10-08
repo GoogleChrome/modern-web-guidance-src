@@ -72,22 +72,23 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
 ```
 
 ```css
+.carousel {
+  position: relative;
+}
+
 .carousel-track {
   anchor-name: --carousel-track;
   display: flex;
   gap: 1rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  list-style: none;
-  margin: 0;
-  padding: 0;
 }
 
 .carousel-slide {
   flex: 0 0 100%;
   scroll-snap-align: center;
 }
-@supports selector(::scroll-button(*)) {
+@supports selector(::scroll-button(*)) and (anchor-name: --carousel-track) {
   .carousel-track::scroll-button(inline-start) {
     content: "‹" / "Previous slide";
     inset-inline-start: calc(anchor(start) + 0.5rem);
@@ -99,7 +100,7 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
   }
 
   .carousel-track::scroll-button(*) {
-    position: fixed;
+    position: absolute;
     position-anchor: --carousel-track;
     inset-block-start: anchor(center);
     translate: 0 -50%;
@@ -115,11 +116,6 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
   .carousel-track::scroll-button(*):disabled {
     opacity: 0.3;
     cursor: default;
-  }
-}
-@supports selector(::scroll-button(*)) and not (anchor-name: --carousel-track) {
-  .carousel-track::scroll-button(*) {
-    display: none;
   }
 }
 @supports selector(::scroll-marker) {
