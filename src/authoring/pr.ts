@@ -27,7 +27,14 @@ export function resolveGuideResultsDir(targetDir: string, guideInfo?: { category
 }
 
 export type DevPrLabel = 'gd-dev-content' | 'gd-dev-eval';
-export const ALL_DEV_PR_LABELS: readonly DevPrLabel[] = ['gd-dev-content', 'gd-dev-eval'];
+export type DevPrRerunLabel = 'needs-eval-gen' | 'needs-eval-run';
+
+const MANAGED_PR_LABELS: readonly string[] = [
+  'gd-dev-content',
+  'gd-dev-eval',
+  'needs-eval-gen',
+  'needs-eval-run',
+];
 
 interface OpenDevPr {
   number: number;
@@ -107,11 +114,11 @@ export const devPrCli = {
   },
   createPr(title: string, bodyPath: string, labels: DevPrLabel[]): string {
     const labelFlags = labels.map(l => `--label "${l}"`).join(' ');
-    return execSync(`gh pr create --draft --title "${title}" --body-file "${bodyPath}" ${labelFlags}`.trim(), {
+    return execSync(`gh pr create --title "${title}" --body-file "${bodyPath}" ${labelFlags}`.trim(), {
       encoding: 'utf-8',
     }).trim();
   },
-  editPr(prNumber: number, bodyPath: string, addLabels: DevPrLabel[], removeLabels: DevPrLabel[]): void {
+  editPr(prNumber: number, bodyPath: string, addLabels: DevPrLabel[], removeLabels: string[]): void {
     execSync(`gh api repos/{owner}/{repo}/pulls/${prNumber} --method PATCH -F body=@"${bodyPath}"`, { stdio: 'ignore' });
     for (const label of removeLabels) {
       try {
@@ -126,16 +133,17 @@ export const devPrCli = {
 
 /**
  * Computes which gd-dev labels to add or remove based on new recommendations vs existing PR labels.
+ * Also removes any trigger rerun labels (`needs-eval-gen`, `needs-eval-run`).
  */
 export function computeLabelDiff(
   newLabels: DevPrLabel[],
   existingLabels: { name: string }[] = []
-): { addLabels: DevPrLabel[]; removeLabels: DevPrLabel[] } {
+): { addLabels: DevPrLabel[]; removeLabels: string[] } {
   const current = new Set((existingLabels || []).map(l => l.name));
-  const next = new Set(newLabels);
+  const next = new Set<string>(newLabels);
   return {
     addLabels: newLabels.filter(l => !current.has(l)),
-    removeLabels: ALL_DEV_PR_LABELS.filter(l => current.has(l) && !next.has(l)),
+    removeLabels: MANAGED_PR_LABELS.filter(l => current.has(l) && !next.has(l)),
   };
 }
 

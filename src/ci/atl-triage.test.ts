@@ -10,7 +10,6 @@ import {
   getKnownCategories,
   KNOWN_CATEGORIES,
   extractFeatureIdsFromContent,
-  EVAL_PR_REVIEWER,
   featureGroups,
   githubApi
 } from './atl-triage.ts';
@@ -674,7 +673,7 @@ describe('handlePR', () => {
     assert.deepStrictEqual(result.sort(), ['rviscomi', 'paulirish', 'philipwalton'].sort());
   });
 
-  it('returns empty array when only eval files are touched and no gd-dev labels are set', () => {
+  it('returns empty array when only eval files are touched and no gd-dev-content label is set', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/grader.ts',
       'guides/performance/deliver-optimized-decorative-images/tasks/task.md',
@@ -682,40 +681,8 @@ describe('handlePR', () => {
       'README.md'
     ];
 
-    const result = handlePR(99999, 'some-contributor', mockConfig, mockFiles);
-    assert.deepStrictEqual(result, []);
-  });
-
-  it('requests review from the eval reviewer only (not ATLs) when gd-dev-eval label is set on eval-only changes', () => {
-    const mockFiles = [
-      'guides/performance/deliver-optimized-decorative-images/grader.ts',
-      'guides/performance/deliver-optimized-decorative-images/tasks/task.md',
-      'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/grader.ts',
-      'README.md'
-    ];
-
-    const result = handlePR(99999, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-eval']);
-    assert.deepStrictEqual(result, [EVAL_PR_REVIEWER]);
-  });
-
-  it('requests review from ATL and labels content when demo.html is modified, even with gd-dev-eval label', () => {
-    addPrLabelsMock.mock.resetCalls();
-    const mockFiles = [
-      'guides/performance/deliver-optimized-decorative-images/grader.ts',
-      'guides/performance/deliver-optimized-decorative-images/demo.html'
-    ];
-
-    const filesMock = mock.method(githubApi, 'getPrFiles', () => mockFiles);
-    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
-    try {
-      const result = handlePR(99999, 'some-contributor', mockConfig, undefined, undefined, ['gd-dev-eval']);
-      assert.deepStrictEqual(result.sort(), ['override-pr-reviewer', 'rviscomi', 'paulirish'].sort());
-      assert.strictEqual(addPrLabelsMock.mock.callCount(), 1);
-      assert.deepStrictEqual(addPrLabelsMock.mock.calls[0].arguments, [99999, ['content']]);
-    } finally {
-      filesMock.mock.restore();
-      reviewStateMock.mock.restore();
-    }
+    assert.deepStrictEqual(handlePR(99999, 'some-contributor', mockConfig, mockFiles), []);
+    assert.deepStrictEqual(handlePR(99999, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-eval']), []);
   });
 
   it('assigns corresponding ATL when gd-dev-content label is present even if only target eval files were touched', () => {

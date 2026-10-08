@@ -265,8 +265,9 @@ Diagnose each target according to its assigned flag:
      - **Miscellaneous Issues**: Any other issues discovered.
    - **Recommendation Rules**:
      - **Source-of-Truth Fixes**: If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` needs changes, recommend modifications **ONLY** to those files and **DO NOT** recommend edits to any files in \`targets/\`. Always append:
-       \`*(Note: After modifying source files, delete the targets/ directory and re-run gd dev to regenerate all target artifacts)*\`
-     - **Grader Fixes**: When grader fixes are necessary, only recommend direct edits to \`targets/<target>/grader.ts\` if \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` require **NO** changes.
+       \`*(Note: After modifying source files, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*\`
+     - **Grader Fixes**: When grader fixes are necessary, only recommend direct edits to \`targets/<target>/grader.ts\` if \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` require **NO** changes. Always append:
+       \`*(Note: After modifying target files, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
      - **Miscellaneous Fixes**: Any other recommended fixes (do not have to be file-specific).
 
 5. **\`HEALTHY\`**:

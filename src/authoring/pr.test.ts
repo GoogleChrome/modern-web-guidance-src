@@ -29,7 +29,7 @@ The guide lacks Safari fallback examples.
 
 #### Actionable Recommendations:
 - \`guide.md\`: Add fallback syntax example for Safari.
-*(Note: After modifying source files, delete the targets/ directory and run gd dev to regenerate all target artifacts)*
+*(Note: After modifying source files, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*
 `;
 
     const labels = determinePrLabels(report);
@@ -140,7 +140,7 @@ Target is healthy.
 });
 
 describe('computeLabelDiff', () => {
-  it('computes labels to add and remove correctly', () => {
+  it('computes labels to add and remove correctly, including rerun trigger labels', () => {
     // 1. Initial creation (no labels on PR yet)
     const diff1 = computeLabelDiff(['gd-dev-content'], []);
     assert.deepEqual(diff1.addLabels, ['gd-dev-content']);
@@ -151,10 +151,16 @@ describe('computeLabelDiff', () => {
     assert.deepEqual(diff2.addLabels, ['gd-dev-eval']);
     assert.deepEqual(diff2.removeLabels, ['gd-dev-content']);
 
-    // 3. All issues resolved (all gd-dev labels removed)
-    const diff3 = computeLabelDiff([], [{ name: 'gd-dev-content' }, { name: 'gd-dev-eval' }, { name: 'enhancement' }]);
+    // 3. All issues resolved + rerun labels cleared (all gd-dev and rerun labels removed)
+    const diff3 = computeLabelDiff([], [
+      { name: 'gd-dev-content' },
+      { name: 'gd-dev-eval' },
+      { name: 'needs-eval-gen' },
+      { name: 'needs-eval-run' },
+      { name: 'enhancement' },
+    ]);
     assert.deepEqual(diff3.addLabels, []);
-    assert.deepEqual(diff3.removeLabels, ['gd-dev-content', 'gd-dev-eval']);
+    assert.deepEqual(diff3.removeLabels, ['gd-dev-content', 'gd-dev-eval', 'needs-eval-gen', 'needs-eval-run']);
   });
 });
 
@@ -173,7 +179,7 @@ describe('runDevPr', () => {
     Object.assign(devPrCli, originalDevPrCli);
   });
 
-  it('creates a new draft PR when no PR exists for branch', async () => {
+  it('creates a new PR when no PR exists for branch', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const category = 'cat';
     const slug = path.basename(tempDir);
@@ -208,7 +214,7 @@ describe('runDevPr', () => {
     }
   });
 
-  it('updates an existing PR description and labels when a PR already exists', async () => {
+  it('updates an existing PR description and removes rerun labels when a PR already exists', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const category = 'cat';
     const slug = path.basename(tempDir);
@@ -222,12 +228,12 @@ describe('runDevPr', () => {
     let prUpdated = false;
     let updatedPrNumber = 0;
     let addedLabels: DevPrLabel[] = [];
-    let removedLabels: DevPrLabel[] = [];
+    let removedLabels: string[] = [];
 
     devPrCli.viewOpenPr = () => ({
       number: 42,
       url: 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42',
-      labels: [{ name: 'gd-dev-content' }, { name: 'category:css' }],
+      labels: [{ name: 'gd-dev-content' }, { name: 'needs-eval-gen' }, { name: 'category:css' }],
     });
 
     devPrCli.editPr = (prNumber, _bodyPath, addLabels, removeLabels) => {
@@ -243,7 +249,7 @@ describe('runDevPr', () => {
       assert.equal(prUpdated, true);
       assert.equal(updatedPrNumber, 42);
       assert.deepEqual(addedLabels, ['gd-dev-eval']);
-      assert.deepEqual(removedLabels, ['gd-dev-content']);
+      assert.deepEqual(removedLabels, ['gd-dev-content', 'needs-eval-gen']);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
       fs.rmSync(resultsDir, { recursive: true, force: true });

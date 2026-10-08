@@ -157,11 +157,15 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
 /**
  * Runs the agent-driven evaluation report generation phase across all targets for a guide.
  */
-export async function runDevReport(targetDir: string, guideInfo?: { category?: string; slug?: string }): Promise<void> {
+export async function runDevReport(
+  targetDir: string,
+  guideInfo?: { category?: string; slug?: string },
+  targets: readonly string[] = SUPPORTED_BASE_APPS
+): Promise<void> {
   console.log(cCyan(`\n--- Running Evaluation Report ---`));
 
   const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
-  const summaries = SUPPORTED_BASE_APPS
+  const summaries = targets
     .map(baseApp => computeTargetSummary(targetDir, baseApp, guideInfo))
     .filter((s): s is TargetEvalSummary => s !== null);
 

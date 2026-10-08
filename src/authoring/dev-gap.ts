@@ -5,9 +5,10 @@
  * `expectations.md` but are missing evals (`grader.ts` or `task.md`, in legacy
  * format or `targets/`). For each guide without an open `gd pr` PR or a
  * leftover `gd-dev/` branch, runs `gd dev`, opens a PR with `gd pr`, then
- * returns to `main` and deletes the local branch.
+ * returns to `main` and deletes the local branch. Also reruns open `gd pr` PRs
+ * labeled `needs-eval-gen` or `needs-eval-run`.
  *
- * Usage: gd dev-gap [--dry-run] [--limit <n>]
+ * Usage: gd dev-gap [--dry-run] [--limit <n>] [--targets <apps>]
  */
 
 import child_process from 'node:child_process';
@@ -20,20 +21,26 @@ import {
   getGuideStatus,
   ProjectStatus,
   REPORT_FILE,
+  TARGETS_DIR,
   type GuideInventory,
 } from '../core/guide-validation.ts';
 import { rootDir, getGuideResultsDir } from '../core/paths.ts';
 import type { SuiteConfig } from '../harness/config.ts';
-import { devPrBranch, devPrTitle, runDevPr } from './pr.ts';
+import { devPrBranch, devPrTitle, runDevPr, type DevPrRerunLabel } from './pr.ts';
 
 export interface OpenPr {
   number: number;
   title: string;
+  headRefName?: string;
+  labels?: { name: string }[];
 }
 
 interface GapToFix {
   guidePath: string;
   inv: GuideInventory;
+  prNumber?: number;
+  branch?: string;
+  rerunMode?: DevPrRerunLabel;
 }
 
 interface SkippedGap {
@@ -46,9 +53,18 @@ export interface FixEvalGapsOptions {
   limit?: number;
   verbose?: boolean;
   suiteConfig?: SuiteConfig;
+  targets?: readonly string[];
 }
 
-/** Decides which guides missing evals to work on, and why any are skipped. */
+function getRerunMode(pr: OpenPr): DevPrRerunLabel | undefined {
+  const names = new Set((pr.labels ?? []).map(l => l.name));
+  // `needs-eval-gen` supersedes `needs-eval-run` since it also runs evals.
+  if (names.has('needs-eval-gen')) return 'needs-eval-gen';
+  if (names.has('needs-eval-run')) return 'needs-eval-run';
+  return undefined;
+}
+
+/** Decides which guides missing evals (or labeled PRs) to work on, and why any are skipped. */
 export function planFixes(
   guides: GuideInventory[],
   openPrs: OpenPr[],
@@ -56,15 +72,28 @@ export function planFixes(
 ): { toFix: GapToFix[]; skipped: SkippedGap[] } {
   const toFix: GapToFix[] = [];
   const skipped: SkippedGap[] = [];
+  const handledPrs = new Set<number>();
 
   for (const inv of guides) {
     if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) continue;
     const guidePath = path.relative(rootDir, inv.dir);
 
     // `gd pr` titles its PR the same way whichever branch it runs from.
-    const pr = openPrs.find(p => p.title === devPrTitle(inv.name));
+    const pr = openPrs.find(p => p.title === devPrTitle(inv.name) || p.headRefName === devPrBranch(inv.name));
     if (pr) {
-      skipped.push({ guidePath, reason: `already has PR #${pr.number}` });
+      handledPrs.add(pr.number);
+      const rerunMode = getRerunMode(pr);
+      if (rerunMode) {
+        toFix.push({
+          guidePath,
+          inv,
+          prNumber: pr.number,
+          branch: pr.headRefName ?? devPrBranch(inv.name),
+          rerunMode,
+        });
+      } else {
+        skipped.push({ guidePath, reason: `already has PR #${pr.number}` });
+      }
       continue;
     }
 
@@ -77,6 +106,23 @@ export function planFixes(
     }
 
     toFix.push({ guidePath, inv });
+  }
+
+  // Also check open PRs that were not matched above (e.g. guides that already
+  // have evals on main) for `needs-eval-gen` / `needs-eval-run` rerun labels.
+  for (const pr of openPrs) {
+    if (handledPrs.has(pr.number)) continue;
+    const rerunMode = getRerunMode(pr);
+    if (!rerunMode) continue;
+    const inv = guides.find(g => pr.title === devPrTitle(g.name) || pr.headRefName === devPrBranch(g.name));
+    if (!inv) continue;
+    toFix.push({
+      guidePath: path.relative(rootDir, inv.dir),
+      inv,
+      prNumber: pr.number,
+      branch: pr.headRefName ?? devPrBranch(inv.name),
+      rerunMode,
+    });
   }
 
   return { toFix, skipped };
@@ -93,8 +139,13 @@ export const evalGapFixCli = {
   treeStatus: () => git(['status', '--porcelain']),
   pullMain: () => { git(['pull', '--ff-only']); },
   createBranch: (branch: string) => { git(['checkout', '-b', branch]); },
+  checkoutPrBranch: (branch: string) => {
+    git(['fetch', 'origin', branch]);
+    git(['checkout', '-B', branch, `origin/${branch}`]);
+  },
   /** Switches to `main`, dropping tracked edits anywhere and untracked (non-ignored) files in `dir`. */
   resetToMain: (dir: string) => {
+    git(['reset', '--hard']);
     git(['checkout', '-f', 'main']);
     git(['clean', '-fd', '--', dir]);
   },
@@ -108,13 +159,18 @@ export const evalGapFixCli = {
   },
   listOpenPrs: (): OpenPr[] => JSON.parse(child_process.execFileSync(
     'gh',
-    ['pr', 'list', '--state', 'open', '--limit', '500', '--json', 'number,title'],
+    ['pr', 'list', '--state', 'open', '--limit', '500', '--json', 'number,title,headRefName,labels'],
     { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
   )),
   scanGuides: (): GuideInventory[] => scanAllGuides(),
   runDevGuide: async (inv: GuideInventory, options: FixEvalGapsOptions): Promise<boolean> => {
     const { devGuide } = await import('./dev.ts');
-    return devGuide(inv.dir, { test: true, verbose: options.verbose, suiteConfig: options.suiteConfig }, inv);
+    return devGuide(inv.dir, {
+      test: true,
+      verbose: options.verbose,
+      suiteConfig: options.suiteConfig,
+      targets: options.targets ?? ['daily-grind'],
+    });
   },
   runDevPr,
 };
@@ -132,7 +188,8 @@ interface Outcome {
  */
 async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outcome> {
   const { inv } = gap;
-  const branch = devPrBranch(inv.name);
+  const branch = gap.branch ?? devPrBranch(inv.name);
+  const targets = options.targets ?? ['daily-grind'];
   let createdBranch = false;
 
   let outcome: Outcome;
@@ -141,13 +198,25 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
     const resultsDir = getGuideResultsDir(inv);
     fs.rmSync(resultsDir, { recursive: true, force: true });
 
-    const devOk = await evalGapFixCli.runDevGuide(inv, options);
+    if (gap.rerunMode) {
+      evalGapFixCli.checkoutPrBranch(branch);
+      createdBranch = true;
+      if (gap.rerunMode === 'needs-eval-gen') {
+        for (const t of targets) {
+          fs.rmSync(path.join(inv.dir, TARGETS_DIR, t), { recursive: true, force: true });
+        }
+      }
+    }
+
+    const devOk = await evalGapFixCli.runDevGuide(inv, { ...options, targets });
     if (!devOk || !fs.existsSync(path.join(resultsDir, REPORT_FILE))) {
       outcome = { gap, status: 'dev-failed', detail: devOk ? `gd dev wrote no ${REPORT_FILE}` : 'gd dev failed' };
     } else {
-      // Branch off main here so `gd pr` commits to a fresh branch this run owns.
-      evalGapFixCli.createBranch(branch);
-      createdBranch = true;
+      if (!createdBranch) {
+        // Branch off main here so `gd pr` commits to a fresh branch this run owns.
+        evalGapFixCli.createBranch(branch);
+        createdBranch = true;
+      }
       const prUrl = await evalGapFixCli.runDevPr(inv.dir);
       outcome = prUrl
         ? { gap, status: 'pr-opened', detail: prUrl }
@@ -189,7 +258,10 @@ export async function fixEvalGaps(options: FixEvalGapsOptions = {}): Promise<boo
 
   console.log(cBold(`\nGuides missing evals: ${toFix.length} to fix, ${skipped.length} skipped\n`));
   for (const s of skipped) console.log(cDim(`  skip ${s.guidePath} — ${s.reason}`));
-  for (const g of queue) console.log(`  ${cCyan('fix')}  ${g.guidePath}`);
+  for (const g of queue) {
+    const suffix = g.rerunMode ? ` (PR #${g.prNumber}: ${g.rerunMode})` : '';
+    console.log(`  ${cCyan('fix')}  ${g.guidePath}${cDim(suffix)}`);
+  }
   if (queue.length < toFix.length) console.log(cDim(`  (limited to ${queue.length} of ${toFix.length})`));
   console.log('');
 
@@ -200,7 +272,8 @@ export async function fixEvalGaps(options: FixEvalGapsOptions = {}): Promise<boo
 
   const outcomes: Outcome[] = [];
   for (const [i, gap] of queue.entries()) {
-    console.log(cBold(`\n[${i + 1}/${queue.length}] ${gap.guidePath}`));
+    const suffix = gap.rerunMode ? ` (PR #${gap.prNumber}: ${gap.rerunMode})` : '';
+    console.log(cBold(`\n[${i + 1}/${queue.length}] ${gap.guidePath}${suffix}`));
     outcomes.push(await fixOne(gap, options));
 
     // Stop if cleanup left something behind; it would leak into the next guide's PR.
