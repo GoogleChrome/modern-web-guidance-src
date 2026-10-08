@@ -666,6 +666,12 @@ window.__featuresMapping = {
     "resize-observer",
     "web-animations"
   ],
+  "swipe-to-reveal": [
+    "overscroll-behavior",
+    "scroll-initial-target",
+    "scroll-snap",
+    "scrollbar-width"
+  ],
   "accordion": [
     "hidden-until-found",
     "interpolate-size",
