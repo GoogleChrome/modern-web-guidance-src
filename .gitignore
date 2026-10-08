@@ -1,25 +1,11 @@
 # Dependencies
 node_modules/
 
-# Build artifacts
-serving/vector_store/
-serving/build/
-serving/lib/use-cases.gen.ts
-eval-view/features_mapping.gen.js
-eval-view/grouped-tasks.gen.json
-eval-view/suites.gen.json
+# Build & runtime outputs
 dist/
-
-# Test artifacts
+out/
+results/
 **/test-results/
-harness/results/
-harness/results.bak/
-tasks/test-results/
-grade-report/
-test-app-results/
-guides/**/test-results/
-guides/**/test-app-results/
-guides/**/.last-run.json
 
 # Environment and Logs
 .env
@@ -30,10 +16,7 @@ dev.log
 # OS Junk
 .DS_Store
 
-# Generated Skills (temporary. This can't be ignored when publishing the repo/skill)
-skills/modern-web/
-
-# team context repo
+# Team context repo
 project-gleam/
 
 # Local configs
@@ -48,25 +31,36 @@ project-gleam/
 .antigravitycli/
 GEMINI.md
 
-# Research drafts
-
-
-# Generated vector and benchmark evaluation files
-serving/lib/use-cases.vectors.gen.json
-serving/lib/use-cases.vectors.gen.json.gz
-serving/benchmarks/data/eval-queries.gen.json
-# ML Models
-serving/lib/tfjs_model_minilm/tfjs_model*/
-serving/lib/tfjs_model_minilm/saved_model*/
+# ML Models (local conversion scratch)
 src/rag/tfjs-model-minilm/tfjs_model*/
 src/rag/tfjs-model-minilm/saved_model*/
 
-# Caches
+# =============================================================================
+# Legacy pre-restructure paths (keep until ~Nov 2026 so existing local files in
+# contributors' checkouts stay ignored until they run `pnpm install` or move
+# their local `harness/results/` to `results/suites/`).
+# Note: `src/core/postinstall.ts` automatically deletes the regenerable build
+# artifacts below on `pnpm install`.
+# =============================================================================
+serving/vector_store/
+serving/build/
+serving/lib/use-cases.gen.ts
+serving/lib/use-cases.vectors.gen.json
+serving/lib/use-cases.vectors.gen.json.gz
+serving/benchmarks/data/eval-queries.gen.json
+serving/lib/tfjs_model_minilm/tfjs_model*/
+serving/lib/tfjs_model_minilm/saved_model*/
+eval-view/features_mapping.gen.js
+eval-view/grouped-tasks.gen.json
+eval-view/suites.gen.json
+harness/results/
+harness/results.bak/
+tasks/test-results/
+grade-report/
+test-app-results/
+guides/**/test-results/
+guides/**/test-app-results/
+guides/**/.last-run.json
+skills/modern-web/
 **/.cache/
-
-# Agent skills artifacts
 .agents/skills/nightly-eval-investigation/artifacts/
-
-# Output and Results
-out/
-results/
