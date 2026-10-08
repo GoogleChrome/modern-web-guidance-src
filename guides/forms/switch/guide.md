@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Build Accessible Switch Controls
 
-Use the HTML `switch` attribute on `<input type="checkbox" role="switch" switch>` with an associated `<label>` to build a binary on/off toggle that preserves native form submission, keyboard navigation, and screen reader semantics (see {{ GUIDE_REF("checkbox") }} and {{ GUIDE_REF("forms") }}).
+Use the HTML `switch` attribute on `<input type="checkbox" switch>` with an associated `<label>` to build a binary on/off toggle that preserves native form submission, keyboard navigation, and screen reader semantics (see {{ GUIDE_REF("checkbox") }} and {{ GUIDE_REF("forms") }}).
 
 ## Markup
 
