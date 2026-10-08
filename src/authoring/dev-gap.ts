@@ -139,9 +139,11 @@ export const evalGapFixCli = {
   treeStatus: () => git(['status', '--porcelain']),
   pullMain: () => { git(['pull', '--ff-only']); },
   createBranch: (branch: string) => { git(['checkout', '-b', branch]); },
+  /** Fetches latest `main` and the remote PR branch, checks out the PR branch, and merges `origin/main`. */
   checkoutPrBranch: (branch: string) => {
-    git(['fetch', 'origin', branch]);
+    git(['fetch', 'origin', 'main', branch]);
     git(['checkout', '-B', branch, `origin/${branch}`]);
+    git(['merge', 'origin/main', '--no-edit']);
   },
   /** Switches to `main`, dropping tracked edits anywhere and untracked (non-ignored) files in `dir`. */
   resetToMain: (dir: string) => {
@@ -177,7 +179,7 @@ export const evalGapFixCli = {
 
 interface Outcome {
   gap: GapToFix;
-  status: 'pr-opened' | 'dev-failed' | 'pr-failed' | 'error';
+  status: 'pr-opened' | 'pr-updated' | 'dev-failed' | 'pr-failed' | 'error';
   detail: string;
 }
 
@@ -194,13 +196,9 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
 
   let outcome: Outcome;
   try {
-    // Clear guide results so the report can only come from this run.
-    const resultsDir = getGuideResultsDir(inv);
-    fs.rmSync(resultsDir, { recursive: true, force: true });
-
     if (gap.rerunMode) {
-      evalGapFixCli.checkoutPrBranch(branch);
       createdBranch = true;
+      evalGapFixCli.checkoutPrBranch(branch);
       if (gap.rerunMode === 'needs-eval-gen') {
         for (const t of targets) {
           fs.rmSync(path.join(inv.dir, TARGETS_DIR, t), { recursive: true, force: true });
@@ -208,18 +206,22 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
       }
     }
 
+    // Clear guide results so the report can only come from this run.
+    const resultsDir = getGuideResultsDir(inv);
+    fs.rmSync(resultsDir, { recursive: true, force: true });
+
     const devOk = await evalGapFixCli.runDevGuide(inv, { ...options, targets });
     if (!devOk || !fs.existsSync(path.join(resultsDir, REPORT_FILE))) {
       outcome = { gap, status: 'dev-failed', detail: devOk ? `gd dev wrote no ${REPORT_FILE}` : 'gd dev failed' };
     } else {
-      if (!createdBranch) {
+      if (!gap.rerunMode) {
         // Branch off main here so `gd pr` commits to a fresh branch this run owns.
         evalGapFixCli.createBranch(branch);
         createdBranch = true;
       }
       const prUrl = await evalGapFixCli.runDevPr(inv.dir);
       outcome = prUrl
-        ? { gap, status: 'pr-opened', detail: prUrl }
+        ? { gap, status: gap.rerunMode ? 'pr-updated' : 'pr-opened', detail: prUrl }
         : { gap, status: 'pr-failed', detail: 'gd pr failed (branch may be on origin; delete it to retry)' };
     }
   } catch (err) {
@@ -256,7 +258,7 @@ export async function fixEvalGaps(options: FixEvalGapsOptions = {}): Promise<boo
   );
   const queue = toFix.slice(0, options.limit);
 
-  console.log(cBold(`\nGuides missing evals: ${toFix.length} to fix, ${skipped.length} skipped\n`));
+  console.log(cBold(`\nGuides missing evals & PRs: ${toFix.length} to fix, ${skipped.length} skipped\n`));
   for (const s of skipped) console.log(cDim(`  skip ${s.guidePath} — ${s.reason}`));
   for (const g of queue) {
     const suffix = g.rerunMode ? ` (PR #${g.prNumber}: ${g.rerunMode})` : '';
@@ -287,11 +289,12 @@ export async function fixEvalGaps(options: FixEvalGapsOptions = {}): Promise<boo
 
   console.log(cBold('\nSummary'));
   for (const o of outcomes) {
-    const color = o.status === 'pr-opened' ? cGreen : cRed;
+    const isSuccess = o.status === 'pr-opened' || o.status === 'pr-updated';
+    const color = isSuccess ? cGreen : cRed;
     console.log(`  ${color(o.status.padEnd(10))} ${o.gap.guidePath} ${cDim(`— ${o.detail}`)}`);
   }
   const notRun = queue.length - outcomes.length;
   if (notRun > 0) console.log(cDim(`  ${notRun} guide(s) not attempted`));
 
-  return notRun === 0 && outcomes.every(o => o.status === 'pr-opened');
+  return notRun === 0 && outcomes.every(o => o.status === 'pr-opened' || o.status === 'pr-updated');
 }
