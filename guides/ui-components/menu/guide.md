@@ -38,7 +38,7 @@ Nest the focusgroup inside the popover. Putting `focusgroup` on the `[popover]` 
 </div>
 ```
 
-Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative submenu indicators `aria-hidden="true"`. Put `role="menubar"` on the element that contains the top-level triggers, not on a menu popover.
+Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative submenu indicators in CSS, or add `aria-hidden="true"`. Put `role="menubar"` on the element that contains the top-level triggers, not on a menu popover.
 
 ### Position the menu with CSS Anchor Positioning
 
