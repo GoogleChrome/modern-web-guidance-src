@@ -8,8 +8,8 @@ import {
   spawnAsync,
   setupAgentCredentials,
   getAgentCommandAndArgs,
-} from '../../../harness/lib/agent-shared.ts';
-import { Agents } from '../../../harness/config.ts';
+} from './agent-shared.ts';
+import { Agents } from '../config.ts';
 import { getDefaultSolutionAgent } from '../../core/guide-validation.ts';
 
 export async function copyBaseAppToWorkspace(baseApp: string, destDir: string): Promise<void> {

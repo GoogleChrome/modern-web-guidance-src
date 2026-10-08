@@ -7,7 +7,7 @@
  */
 
 import { type SolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, REPORT_FILE } from '../core/guide-validation.ts';
-import { Agents } from '../../harness/config.ts';
+import { Agents } from '../harness/config.ts';
 import type { TargetEvalSummary } from './dev-report.ts';
 
 /** Shared discipline-guide preamble for the solution, zero-passrate, and grader prompts. */

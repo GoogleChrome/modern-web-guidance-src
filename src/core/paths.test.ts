@@ -5,13 +5,11 @@ import {
   rootDir,
   guidesDir,
   featuresDir,
-  harnessDir,
   baseAppsDir,
   outDir,
   resultsDir,
   suitesDir,
   dashboardDir,
-  evalViewDir,
   getGuideResultsDir,
 } from './paths.ts';
 
@@ -19,13 +17,11 @@ describe('paths.ts exports', () => {
   test('exports correct absolute paths relative to rootDir', () => {
     assert.equal(guidesDir, path.join(rootDir, 'guides'));
     assert.equal(featuresDir, path.join(rootDir, 'features'));
-    assert.equal(harnessDir, path.join(rootDir, 'harness'));
-    assert.equal(baseAppsDir, path.join(rootDir, 'harness/base_apps'));
+    assert.equal(baseAppsDir, path.join(rootDir, 'src/harness/base-apps'));
     assert.equal(outDir, path.join(rootDir, 'out'));
     assert.equal(resultsDir, path.join(rootDir, 'results'));
     assert.equal(suitesDir, path.join(rootDir, 'results/suites'));
-    assert.equal(dashboardDir, path.join(rootDir, 'eval-view'));
-    assert.equal(evalViewDir, dashboardDir);
+    assert.equal(dashboardDir, path.join(rootDir, 'src/dashboard'));
   });
 
   test('getGuideResultsDir constructs path correctly with slug or name', () => {

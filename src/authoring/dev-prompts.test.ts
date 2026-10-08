@@ -10,7 +10,7 @@ import {
   buildTargetTaskPrompt,
   buildDevReportPrompt,
 } from './dev-prompts.ts';
-import { Agents } from '../../harness/config.ts';
+import { Agents } from '../harness/config.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

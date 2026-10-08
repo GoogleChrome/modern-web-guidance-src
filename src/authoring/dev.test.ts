@@ -81,7 +81,7 @@ test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_
   const path = await import('node:path');
   const os = await import('node:os');
   const { setupGuideDevWorkDir } = await import('../harness/lib/utils.ts');
-  const { cleanupIsolatedHome } = await import('../../harness/lib/agent-shared.ts');
+  const { cleanupIsolatedHome } = await import('../harness/lib/agent-shared.ts');
 
   const originalHome = process.env.HOME;
   const originalGdUseJetski = process.env.GD_DEV_USE_JETSKI;
