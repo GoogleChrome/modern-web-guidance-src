@@ -76,15 +76,15 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       path.join(workDir, 'playwright-pattern-library.grader.ts')
     );
     fs.copyFileSync(
-      path.resolve(repoRoot, 'guides', 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
+      path.resolve(repoRoot, 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
       path.join(workDir, 'ts-morph.d.ts')
     );
     fs.copyFileSync(
-      path.resolve(repoRoot, 'guides', 'node_modules', 'linkedom', 'types', 'index.d.ts'),
+      path.resolve(repoRoot, 'node_modules', 'linkedom', 'types', 'index.d.ts'),
       path.join(workDir, 'linkedom.d.ts')
     );
     fs.copyFileSync(
-      path.resolve(repoRoot, 'guides', 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
+      path.resolve(repoRoot, 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
       path.join(workDir, 'cssomnom.d.ts')
     );
 

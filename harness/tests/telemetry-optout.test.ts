@@ -41,7 +41,6 @@ test('importing harness/config.ts disables telemetry', () => {
   const result = spawnSync(
     process.execPath,
     [
-      '--experimental-strip-types',
       '--input-type=module',
       '-e',
       `await import(${JSON.stringify(configUrl)});` +

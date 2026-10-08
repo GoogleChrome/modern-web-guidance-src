@@ -31,7 +31,7 @@ const { values, positionals } = parseArgs({
 });
 
 if (values.help) {
-  console.log('Usage: node --experimental-strip-types scripts/scan-guide-lengths.ts [--guide <path|name>] [--oversized]');
+  console.log('Usage: node scripts/scan-guide-lengths.ts [--guide <path|name>] [--oversized]');
   console.log('\nScans and displays length metrics (line count, total characters, body characters) for markdown guides.');
   console.log('By default (without arguments), scans all guides across the repository and sorts by body character count descending.');
   console.log('\nOptions:');

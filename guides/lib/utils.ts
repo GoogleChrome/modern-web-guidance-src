@@ -95,11 +95,6 @@ export function setupGuideDevWorkDir(suffix: string, relativeWorkSubdir?: string
   if (fs.existsSync(hostNodeModules)) {
     fs.symlinkSync(hostNodeModules, path.join(tempHome, 'node_modules'));
   }
-  const hostGuidesNodeModules = path.join(rootDir, 'guides', 'node_modules');
-  if (fs.existsSync(hostGuidesNodeModules)) {
-    fs.mkdirSync(path.join(tempHome, 'guides'), { recursive: true });
-    fs.symlinkSync(hostGuidesNodeModules, path.join(tempHome, 'guides', 'node_modules'));
-  }
 
   // Write a dummy package.json at tempHome with type: module so tsc compiles test-fixture.ts as ESM
   fs.writeFileSync(

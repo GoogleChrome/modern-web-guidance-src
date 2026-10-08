@@ -16,7 +16,7 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
             assert.fail(`distDir not found at ${distDir}`);
         }
         
-        const geminiBin = path.join(rootDir, 'harness/node_modules/.bin/gemini');
+        const geminiBin = path.join(rootDir, 'node_modules/.bin/gemini');
         if (!fs.existsSync(geminiBin)) {
             assert.fail(`Gemini binary not found at ${geminiBin}`);
         }

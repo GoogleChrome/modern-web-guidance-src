@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './',
+  testDir: import.meta.dirname,
   testMatch: '*.spec.js',
   fullyParallel: false, // Run tests sequentially to avoid port conflicts if we were doing it manually
   forbidOnly: !!process.env.CI,

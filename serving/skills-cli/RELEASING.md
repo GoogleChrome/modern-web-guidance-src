@@ -15,10 +15,10 @@ To publish manually from your terminal:
 
 ```bash
 # 1. Preview changes and release notes (dry run)
-pnpm --filter serving run publish-skills --dry-run
+pnpm run publish-skills --dry-run
 
 # 2. Publish release
-pnpm --filter serving run publish-skills
+pnpm run publish-skills
 ```
 
 **What the publishing pipeline does under the hood:**
@@ -36,10 +36,10 @@ You can generate and preview release notes for any tag or diff using the `genera
 
 ```bash
 # Preview notes comparing against the latest tag using Gemini
-node --env-file=.env --experimental-strip-types serving/skills-cli/generate-release-notes.ts v0.0.185
+node --env-file=.env serving/skills-cli/generate-release-notes.ts v0.0.185
 
 # Test deterministic fallback (without API key)
-node --experimental-strip-types serving/skills-cli/generate-release-notes.ts v0.0.185
+node serving/skills-cli/generate-release-notes.ts v0.0.185
 ```
 
 ### Release Notes Structure

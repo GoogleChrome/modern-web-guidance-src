@@ -302,7 +302,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
 
   // Build workspace dependencies
   console.log(`\nBuilding skills-cli dist...`);
-  const buildCode = await spawnAsync('pnpm', ['--filter', 'serving', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
+  const buildCode = await spawnAsync('pnpm', ['run', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
 
   if (buildCode !== 0) {
     console.error(cRed(`Failed to build workspace dependencies (exit code ${buildCode})`));
@@ -746,7 +746,7 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === import.meta.filen
   const guidedOnly = args.includes('--guided-only');
 
   if (!dir) {
-    console.error('Usage: node --experimental-strip-types guides/dev-guide.ts <path/to/guide> [--no-test] [--guided-only]');
+    console.error('Usage: node guides/dev-guide.ts <path/to/guide> [--no-test] [--guided-only]');
     process.exit(1);
   }
 

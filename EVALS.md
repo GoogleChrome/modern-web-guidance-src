@@ -50,7 +50,7 @@ The Claude Code agent (`claude_code`) is implemented with [Claude Code on Vertex
 To use the Codex CLI agent, you will need to request an exception, which appears when attempting to use it:
 
 ```bash
-harness/node_modules/.bin/codex
+node_modules/.bin/codex
 ```
 
 1. This request should file a bug similar to [`b/492300931`](https://b.corp.google.com/issues/492300931).

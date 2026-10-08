@@ -284,7 +284,7 @@ function setupGraderForTask(
       console.warn("Failed to parse existing package.json, overwriting...");
     }
   }
-  pkgJsonObj.scripts["run-grader"] = `node --experimental-strip-types grade.mjs --id ${relativeId}`;
+  pkgJsonObj.scripts["run-grader"] = `node grade.mjs --id ${relativeId}`;
   fs.writeFileSync(ctx.targetPkgJson, JSON.stringify(pkgJsonObj, null, 2));
 
   return relativeId;

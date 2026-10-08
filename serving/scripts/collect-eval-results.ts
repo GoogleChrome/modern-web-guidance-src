@@ -161,7 +161,7 @@ function collectResults() {
 
   console.log(`\nVerifying collected summary against evaluation regression guardrails...`);
   try {
-    execSync('node --experimental-strip-types --test skills-cli/eval-regression.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
+    execSync('node --test skills-cli/eval-regression.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
     console.log(`✅ Regression guardrail checks passed successfully.`);
   } catch (err) {
     console.error(`\n❌ EVALUATION REGRESSION DETECTED! Please review the failures above before committing.`);

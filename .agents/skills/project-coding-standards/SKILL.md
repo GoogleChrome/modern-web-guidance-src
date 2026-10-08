@@ -90,12 +90,12 @@ All changes must pass linting, typechecking, and tests before PR submission:
   ```
 - **Browser E2E gate (eval-view / dashboard / UI changes):** Playwright browser tests are not included in `pnpm run preflight` and must be executed when touching frontend visualizers, dashboard code, or server endpoints in `eval-view/`:
   ```bash
-  pnpm --filter eval-view run test:e2e
+  pnpm run test:e2e
   ```
   *(Run `pnpm run setup:playwright` first if browser binaries are not installed).*
 
 ### Domain-Specific Validation
-- **Serving & Skills:** When modifying skills packaging, verify with `pnpm --filter serving run publish-skills --dry-run`.
+- **Serving & Skills:** When modifying skills packaging, verify with `pnpm run publish-skills --dry-run`.
 - **Guides & Graders:** When authoring or updating evaluation capsules, verify grader calibration via `gd dev <guide> --test-grader`.
 - **Clean Git Tree:** The build must produce zero uncommitted side effects or untracked artifacts (`git status` must remain clean).
 
@@ -115,4 +115,4 @@ All changes must pass linting, typechecking, and tests before PR submission:
 6. [ ] **Configs:** Root `tsconfig.json`, `package.json`, and `.oxlintignore` are untouched unless explicitly intended.
 7. [ ] **Remote I/O & Git:** Remote fetches are strictly scoped and cached; no transient debug artifacts committed.
 8. [ ] **Dashboard/UI:** Handles static vs. local server modes; URL parameters safely parsed and sanitized.
-9. [ ] **Verification:** `pnpm run preflight` (and `pnpm --filter eval-view run test:e2e` for `eval-view/` changes) passes with 0 errors.
+9. [ ] **Verification:** `pnpm run preflight` (and `pnpm run test:e2e` for `eval-view/` changes) passes with 0 errors.

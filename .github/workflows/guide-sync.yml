@@ -59,7 +59,7 @@ jobs:
           permission-contents: read
 
       - name: Run sync script
-        run: node --experimental-strip-types guides/sync-use-cases.ts
+        run: node guides/sync-use-cases.ts
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PROJECT_GITHUB_TOKEN: ${{ secrets.GH_PAT }}

@@ -67,7 +67,7 @@ jobs:
       - name: Collect latest evaluation results from GCS
         id: collect-evals
         continue-on-error: true
-        run: pnpm --filter serving run collect-evals
+        run: pnpm run collect-evals
 
       - name: Handle eval collection fallback on failure
         if: steps.collect-evals.outcome != 'success'
@@ -78,14 +78,14 @@ jobs:
           git checkout -- serving/skills-cli/eval-results-summary.json || true
 
       - name: Build distribution
-        run: pnpm --filter serving run build
+        run: pnpm run build
 
       - name: Verify installation with install-skills test
         env:
           FULL: 1
           TEST_REPORTER: spec
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: pnpm --filter serving exec node --test skills-cli/install-skills.test.ts
+        run: node --test serving/skills-cli/install-skills.test.ts
 
 
 
@@ -102,7 +102,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: pnpm --filter serving run publish-skills
+        run: pnpm run publish-skills
 
       - name: Publish to npm via OIDC Provenance
         run: |

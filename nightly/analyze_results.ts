@@ -27,7 +27,7 @@ function main(): void {
   const outputFormat = args[1] || 'json'; // 'json', 'text', 'has-data', 'errors-count', 'is-catastrophic-failure'
 
   if (!evalsJsonPath) {
-    console.error('Usage: node --experimental-strip-types analyze_results.ts <path-to-evals.json> [format]');
+    console.error('Usage: node analyze_results.ts <path-to-evals.json> [format]');
     process.exit(1);
   }
 

@@ -19,7 +19,7 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
 
         const cmd = `npx skills add -y -g ${distDir}`;
         
-        const geminiBin = path.join(rootDir, 'harness/node_modules/.bin/gemini');
+        const geminiBin = path.join(rootDir, 'node_modules/.bin/gemini');
         if (!fs.existsSync(geminiBin)) {
             assert.fail(`Gemini binary not found at ${geminiBin}`);
         }

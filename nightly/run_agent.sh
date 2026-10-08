@@ -120,8 +120,8 @@ cleanup() {
   local has_data=true
 
   if [ -f "${RESULTS_JSON:-}" ]; then
-    has_data=$(node --experimental-strip-types "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" has-data)
-    generation_errors_count=$(node --experimental-strip-types "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" errors-count)
+    has_data=$(node "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" has-data)
+    generation_errors_count=$(node "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" errors-count)
     if [ "$generation_errors_count" -gt 0 ]; then
       has_generation_errors=true
     fi
@@ -153,7 +153,7 @@ cleanup() {
   # Append generation errors ONLY if results were NOT uploaded successfully (exit_code != 0)
   if [ "$exit_code" -ne 0 ] && [ -f "${RESULTS_JSON:-}" ] && [ "$has_generation_errors" = "true" ]; then
     local errors_text
-    errors_text=$(node --experimental-strip-types "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" text)
+    errors_text=$(node "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" text)
     body="${body}\n\n${errors_text}"
   fi
 
@@ -241,14 +241,14 @@ fi
 
 # Check if evals.json was generated and verify presence of data
 if [ -f "$RESULTS_JSON" ]; then
-  HAS_DATA=$(node --experimental-strip-types "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" has-data)
+  HAS_DATA=$(node "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" has-data)
   if [ "$HAS_DATA" = "false" ]; then
     echo "⚠️ Warning: No evaluation data was generated (0 tasks run). Skipping upload."
     FAIL_REASON="No evaluation data was generated (0 tasks run). Upload skipped."
     exit 2
   fi
 
-  IS_CATASTROPHIC_FAILURE=$(node --experimental-strip-types "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" is-catastrophic-failure)
+  IS_CATASTROPHIC_FAILURE=$(node "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" is-catastrophic-failure)
   if [ "$IS_CATASTROPHIC_FAILURE" = "true" ]; then
     echo "❌ Error: Catastrophic generation failures (100% early failure rate). Skipping upload."
     FAIL_REASON="Catastrophic generation failures (100% early failure rate). Upload skipped."

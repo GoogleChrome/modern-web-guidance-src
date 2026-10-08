@@ -80,20 +80,20 @@ The harness does **not** centrally configure which model each agent uses. Instea
 
 ```bash
 # Run Pi withClaude Sonnet
-PI_MODEL=anthropic/claude-sonnet node --experimental-strip-types harness/quick-smoke.ts pi
+PI_MODEL=anthropic/claude-sonnet node harness/quick-smoke.ts pi
 
 # Run Gemini CLI with Flash
-GEMINI_MODEL=gemini-2.5-flash node --experimental-strip-types harness/quick-smoke.ts gemini-cli
+GEMINI_MODEL=gemini-2.5-flash node harness/quick-smoke.ts gemini-cli
 
 # Run Codex with GPT-5
-CODEX_MODEL=gpt-5 node --experimental-strip-types harness/quick-smoke.ts codex-cli
+CODEX_MODEL=gpt-5 node harness/quick-smoke.ts codex-cli
 
 # Run Jetski CLI with specific model
-JETSKI_MODEL='Gemini 2.5 Flash' node --experimental-strip-types harness/quick-smoke.ts jetski-cli
+JETSKI_MODEL='Gemini 2.5 Flash' node harness/quick-smoke.ts jetski-cli
 
 # Run full eval suite with Pi and specific model
 PI_MODEL=google/gemini-2.5-flash GD_SUITE_CONFIG='{"agent":"pi"}' \
-  node --experimental-strip-types harness/run_suite.ts <task>
+  node harness/run_suite.ts <task>
 ```
 
 ### How It Works in the Harness
@@ -131,10 +131,10 @@ For development testing, use cheaper/faster models:
 
 ```bash
 # Use fast model for smoke tests
-PI_MODEL=qwen/qwen3.5-plus node --experimental-strip-types harness/quick-smoke.ts pi
+PI_MODEL=qwen/qwen3.5-plus node harness/quick-smoke.ts pi
 
 # Use expensive model only for final evals
-PI_MODEL=anthropic/claude-opus GD_SUITE_CONFIG='...' node --experimental-strip-types harness/run_suite.ts
+PI_MODEL=anthropic/claude-opus GD_SUITE_CONFIG='...' node harness/run_suite.ts
 ```
 
 ---
@@ -431,12 +431,12 @@ The `quick-smoke.ts` script supports all registered agents:
 
 ```bash
 # Usage: node quick-smoke.ts [agent] [guided|unguided]
-node --experimental-strip-types quick-smoke.ts pi unguided
-node --experimental-strip-types quick-smoke.ts gemini-cli guided
-node --experimental-strip-types quick-smoke.ts # defaults to pi
+node quick-smoke.ts pi unguided
+node quick-smoke.ts gemini-cli guided
+node quick-smoke.ts # defaults to pi
 
 # Or via environment variable
-SMOKE_AGENT=claude-code node --experimental-strip-types quick-smoke.ts
+SMOKE_AGENT=claude-code node quick-smoke.ts
 ```
 
 **Option B: Create agent-specific smoke test** (if you need custom validation)
@@ -458,7 +458,6 @@ export async function runMyAgentSmokeTest() {
   };
   
   const result = spawnSync('node', [
-    '--experimental-strip-types',
     path.join(import.meta.dirname, 'agents/my-agent.ts'),
     prompt,
     'unguided',
@@ -565,7 +564,7 @@ node serving/bin/modern-web.ts search "address form"
 
 ```bash
 # Verify guides are "eval-ready" before running suite
-node --experimental-strip-types lib/guide-validation.ts
+node lib/guide-validation.ts
 ```
 
 ## Token Efficiency
@@ -589,18 +588,18 @@ Use the agent-agnostic smoke test for quick validation:
 
 ```bash
 # Test Pi (default)
-node --experimental-strip-types quick-smoke.ts
+node quick-smoke.ts
 
 # Test specific agent
-node --experimental-strip-types quick-smoke.ts <agent> [guided|unguided]
+node quick-smoke.ts <agent> [guided|unguided]
 
 # Available agents: jetski-cli, gemini-cli, claude-code, codex-cli, pi
-node --experimental-strip-types quick-smoke.ts pi unguided
-node --experimental-strip-types quick-smoke.ts gemini-cli guided
+node quick-smoke.ts pi unguided
+node quick-smoke.ts gemini-cli guided
 
 # Or via environment
 export SMOKE_AGENT=pi
-node --experimental-strip-types quick-smoke.ts
+node quick-smoke.ts
 ```
 
 ### Custom Smoke Tests
@@ -622,7 +621,7 @@ Run the Pi trajectory parsing unit tests:
 
 ```bash
 cd harness
-node --test --experimental-strip-types tests/pi-parsing.test.ts
+node --test tests/pi-parsing.test.ts
 ```
 
 Tests cover:
@@ -636,10 +635,10 @@ Tests cover:
 
 ```bash
 # Quick validation that Pi harness works end-to-end
-node --experimental-strip-types quick-smoke.ts pi
+node quick-smoke.ts pi
 
 # Or specify agent explicitly
-node --experimental-strip-types quick-smoke.ts pi unguided
+node quick-smoke.ts pi unguided
 ```
 
 ### Manual Trajectory Inspection
@@ -649,7 +648,7 @@ To inspect actual Pi trajectories from a run:
 ```bash
 # Run full eval suite with Pi (sessions enabled by default)
 GD_SUITE_CONFIG='{"agent":"pi"}' \
-  node --experimental-strip-types harness/run_suite.ts <task>
+  node harness/run_suite.ts <task>
 
 # Sessions are saved to the isolated HOME, then exported to results dir
 # Inspect the JSONL format
