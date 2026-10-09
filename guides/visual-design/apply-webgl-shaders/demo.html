@@ -108,15 +108,15 @@
 
                 for (float i = 0.0; i < n_drops; ++i) {
                     float time = u_time + life_time * (i + i / n_drops);
-                    float ellapsed_time = mod(time, life_time);
+                    float elapsed_time = mod(time, life_time);
                     vec2 initial_pos = random_drop_pos(i + floor(time / life_time - i) * n_drops, u_resolution, velocity);
 
-                    if (ellapsed_time < fall_time) {
-                        vec2 current_pos = initial_pos + ellapsed_time * velocity;
+                    if (elapsed_time < fall_time) {
+                        vec2 current_pos = initial_pos + elapsed_time * velocity;
                         pixel_color += trail_color(gl_FragCoord.xy, current_pos, velocity_dir, trail_width, trail_size);
                     } else {
                         vec2 final_pos = initial_pos + fall_time * velocity;
-                        pixel_color += wave_color(gl_FragCoord.xy, final_pos, wave_size, ellapsed_time - fall_time);
+                        pixel_color += wave_color(gl_FragCoord.xy, final_pos, wave_size, elapsed_time - fall_time);
                     }
                 }
 

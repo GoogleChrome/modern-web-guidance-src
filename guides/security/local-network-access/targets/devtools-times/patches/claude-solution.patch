@@ -1,0 +1,296 @@
+diff --git a/src/components/LocalPrinterWidget.tsx b/src/components/LocalPrinterWidget.tsx
+new file mode 100644
+index 0000000..1a5fdd2
+--- /dev/null
++++ b/src/components/LocalPrinterWidget.tsx
+@@ -0,0 +1,186 @@
++import React, { useEffect, useRef, useState } from 'react';
++import {
++  fetchLocalResource,
++  watchLnaPermission,
++  type LnaPermissionName,
++  type TargetAddressSpace,
++} from '../utils/localNetworkAccess';
++
++interface DeviceConfig {
++  id: string;
++  label: string;
++  description: string;
++  permissionName: LnaPermissionName;
++  targetAddressSpace: TargetAddressSpace;
++  endpoint: string;
++}
++
++const DEVICES: DeviceConfig[] = [
++  {
++    id: 'lan-printer',
++    label: 'Home Network Printer',
++    description: 'Send this article straight to a printer on your Wi-Fi network.',
++    permissionName: 'local-network',
++    targetAddressSpace: 'local',
++    // Illustrative LAN printer address; replace with device discovery in production.
++    endpoint: 'http://192.168.1.50:9100/print',
++  },
++  {
++    id: 'desktop-companion',
++    label: 'Desktop Print Assistant',
++    description: 'Use the companion app running on this computer to format and print.',
++    permissionName: 'loopback-network',
++    targetAddressSpace: 'loopback',
++    endpoint: 'http://127.0.0.1:9812/print',
++  },
++];
++
++type ConnectionState = 'idle' | 'connecting' | 'success' | 'error';
++
++function DeviceConnector({ device, articleSlug }: { device: DeviceConfig; articleSlug: string }) {
++  const [permissionState, setPermissionState] = useState<PermissionState>('prompt');
++  const [connectionState, setConnectionState] = useState<ConnectionState>('idle');
++  const [errorMessage, setErrorMessage] = useState('');
++  const hasAutoConnected = useRef(false);
++
++  const connect = async () => {
++    setConnectionState('connecting');
++    setErrorMessage('');
++    try {
++      const response = await fetchLocalResource(device.endpoint, device.targetAddressSpace, {
++        method: 'POST',
++        mode: 'cors',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ articleSlug }),
++      });
++      if (!response.ok) {
++        throw new Error(`${device.label} responded with HTTP ${response.status}`);
++      }
++      setConnectionState('success');
++    } catch (error) {
++      setConnectionState('error');
++      setErrorMessage(error instanceof Error ? error.message : `Could not reach ${device.label}.`);
++    }
++  };
++
++  useEffect(() => {
++    let cancelled = false;
++    let unsubscribe = () => {};
++
++    watchLnaPermission(device.permissionName, (state) => {
++      if (cancelled) return;
++      setPermissionState(state);
++
++      // Only auto-connect once access is already granted. When the state is
++      // 'prompt' we deliberately do nothing here and wait for the button click
++      // below so the permission dialog is never triggered on page load.
++      if (state === 'granted' && !hasAutoConnected.current) {
++        hasAutoConnected.current = true;
++        connect();
++      }
++    }).then((unsub) => {
++      if (cancelled) {
++        unsub();
++      } else {
++        unsubscribe = unsub;
++      }
++    });
++
++    return () => {
++      cancelled = true;
++      unsubscribe();
++    };
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [device.permissionName]);
++
++  const isDenied = permissionState === 'denied';
++
++  return (
++    <div className="border border-gray-200 rounded-md p-4">
++      <div className="flex items-center justify-between gap-3 flex-wrap">
++        <div>
++          <h4 className="font-semibold text-gray-800">{device.label}</h4>
++          <p className="text-sm text-gray-600">{device.description}</p>
++        </div>
++        <span
++          data-permission-status={device.permissionName}
++          className={`text-xs font-mono px-2 py-1 rounded whitespace-nowrap ${
++            permissionState === 'granted'
++              ? 'bg-green-100 text-green-800'
++              : permissionState === 'denied'
++                ? 'bg-red-100 text-red-800'
++                : 'bg-gray-100 text-gray-600'
++          }`}
++        >
++          {permissionState}
++        </span>
++      </div>
++
++      {isDenied ? (
++        <div
++          data-remediation={device.permissionName}
++          className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
++        >
++          Access to your {device.permissionName === 'local-network' ? 'local network' : 'loopback'} device is
++          blocked. Open this site's settings in your browser and set{' '}
++          <strong>{device.permissionName === 'local-network' ? 'Local network' : 'Loopback network'}</strong> to
++          "Allow", then reload the page.
++        </div>
++      ) : (
++        <button
++          onClick={connect}
++          disabled={connectionState === 'connecting'}
++          className="mt-3 px-4 py-2 bg-amber-400 text-gray-900 font-semibold rounded hover:bg-amber-500 disabled:opacity-50"
++        >
++          {connectionState === 'connecting' ? 'Connecting…' : `Print with ${device.label}`}
++        </button>
++      )}
++
++      {connectionState === 'success' && <p className="mt-2 text-sm text-green-700">Sent to {device.label}.</p>}
++      {connectionState === 'error' && (
++        <p className="mt-2 text-sm text-red-700">
++          {errorMessage} Check that the device is powered on, connected to the same network, and allowed in your
++          browser's site settings.
++        </p>
++      )}
++    </div>
++  );
++}
++
++export default function LocalPrinterWidget({ articleSlug }: { articleSlug: string }) {
++  const [showSetup, setShowSetup] = useState(false);
++
++  return (
++    <section className="border-t border-b border-gray-200 py-6 my-6">
++      <h3 className="text-lg font-bold text-gray-900 mb-1">Print This Article</h3>
++      <p className="text-sm text-gray-600 mb-4">
++        Connect a printer on your local network or the desktop companion app to print a copy.
++      </p>
++      <div className="grid sm:grid-cols-2 gap-4">
++        {DEVICES.map((device) => (
++          <DeviceConnector key={device.id} device={device} articleSlug={articleSlug} />
++        ))}
++      </div>
++
++      <button
++        onClick={() => setShowSetup((s) => !s)}
++        className="mt-4 text-sm text-amber-600 hover:text-amber-700 underline"
++      >
++        {showSetup ? 'Hide setup assistant' : 'Need help pairing your printer?'}
++      </button>
++
++      {showSetup && (
++        <div className="mt-3 border border-gray-200 rounded-md overflow-hidden">
++          {/* Delegate local/loopback access to the embedded partner setup widget,
++              since Permissions-Policy defaults iframe access to 'self'. */}
++          <iframe
++            src="https://printer-setup.partner.example.com/device-bridge"
++            allow="local-network; loopback-network"
++            title="Local Printer Setup Assistant"
++            className="w-full h-64"
++          />
++        </div>
++      )}
++    </section>
++  );
++}
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..890f343 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -7,6 +7,7 @@ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
++import LocalPrinterWidget from '../../components/LocalPrinterWidget.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+ 
+ export const getStaticPaths = (async () => {
+@@ -109,6 +110,9 @@ const isBookmarked = readingList.includes(article.slug);
+             <Content />
+         </div>
+ 
++        <!-- Local/Loopback Network Printing Widget -->
++        <LocalPrinterWidget client:visible articleSlug={article.slug} />
++
+         <!-- ADVERTISEMENT -->
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:load />
+diff --git a/src/utils/localNetworkAccess.ts b/src/utils/localNetworkAccess.ts
+new file mode 100644
+index 0000000..afa771d
+--- /dev/null
++++ b/src/utils/localNetworkAccess.ts
+@@ -0,0 +1,76 @@
++/**
++ * Helpers for the Local Network Access (LNA) permissions ('local-network' and
++ * 'loopback-network'). These are intentionally kept separate from the legacy,
++ * combined 'local-network-access' permission name, which must never be queried
++ * directly since older Chrome versions crash the renderer on that query.
++ */
++
++export type LnaPermissionName = 'local-network' | 'loopback-network';
++export type TargetAddressSpace = 'local' | 'loopback';
++
++export interface LnaRequestInit extends RequestInit {
++  targetAddressSpace?: TargetAddressSpace;
++}
++
++/**
++ * Cross-browser permission check for a granular LNA permission. Falls back to
++ * 'prompt' (rather than throwing) when the Permissions API is unavailable or
++ * the browser doesn't yet recognize the permission name, so callers can still
++ * gate the first request behind an explicit user gesture.
++ */
++export async function queryLnaPermissionSafe(permissionName: LnaPermissionName): Promise<PermissionState> {
++  if (!navigator.permissions?.query) {
++    return 'prompt';
++  }
++  try {
++    const status = await navigator.permissions.query({ name: permissionName } as unknown as PermissionDescriptor);
++    return status.state;
++  } catch {
++    // Unrecognized PermissionName in this browser; proceed as if a prompt is required.
++    return 'prompt';
++  }
++}
++
++/**
++ * Queries a granular LNA permission and keeps `onChange` in sync with the live
++ * PermissionStatus, mirroring browser Site Settings changes without a reload.
++ * Returns an unsubscribe function; safe to call even where the Permissions API
++ * or the permission name itself isn't supported.
++ */
++export async function watchLnaPermission(
++  permissionName: LnaPermissionName,
++  onChange: (state: PermissionState) => void,
++): Promise<() => void> {
++  if (!navigator.permissions?.query) {
++    onChange('prompt');
++    return () => {};
++  }
++  try {
++    const status = await navigator.permissions.query({ name: permissionName } as unknown as PermissionDescriptor);
++    const listener = () => onChange(status.state);
++    status.addEventListener('change', listener);
++    onChange(status.state);
++    return () => status.removeEventListener('change', listener);
++  } catch {
++    onChange('prompt');
++    return () => {};
++  }
++}
++
++/**
++ * Fetches a resource on the local network or loopback interface, declaring
++ * `targetAddressSpace` so the browser exempts the request from Mixed Content
++ * blocking ahead of DNS resolution and verifies the resolved IP afterward.
++ */
++export async function fetchLocalResource(
++  url: string,
++  targetAddressSpace: TargetAddressSpace,
++  init: RequestInit = {},
++): Promise<Response> {
++  const requestInit: LnaRequestInit = {
++    ...init,
++    targetAddressSpace,
++  };
++  const request = new Request(url, requestInit);
++  return fetch(request);
++}

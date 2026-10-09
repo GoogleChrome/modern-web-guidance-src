@@ -1,0 +1,513 @@
+diff --git a/index.html b/index.html
+index 66c9173..d906fd3 100644
+--- a/index.html
++++ b/index.html
+@@ -44,6 +44,9 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      cursor: pointer;
+     }
+ 
+     nav ul {
+@@ -60,6 +63,7 @@
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
++      cursor: pointer;
+     }
+ 
+     nav a:hover {
+@@ -72,6 +76,27 @@
+       border-radius: 4px;
+     }
+ 
++    /* SPA View Containers & Transitions */
++    .spa-view {
++      content-visibility: visible;
++      outline: none;
++      width: 100%;
++    }
++
++    .spa-view.inactive {
++      /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++      content-visibility: hidden;
++      
++      /* Optional: Prevent hidden views from taking up physical space in layout flow */
++      position: absolute;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -98,6 +123,24 @@
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
++      min-height: 50vh;
++      position: relative;
++    }
++
++    .view-header {
++      text-align: center;
++      margin-bottom: 30px;
++    }
++
++    .view-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .view-header p {
++      color: #6d4c41;
++      font-size: 1.1rem;
+     }
+ 
+     .grid {
+@@ -109,10 +152,13 @@
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+@@ -120,6 +166,17 @@
+       color: var(--primary);
+     }
+ 
++    .card p {
++      margin-bottom: 12px;
++      color: #5d4037;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -127,14 +184,34 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      margin-top: 10px;
+       transition: background 0.3s;
++      cursor: pointer;
++      border: none;
++      font-size: 0.95rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .info-section {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++    }
++
++    .info-section h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .info-section p {
++      margin-bottom: 15px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -151,6 +228,7 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      cursor: pointer;
+     }
+   </style>
+ </head>
+@@ -158,55 +236,324 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="#home" data-view="home" class="logo">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#menu" data-view="menu">Menu</a></li>
++      <li><a href="#locations" data-view="locations">Locations</a></li>
++      <li><a href="#rewards" data-view="rewards">Rewards</a></li>
++      <li><a href="#account" data-view="account">My Account</a></li>
++      <li><a href="#account" data-view="account" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <!-- SPA Views -->
++  <section id="home" class="spa-view" tabindex="-1" aria-hidden="false">
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="#menu" data-view="menu" class="btn">Order Now</a>
++    </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <div class="container">
++      <div class="view-header">
++        <h2>Seasonal Favorites</h2>
++        <p>Handcrafted drinks perfected for the season</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <span class="price">$5.75</span>
++          <a href="#menu" data-view="menu" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <span class="price">$3.95</span>
++          <a href="#menu" data-view="menu" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <span class="price">$4.85</span>
++          <a href="#menu" data-view="menu" class="btn">View Details</a>
++        </div>
++      </div>
++    </div>
++  </section>
++
++  <div class="container">
++    <section id="menu" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Our Artisanal Menu</h2>
++        <p>Expertly crafted beverages and fresh baked goods</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Pour-Over Single Origin</h3>
++          <p>Rotating single-origin beans brewed to precision.</p>
++          <span class="price">$4.50</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++        <div class="card">
++          <h3>Caramel Macchiato</h3>
++          <p>Espresso layered with steamed milk and vanilla syrup, topped with caramel drizzle.</p>
++          <span class="price">$5.25</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++        <div class="card">
++          <h3>Nitro Cold Brew</h3>
++          <p>Infused with nitrogen for a creamy, velvety head and rich texture.</p>
++          <span class="price">$5.50</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++        <div class="card">
++          <h3>Matcha Green Tea Latte</h3>
++          <p>Ceremonial-grade Japanese matcha whisked with lightly sweetened milk.</p>
++          <span class="price">$5.25</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++        <div class="card">
++          <h3>Almond Croissant</h3>
++          <p>Flaky butter pastry baked twice with almond frangipane.</p>
++          <span class="price">$4.25</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++        <div class="card">
++          <h3>Avocado Toast</h3>
++          <p>Sourdough toast with mashed avocado, chili flakes, and microgreens.</p>
++          <span class="price">$7.50</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++      </div>
++    </section>
++
++    <section id="locations" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Our Locations</h2>
++        <p>Find your nearest Daily Grind cafe and roastery</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Flagship</h3>
++          <p>100 Main Street, Suite 1A<br>Mon-Sun: 6:00 AM - 8:00 PM</p>
++          <button class="btn" type="button">Get Directions</button>
++        </div>
++        <div class="card">
++          <h3>Arts District Roastery</h3>
++          <p>450 Industrial Parkway<br>Mon-Sat: 7:00 AM - 7:00 PM</p>
++          <button class="btn" type="button">Get Directions</button>
++        </div>
++        <div class="card">
++          <h3>Westside Commons</h3>
++          <p>780 West Grand Avenue<br>Mon-Sun: 6:30 AM - 6:00 PM</p>
++          <button class="btn" type="button">Get Directions</button>
+         </div>
+       </div>
+     </section>
+-  </main>
++
++    <section id="rewards" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Daily Grind Rewards</h2>
++        <p>Earn beans on every purchase and unlock exclusive perks</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Free Birthday Drink</h3>
++          <p>Celebrate your special day with any beverage on the house.</p>
++          <span class="price">All Members</span>
++        </div>
++        <div class="card">
++          <h3>Free Refills</h3>
++          <p>Enjoy free brewed coffee and tea refills during the same visit.</p>
++          <span class="price">Gold Tier</span>
++        </div>
++        <div class="card">
++          <h3>Exclusive Tastings</h3>
++          <p>Invitations to monthly private cuppings and new roast previews.</p>
++          <span class="price">Platinum Tier</span>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>My Account</h2>
++        <p>Manage your orders, payment methods, and subscription</p>
++      </div>
++      <div class="info-section">
++        <h3>Member Profile</h3>
++        <p><strong>Status:</strong> Gold Member (340 Beans)</p>
++        <p><strong>Active Subscription:</strong> Monthly Roaster's Choice (2 Bags)</p>
++        <p><strong>Next Delivery:</strong> September 15, 2026</p>
++        <button class="btn" type="button">Manage Subscription</button>
++      </div>
++    </section>
++
++    <section id="about" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Our Story</h2>
++        <p>Passion for craft coffee since 2018</p>
++      </div>
++      <div class="info-section">
++        <h3>Crafted with Care</h3>
++        <p>Founded with a mission to bring sustainable, direct-trade coffees to our local community, The Daily Grind partners directly with independent farmers across Central and South America, Africa, and Southeast Asia.</p>
++      </div>
++    </section>
++
++    <section id="careers" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Join the Team</h2>
++        <p>Grow your career with us</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Lead Barista</h3>
++          <p>Full-time | Downtown Flagship</p>
++          <button class="btn" type="button">Apply Now</button>
++        </div>
++        <div class="card">
++          <h3>Roastery Assistant</h3>
++          <p>Full-time | Arts District Roastery</p>
++          <button class="btn" type="button">Apply Now</button>
++        </div>
++      </div>
++    </section>
++
++    <section id="contact" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Contact Us</h2>
++        <p>We'd love to hear from you</p>
++      </div>
++      <div class="info-section">
++        <h3>Get in Touch</h3>
++        <p>Email: hello@dailygrindcoffee.example.com</p>
++        <p>Phone: (555) 019-2834</p>
++        <p>Customer support hours: Mon-Fri 8:00 AM - 5:00 PM EST</p>
++      </div>
++    </section>
++
++    <section id="privacy-policy" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Privacy Policy</h2>
++        <p>Your privacy is important to us</p>
++      </div>
++      <div class="info-section">
++        <h3>Data Collection & Usage</h3>
++        <p>We respect your privacy and only collect information required to fulfill orders and provide loyalty rewards.</p>
++      </div>
++    </section>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#about" data-view="about">Our Story</a> |
++      <a href="#careers" data-view="careers">Join the Team</a> |
++      <a href="#contact" data-view="contact">Contact Us</a> |
++      <a href="#privacy-policy" data-view="privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function switchToView(viewId) {
++      let activeView = null;
++      if (typeof viewId === 'string') {
++        const cleanId = viewId.replace(/^[#/]+/, '');
++        activeView = document.getElementById(viewId) ||
++                     document.getElementById(cleanId) ||
++                     document.getElementById(cleanId.replace(/^view-/, '')) ||
++                     document.getElementById('view-' + cleanId) ||
++                     document.querySelector(`[data-view="${cleanId}"]`) ||
++                     document.querySelector(`[data-view="${viewId}"]`);
++      } else if (viewId instanceof HTMLElement) {
++        activeView = viewId;
++      }
++
++      if (!activeView) {
++        console.warn('View not found:', viewId);
++        return;
++      }
++
++      // Hide all views
++      document.querySelectorAll('.spa-view').forEach(view => {
++        view.classList.add('inactive');
++        view.setAttribute('aria-hidden', 'true');
++      });
++
++      // Show the target view
++      activeView.classList.remove('inactive');
++      activeView.setAttribute('aria-hidden', 'false');
++
++      // MANDATORY: Move focus to the new view to ensure a logical tab-order
++      if (!activeView.hasAttribute('tabindex')) {
++        activeView.setAttribute('tabindex', '-1');
++      }
++      activeView.focus();
++    }
++
++    // Expose globally
++    window.switchToView = switchToView;
++
++    // Attach link handlers and history navigation
++    document.addEventListener('DOMContentLoaded', () => {
++      document.querySelectorAll('a[href], [data-view]').forEach(elem => {
++        elem.addEventListener('click', (e) => {
++          const targetView = elem.getAttribute('data-view');
++          const href = elem.getAttribute('href');
++          
++          let viewId = targetView;
++          if (!viewId && href) {
++            if (href.startsWith('#')) {
++              viewId = href.slice(1);
++            } else if (href.startsWith('/')) {
++              const path = href.slice(1).split('/')[0];
++              viewId = path || 'home';
++            }
++          }
++
++          if (viewId) {
++            const cleanId = viewId.replace(/^[#/]+/, '');
++            const targetElem = document.getElementById(viewId) ||
++                               document.getElementById(cleanId) ||
++                               document.getElementById(cleanId.replace(/^view-/, '')) ||
++                               document.getElementById('view-' + cleanId) ||
++                               document.querySelector(`[data-view="${cleanId}"]`);
++            if (targetElem) {
++              e.preventDefault();
++              switchToView(viewId);
++              if (window.location.hash !== '#' + cleanId) {
++                history.pushState(null, '', '#' + cleanId);
++              }
++            }
++          }
++        });
++      });
++
++      window.addEventListener('hashchange', () => {
++        const hash = window.location.hash.slice(1);
++        if (hash) {
++          switchToView(hash);
++        }
++      });
++
++      window.addEventListener('popstate', () => {
++        const hash = window.location.hash.slice(1);
++        if (hash) {
++          switchToView(hash);
++        } else {
++          switchToView('home');
++        }
++      });
++
++      // Activate initial view based on hash if present
++      const initialHash = window.location.hash.slice(1);
++      if (initialHash) {
++        switchToView(initialHash);
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>
++
+diff --git a/package.json b/package.json
+index 2bd4d77..a28c8d2 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "node -e 'console.log(\"Build complete\")'"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []

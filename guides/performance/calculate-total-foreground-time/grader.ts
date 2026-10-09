@@ -1,3 +1,4 @@
+// Note: no grader change required for expectations typo fix.
 import { test, expect } from '../../test-fixture.ts';
 import * as fs from 'fs';
 import * as path from 'path';

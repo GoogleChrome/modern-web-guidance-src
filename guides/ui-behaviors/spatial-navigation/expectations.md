@@ -1,0 +1,8 @@
+- **MANDATORY**: The spatial navigation container uses an accessible focus management pattern (such as roving tabindex or `aria-activedescendant`), exposing exactly one tab stop to sequential page navigation.
+- **MANDATORY**: Pressing the Right Arrow key moves focus to the visually closest focusable element located to the right of the currently focused element, using visual bounding client geometries.
+- **MANDATORY**: Pressing the Left Arrow key moves focus to the visually closest focusable element located to the left of the currently focused element.
+- **MANDATORY**: Pressing the Down Arrow key moves focus to the visually closest focusable element located below the currently focused element.
+- **MANDATORY**: Pressing the Up Arrow key moves focus to the visually closest focusable element located above the currently focused element.
+- **MANDATORY**: Pressing an arrow key in a direction where no further interactive elements exist does not block or prevent the browser's default viewport scroll behavior.
+- **MANDATORY**: When an element inside the spatial widget is focused, it is scrolled into view so that it remains visible in the viewport.
+- **MANDATORY**: The active focused state is maintained correctly as focus shifts across elements, updating active focus attributes or classes without losing programmatic focus.
