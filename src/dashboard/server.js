@@ -20,6 +20,110 @@ import {
 const PORT = process.env.PORT || 8081;
 const STATIC = parseBooleanEnv(process.env.STATIC, false);
 
+/**
+ * Resolves a path relative to resultsDir, ensuring it does not escape resultsDir.
+ * @param {string | null | undefined} relDir
+ * @returns {string | null}
+ */
+function resolveSafeResultDir(relDir) {
+  if (!relDir) return null;
+  const base = path.resolve(resultsDir);
+  const target = path.resolve(resultsDir, relDir);
+  const rel = path.relative(base, target);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    return null;
+  }
+  return target;
+}
+
+/**
+ * Generates and serves missing trajectory_summary.json on the fly.
+ * @param {string} filePath
+ * @param {http.ServerResponse} res
+ */
+async function handleMissingTrajectorySummary(filePath, res) {
+  const runDir = path.dirname(filePath);
+  if (!fs.existsSync(runDir)) {
+    res.writeHead(404);
+    res.end('404 Not Found: Run directory does not exist');
+    return;
+  }
+  try {
+    const { ensureFreshTrajectorySummary } = await import('../harness/lib/trajectory-normalizer.ts');
+    await ensureFreshTrajectorySummary(runDir);
+    if (fs.existsSync(filePath)) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(fs.readFileSync(filePath), 'utf-8');
+      return;
+    }
+    res.writeHead(404);
+    res.end(`404 Not Found: Trajectory summary generation failed for path "${filePath}".`);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error('Failed to auto-generate trajectory summary:', message);
+    res.writeHead(500);
+    res.end(`500 Internal Error: ${message}`);
+  }
+}
+
+const STEP_AUTO_SCROLL_SCRIPT = `
+<script id="step-auto-scroll-injected">
+(function() {
+  function highlightHash() {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#step-')) {
+      const target = document.querySelector(hash);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.style.outline = '3px solid #58a6ff';
+        target.style.boxShadow = '0 0 25px rgba(88, 166, 255, 0.6)';
+      }
+    }
+  }
+
+  function initStepAnchors() {
+    const logsContainer = document.getElementById("logs");
+    if (!logsContainer) return;
+
+    let toolStepCounter = 0;
+    const entries = Array.from(logsContainer.children);
+    entries.forEach((el, idx) => {
+      if (!el.id) el.id = "entry-" + (idx + 1);
+      const isToolCall = !!el.querySelector(".tool-use");
+      if (isToolCall) {
+        toolStepCounter++;
+        if (!el.id || el.id.startsWith("entry-")) el.id = "step-" + toolStepCounter;
+
+        const meta = el.querySelector(".meta");
+        if (meta && !meta.querySelector(".step-badge")) {
+          const badge = document.createElement("span");
+          badge.className = "step-badge";
+          badge.style.cssText = "background:#1f6feb22; color:#58a6ff; border:1px solid #1f6feb; border-radius:4px; padding:2px 8px; font-size:0.8em; font-weight:bold; margin-left:8px;";
+          badge.textContent = "STEP " + toolStepCounter;
+          const firstChild = meta.firstElementChild;
+          if (firstChild && firstChild.tagName === "SPAN") {
+            meta.insertBefore(badge, firstChild.nextSibling);
+          } else {
+            meta.appendChild(badge);
+          }
+        }
+      }
+    });
+
+    setTimeout(highlightHash, 150);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(initStepAnchors, 100));
+  } else {
+    setTimeout(initStepAnchors, 100);
+  }
+
+  window.addEventListener('hashchange', highlightHash);
+})();
+</script>
+`;
+
 if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
   
@@ -100,6 +204,7 @@ const MIME_TYPES = {
  *   timestamp?: string;
  * }} SuiteInfo
  */
+
 
 /** @type {string | null} */
 let cachedGcsToken = null;
@@ -215,6 +320,7 @@ const server = http.createServer(async (req, res) => {
     res.end('403 Forbidden: Directory traversal is not allowed');
     return;
   }
+
 
   // Block directory traversal attempts
   if (decodedPath.includes('..')) {
@@ -337,7 +443,6 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
-        // Return 200 immediately so UI can track the run
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
 
@@ -373,10 +478,153 @@ const server = http.createServer(async (req, res) => {
           }
         });
 
-        p.unref(); // Avoid holding parent open if terminating event context
+        p.unref();
       } catch (e) {
         console.error('Launch failure:', e);
       }
+    });
+    return;
+  }
+
+  // --- /api/ensure-run : lazily downloads run directories from GCS if missing locally with live log streaming ---
+  if (decodedPath === '/api/ensure-run') {
+    const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
+    const dirA = parsedUrl.searchParams.get('dirA');
+    const dirB = parsedUrl.searchParams.get('dirB');
+
+    if (!dirA && !dirB) {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Missing dirA or dirB parameter');
+      return;
+    }
+
+    const authHeader = req.headers.authorization || '';
+    if (authHeader) {
+      process.env.GD_GCS_TOKEN = authHeader;
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Content-Type-Options': 'nosniff'
+    });
+
+    /** @param {any} str */
+    const stripAnsi = (str) => typeof str === 'string' ? str.replace(new RegExp(String.fromCharCode(27) + '\\[\\d+m', 'g'), '') : String(str);
+
+    const origLog = console.log;
+    const origWarn = console.warn;
+    const origErr = console.error;
+
+    /**
+     * @param {(...args: any[]) => void} origFn
+     * @returns {(...args: any[]) => void}
+     */
+    const makeStreamLogger = (origFn) => (...args) => {
+      const msg = args.map(stripAnsi).join(' ') + '\n';
+      res.write(msg);
+      origFn(...args);
+    };
+
+    console.log = makeStreamLogger(origLog);
+    console.warn = makeStreamLogger(origWarn);
+    console.error = makeStreamLogger(origErr);
+
+    try {
+      res.write(`[Server] Verifying local run files before loading comparison...\n`);
+      const { downloadRunFromGcsIfMissing } = await import('../harness/lib/gcs-downloader.ts');
+
+      if (dirA) {
+        const absA = resolveSafeResultDir(dirA);
+        if (absA) {
+          res.write(`[Server] Checking run A: ${dirA}\n`);
+          await downloadRunFromGcsIfMissing(absA);
+        }
+      }
+      if (dirB && dirB !== dirA) {
+        const absB = resolveSafeResultDir(dirB);
+        if (absB) {
+          res.write(`[Server] Checking run B: ${dirB}\n`);
+          await downloadRunFromGcsIfMissing(absB);
+        }
+      }
+      res.write(`[Server] Run files ready.\n`);
+    } catch (/** @type {any} */ e) {
+      const errMsg = `[Server Error] /api/ensure-run failed: ${e.message}\n`;
+      res.write(errMsg);
+      origErr(errMsg, e);
+    } finally {
+      console.log = origLog;
+      console.warn = origWarn;
+      console.error = origErr;
+      res.end();
+    }
+    return;
+  }
+
+  // --- /api/compare : runs comparison on the fly, streaming output ---
+  if (decodedPath === '/api/compare') {
+    const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
+    const relativeDirA = parsedUrl.searchParams.get('runDirA');
+    const relativeDirB = parsedUrl.searchParams.get('runDirB');
+
+    if (!relativeDirA || !relativeDirB) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Missing runDirA or runDirB parameter');
+      return;
+    }
+
+    const absDirA = resolveSafeResultDir(relativeDirA);
+    const absDirB = resolveSafeResultDir(relativeDirB);
+
+    // Security check: ensure both paths are strictly within the results directory
+    if (!absDirA || !absDirB) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      res.end('Forbidden: Paths must be within the results directory');
+      return;
+    }
+
+    // Set headers for chunked streaming
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Content-Type-Options': 'nosniff'
+    });
+
+    res.write(`[Server] Starting on-the-fly comparison between:\n  A: ${absDirA}\n  B: ${absDirB}\n\n`);
+
+    const authHeader = req.headers.authorization || '';
+
+    const gdTsPath = path.join(rootDir, 'bin', 'gd.ts');
+    const p = spawn(process.execPath, [gdTsPath, 'compare', absDirA, absDirB], {
+      cwd: rootDir,
+      env: { ...process.env, GD_GCS_TOKEN: authHeader }
+    });
+
+    p.stdout.on('data', (data) => {
+      const str = data.toString();
+      res.write(str);
+      process.stdout.write(str);
+    });
+
+    p.stderr.on('data', (data) => {
+      const str = data.toString();
+      res.write(str);
+      process.stderr.write(str);
+    });
+
+    p.on('close', (code) => {
+      if (code !== 0) {
+        res.write(`\n[Server Error] Comparison command failed with code ${code}.\n`);
+      }
+      res.end();
+    });
+
+    p.on('error', (err) => {
+      res.write(`\n[Server Error] Failed to spawn comparison command: ${err.message}\n`);
+      res.end();
     });
     return;
   }
@@ -423,7 +671,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- Silent File Probing API ---
-  // Avoids native browser 404 console errors by returning JSON { exists: boolean }
   if (decodedPath === '/api/exists') {
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const checkPath = parsedUrl.searchParams.get('path');
@@ -483,30 +730,15 @@ const server = http.createServer(async (req, res) => {
     if (fs.existsSync(localEvalViewPath)) {
         filePath = localEvalViewPath;
     } else {
-        const useLocal = reqUrl.includes('source=local');
-        const referer = req.headers.referer;
-        const refererLocal = referer && (referer.includes('source=local') || referer.includes('localhost'));
-        
-        if (!useLocal && !refererLocal && decodedPath.includes('/')) {
-            // Give a decent error if someone tries to stream a remote file directly
-            res.writeHead(400);
-            res.end('400 Bad Request: Remote GCS streaming must use client-side authenticated fetches directly to GCS.');
-            return;
-        }
-
-        // If this is an absolute navigation link (e.g. /menu) clicked from inside a test result,
-        // it will lack the <suite>/<run>/... prefix. We must restore it from the referer.
         let finalRelativePath = relativePath;
+        const referer = req.headers.referer;
         if (referer) {
             try {
                 const refererUrl = new URL(referer);
-                const refPath = refererUrl.pathname.substring(1); // remove leading slash
+                const refPath = refererUrl.pathname.substring(1);
                 
-                // If referer is a test result (e.g. suite/1/task/guided/index.html)
-                // and the requested path does NOT start with the suite name
                 const parts = refPath.split('/');
                 if (parts.length >= 4 && !finalRelativePath.startsWith(parts[0] + '/')) {
-                    // Reconstruct the base path up to the run type directory
                     const basePath = parts.slice(0, 4).join('/');
                     finalRelativePath = path.join(basePath, finalRelativePath);
                 }
@@ -517,6 +749,18 @@ const server = http.createServer(async (req, res) => {
 
         const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
         filePath = path.join(localSuitesDir, finalRelativePath);
+
+        // If file does not exist locally and request is not local, return 400 for remote GCS streaming
+        if (!fs.existsSync(filePath)) {
+            const useLocal = reqUrl.includes('source=local');
+            const refererLocal = referer && (referer.includes('source=local') || referer.includes('localhost') || referer.includes('127.0.0.1') || referer.includes('compare.html') || referer.includes('dashboard.html') || referer.includes('guide.html'));
+            
+            if (!useLocal && !refererLocal && decodedPath.includes('/')) {
+                res.writeHead(400);
+                res.end('400 Bad Request: Remote GCS streaming must use client-side authenticated fetches directly to GCS.');
+                return;
+            }
+        }
     }
   }
 
@@ -545,7 +789,7 @@ const server = http.createServer(async (req, res) => {
   const extname = path.extname(filePath);
   const contentType = MIME_TYPES[extname] || 'application/octet-stream';
 
-  fs.readFile(filePath, (err, content) => {
+  fs.readFile(filePath, async (err, content) => {
     if (err) {
       if (err.code === 'EISDIR') {
         // It's a directory, try serving index.html
@@ -563,6 +807,11 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (err.code === 'ENOENT') {
+        if (path.basename(filePath) === 'trajectory_summary.json') {
+          await handleMissingTrajectorySummary(filePath, res);
+          return;
+        }
+
         // SPA Fallback: If it's a structural route (no extension or .html) that 404s,
         // try to serve the index.html from the same base run directory instead.
         if (!extname || extname === '.html') {
@@ -585,6 +834,15 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
+      if (contentType === 'text/html' && path.basename(filePath).startsWith('session-')) {
+        let htmlStr = content.toString('utf-8');
+        if (!htmlStr.includes('id="step-auto-scroll-injected"')) {
+          htmlStr = htmlStr.replace('</body>', STEP_AUTO_SCROLL_SCRIPT + '\n</body>');
+        }
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(htmlStr, 'utf-8');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(content, 'utf-8');
     }
