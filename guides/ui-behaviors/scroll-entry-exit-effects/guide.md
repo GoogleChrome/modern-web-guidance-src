@@ -7,7 +7,7 @@ web-feature-ids:
 
 # Add entry and exit effects to elements as they enter or exit the scrollport
 
-Entry and exit effects are animations that are triggered when an element enters or leaves the viewport. This can be used to create engaging and dynamic user experiences. For example, you can use an entry effect to fade in an element as it scrolls into view, or an exit effect to scale it down as it scrolls out of view.
+Entry and exit effects are scroll-driven animations whose progress is continuously tied to how far an element has entered or left the viewport. This can be used to create engaging and dynamic user experiences. For example, you can use an entry effect to fade in an element as it scrolls into view, or an exit effect to scale it down as it scrolls out of view.
 
 ## How to implement
 
