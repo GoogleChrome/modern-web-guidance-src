@@ -330,10 +330,13 @@
         skipPreviewFocus.add(trigger);
         returnFocusTo.set(trigger, menu);
       }
+      const wasSuppressing = suppressMenuPreview;
+      suppressMenuPreview = true;
       menu.hidePopover();
       previewedMenus.delete(menu);
       if (trigger) trigger.setAttribute('aria-expanded', 'false');
       if (returnFocus && trigger && document.activeElement !== trigger) trigger.focus();
+      suppressMenuPreview = wasSuppressing;
     }
 
     function closeAllMenus(returnFocus = false, except = null) {
