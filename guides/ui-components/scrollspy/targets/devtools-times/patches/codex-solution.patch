@@ -1,0 +1,268 @@
+diff --git a/src/components/SectionNav.astro b/src/components/SectionNav.astro
+new file mode 100644
+index 0000000..6f958c9
+--- /dev/null
++++ b/src/components/SectionNav.astro
+@@ -0,0 +1,54 @@
++---
++interface Props {
++  sections: { id: string; label: string }[];
++}
++
++const { sections } = Astro.props;
++---
++
++<nav class="section-nav" aria-label="On this page" data-scrollspy>
++  {sections.map(({ id, label }) => (
++    <a href={`#${id}`} aria-current="false">{label}</a>
++  ))}
++</nav>
++
++<style>
++  .section-nav {
++    scroll-target-group: auto;
++    position: sticky;
++    top: 0;
++    z-index: 20;
++    display: flex;
++    justify-content: center;
++    gap: clamp(0.25rem, 2vw, 1.5rem);
++    padding: 0.5rem;
++    background: white;
++    border-block: 1px solid #d1d5db;
++  }
++
++  a {
++    padding: 0.5rem 0.375rem;
++    border-bottom: 3px solid transparent;
++    color: #374151;
++    font-size: 0.875rem;
++    font-weight: 600;
++    white-space: nowrap;
++  }
++
++  a:is(:target-current, .\:target-current) {
++    color: #92400e;
++    border-bottom-color: currentColor;
++    background: #fffbeb;
++    text-decoration: underline;
++    text-underline-offset: 0.2em;
++  }
++
++  a:focus-visible {
++    outline: 2px solid #92400e;
++    outline-offset: 2px;
++  }
++</style>
++
++<script>
++  import '../scripts/scrollspy';
++</script>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..06e8f85 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -3,13 +3,14 @@ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..b62e554 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -6,11 +6,12 @@ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..8e22087 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
++import SectionNav from '../components/SectionNav.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+@@ -38,6 +39,13 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNav sections={[
++        { id: 'top-stories', label: 'Top Stories' },
++        { id: 'top-news', label: 'Top News' },
++        { id: 'world', label: 'World' },
++        { id: 'politics', label: 'Politics' },
++    ]} />
++    <section id="top-stories" aria-label="Top Stories">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,9 +63,10 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </div>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -65,20 +74,26 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
++
++<style is:global>
++    :is(#top-stories, #top-news, #world, #politics) {
++        scroll-margin-top: 5rem;
++    }
++</style>
+diff --git a/src/scripts/scrollspy.ts b/src/scripts/scrollspy.ts
+new file mode 100644
+index 0000000..bec5a2c
+--- /dev/null
++++ b/src/scripts/scrollspy.ts
+@@ -0,0 +1,84 @@
++/** Track only this page's section links, leaving the site navigation untouched. */
++export function initScrollspy(): (() => void) | undefined {
++  const nav = document.querySelector<HTMLElement>('[data-scrollspy]');
++  if (!nav) return;
++
++  const targets = Array.from(nav.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'))
++    .flatMap((link) => {
++      const section = document.getElementById(link.hash.slice(1));
++      return section ? [{ link, section }] : [];
++    });
++  if (!targets.length) return;
++
++  const native = CSS.supports('scroll-target-group: auto') &&
++    CSS.supports('selector(a:target-current)');
++  const controller = new AbortController();
++  const { signal } = controller;
++  let timer: ReturnType<typeof setTimeout> | undefined;
++  let frame = 0;
++
++  function sync() {
++    // Native CSS is the source of truth wherever the complete feature is supported.
++    const nativeLink = native
++      ? nav?.querySelector<HTMLAnchorElement>('a:target-current')
++      : null;
++    const readingLine = Math.max(80, (nav?.getBoundingClientRect().height ?? 0) + 16) + 1;
++    let current = targets[0];
++    for (const target of targets) {
++      if (target.section.getBoundingClientRect().top <= readingLine) current = target;
++    }
++    // The final section can be too short to reach the reading line.
++    if (window.scrollY > 0 &&
++        window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
++      current = targets[targets.length - 1];
++    }
++    const activeLink = nativeLink ?? current.link;
++    for (const { link } of targets) {
++      const active = link === activeLink;
++      link.setAttribute('aria-current', String(active));
++      link.classList.toggle(':target-current', !native && active);
++    }
++  }
++
++  function schedule() {
++    cancelAnimationFrame(frame);
++    frame = requestAnimationFrame(sync);
++  }
++
++  // The observer handles the fallback; the scroll listener also covers long
++  // sections, gaps, and browsers without a scrollend event.
++  const observer = !native ? new IntersectionObserver(schedule, {
++    rootMargin: '-64px 0px -50% 0px',
++    threshold: [0, 0.5, 1],
++  }) : undefined;
++  targets.forEach(({ section }) => observer?.observe(section));
++
++  document.addEventListener('scroll', () => {
++    if (!native) schedule();
++    clearTimeout(timer);
++    timer = setTimeout(schedule, 120);
++  }, { passive: true, signal });
++  document.addEventListener('scrollend', schedule, { signal });
++  window.addEventListener('hashchange', schedule, { signal });
++  window.addEventListener('resize', schedule, { signal });
++  window.addEventListener('load', schedule, { signal });
++  sync();
++  schedule();
++
++  return () => {
++    controller.abort();
++    observer?.disconnect();
++    clearTimeout(timer);
++    cancelAnimationFrame(frame);
++  };
++}
++
++let cleanup: (() => void) | undefined;
++function initialize() {
++  cleanup?.();
++  cleanup = initScrollspy();
++}
++
++initialize();
++document.addEventListener('astro:page-load', initialize);
++document.addEventListener('astro:before-swap', () => cleanup?.());
