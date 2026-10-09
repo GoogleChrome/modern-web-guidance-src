@@ -40,7 +40,7 @@ jobs:
           fi
 
           corepack enable pnpm
-          pnpm update --recursive web-features
+          pnpm update web-features
 
           if git diff --quiet; then
             echo "::notice::No new web-features package updates available. Workspaces are already on the latest version."
@@ -72,15 +72,15 @@ jobs:
 
       - name: Update web-features across workspaces
         run: |
-          pnpm update --recursive web-features
+          pnpm update web-features
 
       - name: Regenerate feature-to-groups cache for ATL triage
-        run: node --experimental-strip-types guides/generate-feature-to-groups.ts
+        run: node src/ci/generate-feature-to-groups.ts
 
       - name: Validate repository guide impact after web-features bump
         id: validate-web-feature-update
         continue-on-error: true
-        run: node --experimental-strip-types guides/validate-after-web-feature-update.ts
+        run: node src/ci/validate-after-web-feature-update.ts
 
       - name: Generate GitHub App token
         if: ${{ vars.GH_APP_ID != '' }}
