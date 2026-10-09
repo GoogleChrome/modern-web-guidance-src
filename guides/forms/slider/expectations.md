@@ -5,6 +5,6 @@
 - For custom visual styling, the implementation MUST use `appearance: none` and the established browser-specific slider pseudo-elements, including the relevant `::-webkit-slider-runnable-track`, `::-webkit-slider-thumb`, `::-moz-range-track`, `::-moz-range-thumb`, or `::-moz-range-progress` selectors.
 - Each of the `::-moz-` or `::-webkit-` prefixed pseudo-elements must only be used once, with variations going through custom properties.
 - If the implementation calculates custom track-fill progress, it MUST derive it from the control’s actual `min`, `max`, and `value`, not assume a 0–100 range.
-- The implementation MUST NOT rely on generated content from slider pseudo-elements for labels, values, instructions, or other essential information.
+- The implementation MUST NOT use generated content on slider pseudo-elements to provide labels, current values, instructions, or functionality.
 - The implementation MUST account for right-to-left layouts and MUST NOT hard-code a left-to-right active-track direction without an explicit RTL strategy.
 - If the numeric value requires a human-readable unit, the implementation MUST expose that formatted value in ordinary DOM content and update `aria-valuetext` whenever the value changes. Otherwise, it SHOULD rely on the native numeric value.
