@@ -1,4 +1,4 @@
-- Each switch control is a standard HTML `<input type="checkbox">` element with the `switch` attribute and `role="switch"`.
+- Each switch control is a standard HTML `<input type="checkbox">` element with the `switch` attribute.
 - Each switch input is associated with a `<label>` element (either by wrapping the `<input>` inside the `<label>` or via matching `for` and `id` attributes).
 - Native switch support is feature-detected via `'switch' in HTMLInputElement.prototype`, and `input-switch-polyfill` is conditionally loaded only when native support is missing.
 - When native switch support is missing, the checkbox input uses `appearance: none` to render switch styling while remaining visible and interactive (not visually hidden or clipped).
