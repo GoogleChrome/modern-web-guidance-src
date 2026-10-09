@@ -181,7 +181,11 @@ window.__featuresMapping = {
   ],
   "slider": [
     "accent-color",
-    "input-range"
+    "input-range",
+    "appearance",
+    "progress-function",
+    "attr",
+    "dir-pseudo"
   ],
   "slider-range": [
     "accent-color",
