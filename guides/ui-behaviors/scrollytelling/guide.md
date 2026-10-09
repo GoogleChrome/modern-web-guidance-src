@@ -3,7 +3,6 @@ name: scrollytelling
 description: Animate visual properties on a target element — such as fading a backdrop, shifting a background color, or transitioning a fixed illustration — in response to the scrollport position of a completely different element.
 web-feature-ids:
   - scroll-driven-animations
-  - tmp-scroll-triggered-animations
 ---
 
 # Scrollytelling
