@@ -27,12 +27,12 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 ## Architectural Principles
 
 ### Use Existing Abstractions & CLI Runners
-- **Reuse repository tooling:** When interacting with LLMs or executing agent workflows, use the shared repository abstractions in `config.environment` (such as `config.environment.jetskiCliBin` or `config.environment.geminiCliBin`) instead of writing custom REST API clients, bespoke fetch loops, or ad-hoc token validators.
-- **Environment and flag handling:** Respect standard environment toggles (such as `GD_DEV_USE_GEMINI === '1'`) and omit non-essential flags (e.g., omit `--yolo` for non-interactive or diagnostics tasks).
+- **Reuse repository tooling:** When interacting with LLMs or executing agent workflows, use the shared repository abstractions in `config.environment` (such as `config.environment.antigravityCliBin` or `config.environment.jetskiCliBin`) instead of writing custom REST API clients, bespoke fetch loops, or ad-hoc token validators.
+- **Environment and flag handling:** Respect standard environment toggles (such as `GD_DEV_USE_JETSKI === '1'`) and omit non-essential flags (e.g., omit `--yolo` for non-interactive or diagnostics tasks).
 
 ### Single Source of Truth & Canonical Enums
 - **Never hardcode string constants for agents:**
-  - Use centralized enums like `Agents` from `harness/config.ts` (`Agents.JETSKI_CLI`, `Agents.CLAUDE_CODE`, `Agents.GEMINI_CLI`, `Agents.CODEX_CLI`).
+  - Use centralized enums like `Agents` from `src/harness/config.ts` (`Agents.ANTIGRAVITY_CLI`, `Agents.JETSKI_CLI`, `Agents.CLAUDE_CODE`, `Agents.CODEX_CLI`).
 - **Extract metadata from source-of-truth files:**
   - Never infer properties (such as `targetFile` or `agent`) using fragile path heuristics or regexes if canonical metadata files (e.g., `evals.json`) exist in the parent hierarchy. Extract canonical properties directly from `evals.json`.
 
@@ -54,7 +54,7 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 
 ### Keep Repository Clean of Generated Artifacts
 - **Ignore transient outputs:** Never commit test outputs, debug files, local caches, or working directories.
-- Store temporary data in standard output locations (e.g., `harness/results/`) and ensure `.gitignore` excludes transient files.
+- Store temporary data in standard output locations (e.g., `results/suites/`, `out/`) and ensure `.gitignore` excludes transient files.
 
 ---
 
@@ -88,14 +88,14 @@ All changes must pass linting, typechecking, and tests before PR submission:
   ```bash
   pnpm run preflight
   ```
-- **Browser E2E gate (eval-view / dashboard / UI changes):** Playwright browser tests are not included in `pnpm run preflight` and must be executed when touching frontend visualizers, dashboard code, or server endpoints in `eval-view/`:
+- **Browser E2E gate (dashboard / UI changes):** Playwright browser tests are not included in `pnpm run preflight` and must be executed when touching frontend visualizers, dashboard code, or server endpoints in `src/dashboard/`:
   ```bash
-  pnpm --filter eval-view run test:e2e
+  pnpm run test:e2e
   ```
   *(Run `pnpm run setup:playwright` first if browser binaries are not installed).*
 
 ### Domain-Specific Validation
-- **Serving & Skills:** When modifying skills packaging, verify with `pnpm --filter serving run publish-skills --dry-run`.
+- **Serving & Skills:** When modifying skills packaging, verify with `pnpm run publish-skills --dry-run`.
 - **Guides & Graders:** When authoring or updating evaluation capsules, verify grader calibration via `gd dev <guide> --test-grader`.
 - **Clean Git Tree:** The build must produce zero uncommitted side effects or untracked artifacts (`git status` must remain clean).
 
@@ -109,10 +109,10 @@ All changes must pass linting, typechecking, and tests before PR submission:
 
 1. [ ] **PR Scope:** Focused on a single feature, library, or UI component (no monolithic multi-component PRs).
 2. [ ] **Abstractions:** Reuses repository CLI runners (`config.environment`) and avoids custom API clients.
-3. [ ] **Enums:** Uses the `Agents` enum from `harness/config.ts` rather than raw string constants.
+3. [ ] **Enums:** Uses the `Agents` enum from `src/harness/config.ts` rather than raw string constants.
 4. [ ] **Metadata:** Reads properties from canonical metadata files (`evals.json`) instead of path heuristics.
 5. [ ] **Prompts:** Extracted into dedicated `*-prompts.ts` or constants modules.
 6. [ ] **Configs:** Root `tsconfig.json`, `package.json`, and `.oxlintignore` are untouched unless explicitly intended.
 7. [ ] **Remote I/O & Git:** Remote fetches are strictly scoped and cached; no transient debug artifacts committed.
 8. [ ] **Dashboard/UI:** Handles static vs. local server modes; URL parameters safely parsed and sanitized.
-9. [ ] **Verification:** `pnpm run preflight` (and `pnpm --filter eval-view run test:e2e` for `eval-view/` changes) passes with 0 errors.
+9. [ ] **Verification:** `pnpm run preflight` (and `pnpm run test:e2e` for `src/dashboard/` changes) passes with 0 errors.

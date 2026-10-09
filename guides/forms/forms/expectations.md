@@ -27,6 +27,8 @@
 - The implementation MUST use the `autocomplete` attribute to specify expected data (e.g., `email`, `tel`).
 - The implementation MUST use `inputmode` to optimize on-screen keyboards (e.g., `inputmode="numeric"` for PINs).
 - The implementation MUST use `enterkeyhint` to set the Enter key label.
+- The implementation MUST set `autocorrect="off"` (and `autocapitalize="off"`, `spellcheck="false"`) on unstructured identifier fields such as usernames and codes (but NOT on structured fields like emails or URLs).
+- The implementation MUST NOT set `autocorrect="off"` or `autocapitalize="off"` on `type=email` or `type=url` inputs.
 - The implementation MUST use single-field inputs for complex numbers (credit cards, phones).
 - The implementation MUST NOT use `type="number"` for credit cards or ZIP codes.
 - The implementation MUST use native constraints: `required`, `minlength`, `maxlength`, `pattern`.
