@@ -9,7 +9,22 @@ export function extractFeatureIds(description: string): string[] {
   let match;
   while ((match = formRegex.exec(description)) !== null) {
     const val = match[1].trim();
-    if (val) featureIds.add(val);
+    if (val && val !== '_No response_') featureIds.add(val);
+  }
+
+  // Pattern 1b: new-use-case form template:
+  // ### Affected web-feature IDs
+  //
+  // dialog-closedby, popover
+  const affectedFeaturesRegex = /### Affected web-feature IDs\s*\r?\n\s*([^\r\n#]+)/gi;
+  while ((match = affectedFeaturesRegex.exec(description)) !== null) {
+    const raw = match[1].trim();
+    if (raw && raw !== '_No response_') {
+      for (const token of raw.split(',')) {
+        const val = token.trim();
+        if (val) featureIds.add(val);
+      }
+    }
   }
 
   // Pattern 2: Bold or plain label:
