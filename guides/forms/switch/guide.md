@@ -12,12 +12,12 @@ Use the HTML `switch` attribute on `<input type="checkbox" switch>` with an asso
 
 ## Markup
 
-Add the boolean `switch` attribute and `role="switch"` to a standard checkbox input:
+Add the boolean `switch` attribute to a standard checkbox input:
 
 ```html
 <label>
   Enable notifications
-  <input id="notifications" type="checkbox" role="switch" switch>
+  <input id="notifications" type="checkbox" switch>
 </label>
 ```
 
