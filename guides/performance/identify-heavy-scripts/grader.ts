@@ -11,26 +11,69 @@ if (!targetFile) {
 const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
-const demoUrl = `http://localhost/${demoName}`;
+const demoUrl = `http://localhost/${demoName}?performance=1&debug=1`;
+
+function getCombinedCode(): string {
+  const isDemoTarget = demoName === 'demo.html' || demoName === 'negative-demo.html';
+  const html = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '';
+  const files: string[] = [filePath];
+  if (isDemoTarget) {
+    const srcMatches = html.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi);
+    for (const match of srcMatches) {
+      const src = match[1];
+      if (!/^https?:\/\//i.test(src) && !src.startsWith('//')) {
+        const resolved = path.resolve(targetDir, src.replace(/^\/+/, ''));
+        if (resolved.startsWith(targetDir + path.sep) && fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+          files.push(resolved);
+        }
+      }
+    }
+  } else {
+    const excludedDirs = new Set(['node_modules', 'vendor', 'test', 'tests', 'grade-report', 'test-results', 'dist', '.git']);
+    const walk = (dir: string) => {
+      try {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            if (!excludedDirs.has(entry.name)) walk(fullPath);
+          } else if (
+            entry.isFile() &&
+            (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
+            !entry.name.includes('.test.') &&
+            !entry.name.includes('.spec.') &&
+            !entry.name.includes('.config.') &&
+            entry.name !== 'grade.mjs' &&
+            entry.name !== 'run.mjs'
+          ) {
+            files.push(fullPath);
+          }
+        }
+      } catch {}
+    };
+    walk(targetDir);
+  }
+  return [...new Set(files)].filter(f => fs.existsSync(f)).map(f => fs.readFileSync(f, 'utf-8')).join('\n');
+}
 
 test.describe(`Identify Heavy Scripts Expectations: ${demoName}`, () => {
   // Static assertions
   test('No polyfill for Long Animation Frames should be included', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
+    const code = getCombinedCode();
     // Check for explicit polyfill attempts for PerformanceLongAnimationFrame
     const polyfillPattern = /PerformanceLongAnimationFrame\s*=/;
-    expect(html).not.toMatch(polyfillPattern);
+    expect(code).not.toMatch(polyfillPattern);
   });
 
   // Browser tests
   test.describe('Performance Monitoring Implementation', () => {
     test.beforeEach(async ({ page }) => {
       // Set up routing to serve local files
-      await page.route('http://localhost/*', async (route) => {
-        const requestPath = new URL(route.request().url()).pathname;
-        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      await page.route('http://localhost/**', async (route) => {
+        const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+        const relPath = requestPath === '/' ? demoName : requestPath.replace(/^\/+/, '');
+        const localFilePath = path.resolve(targetDir, relPath);
 
-        if (fs.existsSync(localFilePath)) {
+        if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
           await route.fulfill({ path: localFilePath });
         } else {
           await route.continue();
@@ -51,7 +94,7 @@ test.describe(`Identify Heavy Scripts Expectations: ${demoName}`, () => {
             observe(options: any) { (window as any)._observeCalls.push(options); }
             disconnect() {}
             takeRecords() { return []; }
-            static supportedEntryTypes = ['long-animation-frame'];
+            static supportedEntryTypes = ['long-animation-frame', 'resource', 'longtask'];
           };
         } else {
           const originalObserve = originalPerformanceObserver.prototype.observe;

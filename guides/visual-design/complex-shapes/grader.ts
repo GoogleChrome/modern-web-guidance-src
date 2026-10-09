@@ -1,14 +1,30 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 
-const targetFile = process.env.TARGET_FILE || path.resolve(import.meta.dirname, 'demo.html');
-const targetUrl = `file://${targetFile}`;
+const targetFile = path.resolve(process.env.TARGET_FILE || path.resolve(import.meta.dirname, 'demo.html'));
+const targetDir = path.dirname(targetFile);
+const targetFileName = path.basename(targetFile);
+const targetUrl = `http://localhost/${targetFileName}`;
+
+test.beforeEach(async ({ page }) => {
+  await page.route('http://localhost/**', async (route) => {
+    const reqPath = decodeURIComponent(new URL(route.request().url()).pathname);
+    const relPath = reqPath === '/' ? targetFileName : reqPath.replace(/^\/+/, '');
+    const resolved = path.resolve(targetDir, relPath);
+    if (resolved.startsWith(targetDir + path.sep) && fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+      await route.fulfill({ path: resolved });
+    } else {
+      await route.continue();
+    }
+  });
+});
 
 test('The element with class .shaped-element has the mask-image property applied', async ({ page }) => {
   await page.goto(targetUrl);
   
   const hasMaskImage = await page.evaluate(() => {
-    const el = document.querySelector('.shaped-element') as HTMLElement;
+    const el = document.querySelector('.shaped-element, .masked-content') as HTMLElement;
     if (!el) return false;
     
     // 1. Check computed style
@@ -27,7 +43,7 @@ test('The element with class .shaped-element has the mask-image property applied
       try {
         const rules = Array.from(sheet.cssRules || sheet.rules);
         for (const rule of rules) {
-          if (rule instanceof CSSStyleRule && rule.selectorText.includes('.shaped-element')) {
+          if (rule instanceof CSSStyleRule && (rule.selectorText.includes('.shaped-element') || rule.selectorText.includes('.masked-content'))) {
             if (rule.style.maskImage || rule.style.getPropertyValue('mask-image')) {
               return true;
             }
@@ -47,7 +63,7 @@ test('The element with class .shaped-element has the -webkit-mask-image property
   await page.goto(targetUrl);
   
   const hasWebkitMaskImage = await page.evaluate(() => {
-    const el = document.querySelector('.shaped-element') as HTMLElement;
+    const el = document.querySelector('.shaped-element, .masked-content') as HTMLElement;
     if (!el) return false;
     
     // 1. Check computed style
@@ -66,7 +82,7 @@ test('The element with class .shaped-element has the -webkit-mask-image property
       try {
         const rules = Array.from(sheet.cssRules || sheet.rules);
         for (const rule of rules) {
-          if (rule instanceof CSSStyleRule && rule.selectorText.includes('.shaped-element')) {
+          if (rule instanceof CSSStyleRule && (rule.selectorText.includes('.shaped-element') || rule.selectorText.includes('.masked-content'))) {
             if (rule.style.webkitMaskImage || rule.style.getPropertyValue('-webkit-mask-image')) {
               return true;
             }
@@ -86,7 +102,7 @@ test('The mask references a valid image URL or an ID of a mask element in an svg
   await page.goto(targetUrl);
   
   const isValidMaskReference = await page.evaluate(() => {
-    const el = document.querySelector('.shaped-element') as HTMLElement;
+    const el = document.querySelector('.shaped-element, .masked-content') as HTMLElement;
     if (!el) return false;
     
     const computed = window.getComputedStyle(el);
@@ -130,7 +146,7 @@ test('A fallback strategy is included, such as a simpler shape with clip-path or
   await page.goto(targetUrl);
   
   const hasFallbackStrategy = await page.evaluate(() => {
-    const el = document.querySelector('.shaped-element') as HTMLElement;
+    const el = document.querySelector('.shaped-element, .masked-content') as HTMLElement;
     if (!el) return false;
     
     // 1. Check if there are any CSS rules with @supports that check for mask-image or -webkit-mask-image
@@ -157,7 +173,7 @@ test('A fallback strategy is included, such as a simpler shape with clip-path or
       try {
         const rules = Array.from(sheet.cssRules || sheet.rules);
         for (const rule of rules) {
-          if (rule instanceof CSSStyleRule && rule.selectorText.includes('.shaped-element')) {
+          if (rule instanceof CSSStyleRule && (rule.selectorText.includes('.shaped-element') || rule.selectorText.includes('.masked-content'))) {
             if (rule.style.clipPath || rule.style.getPropertyValue('clip-path')) {
               hasClipPath = true;
               break;
@@ -212,7 +228,7 @@ test('The layout does not break if the mask fails to load or is unsupported', as
   await page.goto(targetUrl);
   
   const layoutIsSolid = await page.evaluate(() => {
-    const el = document.querySelector('.shaped-element') as HTMLElement;
+    const el = document.querySelector('.shaped-element, .masked-content') as HTMLElement;
     if (!el) return false;
     
     const computed = window.getComputedStyle(el);

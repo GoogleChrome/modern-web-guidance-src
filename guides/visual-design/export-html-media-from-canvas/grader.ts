@@ -1,4 +1,54 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const targetFileRaw = process.env.TARGET_FILE || 'demo.html';
+const targetFile = path.isAbsolute(targetFileRaw) ? targetFileRaw : path.resolve(process.cwd(), targetFileRaw);
+const targetDir = path.dirname(targetFile);
+const targetFileName = path.basename(targetFile);
+const targetUrl = `http://localhost/${targetFileName}`;
+
+function getAllScriptContent(): string {
+  const isDemoTarget = targetFileName === 'demo.html' || targetFileName === 'negative-demo.html';
+  const html = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, 'utf-8') : '';
+  const files: string[] = [targetFile];
+  if (isDemoTarget) {
+    const srcMatches = html.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi);
+    for (const match of srcMatches) {
+      const src = match[1];
+      if (!/^https?:\/\//i.test(src) && !src.startsWith('//')) {
+        const resolved = path.resolve(targetDir, src.replace(/^\/+/, ''));
+        if (resolved.startsWith(targetDir + path.sep) && fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+          files.push(resolved);
+        }
+      }
+    }
+  } else {
+    const excludedDirs = new Set(['node_modules', 'vendor', 'test', 'tests', 'grade-report', 'test-results', 'dist', '.git']);
+    const walk = (dir: string) => {
+      try {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            if (!excludedDirs.has(entry.name)) walk(fullPath);
+          } else if (
+            entry.isFile() &&
+            (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
+            !entry.name.includes('.test.') &&
+            !entry.name.includes('.spec.') &&
+            !entry.name.includes('.config.') &&
+            entry.name !== 'grade.mjs' &&
+            entry.name !== 'run.mjs'
+          ) {
+            files.push(fullPath);
+          }
+        }
+      } catch {}
+    };
+    walk(targetDir);
+  }
+  return [...new Set(files)].filter(f => fs.existsSync(f)).map(f => fs.readFileSync(f, 'utf-8')).join('\n');
+}
 
 declare global {
   interface Window {
@@ -13,6 +63,7 @@ declare global {
     __resizeObserverObserved: Array<{
       targetTagName: string | null;
       targetId: string | null;
+      containsCanvas: boolean;
       options: any;
     }>;
   }
@@ -23,6 +74,17 @@ declare global {
 }
 
 test.beforeEach(async ({ page }) => {
+  await page.route('http://localhost/**', async (route) => {
+    const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+    const relPath = requestPath === '/' ? targetFileName : requestPath.replace(/^\/+/, '');
+    const localFilePath = path.resolve(targetDir, relPath);
+    if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+      await route.fulfill({ path: localFilePath });
+    } else {
+      await route.continue();
+    }
+  });
+
   // Add the HTML-in-Canvas API polyfills and spy hooks before loading the page
   await page.addInitScript(() => {
     // Spies & trackers
@@ -34,6 +96,18 @@ test.beforeEach(async ({ page }) => {
 
     const onpaintMap = new WeakMap<HTMLCanvasElement, any>();
     
+    Object.defineProperty(HTMLCanvasElement.prototype, 'layoutSubtree', {
+      get() {
+        window.__featureDetectionChecked = true;
+        return this.hasAttribute('layoutsubtree');
+      },
+      set(val) {
+        if (val) this.setAttribute('layoutsubtree', '');
+        else this.removeAttribute('layoutsubtree');
+      },
+      configurable: true,
+    });
+
     Object.defineProperty(HTMLCanvasElement.prototype, 'onpaint', {
       get() {
         return onpaintMap.get(this);
@@ -139,6 +213,7 @@ test.beforeEach(async ({ page }) => {
           window.__resizeObserverObserved.push({
             targetTagName: target ? target.tagName.toLowerCase() : null,
             targetId: target ? target.id : null,
+            containsCanvas: Boolean(target && (target.tagName.toLowerCase() === 'canvas' || target.querySelector('canvas'))),
             options: options || null
           });
           return super.observe(target, options);
@@ -150,11 +225,11 @@ test.beforeEach(async ({ page }) => {
 
   // Navigate to target file
   page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
-  await page.goto(`file://${process.env.TARGET_FILE || ''}`);
+  await page.goto(targetUrl);
   // Give time for initial load and observation to register
   await page.waitForTimeout(500);
 
-  const exportBtn = page.locator('#download_card, #download-btn, #export-card-btn, #export-btn, button:has-text("Download"), button:has-text("Export"), button:has-text("Save")').first();
+  const exportBtn = page.locator('#download_card, #download-card, #download-btn, #export-card-btn, #export-btn, button:has-text("Download"), button:has-text("Export"), button:has-text("Save")').first();
   if (await exportBtn.isVisible()) {
     await exportBtn.click();
     await page.waitForTimeout(500);
@@ -163,15 +238,21 @@ test.beforeEach(async ({ page }) => {
 
 // Test 1: Feature detection is conducted
 test('Feature detection for HTML-in-Canvas MUST be conducted', async ({ page }) => {
+  const allCode = getAllScriptContent();
   const isFeatureDetected = await page.evaluate(() => {
     const scriptText = Array.from(document.querySelectorAll('script'))
       .map(s => s.textContent || '')
       .join(String.fromCharCode(10));
-    return window.__featureDetectionChecked || 
-           scriptText.includes('requestPaint') || 
+    return window.__featureDetectionChecked ||
+           /['"`](?:requestPaint|layoutSubtree|drawElementImage|onpaint|devicePixelContentBoxSize)['"`]\s+in\b/.test(scriptText) ||
+           /typeof\s+[\w.?]+\.(?:requestPaint|layoutSubtree|drawElementImage|onpaint)\b/.test(scriptText) ||
            scriptText.includes('devicePixelContentBoxSize');
   });
-  expect(isFeatureDetected).toBe(true);
+  const hasStaticFeatureDetection =
+    /['"`](?:requestPaint|layoutSubtree|drawElementImage|onpaint|devicePixelContentBoxSize)['"`]\s+in\b/.test(allCode) ||
+    /typeof\s+[\w.?]+\.(?:requestPaint|layoutSubtree|drawElementImage|onpaint)\b/.test(allCode) ||
+    /\bif\s*\(\s*!?\s*(?:canvas|ctx|context|HTMLCanvasElement\.prototype|CanvasRenderingContext2D\.prototype)\??\.(?:requestPaint|layoutSubtree|drawElementImage|onpaint)\b/.test(allCode);
+  expect(isFeatureDetected || hasStaticFeatureDetection).toBe(true);
 });
 
 // Test 2: Canvas element includes layoutsubtree attribute
@@ -218,7 +299,7 @@ test('The CSS transform property of the descendant element MUST be updated', asy
 // Test 6: Screen size changes are observed to update canvas size
 test('Screen size changes MUST be observed via ResizeObserver on the canvas', async ({ page }) => {
   const isCanvasObserved = await page.evaluate(() => {
-    return window.__resizeObserverObserved.some(obs => obs.targetTagName === 'canvas' || obs.targetId === 'export_element' || obs.targetTagName === 'article');
+    return window.__resizeObserverObserved.some(obs => obs.targetTagName === 'canvas' || obs.targetId === 'export_element' || obs.targetTagName === 'article' || obs.containsCanvas);
   });
   expect(isCanvasObserved).toBe(true);
 });

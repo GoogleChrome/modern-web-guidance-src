@@ -1,17 +1,42 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const targetFile = process.env.TARGET_FILE;
 
 // Helper to check target file
-function checkTargetFile() {
+function checkTargetFile(): { filePath: string; targetDir: string; fileName: string; targetUrl: string } {
   if (!targetFile) {
     throw new Error('TARGET_FILE environment variable is not defined');
   }
+  const filePath = path.resolve(targetFile);
+  const targetDir = path.dirname(filePath);
+  const fileName = path.basename(filePath);
+  return {
+    filePath,
+    targetDir,
+    fileName,
+    targetUrl: `http://localhost/${fileName}`,
+  };
+}
+
+async function setupLocalhostRoute(page: any, targetDir: string, fileName: string) {
+  await page.route('http://localhost/**', async (route: any) => {
+    const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+    const relPath = requestPath === '/' ? fileName : requestPath.replace(/^\/+/, '');
+    const localFilePath = path.resolve(targetDir, relPath);
+    if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+      await route.fulfill({ path: localFilePath });
+    } else {
+      await route.continue();
+    }
+  });
 }
 
 // Test 1: "The code checks for modelContext in document before registering a tool."
 test('1. Checks for modelContext in document before registering', async ({ page }) => {
-  checkTargetFile();
+  const { targetDir, fileName, targetUrl } = checkTargetFile();
+  await setupLocalhostRoute(page, targetDir, fileName);
 
   const errors: string[] = [];
   page.on('pageerror', (err) => {
@@ -19,7 +44,7 @@ test('1. Checks for modelContext in document before registering', async ({ page 
   });
 
   // Load the page WITHOUT mocking document.modelContext
-  await page.goto(`file://${targetFile}`);
+  await page.goto(targetUrl);
 
   // Give any scripts half a second to execute and possibly crash
   await page.waitForTimeout(500);
@@ -33,7 +58,8 @@ test('1. Checks for modelContext in document before registering', async ({ page 
 // and verify their details.
 test.describe('With mocked WebMCP API', () => {
   test.beforeEach(async ({ page }) => {
-    checkTargetFile();
+    const { targetDir, fileName, targetUrl } = checkTargetFile();
+    await setupLocalhostRoute(page, targetDir, fileName);
 
     await page.addInitScript(() => {
       const registerCalls: any[][] = [];
@@ -66,7 +92,7 @@ test.describe('With mocked WebMCP API', () => {
       };
     });
 
-    await page.goto(`file://${targetFile}`);
+    await page.goto(targetUrl);
     // Wait for page load and execution
     await page.waitForTimeout(500);
   });

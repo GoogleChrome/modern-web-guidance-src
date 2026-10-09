@@ -1,12 +1,37 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 
-const targetFile = process.env.TARGET_FILE || path.resolve('demo.html');
-const targetUrl = `file://${path.isAbsolute(targetFile) ? targetFile : path.resolve(targetFile)}`;
+const rawTargetFile = process.env.TARGET_FILE || path.resolve('demo.html');
+const targetFile = path.isAbsolute(rawTargetFile) ? rawTargetFile : path.resolve(rawTargetFile);
+const targetDir = path.dirname(targetFile);
+const fileName = path.basename(targetFile);
+const targetUrl = `http://localhost/${fileName}`;
 
 test.describe('Design Token Reactivity Grader', () => {
 
   test.beforeEach(async ({ page }) => {
+    await page.route('http://localhost/**', async (route) => {
+      const url = new URL(route.request().url());
+      let reqPath = decodeURIComponent(url.pathname);
+      if (reqPath === '/' || reqPath === '') reqPath = `/${fileName}`;
+      const fullPath = path.join(targetDir, reqPath);
+      if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+        const ext = path.extname(fullPath).toLowerCase();
+        const contentType =
+          ext === '.html' ? 'text/html' :
+          ext === '.css' ? 'text/css' :
+          ext === '.js' || ext === '.mjs' ? 'application/javascript' :
+          'application/octet-stream';
+        await route.fulfill({
+          status: 200,
+          contentType,
+          body: fs.readFileSync(fullPath),
+        });
+      } else {
+        await route.continue();
+      }
+    });
     await page.goto(targetUrl);
   });
 
@@ -38,43 +63,46 @@ test.describe('Design Token Reactivity Grader', () => {
       const allElements = Array.from(document.querySelectorAll('*'));
       for (const el of allElements) {
         if (el === document.documentElement || el === document.body) continue;
-        const parent = el.parentElement;
-        if (!parent) continue;
 
         for (const prop of props) {
           if (prop.includes('support')) continue;
 
-          const originalVal = getComputedStyle(parent).getPropertyValue(prop).trim();
-          const getStyles = (element: Element) => {
-            const s = getComputedStyle(element);
-            return {
-              padding: s.padding,
-              paddingTop: s.paddingTop,
-              paddingBottom: s.paddingBottom,
-              paddingLeft: s.paddingLeft,
-              paddingRight: s.paddingRight,
+          let ancestor = el.parentElement;
+          while (ancestor) {
+            const originalVal = getComputedStyle(ancestor).getPropertyValue(prop).trim();
+            const inlineOriginalVal = (ancestor as HTMLElement).style.getPropertyValue(prop);
+            const getStyles = (element: Element) => {
+              const s = getComputedStyle(element);
+              return {
+                padding: s.padding,
+                paddingTop: s.paddingTop,
+                paddingBottom: s.paddingBottom,
+                paddingLeft: s.paddingLeft,
+                paddingRight: s.paddingRight,
+              };
             };
-          };
 
-          const stylesBefore = getStyles(el);
+            const stylesBefore = getStyles(el);
 
-          // Change value to trigger query evaluation
-          const testVal = originalVal === 'spacious' ? 'compact' : 'spacious';
-          (parent as HTMLElement).style.setProperty(prop, testVal);
-          const stylesAfter = getStyles(el);
+            // Change value to trigger query evaluation
+            const testVal = originalVal === 'spacious' ? 'compact' : 'spacious';
+            (ancestor as HTMLElement).style.setProperty(prop, testVal);
+            const stylesAfter = getStyles(el);
 
-          // Restore
-          if (originalVal) {
-            (parent as HTMLElement).style.setProperty(prop, originalVal);
-          } else {
-            (parent as HTMLElement).style.removeProperty(prop);
-          }
+            // Restore
+            if (inlineOriginalVal) {
+              (ancestor as HTMLElement).style.setProperty(prop, inlineOriginalVal);
+            } else {
+              (ancestor as HTMLElement).style.removeProperty(prop);
+            }
 
-          const changed = Object.keys(stylesBefore).some(
-            (p) => stylesBefore[p as keyof typeof stylesBefore] !== stylesAfter[p as keyof typeof stylesAfter]
-          );
-          if (changed) {
-            return true;
+            const changed = Object.keys(stylesBefore).some(
+              (p) => stylesBefore[p as keyof typeof stylesBefore] !== stylesAfter[p as keyof typeof stylesAfter]
+            );
+            if (changed) {
+              return true;
+            }
+            ancestor = ancestor.parentElement;
           }
         }
       }
@@ -255,14 +283,25 @@ test.describe('Design Token Reactivity Grader', () => {
       if (!button) return false;
 
       let supportProp: string | null = null;
+      let hasBaseDisplayNone = false;
+      let hasContainerDisplayReveal = false;
+
       for (const sheet of Array.from(document.styleSheets)) {
         try {
           for (const rule of Array.from(sheet.cssRules)) {
+            if (rule instanceof CSSStyleRule && rule.selectorText && rule.selectorText.includes('toggle-spacious')) {
+              if (rule.style.display === 'none') {
+                hasBaseDisplayNone = true;
+              }
+            }
             if (rule.constructor.name === 'CSSContainerRule') {
               const containerRule = rule as any;
+              const cond = containerRule.conditionText || '';
               for (const subRule of Array.from(containerRule.cssRules) as any[]) {
                 if (subRule.selectorText && subRule.selectorText.includes('toggle-spacious')) {
-                  const cond = containerRule.conditionText || '';
+                  if (cond.includes('style(') && subRule.style && subRule.style.display && subRule.style.display !== 'none') {
+                    hasContainerDisplayReveal = true;
+                  }
                   const match = cond.match(/--[a-zA-Z0-9_-]+/);
                   if (match) {
                     supportProp = match[0];
@@ -284,7 +323,11 @@ test.describe('Design Token Reactivity Grader', () => {
 
       document.documentElement.style.removeProperty(supportProp);
 
-      return originalDisplay !== 'none' && displayAfterRemoval === 'none';
+      if (originalDisplay !== 'none' && displayAfterRemoval === 'none') {
+        return true;
+      }
+
+      return originalDisplay !== 'none' && hasBaseDisplayNone && hasContainerDisplayReveal;
     });
 
     expect(usesFeatureCheck).toBe(true);
