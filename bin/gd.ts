@@ -8,7 +8,7 @@ import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
 import { resolveSuiteConfig } from '../src/harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir } from '../src/core/paths.ts';
-import { getTaskMap } from '../src/core/guide-validation.ts';
+import { getTaskMap, SUPPORTED_BASE_APPS } from '../src/core/guide-validation.ts';
 
 // Load environment variables (Node 20.12+)
 try {
@@ -34,14 +34,15 @@ const ALL_OPTIONS = {
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
   'dry-run': { type: 'boolean', desc: 'List what would run without running it' },
   limit: { type: 'string', desc: 'Process at most <n> guides' },
+  targets: { type: 'string', desc: 'Target base app(s), comma-separated (e.g. daily-grind,devtools-times)' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
-  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app'] },
-  'dev-gap': { desc: 'Run dev + pr for each open eval-gap issue without a PR', flags: ['dry-run', 'limit'] },
+  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
+  'dev-gap': { desc: 'Run dev + pr for each guide missing evals or PR labeled for rerun', flags: ['dry-run', 'limit', 'targets'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
@@ -163,6 +164,19 @@ function requireArg(arg: string | undefined, usage: string): string {
   return arg;
 }
 
+function parseTargets(raw: unknown): string[] | undefined {
+  if (raw === undefined) return undefined;
+  const parsed = typeof raw === 'string'
+    ? raw.split(',').map(t => t.trim()).filter(Boolean)
+    : [];
+  const invalid = parsed.filter(t => !(SUPPORTED_BASE_APPS as readonly string[]).includes(t));
+  if (parsed.length === 0 || invalid.length > 0) {
+    console.error(cRed(`Invalid --targets (${invalid.join(', ') || 'empty'}). Supported targets: ${SUPPORTED_BASE_APPS.join(', ')}`));
+    process.exit(1);
+  }
+  return parsed;
+}
+
 // --- Command Routing ---
 
 function showHelp() {
@@ -205,7 +219,7 @@ function showHelp() {
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
-          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : '';
+          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : flagName === 'targets' ? ' <apps>' : '';
           console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }
@@ -236,7 +250,7 @@ async function main() {
 
     case 'dev-gap': {
       if (positionals[1]) {
-        console.error(cRed(`gd dev-gap picks guides from open issues; don't pass a guide ('${positionals[1]}').`));
+        console.error(cRed(`gd dev-gap scans guides on disk; don't pass a guide ('${positionals[1]}').`));
         process.exit(1);
       }
       const { fixEvalGaps } = await import('../src/authoring/dev-gap.ts');
@@ -245,6 +259,7 @@ async function main() {
         limit: values.limit ? Number(values.limit) : undefined,
         verbose: !!values.verbose,
         suiteConfig: await resolveSuiteConfig(values.config as string | undefined),
+        targets: parseTargets(values.targets) ?? ['daily-grind'],
       });
       process.exit(success ? 0 : 1);
     }
@@ -273,6 +288,7 @@ async function main() {
         verbose: !!values.verbose,
         test: !values['no-test'],
         suiteConfig: mergedSuiteConfig,
+        targets: parseTargets(values.targets),
       });
       process.exit(success ? 0 : 1);
     }

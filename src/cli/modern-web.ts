@@ -10,6 +10,7 @@ import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
 import { getSkillUpdateLevel } from "./skill-version.ts";
 import { USE_CASES } from "../rag/guides.ts";
+import { determineAgent } from "./telemetry/detect-agent.ts";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -146,7 +147,13 @@ async function main() {
       .filter(Boolean)
       .concat(extraArgs);
 
-    const result = spawnSync("npx", installArgs, { stdio: "inherit", shell: process.platform === "win32" });
+    const detectedAgent = determineAgent().agent?.name;
+    const env = detectedAgent ? { ...process.env, AI_AGENT: detectedAgent } : process.env;
+    const result = spawnSync("npx", installArgs, {
+      stdio: "inherit",
+      shell: process.platform === "win32",
+      env,
+    });
 
     const success = !result.error && result.status === 0;
     const commandType = values.choose ? CommandType.INSTALL_CHOOSE : CommandType.INSTALL;

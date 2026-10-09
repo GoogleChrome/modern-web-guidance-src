@@ -46,9 +46,10 @@ export interface DevGuideOptions {
   guidedOnly?: boolean;  // skip calibration and only run the guided agent test
   verbose?: boolean;
   suiteConfig?: SuiteConfig;
+  targets?: readonly string[];
 }
 
-function printInventory(inv: GuideInventory): void {
+function printInventory(inv: GuideInventory, targets: readonly string[] = SUPPORTED_BASE_APPS): void {
   const icon = (exists: boolean, willGenerate = false, warn = false) => {
     if (exists && !warn) return '\u2705';
     if (warn) return '\u26a0\ufe0f ';
@@ -68,7 +69,7 @@ function printInventory(inv: GuideInventory): void {
 
   if (inv.targets) {
     console.log(`\n   ${cDim('Targets:')}`);
-    for (const target of inv.targets) {
+    for (const target of inv.targets.filter(t => targets.includes(t.name))) {
       console.log(`     ${cBold(target.name)}`);
       console.log(`       ${'solutions/*.patch'.padEnd(18)} ${target.hasSolution ? icon(true) : icon(false, true) + ' will generate'}`);
       console.log(`       ${'zero-passrate.patch'.padEnd(18)} ${target.hasZeroPassrate ? icon(true) : icon(false, true) + ' will generate'}`);
@@ -100,6 +101,7 @@ export function exciseOldEvalArtifacts(guideDir: string): void {
 export async function devGuide(targetDirRaw: string, options: DevGuideOptions = {}, inv?: GuideInventory): Promise<boolean> {
   const maxRetries = options.maxRetries ?? 4;
   const targetDir = path.resolve(process.cwd(), targetDirRaw);
+  const targets = options.targets ?? SUPPORTED_BASE_APPS;
 
   if (!fs.existsSync(targetDir)) {
     console.error(`Error: Directory not found: ${targetDir}`);
@@ -110,8 +112,8 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   exciseOldEvalArtifacts(targetDir);
 
   // Step 1: Validate guide inventory
-  const currentInv = inv || inventoryGuide(targetDir, { useTargetEvals: true });
-  printInventory(currentInv);
+  const currentInv = inv?.targets ? inv : inventoryGuide(targetDir, { useTargetEvals: true });
+  printInventory(currentInv, targets);
 
   if (!currentInv.hasGuide) {
     if (currentInv.isStub) {
@@ -126,9 +128,9 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-  // Step 2: Parallel target generation across SUPPORTED_BASE_APPS
+  // Step 2: Parallel target generation across targets
   await Promise.all(
-    SUPPORTED_BASE_APPS.map(async (baseApp) => {
+    targets.map(async (baseApp) => {
       const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, baseApp);
       fs.mkdirSync(targetCapsuleDir, { recursive: true });
 
@@ -172,7 +174,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 3: Calibrate targets in parallel and retry grader if calibration fails
   const calibrationResults = await Promise.all(
-    SUPPORTED_BASE_APPS.map(async (baseApp) => {
+    targets.map(async (baseApp) => {
       console.log(cCyan(`\n--- Calibrating target: ${baseApp} ---`));
       for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
         const res = await testGrader(path.join(targetDirRaw, TARGETS_DIR, baseApp));
@@ -196,16 +198,16 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 4: Run agent evaluation test (runs by default unless --no-test is passed or calibration failed)
   if (options.test !== false && overallSuccess) {
-    await runAgentTest(targetDir, currentInv.name, options.guidedOnly, options.suiteConfig);
+    await runAgentTest(targetDir, currentInv.name, options.guidedOnly, options.suiteConfig, targets);
   }
 
   // Summary
   const defaultAgent = getDefaultSolutionAgent();
-  printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CODEX_CLI]: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
+  printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CODEX_CLI]: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1, targets);
 
   // Step 5: Run evaluation report (printed last)
   if (options.test !== false && overallSuccess) {
-    await runDevReport(targetDir, currentInv);
+    await runDevReport(targetDir, currentInv, targets);
   }
 
   return overallSuccess;
@@ -282,7 +284,13 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
   }
 }
 
-async function runAgentTest(targetDir: string, guideName: string, guidedOnly = false, suiteConfig?: SuiteConfig): Promise<void> {
+async function runAgentTest(
+  targetDir: string,
+  guideName: string,
+  guidedOnly = false,
+  suiteConfig?: SuiteConfig,
+  targets: readonly string[] = SUPPORTED_BASE_APPS
+): Promise<void> {
   console.log(cCyan(`\n--- Running agent tests ---`));
 
   const targetsDir = path.join(targetDir, 'targets');
@@ -292,7 +300,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
   }
 
   const baseApps = fs.readdirSync(targetsDir).filter(name => {
-    return !name.startsWith('.') && fs.statSync(path.join(targetsDir, name)).isDirectory() && SUPPORTED_BASE_APPS.includes(name as any);
+    return !name.startsWith('.') && fs.statSync(path.join(targetsDir, name)).isDirectory() && targets.includes(name);
   });
 
   if (baseApps.length === 0) {
@@ -332,8 +340,8 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
 
       // 1. Grade base app (with zero-passrate baseline applied)
       const relGuidePath = path.relative(guidesDir, targetDir);
-      const [category, slug] = relGuidePath.split(path.sep);
-      const guideResultsDir = getGuideResultsDir({ category, slug: slug || guideName });
+      const [category, name] = relGuidePath.split(path.sep);
+      const guideResultsDir = getGuideResultsDir({ category, name: name || guideName });
       const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
       const preResults = await gradeOutput(
         targetsDir,
@@ -444,7 +452,7 @@ export function printTestComparison(
   }
 }
 
-function printSummary(targetDir: string, inv: GuideInventory, result: CalibrationResult | null, attempts: number): void {
+function printSummary(targetDir: string, inv: GuideInventory, result: CalibrationResult | null, attempts: number, targets: readonly string[] = SUPPORTED_BASE_APPS): void {
   const relDir = path.relative(process.cwd(), targetDir);
 
   console.log(`\n${'='.repeat(60)}`);
@@ -465,7 +473,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
   const targetsDir = path.join(targetDir, TARGETS_DIR);
   if (fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory()) {
     const baseApps = fs.readdirSync(targetsDir).filter(name => {
-      return !name.startsWith('.') && fs.statSync(path.join(targetsDir, name)).isDirectory() && SUPPORTED_BASE_APPS.includes(name as any);
+      return !name.startsWith('.') && fs.statSync(path.join(targetsDir, name)).isDirectory() && targets.includes(name);
     });
 
     for (const baseApp of baseApps) {
