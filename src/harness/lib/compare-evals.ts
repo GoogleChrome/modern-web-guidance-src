@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
+import { cGreen, cRed, cCyan, cBold } from '../../core/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
-import { baseAppsDir, guidesDir, resultsDir } from '../../lib/paths.ts';
+import { baseAppsDir, guidesDir, resultsDir } from '../../core/paths.ts';
 import { getComparisonPrompts } from './compare-prompts.ts';
-import { generateUnifiedDiff, extractTargetFilesFromPatch } from '../../lib/patch-utils.ts';
+import { generateUnifiedDiff, extractTargetFilesFromPatch } from '../../core/patch-utils.ts';
 import {
   categorizeAction,
   ensureFreshTrajectorySummary,
@@ -14,8 +14,8 @@ import {
 } from './trajectory-normalizer.ts';
 import { parseResultPath } from './collection.ts';
 import { cleanupIsolatedHome, isEnoent } from './agent-shared.ts';
-import { getDefaultSolutionAgent, getGuidesMap, getTaskMap, GUIDE_FILE, EXPECTATIONS_FILE, GRADER_FILE, TASK_FILE } from '../../lib/guide-validation.ts';
-import { runAgent, setupGuideDevWorkDir } from '../../guides/lib/utils.ts';
+import { getDefaultSolutionAgent, getGuidesMap, getTaskMap, GUIDE_FILE, EXPECTATIONS_FILE, GRADER_FILE, TASK_FILE } from '../../core/guide-validation.ts';
+import { runAgent, setupGuideDevWorkDir } from './utils.ts';
 
 const ERROR_LOOP_THRESHOLD = 2;
 const MAX_THOUGHT_SNIPPET_LEN = 120;
@@ -101,6 +101,7 @@ export interface TaggedStep {
   category: Exclude<CanonicalCategory, 'other'>;
   thought?: string;
   actionName?: string;
+  detail?: string;
 }
 
 export interface PreprocessedTrajectory {
@@ -419,7 +420,8 @@ export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null
       stepNumber,
       category,
       thought,
-      actionName
+      actionName,
+      detail: String(actionParams?.command ?? actionParams?.path ?? '') || undefined
     });
   }
 

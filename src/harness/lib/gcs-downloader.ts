@@ -1,8 +1,8 @@
 import { Storage } from '@google-cloud/storage';
 import path from 'path';
 import fs from 'fs';
-import { resultsDir as baseResultsDir } from '../../lib/paths.ts';
-import { cCyan, cGreen, cYellow, cRed } from '../../lib/colors.ts';
+import { resultsDir as baseResultsDir } from '../../core/paths.ts';
+import { cCyan, cGreen, cYellow, cRed } from '../../core/colors.ts';
 import {
   NORMALIZER_VERSION,
   ensureFreshTrajectorySummary,

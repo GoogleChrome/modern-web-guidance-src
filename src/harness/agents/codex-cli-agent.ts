@@ -281,7 +281,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         const rawInput = p.arguments || p.input;
         const inputStr = typeof rawInput === 'string' ? rawInput : (typeof rawInput === 'object' ? JSON.stringify(rawInput) : '');
 
-        if (commands.length > 0) {
+        if (commands.length > 0 && !inputStr.includes('*** Begin Patch')) {
           actionType = 'run_command';
           actionName = commands[0];
           params = { command: commands[0] };

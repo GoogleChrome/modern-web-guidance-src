@@ -6,13 +6,13 @@ import os from 'node:os';
 
 describe('compare-evals pipeline', () => {
   test('imports compare-evals module cleanly and exports runComparison', async () => {
-    const compareModule = await import('../lib/compare-evals.ts');
+    const compareModule = await import('./compare-evals.ts');
     assert.ok(compareModule.runComparison);
     assert.strictEqual(typeof compareModule.runComparison, 'function');
   });
 
   test('extractSearchQuery captures the whole query, not just the first word', async () => {
-    const { extractSearchQuery } = await import('../lib/compare-evals.ts');
+    const { extractSearchQuery } = await import('./compare-evals.ts');
     const cases: Array<[string, string | undefined]> = [
       ['npx modern-web-guidance search "form validation user-invalid"', 'form validation user-invalid'],
       ["npx modern-web-guidance search 'dialog focus management'", 'dialog focus management'],
@@ -132,7 +132,7 @@ describe('compare-evals pipeline', () => {
       fs.writeFileSync(indexHtml, '<html><body><details><summary>Title</summary>Body</details></body></html>');
 
       // Verify loadRunContext and preprocessTrajectory
-      const { loadRunContext, preprocessTrajectory } = await import('../lib/compare-evals.ts');
+      const { loadRunContext, preprocessTrajectory } = await import('./compare-evals.ts');
       const ctx = loadRunContext(tmpDir);
 
       assert.strictEqual(ctx.score, 50);
@@ -161,7 +161,7 @@ describe('compare-evals pipeline', () => {
   });
 
   test('stripAgentNarration removes streamed conversational preamble before report headings', async () => {
-    const { stripAgentNarration } = await import('../lib/compare-evals.ts');
+    const { stripAgentNarration } = await import('./compare-evals.ts');
 
     const rawWithPrimary = `I will start the investigation by checking the workspace files.\nLet me spawn subagents now.\n\n### 1. First Meaningful Divergence\n- **Step Number**: Trial A Step 2\n\n### 2. Root Cause & Friction Analysis\nDetails here.`;
     assert.strictEqual(
@@ -177,7 +177,7 @@ describe('compare-evals pipeline', () => {
   });
 
   test('getComparisonPrompts stays well under Linux MAX_ARG_STRLEN (131KB) even with 33KB guide, large diffs, and 200 steps', async () => {
-    const { getComparisonPrompts } = await import('../lib/compare-prompts.ts');
+    const { getComparisonPrompts } = await import('./compare-prompts.ts');
     const MAX_ARG_STRLEN = 131_072;
 
     const hugeGuideCtx = {
@@ -301,7 +301,7 @@ describe('compare-evals pipeline', () => {
         return `I will start analyzing the runs now...\n\n### 1. First Meaningful Divergence\nMock analysis from ${label}`;
       };
 
-      const { runComparison, buildComparisonReportPath } = await import('../lib/compare-evals.ts');
+      const { runComparison, buildComparisonReportPath } = await import('./compare-evals.ts');
       const report = await runComparison(runDirA, runDirB, mockAgentCaller);
 
       assert.strictEqual(typeof report, 'string');
@@ -327,8 +327,8 @@ describe('compare-evals pipeline', () => {
   });
 
   test('buildComparisonReportPath is deterministic regardless of which run won and avoids collisions', async () => {
-    const { buildComparisonReportPath } = await import('../lib/compare-evals.ts');
-    const { resultsDir } = await import('../../lib/paths.ts');
+    const { buildComparisonReportPath } = await import('./compare-evals.ts');
+    const { resultsDir } = await import('../../core/paths.ts');
 
     const suiteA = '/repo/harness/results/suite-alpha/1/details-styling/task/guided';
     const suiteB = '/repo/harness/results/suite-beta/1/details-styling/task/guided';
@@ -379,7 +379,7 @@ describe('compare-evals pipeline', () => {
         return `### 1. First Meaningful Divergence\nReport from ${label}`;
       };
 
-      const { runComparison } = await import('../lib/compare-evals.ts');
+      const { runComparison } = await import('./compare-evals.ts');
       const report = await runComparison(runDirA, runDirB, mockAgentCaller);
       assert.ok(report.includes('Report from Compare Agent'));
       assert.ok(capturedPrompt.includes('+newA'), 'Expected patch A content in prompt');
