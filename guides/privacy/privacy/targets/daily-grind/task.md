@@ -1,0 +1,1 @@
+- Implement privacy by design across the application, including data minimization, third-party audits, secure data handling, and configuring security headers.

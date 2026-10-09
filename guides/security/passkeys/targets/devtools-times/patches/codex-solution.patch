@@ -1,0 +1,369 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..c6f2152 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,48 @@
+ declare global {
+   interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++    adNetwork: any;
+   }
++
++  interface PublicKeyCredential {
++    toJSON(): Record<string, unknown>;
++  }
++}
++
++interface PublicKeyCredentialCreationOptionsJSON {
++  [key: string]: unknown;
+ }
+ 
+-export {};
+\ No newline at end of file
++interface PublicKeyCredentialRequestOptionsJSON {
++  [key: string]: unknown;
++}
++
++declare var PublicKeyCredential: {
++  prototype: PublicKeyCredential;
++  new (): PublicKeyCredential;
++  isConditionalMediationAvailable(): Promise<boolean>;
++  isUserVerifyingPlatformAuthenticatorAvailable(): Promise<boolean>;
++  getClientCapabilities(): Promise<Record<string, boolean>>;
++  parseCreationOptionsFromJSON(
++    options: PublicKeyCredentialCreationOptionsJSON,
++  ): PublicKeyCredentialCreationOptions;
++  parseRequestOptionsFromJSON(
++    options: PublicKeyCredentialRequestOptionsJSON,
++  ): PublicKeyCredentialRequestOptions;
++  signalAllAcceptedCredentials(options: {
++    rpId: string;
++    userId: string;
++    allAcceptedCredentialIds: string[];
++  }): Promise<void>;
++  signalCurrentUserDetails(options: {
++    rpId: string;
++    userId: string;
++    name: string;
++    displayName: string;
++  }): Promise<void>;
++  signalUnknownCredential(options: {
++    rpId: string;
++    credentialId: string;
++  }): Promise<void>;
++};
++
++export {};
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..32a7e1f 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,5 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
++import { isPasskeySupported, authenticatePasskey } from '../utils/passkeys';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -6,6 +7,30 @@ export default function SignInForm() {
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [passkeySupported, setPasskeySupported] = useState(false);
++  const [passkeyLoading, setPasskeyLoading] = useState(false);
++
++  useEffect(() => {
++    setPasskeySupported(isPasskeySupported());
++  }, []);
++
++  const handlePasskeySignIn = async () => {
++    setError(null);
++    setSuccess(null);
++    setPasskeyLoading(true);
++    try {
++      const result = await authenticatePasskey();
++      if (result.success) {
++        setSuccess('Signed in successfully with passkey!');
++      } else {
++        setError(result.error || 'Passkey sign-in failed.');
++      }
++    } catch {
++      setError('An unexpected error occurred during passkey sign-in.');
++    } finally {
++      setPasskeyLoading(false);
++    }
++  };
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+@@ -55,6 +80,28 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
++      {passkeySupported && (
++        <div className="mb-4">
++          <button
++            type="button"
++            data-testid="auth-button"
++            onClick={handlePasskeySignIn}
++            disabled={passkeyLoading || loading}
++            className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
++          >
++            {passkeyLoading ? 'Signing in with passkey...' : 'Sign in with a passkey'}
++          </button>
++          <div className="relative my-4">
++            <div className="absolute inset-0 flex items-center">
++              <div className="w-full border-t border-gray-300" />
++            </div>
++            <div className="relative flex justify-center text-sm">
++              <span className="px-2 bg-white text-gray-500">or</span>
++            </div>
++          </div>
++        </div>
++      )}
++
+       <form onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+@@ -63,6 +110,8 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +126,8 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..858b276 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,5 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
++import { isPasskeySupported, registerPasskey } from '../utils/passkeys';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -6,6 +7,36 @@ export default function SignUpForm() {
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [passkeySupported, setPasskeySupported] = useState(false);
++  const [passkeyLoading, setPasskeyLoading] = useState(false);
++
++  useEffect(() => {
++    setPasskeySupported(isPasskeySupported());
++  }, []);
++
++  const handlePasskeyRegister = async () => {
++    if (!username) {
++      setError('Please enter a username before registering a passkey.');
++      return;
++    }
++    setError(null);
++    setSuccess(null);
++    setPasskeyLoading(true);
++    try {
++      const result = await registerPasskey(username);
++      if (result.success) {
++        setSuccess('Passkey registered successfully! You can now sign in.');
++        setUsername('');
++        setPassword('');
++      } else {
++        setError(result.error || 'Passkey registration failed.');
++      }
++    } catch {
++      setError('An unexpected error occurred during passkey registration.');
++    } finally {
++      setPasskeyLoading(false);
++    }
++  };
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+@@ -64,6 +95,8 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,6 +111,8 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -99,6 +134,28 @@ export default function SignUpForm() {
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
+       </form>
++
++      {passkeySupported && (
++        <div className="mt-4">
++          <div className="relative my-4">
++            <div className="absolute inset-0 flex items-center">
++              <div className="w-full border-t border-gray-300" />
++            </div>
++            <div className="relative flex justify-center text-sm">
++              <span className="px-2 bg-white text-gray-500">or</span>
++            </div>
++          </div>
++          <button
++            type="button"
++            data-testid="register-button"
++            onClick={handlePasskeyRegister}
++            disabled={passkeyLoading || loading}
++            className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
++          >
++            {passkeyLoading ? 'Registering passkey...' : 'Sign up with a passkey'}
++          </button>
++        </div>
++      )}
+     </div>
+   );
+ }
+diff --git a/src/utils/passkeys.ts b/src/utils/passkeys.ts
+new file mode 100644
+index 0000000..75b26df
+--- /dev/null
++++ b/src/utils/passkeys.ts
+@@ -0,0 +1,123 @@
++const API_BASE = 'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api';
++
++export function isPasskeySupported(): boolean {
++  return typeof window !== 'undefined' && 'PublicKeyCredential' in window;
++}
++
++export async function registerPasskey(
++  username: string,
++): Promise<{ success: boolean; error?: string }> {
++  try {
++    const optionsRes = await fetch(`${API_BASE}/passkey/registration/options`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ username }),
++    });
++
++    if (!optionsRes.ok) {
++      const data = await optionsRes.json().catch(() => ({}));
++      return {
++        success: false,
++        error: data.error || 'Failed to get registration options',
++      };
++    }
++
++    const optionsJSON = await optionsRes.json();
++    const publicKeyOptions = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++
++    const credential = (await navigator.credentials.create({
++      publicKey: publicKeyOptions,
++    })) as PublicKeyCredential;
++
++    if (!credential) {
++      return { success: false, error: 'No credential created' };
++    }
++
++    const credentialJSON = typeof credential.toJSON === 'function'
++      ? credential.toJSON()
++      : PublicKeyCredential.prototype.toJSON.call(credential);
++
++    const verifyRes = await fetch(`${API_BASE}/passkey/registration/verify`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(credentialJSON),
++    });
++
++    if (!verifyRes.ok) {
++      const data = await verifyRes.json().catch(() => ({}));
++      return {
++        success: false,
++        error: data.error || 'Registration verification failed',
++      };
++    }
++
++    return { success: true };
++  } catch (err: any) {
++    if (err.name === 'NotAllowedError') {
++      return { success: false, error: 'Passkey registration was cancelled.' };
++    }
++    if (err.name === 'AbortError') {
++      return { success: false, error: 'Passkey registration was aborted.' };
++    }
++    return { success: false, error: 'An error occurred during passkey registration.' };
++  }
++}
++
++export async function authenticatePasskey(): Promise<{
++  success: boolean;
++  error?: string;
++}> {
++  try {
++    const optionsRes = await fetch(`${API_BASE}/passkey/authentication/options`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++    });
++
++    if (!optionsRes.ok) {
++      const data = await optionsRes.json().catch(() => ({}));
++      return {
++        success: false,
++        error: data.error || 'Failed to get authentication options',
++      };
++    }
++
++    const optionsJSON = await optionsRes.json();
++    const publicKeyOptions = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++    const credential = (await navigator.credentials.get({
++      publicKey: publicKeyOptions,
++    })) as PublicKeyCredential;
++
++    if (!credential) {
++      return { success: false, error: 'No credential returned' };
++    }
++
++    const credentialJSON = typeof credential.toJSON === 'function'
++      ? credential.toJSON()
++      : PublicKeyCredential.prototype.toJSON.call(credential);
++
++    const verifyRes = await fetch(`${API_BASE}/passkey/authentication/verify`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(credentialJSON),
++    });
++
++    if (!verifyRes.ok) {
++      const data = await verifyRes.json().catch(() => ({}));
++      return {
++        success: false,
++        error: data.error || 'Authentication verification failed',
++      };
++    }
++
++    return { success: true };
++  } catch (err: any) {
++    if (err.name === 'NotAllowedError') {
++      return { success: false, error: 'Passkey sign-in was cancelled.' };
++    }
++    if (err.name === 'AbortError') {
++      return { success: false, error: 'Passkey sign-in was aborted.' };
++    }
++    return { success: false, error: 'An error occurred during passkey sign-in.' };
++  }
++}

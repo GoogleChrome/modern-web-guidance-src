@@ -162,12 +162,12 @@
       <h1>Efficient Background Processing</h1>
 
       <div class="info-box">
-        <p><strong>The Challenge:</strong> Heavy DOM components, Javascript complex animations, or expensive
+        <p><strong>The Challenge:</strong> Heavy DOM components, JavaScript complex animations, or expensive
           data-polling often run continuously whether the user is looking at them or not. This burns battery life, ties
           up the main thread, and degrades overall page performance.</p>
         <p><strong>The Solution:</strong> By applying <code>content-visibility: auto</code> to a container, the browser
           fires a <code>contentvisibilityautostatechange</code> event indicating if the element's rendering is currently
-          "skipped". We can listen to this event to safely pause our intense Javascript loops or HTTP polling when the
+          "skipped". We can listen to this event to safely pause our intense JavaScript loops or HTTP polling when the
           user can't see the component anyway!</p>
       </div>
     </header>
