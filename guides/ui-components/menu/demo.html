@@ -392,18 +392,7 @@
       closeAllMenus(true);
     }
 
-    function waitForPopoverToClose(menu) {
-      if (!menu.matches(':popover-open')) return Promise.resolve();
-      return new Promise(resolve => {
-        menu.addEventListener('toggle', event => {
-          if (event.newState === 'closed') resolve();
-        }, { once: true });
-      });
-    }
-
     function moveToRootTrigger(from, direction, enterAdjacentMenu = false) {
-      const closingMenus = menus.filter(menu => menu.matches(':popover-open'));
-      const closed = Promise.all(closingMenus.map(waitForPopoverToClose));
       const next = rootTriggers[(rootTriggers.indexOf(from) + direction + rootTriggers.length) % rootTriggers.length];
       rootTriggers.forEach(item => { item.tabIndex = item === next ? 0 : -1; });
       suppressMenuPreview = true;
@@ -411,18 +400,13 @@
       // focus through intermediate parent items as the menu hierarchy closes.
       next.focus();
       closeAllMenus();
-      closed.then(() => {
-        requestAnimationFrame(() => {
-          if (enterAdjacentMenu) {
-            suppressMenuPreview = false;
-            // APG menubar navigation switches menus and places focus on the new menu's first item.
-            openMenu(menuForTrigger(next), next);
-          } else {
-            suppressMenuPreview = false;
-            previewMenu(menuForTrigger(next), next);
-          }
-        });
-      });
+      suppressMenuPreview = false;
+      if (enterAdjacentMenu) {
+        // APG menubar navigation switches menus and places focus on the new menu's first item.
+        openMenu(menuForTrigger(next), next);
+      } else {
+        previewMenu(menuForTrigger(next), next);
+      }
     }
 
     rootTriggers.forEach((trigger, index) => {
