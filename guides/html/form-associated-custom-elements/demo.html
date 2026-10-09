@@ -5,10 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Form-Associated Custom Elements: a custom control in a form</title>
   <style>
-    rating-input:not(:defined) { visibility: hidden; }
+    rating-input:not(:defined) {
+      opacity: 0;
+      animation: defined-fallback 0.2s 2s forwards;
+    }
+    @keyframes defined-fallback { to { opacity: 1; } }
     rating-input { display: inline-flex; gap: .25rem; }
     rating-input:invalid { outline: 2px solid crimson; }
-    button[part] { all: unset; cursor: pointer; font-size: 1.5rem; line-height: 1; }
+    rating-input:disabled { opacity: 0.5; cursor: not-allowed; }
+    rating-input::part(star) { background: none; border: 0; padding: 0; cursor: pointer; font-size: 1.5rem; line-height: 1; }
   </style>
 </head>
 <body>
@@ -26,6 +31,7 @@
 
       #internals;
       #value = '';
+      #disabled = false;
 
       constructor() {
         super();
@@ -35,9 +41,13 @@
           .map(n => `<button type="button" part="star" data-value="${n}" tabindex="${n === 1 ? 0 : -1}">★</button>`)
           .join('');
         this.shadowRoot.addEventListener('click', (e) => {
+          if (this.#disabled) return;
           const star = e.target.closest('[data-value]');
           if (star) this.value = star.dataset.value;
         });
+      }
+
+      connectedCallback() {
         this.#validate();
       }
 
@@ -61,7 +71,12 @@
       }
 
       formResetCallback() { this.value = ''; }
-      formDisabledCallback(disabled) { this.toggleAttribute('disabled', disabled); }
+      formDisabledCallback(disabled) {
+        this.#disabled = disabled;
+        for (const star of this.shadowRoot.querySelectorAll('button')) {
+          star.disabled = disabled;
+        }
+      }
       formStateRestoreCallback(state) { this.value = state; }
     }
 

@@ -20,7 +20,12 @@ class RatingInput extends HTMLElement {
   constructor() {
     super();
     this.#internals = this.attachInternals();
-    this.attachShadow({ mode: 'open' });
+    this.attachShadow({ mode: 'open', delegatesFocus: true });
+  }
+
+  connectedCallback() {
+    // Validate initial state once attributes (such as `required`) are present.
+    this.#validate();
   }
 
   get value() { return this.#value; }
@@ -46,7 +51,14 @@ class RatingInput extends HTMLElement {
 
   // Optional FACE lifecycle hooks:
   formResetCallback() { this.value = ''; }
-  formDisabledCallback(disabled) { this.toggleAttribute('disabled', disabled); }
+  formDisabledCallback(disabled) {
+    // Disable internal controls so they leave the tab order and ignore clicks.
+    // Do NOT toggle `disabled` on `this`, or a `<fieldset disabled>` toggle will
+    // leave the host permanently stuck with its own `disabled` attribute.
+    for (const el of this.shadowRoot.querySelectorAll('button')) {
+      el.disabled = disabled;
+    }
+  }
   formStateRestoreCallback(state) { this.value = state; }
 }
 customElements.define('rating-input', RatingInput);
@@ -57,7 +69,7 @@ Key points:
 - `static formAssociated = true` is **MANDATORY**; it unlocks the form-related `ElementInternals` methods and the `formXxxCallback` lifecycle.
 - `setFormValue(value)` is what submits, with no hidden input required. Pass a `FormData` for multi-value controls.
 - `setValidity(flags, message, anchor)` integrates with native constraint validation: the form won't submit while invalid, `:invalid`/`:valid` apply, and the anchor element receives focus on report. Call `setValidity({})` to clear. The interaction-aware `:user-valid`/`:user-invalid` pseudo-classes are *not* consistently wired up for form-associated elements across browsers — verify support before relying on them rather than assuming they track user interaction the way they do for native controls.
-- Implement `formResetCallback`, `formDisabledCallback`, and `formStateRestoreCallback` so the element behaves like a native control on reset, `fieldset[disabled]`, and back/forward autofill restore.
+- Implement `formResetCallback`, `formDisabledCallback`, and `formStateRestoreCallback` so the element behaves like a native control on reset, `fieldset[disabled]`, and back/forward autofill restore. In `formDisabledCallback(disabled)`, disable internal controls (or remove them from the tab order and ignore input) rather than setting `disabled` on the host — setting the host attribute inside the callback prevents re-enabling when an ancestor `<fieldset>` is re-enabled, and the host already matches `:disabled` automatically.
 - Follow platform conventions for dispatched events and prefer the built-in `input` and `change` events over custom ones. `input` fires when the value changes as a direct result of user action (typing, dragging a slider); `change` fires once per stream of changes, when the user commits (releasing the slider, blurring the field). Construct them with `InputEvent` and `Event` respectively.
 
 ## Fallback strategies

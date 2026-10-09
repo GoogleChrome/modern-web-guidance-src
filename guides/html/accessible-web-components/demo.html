@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Accessible Web Components: ElementInternals roles and state</title>
   <style>
-    toggle-switch:not(:defined) { visibility: hidden; }
+    toggle-switch:not(:defined) {
+      opacity: 0;
+      animation: defined-fallback 0.2s 2s forwards;
+    }
+    @keyframes defined-fallback { to { opacity: 1; } }
     toggle-switch {
       display: inline-block; inline-size: 3rem; block-size: 1.5rem;
       border-radius: 1rem; background: #ccc; cursor: pointer;
@@ -30,15 +34,15 @@
         // and consumers can still override with attributes in the Light DOM.
         this.#internals.role = 'switch';
         this.#internals.ariaChecked = 'false';
+        this.addEventListener('click', () => this.toggle());
+        this.addEventListener('keydown', (e) => {
+          if (e.key === ' ') { e.preventDefault(); this.toggle(); }
+        });
       }
 
       connectedCallback() {
-        // Make the host keyboard-focusable and operable like a native control.
+        // Make the host keyboard-focusable on connect (setting tabIndex in the constructor throws on createElement).
         if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
-        this.addEventListener('click', () => this.toggle());
-        this.addEventListener('keydown', (e) => {
-          if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.toggle(); }
-        });
       }
 
       toggle() {

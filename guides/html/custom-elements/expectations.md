@@ -2,6 +2,6 @@
 - The stylesheet includes a `:not(:defined)` rule scoped to the custom element's tag name (not `body`, `*`, or a page-wide wrapper). If it hides the element, the element reveals itself again after a delay without script (for example `opacity: 0` with a delayed `animation` to `opacity: 1`); `visibility: hidden` or `display: none` alone does not pass.
 - A custom element with observed attributes reads any initial attribute values already present in markup upon upgrade and renders the corresponding initial state in the DOM.
 - Calling `setAttribute()` on an observed attribute triggers `attributeChangedCallback` and re-renders the component. `observedAttributes` is a static field or static getter present when `customElements.define()` runs, and setting a reflected property does not recurse.
-- Reading a numeric reflected property returns a `number`, not a string (for example `el.count === 3` after `count="3"`).
-- Setting a boolean reflected property to `false` removes the attribute rather than writing `"false"`.
-- Changing either the reflected property or its attribute updates the other and the rendered output.
+- When the custom element reflects a numeric property, reading the property returns a `number`, not a string (for example `el.count === 3` after `count="3"`).
+- When the custom element reflects a boolean property, setting the property to `false` removes the attribute rather than writing `"false"`.
+- Changing either a reflected property or its attribute updates the other and the rendered output.

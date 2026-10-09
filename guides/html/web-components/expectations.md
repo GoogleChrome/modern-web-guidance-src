@@ -1,3 +1,4 @@
+- Every custom element encapsulates stateful behavior, lifecycle logic, or a reusable JavaScript API rather than purely presentational styling or a re-implementation of a native HTML element (such as `<button>` or `<details>`).
 - Custom element tag names are lowercase kebab-case strings containing at least one hyphen.
 - Any explicit custom element constructor calls `super()` before accessing `this`, so instantiating or upgrading the element succeeds without throwing a `ReferenceError`.
 - Interactive controls inside shadow roots use native semantic HTML elements (such as `<button>`, `<input>`, `<select>`, or `<a href>`) rather than non-semantic `<div>` or `<span>` elements with click handlers or `tabindex`.

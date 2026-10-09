@@ -1,7 +1,7 @@
 - When the custom element has a default semantic role, it should expose it via `ElementInternals` and must never set a `role` attribute on the host element.
 - When the component has a state (checked, pressed, or expanded), its initial value is exposed in the accessibility tree via `ElementInternals` (for example `internals.ariaChecked`) without a matching `aria-*` attribute on the host.
-- The host element is in the tab order (`this.tabIndex = 0` set in `connectedCallback` when no `tabindex` attribute exists, not in the constructor) and is the element that receives focus, so the role and state from the lines above are announced on focus.
-- Clicking the custom element toggles its state in the accessibility tree.
-- Pressing `Space` while the custom element has focus toggles its state in the accessibility tree.
+- When the custom element is an interactive control whose role and state live on the host, the host element is in the tab order (`this.tabIndex = 0` set in `connectedCallback` when no `tabindex` attribute exists, not in the constructor) and is the element that receives focus, so the role and state from the lines above are announced on focus; static non-interactive custom elements do not set `tabindex` on the host.
+- When the custom element has a toggleable state, clicking the control toggles its state in the accessibility tree.
+- When the custom element has a toggleable state, pressing `Space` while the control has focus toggles its state in the accessibility tree.
 - No `aria-*` state attribute is added to the host when the state changes.
 - The custom element has a non-empty accessible name. When the name comes from `aria-labelledby`, the referenced `id` is in the same tree as the attribute; when the label crosses a shadow boundary, it uses `ariaLabelledByElements` pointing outward to the Light DOM or an ancestor tree, never into the host's own shadow root.
