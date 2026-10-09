@@ -16,7 +16,7 @@ Calling `element.startViewTransition()` on a component root addresses this by sc
 
 ### 1. Trigger a Scoped Transition
 
-Call `element.startViewTransition()` on the component's root container element instead of `document.startViewTransition()`. Only elements within the scope's subtree are captured, only rendering of the scope halts during the update callback, and the resulting `::view-transition` overlay matches the scope element's size, shape, and stacking context.
+Call `element.startViewTransition()` on the component's root container element instead of `document.startViewTransition()`. The element you call `startViewTransition()` on becomes the transition's scope (the scope element): only elements within its subtree are captured, only rendering of the scope halts during the update callback, and the resulting `::view-transition` overlay matches the scope element's size, shape, and stacking context.
 
 ### 2. Name Participating Elements
 
