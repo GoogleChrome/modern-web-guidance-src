@@ -53,7 +53,7 @@ function realpathOrSelf(p: string): string {
  *   rule applies even before grading populates it).
  * - The real user's agent/eval dot-directories (`.gemini`, `.claude`, `.codex`,
  *   `.jetski`, `.jetski-server`, `.pi`, `.guidance_logs`) and top-level non-dot
- *   directories in the user's home directory (e.g. sibling repo checkouts like `~/mwg2`).
+ *   directories in the user's home directory (e.g. an additional checkout of `modern-web-guidance-src`).
  */
 export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.platform): string[] {
   const homedir = os.userInfo().homedir;
