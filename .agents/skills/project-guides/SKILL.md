@@ -11,20 +11,23 @@ This is the second of three stages in creating guidance:
 2. Stage 2: Authoring guidance for a use case (you are here)
 3. Stage 3: Evaluating guidance for a use case
 
+> **Governance & Review**: See [`GOVERNANCE.md`](../../../GOVERNANCE.md) and [`docs/ATLS.md`](../../../docs/ATLS.md) for authoring permissions (Peers fast-track to Stage 2; every guide requires Peer/ATL authorship and category Content ATL approval before merging).
+
 ## What a real-world coding agent sees
 
-When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is eval infrastructure:
+When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is reference or eval infrastructure:
 
 | File/Directory | Purpose | Seen by real-world agents? |
 |---|---|---|
 | `guide.md` | Guidance for implementing the use case | ✅ Yes — this is the only file |
+| `demo.html` | Canonical standalone reference implementation used for Stage 2 validation and review | ❌ No |
 | `expectations.md` | Verification criteria used to generate target evaluation suites | ❌ No |
-| `targets/<base_app>/solution.patch` | Golden diff against clean base app used to calibrate the grader | ❌ No |
-| `targets/<base_app>/zero-passrate.patch` | Guidance-absent diff used to verify grader assertions fail when requirements are not implemented | ❌ No |
+| `targets/<base_app>/patches/*-solution.patch` | Golden diffs against clean base apps used to calibrate the grader | ❌ No |
+| `targets/<base_app>/patches/zero-passrate.patch` | Guidance-absent diff used to verify grader assertions fail when requirements are not implemented | ❌ No |
 | `targets/<base_app>/grader.ts` | Playwright test suite run against the eval agent's output | ❌ No |
 | `targets/<base_app>/task.md` | Simulated developer prompts fed to the eval agent by the harness | ❌ No |
 
-**Implication for authoring (`guide.md` & `expectations.md`):** Authors and SMEs strictly author `guide.md` and `expectations.md`. You do not hand-author `solution.patch`, `zero-passrate.patch`, `grader.ts`, or `task.md`. Once `guide.md` and `expectations.md` are authored, running `gd dev <guide>` automatically loops across `SUPPORTED_BASE_APPS` (`daily-grind` and `devtools-times`) inside safe temporary `/tmp/` sandboxes to generate and calibrate the evaluation capsules under `targets/<base_app>/`, runs agent evaluations, and produces an evaluation diagnostic report (`results/guides/<category>/<slug>/report.md`). Running `gd pr <guide>` then automatically commits, pushes, detects PR labels (`gd-dev-content` or `gd-dev-eval`), and opens the Pull Request.
+**Implication for Stage 2 authoring (`guide.md`, `demo.html`, & `expectations.md`):** Content contributors and Peers strictly author `guide.md`, `demo.html`, and `expectations.md` (and self-validate with the [`project-guide-validation`](../project-guide-validation/SKILL.md) skill). You do not hand-author solution patches, `grader.ts`, or `task.md`—Stage 3 evaluation generation and calibration (`gd dev` and `gd pr`) are handled downstream by maintainers and evaluation tooling (see [`src/harness/README.md`](../../../src/harness/README.md)).
 
 **Implication for `guide.md`:** Because `guide.md` is the agent's only source of truth, it must be entirely self-contained. Do not rely on agents reading `expectations.md`, any target patch, or any external link to understand how to implement the use case.
 
@@ -128,8 +131,12 @@ Coding agents mostly discover and batch-retrieve guides upfront (`retrieve "a,b"
 
 When the same feature-level content (intro, fallback patterns, a11y, gotchas) applies to multiple guides, extract it into `features/<feature-id>.md` and pull it in with the macros above. Rule of thumb: extract if two or more guides cover the same `web-feature-id` and repeat the same advice. Standard section names: `## Fallbacks` (used by `FEATURE_FALLBACKS`), `## Issues` (used by `FEATURE_ISSUES`); add others as needed and pull them with `FEATURE`. Verify your include resolved by inspecting the build output (`out/build/skills-cli/guides/<category>/<id>.md`) — silent misses won't fail the build.
 
-## Authoring `expectations.md` and  `demo.html`
+## Authoring `expectations.md` and `demo.html`
 
 * **`expectations.md`**: Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly. (e.g., "The input element is styled with a red border only AFTER a blur event").
 * **`demo.html`**: The `demo.html` file should be a clean example of a correct implementation of the use case. If possible, it should be self-contained with inline scripts and styles.
 * **Warning-Free Demos**: Documentation and demos must adhere to all browser console recommendations, including non-fatal warnings, to ensure clean evaluation runs.
+
+## Self-Validation (Before Submitting a PR)
+
+Once you have authored `guide.md`, `demo.html`, and `expectations.md`, invoke the [`project-guide-validation`](../project-guide-validation/SKILL.md) skill with your AI coding assistant to self-validate your work before opening a PR or proceeding to Stage 3. This autonomously exercises the demo in a browser via DevTools MCP, verifies expectation alignment, and checks accessibility compliance.
