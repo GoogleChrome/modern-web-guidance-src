@@ -1,0 +1,272 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..9967e61 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,23 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  interface SubmitEvent {
++    readonly agentInvoked?: boolean;
++    respondWith?: (response: Promise<string>) => void;
++  }
++}
++
++declare module 'react' {
++  interface FormHTMLAttributes<T> {
++    toolname?: string;
++    tooldescription?: string;
++    toolautosubmit?: boolean | '';
++  }
++
++  interface InputHTMLAttributes<T> {
++    toolparamdescription?: string;
++  }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/public/agentic-forms.css b/public/agentic-forms.css
+new file mode 100644
+index 0000000..21580d7
+--- /dev/null
++++ b/public/agentic-forms.css
+@@ -0,0 +1,17 @@
++form:tool-form-active {
++  outline: 2px dashed #f59e0b;
++  outline-offset: 4px;
++  background-color: rgba(245, 158, 11, 0.08);
++}
++
++button:tool-submit-active {
++  outline: 2px dashed #b45309;
++  outline-offset: 3px;
++  animation: agent-submit-pulse 1.5s ease-in-out infinite;
++}
++
++@keyframes agent-submit-pulse {
++  50% {
++    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.2);
++  }
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..972c7f1 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -8,6 +8,12 @@ const articles = await getCollection("articles");
+ const reports = await getCollection("reports");
+ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
++const searchableArticles = articles.map((article) => ({
++  slug: article.id,
++  title: article.data.title,
++  summary: article.data.summary,
++  image: article.data.image,
++}));
+ 
+ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+@@ -19,7 +25,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+     <div class="flex justify-between items-center">
+       <!-- Left: Search Icon -->
+       <div class="flex items-center space-x-3">
+-        <SearchButton client:load />
++        <SearchButton client:load articles={searchableArticles} />
+         <ReadingListButton client:load />
+       </div>
+ 
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..fe609b3 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -6,16 +6,19 @@ interface Article {
+     slug: string;
+     title: string;
+     summary: string;
++    image?: string;
+ }
+ 
+-export default function SearchButton() {
++interface Props {
++    articles: Article[];
++}
++
++export default function SearchButton({ articles }: Props) {
+     const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+-    const [articles, setArticles] = useState<Article[]>([]);
+     const [isLoading, setIsLoading] = useState(false);
+ 
+     const openSearch = async () => {
+         try {
+-            setArticles([]);
+             setIsFlyoutOpen(true);
+         } catch (error) {
+             console.error('Failed to fetch articles:', error);
+@@ -43,7 +46,7 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            <SearchFlyout articles={articles} onClose={closeSearch} isOpen={isFlyoutOpen} />
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..990a3a5 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useMemo, useEffect } from 'react';
++import React, { useState, useMemo, useEffect, useRef } from 'react';
+ 
+ interface Article {
+     slug: string;
+@@ -11,6 +11,7 @@ interface Article {
+ interface Props {
+     articles: Article[];
+     onClose: () => void;
++    isOpen: boolean;
+ }
+ 
+ // Function to shuffle an array and get the first N items
+@@ -18,9 +19,15 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+     return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+ };
+ 
+-export default function SearchFlyout({ articles, onClose }: Props) {
++export default function SearchFlyout({ articles, onClose, isOpen }: Props) {
+     const [searchTerm, setSearchTerm] = useState('');
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
++    const searchFormRef = useRef<HTMLFormElement>(null);
++    const searchInputRef = useRef<HTMLInputElement>(null);
++
++    useEffect(() => {
++        if (isOpen) searchInputRef.current?.focus();
++    }, [isOpen]);
+ 
+     useEffect(() => {
+         const handleKeyDown = (event: KeyboardEvent) => {
+@@ -58,8 +65,49 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         );
+     }, [articles, searchTerm]);
+ 
++    const searchArticles = async (query: string): Promise<string> => {
++        const normalizedQuery = query.trim().toLowerCase();
++        const matches = articles.filter((article) =>
++            article.title.toLowerCase().includes(normalizedQuery) ||
++            article.summary.toLowerCase().includes(normalizedQuery)
++        );
++
++        return JSON.stringify({
++            query: query.trim(),
++            count: matches.length,
++            results: matches.map(({ slug, title, summary }) => ({
++                title,
++                summary,
++                url: `${window.location.origin}${import.meta.env.BASE_URL}articles/${slug}`,
++            })),
++        });
++    };
++
++    useEffect(() => {
++        const form = searchFormRef.current;
++        if (!form) return;
++
++        const handleSubmit = (event: SubmitEvent) => {
++            event.preventDefault();
++
++            const submittedQuery = String(new FormData(form).get('query') ?? '').trim();
++            setSearchTerm(submittedQuery);
++
++            if (event.agentInvoked && event.respondWith) {
++                event.respondWith(searchArticles(submittedQuery));
++            }
++        };
++
++        form.addEventListener('submit', handleSubmit);
++        return () => form.removeEventListener('submit', handleSubmit);
++    }, [articles]);
++
+     return (
+-        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
++        <div
++            className={`fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] justify-center items-start p-4 pt-[15vh] ${isOpen ? 'flex' : 'hidden'}`}
++            onClick={onClose}
++            aria-hidden={!isOpen}
++        >
+             <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+                 <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+@@ -85,15 +133,37 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                             </ul>
+                         </div>
+                     )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
++                    <form
++                        ref={searchFormRef}
++                        toolname="search-articles"
++                        tooldescription="Search The DevTools Times for articles by words in their titles or summaries."
++                        toolautosubmit=""
++                        className="rounded-md"
++                    >
++                        <label htmlFor="article-search-query" className="block text-sm font-semibold text-gray-500 mb-3">
++                            Search articles
++                        </label>
++                        <div className="flex gap-2">
++                            <input
++                                ref={searchInputRef}
++                                id="article-search-query"
++                                name="query"
++                                type="search"
++                                placeholder="Search for articles..."
++                                toolparamdescription="Words to find in article titles or summaries."
++                                className="min-w-0 flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
++                                value={searchTerm}
++                                onChange={e => setSearchTerm(e.target.value)}
++                                required
++                            />
++                            <button
++                                type="submit"
++                                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
++                            >
++                                Search
++                            </button>
++                        </div>
++                    </form>
+                 </div>
+                 <div className="p-4 max-h-[60vh] overflow-y-auto">
+                     {searchTerm && filteredArticles.length === 0 && (
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..b5fe81d 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -33,6 +33,7 @@ const baseUrl = import.meta.env.BASE_URL;
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
++    <link rel="stylesheet" href={`${baseUrl}agentic-forms.css`} />
+ 
+     <ClientRouter />
+   </head>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..270000d 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,4 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

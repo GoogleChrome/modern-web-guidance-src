@@ -1,0 +1,715 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..d282b1b 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,47 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  interface PublicKeyCredential {
++    toJSON(): Record<string, unknown>;
++  }
++}
++
++interface PublicKeyCredentialCreationOptionsJSON {
++  [key: string]: unknown;
+ }
+ 
++interface PublicKeyCredentialRequestOptionsJSON {
++  [key: string]: unknown;
++}
++
++declare var PublicKeyCredential: {
++  prototype: PublicKeyCredential;
++  new (): PublicKeyCredential;
++  isConditionalMediationAvailable(): Promise<boolean>;
++  isUserVerifyingPlatformAuthenticatorAvailable(): Promise<boolean>;
++  getClientCapabilities(): Promise<Record<string, boolean>>;
++  parseCreationOptionsFromJSON(
++    options: PublicKeyCredentialCreationOptionsJSON,
++  ): PublicKeyCredentialCreationOptions;
++  parseRequestOptionsFromJSON(
++    options: PublicKeyCredentialRequestOptionsJSON,
++  ): PublicKeyCredentialRequestOptions;
++  signalAllAcceptedCredentials(options: {
++    rpId: string;
++    userId: string;
++    allAcceptedCredentialIds: string[];
++  }): Promise<void>;
++  signalCurrentUserDetails(options: {
++    rpId: string;
++    userId: string;
++    name: string;
++    displayName: string;
++  }): Promise<void>;
++  signalUnknownCredential(options: {
++    rpId: string;
++    credentialId: string;
++  }): Promise<void>;
++};
++
+ export {};
+\ No newline at end of file
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..f4c0a69 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,5 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect, useRef } from 'react';
++import { isPasskeySupported, isConditionalMediationAvailable, authenticatePasskey } from '../utils/passkeys';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -6,6 +7,48 @@ export default function SignInForm() {
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [passkeySupported, setPasskeySupported] = useState(false);
++  const [passkeyLoading, setPasskeyLoading] = useState(false);
++  const conditionalAbortControllerRef = useRef<AbortController | null>(null);
++
++  useEffect(() => {
++    let isMounted = true;
++
++    const init = async () => {
++      const supported = await isPasskeySupported();
++      if (!isMounted) return;
++      setPasskeySupported(supported);
++
++      if (supported) {
++        const conditionalAvailable = await isConditionalMediationAvailable();
++        if (!isMounted || !conditionalAvailable) return;
++
++        const controller = new AbortController();
++        conditionalAbortControllerRef.current = controller;
++
++        try {
++          const result = await authenticatePasskey({
++            abortController: controller,
++            mediation: 'conditional',
++          });
++          if (isMounted && result.success) {
++            setSuccess('Signed in successfully with passkey!');
++          }
++        } catch {
++          // Conditional UI autofill cancelled or dismissed
++        }
++      }
++    };
++
++    init();
++
++    return () => {
++      isMounted = false;
++      if (conditionalAbortControllerRef.current) {
++        conditionalAbortControllerRef.current.abort();
++      }
++    };
++  }, []);
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+@@ -25,12 +68,9 @@ export default function SignInForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -39,6 +79,30 @@ export default function SignInForm() {
+     }
+   };
+ 
++  const handlePasskeySignIn = async () => {
++    if (conditionalAbortControllerRef.current) {
++      conditionalAbortControllerRef.current.abort();
++      conditionalAbortControllerRef.current = null;
++    }
++
++    setError(null);
++    setSuccess(null);
++    setPasskeyLoading(true);
++
++    try {
++      const result = await authenticatePasskey();
++      if (result.success) {
++        setSuccess('Signed in successfully with passkey!');
++      } else {
++        setError(result.error || 'Passkey sign-in failed.');
++      }
++    } catch (err) {
++      setError('An unexpected error occurred during passkey sign-in.');
++    } finally {
++      setPasskeyLoading(false);
++    }
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+@@ -55,6 +119,31 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
++      {passkeySupported && (
++        <div className="mb-4">
++          <button
++            type="button"
++            data-testid="auth-button"
++            onClick={handlePasskeySignIn}
++            disabled={passkeyLoading || loading}
++            className={`w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 ${
++              passkeyLoading ? 'opacity-75 cursor-not-allowed' : ''
++            }`}
++          >
++            {passkeyLoading ? 'Signing in with passkey...' : 'Sign in with a passkey'}
++          </button>
++
++          <div className="relative my-4">
++            <div className="absolute inset-0 flex items-center">
++              <div className="w-full border-t border-gray-300" />
++            </div>
++            <div className="relative flex justify-center text-sm">
++              <span className="px-2 bg-white text-gray-500">or</span>
++            </div>
++          </div>
++        </div>
++      )}
++
+       <form onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+@@ -63,6 +152,9 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username webauthn"
++            autoFocus
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +169,8 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -86,7 +180,7 @@ export default function SignInForm() {
+ 
+         <button
+           type="submit"
+-          disabled={loading}
++          disabled={loading || passkeyLoading}
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..fa24239 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,5 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
++import { isPasskeySupported, registerPasskey } from '../utils/passkeys';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -6,6 +7,18 @@ export default function SignUpForm() {
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [passkeySupported, setPasskeySupported] = useState(false);
++  const [passkeyLoading, setPasskeyLoading] = useState(false);
++
++  useEffect(() => {
++    let isMounted = true;
++    isPasskeySupported().then((supported) => {
++      if (isMounted) setPasskeySupported(supported);
++    });
++    return () => {
++      isMounted = false;
++    };
++  }, []);
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+@@ -25,8 +38,6 @@ export default function SignUpForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Registration failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
+@@ -40,6 +51,31 @@ export default function SignUpForm() {
+     }
+   };
+ 
++  const handlePasskeyRegister = async () => {
++    if (!username) {
++      setError('Please enter a username before registering a passkey.');
++      return;
++    }
++    setError(null);
++    setSuccess(null);
++    setPasskeyLoading(true);
++
++    try {
++      const result = await registerPasskey(username);
++      if (result.success) {
++        setSuccess('Passkey registered successfully! You can now sign in.');
++        setUsername('');
++        setPassword('');
++      } else {
++        setError(result.error || 'Passkey registration failed.');
++      }
++    } catch (err) {
++      setError('An unexpected error occurred during passkey registration.');
++    } finally {
++      setPasskeyLoading(false);
++    }
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+@@ -64,6 +100,8 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username webauthn"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,6 +116,8 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -90,7 +130,7 @@ export default function SignUpForm() {
+ 
+         <button
+           type="submit"
+-          disabled={loading}
++          disabled={loading || passkeyLoading}
+           data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+@@ -99,6 +139,31 @@ export default function SignUpForm() {
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
+       </form>
++
++      {passkeySupported && (
++        <div className="mt-4">
++          <div className="relative my-4">
++            <div className="absolute inset-0 flex items-center">
++              <div className="w-full border-t border-gray-300" />
++            </div>
++            <div className="relative flex justify-center text-sm">
++              <span className="px-2 bg-white text-gray-500">or</span>
++            </div>
++          </div>
++
++          <button
++            type="button"
++            data-testid="register-button"
++            onClick={handlePasskeyRegister}
++            disabled={passkeyLoading || loading}
++            className={`w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 ${
++              passkeyLoading ? 'opacity-75 cursor-not-allowed' : ''
++            }`}
++          >
++            {passkeyLoading ? 'Registering passkey...' : 'Sign up with a passkey'}
++          </button>
++        </div>
++      )}
+     </div>
+   );
+ }
+diff --git a/src/utils/passkeys.ts b/src/utils/passkeys.ts
+new file mode 100644
+index 0000000..7d981f2
+--- /dev/null
++++ b/src/utils/passkeys.ts
+@@ -0,0 +1,362 @@
++/**
++ * Utilities for WebAuthn and Passkeys support.
++ * Implements guidance from WebAuthn / Passkeys discipline specifications.
++ */
++
++const API_BASE = 'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api';
++
++/**
++ * Returns a bare domain string without scheme, port, or path for Relying Party ID.
++ * Must match origin's hostname or registrable parent domain (or localhost).
++ */
++export function getRelyingPartyId(): string {
++  if (typeof window !== 'undefined' && window.location) {
++    return window.location.hostname;
++  }
++  return 'localhost';
++}
++
++/**
++ * Known AAGUID mapping used exclusively for UX hinting (provider names/icons).
++ * Note: AAGUIDs MUST NOT be used for authorization or access control decisions.
++ */
++export const AAGUID_MAP: Record<string, { name: string; icon?: string }> = {
++  'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4': { name: 'Google Password Manager' },
++  'ad59dadf-6450-4bf6-0881-76dd617304a9': { name: 'Google Password Manager' },
++  '08987058-cadc-4b81-b6e1-30de50dcbe96': { name: 'Windows Hello' },
++  '9f44433d-5523-4e35-9467-eed44470bc0e': { name: 'Windows Hello' },
++  'dd48076a-e17a-4be1-ab04-3be87bf782d9': { name: 'iCloud Keychain' },
++  '00000000-0000-0000-0000-000000000000': { name: 'Security Key' },
++};
++
++export function getPasskeyProviderInfo(aaguid: string): { name: string; icon?: string } {
++  // AAGUID is used exclusively to render provider names or icons in the UI
++  // and MUST NOT be used for authorization or access control decisions.
++  return AAGUID_MAP[aaguid.toLowerCase()] || { name: 'Passkey Provider' };
++}
++
++/**
++ * Feature detection check to verify if passkeys and platform authenticators are supported.
++ * Gates all passkey entry points and hides them when passkeys are unsupported.
++ */
++export async function isPasskeySupported(): Promise<boolean> {
++  if (typeof window === 'undefined' || !('PublicKeyCredential' in window)) {
++    return false;
++  }
++
++  if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
++    try {
++      const capabilities = await PublicKeyCredential.getClientCapabilities();
++      if (capabilities && capabilities.passkeyPlatformAuthenticator !== undefined) {
++        return Boolean(capabilities.passkeyPlatformAuthenticator);
++      }
++    } catch {
++      // Fallback to checking platform authenticator availability
++    }
++  }
++
++  if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
++    try {
++      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
++    } catch {
++      return true;
++    }
++  }
++
++  return true;
++}
++
++/**
++ * Checks if conditional mediation (autofill UI) is available.
++ */
++export async function isConditionalMediationAvailable(): Promise<boolean> {
++  if (typeof window === 'undefined' || !('PublicKeyCredential' in window)) {
++    return false;
++  }
++
++  if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
++    try {
++      const capabilities = await PublicKeyCredential.getClientCapabilities();
++      if (capabilities && capabilities.conditionalGet !== undefined) {
++        return Boolean(capabilities.conditionalGet);
++      }
++    } catch {
++      // Fallback
++    }
++  }
++
++  if (typeof PublicKeyCredential.isConditionalMediationAvailable === 'function') {
++    try {
++      return await PublicKeyCredential.isConditionalMediationAvailable();
++    } catch {
++      return false;
++    }
++  }
++
++  return false;
++}
++
++/**
++ * Helper to fetch from primary endpoint with fallback to relative path.
++ */
++async function fetchEndpoint(url: string, fallbackUrl: string, init?: RequestInit): Promise<Response> {
++  try {
++    const res = await fetch(url, init);
++    if (!res.ok && res.status === 404 && url !== fallbackUrl) {
++      return await fetch(fallbackUrl, init);
++    }
++    return res;
++  } catch (err) {
++    if (url !== fallbackUrl) {
++      return await fetch(fallbackUrl, init);
++    }
++    throw err;
++  }
++}
++
++export interface PasskeyResult {
++  success: boolean;
++  error?: string;
++  data?: any;
++}
++
++/**
++ * Registers a new passkey for a user.
++ */
++export async function registerPasskey(username: string): Promise<PasskeyResult> {
++  const optionsUrl = `${API_BASE}/register/options`;
++  const optionsFallback = '/api/register/options';
++
++  let optionsRes: Response;
++  try {
++    optionsRes = await fetchEndpoint(optionsUrl, optionsFallback, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ username }),
++    });
++  } catch (err) {
++    return { success: false, error: 'Failed to connect to authentication server.' };
++  }
++
++  if (!optionsRes.ok) {
++    const errData = await optionsRes.json().catch(() => ({}));
++    return {
++      success: false,
++      error: errData.error || 'Failed to get passkey registration options.',
++    };
++  }
++
++  const optionsJSON = await optionsRes.json();
++
++  // Decode server-provided registration options with PublicKeyCredential.parseCreationOptionsFromJSON
++  const publicKeyOptions = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++
++  let credential: PublicKeyCredential | null = null;
++  // Wrap navigator.credentials calls in try/catch error handling
++  try {
++    const result = await navigator.credentials.create({
++      publicKey: publicKeyOptions,
++    });
++    if (!result) {
++      return { success: false, error: 'No credential was created.' };
++    }
++    credential = result as PublicKeyCredential;
++  } catch (err: unknown) {
++    if (err instanceof DOMException || (err instanceof Error && err.name)) {
++      if (err.name === 'NotAllowedError') {
++        return { success: false, error: 'Passkey registration was cancelled.' };
++      }
++      if (err.name === 'AbortError') {
++        return { success: false, error: 'Passkey registration was aborted.' };
++      }
++      if (err.name === 'InvalidStateError') {
++        return { success: false, error: 'A passkey already exists for this device.' };
++      }
++    }
++    return {
++      success: false,
++      error: 'An unexpected error occurred during passkey registration.',
++    };
++  }
++
++  // Serialize returned credential using PublicKeyCredential.prototype.toJSON
++  const credentialJSON = typeof credential.toJSON === 'function'
++    ? credential.toJSON()
++    : PublicKeyCredential.prototype.toJSON.call(credential);
++
++  const verifyUrl = `${API_BASE}/register/verify`;
++  const verifyFallback = '/api/register/verify';
++
++  let verifyRes: Response;
++  try {
++    verifyRes = await fetchEndpoint(verifyUrl, verifyFallback, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(credentialJSON),
++    });
++  } catch (err) {
++    return { success: false, error: 'Failed to verify credential with server.' };
++  }
++
++  const verifyData = await verifyRes.json().catch(() => ({}));
++
++  if (!verifyRes.ok) {
++    if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++      try {
++        await PublicKeyCredential.signalUnknownCredential({
++          rpId: verifyData.rpId || getRelyingPartyId(),
++          credentialId: credential.id || verifyData.credentialId || '',
++        });
++      } catch {
++        // Best-effort signal
++      }
++    }
++    return {
++      success: false,
++      error: verifyData.error || 'Passkey registration verification failed.',
++    };
++  }
++
++  // Signal all accepted credentials after list changes
++  if (typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function') {
++    try {
++      await PublicKeyCredential.signalAllAcceptedCredentials({
++        rpId: verifyData.rpId || getRelyingPartyId(),
++        userId: verifyData.userId || username,
++        allAcceptedCredentialIds: verifyData.allAcceptedCredentialIds || [credential.id],
++      });
++    } catch {
++      // Best-effort signal
++    }
++  }
++
++  // Signal current user details
++  if (typeof PublicKeyCredential.signalCurrentUserDetails === 'function') {
++    try {
++      await PublicKeyCredential.signalCurrentUserDetails({
++        rpId: verifyData.rpId || getRelyingPartyId(),
++        userId: verifyData.userId || username,
++        name: verifyData.name || username,
++        displayName: verifyData.displayName || username,
++      });
++    } catch {
++      // Best-effort signal
++    }
++  }
++
++  return { success: true, data: verifyData };
++}
++
++export interface AuthenticatePasskeyOptions {
++  abortController?: AbortController;
++  mediation?: CredentialMediationRequirement;
++}
++
++/**
++ * Authenticates with a passkey.
++ */
++export async function authenticatePasskey(options?: AuthenticatePasskeyOptions): Promise<PasskeyResult> {
++  const optionsUrl = `${API_BASE}/login/options`;
++  const optionsFallback = '/api/login/options';
++
++  let optionsRes: Response;
++  try {
++    optionsRes = await fetchEndpoint(optionsUrl, optionsFallback, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({}),
++    });
++  } catch (err) {
++    return { success: false, error: 'Failed to connect to authentication server.' };
++  }
++
++  if (!optionsRes.ok) {
++    const errData = await optionsRes.json().catch(() => ({}));
++    return {
++      success: false,
++      error: errData.error || 'Failed to get passkey authentication options.',
++    };
++  }
++
++  const optionsJSON = await optionsRes.json();
++
++  // Decode server-provided authentication options with PublicKeyCredential.parseRequestOptionsFromJSON
++  const publicKeyOptions = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++  let credential: PublicKeyCredential | null = null;
++  // Wrap navigator.credentials calls in try/catch error handling
++  try {
++    const result = await navigator.credentials.get({
++      publicKey: publicKeyOptions,
++      signal: options?.abortController?.signal,
++      mediation: options?.mediation,
++    });
++    if (!result) {
++      return { success: false, error: 'No credential was returned.' };
++    }
++    credential = result as PublicKeyCredential;
++  } catch (err: unknown) {
++    if (err instanceof DOMException || (err instanceof Error && err.name)) {
++      if (err.name === 'NotAllowedError') {
++        return { success: false, error: 'Passkey sign-in was cancelled.' };
++      }
++      if (err.name === 'AbortError') {
++        return { success: false, error: 'Passkey sign-in was aborted.' };
++      }
++    }
++    return {
++      success: false,
++      error: 'An unexpected error occurred during passkey sign-in.',
++    };
++  }
++
++  // Serialize returned credential using PublicKeyCredential.prototype.toJSON
++  const credentialJSON = typeof credential.toJSON === 'function'
++    ? credential.toJSON()
++    : PublicKeyCredential.prototype.toJSON.call(credential);
++
++  const verifyUrl = `${API_BASE}/login/verify`;
++  const verifyFallback = '/api/login/verify';
++
++  let verifyRes: Response;
++  try {
++    verifyRes = await fetchEndpoint(verifyUrl, verifyFallback, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(credentialJSON),
++    });
++  } catch (err) {
++    return { success: false, error: 'Failed to verify passkey with server.' };
++  }
++
++  const verifyData = await verifyRes.json().catch(() => ({}));
++
++  if (!verifyRes.ok) {
++    // If server reports asserted credential is unknown (404 status or UNKNOWN_CREDENTIAL error),
++    // invoke PublicKeyCredential.signalUnknownCredential
++    if (
++      verifyRes.status === 404 ||
++      verifyData.code === 'UNKNOWN_CREDENTIAL' ||
++      verifyData.error === 'UNKNOWN_CREDENTIAL' ||
++      (typeof verifyData.error === 'string' && verifyData.error.toLowerCase().includes('unknown'))
++    ) {
++      if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++        try {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: verifyData.rpId || getRelyingPartyId(),
++            credentialId: credential.id || verifyData.credentialId || '',
++          });
++        } catch {
++          // Best-effort signal
++        }
++      }
++    }
++
++    return {
++      success: false,
++      error: verifyData.error || 'Passkey authentication verification failed.',
++    };
++  }
++
++  return { success: true, data: verifyData };
++}

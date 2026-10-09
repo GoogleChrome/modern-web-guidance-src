@@ -1,0 +1,836 @@
+[
+  {
+    "timestamp": "2026-04-03T21:56:10.888Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:56:25.541Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:56:39.642Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:56:53.706Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:57:07.468Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:57:16.948Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6981,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8159,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:57:23.733Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6981,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8159,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:57:27.548Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:57:29.874Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6981,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8159,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:57:37.302Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6981,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8159,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:57:43.473Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6981,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8159,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:57:49.702Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6981,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8159,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:57:52.031Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:57:56.893Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6981,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8159,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:58:03.258Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6981,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8159,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:58:09.542Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6981,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8159,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:58:15.854Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6981,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8159,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:58:16.614Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:58:30.942Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T21:58:44.984Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974,
+    "runId": "2026-04-03T21:56:10.888Z"
+  },
+  {
+    "timestamp": "2026-04-03T22:08:30.297Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-03T22:08:30.297Z"
+  },
+  {
+    "timestamp": "2026-04-03T22:08:45.798Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-03T22:08:30.297Z"
+  },
+  {
+    "timestamp": "2026-04-03T22:09:00.796Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-03T22:08:30.297Z"
+  },
+  {
+    "timestamp": "2026-04-03T22:09:15.152Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-03T22:08:30.297Z"
+  },
+  {
+    "timestamp": "2026-04-03T22:09:31.323Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-03T22:08:30.297Z"
+  },
+  {
+    "timestamp": "2026-04-03T22:09:46.974Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-03T22:08:30.297Z"
+  },
+  {
+    "timestamp": "2026-04-03T22:10:19.604Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-03T22:08:30.297Z"
+  },
+  {
+    "timestamp": "2026-04-03T22:10:37.224Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-03T22:08:30.297Z"
+  },
+  {
+    "timestamp": "2026-04-03T22:10:55.700Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-03T22:08:30.297Z"
+  },
+  {
+    "timestamp": "2026-04-03T22:11:19.142Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-03T22:08:30.297Z"
+  },
+  {
+    "timestamp": "2026-04-08T16:55:06.450Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "fp32",
+      "runtime": "tfjs",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8314,
+    "top5HitRate": 0.9139,
+    "meanReciprocalRank": 0.6943,
+    "runId": "2026-04-08T16:55:06.450Z"
+  },
+  {
+    "timestamp": "2026-04-08T17:08:07.231Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "fp32",
+      "runtime": "tfjs",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8314,
+    "top5HitRate": 0.9139,
+    "meanReciprocalRank": 0.6943,
+    "runId": "2026-04-08T17:08:07.231Z"
+  },
+  {
+    "timestamp": "2026-04-08T17:09:46.575Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "no-maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8396,
+    "top5HitRate": 0.9127,
+    "meanReciprocalRank": 0.6951,
+    "runId": "2026-04-08T17:08:07.231Z"
+  },
+  {
+    "timestamp": "2026-04-08T17:12:13.157Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.7028,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9811,
+    "meanReciprocalRank": 0.8208,
+    "runId": "2026-04-08T17:12:13.157Z"
+  },
+  {
+    "timestamp": "2026-04-08T17:14:30.530Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "fp32",
+      "runtime": "tfjs",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.7064,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9741,
+    "meanReciprocalRank": 0.8208,
+    "runId": "2026-04-08T17:14:30.530Z"
+  },
+  {
+    "timestamp": "2026-04-08T17:20:54.558Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.7028,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9811,
+    "meanReciprocalRank": 0.8208,
+    "runId": "2026-04-08T17:20:54.558Z"
+  },
+  {
+    "timestamp": "2026-04-08T17:21:06.120Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.7028,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9811,
+    "meanReciprocalRank": 0.8208,
+    "runId": "2026-04-08T17:20:54.558Z"
+  },
+  {
+    "timestamp": "2026-04-08T17:21:25.145Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.7028,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9811,
+    "meanReciprocalRank": 0.8208,
+    "runId": "2026-04-08T17:20:54.558Z"
+  },
+  {
+    "timestamp": "2026-04-08T18:41:09.797Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "chunking": "chunked",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.7028,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9811,
+    "meanReciprocalRank": 0.8208,
+    "runId": "2026-04-08T18:41:09.797Z"
+  },
+  {
+    "timestamp": "2026-04-08T20:37:57.142Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "nochunk",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6993,
+    "top3HitRate": 0.9151,
+    "top5HitRate": 0.9741,
+    "meanReciprocalRank": 0.8075,
+    "runId": "2026-04-08T20:37:57.142Z"
+  },
+  {
+    "timestamp": "2026-04-08T20:41:07.554Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "nochunk",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6993,
+    "top3HitRate": 0.9151,
+    "top5HitRate": 0.9741,
+    "meanReciprocalRank": 0.8075,
+    "runId": "2026-04-08T20:41:07.554Z"
+  },
+  {
+    "timestamp": "2026-04-08T20:45:01.890Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "nochunk",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6993,
+    "top3HitRate": 0.9151,
+    "top5HitRate": 0.9741,
+    "meanReciprocalRank": 0.8075,
+    "runId": "2026-04-08T20:45:01.890Z"
+  },
+  {
+    "timestamp": "2026-04-08T21:04:33.886Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "nochunk",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.684,
+    "top3HitRate": 0.9151,
+    "top5HitRate": 0.9776,
+    "meanReciprocalRank": 0.8002,
+    "runId": "2026-04-08T21:04:30.520Z"
+  },
+  {
+    "timestamp": "2026-04-08T21:07:05.604Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "nochunk",
+      "variant": "boost3x",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.684,
+    "top3HitRate": 0.9151,
+    "top5HitRate": 0.9776,
+    "meanReciprocalRank": 0.8002,
+    "runId": "2026-04-08T21:07:02.270Z"
+  },
+  {
+    "timestamp": "2026-04-08T21:13:18.410Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "fp32",
+      "runtime": "tfjs",
+      "search": "maxsim",
+      "chunking": "nochunk",
+      "variant": "nochunk"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6958,
+    "top3HitRate": 0.9127,
+    "top5HitRate": 0.9741,
+    "meanReciprocalRank": 0.8062,
+    "runId": "2026-04-08T21:11:15.914Z"
+  },
+  {
+    "timestamp": "2026-04-09T21:04:58.158Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "search": "no-maxsim",
+      "chunking": "chunked",
+      "variant": "baseline main branch"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6887,
+    "top3HitRate": 0.934,
+    "top5HitRate": 0.9705,
+    "meanReciprocalRank": 0.8084,
+    "runId": "2026-04-09T21:04:49.925Z"
+  },
+  {
+    "timestamp": "2026-04-09T21:15:25.938Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "fp32",
+      "runtime": "tfjs",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "tfjs-pure-js"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6899,
+    "top3HitRate": 0.9328,
+    "top5HitRate": 0.9705,
+    "meanReciprocalRank": 0.8086,
+    "runId": "2026-04-09T21:13:18.722Z"
+  },
+  {
+    "timestamp": "2026-04-09T21:37:13.663Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "tfjs",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "q8"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6958,
+    "top3HitRate": 0.9316,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8117,
+    "runId": "2026-04-09T21:35:03.972Z"
+  },
+  {
+    "timestamp": "2026-10-05T20:18:14.971Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "tfjs",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "baseline-pre"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5236,
+    "top3HitRate": 0.7476,
+    "top5HitRate": 0.7995,
+    "meanReciprocalRank": 0.6337,
+    "runId": "2026-10-05T20:13:45.880Z"
+  },
+  {
+    "timestamp": "2026-10-05T20:30:05.146Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "tfjs",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "tokenizer-swap"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5236,
+    "top3HitRate": 0.7476,
+    "top5HitRate": 0.7995,
+    "meanReciprocalRank": 0.6337,
+    "validQueries": 748,
+    "validTop1HitRate": 0.5936,
+    "validTop3HitRate": 0.8476,
+    "validTop5HitRate": 0.9064,
+    "validMeanReciprocalRank": 0.7184,
+    "runId": "2026-10-05T20:25:34.169Z"
+  },
+  {
+    "timestamp": "2026-10-05T20:38:48.049Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "transformers-v4"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5212,
+    "top3HitRate": 0.7535,
+    "top5HitRate": 0.8066,
+    "meanReciprocalRank": 0.6337,
+    "validQueries": 748,
+    "validTop1HitRate": 0.5909,
+    "validTop3HitRate": 0.8543,
+    "validTop5HitRate": 0.9144,
+    "validMeanReciprocalRank": 0.7184,
+    "runId": "2026-10-05T20:38:16.086Z"
+  }
+]

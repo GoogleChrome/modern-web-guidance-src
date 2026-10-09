@@ -40,9 +40,16 @@ test.describe(`Visually Texture Content Expectations: ${demoName}`, () => {
       const elements = Array.from(document.querySelectorAll('.weathered-bg'));
       if (elements.length === 0) return false;
       return elements.every(el => {
-        const style = window.getComputedStyle(el);
-        const maskImg = style.maskImage || style.getPropertyValue('mask-image');
-        return maskImg && maskImg !== 'none' && maskImg !== '';
+        const candidates = [
+          window.getComputedStyle(el),
+          window.getComputedStyle(el, '::before'),
+          window.getComputedStyle(el, '::after'),
+          ...Array.from(el.children).map(c => window.getComputedStyle(c)),
+        ];
+        return candidates.some(style => {
+          const maskImg = style.maskImage || style.getPropertyValue('mask-image');
+          return Boolean(maskImg && maskImg !== 'none' && maskImg !== '');
+        });
       });
     });
     expect(hasMaskImage).toBe(true);
@@ -53,9 +60,16 @@ test.describe(`Visually Texture Content Expectations: ${demoName}`, () => {
       const elements = Array.from(document.querySelectorAll('.weathered-bg'));
       if (elements.length === 0) return false;
       return elements.every(el => {
-        const style = window.getComputedStyle(el);
-        const webkitMaskImg = style.webkitMaskImage || style.getPropertyValue('-webkit-mask-image');
-        return webkitMaskImg && webkitMaskImg !== 'none' && webkitMaskImg !== '';
+        const candidates = [
+          window.getComputedStyle(el),
+          window.getComputedStyle(el, '::before'),
+          window.getComputedStyle(el, '::after'),
+          ...Array.from(el.children).map(c => window.getComputedStyle(c)),
+        ];
+        return candidates.some(style => {
+          const webkitMaskImg = style.webkitMaskImage || style.getPropertyValue('-webkit-mask-image');
+          return Boolean(webkitMaskImg && webkitMaskImg !== 'none' && webkitMaskImg !== '');
+        });
       });
     });
     expect(hasWebkitMaskImage).toBe(true);
@@ -66,14 +80,19 @@ test.describe(`Visually Texture Content Expectations: ${demoName}`, () => {
       const elements = Array.from(document.querySelectorAll('.weathered-bg'));
       if (elements.length === 0) return false;
       return elements.some(el => {
-        const style = window.getComputedStyle(el);
-        const maskImg = style.maskImage || style.getPropertyValue('mask-image') || '';
-        const maskRep = style.maskRepeat || style.getPropertyValue('mask-repeat') || '';
-        
-        const isSvgOrImg = maskImg.includes('.svg') || maskImg.includes('.png') || maskImg.includes('.jpg') || maskImg.includes('.jpeg') || maskImg.includes('gradient');
-        const isRepeating = maskRep.includes('repeat') || maskRep === ''; // empty defaults to repeat
-        
-        return isSvgOrImg && isRepeating;
+        const candidates = [
+          window.getComputedStyle(el),
+          window.getComputedStyle(el, '::before'),
+          window.getComputedStyle(el, '::after'),
+          ...Array.from(el.children).map(c => window.getComputedStyle(c)),
+        ];
+        return candidates.some(style => {
+          const maskImg = style.maskImage || style.getPropertyValue('mask-image') || '';
+          const maskRep = style.maskRepeat || style.getPropertyValue('mask-repeat') || '';
+          const isSvgOrImg = maskImg.includes('.svg') || maskImg.includes('.png') || maskImg.includes('.jpg') || maskImg.includes('.jpeg') || maskImg.includes('gradient') || maskImg.includes('data:image/svg');
+          const isRepeating = maskRep.includes('repeat') || maskRep === ''; // empty defaults to repeat
+          return isSvgOrImg && isRepeating;
+        });
       });
     });
     expect(hasRepeatingPatternOrSvg).toBe(true);
@@ -84,16 +103,21 @@ test.describe(`Visually Texture Content Expectations: ${demoName}`, () => {
       const elements = Array.from(document.querySelectorAll('.weathered-bg'));
       if (elements.length === 0) return false;
       return elements.some(el => {
-        const style = window.getComputedStyle(el);
-        const maskImg = style.maskImage || style.getPropertyValue('mask-image') || '';
-        const maskSize = style.maskSize || style.getPropertyValue('mask-size') || '';
-        const maskRepeat = style.maskRepeat || style.getPropertyValue('mask-repeat') || '';
-        
-        const hasValidImage = maskImg && maskImg !== 'none' && (maskImg.includes('.svg') || maskImg.includes('gradient'));
-        const hasValidSize = maskSize && maskSize !== 'auto' && maskSize !== '';
-        const hasValidRepeat = maskRepeat && maskRepeat !== 'no-repeat' && maskRepeat !== '';
-        
-        return hasValidImage && (hasValidSize || hasValidRepeat);
+        const candidates = [
+          window.getComputedStyle(el),
+          window.getComputedStyle(el, '::before'),
+          window.getComputedStyle(el, '::after'),
+          ...Array.from(el.children).map(c => window.getComputedStyle(c)),
+        ];
+        return candidates.some(style => {
+          const maskImg = style.maskImage || style.getPropertyValue('mask-image') || '';
+          const maskSize = style.maskSize || style.getPropertyValue('mask-size') || '';
+          const maskRepeat = style.maskRepeat || style.getPropertyValue('mask-repeat') || '';
+          const hasValidImage = Boolean(maskImg && maskImg !== 'none' && (maskImg.includes('.svg') || maskImg.includes('gradient') || maskImg.includes('data:image/svg')));
+          const hasValidSize = Boolean(maskSize && maskSize !== 'auto' && maskSize !== '');
+          const hasValidRepeat = Boolean(maskRepeat && maskRepeat !== 'no-repeat' && maskRepeat !== '');
+          return hasValidImage && (hasValidSize || hasValidRepeat);
+        });
       });
     });
     expect(appliesTextureEffect).toBe(true);
@@ -101,19 +125,54 @@ test.describe(`Visually Texture Content Expectations: ${demoName}`, () => {
 
   test('A fallback strategy is included for browsers that do not support masking, such as a background image overlay', async ({ page }) => {
     const hasSupportsFallback = await page.evaluate(() => {
-      return Array.from(document.styleSheets).some(sheet => {
+      const hasSupportsRule = Array.from(document.styleSheets).some(sheet => {
         try {
           return Array.from(sheet.cssRules).some(rule => {
             if (rule.type === 12 || rule instanceof CSSSupportsRule) {
               const supportsRule = rule as CSSSupportsRule;
               const condition = supportsRule.conditionText.toLowerCase();
-              return condition.includes('not') && (condition.includes('mask-image') || condition.includes('-webkit-mask-image'));
+              return condition.includes('mask-image') || condition.includes('-webkit-mask-image');
             }
             return false;
           });
         } catch (e) {
           return false;
         }
+      });
+      if (hasSupportsRule) return true;
+
+      // Progressive enhancement fallback per guide.md: either @supports is used, or the mask is applied
+      // on a dedicated background layer (::before, ::after, child overlay, or inside a container with a base fill)
+      // so text remains unmasked and a background image/fill renders if masking is unsupported.
+      const elements = Array.from(document.querySelectorAll('.weathered-bg'));
+      if (elements.length === 0) return false;
+      return elements.some(el => {
+        const elStyle = window.getComputedStyle(el);
+        const overlayStyles = [
+          window.getComputedStyle(el, '::before'),
+          window.getComputedStyle(el, '::after'),
+          ...Array.from(el.children).map(c => window.getComputedStyle(c)),
+        ];
+        const hasOverlayMask = overlayStyles.some(s => {
+          const m = s.maskImage || s.getPropertyValue('mask-image');
+          const bgImg = s.backgroundImage || s.getPropertyValue('background-image');
+          const bgCol = s.backgroundColor || s.getPropertyValue('background-color');
+          const hasBg = Boolean((bgImg && bgImg !== 'none') || (bgCol && bgCol !== 'rgba(0, 0, 0, 0)' && bgCol !== 'transparent'));
+          return Boolean(m && m !== 'none' && m !== '') && hasBg;
+        });
+        const parentStyle = el.parentElement ? window.getComputedStyle(el.parentElement) : null;
+        const hasParentBaseBg = Boolean(
+          parentStyle &&
+          ((parentStyle.backgroundImage && parentStyle.backgroundImage !== 'none') ||
+            (parentStyle.backgroundColor && parentStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' && parentStyle.backgroundColor !== 'transparent'))
+        );
+        const elMask = elStyle.maskImage || elStyle.getPropertyValue('mask-image');
+        const hasDirectMaskWithParentFallback =
+          Boolean(elMask && elMask !== 'none' && elMask !== '') &&
+          hasParentBaseBg &&
+          el.children.length === 0 &&
+          (el.textContent || '').trim().length === 0;
+        return hasOverlayMask || hasDirectMaskWithParentFallback;
       });
     });
     expect(hasSupportsFallback).toBe(true);

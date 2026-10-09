@@ -1,0 +1,238 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,25 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .passkey-hidden {
++      display: none !important;
++    }
++    .passkey-btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 8px 16px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-weight: bold;
++    }
++    .passkey-section {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      margin: 20px 0;
++      text-align: center;
++    }
+   </style>
+ </head>
+ 
+@@ -165,6 +184,7 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="passkey-hidden" id="navPasskeyItem"><button class="passkey-btn" id="signInPasskeyBtn" onclick="authenticatePasskey()">Passkey Sign In</button></li>
+     </ul>
+   </nav>
+ 
+@@ -175,6 +195,17 @@
+   </header>
+ 
+   <main class="container">
++    <section class="passkey-section passkey-hidden" id="passkeySection">
++      <h2>Passkey Management</h2>
++      <p id="passkeyStatus">Manage your biometric credentials</p>
++      <button class="passkey-btn" id="createPasskeyBtn" onclick="registerPasskey()">Add Passkey</button>
++      <ul id="passkeyList" style="list-style: none; margin: 15px auto; max-width: 400px; padding: 0;"></ul>
++      <form id="profileForm" onsubmit="updateProfile(event)" style="margin-top: 15px;">
++        <input type="text" id="profileName" placeholder="Username" value="barista" />
++        <input type="text" id="profileDisplay" placeholder="Display Name" value="Master Barista" />
++        <button type="submit" class="passkey-btn">Update Profile</button>
++      </form>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +238,181 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const AAGUID_PROVIDERS = {
++      'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4': { name: 'Google Password Manager', icon: 'gpm.png' },
++      'dd4ec2ec-1062-d1f0-e4d0-c4e2fb8a4400': { name: 'iCloud Keychain', icon: 'icloud.png' },
++      '531126d6-e717-415c-9320-3d9aa6981239': { name: '1Password', icon: '1pass.png' }
++    };
++
++    function getProviderInfo(aaguid) {
++      return AAGUID_PROVIDERS[aaguid] || { name: 'Standard Passkey', icon: null };
++    }
++
++    async function checkFeatureSupport() {
++      if (!('PublicKeyCredential' in window)) return false;
++      if (typeof PublicKeyCredential.isConditionalMediationAvailable === 'function') {
++        try {
++          return await PublicKeyCredential.isConditionalMediationAvailable();
++        } catch (e) {
++          return false;
++        }
++      }
++      return true;
++    }
++
++    async function initPasskeyFeature() {
++      const supported = await checkFeatureSupport();
++      const elements = document.querySelectorAll('.passkey-hidden');
++      elements.forEach(el => {
++        if (supported) {
++          el.classList.remove('passkey-hidden');
++          el.style.display = '';
++        } else {
++          el.style.display = 'none';
++        }
++      });
++    }
++
++    async function registerPasskey() {
++      try {
++        const optionsRes = await fetch('/api/webauthn/register/options', { method: 'POST' });
++        const optionsJSON = await optionsRes.json();
++        const options = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++        const credential = await navigator.credentials.create({ publicKey: options });
++        if (!credential) return;
++
++        const credJSON = credential.toJSON();
++        const verifyRes = await fetch('/api/webauthn/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(credJSON)
++        });
++        const result = await verifyRes.json();
++
++        if (result.verified && typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function') {
++          await PublicKeyCredential.signalAllAcceptedCredentials({
++            rpId: result.rpId || window.location.hostname,
++            userId: result.userId || 'user-default',
++            allAcceptedCredentialIds: result.credentialIds || [credJSON.id]
++          });
++        }
++        await loadCredentials();
++      } catch (err) {
++        if (err.name === 'NotAllowedError') {
++          console.warn('Registration cancelled');
++        } else if (err.name === 'AbortError') {
++          console.warn('Registration aborted');
++        } else {
++          console.error('Registration failed', err);
++        }
++      }
++    }
++
++    async function authenticatePasskey() {
++      try {
++        const optionsRes = await fetch('/api/webauthn/authenticate/options', { method: 'POST' });
++        const optionsJSON = await optionsRes.json();
++        const options = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++        const credential = await navigator.credentials.get({ publicKey: options });
++        if (!credential) return;
++
++        const credJSON = credential.toJSON();
++        const verifyRes = await fetch('/api/webauthn/authenticate/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(credJSON)
++        });
++        const result = await verifyRes.json();
++
++        if (result.unknownCredential && typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: result.rpId || window.location.hostname,
++            credentialId: credJSON.id
++          });
++        }
++      } catch (err) {
++        if (err.name === 'NotAllowedError') {
++          console.warn('Authentication cancelled');
++        } else if (err.name === 'AbortError') {
++          console.warn('Authentication aborted');
++        } else {
++          console.error('Authentication failed', err);
++        }
++      }
++    }
++
++    async function deleteCredential(credId) {
++      try {
++        const res = await fetch('/api/webauthn/credentials/delete', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ credentialId: credId })
++        });
++        const result = await res.json();
++        if (typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function') {
++          await PublicKeyCredential.signalAllAcceptedCredentials({
++            rpId: result.rpId || window.location.hostname,
++            userId: result.userId || 'user-default',
++            allAcceptedCredentialIds: result.remainingCredentialIds || []
++          });
++        }
++        await loadCredentials();
++      } catch (err) {
++        console.error('Delete failed', err);
++      }
++    }
++
++    async function updateProfile(event) {
++      event.preventDefault();
++      const username = document.getElementById('profileName').value;
++      const displayName = document.getElementById('profileDisplay').value;
++      try {
++        const res = await fetch('/api/user/update', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ username, displayName })
++        });
++        const result = await res.json();
++        if (typeof PublicKeyCredential.signalCurrentUserDetails === 'function') {
++          await PublicKeyCredential.signalCurrentUserDetails({
++            rpId: result.rpId || window.location.hostname,
++            userId: result.userId || 'user-default',
++            name: username,
++            displayName: displayName
++          });
++        }
++      } catch (err) {
++        console.error('Profile update failed', err);
++      }
++    }
++
++    async function loadCredentials() {
++      const list = document.getElementById('passkeyList');
++      if (!list) return;
++      try {
++        const res = await fetch('/api/webauthn/credentials');
++        const data = await res.json();
++        list.innerHTML = '';
++        (data.credentials || []).forEach(cred => {
++          const item = document.createElement('li');
++          const info = getProviderInfo(cred.aaguid);
++          item.textContent = info.name + ' - ' + (cred.name || cred.id) + ' ';
++          const delBtn = document.createElement('button');
++          delBtn.textContent = 'Remove';
++          delBtn.className = 'passkey-btn';
++          delBtn.onclick = () => deleteCredential(cred.id);
++          item.appendChild(delBtn);
++          list.appendChild(item);
++        });
++      } catch (e) {}
++    }
++
++    document.addEventListener('DOMContentLoaded', () => {
++      initPasskeyFeature();
++      loadCredentials();
++    });
++  </script>
+ </body>
+ 
+ </html>
+
