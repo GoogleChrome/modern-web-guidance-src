@@ -129,7 +129,8 @@ export function buildIssueContent(
   featureIds: string[],
   relativeSubdir: string,
   featureToIssueMap: Map<string, FeatureIssueData>,
-  inv: GuideInventory
+  inv: GuideInventory,
+  existingMilestoneNumber: number | null | undefined = undefined
 ): IssueContent {
   const relatedLinks: string[] = [];
   let priorityLabel: string | null = null;
@@ -139,10 +140,13 @@ export function buildIssueContent(
     const featureData = featureToIssueMap.get(stripTmpPrefix(id));
     if (featureData) {
       relatedLinks.push(`#${featureData.number}`);
-      if (!priorityLabel && featureData.priorityLabel) {
+      const sameMilestone =
+        existingMilestoneNumber === undefined ||
+        existingMilestoneNumber === featureData.milestoneNumber;
+      if (!priorityLabel && featureData.priorityLabel && sameMilestone) {
         priorityLabel = featureData.priorityLabel;
       }
-      if (!milestoneNumber && featureData.milestoneNumber) {
+      if (!milestoneNumber && featureData.milestoneNumber && sameMilestone) {
         milestoneNumber = featureData.milestoneNumber;
       }
     }
@@ -605,8 +609,19 @@ async function processUseCases(
       console.warn(`⚠️ Could not find inventory for ${relativeSubdir}`);
       continue;
     }
-    const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap, inv);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
+    const existingMilestoneNumber = existingIssue
+      ? (existingIssue.milestone ? existingIssue.milestone.number : null)
+      : undefined;
+    const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(
+      name,
+      description,
+      featureIds,
+      relativeSubdir,
+      featureToIssueMap,
+      inv,
+      existingMilestoneNumber
+    );
     const existingIssueNumber = existingIssue?.number;
     const currentProjectStatus = existingIssueNumber ? projectDetails?.issueStatusMap.get(existingIssueNumber) : undefined;
 

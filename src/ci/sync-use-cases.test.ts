@@ -649,6 +649,25 @@ describe('buildIssueContent', () => {
     assert.strictEqual(milestoneNumber, 1);
   });
 
+  test('does not inherit priority label from feature issues in a different milestone when existingMilestoneNumber is set', () => {
+    const featureMap = new Map([
+      ['feature-a', { number: 1, priorityLabel: 'P0', milestoneNumber: 3, state: 'open', body: '' }],
+      ['feature-b', { number: 2, priorityLabel: 'P2', milestoneNumber: 4, state: 'open', body: '' }],
+    ]);
+    const mismatchResult = buildIssueContent('my-use-case', 'desc', ['feature-a'], 'guides/ux/my-use-case', featureMap, makeInventory(), 4);
+    assert.strictEqual(mismatchResult.priorityLabel, null);
+    assert.strictEqual(mismatchResult.milestoneNumber, null);
+    assert.ok(mismatchResult.issueBody.includes('Related features: #1'));
+
+    const matchSecondResult = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap, makeInventory(), 4);
+    assert.strictEqual(matchSecondResult.priorityLabel, 'P2');
+    assert.strictEqual(matchSecondResult.milestoneNumber, 4);
+
+    const nullMilestoneResult = buildIssueContent('my-use-case', 'desc', ['feature-a'], 'guides/ux/my-use-case', featureMap, makeInventory(), null);
+    assert.strictEqual(nullMilestoneResult.priorityLabel, null);
+    assert.strictEqual(nullMilestoneResult.milestoneNumber, null);
+  });
+
   test('omits related features section when no features have linked issues', () => {
     const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap, makeInventory());
     assert.ok(!issueBody.includes('Related features'));
