@@ -107,6 +107,27 @@
     .card-container {
       container-type: inline-size;
       width: 100%;
+
+      /* Switch to a sidebar layout only when there is room and media is present */
+      @container (min-width: 32rem) {
+        .card:has(> :is(img, picture, video, svg)) {
+          grid-template-columns: 140px 1fr;
+          grid-template-rows: auto 1fr auto;
+          gap: 0.5rem 1.25rem;
+
+          > :is(img, picture, video, svg) {
+            grid-column: 1;
+            grid-row: 1 / -1;
+            align-self: start;
+            height: 100%;
+            min-height: 140px;
+          }
+
+          > :not(:is(img, picture, video, svg)) {
+            grid-column: 2;
+          }
+        }
+      }
     }
 
     /* The article element itself is the card component */
@@ -121,126 +142,98 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
       padding: 1.5rem;
       gap: 0.75rem;
-    }
 
-    /* Delegate outer focus state when any inner link or button has focus */
-    .card:has(:focus-visible) {
-      outline: 2px solid var(--focus-ring-color);
-      outline-offset: 4px;
-    }
-
-    /* Target direct visual media elements */
-    .card> :is(img, picture, video, svg) {
-      width: 100%;
-      height: 140px;
-      object-fit: cover;
-      border-radius: 8px;
-    }
-
-    /* Target direct heading groups */
-    .card>hgroup {
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-    }
-
-    .card>hgroup> :is(h1, h2, h3, h4, h5, h6) {
-      margin: 0;
-      font-size: 1.25rem;
-      font-weight: 750;
-      letter-spacing: -0.015em;
-      text-wrap: balance;
-      /* Modern CSS: Balance heading lines */
-    }
-
-    .card>hgroup>p {
-      margin: 0;
-      font-size: 0.825rem;
-      color: var(--text-muted);
-    }
-
-    /* Handle link text style overrides */
-    .card>hgroup> :is(h1, h2, h3, h4, h5, h6) a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .card :is(hgroup a, footer button, footer a):focus-visible {
-      outline: 2px solid var(--focus-ring-color);
-      outline-offset: 2px;
-      border-radius: 2px;
-    }
-
-    /* Stretch the title link's pointer target across the card without wrapping body text in <a> */
-    .card>hgroup a::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-    }
-
-    /* Target paragraphs within the body-content wrapper */
-    .card>.content p {
-      margin: 0;
-      font-size: 0.875rem;
-      line-height: 1.55;
-      text-wrap: pretty;
-      /* Modern CSS: Prevent orphans */
-    }
-
-    /* Target footer as actions list */
-    .card>footer {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-
-    .card>footer :is(button, a) {
-      all: unset;
-      appearance: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--btn-bg);
-      color: var(--btn-text);
-      border-radius: 8px;
-      padding: 0.45rem 0.9rem;
-      font-size: 0.825rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      /* Stack secondary controls above the stretched link so they remain independently clickable */
-      position: relative;
-      z-index: 1;
-      transition: background 0.15s ease, color 0.15s ease;
-    }
-
-    .card>footer :is(button, a):hover {
-      background: var(--btn-bg-hover);
-      color: var(--btn-text-hover);
-    }
-
-    /* --------------------------------------------------
-     DYNAMIC SIDEBAR LAYOUT (If media is present)
-     -------------------------------------------------- */
-    @container (min-width: 32rem) {
-
-      /* Automatically shift to sidebar grid ONLY if an image/media element is present */
-      .card:has(> :is(img, picture, video, svg)) {
-        grid-template-columns: 140px 1fr;
-        grid-template-rows: auto 1fr auto;
-        gap: 0.5rem 1.25rem;
+      /* Delegate outer focus state when any inner link or button has focus */
+      &:has(:focus-visible) {
+        outline: 2px solid var(--focus-ring-color);
+        outline-offset: 4px;
       }
 
-      .card:has(> :is(img, picture, video, svg))> :is(img, picture, video, svg) {
-        grid-column: 1;
-        grid-row: 1 / -1;
-        align-self: start;
-        height: 100%;
-        min-height: 140px;
+      /* Target direct visual media elements */
+      > :is(img, picture, video, svg) {
+        width: 100%;
+        height: 140px;
+        object-fit: cover;
+        border-radius: 8px;
       }
 
-      .card:has(> :is(img, picture, video, svg))> :not(:is(img, picture, video, svg)) {
-        grid-column: 2;
+      /* Target direct heading groups */
+      > hgroup {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+
+        > :is(h1, h2, h3, h4, h5, h6) {
+          margin: 0;
+          font-size: 1.25rem;
+          font-weight: 750;
+          letter-spacing: -0.015em;
+          text-wrap: balance;
+
+          a {
+            color: inherit;
+            text-decoration: none;
+
+            /* Stretch the title link's pointer target without wrapping body text in <a> */
+            &::after {
+              content: "";
+              position: absolute;
+              inset: 0;
+            }
+          }
+        }
+
+        > p {
+          margin: 0;
+          font-size: 0.825rem;
+          color: var(--text-muted);
+        }
+      }
+
+      :is(hgroup a, footer button, footer a):focus-visible {
+        outline: 2px solid var(--focus-ring-color);
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
+
+      /* Target paragraphs within the body-content wrapper */
+      > .content p {
+        margin: 0;
+        font-size: 0.875rem;
+        line-height: 1.55;
+        text-wrap: pretty;
+      }
+
+      /* Target footer as actions list */
+      > footer {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+
+        :is(button, a) {
+          all: unset;
+          appearance: none;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--btn-bg);
+          color: var(--btn-text);
+          border-radius: 8px;
+          padding: 0.45rem 0.9rem;
+          font-size: 0.825rem;
+          font-weight: 600;
+          cursor: pointer;
+          text-decoration: none;
+          /* Stack secondary controls above the stretched link so they remain independently clickable */
+          position: relative;
+          z-index: 1;
+          transition: background 0.15s ease, color 0.15s ease;
+
+          &:hover {
+            background: var(--btn-bg-hover);
+            color: var(--btn-text-hover);
+          }
+        }
       }
     }
 

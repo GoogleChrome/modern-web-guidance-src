@@ -53,32 +53,31 @@ When a card’s layout should change with its available width—for example, swi
 .card-container {
   /* Query the wrapper's inline size because a card cannot query its own container size */
   container-type: inline-size;
+
+  /* Switch to two columns only when wide enough AND media is present */
+  @container (min-width: 32rem) {
+    .card:has(> :is(img, picture, video, svg)) {
+      grid-template-columns: 9rem 1fr; /* Example media column width */
+      grid-template-rows: auto 1fr auto;
+      gap: 0.5rem 1.25rem;
+
+      > :is(img, picture, video, svg) {
+        grid-column: 1;
+        grid-row: 1 / -1;
+        block-size: 100%;
+        object-fit: cover;
+      }
+
+      > :not(:is(img, picture, video, svg)) {
+        grid-column: 2;
+      }
+    }
+  }
 }
 
 .card {
   display: grid;
   gap: 0.75rem; /* Example spacing */
-}
-
-/* Switch to two columns only when the container is wide enough (32rem is an example threshold) AND media is present */
-@container (min-width: 32rem) {
-  .card:has(> :is(img, picture, video, svg)) {
-    grid-template-columns: 9rem 1fr; /* Example media column width */
-    grid-template-rows: auto 1fr auto; /* Size hgroup and footer to content; let body text flex */
-    gap: 0.5rem 1.25rem;
-  }
-
-  .card:has(> :is(img, picture, video, svg)) > :is(img, picture, video, svg) {
-    grid-column: 1;
-    /* Span all explicit text rows (-1) instead of an arbitrary span count, which would create empty implicit tracks that still accumulate row-gap */
-    grid-row: 1 / -1;
-    block-size: 100%;
-    object-fit: cover;
-  }
-
-  .card:has(> :is(img, picture, video, svg)) > :not(:is(img, picture, video, svg)) {
-    grid-column: 2;
-  }
 }
 ```
 
@@ -92,24 +91,24 @@ When cards need shared internal tracks, `subgrid` can align them without changin
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); /* 18rem is an example minimum card width */
-  /* Define 4 implicit tracks per wrapped card row: media, heading, flexible body (1fr), and footer */
+  /* Four tracks: media, heading, flexible body, and footer */
   grid-auto-rows: auto auto 1fr auto;
   gap: 1.5rem; /* Example grid gap */
-}
 
-.card {
-  display: grid;
-  /* Span all 4 shared tracks; do not set container-type on .card or an intermediate wrapper, as layout containment disables subgrid */
-  grid-row: span 4;
-  grid-template-rows: subgrid;
-  row-gap: 0.75rem;
-}
+  > .card {
+    display: grid;
+    /* Span the shared tracks; layout containment on the card prevents subgrid */
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+    row-gap: 0.75rem;
 
-/* Assign each region to its track so omitting optional media or footer does not shift sibling tracks */
-.card > :is(img, picture, video, svg) { grid-row: 1; }
-.card > hgroup { grid-row: 2; }
-.card > .content { grid-row: 3; }
-.card > footer { grid-row: 4; }
+    /* Keep optional regions in their intended tracks */
+    > :is(img, picture, video, svg) { grid-row: 1; }
+    > hgroup { grid-row: 2; }
+    > .content { grid-row: 3; }
+    > footer { grid-row: 4; }
+  }
+}
 ```
 
 ## Interaction models
@@ -121,17 +120,17 @@ Use an `<article>` for independently understandable card content. Keep links and
 ```css
 .card {
   position: relative; /* Containing block for the stretched link */
-}
 
-.card h3 a::after {
-  content: ""; /* Stretch the title link across the card */
-  position: absolute;
-  inset: 0;
-}
+  h3 a::after {
+    content: ""; /* Stretch the title link across the card */
+    position: absolute;
+    inset: 0;
+  }
 
-.card footer :is(button, a) {
-  position: relative; /* Keep secondary controls above the overlay */
-  z-index: 1;
+  footer :is(button, a) {
+    position: relative; /* Keep secondary controls above the overlay */
+    z-index: 1;
+  }
 }
 ```
 
@@ -175,10 +174,12 @@ Style native controls and their labels as cards. Use radios for one choice and c
 Style the selected option card with `:has(:checked)` using more than color alone (such as border thickness or font weight):
 
 ```css
-.card:has(:checked) {
-  /* Pair any color change with non-color indicators (example border width and weight) so selection is never conveyed by color alone */
-  border-width: 2px;
-  font-weight: 600;
+.card {
+  &:has(:checked) {
+    /* Pair any color change with non-color indicators, such as border width or weight */
+    border-width: 2px;
+    font-weight: 600;
+  }
 }
 ```
 
