@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Equal-Width Text Lines</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 2rem;
+        display: grid;
+        gap: 3rem;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+
+      /* Drag the corner of each poster to see the lines refit */
+      .poster {
+        width: min(100%, 24rem);
+        min-width: 10rem;
+        max-width: 100%;
+        padding: 1.5rem;
+        border: 2px solid #0f172a;
+        background: white;
+        resize: horizontal;
+        overflow: auto;
+        /* So the lockup's gap can be relative to the poster's width */
+        container-type: inline-size;
+      }
+
+      .lockup {
+        /* Each line grows until it spans the poster's inline size.
+           The percentage caps the growth so a short line can't become absurdly large.
+           Tune it to the copy: "Sale" needs almost 5x here, so 300% would stop it short. */
+        text-fit: grow per-line-all 500%;
+
+        /* Base size: what scaling starts from, and what unsupporting browsers render */
+        font-size: 2rem;
+        font-weight: 800;
+
+        span {
+          font-weight: calc(800 * pow(2rem / 1lh, .2));
+        }
+
+        /* Unitless so the leading scales with each line's own text.
+           Tight for all-caps lockups without lines touching. */
+        line-height: 0.9;
+        text-transform: uppercase;
+        margin: 0;
+      }
+
+      /* Forced lines: one block per line */
+      .lockup > span {
+        display: block;
+      }
+
+      /* Fixed lockup: every line forced. Each line's box is trimmed to its
+         cap-height and baseline, so the gap between lines is exactly `gap`,
+         uniform regardless of each line's font-size. line-height is a no-op
+         here and only serves as the fallback where text-box is unsupported.
+         Not for lockups with free lines: trimming only their outer lines
+         would make gaps inconsistent. */
+      .lockup.fixed {
+        display: flex;
+        flex-direction: column;
+        gap: 2cqi;
+
+        > span {
+          text-box: trim-both cap alphabetic;
+        }
+      }
+
+      /* Forced lines must never wrap: the base font-size is the minimum, so a
+         line that wraps at it would be fitted as two lines, not one. */
+      .lockup > span:not(.free) {
+        white-space: nowrap;
+      }
+
+      /* Free lines: the browser wraps them, balanced so they scale evenly */
+      .lockup.dynamic,
+      .lockup > .free {
+        text-wrap: balance;
+      }
+
+      /* Fallback for browsers without text-fit: shrink-wrap each line so its
+         width is the text width, which the script below measures */
+      @supports not (text-fit: grow) {
+        .lockup > span {
+          width: fit-content;
+          /* --text-fit-scale is measured by the script; the cap mirrors the text-fit percentage */
+          font-size: min(var(--text-fit-scale, 1) * 1em, 500%);
+        }
+      }
+
+      p {
+        margin: 0 0 1rem;
+        max-width: 60ch;
+      }
+    </style>
+  </head>
+  <body>
+    <section>
+      <p>Fixed lockup: one block per line. Resize the poster and every line stays edge to edge.</p>
+      <div class="poster">
+        <h1 class="lockup fixed">
+          <span>Summer</span>
+          <span>Sale</span>
+          <span>Up to fifty percent</span>
+          <span>Ends Sunday</span>
+        </h1>
+      </div>
+    </section>
+
+    <section>
+      <p>Dynamic copy: the text wraps naturally, <code>text-wrap: balance</code> evens out the lines, then each line scales.</p>
+      <div class="poster">
+        <h2 class="lockup dynamic">The quick brown fox jumps over the lazy dog</h2>
+      </div>
+    </section>
+
+    <section>
+      <p>Mixed: the emphasized words are forced onto their own lines, the rest wraps freely between them.</p>
+      <div class="poster">
+        <h2 class="lockup">
+          <span>Summer</span>
+          <span>Sale</span>
+          <span class="free">Up to fifty percent off everything in store</span>
+          <span>Ends Sunday</span>
+        </h2>
+      </div>
+    </section>
+
+    <script type="module">
+      // Fallback for browsers without text-fit: measure each fixed line at its
+      // base size and scale it by the ratio to the container, with the same cap.
+      if (!CSS.supports('text-fit', 'grow per-line-all')) {
+        const fit = lockup => {
+          const lines = [...lockup.querySelectorAll(':scope > span')];
+          // Unscale first: on a refit, offsetWidth would otherwise include the previous scale
+          for (const line of lines) line.style.removeProperty('--text-fit-scale');
+          const scales = lines.map(line => lockup.clientWidth / line.offsetWidth);
+          lines.forEach((line, i) => line.style.setProperty('--text-fit-scale', scales[i]));
+        };
+
+        // Refit when the container resizes (viewport, drag handle, font load)
+        for (const lockup of document.querySelectorAll('.lockup')) {
+          new ResizeObserver(() => fit(lockup)).observe(lockup);
+        }
+      }
+    </script>
+  </body>
+</html>

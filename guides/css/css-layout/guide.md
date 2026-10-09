@@ -237,7 +237,7 @@ Manage layout shifts, scrollbars, and clipping predictably.
 - Use `overflow: auto` so scrollbars appear only when content actually overflows.
 - Use `overflow: clip` to clip content **without** establishing a scroll container; opt into spillover with `overflow-clip-margin`.
 - Use `scrollbar-gutter: stable` to reserve space for scrollbars and prevent layout shifts when content grows.
-- Use `overscroll-behavior: contain` (or `none`) on scrollable containers to stop scroll chains from bubbling into the parent or document.
+- Use `overscroll-behavior: contain` (or `none`) on nested scroll regions (such as sidebars, modals, and lists) to stop scroll chains from bubbling into the page, or `overscroll-behavior: chain` on intermediate scroll wrappers (such as swipe-to-reveal tracks) when excess scroll should propagate to an ancestor scroller without triggering a local rubber-band bounce.
 - Use the `-webkit-line-clamp` + `display: -webkit-box` + `-webkit-box-orient: vertical` triad for multi-line truncation — despite the prefix, this pattern is fully specified and not deprecated. Declare the unprefixed `line-clamp` shorthand alongside it; browsers that don't yet support it ignore the property harmlessly.
 **Do not:**
 
@@ -261,7 +261,7 @@ Manage layout shifts, scrollbars, and clipping predictably.
 }
 ```
 
-> For `overflow: clip` and `overflow-clip-margin` in depth, see {{ GUIDE_REF("overflow-clipping-control") }}. For scrollbar color, sizing, and theming, see {{ GUIDE_REF("customize-scrollbar-color-and-thickness") }}, {{ GUIDE_REF("dark-mode") }}, and {{ GUIDE_REF("adapt-scrollbar-to-contrast-preferences") }}.
+> For `overflow: clip` and `overflow-clip-margin` in depth, see {{ GUIDE_REF("overflow-clipping-control") }}. For nested scroll handoff with `overscroll-behavior: chain` in swipe-to-reveal UI, see {{ GUIDE_REF("swipe-to-reveal") }}. For scrollbar color, sizing, and theming, see {{ GUIDE_REF("customize-scrollbar-color-and-thickness") }}, {{ GUIDE_REF("dark-mode") }}, and {{ GUIDE_REF("adapt-scrollbar-to-contrast-preferences") }}.
 
 ## 7 Viewport mechanics and track distribution
 
@@ -270,7 +270,7 @@ Manage layout shifts, scrollbars, and clipping predictably.
 - Use `dvh`/`dvw` for mobile layout containers that must account for browser UI shifting (URL bar collapse/expand).
 - Don't use `100vw` for full-width layout — it ignores scrollbar width and causes horizontal overflow. Use `100%`, `100dvw`, or `100svw` instead.
 
-> For the full viewport unit reference (`svh`, `lvh`, `dvi`, `dvb`, etc.), see {{ GUIDE_REF("css") }}.
+> For the responsive design entry point (dynamic viewport units, reserving space for media, fluid typography), see {{ GUIDE_REF("responsive-design") }}.
 
 ## 8 Grid lanes (aka masonry)
 
