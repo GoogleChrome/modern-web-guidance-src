@@ -128,10 +128,11 @@ const isValid = await crypto.subtle.verify(
 ## Fallback strategies
 
 {{ BASELINE_STATUS("web-cryptography") }}
+{{ BASELINE_STATUS("web-cryptography", "api.SubtleCrypto.sign.ed25519") }}
 
-If your Baseline target does not yet support `SubtleCrypto.supports()` or ML-DSA, detect support using the **static** `SubtleCrypto.supports()` method and fall back to classical `'Ed25519'` (or `'ECDSA'` with `'P-256'` and `'SHA-256'`):
+If your Baseline target does not yet support `SubtleCrypto.supports()` or ML-DSA, detect support using the **static** `SubtleCrypto.supports()` method and fall back to classical `'Ed25519'` (or `'ECDSA'` with `'P-256'` and `'SHA-256'` when targeting browsers prior to `'Ed25519'` support):
 
-- **Call `SubtleCrypto.supports()` on the `SubtleCrypto` constructor, not on `crypto.subtle`**: `globalThis.SubtleCrypto?.supports?.('sign', 'ML-DSA-65')` is a synchronous static method returning a boolean (`crypto.subtle.supports` is `undefined`). Probe `'sign'`, `'verify'`, `'generateKey'`, `'importKey'`, or `'getPublicKey'` (or pass a `ContextParams` dictionary such as `SubtleCrypto.supports('sign', { name: 'ML-DSA-65', context })`); do not probe `'exportKey'`, which is not a supported operation name in `SubtleCrypto.supports()`.
+- **Call `SubtleCrypto.supports()` on the `SubtleCrypto` constructor, not on `crypto.subtle`**: `globalThis.SubtleCrypto?.supports?.('sign', 'ML-DSA-65')` is a synchronous static method returning a boolean (`crypto.subtle.supports` is `undefined`). Probe `'sign'`, `'verify'`, `'generateKey'`, `'importKey'`, `'exportKey'`, or `'getPublicKey'` (or pass a `ContextParams` dictionary such as `SubtleCrypto.supports('sign', { name: 'ML-DSA-65', context })`).
 - **Key format in the fallback (`'raw'`)**: While browsers that support Modern WebCrypto also accept `'raw-public'` on `'Ed25519'` and `'ECDSA'`, use `'raw'` in fallback paths targeting older browsers.
 - **Domain separation in the fallback**: Classical WebCrypto algorithms (`'Ed25519'` and `'ECDSA'`) do not read a `context` property from the algorithm dictionary (WebIDL silently ignores unknown dictionary properties on `Algorithm` and `EcdsaParams`). Prepend a length-prefixed `context` header to the payload in your fallback path so domain separation behaves consistently across both suites.
 
