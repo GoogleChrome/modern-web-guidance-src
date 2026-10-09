@@ -1,7 +1,7 @@
-- The implementation MUST place all page content within semantic HTML landmarks (`<header>`, `<nav>`, `<main>`, `<aside>`, `<footer>`).
+- The implementation MUST place all page content within semantic HTML landmarks (e.g., `<header>`, `<nav>`, `<main>`, `<aside>`, `<footer>`).
 - The implementation MUST maintain a sequential heading hierarchy (`<h1>` through `<h6>`) without skipping heading levels.
 - The implementation MUST use semantic list elements (`<ul>` or `<ol>`) for repeated, contiguous groups of items.
-- The implementation MUST provide a skip link before repeated navigation content that targets a focusable main content region (`<main id="..." tabindex="-1">`).
+- The implementation MUST provide a skip link before repeated content (e.g., a site header with navigation or a long list of focusable items) that targets a focusable element following that content (e.g., `<main id="content" tabindex="-1">`).
 - The implementation MUST use `<caption>` and `<th scope="col">` or `<th scope="row">` for data tables.
 - The implementation MUST NOT style generic `<div>` or `<span>` elements to act as headings without standard `<h1>`–`<h6>` tags.
 - The implementation MUST NOT place heading elements (`<h1>`–`<h6>`) inside `<summary>` elements.
@@ -10,9 +10,9 @@
 - The implementation MUST NOT add redundant ARIA roles or attributes that duplicate native HTML semantics (such as `<nav role="navigation">` or `<input required aria-required="true">`), except for `role="list"` on `<ul>` or `<ol>` elements styled with `list-style: none`, `display: flex`, or `display: grid`.
 - The implementation MUST explicitly associate every `<label>` with its form control using matching `for` and `id` attributes.
 - When a landmark, dialog, or group has a visible heading or label element in the DOM, the implementation MUST reference it with `aria-labelledby` rather than duplicating its text in `aria-label`.
-- The implementation MUST disambiguate identical-looking interactive controls in a list (such as multiple "Edit" or "Delete" buttons) using visually hidden text or `aria-labelledby`.
+- The implementation MUST disambiguate identical-looking interactive controls in a view (such as multiple "Edit" or "Delete" buttons) using visually hidden text or `aria-labelledby`.
 - The implementation MUST NOT apply `aria-label` or `aria-labelledby` to generic `<div>` or `<span>` elements that lack an explicit ARIA `role`.
-- The implementation MUST NOT include the element's role word (such as "navigation" or "button") inside its `aria-label` text.
+- The implementation MUST NOT include the element's role word (such as "navigation" or "button") inside its accessible name.
 - The implementation MUST NOT rely on `title` or `placeholder` attributes as the accessible name for interactive controls.
 - The implementation MUST declare the primary document language using the `lang` attribute on the `<html>` element.
 - The implementation MUST provide a descriptive `<title>` element within the document `<head>`.
@@ -30,8 +30,8 @@
 - The implementation MUST provide `<track kind="captions">` for `<video>` elements containing speech or meaningful audio.
 - The implementation MUST link form input help text and validation hints to controls using `aria-describedby`.
 - The implementation MUST set valid `autocomplete` attributes on personal data form inputs.
-- The implementation MUST announce dynamic form validation errors or status updates using live regions (`aria-live`, `role="status"`, or `role="alert"`) or programmatic focus management.
+- The implementation MUST announce dynamic form validation errors using live regions (`aria-live`, `role="status"`, or `role="alert"`) or programmatic focus management.
 - The implementation MUST use `aria-live="polite"` (or `role="status"`) for standard status updates and reserve `role="alert"` or `aria-live="assertive"` strictly for critical, time-sensitive warnings.
-- The implementation MUST NOT trigger live-region updates inside `inert` DOM subtrees.
+- The implementation MUST NOT trigger live-region updates inside inert DOM subtrees.
 - The implementation MUST use the native `<dialog>` element invoked via `.showModal()` for modal dialogs rather than custom JavaScript focus traps.
 - The implementation MUST apply the `inert` attribute to background content when custom non-dialog modal overlays or drawers are open.
