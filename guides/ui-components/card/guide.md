@@ -122,17 +122,13 @@ Style native controls and their labels as cards. Use radios for one choice and c
   <legend>Choose a delivery method</legend>
   <label class="card">
     <input type="radio" name="delivery" value="standard">
-    <span>
-      <strong>Standard delivery</strong>
-      <span>Arrives in 3–5 working days</span>
-    </span>
+    <strong>Standard delivery</strong>
+    <span>Arrives in 3–5 working days</span>
   </label>
   <label class="card">
     <input type="radio" name="delivery" value="express">
-    <span>
-      <strong>Express delivery</strong>
-      <span>Arrives the next working day</span>
-    </span>
+    <strong>Express delivery</strong>
+    <span>Arrives the next working day</span>
   </label>
 </fieldset>
 ```
