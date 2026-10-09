@@ -8,6 +8,11 @@
     "group": "scrolling",
     "compat_features": "css.properties.scroll-axis-lock"
   },
+  "tmp-email-verification": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4439",
+    "group": "security",
+    "compat_features": "html.elements.input.autocomplete.email-verification-token"
+  },
   "tmp-aria-actions": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4108",
     "compat_features": "api.Element.ariaActionsElements"
@@ -73,5 +78,25 @@
   "tmp-long-animation-frames-style-layout": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4453",
     "compat_features": "api.PerformanceLongAnimationFrameTiming.styleDuration"
+  },
+  "tmp-polygon-round": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4429",
+    "group": "css",
+    "compat_features": "css.types.basic-shape.polygon.round"
+  },
+  "tmp-column-wrap": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4430",
+    "group": "css",
+    "compat_features": "css.properties.column-wrap"
+  },
+  "tmp-revert-rule": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4431",
+    "group": "css",
+    "compat_features": "css.types.global_keywords.revert-rule"
+  },
+  "tmp-path-length": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4307",
+    "group": "css",
+    "compat_features": "css.properties.path-length"
   }
 }
