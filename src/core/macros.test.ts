@@ -1,0 +1,700 @@
+import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { replaceMacros, maskComments, MacroError } from './macros.ts';
+import { slugify } from './include.ts';
+import { rootDir } from './paths.ts';
+
+describe('maskComments', () => {
+  it('masks comments while preserving line count', () => {
+    const input = 'Line 1\n{#\nMulti-line\ncomment\n#}\nLine 6';
+    const masked = maskComments(input);
+    assert.strictEqual(masked.split('\n').length, input.split('\n').length);
+    assert.ok(!masked.includes('Multi-line'));
+    assert.ok(masked.startsWith('Line 1\n'));
+    assert.ok(masked.endsWith('\nLine 6'));
+  });
+
+  it('collapses each comment line to a single space so following text is not indented into a code block', () => {
+    assert.strictEqual(maskComments('{# reviewer note #} <dialog>'), '  <dialog>');
+    assert.strictEqual(maskComments('{# a\nlonger note #} <dialog>'), ' \n  <dialog>');
+  });
+
+  it('keeps words on either side of an inline comment separated', () => {
+    assert.strictEqual(maskComments('Baseline{# note #}widely'), 'Baseline widely');
+  });
+
+  it('preserves code blocks and inline code spans without masking comment-like syntax inside them', () => {
+    const input = '`{# not a comment #}`\n```\n{# fenced #}\n```\n{# real comment #}';
+    const masked = maskComments(input);
+    assert.ok(masked.includes('`{# not a comment #}`'));
+    assert.ok(masked.includes('{# fenced #}'));
+    assert.ok(!masked.includes('real comment'));
+  });
+});
+
+describe('replaceMacros (Functional with real data)', () => {
+  describe('BASELINE_STATUS', () => {
+    it('replaces macro with widely available status including detailed browser support', () => {
+      const content = '{{ BASELINE_STATUS("grid") }}';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(
+        result,
+        "Baseline status for Grid: Widely available. It's been Baseline since 2017-10-17.\nSupported by: Chrome 57 (Mar 2017), Edge 16 (Oct 2017), Firefox 52 (Mar 2017), Safari 10.1 (Mar 2017), and Safari iOS 10.3 (Mar 2017)."
+      );
+    });
+
+    it('replaces macro with newly available status dynamically splitting out mobile targets when support diverges', () => {
+      const content = "{{ BASELINE_STATUS('popover') }}";
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(
+        result,
+        "Baseline status for Popover: Newly available. It's been Baseline since 2025-01-27.\nSupported by: Chrome 116 (Aug 2023), Edge 116 (Aug 2023), Firefox 125 (Apr 2024), Safari 17 (Sep 2023), and Safari iOS 18.3 (Jan 2025)."
+      );
+    });
+
+    it('replaces macro with limited availability status listing exact supporting engines', () => {
+      const content = '{{ BASELINE_STATUS("popover-hint") }}';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(
+        result,
+        "Browser support for popover=\"hint\": Limited availability.\nSupported by: Chrome 151 (Jul 2026), Edge 151 (Jul 2026), and Firefox 153 (Jul 2026).\nUnsupported in: Safari."
+      );
+    });
+
+    it('replaces macro with declarative-webmcp status', () => {
+      const content = '{{ BASELINE_STATUS("declarative-webmcp") }}';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(
+        result,
+        "Form-associated WebMCP attributes is not natively supported by any major browser yet."
+      );
+    });
+
+    it('replaces macro with canvas-html status', () => {
+      const content = '{{ BASELINE_STATUS("canvas-html") }}';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(
+        result,
+        "HTML in canvas is not natively supported by any major browser yet."
+      );
+    });
+
+    it('preserves macro syntax for static-site target', () => {
+      const content = '{{ BASELINE_STATUS("grid") }}';
+      const result = replaceMacros(content, 'test.md', { target: 'static-site' });
+      assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}');
+    });
+
+    it('preserves macro syntax with BCD key for static-site target', () => {
+      const content = '{{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}';
+      const result = replaceMacros(content, 'test.md', { target: 'static-site' });
+      assert.strictEqual(result, '{{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}');
+    });
+
+    it('throws error for non-existent feature', () => {
+      const content = '{{ BASELINE_STATUS("non-existent-feature-xyz") }}';
+      assert.throws(() => replaceMacros(content, 'test.md'), /Web feature ID "non-existent-feature-xyz" not found/);
+    });
+  });
+
+  describe('BASELINE_STATUS (with BCD key)', () => {
+    it('replaces macro with widely available status', () => {
+      const content = '{{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}';
+      const result = replaceMacros(content, 'test.md');
+      assert.ok(result.includes('grid') && result.includes('Widely'));
+    });
+
+    it('throws error for non-existent BCD key', () => {
+      const content = '{{ BASELINE_STATUS("grid", "css.properties.non-existent-xyz") }}';
+      assert.throws(() => replaceMacros(content, 'test.md'), /BCD key/);
+    });
+  });
+
+  it('supports multiple macros and mixed quotes', () => {
+    const content = '{{ BASELINE_STATUS("grid") }} and {{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}';
+    const result = replaceMacros(content, 'test.md');
+    assert.ok(result.includes('grid'));
+    assert.ok(result.includes('Widely available'));
+    assert.ok(result.includes('Baseline since'));
+  });
+
+  describe('comment macro syntax {# ... #}', () => {
+    it('strips single-line comments and collapses surrounding spaces to a single space', () => {
+      const content = 'Before {# this is a comment #} after';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(result, 'Before after');
+    });
+
+    it('strips multi-line comments and collapses surrounding spaces to a single space', () => {
+      const content = 'Before {# line 1\nline 2\nline 3 #} after';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(result, 'Before after');
+    });
+
+    it('strips comments with leading/trailing whitespace inside delimiters', () => {
+      const content = 'Hello {#   some comment with spaces   #} world';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(result, 'Hello world');
+    });
+
+    it('strips empty comments', () => {
+      const content = 'Hello {##} world';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(result, 'Hello world');
+    });
+
+    it('strips standalone comment lines without leaving blank lines', () => {
+      const content = 'Paragraph 1\n\n{# standalone comment #}\n\nParagraph 2';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(result, 'Paragraph 1\n\nParagraph 2');
+    });
+
+    it('strips single-line comment on its own line between paragraphs', () => {
+      const content = 'Paragraph 1\n{# standalone comment #}\nParagraph 2';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(result, 'Paragraph 1\nParagraph 2');
+    });
+
+    it('strips comments alongside other macros', () => {
+      const content = '{# Note about grid #}\n{{ BASELINE_STATUS("grid") }}';
+      const result = replaceMacros(content, 'test.md');
+      const expected = replaceMacros('{{ BASELINE_STATUS("grid") }}', 'test.md');
+      assert.strictEqual(result, expected);
+    });
+
+    it('does not affect explicit heading ids like {#my-heading}', () => {
+      const content = '### Section Title {#my-heading}';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(result, '### Section Title {#my-heading}');
+    });
+
+    it('does not collide with heading anchors when comments appear later in the document', () => {
+      const content = '### Section Title {#stable-id}\n\nSome text {# note #} more text.';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(result, '### Section Title {#stable-id}\n\nSome text more text.');
+    });
+
+    it('preserves comment-like syntax inside fenced code blocks', () => {
+      const content = '```html\n{# Jinja comment #}\n<div>Hello</div>\n```';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(result, '```html\n{# Jinja comment #}\n<div>Hello</div>\n```');
+    });
+
+    it('preserves comment-like syntax inside inline code spans', () => {
+      const content = 'Use `{# Jinja syntax #}` for templates.';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(result, 'Use `{# Jinja syntax #}` for templates.');
+    });
+
+    it('strips comments for all build targets', () => {
+      const content = 'Visible {# secret #} text';
+      assert.strictEqual(replaceMacros(content, 'test.md', { target: 'static-site' }), 'Visible text');
+      assert.strictEqual(replaceMacros(content, 'test.md', { target: 'skills-cli' }), 'Visible text');
+      assert.strictEqual(replaceMacros(content, 'test.md', { target: 'local-dev' }), 'Visible text');
+    });
+
+    describe('whitespace edge cases', () => {
+      it('handles comment at the start of a line/string without leaving leading whitespace', () => {
+        const content = '{# leading comment #} Start of text';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, 'Start of text');
+      });
+
+      it('handles comment at the end of a line/string without leaving trailing whitespace', () => {
+        const content = 'End of text {# trailing comment #}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, 'End of text');
+      });
+
+      it('handles comment adjacent to punctuation without inserting or leaving spaces', () => {
+        const content = 'Hello({# comment #}world)';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, 'Hello(world)');
+      });
+
+      it('handles comment right after a word before punctuation', () => {
+        const content = 'Word{# comment #}, next word';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, 'Word, next word');
+      });
+
+      it('handles comment inside markdown list items without breaking indentation', () => {
+        const content = '- Item 1\n- {# item comment #} Item 2\n- Item 3';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, '- Item 1\n- Item 2\n- Item 3');
+      });
+
+      it('handles multiple adjacent comments with spaces in between', () => {
+        const content = 'Start {# comment 1 #} {# comment 2 #} end';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, 'Start end');
+      });
+
+      it('handles comment spanning multiple lines on its own lines', () => {
+        const content = 'Line 1\n{#\nMulti-line\ncomment\n#}\nLine 2';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, 'Line 1\nLine 2');
+      });
+
+      it('preserves single space between words and punctuation when comment is removed', () => {
+        const content = 'Done. {# comment #}Next sentence.';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, 'Done. Next sentence.');
+      });
+
+      it('preserves single space between inline code and text when comment is removed', () => {
+        const content = '`code` {# comment #}text';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, '`code` text');
+      });
+
+      it('does not leave orphaned space before period punctuation', () => {
+        const content = 'the value {# comment #}. Next';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, 'the value. Next');
+      });
+
+      it('does not leak NUL sentinels when inline code spans capture code fence placeholders', () => {
+        const content = 'A ` here.\n\n```\nfenced {# keep #}\n```\n\nAnd ` there. {# drop #} End.';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, 'A ` here.\n\n```\nfenced {# keep #}\n```\n\nAnd ` there. End.');
+      });
+    });
+  });
+
+  describe('consecutive macro spacing normalization', () => {
+    const gridStatus = replaceMacros('{{ BASELINE_STATUS("grid") }}', 'test.md');
+    const popoverStatus = replaceMacros('{{ BASELINE_STATUS("popover") }}', 'test.md');
+    const webmcpStatus = replaceMacros('{{ BASELINE_STATUS("declarative-webmcp") }}', 'test.md');
+
+    describe('consecutive BASELINE_STATUS calls', () => {
+      it('normalizes 0 blank lines (single newline) to double newlines', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+      });
+
+      it('preserves 1 blank line (double newlines)', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+      });
+
+      it('normalizes 2+ blank lines (multiple newlines) to standard double newlines', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+
+        const content4 = '{{ BASELINE_STATUS("grid") }}\n\n\n\n{{ BASELINE_STATUS("popover") }}';
+        const result4 = replaceMacros(content4, 'test.md');
+        assert.strictEqual(result4, `${gridStatus}\n\n${popoverStatus}`);
+      });
+
+      it('normalizes 3+ consecutive macros with mixed newline counts', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}\n\n\n{{ BASELINE_STATUS("declarative-webmcp") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}\n\n${webmcpStatus}`);
+      });
+
+      it('handles whitespace containing spaces and tabs around newlines', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}  \n  \t  \n  {{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+      });
+
+      it('handles CRLF line endings', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\r\n{{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+      });
+    });
+
+    describe('mixed text and macros', () => {
+      it('normalizes consecutive macros within surrounding text', () => {
+        const content = '## Fallback strategies\n\n{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}\n\nSome explanation.';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `## Fallback strategies\n\n${gridStatus}\n\n${popoverStatus}\n\nSome explanation.`);
+      });
+
+      it('preserves single newlines between text and an isolated macro', () => {
+        const content = 'Before\n{{ BASELINE_STATUS("grid") }}\nAfter';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `Before\n${gridStatus}\nAfter`);
+      });
+
+      it('preserves double newlines between text and an isolated macro', () => {
+        const content = 'Before\n\n{{ BASELINE_STATUS("grid") }}\n\nAfter';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `Before\n\n${gridStatus}\n\nAfter`);
+      });
+
+      it('does not alter spacing for macros separated by intermediate text', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\n\nMiddle paragraph\n\n{{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\nMiddle paragraph\n\n${popoverStatus}`);
+      });
+
+      it('does not alter inline macros on the same line without newlines', () => {
+        const content = 'See {{ BASELINE_STATUS("grid") }} and {{ BASELINE_STATUS("popover") }} inline.';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `See ${gridStatus} and ${popoverStatus} inline.`);
+      });
+    });
+
+    describe('build targets', () => {
+      describe('static-site', () => {
+        it('normalizes consecutive BASELINE_STATUS with 0 blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
+          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
+        });
+
+        it('normalizes consecutive BASELINE_STATUS with 1 blank line', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
+          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
+        });
+
+        it('normalizes consecutive BASELINE_STATUS with multiple blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
+          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
+        });
+
+        it('normalizes consecutive GUIDE_REF calls', () => {
+          const content = '{{ GUIDE_REF("break-up-long-tasks") }}\n{{ GUIDE_REF("forms") }}';
+          const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
+          assert.strictEqual(result, '[Break Up Long Tasks](../performance/break-up-long-tasks.md)\n\n[Forms](../forms/forms.md)');
+        });
+      });
+
+      describe('skills-cli', () => {
+        it('normalizes consecutive BASELINE_STATUS with 0 blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'skills-cli' });
+          assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+        });
+
+        it('normalizes consecutive BASELINE_STATUS with 2+ blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'skills-cli' });
+          assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+        });
+
+        it('normalizes consecutive GUIDE_REF calls', () => {
+          const content = '{{ GUIDE_REF("break-up-long-tasks") }}\n{{ GUIDE_REF("forms") }}';
+          const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'skills-cli' });
+          const expected = '`break-up-long-tasks` (via `npx -y modern-web-guidance@latest retrieve "break-up-long-tasks"`)\n\n`forms` (via `npx -y modern-web-guidance@latest retrieve "forms"`)';
+          assert.strictEqual(result, expected);
+        });
+      });
+
+      describe('local-dev', () => {
+        it('normalizes consecutive BASELINE_STATUS with 0 blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'local-dev' });
+          assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+        });
+
+        it('normalizes consecutive BASELINE_STATUS with 2+ blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'local-dev' });
+          assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+        });
+      });
+    });
+  });
+});
+
+describe('slugify', () => {
+  it('lowercases and replaces whitespace with hyphens', () => {
+    assert.equal(slugify('Fallback strategies'), 'fallback-strategies');
+  });
+
+  it('trims surrounding whitespace', () => {
+    assert.equal(slugify('  Foo Bar  '), 'foo-bar');
+  });
+
+  it('strips punctuation', () => {
+    assert.equal(slugify('Hello, World!'), 'hello-world');
+  });
+
+  it('preserves hyphens', () => {
+    assert.equal(slugify('multi-word section'), 'multi-word-section');
+  });
+});
+
+describe('INCLUDE', () => {
+  let tmpDir: string;
+  let FIXTURE_CALLER: string;
+  let repoFixtureDir: string;
+  let repoFixtureRelPath: string;
+
+  before(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'macros-test-'));
+    FIXTURE_CALLER = path.join(tmpDir, 'caller.md');
+    // A second tmp dir inside the repo root, so we can test bare-path resolution
+    // (which always resolves from rootDir).
+    repoFixtureDir = fs.mkdtempSync(path.join(rootDir, 'macros-test-'));
+    repoFixtureRelPath = `${path.basename(repoFixtureDir)}/repo-root-fixture.md`;
+    fs.writeFileSync(
+      path.join(repoFixtureDir, 'repo-root-fixture.md'),
+      '# Repo Root Fixture\n\nThis fixture lives inside the repo root.\n'
+    );
+
+    fs.writeFileSync(
+      path.join(tmpDir, 'sibling.md'),
+      '# Sibling Fixture\n\nSibling content.\n'
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'with-frontmatter.md'),
+      '---\ntitle: With Frontmatter\n---\n\n# Heading One\n\nBody content after frontmatter.\n\n### Section Alpha\n\nAlpha section text.\n'
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'multi-section.md'),
+      '# Multi-section\n\n### First\n\nFirst section content. UNIQUE_FIRST.\n\n#### Nested\n\nNested content stays inside First.\n\n### Second\n\nSecond section content. UNIQUE_SECOND.\n'
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'explicit-id.md'),
+      '# Explicit ID\n\n### A long renamed heading {#stable-id}\n\nExplicit-ID section content. UNIQUE_EXPLICIT.\n\n### Plain heading\n\nPlain section content.\n'
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'with-baseline.md'),
+      '# With Baseline\n\n### Fallbacks\n\nBaseline status: {{ BASELINE_STATUS("grid") }}\n'
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'formatted-headings.md'),
+      '# Formatted Headings\n\n' +
+      '### Foo **bar** <em>baz</em>\n\nUNIQUE_BOLD_HTML\n\n' +
+      '### A [link](https://example.com) here\n\nUNIQUE_LINK\n\n' +
+      '### `code` in heading\n\nUNIQUE_CODE\n\n' +
+      '### *Italic* heading {#renamed}\n\nUNIQUE_RENAMED\n\n' +
+      'Setext Foo  \nBar\n----------\n\nUNIQUE_BR\n'
+    );
+  });
+
+  after(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(repoFixtureDir, { recursive: true, force: true });
+  });
+
+  describe('whole-file include', () => {
+    it('strips frontmatter and leading h1 from the included body', () => {
+      const result = replaceMacros('{{ INCLUDE("./with-frontmatter.md") }}', FIXTURE_CALLER);
+      assert.ok(!result.includes('---'));
+      assert.ok(!result.includes('# Heading One'));
+      assert.ok(result.includes('Body content after frontmatter.'));
+      assert.ok(result.includes('### Section Alpha'));
+    });
+
+    it('expands BASELINE_STATUS inside the included content (recursive)', () => {
+      const result = replaceMacros('{{ INCLUDE("./with-baseline.md") }}', FIXTURE_CALLER);
+      assert.ok(!result.includes('{{ BASELINE_STATUS'));
+      assert.ok(/Baseline|limited availability/.test(result));
+    });
+
+    it('strips comments from included content', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'with-comment.md'),
+        '# Title\n\nContent before {# comment #} after.\n'
+      );
+      const result = replaceMacros('{{ INCLUDE("./with-comment.md") }}', FIXTURE_CALLER);
+      assert.strictEqual(result, 'Content before after.');
+    });
+  });
+
+
+  describe('section include', () => {
+    it('returns section body, dropping the section heading itself', () => {
+      const result = replaceMacros(
+        '{{ INCLUDE("./multi-section.md#first") }}',
+        FIXTURE_CALLER
+      );
+      assert.ok(result.includes('UNIQUE_FIRST'));
+      assert.ok(!result.includes('### First'));
+    });
+
+    it('stops at the next heading of the same depth (and includes deeper sub-headings)', () => {
+      const result = replaceMacros('{{ INCLUDE("./multi-section.md#first") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('UNIQUE_FIRST'));
+      assert.ok(result.includes('Nested content stays inside First.'));
+      assert.ok(!result.includes('UNIQUE_SECOND'));
+    });
+
+    it('matches an explicit `{#id}` suffix on the heading', () => {
+      const result = replaceMacros('{{ INCLUDE("./explicit-id.md#stable-id") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('UNIQUE_EXPLICIT'));
+      assert.ok(!result.includes('Plain section content'));
+    });
+
+    it('still matches by slugified heading text when no `{#id}` is set', () => {
+      const result = replaceMacros('{{ INCLUDE("./explicit-id.md#plain-heading") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('Plain section content'));
+    });
+
+    it('matches headings with bold and inline HTML by visible text', () => {
+      const result = replaceMacros('{{ INCLUDE("./formatted-headings.md#foo-bar-baz") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('UNIQUE_BOLD_HTML'));
+    });
+
+    it('matches headings with links by visible text only (URL not in slug)', () => {
+      const result = replaceMacros('{{ INCLUDE("./formatted-headings.md#a-link-here") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('UNIQUE_LINK'));
+    });
+
+    it('matches headings with inline code', () => {
+      const result = replaceMacros('{{ INCLUDE("./formatted-headings.md#code-in-heading") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('UNIQUE_CODE'));
+    });
+
+    it('treats a hard line break in a setext heading as a word boundary', () => {
+      const result = replaceMacros('{{ INCLUDE("./formatted-headings.md#setext-foo-bar") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('UNIQUE_BR'));
+    });
+
+    it('matches a heading with both formatting and {#id}, by either id or slug', () => {
+      const byId = replaceMacros('{{ INCLUDE("./formatted-headings.md#renamed") }}', FIXTURE_CALLER);
+      assert.ok(byId.includes('UNIQUE_RENAMED'));
+      const bySlug = replaceMacros('{{ INCLUDE("./formatted-headings.md#italic-heading") }}', FIXTURE_CALLER);
+      assert.ok(bySlug.includes('UNIQUE_RENAMED'));
+    });
+
+    it('trims output so a section can be inlined cleanly', () => {
+      const result = replaceMacros(
+        '* prelude {{ INCLUDE("./sibling.md") }} postlude',
+        FIXTURE_CALLER
+      );
+      assert.ok(/prelude Sibling content[^\n]* postlude/.test(result));
+    });
+  });
+
+  describe('path resolution', () => {
+    it('resolves bare paths from repo root regardless of caller location', () => {
+      const result = replaceMacros(
+        `{{ INCLUDE("${repoFixtureRelPath}") }}`,
+        '/some/unrelated/path/test.md'
+      );
+      assert.ok(result.includes('This fixture lives inside the repo root.'));
+    });
+
+    it('resolves ./ paths relative to the caller', () => {
+      const result = replaceMacros('{{ INCLUDE("./sibling.md") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('Sibling content'));
+    });
+
+    it('resolves ../ paths relative to the caller', () => {
+      const deeperCaller = path.join(tmpDir, 'subdir', 'caller.md');
+      const result = replaceMacros('{{ INCLUDE("../sibling.md") }}', deeperCaller);
+      assert.ok(result.includes('Sibling content'));
+    });
+
+    it('rejects absolute paths', () => {
+      assert.throws(
+        () => replaceMacros('{{ INCLUDE("/etc/passwd") }}', 'test.md'),
+        /Absolute paths are not allowed/
+      );
+    });
+  });
+
+  describe('error handling', () => {
+    it('throws on missing argument', () => {
+      assert.throws(
+        () => replaceMacros('{{ INCLUDE() }}', 'test.md'),
+        /Missing path in INCLUDE/
+      );
+    });
+  });
+
+  describe('missing file or section', () => {
+    it('throws MacroError for missing file', () => {
+      assert.throws(
+        () => replaceMacros(
+          'before {{ INCLUDE("features/does-not-exist-xyz.md") }} after',
+          'test.md'
+        ),
+        MacroError
+      );
+    });
+
+    it('throws MacroError for missing section', () => {
+      assert.throws(
+        () => replaceMacros(
+          'before {{ INCLUDE("./multi-section.md#nonexistent-section-xyz") }} after',
+          FIXTURE_CALLER
+        ),
+        MacroError
+      );
+    });
+  });
+
+  describe('FEATURE_FALLBACKS wrapper', () => {
+    it('throws on missing feature ID', () => {
+      assert.throws(
+        () => replaceMacros('{{ FEATURE_FALLBACKS() }}', 'test.md'),
+        /Missing feature ID in FEATURE_FALLBACKS/
+      );
+    });
+
+    it('throws on unknown feature ID', () => {
+      assert.throws(
+        () => replaceMacros('{{ FEATURE_FALLBACKS("nonexistent-feature") }}', 'test.md'),
+        /Web feature ID "nonexistent-feature" not found/
+      );
+    });
+  });
+
+  describe('caching', () => {
+    it('returns consistent results across multiple includes of the same file and section', () => {
+      const result = replaceMacros(
+        `{{ INCLUDE("./multi-section.md#first") }}\n---\n{{ INCLUDE("./multi-section.md#first") }}`,
+        FIXTURE_CALLER
+      );
+      const [first, second] = result.split('\n---\n');
+      assert.equal(first, second);
+      assert.ok(first.length > 0);
+    });
+
+    it('shares the file read across whole-file and section requests', () => {
+      const wholeFile = replaceMacros('{{ INCLUDE("./multi-section.md") }}', FIXTURE_CALLER);
+      const section = replaceMacros('{{ INCLUDE("./multi-section.md#first") }}', FIXTURE_CALLER);
+      assert.ok(wholeFile.length > 0);
+      assert.ok(section.length > 0);
+      assert.ok(wholeFile.includes('UNIQUE_FIRST'));
+      assert.ok(section.includes('UNIQUE_FIRST'));
+    });
+  });
+
+  describe('GUIDE_REF', () => {
+    it('replaces macro with guide path', () => {
+      const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
+      const result = replaceMacros(content, path.join(rootDir, 'test.md'));
+      assert.equal(result, '`guides/performance/break-up-long-tasks/guide.md`');
+    });
+
+    it('replaces macro with forms skill path', () => {
+      const content = '{{ GUIDE_REF("forms") }}';
+      const result = replaceMacros(content, path.join(rootDir, 'test.md'));
+      assert.equal(result, '`guides/forms/forms/guide.md`');
+    });
+
+    it('replaces macro with category-level skill command for skills-cli', () => {
+      const content = '{{ GUIDE_REF("forms") }}';
+      const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'skills-cli' });
+      assert.equal(result, '`forms` (via `npx -y modern-web-guidance@latest retrieve "forms"`)');
+    });
+
+    it('replaces macro with relative markdown link for static-site target', () => {
+      const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
+      const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
+      assert.equal(result, '[Break Up Long Tasks](../performance/break-up-long-tasks.md)');
+    });
+
+    it('throws error for non-existent guide', () => {
+      const content = '{{ GUIDE_REF("non-existent-guide-xyz") }}';
+      assert.throws(() => replaceMacros(content, path.join(rootDir, 'test.md')), /Guide "non-existent-guide-xyz" not found/);
+    });
+  });
+});

@@ -76,8 +76,28 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
     expect(hasSupports).toBe(true);
   });
 
-  test(`MANDATORY: The implementation respects user preferences for reduced motion or provides valid fallback.`, async () => {
-    expect(true).toBe(true);
+  test(`MANDATORY: The implementation respects user preferences for reduced motion or provides valid fallback.`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const respectsReducedMotion = await page.evaluate(() => {
+      const elements = Array.from(document.querySelectorAll('header, nav'));
+      const el = elements[0];
+      if (el && window.getComputedStyle(el).animationName === 'none') {
+        const sheets = Array.from(document.styleSheets);
+        for (const sheet of sheets) {
+          try {
+            const text = Array.from(sheet.cssRules).map(r => r.cssText).join('\n');
+            if (text.includes('prefers-reduced-motion')) return true;
+          } catch {}
+        }
+      }
+      return false;
+    });
+    if (respectsReducedMotion) {
+      expect(respectsReducedMotion).toBe(true);
+      return;
+    }
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(html).toContain('prefers-reduced-motion');
   });
 
 });

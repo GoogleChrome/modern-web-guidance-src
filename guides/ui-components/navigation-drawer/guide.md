@@ -1,6 +1,6 @@
 ---
 name: navigation-drawer
-description: Create a navigation drawer component that, when triggered from a menu button, slides in from the side overlayed on top of existing page content, and slides out when dismissed (by swiping away, tapping outside, or pressing escape).
+description: Create a navigation drawer component that, when triggered from a menu button, slides in from the side overlaid on top of existing page content, and slides out when dismissed (by swiping away, tapping outside, or pressing escape).
 web-feature-ids:
   - inert
   - intersection-observer
