@@ -28,57 +28,23 @@ Keep media, title, supporting content, and actions in meaningful source order; d
 
 ## Implementation
 
-This example shows a content card with media, a linked title, supporting text, and separate actions. The wrapper provides the size-query container; the card starts stacked, then the CSS below places its media beside the content when the wrapper is wide enough. See {{ GUIDE_REF("size-aware-styling") }} for the container-query pattern.
+This example shows the structure of a content card with media, a linked title, supporting text, and separate actions. Choose the link and action pattern that matches the card’s behaviour; see [Interaction models](#interaction-models).
 
 ```html
-<div class="card-container">
-  <article class="card">
-    <img src="recipe.jpg" alt="Poached eggs on toast">
-    <hgroup>
-      <h3><a href="/recipes/poached-eggs">Poached eggs</a></h3>
-      <p>Breakfast special</p>
-    </hgroup>
-    <div class="content">
-      <p>Two poached eggs served on toasted sourdough.</p>
-    </div>
-    <footer>
-      <button type="button">Favorite</button>
-      <button type="button">Share</button>
-    </footer>
-  </article>
-</div>
-```
-
-```css
-.card-container {
-  /* Query the wrapper's inline size because a card cannot query its own container size */
-  container-type: inline-size;
-
-  /* Switch to two columns only when wide enough AND media is present */
-  @container (min-width: 32rem) {
-    .card:has(> :is(img, picture, video, svg)) {
-      grid-template-columns: 9rem 1fr; /* Example media column width */
-      grid-template-rows: auto 1fr auto;
-      gap: 0.5rem 1.25rem;
-
-      > :is(img, picture, video, svg) {
-        grid-column: 1;
-        grid-row: 1 / -1;
-        block-size: 100%;
-        object-fit: cover;
-      }
-
-      > :not(:is(img, picture, video, svg)) {
-        grid-column: 2;
-      }
-    }
-  }
-}
-
-.card {
-  display: grid;
-  gap: 0.75rem; /* Example spacing */
-}
+<article class="card">
+  <img src="recipe.jpg" alt="Poached eggs on toast">
+  <hgroup>
+    <h3><a href="/recipes/poached-eggs">Poached eggs</a></h3>
+    <p>Breakfast special</p>
+  </hgroup>
+  <div class="content">
+    <p>Two poached eggs served on toasted sourdough.</p>
+  </div>
+  <footer>
+    <button type="button">Favorite</button>
+    <button type="button">Share</button>
+  </footer>
+</article>
 ```
 
 For card images or video that should fill a fixed-ratio area, set `aspect-ratio` on the media or its container and use `object-fit: cover` to fill it without distortion (cropping may occur). Otherwise, preserve the media’s intrinsic ratio. Give informative images an appropriate text alternative; use `alt=""` for decorative images.
