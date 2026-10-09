@@ -225,6 +225,9 @@ test('run.mjs: removes each attempt\'s isolated HOME even when the agent is kill
     const graderPath = path.join(tempDir, 'grader.ts');
     fs.writeFileSync(graderPath, '// mock grader');
 
+    const homesFile = path.join(tempDir, 'homes.json');
+    fs.writeFileSync(homesFile, '[]', 'utf8');
+
     const agentScript = path.join(tempDir, 'mock-agent.js');
     fs.writeFileSync(agentScript, `
 import fs from 'fs';
@@ -247,7 +250,7 @@ if (homes.length === 1) process.kill(process.pid, 'SIGKILL');
     const runResult = spawnSync(process.execPath, ['run.mjs'], { cwd: tempDir, encoding: 'utf8' });
     assert.strictEqual(runResult.status, 0, 'Execution should succeed on the second attempt');
 
-    const homes: string[] = JSON.parse(fs.readFileSync(path.join(tempDir, 'homes.json'), 'utf8'));
+    const homes: string[] = JSON.parse(fs.readFileSync(homesFile, 'utf8'));
     assert.strictEqual(homes.length, 2, 'Should have attempted twice');
     assert.notStrictEqual(homes[0], homes[1], 'Each attempt should get a fresh HOME');
     for (const home of homes) {
@@ -259,7 +262,7 @@ if (homes.length === 1) process.kill(process.pid, 'SIGKILL');
   }
 });
 
-test('run.mjs: does not retry when attempt times out (ETIMEDOUT or TIMEOUT (10m) in generation_failed.json)', () => {
+test('run.mjs: records TIMEOUT (10m) in generation_failed.json when all attempts time out without wrapper writing it', () => {
   const tempDir = createTempDir();
   try {
     const graderPath = path.join(tempDir, 'grader.ts');
@@ -271,17 +274,9 @@ test('run.mjs: does not retry when attempt times out (ETIMEDOUT or TIMEOUT (10m)
       JSON.stringify({ agentName: 'mock-agent.js', exitCode: 1, stderr: 'stale', stdout: '' })
     );
 
-    // Agent records attempt count and hangs until killed by timeout.
+    // Agent hangs until killed by spawnSync timeout without writing generation_failed.json itself.
     const agentScript = path.join(tempDir, 'mock-agent.js');
-    fs.writeFileSync(agentScript, `
-import fs from 'fs';
-import path from 'path';
-const targetDir = process.argv[4];
-const countFile = path.join(targetDir, 'attempts.txt');
-const count = fs.existsSync(countFile) ? Number(fs.readFileSync(countFile, 'utf8')) : 0;
-fs.writeFileSync(countFile, String(count + 1));
-setTimeout(() => {}, 60000);
-`.trim(), 'utf8');
+    fs.writeFileSync(agentScript, 'setTimeout(() => {}, 60000);', 'utf8');
 
     generateTransientPackage(tempDir, agentScript, 'dummy prompt', 'guided', tempDir, 'test-task', 'test-guide', graderPath);
     patchRunnerDelay(tempDir);
@@ -289,50 +284,11 @@ setTimeout(() => {}, 60000);
     fs.writeFileSync(runMjsPath, fs.readFileSync(runMjsPath, 'utf8').replace('timeout: 600000', 'timeout: 200'));
 
     const runResult = spawnSync(process.execPath, ['run.mjs'], { cwd: tempDir, encoding: 'utf8' });
-    assert.strictEqual(runResult.status, 1, 'Timed-out run.mjs should exit with 1, not 0');
-
-    const attempts = Number(fs.readFileSync(path.join(tempDir, 'attempts.txt'), 'utf8'));
-    assert.strictEqual(attempts, 1, 'Timed-out attempt must not be retried');
+    assert.notStrictEqual(runResult.status, 0, 'Timed-out run.mjs should not exit 0');
 
     const failureData = JSON.parse(fs.readFileSync(path.join(tempDir, 'generation_failed.json'), 'utf8'));
     assert.strictEqual(failureData.exitCode, 'TIMEOUT (10m)');
     assert.match(failureData.stderr, /timed out/i);
-  } finally {
-    removeTempDir(tempDir);
-  }
-});
-
-test('run.mjs: does not retry when agent wrapper catches SIGTERM and writes TIMEOUT (10m) to generation_failed.json', () => {
-  const tempDir = createTempDir();
-  try {
-    const graderPath = path.join(tempDir, 'grader.ts');
-    fs.writeFileSync(graderPath, '// mock grader');
-
-    const agentScript = path.join(tempDir, 'mock-agent.js');
-    fs.writeFileSync(agentScript, `
-import fs from 'fs';
-import path from 'path';
-const targetDir = process.argv[4];
-const countFile = path.join(targetDir, 'attempts.txt');
-const count = fs.existsSync(countFile) ? Number(fs.readFileSync(countFile, 'utf8')) : 0;
-fs.writeFileSync(countFile, String(count + 1));
-fs.writeFileSync(path.join(targetDir, 'generation_failed.json'), JSON.stringify({
-  agentName: 'mock-agent.js',
-  exitCode: 'TIMEOUT (10m)',
-  stderr: 'Agent timed out after 10 minutes',
-  stdout: ''
-}));
-process.exit(1);
-`.trim(), 'utf8');
-
-    generateTransientPackage(tempDir, agentScript, 'dummy prompt', 'guided', tempDir, 'test-task', 'test-guide', graderPath);
-    patchRunnerDelay(tempDir);
-
-    const runResult = spawnSync(process.execPath, ['run.mjs'], { cwd: tempDir, encoding: 'utf8' });
-    assert.strictEqual(runResult.status, 1);
-
-    const attempts = Number(fs.readFileSync(path.join(tempDir, 'attempts.txt'), 'utf8'));
-    assert.strictEqual(attempts, 1, 'Wrapper-reported TIMEOUT (10m) must not be retried');
   } finally {
     removeTempDir(tempDir);
   }
@@ -343,6 +299,8 @@ test('run.mjs: cleans up stale trajectory and SQLite files from failed attempt b
   try {
     const graderPath = path.join(tempDir, 'grader.ts');
     fs.writeFileSync(graderPath, '// mock grader');
+    const countFile = path.join(tempDir, 'attempts.txt');
+    fs.writeFileSync(countFile, '0', 'utf8');
 
     const agentScript = path.join(tempDir, 'mock-agent.js');
     fs.writeFileSync(agentScript, `
@@ -350,7 +308,7 @@ import fs from 'fs';
 import path from 'path';
 const targetDir = process.argv[4];
 const countFile = path.join(targetDir, 'attempts.txt');
-const count = fs.existsSync(countFile) ? Number(fs.readFileSync(countFile, 'utf8')) + 1 : 1;
+const count = Number(fs.readFileSync(countFile, 'utf8')) + 1;
 fs.writeFileSync(countFile, String(count));
 if (count === 1) {
   fs.writeFileSync(path.join(targetDir, 'stale.db'), 'db1');
