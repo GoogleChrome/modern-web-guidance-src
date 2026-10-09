@@ -16,7 +16,7 @@ const RUN_TYPES = ['guided', 'unguided'];
 let logStream: fs.WriteStream | null = null;
 
 
-const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, starting a dev server, or running headless browser/Playwright checks. Do not search outside the current working directory. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
 export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
@@ -442,11 +442,27 @@ let result;
 let attempts = 0;
 const maxAttempts = 3; // 1 initial attempt + 2 retries with exponential backoff
 const baseDelay = 15000; // 15 seconds base delay
-const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
+const targetDirPath = ${JSON.stringify(targetDir)};
+const failureFile = path.join(targetDirPath, 'generation_failed.json');
 
 while (attempts < maxAttempts) {
   attempts++;
   fs.rmSync(failureFile, { force: true });
+  for (const entry of fs.readdirSync(targetDirPath)) {
+    if (
+      entry.endsWith('.db') ||
+      entry.endsWith('.db-wal') ||
+      entry.endsWith('.db-shm') ||
+      (entry.startsWith('session-') && (entry.endsWith('.html') || entry.endsWith('.json'))) ||
+      entry === 'trajectory_summary.json' ||
+      entry === 'agent_stderr.log' ||
+      entry === 'chat_log.txt' ||
+      entry === 'agent.patch' ||
+      entry === 'modern-web.log'
+    ) {
+      fs.rmSync(path.join(targetDirPath, entry), { force: true });
+    }
+  }
   // Assign the isolated HOME here so it is removed even if the timeout kills the agent
   // wrapper before its own cleanup runs.
   const isolatedHome = '/tmp/ghh-' + ${JSON.stringify(path.basename(agentScript).replace(/-agent\.ts$/, ''))} + '-' + randomUUID().slice(0, 8);
@@ -458,8 +474,21 @@ while (attempts < maxAttempts) {
   }
   if (result.status === 0) break;
 
+  let timedOut = result.error?.code === 'ETIMEDOUT';
+  if (!timedOut && fs.existsSync(failureFile)) {
+    try {
+      timedOut = JSON.parse(fs.readFileSync(failureFile, 'utf8')).exitCode === 'TIMEOUT (10m)';
+    } catch {
+      // Ignore malformed failure file
+    }
+  }
+  if (timedOut) {
+    console.warn('⚠️ Attempt ' + attempts + ' timed out after 10m. Skipping retries.');
+    break;
+  }
+
   // Check if this is a rate limit error (429)
-  const isRateLimit = result.error?.code !== 'ETIMEDOUT' && (result.status === 1 || (result.stderr && result.stderr.toString().includes('429')));
+  const isRateLimit = result.status === 1 || (result.stderr && result.stderr.toString().includes('429'));
 
   if (attempts < maxAttempts) {
     // Exponential backoff: 15s, 30s (with some jitter)

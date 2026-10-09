@@ -22,7 +22,7 @@ EOF
 
 # Parse flags
 AGENT=""
-WORKERS="20"
+WORKERS=""
 PREFIX="nightly"
 RUN_LOCAL="false"
 while [[ $# -gt 0 ]]; do
@@ -64,7 +64,13 @@ if [[ -z "$AGENT" ]]; then
   exit 1
 fi
 
-# AGENT is already set above
+if [[ -z "$WORKERS" ]]; then
+  if [[ "$AGENT" == "antigravity_cli" ]]; then
+    WORKERS="10"
+  else
+    WORKERS="20"
+  fi
+fi
 
 # Initialization & State Reset
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

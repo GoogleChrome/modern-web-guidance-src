@@ -133,6 +133,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
 
     if (runType === 'guided') {
       runs.forEach(run => {
+        if (run.results.some(c => c.isEarlyFailure)) {
+          return;
+        }
         const guidesUsed = run.guidesUsed || [];
         const expectedGuide = run.guideName;
         if (expectedGuide && guidesUsed.includes(expectedGuide)) {
