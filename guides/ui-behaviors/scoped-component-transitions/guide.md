@@ -54,25 +54,21 @@ If an outer transition needs to move a component while its inner transition is a
 
 ## Example
 
-```css
-/* 1. Configure the component scope */
-.card,
-.card ul {
-  /* No CSS is needed for this. The scope is determined by you calling startViewTransition on the element instead of document */
-}
+No CSS is needed on the scope element itself (`.card` or `.card ul`) to establish the scope—the scope is determined by calling `startViewTransition()` on the element instead of `document` (if the component will be nested inside an outer view transition, see [Running an outer transition](#running-an-outer-transition) for `view-transition-scope: all`).
 
-/* 2. Name participating child items */
+```css
+/* 1. Name participating child items */
 .card ul li {
   view-transition-name: match-element;
 }
 
-/* 3. OPTIONAL: Customize transition timing (300ms is an example duration) */
+/* 2. OPTIONAL: Customize transition timing (300ms is an example duration) */
 ::view-transition-group(*) {
   animation-duration: 300ms;
   animation-timing-function: ease-in-out;
 }
 
-/* 4. MANDATORY: Respect user preference for reduced motion */
+/* 3. MANDATORY: Respect user preference for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),
