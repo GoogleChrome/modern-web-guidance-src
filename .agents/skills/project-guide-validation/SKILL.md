@@ -44,10 +44,25 @@ Critically evaluate the guide's content against the authoring standards in [proj
 
 ## 3. Expectation Alignment
 
-Ensure that the `expectations.md` file (used for evaluation) aligns perfectly with `guide.md`:
-*   **Traceability**: Every expectation should be traceable back to a specific recommendation in the guide. Do not create expectations for behaviors not covered in the guidance.
-*   **Actionability**: The guide must provide clear instructions on *how* to meet each expectation. An agent should not have to guess the implementation to satisfy an expectation.
-*   **Outcome Focus**: Expectations should focus on the observable output and behavior (e.g., "The UI correctly updates when the date is modified"), not the specific implementation approach (unless strictly required by the guide's constraints).
+Review `expectations.md` against `guide.md`, `demo.html`, and primary specs/MDN/BCD to prevent both **false failures** (rejecting valid code) and **false passes** (passing broken code). Follow the authoring rules in [project-guides](../project-guides/SKILL.md#writing-expectationsmd); sibling `expectations.md` files are useful for calibrating scope and length but not phrasing, since many predate the plain-declarative convention.
+*   **Accuracy & Contradictions**:
+    *   **Traceability & Strength**: Map each expectation to the `guide.md` section it comes from. Flag expectations absent from the guide, expectations that strengthen or narrow guide wording (e.g., turning a *"Prefer"* or snippet detail into a required rule, or *"preceding"* into *"immediately before"*), and rules that the guide's own code examples, decision trees, or `demo.html` would fail.
+    *   **Actionability**: The guide must provide clear instructions on *how* to meet each expectation. An agent should not have to guess the implementation to satisfy an expectation.
+    *   **Spec & BCD Verification (`guide.md` is not infallible)**: Verify technical claims against specs (W3C, WHATWG, CSSWG), MDN, and BCD. Flag valid alternatives the expectation would reject, deprecated or renamed syntax (`masonry` vs. `grid-lanes`, `interesttarget` vs. `interestfor`), unit and property edge cases, and flawed feature-detection strings. Report `guide.md` errors separately from expectation issues.
+    *   **Internal Consistency**: Flag direct contradictions or redundant overlaps between bullets in `expectations.md`.
+*   **Coverage (Missing & Unnecessary)**:
+    *   **Missing**: Identify core guide rules (`DO` / `DO NOT` / decision-tree branches, accessibility, overflow, focus order, fallbacks) and `demo.html` behaviors with no corresponding expectation, prioritized by how likely an agent is to get them wrong and how deterministically testable they are.
+    *   **Unnecessary**: Cut items that are absent from `guide.md`, redundant, subjective or untestable (*"where content should determine the size"*), off-scenario, or so strict that they reject idiomatic correct code.
+*   **Per-Expectation Grader Read**: Evaluate each bullet as the grader generator (`gd dev`) will interpret it when writing a test that must pass every golden solution patch and fail the zero-passrate patch:
+
+| Check | Question |
+|---|---|
+| **Clear** | Is there one unambiguous reading with self-evident terms in plain declarative phrasing (no `MUST` / `SHOULD` boilerplate)? |
+| **Succinct** | Is it a single requirement per bullet (no compound assertions)? |
+| **Scoped** | Does every correct implementation of this use case satisfy it? If it is a discipline-guide bullet, does it name the element or feature it governs so the grader generator can judge relevance per base app? |
+| **Correct** | Does it match both `guide.md` and the underlying spec/MDN/BCD without rejecting valid alternatives? |
+| **Achievable** | Would all golden solutions (written by different agents) satisfy it, or would the generated test overfit to an example value or *"such as"* clause? |
+| **Gradable** | Can it be verified deterministically—statically (DOM, CSSOM, or JS AST) or in-browser (computed style, accessibility tree, runtime behavior)—without human judgment or site-specific locators? |
 
 ## 4. Testing and Verification with DevTools MCP
 
