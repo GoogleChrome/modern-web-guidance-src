@@ -12,10 +12,10 @@ CODEOWNERS @paulirish @rviscomi @micahjo7
 .github/ @paulirish @micahjo7
 package.json @paulirish @micahjo7
 pnpm-lock.yaml @paulirish @micahjo7
-pnpm-workspace.yaml @paulirish @micahjo7
+.github/atls.json @rviscomi @paulirish @micahjo7
 
 # Eval files
-**/targets/ @paulirish @micahjo7
-**/grader.ts @paulirish @micahjo7
-**/tasks/task.md @paulirish @micahjo7
-**/negative-demo.html @paulirish @micahjo7
+src/grading/ @TravenReese @micahjo7
+**/targets/ @TravenReese @micahjo7
+**/grader.ts @TravenReese @micahjo7
+**/tasks/task.md @TravenReese @micahjo7
