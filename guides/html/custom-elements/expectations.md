@@ -1,5 +1,7 @@
-- Autonomous custom elements are registered via `customElements.define()` with a hyphenated kebab-case tag name and upgrade in the document without constructor errors as `HTMLElement` instances matching `:defined`.
-- The stylesheet includes a `:not(:defined)` rule for the custom element to prevent a flash of unstyled content before registration and upgrade.
+- Autonomous custom elements are registered via `customElements.define()` with a hyphenated kebab-case tag name and upgrade without constructor errors, matching `:defined`.
+- The stylesheet includes a `:not(:defined)` rule scoped to the custom element's tag name (not `body`, `*`, or a page-wide wrapper). If it hides the element, the element reveals itself again after a delay without script (for example `opacity: 0` with a delayed `animation` to `opacity: 1`); `visibility: hidden` or `display: none` alone does not pass.
 - A custom element with observed attributes reads any initial attribute values already present in markup upon upgrade and renders the corresponding initial state in the DOM.
-- Mutating an observed attribute on the custom element via `setAttribute()` triggers `attributeChangedCallback` (configured via `static observedAttributes` at registration time) and updates the component's rendered DOM without entering an infinite reflection loop.
-- Reflected JavaScript properties and HTML attributes stay synchronized with appropriate type coercion (such as coercing numeric or boolean attributes rather than returning raw strings or setting `"false"`), so updating either the property or the attribute updates the other and re-renders the component.
+- Calling `setAttribute()` on an observed attribute triggers `attributeChangedCallback` and re-renders the component. `observedAttributes` is a static field or static getter present when `customElements.define()` runs, and setting a reflected property does not recurse.
+- Reading a numeric reflected property returns a `number`, not a string (for example `el.count === 3` after `count="3"`).
+- Setting a boolean reflected property to `false` removes the attribute rather than writing `"false"`.
+- Changing either the reflected property or its attribute updates the other and the rendered output.

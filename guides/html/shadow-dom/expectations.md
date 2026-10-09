@@ -1,5 +1,6 @@
 - The custom element attaches an open shadow root (`mode: 'open'`) to encapsulate its internal DOM subtree.
-- The component defines a reusable `<template>` once outside the constructor and populates each instance's shadow root by deep-cloning its `.content` (`cloneNode(true)`), so multiple component instances receive distinct internal DOM nodes without re-parsing `innerHTML` per instance.
+- The component defines a `<template>` once outside the constructor and builds each instance's shadow root by cloning its `.content` (`cloneNode(true)` or `document.importNode(content, true)`), without assigning `innerHTML` per instance.
 - Light DOM children with `slot` attributes are projected into matching named `<slot name="...">` elements inside the shadow root, while unslotted children are projected into the default `<slot>`.
-- The component listens for the `slotchange` event on its `<slot>` and inspects `assignedElements()` (or `assignedNodes()`) so adding or removing slotted Light DOM children dynamically updates the component's state or attributes.
-- Component styles are scoped to the shadow root via `adoptedStyleSheets` with a shared `CSSStyleSheet` (or a `<style>` element inside the shadow tree), applying computed styles to `:host` and internal shadow elements without leaking rules to matching elements in the outer document.
+- Adding or removing a slotted Light DOM element after upgrade updates the state the task defines, via a `slotchange` listener. Whitespace-only text does not count as content: use `assignedElements()` or filter `assignedNodes()`.
+- Component styles live in the shadow root: an `adoptedStyleSheets` `CSSStyleSheet` shared across instances, a `<style>` element, or a `<link rel="stylesheet">` inside the shadow tree.
+- A Light DOM element outside the component that uses the same class name as an internal element does not receive the component's styles.

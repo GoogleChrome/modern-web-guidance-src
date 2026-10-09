@@ -1,5 +1,5 @@
 - The initial HTML markup includes a `<template shadowrootmode="open">` inside the custom element host, which the HTML parser attaches as an open `shadowRoot` and removes from the host's Light DOM children.
-- Component styles are declared inside the `<template shadowrootmode="open">` so the pre-rendered shadow DOM has its computed layout and visual styles applied on first paint before JavaScript executes.
-- Light DOM children of the custom element host are projected into the declarative shadow root's matching `<slot>` elements.
+- With JavaScript disabled, the pre-rendered shadow content has its component styles applied, shipped inside the `<template shadowrootmode="open">` as a `<style>` or `<link rel="stylesheet">`.
+- Light DOM content stays in the Light DOM and renders through `<slot>` elements; it is not duplicated inside the declarative template.
 - When the custom element upgrades, it reuses the existing declarative `shadowRoot` and preserves the pre-rendered shadow DOM nodes in place without replacing them, calling `attachShadow({ mode: 'open' })` only when no `shadowRoot` already exists.
-- Hydrating the custom element attaches event listeners to the existing pre-rendered shadow DOM elements in place so user interaction updates the component's state.
+- Interactive controls in the pre-rendered shadow DOM work after upgrade without the shadow tree being replaced, and their listeners are attached once: after the element is moved in the DOM, one click still causes exactly one state change.
