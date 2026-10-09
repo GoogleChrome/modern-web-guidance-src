@@ -1,0 +1,1 @@
+- Update the sign-in flow in the app to authenticate returning users in place using their saved passkeys or passwords before navigating to the sign-in page or interrupting their workflow.

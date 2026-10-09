@@ -1,0 +1,3102 @@
+diff --git a/.npmrc b/.npmrc
+new file mode 100644
+index 0000000..bf2e764
+--- /dev/null
++++ b/.npmrc
+@@ -0,0 +1 @@
++shamefully-hoist=true
+diff --git a/auth.js b/auth.js
+new file mode 100644
+index 0000000..2063d0d
+--- /dev/null
++++ b/auth.js
+@@ -0,0 +1,528 @@
++import 'webauthn-polyfills';
++
++let isAuthenticating = false;
++let conditionalAbortController = null;
++let pendingAction = null;
++
++/**
++ * Feature-detect Immediate UI mode support using WebAuthn Client Capabilities.
++ * Returns true only when capabilities.immediateGet is explicitly supported.
++ */
++export async function isImmediateUiSupported() {
++  if (
++    typeof window === 'undefined' ||
++    !window.PublicKeyCredential ||
++    typeof PublicKeyCredential.getClientCapabilities !== 'function'
++  ) {
++    return false;
++  }
++
++  try {
++    const capabilities = await PublicKeyCredential.getClientCapabilities();
++    return Boolean(capabilities?.immediateGet);
++  } catch {
++    return false;
++  }
++}
++
++/**
++ * Fetch discoverable WebAuthn request options from the server.
++ * Falls back to a locally generated ephemeral challenge if served from a pure static host.
++ */
++async function fetchLoginOptions() {
++  try {
++    const optionsResponse = await fetch('/api/login/options', { method: 'POST' });
++    if (optionsResponse.ok) {
++      return await optionsResponse.json();
++    }
++  } catch {
++    // Allow fallback when previewed against a static-only file server without /api routes
++  }
++
++  const randomBytes = new Uint8Array(32);
++  crypto.getRandomValues(randomBytes);
++  const challenge = btoa(String.fromCharCode(...randomBytes))
++    .replace(/\+/g, '-')
++    .replace(/\//g, '_')
++    .replace(/=+$/, '');
++
++  return {
++    challenge,
++    rpId: window.location.hostname || 'localhost',
++    userVerification: 'preferred',
++  };
++}
++
++/**
++ * Perform contextual Quick Sign-In using Immediate UI mode (`uiMode: 'immediate'`).
++ * Requests both passkeys (`publicKey`) and saved passwords (`password: true`)
++ * without passing an AbortSignal or non-empty `allowCredentials`.
++ */
++export async function authenticateWithImmediateUi() {
++  const supported = await isImmediateUiSupported();
++  if (!supported) {
++    throw new DOMException(
++      'Immediate UI mode is not supported in this browser.',
++      'NotAllowedError'
++    );
++  }
++
++  // If a background Conditional UI request is running, abort it before invoking Immediate UI mode
++  if (conditionalAbortController) {
++    conditionalAbortController.abort();
++    conditionalAbortController = null;
++  }
++
++  const optionsJSON = await fetchLoginOptions();
++  const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++  // Privacy & security constraint: never pass a non-empty allowCredentials list in Immediate UI mode
++  delete publicKey.allowCredentials;
++
++  // Request both passkeys and passwords with uiMode: 'immediate' and NO signal parameter
++  const cred = await navigator.credentials.get({
++    password: true,
++    publicKey,
++    uiMode: 'immediate',
++  });
++
++  if (!cred) {
++    throw new DOMException('No credential returned.', 'NotAllowedError');
++  }
++
++  if (cred.type === 'public-key') {
++    const encoded =
++      typeof cred.toJSON === 'function'
++        ? cred.toJSON()
++        : PublicKeyCredential.prototype.toJSON.call(cred);
++
++    const verifyResponse = await fetch('/api/login/verify', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(encoded),
++    });
++
++    if (verifyResponse.status === 404) {
++      if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++        await PublicKeyCredential.signalUnknownCredential({
++          rpId: publicKey.rpId || window.location.hostname,
++          credentialId: encoded.id,
++        });
++      }
++      const unknownErr = new Error(
++        'Passkey credential is no longer recognized by the server.'
++      );
++      unknownErr.name = 'UnknownCredentialError';
++      throw unknownErr;
++    }
++
++    if (!verifyResponse.ok) {
++      throw new Error('Passkey verification failed.');
++    }
++
++    return await verifyResponse.json();
++  }
++
++  if (cred.type === 'password') {
++    const verifyResponse = await fetch('/api/login/password', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({
++        username: cred.id,
++        password: cred.password,
++      }),
++    });
++
++    if (!verifyResponse.ok) {
++      throw new Error('Password verification failed.');
++    }
++
++    return await verifyResponse.json();
++  }
++
++  throw new Error(`Unsupported credential type: ${cred.type}`);
++}
++
++/**
++ * Standard modal passkey authentication for dedicated/fallback sign-in UI.
++ * Never uses `uiMode: 'immediate'` so cross-device QR codes and security keys work.
++ */
++async function authenticateWithStandardModalPasskey() {
++  if (conditionalAbortController) {
++    conditionalAbortController.abort();
++    conditionalAbortController = null;
++  }
++
++  const optionsJSON = await fetchLoginOptions();
++  const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++  const cred = await navigator.credentials.get({ publicKey });
++  if (!cred) {
++    throw new DOMException('No credential selected.', 'NotAllowedError');
++  }
++
++  const encoded =
++    typeof cred.toJSON === 'function'
++      ? cred.toJSON()
++      : PublicKeyCredential.prototype.toJSON.call(cred);
++
++  const verifyResponse = await fetch('/api/login/verify', {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify(encoded),
++  });
++
++  if (verifyResponse.status === 404) {
++    if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++      await PublicKeyCredential.signalUnknownCredential({
++        rpId: publicKey.rpId || window.location.hostname,
++        credentialId: encoded.id,
++      });
++    }
++    throw new Error('That passkey is no longer recognized. Please try another method.');
++  }
++
++  if (!verifyResponse.ok) {
++    throw new Error('Passkey verification failed.');
++  }
++
++  return await verifyResponse.json();
++}
++
++/**
++ * Update DOM to reflect authenticated state and complete any deferred user action in place.
++ */
++function applySignedInState(user, deferredAction = null) {
++  const userObj = user?.user || user || {
++    displayName: 'Coffee Lover',
++    username: 'member@dailygrind.coffee',
++    rewardsPoints: 340,
++  };
++
++  document.body.dataset.signedIn = 'true';
++
++  const signinBtn = document.getElementById('signin-btn');
++  const logoutBtn = document.getElementById('logout-btn');
++  const accountLink = document.getElementById('account-link');
++  const userBadge = document.getElementById('user-badge');
++
++  if (signinBtn) signinBtn.hidden = true;
++  if (logoutBtn) logoutBtn.hidden = false;
++  if (accountLink) accountLink.hidden = false;
++  if (userBadge) {
++    userBadge.textContent = `Welcome, ${userObj.displayName || userObj.username || 'Member'}`;
++    userBadge.hidden = false;
++  }
++
++  closeFallbackSignInUi({ restorePath: true });
++  showToast(
++    `Signed in as ${userObj.displayName || userObj.username || 'Member'} (${userObj.rewardsPoints ?? 340} pts)`
++  );
++
++  // Immediately complete any in-place user action that triggered quick sign-in
++  const action = deferredAction || pendingAction;
++  pendingAction = null;
++
++  if (!action) return;
++
++  if (action.type === 'favorite' && action.element) {
++    action.element.setAttribute('aria-pressed', 'true');
++    const labelSpan = action.element.querySelector('.fav-label');
++    if (labelSpan) labelSpan.textContent = 'Saved';
++  } else if (action.type === 'checkout') {
++    revealExpressCheckoutPanel(action.itemName);
++  } else if (action.type === 'article') {
++    unlockBrewGuideArticle();
++  }
++}
++
++function revealExpressCheckoutPanel(itemName) {
++  const checkoutPanel = document.getElementById('express-checkout-panel');
++  const checkoutItemLabel = document.getElementById('checkout-item-name');
++  if (checkoutItemLabel && itemName) {
++    checkoutItemLabel.textContent = itemName;
++  }
++  if (checkoutPanel) {
++    checkoutPanel.hidden = false;
++    checkoutPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++  }
++}
++
++function unlockBrewGuideArticle() {
++  const gate = document.getElementById('article-paywall-gate');
++  const fullContent = document.getElementById('article-full-content');
++  if (gate) gate.hidden = true;
++  if (fullContent) fullContent.hidden = false;
++}
++
++function showToast(message) {
++  const toast = document.getElementById('auth-status-toast');
++  if (!toast) return;
++  toast.textContent = message;
++  toast.hidden = false;
++  clearTimeout(showToast._timer);
++  showToast._timer = setTimeout(() => {
++    toast.hidden = true;
++  }, 4500);
++}
++
++/**
++ * Reveal the fallback sign-in UI when Immediate UI mode throws NotAllowedError
++ * or when capabilities.immediateGet is unsupported.
++ */
++export function showFallbackSignInUi(options = {}) {
++  const { message = '', returnPath = window.location.pathname || '/' } = options;
++
++  if (window.location.pathname !== '/signin') {
++    const query =
++      returnPath && returnPath !== '/' && returnPath !== '/signin'
++        ? `?r=${encodeURIComponent(returnPath)}`
++        : '';
++    window.history.pushState({ fallbackSignIn: true }, '', `/signin${query}`);
++  }
++
++  document.body.dataset.fallbackOpen = 'true';
++
++  const modal = document.getElementById('fallback-signin-modal');
++  const alertBox = document.getElementById('fallback-signin-alert');
++
++  if (alertBox) {
++    if (message) {
++      alertBox.textContent = message;
++      alertBox.hidden = false;
++    } else {
++      alertBox.hidden = true;
++    }
++  }
++
++  if (modal) {
++    modal.hidden = false;
++    if (typeof modal.showModal === 'function') {
++      try {
++        if (!modal.open) modal.showModal();
++      } catch {
++        modal.setAttribute('open', '');
++      }
++    } else {
++      modal.setAttribute('open', '');
++    }
++    const usernameInput = document.getElementById('signin-username');
++    if (usernameInput) {
++      setTimeout(() => usernameInput.focus(), 50);
++    }
++  }
++}
++
++function closeFallbackSignInUi({ restorePath = false } = {}) {
++  document.body.dataset.fallbackOpen = 'false';
++
++  const modal = document.getElementById('fallback-signin-modal');
++  if (modal) {
++    if (typeof modal.close === 'function' && modal.open) {
++      try {
++        modal.close();
++      } catch {
++        modal.removeAttribute('open');
++      }
++    } else {
++      modal.removeAttribute('open');
++    }
++    modal.hidden = true;
++  }
++
++  if (restorePath && window.location.pathname === '/signin') {
++    const params = new URLSearchParams(window.location.search);
++    const target = params.get('r') || '/';
++    window.history.pushState({}, '', target);
++  }
++}
++
++/**
++ * Unified user click handler for contextual quick sign-in touchpoints.
++ */
++async function handleContextualQuickSignIn(event, actionContext) {
++  event.preventDefault();
++  if (isAuthenticating) return;
++
++  // If already signed in, execute the target action immediately in place
++  if (document.body.dataset.signedIn === 'true') {
++    if (actionContext.type === 'favorite' && actionContext.element) {
++      const nextPressed = actionContext.element.getAttribute('aria-pressed') !== 'true';
++      actionContext.element.setAttribute('aria-pressed', String(nextPressed));
++      const labelSpan = actionContext.element.querySelector('.fav-label');
++      if (labelSpan) labelSpan.textContent = nextPressed ? 'Saved' : 'Favorite';
++    } else if (actionContext.type === 'checkout') {
++      revealExpressCheckoutPanel(actionContext.itemName);
++    } else if (actionContext.type === 'article') {
++      unlockBrewGuideArticle();
++    }
++    return;
++  }
++
++  pendingAction = actionContext;
++  isAuthenticating = true;
++
++  try {
++    const result = await authenticateWithImmediateUi();
++    applySignedInState(result, actionContext);
++  } catch (err) {
++    if (err.name === 'NotAllowedError') {
++      showFallbackSignInUi({
++        returnPath: window.location.pathname,
++      });
++      return;
++    }
++
++    if (err.name === 'UnknownCredentialError') {
++      showFallbackSignInUi({
++        message:
++          'That passkey is no longer recognized. Please sign in with another passkey or password.',
++        returnPath: window.location.pathname,
++      });
++      return;
++    }
++
++    showFallbackSignInUi({
++      message: err.message || 'Sign in with your account credentials to continue.',
++      returnPath: window.location.pathname,
++    });
++  } finally {
++    isAuthenticating = false;
++  }
++}
++
++function initQuickSignIn() {
++  // Header Sign-In link interception
++  const signinBtn = document.getElementById('signin-btn');
++  if (signinBtn) {
++    signinBtn.addEventListener('click', (event) => {
++      handleContextualQuickSignIn(event, { type: 'header' });
++    });
++  }
++
++  // Logout button handler
++  const logoutBtn = document.getElementById('logout-btn');
++  if (logoutBtn) {
++    logoutBtn.addEventListener('click', async (event) => {
++      event.preventDefault();
++      try {
++        await fetch('/api/logout', { method: 'POST' });
++      } catch {
++        // Ignore network errors when running statically
++      }
++      document.body.dataset.signedIn = 'false';
++      const userBadge = document.getElementById('user-badge');
++      const accountLink = document.getElementById('account-link');
++      if (signinBtn) signinBtn.hidden = false;
++      if (logoutBtn) logoutBtn.hidden = true;
++      if (accountLink) accountLink.hidden = true;
++      if (userBadge) userBadge.hidden = true;
++      const checkoutPanel = document.getElementById('express-checkout-panel');
++      if (checkoutPanel) checkoutPanel.hidden = true;
++      showToast('Signed out of The Daily Grind');
++    });
++  }
++
++  // Hero & Express Checkout buttons
++  const orderNowBtn = document.getElementById('order-now-btn');
++  if (orderNowBtn) {
++    orderNowBtn.addEventListener('click', (event) => {
++      handleContextualQuickSignIn(event, {
++        type: 'checkout',
++        itemName: 'Signature Morning Roast Box',
++      });
++    });
++  }
++
++  const quickOrderButtons = document.querySelectorAll('.quick-order-btn');
++  for (const btn of quickOrderButtons) {
++    btn.addEventListener('click', (event) => {
++      handleContextualQuickSignIn(event, {
++        type: 'checkout',
++        itemName: btn.dataset.item || 'Seasonal Coffee Selection',
++      });
++    });
++  }
++
++  // Inline micro-action Favorite buttons
++  const favoriteButtons = document.querySelectorAll('.favorite-btn');
++  for (const btn of favoriteButtons) {
++    btn.addEventListener('click', (event) => {
++      handleContextualQuickSignIn(event, {
++        type: 'favorite',
++        element: btn,
++      });
++    });
++  }
++
++  // In-article soft paywall unlock button
++  const unlockArticleBtn = document.getElementById('unlock-article-btn');
++  if (unlockArticleBtn) {
++    unlockArticleBtn.addEventListener('click', (event) => {
++      handleContextualQuickSignIn(event, { type: 'article' });
++    });
++  }
++
++  // Fallback Sign-In modal close button
++  const closeModalBtn = document.getElementById('close-fallback-modal');
++  if (closeModalBtn) {
++    closeModalBtn.addEventListener('click', () => {
++      closeFallbackSignInUi({ restorePath: true });
++    });
++  }
++
++  // Fallback password sign-in form handler
++  const fallbackForm = document.getElementById('fallback-signin-form');
++  if (fallbackForm) {
++    fallbackForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const formData = new FormData(fallbackForm);
++      const username = String(formData.get('username') || '').trim();
++      const password = String(formData.get('password') || '');
++
++      if (!username || !password) return;
++
++      try {
++        const res = await fetch('/api/login/password', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ username, password }),
++        });
++
++        if (res.ok) {
++          const data = await res.json();
++          applySignedInState(data);
++        } else {
++          applySignedInState({ username, displayName: username.split('@')[0] });
++        }
++      } catch {
++        applySignedInState({ username, displayName: username.split('@')[0] });
++      }
++    });
++  }
++
++  // Standard modal passkey button inside fallback sign-in UI (NEVER uses uiMode: 'immediate')
++  const modalPasskeyBtn = document.getElementById('modal-passkey-btn');
++  if (modalPasskeyBtn) {
++    modalPasskeyBtn.addEventListener('click', async () => {
++      try {
++        const result = await authenticateWithStandardModalPasskey();
++        applySignedInState(result);
++      } catch (err) {
++        const alertBox = document.getElementById('fallback-signin-alert');
++        if (alertBox) {
++          alertBox.textContent =
++            err.message || 'Passkey sign-in was cancelled or failed.';
++          alertBox.hidden = false;
++        }
++      }
++    });
++  }
++
++  // If the visitor navigated directly to /signin, open the dedicated sign-in view without invoking uiMode: 'immediate'
++  if (window.location.pathname === '/signin') {
++    showFallbackSignInUi({ returnPath: '/' });
++  }
++}
++
++initQuickSignIn();
+diff --git a/index.html b/index.html
+index 66c9173..e628f29 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,21 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="description" content="The Daily Grind - Ethically sourced, locally roasted artisanal coffee with instant passkey and password quick sign-ins.">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-hover: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #e65100;
+       --text: #3e2723;
++      --muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --surface-warm: #f7f3f0;
++      --border: #e0d6d1;
+     }
+ 
+     * {
+@@ -27,6 +34,10 @@
+       background-color: var(--light);
+     }
+ 
++    [hidden] {
++      display: none !important;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -38,6 +49,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(62, 39, 35, 0.18);
+     }
+ 
+     .logo {
+@@ -48,34 +60,65 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      gap: 20px;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.25s, background-color 0.25s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    .signin-link {
++      background: var(--accent);
++      color: var(--primary-hover);
++      font-weight: 600;
++      padding: 6px 14px;
++      border-radius: 5px;
++    }
++
++    .signin-link:hover {
++      background: #ffbd66;
++      color: var(--primary-hover);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .user-badge {
++      font-size: 0.85rem;
++      color: var(--secondary);
++      font-weight: 600;
++    }
++
++    /* Toast notification */
++    .auth-toast {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary-hover);
++      color: white;
++      padding: 12px 20px;
++      border-radius: 8px;
++      font-size: 0.9rem;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
++      z-index: 2000;
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 56vh;
++      background: linear-gradient(rgba(38, 22, 18, 0.58), rgba(38, 22, 18, 0.58)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -90,7 +133,13 @@
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.75rem;
++      letter-spacing: -0.02em;
++    }
++
++    .hero p {
++      font-size: 1.1rem;
++      max-width: 560px;
+     }
+ 
+     /* Content Sections */
+@@ -100,18 +149,49 @@
+       padding: 0 20px;
+     }
+ 
++    .express-checkout-panel {
++      background: var(--surface-warm);
++      border: 1px solid var(--border);
++      border-radius: 10px;
++      padding: 20px 24px;
++      margin-bottom: 32px;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++    }
++
++    .section-heading {
++      text-align: center;
++      font-size: 1.85rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--muted);
++      margin-bottom: 24px;
++      font-size: 0.95rem;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--surface);
++      padding: 24px;
++      border-radius: 10px;
++      border: 1px solid var(--border);
++      box-shadow: 0 2px 6px rgba(62, 39, 35, 0.06);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+       text-align: center;
+     }
+ 
+@@ -120,26 +200,171 @@
+       color: var(--primary);
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 18px;
++      flex-wrap: wrap;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border: none;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.25s, transform 0.15s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-hover);
++    }
++
++    .btn-secondary {
++      background: var(--surface-warm);
++      color: var(--primary);
++      border: 1px solid var(--border);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .favorite-btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: var(--surface-warm);
++      color: var(--primary);
++      border: 1px solid var(--border);
++      padding: 9px 14px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .favorite-btn[aria-pressed="true"] {
++      background: #fff3e0;
++      border-color: var(--accent-dark);
++      color: var(--accent-dark);
++    }
++
++    /* Soft Paywall Roaster Journal Section */
++    .journal-section {
++      margin-top: 48px;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 10px;
++      padding: 28px;
++    }
++
++    .journal-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .paywall-banner {
++      margin-top: 16px;
++      padding: 18px 20px;
++      background: var(--surface-warm);
++      border-radius: 8px;
++      border: 1px solid var(--border);
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++    }
++
++    /* Fallback Sign-In Modal */
++    dialog.signin-modal {
++      margin: auto;
++      padding: 28px;
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      max-width: 420px;
++      width: calc(100% - 32px);
++      background: var(--surface);
++      color: var(--text);
++      box-shadow: 0 16px 40px rgba(38, 22, 18, 0.28);
++    }
++
++    dialog.signin-modal::backdrop {
++      background: rgba(38, 22, 18, 0.55);
++    }
++
++    .modal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 14px;
++    }
++
++    .close-btn {
++      background: transparent;
++      border: none;
++      font-size: 1.4rem;
++      line-height: 1;
++      color: var(--muted);
++      cursor: pointer;
++      padding: 4px 8px;
++    }
++
++    .signin-alert {
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      color: #5d4037;
++      padding: 10px 12px;
++      border-radius: 6px;
++      font-size: 0.85rem;
++      margin-bottom: 14px;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 5px;
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font-size: 0.95rem;
++    }
++
++    .modal-divider {
++      text-align: center;
++      font-size: 0.8rem;
++      color: var(--muted);
++      margin: 14px 0;
++    }
++
++    .full-width {
++      width: 100%;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 48px;
+     }
+ 
+     .footer-links {
+@@ -153,50 +378,127 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="importmap">
++    {
++      "imports": {
++        "webauthn-polyfills": "./vendor/webauthn-polyfills.mjs"
++      }
++    }
++  </script>
+ </head>
+ 
+-<body>
++<body data-signed-in="false">
+ 
+-  <nav>
++  <nav aria-label="Primary Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><span id="user-badge" class="user-badge" hidden></span></li>
++      <li><a href="/account" id="account-link" hidden>My Account</a></li>
++      <li><a href="/signin" id="signin-btn" class="signin-link">Sign In</a></li>
++      <li><a href="/logout" id="logout-btn" class="logout-link" hidden>Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" id="order-now-btn" class="btn" style="margin-top: 20px;">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section id="express-checkout-panel" class="express-checkout-panel" hidden>
++      <div>
++        <strong>Express Member Checkout Ready</strong>
++        <p>Preparing one-tap order for <span id="checkout-item-name">Signature Morning Roast Box</span> with saved rewards.</p>
++      </div>
++      <span class="btn">Order Confirmed</span>
++    </section>
++
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
++      <p class="section-subtitle">Save your favorite roasts or start an express order with one-tap Quick Sign-In.</p>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
++          <div class="card-actions">
++            <button type="button" id="favorite-btn" class="favorite-btn" aria-pressed="false" aria-label="Save Maple Oat Latte to favorites" data-item="Maple Oat Latte">
++              <span aria-hidden="true">&#9825;</span>
++              <span class="fav-label">Favorite</span>
++            </button>
++            <a href="/menu/seasonal" class="btn quick-order-btn" data-item="Maple Oat Latte">Quick Order</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++          </div>
++          <div class="card-actions">
++            <button type="button" id="favorite-btn-espresso" class="favorite-btn" aria-pressed="false" aria-label="Save Dark Roast Espresso to favorites" data-item="Dark Roast Espresso">
++              <span aria-hidden="true">&#9825;</span>
++              <span class="fav-label">Favorite</span>
++            </button>
++            <a href="/menu/espresso" class="btn quick-order-btn" data-item="Dark Roast Espresso">Quick Order</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++          </div>
++          <div class="card-actions">
++            <button type="button" id="favorite-btn-coldbrew" class="favorite-btn" aria-pressed="false" aria-label="Save Cold Brew to favorites" data-item="Cold Brew">
++              <span aria-hidden="true">&#9825;</span>
++              <span class="fav-label">Favorite</span>
++            </button>
++            <a href="/menu/cold-brew" class="btn quick-order-btn" data-item="Cold Brew">Quick Order</a>
++          </div>
+         </div>
+       </div>
+     </section>
++
++    <section class="journal-section" aria-labelledby="journal-heading">
++      <h2 id="journal-heading">Roaster's Notes: Single-Origin Ethiopian Yirgacheffe</h2>
++      <p>Washed high-altitude heirloom beans with jasmine aroma, bergamot clarity, and sweet peach finish.</p>
++      <div id="article-paywall-gate" class="paywall-banner">
++        <span>Sign in in place to unlock our head roaster's V60 pour-over brew ratio and temperature guide.</span>
++        <button type="button" id="unlock-article-btn" class="btn">Continue reading with your account</button>
++      </div>
++      <div id="article-full-content" style="margin-top: 16px;" hidden>
++        <p><strong>Brew Recipe:</strong> Use 18g medium-fine ground beans to 300g filtered water at 94&deg;C. Bloom with 50g for 40 seconds, then pour in two concentric stages finishing at 2:45.</p>
++      </div>
++    </section>
+   </main>
+ 
++  <dialog id="fallback-signin-modal" class="signin-modal" aria-labelledby="signin-modal-title" hidden>
++    <div class="modal-header">
++      <h2 id="signin-modal-title">Sign In to The Daily Grind</h2>
++      <button type="button" id="close-fallback-modal" class="close-btn" aria-label="Close sign-in dialog">&times;</button>
++    </div>
++    <p id="fallback-signin-alert" class="signin-alert" hidden></p>
++    <form id="fallback-signin-form">
++      <div class="form-group">
++        <label for="signin-username">Email or Username</label>
++        <input id="signin-username" name="username" type="text" autocomplete="username webauthn" placeholder="alex@dailygrind.coffee" required>
++      </div>
++      <div class="form-group">
++        <label for="signin-password">Password</label>
++        <input id="signin-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
++      </div>
++      <button type="submit" id="password-signin-submit" class="btn full-width">Sign In with Password</button>
++    </form>
++    <div class="modal-divider">or use a cross-device passkey / security key</div>
++    <button type="button" id="modal-passkey-btn" class="btn btn-secondary full-width">Sign in with a Passkey</button>
++  </dialog>
++
++  <div id="auth-status-toast" class="auth-toast" role="status" aria-live="polite" hidden></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +509,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./auth.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..572368c 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,13 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "node scripts/build.mjs",
++    "start": "node server.js"
++  },
++  "dependencies": {
++    "webauthn-polyfills": "0.1.7"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+new file mode 100644
+index 0000000..f5fbb3b
+--- /dev/null
++++ b/pnpm-lock.yaml
+@@ -0,0 +1,49 @@
++lockfileVersion: '9.0'
++
++settings:
++  autoInstallPeers: true
++  excludeLinksFromLockfile: false
++
++importers:
++
++  .:
++    dependencies:
++      webauthn-polyfills:
++        specifier: ^0.1.7
++        version: 0.1.7
++
++packages:
++
++  '@simplewebauthn/types@11.0.0':
++    resolution: {integrity: sha512-b2o0wC5u2rWts31dTgBkAtSNKGX0cvL6h8QedNsKmj8O4QoLFQFR3DBVBUlpyVEhYKA+mXGUaXbcOc4JdQ3HzA==}
++    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
++
++  '@types/ua-parser-js@0.7.39':
++    resolution: {integrity: sha512-P/oDfpofrdtF5xw433SPALpdSchtJmY7nsJItf8h3KXqOslkbySh8zq4dSWXH2oTjRvJ5PczVEoCZPow6GicLg==}
++
++  compare-versions@6.1.1:
++    resolution: {integrity: sha512-4hm4VPpIecmlg59CHXnRDnqGplJFrbLG4aFEl5vl6cK1u76ws3LLvX7ikFnTDl5vo39sjWD6AaDPYodJp/NNHg==}
++
++  ua-parser-js@1.0.41:
++    resolution: {integrity: sha512-LbBDqdIC5s8iROCUjMbW1f5dJQTEFB1+KO9ogbvlb3nm9n4YHa5p4KTvFPWvh2Hs8gZMBuiB1/8+pdfe/tDPug==}
++    hasBin: true
++
++  webauthn-polyfills@0.1.7:
++    resolution: {integrity: sha512-tOA5KPHhN8j8EBA9I90bYmsEc6CAKd1SbWJzmVn0hmTfvfiNJLGGzRPlSW4fKiQPm8BC6doPQC0CnaQdhxsL3Q==}
++
++snapshots:
++
++  '@simplewebauthn/types@11.0.0': {}
++
++  '@types/ua-parser-js@0.7.39': {}
++
++  compare-versions@6.1.1: {}
++
++  ua-parser-js@1.0.41: {}
++
++  webauthn-polyfills@0.1.7:
++    dependencies:
++      '@simplewebauthn/types': 11.0.0
++      '@types/ua-parser-js': 0.7.39
++      compare-versions: 6.1.1
++      ua-parser-js: 1.0.41
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..02e4325
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,77 @@
++import fs from 'node:fs';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const __dirname = path.dirname(fileURLToPath(import.meta.url));
++const rootDir = path.resolve(__dirname, '..');
++
++function buildWebAuthnPolyfillsBundle() {
++  const uaParserCode = fs.readFileSync(
++    path.join(rootDir, 'node_modules/ua-parser-js/src/ua-parser.js'),
++    'utf8'
++  );
++  const compareVersionsCode = fs.readFileSync(
++    path.join(rootDir, 'node_modules/compare-versions/lib/umd/index.js'),
++    'utf8'
++  );
++  const base64urlCode = fs.readFileSync(
++    path.join(rootDir, 'node_modules/webauthn-polyfills/esm/base64url.js'),
++    'utf8'
++  );
++  const jsonSerializationCode = fs
++    .readFileSync(
++      path.join(rootDir, 'node_modules/webauthn-polyfills/esm/json_serialization.js'),
++      'utf8'
++    )
++    .replace(/^import\s+.*?;?\s*$/gm, '');
++  const isVersionCode = fs
++    .readFileSync(
++      path.join(rootDir, 'node_modules/webauthn-polyfills/esm/is_version.js'),
++      'utf8'
++    )
++    .replace(/^import\s+.*?;?\s*$/gm, '');
++  const clientCapabilitiesCode = fs
++    .readFileSync(
++      path.join(rootDir, 'node_modules/webauthn-polyfills/esm/client_capabilities.js'),
++      'utf8'
++    )
++    .replace(/^import\s+.*?;?\s*$/gm, '');
++
++  const bundle = `// Generated ES module bundle of webauthn-polyfills
++const __uaModule = { exports: {} };
++(function(module, exports) {
++${uaParserCode}
++})(__uaModule, __uaModule.exports);
++const UAParser = __uaModule.exports.UAParser || __uaModule.exports || globalThis.UAParser;
++
++const __cvModule = { exports: {} };
++(function(module, exports) {
++${compareVersionsCode}
++})(__cvModule, __cvModule.exports);
++const { compare } = __cvModule.exports;
++
++${base64urlCode.replace(/^export\s+/gm, '')}
++
++${jsonSerializationCode.replace(/^export\s+/gm, '')}
++
++${isVersionCode.replace(/^export\s+/gm, '')}
++
++${clientCapabilitiesCode.replace(/^export\s+/gm, '')}
++
++export {
++  Base64URL,
++  parseCreationOptionsFromJSON,
++  parseRequestOptionsFromJSON,
++  toJSON,
++  prepareGetClientCapabilities,
++  applyPolyfill
++};
++`;
++
++  const vendorDir = path.join(rootDir, 'vendor');
++  fs.mkdirSync(vendorDir, { recursive: true });
++  fs.writeFileSync(path.join(vendorDir, 'webauthn-polyfills.mjs'), bundle, 'utf8');
++  console.log('Built vendor/webauthn-polyfills.mjs successfully.');
++}
++
++buildWebAuthnPolyfillsBundle();
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..8f32920
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,247 @@
++import http from 'node:http';
++import fs from 'node:fs';
++import path from 'node:path';
++import crypto from 'node:crypto';
++import { fileURLToPath } from 'node:url';
++
++const __dirname = path.dirname(fileURLToPath(import.meta.url));
++
++const MIME_TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.js': 'application/javascript; charset=utf-8',
++  '.mjs': 'application/javascript; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.svg': 'image/svg+xml',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.ico': 'image/x-icon',
++};
++
++// In-memory session store and credential registry
++const sessions = new Map();
++const unknownCredentialIds = new Set(['unknown-credential', 'revoked-passkey-id']);
++
++function parseCookies(req) {
++  const header = req.headers.cookie;
++  const cookies = {};
++  if (!header) return cookies;
++  for (const part of header.split(';')) {
++    const [rawName, ...rest] = part.trim().split('=');
++    if (rawName) {
++      cookies[rawName] = decodeURIComponent(rest.join('='));
++    }
++  }
++  return cookies;
++}
++
++function getOrCreateSession(req, res) {
++  const cookies = parseCookies(req);
++  let sid = cookies.dg_sid;
++  if (!sid || !sessions.has(sid)) {
++    sid = crypto.randomBytes(24).toString('base64url');
++    sessions.set(sid, {
++      id: sid,
++      challenge: null,
++      expectedUserVerification: 'preferred',
++      user: null,
++      createdAt: Date.now(),
++    });
++    res.setHeader(
++      'Set-Cookie',
++      `dg_sid=${encodeURIComponent(sid)}; Path=/; HttpOnly; SameSite=Lax`
++    );
++  }
++  return sessions.get(sid);
++}
++
++function readJsonBody(req) {
++  return new Promise((resolve, reject) => {
++    let data = '';
++    req.on('data', (chunk) => {
++      data += chunk;
++      if (data.length > 1024 * 1024) {
++        reject(new Error('Payload too large'));
++      }
++    });
++    req.on('end', () => {
++      if (!data) {
++        resolve({});
++        return;
++      }
++      try {
++        resolve(JSON.parse(data));
++      } catch (err) {
++        reject(err);
++      }
++    });
++    req.on('error', reject);
++  });
++}
++
++function sendJson(res, statusCode, payload) {
++  const body = JSON.stringify(payload);
++  res.writeHead(statusCode, {
++    'Content-Type': 'application/json; charset=utf-8',
++    'Content-Length': Buffer.byteLength(body),
++  });
++  res.end(body);
++}
++
++const server = http.createServer(async (req, res) => {
++  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
++  const pathname = url.pathname;
++  const session = getOrCreateSession(req, res);
++
++  // 1. Server-side options generation endpoint (/api/login/options)
++  if (pathname === '/api/login/options' && (req.method === 'POST' || req.method === 'GET')) {
++    const challenge = crypto.randomBytes(32).toString('base64url');
++    const rpId = (req.headers.host || 'localhost').split(':')[0];
++
++    // Omit allowCredentials so Immediate UI mode is never rejected for non-empty allowlists
++    const options = {
++      challenge,
++      rpId,
++      userVerification: 'preferred',
++    };
++
++    session.challenge = options.challenge;
++    session.expectedUserVerification = 'preferred';
++    return sendJson(res, 200, options);
++  }
++
++  // 2. WebAuthn assertion verification endpoint (/api/login/verify)
++  if (pathname === '/api/login/verify' && req.method === 'POST') {
++    try {
++      const assertion = await readJsonBody(req);
++      const credId = assertion?.id || assertion?.rawId;
++
++      if (!credId) {
++        return sendJson(res, 400, { error: 'Missing credential assertion ID' });
++      }
++
++      // Return HTTP 404 for unknown/revoked credentials so client invokes signalUnknownCredential
++      if (unknownCredentialIds.has(credId)) {
++        return sendJson(res, 404, { error: 'Passkey credential not recognized' });
++      }
++
++      session.user = {
++        id: 'user-passkey-1',
++        username: 'alex@dailygrind.coffee',
++        displayName: 'Alex Rivera',
++        authMethod: 'passkey',
++        rewardsPoints: 340,
++      };
++      session.challenge = null;
++
++      return sendJson(res, 200, {
++        verified: true,
++        user: session.user,
++      });
++    } catch {
++      return sendJson(res, 400, { error: 'Invalid verification request body' });
++    }
++  }
++
++  // 3. Password verification endpoint (/api/login/password)
++  if (pathname === '/api/login/password' && req.method === 'POST') {
++    try {
++      const body = await readJsonBody(req);
++      const username = (body?.username || body?.id || '').trim();
++      const password = body?.password || '';
++
++      if (!username || !password) {
++        return sendJson(res, 401, { error: 'Username and password are required' });
++      }
++
++      const displayPart = username.split('@')[0] || 'Member';
++      const displayName =
++        displayPart.charAt(0).toUpperCase() + displayPart.slice(1);
++
++      session.user = {
++        id: `user-${Buffer.from(username).toString('base64url').slice(0, 8)}`,
++        username,
++        displayName,
++        authMethod: 'password',
++        rewardsPoints: 340,
++      };
++      session.challenge = null;
++
++      return sendJson(res, 200, {
++        verified: true,
++        user: session.user,
++      });
++    } catch {
++      return sendJson(res, 400, { error: 'Invalid password login payload' });
++    }
++  }
++
++  // 4. Session inspection endpoint (/api/session)
++  if (pathname === '/api/session' && req.method === 'GET') {
++    return sendJson(res, 200, {
++      signedIn: Boolean(session.user),
++      user: session.user,
++    });
++  }
++
++  // 5. Logout handler (/api/logout or /logout)
++  if (pathname === '/api/logout' || pathname === '/logout') {
++    session.user = null;
++    session.challenge = null;
++    if (req.method === 'POST' || pathname === '/api/logout') {
++      return sendJson(res, 200, { ok: true });
++    }
++    res.writeHead(302, { Location: '/' });
++    res.end();
++    return;
++  }
++
++  // 6. Serve static assets or fallback SPA index.html
++  const safePath = path.normalize(pathname).replace(/^(\.\.[/\\])+/, '');
++  let filePath = path.join(
++    __dirname,
++    safePath === '/' ? 'index.html' : safePath
++  );
++
++  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
++    const htmlCandidate = `${filePath}.html`;
++    if (fs.existsSync(htmlCandidate) && fs.statSync(htmlCandidate).isFile()) {
++      filePath = htmlCandidate;
++    } else if (!path.extname(safePath)) {
++      filePath = path.join(__dirname, 'index.html');
++    } else {
++      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++      res.end('Not Found');
++      return;
++    }
++  }
++
++  const ext = path.extname(filePath).toLowerCase();
++  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
++
++  const stream = fs.createReadStream(filePath);
++  stream.on('open', () => {
++    res.writeHead(200, { 'Content-Type': contentType });
++  });
++  stream.on('error', () => {
++    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Internal Server Error');
++  });
++  stream.pipe(res);
++});
++
++function resolvePort() {
++  const argIdx = process.argv.indexOf('--port');
++  if (argIdx !== -1 && process.argv[argIdx + 1]) {
++    const parsed = Number(process.argv[argIdx + 1]);
++    if (!Number.isNaN(parsed) && parsed > 0) return parsed;
++  }
++  const envPort = Number(process.env.PORT);
++  if (!Number.isNaN(envPort) && envPort > 0) return envPort;
++  return 11222;
++}
++
++const port = resolvePort();
++server.listen(port, () => {
++  console.log(`The Daily Grind server listening on http://localhost:${port}`);
++});
+diff --git a/vendor/webauthn-polyfills.mjs b/vendor/webauthn-polyfills.mjs
+new file mode 100644
+index 0000000..383bc3b
+--- /dev/null
++++ b/vendor/webauthn-polyfills.mjs
+@@ -0,0 +1,1628 @@
++// Generated ES module bundle of webauthn-polyfills
++const __uaModule = { exports: {} };
++(function(module, exports) {
++/////////////////////////////////////////////////////////////////////////////////
++/* UAParser.js v1.0.41
++   Copyright © 2012-2025 Faisal Salman <f@faisalman.com>
++   MIT License *//*
++   Detect Browser, Engine, OS, CPU, and Device type/model from User-Agent data.
++   Supports browser & node.js environment. 
++   Demo   : https://faisalman.github.io/ua-parser-js
++   Source : https://github.com/faisalman/ua-parser-js */
++/////////////////////////////////////////////////////////////////////////////////
++
++(function (window, undefined) {
++
++    'use strict';
++
++    //////////////
++    // Constants
++    /////////////
++
++
++    var LIBVERSION  = '1.0.41',
++        EMPTY       = '',
++        UNKNOWN     = '?',
++        FUNC_TYPE   = 'function',
++        UNDEF_TYPE  = 'undefined',
++        OBJ_TYPE    = 'object',
++        STR_TYPE    = 'string',
++        MAJOR       = 'major',
++        MODEL       = 'model',
++        NAME        = 'name',
++        TYPE        = 'type',
++        VENDOR      = 'vendor',
++        VERSION     = 'version',
++        ARCHITECTURE= 'architecture',
++        CONSOLE     = 'console',
++        MOBILE      = 'mobile',
++        TABLET      = 'tablet',
++        SMARTTV     = 'smarttv',
++        WEARABLE    = 'wearable',
++        EMBEDDED    = 'embedded',
++        UA_MAX_LENGTH = 500;
++
++    var AMAZON  = 'Amazon',
++        APPLE   = 'Apple',
++        ASUS    = 'ASUS',
++        BLACKBERRY = 'BlackBerry',
++        BROWSER = 'Browser',
++        CHROME  = 'Chrome',
++        EDGE    = 'Edge',
++        FIREFOX = 'Firefox',
++        GOOGLE  = 'Google',
++        HONOR   = 'Honor',
++        HUAWEI  = 'Huawei',
++        LENOVO  = 'Lenovo',
++        LG      = 'LG',
++        MICROSOFT = 'Microsoft',
++        MOTOROLA  = 'Motorola',
++        NVIDIA  = 'Nvidia',
++        ONEPLUS = 'OnePlus',
++        OPERA   = 'Opera',
++        OPPO    = 'OPPO',
++        SAMSUNG = 'Samsung',
++        SHARP   = 'Sharp',
++        SONY    = 'Sony',
++        XIAOMI  = 'Xiaomi',
++        ZEBRA   = 'Zebra',
++        FACEBOOK    = 'Facebook',
++        CHROMIUM_OS = 'Chromium OS',
++        MAC_OS  = 'Mac OS',
++        SUFFIX_BROWSER = ' Browser';
++
++    ///////////
++    // Helper
++    //////////
++
++    var extend = function (regexes, extensions) {
++            var mergedRegexes = {};
++            for (var i in regexes) {
++                if (extensions[i] && extensions[i].length % 2 === 0) {
++                    mergedRegexes[i] = extensions[i].concat(regexes[i]);
++                } else {
++                    mergedRegexes[i] = regexes[i];
++                }
++            }
++            return mergedRegexes;
++        },
++        enumerize = function (arr) {
++            var enums = {};
++            for (var i=0; i<arr.length; i++) {
++                enums[arr[i].toUpperCase()] = arr[i];
++            }
++            return enums;
++        },
++        has = function (str1, str2) {
++            return typeof str1 === STR_TYPE ? lowerize(str2).indexOf(lowerize(str1)) !== -1 : false;
++        },
++        lowerize = function (str) {
++            return str.toLowerCase();
++        },
++        majorize = function (version) {
++            return typeof(version) === STR_TYPE ? version.replace(/[^\d\.]/g, EMPTY).split('.')[0] : undefined;
++        },
++        trim = function (str, len) {
++            if (typeof(str) === STR_TYPE) {
++                str = str.replace(/^\s\s*/, EMPTY);
++                return typeof(len) === UNDEF_TYPE ? str : str.substring(0, UA_MAX_LENGTH);
++            }
++    };
++
++    ///////////////
++    // Map helper
++    //////////////
++
++    var rgxMapper = function (ua, arrays) {
++
++            var i = 0, j, k, p, q, matches, match;
++
++            // loop through all regexes maps
++            while (i < arrays.length && !matches) {
++
++                var regex = arrays[i],       // even sequence (0,2,4,..)
++                    props = arrays[i + 1];   // odd sequence (1,3,5,..)
++                j = k = 0;
++
++                // try matching uastring with regexes
++                while (j < regex.length && !matches) {
++
++                    if (!regex[j]) { break; }
++                    matches = regex[j++].exec(ua);
++
++                    if (!!matches) {
++                        for (p = 0; p < props.length; p++) {
++                            match = matches[++k];
++                            q = props[p];
++                            // check if given property is actually array
++                            if (typeof q === OBJ_TYPE && q.length > 0) {
++                                if (q.length === 2) {
++                                    if (typeof q[1] == FUNC_TYPE) {
++                                        // assign modified match
++                                        this[q[0]] = q[1].call(this, match);
++                                    } else {
++                                        // assign given value, ignore regex match
++                                        this[q[0]] = q[1];
++                                    }
++                                } else if (q.length === 3) {
++                                    // check whether function or regex
++                                    if (typeof q[1] === FUNC_TYPE && !(q[1].exec && q[1].test)) {
++                                        // call function (usually string mapper)
++                                        this[q[0]] = match ? q[1].call(this, match, q[2]) : undefined;
++                                    } else {
++                                        // sanitize match using given regex
++                                        this[q[0]] = match ? match.replace(q[1], q[2]) : undefined;
++                                    }
++                                } else if (q.length === 4) {
++                                        this[q[0]] = match ? q[3].call(this, match.replace(q[1], q[2])) : undefined;
++                                }
++                            } else {
++                                this[q] = match ? match : undefined;
++                            }
++                        }
++                    }
++                }
++                i += 2;
++            }
++        },
++
++        strMapper = function (str, map) {
++
++            for (var i in map) {
++                // check if current value is array
++                if (typeof map[i] === OBJ_TYPE && map[i].length > 0) {
++                    for (var j = 0; j < map[i].length; j++) {
++                        if (has(map[i][j], str)) {
++                            return (i === UNKNOWN) ? undefined : i;
++                        }
++                    }
++                } else if (has(map[i], str)) {
++                    return (i === UNKNOWN) ? undefined : i;
++                }
++            }
++            return map.hasOwnProperty('*') ? map['*'] : str;
++    };
++
++    ///////////////
++    // String map
++    //////////////
++
++    // Safari < 3.0
++    var oldSafariMap = {
++            '1.0'   : '/8',
++            '1.2'   : '/1',
++            '1.3'   : '/3',
++            '2.0'   : '/412',
++            '2.0.2' : '/416',
++            '2.0.3' : '/417',
++            '2.0.4' : '/419',
++            '?'     : '/'
++        },
++        windowsVersionMap = {
++            'ME'        : '4.90',
++            'NT 3.11'   : 'NT3.51',
++            'NT 4.0'    : 'NT4.0',
++            '2000'      : 'NT 5.0',
++            'XP'        : ['NT 5.1', 'NT 5.2'],
++            'Vista'     : 'NT 6.0',
++            '7'         : 'NT 6.1',
++            '8'         : 'NT 6.2',
++            '8.1'       : 'NT 6.3',
++            '10'        : ['NT 6.4', 'NT 10.0'],
++            'RT'        : 'ARM'
++    };
++
++    //////////////
++    // Regex map
++    /////////////
++
++    var regexes = {
++
++        browser : [[
++
++            /\b(?:crmo|crios)\/([\w\.]+)/i                                      // Chrome for Android/iOS
++            ], [VERSION, [NAME, 'Chrome']], [
++            /edg(?:e|ios|a)?\/([\w\.]+)/i                                       // Microsoft Edge
++            ], [VERSION, [NAME, 'Edge']], [
++
++            // Presto based
++            /(opera mini)\/([-\w\.]+)/i,                                        // Opera Mini
++            /(opera [mobiletab]{3,6})\b.+version\/([-\w\.]+)/i,                 // Opera Mobi/Tablet
++            /(opera)(?:.+version\/|[\/ ]+)([\w\.]+)/i                           // Opera
++            ], [NAME, VERSION], [
++            /opios[\/ ]+([\w\.]+)/i                                             // Opera mini on iphone >= 8.0
++            ], [VERSION, [NAME, OPERA+' Mini']], [
++            /\bop(?:rg)?x\/([\w\.]+)/i                                          // Opera GX
++            ], [VERSION, [NAME, OPERA+' GX']], [
++            /\bopr\/([\w\.]+)/i                                                 // Opera Webkit
++            ], [VERSION, [NAME, OPERA]], [
++
++            // Mixed
++            /\bb[ai]*d(?:uhd|[ub]*[aekoprswx]{5,6})[\/ ]?([\w\.]+)/i            // Baidu
++            ], [VERSION, [NAME, 'Baidu']], [
++            /\b(?:mxbrowser|mxios|myie2)\/?([-\w\.]*)\b/i                       // Maxthon
++            ], [VERSION, [NAME, 'Maxthon']], [
++            /(kindle)\/([\w\.]+)/i,                                             // Kindle
++            /(lunascape|maxthon|netfront|jasmine|blazer|sleipnir)[\/ ]?([\w\.]*)/i,      
++                                                                                // Lunascape/Maxthon/Netfront/Jasmine/Blazer/Sleipnir
++            // Trident based
++            /(avant|iemobile|slim(?:browser|boat|jet))[\/ ]?([\d\.]*)/i,        // Avant/IEMobile/SlimBrowser/SlimBoat/Slimjet
++            /(?:ms|\()(ie) ([\w\.]+)/i,                                         // Internet Explorer
++
++            // Blink/Webkit/KHTML based                                         // Flock/RockMelt/Midori/Epiphany/Silk/Skyfire/Bolt/Iron/Iridium/PhantomJS/Bowser/QupZilla/Falkon
++            /(flock|rockmelt|midori|epiphany|silk|skyfire|ovibrowser|bolt|iron|vivaldi|iridium|phantomjs|bowser|qupzilla|falkon|rekonq|puffin|brave|whale(?!.+naver)|qqbrowserlite|duckduckgo|klar|helio|(?=comodo_)?dragon)\/([-\w\.]+)/i,
++                                                                                // Rekonq/Puffin/Brave/Whale/QQBrowserLite/QQ//Vivaldi/DuckDuckGo/Klar/Helio/Dragon
++            /(heytap|ovi|115)browser\/([\d\.]+)/i,                              // HeyTap/Ovi/115
++            /(weibo)__([\d\.]+)/i                                               // Weibo
++            ], [NAME, VERSION], [
++            /quark(?:pc)?\/([-\w\.]+)/i                                         // Quark
++            ], [VERSION, [NAME, 'Quark']], [
++            /\bddg\/([\w\.]+)/i                                                 // DuckDuckGo
++            ], [VERSION, [NAME, 'DuckDuckGo']], [
++            /(?:\buc? ?browser|(?:juc.+)ucweb)[\/ ]?([\w\.]+)/i                 // UCBrowser
++            ], [VERSION, [NAME, 'UC'+BROWSER]], [
++            /microm.+\bqbcore\/([\w\.]+)/i,                                     // WeChat Desktop for Windows Built-in Browser
++            /\bqbcore\/([\w\.]+).+microm/i,
++            /micromessenger\/([\w\.]+)/i                                        // WeChat
++            ], [VERSION, [NAME, 'WeChat']], [
++            /konqueror\/([\w\.]+)/i                                             // Konqueror
++            ], [VERSION, [NAME, 'Konqueror']], [
++            /trident.+rv[: ]([\w\.]{1,9})\b.+like gecko/i                       // IE11
++            ], [VERSION, [NAME, 'IE']], [
++            /ya(?:search)?browser\/([\w\.]+)/i                                  // Yandex
++            ], [VERSION, [NAME, 'Yandex']], [
++            /slbrowser\/([\w\.]+)/i                                             // Smart Lenovo Browser
++            ], [VERSION, [NAME, 'Smart Lenovo '+BROWSER]], [
++            /(avast|avg)\/([\w\.]+)/i                                           // Avast/AVG Secure Browser
++            ], [[NAME, /(.+)/, '$1 Secure '+BROWSER], VERSION], [
++            /\bfocus\/([\w\.]+)/i                                               // Firefox Focus
++            ], [VERSION, [NAME, FIREFOX+' Focus']], [
++            /\bopt\/([\w\.]+)/i                                                 // Opera Touch
++            ], [VERSION, [NAME, OPERA+' Touch']], [
++            /coc_coc\w+\/([\w\.]+)/i                                            // Coc Coc Browser
++            ], [VERSION, [NAME, 'Coc Coc']], [
++            /dolfin\/([\w\.]+)/i                                                // Dolphin
++            ], [VERSION, [NAME, 'Dolphin']], [
++            /coast\/([\w\.]+)/i                                                 // Opera Coast
++            ], [VERSION, [NAME, OPERA+' Coast']], [
++            /miuibrowser\/([\w\.]+)/i                                           // MIUI Browser
++            ], [VERSION, [NAME, 'MIUI' + SUFFIX_BROWSER]], [
++            /fxios\/([\w\.-]+)/i                                                // Firefox for iOS
++            ], [VERSION, [NAME, FIREFOX]], [
++            /\bqihoobrowser\/?([\w\.]*)/i                                       // 360
++            ], [VERSION, [NAME, '360']], [
++            /\b(qq)\/([\w\.]+)/i                                                // QQ
++            ], [[NAME, /(.+)/, '$1Browser'], VERSION], [
++            /(oculus|sailfish|huawei|vivo|pico)browser\/([\w\.]+)/i
++            ], [[NAME, /(.+)/, '$1' + SUFFIX_BROWSER], VERSION], [              // Oculus/Sailfish/HuaweiBrowser/VivoBrowser/PicoBrowser
++            /samsungbrowser\/([\w\.]+)/i                                        // Samsung Internet
++            ], [VERSION, [NAME, SAMSUNG + ' Internet']], [
++            /metasr[\/ ]?([\d\.]+)/i                                            // Sogou Explorer
++            ], [VERSION, [NAME, 'Sogou Explorer']], [
++            /(sogou)mo\w+\/([\d\.]+)/i                                          // Sogou Mobile
++            ], [[NAME, 'Sogou Mobile'], VERSION], [
++            /(electron)\/([\w\.]+) safari/i,                                    // Electron-based App
++            /(tesla)(?: qtcarbrowser|\/(20\d\d\.[-\w\.]+))/i,                   // Tesla
++            /m?(qqbrowser|2345(?=browser|chrome|explorer))\w*[\/ ]?v?([\w\.]+)/i   // QQ/2345
++            ], [NAME, VERSION], [
++            /(lbbrowser|rekonq)/i,                                              // LieBao Browser/Rekonq
++            /\[(linkedin)app\]/i                                                // LinkedIn App for iOS & Android
++            ], [NAME], [
++            /ome\/([\w\.]+) \w* ?(iron) saf/i,                                  // Iron
++            /ome\/([\w\.]+).+qihu (360)[es]e/i                                  // 360
++            ], [VERSION, NAME], [
++
++            // WebView
++            /((?:fban\/fbios|fb_iab\/fb4a)(?!.+fbav)|;fbav\/([\w\.]+);)/i       // Facebook App for iOS & Android
++            ], [[NAME, FACEBOOK], VERSION], [
++            /(Klarna)\/([\w\.]+)/i,                                             // Klarna Shopping Browser for iOS & Android
++            /(kakao(?:talk|story))[\/ ]([\w\.]+)/i,                             // Kakao App
++            /(naver)\(.*?(\d+\.[\w\.]+).*\)/i,                                  // Naver InApp
++            /(daum)apps[\/ ]([\w\.]+)/i,                                        // Daum App
++            /safari (line)\/([\w\.]+)/i,                                        // Line App for iOS
++            /\b(line)\/([\w\.]+)\/iab/i,                                        // Line App for Android
++            /(alipay)client\/([\w\.]+)/i,                                       // Alipay
++            /(twitter)(?:and| f.+e\/([\w\.]+))/i,                               // Twitter
++            /(chromium|instagram|snapchat)[\/ ]([-\w\.]+)/i                     // Chromium/Instagram/Snapchat
++            ], [NAME, VERSION], [
++            /\bgsa\/([\w\.]+) .*safari\//i                                      // Google Search Appliance on iOS
++            ], [VERSION, [NAME, 'GSA']], [
++            /musical_ly(?:.+app_?version\/|_)([\w\.]+)/i                        // TikTok
++            ], [VERSION, [NAME, 'TikTok']], [
++
++            /headlesschrome(?:\/([\w\.]+)| )/i                                  // Chrome Headless
++            ], [VERSION, [NAME, CHROME+' Headless']], [
++
++            / wv\).+(chrome)\/([\w\.]+)/i                                       // Chrome WebView
++            ], [[NAME, CHROME+' WebView'], VERSION], [
++
++            /droid.+ version\/([\w\.]+)\b.+(?:mobile safari|safari)/i           // Android Browser
++            ], [VERSION, [NAME, 'Android '+BROWSER]], [
++
++            /(chrome|omniweb|arora|[tizenoka]{5} ?browser)\/v?([\w\.]+)/i       // Chrome/OmniWeb/Arora/Tizen/Nokia
++            ], [NAME, VERSION], [
++
++            /version\/([\w\.\,]+) .*mobile\/\w+ (safari)/i                      // Mobile Safari
++            ], [VERSION, [NAME, 'Mobile Safari']], [
++            /version\/([\w(\.|\,)]+) .*(mobile ?safari|safari)/i                // Safari & Safari Mobile
++            ], [VERSION, NAME], [
++            /webkit.+?(mobile ?safari|safari)(\/[\w\.]+)/i                      // Safari < 3.0
++            ], [NAME, [VERSION, strMapper, oldSafariMap]], [
++
++            /(webkit|khtml)\/([\w\.]+)/i
++            ], [NAME, VERSION], [
++
++            // Gecko based
++            /(navigator|netscape\d?)\/([-\w\.]+)/i                              // Netscape
++            ], [[NAME, 'Netscape'], VERSION], [
++            /(wolvic|librewolf)\/([\w\.]+)/i                                    // Wolvic/LibreWolf
++            ], [NAME, VERSION], [
++            /mobile vr; rv:([\w\.]+)\).+firefox/i                               // Firefox Reality
++            ], [VERSION, [NAME, FIREFOX+' Reality']], [
++            /ekiohf.+(flow)\/([\w\.]+)/i,                                       // Flow
++            /(swiftfox)/i,                                                      // Swiftfox
++            /(icedragon|iceweasel|camino|chimera|fennec|maemo browser|minimo|conkeror)[\/ ]?([\w\.\+]+)/i,
++                                                                                // IceDragon/Iceweasel/Camino/Chimera/Fennec/Maemo/Minimo/Conkeror
++            /(seamonkey|k-meleon|icecat|iceape|firebird|phoenix|palemoon|basilisk|waterfox)\/([-\w\.]+)$/i,
++                                                                                // Firefox/SeaMonkey/K-Meleon/IceCat/IceApe/Firebird/Phoenix
++            /(firefox)\/([\w\.]+)/i,                                            // Other Firefox-based
++            /(mozilla)\/([\w\.]+) .+rv\:.+gecko\/\d+/i,                         // Mozilla
++
++            // Other
++            /(amaya|dillo|doris|icab|ladybird|lynx|mosaic|netsurf|obigo|polaris|w3m|(?:go|ice|up)[\. ]?browser)[-\/ ]?v?([\w\.]+)/i,
++                                                                                // Polaris/Lynx/Dillo/iCab/Doris/Amaya/w3m/NetSurf/Obigo/Mosaic/Go/ICE/UP.Browser/Ladybird
++            /\b(links) \(([\w\.]+)/i                                            // Links
++            ], [NAME, [VERSION, /_/g, '.']], [
++            
++            /(cobalt)\/([\w\.]+)/i                                              // Cobalt
++            ], [NAME, [VERSION, /master.|lts./, ""]]
++        ],
++
++        cpu : [[
++
++            /\b((amd|x|x86[-_]?|wow|win)64)\b/i                                 // AMD64 (x64)
++            ], [[ARCHITECTURE, 'amd64']], [
++
++            /(ia32(?=;))/i,                                                     // IA32 (quicktime)
++            /\b((i[346]|x)86)(pc)?\b/i                                          // IA32 (x86)
++            ], [[ARCHITECTURE, 'ia32']], [
++
++            /\b(aarch64|arm(v?[89]e?l?|_?64))\b/i                               // ARM64
++            ], [[ARCHITECTURE, 'arm64']], [
++
++            /\b(arm(v[67])?ht?n?[fl]p?)\b/i                                     // ARMHF
++            ], [[ARCHITECTURE, 'armhf']], [
++
++            // PocketPC mistakenly identified as PowerPC
++            /( (ce|mobile); ppc;|\/[\w\.]+arm\b)/i
++            ], [[ARCHITECTURE, 'arm']], [
++
++            /((ppc|powerpc)(64)?)( mac|;|\))/i                                  // PowerPC
++            ], [[ARCHITECTURE, /ower/, EMPTY, lowerize]], [
++
++            / sun4\w[;\)]/i                                                     // SPARC
++            ], [[ARCHITECTURE, 'sparc']], [
++
++            /\b(avr32|ia64(?=;)|68k(?=\))|\barm(?=v([1-7]|[5-7]1)l?|;|eabi)|(irix|mips|sparc)(64)?\b|pa-risc)/i
++                                                                                // IA64, 68K, ARM/64, AVR/32, IRIX/64, MIPS/64, SPARC/64, PA-RISC
++            ], [[ARCHITECTURE, lowerize]]
++        ],
++
++        device : [[
++
++            //////////////////////////
++            // MOBILES & TABLETS
++            /////////////////////////
++
++            // Samsung
++            /\b(sch-i[89]0\d|shw-m380s|sm-[ptx]\w{2,4}|gt-[pn]\d{2,4}|sgh-t8[56]9|nexus 10)/i
++            ], [MODEL, [VENDOR, SAMSUNG], [TYPE, TABLET]], [
++            /\b((?:s[cgp]h|gt|sm)-(?![lr])\w+|sc[g-]?[\d]+a?|galaxy nexus)/i,
++            /samsung[- ]((?!sm-[lr])[-\w]+)/i,
++            /sec-(sgh\w+)/i
++            ], [MODEL, [VENDOR, SAMSUNG], [TYPE, MOBILE]], [
++
++            // Apple
++            /(?:\/|\()(ip(?:hone|od)[\w, ]*)(?:\/|;)/i                          // iPod/iPhone
++            ], [MODEL, [VENDOR, APPLE], [TYPE, MOBILE]], [
++            /\((ipad);[-\w\),; ]+apple/i,                                       // iPad
++            /applecoremedia\/[\w\.]+ \((ipad)/i,
++            /\b(ipad)\d\d?,\d\d?[;\]].+ios/i
++            ], [MODEL, [VENDOR, APPLE], [TYPE, TABLET]], [
++            /(macintosh);/i
++            ], [MODEL, [VENDOR, APPLE]], [
++
++            // Sharp
++            /\b(sh-?[altvz]?\d\d[a-ekm]?)/i
++            ], [MODEL, [VENDOR, SHARP], [TYPE, MOBILE]], [
++
++            // Honor
++            /\b((?:brt|eln|hey2?|gdi|jdn)-a?[lnw]09|(?:ag[rm]3?|jdn2|kob2)-a?[lw]0[09]hn)(?: bui|\)|;)/i
++            ], [MODEL, [VENDOR, HONOR], [TYPE, TABLET]], [
++            /honor([-\w ]+)[;\)]/i
++            ], [MODEL, [VENDOR, HONOR], [TYPE, MOBILE]], [
++
++            // Huawei
++            /\b((?:ag[rs][2356]?k?|bah[234]?|bg[2o]|bt[kv]|cmr|cpn|db[ry]2?|jdn2|got|kob2?k?|mon|pce|scm|sht?|[tw]gr|vrd)-[ad]?[lw][0125][09]b?|605hw|bg2-u03|(?:gem|fdr|m2|ple|t1)-[7a]0[1-4][lu]|t1-a2[13][lw]|mediapad[\w\. ]*(?= bui|\)))\b(?!.+d\/s)/i
++            ], [MODEL, [VENDOR, HUAWEI], [TYPE, TABLET]], [
++            /(?:huawei)([-\w ]+)[;\)]/i,
++            /\b(nexus 6p|\w{2,4}e?-[atu]?[ln][\dx][012359c][adn]?)\b(?!.+d\/s)/i
++            ], [MODEL, [VENDOR, HUAWEI], [TYPE, MOBILE]], [
++
++            // Xiaomi
++            /oid[^\)]+; (2[\dbc]{4}(182|283|rp\w{2})[cgl]|m2105k81a?c)(?: bui|\))/i,
++            /\b((?:red)?mi[-_ ]?pad[\w- ]*)(?: bui|\))/i                                // Mi Pad tablets
++            ],[[MODEL, /_/g, ' '], [VENDOR, XIAOMI], [TYPE, TABLET]], [
++
++            /\b(poco[\w ]+|m2\d{3}j\d\d[a-z]{2})(?: bui|\))/i,                  // Xiaomi POCO
++            /\b; (\w+) build\/hm\1/i,                                           // Xiaomi Hongmi 'numeric' models
++            /\b(hm[-_ ]?note?[_ ]?(?:\d\w)?) bui/i,                             // Xiaomi Hongmi
++            /\b(redmi[\-_ ]?(?:note|k)?[\w_ ]+)(?: bui|\))/i,                   // Xiaomi Redmi
++            /oid[^\)]+; (m?[12][0-389][01]\w{3,6}[c-y])( bui|; wv|\))/i,        // Xiaomi Redmi 'numeric' models
++            /\b(mi[-_ ]?(?:a\d|one|one[_ ]plus|note lte|max|cc)?[_ ]?(?:\d?\w?)[_ ]?(?:plus|se|lite|pro)?)(?: bui|\))/i, // Xiaomi Mi
++            / ([\w ]+) miui\/v?\d/i
++            ], [[MODEL, /_/g, ' '], [VENDOR, XIAOMI], [TYPE, MOBILE]], [
++
++            // OPPO
++            /; (\w+) bui.+ oppo/i,
++            /\b(cph[12]\d{3}|p(?:af|c[al]|d\w|e[ar])[mt]\d0|x9007|a101op)\b/i
++            ], [MODEL, [VENDOR, OPPO], [TYPE, MOBILE]], [
++            /\b(opd2(\d{3}a?))(?: bui|\))/i
++            ], [MODEL, [VENDOR, strMapper, { 'OnePlus' : ['304', '403', '203'], '*' : OPPO }], [TYPE, TABLET]], [
++
++            // Vivo
++            /vivo (\w+)(?: bui|\))/i,
++            /\b(v[12]\d{3}\w?[at])(?: bui|;)/i
++            ], [MODEL, [VENDOR, 'Vivo'], [TYPE, MOBILE]], [
++
++            // Realme
++            /\b(rmx[1-3]\d{3})(?: bui|;|\))/i
++            ], [MODEL, [VENDOR, 'Realme'], [TYPE, MOBILE]], [
++
++            // Motorola
++            /\b(milestone|droid(?:[2-4x]| (?:bionic|x2|pro|razr))?:?( 4g)?)\b[\w ]+build\//i,
++            /\bmot(?:orola)?[- ](\w*)/i,
++            /((?:moto(?! 360)[\w\(\) ]+|xt\d{3,4}|nexus 6)(?= bui|\)))/i
++            ], [MODEL, [VENDOR, MOTOROLA], [TYPE, MOBILE]], [
++            /\b(mz60\d|xoom[2 ]{0,2}) build\//i
++            ], [MODEL, [VENDOR, MOTOROLA], [TYPE, TABLET]], [
++
++            // LG
++            /((?=lg)?[vl]k\-?\d{3}) bui| 3\.[-\w; ]{10}lg?-([06cv9]{3,4})/i
++            ], [MODEL, [VENDOR, LG], [TYPE, TABLET]], [
++            /(lm(?:-?f100[nv]?|-[\w\.]+)(?= bui|\))|nexus [45])/i,
++            /\blg[-e;\/ ]+((?!browser|netcast|android tv|watch)\w+)/i,
++            /\blg-?([\d\w]+) bui/i
++            ], [MODEL, [VENDOR, LG], [TYPE, MOBILE]], [
++
++            // Lenovo
++            /(ideatab[-\w ]+|602lv|d-42a|a101lv|a2109a|a3500-hv|s[56]000|pb-6505[my]|tb-?x?\d{3,4}(?:f[cu]|xu|[av])|yt\d?-[jx]?\d+[lfmx])( bui|;|\)|\/)/i,
++            /lenovo ?(b[68]0[08]0-?[hf]?|tab(?:[\w- ]+?)|tb[\w-]{6,7})( bui|;|\)|\/)/i
++            ], [MODEL, [VENDOR, LENOVO], [TYPE, TABLET]], [
++
++            // Nokia
++            /(nokia) (t[12][01])/i
++            ], [VENDOR, MODEL, [TYPE, TABLET]], [
++            /(?:maemo|nokia).*(n900|lumia \d+|rm-\d+)/i,
++            /nokia[-_ ]?(([-\w\. ]*))/i
++            ], [[MODEL, /_/g, ' '], [TYPE, MOBILE], [VENDOR, 'Nokia']], [
++
++            // Google
++            /(pixel (c|tablet))\b/i                                             // Google Pixel C/Tablet
++            ], [MODEL, [VENDOR, GOOGLE], [TYPE, TABLET]], [
++            /droid.+; (pixel[\daxl ]{0,6})(?: bui|\))/i                         // Google Pixel
++            ], [MODEL, [VENDOR, GOOGLE], [TYPE, MOBILE]], [
++
++            // Sony
++            /droid.+; (a?\d[0-2]{2}so|[c-g]\d{4}|so[-gl]\w+|xq-a\w[4-7][12])(?= bui|\).+chrome\/(?![1-6]{0,1}\d\.))/i
++            ], [MODEL, [VENDOR, SONY], [TYPE, MOBILE]], [
++            /sony tablet [ps]/i,
++            /\b(?:sony)?sgp\w+(?: bui|\))/i
++            ], [[MODEL, 'Xperia Tablet'], [VENDOR, SONY], [TYPE, TABLET]], [
++
++            // OnePlus
++            / (kb2005|in20[12]5|be20[12][59])\b/i,
++            /(?:one)?(?:plus)? (a\d0\d\d)(?: b|\))/i
++            ], [MODEL, [VENDOR, ONEPLUS], [TYPE, MOBILE]], [
++
++            // Amazon
++            /(alexa)webm/i,
++            /(kf[a-z]{2}wi|aeo(?!bc)\w\w)( bui|\))/i,                           // Kindle Fire without Silk / Echo Show
++            /(kf[a-z]+)( bui|\)).+silk\//i                                      // Kindle Fire HD
++            ], [MODEL, [VENDOR, AMAZON], [TYPE, TABLET]], [
++            /((?:sd|kf)[0349hijorstuw]+)( bui|\)).+silk\//i                     // Fire Phone
++            ], [[MODEL, /(.+)/g, 'Fire Phone $1'], [VENDOR, AMAZON], [TYPE, MOBILE]], [
++
++            // BlackBerry
++            /(playbook);[-\w\),; ]+(rim)/i                                      // BlackBerry PlayBook
++            ], [MODEL, VENDOR, [TYPE, TABLET]], [
++            /\b((?:bb[a-f]|st[hv])100-\d)/i,
++            /\(bb10; (\w+)/i                                                    // BlackBerry 10
++            ], [MODEL, [VENDOR, BLACKBERRY], [TYPE, MOBILE]], [
++
++            // Asus
++            /(?:\b|asus_)(transfo[prime ]{4,10} \w+|eeepc|slider \w+|nexus 7|padfone|p00[cj])/i
++            ], [MODEL, [VENDOR, ASUS], [TYPE, TABLET]], [
++            / (z[bes]6[027][012][km][ls]|zenfone \d\w?)\b/i
++            ], [MODEL, [VENDOR, ASUS], [TYPE, MOBILE]], [
++
++            // HTC
++            /(nexus 9)/i                                                        // HTC Nexus 9
++            ], [MODEL, [VENDOR, 'HTC'], [TYPE, TABLET]], [
++            /(htc)[-;_ ]{1,2}([\w ]+(?=\)| bui)|\w+)/i,                         // HTC
++
++            // ZTE
++            /(zte)[- ]([\w ]+?)(?: bui|\/|\))/i,
++            /(alcatel|geeksphone|nexian|panasonic(?!(?:;|\.))|sony(?!-bra))[-_ ]?([-\w]*)/i         // Alcatel/GeeksPhone/Nexian/Panasonic/Sony
++            ], [VENDOR, [MODEL, /_/g, ' '], [TYPE, MOBILE]], [
++
++            // TCL
++            /droid [\w\.]+; ((?:8[14]9[16]|9(?:0(?:48|60|8[01])|1(?:3[27]|66)|2(?:6[69]|9[56])|466))[gqswx])\w*(\)| bui)/i
++            ], [MODEL, [VENDOR, 'TCL'], [TYPE, TABLET]], [
++
++            // itel
++            /(itel) ((\w+))/i
++            ], [[VENDOR, lowerize], MODEL, [TYPE, strMapper, { 'tablet' : ['p10001l', 'w7001'], '*' : 'mobile' }]], [
++
++            // Acer
++            /droid.+; ([ab][1-7]-?[0178a]\d\d?)/i
++            ], [MODEL, [VENDOR, 'Acer'], [TYPE, TABLET]], [
++
++            // Meizu
++            /droid.+; (m[1-5] note) bui/i,
++            /\bmz-([-\w]{2,})/i
++            ], [MODEL, [VENDOR, 'Meizu'], [TYPE, MOBILE]], [
++                
++            // Ulefone
++            /; ((?:power )?armor(?:[\w ]{0,8}))(?: bui|\))/i
++            ], [MODEL, [VENDOR, 'Ulefone'], [TYPE, MOBILE]], [
++
++            // Energizer
++            /; (energy ?\w+)(?: bui|\))/i,
++            /; energizer ([\w ]+)(?: bui|\))/i
++            ], [MODEL, [VENDOR, 'Energizer'], [TYPE, MOBILE]], [
++
++            // Cat
++            /; cat (b35);/i,
++            /; (b15q?|s22 flip|s48c|s62 pro)(?: bui|\))/i
++            ], [MODEL, [VENDOR, 'Cat'], [TYPE, MOBILE]], [
++
++            // Smartfren
++            /((?:new )?andromax[\w- ]+)(?: bui|\))/i
++            ], [MODEL, [VENDOR, 'Smartfren'], [TYPE, MOBILE]], [
++
++            // Nothing
++            /droid.+; (a(?:015|06[35]|142p?))/i
++            ], [MODEL, [VENDOR, 'Nothing'], [TYPE, MOBILE]], [
++
++            // Archos
++            /; (x67 5g|tikeasy \w+|ac[1789]\d\w+)( b|\))/i,
++            /archos ?(5|gamepad2?|([\w ]*[t1789]|hello) ?\d+[\w ]*)( b|\))/i
++            ], [MODEL, [VENDOR, 'Archos'], [TYPE, TABLET]], [
++            /archos ([\w ]+)( b|\))/i,
++            /; (ac[3-6]\d\w{2,8})( b|\))/i 
++            ], [MODEL, [VENDOR, 'Archos'], [TYPE, MOBILE]], [
++
++            // MIXED
++            /(imo) (tab \w+)/i,                                                 // IMO
++            /(infinix) (x1101b?)/i                                              // Infinix XPad
++            ], [VENDOR, MODEL, [TYPE, TABLET]], [
++
++            /(blackberry|benq|palm(?=\-)|sonyericsson|acer|asus(?! zenw)|dell|jolla|meizu|motorola|polytron|infinix|tecno|micromax|advan)[-_ ]?([-\w]*)/i,
++                                                                                // BlackBerry/BenQ/Palm/Sony-Ericsson/Acer/Asus/Dell/Meizu/Motorola/Polytron/Infinix/Tecno/Micromax/Advan
++            /; (hmd|imo) ([\w ]+?)(?: bui|\))/i,                                // HMD/IMO
++            /(hp) ([\w ]+\w)/i,                                                 // HP iPAQ
++            /(microsoft); (lumia[\w ]+)/i,                                      // Microsoft Lumia
++            /(lenovo)[-_ ]?([-\w ]+?)(?: bui|\)|\/)/i,                          // Lenovo
++            /(oppo) ?([\w ]+) bui/i                                             // OPPO
++            ], [VENDOR, MODEL, [TYPE, MOBILE]], [
++
++            /(kobo)\s(ereader|touch)/i,                                         // Kobo
++            /(hp).+(touchpad(?!.+tablet)|tablet)/i,                             // HP TouchPad
++            /(kindle)\/([\w\.]+)/i,                                             // Kindle
++            /(nook)[\w ]+build\/(\w+)/i,                                        // Nook
++            /(dell) (strea[kpr\d ]*[\dko])/i,                                   // Dell Streak
++            /(le[- ]+pan)[- ]+(\w{1,9}) bui/i,                                  // Le Pan Tablets
++            /(trinity)[- ]*(t\d{3}) bui/i,                                      // Trinity Tablets
++            /(gigaset)[- ]+(q\w{1,9}) bui/i,                                    // Gigaset Tablets
++            /(vodafone) ([\w ]+)(?:\)| bui)/i                                   // Vodafone
++            ], [VENDOR, MODEL, [TYPE, TABLET]], [
++
++            /(surface duo)/i                                                    // Surface Duo
++            ], [MODEL, [VENDOR, MICROSOFT], [TYPE, TABLET]], [
++            /droid [\d\.]+; (fp\du?)(?: b|\))/i                                 // Fairphone
++            ], [MODEL, [VENDOR, 'Fairphone'], [TYPE, MOBILE]], [
++            /(u304aa)/i                                                         // AT&T
++            ], [MODEL, [VENDOR, 'AT&T'], [TYPE, MOBILE]], [
++            /\bsie-(\w*)/i                                                      // Siemens
++            ], [MODEL, [VENDOR, 'Siemens'], [TYPE, MOBILE]], [
++            /\b(rct\w+) b/i                                                     // RCA Tablets
++            ], [MODEL, [VENDOR, 'RCA'], [TYPE, TABLET]], [
++            /\b(venue[\d ]{2,7}) b/i                                            // Dell Venue Tablets
++            ], [MODEL, [VENDOR, 'Dell'], [TYPE, TABLET]], [
++            /\b(q(?:mv|ta)\w+) b/i                                              // Verizon Tablet
++            ], [MODEL, [VENDOR, 'Verizon'], [TYPE, TABLET]], [
++            /\b(?:barnes[& ]+noble |bn[rt])([\w\+ ]*) b/i                       // Barnes & Noble Tablet
++            ], [MODEL, [VENDOR, 'Barnes & Noble'], [TYPE, TABLET]], [
++            /\b(tm\d{3}\w+) b/i
++            ], [MODEL, [VENDOR, 'NuVision'], [TYPE, TABLET]], [
++            /\b(k88) b/i                                                        // ZTE K Series Tablet
++            ], [MODEL, [VENDOR, 'ZTE'], [TYPE, TABLET]], [
++            /\b(nx\d{3}j) b/i                                                   // ZTE Nubia
++            ], [MODEL, [VENDOR, 'ZTE'], [TYPE, MOBILE]], [
++            /\b(gen\d{3}) b.+49h/i                                              // Swiss GEN Mobile
++            ], [MODEL, [VENDOR, 'Swiss'], [TYPE, MOBILE]], [
++            /\b(zur\d{3}) b/i                                                   // Swiss ZUR Tablet
++            ], [MODEL, [VENDOR, 'Swiss'], [TYPE, TABLET]], [
++            /\b((zeki)?tb.*\b) b/i                                              // Zeki Tablets
++            ], [MODEL, [VENDOR, 'Zeki'], [TYPE, TABLET]], [
++            /\b([yr]\d{2}) b/i,
++            /\b(dragon[- ]+touch |dt)(\w{5}) b/i                                // Dragon Touch Tablet
++            ], [[VENDOR, 'Dragon Touch'], MODEL, [TYPE, TABLET]], [
++            /\b(ns-?\w{0,9}) b/i                                                // Insignia Tablets
++            ], [MODEL, [VENDOR, 'Insignia'], [TYPE, TABLET]], [
++            /\b((nxa|next)-?\w{0,9}) b/i                                        // NextBook Tablets
++            ], [MODEL, [VENDOR, 'NextBook'], [TYPE, TABLET]], [
++            /\b(xtreme\_)?(v(1[045]|2[015]|[3469]0|7[05])) b/i                  // Voice Xtreme Phones
++            ], [[VENDOR, 'Voice'], MODEL, [TYPE, MOBILE]], [
++            /\b(lvtel\-)?(v1[12]) b/i                                           // LvTel Phones
++            ], [[VENDOR, 'LvTel'], MODEL, [TYPE, MOBILE]], [
++            /\b(ph-1) /i                                                        // Essential PH-1
++            ], [MODEL, [VENDOR, 'Essential'], [TYPE, MOBILE]], [
++            /\b(v(100md|700na|7011|917g).*\b) b/i                               // Envizen Tablets
++            ], [MODEL, [VENDOR, 'Envizen'], [TYPE, TABLET]], [
++            /\b(trio[-\w\. ]+) b/i                                              // MachSpeed Tablets
++            ], [MODEL, [VENDOR, 'MachSpeed'], [TYPE, TABLET]], [
++            /\btu_(1491) b/i                                                    // Rotor Tablets
++            ], [MODEL, [VENDOR, 'Rotor'], [TYPE, TABLET]], [
++            /((?:tegranote|shield t(?!.+d tv))[\w- ]*?)(?: b|\))/i              // Nvidia Tablets
++            ], [MODEL, [VENDOR, NVIDIA], [TYPE, TABLET]], [
++            /(sprint) (\w+)/i                                                   // Sprint Phones
++            ], [VENDOR, MODEL, [TYPE, MOBILE]], [
++            /(kin\.[onetw]{3})/i                                                // Microsoft Kin
++            ], [[MODEL, /\./g, ' '], [VENDOR, MICROSOFT], [TYPE, MOBILE]], [
++            /droid.+; (cc6666?|et5[16]|mc[239][23]x?|vc8[03]x?)\)/i             // Zebra
++            ], [MODEL, [VENDOR, ZEBRA], [TYPE, TABLET]], [
++            /droid.+; (ec30|ps20|tc[2-8]\d[kx])\)/i
++            ], [MODEL, [VENDOR, ZEBRA], [TYPE, MOBILE]], [
++
++            ///////////////////
++            // SMARTTVS
++            ///////////////////
++
++            /smart-tv.+(samsung)/i                                              // Samsung
++            ], [VENDOR, [TYPE, SMARTTV]], [
++            /hbbtv.+maple;(\d+)/i
++            ], [[MODEL, /^/, 'SmartTV'], [VENDOR, SAMSUNG], [TYPE, SMARTTV]], [
++            /(nux; netcast.+smarttv|lg (netcast\.tv-201\d|android tv))/i        // LG SmartTV
++            ], [[VENDOR, LG], [TYPE, SMARTTV]], [
++            /(apple) ?tv/i                                                      // Apple TV
++            ], [VENDOR, [MODEL, APPLE+' TV'], [TYPE, SMARTTV]], [
++            /crkey/i                                                            // Google Chromecast
++            ], [[MODEL, CHROME+'cast'], [VENDOR, GOOGLE], [TYPE, SMARTTV]], [
++            /droid.+aft(\w+)( bui|\))/i                                         // Fire TV
++            ], [MODEL, [VENDOR, AMAZON], [TYPE, SMARTTV]], [
++            /(shield \w+ tv)/i                                                  // Nvidia Shield TV
++            ], [MODEL, [VENDOR, NVIDIA], [TYPE, SMARTTV]], [
++            /\(dtv[\);].+(aquos)/i,
++            /(aquos-tv[\w ]+)\)/i                                               // Sharp
++            ], [MODEL, [VENDOR, SHARP], [TYPE, SMARTTV]],[
++            /(bravia[\w ]+)( bui|\))/i                                              // Sony
++            ], [MODEL, [VENDOR, SONY], [TYPE, SMARTTV]], [
++            /(mi(tv|box)-?\w+) bui/i                                            // Xiaomi
++            ], [MODEL, [VENDOR, XIAOMI], [TYPE, SMARTTV]], [
++            /Hbbtv.*(technisat) (.*);/i                                         // TechniSAT
++            ], [VENDOR, MODEL, [TYPE, SMARTTV]], [
++            /\b(roku)[\dx]*[\)\/]((?:dvp-)?[\d\.]*)/i,                          // Roku
++            /hbbtv\/\d+\.\d+\.\d+ +\([\w\+ ]*; *([\w\d][^;]*);([^;]*)/i         // HbbTV devices
++            ], [[VENDOR, trim], [MODEL, trim], [TYPE, SMARTTV]], [
++                                                                                // SmartTV from Unidentified Vendors
++            /droid.+; ([\w- ]+) (?:android tv|smart[- ]?tv)/i
++            ], [MODEL, [TYPE, SMARTTV]], [
++            /\b(android tv|smart[- ]?tv|opera tv|tv; rv:)\b/i
++            ], [[TYPE, SMARTTV]], [
++
++            ///////////////////
++            // CONSOLES
++            ///////////////////
++
++            /(ouya)/i,                                                          // Ouya
++            /(nintendo) ([wids3utch]+)/i                                        // Nintendo
++            ], [VENDOR, MODEL, [TYPE, CONSOLE]], [
++            /droid.+; (shield)( bui|\))/i                                       // Nvidia Portable
++            ], [MODEL, [VENDOR, NVIDIA], [TYPE, CONSOLE]], [
++            /(playstation \w+)/i                                                // Playstation
++            ], [MODEL, [VENDOR, SONY], [TYPE, CONSOLE]], [
++            /\b(xbox(?: one)?(?!; xbox))[\); ]/i                                // Microsoft Xbox
++            ], [MODEL, [VENDOR, MICROSOFT], [TYPE, CONSOLE]], [
++
++            ///////////////////
++            // WEARABLES
++            ///////////////////
++
++            /\b(sm-[lr]\d\d[0156][fnuw]?s?|gear live)\b/i                       // Samsung Galaxy Watch
++            ], [MODEL, [VENDOR, SAMSUNG], [TYPE, WEARABLE]], [
++            /((pebble))app/i,                                                   // Pebble
++            /(asus|google|lg|oppo) ((pixel |zen)?watch[\w ]*)( bui|\))/i        // Asus ZenWatch / LG Watch / Pixel Watch
++            ], [VENDOR, MODEL, [TYPE, WEARABLE]], [
++            /(ow(?:19|20)?we?[1-3]{1,3})/i                                      // Oppo Watch
++            ], [MODEL, [VENDOR, OPPO], [TYPE, WEARABLE]], [
++            /(watch)(?: ?os[,\/]|\d,\d\/)[\d\.]+/i                              // Apple Watch
++            ], [MODEL, [VENDOR, APPLE], [TYPE, WEARABLE]], [
++            /(opwwe\d{3})/i                                                     // OnePlus Watch
++            ], [MODEL, [VENDOR, ONEPLUS], [TYPE, WEARABLE]], [
++            /(moto 360)/i                                                       // Motorola 360
++            ], [MODEL, [VENDOR, MOTOROLA], [TYPE, WEARABLE]], [
++            /(smartwatch 3)/i                                                   // Sony SmartWatch
++            ], [MODEL, [VENDOR, SONY], [TYPE, WEARABLE]], [
++            /(g watch r)/i                                                      // LG G Watch R
++            ], [MODEL, [VENDOR, LG], [TYPE, WEARABLE]], [
++            /droid.+; (wt63?0{2,3})\)/i
++            ], [MODEL, [VENDOR, ZEBRA], [TYPE, WEARABLE]], [
++
++            ///////////////////
++            // XR
++            ///////////////////
++
++            /droid.+; (glass) \d/i                                              // Google Glass
++            ], [MODEL, [VENDOR, GOOGLE], [TYPE, WEARABLE]], [
++            /(pico) (4|neo3(?: link|pro)?)/i                                    // Pico
++            ], [VENDOR, MODEL, [TYPE, WEARABLE]], [
++            /; (quest( \d| pro)?)/i                                             // Oculus Quest
++            ], [MODEL, [VENDOR, FACEBOOK], [TYPE, WEARABLE]], [
++
++            ///////////////////
++            // EMBEDDED
++            ///////////////////
++
++            /(tesla)(?: qtcarbrowser|\/[-\w\.]+)/i                              // Tesla
++            ], [VENDOR, [TYPE, EMBEDDED]], [
++            /(aeobc)\b/i                                                        // Echo Dot
++            ], [MODEL, [VENDOR, AMAZON], [TYPE, EMBEDDED]], [
++            /(homepod).+mac os/i                                                // Apple HomePod
++            ], [MODEL, [VENDOR, APPLE], [TYPE, EMBEDDED]], [
++            /windows iot/i
++            ], [[TYPE, EMBEDDED]], [
++
++            ////////////////////
++            // MIXED (GENERIC)
++            ///////////////////
++
++            /droid .+?; ([^;]+?)(?: bui|; wv\)|\) applew).+? mobile safari/i    // Android Phones from Unidentified Vendors
++            ], [MODEL, [TYPE, MOBILE]], [
++            /droid .+?; ([^;]+?)(?: bui|\) applew).+?(?! mobile) safari/i       // Android Tablets from Unidentified Vendors
++            ], [MODEL, [TYPE, TABLET]], [
++            /\b((tablet|tab)[;\/]|focus\/\d(?!.+mobile))/i                      // Unidentifiable Tablet
++            ], [[TYPE, TABLET]], [
++            /(phone|mobile(?:[;\/]| [ \w\/\.]*safari)|pda(?=.+windows ce))/i    // Unidentifiable Mobile
++            ], [[TYPE, MOBILE]], [
++            /droid .+?; ([\w\. -]+)( bui|\))/i                                  // Generic Android Device
++            ], [MODEL, [VENDOR, 'Generic']]
++        ],
++
++        engine : [[
++
++            /windows.+ edge\/([\w\.]+)/i                                       // EdgeHTML
++            ], [VERSION, [NAME, EDGE+'HTML']], [
++
++            /(arkweb)\/([\w\.]+)/i                                              // ArkWeb
++            ], [NAME, VERSION], [
++
++            /webkit\/537\.36.+chrome\/(?!27)([\w\.]+)/i                         // Blink
++            ], [VERSION, [NAME, 'Blink']], [
++
++            /(presto)\/([\w\.]+)/i,                                             // Presto
++            /(webkit|trident|netfront|netsurf|amaya|lynx|w3m|goanna|servo)\/([\w\.]+)/i, // WebKit/Trident/NetFront/NetSurf/Amaya/Lynx/w3m/Goanna/Servo
++            /ekioh(flow)\/([\w\.]+)/i,                                          // Flow
++            /(khtml|tasman|links)[\/ ]\(?([\w\.]+)/i,                           // KHTML/Tasman/Links
++            /(icab)[\/ ]([23]\.[\d\.]+)/i,                                      // iCab
++
++            /\b(libweb)/i                                                       // LibWeb
++            ], [NAME, VERSION], [
++            /ladybird\//i
++            ], [[NAME, 'LibWeb']], [
++
++            /rv\:([\w\.]{1,9})\b.+(gecko)/i                                     // Gecko
++            ], [VERSION, NAME]
++        ],
++
++        os : [[
++
++            // Windows
++            /microsoft (windows) (vista|xp)/i                                   // Windows (iTunes)
++            ], [NAME, VERSION], [
++            /(windows (?:phone(?: os)?|mobile|iot))[\/ ]?([\d\.\w ]*)/i         // Windows Phone
++            ], [NAME, [VERSION, strMapper, windowsVersionMap]], [
++            /windows nt 6\.2; (arm)/i,                                          // Windows RT
++            /windows[\/ ]([ntce\d\. ]+\w)(?!.+xbox)/i,
++            /(?:win(?=3|9|n)|win 9x )([nt\d\.]+)/i
++            ], [[VERSION, strMapper, windowsVersionMap], [NAME, 'Windows']], [
++
++            // iOS/macOS
++            /[adehimnop]{4,7}\b(?:.*os ([\w]+) like mac|; opera)/i,             // iOS
++            /(?:ios;fbsv\/|iphone.+ios[\/ ])([\d\.]+)/i,
++            /cfnetwork\/.+darwin/i
++            ], [[VERSION, /_/g, '.'], [NAME, 'iOS']], [
++            /(mac os x) ?([\w\. ]*)/i,
++            /(macintosh|mac_powerpc\b)(?!.+haiku)/i                             // Mac OS
++            ], [[NAME, MAC_OS], [VERSION, /_/g, '.']], [
++
++            // Mobile OSes
++            /droid ([\w\.]+)\b.+(android[- ]x86|harmonyos)/i                    // Android-x86/HarmonyOS
++            ], [VERSION, NAME], [                                               
++            /(ubuntu) ([\w\.]+) like android/i                                  // Ubuntu Touch
++            ], [[NAME, /(.+)/, '$1 Touch'], VERSION], [
++                                                                                // Android/Blackberry/WebOS/QNX/Bada/RIM/KaiOS/Maemo/MeeGo/S40/Sailfish OS/OpenHarmony/Tizen
++            /(android|bada|blackberry|kaios|maemo|meego|openharmony|qnx|rim tablet os|sailfish|series40|symbian|tizen|webos)\w*[-\/; ]?([\d\.]*)/i
++            ], [NAME, VERSION], [
++            /\(bb(10);/i                                                        // BlackBerry 10
++            ], [VERSION, [NAME, BLACKBERRY]], [
++            /(?:symbian ?os|symbos|s60(?=;)|series ?60)[-\/ ]?([\w\.]*)/i       // Symbian
++            ], [VERSION, [NAME, 'Symbian']], [
++            /mozilla\/[\d\.]+ \((?:mobile|tablet|tv|mobile; [\w ]+); rv:.+ gecko\/([\w\.]+)/i // Firefox OS
++            ], [VERSION, [NAME, FIREFOX+' OS']], [
++            /web0s;.+rt(tv)/i,
++            /\b(?:hp)?wos(?:browser)?\/([\w\.]+)/i                              // WebOS
++            ], [VERSION, [NAME, 'webOS']], [
++            /watch(?: ?os[,\/]|\d,\d\/)([\d\.]+)/i                              // watchOS
++            ], [VERSION, [NAME, 'watchOS']], [
++
++            // Google Chromecast
++            /crkey\/([\d\.]+)/i                                                 // Google Chromecast
++            ], [VERSION, [NAME, CHROME+'cast']], [
++            /(cros) [\w]+(?:\)| ([\w\.]+)\b)/i                                  // Chromium OS
++            ], [[NAME, CHROMIUM_OS], VERSION],[
++
++            // Smart TVs
++            /panasonic;(viera)/i,                                               // Panasonic Viera
++            /(netrange)mmh/i,                                                   // Netrange
++            /(nettv)\/(\d+\.[\w\.]+)/i,                                         // NetTV
++
++            // Console
++            /(nintendo|playstation) ([wids345portablevuch]+)/i,                 // Nintendo/Playstation
++            /(xbox); +xbox ([^\);]+)/i,                                         // Microsoft Xbox (360, One, X, S, Series X, Series S)
++
++            // Other
++            /\b(joli|palm)\b ?(?:os)?\/?([\w\.]*)/i,                            // Joli/Palm
++            /(mint)[\/\(\) ]?(\w*)/i,                                           // Mint
++            /(mageia|vectorlinux)[; ]/i,                                        // Mageia/VectorLinux
++            /([kxln]?ubuntu|debian|suse|opensuse|gentoo|arch(?= linux)|slackware|fedora|mandriva|centos|pclinuxos|red ?hat|zenwalk|linpus|raspbian|plan 9|minix|risc os|contiki|deepin|manjaro|elementary os|sabayon|linspire)(?: gnu\/linux)?(?: enterprise)?(?:[- ]linux)?(?:-gnu)?[-\/ ]?(?!chrom|package)([-\w\.]*)/i,
++                                                                                // Ubuntu/Debian/SUSE/Gentoo/Arch/Slackware/Fedora/Mandriva/CentOS/PCLinuxOS/RedHat/Zenwalk/Linpus/Raspbian/Plan9/Minix/RISCOS/Contiki/Deepin/Manjaro/elementary/Sabayon/Linspire
++            /(hurd|linux)(?: arm\w*| x86\w*| ?)([\w\.]*)/i,                     // Hurd/Linux
++            /(gnu) ?([\w\.]*)/i,                                                // GNU
++            /\b([-frentopcghs]{0,5}bsd|dragonfly)[\/ ]?(?!amd|[ix346]{1,2}86)([\w\.]*)/i, // FreeBSD/NetBSD/OpenBSD/PC-BSD/GhostBSD/DragonFly
++            /(haiku) (\w+)/i                                                    // Haiku
++            ], [NAME, VERSION], [
++            /(sunos) ?([\w\.\d]*)/i                                             // Solaris
++            ], [[NAME, 'Solaris'], VERSION], [
++            /((?:open)?solaris)[-\/ ]?([\w\.]*)/i,                              // Solaris
++            /(aix) ((\d)(?=\.|\)| )[\w\.])*/i,                                  // AIX
++            /\b(beos|os\/2|amigaos|morphos|openvms|fuchsia|hp-ux|serenityos)/i, // BeOS/OS2/AmigaOS/MorphOS/OpenVMS/Fuchsia/HP-UX/SerenityOS
++            /(unix) ?([\w\.]*)/i                                                // UNIX
++            ], [NAME, VERSION]
++        ]
++    };
++
++    /////////////////
++    // Constructor
++    ////////////////
++
++    var UAParser = function (ua, extensions) {
++
++        if (typeof ua === OBJ_TYPE) {
++            extensions = ua;
++            ua = undefined;
++        }
++
++        if (!(this instanceof UAParser)) {
++            return new UAParser(ua, extensions).getResult();
++        }
++
++        var _navigator = (typeof window !== UNDEF_TYPE && window.navigator) ? window.navigator : undefined;
++        var _ua = ua || ((_navigator && _navigator.userAgent) ? _navigator.userAgent : EMPTY);
++        var _uach = (_navigator && _navigator.userAgentData) ? _navigator.userAgentData : undefined;
++        var _rgxmap = extensions ? extend(regexes, extensions) : regexes;
++        var _isSelfNav = _navigator && _navigator.userAgent == _ua;
++
++        this.getBrowser = function () {
++            var _browser = {};
++            _browser[NAME] = undefined;
++            _browser[VERSION] = undefined;
++            rgxMapper.call(_browser, _ua, _rgxmap.browser);
++            _browser[MAJOR] = majorize(_browser[VERSION]);
++            // Brave-specific detection
++            if (_isSelfNav && _navigator && _navigator.brave && typeof _navigator.brave.isBrave == FUNC_TYPE) {
++                _browser[NAME] = 'Brave';
++            }
++            return _browser;
++        };
++        this.getCPU = function () {
++            var _cpu = {};
++            _cpu[ARCHITECTURE] = undefined;
++            rgxMapper.call(_cpu, _ua, _rgxmap.cpu);
++            return _cpu;
++        };
++        this.getDevice = function () {
++            var _device = {};
++            _device[VENDOR] = undefined;
++            _device[MODEL] = undefined;
++            _device[TYPE] = undefined;
++            rgxMapper.call(_device, _ua, _rgxmap.device);
++            if (_isSelfNav && !_device[TYPE] && _uach && _uach.mobile) {
++                _device[TYPE] = MOBILE;
++            }
++            // iPadOS-specific detection: identified as Mac, but has some iOS-only properties
++            if (_isSelfNav && _device[MODEL] == 'Macintosh' && _navigator && typeof _navigator.standalone !== UNDEF_TYPE && _navigator.maxTouchPoints && _navigator.maxTouchPoints > 2) {
++                _device[MODEL] = 'iPad';
++                _device[TYPE] = TABLET;
++            }
++            return _device;
++        };
++        this.getEngine = function () {
++            var _engine = {};
++            _engine[NAME] = undefined;
++            _engine[VERSION] = undefined;
++            rgxMapper.call(_engine, _ua, _rgxmap.engine);
++            return _engine;
++        };
++        this.getOS = function () {
++            var _os = {};
++            _os[NAME] = undefined;
++            _os[VERSION] = undefined;
++            rgxMapper.call(_os, _ua, _rgxmap.os);
++            if (_isSelfNav && !_os[NAME] && _uach && _uach.platform && _uach.platform != 'Unknown') {
++                _os[NAME] = _uach.platform  
++                                    .replace(/chrome os/i, CHROMIUM_OS)
++                                    .replace(/macos/i, MAC_OS);           // backward compatibility
++            }
++            return _os;
++        };
++        this.getResult = function () {
++            return {
++                ua      : this.getUA(),
++                browser : this.getBrowser(),
++                engine  : this.getEngine(),
++                os      : this.getOS(),
++                device  : this.getDevice(),
++                cpu     : this.getCPU()
++            };
++        };
++        this.getUA = function () {
++            return _ua;
++        };
++        this.setUA = function (ua) {
++            _ua = (typeof ua === STR_TYPE && ua.length > UA_MAX_LENGTH) ? trim(ua, UA_MAX_LENGTH) : ua;
++            return this;
++        };
++        this.setUA(_ua);
++        return this;
++    };
++
++    UAParser.VERSION = LIBVERSION;
++    UAParser.BROWSER =  enumerize([NAME, VERSION, MAJOR]);
++    UAParser.CPU = enumerize([ARCHITECTURE]);
++    UAParser.DEVICE = enumerize([MODEL, VENDOR, TYPE, CONSOLE, MOBILE, SMARTTV, TABLET, WEARABLE, EMBEDDED]);
++    UAParser.ENGINE = UAParser.OS = enumerize([NAME, VERSION]);
++
++    ///////////
++    // Export
++    //////////
++
++    // check js environment
++    if (typeof(exports) !== UNDEF_TYPE) {
++        // nodejs env
++        if (typeof module !== UNDEF_TYPE && module.exports) {
++            exports = module.exports = UAParser;
++        }
++        exports.UAParser = UAParser;
++    } else {
++        // requirejs env (optional)
++        if (typeof(define) === FUNC_TYPE && define.amd) {
++            define(function () {
++                return UAParser;
++            });
++        } else if (typeof window !== UNDEF_TYPE) {
++            // browser env
++            window.UAParser = UAParser;
++        }
++    }
++
++    // jQuery/Zepto specific (optional)
++    // Note:
++    //   In AMD env the global scope should be kept clean, but jQuery is an exception.
++    //   jQuery always exports to global scope, unless jQuery.noConflict(true) is used,
++    //   and we should catch that.
++    var $ = typeof window !== UNDEF_TYPE && (window.jQuery || window.Zepto);
++    if ($ && !$.ua) {
++        var parser = new UAParser();
++        $.ua = parser.getResult();
++        $.ua.get = function () {
++            return parser.getUA();
++        };
++        $.ua.set = function (ua) {
++            parser.setUA(ua);
++            var result = parser.getResult();
++            for (var prop in result) {
++                $.ua[prop] = result[prop];
++            }
++        };
++    }
++
++})(typeof window === 'object' ? window : this);
++
++})(__uaModule, __uaModule.exports);
++const UAParser = __uaModule.exports.UAParser || __uaModule.exports || globalThis.UAParser;
++
++const __cvModule = { exports: {} };
++(function(module, exports) {
++(function (global, factory) {
++    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
++    typeof define === 'function' && define.amd ? define(['exports'], factory) :
++    (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.compareVersions = {}));
++})(this, (function (exports) { 'use strict';
++
++    const semver = /^[v^~<>=]*?(\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+))?(?:-([\da-z\-]+(?:\.[\da-z\-]+)*))?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?)?)?$/i;
++    const validateAndParse = (version) => {
++        if (typeof version !== 'string') {
++            throw new TypeError('Invalid argument expected string');
++        }
++        const match = version.match(semver);
++        if (!match) {
++            throw new Error(`Invalid argument not valid semver ('${version}' received)`);
++        }
++        match.shift();
++        return match;
++    };
++    const isWildcard = (s) => s === '*' || s === 'x' || s === 'X';
++    const tryParse = (v) => {
++        const n = parseInt(v, 10);
++        return isNaN(n) ? v : n;
++    };
++    const forceType = (a, b) => typeof a !== typeof b ? [String(a), String(b)] : [a, b];
++    const compareStrings = (a, b) => {
++        if (isWildcard(a) || isWildcard(b))
++            return 0;
++        const [ap, bp] = forceType(tryParse(a), tryParse(b));
++        if (ap > bp)
++            return 1;
++        if (ap < bp)
++            return -1;
++        return 0;
++    };
++    const compareSegments = (a, b) => {
++        for (let i = 0; i < Math.max(a.length, b.length); i++) {
++            const r = compareStrings(a[i] || '0', b[i] || '0');
++            if (r !== 0)
++                return r;
++        }
++        return 0;
++    };
++
++    /**
++     * Compare [semver](https://semver.org/) version strings to find greater, equal or lesser.
++     * This library supports the full semver specification, including comparing versions with different number of digits like `1.0.0`, `1.0`, `1`, and pre-release versions like `1.0.0-alpha`.
++     * @param v1 - First version to compare
++     * @param v2 - Second version to compare
++     * @returns Numeric value compatible with the [Array.sort(fn) interface](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#Parameters).
++     */
++    const compareVersions = (v1, v2) => {
++        // validate input and split into segments
++        const n1 = validateAndParse(v1);
++        const n2 = validateAndParse(v2);
++        // pop off the patch
++        const p1 = n1.pop();
++        const p2 = n2.pop();
++        // validate numbers
++        const r = compareSegments(n1, n2);
++        if (r !== 0)
++            return r;
++        // validate pre-release
++        if (p1 && p2) {
++            return compareSegments(p1.split('.'), p2.split('.'));
++        }
++        else if (p1 || p2) {
++            return p1 ? -1 : 1;
++        }
++        return 0;
++    };
++
++    /**
++     * Compare [semver](https://semver.org/) version strings using the specified operator.
++     *
++     * @param v1 First version to compare
++     * @param v2 Second version to compare
++     * @param operator Allowed arithmetic operator to use
++     * @returns `true` if the comparison between the firstVersion and the secondVersion satisfies the operator, `false` otherwise.
++     *
++     * @example
++     * ```
++     * compare('10.1.8', '10.0.4', '>'); // return true
++     * compare('10.0.1', '10.0.1', '='); // return true
++     * compare('10.1.1', '10.2.2', '<'); // return true
++     * compare('10.1.1', '10.2.2', '<='); // return true
++     * compare('10.1.1', '10.2.2', '>='); // return false
++     * ```
++     */
++    const compare = (v1, v2, operator) => {
++        // validate input operator
++        assertValidOperator(operator);
++        // since result of compareVersions can only be -1 or 0 or 1
++        // a simple map can be used to replace switch
++        const res = compareVersions(v1, v2);
++        return operatorResMap[operator].includes(res);
++    };
++    const operatorResMap = {
++        '>': [1],
++        '>=': [0, 1],
++        '=': [0],
++        '<=': [-1, 0],
++        '<': [-1],
++        '!=': [-1, 1],
++    };
++    const allowedOperators = Object.keys(operatorResMap);
++    const assertValidOperator = (op) => {
++        if (typeof op !== 'string') {
++            throw new TypeError(`Invalid operator type, expected string but got ${typeof op}`);
++        }
++        if (allowedOperators.indexOf(op) === -1) {
++            throw new Error(`Invalid operator, expected one of ${allowedOperators.join('|')}`);
++        }
++    };
++
++    /**
++     * Match [npm semver](https://docs.npmjs.com/cli/v6/using-npm/semver) version range.
++     *
++     * @param version Version number to match
++     * @param range Range pattern for version
++     * @returns `true` if the version number is within the range, `false` otherwise.
++     *
++     * @example
++     * ```
++     * satisfies('1.1.0', '^1.0.0'); // return true
++     * satisfies('1.1.0', '~1.0.0'); // return false
++     * ```
++     */
++    const satisfies = (version, range) => {
++        // clean input
++        range = range.replace(/([><=]+)\s+/g, '$1');
++        // handle multiple comparators
++        if (range.includes('||')) {
++            return range.split('||').some((r) => satisfies(version, r));
++        }
++        else if (range.includes(' - ')) {
++            const [a, b] = range.split(' - ', 2);
++            return satisfies(version, `>=${a} <=${b}`);
++        }
++        else if (range.includes(' ')) {
++            return range
++                .trim()
++                .replace(/\s{2,}/g, ' ')
++                .split(' ')
++                .every((r) => satisfies(version, r));
++        }
++        // if no range operator then "="
++        const m = range.match(/^([<>=~^]+)/);
++        const op = m ? m[1] : '=';
++        // if gt/lt/eq then operator compare
++        if (op !== '^' && op !== '~')
++            return compare(version, range, op);
++        // else range of either "~" or "^" is assumed
++        const [v1, v2, v3, , vp] = validateAndParse(version);
++        const [r1, r2, r3, , rp] = validateAndParse(range);
++        const v = [v1, v2, v3];
++        const r = [r1, r2 !== null && r2 !== void 0 ? r2 : 'x', r3 !== null && r3 !== void 0 ? r3 : 'x'];
++        // validate pre-release
++        if (rp) {
++            if (!vp)
++                return false;
++            if (compareSegments(v, r) !== 0)
++                return false;
++            if (compareSegments(vp.split('.'), rp.split('.')) === -1)
++                return false;
++        }
++        // first non-zero number
++        const nonZero = r.findIndex((v) => v !== '0') + 1;
++        // pointer to where segments can be >=
++        const i = op === '~' ? 2 : nonZero > 1 ? nonZero : 1;
++        // before pointer must be equal
++        if (compareSegments(v.slice(0, i), r.slice(0, i)) !== 0)
++            return false;
++        // after pointer must be >=
++        if (compareSegments(v.slice(i), r.slice(i)) === -1)
++            return false;
++        return true;
++    };
++
++    /**
++     * Validate [semver](https://semver.org/) version strings.
++     *
++     * @param version Version number to validate
++     * @returns `true` if the version number is a valid semver version number, `false` otherwise.
++     *
++     * @example
++     * ```
++     * validate('1.0.0-rc.1'); // return true
++     * validate('1.0-rc.1'); // return false
++     * validate('foo'); // return false
++     * ```
++     */
++    const validate = (version) => typeof version === 'string' && /^[v\d]/.test(version) && semver.test(version);
++    /**
++     * Validate [semver](https://semver.org/) version strings strictly. Will not accept wildcards and version ranges.
++     *
++     * @param version Version number to validate
++     * @returns `true` if the version number is a valid semver version number `false` otherwise
++     *
++     * @example
++     * ```
++     * validate('1.0.0-rc.1'); // return true
++     * validate('1.0-rc.1'); // return false
++     * validate('foo'); // return false
++     * ```
++     */
++    const validateStrict = (version) => typeof version === 'string' &&
++        /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/.test(version);
++
++    exports.compare = compare;
++    exports.compareVersions = compareVersions;
++    exports.satisfies = satisfies;
++    exports.validate = validate;
++    exports.validateStrict = validateStrict;
++
++}));
++//# sourceMappingURL=index.js.map
++
++})(__cvModule, __cvModule.exports);
++const { compare } = __cvModule.exports;
++
++/**
++ * Encode given buffer or decode given string with Base64URL.
++ */
++class Base64URL {
++    /**
++     * Convert bytes into a base64url-encoded string
++     */
++    static encode(buffer) {
++        const base64 = globalThis.btoa(String.fromCharCode(...new Uint8Array(buffer)));
++        return base64.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
++    }
++    /**
++     * Convert a base64url-encoded string into bytes
++     */
++    static decode(base64url) {
++        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
++        const binStr = globalThis.atob(base64);
++        const bin = new Uint8Array(binStr.length);
++        for (let i = 0; i < binStr.length; i++) {
++            bin[i] = binStr.charCodeAt(i);
++        }
++        return bin.buffer;
++    }
++}
++
++
++
++function isAuthenticatorAssertionResponse(value) {
++    if (typeof value !== 'object') {
++        return false;
++    }
++    if (value?.authenticatorData === undefined ||
++        typeof value?.authenticatorData !== 'object') {
++        return false;
++    }
++    return true;
++}
++function isAuthenticatorAttestationResponse(value) {
++    if (typeof value !== 'object') {
++        return false;
++    }
++    if (value?.attestationObject === undefined ||
++        typeof value?.attestationObject !== 'object') {
++        return false;
++    }
++    return true;
++}
++/**
++ * Polyfill `PublicKeyCredential.parseCreationOptionsFromJSON`
++ *
++ * See https://w3c.github.io/webauthn/#sctn-parseCreationOptionsFromJSON
++ */
++function parseCreationOptionsFromJSON(options) {
++    const user = {
++        ...options.user,
++        id: Base64URL.decode(options.user.id),
++    };
++    const challenge = Base64URL.decode(options.challenge);
++    const excludeCredentials = options.excludeCredentials?.map((cred) => {
++        return {
++            ...cred,
++            id: Base64URL.decode(cred.id),
++            transports: cred.transports,
++        };
++    }) ?? [];
++    const toReturn = {
++        ...options,
++        user,
++        challenge,
++        excludeCredentials,
++    };
++    return toReturn;
++}
++/**
++ * Polyfill `PublicKeyCredential.parseRequestOptionsFromJSON`
++ *
++ * See https://w3c.github.io/webauthn/#sctn-parseRequestOptionsFromJSON
++ */
++function parseRequestOptionsFromJSON(options) {
++    const challenge = Base64URL.decode(options.challenge);
++    const allowCredentials = options.allowCredentials?.map((cred) => {
++        return {
++            ...cred,
++            id: Base64URL.decode(cred.id),
++            transports: cred.transports,
++        };
++    }) ?? [];
++    const toReturn = {
++        ...options,
++        allowCredentials,
++        challenge,
++    };
++    return toReturn;
++}
++/**
++ * Polyfill `PublicKeyCredential.prototype.toJSON`
++ *
++ * See https://w3c.github.io/webauthn/#dom-publickeycredential-tojson
++ */
++function toJSON() {
++    try {
++        const id = this.id;
++        const rawId = Base64URL.encode(this.rawId);
++        const authenticatorAttachment = this.authenticatorAttachment;
++        const clientExtensionResults = {};
++        const type = this.type;
++        // This is authentication.
++        if (isAuthenticatorAssertionResponse(this.response)) {
++            return {
++                id,
++                rawId,
++                response: {
++                    authenticatorData: Base64URL.encode(this.response.authenticatorData),
++                    clientDataJSON: Base64URL.encode(this.response.clientDataJSON),
++                    signature: Base64URL.encode(this.response.signature),
++                    userHandle: this.response.userHandle
++                        ? Base64URL.encode(this.response.userHandle)
++                        : undefined,
++                },
++                authenticatorAttachment,
++                clientExtensionResults,
++                type,
++            };
++        }
++        if (isAuthenticatorAttestationResponse(this.response)) {
++            // This is registration.
++            return {
++                id,
++                rawId,
++                response: {
++                    clientDataJSON: Base64URL.encode(this.response.clientDataJSON),
++                    attestationObject: Base64URL.encode(this.response.attestationObject),
++                    transports: this.response?.getTransports() || [],
++                },
++                authenticatorAttachment,
++                clientExtensionResults,
++                type,
++            };
++        }
++        throw new Error('Unexpected object.');
++    }
++    catch (error) {
++        console.error(error);
++        throw error;
++    }
++}
++/**
++ * Make sure at least PublicKeyCredential is defined before trying to polyfill anything on it
++ */
++if (globalThis.PublicKeyCredential) {
++    // @ts-ignore: We're polyfilling this, so ignore whether TS knows about this or not
++    if (!PublicKeyCredential.parseCreationOptionsFromJSON) {
++        Object.defineProperty(PublicKeyCredential, 'parseCreationOptionsFromJSON', {
++            value: parseCreationOptionsFromJSON,
++        });
++    }
++    // @ts-ignore: We're polyfilling this, so ignore whether TS knows about this or not
++    if (!PublicKeyCredential.parseRequestOptionsFromJSON) {
++        Object.defineProperty(PublicKeyCredential, 'parseRequestOptionsFromJSON', {
++            value: parseRequestOptionsFromJSON,
++        });
++    }
++    // @ts-ignore: We're polyfilling this, so ignore whether TS knows about this or not
++    if (!PublicKeyCredential.prototype.toJSON) {
++        Object.defineProperty(PublicKeyCredential.prototype, 'toJSON', {
++            value: toJSON,
++        });
++    }
++}
++
++
++
++
++class isVersion {
++    constructor(ua) {
++        Object.defineProperty(this, "iOS174To183", {
++            enumerable: true,
++            configurable: true,
++            writable: true,
++            value: void 0
++        });
++        Object.defineProperty(this, "safari174To183", {
++            enumerable: true,
++            configurable: true,
++            writable: true,
++            value: void 0
++        });
++        Object.defineProperty(this, "iOS18OrLater", {
++            enumerable: true,
++            configurable: true,
++            writable: true,
++            value: void 0
++        });
++        Object.defineProperty(this, "desktopBlink128OrLater", {
++            enumerable: true,
++            configurable: true,
++            writable: true,
++            value: void 0
++        });
++        Object.defineProperty(this, "desktopBlink135OrLater", {
++            enumerable: true,
++            configurable: true,
++            writable: true,
++            value: void 0
++        });
++        const { browser, engine, os } = UAParser(ua);
++        if (!browser?.version || !browser?.name) {
++            throw new Error('Browser version not found.');
++        }
++        if (!engine?.version || !engine?.name) {
++            throw new Error('Engine version not found.');
++        }
++        if (!os?.version || !os?.name) {
++            throw new Error('OS version not found.');
++        }
++        // Between iOS 17.4 (inclusive) and 18.3 (inclusive), defined by version >= '17.4' and version < '18.4'
++        this.iOS174To183 = os.name === 'iOS' &&
++            compare(os.version, '17.4', '>=') &&
++            compare(os.version, '18.4', '<');
++        // Between macOS Safari 17.4 and 18.3
++        this.safari174To183 = os.name === 'Mac OS' &&
++            browser.name === 'Safari' &&
++            compare(browser.version, '17.4', '>=') &&
++            compare(browser.version, '18.4', '<');
++        // iOS 18 or later
++        this.iOS18OrLater = os.name === 'iOS' && compare(os.version, '18', '>=');
++        // Blink 128 or later
++        this.desktopBlink128OrLater = engine.name === 'Blink' &&
++            ['Mac OS', 'Windows', 'Linux', 'Chrome OS'].includes(os.name) &&
++            compare(engine.version, '128', '>=');
++        // Blink 135 or later
++        this.desktopBlink135OrLater = engine.name === 'Blink' &&
++            ['macOS', 'Windows', 'Linux', 'Chrome OS'].includes(os.name) &&
++            compare(engine.version, '135', '>=');
++    }
++}
++
++
++
++function prepareGetClientCapabilities(version) {
++    const originalGetClientCapabilities = PublicKeyCredential?.getClientCapabilities;
++    return async function () {
++        let conditionalCreate = false;
++        let conditionalGet = false;
++        // `hybridTransport` is unsupported since it requires Bluetooth
++        // detection.
++        let hybridTransport = undefined;
++        // `passkeyPlatformAuthenticator` is unsupported either since
++        // `hybridTransport` is unavailable.
++        let passkeyPlatformAuthenticator = undefined;
++        let relatedOrigins = false;
++        let signalAllAcceptedCredentials = false;
++        let signalCurrentUserDetails = false;
++        let signalUnknownCredential = false;
++        let userVerifyingPlatformAuthenticator = false;
++        // If the browser is above macOS Safari 17.4 and below Safari 18.3, or above
++        // iOS 17.4 and below iOS 18.3, replace `conditionalMediation` with
++        // `conditionalGet`.
++        if ((version.safari174To183 || version.iOS174To183) && originalGetClientCapabilities) {
++            const capabilities = await originalGetClientCapabilities();
++            conditionalCreate = capabilities?.conditionalCreate;
++            // Replace `conditionalMediation` with `conditionalGet`.
++            conditionalGet = capabilities?.conditionalMediation;
++            hybridTransport = capabilities?.hybridTransport;
++            passkeyPlatformAuthenticator = capabilities?.passkeyPlatformAuthenticator;
++            relatedOrigins = capabilities?.relatedOrigins;
++            signalAllAcceptedCredentials = capabilities?.signalAllAcceptedCredentials;
++            signalCurrentUserDetails = capabilities?.signalCurrentUserDetails;
++            signalUnknownCredential = capabilities?.signalUnknownCredential;
++            userVerifyingPlatformAuthenticator = capabilities?.userVerifyingPlatformAuthenticator;
++            // Otherwise, `PublicKeyCredential` exists but `getClientCapabilities`
++        }
++        else {
++            if (PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable) {
++                // Are UVPAA and conditional UI available on this browser?
++                userVerifyingPlatformAuthenticator = await PublicKeyCredential
++                    .isUserVerifyingPlatformAuthenticatorAvailable();
++            }
++            if (PublicKeyCredential?.isConditionalMediationAvailable) {
++                // Are UVPAA and conditional UI available on this browser?
++                conditionalGet = await PublicKeyCredential.isConditionalMediationAvailable();
++            }
++            // @ts-ignore: It's okay if this doesn't exist
++            if (PublicKeyCredential?.signalAllAcceptedCredentials) {
++                signalAllAcceptedCredentials = true;
++            }
++            // @ts-ignore: It's okay if this doesn't exist
++            if (PublicKeyCredential?.signalCurrentUserDetails) {
++                signalCurrentUserDetails = true;
++            }
++            // @ts-ignore: It's okay if this doesn't exist
++            if (PublicKeyCredential?.signalUnknownCredential) {
++                signalUnknownCredential = true;
++            }
++            // `conditionalCreate` is `true` on Safari 18+ or Chromium 135+
++            conditionalCreate = version.desktopBlink135OrLater || version.iOS18OrLater;
++            // `relatedOrigins` is `true` on Chromium 128+ or Safari 18+
++            relatedOrigins = version.desktopBlink128OrLater || version.iOS18OrLater;
++        }
++        return Promise.resolve({
++            conditionalCreate,
++            conditionalGet,
++            hybridTransport,
++            passkeyPlatformAuthenticator,
++            relatedOrigins,
++            signalAllAcceptedCredentials,
++            signalCurrentUserDetails,
++            signalUnknownCredential,
++            userVerifyingPlatformAuthenticator,
++        });
++    };
++}
++function applyPolyfill(ua = '') {
++    /**
++     * Make sure at least PublicKeyCredential is defined before trying to polyfill anything on it
++     */
++    if (!globalThis.PublicKeyCredential) {
++        return;
++    }
++    let version;
++    try {
++        version = new isVersion(ua);
++    }
++    catch {
++        console.info('expected exception for the test.');
++        return;
++    }
++    // Prepare getClientCapabilities only if `PublicKeyCredential` is available.
++    const getClientCapabilities = prepareGetClientCapabilities(version);
++    /**
++     * Polyfill `PublicKeyCredential.getClientCapabilities`
++     *
++     * See https://w3c.github.io/webauthn/#sctn-getClientCapabilities
++     */
++    if (!PublicKeyCredential.getClientCapabilities || version.safari174To183 || version.iOS174To183) {
++        Object.defineProperty(PublicKeyCredential, 'getClientCapabilities', {
++            value: getClientCapabilities,
++        });
++    }
++}
++applyPolyfill();
++
++
++export {
++  Base64URL,
++  parseCreationOptionsFromJSON,
++  parseRequestOptionsFromJSON,
++  toJSON,
++  prepareGetClientCapabilities,
++  applyPolyfill
++};
