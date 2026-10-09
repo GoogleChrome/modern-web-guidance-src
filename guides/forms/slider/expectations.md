@@ -3,7 +3,7 @@
 - The implementation MUST configure an initial `value` and, when the use case differs from the native defaults (`min="0"`, `max="100"`, `step="1"`), appropriate `min`, `max`, and `step` attributes.
 - The implementation MUST preserve a usable interaction area and MUST provide a visible `:focus-visible` indicator with sufficient contrast after changing the native appearance.
 - For custom visual styling, the implementation MUST use `appearance: none` and the established browser-specific slider pseudo-elements, including the relevant `::-webkit-slider-runnable-track`, `::-webkit-slider-thumb`, `::-moz-range-track`, `::-moz-range-thumb`, or `::-moz-range-progress` selectors.
-- Consumer-facing styling values SHOULD be exposed as custom properties on the range input, allowing themes to customise the slider without targeting pseudo-elements directly.
+- Each of the `::-moz-` or `::-webkit-` prefixed pseudo-elements must only be used once, with variations going through custom properties.
 - The implementation MUST retain a usable track, thumb, and active-value indication across supported browsers. Where the active fill needs the control’s value, it MUST derive progress from the actual `min`, `max`, and `value` rather than assuming a 0–100 range.
 - The implementation MUST NOT rely on generated content from slider pseudo-elements for labels, values, instructions, or other essential information.
 - The implementation MUST account for right-to-left layouts and MUST NOT hard-code a left-to-right active-track direction without an explicit RTL strategy.
