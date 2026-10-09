@@ -28,7 +28,7 @@ Keep media, title, supporting content, and actions in meaningful source order; d
 
 ## Implementation
 
-When a card’s layout should change with its available width—for example, switching from stacked media and content to a side-by-side layout—put the size-query container on a wrapper around the card. See {{ GUIDE_REF("size-aware-styling") }} for the container-query setup.
+This example shows a content card with media, a linked title, supporting text, and separate actions. The wrapper provides the size-query container; the card starts stacked, then the CSS below places its media beside the content when the wrapper is wide enough. See {{ GUIDE_REF("size-aware-styling") }} for the container-query pattern.
 
 ```html
 <div class="card-container">
