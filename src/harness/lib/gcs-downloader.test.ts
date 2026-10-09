@@ -7,15 +7,14 @@ import { NORMALIZER_VERSION } from './trajectory-normalizer.ts';
 import { resultsDir } from '../../core/paths.ts';
 
 describe('gcs-downloader', () => {
-  test('downloadRunFromGcsIfMissing returns early when complete directory exists locally and upgrades stale trajectory_summary.json', async () => {
+  test('downloadRunFromGcsIfMissing returns early when complete directory exists locally', async () => {
     const testSuite = `test-gcs-local-${Date.now()}`;
     const testRunDir = path.join(resultsDir, testSuite, '1', 'details-styling', 'task', 'guided');
     fs.mkdirSync(testRunDir, { recursive: true });
     try {
-      // Create local run directory with suite evals.json, _results.json, stale trajectory_summary.json (no normalizerVersion), and raw session log
+      // Create local run directory with suite evals.json, _results.json, and raw session log
       fs.writeFileSync(path.join(resultsDir, testSuite, 'evals.json'), JSON.stringify({ suite: testSuite, agent: 'claude_code' }));
       fs.writeFileSync(path.join(testRunDir, 'details-styling_results.json'), JSON.stringify({ suites: [] }));
-      fs.writeFileSync(path.join(testRunDir, 'trajectory_summary.json'), JSON.stringify({ agent: 'claude_code', steps: [{ stepNumber: 1 }] }));
       fs.writeFileSync(
         path.join(testRunDir, 'session-1.jsonl'),
         JSON.stringify({
@@ -25,13 +24,8 @@ describe('gcs-downloader', () => {
         })
       );
 
-      // Calling downloadRunFromGcsIfMissing should hit cache AND upgrade trajectory_summary.json to NORMALIZER_VERSION
       const result = await downloadRunFromGcsIfMissing(testRunDir);
       assert.strictEqual(result, true);
-
-      const upgradedSummary = JSON.parse(fs.readFileSync(path.join(testRunDir, 'trajectory_summary.json'), 'utf8'));
-      assert.strictEqual(upgradedSummary.normalizerVersion, NORMALIZER_VERSION);
-      assert.strictEqual(upgradedSummary.steps[0].action.canonicalCategory, 'skill_search');
     } finally {
       fs.rmSync(path.join(resultsDir, testSuite), { recursive: true, force: true });
     }

@@ -172,6 +172,9 @@ describe('compare-evals pipeline', () => {
     const rawWithFallbackHeading = `Thinking about the problem...\n### Custom Report Heading\nBody text`;
     assert.strictEqual(stripAgentNarration(rawWithFallbackHeading), `### Custom Report Heading\nBody text`);
 
+    const rawWithH2Heading = `Preamble text...\n## 1. Summary Heading\nBody text`;
+    assert.strictEqual(stripAgentNarration(rawWithH2Heading), `## 1. Summary Heading\nBody text`);
+
     const rawClean = `### 1. First Meaningful Divergence\nDirect output.`;
     assert.strictEqual(stripAgentNarration(rawClean), rawClean);
   });

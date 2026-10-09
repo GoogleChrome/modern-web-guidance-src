@@ -2,9 +2,9 @@ import type { GuideContext, RunContext, TaggedStep } from './compare-evals.ts';
 
 export const MAX_GUIDE_PROMPT_CHARS = 8000;
 export const MAX_EXPECTATIONS_PROMPT_CHARS = 6000;
-export const MAX_GRADER_PROMPT_CHARS = 12000;
-export const MAX_DIFF_PROMPT_CHARS = 15000;
-export const MAX_INLINE_STEPS_PER_RUN = 80;
+export const MAX_GRADER_PROMPT_CHARS = 8000;
+export const MAX_DIFF_PROMPT_CHARS = 10000;
+export const MAX_INLINE_STEPS_PER_RUN = 50;
 export const MAX_TOTAL_COMBINED_PROMPT_BYTES = 92000;
 const MAX_PROMPT_FIELD_CHARS = 1500;
 const MAX_FAILED_TRACES_CHARS = 2500;
