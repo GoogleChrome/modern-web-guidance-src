@@ -142,7 +142,7 @@ export function buildIssueContent(
     if (featureData) {
       relatedLinks.push(`#${featureData.number}`);
       const sameMilestone =
-        existingMilestoneNumber === undefined ||
+        existingMilestoneNumber == null ||
         existingMilestoneNumber === featureData.milestoneNumber;
       if (!priorityLabel && featureData.priorityLabel && sameMilestone) {
         priorityLabel = featureData.priorityLabel;
@@ -520,17 +520,17 @@ async function syncIssue(
       return { issueNumber, changed: false };
     }
 
-    const { needsClose, needsReopen } = getIssueStateChanges(existingIssue.state, statusName);
+    const { needsClose } = getIssueStateChanges(existingIssue.state, statusName);
     const currentLabels = (existingIssue.labels as any[]).map(l => typeof l === 'string' ? l : l.name);
     const desiredLabels = getDesiredLabels(currentLabels, priorityLabel);
     const labelsChanged = desiredLabels.length !== currentLabels.length || desiredLabels.some(l => !currentLabels.includes(l));
     const existingMilestoneNumber = existingIssue.milestone ? existingIssue.milestone.number : null;
     const targetMilestoneNumber = existingMilestoneNumber || milestoneNumber;
     const milestoneChanged = existingMilestoneNumber !== targetMilestoneNumber;
-    const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen || needsClose || labelsChanged || milestoneChanged;
+    const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsClose || labelsChanged || milestoneChanged;
 
     if (needsUpdate) {
-      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}${needsClose ? ' (closing as completed)' : ''}${labelsChanged ? ' (updating labels)' : ''}${milestoneChanged ? ' (updating milestone)' : ''}...`);
+      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsClose ? ' (closing as completed)' : ''}${labelsChanged ? ' (updating labels)' : ''}${milestoneChanged ? ' (updating milestone)' : ''}...`);
       if (!IS_DRY_RUN) {
         await octokit.rest.issues.update({
           owner: ORG,
@@ -540,14 +540,12 @@ async function syncIssue(
           body: issueBody,
           labels: desiredLabels,
           milestone: targetMilestoneNumber,
-          ...(needsReopen ? { state: 'open' } : {}),
           ...(needsClose ? { state: 'closed', state_reason: 'completed' } : {})
         });
       } else {
         if (existingIssue.title !== issueTitle) console.log(`[DRY RUN] Title: ${issueTitle}`);
         if (labelsChanged) console.log(`[DRY RUN] Labels: ${desiredLabels.join(', ')}`);
         if (milestoneChanged) console.log(`[DRY RUN] Milestone: ${targetMilestoneNumber}`);
-        if (needsReopen) console.log(`[DRY RUN] State: open`);
         if (needsClose) console.log(`[DRY RUN] State: closed (completed)`);
         if (existingIssue.body !== issueBody) console.log(`[DRY RUN] Body:\n${issueBody}\n`);
       }
@@ -587,6 +585,31 @@ async function syncIssue(
       if (isComplete) console.log(`[DRY RUN] State: closed (completed)`);
       console.log(`[DRY RUN] Body:\n${issueBody}\n`);
       return { issueNumber: 0, changed: true };
+    }
+  }
+}
+
+export function preserveTemplateUseCases(
+  allUseCases: any[],
+  activeIssueNumbers: Set<number>,
+  featureUseCaseMap: Map<string, UseCaseEntry[]>,
+  featuresWithActiveUseCases: Set<string>,
+  featuresWithAnyUseCases: Set<string>
+): void {
+  for (const issue of allUseCases) {
+    if (activeIssueNumbers.has(issue.number)) continue;
+    const body = issue.body ?? '';
+    if (issue.state === 'open' && !body.includes(REQUIRED_FILES_START)) {
+      activeIssueNumbers.add(issue.number);
+      const slugMatch = body.match(/###\s+Use case slug\s*\r?\n+([^\r\n#]+)/i) || issue.title?.match(/Create guide(?: and evals)? for the (.+) use case/i);
+      const slug = slugMatch ? slugMatch[1].trim().toLowerCase() : `issue-${issue.number}`;
+      for (const id of extractFeatureIds(body)) {
+        const normalizedId = stripTmpPrefix(id);
+        featuresWithAnyUseCases.add(normalizedId);
+        featuresWithActiveUseCases.add(normalizedId);
+        if (!featureUseCaseMap.has(normalizedId)) featureUseCaseMap.set(normalizedId, []);
+        featureUseCaseMap.get(normalizedId)!.push({ name: slug, issueNumber: issue.number, complete: false });
+      }
     }
   }
 }
@@ -669,22 +692,7 @@ async function processUseCases(
   }
 
   // Preserve open template-filed new-use-case issues that do not yet have a guide directory on disk
-  for (const issue of allUseCases) {
-    if (activeIssueNumbers.has(issue.number)) continue;
-    const body = issue.body ?? '';
-    if (issue.state === 'open' && !body.includes(REQUIRED_FILES_START)) {
-      activeIssueNumbers.add(issue.number);
-      const slugMatch = body.match(/###\s+Use case slug\s*\r?\n+([^\r\n#]+)/i) || issue.title?.match(/Create guide(?: and evals)? for the (.+) use case/i);
-      const slug = slugMatch ? slugMatch[1].trim() : `issue-${issue.number}`;
-      for (const id of extractFeatureIds(body)) {
-        const normalizedId = stripTmpPrefix(id);
-        featuresWithAnyUseCases.add(normalizedId);
-        featuresWithActiveUseCases.add(normalizedId);
-        if (!featureUseCaseMap.has(normalizedId)) featureUseCaseMap.set(normalizedId, []);
-        featureUseCaseMap.get(normalizedId)!.push({ name: slug, issueNumber: issue.number, complete: false });
-      }
-    }
-  }
+  preserveTemplateUseCases(allUseCases, activeIssueNumbers, featureUseCaseMap, featuresWithActiveUseCases, featuresWithAnyUseCases);
 
   return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors };
 }

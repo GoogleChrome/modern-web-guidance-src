@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, buildRequiredFilesChecklist } from './sync-use-cases.ts';
+import { getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, REQUIRED_FILES_START, buildRequiredFilesChecklist, preserveTemplateUseCases } from './sync-use-cases.ts';
 import { ProjectStatus, validateGuide, getStatusName, processGuideInventory, type GuideInventory } from '../core/guide-validation.ts';
 import { pendingFeatures } from '../core/baseline.ts';
 
@@ -658,6 +658,15 @@ describe('buildIssueContent', () => {
     assert.strictEqual(priorityLabel, 'P2');
   });
 
+  test('inherits milestone and priority when existingMilestoneNumber is null (unassigned existing issue)', () => {
+    const featureMap = new Map([
+      ['feature-a', { number: 1, priorityLabel: 'P1', milestoneNumber: 3, state: 'open', body: '' }],
+    ]);
+    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['feature-a'], 'guides/ux/my-use-case', featureMap, makeInventory(), null);
+    assert.strictEqual(milestoneNumber, 3);
+    assert.strictEqual(priorityLabel, 'P1');
+  });
+
   test('omits related features section when no features have linked issues', () => {
     const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap, makeInventory());
     assert.ok(!issueBody.includes('Related features'));
@@ -925,3 +934,57 @@ Body content.
     }
   });
 });
+
+describe('preserveTemplateUseCases', () => {
+  test('preserves open template-filed new-use-case issues lacking REQUIRED_FILES_START and registers linked features', () => {
+    const activeIssueNumbers = new Set<number>([10]);
+    const featureUseCaseMap = new Map();
+    const featuresWithActiveUseCases = new Set<string>();
+    const featuresWithAnyUseCases = new Set<string>();
+
+    const allUseCases = [
+      {
+        number: 10,
+        state: 'open',
+        title: 'Create guide and evals for the existing-on-disk use case',
+        body: '### web-feature-id\n\ndialog-closedby\n',
+      },
+      {
+        number: 25,
+        state: 'open',
+        title: 'Create guide for the Custom-Scrollbars use case',
+        body: '### Use case slug\n\nCustom-Scrollbars\n\n### Category\n\nvisual-design\n\n### Affected web-feature IDs\n\nscrollbar-color, tmp-scroll-axis-lock\n',
+      },
+      {
+        number: 26,
+        state: 'open',
+        title: 'Create guide and evals for the orphaned-bot-issue use case',
+        body: `Some desc\n\n${REQUIRED_FILES_START}\n**Required files:**\n`,
+      },
+      {
+        number: 27,
+        state: 'closed',
+        title: 'Create guide for the closed-template use case',
+        body: '### Use case slug\n\nclosed-template\n',
+      },
+    ];
+
+    preserveTemplateUseCases(
+      allUseCases,
+      activeIssueNumbers,
+      featureUseCaseMap,
+      featuresWithActiveUseCases,
+      featuresWithAnyUseCases
+    );
+
+    assert.ok(activeIssueNumbers.has(25), 'Should preserve open template issue #25');
+    assert.ok(!activeIssueNumbers.has(26), 'Should NOT preserve bot-synced issue #26 that has REQUIRED_FILES_START');
+    assert.ok(!activeIssueNumbers.has(27), 'Should NOT preserve closed issue #27');
+    assert.ok(featuresWithActiveUseCases.has('scrollbar-color'));
+    assert.ok(featuresWithActiveUseCases.has('scroll-axis-lock'));
+    assert.deepStrictEqual(featureUseCaseMap.get('scrollbar-color'), [
+      { name: 'custom-scrollbars', issueNumber: 25, complete: false },
+    ]);
+  });
+});
+
