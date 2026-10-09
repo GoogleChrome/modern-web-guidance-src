@@ -73,8 +73,8 @@ test('computeTargetSummary extracts metrics and flags from evals.json correctly'
   const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-dev-report-'));
   const tmpDir = path.join(rootTmp, 'size-aware-styling');
   const category = 'css';
-  const slug = 'size-aware-styling';
-  const guideResultsDir = getGuideResultsDir({ category, slug });
+  const name = 'size-aware-styling';
+  const guideResultsDir = getGuideResultsDir({ category, name });
   const testResultsDir = path.join(guideResultsDir, 'daily-grind');
   fs.mkdirSync(testResultsDir, { recursive: true });
 
@@ -118,7 +118,7 @@ test('computeTargetSummary extracts metrics and flags from evals.json correctly'
     fs.rmSync(guideResultsDir, { recursive: true, force: true });
   });
 
-  const summary = computeTargetSummary(tmpDir, 'daily-grind', { category, slug });
+  const summary = computeTargetSummary(tmpDir, 'daily-grind', { category, name });
   assert.ok(summary !== null);
   assert.strictEqual(summary?.baseApp, 'daily-grind');
   assert.strictEqual(summary?.guidedPassRate, 50);
@@ -130,8 +130,8 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
   const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-evals-interleaved-'));
   const tmpDir = path.join(rootTmp, 'size-aware-styling');
   const category = 'css';
-  const slug = 'size-aware-styling';
-  const guideResultsDir = getGuideResultsDir({ category, slug });
+  const name = 'size-aware-styling';
+  const guideResultsDir = getGuideResultsDir({ category, name });
   const dgDir = path.join(guideResultsDir, 'daily-grind');
   const dtDir = path.join(guideResultsDir, 'devtools-times');
   fs.mkdirSync(dgDir, { recursive: true });
@@ -162,7 +162,7 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
     },
   ];
 
-  const report = buildInitialDevReport(tmpDir, summaries, { category, slug });
+  const report = buildInitialDevReport(tmpDir, summaries, { category, name });
   assert.ok(report.includes('# Evaluation Report: size-aware-styling'));
   assert.ok(report.includes('## Target: `daily-grind` (Status: `HEALTHY`)'));
   assert.ok(report.includes('### Evaluation Results'));

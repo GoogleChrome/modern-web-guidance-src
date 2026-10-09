@@ -151,7 +151,11 @@ export const evalGapFixCli = {
     git(['checkout', '-f', 'main']);
     git(['clean', '-fd', '--', dir]);
   },
-  deleteLocalBranch: (branch: string) => { git(['branch', '-D', branch]); },
+  deleteLocalBranch: (branch: string) => {
+    if (git(['for-each-ref', '--format=%(refname:lstrip=2)', `refs/heads/${branch}`])) {
+      git(['branch', '-D', branch]);
+    }
+  },
   /** `gd-dev/*` branch names that exist locally or on origin. */
   listDevBranches: (): Set<string> => {
     const local = git(['for-each-ref', '--format=%(refname:lstrip=2)', 'refs/heads/gd-dev/']).split('\n');

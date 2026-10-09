@@ -161,8 +161,8 @@ describe('fixEvalGaps', () => {
   afterEach(() => {
     Object.assign(evalGapFixCli, originalCli);
     fs.rmSync(tempGuidesRoot, { recursive: true, force: true });
-    for (const name of ['scrollspy', 'spinner', 'progress-ring']) {
-      fs.rmSync(getGuideResultsDir({ category: 'css', slug: name }), { recursive: true, force: true });
+    for (const name of ['scrollspy', 'spinner', 'progress-ring', 'a', 'b']) {
+      fs.rmSync(getGuideResultsDir({ category: 'css', name }), { recursive: true, force: true });
     }
   });
 

@@ -3,28 +3,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { cGreen, cCyan, cRed, cDim } from '../core/colors.ts';
 import { REPORT_FILE } from '../core/guide-validation.ts';
-import { getGuideResultsDir, guidesDir } from '../core/paths.ts';
-
-export function resolveGuideResultsDir(targetDir: string, guideInfo?: { category?: string; slug?: string }): string {
-  if (guideInfo?.category && guideInfo?.slug) {
-    return getGuideResultsDir({ category: guideInfo.category, slug: guideInfo.slug });
-  }
-  const resolvedTarget = path.resolve(targetDir);
-  const rel = path.relative(guidesDir, resolvedTarget);
-  if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
-    const parts = rel.split(path.sep);
-    if (parts.length >= 2) {
-      return getGuideResultsDir({ category: parts[0], slug: parts[1] });
-    }
-    if (parts.length === 1) {
-      return getGuideResultsDir({ category: parts[0], slug: parts[0] });
-    }
-  }
-  const parts = resolvedTarget.split(path.sep);
-  const slug = parts[parts.length - 1];
-  const category = parts[parts.length - 2] || 'cat';
-  return getGuideResultsDir({ category, slug });
-}
+import { resolveGuideResultsDir, type GuideResultsInventory } from '../core/paths.ts';
 
 export type DevPrLabel = 'gd-dev-content' | 'gd-dev-eval';
 export type DevPrRerunLabel = 'needs-eval-gen' | 'needs-eval-run';
@@ -192,7 +171,7 @@ export function devPrTitle(guideName: string): string {
  * Orchestrates branch push, label determination, and GitHub PR creation or update.
  * Returns the PR URL, or null on failure.
  */
-export async function runDevPr(guideDir: string, guideInfo?: { category?: string; slug?: string }): Promise<string | null> {
+export async function runDevPr(guideDir: string, guideInfo?: Partial<GuideResultsInventory>): Promise<string | null> {
   const resolvedGuideDir = path.resolve(guideDir);
   const guideResultsDir = resolveGuideResultsDir(resolvedGuideDir, guideInfo);
   const reportPath = path.join(guideResultsDir, REPORT_FILE);

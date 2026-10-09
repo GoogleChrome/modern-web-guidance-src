@@ -340,8 +340,8 @@ async function runAgentTest(
 
       // 1. Grade base app (with zero-passrate baseline applied)
       const relGuidePath = path.relative(guidesDir, targetDir);
-      const [category, slug] = relGuidePath.split(path.sep);
-      const guideResultsDir = getGuideResultsDir({ category, slug: slug || guideName });
+      const [category, name] = relGuidePath.split(path.sep);
+      const guideResultsDir = getGuideResultsDir({ category, name: name || guideName });
       const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
       const preResults = await gradeOutput(
         targetsDir,

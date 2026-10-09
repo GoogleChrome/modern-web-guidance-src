@@ -182,8 +182,8 @@ describe('runDevPr', () => {
   it('creates a new PR when no PR exists for branch', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const category = 'cat';
-    const slug = path.basename(tempDir);
-    const resultsDir = getGuideResultsDir({ category, slug });
+    const name = path.basename(tempDir);
+    const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
       path.join(resultsDir, 'report.md'),
@@ -203,7 +203,7 @@ describe('runDevPr', () => {
     };
 
     try {
-      const prUrl = await runDevPr(tempDir, { category, slug });
+      const prUrl = await runDevPr(tempDir, { category, name });
       assert.equal(prUrl, 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/101');
       assert.equal(prCreated, true);
       assert.equal(prTitleArg, `grader updates: ${path.basename(tempDir)}`);
@@ -217,8 +217,8 @@ describe('runDevPr', () => {
   it('updates an existing PR description and removes rerun labels when a PR already exists', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const category = 'cat';
-    const slug = path.basename(tempDir);
-    const resultsDir = getGuideResultsDir({ category, slug });
+    const name = path.basename(tempDir);
+    const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
       path.join(resultsDir, 'report.md'),
@@ -244,7 +244,7 @@ describe('runDevPr', () => {
     };
 
     try {
-      const prUrl = await runDevPr(tempDir, { category, slug });
+      const prUrl = await runDevPr(tempDir, { category, name });
       assert.equal(prUrl, 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42');
       assert.equal(prUpdated, true);
       assert.equal(updatedPrNumber, 42);
@@ -259,8 +259,8 @@ describe('runDevPr', () => {
   it('opens a new PR when the branch has no open PR and no finished PR in its history', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const category = 'cat';
-    const slug = path.basename(tempDir);
-    const resultsDir = getGuideResultsDir({ category, slug });
+    const name = path.basename(tempDir);
+    const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
       path.join(resultsDir, 'report.md'),
@@ -274,7 +274,7 @@ describe('runDevPr', () => {
     devPrCli.createPr = () => 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/43';
 
     try {
-      const prUrl = await runDevPr(tempDir, { category, slug });
+      const prUrl = await runDevPr(tempDir, { category, name });
       assert.equal(prUrl, 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/43');
       assert.equal(edited, false);
     } finally {
@@ -286,8 +286,8 @@ describe('runDevPr', () => {
   it('refuses a branch whose history already contains a merged PR, before pushing', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const category = 'cat';
-    const slug = path.basename(tempDir);
-    const resultsDir = getGuideResultsDir({ category, slug });
+    const name = path.basename(tempDir);
+    const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
       path.join(resultsDir, 'report.md'),
@@ -303,7 +303,7 @@ describe('runDevPr', () => {
     devPrCli.createPr = () => { created = true; return 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/44'; };
 
     try {
-      const prUrl = await runDevPr(tempDir, { category, slug });
+      const prUrl = await runDevPr(tempDir, { category, name });
       assert.strictEqual(prUrl, null);
       assert.equal(pushed, false);
       assert.equal(created, false);
@@ -316,8 +316,8 @@ describe('runDevPr', () => {
   it('automatically creates a new branch if currently on main', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const category = 'cat';
-    const slug = path.basename(tempDir);
-    const resultsDir = getGuideResultsDir({ category, slug });
+    const name = path.basename(tempDir);
+    const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
       path.join(resultsDir, 'report.md'),
@@ -336,7 +336,7 @@ describe('runDevPr', () => {
     devPrCli.createPr = () => 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/105';
 
     try {
-      const prUrl = await runDevPr(tempDir, { category, slug });
+      const prUrl = await runDevPr(tempDir, { category, name });
       assert.ok(prUrl);
       assert.equal(createdBranch, `gd-dev/${path.basename(tempDir)}`);
       assert.equal(current, `gd-dev/${path.basename(tempDir)}`);
@@ -359,8 +359,8 @@ describe('runDevPr', () => {
   it('returns null when gh pr create throws an error', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const category = 'cat';
-    const slug = path.basename(tempDir);
-    const resultsDir = getGuideResultsDir({ category, slug });
+    const name = path.basename(tempDir);
+    const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
       path.join(resultsDir, 'report.md'),
@@ -373,7 +373,7 @@ describe('runDevPr', () => {
     };
 
     try {
-      const prUrl = await runDevPr(tempDir, { category, slug });
+      const prUrl = await runDevPr(tempDir, { category, name });
       assert.strictEqual(prUrl, null);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
@@ -384,8 +384,8 @@ describe('runDevPr', () => {
   it('returns null when gh pr edit throws an error', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const category = 'cat';
-    const slug = path.basename(tempDir);
-    const resultsDir = getGuideResultsDir({ category, slug });
+    const name = path.basename(tempDir);
+    const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
       path.join(resultsDir, 'report.md'),
@@ -402,7 +402,7 @@ describe('runDevPr', () => {
     };
 
     try {
-      const prUrl = await runDevPr(tempDir, { category, slug });
+      const prUrl = await runDevPr(tempDir, { category, name });
       assert.strictEqual(prUrl, null);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
