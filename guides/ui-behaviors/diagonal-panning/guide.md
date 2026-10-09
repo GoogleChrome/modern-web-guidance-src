@@ -19,7 +19,7 @@ Apply `scroll-axis-lock: none` directly to the element that establishes the two-
 
 ### Property Values
 
-- `auto`: The browser may lock the scroll gesture to a single axis when it determines the gesture is predominantly one-dimensional. This is the default (`initial`) value.
+- `auto`: The browser may lock the scroll gesture to a single axis when it determines the gesture is predominantly one-dimensional. This is the default value.
 - `none`: Disables scroll axis-locking. The scroll container applies scroll deltas on both axes simultaneously from the start of the gesture across touchscreens, trackpads, and mouse wheels.
 
 ### 2. Preserve keyboard focusability and accessibility
