@@ -6,28 +6,12 @@ import { getAccessToken, capitalize, normalizeTrajectoryClient, parseResultKey, 
  * @import { StandardizedStep, TrajectorySummary } from '../harness/lib/trajectory-normalizer.ts'
  * @import { CompareSide, TrialSelection } from './evals.d.ts'
  *
- * @typedef {Object} AlignedStepPair
- * @property {StandardizedStep | null} stepA
- * @property {StandardizedStep | null} stepB
- *
- * @typedef {Object} DivergenceInfo
- * @property {number | null} primaryStepA
- * @property {number | null} primaryStepB
- *
- * @typedef {Object} AssertionResult
- * @property {string} message
- * @property {boolean} passed
- *
- * @typedef {Object} PlaywrightSpec
- * @property {string} title
- * @property {boolean} [ok]
- *
- * @typedef {Object} PlaywrightSuite
- * @property {PlaywrightSpec[]} [specs]
- * @property {PlaywrightSuite[]} [suites]
- *
- * @typedef {Object} PlaywrightReport
- * @property {PlaywrightSuite[]} [suites]
+ * @typedef {{ stepA: StandardizedStep | null, stepB: StandardizedStep | null }} AlignedStepPair
+ * @typedef {{ primaryStepA: number | null, primaryStepB: number | null }} DivergenceInfo
+ * @typedef {{ message: string, passed: boolean }} AssertionResult
+ * @typedef {{ title: string, ok?: boolean }} PlaywrightSpec
+ * @typedef {{ specs?: PlaywrightSpec[], suites?: PlaywrightSuite[] }} PlaywrightSuite
+ * @typedef {{ suites?: PlaywrightSuite[] }} PlaywrightReport
  */
 
 // Cross-Run Performance Variance Diagnosis Dashboard JavaScript
@@ -43,7 +27,6 @@ let guideName = '';
 let isStatic = false;
 
 /**
- * Factory for creating a side of the trial comparison
  * @param {'A' | 'B'} key
  * @returns {CompareSide}
  */
@@ -66,7 +49,6 @@ const sideA = createCompareSide('A');
 const sideB = createCompareSide('B');
 
 /**
- * Encapsulates the relative directory path for a trial run.
  * @param {CompareSide} side
  * @returns {string}
  */
@@ -75,7 +57,6 @@ function getTrialPath(side) {
 }
 
 /**
- * Robust line-by-line markdown to HTML compiler with ANSI stripping & GFM Table support
  * @param {string | null | undefined} md
  * @returns {string}
  */
@@ -84,6 +65,8 @@ function renderMarkdown(md) {
   
   // Strip ANSI escape sequences (e.g. \x1b[36m)
   const cleanMd = md.replace(new RegExp(String.fromCharCode(27) + '\\[[0-9;]*[a-zA-Z]', 'g'), '').trim();
+  const escHtmlBasic = (/** @type {string} */ s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const splitTableRow = (/** @type {string} */ r) => r.split('|').slice(1, -1).map(c => c.trim());
   
   const lines = cleanMd.split('\n');
   let html = '';
@@ -100,6 +83,24 @@ function renderMarkdown(md) {
   let tableAlignments = [];
   /** @type {string[][]} */
   let tableRows = [];
+
+  function closeOpenBlocks(keepTable = false) {
+    if (!keepTable && inTable) {
+      html += renderTableHtml(tableHeaders, tableAlignments, tableRows);
+      inTable = false;
+      tableHeaders = [];
+      tableAlignments = [];
+      tableRows = [];
+    }
+    if (inList) {
+      html += '</ul>';
+      inList = false;
+    }
+    if (inParagraph) {
+      html += '</p>';
+      inParagraph = false;
+    }
+  }
   
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim();
@@ -111,6 +112,7 @@ function renderMarkdown(md) {
         inCodeBlock = false;
         codeContent = [];
       } else {
+        closeOpenBlocks();
         inCodeBlock = true;
         codeLanguage = line.substring(3).trim();
       }
@@ -123,61 +125,33 @@ function renderMarkdown(md) {
     }
     
     // Escape HTML in non-code lines
-    line = line
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    line = escHtmlBasic(line);
       
     if (!line) {
-      if (inTable) {
-        html += renderTableHtml(tableHeaders, tableAlignments, tableRows);
-        inTable = false;
-        tableHeaders = [];
-        tableAlignments = [];
-        tableRows = [];
-      }
-      if (inList) {
-        html += '</ul>';
-        inList = false;
-      }
-      if (inParagraph) {
-        html += '</p>';
-        inParagraph = false;
-      }
+      closeOpenBlocks();
       continue;
     }
 
     // 2. Handle Tables
     const isTableLine = line.startsWith('|') && line.endsWith('|');
     if (inTable && !isTableLine) {
-      html += renderTableHtml(tableHeaders, tableAlignments, tableRows);
-      inTable = false;
-      tableHeaders = [];
-      tableAlignments = [];
-      tableRows = [];
+      closeOpenBlocks();
     }
 
     if (isTableLine) {
-      if (inParagraph) { html += '</p>'; inParagraph = false; }
-      if (inList) { html += '</ul>'; inList = false; }
+      closeOpenBlocks(inTable);
       
       if (!inTable) {
         // Look ahead to check if the next line is a divider
         const nextLine = (lines[i+1] || '').trim();
-        const escapedNextLine = nextLine
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
+        const escapedNextLine = escHtmlBasic(nextLine);
         const isNextDivider = escapedNextLine.startsWith('|') && /^[\s|:-]+$/.test(escapedNextLine);
         
         if (isNextDivider) {
           inTable = true;
           tableRows = [];
-          
-          const cells = line.split('|').map(c => c.trim()).filter((_c, idx, arr) => idx > 0 && idx < arr.length - 1);
-          tableHeaders = cells;
-          
-          const dividerCells = escapedNextLine.split('|').map(c => c.trim()).filter((_c, idx, arr) => idx > 0 && idx < arr.length - 1);
+          tableHeaders = splitTableRow(line);
+          const dividerCells = splitTableRow(escapedNextLine);
           tableAlignments = dividerCells.map(cell => {
             const left = cell.startsWith(':');
             const right = cell.endsWith(':');
@@ -190,8 +164,7 @@ function renderMarkdown(md) {
           continue;
         }
       } else {
-        const cells = line.split('|').map(c => c.trim()).filter((_c, idx, arr) => idx > 0 && idx < arr.length - 1);
-        tableRows.push(cells);
+        tableRows.push(splitTableRow(line));
         continue;
       }
     }
@@ -200,8 +173,7 @@ function renderMarkdown(md) {
     if (line.startsWith('#')) {
       const match = line.match(/^(#{1,6})\s+(.*)$/);
       if (match) {
-        if (inList) { html += '</ul>'; inList = false; }
-        if (inParagraph) { html += '</p>'; inParagraph = false; }
+        closeOpenBlocks();
         const level = match[1].length;
         html += `<h${level}>${parseInline(match[2])}</h${level}>`;
         continue;
@@ -212,6 +184,7 @@ function renderMarkdown(md) {
     const listMatch = line.match(/^([-*+])\s+(.*)$/);
     if (listMatch) {
       if (inParagraph) { html += '</p>'; inParagraph = false; }
+      if (inTable) { closeOpenBlocks(); }
       if (!inList) {
         html += '<ul>';
         inList = true;
@@ -222,8 +195,7 @@ function renderMarkdown(md) {
     
     // 5. Handle Horizontal Rules
     if (line === '---' || line === '***') {
-      if (inList) { html += '</ul>'; inList = false; }
-      if (inParagraph) { html += '</p>'; inParagraph = false; }
+      closeOpenBlocks();
       html += '<hr>';
       continue;
     }
@@ -238,9 +210,7 @@ function renderMarkdown(md) {
     }
   }
   
-  if (inTable) html += renderTableHtml(tableHeaders, tableAlignments, tableRows);
-  if (inList) html += '</ul>';
-  if (inParagraph) html += '</p>';
+  closeOpenBlocks();
   if (inCodeBlock) html += `<pre><code>${codeContent.join('\n')}</code></pre>`;
   
   return html;
@@ -254,30 +224,9 @@ function renderMarkdown(md) {
  * @returns {string}
  */
 function renderTableHtml(headers, alignments, rows) {
-  let html = '<table class="markdown-table">';
-  
-  // Header Row
-  html += '<thead><tr>';
-  headers.forEach((h, idx) => {
-    const align = alignments[idx] || 'left';
-    html += `<th style="text-align:${align}">${parseInline(h)}</th>`;
-  });
-  html += '</tr></thead>';
-  
-  // Body Rows
-  html += '<tbody>';
-  rows.forEach(row => {
-    html += '<tr>';
-    for (let idx = 0; idx < headers.length; idx++) {
-      const cell = row[idx] || '';
-      const align = alignments[idx] || 'left';
-      html += `<td style="text-align:${align}">${parseInline(cell)}</td>`;
-    }
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  
-  return html;
+  const thead = `<thead><tr>${headers.map((h, i) => `<th style="text-align:${alignments[i] || 'left'}">${parseInline(h)}</th>`).join('')}</tr></thead>`;
+  const tbody = `<tbody>${rows.map(row => `<tr>${headers.map((_, i) => `<td style="text-align:${alignments[i] || 'left'}">${parseInline(row[i] || '')}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  return `<table class="markdown-table">${thead}${tbody}</table>`;
 }
 
 /**
@@ -285,17 +234,13 @@ function renderTableHtml(headers, alignments, rows) {
  * @returns {string}
  */
 function parseInline(text) {
-  // Bold: **text**
-  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // Italic: *text*
-  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  // Inline code: `code`
-  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  return text;
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
 }
 
 /**
- * Parses URL query parameters into a validated CompareSide domain object.
  * @param {CompareSide} side
  * @param {'A' | 'B'} key
  * @param {URLSearchParams} urlParams
@@ -318,10 +263,7 @@ function parseSideFromUrl(side, key, urlParams, fallbackSide) {
   side.score = Number.isNaN(parsedScore) ? 0 : parsedScore;
 }
 
-/**
- * Extract query parameters
- * @returns {boolean}
- */
+/** @returns {boolean} */
 function initParams() {
   const urlParams = new URLSearchParams(window.location.search);
   guideName = urlParams.get('guide') || '';
@@ -330,27 +272,20 @@ function initParams() {
   parseSideFromUrl(sideA, 'A', urlParams);
   parseSideFromUrl(sideB, 'B', urlParams, sideA);
 
-  // Initialize dropdown selections
-  const elA = /** @type {HTMLSelectElement | null} */ (document.getElementById('run-type-a'));
-  const elB = /** @type {HTMLSelectElement | null} */ (document.getElementById('run-type-b'));
-  if (elA) elA.value = sideA.runType;
-  if (elB) elB.value = sideB.runType;
-
-  // Set up dropdown change listeners
-  elA?.addEventListener('change', async (e) => {
-    const target = /** @type {HTMLSelectElement | null} */ (e.target);
-    if (target) {
-      sideA.runType = /** @type {'guided' | 'unguided'} */ (target.value);
-      await handleRunTypeChange();
+  // Initialize dropdown selections and listeners
+  for (const side of [sideA, sideB]) {
+    const el = /** @type {HTMLSelectElement | null} */ (document.getElementById(`run-type-${side.key.toLowerCase()}`));
+    if (el) {
+      el.value = side.runType;
+      el.addEventListener('change', async (e) => {
+        const target = /** @type {HTMLSelectElement | null} */ (e.target);
+        if (target) {
+          side.runType = /** @type {'guided' | 'unguided'} */ (target.value);
+          await handleRunTypeChange();
+        }
+      });
     }
-  });
-  elB?.addEventListener('change', async (e) => {
-    const target = /** @type {HTMLSelectElement | null} */ (e.target);
-    if (target) {
-      sideB.runType = /** @type {'guided' | 'unguided'} */ (target.value);
-      await handleRunTypeChange();
-    }
-  });
+  }
 
   // Back button setup
   const backBtn = /** @type {HTMLAnchorElement | null} */ (document.getElementById('back-btn'));
@@ -370,10 +305,7 @@ function initParams() {
   return true;
 }
 
-/**
- * Handles reloading of workspace files and resetting diagnosis state when run type is toggled.
- * @returns {Promise<void>}
- */
+/** @returns {Promise<void>} */
 async function handleRunTypeChange() {
   updateExecutiveSummary();
   await loadActiveTaskDetails();
@@ -381,7 +313,6 @@ async function handleRunTypeChange() {
 }
 
 /**
- * Streams a ReadableStream response into a <pre> element with throttled rendering.
  * @param {ReadableStream<Uint8Array>} body
  * @param {HTMLElement | null} logElement
  * @returns {Promise<string>}
@@ -469,7 +400,6 @@ async function ensureRunDirectories(dirA, dirB) {
 }
 
 /**
- * Helper to fetch suite metadata for a test ID.
  * @param {string} testId
  * @param {string} resultsBase
  * @param {string} srcParam
@@ -486,9 +416,7 @@ async function loadSuiteData(testId, resultsBase, srcParam) {
   return null;
 }
 
-/**
- * @returns {Promise<void>}
- */
+/** @returns {Promise<void>} */
 async function loadTrialMetadata() {
   const resultsBase = isStatic ? 'results' : '';
   const srcParam = isStatic ? '' : '?source=local';
@@ -509,28 +437,8 @@ async function loadTrialMetadata() {
     : await loadSuiteData(sideB.testId, resultsBase, srcParam);
 
   // Determine tasks belonging to this guide in Trial A and Trial B
-  /** @type {Set<string>} */
-  const tasksA = new Set();
-  /** @type {Set<string>} */
-  const tasksB = new Set();
-
-  if (sideA.suiteData?.results) {
-    Object.keys(sideA.suiteData.results).forEach(key => {
-      const parsedKey = parseResultKey(key);
-      if (parsedKey && parsedKey.guide === guideName) {
-        tasksA.add(parsedKey.task);
-      }
-    });
-  }
-
-  if (sideB.suiteData?.results) {
-    Object.keys(sideB.suiteData.results).forEach(key => {
-      const parsedKey = parseResultKey(key);
-      if (parsedKey && parsedKey.guide === guideName) {
-        tasksB.add(parsedKey.task);
-      }
-    });
-  }
+  const tasksA = getGuideTasks(sideA.suiteData);
+  const tasksB = getGuideTasks(sideB.suiteData);
 
   const allTasksSet = new Set([...tasksA, ...tasksB]);
   const commonTasks = Array.from(tasksA).filter(t => tasksB.has(t)).sort();
@@ -558,20 +466,32 @@ async function loadTrialMetadata() {
 
 /**
  * @param {EvalsReport | null | undefined} suiteData
+ * @returns {Set<string>}
+ */
+function getGuideTasks(suiteData) {
+  /** @type {Set<string>} */
+  const tasks = new Set();
+  if (suiteData?.results) {
+    Object.keys(suiteData.results).forEach(key => {
+      const parsedKey = parseResultKey(key);
+      if (parsedKey && parsedKey.guide === guideName) {
+        tasks.add(parsedKey.task);
+      }
+    });
+  }
+  return tasks;
+}
+
+/**
+ * @param {EvalsReport | null | undefined} suiteData
  * @param {string} task
  * @returns {boolean}
  */
 function checkTaskInSuite(suiteData, task) {
-  if (!suiteData || !suiteData.results) return false;
-  return Object.keys(suiteData.results).some(key => {
-    const parsedKey = parseResultKey(key);
-    return parsedKey && parsedKey.guide === guideName && parsedKey.task === task;
-  });
+  return getGuideTasks(suiteData).has(task);
 }
 
-/**
- * @returns {void}
- */
+/** @returns {void} */
 function populateSidebar() {
   const sidebarList = $('#task-sidebar-list');
   sidebarList.innerHTML = '';
@@ -596,45 +516,35 @@ function populateSidebar() {
 }
 
 /**
+ * @param {CompareSide} side
+ * @param {boolean} isSameSuite
+ */
+function updateSideCard(side, isSameSuite) {
+  const s = side.key.toLowerCase();
+  $(`#title-${s}`).innerText = `${side.testId.slice(0, 18)} (Run ${side.runNumber})`;
+  $(`#meta-${s}`).innerText = isSameSuite
+    ? 'Within-Trial Non-determinism Check'
+    : (side.testId.includes('test-') ? `Date: ${side.testId.replace('test-', '').slice(0, 10)}` : 'Historical Suite');
+
+  const displayAgent = side.agent || side.suiteData?.agent || 'Unknown';
+  const displayModel = side.model || side.suiteData?.model || 'Unknown';
+  $(`#agent-model-${s}`).innerText = `Agent: ${displayAgent} | Model: ${displayModel}`;
+
+  if (side.suiteData) {
+    side.score = calculateGuideScore(side.suiteData, side.runNumber, side.runType);
+  }
+
+  const badge = $(`#score-badge-${s}`);
+  badge.innerText = `${side.score}%`;
+  badge.className = `score-badge ${side.score >= 70 ? 'score-high' : 'score-low'}`;
+}
+
+/**
  * @returns {void}
  */
 function updateExecutiveSummary() {
-  // Trial A
-  $('#title-a').innerText = `${sideA.testId.slice(0, 18)} (Run ${sideA.runNumber})`;
-  $('#meta-a').innerText = sideA.testId.includes('test-') ? `Date: ${sideA.testId.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
-  
-  const displayAgentA = sideA.agent || sideA.suiteData?.agent || 'Unknown';
-  const displayModelA = sideA.model || sideA.suiteData?.model || 'Unknown';
-  $('#agent-model-a').innerText = `Agent: ${displayAgentA} | Model: ${displayModelA}`;
-
-  // Trial B
-  if (sideA.testId === sideB.testId) {
-    $('#title-b').innerText = `${sideA.testId.slice(0, 18)} (Run ${sideB.runNumber})`;
-    $('#meta-b').innerText = 'Within-Trial Non-determinism Check';
-  } else {
-    $('#title-b').innerText = `${sideB.testId.slice(0, 18)} (Run ${sideB.runNumber})`;
-    $('#meta-b').innerText = sideB.testId.includes('test-') ? `Date: ${sideB.testId.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
-  }
-  
-  const displayAgentB = sideB.agent || sideB.suiteData?.agent || 'Unknown';
-  const displayModelB = sideB.model || sideB.suiteData?.model || 'Unknown';
-  $('#agent-model-b').innerText = `Agent: ${displayAgentB} | Model: ${displayModelB}`;
-
-  // Calculate Scores for the specific guide across active run types and runs
-  if (sideA.suiteData) {
-    sideA.score = calculateGuideScore(sideA.suiteData, sideA.runNumber, sideA.runType);
-  }
-  if (sideB.suiteData) {
-    sideB.score = calculateGuideScore(sideB.suiteData, sideB.runNumber, sideB.runType);
-  }
-
-  const badgeA = $('#score-badge-a');
-  badgeA.innerText = `${sideA.score}%`;
-  badgeA.className = `score-badge ${sideA.score >= 70 ? 'score-high' : 'score-low'}`;
-
-  const badgeB = $('#score-badge-b');
-  badgeB.innerText = `${sideB.score}%`;
-  badgeB.className = `score-badge ${sideB.score >= 70 ? 'score-high' : 'score-low'}`;
+  updateSideCard(sideA, false);
+  updateSideCard(sideB, sideA.testId === sideB.testId);
 
   const delta = sideB.score - sideA.score;
   const deltaText = delta === 0 ? 'No change (0%)' : delta > 0 ? `+${delta}% Improvement` : `${delta}% Regression`;
@@ -714,7 +624,6 @@ function getRunDateString(testId) {
 }
 
 /**
- * Helper to format human-readable title for split-pane views
  * @param {CompareSide} side
  * @param {TrajectorySummary | null} [trajOverride]
  * @returns {string}
@@ -728,8 +637,20 @@ function getFormattedTrialTitle(side, trajOverride) {
 }
 
 /**
- * @returns {Promise<void>}
+ * @param {string} titleA
+ * @param {string} titleB
  */
+function updatePaneTitles(titleA, titleB) {
+  const titles = { a: titleA, b: titleB };
+  for (const side of /** @type {const} */ (['a', 'b'])) {
+    for (const prefix of ['timeline-title', 'code-title', 'header-assert']) {
+      const el = document.getElementById(`${prefix}-${side}`);
+      if (el) el.innerText = titles[side];
+    }
+  }
+}
+
+/** @returns {Promise<void>} */
 async function loadActiveTaskDetails() {
   $('#compare-loading').style.display = 'flex';
   $('#tab-content-assertions').style.display = 'none';
@@ -740,21 +661,7 @@ async function loadActiveTaskDetails() {
   const pathPartB = getTrialPath(sideB);
 
   // Update split-pane column titles to display both run number and run type
-  const titleAStr = getFormattedTrialTitle(sideA);
-  const titleBStr = getFormattedTrialTitle(sideB);
-
-  const timelineTitleA = document.getElementById('timeline-title-a');
-  if (timelineTitleA) timelineTitleA.innerText = titleAStr;
-  const timelineTitleB = document.getElementById('timeline-title-b');
-  if (timelineTitleB) timelineTitleB.innerText = titleBStr;
-  const codeTitleA = document.getElementById('code-title-a');
-  if (codeTitleA) codeTitleA.innerText = titleAStr;
-  const codeTitleB = document.getElementById('code-title-b');
-  if (codeTitleB) codeTitleB.innerText = titleBStr;
-  const headerAssertA = document.getElementById('header-assert-a');
-  if (headerAssertA) headerAssertA.innerText = titleAStr;
-  const headerAssertB = document.getElementById('header-assert-b');
-  if (headerAssertB) headerAssertB.innerText = titleBStr;
+  updatePaneTitles(getFormattedTrialTitle(sideA), getFormattedTrialTitle(sideB));
 
   // 0. Ensure run directories exist locally before fetching tab data
   await ensureRunDirectories(pathPartA, pathPartB);
@@ -773,7 +680,6 @@ async function loadActiveTaskDetails() {
 }
 
 /**
- * Recursively parses Playwright's JSON report and extracts a flat array of assertions.
  * @param {PlaywrightReport | null | undefined} report
  * @returns {AssertionResult[]}
  */
@@ -806,6 +712,32 @@ function parsePlaywrightResults(report) {
 }
 
 /**
+ * @param {string} pathStr
+ * @param {string} resultsBase
+ * @param {string} srcParam
+ * @returns {Promise<AssertionResult[]>}
+ */
+async function fetchSideAssertions(pathStr, resultsBase, srcParam) {
+  try {
+    let res = await fetch(`${resultsBase}/${pathStr}/${guideName}_results.json${srcParam}`);
+    if (!res.ok) {
+      const filesRes = await fetch(`/api/run-files?dir=${encodeURIComponent(pathStr)}&source=local`);
+      if (filesRes.ok) {
+        /** @type {string[]} */
+        const files = (await filesRes.json()).files || [];
+        const resFile = files.find((/** @type {string} */ f) => f.endsWith('_results.json'));
+        if (resFile) res = await fetch(`${resultsBase}/${pathStr}/${resFile}${srcParam}`);
+      }
+    }
+    if (res.ok) {
+      const raw = /** @type {PlaywrightReport} */ (await res.json());
+      return parsePlaywrightResults(raw);
+    }
+  } catch (e) {}
+  return [];
+}
+
+/**
  * @param {string} pathA
  * @param {string} pathB
  * @returns {Promise<void>}
@@ -816,62 +748,23 @@ async function loadAssertions(pathA, pathB) {
   const tbody = $('tbody#assert-tbody');
   tbody.innerHTML = '';
 
-  /** @type {AssertionResult[]} */
-  let resultsA = [];
-  /** @type {AssertionResult[]} */
-  let resultsB = [];
-
-  // Fetch Run A results JSON
-  try {
-    let resA = await fetch(`${resultsBase}/${pathA}/${guideName}_results.json${srcParam}`);
-    if (!resA.ok) {
-      const filesResA = await fetch(`/api/run-files?dir=${encodeURIComponent(pathA)}&source=local`);
-      if (filesResA.ok) {
-        /** @type {string[]} */
-        const filesA = (await filesResA.json()).files || [];
-        const resFile = filesA.find((/** @type {string} */ f) => f.endsWith('_results.json'));
-        if (resFile) resA = await fetch(`${resultsBase}/${pathA}/${resFile}${srcParam}`);
-      }
-    }
-    if (resA.ok) {
-      const rawA = /** @type {PlaywrightReport} */ (await resA.json());
-      resultsA = parsePlaywrightResults(rawA);
-    }
-  } catch (e) {}
-
-  // Fetch Run B results JSON
-  try {
-    let resB = await fetch(`${resultsBase}/${pathB}/${guideName}_results.json${srcParam}`);
-    if (!resB.ok) {
-      const filesResB = await fetch(`/api/run-files?dir=${encodeURIComponent(pathB)}&source=local`);
-      if (filesResB.ok) {
-        /** @type {string[]} */
-        const filesB = (await filesResB.json()).files || [];
-        const resFile = filesB.find((/** @type {string} */ f) => f.endsWith('_results.json'));
-        if (resFile) resB = await fetch(`${resultsBase}/${pathB}/${resFile}${srcParam}`);
-      }
-    }
-    if (resB.ok) {
-      const rawB = /** @type {PlaywrightReport} */ (await resB.json());
-      resultsB = parsePlaywrightResults(rawB);
-    }
-  } catch (e) {}
+  const [resultsA, resultsB] = await Promise.all([
+    fetchSideAssertions(pathA, resultsBase, srcParam),
+    fetchSideAssertions(pathB, resultsBase, srcParam)
+  ]);
 
   // Update Assertion table column headers with task-specific pass rate
-  const titleAStr = getFormattedTrialTitle(sideA);
-  const titleBStr = getFormattedTrialTitle(sideB);
-  if (resultsA.length > 0) {
-    const passedA = resultsA.filter(r => r.passed).length;
-    const taskScoreA = Math.round((passedA / resultsA.length) * 100);
-    const headerA = document.getElementById('header-assert-a');
-    if (headerA) headerA.innerText = `${titleAStr} [Task: ${taskScoreA}%]`;
-  }
-  if (resultsB.length > 0) {
-    const passedB = resultsB.filter(r => r.passed).length;
-    const taskScoreB = Math.round((passedB / resultsB.length) * 100);
-    const headerB = document.getElementById('header-assert-b');
-    if (headerB) headerB.innerText = `${titleBStr} [Task: ${taskScoreB}%]`;
-  }
+  [
+    { side: sideA, results: resultsA, id: 'header-assert-a' },
+    { side: sideB, results: resultsB, id: 'header-assert-b' }
+  ].forEach(({ side, results, id }) => {
+    if (results.length > 0) {
+      const passed = results.filter(r => r.passed).length;
+      const taskScore = Math.round((passed / results.length) * 100);
+      const header = document.getElementById(id);
+      if (header) header.innerText = `${getFormattedTrialTitle(side)} [Task: ${taskScore}%]`;
+    }
+  });
 
   // Merge assertions list to compare side-by-side
   const allAssertionMessages = Array.from(new Set([
@@ -884,35 +777,14 @@ async function loadAssertions(pathA, pathB) {
     return;
   }
 
+  const formatStatusHtml = (/** @type {AssertionResult | undefined} */ c) => !c ? 'N/A' : c.passed ? '<span class="pass-icon">✓ PASS</span>' : '<span class="fail-icon">✗ FAIL</span>';
+
   allAssertionMessages.forEach(msg => {
     const checkA = resultsA.find(r => r.message === msg);
     const checkB = resultsB.find(r => r.message === msg);
 
     const tr = document.createElement('tr');
-    
-    // Check text
-    const tdMsg = document.createElement('td');
-    tdMsg.innerText = msg;
-    tr.appendChild(tdMsg);
-
-    // Trial A status
-    const tdA = document.createElement('td');
-    if (checkA) {
-      tdA.innerHTML = checkA.passed ? '<span class="pass-icon">✓ PASS</span>' : '<span class="fail-icon">✗ FAIL</span>';
-    } else {
-      tdA.innerText = 'N/A';
-    }
-    tr.appendChild(tdA);
-
-    // Trial B status
-    const tdB = document.createElement('td');
-    if (checkB) {
-      tdB.innerHTML = checkB.passed ? '<span class="pass-icon">✓ PASS</span>' : '<span class="fail-icon">✗ FAIL</span>';
-    } else {
-      tdB.innerText = 'N/A';
-    }
-    tr.appendChild(tdB);
-
+    tr.innerHTML = `<td>${escapeHtml(msg)}</td><td>${formatStatusHtml(checkA)}</td><td>${formatStatusHtml(checkB)}</td>`;
     tbody.appendChild(tr);
   });
 }
@@ -955,6 +827,44 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
 }
 
 /**
+ * @param {string} pathStr
+ * @param {string} resultsBase
+ * @param {string} srcParam
+ * @returns {Promise<{ traj: TrajectorySummary | null, chat: string, sessionUrl: string }>}
+ */
+async function loadSideTrajectory(pathStr, resultsBase, srcParam) {
+  /** @type {TrajectorySummary | null} */
+  let traj = null;
+  let chat = '';
+  let sessionUrl = '';
+
+  try {
+    const res = await fetch(`${resultsBase}/${pathStr}/trajectory_summary.json${srcParam}`);
+    if (res.ok) {
+      traj = /** @type {TrajectorySummary} */ (normalizeTrajectoryClient(await res.json()));
+      await enrichTrajectorySteps(traj, pathStr, resultsBase);
+    }
+  } catch (e) {}
+
+  try {
+    const chatRes = await fetch(`${resultsBase}/${pathStr}/chat_log.txt${srcParam}`);
+    if (chatRes.ok) chat = await chatRes.text();
+  } catch (e) {}
+
+  try {
+    const filesRes = await fetch(`/api/run-files?dir=${encodeURIComponent(pathStr)}&source=local`);
+    if (filesRes.ok) {
+      /** @type {string[]} */
+      const files = (await filesRes.json()).files || [];
+      const sessionFile = files.find((/** @type {string} */ f) => f.startsWith('session-') && !f.includes('-subagents-') && f.endsWith('.html')) || files.find((/** @type {string} */ f) => f.startsWith('session-') && f.endsWith('.html'));
+      if (sessionFile) sessionUrl = `${resultsBase}/${pathStr}/${sessionFile}`;
+    }
+  } catch (e) {}
+
+  return { traj, chat, sessionUrl };
+}
+
+/**
  * @param {string} pathA
  * @param {string} pathB
  * @returns {Promise<void>}
@@ -965,66 +875,16 @@ async function loadTrajectories(pathA, pathB) {
   const container = $('#tab-content-timeline');
   container.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">Loading aligned trajectories...</div>';
 
-  /** @type {TrajectorySummary | null} */
-  let trajA = null;
-  /** @type {TrajectorySummary | null} */
-  let trajB = null;
-  let chatA = '';
-  let chatB = '';
-  let sessionUrlA = '';
-  let sessionUrlB = '';
+  const [dataA, dataB] = await Promise.all([
+    loadSideTrajectory(pathA, resultsBase, srcParam),
+    loadSideTrajectory(pathB, resultsBase, srcParam)
+  ]);
 
-  try {
-    const resA = await fetch(`${resultsBase}/${pathA}/trajectory_summary.json${srcParam}`);
-    if (resA.ok) {
-      trajA = /** @type {TrajectorySummary} */ (normalizeTrajectoryClient(await resA.json()));
-      await enrichTrajectorySteps(trajA, pathA, resultsBase);
-    }
-  } catch (e) {}
-
-  try {
-    const resB = await fetch(`${resultsBase}/${pathB}/trajectory_summary.json${srcParam}`);
-    if (resB.ok) {
-      trajB = /** @type {TrajectorySummary} */ (normalizeTrajectoryClient(await resB.json()));
-      await enrichTrajectorySteps(trajB, pathB, resultsBase);
-    }
-  } catch (e) {}
-
-  try {
-    const chatResA = await fetch(`${resultsBase}/${pathA}/chat_log.txt${srcParam}`);
-    if (chatResA.ok) chatA = await chatResA.text();
-  } catch (e) {}
-
-  try {
-    const chatResB = await fetch(`${resultsBase}/${pathB}/chat_log.txt${srcParam}`);
-    if (chatResB.ok) chatB = await chatResB.text();
-  } catch (e) {}
-
-  try {
-    const filesResA = await fetch(`/api/run-files?dir=${encodeURIComponent(pathA)}&source=local`);
-    if (filesResA.ok) {
-      /** @type {string[]} */
-      const filesA = (await filesResA.json()).files || [];
-      const sessionFileA = filesA.find((/** @type {string} */ f) => f.startsWith('session-') && !f.includes('-subagents-') && f.endsWith('.html')) || filesA.find((/** @type {string} */ f) => f.startsWith('session-') && f.endsWith('.html'));
-      if (sessionFileA) sessionUrlA = `${resultsBase}/${pathA}/${sessionFileA}`;
-    }
-  } catch (e) {}
-
-  try {
-    const filesResB = await fetch(`/api/run-files?dir=${encodeURIComponent(pathB)}&source=local`);
-    if (filesResB.ok) {
-      /** @type {string[]} */
-      const filesB = (await filesResB.json()).files || [];
-      const sessionFileB = filesB.find((/** @type {string} */ f) => f.startsWith('session-') && !f.includes('-subagents-') && f.endsWith('.html')) || filesB.find((/** @type {string} */ f) => f.startsWith('session-') && f.endsWith('.html'));
-      if (sessionFileB) sessionUrlB = `${resultsBase}/${pathB}/${sessionFileB}`;
-    }
-  } catch (e) {}
-
-  sideA.trajectory = trajA;
-  sideB.trajectory = trajB;
-  sideA.chatLog = chatA;
-  sideB.chatLog = chatB;
-  renderTimelineRows(container, trajA, trajB, chatA, chatB, sessionUrlA, sessionUrlB);
+  sideA.trajectory = dataA.traj;
+  sideB.trajectory = dataB.traj;
+  sideA.chatLog = dataA.chat;
+  sideB.chatLog = dataB.chat;
+  renderTimelineRows(container, dataA.traj, dataB.traj, dataA.chat, dataB.chat, dataA.sessionUrl, dataB.sessionUrl);
 }
 
 /**
@@ -1116,21 +976,13 @@ function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
     const promptA = trajAObj.initialPrompt || '';
     const promptB = trajBObj.initialPrompt || '';
     if (promptA || promptB) {
-      /** @type {StandardizedStep | null} */
-      const step0A = promptA ? {
+      const makeStep0 = (/** @type {string} */ prompt) => prompt ? /** @type {StandardizedStep} */ ({
         stepNumber: 0,
         thought: 'Harness launched agent with initial prompt',
-        action: { type: 'other', name: 'Starting Prompt / Launch', params: { prompt: promptA }, canonicalCategory: 'other' },
-        outcome: { status: 'success', output: promptA }
-      } : null;
-      /** @type {StandardizedStep | null} */
-      const step0B = promptB ? {
-        stepNumber: 0,
-        thought: 'Harness launched agent with initial prompt',
-        action: { type: 'other', name: 'Starting Prompt / Launch', params: { prompt: promptB }, canonicalCategory: 'other' },
-        outcome: { status: 'success', output: promptB }
-      } : null;
-      alignedResult.unshift({ stepA: step0A, stepB: step0B });
+        action: { type: 'other', name: 'Starting Prompt / Launch', params: { prompt }, canonicalCategory: 'other' },
+        outcome: { status: 'success', output: prompt }
+      }) : null;
+      alignedResult.unshift({ stepA: makeStep0(promptA), stepB: makeStep0(promptB) });
     }
   }
 
@@ -1245,19 +1097,7 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
 
   const titleAStr = getFormattedTrialTitle(sideA, trajA);
   const titleBStr = getFormattedTrialTitle(sideB, trajB);
-
-  const timelineTitleA = document.getElementById('timeline-title-a');
-  if (timelineTitleA) timelineTitleA.innerText = titleAStr;
-  const timelineTitleB = document.getElementById('timeline-title-b');
-  if (timelineTitleB) timelineTitleB.innerText = titleBStr;
-  const codeTitleA = document.getElementById('code-title-a');
-  if (codeTitleA) codeTitleA.innerText = titleAStr;
-  const codeTitleB = document.getElementById('code-title-b');
-  if (codeTitleB) codeTitleB.innerText = titleBStr;
-  const headerAssertA = document.getElementById('header-assert-a');
-  if (headerAssertA) headerAssertA.innerText = titleAStr;
-  const headerAssertB = document.getElementById('header-assert-b');
-  if (headerAssertB) headerAssertB.innerText = titleBStr;
+  updatePaneTitles(titleAStr, titleBStr);
 
   // Top header row
   const headerRow = document.createElement('div');
@@ -1285,9 +1125,6 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
     const stepA = aligned[i].stepA;
     const stepB = aligned[i].stepB;
 
-    const isStep0A = stepA?.stepNumber === 0;
-    const isStep0B = stepB?.stepNumber === 0;
-
     const isPrimaryA = Boolean(stepA && (typeof stepA.stepNumber === 'number' ? stepA.stepNumber === primaryStepA : stepNum === primaryStepA));
     const isPrimaryB = Boolean(stepB && (typeof stepB.stepNumber === 'number' ? stepB.stepNumber === primaryStepB : stepNum === primaryStepB));
 
@@ -1295,35 +1132,8 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
     row.className = `timeline-step-row ${(isPrimaryA || isPrimaryB) ? 'divergence-row' : ''}`;
     row.id = `step-row-${stepNum}`;
 
-    let colAHtml = '';
-    if (stepA) {
-      if (isPrimaryA) {
-        colAHtml += `
-          <div class="divergence-banner primary track-banner" style="margin-bottom:8px;">
-            <span class="divergence-badge">🚨 PRIMARY DIVERGENCE (TRIAL A)</span>
-            <span class="divergence-desc">${isStep0A ? 'Starting prompt / launch parameters diverged' : `Divergent step in Trial A (Step ${stepA.stepNumber})`}</span>
-          </div>
-        `;
-      }
-      colAHtml += renderStepCardHtml(stepA, isPrimaryA, sessionUrlA);
-    } else {
-      colAHtml = '<div class="timeline-empty-card">No step in Trial A</div>';
-    }
-
-    let colBHtml = '';
-    if (stepB) {
-      if (isPrimaryB) {
-        colBHtml += `
-          <div class="divergence-banner primary track-banner" style="margin-bottom:8px;">
-            <span class="divergence-badge">🚨 PRIMARY DIVERGENCE (TRIAL B)</span>
-            <span class="divergence-desc">${isStep0B ? 'Starting prompt / launch parameters diverged' : `Divergent step in Trial B (Step ${stepB.stepNumber})`}</span>
-          </div>
-        `;
-      }
-      colBHtml += renderStepCardHtml(stepB, isPrimaryB, sessionUrlB);
-    } else {
-      colBHtml = '<div class="timeline-empty-card">No step in Trial B</div>';
-    }
+    const colAHtml = renderTimelineColHtml(stepA, 'Trial A', isPrimaryA, sessionUrlA);
+    const colBHtml = renderTimelineColHtml(stepB, 'Trial B', isPrimaryB, sessionUrlB);
 
     row.innerHTML = `
       <div class="timeline-cols-grid">
@@ -1338,34 +1148,79 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
   if (chatA || chatB) {
     const finalRow = document.createElement('div');
     finalRow.className = 'timeline-step-row final-answer-row';
+    const renderFinalCol = (/** @type {string} */ label, /** @type {string} */ chat) => `
+      <div class="final-answer-card">
+        <div class="final-answer-header"><span>ASSISTANT</span><span style="font-size:0.8em; color:#64748b;">${label}</span></div>
+        <div class="final-answer-body">${escapeHtml(chat || `No final message recorded for ${label}.`)}</div>
+      </div>`;
     finalRow.innerHTML = `
       <div class="final-answer-banner">
         <span class="final-answer-badge">🏁 FINAL ASSISTANT OUTPUT</span>
         <span style="font-size:0.9em; color:#15803d; font-weight:500;">Agent final response after completing or halting execution.</span>
       </div>
       <div class="timeline-cols-grid">
-        <div class="timeline-col col-a">
-          <div class="final-answer-card">
-            <div class="final-answer-header">
-              <span>ASSISTANT</span>
-              <span style="font-size:0.8em; color:#64748b;">Trial A</span>
-            </div>
-            <div class="final-answer-body">${escapeHtml(chatA || 'No final message recorded for Trial A.')}</div>
-          </div>
-        </div>
-        <div class="timeline-col col-b">
-          <div class="final-answer-card">
-            <div class="final-answer-header">
-              <span>ASSISTANT</span>
-              <span style="font-size:0.8em; color:#64748b;">Trial B</span>
-            </div>
-            <div class="final-answer-body">${escapeHtml(chatB || 'No final message recorded for Trial B.')}</div>
-          </div>
-        </div>
+        <div class="timeline-col col-a">${renderFinalCol('Trial A', chatA)}</div>
+        <div class="timeline-col col-b">${renderFinalCol('Trial B', chatB)}</div>
       </div>
     `;
     container.appendChild(finalRow);
   }
+}
+
+/**
+ * @param {StandardizedStep | null | undefined} step
+ * @param {string} trialLabel
+ * @param {boolean} isPrimary
+ * @param {string} sessionUrl
+ * @returns {string}
+ */
+function renderTimelineColHtml(step, trialLabel, isPrimary, sessionUrl) {
+  if (!step) {
+    return `<div class="timeline-empty-card">No step in ${trialLabel}</div>`;
+  }
+  let html = '';
+  if (isPrimary) {
+    const isStep0 = step.stepNumber === 0;
+    html += `
+      <div class="divergence-banner primary track-banner" style="margin-bottom:8px;">
+        <span class="divergence-badge">🚨 PRIMARY DIVERGENCE (${trialLabel.toUpperCase()})</span>
+        <span class="divergence-desc">${isStep0 ? 'Starting prompt / launch parameters diverged' : `Divergent step in ${trialLabel} (Step ${step.stepNumber})`}</span>
+      </div>
+    `;
+  }
+  html += renderStepCardHtml(step, isPrimary, sessionUrl);
+  return html;
+}
+
+/**
+ * @param {StandardizedStep} step
+ * @returns {string}
+ */
+function extractStepOutcomeText(step) {
+  if (step.outcome) {
+    if (typeof step.outcome === 'string') {
+      return step.outcome;
+    }
+    if (typeof step.outcome === 'object' && step.outcome !== null) {
+      const outcomeObj = /** @type {Record<string, any>} */ (step.outcome);
+      const val = outcomeObj.output || outcomeObj.result || outcomeObj.message || outcomeObj.content || outcomeObj.text || outcomeObj.stdout || outcomeObj.stderr;
+      if (val !== undefined && val !== null) {
+        return typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val);
+      }
+      const keys = Object.keys(outcomeObj);
+      const onlyStatus = keys.every(k => k === 'status' || k === 'exitCode');
+      if (!onlyStatus) {
+        return JSON.stringify(outcomeObj, null, 2);
+      }
+    }
+  } else {
+    const unnormalizedStep = /** @type {Record<string, any>} */ (step);
+    if (unnormalizedStep.output || unnormalizedStep.result) {
+      const val = unnormalizedStep.output || unnormalizedStep.result;
+      return typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val);
+    }
+  }
+  return '';
 }
 
 /**
@@ -1421,30 +1276,7 @@ function renderStepCardHtml(step, isDivergent = false, sessionUrl = '') {
     `;
   }
 
-  let outcomeText = '';
-  if (step.outcome) {
-    if (typeof step.outcome === 'string') {
-      outcomeText = step.outcome;
-    } else if (typeof step.outcome === 'object' && step.outcome !== null) {
-      const outcomeObj = /** @type {Record<string, any>} */ (step.outcome);
-      if (outcomeObj.output || outcomeObj.result || outcomeObj.message || outcomeObj.content || outcomeObj.text || outcomeObj.stdout || outcomeObj.stderr) {
-        outcomeText = outcomeObj.output || outcomeObj.result || outcomeObj.message || outcomeObj.content || outcomeObj.text || outcomeObj.stdout || outcomeObj.stderr;
-        if (typeof outcomeText === 'object') outcomeText = JSON.stringify(outcomeText, null, 2);
-      } else {
-        const keys = Object.keys(outcomeObj);
-        const onlyStatus = keys.every(k => k === 'status' || k === 'exitCode');
-        if (!onlyStatus) {
-          outcomeText = JSON.stringify(outcomeObj, null, 2);
-        }
-      }
-    }
-  } else {
-    const unnormalizedStep = /** @type {Record<string, any>} */ (step);
-    if (unnormalizedStep.output || unnormalizedStep.result) {
-      outcomeText = unnormalizedStep.output || unnormalizedStep.result;
-      if (typeof outcomeText === 'object') outcomeText = JSON.stringify(outcomeText, null, 2);
-    }
-  }
+  const outcomeText = extractStepOutcomeText(step);
 
   const cleanText = String(outcomeText || '').trim().replace(/\s+/g, '');
   const hasOutputData = outcomeText && outcomeText !== '{}' && outcomeText !== 'null' && cleanText !== '{"status":"success"}' && cleanText !== '{"status":"error"}';
@@ -1477,6 +1309,25 @@ function renderStepCardHtml(step, isDivergent = false, sessionUrl = '') {
 }
 
 /**
+ * @param {string} pathStr
+ * @param {string} resultsBase
+ * @param {string} srcParam
+ * @returns {Promise<string>}
+ */
+async function fetchFirstCodeOutput(pathStr, resultsBase, srcParam) {
+  const candidates = ['dist/index.html', 'src/App.jsx', 'index.html'];
+  for (const file of candidates) {
+    try {
+      const res = await fetch(`${resultsBase}/${pathStr}/${file}${srcParam}`);
+      if (res.ok) {
+        return await res.text();
+      }
+    } catch (e) {}
+  }
+  return 'No generated code file found.';
+}
+
+/**
  * @param {string} pathA
  * @param {string} pathB
  * @returns {Promise<void>}
@@ -1491,68 +1342,30 @@ async function loadCodeOutputs(pathA, pathB) {
   containerA.innerHTML = 'Loading output file...';
   containerB.innerHTML = 'Loading output file...';
 
-  // Find and load output code files
-  // We check candidates: dist/index.html, src/App.jsx, index.html
-  const candidates = ['dist/index.html', 'src/App.jsx', 'index.html'];
-  
-  let codeTextA = 'No generated code file found.';
-  let codeTextB = 'No generated code file found.';
-
-  for (const file of candidates) {
-    try {
-      const resA = await fetch(`${resultsBase}/${pathA}/${file}${srcParam}`);
-      if (resA.ok) {
-        codeTextA = await resA.text();
-        break;
-      }
-    } catch (e) {}
-  }
-
-  for (const file of candidates) {
-    try {
-      const resB = await fetch(`${resultsBase}/${pathB}/${file}${srcParam}`);
-      if (resB.ok) {
-        codeTextB = await resB.text();
-        break;
-      }
-    } catch (e) {}
-  }
+  const [codeTextA, codeTextB] = await Promise.all([
+    fetchFirstCodeOutput(pathA, resultsBase, srcParam),
+    fetchFirstCodeOutput(pathB, resultsBase, srcParam)
+  ]);
 
   containerA.innerText = codeTextA;
   containerB.innerText = codeTextB;
 }
 
-/**
- * @param {string} tab
- * @returns {void}
- */
+/** @param {string} tab */
 function switchTab(tab) {
   currentTab = /** @type {'assertions' | 'timeline' | 'code'} */ (tab);
   
   // Update tab buttons active state using data-tab attribute
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    const btnTab = btn.getAttribute('data-tab');
-    btn.classList.toggle('active', btnTab === currentTab);
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === currentTab);
   });
 
-  // Hide all tab contents
-  $('#tab-content-assertions').style.display = 'none';
-  $('#tab-content-timeline').style.display = 'none';
-  $('#tab-content-code').style.display = 'none';
-
-  // Show active tab content
-  if (currentTab === 'assertions') {
-    $('#tab-content-assertions').style.display = 'block';
-  } else if (currentTab === 'timeline') {
-    $('#tab-content-timeline').style.display = 'block';
-  } else if (currentTab === 'code') {
-    $('#tab-content-code').style.display = 'flex';
+  for (const t of ['assertions', 'timeline', 'code']) {
+    $(`#tab-content-${t}`).style.display = t === currentTab ? (t === 'code' ? 'flex' : 'block') : 'none';
   }
 }
 
-/**
- * @returns {void}
- */
+/** @returns {void} */
 function resetDiagnosisUI() {
   const diagnosisText = document.getElementById('diagnosis-text');
   const statusSpan = document.getElementById('summary-status');
@@ -1569,15 +1382,13 @@ function resetDiagnosisUI() {
   if (diagnosisText) {
     diagnosisText.innerHTML = `
       <div style="color:#64748b; font-size:0.95em;">
-        Click <strong>"Run AI Diagnosis"</strong> above to dispatch the 3-phase AI variance analysis (Compliance Audit + Code & Friction Diagnostic) for this task comparison.
+        Click <strong>"Run AI Diagnosis"</strong> above to dispatch the AI variance analysis (Guide Compliance + Code & Friction Diagnostic) for this task comparison.
       </div>
     `;
   }
 }
 
-/**
- * @returns {Promise<void>}
- */
+/** @returns {Promise<void>} */
 async function runDiagnosticAgent() {
   const diagnosisBox = $('#diagnosis-box');
   const diagnosisText = $('#diagnosis-text');
@@ -1747,10 +1558,7 @@ window.switchTab = switchTab;
 window.switchTask = switchTask;
 window.runDiagnosticAgent = runDiagnosticAgent;
 
-/**
- * @param {'milestone' | 'raw'} mode
- * @returns {void}
- */
+/** @param {'milestone' | 'raw'} mode */
 function switchTimelineMode(mode) {
   timelineViewMode = mode;
   loadTrajectories(getTrialPath(sideA), getTrialPath(sideB));
@@ -1758,8 +1566,40 @@ function switchTimelineMode(mode) {
 window.switchTimelineMode = switchTimelineMode;
 
 /**
- * @returns {void}
+ * @param {StandardizedStep | null | undefined} step
+ * @param {string} trialLabel
+ * @param {boolean} isPrimary
+ * @returns {string}
  */
+function formatStepMarkdown(step, trialLabel, isPrimary) {
+  const marker = isPrimary ? ` [🚨 ${trialLabel.toUpperCase()} PRIMARY DIVERGENCE]` : '';
+  const stepLabel = step?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : (step?.stepNumber ?? 'N/A');
+  let md = `#### ${trialLabel} (Step ${stepLabel})${marker}\n`;
+  if (!step) {
+    return md + `*No step in ${trialLabel} at this position.*\n\n`;
+  }
+  const outcomeStatus = typeof step.outcome === 'object' && step.outcome !== null && step.outcome.status ? step.outcome.status : 'UNKNOWN';
+  md += `- **Status**: ${outcomeStatus.toUpperCase()}\n`;
+  if (step.thought) {
+    md += `- **Thinking / Reasoning**:\n\`\`\`\n${step.thought.trim()}\n\`\`\`\n`;
+  }
+  if (step.action) {
+    const actName = step.action.name || 'Unknown Action';
+    const actType = step.action.canonicalCategory ? ` [Category: ${step.action.canonicalCategory}]` : '';
+    const paramsStr = step.action.params ? JSON.stringify(step.action.params, null, 2) : '';
+    md += `- **Action**: \`${actName}\`${actType}\n`;
+    if (paramsStr && paramsStr !== '{}') {
+      md += `  - **Parameters**:\n\`\`\`json\n${paramsStr}\n\`\`\`\n`;
+    }
+  }
+  const outcomeText = extractStepOutcomeText(step);
+  if (outcomeText && outcomeText !== '{}' && outcomeText !== 'null') {
+    md += `- **Outcome / Output**:\n\`\`\`\n${outcomeText.trim()}\n\`\`\`\n`;
+  }
+  return md + '\n';
+}
+
+/** @returns {void} */
 function exportCompareReport() {
   const titleAStr = getFormattedTrialTitle(sideA);
   const titleBStr = getFormattedTrialTitle(sideB);
@@ -1812,78 +1652,10 @@ function exportCompareReport() {
       const isPrimaryA = Boolean(pair.stepA && (typeof pair.stepA.stepNumber === 'number' ? pair.stepA.stepNumber === primaryStepA : stepNum === primaryStepA));
       const isPrimaryB = Boolean(pair.stepB && (typeof pair.stepB.stepNumber === 'number' ? pair.stepB.stepNumber === primaryStepB : stepNum === primaryStepB));
 
-      const markerA = isPrimaryA ? ' [🚨 TRIAL A PRIMARY DIVERGENCE]' : '';
-      const markerB = isPrimaryB ? ' [🚨 TRIAL B PRIMARY DIVERGENCE]' : '';
-
       report += `### Row ${stepNum}\n\n`;
-
-      // Trial A
-      report += `#### Trial A (Step ${pair.stepA?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : pair.stepA?.stepNumber || 'N/A'})${markerA}\n`;
-      if (pair.stepA) {
-        const outcomeStatus = typeof pair.stepA.outcome === 'object' && pair.stepA.outcome !== null && pair.stepA.outcome.status ? pair.stepA.outcome.status : 'UNKNOWN';
-        report += `- **Status**: ${outcomeStatus.toUpperCase()}\n`;
-        if (pair.stepA.thought) {
-          report += `- **Thinking / Reasoning**:\n\`\`\`\n${pair.stepA.thought.trim()}\n\`\`\`\n`;
-        }
-        if (pair.stepA.action) {
-          const actName = pair.stepA.action.name || 'Unknown Action';
-          const actType = pair.stepA.action.canonicalCategory ? ` [Category: ${pair.stepA.action.canonicalCategory}]` : '';
-          const paramsStr = pair.stepA.action.params ? JSON.stringify(pair.stepA.action.params, null, 2) : '';
-          report += `- **Action**: \`${actName}\`${actType}\n`;
-          if (paramsStr && paramsStr !== '{}') {
-            report += `  - **Parameters**:\n\`\`\`json\n${paramsStr}\n\`\`\`\n`;
-          }
-        }
-        if (pair.stepA.outcome) {
-          const outcomeObj = /** @type {Record<string, any>} */ (pair.stepA.outcome);
-          const out = typeof pair.stepA.outcome === 'object' && pair.stepA.outcome !== null
-            ? (outcomeObj.output || outcomeObj.result || outcomeObj.message || outcomeObj.content || outcomeObj.text || outcomeObj.stdout || outcomeObj.stderr || '')
-            : pair.stepA.outcome;
-          if (out && typeof out !== 'object' || (typeof out === 'object' && Object.keys(out).length > 0)) {
-            const outStr = typeof out === 'object' ? JSON.stringify(out, null, 2) : String(out);
-            if (outStr !== '{}' && outStr !== 'null') {
-              report += `- **Outcome / Output**:\n\`\`\`\n${outStr.trim()}\n\`\`\`\n`;
-            }
-          }
-        }
-      } else {
-        report += `*No step in Trial A at this position.*\n`;
-      }
-      report += `\n`;
-
-      // Trial B
-      report += `#### Trial B (Step ${pair.stepB?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : pair.stepB?.stepNumber || 'N/A'})${markerB}\n`;
-      if (pair.stepB) {
-        const outcomeStatus = typeof pair.stepB.outcome === 'object' && pair.stepB.outcome !== null && pair.stepB.outcome.status ? pair.stepB.outcome.status : 'UNKNOWN';
-        report += `- **Status**: ${outcomeStatus.toUpperCase()}\n`;
-        if (pair.stepB.thought) {
-          report += `- **Thinking / Reasoning**:\n\`\`\`\n${pair.stepB.thought.trim()}\n\`\`\`\n`;
-        }
-        if (pair.stepB.action) {
-          const actName = pair.stepB.action.name || 'Unknown Action';
-          const actType = pair.stepB.action.canonicalCategory ? ` [Category: ${pair.stepB.action.canonicalCategory}]` : '';
-          const paramsStr = pair.stepB.action.params ? JSON.stringify(pair.stepB.action.params, null, 2) : '';
-          report += `- **Action**: \`${actName}\`${actType}\n`;
-          if (paramsStr && paramsStr !== '{}') {
-            report += `  - **Parameters**:\n\`\`\`json\n${paramsStr}\n\`\`\`\n`;
-          }
-        }
-        if (pair.stepB.outcome) {
-          const outcomeObj = /** @type {Record<string, any>} */ (pair.stepB.outcome);
-          const out = typeof pair.stepB.outcome === 'object' && pair.stepB.outcome !== null
-            ? (outcomeObj.output || outcomeObj.result || outcomeObj.message || outcomeObj.content || outcomeObj.text || outcomeObj.stdout || outcomeObj.stderr || '')
-            : pair.stepB.outcome;
-          if (out && typeof out !== 'object' || (typeof out === 'object' && Object.keys(out).length > 0)) {
-            const outStr = typeof out === 'object' ? JSON.stringify(out, null, 2) : String(out);
-            if (outStr !== '{}' && outStr !== 'null') {
-              report += `- **Outcome / Output**:\n\`\`\`\n${outStr.trim()}\n\`\`\`\n`;
-            }
-          }
-        }
-      } else {
-        report += `*No step in Trial B at this position.*\n`;
-      }
-      report += `\n---\n\n`;
+      report += formatStepMarkdown(pair.stepA, 'Trial A', isPrimaryA);
+      report += formatStepMarkdown(pair.stepB, 'Trial B', isPrimaryB);
+      report += `---\n\n`;
     });
   }
 

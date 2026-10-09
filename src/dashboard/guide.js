@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         initGoogleAuth(async () => {
             await loadRemoteTests();
-            if (runFilterParam === null && hasNightlyRuns()) {
+            if (runFilterParam === null && hasNightlyRuns(allTestData)) {
                 currentRunFilter = 'nightly';
                 const runFilterInput = /** @type {HTMLInputElement | null} */ ($('#guide-run-filter-input'));
                 if (runFilterInput) runFilterInput.value = currentRunFilter;
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadRemoteTests();
         }
         if (runFilterParam === null) {
-            currentRunFilter = hasNightlyRuns() ? 'nightly' : '';
+            currentRunFilter = hasNightlyRuns(allTestData) ? 'nightly' : '';
             const runFilterInput = /** @type {HTMLInputElement | null} */ ($('#guide-run-filter-input'));
             if (runFilterInput) runFilterInput.value = currentRunFilter;
         }
@@ -405,22 +405,12 @@ function renderGraphs(guideName) {
     }
     $('#empty-state').style.display = 'none';
 
-    const deduplicatedRunsMap = new Map();
-    filteredKeys.forEach(compoundKey => {
-        const run = allTestData[compoundKey];
-        if (!deduplicatedRunsMap.has(run.testId) || run.source === 'local' || run.source === 'static') {
-            deduplicatedRunsMap.set(run.testId, run);
-        }
-    });
-
     /** @type {Record<string, any[]>} */
     const combinations = {};
-    deduplicatedRunsMap.forEach(run => {
+    filteredKeys.forEach(compoundKey => {
+        const run = allTestData[compoundKey];
         const combKey = `${run.agent}|||${run.model}`;
-        if (!combinations[combKey]) {
-            combinations[combKey] = [];
-        }
-        combinations[combKey].push(run);
+        (combinations[combKey] ??= []).push(run);
     });
 
     /**
@@ -786,30 +776,15 @@ function renderGraphs(guideName) {
 
                     if (runsOnDate.length > 1) {
                         const selectorContainer = document.createElement('div');
-                        selectorContainer.style.display = 'flex';
-                        selectorContainer.style.alignItems = 'center';
-                        selectorContainer.style.gap = '8px';
-                        selectorContainer.style.background = 'var(--bg-secondary)';
-                        selectorContainer.style.padding = '4px 10px';
-                        selectorContainer.style.borderRadius = '6px';
-                        selectorContainer.style.border = '1px solid var(--border-color)';
-                        selectorContainer.style.fontSize = '0.85rem';
+                        selectorContainer.style.cssText = 'display:flex; align-items:center; gap:8px; background:var(--bg-secondary); padding:4px 10px; border-radius:6px; border:1px solid var(--border-color); font-size:0.85rem;';
 
                         const title = document.createElement('span');
-                        title.style.fontWeight = '600';
-                        title.style.color = 'var(--text-primary)';
+                        title.style.cssText = 'font-weight:600; color:var(--text-primary);';
                         title.innerText = `Select run for ${dateKey}:`;
                         selectorContainer.appendChild(title);
 
                         const select = document.createElement('select');
-                        select.style.padding = '3px 8px';
-                        select.style.borderRadius = '4px';
-                        select.style.border = '1px solid var(--border-color)';
-                        select.style.background = '#ffffff';
-                        select.style.color = '#334155';
-                        select.style.fontSize = '0.8rem';
-                        select.style.fontWeight = '500';
-                        select.style.cursor = 'pointer';
+                        select.style.cssText = 'padding:3px 8px; border-radius:4px; border:1px solid var(--border-color); background:#ffffff; color:#334155; font-size:0.8rem; font-weight:500; cursor:pointer;';
 
                         runsOnDate.forEach((/** @type {any} */ r, /** @type {number} */ idx) => {
                             const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -968,14 +943,16 @@ function handlePointSelection(runData, group, combKey, guideName, runNumber = 1)
         
         if (!group.querySelector('.compare-highlight')) {
             const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            highlight.setAttribute('class', 'compare-highlight');
-            highlight.setAttribute('cx', x.toString());
-            highlight.setAttribute('cy', y.toString());
-            highlight.setAttribute('r', '12');
-            highlight.setAttribute('stroke', '#2563eb');
-            highlight.setAttribute('stroke-width', '3');
-            highlight.setAttribute('fill', 'none');
-            highlight.setAttribute('style', 'stroke-dasharray: 2; transform-origin: center;');
+            Object.entries({
+                class: 'compare-highlight',
+                cx: x.toString(),
+                cy: y.toString(),
+                r: '12',
+                stroke: '#2563eb',
+                'stroke-width': '3',
+                fill: 'none',
+                style: 'stroke-dasharray: 2; transform-origin: center;'
+            }).forEach(([k, v]) => highlight.setAttribute(k, v));
             
             group.appendChild(highlight);
         }

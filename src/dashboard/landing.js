@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
         initGoogleAuth(async () => {
              await loadRemoteTests();
-             if (runFilterParam === null && hasNightlyRuns()) {
+             if (runFilterParam === null && hasNightlyRuns(allTestData)) {
                  currentRunFilter = 'nightly';
                  const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
                  if (runFilterInput) runFilterInput.value = currentRunFilter;
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (runFilterParam === null) {
-            currentRunFilter = hasNightlyRuns() ? 'nightly' : '';
+            currentRunFilter = hasNightlyRuns(allTestData) ? 'nightly' : '';
             const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
             if (runFilterInput) runFilterInput.value = currentRunFilter;
         }
