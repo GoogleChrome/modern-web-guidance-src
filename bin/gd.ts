@@ -1,14 +1,14 @@
-#!/usr/bin/env -S node --experimental-strip-types
+#!/usr/bin/env node
 
 import { parseArgs } from 'util';
 import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
-import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
-import { Serving, resolveSuiteConfig } from '../harness/config.ts';
-import { rootDir, guidesDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
-import { getTaskMap } from '../lib/guide-validation.ts';
+import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
+import { resolveSuiteConfig } from '../src/harness/config.ts';
+import { rootDir, guidesDir, baseAppsDir } from '../src/core/paths.ts';
+import { getTaskMap } from '../src/core/guide-validation.ts';
 
 // Load environment variables (Node 20.12+)
 try {
@@ -32,6 +32,8 @@ const ALL_OPTIONS = {
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
+  'dry-run': { type: 'boolean', desc: 'List what would run without running it' },
+  limit: { type: 'string', desc: 'Process at most <n> guides' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
@@ -39,6 +41,7 @@ type OptionName = keyof typeof ALL_OPTIONS;
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app'] },
+  'dev-gap': { desc: 'Run dev + pr for each open eval-gap issue without a PR', flags: ['dry-run', 'limit'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
@@ -166,7 +169,7 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'pr', 'audit'],
+      commands: ['dev', 'pr', 'dev-gap', 'audit'],
     },
 
     {
@@ -202,7 +205,7 @@ function showHelp() {
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
-          const arg = flagName === 'config' ? ' <path>' : '';
+          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : '';
           console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }
@@ -231,10 +234,25 @@ async function main() {
       process.exit(0);
     }
 
+    case 'dev-gap': {
+      if (positionals[1]) {
+        console.error(cRed(`gd dev-gap picks guides from open issues; don't pass a guide ('${positionals[1]}').`));
+        process.exit(1);
+      }
+      const { fixEvalGaps } = await import('../src/authoring/dev-gap.ts');
+      const success = await fixEvalGaps({
+        dryRun: !!values['dry-run'],
+        limit: values.limit ? Number(values.limit) : undefined,
+        verbose: !!values.verbose,
+        suiteConfig: await resolveSuiteConfig(values.config as string | undefined),
+      });
+      process.exit(success ? 0 : 1);
+    }
+
     case 'dev': {
       const dir = requireArg(positionals[1], 'gd dev <path/to/guide>');
       if (values.grade || values['test-grader']) {
-        const { testGrader } = await import('../guides/run-grader.ts');
+        const { testGrader } = await import('../src/grading/run-grader.ts');
         const res = await testGrader(dir);
         if (!res.success && res.errorDetails) {
           console.error(cRed(`\nCalibration Error:\n${res.errorDetails}`));
@@ -242,13 +260,13 @@ async function main() {
         process.exit(res.success ? 0 : 1);
       }
       if (values['gen-grader']) {
-        const { generateGrader } = await import('../guides/grader-gen.ts');
+        const { generateGrader } = await import('../src/grading/generate-grader.ts');
         await generateGrader(dir);
         break;
       }
 
       // Default dev-guide pipeline
-      const { devGuide } = await import('../guides/dev-guide.ts');
+      const { devGuide } = await import('../src/authoring/dev.ts');
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
       const success = await devGuide(dir, {
         guidedOnly: !!values.guided,
@@ -261,13 +279,13 @@ async function main() {
 
     // not documented because it's UBER-powerful.
     case 'dev-all': {
-      const { devAll } = await import('../guides/dev-guide.ts');
+      const { devAll } = await import('../src/authoring/dev.ts');
       await devAll({ verbose: !!values.verbose });
       break;
     }
 
     case 'audit': {
-      const { auditGuides } = await import('../guides/dev-guide.ts');
+      const { auditGuides } = await import('../src/authoring/dev.ts');
       auditGuides({ groupByUsecases: !!values.usecases });
       break;
     }
@@ -278,14 +296,13 @@ async function main() {
 
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
-      const { runSingleTask } = await import('../harness/run_suite.ts');
+      const { runSingleTask } = await import('../src/harness/run-suite.ts');
       await runSingleTask(tmpl, prompt, mergedSuiteConfig);
       break;
     }
 
     case 'dashboard': {
-      process.chdir(evalViewDir);
-      await import('../eval-view/server.js');
+      await import('../src/dashboard/server.js');
       break;
     }
 
@@ -293,23 +310,16 @@ async function main() {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
-      let buildCode = 0;
-      if (mergedSuiteConfig.serving === Serving.MCP) {
-        buildCode = await runNpm(['build:mcp']);
-      } else if (mergedSuiteConfig.serving === Serving.SKILLS_CLI) {
-        buildCode = await runNpm(['--filter', 'serving', 'build-dist']);
-      }
-
+      const buildCode = await runNpm(['run', 'build-dist']);
       if (buildCode !== 0) process.exit(buildCode);
 
       if (values['ui']) {
         process.env.LAUNCH_UI = 'true';
-        process.chdir(evalViewDir);
-        await import('../eval-view/server.js');
+        await import('../src/dashboard/server.js');
         break;
       }
 
-      const { runSuite } = await import('../harness/run_suite.ts');
+      const { runSuite } = await import('../src/harness/run-suite.ts');
 
       const runOptions: any = { suiteConfig: mergedSuiteConfig }; // Pass the merged config
       if (tasks.length > 0) runOptions.tasks = tasks;
@@ -325,7 +335,7 @@ async function main() {
     }
 
     case 'backfill': {
-      const { runBackfill } = await import('../harness/backfill.ts');
+      const { runBackfill } = await import('../src/harness/backfill.ts');
       await runBackfill();
       break;
     }
@@ -343,39 +353,14 @@ async function main() {
 
     case 'pr': {
       const dir = requireArg(positionals[1], 'gd pr <path/to/guide>');
-      const { runDevPr } = await import('../guides/lib/dev-pr.ts');
-      const success = await runDevPr(dir);
-      process.exit(success ? 0 : 1);
+      const { runDevPr } = await import('../src/authoring/pr.ts');
+      const prUrl = await runDevPr(dir);
+      process.exit(prUrl ? 0 : 1);
     }
 
 
     default: {
-      // Legacy fallbacks — guide namespace was flattened
-      if (command === 'guide') {
-        const action = positionals[1] || '';
-        const remap: Record<string, string> = {
-          'dev': 'dev', 'dev-all': 'dev-all', 'grade': 'grade',
-          'test-grader': 'test', 'gen-grader': 'gen grader', 'gen-negative': 'gen negative',
-        };
-        if (remap[action]) {
-          const rest = positionals.slice(2).join(' ');
-          console.error(cRed("gd guide " + action + " has moved.") + "  Run: " + cCyan("gd " + remap[action] + (rest ? " " + rest : "")) + "\n");
-        } else {
-          console.error(cRed("The 'guide' namespace has been removed.") + " Run " + cCyan("gd --help") + " for the new commands.\n");
-        }
-      } else if (['suite', 'task', 'smoke', 'report'].includes(command)) {
-        console.error(cRed("'gd " + command + "' has moved.") + "  Run: " + cCyan("gd eval " + command) + "\n");
-      } else if (command === 'agent') {
-        console.error(cRed("'gd agent' has moved.") + "  Run: " + cCyan("gd run <template> <prompt>") + "\n");
-      } else if (['grade'].includes(command)) {
-        console.error(cRed("'gd grade' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --grade") + "\n");
-      } else if (['test', 'test-grader'].includes(command)) {
-        console.error(cRed("'gd test' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --test-grader") + "\n");
-      } else if (['gen', 'gen-grader', 'gen:grader'].includes(command)) {
-        console.error(cRed("'gd " + command + "' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --gen-grader") + "\n");
-      } else {
-        console.error(cRed("Unknown command: " + command + ".") + " Run " + cCyan("gd --help") + " for usage.");
-      }
+      console.error(cRed("Unknown command: " + command + ".") + " Run " + cCyan("gd --help") + " for usage.");
       process.exit(1);
     }
   }

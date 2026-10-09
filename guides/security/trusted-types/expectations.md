@@ -1,0 +1,5 @@
+- The application configures a Content Security Policy (via a `<meta http-equiv="Content-Security-Policy">` tag or HTTP response header) that enforces `require-trusted-types-for 'script'`.
+- The application defines a Trusted Types policy (such as a named sanitization policy or a `default` policy) using `trustedTypes.createPolicy()` with a `createHTML` rule that sanitizes or escapes untrusted HTML.
+- The application provides a "tinyfill" fallback that defines `window.trustedTypes.createPolicy` if the API is not natively supported by the browser.
+- Assigning a raw string directly to `Element.innerHTML` is blocked by Trusted Types enforcement with a `TypeError` (or automatically sanitized if a `default` policy is registered).
+- Untrusted HTML written to `Element.innerHTML` is converted through the Trusted Types policy's `createHTML()` method and rendered without executable `<script>` elements or inline `on*` event handler attributes in the DOM.

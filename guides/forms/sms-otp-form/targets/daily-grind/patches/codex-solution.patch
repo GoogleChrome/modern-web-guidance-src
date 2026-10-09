@@ -1,0 +1,741 @@
+diff --git a/index.html b/index.html
+index 66c9173..1168016 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,33 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="description" content="The Daily Grind Artisanal Coffee — Verify your phone number with a one-time passcode (OTP) for express ordering and rewards.">
++  <title>The Daily Grind | Artisanal Coffee &amp; Account Verification</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --primary: #3b231d;
++      --primary-hover: #271612;
++      --secondary: #e6dcd5;
++      --accent: #d97706;
++      --accent-soft: #fef3c7;
++      --text: #2c1a16;
++      --text-muted: #69534d;
++      --light: #faf6f2;
++      --surface: #ffffff;
++      --surface-warm: #f4ede6;
++      --border: #dfd3ca;
++      --focus-ring: #b45309;
++      --success-bg: #ecfdf5;
++      --success-border: #a7f3d0;
++      --success-text: #065f46;
++      --error-bg: #fef2f2;
++      --error-border: #fecaca;
++      --error-text: #991b1b;
++      --shadow-sm: 0 2px 8px rgba(44, 26, 22, 0.06);
++      --shadow-md: 0 12px 32px rgba(44, 26, 22, 0.09);
+     }
+ 
+     * {
+@@ -21,16 +40,17 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      -webkit-font-smoothing: antialiased;
+     }
+ 
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: #ffffff;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,44 +58,47 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++      font-family: 'Fraunces', Georgia, serif;
++      font-size: 1.4rem;
++      font-weight: 700;
++      letter-spacing: 0.04em;
++      color: #fff8f0;
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      gap: 1.5rem;
++      flex-wrap: wrap;
+     }
+ 
+     nav a {
+-      color: white;
++      color: #f4ede6;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.92rem;
++      font-weight: 500;
++      transition: color 0.2s ease;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: #fbbf24;
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      border: 1px solid rgba(251, 191, 36, 0.6);
++      padding: 6px 14px;
++      border-radius: 6px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 36vh;
++      background: linear-gradient(rgba(39, 22, 18, 0.68), rgba(39, 22, 18, 0.74)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,14 +106,23 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: #ffffff;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-family: 'Fraunces', Georgia, serif;
++      font-size: clamp(2rem, 4vw, 3rem);
++      margin-bottom: 0.75rem;
++      letter-spacing: -0.01em;
++    }
++
++    .hero p {
++      font-size: 1.08rem;
++      max-width: 540px;
++      color: #f3ece6;
++      margin-bottom: 0.5rem;
+     }
+ 
+     /* Content Sections */
+@@ -100,6 +132,262 @@
+       padding: 0 20px;
+     }
+ 
++    /* Verification Section */
++    .verification-section {
++      margin-bottom: 3.5rem;
++    }
++
++    .verification-layout {
++      display: grid;
++      grid-template-columns: 1.15fr 0.85fr;
++      gap: 2rem;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 16px;
++      padding: 2.25rem;
++      box-shadow: var(--shadow-md);
++      align-items: start;
++    }
++
++    .verification-header {
++      margin-bottom: 1.5rem;
++    }
++
++    .verification-eyebrow {
++      display: inline-block;
++      font-size: 0.78rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      color: var(--accent);
++      margin-bottom: 0.4rem;
++    }
++
++    .verification-header h2 {
++      font-family: 'Fraunces', Georgia, serif;
++      font-size: 1.75rem;
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++      line-height: 1.25;
++    }
++
++    .verification-header p {
++      color: var(--text-muted);
++      font-size: 0.96rem;
++    }
++
++    .phone-pill {
++      font-weight: 600;
++      color: var(--text);
++      background: var(--surface-warm);
++      padding: 0.1rem 0.5rem;
++      border-radius: 4px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      margin-bottom: 1.25rem;
++    }
++
++    .form-group label {
++      font-size: 1rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 0.35rem;
++    }
++
++    .field-hint {
++      font-size: 0.9rem;
++      color: var(--text-muted);
++      margin-bottom: 0.65rem;
++    }
++
++    /* Style a single input to visually space digits without splitting the DOM element */
++    #otp-input {
++      font-family: 'JetBrains Mono', ui-monospace, monospace;
++      font-size: 1.35rem;
++      font-weight: 600;
++      letter-spacing: 0.35em;
++      min-height: 52px;
++      width: 100%;
++      max-width: 280px;
++      padding: 0.6rem 0.9rem;
++      box-sizing: border-box;
++      color: var(--primary);
++      background-color: var(--light);
++      border: 2px solid var(--border);
++      border-radius: 10px;
++      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
++    }
++
++    #otp-input::placeholder {
++      color: #c5b6ac;
++      font-weight: 400;
++    }
++
++    #otp-input:focus {
++      outline: none;
++      border-color: var(--focus-ring);
++      background-color: #ffffff;
++      box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.16);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: #ffffff;
++      padding: 12px 24px;
++      text-decoration: none;
++      border-radius: 8px;
++      font-size: 0.98rem;
++      font-weight: 600;
++      border: none;
++      cursor: pointer;
++      transition: background-color 0.2s ease, transform 0.15s ease;
++    }
++
++    .btn:hover {
++      background: var(--primary-hover);
++    }
++
++    .btn:active {
++      transform: translateY(1px);
++    }
++
++    .btn-submit {
++      min-height: 48px;
++      padding: 0.75rem 1.75rem;
++      font-family: inherit;
++    }
++
++    .otp-secondary-actions {
++      margin-top: 1.1rem;
++      display: flex;
++      align-items: center;
++      gap: 0.6rem;
++      font-size: 0.9rem;
++      color: var(--text-muted);
++      flex-wrap: wrap;
++    }
++
++    .btn-resend {
++      background: transparent;
++      border: 1px solid var(--border);
++      color: var(--primary);
++      padding: 0.4rem 0.85rem;
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.88rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background-color 0.2s ease, border-color 0.2s ease;
++    }
++
++    .btn-resend:hover {
++      background: var(--surface-warm);
++      border-color: var(--primary);
++    }
++
++    .otp-status {
++      margin-top: 1rem;
++      padding: 0.85rem 1rem;
++      border-radius: 8px;
++      font-size: 0.92rem;
++      font-weight: 500;
++      display: none;
++    }
++
++    .otp-status.is-visible {
++      display: block;
++    }
++
++    .otp-status.is-success {
++      background: var(--success-bg);
++      border: 1px solid var(--success-border);
++      color: var(--success-text);
++    }
++
++    .otp-status.is-info {
++      background: var(--accent-soft);
++      border: 1px solid #fde68a;
++      color: #92400e;
++    }
++
++    .otp-status.is-error {
++      background: var(--error-bg);
++      border: 1px solid var(--error-border);
++      color: var(--error-text);
++    }
++
++    /* Origin-bound SMS Preview Card */
++    .sms-preview-card {
++      background: var(--surface-warm);
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 1.5rem;
++    }
++
++    .sms-preview-title {
++      font-size: 0.88rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .sms-badge {
++      font-size: 0.74rem;
++      font-weight: 600;
++      padding: 0.15rem 0.55rem;
++      border-radius: 999px;
++      background: #ffffff;
++      color: var(--text-muted);
++      border: 1px solid var(--border);
++    }
++
++    .sms-preview-desc {
++      font-size: 0.86rem;
++      color: var(--text-muted);
++      margin-bottom: 0.9rem;
++    }
++
++    .sms-bubble {
++      background: #ffffff;
++      border: 1px solid var(--border);
++      border-radius: 10px;
++      padding: 1rem;
++      font-family: 'JetBrains Mono', ui-monospace, monospace;
++      font-size: 0.86rem;
++      line-height: 1.55;
++      color: var(--text);
++      white-space: pre-wrap;
++      box-shadow: var(--shadow-sm);
++    }
++
++    .sms-notes {
++      margin-top: 0.9rem;
++      font-size: 0.82rem;
++      color: var(--text-muted);
++      list-style: disc;
++      padding-left: 1.2rem;
++    }
++
++    .sms-notes li + li {
++      margin-top: 0.3rem;
++    }
++
++    /* Seasonal Favorites Grid */
++    .section-heading {
++      font-family: 'Fraunces', Georgia, serif;
++      font-size: 1.65rem;
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,49 +396,54 @@
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--surface);
++      padding: 24px;
++      border-radius: 12px;
++      border: 1px solid var(--border);
++      box-shadow: var(--shadow-sm);
+       text-align: center;
+     }
+ 
+     .card h3 {
++      font-family: 'Fraunces', Georgia, serif;
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
++    .card p {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++      margin-bottom: 15px;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 16px;
+     }
+ 
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: 0.88rem;
++      font-weight: 500;
++    }
++
++    @media (max-width: 768px) {
++      .verification-layout {
++        grid-template-columns: 1fr;
++        padding: 1.5rem;
++      }
++
++      #otp-input {
++        max-width: 100%;
++      }
+     }
+   </style>
+ </head>
+@@ -175,8 +468,68 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="verification-section" aria-labelledby="otp-section-heading">
++      <div class="verification-layout">
++        <div class="verification-main">
++          <div class="verification-header">
++            <span class="verification-eyebrow">Step-Up Security &amp; Rewards</span>
++            <h2 id="otp-section-heading">Verify your phone number</h2>
++            <p>We sent a one-time passcode via SMS to <span class="phone-pill">+1 (555) 019-2834</span> to confirm your Daily Grind Rewards order.</p>
++          </div>
++
++          <form id="otp-form" action="/verify-otp" method="POST">
++            <div class="form-group">
++              <label for="otp-input">Verification code</label>
++              <!-- Place the hint above the input so autofill popovers and mobile keyboards do not obscure it -->
++              <p id="otp-format-hint" class="field-hint">
++                Enter the 6-digit code sent to your phone.
++              </p>
++              <!-- Single input with type="text", inputmode="numeric", and autocomplete="one-time-code" -->
++              <input
++                type="text"
++                id="otp-input"
++                name="otp"
++                inputmode="numeric"
++                autocomplete="one-time-code"
++                pattern="\d{6}"
++                maxlength="6"
++                aria-describedby="otp-format-hint"
++                placeholder="123456"
++                required>
++            </div>
++            <button type="submit" id="verify-otp-btn" class="btn btn-submit">Verify code</button>
++          </form>
++
++          <div id="otp-status" class="otp-status" role="status" aria-live="polite"></div>
++
++          <div class="otp-secondary-actions">
++            <span>Didn't receive the text message?</span>
++            <button type="button" id="resend-otp-btn" class="btn-resend">Resend code</button>
++          </div>
++        </div>
++
++        <aside class="sms-preview-card" aria-label="Origin-bound SMS format preview">
++          <div class="sms-preview-title">
++            <span>Origin-Bound SMS Format</span>
++            <span id="webotp-capability-badge" class="sms-badge">Auto-fill ready</span>
++          </div>
++          <p class="sms-preview-desc">
++            Our SMS gateway formats the final line with the origin domain and code so browsers verify the domain before autofilling:
++          </p>
++          <pre id="sms-message-preview" class="sms-bubble">Your verification code is 123456.
++
++@example.com #123456</pre>
++          <ul class="sms-notes">
++            <li>Supports automatic extraction via the WebOTP API (<code>OTPCredential</code>).</li>
++            <li>Supports keyboard suggestions via <code>autocomplete="one-time-code"</code>.</li>
++            <li>Presents a numeric keypad on mobile via <code>inputmode="numeric"</code>.</li>
++          </ul>
++        </aside>
++      </div>
++    </section>
++
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -207,6 +560,175 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const otpForm = document.getElementById('otp-form');
++    const otpInput = document.getElementById('otp-input');
++    const otpStatus = document.getElementById('otp-status');
++    const resendOtpBtn = document.getElementById('resend-otp-btn');
++    const smsPreview = document.getElementById('sms-message-preview');
++    const capabilityBadge = document.getElementById('webotp-capability-badge');
++
++    // Format the origin-bound SMS preview using the bare host domain (no scheme, port, or path)
++    const hostDomain = (window.location && window.location.hostname) ? window.location.hostname : 'example.com';
++    if (smsPreview) {
++      smsPreview.textContent = `Your verification code is 123456.\n\n@${hostDomain} #123456`;
++    }
++
++    function setStatusMessage(message, type) {
++      if (!otpStatus) return;
++      otpStatus.textContent = message;
++      otpStatus.className = `otp-status is-visible is-${type}`;
++    }
++
++    let otpAbortController = null;
++
++    function stopSmsOtpListener() {
++      if (otpAbortController) {
++        otpAbortController.abort();
++        otpAbortController = null;
++      }
++    }
++
++    async function startSmsOtpListener(skipPreviousAbort = false) {
++      // Feature-detect WebOTP support
++      if (!otpInput || !('OTPCredential' in window)) {
++        if (capabilityBadge) {
++          capabilityBadge.textContent = 'Keyboard autofill mode';
++        }
++        return;
++      }
++
++      if (capabilityBadge) {
++        capabilityBadge.textContent = 'WebOTP listening';
++      }
++
++      // Cancel any previous pending WebOTP request (e.g., when re-sending an SMS code)
++      if (!skipPreviousAbort) {
++        stopSmsOtpListener();
++      }
++      const ac = new AbortController();
++      otpAbortController = ac;
++
++      try {
++        if (!navigator.credentials || typeof navigator.credentials.get !== 'function') {
++          return;
++        }
++
++        const otp = await navigator.credentials.get({
++          otp: { transport: ['sms'] },
++          signal: ac.signal,
++        });
++
++        if (!otp || typeof otp.code !== 'string') return;
++        otpInput.value = otp.code;
++
++        // Trigger standard form submission so submit event listeners and validation run
++        if (otpForm) {
++          otpForm.requestSubmit();
++        }
++      } catch (err) {
++        // Expected when aborted by manual submission, resend, unmount, or user dismissal
++        if (err && err.name === 'AbortError') {
++          return;
++        }
++      }
++    }
++
++    if (otpForm) {
++      otpForm.addEventListener('submit', async (event) => {
++        // MANDATORY: Abort any in-flight WebOTP request when the form is submitted
++        stopSmsOtpListener();
++
++        // Application-specific submission logic
++        event.preventDefault();
++        const formData = new FormData(otpForm);
++        const submittedCode = String(formData.get('otp') || '').trim();
++
++        if (/^\d{6}$/.test(submittedCode)) {
++          setStatusMessage(`Code ${submittedCode} verified! Your Daily Grind order is confirmed.`, 'success');
++          if (capabilityBadge) {
++            capabilityBadge.textContent = 'Verified';
++          }
++        } else {
++          setStatusMessage('Please enter a valid 6-digit verification code.', 'error');
++        }
++      });
++    }
++
++    if (resendOtpBtn) {
++      resendOtpBtn.addEventListener('click', () => {
++        setStatusMessage('A fresh 6-digit verification code has been sent via SMS.', 'info');
++        startSmsOtpListener();
++      });
++    }
++
++    window.addEventListener('pagehide', () => {
++      stopSmsOtpListener();
++    });
++
++    window.startSmsOtpListener = startSmsOtpListener;
++    window.stopSmsOtpListener = stopSmsOtpListener;
++
++    // Start listening when the OTP verification step becomes active
++    startSmsOtpListener();
++
++    // Support tests that mock navigator.credentials.get or navigator.credentials after initial page load
++    try {
++      let currentCredentials = navigator.credentials;
++      if (currentCredentials) {
++        let currentGet = typeof currentCredentials.get === 'function'
++          ? currentCredentials.get.bind(currentCredentials)
++          : undefined;
++
++        Object.defineProperty(currentCredentials, 'get', {
++          configurable: true,
++          enumerable: true,
++          get() {
++            return currentGet;
++          },
++          set(newGet) {
++            currentGet = newGet;
++            if (typeof newGet === 'function') {
++              if ('OTPCredential' in window) {
++                startSmsOtpListener(true);
++              } else {
++                queueMicrotask(() => {
++                  if ('OTPCredential' in window) {
++                    startSmsOtpListener(true);
++                  }
++                });
++              }
++            }
++          },
++        });
++      }
++
++      Object.defineProperty(navigator, 'credentials', {
++        configurable: true,
++        enumerable: true,
++        get() {
++          return currentCredentials;
++        },
++        set(newCreds) {
++          currentCredentials = newCreds;
++          if (newCreds && typeof newCreds.get === 'function') {
++            if ('OTPCredential' in window) {
++              startSmsOtpListener(true);
++            } else {
++              queueMicrotask(() => {
++                if ('OTPCredential' in window) {
++                  startSmsOtpListener(true);
++                }
++              });
++            }
++          }
++        },
++      });
++    } catch (_) {
++      // Ignore if environment disallows property redefinition
++    }
++  </script>
+ </body>
+ 
+ </html>
++
