@@ -20,51 +20,20 @@ import {
 const PORT = process.env.PORT || 8081;
 const STATIC = parseBooleanEnv(process.env.STATIC, false);
 
-// Registry of supported agent identifiers mapping path substrings to Agent display names.
-// To add a new agent in the future, simply append an entry here (e.g., { match: 'newagent', name: 'New Agent CLI' }).
-const SUPPORTED_AGENTS = [
-  { match: 'claude', name: 'claude_code' },
-  { match: 'gemini', name: 'gemini_cli' },
-  { match: 'jetski', name: 'jetski_cli' },
-  { match: 'codex', name: 'codex_cli' }
-];
-
 /**
- * Detects the agent display name from a file path based on SUPPORTED_AGENTS.
- * Returns { agentName: string, isKnown: boolean }.
+ * Resolves a path relative to resultsDir, ensuring it does not escape resultsDir.
+ * @param {string | null | undefined} relDir
+ * @returns {string | null}
  */
-/**
- * @param {string} filePath
- */
-function detectAgentFromPath(filePath) {
-  const lowerPath = (filePath || '').toLowerCase();
-  for (const agent of SUPPORTED_AGENTS) {
-    if (lowerPath.includes(agent.match)) {
-      return { agentName: agent.name, isKnown: true };
-    }
+function resolveSafeResultDir(relDir) {
+  if (!relDir) return null;
+  const base = path.resolve(resultsDir);
+  const target = path.resolve(resultsDir, relDir);
+  const rel = path.relative(base, target);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    return null;
   }
-  return { agentName: 'Unknown Agent', isKnown: false };
-}
-
-/**
- * Resolves the agent identifier from evals.json in parent directories, falling back to fallbackAgent.
- * @param {string} startDir
- * @param {string} fallbackAgent
- * @returns {string}
- */
-function getAgentFromEvalsJson(startDir, fallbackAgent) {
-  let curr = startDir;
-  while (curr && curr !== path.dirname(curr)) {
-    const evalsPath = path.join(curr, 'evals.json');
-    if (fs.existsSync(evalsPath)) {
-      try {
-        const data = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
-        if (data && data.agent) return data.agent;
-      } catch (e) {}
-    }
-    curr = path.dirname(curr);
-  }
-  return fallbackAgent;
+  return target;
 }
 
 /**
@@ -79,24 +48,19 @@ async function handleMissingTrajectorySummary(filePath, res) {
     res.end('404 Not Found: Run directory does not exist');
     return;
   }
-  const { agentName, isKnown } = detectAgentFromPath(filePath);
-  const resolvedAgent = getAgentFromEvalsJson(runDir, agentName);
-  if (!isKnown && resolvedAgent === agentName) {
-    console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-normalizer.ts.`);
-  }
   try {
-    const { generateNormalizedTrajectory } = await import('../harness/lib/trajectory-normalizer.ts');
-    await generateNormalizedTrajectory(runDir, resolvedAgent, 'local');
+    const { ensureFreshTrajectorySummary } = await import('../harness/lib/trajectory-normalizer.ts');
+    await ensureFreshTrajectorySummary(runDir);
     if (fs.existsSync(filePath)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(fs.readFileSync(filePath), 'utf-8');
       return;
     }
     res.writeHead(404);
-    res.end(`404 Not Found: Trajectory summary generation failed for agent "${resolvedAgent}" in path "${filePath}".`);
+    res.end(`404 Not Found: Trajectory summary generation failed for path "${filePath}".`);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error(`Failed to auto-generate trajectory summary for agent "${resolvedAgent}":`, message);
+    console.error('Failed to auto-generate trajectory summary:', message);
     res.writeHead(500);
     res.end(`500 Internal Error: ${message}`);
   }
@@ -105,6 +69,18 @@ async function handleMissingTrajectorySummary(filePath, res) {
 const STEP_AUTO_SCROLL_SCRIPT = `
 <script id="step-auto-scroll-injected">
 (function() {
+  function highlightHash() {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#step-')) {
+      const target = document.querySelector(hash);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.style.outline = '3px solid #58a6ff';
+        target.style.boxShadow = '0 0 25px rgba(88, 166, 255, 0.6)';
+      }
+    }
+  }
+
   function initStepAnchors() {
     const logsContainer = document.getElementById("logs");
     if (!logsContainer) return;
@@ -134,17 +110,7 @@ const STEP_AUTO_SCROLL_SCRIPT = `
       }
     });
 
-    const hash = window.location.hash;
-    if (hash && hash.startsWith('#step-')) {
-      const target = document.querySelector(hash);
-      if (target) {
-        setTimeout(() => {
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          target.style.outline = '3px solid #58a6ff';
-          target.style.boxShadow = '0 0 25px rgba(88, 166, 255, 0.6)';
-        }, 150);
-      }
-    }
+    setTimeout(highlightHash, 150);
   }
 
   if (document.readyState === 'loading') {
@@ -153,14 +119,7 @@ const STEP_AUTO_SCROLL_SCRIPT = `
     setTimeout(initStepAnchors, 100);
   }
 
-  window.addEventListener('hashchange', () => {
-    const target = document.querySelector(window.location.hash);
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      target.style.outline = '3px solid #58a6ff';
-      target.style.boxShadow = '0 0 25px rgba(88, 166, 255, 0.6)';
-    }
-  });
+  window.addEventListener('hashchange', highlightHash);
 })();
 </script>
 `;
@@ -558,50 +517,34 @@ const server = http.createServer(async (req, res) => {
     const origWarn = console.warn;
     const origErr = console.error;
 
-    /** @param {...any} args */
-    const streamLog = (...args) => {
+    /**
+     * @param {(...args: any[]) => void} origFn
+     * @returns {(...args: any[]) => void}
+     */
+    const makeStreamLogger = (origFn) => (...args) => {
       const msg = args.map(stripAnsi).join(' ') + '\n';
       res.write(msg);
-      origLog(...args);
-    };
-    /** @param {...any} args */
-    const streamWarn = (...args) => {
-      const msg = args.map(stripAnsi).join(' ') + '\n';
-      res.write(msg);
-      origWarn(...args);
-    };
-    /** @param {...any} args */
-    const streamErr = (...args) => {
-      const msg = args.map(stripAnsi).join(' ') + '\n';
-      res.write(msg);
-      origErr(...args);
+      origFn(...args);
     };
 
-    console.log = streamLog;
-    console.warn = streamWarn;
-    console.error = streamErr;
+    console.log = makeStreamLogger(origLog);
+    console.warn = makeStreamLogger(origWarn);
+    console.error = makeStreamLogger(origErr);
 
     try {
-      const authHeader = req.headers.authorization || '';
-      if (authHeader) {
-        process.env.GD_GCS_TOKEN = authHeader;
-      }
       res.write(`[Server] Verifying local run files before loading comparison...\n`);
       const { downloadRunFromGcsIfMissing } = await import('../harness/lib/gcs-downloader.ts');
-      const absoluteResultsDir = path.resolve(resultsDir);
 
       if (dirA) {
-        const absA = path.resolve(resultsDir, dirA);
-        const relA = path.relative(absoluteResultsDir, absA);
-        if (!relA.startsWith('..') && !path.isAbsolute(relA)) {
+        const absA = resolveSafeResultDir(dirA);
+        if (absA) {
           res.write(`[Server] Checking run A: ${dirA}\n`);
           await downloadRunFromGcsIfMissing(absA);
         }
       }
       if (dirB && dirB !== dirA) {
-        const absB = path.resolve(resultsDir, dirB);
-        const relB = path.relative(absoluteResultsDir, absB);
-        if (!relB.startsWith('..') && !path.isAbsolute(relB)) {
+        const absB = resolveSafeResultDir(dirB);
+        if (absB) {
           res.write(`[Server] Checking run B: ${dirB}\n`);
           await downloadRunFromGcsIfMissing(absB);
         }
@@ -632,15 +575,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const absoluteResultsDir = path.resolve(resultsDir);
-    const absDirA = path.resolve(resultsDir, relativeDirA);
-    const absDirB = path.resolve(resultsDir, relativeDirB);
+    const absDirA = resolveSafeResultDir(relativeDirA);
+    const absDirB = resolveSafeResultDir(relativeDirB);
 
     // Security check: ensure both paths are strictly within the results directory
-    const relA = path.relative(absoluteResultsDir, absDirA);
-    const relB = path.relative(absoluteResultsDir, absDirB);
-
-    if (relA.startsWith('..') || path.isAbsolute(relA) || relB.startsWith('..') || path.isAbsolute(relB)) {
+    if (!absDirA || !absDirB) {
       res.writeHead(403, { 'Content-Type': 'text/plain' });
       res.end('Forbidden: Paths must be within the results directory');
       return;
