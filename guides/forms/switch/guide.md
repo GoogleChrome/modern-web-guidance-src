@@ -49,7 +49,7 @@ input[type="checkbox"][switch]:focus-visible {
 
 If your Baseline target does not support `<input type="checkbox" switch>`, load `input-switch-polyfill` only when `'switch' in HTMLInputElement.prototype` is `false`. Do not load the polyfill unconditionally. The polyfill enhances checkboxes with the `switch` attribute by setting `role="switch"`, applying switch styling (`appearance: none`), syncing computed `accent-color`, and providing pointer drag support.
 
-Use the package-loading approach appropriate to your project. The example below assumes your build setup can resolve the module specifier:
+Use the package-loading approach appropriate to your project. The example below assumes your setup can resolve module specifiers:
 
 ```javascript
 if (!('switch' in HTMLInputElement.prototype)) {
