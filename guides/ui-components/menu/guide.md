@@ -224,3 +224,17 @@ if (!('focusgroup' in HTMLElement.prototype)) {
 {{ FEATURE_FALLBACKS("anchor-positioning") }}
 
 In browsers without CSS Anchor Positioning, guard `inset: auto` (and any `margin: 0` reset on `[popover]`) inside `@supports (position-area: block-end)` so popovers fall back to centered viewport placement instead of stacking at the top-left corner, or position the menu from `getBoundingClientRect()`.
+
+{{ BASELINE_STATUS("anchor-positioning", "api.HTMLElement.showPopover.options_source_parameter.implicit_anchor_reference") }}
+
+If targeting earlier Anchor Positioning implementations where `showPopover({ source })` does not establish an implicit anchor, link each trigger and menu in JavaScript instead of writing per-menu CSS rules:
+
+```js
+if (!('ToggleEvent' in window && 'source' in ToggleEvent.prototype)) {
+  triggers.forEach((trigger, index) => {
+    const anchorName = `--menu-trigger-${index}`;
+    trigger.style.anchorName = anchorName;
+    menuForTrigger(trigger).style.positionAnchor = anchorName;
+  });
+}
+```
