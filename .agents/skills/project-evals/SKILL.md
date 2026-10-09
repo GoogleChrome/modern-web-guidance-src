@@ -1,6 +1,6 @@
 ---
 name: project-evals
-description: Best practices for creating expectations and grader files to evaluate guidance quality. Use this skill any time you're writing or reviewing an `expectations.md` or `grader.ts` file.
+description: Best practices for generating, calibrating, and reviewing target evaluation capsules (`grader.ts`, `task.md`, and solution patches). Use this skill any time you're working on Stage 3 evaluation files.
 ---
 
 # Stage 3: Evaluating guidance for a use case (Needs evals)
@@ -15,41 +15,30 @@ This is the third of three stages in creating guidance:
 
 **Real-world coding agents see only `guide.md`** — retrieved automatically via the RAG skills system when a developer asks for help. Every other file in a use case directory is eval infrastructure.
 
-**The eval harness** runs a separate coding agent in a controlled environment to test whether the guidance works. This eval agent receives the first prompt from `tasks/task.md` and has access to `guide.md` via the same RAG system. The harness then runs `grader.ts` against the eval agent's output.
+**The eval harness** runs a separate coding agent in a controlled environment to test whether the guidance works. This eval agent receives the first prompt from `targets/<base_app>/task.md` and has access to `guide.md` via the same RAG system. The harness then runs `targets/<base_app>/grader.ts` against the eval agent's output.
 
 None of the following are ever seen by real-world coding agents:
 
 | File | Role in eval pipeline |
 |---|---|
-| `tasks/task.md` | Simulated developer prompts and base application name fed to the eval agent by the harness |
-| `demo.html` | Reference implementation — grader runs against it to confirm tests pass on correct code |
-| `negative-demo.html` | Anti-example — grader runs against it to confirm tests fail on incorrect code |
-| `expectations.md` | Spec used to generate `grader.ts` |
-| `grader.ts` | Playwright tests run against the eval agent's output |
+| `targets/<base_app>/task.md` | Simulated developer prompts and base application name fed to the eval agent by the harness |
+| `demo.html` | Standalone reference implementation of the use case |
+| `expectations.md` | Spec used to generate and calibrate target graders (`targets/<base_app>/grader.ts`) |
+| `targets/<base_app>/patches/*-solution.patch` | Golden solution diffs against the base app (must pass 100% of grader checks) |
+| `targets/<base_app>/patches/zero-passrate.patch` | Baseline diff without guidance (must fail 100% of grader checks) |
+| `targets/<base_app>/grader.ts` | Playwright tests run against the eval agent's output |
 
 ## How the eval files work together
 
-`tasks/task.md`, `expectations.md`, and `grader.ts` form a tightly coupled pipeline:
-1. **`tasks/task.md`** — Simulated developer prompts used only by the eval harness. It must start with a YAML frontmatter specifying the `base_app`, followed by a list of prompts. Each prompt should sound like a real developer request, without naming specific APIs or best practices — the eval agent is expected to discover those by reading `guide.md` via RAG. The first prompt is the most important: it is used as the default task.
+`targets/<base_app>/task.md`, `expectations.md`, and `targets/<base_app>/grader.ts` form a tightly coupled pipeline:
+1. **`targets/<base_app>/task.md`** — Simulated developer prompts used only by the eval harness. It must start with a YAML frontmatter specifying the `base_app`, followed by a list of prompts. Each prompt should sound like a real developer request, without naming specific APIs or best practices — the eval agent is expected to discover those by reading `guide.md` via RAG. The first prompt is the most important: it is used as the default task.
 
-2. **`expectations.md`** — The ground truth for what a correct implementation looks like. Each bullet becomes exactly one test in `grader.ts`. Write expectations assuming the eval agent read `guide.md` and implemented it faithfully; they describe the observable output, not the implementation approach.
+2. **`expectations.md`** — The ground truth for what a correct implementation looks like (authored in Stage 2 alongside `guide.md` and `demo.html`; see [project-guides/SKILL.md](../project-guides/SKILL.md) for `expectations.md` authoring and review rules). Each bullet becomes one test in `targets/<base_app>/grader.ts`.
 
-3. **`grader.ts`** — A Playwright test file generated 1:1 from `expectations.md`. Every bullet maps to one `test()` block. If an expectation cannot be translated into a Playwright assertion (static file check or browser automation), it does not belong in `expectations.md`.
-
-## Writing `expectations.md`
-
-Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly (e.g., "The input element is styled with a red border only AFTER a blur event").
-
-* **1:1 with grader tests** — Each bullet becomes exactly one test. Write one bullet per assertion. Do not combine multiple checks into a single bullet.
-* **Plain declarative phrasing** — Write each bullet as a plain statement of what is true of a correct implementation (e.g., "The dialog closes when the Escape key is pressed"). Imperative directives such as `MUST`, `MUST NOT`, `DO`, and `DO NOT` are a `guide.md` convention for steering coding agents; `expectations.md` is consumed only by the internal grader generator, so the `The implementation MUST…` boilerplate adds nothing and should be omitted.
-* **Concrete, Testable Criteria (No API Facts)** — Expectations must be verifiable browser behaviors we can check with Playwright (e.g., computed styles, DOM layout), not just factual statements about an API or code structure.
-* **Exercised in Demo**: Ensure that every expectation written here is actively exercised in the accompanying `demo.html`. Expectations that aren't covered by the demo lead to unreliable grader calibration.
-* **Scoped to this use case** — Only include expectations that apply to the specific use case being graded. Do not copy generic expectations from other guides if they describe behavior that won't appear in an implementation of this guide (e.g., don't include URL input expectations in a sign-in form grader).
-* **No external links** — The grader generator cannot resolve them.
-* **Avoid over-constraining** — Don't assert implementation details that don't affect correctness (e.g., don't require a direct child relationship if a descendant also works).
+3. **`targets/<base_app>/grader.ts`** — A Playwright test file generated from `expectations.md` and calibrated against `patches/*-solution.patch` (100% pass) and `patches/zero-passrate.patch` (0% pass). Every bullet maps to a `test()` block (verified by `validateGraderExpectationCoverage()`).
 
 ## Grading Note
-* Graders (`grader.ts`) live within their respective guide folders. These are Playwright test files.
+* Graders (`targets/<base_app>/grader.ts`) are Playwright test files calibrated per target base app.
 * **AVOID** using static assertions (like regex or `str.includes()` on `fs.readFileSync`) to test CSS or HTML syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting.
 * Instead, **PREFER** using Playwright's browser APIs to test computed styles and actual DOM layout. Use `element.evaluate((el) => window.getComputedStyle(el).propertyName)` to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
 * A human may manually edit the `.ts` file if the generator struggles to get it perfectly tailored.
@@ -60,23 +49,24 @@ Once a guide has its `guide.md`, `demo.html`, and `expectations.md` completely w
 
 ## Generating the Eval Graders
 
-To generate the eval graders, use the `gd dev` tool.
+To generate and calibrate the evaluation capsules across `SUPPORTED_BASE_APPS` (`daily-grind`, `devtools-times`), use `gd dev`:
 
-Run the following command:
 ```bash
-node ./bin/gd.ts dev <path-to-guide-directory>
+gd dev <path-to-guide-directory>
+# Or to re-verify calibration of existing target graders and patches:
+gd dev <path-to-guide-directory> --test-grader
 ```
 
 This command will automatically:
-1. Generate a `negative-demo.html` based on the guidance.
-2. Generate a `grader.ts` Playwright test that asserts your `expectations.md` against both `demo.html` (should pass) and `negative-demo.html` (should fail).
-3. Test and calibrate the grader by running the test suite.
+1. Generate multi-agent golden solution patches (`patches/*-solution.patch`), a baseline `patches/zero-passrate.patch`, and `task.md` for each base app under `targets/<base_app>/`.
+2. Generate a `targets/<base_app>/grader.ts` Playwright test suite that asserts `expectations.md` passes 100% on the golden solution patches and fails 100% on `zero-passrate.patch`.
+3. Run guided vs. unguided agent evaluations and write a diagnostic report.
 
 * **Eval Performance Thresholds**: A guide is not considered ready if evaluation pass rates are low. A 0% unguided pass rate is a critical blocker, indicating the guide may lack sufficient scaffolding for the model to discover the solution.
 
-## Writing `tasks/task.md`
+## Writing `targets/<base_app>/task.md`
 
-`tasks/task.md` contains realistic developer prompts used to run AI agents end-to-end against the guide's grader, prefixed by a YAML frontmatter specifying the base application.
+`targets/<base_app>/task.md` contains realistic developer prompts used to run AI agents end-to-end against the guide's grader, prefixed by a YAML frontmatter specifying the base application.
 
 **Format:**
 ```md
