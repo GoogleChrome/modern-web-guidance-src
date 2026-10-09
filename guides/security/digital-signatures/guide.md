@@ -127,6 +127,7 @@ const isValid = await crypto.subtle.verify(
 
 ## Fallback strategies
 
+{# {{ BASELINE_STATUS("tmp-webcrypto-modern-algos") }} #}
 {{ BASELINE_STATUS("web-cryptography") }}
 {{ BASELINE_STATUS("web-cryptography", "api.SubtleCrypto.sign.ed25519") }}
 
