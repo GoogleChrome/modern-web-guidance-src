@@ -514,11 +514,19 @@ export function ensureFreshTrajectorySummarySync(runDir: string): TrajectorySumm
   if (hasRawSessionLogs(runDir)) {
     const detectedAgent = detectAgentForRun(runDir, existing);
     if (detectedAgent) {
+      console.log(`[Trajectory] Regenerating trajectory_summary.json (v${existing?.normalizerVersion ?? 'none'} → v${NORMALIZER_VERSION}) in ${runDir}`);
       const regenerated = generateNormalizedTrajectorySync(runDir, detectedAgent, existing?.initialPrompt);
       if (regenerated) {
         return regenerated;
       }
+      console.warn(`[Trajectory] Failed to regenerate summary for ${runDir} (agent=${detectedAgent ?? 'unknown'})`);
+    } else {
+      console.warn(`[Trajectory] Failed to regenerate summary for ${runDir} (agent=${detectedAgent ?? 'unknown'})`);
     }
+  } else if (!existing) {
+    console.warn(`[Trajectory] No trajectory_summary.json or raw logs in ${runDir}; trajectory unavailable`);
+  } else {
+    console.warn(`[Trajectory] Using stale summary (v${existing.normalizerVersion ?? 'none'}) in ${runDir}; no raw logs to regenerate`);
   }
 
   return existing;

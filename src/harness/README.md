@@ -743,7 +743,8 @@ Run directory paths can be:
 - **Remote GCS buckets**: If the specified run directory is not found locally, `gd compare` automatically downloads the run artifacts from Google Cloud Storage (`gs://guidance-evals/<suite-path>`) before launching analysis.
 
 ### Analysis Pipeline
-The comparison executes a three-phase pipeline:
-1. **Pre-processes trajectories** into chronological milestone steps (filtering noise and retrying error loops).
-2. **Dispatches parallel sub-agents** using the configured solution agent CLI (Jetski or Gemini CLI) to analyze guide compliance, code mutations, and friction.
-3. **Synthesizes a structured markdown diagnosis** written to `results/<suite-name>/variance_diagnoses/<guide>-<task>-<runType>.md`.
+The comparison runs in four steps:
+1. **Loads both runs.** Missing runs are downloaded from GCS. If a `trajectory_summary.json` is missing or from an older normalizer version, it's rebuilt from the raw session logs.
+2. **Pre-processes trajectories** into tagged milestone steps (skill search, guide retrieval, code mutation, noise) and counts error/retry loops.
+3. **Runs one diagnostic prompt** with the configured solution agent CLI in an isolated temp workspace. The full guide, grader, diffs and trajectories are staged there as files. The agent may split the guide-compliance and code/friction audits across its own subagents.
+4. **Writes a four-section markdown report** to `<Run A suite>/variance_diagnoses/<guide>-<task>-<runA>-vs-<runB>.md`. If Run A isn't in a recognizable suite folder, it falls back to Run B's suite, then to `harness/results/variance_diagnoses/`.

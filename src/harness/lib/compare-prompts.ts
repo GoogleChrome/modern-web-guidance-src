@@ -206,7 +206,7 @@ ${truncateAtLineBoundary(diffAvsB, MAX_DIFF_PROMPT_CHARS)}
   const maxPromptBytes = MAX_TOTAL_COMBINED_PROMPT_BYTES - Buffer.byteLength(systemInstruction, 'utf8') - 1024;
   const boundedPrompt =
     Buffer.byteLength(prompt, 'utf8') > maxPromptBytes
-      ? truncateAtLineBoundary(prompt, maxPromptBytes)
+      ? truncateAtLineBoundary(prompt, Math.floor((maxPromptBytes * prompt.length) / Buffer.byteLength(prompt, 'utf8')))
       : prompt;
 
   return { systemInstruction, prompt: boundedPrompt };
