@@ -1,7 +1,15 @@
 {
   "default": {
     "built-in-ai": "tomayac",
+    "chrome-extensions": [
+      "oliverdunk",
+      "patrickkettner"
+    ],
     "css": "LeaVerou",
+    "extensions": [
+      "oliverdunk",
+      "patrickkettner"
+    ],
     "html": "LeaVerou",
     "forms": "LeaVerou",
     "ui-behaviors": "LeaVerou",
