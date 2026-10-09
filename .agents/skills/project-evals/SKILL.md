@@ -38,9 +38,10 @@ None of the following are ever seen by real-world coding agents:
 3. **`targets/<base_app>/grader.ts`** — A Playwright test file generated from `expectations.md` and calibrated against `patches/*-solution.patch` (100% pass) and `patches/zero-passrate.patch` (0% pass). Every bullet maps to a `test()` block (verified by `validateGraderExpectationCoverage()`).
 
 ## Grading Note
-* Graders (`targets/<base_app>/grader.ts`) are Playwright test files calibrated per target base app.
-* **AVOID** using static assertions (like regex or `str.includes()` on `fs.readFileSync`) to test CSS or HTML syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting.
-* Instead, **PREFER** using Playwright's browser APIs to test computed styles and actual DOM layout. Use `element.evaluate((el) => window.getComputedStyle(el).propertyName)` to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
+* Graders (`targets/<base_app>/grader.ts`) are Playwright test files calibrated per target base app, with exactly one assertion per `test()` block.
+* **AVOID** regex or `str.includes()` on raw file contents to test HTML, CSS, or JavaScript syntax. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting.
+* **PREFER static analysis first** using the template helpers: Linkedom for HTML structure (`getHtmlDocuments`), CSSOMNom for CSS rules and at-rules (`getCssStyleSheet`), and ts-morph for JavaScript/TypeScript (`getJsProject`). Verify outcomes rather than one narrow implementation, and accept equivalent utility classes in utility-first CSS apps.
+* **Browser checks only when necessary**: Use Playwright browser APIs (e.g., `element.evaluate((el) => window.getComputedStyle(el).propertyName)`) for requirements that cannot be verified statically, such as runtime click events, dynamic state updates, or computed styles.
 * A human may manually edit the `.ts` file if the generator struggles to get it perfectly tailored.
 
 ---
