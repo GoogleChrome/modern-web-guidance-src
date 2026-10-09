@@ -8,44 +8,49 @@ web-feature-ids:
 
 # Encrypt data client-side with WebCrypto
 
-Use the Web Cryptography API (`crypto.subtle`) to establish shared secrets over untrusted networks and encrypt sensitive data in the browser using Authenticated Encryption with Associated Data (AEAD). For signing and verifying messages or artifacts without encrypting them, see {{ GUIDE_REF("digital-signatures") }}.
+Use the Web Cryptography API (`crypto.subtle`) to establish shared secrets over untrusted networks using quantum-resistant Key Encapsulation Mechanisms (KEMs) or classical key agreement, and encrypt sensitive data in the browser with Authenticated Encryption with Associated Data (AEAD). For signing and verifying messages or artifacts without encrypting them, see {{ GUIDE_REF("digital-signatures") }}.
 
-Modern WebCrypto adds **Key Encapsulation Mechanisms (KEMs)** (`encapsulateKey()`, `decapsulateKey()`, `encapsulateBits()`, `decapsulateBits()`), the **`ChaCha20-Poly1305`** AEAD cipher, **explicit raw key formats** (`'raw-public'`, `'raw-seed'`, `'raw-secret'`), **`getPublicKey()`**, and static feature detection via **`SubtleCrypto.supports()`**.
-
-## 1. Key Encapsulation (`MLKEM768-X25519` and `ML-KEM`)
+## 1. Choose a KEM algorithm and generate a recipient key pair
 
 Unlike Diffie-Hellman key agreement (`deriveKey()`), where both parties combine their keys, a Key Encapsulation Mechanism (KEM) uses the recipient's public key to generate both a random shared secret and a ciphertext capsule in a single `encapsulateKey()` call. The recipient recovers the same shared key from the ciphertext capsule using `decapsulateKey()`.
 
-### Supported KEM algorithms
+Use **`'MLKEM768-X25519'`** by default: it combines post-quantum ML-KEM (standardized in NIST FIPS 203) with classical `'X25519'` so the shared secret remains secure as long as either algorithm holds. Choose standalone `'ML-KEM-768'` when a policy requires pure FIPS 203 output without a hybrid component, or `'ML-KEM-1024'` when a policy requires NIST Category 5 (CNSA 2.0) compliance.
 
-| Algorithm name | Description | Public key (`'raw-public'`) | Private seed (`'raw-seed'`) | Ciphertext size |
+| Algorithm name | Security level & use case | Public key (`'raw-public'`) | Private seed (`'raw-seed'`) | Ciphertext size |
 |---|---|---|---|---|
-| `'MLKEM768-X25519'` | Hybrid post-quantum + classical KEM (recommended default; combines `ML-KEM-768` and `X25519`) | 1216 bytes | 32 bytes | 1120 bytes |
-| `'ML-KEM-768'` | NIST FIPS 203 post-quantum KEM (192-bit security category) | 1184 bytes | 64 bytes | 1088 bytes |
-| `'ML-KEM-1024'` | NIST FIPS 203 post-quantum KEM (256-bit security category) | 1568 bytes | 64 bytes | 1568 bytes |
+| **`'MLKEM768-X25519'`** | **Hybrid post-quantum (`'ML-KEM-768'`) + classical (`'X25519'`); recommended default** | 1216 bytes | 32 bytes | 1120 bytes |
+| `'ML-KEM-768'` | NIST Category 3 (~192-bit security); standalone post-quantum KEM | 1184 bytes | 64 bytes | 1088 bytes |
+| `'ML-KEM-1024'` | NIST Category 5 (~256-bit security); highest security margin | 1568 bytes | 64 bytes | 1568 bytes |
 
-- Use the exact string `'MLKEM768-X25519'` for the hybrid KEM. Non-standard aliases such as `'X-Wing'` or `'X25519MLKEM768'`, as well as `'ML-KEM-512'`, throw `NotSupportedError`.
-- KEM public keys only accept `'encapsulateKey'` and `'encapsulateBits'` usages; KEM private keys only accept `'decapsulateKey'` and `'decapsulateBits'`.
-
-### Encapsulating and decapsulating a shared key
-
-`encapsulateKey()` and `decapsulateKey()` interpret their `sharedKeyAlgorithm` parameter using `importKey()` rules, importing the 32-byte (256-bit) KEM shared secret with format `'raw-secret'`. You can pass `'ChaCha20-Poly1305'`, `'AES-GCM'`, or `'HKDF'` directly:
+- Pass `'MLKEM768-X25519'`, `'ML-KEM-768'`, or `'ML-KEM-1024'` as the algorithm name (aliases such as `'X-Wing'` or `'X25519MLKEM768'`, as well as `'ML-KEM-512'`, throw `NotSupportedError`).
+- Pass `['encapsulateKey', 'decapsulateKey']` (or `['encapsulateBits', 'decapsulateBits']`) when generating a KEM key pair:
 
 ```javascript
-// 1. Recipient generates a key pair and exports the public key using 'raw-public'
 const recipientKeyPair = await crypto.subtle.generateKey(
   'MLKEM768-X25519',
   false,
   ['encapsulateKey', 'decapsulateKey'],
 );
+```
 
-// Modern algorithms reject legacy 'raw'; use 'raw-public' for public keys
+## 2. Export and import keys
+
+Modern WebCrypto algorithms (`'MLKEM768-X25519'`, `'ML-KEM-768'`, `'ML-KEM-1024'`, and `'ChaCha20-Poly1305'`) **reject the legacy `'raw'` format** in `importKey()` and `exportKey()` with a `NotSupportedError`. Always specify the explicit key format:
+
+- **`'raw-public'`**: Public key bytes (`1216`, `1184`, or `1568` bytes). Pass `['encapsulateKey']` (or `['encapsulateBits']`) when importing a KEM public key.
+- **`'raw-seed'`**: Private key seed bytes (`32` bytes for `'MLKEM768-X25519'`; `64` bytes for `'ML-KEM-768'` and `'ML-KEM-1024'`). Pass `['decapsulateKey']` (or `['decapsulateBits']`) when importing a KEM private key (passing `['encapsulateKey', 'decapsulateKey']` to `importKey()` or `getPublicKey()` throws `SyntaxError`). Both `'raw'` and `'raw-private'` throw `NotSupportedError` on KEM private keys. Note that `'MLKEM768-X25519'` only supports `'raw-public'`, `'raw-seed'`, and `'jwk'`—it does **not** support `'spki'` or `'pkcs8'`.
+- **`'raw-secret'`**: Symmetric secret key bytes (`'ChaCha20-Poly1305'`, and accepted on `'AES-GCM'` and `'HKDF'`).
+
+Always export the recipient's public key with `'raw-public'` so the public key bytes can be serialized or shared with senders:
+
+```javascript
+// Export the recipient's public key bytes
 const recipientPublicKeyBytes = await crypto.subtle.exportKey(
   'raw-public',
   recipientKeyPair.publicKey,
 );
 
-// 2. Sender imports the recipient's public key and encapsulates a 256-bit AEAD key
+// Import the recipient's public key on the sender (usage must be ['encapsulateKey'])
 const importedPublicKey = await crypto.subtle.importKey(
   'raw-public',
   recipientPublicKeyBytes,
@@ -53,7 +58,23 @@ const importedPublicKey = await crypto.subtle.importKey(
   true,
   ['encapsulateKey'],
 );
+```
 
+If you only hold a private `CryptoKey` (even with `extractable: false`) and need its corresponding public `CryptoKey`, call `crypto.subtle.getPublicKey()`:
+
+```javascript
+const publicKey = await crypto.subtle.getPublicKey(
+  recipientKeyPair.privateKey,
+  ['encapsulateKey'],
+);
+```
+
+## 3. Encapsulate and decapsulate a shared key
+
+`encapsulateKey()` and `decapsulateKey()` import the 32-byte (256-bit) KEM shared secret into a `CryptoKey` using the algorithm specified in `sharedKeyAlgorithm` (with `'raw-secret'` format). Pass `'ChaCha20-Poly1305'` or `'AES-GCM'` directly to produce an AEAD encryption key:
+
+```javascript
+// Sender encapsulates a 256-bit AEAD key and produces a ciphertext capsule
 const { sharedKey: senderKey, ciphertext: encapsulatedCiphertext } =
   await crypto.subtle.encapsulateKey(
     'MLKEM768-X25519',
@@ -63,7 +84,7 @@ const { sharedKey: senderKey, ciphertext: encapsulatedCiphertext } =
     ['encrypt', 'decrypt'],
   );
 
-// 3. Recipient decapsulates the ciphertext capsule to recover the identical AEAD key
+// Recipient decapsulates the ciphertext capsule to recover the identical AEAD key
 const recipientKey = await crypto.subtle.decapsulateKey(
   'MLKEM768-X25519',
   recipientKeyPair.privateKey,
@@ -74,7 +95,9 @@ const recipientKey = await crypto.subtle.decapsulateKey(
 );
 ```
 
-When you need domain separation (`info` and `salt`) or multiple derived subkeys from a single encapsulation, pass `'HKDF'` as `sharedKeyAlgorithm` with `['deriveKey']` usage, then call `crypto.subtle.deriveKey()`:
+### Domain separation with `'HKDF'`
+
+To bind the shared key to a specific protocol context (`info` and `salt`) or derive multiple subkeys from a single encapsulation, pass `'HKDF'` as `sharedKeyAlgorithm` with `['deriveKey']` usage, then call `crypto.subtle.deriveKey()`:
 
 ```javascript
 const { sharedKey: hkdfBaseKey, ciphertext } = await crypto.subtle.encapsulateKey(
@@ -99,30 +122,13 @@ const aeadKey = await crypto.subtle.deriveKey(
 );
 ```
 
-## 2. Explicit Raw Key Formats and `getPublicKey()`
+## 4. Encrypt and decrypt payloads (`'ChaCha20-Poly1305'` and `'AES-GCM'`)
 
-Modern WebCrypto algorithms (`'MLKEM768-X25519'`, `'ML-KEM-768'`, `'ML-KEM-1024'`, and `'ChaCha20-Poly1305'`) **reject the legacy `'raw'` format** in `importKey()` and `exportKey()` with a `NotSupportedError`. Always specify the exact key role format:
-
-- **`'raw-public'`**: Public key bytes (also accepted on `'X25519'` and `'ECDH'` in browsers that support Modern WebCrypto; keep `'raw'` in fallback paths targeting older browsers).
-- **`'raw-seed'`**: Private key seed bytes (`'MLKEM768-X25519'`, `'ML-KEM-768'`, `'ML-KEM-1024'`). Note that `'MLKEM768-X25519'` only supports `'raw-public'`, `'raw-seed'`, and `'jwk'`—it does **not** support `'spki'` or `'pkcs8'`.
-- **`'raw-secret'`**: Symmetric secret key bytes (`'ChaCha20-Poly1305'`, and accepted on `'AES-GCM'` and `'HKDF'`).
-
-If you hold a private `CryptoKey` (even with `extractable: false`) and need its corresponding public `CryptoKey`, call `crypto.subtle.getPublicKey()`:
-
-```javascript
-const publicKey = await crypto.subtle.getPublicKey(
-  recipientKeyPair.privateKey,
-  ['encapsulateKey'],
-);
-```
-
-## 3. Authenticated Encryption (`ChaCha20-Poly1305` and `AES-GCM`)
-
-Always encrypt payload data with an AEAD algorithm (`'ChaCha20-Poly1305'` or `'AES-GCM'`) using a fresh, cryptographically random **12-byte (96-bit) initialization vector (`iv`)** for every encryption operation. Never reuse an `(iv, key)` pair.
+Encrypt payload data with an AEAD algorithm (`'ChaCha20-Poly1305'` or `'AES-GCM'`) using a fresh, cryptographically random **12-byte (96-bit) initialization vector (`iv`)** for every encryption operation. Never reuse an `(iv, key)` pair. Choose `'ChaCha20-Poly1305'` for consistent constant-time performance across devices without dedicated AES hardware acceleration, or `'AES-GCM'` when interoperating with existing WebCrypto or FIPS 140 deployments.
 
 - **`'ChaCha20-Poly1305'`**: Uses a fixed 256-bit (32-byte) key (`generateKey('ChaCha20-Poly1305', extractable, ['encrypt', 'decrypt'])` takes a string or `{ name: 'ChaCha20-Poly1305' }` with **no `length` property**). The `iv` must be exactly 12 bytes, and the 128-bit Poly1305 authentication tag is appended to the ciphertext.
 - **`'AES-GCM'`**: Pass `{ name: 'AES-GCM', length: 256 }` when calling `generateKey()` or `deriveKey()`, and a 12-byte `iv` when calling `encrypt()` and `decrypt()`.
-- **`additionalData` (AAD)**: Bind unencrypted metadata (such as a record ID, sender ID, or protocol version) to the authentication tag via `additionalData` so tampering with the metadata causes `decrypt()` to reject with `OperationError`.
+- **`additionalData` (AAD)**: Bind unencrypted metadata (such as a record ID, recipient ID, or protocol version) to the authentication tag via `additionalData` so tampering with either the ciphertext or the metadata causes `decrypt()` to reject with `OperationError`.
 
 ```javascript
 /**
@@ -175,12 +181,19 @@ export async function decryptMessage(key, iv, ciphertext, additionalData = new U
 
 {{ BASELINE_STATUS("web-cryptography") }}
 
-If your Baseline target does not yet support `SubtleCrypto.supports()`, `encapsulateKey()`, or `ChaCha20-Poly1305`, detect support using the **static** `SubtleCrypto.supports()` method and fall back to ephemeral-static Diffie-Hellman key agreement (`X25519` + `HKDF` + `AES-GCM`):
+If your Baseline target does not yet support `SubtleCrypto.supports()`, `encapsulateKey()`, or `'ChaCha20-Poly1305'`, detect support using the **static** `SubtleCrypto.supports()` method and fall back to ephemeral-static Diffie-Hellman key agreement (`'X25519'` + `'HKDF'` + `'AES-GCM'`):
 
-- **Call `SubtleCrypto.supports()` on the `SubtleCrypto` constructor, not on `crypto.subtle`**: `globalThis.SubtleCrypto?.supports?.('encapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305')` is a synchronous static method returning a boolean (`crypto.subtle.supports` is `undefined`). Note that `SubtleCrypto.supports()` validates operation-specific parameters: bare algorithm strings work for `'encapsulateKey'`, `'decapsulateKey'`, `'generateKey'`, and `'importKey'`, whereas probing `'encrypt'` or `'decrypt'` directly requires an `iv` (for example, `SubtleCrypto.supports('encrypt', { name: 'ChaCha20-Poly1305', iv: new Uint8Array(12) })`).
-- **Classical fallback (`X25519` + `HKDF` + `AES-GCM`)**: When `SubtleCrypto.supports()` is unavailable or returns `false`, generate an ephemeral `'X25519'` key pair for the sender, export the ephemeral public key as the capsule bytes, derive 256 bits via `deriveBits({ name: 'X25519', public: peerPublicKey }, privateKey, 256)`, and pass those bits through `HKDF` (`SHA-256`) to derive a 256-bit `'AES-GCM'` key.
+- **Call `SubtleCrypto.supports()` on the `SubtleCrypto` constructor, not on `crypto.subtle`**: `globalThis.SubtleCrypto?.supports?.('encapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305')` is a synchronous static method returning a boolean (`crypto.subtle.supports` is `undefined`). Note that `SubtleCrypto.supports()` validates operation-specific parameters: bare algorithm strings work for `'encapsulateKey'`, `'decapsulateKey'`, `'generateKey'`, `'importKey'`, and `'getPublicKey'`, whereas probing `'encrypt'` or `'decrypt'` directly requires an `iv` (for example, `SubtleCrypto.supports('encrypt', { name: 'ChaCha20-Poly1305', iv: new Uint8Array(12) })`); do not probe `'exportKey'`, which is not a supported operation name in `SubtleCrypto.supports()`.
+- **Key format in the fallback (`'raw'`)**: While browsers that support Modern WebCrypto also accept `'raw-public'` on `'X25519'` and `'ECDH'`, use `'raw'` in fallback paths targeting older browsers.
+- **Classical fallback (`'X25519'` + `'HKDF'` + `'AES-GCM'`)**: When `SubtleCrypto.supports()` is unavailable or returns `false`, generate an ephemeral `'X25519'` key pair for the sender, export the ephemeral public key as the capsule bytes, derive 256 bits via `deriveBits({ name: 'X25519', public: peerPublicKey }, privateKey, 256)`, and pass those bits through `'HKDF'` (`'SHA-256'`) to derive a 256-bit `'AES-GCM'` key.
 
 ```javascript
+const KEM_PUBLIC_KEY_ALGORITHMS = {
+  1184: 'ML-KEM-768',
+  1216: 'MLKEM768-X25519',
+  1568: 'ML-KEM-1024',
+};
+
 export function supportsPostQuantumEnvelope() {
   return (
     typeof globalThis.SubtleCrypto?.supports === 'function' &&
@@ -231,19 +244,26 @@ async function deriveFallbackAesKey(privateKey, peerPublicKey, infoBytes = new U
 }
 
 export async function encapsulateEnvelopeKey(
-  recipientPublicKeyBytes,
+  recipientPublicKeyOrBytes,
   infoBytes = new Uint8Array(0),
 ) {
-  if (supportsPostQuantumEnvelope()) {
-    const pubKey = await crypto.subtle.importKey(
-      'raw-public',
-      recipientPublicKeyBytes,
-      'MLKEM768-X25519',
-      true,
-      ['encapsulateKey'],
-    );
+  const pubKey =
+    recipientPublicKeyOrBytes instanceof CryptoKey
+      ? recipientPublicKeyOrBytes
+      : await (() => {
+          const bytes =
+            recipientPublicKeyOrBytes instanceof Uint8Array
+              ? recipientPublicKeyOrBytes
+              : new Uint8Array(recipientPublicKeyOrBytes);
+          const kemName = KEM_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
+          return kemName
+            ? crypto.subtle.importKey('raw-public', bytes, kemName, true, ['encapsulateKey'])
+            : crypto.subtle.importKey('raw', bytes, 'X25519', true, []);
+        })();
+
+  if (pubKey.algorithm.name !== 'X25519') {
     const { sharedKey, ciphertext } = await crypto.subtle.encapsulateKey(
-      'MLKEM768-X25519',
+      pubKey.algorithm.name,
       pubKey,
       'ChaCha20-Poly1305',
       false,
@@ -253,16 +273,9 @@ export async function encapsulateEnvelopeKey(
   }
 
   // Classical fallback: generate ephemeral X25519 key pair and send ephemeral public key as capsule
-  const recipientPubKey = await crypto.subtle.importKey(
-    'raw',
-    recipientPublicKeyBytes,
-    'X25519',
-    true,
-    [],
-  );
   const ephemeral = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
   const capsuleBytes = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
-  const sharedKey = await deriveFallbackAesKey(ephemeral.privateKey, recipientPubKey, infoBytes);
+  const sharedKey = await deriveFallbackAesKey(ephemeral.privateKey, pubKey, infoBytes);
   return { sharedKey, capsuleBytes };
 }
 
@@ -271,9 +284,9 @@ export async function decapsulateEnvelopeKey(
   capsuleBytes,
   infoBytes = new Uint8Array(0),
 ) {
-  if (supportsPostQuantumEnvelope()) {
+  if (recipientPrivateKey.algorithm.name !== 'X25519') {
     return crypto.subtle.decapsulateKey(
-      'MLKEM768-X25519',
+      recipientPrivateKey.algorithm.name,
       recipientPrivateKey,
       capsuleBytes,
       'ChaCha20-Poly1305',

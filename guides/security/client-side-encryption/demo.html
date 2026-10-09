@@ -36,7 +36,7 @@
 
         <div class="actions">
           <button type="button" id="btn-encrypt-decrypt">Encapsulate, Encrypt &amp; Decrypt</button>
-          <button type="button" id="btn-tamper">Test Tampered Ciphertext Rejection</button>
+          <button type="button" id="btn-tamper">Test Tampered Envelope Rejection</button>
         </div>
       </fieldset>
 
@@ -45,13 +45,13 @@
         <dl>
           <dt>Active Suite:</dt>
           <dd id="suite-output">-</dd>
-          <dt>Public Key Format &amp; Size:</dt>
+          <dt>Public Key (format, size &amp; hex):</dt>
           <dd id="pubkey-output">-</dd>
-          <dt>KEM Capsule Size:</dt>
+          <dt>KEM Capsule (size &amp; hex):</dt>
           <dd id="capsule-output">-</dd>
           <dt>IV (12 bytes hex):</dt>
           <dd id="iv-output">-</dd>
-          <dt>Ciphertext + Tag (hex):</dt>
+          <dt>Ciphertext + Tag (size &amp; hex):</dt>
           <dd id="ciphertext-output">-</dd>
           <dt>Decrypted Plaintext:</dt>
           <dd id="decrypted-output">-</dd>
@@ -65,6 +65,12 @@
       function toHex(bytes) {
         return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
       }
+
+      const KEM_PUBLIC_KEY_ALGORITHMS = {
+        1184: 'ML-KEM-768',
+        1216: 'MLKEM768-X25519',
+        1568: 'ML-KEM-1024',
+      };
 
       export function supportsPostQuantumEnvelope() {
         return (
@@ -131,19 +137,26 @@
       }
 
       export async function encapsulateEnvelopeKey(
-        recipientPublicKeyBytes,
+        recipientPublicKeyOrBytes,
         infoBytes = new Uint8Array(0),
       ) {
-        if (supportsPostQuantumEnvelope()) {
-          const pubKey = await crypto.subtle.importKey(
-            'raw-public',
-            recipientPublicKeyBytes,
-            'MLKEM768-X25519',
-            true,
-            ['encapsulateKey'],
-          );
+        const pubKey =
+          recipientPublicKeyOrBytes instanceof CryptoKey
+            ? recipientPublicKeyOrBytes
+            : await (() => {
+                const bytes =
+                  recipientPublicKeyOrBytes instanceof Uint8Array
+                    ? recipientPublicKeyOrBytes
+                    : new Uint8Array(recipientPublicKeyOrBytes);
+                const kemName = KEM_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
+                return kemName
+                  ? crypto.subtle.importKey('raw-public', bytes, kemName, true, ['encapsulateKey'])
+                  : crypto.subtle.importKey('raw', bytes, 'X25519', true, []);
+              })();
+
+        if (pubKey.algorithm.name !== 'X25519') {
           const { sharedKey, ciphertext } = await crypto.subtle.encapsulateKey(
-            'MLKEM768-X25519',
+            pubKey.algorithm.name,
             pubKey,
             'ChaCha20-Poly1305',
             false,
@@ -152,18 +165,11 @@
           return { sharedKey, capsuleBytes: new Uint8Array(ciphertext) };
         }
 
-        const recipientPubKey = await crypto.subtle.importKey(
-          'raw',
-          recipientPublicKeyBytes,
-          'X25519',
-          true,
-          [],
-        );
         const ephemeral = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
         const capsuleBytes = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
         const sharedKey = await deriveFallbackAesKey(
           ephemeral.privateKey,
-          recipientPubKey,
+          pubKey,
           infoBytes,
         );
         return { sharedKey, capsuleBytes };
@@ -174,9 +180,9 @@
         capsuleBytes,
         infoBytes = new Uint8Array(0),
       ) {
-        if (supportsPostQuantumEnvelope()) {
+        if (recipientPrivateKey.algorithm.name !== 'X25519') {
           return crypto.subtle.decapsulateKey(
-            'MLKEM768-X25519',
+            recipientPrivateKey.algorithm.name,
             recipientPrivateKey,
             capsuleBytes,
             'ChaCha20-Poly1305',
@@ -254,13 +260,19 @@
         );
         const recovered = await decryptMessage(recipientKey, iv, ciphertext, aadBytes);
 
-        lastState = { recipientKey, iv, ciphertext, aadBytes };
+        lastState = {
+          recipientKey,
+          iv,
+          ciphertext,
+          aadText: aadInput.value,
+          aadBytes,
+        };
 
         suiteOutput.textContent = recipient.suite;
-        pubkeyOutput.textContent = `${recipient.keyFormat} (${recipient.publicKeyBytes.byteLength} bytes)`;
-        capsuleOutput.textContent = `${capsuleBytes.byteLength} bytes`;
+        pubkeyOutput.textContent = `${recipient.keyFormat}, ${recipient.publicKeyBytes.byteLength} bytes (${toHex(recipient.publicKeyBytes.slice(0, 16))}...)`;
+        capsuleOutput.textContent = `${capsuleBytes.byteLength} bytes (${toHex(capsuleBytes.slice(0, 16))}...)`;
         ivOutput.textContent = toHex(iv);
-        ciphertextOutput.textContent = `${toHex(ciphertext.slice(0, 24))}... (${ciphertext.byteLength} bytes)`;
+        ciphertextOutput.textContent = `${ciphertext.byteLength} bytes (${toHex(ciphertext.slice(0, 16))}...)`;
         decryptedOutput.textContent = recovered;
         statusOutput.textContent = 'Verified & decrypted successfully';
       }
@@ -271,16 +283,23 @@
         if (!lastState) {
           await runEnvelopeFlow();
         }
-        const tampered = new Uint8Array(lastState.ciphertext);
-        tampered[0] ^= 0xff;
+        if (aadInput.value === lastState.aadText) {
+          aadInput.value = aadInput.value.endsWith(' TAMPERED')
+            ? aadInput.value.slice(0, -' TAMPERED'.length)
+            : `${aadInput.value} TAMPERED`;
+        }
+        const tamperedAadBytes = new TextEncoder().encode(aadInput.value);
+        const tamperedCiphertext = new Uint8Array(lastState.ciphertext);
+        tamperedCiphertext[0] ^= 0xff;
+        ciphertextOutput.textContent = `${tamperedCiphertext.byteLength} bytes (${toHex(tamperedCiphertext.slice(0, 16))}...) [TAMPERED]`;
         try {
           await decryptMessage(
             lastState.recipientKey,
             lastState.iv,
-            tampered,
-            lastState.aadBytes,
+            tamperedCiphertext,
+            tamperedAadBytes,
           );
-          statusOutput.textContent = 'Unexpected success on tampered ciphertext';
+          statusOutput.textContent = 'Unexpected success on tampered envelope';
         } catch (err) {
           decryptedOutput.textContent = '[Rejected]';
           statusOutput.textContent = `Tampered payload rejected (${err.name})`;
