@@ -42,15 +42,15 @@ However, **NEVER include timestamps** in your updates, as they add absolutely ze
 Artifacts generated during an evaluation run that log success rates, agent trajectories, and the final output produced by the agent.
 
 - **Eval Test Results** (`evals.json`)
-  - **Path**: `harness/results/<suite_id>/evals.json`
+  - **Path**: `results/suites/<suite_id>/evals.json`
   - **Purpose**: Reference to check overall pass rates, verify the success of individual test checks, and confirm which tools or skills were activated during guided runs to ensure the agent properly utilized the corresponding guide.
 
 - **Agent Trajectory** (`session-<timestamp>.json`)
-  - **Path**: `harness/results/<suite_id>/<run_number>/<use-case>/task/guided/session-<timestamp>.json`
+  - **Path**: `results/suites/<suite_id>/<run_number>/<use-case>/task/guided/session-<timestamp>.json`
   - **Purpose**: Review to trace the agent's step-by-step thought process. **Rule**: Always check the most recent run by timestamp; if stale, rerun the eval.
 
 - **Agent Output** (`index.html`)
-  - **Path**: `harness/results/<suite_id>/<run_number>/<use-case>/task/guided/index.html`
+  - **Path**: `results/suites/<suite_id>/<run_number>/<use-case>/task/guided/index.html`
   - **Purpose**: Inspect the exact markup, selectors, and resources produced or modified by the agent. *(Note: If expected changes are missing from index.html, check this directory for stray subresources created by the agent.)*
 
 ### Use Case Files
@@ -90,10 +90,10 @@ gd eval <path/to/use-case>
 To see which specific tests passed or failed, reference the generated `evals.json` file (detailed in the Quick Reference section).
 
 ### Via GCS (Remote / Historical)
-If you are reviewing a shared dashboard and need to investigate specific historical or remote evaluation results, download the entire suite directory recursively to your local harness path:
+If you are reviewing a shared dashboard and need to investigate specific historical or remote evaluation results, download the entire suite directory recursively to your local suites path:
 
 ```bash
-gcloud storage cp -r gs://guidance-evals/<suite_id> harness/results/
+gcloud storage cp -r gs://guidance-evals/<suite_id> results/suites/
 ```
 
 ## 2. Investigation Checklist

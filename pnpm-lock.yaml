@@ -16,9 +16,36 @@ importers:
 
   .:
     dependencies:
+      '@anthropic-ai/vertex-sdk':
+        specifier: ^0.16.0
+        version: 0.16.0(encoding@0.1.13)(zod@3.25.76)
+      '@google-cloud/storage':
+        specifier: ^7.19.0
+        version: 7.19.0(encoding@0.1.13)
+      '@google/gemini-cli':
+        specifier: 0.61.0
+        version: 0.61.0
+      '@huggingface/tokenizers':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@huggingface/transformers':
+        specifier: ^4.3.0
+        version: 4.3.0(@types/node@25.6.0)
       '@mdn/browser-compat-data':
         specifier: ^8.0.7
         version: 8.0.7
+      '@openai/codex':
+        specifier: 0.160.0
+        version: 0.160.0
+      '@tensorflow/tfjs-backend-cpu':
+        specifier: ^4.22.0
+        version: 4.22.0(@tensorflow/tfjs-core@4.22.0(encoding@0.1.13))
+      '@tensorflow/tfjs-converter':
+        specifier: ^4.22.0
+        version: 4.22.0(@tensorflow/tfjs-core@4.22.0(encoding@0.1.13))
+      '@tensorflow/tfjs-core':
+        specifier: ^4.22.0
+        version: 4.22.0(encoding@0.1.13)
       '@webref/css':
         specifier: ^8.7.0
         version: 8.7.0(css-tree@3.2.1)
@@ -29,114 +56,8 @@ importers:
         specifier: ^3.82.0
         version: 3.82.0(webidl2@24.5.0)
       caniuse-lite:
-        specifier: ^1.0.30001806
+        specifier: 1.0.30001806
         version: 1.0.30001806
-      glob:
-        specifier: ^13.0.6
-        version: 13.0.6
-      mdn-data:
-        specifier: ^2.29.0
-        version: 2.29.0
-      omelette:
-        specifier: ^0.4.17
-        version: 0.4.17
-      web-features:
-        specifier: ^3.40.0
-        version: 3.40.0
-    devDependencies:
-      '@types/node':
-        specifier: ^25.6.0
-        version: 25.6.0
-      '@types/omelette':
-        specifier: ^0.4.5
-        version: 0.4.5
-      gh-pages:
-        specifier: ^6.3.0
-        version: 6.3.0
-      gray-matter:
-        specifier: ^4.0.3
-        version: 4.0.3
-      marked:
-        specifier: ^18.0.3
-        version: 18.0.3
-      oxlint:
-        specifier: ^1.55.0
-        version: 1.55.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
-  eval-view:
-    devDependencies:
-      '@playwright/test':
-        specifier: ^1.58.2
-        version: 1.58.2
-      '@types/node':
-        specifier: ^25.6.0
-        version: 25.6.0
-      diff:
-        specifier: ^9.0.0
-        version: 9.0.0
-      gh-pages:
-        specifier: ^6.3.0
-        version: 6.3.0
-      gray-matter:
-        specifier: ^4.0.3
-        version: 4.0.3
-      playwright:
-        specifier: ^1.58.2
-        version: 1.58.2
-      serving:
-        specifier: workspace:*
-        version: link:../serving
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
-  guides:
-    devDependencies:
-      '@octokit/rest':
-        specifier: ^22.0.1
-        version: 22.0.1
-      '@playwright/test':
-        specifier: ^1.58.2
-        version: 1.58.2
-      cssomnom:
-        specifier: ^0.1.4
-        version: 0.1.4
-      gray-matter:
-        specifier: ^4.0.3
-        version: 4.0.3
-      linkedom:
-        specifier: ^0.18.12
-        version: 0.18.13
-      marked:
-        specifier: ^18.0.3
-        version: 18.0.3
-      serving:
-        specifier: workspace:*
-        version: link:../serving
-      ts-morph:
-        specifier: ^27.0.2
-        version: 27.0.2
-      web-features:
-        specifier: ^3.40.0
-        version: 3.40.0
-
-  harness:
-    dependencies:
-      '@anthropic-ai/vertex-sdk':
-        specifier: ^0.16.0
-        version: 0.16.0(encoding@0.1.13)(zod@3.25.76)
-      '@google-cloud/storage':
-        specifier: ^7.19.0
-        version: 7.19.0(encoding@0.1.13)
-      '@google/gemini-cli':
-        specifier: latest
-        version: 0.61.0
-      '@openai/codex':
-        specifier: 0.160.0
-        version: 0.160.0
       cheerio:
         specifier: ^1.2.0
         version: 1.2.0
@@ -149,44 +70,31 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      marked:
+        specifier: ^18.0.3
+        version: 18.0.3
+      mdn-data:
+        specifier: 2.29.0
+        version: 2.29.0
+      omelette:
+        specifier: ^0.4.17
+        version: 0.4.17
+      web-features:
+        specifier: ^3.40.0
+        version: 3.40.0
     devDependencies:
       '@anthropic-ai/claude-code':
         specifier: ^2.1.289
         version: 2.1.289
       '@google/gemini-cli-core':
-        specifier: latest
+        specifier: 0.61.0
         version: 0.61.0(encoding@0.1.13)(express@5.2.1)
-      serving:
-        specifier: workspace:*
-        version: link:../serving
-
-  serving:
-    dependencies:
-      '@huggingface/tokenizers':
-        specifier: ^0.2.0
-        version: 0.2.0
-      '@huggingface/transformers':
-        specifier: ^4.3.0
-        version: 4.3.0(@types/node@25.6.0)
-      '@mdn/browser-compat-data':
-        specifier: ^7.3.13
-        version: 7.3.14
-      '@tensorflow/tfjs-backend-cpu':
-        specifier: ^4.22.0
-        version: 4.22.0(@tensorflow/tfjs-core@4.22.0(encoding@0.1.13))
-      '@tensorflow/tfjs-converter':
-        specifier: ^4.22.0
-        version: 4.22.0(@tensorflow/tfjs-core@4.22.0(encoding@0.1.13))
-      '@tensorflow/tfjs-core':
-        specifier: ^4.22.0
-        version: 4.22.0(encoding@0.1.13)
-      marked:
-        specifier: ^18.0.3
-        version: 18.0.3
-      web-features:
-        specifier: ^3.40.0
-        version: 3.40.0
-    devDependencies:
+      '@octokit/rest':
+        specifier: ^22.0.1
+        version: 22.0.1
+      '@playwright/test':
+        specifier: ^1.58.2
+        version: 1.58.2
       '@types/gh-pages':
         specifier: ^6.1.0
         version: 6.1.0
@@ -196,18 +104,36 @@ importers:
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
+      '@types/omelette':
+        specifier: ^0.4.5
+        version: 0.4.5
+      cssomnom:
+        specifier: ^0.1.4
+        version: 0.1.4
+      diff:
+        specifier: ^9.0.0
+        version: 9.0.0
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
       gh-pages:
         specifier: ^6.3.0
         version: 6.3.0
-      gray-matter:
-        specifier: ^4.0.3
-        version: 4.0.3
+      linkedom:
+        specifier: ^0.18.12
+        version: 0.18.13
       minimatch:
         specifier: ^10.2.5
         version: 10.2.5
+      oxlint:
+        specifier: 1.55.0
+        version: 1.55.0
+      playwright:
+        specifier: ^1.58.2
+        version: 1.58.2
+      ts-morph:
+        specifier: ^27.0.2
+        version: 27.0.2
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -478,7 +404,6 @@ packages:
   '@google-cloud/opentelemetry-cloud-monitoring-exporter@0.21.0':
     resolution: {integrity: sha512-+lAew44pWt6rA4l8dQ1gGhH7Uo95wZKfq/GBf9aEyuNDDLQ2XppGEEReu6ujesSqTtZ8ueQFt73+7SReSHbwqg==}
     engines: {node: '>=18'}
-    deprecated: Google Cloud Platform now supports native OpenTelemetry Protocol (OTLP) endpoints via the Telemetry API. Please follow https://github.com/GoogleCloudPlatform/opentelemetry-operations-js/blob/main/MIGRATION.md
     peerDependencies:
       '@opentelemetry/api': ^1.9.0
       '@opentelemetry/core': ^2.0.0
@@ -488,7 +413,6 @@ packages:
   '@google-cloud/opentelemetry-cloud-trace-exporter@3.0.0':
     resolution: {integrity: sha512-mUfLJBFo+ESbO0dAGboErx2VyZ7rbrHcQvTP99yH/J72dGaPbH2IzS+04TFbTbEd1VW5R9uK3xq2CqawQaG+1Q==}
     engines: {node: '>=18'}
-    deprecated: Google Cloud Platform now supports native OpenTelemetry Protocol (OTLP) endpoints via the Telemetry API. Please follow https://github.com/GoogleCloudPlatform/opentelemetry-operations-js/blob/main/MIGRATION.md
     peerDependencies:
       '@opentelemetry/api': ^1.0.0
       '@opentelemetry/core': ^2.0.0
@@ -1295,9 +1219,6 @@ packages:
 
   '@types/node@25.6.0':
     resolution: {integrity: sha512-+qIYRKdNYJwY3vRCZMdJbPLJAtGjQBudzZzdzwQYkEPQd+PJGixUL5QfvCLDaULoLv+RhT3LDkwEfKaAkgSmNQ==}
-
-  '@types/node@26.6.3':
-    resolution: {integrity: sha512-dsqMQQoeTLqu9wynDD00q573mNzso3IdQOAfHRJqLCcmCFPoGo9A1bDpUcv/9tnKpErQWv9uKeGfl37EIS02Yg==}
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
@@ -2158,10 +2079,6 @@ packages:
     resolution: {integrity: sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==}
     engines: {node: '>= 0.4'}
 
-  hasown@2.0.2:
-    resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
-    engines: {node: '>= 0.4'}
-
   hasown@2.0.3:
     resolution: {integrity: sha512-ej4AhfhfL2Q2zpMmLo7U1Uv9+PyhIZpgQLGT1F9miIGmiCJIoCgSmczFdrc97mWT4kVY72KA+WnnhJ5pghSvSg==}
     engines: {node: '>= 0.4'}
@@ -2499,10 +2416,6 @@ packages:
   netmask@2.1.1:
     resolution: {integrity: sha512-eonl3sLUha+S1GzTPxychyhnUzKyeQkZ7jLjKrBagJgPla13F+uQ71HgpFefyHgqrjEbCPkDArxYsjY8/+gLKA==}
     engines: {node: '>= 0.4.0'}
-
-  node-addon-api@8.7.0:
-    resolution: {integrity: sha512-9MdFxmkKaOYVTV+XVRG8ArDwwQ77XIgIPyKASB1k3JPq3M8fGQQQE3YpMOrKm6g//Ktx8ivZr8xo1Qmtqub+GA==}
-    engines: {node: ^18 || ^20 || >= 21}
 
   node-addon-api@8.9.2:
     resolution: {integrity: sha512-VijLXbi3UACN69I0JVXJsX4tjACjNoQDgv2gTF6sx2wWEi8tkSg2eX8p5gSIFi8z2+DL3oHmY6OyKce38SDolg==}
@@ -2867,11 +2780,6 @@ packages:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
     hasBin: true
 
-  semver@7.7.4:
-    resolution: {integrity: sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==}
-    engines: {node: '>=10'}
-    hasBin: true
-
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
@@ -3122,9 +3030,6 @@ packages:
   undici-types@7.19.2:
     resolution: {integrity: sha512-qYVnV5OEm2AW8cJMCpdV20CDyaN3g0AjDlOGf1OW4iaDEx8MwdtChUp4zu4H0VP3nDRF/8RKWH+IPp9uW0YGZg==}
 
-  undici-types@8.9.0:
-    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
-
   undici@7.10.0:
     resolution: {integrity: sha512-u5otvFBOBZvmdjWLVW+5DAc9Nkq8f24g0O9oY7qw2JVIF1VocIFoyz9JFkuVOS2j41AufeO0xnlweJ2RLT8nGw==}
     engines: {node: '>=20.18.1'}
@@ -3229,18 +3134,6 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  ws@8.20.0:
-    resolution: {integrity: sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   ws@8.22.0:
     resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
     engines: {node: '>=10.0.0'}
@@ -3264,10 +3157,6 @@ packages:
 
   yargs-parser@21.1.1:
     resolution: {integrity: sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==}
-    engines: {node: '>=12'}
-
-  yargs@17.7.2:
-    resolution: {integrity: sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==}
     engines: {node: '>=12'}
 
   yargs@17.7.3:
@@ -3453,7 +3342,7 @@ snapshots:
 
   '@github/keytar@7.10.6':
     dependencies:
-      node-addon-api: 8.7.0
+      node-addon-api: 8.9.2
     optional: true
 
   '@google-cloud/common@5.0.2(encoding@0.1.13)':
@@ -3658,7 +3547,7 @@ snapshots:
 
   '@google/gemini-cli@0.61.0':
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.5
     optionalDependencies:
       '@github/keytar': 7.10.6
       '@lydell/node-pty': 1.1.0
@@ -3672,7 +3561,7 @@ snapshots:
   '@google/genai@1.30.0(@modelcontextprotocol/sdk@1.23.0(zod@3.25.76))':
     dependencies:
       google-auth-library: 10.9.0
-      ws: 8.20.0
+      ws: 8.22.0
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.23.0(zod@3.25.76)
     transitivePeerDependencies:
@@ -3697,7 +3586,7 @@ snapshots:
       lodash.camelcase: 4.3.0
       long: 5.3.2
       protobufjs: 7.5.6
-      yargs: 17.7.2
+      yargs: 17.7.3
 
   '@huggingface/jinja@0.5.10': {}
 
@@ -4397,11 +4286,6 @@ snapshots:
     dependencies:
       undici-types: 7.19.2
 
-  '@types/node@26.6.3':
-    dependencies:
-      undici-types: 8.9.0
-    optional: true
-
   '@types/normalize-package-data@2.4.4': {}
 
   '@types/offscreencanvas@2019.7.3': {}
@@ -4421,7 +4305,7 @@ snapshots:
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 26.6.3
+      '@types/node': 25.6.0
     optional: true
 
   '@webgpu/types@0.1.38': {}
@@ -5120,7 +5004,7 @@ snapshots:
       asynckit: 0.4.0
       combined-stream: 1.0.8
       es-set-tostringtag: 2.1.0
-      hasown: 2.0.2
+      hasown: 2.0.3
       mime-types: 2.1.35
       safe-buffer: 5.2.1
 
@@ -5365,10 +5249,6 @@ snapshots:
   has-tostringtag@1.0.2:
     dependencies:
       has-symbols: 1.1.0
-
-  hasown@2.0.2:
-    dependencies:
-      function-bind: 1.1.2
 
   hasown@2.0.3:
     dependencies:
@@ -5664,9 +5544,6 @@ snapshots:
       content-type: 2.1.0
 
   netmask@2.1.1: {}
-
-  node-addon-api@8.7.0:
-    optional: true
 
   node-addon-api@8.9.2: {}
 
@@ -6068,8 +5945,6 @@ snapshots:
 
   semver@6.3.1: {}
 
-  semver@7.7.4: {}
-
   semver@7.8.5: {}
 
   send@1.2.1:
@@ -6387,9 +6262,6 @@ snapshots:
 
   undici-types@7.19.2: {}
 
-  undici-types@8.9.0:
-    optional: true
-
   undici@7.10.0: {}
 
   undici@7.24.1: {}
@@ -6456,8 +6328,6 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.20.0: {}
-
   ws@8.22.0: {}
 
   y18n@5.0.8: {}
@@ -6465,16 +6335,6 @@ snapshots:
   yaml@2.9.0: {}
 
   yargs-parser@21.1.1: {}
-
-  yargs@17.7.2:
-    dependencies:
-      cliui: 8.0.1
-      escalade: 3.2.0
-      get-caller-file: 2.0.5
-      require-directory: 2.1.1
-      string-width: 4.2.3
-      y18n: 5.0.8
-      yargs-parser: 21.1.1
 
   yargs@17.7.3:
     dependencies:
