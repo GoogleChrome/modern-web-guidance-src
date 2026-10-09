@@ -52,7 +52,7 @@ export function stripAgentNarration(rawOutput: string): string {
     return trimmed.slice(primaryIdx).trim();
   }
 
-  const fallbackMatch = trimmed.match(/^(?:###|#)\s+/m);
+  const fallbackMatch = trimmed.match(/^#{1,6}\s+/m);
   if (fallbackMatch && fallbackMatch.index !== undefined) {
     return trimmed.slice(fallbackMatch.index).trim();
   }
@@ -83,7 +83,7 @@ async function callAgentCli(
     if (!rawOutput) {
       throw new Error(`[${label}] Empty response received from ${agent}`);
     }
-    return stripAgentNarration(rawOutput);
+    return rawOutput;
   } finally {
     if (ownsWorkDir) {
       cleanupIsolatedHome(path.dirname(effectiveWorkDir));

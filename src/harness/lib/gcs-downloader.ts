@@ -3,12 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { resultsDir as baseResultsDir } from '../../core/paths.ts';
 import { cCyan, cGreen, cYellow, cRed } from '../../core/colors.ts';
-import {
-  NORMALIZER_VERSION,
-  ensureFreshTrajectorySummary,
-  hasRawSessionLogs,
-  readTrajectorySummary
-} from './trajectory-normalizer.ts';
+import { hasRawSessionLogs } from './trajectory-normalizer.ts';
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
@@ -16,32 +11,6 @@ const BUCKET_NAME = 'guidance-evals';
 export const GCS_DOWNLOAD_COMPLETE_SENTINEL = '.gcs_download_complete';
 
 const inflightSuiteEvalsDownloads = new Map<string, Promise<void>>();
-
-/**
- * Performs post-download operations, such as generating missing or stale trajectory summaries.
- */
-async function postDownloadProcessing(absoluteRunDir: string, relativeRunPath: string) {
-  const existing = readTrajectorySummary(absoluteRunDir);
-  const isFresh =
-    existing !== null &&
-    Array.isArray(existing.steps) &&
-    existing.steps.length > 0 &&
-    existing.normalizerVersion === NORMALIZER_VERSION;
-
-  if (!isFresh && hasRawSessionLogs(absoluteRunDir)) {
-    console.log(
-      cCyan(
-        `[GCS Downloader] trajectory_summary.json is missing or outdated (version=${existing?.normalizerVersion ?? 'none'}) in ${relativeRunPath}. Regenerating v${NORMALIZER_VERSION} on the fly...`
-      )
-    );
-    try {
-      await ensureFreshTrajectorySummary(absoluteRunDir);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[GCS Downloader] Warning: Failed to generate trajectory on the fly: ${msg}`);
-    }
-  }
-}
 
 /**
  * Downloads a file from GCS using the REST API with a Bearer token.
@@ -230,7 +199,6 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
     const hasTrajectory = files.includes('trajectory_summary.json') || hasRawSessionLogs(absoluteRunDir);
     const hasResults = files.some((f) => f.endsWith('_results.json') || f === 'runtime.json');
     if (hasSentinel || (hasResults && hasTrajectory)) {
-      await postDownloadProcessing(absoluteRunDir, relativeRunPath);
       return true;
     }
   }
@@ -262,7 +230,6 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
 
       fs.writeFileSync(path.join(absoluteRunDir, GCS_DOWNLOAD_COMPLETE_SENTINEL), new Date().toISOString(), 'utf8');
       console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded all files via REST API!`));
-      await postDownloadProcessing(absoluteRunDir, relativeRunPath);
       return true;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -296,7 +263,6 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
 
     fs.writeFileSync(path.join(absoluteRunDir, GCS_DOWNLOAD_COMPLETE_SENTINEL), new Date().toISOString(), 'utf8');
     console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded all files via Storage SDK!`));
-    await postDownloadProcessing(absoluteRunDir, relativeRunPath);
     return true;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
