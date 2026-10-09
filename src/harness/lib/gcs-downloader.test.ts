@@ -2,9 +2,9 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { downloadRunFromGcsIfMissing, downloadSuiteEvalsIfMissing } from '../lib/gcs-downloader.ts';
-import { NORMALIZER_VERSION } from '../lib/trajectory-normalizer.ts';
-import { resultsDir } from '../../lib/paths.ts';
+import { downloadRunFromGcsIfMissing, downloadSuiteEvalsIfMissing } from './gcs-downloader.ts';
+import { NORMALIZER_VERSION } from './trajectory-normalizer.ts';
+import { resultsDir } from '../../core/paths.ts';
 
 describe('gcs-downloader', () => {
   test('downloadRunFromGcsIfMissing returns early when complete directory exists locally and upgrades stale trajectory_summary.json', async () => {
@@ -105,13 +105,13 @@ describe('gcs-downloader', () => {
   });
 
   test('validates GCS bucket configuration constants', async () => {
-    const gcsModule = await import('../lib/gcs-downloader.ts');
+    const gcsModule = await import('./gcs-downloader.ts');
     assert.ok(gcsModule.downloadRunFromGcsIfMissing);
     assert.strictEqual(typeof gcsModule.downloadRunFromGcsIfMissing, 'function');
   });
 
   test('resolveRunPath resolves both repo-relative and results-relative suite paths', async () => {
-    const { resolveRunPath } = await import('../lib/gcs-downloader.ts');
+    const { resolveRunPath } = await import('./gcs-downloader.ts');
     const relativeSuite = 'nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided';
 
     // Results-relative path

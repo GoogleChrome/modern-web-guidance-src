@@ -260,7 +260,7 @@ async function main() {
     case 'compare': {
       const runDirA = requireArg(positionals[1], 'gd compare <runDirA> <runDirB>');
       const runDirB = requireArg(positionals[2], 'gd compare <runDirA> <runDirB>');
-      const { runComparison } = await import('../harness/lib/compare-evals.ts');
+      const { runComparison } = await import('../src/harness/lib/compare-evals.ts');
       try {
         await runComparison(runDirA, runDirB);
       } catch (err: unknown) {

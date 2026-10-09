@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
-import { getComparisonPrompts } from "../lib/compare-prompts.ts";
-import type { GuideContext, RunContext } from "../lib/compare-evals.ts";
+import { formatCappedStepsOverview, getComparisonPrompts } from "./compare-prompts.ts";
+import type { GuideContext, RunContext } from "./compare-evals.ts";
 
 function createMockGuideContext(overrides?: Partial<GuideContext>): GuideContext {
   return {
@@ -88,6 +88,7 @@ describe("compare-prompts pipeline", () => {
     assert.ok(systemInstruction.includes("Audit Track 1 — Guide Compliance & Chronological Sequencing"));
     assert.ok(systemInstruction.includes("Audit Track 2 — Code Diffs, Grader Alignment & Execution Friction"));
     assert.ok(systemInstruction.includes("Strict Payload-Only Constraint"));
+    assert.ok(systemInstruction.includes("Do NOT emit `file://` links to workspace files"));
     assert.ok(systemInstruction.includes("### 1. First Meaningful Divergence"));
     assert.ok(systemInstruction.includes("### 2. Root Cause & Friction Analysis"));
     assert.ok(systemInstruction.includes("### 3. Actionable Fix Recommendation"));
@@ -117,5 +118,25 @@ describe("compare-prompts pipeline", () => {
     assert.doesNotThrow(() => {
       getComparisonPrompts(sparseGuide, sparseRunA, sparseRunB, "", "", "", "COMPARED RUN", "COMPARED RUN");
     });
+  });
+
+  test("formatCappedStepsOverview incorporates step detail when present", () => {
+    const formatted = formatCappedStepsOverview([
+      {
+        stepNumber: 1,
+        category: 'skill_search',
+        thought: 'Looking for guide',
+        actionName: 'run_command',
+        detail: 'ag --markdown "anchor"'
+      },
+      {
+        stepNumber: 2,
+        category: 'code_mutation',
+        thought: 'Updating styles',
+        actionName: 'write_file'
+      }
+    ]);
+    assert.ok(formatted.includes("- Step 1 [skill_search] ag --markdown \"anchor\": Looking for guide"));
+    assert.ok(formatted.includes("- Step 2 [code_mutation] write_file: Updating styles"));
   });
 });

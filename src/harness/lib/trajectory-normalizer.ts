@@ -9,7 +9,6 @@ import { parseGeminiTrajectory } from '../agents/gemini-cli-agent.ts';
 import { parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
 import { parseJetskiTrajectory, parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
 import { parsePiTrajectory } from '../agents/pi-agent.ts';
-import { parseAntigravityTrajectory } from '../agents/antigravity-cli-agent.ts';
 
 // Re-export for test compatibility and legacy callers
 export {

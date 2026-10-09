@@ -41,7 +41,7 @@ export function formatCappedStepsOverview(
 
   const omittedTotal = steps.length - selected.length;
   const lines = selected.map(
-    s => `- Step ${s.stepNumber} [${s.category}] ${s.actionName || 'action'}: ${(s.thought || '').replace(/\s+/g, ' ').slice(0, 65)}`
+    s => `- Step ${s.stepNumber} [${s.category}] ${(s.detail || s.actionName || 'action').replace(/\s+/g, ' ').slice(0, 100)}: ${(s.thought || '').replace(/\s+/g, ' ').slice(0, 65)}`
   );
 
   if (omittedTotal > 0) {
@@ -78,6 +78,7 @@ export function getComparisonPrompts(
 2. **Strict Payload-Only Constraint (MANDATORY)**:
    - Diagnose **strictly** from the provided prompt payload and the uncapped reference files written inside your current isolated comparison workspace (\`comparison_context.md\`, \`guide.md\`, \`expectations.md\`, \`grader.ts\`, \`diff_base_vs_a.patch\`, \`diff_base_vs_b.patch\`, \`diff_a_vs_b.patch\`, \`run_a_trajectory.json\`, \`run_b_trajectory.json\`).
    - **DO NOT** read, search, or inspect the main repository (\`guides/\`, \`tasks/\`, \`harness/\`, \`base-apps/\`, etc.) or run repository-wide search tools outside your current working directory. Never confuse current repository \`HEAD\` or live guides with what Run A and Run B actually produced.
+   - Do NOT emit \`file://\` links to workspace files; the workspace is deleted after this run. Cite files by name and line instead (e.g. \`grader.ts:L45\`).
 
 3. **Required Output Format (No Preamble)**:
    - Output **ONLY** the final Markdown report starting directly with \`### 1. First Meaningful Divergence\`. Do not emit conversational narration (such as "I will start the investigation...") before the first heading.
