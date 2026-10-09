@@ -11,9 +11,7 @@ This is the second of three stages in creating guidance:
 2. Stage 2: Authoring guidance for a use case (you are here)
 3. Stage 3: Evaluating guidance for a use case
 
-> **Peer Fast-Track**: While community contributors align on use cases via Stage 1 first, onboarded Subject Matter Experts ([Peers](../../../GOVERNANCE.md#peers)) are trusted to define appropriate use cases directly and can go straight to Stage 2 (authoring `guide.md`, `demo.html`, and `expectations.md`).
->
-> **Peer & ATL Review Requirement**: Every guide in this repository must be authored (or co-authored) by a human Subject Matter Expert ([Peer](../../../GOVERNANCE.md#peers) or [Content ATL](../../../guides/ATLS.md)) and reviewed and approved for technical accuracy by the category's Content ATL (or, when authored by that category's sole Content ATL, by another Content ATL, a domain Peer, or an Owner) before it can be merged and published.
+> **Governance & Review**: See [`GOVERNANCE.md`](../../../GOVERNANCE.md) and [`docs/ATLS.md`](../../../docs/ATLS.md) for authoring permissions (Peers fast-track to Stage 2; every guide requires Peer/ATL authorship and category Content ATL approval before merging).
 
 ## What a real-world coding agent sees
 

@@ -15,16 +15,7 @@ All submissions to Google Open Source projects require a signed Contributor Lice
 
 ## Governance & Authoring Rights
 
-This project operates under a formal governance model:
-
-* **Contributors**: Community members can submit pull requests to fix bugs, clarify documentation, update Baseline compatibility, or improve existing guides, reference demos, and expectations. Contributors can propose new guides by [opening an issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues).
-* **Peers**: Formally onboarded Subject Matter Experts with write access who author new guidance and provide peer reviews.
-* **Content Area Tech Leads (Content ATLs)**: Designated domain stewards who triage new use cases, review, approve, and merge guidance PRs within their assigned category.
-* **Owners**: Project leads responsible for high-level technical direction, infrastructure, serving platforms, and governance.
-
-> **Note on Authoring New Guidance**: Because guidance is ingested directly by autonomous AI coding assistants to write production code across the web ecosystem, **authoring brand-new guidance from scratch is reserved for [Peers](./GOVERNANCE.md#peers)** (or contributors co-authoring with an assigned Peer or Content ATL).
-
-For complete details on roles, decision making, and becoming a Peer or Content ATL, see **[`GOVERNANCE.md`](./GOVERNANCE.md)**.
+Contributor roles (**Contributors**, **Peers**, **Content ATLs**, and **Owners**), authoring permissions, and review policies are defined in **[`GOVERNANCE.md`](./GOVERNANCE.md)**. Because guidance is ingested directly by AI coding assistants, authoring brand-new guidance from scratch is reserved for onboarded [Peers](./GOVERNANCE.md#peers) (or contributors sponsored by a Peer or [Content ATL](./docs/ATLS.md)), while anyone can open issues to propose use cases or submit PRs to improve existing guides.
 
 
 ## Proposal First for Non-Trivial Changes
@@ -40,8 +31,8 @@ Where would you like to contribute? Follow the link for your pathway:
 | Contribution Track | Description | Documentation |
 |---|---|---|
 | **✍️ Guidance Content** | Author or update web platform guidance (Stages 1 & 2: use cases, `guide.md`, `demo.html`, `expectations.md`, self-validation). Shielded from eval infrastructure. | **[`guides/CONTRIBUTING.md`](./guides/CONTRIBUTING.md)** |
-| **🛡️ Category Stewardship** | Content Area Tech Leads (ATLs) triaging use cases, reviewing guidance PRs, and maintaining domain category health. | **[`guides/ATLS.md`](./guides/ATLS.md)** |
-| **⚙️ Tooling, Infra & Evals** | Develop the unified `gd` CLI, prompt benchmarking harness, Playwright grader generators, serving compiler, and dashboard. | **[`src/harness/README.md`](./src/harness/README.md)** |
+| **🛡️ Category Stewardship** | Content Area Tech Leads (ATLs) triaging use cases, reviewing guidance PRs, and maintaining domain category health. | **[`docs/ATLS.md`](./docs/ATLS.md)** |
+| **⚙️ Tooling, Infra & Evals** | Develop the unified `gd` CLI, prompt benchmarking harness, Playwright grader generators, serving compiler, and dashboard. | **[`src/harness/README.md`](./src/harness/README.md)** & **[`docs/EVALS.md`](./docs/EVALS.md)** |
 | **🏛️ Project Governance** | Contributor roles (Contributors, Peers, Content ATLs, Owners), rights, decision-making model, and meeting cadences. | **[`GOVERNANCE.md`](./GOVERNANCE.md)** |
 
 
@@ -51,7 +42,7 @@ To foster an open-source contributor environment while maintaining a clean, stab
 
 * **Source Repo ([GoogleChrome/modern-web-guidance-src](https://github.com/GoogleChrome/modern-web-guidance-src))**: Contains source guidance files, development scripts, evaluation harnesses, base applications, tests, and CLI tooling. **All issues and pull requests are submitted here.**
 * **Installation Repo ([GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance))**: Read-only distribution repo containing compiled Skills and plugin configurations consumed by coding agents.
-* **Sync & Release Flow**: Changes merged into `modern-web-guidance-src` are compiled and published on a regular weekly release cadence to both the distribution repository and the [`modern-web-guidance` npm package](https://www.npmjs.com/package/modern-web-guidance).
+* **Sync & Release Flow**: Changes merged into `modern-web-guidance-src` are compiled and published on a regular weekly release cadence to both the distribution repository and the [`modern-web-guidance` npm package](https://www.npmjs.com/package/modern-web-guidance) (see [`docs/RELEASING.md`](./docs/RELEASING.md)).
 
 For a technical walkthrough of the repository directory layout and architecture, see **[`docs/CONTEXT.md`](./docs/CONTEXT.md)**.
 
@@ -79,16 +70,14 @@ pnpm preflight
 
 ## Project Agent Skills
 
-This repository includes a curated set of **Agent Skills** in [`.agents/skills/`](./.agents/skills/).
-
-* **For AI Coding Agents**: Coding assistants (such as Antigravity, Claude Code, or Gemini CLI) automatically discover and use these skills to follow repository conventions, generate formatted frontmatter, calibrate graders, and write testable expectations.
-* **For Human Contributors**: Each skill's `SKILL.md` serves as a normative specification.
+This repository includes a curated set of **Agent Skills** in [`.agents/skills/`](./.agents/skills/) that serve as the single normative specifications for both AI coding agents and human contributors:
 
 | Skill | Reference Document | Description |
 |---|---|---|
 | **Use Cases** | [`project-use-cases`](./.agents/skills/project-use-cases/SKILL.md) | Formulating action-oriented developer tasks and frontmatter schemas (Stage 1). |
 | **Guide Authoring** | [`project-guides`](./.agents/skills/project-guides/SKILL.md) | Directives, snippet conventions, self-contained constraints, and Baseline fallback macros (Stage 2). |
 | **Guide Validation** | [`project-guide-validation`](./.agents/skills/project-guide-validation/SKILL.md) | Autonomous DevTools MCP browser testing, accessibility, and expectation alignment (Stage 2). |
+| **Discipline Guides** | [`project-discipline-guides`](./.agents/skills/project-discipline-guides/SKILL.md) | Structuring and pruning category-root and conceptual hub discipline guides. |
 | **Evaluations & Graders** | [`project-evals`](./.agents/skills/project-evals/SKILL.md) | Playwright test grader generation and calibration criteria (Stage 3). |
 | **Baseline Status** | [`web-baseline`](./.agents/skills/web-baseline/SKILL.md) | Checking browser compatibility and Baseline status across web platform features. |
 | **Coding Standards** | [`project-coding-standards`](./.agents/skills/project-coding-standards/SKILL.md) | Architecture conventions, strict typing, canonical enums, and PR review standards for CLI and tooling code. |

@@ -7,64 +7,7 @@ This directory contains the prompt benchmarking harness, base applications, agen
 
 The evaluation harness measures how effectively AI coding agents adopt modern web platform guidance. It executes real-world coding benchmarks across supported agent runners and verifies output against Playwright test assertions (`grader.ts`).
 
-Supported agents and canonical configurations are defined in [`src/harness/config.ts`](./config.ts).
-
-
-## Agent Configuration & Setup
-
-Configure API keys and environment variables in a `.env` file at the repository root:
-
-### 1. Antigravity CLI (Default)
-Antigravity CLI (`antigravity_cli`) is the default agent used by guide development workflows (`gd dev`) and evaluation runs (`gd eval`). Install `agy` and run it once interactively to sign in:
-```bash
-curl -fsSL https://antigravity.google/cli/install.sh | bash
-```
-All settings are optional if signing in with a personal Antigravity account. If you use `agy` through a GCP project, set it in `~/.gemini/antigravity-cli/settings.json` (`gcp.project`), or override it in your `.env` file:
-```bash
-# Optional: GCP project (only for GCP-project auth)
-ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID>
-# Optional: path to the agy binary if it is not on your PATH (e.g. under cron)
-ANTIGRAVITY_CLI_BIN=/home/<you>/.local/bin/agy
-# Optional: model override for Antigravity CLI agent runs
-ANTIGRAVITY_MODEL=gemini-3.8-flash-medium
-```
-
-### 2. Jetski CLI
-Jetski CLI (`jetski_cli`) can be used by guide development workflows (`gd dev`) via `GD_DEV_USE_JETSKI=1`:
-```bash
-JETSKI_MODEL='Gemini 3.8 Flash (Medium)'
-GD_DEV_USE_JETSKI=1  # Required to use Jetski CLI for 'gd dev'
-```
-
-### 3. Gemini CLI
-Gemini CLI (`gemini_cli`) is supported for evaluation harness runs:
-```bash
-GEMINI_API_KEY='your_api_key_here'
-GEMINI_MODEL='gemini-3-flash-preview'
-```
-
-### 4. Claude Code (Vertex AI)
-Implemented via [Claude Code on Vertex AI](https://code.claude.com/docs/en/google-vertex-ai):
-```bash
-gcloud config set project <YOUR-GCP-PROJECT-ID>
-
-# Set in your .env:
-CLAUDE_CODE_USE_VERTEX=1
-CLOUD_ML_REGION=global
-ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
-ANTHROPIC_MODEL=<enabled-model-in-vertex>
-```
-
-### 5. Codex CLI
-To use the Codex CLI agent (`codex_cli`), run `node_modules/.bin/codex` once to request an exception (similar to [`b/492300931`](https://b.corp.google.com/issues/492300931)), log in after approval, and set your model in `.env`:
-```bash
-CODEX_MODEL='gpt-5.5'
-```
-
-### 6. Pi
-```bash
-PI_MODEL='anthropic/claude-sonnet'
-```
+Supported agents and canonical configurations are defined in [`src/harness/config.ts`](./config.ts). For agent installation, authentication, and `.env` configuration (Antigravity CLI, Jetski CLI, Gemini CLI, Claude Code, Codex CLI), see **[`docs/EVALS.md`](../../docs/EVALS.md)**.
 
 
 ## Stage 3 Guide Development: `gd dev`
@@ -720,6 +663,7 @@ cat results/suites/<suite>/<run>/<task>/guided/*.jsonl | head -100
 
 ## Related Documentation
 
+- [`docs/EVALS.md`](../../docs/EVALS.md) - Agent configuration and environment setup
 - [`docs/eval-results.md`](../../docs/eval-results.md) - Results storage and GCS upload
 - [`docs/CONTEXT.md`](../../docs/CONTEXT.md) - High-level architecture
 - [`agent-shared.ts`](./lib/agent-shared.ts) - Shared utility functions

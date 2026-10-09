@@ -11,7 +11,7 @@ The primary goal of this stage is to translate a technical web platform feature 
 2. Stage 2: Authoring guidance for a use case
 3. Stage 3: Evaluating guidance for a use case
 
-> **Peer Fast-Track**: The purpose of Stage 1 (submitting stub use cases first) is to prevent wasted effort if a proposed use case is poorly formed, duplicate, or overly API-centric. However, onboarded Subject Matter Experts ([Peers](../../../GOVERNANCE.md#peers)) possess deep domain knowledge of how a web platform feature is intended to be used. **Peers are trusted to define their use cases directly and may skip Stage 1 review, proceeding straight to Stage 2** (authoring `guide.md`, `demo.html`, and `expectations.md`). Community contributors should always complete Stage 1 alignment with Content ATLs first.
+> **Governance & Fast-Track**: See [`GOVERNANCE.md`](../../../GOVERNANCE.md#peers) for authoring rights—community contributors align on Stage 1 use cases with [Content ATLs](../../../docs/ATLS.md) first, while onboarded Peers may fast-track directly to Stage 2 ([`project-guides`](../project-guides/SKILL.md)).
 
 ## Identifying action-oriented tasks
 
@@ -28,7 +28,7 @@ A "use case" in this project is not a description of a feature; it's a task that
 * **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage or an isolated prerequisite step. If a feature only addresses one facet or prerequisite of a broader workflow, fold it into the guide for that broader goal; if the implementation across proposed use cases is 90% identical, consolidate them.
 * **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline guide.
 * **Avoid Standalone Guides for Single-Line Progressive Enhancements**: If a feature amounts to a single declaration or one-line progressive enhancement, do not create a 1:1 micro-guide whose entire solution is that single line. Instead, fold the feature and its guidance into a broader existing discipline or topic guide where it applies.
-* **Granular Guide Decomposition (Avoid Monoliths)**: For discipline-level guides, ensure the guidance is broken down into granular "subguides" (i.e., smaller, focused guides) rather than a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously. The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for the discipline, explaining when and how to reference each granular subguide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
+* **Granular Guide Decomposition (Avoid Monoliths)**: Break discipline-level guidance into focused subguides rather than monolithic guides, with a conceptual hub routing to subguides via `{{ GUIDE_REF("guide-slug") }}` (see [`project-discipline-guides`](../project-discipline-guides/SKILL.md)).
 
 
 
@@ -102,6 +102,6 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 6: Get the use case approved**
 
-  Open an issue or a draft/stub Pull Request containing the `guide.md` frontmatter stub for review by the category's [Content Area Tech Lead (ATL)](../../../guides/ATLS.md). *(Note: Peers fast-tracking to Stage 2 may proceed directly to the [`project-guides`](../project-guides/SKILL.md) skill to author the full `guide.md`, `demo.html`, and `expectations.md`).*
+  Open an issue or a draft/stub Pull Request containing the `guide.md` frontmatter stub for review by the category's [Content Area Tech Lead (ATL)](../../../docs/ATLS.md).
 
 After the use case is approved, proceed to **Stage 2** using the [`project-guides`](../project-guides/SKILL.md) skill to author `guide.md`, `demo.html`, and `expectations.md`.

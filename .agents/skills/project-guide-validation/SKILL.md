@@ -7,7 +7,7 @@ description: Protocol for validating the technical accuracy, framework nuances, 
 
 This protocol defines the process for an AI agent to validate the technical accuracy, framework nuances, and evaluation readiness of web guidance. In **Stage 2** (after authoring `guide.md`, `demo.html`, and `expectations.md`), authors are strongly encouraged to run their draft guides through this protocol to catch edge cases, verify demo behaviors, and ensure expectation alignment prior to opening a PR.
 
-> **Human SME Sign-Off**: Automated agent validation aids authors, maintainers, and reviewers in checking technical consistency, demo behavior, and expectation alignment, but it does not replace human expertise. Every guide must be authored (or co-authored) by a human Subject Matter Expert ([Peer](../../../GOVERNANCE.md#peers) or [Content ATL](../../../guides/ATLS.md)) and reviewed and approved by the category's Content ATL (or, when authored by that category's sole Content ATL, by another Content ATL, a domain Peer, or an Owner) before merging and publishing.
+> **Human SME Sign-Off**: Automated agent validation complements, but does not replace, human SME review required by [`GOVERNANCE.md`](../../../GOVERNANCE.md) and [`docs/ATLS.md`](../../../docs/ATLS.md).
 
 ## Validation Checklist
 
@@ -32,7 +32,7 @@ Before performing any verification, read the `guide.md` file in its entirety:
 ## 2. Qualitative & Best Practices Review
 
 Critically evaluate the guide's content to ensure it follows established best practices and does not introduce anti-patterns:
-*   **Discipline Guides**: Check if there is a discipline guide for the relevant discipline, either a category root guide at `guides/<category>/<category>/guide.md` or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). If one exists, ensure the guide complies with it.
+*   **Discipline Guides**: Check if there is a discipline guide for the relevant category or domain (see [`project-discipline-guides`](../project-discipline-guides/SKILL.md)); if one exists, ensure the guide complies with it.
 *   **Accessibility (A11y)**: Accessibility is a distinct concern that MUST **always** be evaluated. The canonical reference is `guides/accessibility/accessibility/guide.md`. Read it first, then apply it as follows:
     *   **`guide.md` under review**: MUST adhere to every applicable best practice across all sections of the canonical guide (landmarks/headings, ARIA roles, names/descriptions, focus management, keyboard navigation, alt text and SVG treatment, hints and validation, live regions, non-color state indicators, reduced motion, dialog/overlay semantics, and visibility hiding decisions). Recommendations and code samples must not contradict the canonical guide. Pay particular attention to copy-paste safety (code examples must embed the rules they mention, e.g. `prefers-reduced-motion`, `:focus-visible`, `aria-hidden`), multi-indicator state communication, AT-tree synchronization with visibility changes, and post-transition focus management.
     *   **`demo.html` under review**: NOT held to general a11y best practices — only required to faithfully demonstrate the patterns the `guide.md` prescribes. If the guide mandates a specific a11y pattern (e.g., `aria-live="polite"` on toasts, `aria-pressed` on a toggle, `prefers-reduced-motion` in CSS), the demo MUST show it. Do not flag demos for missing a11y features that the guide does not call out.

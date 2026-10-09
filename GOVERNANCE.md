@@ -15,9 +15,9 @@ Contributors:
 * Submit changes via pull requests for bug fixes, doc updates, Baseline compatibility, and improvements to existing guides.
 * Propose new guidance topics and use cases by [opening an issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues).
 * Review pull requests (advisory).
-* Have pull requests reviewed and merged by the assigned [Content ATL](./guides/ATLS.md) or an [Owner](#owners).
+* Have pull requests reviewed and merged by the assigned [Content ATL](./docs/ATLS.md) or an [Owner](#owners).
 
-> **Note on Authoring New Guidance**: Because guidance is directly ingested by AI coding assistants, **authoring new guidance from scratch is reserved for [Peers](#peers)** unless permitted by a [Content ATL](./guides/ATLS.md) or [Owner](#owners).
+> **Note on Authoring New Guidance**: Because guidance is directly ingested by AI coding assistants, **authoring new guidance from scratch is reserved for [Peers](#peers)** unless permitted by a [Content ATL](./docs/ATLS.md) or [Owner](#owners).
 
 
 ### Peers
@@ -25,9 +25,9 @@ Contributors:
 Peers are formally onboarded Subject Matter Experts with write access to the repository.
 
 Peers:
-* Author brand-new guidance (use cases, `guide.md`, `demo.html`, and `expectations.md`).
+* Author brand-new guidance (use cases, `guide.md`, `demo.html`, and `expectations.md`), and may fast-track directly to Stage 2 without separate Stage 1 use-case sign-off.
 * Review pull requests across the codebase (peer reviews).
-* Submit pull requests subject to review and merge by the assigned [Content ATL](./guides/ATLS.md) or [Owner](#owners).
+* Submit pull requests subject to review and merge by the assigned [Content ATL](./docs/ATLS.md) or [Owner](#owners).
 
 To become a Peer, one must:
 * Demonstrate subject-matter expertise in modern web development and familiarity with repository authoring standards.
@@ -38,11 +38,11 @@ Candidates can be nominated by any Peer, Content ATL, or Owner, and are confirme
 
 ### Content Area Tech Leads (Content ATLs)
 
-Content ATLs are Peers who take formal ownership over specific domain categories (e.g., *Performance*, *CSS*, *Forms*, *UI Behaviors*, *Accessibility*) or feature horizontals (e.g., *Motion*, *WebAuthn*). Domain assignments are defined in **[`.github/atls.json`](./.github/atls.json)** and detailed in **[`guides/ATLS.md`](./guides/ATLS.md)**.
+Content ATLs are Peers who take formal ownership over specific domain categories (e.g., *Performance*, *CSS*, *Forms*, *UI Behaviors*, *Accessibility*) or feature horizontals (e.g., *Motion*, *WebAuthn*). Domain assignments are defined in **[`.github/atls.json`](./.github/atls.json)** and detailed in **[`docs/ATLS.md`](./docs/ATLS.md)**.
 
 Content ATLs:
 * Serve as the primary technical authority for their assigned categories.
-* Triage issues, validate proposed use cases, and participate in evaluation investigations within their domain.
+* Triage issues, validate proposed Stage 1 use cases, and participate in evaluation investigations within their domain.
 * Review, approve, and merge Stage 2 guidance pull requests within their domain.
 * Maintain guidance accuracy, eval readiness, and Baseline fallback alignment.
 * Have their own pull requests reviewed and approved by another Content ATL, a domain [Peer](#peers), or an [Owner](#owners) prior to merging.

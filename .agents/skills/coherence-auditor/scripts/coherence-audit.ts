@@ -49,7 +49,7 @@ if (!broken) console.log('✅ All relative links are valid.');
 
 // 5. TODOs
 console.log('\n📝 Scanning for TODOs/TBDs...');
-const todos = run('git grep -n -I -E "TODO|TBD|FIXME|unresolved|decision needed" -- "guides/*.md" "skills-src/*.md" README.md docs/CONTEXT.md CONTRIBUTING.md GOVERNANCE.md GEMINI.md CODE_OF_CONDUCT.md');
+const todos = run('git grep -n -I -E "TODO|TBD|FIXME|unresolved|decision needed" -- "guides/*.md" "skills-src/*.md" README.md docs/CONTEXT.md docs/EVALS.md docs/ATLS.md CONTRIBUTING.md GOVERNANCE.md GEMINI.md CODE_OF_CONDUCT.md');
 if (todos) console.warn('⚠️  Found items needing attention:\n' + todos.split('\n').map(l => '    ' + l).join('\n'));
 else console.log('✅ No TODOs/TBDs found.');
 
