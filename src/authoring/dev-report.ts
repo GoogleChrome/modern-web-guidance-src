@@ -2,30 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { cGreen, cYellow, cCyan, cBold } from '../core/colors.ts';
 import { SUPPORTED_BASE_APPS, getDefaultSolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, TARGETS_DIR, REPORT_FILE } from '../core/guide-validation.ts';
-import { getGuideResultsDir, guidesDir } from '../core/paths.ts';
+import { resolveGuideResultsDir, type GuideResultsInventory } from '../core/paths.ts';
 import { setupGuideDevWorkDir, runAgent } from '../harness/lib/utils.ts';
 import { buildDevReportPrompt } from './dev-prompts.ts';
-
-export function resolveGuideResultsDir(targetDir: string, guideInfo?: { category?: string; slug?: string }): string {
-  if (guideInfo?.category && guideInfo?.slug) {
-    return getGuideResultsDir({ category: guideInfo.category, slug: guideInfo.slug });
-  }
-  const resolvedTarget = path.resolve(targetDir);
-  const rel = path.relative(guidesDir, resolvedTarget);
-  if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
-    const parts = rel.split(path.sep);
-    if (parts.length >= 2) {
-      return getGuideResultsDir({ category: parts[0], slug: parts[1] });
-    }
-    if (parts.length === 1) {
-      return getGuideResultsDir({ category: parts[0], slug: parts[0] });
-    }
-  }
-  const parts = resolvedTarget.split(path.sep);
-  const slug = parts[parts.length - 1];
-  const category = parts[parts.length - 2] || 'cat';
-  return getGuideResultsDir({ category, slug });
-}
 
 export type DevReportFlag =
   | 'INFRASTRUCTURE_ERROR'
@@ -95,7 +74,7 @@ export function computeDevReportFlag(input: {
 /**
  * Extracts and parses evaluation summary for a specific target base app.
  */
-export function computeTargetSummary(targetDir: string, baseApp: string, guideInfo?: { category?: string; slug?: string }): TargetEvalSummary | null {
+export function computeTargetSummary(targetDir: string, baseApp: string, guideInfo?: Partial<GuideResultsInventory>): TargetEvalSummary | null {
   const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
   const evalsJsonPath = path.join(guideResultsDir, baseApp, 'evals.json');
   if (!fs.existsSync(evalsJsonPath)) {
@@ -134,7 +113,7 @@ export function computeTargetSummary(targetDir: string, baseApp: string, guideIn
 /**
  * Builds the initial report document with interleaved target evals and diagnostic placeholders.
  */
-export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSummary[], guideInfo?: { category?: string; slug?: string }): string {
+export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSummary[], guideInfo?: Partial<GuideResultsInventory>): string {
   const guideName = path.basename(targetDir);
   const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
   let content = `# Evaluation Report: ${guideName}\n\n`;
@@ -157,11 +136,15 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
 /**
  * Runs the agent-driven evaluation report generation phase across all targets for a guide.
  */
-export async function runDevReport(targetDir: string, guideInfo?: { category?: string; slug?: string }): Promise<void> {
+export async function runDevReport(
+  targetDir: string,
+  guideInfo?: Partial<GuideResultsInventory>,
+  targets: readonly string[] = SUPPORTED_BASE_APPS
+): Promise<void> {
   console.log(cCyan(`\n--- Running Evaluation Report ---`));
 
   const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
-  const summaries = SUPPORTED_BASE_APPS
+  const summaries = targets
     .map(baseApp => computeTargetSummary(targetDir, baseApp, guideInfo))
     .filter((s): s is TargetEvalSummary => s !== null);
 
