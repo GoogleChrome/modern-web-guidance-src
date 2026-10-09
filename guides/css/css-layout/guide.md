@@ -69,7 +69,6 @@ body.centered  { display: grid; place-content: center; min-block-size: 100dvb; }
 
 ## 2 Flexbox
 
-{{ BASELINE_STATUS("flexbox") }}
 {{ BASELINE_STATUS("flexbox-flex-wrap-balance") }}
 
 One-dimensional layout — items flow along a single **main** axis with alignment on the **cross** axis. Reach for it for navbars, toolbars, item rows, and any single-row-or-column distribution.
