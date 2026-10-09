@@ -26,7 +26,7 @@ Names are isolated within each scope, preventing collisions across components in
 
 ### 3. Self-Participation and Overflow Clipping
 
-The user-agent stylesheet automatically applies `view-transition-name: root` and `view-transition-group: contain` to the scope element. Scoping the transition to the outer component container (such as a `.card` rather than an inner `<ul>`) ensures the component container itself participates in the transition and smoothly animates its own geometry changes when items are added or removed.
+The scope element automatically participates in its own view transition because the user-agent stylesheet applies `view-transition-name: root` and `view-transition-group: contain` to it. This way, when the scope’s geometry is affected by the change you make in the DOM, it smoothly animates its own geometry alongside its children, as part of the View Transition.
 
 When the scope clips its overflow (`overflow: hidden`, `scroll`, or `clip`), `::view-transition-group-children(root)` automatically applies `overflow: clip`, preventing transitioning children from bleeding outside the component bounds.
 
