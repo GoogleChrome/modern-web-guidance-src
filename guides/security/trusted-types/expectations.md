@@ -1,9 +1,5 @@
-# Expectations for Trusted Types
-
-* The application includes a `<meta>` tag for Content Security Policy that enforces `require-trusted-types-for 'script'` and `trusted-types my-no-pretzel-policy`.
-* The application defines a Trusted Types policy named `my-no-pretzel-policy` using `window.trustedTypes.createPolicy`.
-* The application provides a "tinyfill" that mocks `window.trustedTypes.createPolicy` if the API is not natively supported by the browser.
-* Clicking the `#btn-unsafe` button with HTML content in `#input-field` results in a `TypeError` message displayed within the `#error-log` element (due to Trusted Types enforcement).
-* Clicking the `#btn-safe` button with HTML content in `#input-field` successfully renders the content into the `#output` element.
-* The `#error-log` element is hidden (`display: none`) after a successful update using the `#btn-safe` button.
-* The content rendered in `#output` after clicking `#btn-safe` has all instances of "pretzel" replaced with "popcorn".
+- The application configures a Content Security Policy (via a `<meta http-equiv="Content-Security-Policy">` tag or HTTP response header) that enforces `require-trusted-types-for 'script'`.
+- The application defines a Trusted Types policy (such as a named sanitization policy or a `default` policy) using `trustedTypes.createPolicy()` with a `createHTML` rule that sanitizes or escapes untrusted HTML.
+- The application provides a "tinyfill" fallback that defines `window.trustedTypes.createPolicy` if the API is not natively supported by the browser.
+- Assigning a raw string directly to `Element.innerHTML` is blocked by Trusted Types enforcement with a `TypeError` (or automatically sanitized if a `default` policy is registered).
+- Untrusted HTML written to `Element.innerHTML` is converted through the Trusted Types policy's `createHTML()` method and rendered without executable `<script>` elements or inline `on*` event handler attributes in the DOM.
