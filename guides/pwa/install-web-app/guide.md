@@ -27,8 +27,8 @@ Decide to use either the HTML `<install>` element or the JavaScript
   * Pros:
     * The browser provides the install control, ensuring a consistent and
       trustworthy installation experience.
-    * Installing another app does not trigger a separate permission prompt before
-      the installation confirmation dialog.
+    * Installing another app does not trigger a separate permission prompt
+      before the installation confirmation dialog.
     * The label in the `<install>` element changes to "Launch" if the target
       app is already installed.
     * No JavaScript is required to trigger the installation.
@@ -129,6 +129,31 @@ and use the `event.result` property to determine the outcome:
   prevented the installation from completing.
 * `invalid_data`: the `manifest` or `manifestId` attribute values are invalid.
 
+```html
+<install></install>
+<p id="install-status" role="status"></p>
+
+<script type="module">
+  const installButton = document.querySelector("install");
+  const installStatus = document.querySelector("#install-status");
+
+  installButton.addEventListener("installresult", (event) => {
+    switch (event.result) {
+      case "success":
+        installStatus.textContent = "The app was installed.";
+        break;
+      case "aborted":
+        installStatus.textContent =
+          "Installation was canceled or could not complete.";
+        break;
+      case "invalid_data":
+        installStatus.textContent =
+          "Installation could not start because the app data is invalid.";
+        break;
+    }
+  });
+</script>
+```
 
 ## Use the JavaScript `navigator.install()` method
 
@@ -197,8 +222,8 @@ await navigator.install({
 });
 ```
 
-The `manifestId` option can either be absolute or relative. Relative values
-are resolved against the document's base URL. The resulting URL must match the
+The `manifestId` option can either be absolute or relative. Relative values are
+resolved against the document's base URL. The resulting URL must match the
 processed manifest ID.
 
 ### Handle installation success and errors
@@ -237,8 +262,8 @@ web apps.
 {{ BASELINE_STATUS("manifest") }}
 
 Browsers that do not use web app manifests can still present the application as
-a normal website. Treat installation and standalone display as enhancements;
-do not block access to core functionality when manifest-based installation is
+a normal website. Treat installation and standalone display as enhancements; do
+not block access to core functionality when manifest-based installation is
 unavailable.
 
 ### `<install>` fallback
@@ -278,8 +303,8 @@ event cannot install a different app.
 Capture the event, prevent its automatic prompt, and reveal the custom install
 button only after the browser confirms that prompting is possible. Use one click
 handler that selects `navigator.install()` when available and otherwise uses the
-captured event. The event is single-use, so discard it before awaiting the user's
-choice and hide the button after prompting.
+captured event. The event is single-use, so discard it before awaiting the
+user's choice and hide the button after prompting.
 
 ```js
 const installButton = document.querySelector("#install-app");
