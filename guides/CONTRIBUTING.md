@@ -2,7 +2,7 @@
 
 This guide is for **Peers and content contributors** authoring or updating web platform guidance in `guides/`.
 
-Under our [Governance Model](../GOVERNANCE.md), authoring brand-new guidance from scratch is reserved for **[Peers](../GOVERNANCE.md#peers)** (or contributors co-authoring with an assigned Peer/ATL). Community **Contributors** who are not yet Peers can start by opening (or commenting on) a Stage 1 use-case [Issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues) and tagging the category's Content ATL from [`guides/atls.json`](./atls.json) to get sponsorship and Stage 1 sign-off before drafting a full guide, or submit PRs to improve existing guides, demos, and expectations.
+Under our [Governance Model](../GOVERNANCE.md), authoring brand-new guidance from scratch is reserved for **[Peers](../GOVERNANCE.md#peers)** (or contributors co-authoring with an assigned Peer/ATL). Community **Contributors** who are not yet Peers can start by opening (or commenting on) a Stage 1 use-case [Issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues) and tagging the category's Content ATL from [`.github/atls.json`](../.github/atls.json) to get sponsorship and Stage 1 sign-off before drafting a full guide, or submit PRs to improve existing guides, demos, and expectations.
 
 As a guidance author, your focus is entirely on **technical accuracy and best practices**: identifying real-world developer tasks, authoring concise and self-contained guidance, building working reference demos, and defining testable expectations. You do **not** need to write Playwright test code, configure evaluation sandboxes, or manage automated grader pipelines.
 
@@ -52,7 +52,7 @@ A use case is an **action-oriented developer task**, not an API catalog.
    ```
 3. Open an issue or draft PR to align on the use case with the category's [Content Area Tech Lead (ATL)](./ATLS.md).
 
-> **Peer Fast-Track**: Stage 1 alignment prevents wasted effort on poorly framed or duplicate use cases. Because **Peers** have demonstrated domain expertise, Peers may proceed directly to Stage 2 after creating the use case stub. Community contributors proposing new use cases should open an issue and tag the category Content ATL from [`guides/atls.json`](./atls.json) first to get Stage 1 sign-off and sponsorship.
+> **Peer Fast-Track**: Stage 1 alignment prevents wasted effort on poorly framed or duplicate use cases. Because **Peers** have demonstrated domain expertise, Peers may proceed directly to Stage 2 after creating the use case stub. Community contributors proposing new use cases should open an issue and tag the category Content ATL from [`.github/atls.json`](../.github/atls.json) first to get Stage 1 sign-off and sponsorship.
 
 * **Normative Specification & Schemas**: See [`.agents/skills/project-use-cases/SKILL.md`](../.agents/skills/project-use-cases/SKILL.md).
 
@@ -70,7 +70,7 @@ In Stage 2, you author three core files in the guide directory:
 ### Core Directives for `guide.md`:
 * **Self-Contained**: `guide.md` is the only file a real-world coding assistant reads. All required knowledge must be synthesized directly in the text and code snippets. **Never include external markdown links.**
 * **Explanatory Code Comments**: Every code snippet must include inline comments explaining *why* specific properties, selectors, or options are chosen.
-* **Baseline Fallback Macros**: Non-widely available features must include fallback strategies or progressive enhancement patterns using the `{{ FEATURE_FALLBACKS("feature-id") }}` macro.
+* **Baseline Fallback Macros**: Non-widely available features must include fallback strategies or progressive enhancement patterns using the `{{ FEATURE_FALLBACKS("feature-id") }}` (preferred) or `{{ BASELINE_STATUS("feature-id") }}` macro.
 
 * **Normative Specification & Rules**: See [`.agents/skills/project-guides/SKILL.md`](../.agents/skills/project-guides/SKILL.md).
 
@@ -94,7 +94,7 @@ This autonomously:
 
 ## Content Area Tech Leads (ATLs)
 
-Each guidance category is stewarded by a Content Area Tech Lead (ATL). When opening an issue or PR, tag the category ATL listed in [`guides/atls.json`](./atls.json).
+Each guidance category is stewarded by a Content Area Tech Lead (ATL). When opening an issue or PR, tag the category ATL listed in [`.github/atls.json`](../.github/atls.json).
 
 For details on ATL responsibilities and review criteria, see **[`guides/ATLS.md`](./ATLS.md)**.
 
@@ -106,6 +106,6 @@ When submitting a guidance PR:
 1. **Guidance PR Checklist**:
    - [ ] Signed the [Google CLA](https://developers.google.com/open-source/cla/individual).
    - [ ] Verified `demo.html` is clean, standalone, and warning-free in browser DevTools.
-   - [ ] Tagged the category ATL from [`guides/atls.json`](./atls.json).
+   - [ ] Tagged the category ATL from [`.github/atls.json`](../.github/atls.json).
    - [ ] (Recommended) Ran self-validation via the [`project-guide-validation`](../.agents/skills/project-guide-validation/SKILL.md) skill.
 2. **Review & Approval**: Guidance PRs are reviewed and approved by the category's Content ATL (or, when authored by that category's sole Content ATL, by another Content ATL, a domain Peer, or an Owner) before merging. Stage 3 evaluation calibration will be handled downstream by maintainers and evaluation tooling.

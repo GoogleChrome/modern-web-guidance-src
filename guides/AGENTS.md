@@ -28,4 +28,4 @@ When writing content, note that it is intended to be read by *other* coding agen
 
 **Discipline guides**
 
-A discipline guide is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Refer to the [Discipline Guides](../.agents/skills/project-discipline-guides/SKILL.md) skill when creating or updating one.
+A discipline guide is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Refer to the [Discipline Guides](../.agents/skills/project-discipline-guides/SKILL.md) skill when creating or updating one.

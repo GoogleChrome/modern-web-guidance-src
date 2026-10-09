@@ -25,9 +25,10 @@ A "use case" in this project is not a description of a feature; it's a task that
 * **MANDATORY: Drop niche use cases**: Every guide must solve a tangible, high-priority developer need. Do not document niche features or visual tricks with negligible practical impact. Omit use cases unlikely to match real developer prompts.
 * **Merge rather than split**: If two proposed use cases would result in guides that are 99% identical, combine them into one, more general use case. Duplicate guides bloat context windows and create confusing contradictions.
 * **Break down complex features**: Conversely, do not cram multi-step, intricate features (like passkeys) into a single generic guide. Split them into logical, detailed use cases.
-* **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage. If the implementation across proposed use cases is 90% identical, consolidate them.
+* **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage or an isolated prerequisite step. If a feature only addresses one facet or prerequisite of a broader workflow, fold it into the guide for that broader goal; if the implementation across proposed use cases is 90% identical, consolidate them.
 * **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline guide.
-* **Granular Guide Decomposition (Avoid Monoliths)**: For discipline-level guides, ensure the guidance is broken down into granular "subguides" (i.e., smaller, focused guides) rather than a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously. The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for the discipline, explaining when and how to reference each granular subguide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
+* **Avoid Standalone Guides for Single-Line Progressive Enhancements**: If a feature amounts to a single declaration or one-line progressive enhancement, do not create a 1:1 micro-guide whose entire solution is that single line. Instead, fold the feature and its guidance into a broader existing discipline or topic guide where it applies.
+* **Granular Guide Decomposition (Avoid Monoliths)**: For discipline-level guides, ensure the guidance is broken down into granular "subguides" (i.e., smaller, focused guides) rather than a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously. The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for the discipline, explaining when and how to reference each granular subguide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
 
 
 
@@ -51,11 +52,15 @@ The following steps are REQUIRED for creating a new use case:
   
   For example, a use case of the `fetch-priority` feature is "Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests."
 
+  **Match the scope of the slug and description.** Ensure the `name` and `description` cover the exact same scope—do not pair a narrow slug with a broad description (or vice versa).
+
 * **Step 2: Choose a category**
 
   Use cases MUST live under the [`guides/`](/guides) directory, organized into a single, high-level category such as [`motion`](/guides/motion) or [`performance`](/guides/performance). List the current subdirectories under `guides/` and choose the most appropriate one.
 
   **Categorize by the use case, not the implementation.** This is the "WHAT not HOW" principle applied to taxonomy: a category should name the user's goal (`motion`, `overlays`, `datetime`, `typography`), not the technology used to achieve it. Quick test: *could someone who understands the use case but can't write the code file it correctly?* If the only way to know where a guide belongs is to know which API it uses, the category is implementation-shaped. Two guides solving the same goal with different tech (e.g. a tab underline that morphs via anchor positioning vs. view transitions) belong in the **same** category.
+
+  For UI guides, match the category to the granularity of the use case: [`ui-components`](/guides/ui-components) is for complete, common UI components, while [`ui-behaviors`](/guides/ui-behaviors) and [`ui-atoms`](/guides/ui-atoms) are for individual behavioral patterns or atomic primitives.
 
   Some categories are named after a technology domain (`css`, `html`, `canvas`) because they are anchored by a comprehensive reference guide for that technology (e.g. `html/html/guide.md`). These are valid homes for use cases genuinely about that technology, or that don't yet have enough siblings to form a use-case cluster.
 
@@ -66,6 +71,8 @@ The following steps are REQUIRED for creating a new use case:
   Create a subdirectory under `guides/<category>/` for your use case. The subdirectory name MUST be a short, slugified version of the action-oriented use case. For example, for the use case in Step 1, the subdirectory name is `deprioritize-background-fetches`.
 
   DO NOT prefix the slug with action verbs like `create-`, `build-`, or `add-`. Slugs are directory names scanned in lists—action verbs just add noise and make it harder to find what you're looking for.
+
+  **Keep slugs technology- and format-agnostic.** The "WHAT not HOW" principle applies to directory names as well. Do not prefix or brand the slug with underlying technologies, APIs, or file formats—name the user experience goal or pattern, not the mechanism (unless the technology itself is the explicit subject of a reference guide).
 
 * **Step 4: Create the `guide.md` stub**
 
@@ -91,7 +98,7 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 5: Validate the use case stub**
 
-  Run `pnpm --filter guides test` (or `gd audit`) to validate the frontmatter and directory structure.
+  Run `pnpm test` (or `gd audit`) to validate the frontmatter and directory structure.
 
 * **Step 6: Get the use case approved**
 

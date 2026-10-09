@@ -44,7 +44,7 @@ ATLs ensure that all guidance within their domain is technically accurate, align
 
 ### 9. Discipline Guide Decomposition
 * Ensure discipline-level guides (e.g., CSS, JS, Performance) are broken down into granular, focused subguides rather than monolithic mega-guides.
-* The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual hub that establishes the agent's mental model and links granular subguides via the `{{ GUIDE_REF("guide-slug") }}` macro.
+* The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual hub that establishes the agent's mental model and links granular subguides via the `{{ GUIDE_REF("guide-slug") }}` macro.
 * **Specification**: See [`.agents/skills/project-discipline-guides/SKILL.md`](../.agents/skills/project-discipline-guides/SKILL.md).
 
 
@@ -52,13 +52,13 @@ ATLs ensure that all guidance within their domain is technically accurate, align
 
 ATL stewardship spans both **domain verticals** (directory categories) and **guidance horizontals** (cross-cutting feature groups like Motion or WebAuthn).
 
-Official ownership mapping is maintained in **[`guides/atls.json`](./atls.json)**, which resolves ATL assignments through three hierarchical tiers:
+Official ownership mapping is maintained in **[`.github/atls.json`](../.github/atls.json)**, which resolves ATL assignments through three hierarchical tiers:
 
 1. **`web_features`**: Specific feature-level overrides (highest priority, e.g., `prefers-reduced-motion`, `canvas-html`).
 2. **`web_features_groups`**: Cross-cutting guidance horizontals and feature groups (e.g., `animation`, `transitions`, `view-transitions`, `scrolling`, `webauthn`).
 3. **`default`**: Domain vertical defaults across guidance directories (`css`, `forms`, `performance`, `ui-behaviors`, `ui-components`, `built-in-ai`, `privacy`, `security`, `webmcp`, etc.).
 
-When opening a PR or triaging issues, check [`guides/atls.json`](./atls.json) to identify and tag the assigned ATL.
+When opening a PR or triaging issues, check [`.github/atls.json`](../.github/atls.json) to identify and tag the assigned ATL.
 
 
 ## Review & Triage Workflows
@@ -74,6 +74,6 @@ When a contributor opens an issue or PR proposing a new use case:
 When a contributor submits a PR containing `guide.md`, `demo.html`, and `expectations.md`:
 1. **Technical & Accuracy Review**: Review guidance for domain accuracy, modern idioms, and alignment with repository directives.
 2. **Check Directives & Self-Containment**: Verify that `guide.md` uses imperative directives (`MANDATORY:`, `DO`, `DO NOT`), includes inline code comments explaining choices, and contains **no external links**.
-3. **Verify Baseline Fallbacks**: Ensure non-widely available features include fallback strategies using the `{{ FEATURE_FALLBACKS("feature-id") }}` macro.
+3. **Verify Baseline Fallbacks**: Ensure non-widely available features include fallback strategies using the `{{ FEATURE_FALLBACKS("feature-id") }}` (or `{{ BASELINE_STATUS("feature-id") }}`) macro.
 4. **Inspect Demo & Expectations**: Ensure `demo.html` is clean, standalone, and warning-free in DevTools, and that `expectations.md` lists testable, observable outcomes matching the guide.
 5. **Encourage Self-Validation**: Verify that the author ran the [`project-guide-validation`](../.agents/skills/project-guide-validation/SKILL.md) skill.

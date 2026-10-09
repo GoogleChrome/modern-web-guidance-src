@@ -41,7 +41,7 @@ Where would you like to contribute? Follow the link for your pathway:
 |---|---|---|
 | **✍️ Guidance Content** | Author or update web platform guidance (Stages 1 & 2: use cases, `guide.md`, `demo.html`, `expectations.md`, self-validation). Shielded from eval infrastructure. | **[`guides/CONTRIBUTING.md`](./guides/CONTRIBUTING.md)** |
 | **🛡️ Category Stewardship** | Content Area Tech Leads (ATLs) triaging use cases, reviewing guidance PRs, and maintaining domain category health. | **[`guides/ATLS.md`](./guides/ATLS.md)** |
-| **⚙️ Tooling, Infra & Evals** | Develop the unified `gd` CLI, prompt benchmarking harness, Playwright grader generators, serving compiler, and dashboard. | **[`harness/README.md`](./harness/README.md)** |
+| **⚙️ Tooling, Infra & Evals** | Develop the unified `gd` CLI, prompt benchmarking harness, Playwright grader generators, serving compiler, and dashboard. | **[`src/harness/README.md`](./src/harness/README.md)** |
 | **🏛️ Project Governance** | Contributor roles (Contributors, Peers, Content ATLs, Owners), rights, decision-making model, and meeting cadences. | **[`GOVERNANCE.md`](./GOVERNANCE.md)** |
 
 
@@ -53,10 +53,12 @@ To foster an open-source contributor environment while maintaining a clean, stab
 * **Installation Repo ([GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance))**: Read-only distribution repo containing compiled Skills and plugin configurations consumed by coding agents.
 * **Sync & Release Flow**: Changes merged into `modern-web-guidance-src` are compiled and published on a regular weekly release cadence to both the distribution repository and the [`modern-web-guidance` npm package](https://www.npmjs.com/package/modern-web-guidance).
 
+For a technical walkthrough of the repository directory layout and architecture, see **[`docs/CONTEXT.md`](./docs/CONTEXT.md)**.
+
 
 ## Development Setup & Quality Gate
 
-This project is managed as a **pnpm workspace**.
+This project uses **pnpm** (Node.js 24+):
 
 ```bash
 # Clone and install dependencies:
@@ -70,7 +72,7 @@ pnpm link --global && gd setup-completion
 # Fast static check:
 pnpm typecheck && pnpm lint
 
-# Full preflight gate (builds workspaces, typechecks, lints, and runs all unit tests):
+# Full preflight gate (builds distributions, typechecks, lints, and runs all unit tests):
 pnpm preflight
 ```
 

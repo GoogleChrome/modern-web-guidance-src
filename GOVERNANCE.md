@@ -38,7 +38,7 @@ Candidates can be nominated by any Peer, Content ATL, or Owner, and are confirme
 
 ### Content Area Tech Leads (Content ATLs)
 
-Content ATLs are Peers who take formal ownership over specific domain categories (e.g., *Performance*, *CSS*, *Forms*, *UI Behaviors*, *Accessibility*) or feature horizontals (e.g., *Motion*, *WebAuthn*). Domain assignments are defined in **[`guides/atls.json`](./guides/atls.json)** and detailed in **[`guides/ATLS.md`](./guides/ATLS.md)**.
+Content ATLs are Peers who take formal ownership over specific domain categories (e.g., *Performance*, *CSS*, *Forms*, *UI Behaviors*, *Accessibility*) or feature horizontals (e.g., *Motion*, *WebAuthn*). Domain assignments are defined in **[`.github/atls.json`](./.github/atls.json)** and detailed in **[`guides/ATLS.md`](./guides/ATLS.md)**.
 
 Content ATLs:
 * Serve as the primary technical authority for their assigned categories.
