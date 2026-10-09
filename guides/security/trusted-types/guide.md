@@ -22,7 +22,7 @@ To use Trusted Types, follow four main steps:
 
 ### 1. Creating a Policy
 
-A policy is a set of rules for sanitizing content. You create it using `trustedTypes.createPolicy()`.
+A policy is a set of rules for sanitizing content. You create it using `trustedTypes.createPolicy()`, typically delegating to a sanitizer library such as DOMPurify or your application's HTML escaping rules:
 
 ```javascript
 import DOMPurify from 'dompurify';
@@ -30,6 +30,7 @@ import DOMPurify from 'dompurify';
 const myPolicy = trustedTypes.createPolicy('sanitize-html', {
   createHTML: (input) =>
     // Return a sanitized string; createPolicy() wraps it in a TrustedHTML object.
+    // Example using DOMPurify:
     DOMPurify.sanitize(input, { RETURN_TRUSTED_TYPE: false }),
 });
 ```
