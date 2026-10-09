@@ -7,4 +7,4 @@
 - If the implementation calculates custom track-fill progress, it MUST derive it from the control’s actual `min`, `max`, and `value`, not assume a 0–100 range.
 - The implementation MUST NOT use generated content on slider pseudo-elements to provide labels, current values, instructions, or functionality.
 - The implementation MUST account for right-to-left layouts and MUST NOT hard-code a left-to-right active-track direction without an explicit RTL strategy.
-- If the numeric value requires a human-readable unit, the implementation MUST expose that formatted value in ordinary DOM content and update `aria-valuetext` whenever the value changes. Otherwise, it SHOULD rely on the native numeric value.
+- If `aria-valuetext` is provided, it MUST differ from the slider’s plain numeric value.
