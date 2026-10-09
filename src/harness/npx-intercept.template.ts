@@ -70,7 +70,6 @@ const killGroup = () => {
 for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
   process.on(sig, () => {
     killGroup();
-    process.exit(1);
   });
 }
 
