@@ -1,0 +1,424 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..df5c82b 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,29 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  // Sanitizer API (https://wicg.github.io/sanitizer-api/) — not yet part of
++  // TypeScript's built-in DOM lib, so it's declared here.
++  interface SanitizerConfig {
++    elements?: string[];
++    attributes?: string[];
++    removeElements?: string[];
++    replaceWithChildrenElements?: string[];
++    removeAttributes?: string[];
++  }
++
++  interface SanitizerOptions {
++    sanitizer?: Sanitizer | SanitizerConfig;
++  }
++
++  class Sanitizer {
++    constructor(config?: SanitizerConfig);
++  }
++
++  interface Element {
++    setHTML(input: string, options?: SanitizerOptions): void;
++    setHTMLUnsafe(input: string, options?: SanitizerOptions): void;
++  }
+ }
+ 
+ export {};
+\ No newline at end of file
+diff --git a/package.json b/package.json
+index 5e71a8a..dd76cc3 100644
+--- a/package.json
++++ b/package.json
+@@ -17,6 +17,7 @@
+     "@types/react": "^19.2.14",
+     "@types/react-dom": "^19.2.3",
+     "astro": "^7.2.8",
++    "dompurify": "^3.4.16",
+     "react": "^19.2.5",
+     "react-dom": "^19.2.5",
+     "sharp": "^0.35.0",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index ab0416c..a27c563 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -10,7 +10,7 @@ importers:
+     dependencies:
+       '@astrojs/node':
+         specifier: ^11.0.2
+-        version: 11.0.2(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))
++        version: 11.0.2(astro@7.3.2(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))
+       '@astrojs/react':
+         specifier: ^5.0.4
+         version: 5.0.4(@types/node@25.5.0)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(jiti@2.6.1)(lightningcss@1.32.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)(yaml@2.8.3)
+@@ -28,7 +28,10 @@ importers:
+         version: 19.2.3(@types/react@19.2.14)
+       astro:
+         specifier: ^7.2.8
+-        version: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
++        version: 7.3.2(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
++      dompurify:
++        specifier: ^3.4.16
++        version: 3.4.16
+       react:
+         specifier: ^19.2.5
+         version: 19.2.5
+@@ -294,6 +297,9 @@ packages:
+   '@emnapi/core@1.11.1':
+     resolution: {integrity: sha512-RSvbQmHzdKzNsLYa/wHrbc3KN4sYLKAdPZxqiM2HATqv/SBk2/ENSHpvXGaLOMcsAyz0poEGqkmmKYG3OWiJEQ==}
+ 
++  '@emnapi/core@1.11.3':
++    resolution: {integrity: sha512-zLpS5asjEb7lq8jYLq37N6XKaE41DIexlY1rF/z4/tIl3wo13Sqm28fRyfIsKZD+NZ8mM5RoKkpW/rBcuoSZSg==}
++
+   '@emnapi/runtime@1.11.1':
+     resolution: {integrity: sha512-vgj7R3y3Wgx24IQaGPA/R6YFXLHVMOZ0uVEyIQPaWs+rd1AzfEMXlAC22FYwO1XkKR6NPsq7mUandH8oIRdZFw==}
+ 
+@@ -303,6 +309,9 @@ packages:
+   '@emnapi/wasi-threads@1.2.2':
+     resolution: {integrity: sha512-c95qOXkHdydNKhscBTebqEC1CVAZpyqOfVfBzQ1qgzyl3gfeldUjIggDbIZgDKsHLgnsM+igH7TJ/eAasaVuMA==}
+ 
++  '@emnapi/wasi-threads@1.2.3':
++    resolution: {integrity: sha512-ELEBe8PsLvvJ6QMr0zLt8ffvOHW/dc1m3CEzNMg7aJUv3bMaoDtw2TXyDAwkYBuroxxuHEwhRTLJSe5sya547g==}
++
+   '@esbuild/aix-ppc64@0.27.4':
+     resolution: {integrity: sha512-cQPwL2mp2nSmHHJlCyoXgHGhbEPMrEEU5xhkcy3Hs/O7nGZqEpZ2sUtLaL9MORLtDfRvVl2/3PAuEkYZH0Ty8Q==}
+     engines: {node: '>=18'}
+@@ -1479,6 +1488,9 @@ packages:
+   '@types/react@19.2.14':
+     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
+ 
++  '@types/trusted-types@2.0.7':
++    resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
++
+   '@types/unist@3.0.3':
+     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
+ 
+@@ -1666,6 +1678,9 @@ packages:
+     resolution: {integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==}
+     engines: {node: '>= 4'}
+ 
++  dompurify@3.4.16:
++    resolution: {integrity: sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ==}
++
+   domutils@3.2.2:
+     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
+ 
+@@ -2517,9 +2532,9 @@ snapshots:
+   '@astrojs/compiler-binding-linux-x64-musl@0.4.0':
+     optional: true
+ 
+-  '@astrojs/compiler-binding-wasm32-wasi@0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)':
++  '@astrojs/compiler-binding-wasm32-wasi@0.4.0(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)':
+     dependencies:
+-      '@napi-rs/wasm-runtime': 1.2.4(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)
++      '@napi-rs/wasm-runtime': 1.2.4(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)
+     transitivePeerDependencies:
+       - '@emnapi/core'
+       - '@emnapi/runtime'
+@@ -2531,7 +2546,7 @@ snapshots:
+   '@astrojs/compiler-binding-win32-x64-msvc@0.4.0':
+     optional: true
+ 
+-  '@astrojs/compiler-binding@0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)':
++  '@astrojs/compiler-binding@0.4.0(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)':
+     optionalDependencies:
+       '@astrojs/compiler-binding-darwin-arm64': 0.4.0
+       '@astrojs/compiler-binding-darwin-x64': 0.4.0
+@@ -2539,16 +2554,16 @@ snapshots:
+       '@astrojs/compiler-binding-linux-arm64-musl': 0.4.0
+       '@astrojs/compiler-binding-linux-x64-gnu': 0.4.0
+       '@astrojs/compiler-binding-linux-x64-musl': 0.4.0
+-      '@astrojs/compiler-binding-wasm32-wasi': 0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)
++      '@astrojs/compiler-binding-wasm32-wasi': 0.4.0(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)
+       '@astrojs/compiler-binding-win32-arm64-msvc': 0.4.0
+       '@astrojs/compiler-binding-win32-x64-msvc': 0.4.0
+     transitivePeerDependencies:
+       - '@emnapi/core'
+       - '@emnapi/runtime'
+ 
+-  '@astrojs/compiler-rs@0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)':
++  '@astrojs/compiler-rs@0.4.0(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)':
+     dependencies:
+-      '@astrojs/compiler-binding': 0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)
++      '@astrojs/compiler-binding': 0.4.0(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)
+     transitivePeerDependencies:
+       - '@emnapi/core'
+       - '@emnapi/runtime'
+@@ -2586,10 +2601,10 @@ snapshots:
+       github-slugger: 2.0.0
+       satteri: 0.10.5
+ 
+-  '@astrojs/node@11.0.2(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))':
++  '@astrojs/node@11.0.2(astro@7.3.2(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))':
+     dependencies:
+       '@astrojs/internal-helpers': 0.10.1
+-      astro: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
++      astro: 7.3.2(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
+       send: 1.2.1
+       server-destroy: 1.0.1
+     transitivePeerDependencies:
+@@ -2796,6 +2811,12 @@ snapshots:
+       tslib: 2.8.1
+     optional: true
+ 
++  '@emnapi/core@1.11.3':
++    dependencies:
++      '@emnapi/wasi-threads': 1.2.3
++      tslib: 2.8.1
++    optional: true
++
+   '@emnapi/runtime@1.11.1':
+     dependencies:
+       tslib: 2.8.1
+@@ -2811,6 +2832,11 @@ snapshots:
+       tslib: 2.8.1
+     optional: true
+ 
++  '@emnapi/wasi-threads@1.2.3':
++    dependencies:
++      tslib: 2.8.1
++    optional: true
++
+   '@esbuild/aix-ppc64@0.27.4':
+     optional: true
+ 
+@@ -3216,9 +3242,9 @@ snapshots:
+       '@tybys/wasm-util': 0.10.3
+     optional: true
+ 
+-  '@napi-rs/wasm-runtime@1.2.4(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)':
++  '@napi-rs/wasm-runtime@1.2.4(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)':
+     dependencies:
+-      '@emnapi/core': 1.11.1
++      '@emnapi/core': 1.11.3
+       '@emnapi/runtime': 1.11.3
+       '@tybys/wasm-util': 0.10.3
+     optional: true
+@@ -3590,6 +3616,9 @@ snapshots:
+     dependencies:
+       csstype: 3.2.3
+ 
++  '@types/trusted-types@2.0.7':
++    optional: true
++
+   '@types/unist@3.0.3': {}
+ 
+   '@ungap/structured-clone@1.3.0': {}
+@@ -3619,9 +3648,9 @@ snapshots:
+ 
+   aria-query@5.3.2: {}
+ 
+-  astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3):
++  astro@7.3.2(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3):
+     dependencies:
+-      '@astrojs/compiler-rs': 0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)
++      '@astrojs/compiler-rs': 0.4.0(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)
+       '@astrojs/internal-helpers': 0.11.0
+       '@astrojs/markdown-satteri': 0.4.1
+       '@astrojs/telemetry': 3.3.3
+@@ -3827,6 +3856,10 @@ snapshots:
+     dependencies:
+       domelementtype: 2.3.0
+ 
++  dompurify@3.4.16:
++    optionalDependencies:
++      '@types/trusted-types': 2.0.7
++
+   domutils@3.2.2:
+     dependencies:
+       dom-serializer: 2.0.0
+diff --git a/src/components/CommentSection.tsx b/src/components/CommentSection.tsx
+new file mode 100644
+index 0000000..1f7c751
+--- /dev/null
++++ b/src/components/CommentSection.tsx
+@@ -0,0 +1,115 @@
++import React, { useEffect, useRef, useState } from 'react';
++import { safeSetHTML } from '../utils/sanitize';
++
++interface Comment {
++  id: number;
++  author: string;
++  html: string;
++}
++
++const INITIAL_COMMENTS: Comment[] = [
++  {
++    id: 1,
++    author: 'Jordan R.',
++    html: '<p>Great reporting on this <b>story</b> — thanks for the detailed breakdown.</p>',
++  },
++  {
++    id: 2,
++    author: 'Casey M.',
++    html: '<p>I appreciate the <em>balanced</em> perspective here.</p>',
++  },
++];
++
++interface SanitizedHtmlProps {
++  html: string;
++  className?: string;
++}
++
++function SanitizedHtml({ html, className }: SanitizedHtmlProps) {
++  const ref = useRef<HTMLDivElement>(null);
++
++  useEffect(() => {
++    const el = ref.current;
++    if (!el) return;
++    safeSetHTML(el, html);
++  }, [html]);
++
++  return <div ref={ref} className={className} data-testid="comment-output" />;
++}
++
++export default function CommentSection() {
++  const [comments, setComments] = useState<Comment[]>(INITIAL_COMMENTS);
++  const [author, setAuthor] = useState('');
++  const [draft, setDraft] = useState('');
++  const nextId = useRef(INITIAL_COMMENTS.length + 1);
++
++  const handleSubmit = (e: React.FormEvent) => {
++    e.preventDefault();
++    if (!draft.trim()) return;
++
++    setComments((prev) => [
++      ...prev,
++      { id: nextId.current++, author: author.trim() || 'Anonymous', html: draft },
++    ]);
++    setDraft('');
++  };
++
++  return (
++    <section id="comments" className="max-w-3xl mx-auto px-4 py-8 border-t border-gray-200">
++      <h2 className="text-2xl font-brand text-gray-900 mb-4">Comments</h2>
++
++      <ul className="space-y-4 mb-8">
++        {comments.map((comment) => (
++          <li key={comment.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
++            <p className="text-sm font-semibold text-gray-800 mb-1">{comment.author}</p>
++            <SanitizedHtml html={comment.html} className="prose prose-sm max-w-none text-gray-700" />
++          </li>
++        ))}
++      </ul>
++
++      <form onSubmit={handleSubmit} className="space-y-3">
++        <div>
++          <label htmlFor="comment-author" className="block text-sm font-medium text-gray-700 mb-1">
++            Name
++          </label>
++          <input
++            id="comment-author"
++            type="text"
++            value={author}
++            onChange={(e) => setAuthor(e.target.value)}
++            placeholder="Anonymous"
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400"
++          />
++        </div>
++
++        <div>
++          <label htmlFor="comment-body" className="block text-sm font-medium text-gray-700 mb-1">
++            Add a comment (basic formatting like <code>&lt;b&gt;</code> and <code>&lt;i&gt;</code> is supported)
++          </label>
++          <textarea
++            id="comment-body"
++            value={draft}
++            onChange={(e) => setDraft(e.target.value)}
++            rows={4}
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400"
++          />
++        </div>
++
++        <div>
++          <p className="block text-sm font-medium text-gray-700 mb-1">Preview</p>
++          <SanitizedHtml
++            html={draft}
++            className="prose prose-sm max-w-none text-gray-700 min-h-[2rem] p-3 bg-white border border-dashed border-gray-300 rounded-md"
++          />
++        </div>
++
++        <button
++          type="submit"
++          className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
++        >
++          Post Comment
++        </button>
++      </form>
++    </section>
++  );
++}
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..a75f8bd 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import CommentSection from '../../components/CommentSection.tsx';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -115,6 +116,8 @@ const isBookmarked = readingList.includes(article.slug);
+         </section>
+     </article>
+ 
++    <CommentSection client:load />
++
+     <!-- RELATED ARTICLES SECTION -->
+     <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
+         <div class="grid md:grid-cols-3 gap-6">
+diff --git a/src/utils/sanitize.ts b/src/utils/sanitize.ts
+new file mode 100644
+index 0000000..a0b9688
+--- /dev/null
++++ b/src/utils/sanitize.ts
+@@ -0,0 +1,40 @@
++// Renders untrusted HTML safely using the native Sanitizer API
++// (https://wicg.github.io/sanitizer-api/), falling back to DOMPurify only
++// when the browser doesn't support it, so the fallback bundle is never
++// downloaded by browsers that don't need it.
++
++const ALLOWED_ELEMENTS = ['p', 'b', 'i', 'strong', 'em', 'br'];
++const ALLOWED_ATTRIBUTES = ['class'];
++
++const SANITIZER_CONFIG: SanitizerConfig = {
++  elements: ALLOWED_ELEMENTS,
++  attributes: ALLOWED_ATTRIBUTES,
++};
++
++let domPurifyPromise: Promise<typeof import('dompurify').default> | undefined;
++
++function loadDOMPurify() {
++  // Code-split with the bundler so DOMPurify is only downloaded when needed.
++  domPurifyPromise ??= import('dompurify').then((mod) => mod.default ?? mod);
++  return domPurifyPromise;
++}
++
++/**
++ * Sanitizes `html` and inserts it into `el`, matching behavior between the
++ * native Sanitizer API and its DOMPurify fallback: disallowed elements are
++ * removed together with their content.
++ */
++export async function safeSetHTML(el: Element, html: string): Promise<void> {
++  if ('setHTML' in Element.prototype) {
++    el.setHTML(html, { sanitizer: SANITIZER_CONFIG });
++    return;
++  }
++
++  const DOMPurify = await loadDOMPurify();
++  el.innerHTML = DOMPurify.sanitize(html, {
++    ALLOWED_TAGS: [...ALLOWED_ELEMENTS, '#text'],
++    ALLOWED_ATTR: ALLOWED_ATTRIBUTES,
++    // Match the native Sanitizer: remove disallowed elements with their content.
++    KEEP_CONTENT: false,
++  });
++}
