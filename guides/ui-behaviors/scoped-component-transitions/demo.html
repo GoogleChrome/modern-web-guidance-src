@@ -51,6 +51,7 @@
       gap: 1.5rem;
       max-width: 900px;
       margin: 0 auto;
+      align-items: start;
     }
 
     .card {
@@ -185,20 +186,25 @@
       return [...items.slice(1), items[0]];
     }
 
-    function runWithTransition(scopeEl, listEl, next) {
+    function runWithTransition(scopeEl, listEl, next, afterRender) {
+      const update = () => {
+        render(listEl, next);
+        afterRender?.();
+      };
+
       if (!supportsScopedTransition) {
         // Fallback for browsers without scoped view transitions
-        render(listEl, next);
+        update();
         return next;
       }
 
       // Capture and animate only this card's subtree
-      const transition = scopeEl.startViewTransition(() => render(listEl, next));
+      const transition = scopeEl.startViewTransition(update);
 
       // A skipped transition rejects `ready`, and Chrome 151 leaves that
       // rejection unhandled for scoped transitions, so overlapping clicks
       // would log uncaught errors. The DOM update still applies.
-      transition.ready.catch(() => {});
+      transition.ready.catch(console.error);
       return next;
     }
 
@@ -209,29 +215,42 @@
     render(document.getElementById('right-list'), rightItems);
 
     document.getElementById('left-rotate').addEventListener('click', () => {
+      const listEl = document.getElementById('left-list');
       leftItems = runWithTransition(
-        document.getElementById('left'),
-        document.getElementById('left-list'),
+        listEl,
+        listEl,
         rotate(leftItems),
       );
     });
     document.getElementById('right-rotate').addEventListener('click', () => {
+      const listEl = document.getElementById('right-list');
       rightItems = runWithTransition(
-        document.getElementById('right'),
-        document.getElementById('right-list'),
+        listEl,
+        listEl,
         rotate(rightItems),
       );
     });
 
     function removeItem(scopeId, listId, items, li) {
-      // Chrome 151 aborts a scoped transition when a match-element participant
-      // is removed, so name the outgoing item explicitly to keep its exit
-      // animation
-      li.style.viewTransitionName = `removing-${li.dataset.label}`;
+      const scopeEl = document.getElementById(scopeId);
+      const listEl = document.getElementById(listId);
+      const hadFocus = li.contains(document.activeElement);
+      const nextFocusLabel =
+        li.nextElementSibling?.dataset.label ??
+        li.previousElementSibling?.dataset.label;
+
       return runWithTransition(
-        document.getElementById(scopeId),
-        document.getElementById(listId),
+        scopeEl,
+        listEl,
         items.filter((label) => label !== li.dataset.label),
+        () => {
+          if (hadFocus) {
+            const nextBtn = nextFocusLabel
+              ? listEl.querySelector(`li[data-label="${nextFocusLabel}"] button`)
+              : null;
+            (nextBtn ?? scopeEl.querySelector('button'))?.focus();
+          }
+        },
       );
     }
 
@@ -247,14 +266,16 @@
     // Both scoped transitions animate at the same time; a second
     // document-level startViewTransition call would skip the first instead
     document.getElementById('rotate-both').addEventListener('click', () => {
+      const leftListEl = document.getElementById('left-list');
+      const rightListEl = document.getElementById('right-list');
       leftItems = runWithTransition(
-        document.getElementById('left'),
-        document.getElementById('left-list'),
+        leftListEl,
+        leftListEl,
         rotate(leftItems),
       );
       rightItems = runWithTransition(
-        document.getElementById('right'),
-        document.getElementById('right-list'),
+        rightListEl,
+        rightListEl,
         rotate(rightItems),
       );
     });
