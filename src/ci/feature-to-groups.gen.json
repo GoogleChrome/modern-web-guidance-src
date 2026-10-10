@@ -1109,10 +1109,6 @@
   "time-relative-selectors": [
     "css"
   ],
-  "tmp-animations-css-animation-accessors": [
-    "animation",
-    "css"
-  ],
   "tmp-calc-dimensions": [
     "css"
   ],
@@ -1140,9 +1136,6 @@
   "tmp-revert-rule": [
     "css"
   ],
-  "tmp-scroll-axis-lock": [
-    "scrolling"
-  ],
   "tmp-scroll-triggered-animations": [
     "animation",
     "scrolling"
@@ -1150,14 +1143,8 @@
   "tmp-text-decoration-inset": [
     "css"
   ],
-  "tmp-text-decoration-skip-spaces": [
-    "css"
-  ],
   "tmp-webcrypto-modern-algos": [
     "security"
-  ],
-  "tmp-wheel-events-momentum": [
-    "scrolling"
   ],
   "transforms2d": [
     "css"
