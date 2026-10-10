@@ -16,7 +16,7 @@ A shadow root is an encapsulated DOM subtree attached to a host element: styles 
 this.attachShadow({ mode: 'open', delegatesFocus: true });
 ```
 
-`delegatesFocus: true` makes focusing the host move focus to the first focusable element inside the shadow tree, and routes `:focus` styling to the host. Set it whenever the component wraps focusable controls; it is required for label-click and keyboard accessibility. (Use `mode: 'open'` in almost all cases — see the cross-cutting rules in {{ GUIDE_REF("web-components") }}.)
+`delegatesFocus: true` makes focusing the host move focus to the first focusable element inside the shadow tree, routes `:focus` styling to the host, and on form-associated custom elements (`static formAssociated = true`) forwards `<label>` clicks to the inner control. Set it whenever the component wraps focusable controls. Use `mode: 'open'` in almost all cases so dev tools, page scripts, and server hydration can reach `element.shadowRoot` (see {{ GUIDE_REF("web-components") }}).
 
 ## Templates: construct the tree efficiently
 

@@ -24,6 +24,14 @@ class ToggleSwitch extends HTMLElement {
     this.#internals = this.attachInternals();
     this.#internals.role = 'switch';          // default role, no host attribute needed
     this.#internals.ariaChecked = 'false';    // exposed to the accessibility tree
+    this.addEventListener('click', () => this.toggle());
+    this.addEventListener('keydown', (e) => {
+      if (e.key === ' ') { e.preventDefault(); this.toggle(); }
+    });
+  }
+  connectedCallback() {
+    // Put the host in the tab order on connect (setting tabIndex in the constructor throws on createElement).
+    if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
   }
   toggle() {
     const on = this.#internals.ariaChecked !== 'true';
@@ -37,14 +45,15 @@ This avoids polluting the DOM with ARIA attributes and prevents consumers from a
 
 ## Focus management and `delegatesFocus`
 
-- Attach the shadow root with `delegatesFocus: true` when the component wraps focusable controls. Focusing the host then forwards focus to the first focusable child, and `:focus`/label clicks behave as users expect.
+- When the **host element itself is the interactive control** and carries the role and state via `ElementInternals` (like `ToggleSwitch` above), put the host in the tab order inside `connectedCallback` (`if (!this.hasAttribute('tabindex')) this.tabIndex = 0` — never in the constructor, which throws on `document.createElement`) so focus lands on the host and assistive technology announces its role and state. Do not set `tabindex` on the host for static, non-interactive components (such as a callout or card).
+- Attach the shadow root with `delegatesFocus: true` when the component **wraps an internal focusable control** that owns the semantics (or on a form-associated custom element with `static formAssociated = true`). Focusing the host (and clicking an associated `<label>` for form-associated elements) then forwards focus to the first focusable child, and `:focus` matches the host. Do not combine `delegatesFocus: true` with a role/state on the host, or focus will land on the inner element and skip the host's state.
 - For roving focus or moving focus into a newly revealed region, give the target `tabindex="-1"` and call `.focus()`; make programmatically-focusable targets explicit rather than relying on tab order.
 
 ## ARIA relationships across shadow roots
 
 - **MANDATORY**: an `id` referenced by `aria-labelledby`, `aria-describedby`, `aria-controls`, etc. resolves only within the referencing element's **own** tree. An `id`-based attribute in the Light DOM cannot point at an `id` inside a shadow tree, and vice versa; the reference is silently ignored.
 - To cross the boundary, use the reflected ARIA *element* properties (e.g. `ariaLabelledByElements`, `ariaDescribedByElements`, etc), which take direct JS element references instead of ids. They resolve **outward**: an element inside a shadow tree can point at a target in the Light DOM or any ancestor tree (including slotted content), so you can label a shadow-internal control from Light DOM content — something `id` references can't express.
-- They do **not** resolve **inward**: an element can't reference *into* a descendant shadow tree (e.g. a host can't be labelled by its own shadow content). For that direction the emerging **Reference Target** mechanism is the standards direction, but it is not yet broadly available.
+- They do **not** resolve **inward**: an element can't reference *into* a descendant shadow tree (e.g. a host can't be labeled by its own shadow content). For that direction the emerging **Reference Target** mechanism is the standards direction, but it is not yet broadly available.
 - When a relationship can't be expressed either way, keep it within one tree (render the label in the same tree) or use `aria-label` text instead of an `id` reference.
 
 ## Fallback strategies
