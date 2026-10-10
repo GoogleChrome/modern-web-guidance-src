@@ -217,17 +217,17 @@
     <div class="calculator-card">
       <div class="controls">
         <div class="control-group">
-          <label>Start (Trial Activation)</label>
+          <label id="startLabel">Start (Trial Activation)</label>
           <div style="display: flex; gap: 0.5rem;">
-            <input type="date" id="startDate" style="width: 130px;">
-            <input type="time" id="startTime">
+            <input type="date" id="startDate" style="width: 130px;" aria-label="Start date">
+            <input type="time" id="startTime" aria-label="Start time">
           </div>
         </div>
         <div class="control-group">
-          <label>End (Expiration)</label>
+          <label id="endLabel">End (Expiration)</label>
           <div style="display: flex; gap: 0.5rem;">
-            <input type="date" id="endDate" style="width: 130px;">
-            <input type="time" id="endTime">
+            <input type="date" id="endDate" style="width: 130px;" aria-label="End date">
+            <input type="time" id="endTime" aria-label="End time">
           </div>
         </div>
       </div>
@@ -241,13 +241,13 @@
         <!-- .since() Demonstration -->
         <div class="result-item">
           <span class="result-label">Time Active (Since Activation)</span>
-          <span id="activeValue" class="result-value">0y 0m 0d 0h 0m</span>
+          <span id="activeValue" class="result-value">—</span>
         </div>
 
         <!-- .until() Demonstration -->
         <div class="result-item">
           <span class="result-label">Time Remaining (Until Expiration)</span>
-          <span id="durationValue" class="result-value">0y 0m 0d 0h 0m</span>
+          <span id="durationValue" class="result-value">—</span>
         </div>
 
         <!-- Raw Strings -->
@@ -274,8 +274,11 @@ Temporal.PlainDate.from(startDateStr).toPlainDateTime(startTimeStr).toZonedDateT
 Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(tz);
 
 <span class="comment">// 3. Calculate with .since() and .until()</span>
-<span class="keyword">const</span> timeActive = now.<span class="method">since</span>(start, { largestUnit: <span class="string">'year'</span> });
-<span class="keyword">const</span> timeRemaining = now.<span class="method">until</span>(end, { largestUnit: <span class="string">'year'</span> });</pre>
+<span class="keyword">const</span> timeActive = now.<span class="method">since</span>(start, { largestUnit: <span class="string">'year'</span>, smallestUnit: <span class="string">'minute'</span> });
+<span class="keyword">const</span> timeRemaining = now.<span class="method">until</span>(end, { largestUnit: <span class="string">'year'</span>, smallestUnit: <span class="string">'minute'</span> });
+
+<span class="comment">// 4. Format for display with toLocaleString()</span>
+timeActive.<span class="method">toLocaleString</span>(<span class="string">'en-US'</span>, { style: <span class="string">'narrow'</span> });</pre>
       </div>
     </div>
   </div>
@@ -321,9 +324,9 @@ Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(
       const start = now.subtract({ days: daysInPast });
       const end = start.add({ days: 30 });
 
-      startDateInput.value = start.toPlainDate();
+      startDateInput.value = start.toPlainDate().toString();
       startTimeInput.value = start.toPlainTime().toString({ smallestUnit: 'minute' });
-      endDateInput.value = end.toPlainDate();
+      endDateInput.value = end.toPlainDate().toString();
       endTimeInput.value = end.toPlainTime().toString({ smallestUnit: 'minute' });
 
       // Event Listeners
@@ -339,10 +342,10 @@ Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(
       if (!dur) {
         return '-';
       }
-      if (typeof Intl.DurationFormat !== 'undefined') {
-        return dur.toLocaleString('en-US', { style: 'narrow' });
-      }
-      return `${dur.years}y ${dur.months}m ${dur.days}d ${dur.hours}h ${dur.minutes}m`;
+      // Temporal.Duration.prototype.toLocaleString() delegates to Intl.DurationFormat,
+      // so there is no need to hand-assemble "Xd Yh" strings.
+      // undefined locale = the user's locale, so the output is localized automatically.
+      return dur.toLocaleString(undefined, { style: 'narrow' });
     }
 
     function calculate() {
@@ -357,13 +360,14 @@ Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(
         const now = Temporal.Now.zonedDateTimeISO();
         const tz = now.timeZoneId;
 
-        // Combine Date and Time with Temporal
-        const start = Temporal.PlainDateTime.from(`${startD}T${startT}`).toZonedDateTime(tz);
-        const end = Temporal.PlainDateTime.from(`${endD}T${endT}`).toZonedDateTime(tz);
+        // Combine Date and Time with Temporal (no manual ISO string interpolation)
+        const start = Temporal.PlainDate.from(startD).toPlainDateTime(startT).toZonedDateTime(tz);
+        const end = Temporal.PlainDate.from(endD).toPlainDateTime(endT).toZonedDateTime(tz);
 
         // Calculate Since (Active Time) and Until (Remaining Time)
-        const active = now.since(start, { largestUnit: 'year' });
-        const remaining = now.until(end, { largestUnit: 'year' });
+        // Round to minutes so toLocaleString() does not print seconds and sub-second noise
+        const active = now.since(start, { largestUnit: 'year', smallestUnit: 'minute' });
+        const remaining = now.until(end, { largestUnit: 'year', smallestUnit: 'minute' });
 
         // Update Status by leveraging the native .sign property of Temporal.Duration
         const isPast = remaining.sign < 0;
@@ -372,7 +376,7 @@ Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(
         if (isPast) {
           statusValue.textContent = "EXPIRED";
           statusValue.style.color = "#f43f5e";
-          durationValue.textContent = "0y 0m 0d 0h 0m";
+          durationValue.textContent = "—";
           rawDurationValue.textContent = remaining.toString();
         } else if (isFutureStart) {
           statusValue.textContent = "PENDING";

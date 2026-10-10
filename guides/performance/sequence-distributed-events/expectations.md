@@ -1,6 +1,8 @@
-- The implementation MUST capture high-frequency timestamps using `Temporal.Now.instant()`.
-- The implementation MUST sort events using the native `Temporal.Instant.compare(a, b)` method to ensure precise nanosecond-level ordering.
-- The implementation MUST NOT use standard `Date.now()` as the primary mechanism for event sorting if native `Temporal` resolution is required for disambiguation.
+- The implementation MUST parse timestamps recorded by the source (server, database, or log) using `Temporal.Instant.from(isoString)` rather than capturing new timestamps in the browser.
+- The implementation MUST sort events using the native `Temporal.Instant.compare(a, b)` method so that sub-millisecond ordering is preserved.
+- The implementation MUST NOT parse high-precision timestamp strings with `new Date()` or `Date.parse()` as the primary mechanism for event sorting, because they truncate to milliseconds.
+- The implementation MUST calculate the interval between consecutive events with `Temporal.Instant.prototype.since()` (or `.until()`) and keep the result as a `Temporal.Duration`.
+- The implementation MUST format intervals for display with `Temporal.Duration.prototype.toLocaleString()` and MUST NOT use `duration.total('nanoseconds')` or `epochNanoseconds` arithmetic for display.
 - The implementation MUST include explicit feature detection for `Temporal` support (e.g., `typeof Temporal !== 'undefined'`).
 - A fallback strategy MUST be provided for environments lacking native support, such as conditionally loading a polyfill (e.g., `@js-temporal/polyfill`). Because `@js-temporal/polyfill` does not auto-install globally, the implementation MUST ensure `Temporal` is available after loading (e.g., by assigning `globalThis.Temporal = module.Temporal`).
 - The implementation MUST NOT use static `Temporal.Instant.compare(a, b) === 0` to check instant equivalence; it MUST use the native `a.equals(b)` instance method instead.

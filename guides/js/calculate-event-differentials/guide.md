@@ -27,7 +27,8 @@ To calculate differentials between two events:
 const now = Temporal.Now.zonedDateTimeISO();
 const tz = now.timeZoneId;
 
-// 2. Parse inputs and combine dates and times with PlainDateTime
+// 2. Combine separate date and time strings directly.
+// Do not build an ISO string with template literals; chain the Temporal methods instead.
 const startDateStr = "2025-01-01";
 const startTimeStr = "12:00:00";
 const endDateStr = "2025-01-31";
@@ -37,13 +38,19 @@ const start = Temporal.PlainDate.from(startDateStr).toPlainDateTime(startTimeStr
 const end = Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(tz);
 
 // 3. Calculate difference using .since() and .until()
-// By default, units larger than hours might not wrap automatically.
-// Use largestUnit to ensure differences are expressed in larger units if applicable.
-const timeActive = now.since(start, { largestUnit: 'year' });
-const timeRemaining = now.until(end, { largestUnit: 'year' });
+// ZonedDateTime differences default to largestUnit: 'hour' (days are not a fixed
+// length across DST, so Temporal won't balance into days unless asked). Pass
+// largestUnit: 'day' or a calendar unit ('week', 'month', 'year') when you want a
+// human-scale breakdown instead of e.g. PT1763H. smallestUnit rounds away
+// seconds and sub-second noise so the formatted string stays readable.
+const timeActive = now.since(start, { largestUnit: 'year', smallestUnit: 'minute' });
+const timeRemaining = now.until(end, { largestUnit: 'year', smallestUnit: 'minute' });
 
-console.log(`Active: ${timeActive.days} days, ${timeActive.hours} hours`);
-console.log(`Remaining: ${timeRemaining.days} days, ${timeRemaining.hours} hours`);
+// Format durations for display with .toLocaleString() (Intl.DurationFormat)
+// instead of manually concatenating unit numbers and suffixes. 'en-US' is used
+// here for deterministic output; pass undefined to use the user's locale.
+console.log(`Active: ${timeActive.toLocaleString('en-US', { style: 'narrow' })}`);
+console.log(`Remaining: ${timeRemaining.toLocaleString('en-US', { style: 'narrow' })}`);
 
 // 4. Check status by leveraging the native .sign property on computed Duration objects
 const isExpired = timeRemaining.sign < 0;
@@ -55,9 +62,13 @@ if (isExpired) {
 ## Strategic Implementation & Best Practices
 
 -   **DO** use `Temporal.ZonedDateTime` for calculations involving real-world events that occur in specific time zones (like subscription renewals or event scheduling).
--   **DO** use `largestUnit` to specify the largest unit you want in the result (e.g., `'year'` or `'month'`). If you omit it, it defaults to `'auto'` which might not always sum up to years/months as expected for human-readable durations.
+-   **DO** combine separate date and time strings with Temporal methods, e.g. `Temporal.PlainDate.from(dateStr).toPlainDateTime(timeStr).toZonedDateTime(tz)` or `Temporal.PlainDate.from(dateStr).toZonedDateTime({ timeZone: tz, plainTime: timeStr })`, instead of interpolating an ISO string like `` `${dateStr}T${timeStr}` ``.
+-   **DO** pass `largestUnit` (e.g. `'day'`, `'month'`, `'year'`) when you want durations balanced beyond hours; `ZonedDateTime` difference methods default to `'hour'`.
 -   **DO** use `.since()` when calculating time elapsed *since* a past event (e.g., `now.since(start)`), and `.until()` for time remaining *until* a future event (e.g., `now.until(end)`).
+-   **DO** format durations for display using `.toLocaleString()` (e.g., `duration.toLocaleString(undefined, { style: 'narrow' })` or `{ style: 'digital' }`), which uses `Intl.DurationFormat` under the hood, instead of manually concatenating unit numbers and suffixes.
+-   **DO** render a `PlainTime` as `HH:MM` (e.g., for `<input type="time">`) using `.toPlainTime().toString({ smallestUnit: 'minute' })` rather than string `.slice(0, 5)`.
 -   **DO NOT** modify instances directly; `Temporal` objects are **immutable**. Operations like `add()`, `subtract()`, or `with()` return a *new* instance.
+-   **DO NOT** fall back to `Date`/`getTime()` arithmetic for the differential itself; `Date` has no time-zone-aware calendar math and only millisecond precision.
 -   **DO** use the native `.sign` property of the computed `Temporal.Duration` (or use `Temporal.ZonedDateTime.compare`) to check if a duration represents a past/expired time point (negative sign) or future pending start.
 
 ## Fallback Strategy

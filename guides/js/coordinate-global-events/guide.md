@@ -47,7 +47,8 @@ console.log(`Resolved time: ${hostTime.toString()}`);
 
 // 4. Convert to another time zone (e.g., Tokyo)
 const tokyoTime = hostTime.withTimeZone("Asia/Tokyo");
-console.log(`Tokyo time: ${tokyoTime.toString()}`);
+// Use toLocaleString() for user-facing display instead of manual hour/minute padding
+console.log(`Tokyo time: ${tokyoTime.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' })}`);
 ```
 
 ## Strategic Implementation & Best Practices
