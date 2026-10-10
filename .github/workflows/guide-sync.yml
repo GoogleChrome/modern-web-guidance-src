@@ -5,12 +5,19 @@ on:
     branches:
       - main
     paths:
-      - 'guides/**/guide.md'
-      - 'guides/**/grader.ts'
+      - 'guides/**'
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
+      - ready_for_review
+      - converted_to_draft
     paths:
-      - 'guides/**/guide.md'
-      - 'guides/**/grader.ts'
+      - 'guides/**'
+  schedule:
+    - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -22,6 +29,7 @@ on:
 permissions:
   contents: read
   issues: write
+  pull-requests: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -32,6 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup pnpm
@@ -56,11 +65,18 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-issues: write
+          permission-pull-requests: read
           permission-contents: read
 
-      - name: Run sync script
+      - name: Run use case sync script
         run: node src/ci/sync-use-cases.ts
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PROJECT_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || (github.event_name == 'pull_request' && 'true') || 'false' }}
+
+      - name: Sync canonical pipeline tracker issue (#1815)
+        run: node src/ci/sync-pipeline-issue.ts
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           DRY_RUN: ${{ github.event.inputs.dry_run || (github.event_name == 'pull_request' && 'true') || 'false' }}
