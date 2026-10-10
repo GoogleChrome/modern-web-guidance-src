@@ -235,11 +235,12 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
           });
         } else {
           for (const tool of toolUses) {
+            const toolNameLower = (tool.name || '').toLowerCase();
             if (tool.name === 'Skill' && tool.input?.skill) {
               toolsUsed.add(tool.input.skill);
             } else if (tool.name === 'activate_skill' && tool.input?.name) {
               toolsUsed.add(tool.input.name);
-            } else if (tool.name === 'Bash' && tool.input?.command) {
+            } else if (toolNameLower === 'bash' && tool.input?.command) {
               const command = tool.input.command;
               if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
                 const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
@@ -249,7 +250,7 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
                   }
                 }
               }
-            } else if (tool.name === 'Read' && tool.input?.file_path) {
+            } else if (toolNameLower === 'read' && tool.input?.file_path) {
               const filePath = tool.input.file_path;
               if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
                 const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
@@ -259,7 +260,7 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
               }
             }
 
-            const isSubagentCall = ['task', 'agent', 'stitch', 'dispatch'].includes((tool.name || '').toLowerCase());
+            const isSubagentCall = ['task', 'agent', 'stitch', 'dispatch'].includes(toolNameLower);
             const stepIdx = steps.push({
               stepNumber: 0,
               timestamp,
@@ -379,7 +380,7 @@ export function loadClaudeLogs(dir: string): { logData: any[]; subagentsMap: Rec
   }
 
   for (const file of subFiles) {
-    const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+    const subId = file.replace(/^(?:subagent-.*subagents-agent-|subagent-(?:subagents-)?(?:agent-)?)/, '').replace(/\.jsonl$/, '');
     subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
   }
 

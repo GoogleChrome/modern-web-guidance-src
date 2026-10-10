@@ -9,45 +9,84 @@
 // 1. Session Rollout Envelopes (~/.codex/sessions/*.jsonl)
 // ============================================================================
 
+export interface CodexRolloutLineBase {
+  ordinal?: number;
+  timestamp?: string | number;
+}
+
 export type CodexRolloutLine<T = unknown> =
   | CodexSessionMetaLine
+  | CodexTurnContextLine
   | CodexResponseItemLine
   | CodexCompactedItemLine
   | CodexTurnDiffLine
   | CodexEventMsgLine
-  | { type: string; payload: T };
+  | CodexTokenUsageRecordLine
+  | CodexWorldStateLine
+  | (CodexRolloutLineBase & { type: string; payload: T });
 
-export interface CodexSessionMetaLine {
+export interface CodexSessionMetaLine extends CodexRolloutLineBase {
   type: "session_meta";
   payload: CodexSessionMeta;
 }
 
-export interface CodexResponseItemLine {
-  type: "response_item";
-  payload: CodexResponseItem;
+export interface CodexTurnContextLine extends CodexRolloutLineBase {
+  type: "turn_context";
+  payload: CodexTurnContextItem;
 }
 
-export interface CodexCompactedItemLine {
+export interface CodexResponseItemLine extends CodexRolloutLineBase {
+  type: "response_item";
+  payload: CodexResponseItem;
+  metadata?: {
+    client_authored?: boolean;
+    user_input_order?: number;
+    [key: string]: unknown;
+  };
+}
+
+export interface CodexCompactedItemLine extends CodexRolloutLineBase {
   type: "compacted_item";
   payload: CodexCompactedItem;
 }
 
-export interface CodexTurnDiffLine {
+export interface CodexTurnDiffLine extends CodexRolloutLineBase {
   type: "turn_diff";
   payload: { diff: string; [key: string]: unknown };
 }
 
-export interface CodexEventMsgLine {
+export interface CodexEventMsgLine extends CodexRolloutLineBase {
   type: "event_msg";
   payload: CodexEventMsg;
 }
 
+export interface CodexTokenUsageRecordLine extends CodexRolloutLineBase {
+  type: "token_usage_record";
+  payload: CodexTokenUsageRecord;
+}
+
+export interface CodexWorldStateLine extends CodexRolloutLineBase {
+  type: "world_state";
+  payload: CodexWorldState;
+}
+
 export interface CodexSessionMeta {
   session_id: string;
+  id?: string;
   cwd: string;
   timestamp: string | number;
   model_context_window?: number;
+  context_window?: { window_id: string; [key: string]: unknown };
   cli_version?: string;
+  model_provider?: string;
+  originator?: string;
+  creator_user_id?: string;
+  creator_account_id?: string;
+  base_instructions?: string | { text?: string; [key: string]: unknown };
+  git?: { commit_hash?: string; branch?: string; repository_url?: string; [key: string]: unknown };
+  history_mode?: string;
+  thread_source?: string;
+  runtime_workspace_roots?: string[];
   source?: CodexSessionSource | string;
   multi_agent_version?: "disabled" | "v1" | "v2" | string;
   parent_thread_id?: string;
@@ -63,6 +102,7 @@ export type CodexSessionSource =
   | "exec"
   | "mcp"
   | { subagent: { parent_thread_id: string; agent_path?: string; agent_role?: string } }
+  | { provenance?: { type: string; model?: string; [key: string]: unknown }; [key: string]: unknown }
   | Record<string, unknown>;
 
 // ============================================================================
@@ -82,7 +122,15 @@ export type CodexResponseItem =
 
 export type CodexMessagePhase = "commentary" | "final_answer" | string;
 
-export interface CodexResponseMessageItem {
+export interface CodexResponseItemMetadata {
+  internal_chat_message_metadata_passthrough?: {
+    turn_id?: string;
+    create_time?: number;
+    [key: string]: unknown;
+  };
+}
+
+export interface CodexResponseMessageItem extends CodexResponseItemMetadata {
   type: "message";
   id?: string;
   role: "user" | "assistant" | "system" | "developer";
@@ -93,30 +141,32 @@ export interface CodexResponseMessageItem {
 }
 
 export type CodexMessageContentItem =
-  | { type: "text"; text: string }
+  | { type: "text" | "input_text" | "output_text"; text: string }
   | { type: "image"; image_url: string }
   | { type: "audio"; audio_url?: string; data?: string }
   | { type: string; [key: string]: unknown };
 
-export interface CodexResponseReasoningItem {
+export interface CodexResponseReasoningItem extends CodexResponseItemMetadata {
   type: "reasoning";
   id?: string;
-  summary?: string;
-  content?: string;
+  summary?: string | Array<unknown>;
+  content?: string | Array<unknown> | null;
+  encrypted_content?: string;
   status?: string;
 }
 
-export interface CodexResponseFunctionCallItem {
+export interface CodexResponseFunctionCallItem extends CodexResponseItemMetadata {
   type: "function_call";
   id?: string;
   call_id?: string;
   name: string;
+  namespace?: string;
   arguments: string | Record<string, unknown>;
   input?: string | Record<string, unknown>;
   status?: string;
 }
 
-export interface CodexResponseFunctionCallOutputItem {
+export interface CodexResponseFunctionCallOutputItem extends CodexResponseItemMetadata {
   type: "function_call_output";
   id?: string;
   call_id: string;
@@ -124,7 +174,7 @@ export interface CodexResponseFunctionCallOutputItem {
   is_error?: boolean;
 }
 
-export interface CodexResponseCustomToolCallItem {
+export interface CodexResponseCustomToolCallItem extends CodexResponseItemMetadata {
   type: "custom_tool_call";
   id?: string;
   call_id?: string;
@@ -133,7 +183,7 @@ export interface CodexResponseCustomToolCallItem {
   status?: string;
 }
 
-export interface CodexResponseCustomToolCallOutputItem {
+export interface CodexResponseCustomToolCallOutputItem extends CodexResponseItemMetadata {
   type: "custom_tool_call_output";
   id?: string;
   call_id: string;
@@ -375,6 +425,18 @@ export interface CodexTokenUsageInfo {
   model_context_window?: number | null;
 }
 
+export interface CodexTokenUsageRecord {
+  thread_id: string;
+  turn_id: string;
+  session_id: string;
+  root_turn_id?: string;
+  response_id?: string;
+  usage: CodexTokenUsage;
+  turn_token_usage: CodexTokenUsage;
+  thread_token_usage: CodexTokenUsage;
+  [key: string]: unknown;
+}
+
 export interface CodexRateLimitSnapshot {
   limit_id?: string | null;
   limit_name?: string | null;
@@ -383,6 +445,8 @@ export interface CodexRateLimitSnapshot {
   credits?: unknown | null;
   plan_type?: string | null;
   rate_limit_reached_type?: string | null;
+  spend_control_reached?: boolean | null;
+  individual_limit?: unknown | null;
   [key: string]: unknown;
 }
 
@@ -392,15 +456,19 @@ export interface CodexRateLimitSnapshot {
 
 export interface CodexTurnContextItem {
   turn_id?: string;
+  root_turn_id?: string;
+  disabled_plugin_ids?: string[];
   cwd: string;
   workspace_roots?: string[];
   current_date?: string;
   timezone?: string;
   approval_policy: string;
+  approvals_reviewer?: string;
   sandbox_policy: CodexSandboxPolicy | string;
   permission_profile?: CodexPermissionProfile;
   active_permission_profile?: { id: string };
   model: string;
+  comp_hash?: string;
   personality?: string;
   collaboration_mode?: CodexCollaborationMode;
   realtime_active?: boolean;
@@ -408,6 +476,12 @@ export interface CodexTurnContextItem {
   effort?: string;
   user_instructions?: string;
   multi_agent_version?: string;
+  [key: string]: unknown;
+}
+
+export interface CodexWorldState {
+  full: boolean;
+  state: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -433,7 +507,7 @@ export interface CodexCollaborationMode {
   settings?: {
     model?: string;
     reasoning_effort?: string;
-    developer_instructions?: string;
+    developer_instructions?: string | null;
     [key: string]: unknown;
   };
   [key: string]: unknown;
