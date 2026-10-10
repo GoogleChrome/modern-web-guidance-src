@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Evaluation Suite Results for Modern Web Guidance: Inspect per-task guided vs. unguided uplift, 5-dimension accessibility subscores, completion time, and token usage.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Evaluation Suite Results for Modern Web Guidance: Inspect per-task guided vs. unguided uplift, accessibility subscores, completion time, and token usage.">
   <title>Suite Results</title>
   <link rel="stylesheet" href="dashboard.css">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -13,18 +14,18 @@
 </head>
 
 <body>
-  <a href="#main-content" class="visually-hidden">Skip to main content</a>
+  <a href="#main-content" class="skip-link visually-hidden">Skip to main content</a>
   <div class="container">
     <header>
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
+      <div class="suite-header-row">
         <div>
           <h1 class="visually-hidden">Evaluation Suite Results</h1>
-          <div id="test-header" style="font-size: 0.9em; color: var(--text-secondary);">
+          <div id="test-header" class="suite-test-header">
             <!-- Test ID and timestamp will be injected here -->
           </div>
         </div>
-        <div style="display: flex; gap: 12px; justify-content: flex-end;">
-          <a href="./" class="secondary-btn" style="text-decoration: none;">← Back to Results</a>
+        <div class="suite-header-actions">
+          <a href="./" class="secondary-btn">← Back to results</a>
           <button id="auth-btn" class="secondary-btn" style="display: none;">
             Sign in with Google
           </button>
@@ -36,61 +37,61 @@
     </header>
 
     <main id="main-content" tabindex="-1">
-      <div id="chart-section" class="chart-container hidden" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+      <section id="chart-section" class="chart-container hidden suite-chart-section" aria-labelledby="suite-summary-heading">
+        <h2 id="suite-summary-heading" class="visually-hidden">Suite summary</h2>
         <div id="summary-side-panel" class="narrative-summary-grid"></div>
         <div class="chart-toolbar">
           <div class="chart-toolbar-left">
-            <span class="meta-label">Chart &amp; Task View:</span>
+            <span class="meta-label">Chart &amp; task view:</span>
             <div class="metric-mode-toggle" role="group" aria-label="Evaluation check filter">
-              <button type="button" class="mode-toggle-btn" id="dash-mode-all-btn" aria-pressed="true">All Checks</button>
-              <button type="button" class="mode-toggle-btn" id="dash-mode-a11y-btn" aria-pressed="false">Accessibility Subscore</button>
+              <button type="button" class="mode-toggle-btn" id="dash-mode-all-btn" aria-pressed="true">All checks</button>
+              <button type="button" class="mode-toggle-btn" id="dash-mode-a11y-btn" aria-pressed="false">Accessibility subscore</button>
             </div>
-            <button type="button" class="info-hint-btn anchor-dash-a11y" interestfor="dash-tooltip-a11y" aria-label="About the Accessibility Subscore">?</button>
+            <button type="button" class="info-hint-btn anchor-dash-a11y" interestfor="dash-tooltip-a11y" aria-label="About the accessibility subscore">?</button>
           </div>
           <div class="chart-toolbar-right">
-            <span class="meta-label">Hover points for runtime &amp; uncached token deltas</span>
-            <button type="button" class="info-hint-btn anchor-dash-tokens" interestfor="dash-tooltip-tokens" aria-label="About Uncached vs. Total Tokens">?</button>
+            <span class="meta-label">Hover or focus points for runtime &amp; uncached token deltas</span>
+            <button type="button" class="info-hint-btn anchor-dash-tokens" interestfor="dash-tooltip-tokens" aria-label="About uncached vs. total tokens">?</button>
           </div>
         </div>
-        <div id="dumbbell-chart" style="width: 100%;"></div>
-      </div>
+        <div id="dumbbell-chart" class="suite-dumbbell-chart"></div>
+      </section>
 
-      <div id="guide-section">
+      <section id="guide-section" aria-labelledby="guide-evals-heading">
         <div class="guide-section-header">
-          <h2 style="margin: 16px 0; color: var(--text-primary);">Guide Evals</h2>
+          <h2 id="guide-evals-heading" class="guide-evals-heading">Guide evals</h2>
           <div class="guide-controls">
             <label for="task-sort-select" class="sort-label">Sort tasks:</label>
             <select id="task-sort-select" class="sort-select">
-              <option value="default">Category &amp; Guide (Default)</option>
-              <option value="uplift-desc">Overall Uplift Δ (High → Low)</option>
-              <option value="uplift-asc">Overall Uplift Δ (Low → High)</option>
-              <option value="a11y-desc">Accessibility Uplift Δ (High → Low)</option>
-              <option value="time-saved">Completion Time Saved (Fastest Guided)</option>
-              <option value="time-overhead">Completion Time Overhead (Slowest Guided)</option>
-              <option value="tokens-saved">Uncached Tokens Saved (Most Efficient)</option>
+              <option value="default">Category &amp; guide (default)</option>
+              <option value="uplift-desc">Pass-rate uplift (high → low)</option>
+              <option value="uplift-asc">Pass-rate uplift (low → high)</option>
+              <option value="a11y-desc">Accessibility uplift (high → low)</option>
+              <option value="time-saved">Time saved (fastest guided)</option>
+              <option value="time-overhead">Time overhead (slowest guided)</option>
+              <option value="tokens-saved">Uncached tokens saved (most efficient)</option>
             </select>
           </div>
         </div>
         <div id="guide-grid" class="dashboard-grid"></div>
-      </div>
+      </section>
     </main>
 
     <footer class="dashboard-footer">
-      <a href="./" class="secondary-btn" style="margin-right: 10px;">← Back to Results</a>
-      <button id="view-gcs-artifacts-btn" class="secondary-btn" style="display: none; margin-right: 10px;">View
-        Source</button>
-      <button id="view-log-btn" class="secondary-btn">View Full Run Log</button>
+      <a href="./" class="secondary-btn">← Back to results</a>
+      <button id="view-gcs-artifacts-btn" class="secondary-btn" style="display: none;">View source</button>
+      <button id="view-log-btn" class="secondary-btn">View full run log</button>
     </footer>
   </div>
 
-  <!-- Hint Popovers (interestfor + popover="hint") -->
+  <!-- Hint popovers (interestfor + popover="hint"); keep the text in the element, never in attributes -->
   <div id="dash-tooltip-a11y" popover="hint" class="hint-popover">
-    <strong>Cross-Cutting Accessibility Subscore</strong><br>
-    Aggregates ~107 accessibility-related grader assertions across ~34 guides (both dedicated <code>accessibility/</code> guides and UI/CSS/HTML component guides). Classified deterministically into 5 dimensions: Semantics &amp; Landmarks, ARIA Roles &amp; Live Announcements, Keyboard &amp; Focus Management, Visual / Contrast / Reduced Motion, and Automated Axe-Core Audits.
+    <strong>Cross-cutting accessibility subscore</strong><br>
+    Aggregates the deterministic grader assertions that test accessibility requirements across both dedicated <code>accessibility/</code> guides and UI, CSS, and HTML component guides. Each check is classified into one of six dimensions: Focus &amp; <code>inert</code> management; Motion, contrast &amp; visual; ARIA, roles &amp; live regions; Form labels &amp; grouping; Keyboard &amp; non-gesture operability; and checks from dedicated <code>accessibility/</code> guides.
   </div>
   <div id="dash-tooltip-tokens" popover="hint" class="hint-popover">
-    <strong>Uncached vs. Total Token Accounting</strong><br>
-    <code>Uncached Tokens = total - cached</code> (fresh input + output + thinking tokens billed at full price). Multi-turn agents re-read cached prompt prefixes on every tool turn (often 85%–96% cached), so we surface both uncached tokens and total tokens with cache hit share.
+    <strong>Uncached vs. total token accounting</strong><br>
+    <code>Uncached tokens = total − cached</code> (fresh input + output + thinking tokens). Multi-turn agents re-read cached prompt prefixes on every tool turn (roughly 85–96% cached for Claude Code and Codex CLI, ~20% for Antigravity CLI), so both uncached tokens and totals with cache share are shown.
   </div>
 
   <dialog id="modal" aria-labelledby="modal-title">
@@ -105,6 +106,19 @@
 
   <script src="features-mapping.gen.js"></script>
 
+  <script type="module">
+    // Conditional, pinned polyfills for popover / interestfor / anchor positioning
+    // (same pattern as index.html; only loaded where the native feature is missing).
+    if (!("popover" in HTMLElement.prototype)) {
+      import("https://unpkg.com/@oddbird/popover-polyfill@0.7.3/dist/popover.min.js").catch(() => {});
+    }
+    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+      import("https://unpkg.com/interestfor@1.0.10").catch(() => {});
+    }
+    if (!("anchorName" in document.documentElement.style)) {
+      import("https://unpkg.com/@oddbird/css-anchor-positioning@0.10.2").catch(() => {});
+    }
+  </script>
   <script type="module" src="dashboard.js"></script>
 </body>
 

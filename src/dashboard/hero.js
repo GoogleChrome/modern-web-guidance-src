@@ -9,25 +9,14 @@
  *
  * The hero never touches the browse UI below it (landing.js owns that).
  */
-import { authenticatedFetch, getAccessToken, escapeHtml, formatDuration, formatTokens, isLocalDashboardHost } from './utils.js';
+import { getAccessToken, escapeHtml, formatDuration, formatTokens } from './utils.js';
 import { ApiClient } from './api.js';
-import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
 
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
 /** @typedef {import('./insights.js').FamilyInsight} FamilyInsight */
 /** @typedef {import('./insights.js').RateComparison} RateComparison */
 /** @typedef {import('./insights.js').RuntimeInsight} RuntimeInsight */
 /** @typedef {import('./insights.js').TokenInsight} TokenInsight */
-/** @typedef {import('./insights.js').ManifestSuite} ManifestSuite */
-
-const GCS_MANIFEST_URL = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/suites.gen.json?alt=media';
-
-/**
- * Optional pre-computed snapshot (same shape as `computeHeadlineInsights()` output) that a
- * build step can publish next to index.html so the public page has real numbers before
- * sign-in. Silently ignored when absent.
- */
-const SNAPSHOT_URL = 'headline-insights.gen.json';
 
 const api = new ApiClient();
 const heroEl = /** @type {HTMLElement | null} */ (document.getElementById('hero'));
@@ -66,92 +55,43 @@ function waitForToken(timeoutMs = 120000) {
 }
 
 /**
- * Fetches manifest entries for the active data source.
- * @returns {Promise<{ suites: ManifestSuite[], needsAuth: boolean }>}
+ * Loads the headline numbers through ApiClient.getHeadlineInsights(), which prefers the small
+ * pre-computed headline-insights.gen.json, falls back to the full manifest, and hydrates
+ * a11y/efficiency stats from evals.json for just the latest-N suites when the manifest predates
+ * them. Two-phase paint: manifest-only numbers first, hydrated numbers via onUpdate.
  */
-async function fetchManifest() {
-    if (api.source === 'remote') {
-        if (!getAccessToken()) return { suites: [], needsAuth: true };
-        const res = await authenticatedFetch(`${GCS_MANIFEST_URL}&t=${Date.now()}`);
-        if (res.status === 401 || res.status === 403) return { suites: [], needsAuth: true };
-        if (!res.ok) throw new Error(`Manifest request failed (${res.status})`);
-        const data = await res.json();
-        return { suites: Array.isArray(data) ? data : (data.suites || []), needsAuth: false };
-    }
-
-    // Local dev server first; fall back to the static manifest (static mode / Pages preview).
-    if (api.source === 'local' && isLocalDashboardHost()) {
-        try {
-            const res = await fetch(`/api/suites?t=${Date.now()}`);
-            if (res.ok) {
-                const data = await res.json();
-                return { suites: data.suites || [], needsAuth: false };
-            }
-        } catch {
-            /* fall through to static */
-        }
-    }
-    const res = await fetch(`${api.source === 'static' ? 'suites.gen.json' : '/suites.gen.json'}?t=${Date.now()}`);
-    if (!res.ok) throw new Error(`Manifest request failed (${res.status})`);
-    const data = await res.json();
-    return { suites: Array.isArray(data) ? data : (data.suites || []), needsAuth: false };
-}
-
-/**
- * @returns {Promise<HeadlineInsights | null>}
- */
-async function fetchSnapshot() {
-    try {
-        const res = await fetch(SNAPSHOT_URL, { cache: 'no-cache' });
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data && Array.isArray(data.families) && data.families.length ? data : null;
-    } catch {
-        return null;
-    }
-}
-
 async function loadAndRender() {
     if (!heroEl) return;
     setBusy(true);
     setStatus(null);
 
-    try {
-        const { suites, needsAuth } = await fetchManifest().catch(err => {
-            console.warn('Hero: manifest unavailable', err);
-            return { suites: /** @type {ManifestSuite[]} */ ([]), needsAuth: false };
-        });
+    // The private bucket needs a Google token; a published public snapshot would still load without one.
+    const signedOut = api.source === 'remote' && !getAccessToken();
 
-        /** @type {HeadlineInsights | null} */
-        let insights = null;
-        if (suites.length > 0) {
-            // Manifests written before a11y/efficiency stats existed are hydrated from evals.json
-            // for just the suites the hero needs (latest N per family).
-            await hydrateMissingStats(suites, id => api.getEvals(id)).catch(() => ({ hydrated: [], failed: [] }));
-            insights = computeHeadlineInsights(suites);
-            if (!insights.families.length) insights = null;
-        }
-
-        if (!insights) {
-            const snapshot = await fetchSnapshot();
-            if (snapshot) {
-                renderHero(snapshot, { snapshot: true });
-                setStatus(needsAuth ? 'auth-snapshot' : null);
-                return;
-            }
+    /** @param {HeadlineInsights} insights */
+    const paint = (insights) => {
+        if (!insights || !insights.families.length) {
             renderPending();
-            setStatus(needsAuth ? 'auth' : 'empty');
+            setStatus(signedOut ? 'auth' : 'empty');
             return;
         }
+        renderHero(insights);
+        setStatus(signedOut ? 'auth-snapshot' : null);
+    };
 
-        renderHero(insights, { snapshot: false });
+    try {
+        const insights = await api.getHeadlineInsights({
+            onUpdate: (final) => { paint(final); setBusy(false); }
+        });
+        paint(insights);
+        // Hydration is still running when the manifest lacked stats; keep aria-busy until onUpdate.
+        if (insights.missingStats.length > 0) return;
     } catch (err) {
-        console.error('Hero: failed to render', err);
+        if (!signedOut) console.error('Hero: failed to load headline insights', err);
         renderPending();
-        setStatus('error');
-    } finally {
-        setBusy(false);
+        setStatus(signedOut ? 'auth' : 'error');
     }
+    setBusy(false);
 }
 
 /** @param {boolean} busy */
@@ -170,40 +110,46 @@ function setStatus(kind) {
     if (!el || !text || !btn) return;
     if (!kind) {
         el.hidden = true;
+        text.textContent = '';
         return;
     }
     el.hidden = false;
     btn.hidden = !kind.startsWith('auth');
-    switch (kind) {
-        case 'auth':
-            text.textContent = 'Results live in a private bucket. Sign in with Google to load the latest nightly numbers.';
-            break;
-        case 'auth-snapshot':
-            text.textContent = 'Showing the last published snapshot. Sign in with Google to load the latest nightly numbers.';
-            break;
-        case 'empty':
-            text.textContent = 'No nightly evaluation runs were found for this data source yet.';
-            break;
-        case 'error':
-        default:
-            text.textContent = 'Could not load the latest results. Reload to try again.';
-            break;
-    }
+    /** @type {Record<string, string>} */
+    const messages = {
+        'auth': 'Results live in a private bucket. Sign in with Google to load the latest nightly numbers.',
+        'auth-snapshot': 'Showing the last published snapshot. Sign in with Google to load the latest nightly numbers.',
+        'empty': 'No nightly evaluation runs were found for this data source yet.',
+        'error': 'Could not load the latest results. Reload to try again.'
+    };
+    text.textContent = messages[kind] || messages.error;
+    announce(text.textContent);
+}
+
+/**
+ * Announces a message through the always-present live region (a region that is
+ * un-hidden and filled in the same tick is not reliably announced).
+ * @param {string} message
+ */
+function announce(message) {
+    const live = document.getElementById('hero-live');
+    if (!live) return;
+    live.textContent = '';
+    requestAnimationFrame(() => { live.textContent = message; });
 }
 
 // ==========================================
 // RENDERING
 // ==========================================
 
-/**
- * @param {HeadlineInsights} insights
- * @param {{ snapshot: boolean }} opts
- */
-function renderHero(insights, opts) {
-    renderEyebrow(insights, opts);
+/** @param {HeadlineInsights} insights */
+function renderHero(insights) {
+    renderEyebrow(insights);
     renderTakeaways(insights);
     renderAgentTable(insights);
     renderMethodNumbers(insights);
+    const o = insights.pooled?.overall;
+    announce(o ? `Latest results loaded: ${signed(o.upliftPp, 0)} percentage points more checks passed with MWG.` : 'Latest results loaded.');
 }
 
 /** Placeholder content when no numbers are available (pre sign-in, empty source, error). */
@@ -215,27 +161,18 @@ function renderPending() {
             ['a11y', 'Accessibility', 'more accessibility checks passed with MWG'],
             ['tokens', 'Tokens', 'fewer uncached tokens per task for some agents'],
             ['time', 'Time', 'faster task completion for some agents']
-        ].map(([metric, label, statement]) => takeawayCard({
-            metric, label,
-            figure: '<span class="unit">—</span>',
-            figureText: 'not loaded',
-            statement,
-            qualifier: 'Numbers appear once results are loaded.'
-        })).join('');
+        ].map(([metric, label, statement]) => pendingCard(metric, label, statement)).join('');
     }
     const body = document.getElementById('agent-table-body');
     if (body) {
-        body.innerHTML = `<tr><th scope="row">No data loaded</th><td data-label="Pass rate">${naCell()}</td><td data-label="Accessibility">${naCell()}</td><td data-label="Median time">${naCell()}</td><td data-label="Median uncached tokens">${naCell()}</td></tr>`;
+        body.innerHTML = `<tr><th scope="row">No data loaded</th><td data-label="Pass rate">${naCell()}</td><td data-label="Accessibility">${naCell()}</td><td data-label="Median time">${naCell()}</td><td data-label="Median uncached tokens">${naCell()}</td><td data-label="Runs">${naCell()}</td></tr>`;
     }
     const eyebrow = document.getElementById('hero-eyebrow');
     if (eyebrow) eyebrow.textContent = 'Nightly evaluations';
 }
 
-/**
- * @param {HeadlineInsights} insights
- * @param {{ snapshot: boolean }} opts
- */
-function renderEyebrow(insights, opts) {
+/** @param {HeadlineInsights} insights */
+function renderEyebrow(insights) {
     const agentsEl = document.getElementById('hero-lede-agents');
     if (agentsEl && insights.families.length) agentsEl.textContent = joinNames(insights.families.map(f => f.label));
     const el = document.getElementById('hero-eyebrow');
@@ -244,7 +181,7 @@ function renderEyebrow(insights, opts) {
     const n = insights.pooled?.suiteCount || 0;
     const parts = ['Nightly evaluations'];
     if (n > 0) parts.push(`${n} recent ${n === 1 ? 'run' : 'runs'} across ${insights.families.length} agent ${insights.families.length === 1 ? 'family' : 'families'}`);
-    if (latest) parts.push(`${opts.snapshot ? 'snapshot through' : 'latest data'} ${formatDate(latest)}`);
+    if (latest) parts.push(`latest data ${formatDate(latest)}`);
     el.textContent = parts.join(' · ');
 }
 
@@ -270,12 +207,14 @@ function renderTakeaways(insights) {
             figure: `${signed(o.upliftPp, 0)}<span class="unit"> pp</span>`,
             figureText: `${signed(o.upliftPp, 0)} percentage points`,
             statement: 'more best-practice checks passed with MWG',
-            qualifier: `<span class="range">${pct(o.unguidedRate)} → ${pct(o.guidedRate)}</span> of ~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} graded checks per mode. ${familyNames}; ${runsPhrase}.`
+            qualifier: `<span class="range">${pct(o.unguidedRate)} → ${pct(o.guidedRate)}</span> of ~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} graded checks per mode (deterministic Playwright and static-analysis tests written from each guide's expectations). ${familyNames}; ${runsPhrase}.`
         }));
     }
 
     // 2. Accessibility subscore (pooled)
-    if (pooled?.a11y) {
+    if (!pooled?.a11y) {
+        cards.push(pendingCard('a11y', 'Accessibility', 'more accessibility checks passed with MWG'));
+    } else {
         const a = pooled.a11y;
         cards.push(takeawayCard({
             metric: 'a11y',
@@ -289,16 +228,19 @@ function renderTakeaways(insights) {
 
     // 3. Tokens: per family only (never pooled across families). Name winners and non-winners.
     const tokenFams = fams.filter(f => f.tokens);
-    if (tokenFams.length) {
+    if (!tokenFams.length) {
+        cards.push(pendingCard('tokens', 'Tokens', 'fewer uncached tokens per task for some agents'));
+    } else {
         const winners = tokenFams.filter(f => (f.tokens?.deltaPct ?? 0) < 0).sort((x, y) => (x.tokens?.deltaPct ?? 0) - (y.tokens?.deltaPct ?? 0));
         const others = tokenFams.filter(f => (f.tokens?.deltaPct ?? 0) >= 0);
         if (winners.length) {
             const bestPct = roundAbs(winners[0].tokens?.deltaPct ?? 0);
+            const upTo = winners.length > 1 ? 'up to ' : '';
             cards.push(takeawayCard({
                 metric: 'tokens',
                 label: 'Tokens',
-                figure: `<span class="prefix">up to </span>${bestPct}<span class="unit">% fewer</span>`,
-                figureText: `up to ${bestPct} percent fewer`,
+                figure: `${upTo ? '<span class="prefix">up to </span>' : ''}${bestPct}<span class="unit">% fewer</span>`,
+                figureText: `${upTo}${bestPct} percent fewer`,
                 statement: `uncached tokens per task with MWG on ${joinNames(winners.map(f => f.label))}`,
                 qualifier: `Median per task: ${winnersDetail(winners, 'tokens')}. ${others.length ? `${joinNames(others.map(f => f.label))} used more uncached tokens (${othersDetail(others, 'tokens')}); their raw totals rise far more because ${cachedShareRange(others)} of their tokens are cached prompt re-reads.` : ''}`
             }));
@@ -316,16 +258,19 @@ function renderTakeaways(insights) {
 
     // 4. Time: per family only.
     const timeFams = fams.filter(f => f.runtime);
-    if (timeFams.length) {
+    if (!timeFams.length) {
+        cards.push(pendingCard('time', 'Time', 'faster task completion for some agents'));
+    } else {
         const winners = timeFams.filter(f => (f.runtime?.deltaPct ?? 0) < 0).sort((x, y) => (x.runtime?.deltaPct ?? 0) - (y.runtime?.deltaPct ?? 0));
         const others = timeFams.filter(f => (f.runtime?.deltaPct ?? 0) >= 0);
         if (winners.length) {
             const bestPct = roundAbs(winners[0].runtime?.deltaPct ?? 0);
+            const upTo = winners.length > 1 ? 'up to ' : '';
             cards.push(takeawayCard({
                 metric: 'time',
                 label: 'Time',
-                figure: `<span class="prefix">up to </span>${bestPct}<span class="unit">% faster</span>`,
-                figureText: `up to ${bestPct} percent faster`,
+                figure: `${upTo ? '<span class="prefix">up to </span>' : ''}${bestPct}<span class="unit">% faster</span>`,
+                figureText: `${upTo}${bestPct} percent faster`,
                 statement: `median task completion with MWG on ${joinNames(winners.map(f => f.label))}`,
                 qualifier: `${winnersDetail(winners, 'runtime')}. ${others.length ? `${joinNames(others.map(f => f.label))} pay a per-task lookup cost: ${othersDetail(others, 'runtime')}.` : ''}`
             }));
@@ -342,6 +287,22 @@ function renderTakeaways(insights) {
     }
 
     list.innerHTML = cards.join('');
+}
+
+/**
+ * Placeholder card used before numbers are available (pre sign-in, hydrating, empty source).
+ * @param {string} metric
+ * @param {string} label
+ * @param {string} statement
+ */
+function pendingCard(metric, label, statement) {
+    return takeawayCard({
+        metric, label,
+        figure: '<span class="unit">—</span>',
+        figureText: 'not loaded',
+        statement,
+        qualifier: 'Numbers appear once results are loaded.'
+    });
 }
 
 /**
@@ -365,7 +326,7 @@ function renderAgentTable(insights) {
 
     const n = insights.options.perAgentRecentN;
     if (caption) {
-        caption.textContent = `Latest ${n} nightly ${n === 1 ? 'run' : 'runs'} per agent family, pooled. Unguided → guided; change in percentage points (pp) for pass rates and percent for time and tokens.`;
+        caption.textContent = `Latest ${n} nightly ${n === 1 ? 'run' : 'runs'} per agent family, pooled. Unguided → guided; change in percentage points (pp) for pass rates and percent for time and tokens. Higher is better for pass rates; lower is better for time and tokens.`;
     }
 
     const costEl = document.getElementById('hero-agents-cost');
@@ -380,11 +341,12 @@ function renderAgentTable(insights) {
 
         return `
             <tr>
-                <th scope="row">${escapeHtml(f.label)}<span class="agent-meta">${escapeHtml(meta)}</span></th>
+                <th scope="row">${escapeHtml(f.label)}</th>
                 <td data-label="Pass rate">${rateCell(f.overall)}</td>
                 <td data-label="Accessibility">${rateCell(f.a11y)}</td>
                 <td data-label="Median time">${runtimeCell(f.runtime)}</td>
                 <td data-label="Median uncached tokens">${tokenCell(f.tokens)}</td>
+                <td data-label="Runs"><span class="agent-meta">${escapeHtml(meta)}</span></td>
             </tr>`;
     }).join('');
 }
@@ -402,8 +364,8 @@ function runtimeCell(rt) {
     if (!rt || (rt.guidedMedianMs === 0 && rt.unguidedMedianMs === 0)) return naCell();
     return `
         <span class="metric-pair">${formatDuration(rt.unguidedMedianMs)} → <strong>${formatDuration(rt.guidedMedianMs)}</strong></span>
-        ${deltaChip(rt.deltaPct, '%', 'lower')}
-        <span class="metric-sub">${Math.round(rt.fasterTaskPct)}% of ${fmtInt(rt.pairedTaskCount)} paired tasks faster${consistency(rt.suitesFaster, rt.perSuite.length, 'faster')}</span>`;
+        ${deltaChip(rt.deltaPct, '%', 'lower', ['faster', 'slower'])}
+        <span class="metric-sub">${Math.round(rt.fasterTaskPct)}% of ${fmtInt(rt.pairedTaskCount)} paired tasks faster</span>`;
 }
 
 /** @param {TokenInsight | null} tk */
@@ -412,19 +374,8 @@ function tokenCell(tk) {
     const cached = tk.guidedCachedSharePct > 0 ? ` · ${Math.round(tk.guidedCachedSharePct)}% of raw total was cached` : '';
     return `
         <span class="metric-pair">${formatTokens(tk.unguidedUncachedMedian)} → <strong>${formatTokens(tk.guidedUncachedMedian)}</strong></span>
-        ${deltaChip(tk.deltaPct, '%', 'lower')}
-        <span class="metric-sub">${Math.round(tk.fewerTaskPct)}% of ${fmtInt(tk.pairedTaskCount)} paired tasks used fewer${consistency(tk.suitesFewer, tk.perSuite.length, 'fewer')}${cached}</span>`;
-}
-
-/**
- * "(lower in 2 of 3 runs)" when the recent runs disagree; empty when they all agree.
- * @param {number} agreeing
- * @param {number} total
- * @param {string} word
- */
-function consistency(agreeing, total, word) {
-    if (total <= 1 || agreeing === total || agreeing === 0) return '';
-    return ` · ${word} in ${agreeing} of ${total} runs`;
+        ${deltaChip(tk.deltaPct, '%', 'lower', ['fewer', 'more'])}
+        <span class="metric-sub">${Math.round(tk.fewerTaskPct)}% of ${fmtInt(tk.pairedTaskCount)} paired tasks used fewer${cached}</span>`;
 }
 
 function naCell() {
@@ -432,19 +383,25 @@ function naCell() {
 }
 
 /**
- * Delta chip with sign + arrow glyph + screen-reader text; color is only a secondary cue.
+ * Delta chip: arrow glyph + signed value + a visible valence word for time/tokens
+ * ("14% faster", "10% more"), plus screen-reader text. Color is only a secondary cue.
  * @param {number} value
  * @param {'pp' | '%'} unit
  * @param {'higher' | 'lower'} goodWhen
+ * @param {[string, string]} [words] Visible words for [decrease, increase], e.g. ['faster', 'slower'].
  */
-function deltaChip(value, unit, goodWhen) {
+function deltaChip(value, unit, goodWhen, words) {
     const rounded = Math.sign(value) * roundAbs(value);
     const isGood = goodWhen === 'higher' ? rounded > 0 : rounded < 0;
     const isFlat = rounded === 0;
     const cls = isFlat ? 'flat' : (isGood ? 'good' : 'cost');
     const glyph = isFlat ? '•' : (rounded > 0 ? '▲' : '▼');
-    const sr = isFlat ? 'no change' : `${rounded > 0 ? 'up' : 'down'} ${Math.abs(rounded)}${unit === 'pp' ? ' percentage points' : ' percent'}`;
-    return `<span class="delta ${cls}"><span class="glyph" aria-hidden="true">${glyph}</span><span aria-hidden="true">${signed(rounded, 0)}${unit === 'pp' ? ' pp' : '%'}</span><span class="visually-hidden">${sr}</span></span>`;
+    const unitText = unit === 'pp' ? ' pp' : '%';
+    const visible = words
+        ? (isFlat ? `no change` : `${Math.abs(rounded)}${unitText} ${rounded < 0 ? words[0] : words[1]}`)
+        : `${signed(rounded, 0)}${unitText}`;
+    const sr = isFlat ? 'no change' : `${rounded > 0 ? 'up' : 'down'} ${Math.abs(rounded)}${unit === 'pp' ? ' percentage points' : ' percent'}${isGood ? ', better' : ', worse'}`;
+    return `<span class="delta ${cls}"><span class="glyph" aria-hidden="true">${glyph}</span><span aria-hidden="true">${visible}</span><span class="visually-hidden">${sr}</span></span>`;
 }
 
 /** @param {HeadlineInsights} insights */

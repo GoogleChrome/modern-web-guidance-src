@@ -245,8 +245,9 @@ test.describe('Hero headline takeaways', () => {
     // antigravity_cli (the Gemini-based CLI that succeeded jetski_cli) is labeled "Antigravity CLI".
     expect(families.join(' ')).toMatch(/Antigravity CLI|Gemini CLI/);
     for (let i = 0; i < 3; i++) {
-      await expect(rows.nth(i).locator('td')).toHaveCount(4);
-      await expect(rows.nth(i).locator('td').first()).toHaveText(/\d+%\s*→\s*\d+%/);
+      // Pass rate, Accessibility, Median time, Median uncached tokens, Runs
+      await expect(rows.nth(i).locator('td')).toHaveCount(5);
+      await expect(rows.nth(i).locator('td[data-label="Pass rate"]')).toHaveText(/\d+%\s*→\s*\d+%/);
     }
     // Delta chips are not color-only: each carries a glyph and the signed value.
     await expect(rows.first().locator('.delta .glyph').first()).toBeAttached();

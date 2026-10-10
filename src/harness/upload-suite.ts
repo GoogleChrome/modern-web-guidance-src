@@ -3,7 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import { cRed, cGreen, cCyan, cBold } from '../core/colors.ts';
 import { suitesDir as baseResultsDir } from '../core/paths.ts';
-import { extractSuiteSummary, SUMMARY_SCHEMA_VERSION } from '../dashboard/summary-extractor.js';
+import { extractSuiteSummary, toSlimSuiteSummary, MANIFEST_FILES, SUMMARY_SCHEMA_VERSION } from '../dashboard/summary-extractor.js';
+import { computeHeadlineInsights } from '../dashboard/insights.js';
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
@@ -59,6 +60,12 @@ interface ReconcileOptions {
   force?: boolean;
   /** Write the reconciled manifest to this local path instead of uploading it. */
   dryRunOutput?: string;
+  /**
+   * Store the manifest gzip-encoded (Content-Encoding: gzip). GCS decompresses transparently for
+   * clients that do not advertise gzip, so `gcloud storage cat` and browsers both keep working,
+   * while the public landing page downloads ~10x fewer bytes.
+   */
+  gzip?: boolean;
 }
 
 /** True when a manifest entry predates the current summary schema and should be re-extracted. */
@@ -77,7 +84,7 @@ async function reconcileAndUploadManifest(
   console.log(cCyan('🔄 Reconciling GCS suites manifest...'));
   
   let remoteManifest: any[] = [];
-  const manifestFile = bucket.file('suites.gen.json');
+  const manifestFile = bucket.file(MANIFEST_FILES.full);
   try {
     const [exists] = await manifestFile.exists();
     if (exists) {
@@ -154,21 +161,40 @@ async function reconcileAndUploadManifest(
   }
 
   const updatedList = Array.from(manifestMap.values()).sort((a, b) => (a.testId || '').localeCompare(b.testId || ''));
-  const json = JSON.stringify(updatedList, null, 2);
+
+  // Three artifacts, always written together so they never disagree:
+  //   suites.gen.json           full summaries (guides + chartData) for browsing views
+  //   suites.slim.gen.json      same entries minus guides/chartData (~2 KB/suite) for first paint
+  //   headline-insights.gen.json precomputed landing-page hero numbers
+  const insights = computeHeadlineInsights(updatedList);
+  const artifacts: Array<{ name: string; json: string }> = [
+    { name: MANIFEST_FILES.full, json: JSON.stringify(updatedList, null, 2) },
+    { name: MANIFEST_FILES.slim, json: JSON.stringify(updatedList.map(toSlimSuiteSummary), null, 2) },
+    { name: MANIFEST_FILES.insights, json: JSON.stringify({ generatedAt: new Date().toISOString(), ...insights }, null, 2) },
+  ];
 
   if (options.dryRunOutput) {
-    fs.mkdirSync(path.dirname(options.dryRunOutput), { recursive: true });
-    fs.writeFileSync(options.dryRunOutput, json);
-    console.log(cBold(cGreen(`✅ Dry run: wrote reconciled manifest to ${options.dryRunOutput} (${updatedList.length} suites, ${refreshed} refreshed, ${skipped.length} without evals.json). Nothing uploaded.`)));
+    // dryRunOutput names the full manifest; the slim/insights twins land next to it.
+    const dir = path.dirname(options.dryRunOutput);
+    fs.mkdirSync(dir, { recursive: true });
+    for (const { name, json } of artifacts) {
+      const target = name === MANIFEST_FILES.full ? options.dryRunOutput : path.join(dir, name);
+      fs.writeFileSync(target, json);
+      console.log(`   ${target} (${(json.length / 1024).toFixed(0)} KB)`);
+    }
+    console.log(cBold(cGreen(`✅ Dry run: wrote reconciled manifests to ${dir} (${updatedList.length} suites, ${refreshed} refreshed, ${skipped.length} without evals.json). Nothing uploaded.`)));
     return;
   }
 
-  await manifestFile.save(json, {
-    contentType: 'application/json',
-    resumable: false,
-  });
+  for (const { name, json } of artifacts) {
+    await bucket.file(name).save(json, {
+      contentType: 'application/json',
+      resumable: false,
+      gzip: Boolean(options.gzip),
+    });
+  }
 
-  console.log(cBold(cGreen(`✅ Reconciled and updated gs://${BUCKET_NAME}/suites.gen.json (${updatedList.length} suites, ${refreshed} refreshed)`)));
+  console.log(cBold(cGreen(`✅ Reconciled and updated gs://${BUCKET_NAME}/{${artifacts.map(a => a.name).join(',')}} (${updatedList.length} suites, ${refreshed} refreshed${options.gzip ? ', gzip-encoded' : ''})`)));
 }
 
 async function main() {
@@ -176,6 +202,7 @@ async function main() {
   const summaryOnly = args.includes('--summary-only');
   const reconcileOnly = args.includes('--reconcile-manifest');
   const force = args.includes('--force');
+  const gzip = args.includes('--gzip');
   const dryRunArg = args.find(a => a === '--dry-run' || a.startsWith('--dry-run='));
   const dryRunOutput = dryRunArg
     ? (dryRunArg.includes('=') ? path.resolve(dryRunArg.split('=')[1]) : path.resolve('out/dashboard/suites.remote.gen.json'))
@@ -185,13 +212,13 @@ async function main() {
   // is missing or predates SUMMARY_SCHEMA_VERSION (or all of them with --force). No suite files are
   // uploaded. `--dry-run[=path]` writes the result locally instead of overwriting the remote manifest.
   //   pnpm upload --reconcile-manifest --dry-run
-  //   pnpm upload --reconcile-manifest
+  //   pnpm upload --reconcile-manifest [--gzip]
   if (reconcileOnly) {
     console.log(cBold(cCyan(`Reconciling suites manifest${force ? ' (forced full refresh)' : ''}${dryRunOutput ? ' [dry run]' : ''}`)));
     const storage = new Storage({ projectId: PROJECT_ID });
     const bucket = storage.bucket(BUCKET_NAME);
     try {
-      await reconcileAndUploadManifest(bucket, null, null, { force, dryRunOutput });
+      await reconcileAndUploadManifest(bucket, null, null, { force, dryRunOutput, gzip });
     } catch (error: any) {
       console.error(cRed(`❌ Manifest reconcile failed: ${error.message}`));
       process.exit(1);

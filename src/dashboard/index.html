@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
   <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, accessibility subscores, completion time, and token efficiency across suites.">
   <title>Modern Web Guidance Evals: Do coding agents build better web UIs with MWG?</title>
   <link rel="stylesheet" href="dashboard.css">
@@ -30,13 +31,10 @@
       <section id="hero" class="hero" aria-labelledby="hero-heading" aria-busy="true">
         <p id="hero-eyebrow" class="hero-eyebrow">Nightly evaluations · loading latest results…</p>
         <h2 id="hero-heading" class="hero-heading">Same agent, same task, better web code with Modern Web Guidance.</h2>
-        <p class="hero-lede">
-          On a nightly schedule we run <span id="hero-lede-agents">Claude Code, Codex CLI, and Antigravity CLI</span> on the same web development tasks twice:
-          <strong>unguided</strong> (the agent on its own) and <strong>guided</strong> (with the MWG skill installed).
-          Guided runs pass more best-practice and accessibility checks, and some agents also finish faster with fewer tokens.
-        </p>
 
-        <div id="hero-status" class="hero-status" role="status" hidden>
+        <!-- Always-present live region so status changes are announced; the visible box below is purely presentational. -->
+        <p id="hero-live" class="visually-hidden" role="status" aria-live="polite"></p>
+        <div id="hero-status" class="hero-status" hidden>
           <span id="hero-status-text"></span>
           <button id="hero-auth-btn" class="primary-btn" type="button" hidden>Sign in with Google</button>
         </div>
@@ -68,6 +66,12 @@
           </li>
         </ul>
 
+        <p class="hero-lede">
+          On a nightly schedule we run <span id="hero-lede-agents">Claude Code, Codex CLI, and Antigravity CLI</span> on the same web development tasks twice:
+          <strong>unguided</strong> (the agent on its own) and <strong>guided</strong> (with the MWG skill installed).
+          Guided runs pass more best-practice and accessibility checks, and some agents also finish faster with fewer tokens.
+        </p>
+
         <div class="hero-agents">
           <h3 class="hero-agents-heading">By agent family</h3>
           <p class="hero-agents-note">Within every run the agent, model, and tasks are identical; only MWG changes. Rows pool the latest runs per agent (models listed). <span id="hero-agents-cost"></span></p>
@@ -81,10 +85,11 @@
                   <th scope="col">Accessibility</th>
                   <th scope="col">Median time</th>
                   <th scope="col">Median uncached tokens</th>
+                  <th scope="col">Runs</th>
                 </tr>
               </thead>
               <tbody id="agent-table-body">
-                <tr><th scope="row">Loading…</th><td data-label="Pass rate">—</td><td data-label="Accessibility">—</td><td data-label="Median time">—</td><td data-label="Median uncached tokens">—</td></tr>
+                <tr><th scope="row">Loading…</th><td data-label="Pass rate">—</td><td data-label="Accessibility">—</td><td data-label="Median time">—</td><td data-label="Median uncached tokens">—</td><td data-label="Runs">—</td></tr>
               </tbody>
             </table>
           </div>
@@ -104,6 +109,8 @@
               <dd>The pass rate on the subset of checks that test accessibility requirements (focus and <code>inert</code> management, reduced motion and contrast, ARIA roles and live regions, form labels, keyboard operability). Most of these live inside forms, UI component, and CSS guides, not only the <code>accessibility/</code> guides.</dd>
               <dt>Time</dt>
               <dd>Median agent time per task (agent only, excluding the grader), over tasks that have both an unguided and a guided run in the same suite. "% of tasks faster" compares those pairs one by one. Time and token medians are shown per agent family only; pooling them across families would mix 30-second and 7-minute tasks.</dd>
+              <dt>Source</dt>
+              <dd>Harness, task prompts, and graders are open source in <a href="https://github.com/GoogleChrome/modern-web-guidance-src" rel="noopener">GoogleChrome/modern-web-guidance-src</a> (<code>harness/</code> and each guide's <code>targets/</code>).</dd>
               <dt>Uncached tokens</dt>
               <dd>Total tokens minus cached prompt re-reads (<code>total − cached</code>). Raw totals are dominated by cached re-reads on every tool turn (roughly 85–96% for Claude Code and Codex CLI), so uncached tokens measure the new input, output, and reasoning tokens actually consumed. Runs that timed out and reported no token usage are excluded from token medians.</dd>
             </dl>
@@ -214,13 +221,13 @@
   </div>
 
   <div popover="hint" id="tooltip-a11y-subscore" class="hint-popover">
-    <strong>Cross-Cutting Accessibility Subscore</strong><br>
-    Aggregates ~107 deterministic accessibility assertions across 51 guides (focus &amp; <code>inert</code> management, reduced motion &amp; contrast, ARIA roles &amp; live regions, form labels, and keyboard operability)—not just the 5 checks in <code>guides/accessibility/</code>.
+    <strong>Cross-cutting accessibility subscore</strong><br>
+    Aggregates the deterministic grader assertions that test accessibility requirements (currently ~110 across 50+ guides: focus &amp; <code>inert</code> management, reduced motion &amp; contrast, ARIA roles &amp; live regions, form labels, keyboard operability)—not just the checks in <code>guides/accessibility/</code>.
   </div>
 
   <div popover="hint" id="tooltip-token-efficiency" class="hint-popover">
-    <strong>Normalized Uncached Tokens (<code>total - cached</code>)</strong><br>
-    Raw total token counts are dominated (86%–98%) by cached prompt re-reads on each tool turn. Normalized uncached tokens measure actual new input, output, and reasoning tokens consumed.
+    <strong>Uncached tokens (<code>total − cached</code>)</strong><br>
+    Raw total token counts are dominated by cached prompt re-reads on each tool turn (roughly 85–96% for Claude Code and Codex CLI; ~20% for Antigravity CLI). Uncached tokens measure the new input, output, and reasoning tokens actually consumed.
   </div>
 
   <div popover="hint" id="tooltip-scheduled-runs" class="hint-popover">

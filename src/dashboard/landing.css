@@ -21,6 +21,10 @@
 
 .landing-title {
   margin: 0;
+  /* Wordmark, not the message: keep it to one line on phones. */
+  font-size: clamp(1.25rem, 1rem + 1.5vw, 2.5rem);
+  line-height: 1.15;
+  text-wrap: balance;
 }
 
 .empty-state {
@@ -160,6 +164,21 @@
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--color-surface-container-lowest);
+  /* Edge shadows hint that there is more to scroll (fade out at the ends). */
+  background-image:
+    linear-gradient(to right, var(--color-surface-container-lowest) 30%, transparent),
+    linear-gradient(to left, var(--color-surface-container-lowest) 30%, transparent),
+    linear-gradient(to right, var(--color-shadow), transparent),
+    linear-gradient(to left, var(--color-shadow), transparent);
+  background-position: left center, right center, left center, right center;
+  background-repeat: no-repeat;
+  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+.suites-table-container:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .suites-table {
@@ -193,7 +212,7 @@
 
 .suites-table thead th:first-child,
 .suites-table tbody th {
-  min-width: 170px;
+  min-width: 160px;
 }
 
 .suites-table tbody th {
@@ -217,6 +236,12 @@
 
 .suites-table tbody tr:last-child :is(th, td) {
   border-bottom: 0;
+}
+
+/* Columns with a single distinct value are hidden by landing.js (see syncOptionalColumns). */
+.suites-table.hide-serving :is(th, td):nth-child(3),
+.suites-table.hide-source :is(th, td):nth-child(10) {
+  display: none;
 }
 
 /* Sort buttons live inside <th> so the header stays a real column header. */
@@ -364,11 +389,11 @@ th[aria-sort="ascending"] .sort-btn::after {
 }
 
 .metric-cell {
-  min-inline-size: 140px;
+  min-inline-size: 128px;
 }
 
 .tokens-cell {
-  min-inline-size: 170px;
+  min-inline-size: 160px;
 }
 
 .uplift-cell {
@@ -510,9 +535,13 @@ th[aria-sort="ascending"] .sort-btn::after {
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 3px 6px;
   font-size: var(--font-md);
   color: var(--text-primary);
+}
+
+.eff-cell-main > span:first-child {
+  white-space: nowrap;
 }
 
 .eff-cell-sub {
@@ -581,8 +610,8 @@ th[aria-sort="ascending"] .sort-btn::after {
   background-repeat: no-repeat;
   background-position: right 8px center;
   background-size: 1em;
-  width: 100px; /* auto would make these columns far too wide */
-  min-width: 90px;
+  width: 92px; /* auto would make these columns far too wide */
+  min-width: 84px;
 }
 
 .header-filter-select.is-filtered {
@@ -954,6 +983,20 @@ th[aria-sort="ascending"] .sort-btn::after {
   color: var(--color-primary);
 }
 
+.pivot-scroll {
+  max-block-size: min(520px, 70vh);
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--color-surface-container-lowest);
+  padding-inline: 8px;
+}
+
+.pivot-scroll:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .pivot-empty {
   margin: 0;
   padding: 8px 4px;
@@ -1125,12 +1168,18 @@ button[interestfor="tooltip-scheduled-runs"] {
     flex-shrink: 0;
   }
 
+  /* Re-assert hidden single-value columns above the stacked display:flex rule. */
+  .suites-table.hide-serving td:nth-child(3),
+  .suites-table.hide-source td:nth-child(10) {
+    display: none;
+  }
+
   .suites-table .model-cell {
     max-inline-size: none;
   }
 
   /* Metric cells stack label over value so dumbbells and "U → G" text get the full width. */
-  .suites-table .metric-cell {
+  .suites-table td.metric-cell {
     flex-direction: column;
     align-items: stretch;
     gap: 4px;
@@ -1138,7 +1187,11 @@ button[interestfor="tooltip-scheduled-runs"] {
     min-inline-size: 0;
   }
 
-  .suites-table .uplift-cell {
+  .suites-table td.metric-cell::before {
+    text-align: left;
+  }
+
+  .suites-table td.uplift-cell {
     padding: 8px 12px;
   }
 
@@ -1148,7 +1201,7 @@ button[interestfor="tooltip-scheduled-runs"] {
 
   .suite-dumbbell-track {
     margin-inline: 4px 0;
-    max-inline-size: 180px;
+    inline-size: min(180px, 100%);
   }
 
   .rate-text,

@@ -91,6 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupTestFilters();
         setupTableFilters();
         setupScheduledToggle();
+        setupScrollRegion();
         setupSortButtons();
         setupInsightsControls();
 
@@ -248,6 +249,18 @@ function setupScheduledToggle() {
         scheduledOnly = check.checked;
         renderSuites();
     });
+}
+
+/**
+ * The table wrapper scrolls horizontally on narrow viewports; making it a focusable,
+ * labeled region lets keyboard users scroll it (MWG `accessibility`: scroll containers).
+ */
+function setupScrollRegion() {
+    const wrap = document.querySelector('.suites-table-container');
+    if (!(wrap instanceof HTMLElement)) return;
+    wrap.setAttribute('tabindex', '0');
+    wrap.setAttribute('role', 'region');
+    wrap.setAttribute('aria-label', 'All runs table (scrolls horizontally)');
 }
 
 function setupSortButtons() {
@@ -577,10 +590,40 @@ function formatSuiteDate(date) {
 }
 
 /**
+ * Unrounded pass rate (0–100).
+ * @param {{ passed: number, total: number } | undefined} stats
+ */
+function toRateExact(stats) {
+    return stats && stats.total > 0 ? (stats.passed / stats.total) * 100 : 0;
+}
+
+/**
  * @param {{ passed: number, total: number } | undefined} stats
  */
 function toRate(stats) {
-    return stats && stats.total > 0 ? Math.round((stats.passed / stats.total) * 100) : 0;
+    return Math.round(toRateExact(stats));
+}
+
+/**
+ * Percentage-point change computed from unrounded rates and rounded once, so
+ * "64% → 92%" can honestly read "+27 pp" when the exact values are 64.4 → 91.5.
+ * @param {{ passed: number, total: number } | undefined} uStats
+ * @param {{ passed: number, total: number } | undefined} gStats
+ */
+function upliftPp(uStats, gStats) {
+    return Math.round(toRateExact(gStats) - toRateExact(uStats));
+}
+
+/**
+ * @param {import('./summary-extractor.js').SuiteA11yStats | undefined} a11y
+ * @returns {{ u: { passed: number, total: number }, g: { passed: number, total: number } } | null}
+ */
+function a11yPair(a11y) {
+    if (!a11y || !(a11y.guidedTotal > 0 || a11y.unguidedTotal > 0)) return null;
+    return {
+        u: { passed: a11y.unguidedPassed, total: a11y.unguidedTotal },
+        g: { passed: a11y.guidedPassed, total: a11y.guidedTotal }
+    };
 }
 
 /**
@@ -627,10 +670,10 @@ function getSortValue(t, key) {
         case 'tasks':
             return t.taskCount || 0;
         case 'uplift':
-            return toRate(t.guidedStats) - toRate(t.unguidedStats);
+            return toRateExact(t.guidedStats) - toRateExact(t.unguidedStats);
         case 'a11y': {
-            const a = t.a11yStats;
-            return a && (a.guidedTotal > 0 || a.unguidedTotal > 0) ? a.uplift : null;
+            const pair = a11yPair(t.a11yStats);
+            return pair ? toRateExact(pair.g) - toRateExact(pair.u) : null;
         }
         case 'time': {
             const rt = t.efficiencyStats?.runtime;
@@ -673,12 +716,12 @@ function sortSuiteKeys(keys) {
 /**
  * Inline dumbbell (decorative) followed by the textual comparison, which is the
  * accessible encoding: "62% → 85% (+23 pp)".
- * @param {number} uRate
- * @param {number} gRate
+ * @param {number} uRate rounded unguided rate
+ * @param {number} gRate rounded guided rate
+ * @param {number} delta percentage-point change, computed from unrounded rates
  * @param {string} label used for the screen-reader sentence
  */
-function renderRateComparison(uRate, gRate, label) {
-    const delta = gRate - uRate;
+function renderRateComparison(uRate, gRate, delta, label) {
     const sign = delta > 0 ? '+' : '';
     const deltaClass = delta > 0 ? 'delta up' : (delta < 0 ? 'delta down' : 'delta flat');
     return `
@@ -698,18 +741,19 @@ function renderRateComparison(uRate, gRate, label) {
 
 /**
  * Relative change pill for "lower is better" metrics (time, tokens).
- * Shape (▼/▲) and sign carry the meaning; color is reinforcement only.
+ * Glyph (▼/▲) + a visible word ("faster"/"slower", "fewer"/"more") carry the
+ * meaning so it survives forced-colors and grayscale; color is reinforcement only.
  * @param {number} deltaPct
- * @param {string} noun e.g. "time" or "uncached tokens"
+ * @param {{ less: string, more: string, noun: string }} words
  */
-function renderDeltaPill(deltaPct, noun) {
+function renderDeltaPill(deltaPct, words) {
     if (deltaPct < 0) {
-        return `<span class="eff-pill positive"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}%<span class="visually-hidden"> less ${escapeHtml(noun)}</span></span>`;
+        return `<span class="eff-pill positive"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}% ${escapeHtml(words.less)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
     }
     if (deltaPct === 0) {
-        return `<span class="eff-pill neutral">±0%<span class="visually-hidden"> ${escapeHtml(noun)}, no change</span></span>`;
+        return `<span class="eff-pill neutral">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
     }
-    return `<span class="eff-pill muted"><span aria-hidden="true">▲ </span>${deltaPct}%<span class="visually-hidden"> more ${escapeHtml(noun)}</span></span>`;
+    return `<span class="eff-pill muted"><span aria-hidden="true">▲ </span>${deltaPct}% ${escapeHtml(words.more)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
 }
 
 /** @param {string} what */
@@ -721,19 +765,15 @@ function renderSuites() {
     const container = document.getElementById('suites-list');
     if (!container) return;
 
-    const headerSource = document.getElementById('header-source');
-    if (headerSource) {
-        headerSource.style.display = isRemoteDashboard() ? 'none' : '';
-    }
     syncSortHeaders();
 
     const filteredKeys = getFilteredKeys();
     const visibleKeys = getVisibleKeys();
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
-    const showSource = !isRemoteDashboard();
-    const colCount = showSource ? 10 : 9;
+    const colCount = 10;
 
     renderSuitesCount(visibleKeys.length, filteredKeys.length, hiddenAdHoc);
+    syncOptionalColumns();
 
     if (visibleKeys.length === 0) {
         const anyData = Object.keys(allTestData).length > 0;
@@ -753,9 +793,9 @@ function renderSuites() {
 
         const gRate = toRate(testInfo.guidedStats);
         const uRate = toRate(testInfo.unguidedStats);
+        const overallPp = upliftPp(testInfo.unguidedStats, testInfo.guidedStats);
 
-        const a11y = testInfo.a11yStats;
-        const hasA11y = Boolean(a11y && (a11y.guidedTotal > 0 || a11y.unguidedTotal > 0));
+        const a11y = a11yPair(testInfo.a11yStats);
 
         const rt = testInfo.efficiencyStats?.runtime;
         const hasRuntime = Boolean(rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0));
@@ -770,17 +810,17 @@ function renderSuites() {
         const scheduled = isScheduledSuite(testId);
         const { label, ldap } = formatSuiteLabel(testInfo);
 
-        const a11yCellHtml = hasA11y && a11y
-            ? renderRateComparison(a11y.unguidedRate, a11y.guidedRate, 'Accessibility subscore')
+        const a11yCellHtml = a11y
+            ? renderRateComparison(toRate(a11y.u), toRate(a11y.g), upliftPp(a11y.u, a11y.g), 'Accessibility subscore')
             : renderNotAvailable('Accessibility subscore');
 
         const timeCellHtml = hasRuntime && rt
             ? `
                 <div class="eff-cell-main">
                     <span><span class="visually-hidden">Median time: unguided </span>${formatDuration(rt.unguidedMedianMs)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatDuration(rt.guidedMedianMs)}</strong></span>
-                    ${renderDeltaPill(rt.medianDeltaPct, 'time')}
+                    ${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median time' })}
                 </div>
-                ${rt.pairedTaskCount > 0 ? `<div class="eff-cell-sub">${rt.fasterTaskPct}% of tasks faster or equal</div>` : ''}
+                ${rt.pairedTaskCount > 0 ? `<div class="eff-cell-sub">faster or equal in ${rt.fasterTaskPct}% of tasks</div>` : ''}
             `
             : renderNotAvailable('Median time');
 
@@ -788,7 +828,7 @@ function renderSuites() {
             ? `
                 <div class="eff-cell-main">
                     <span><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatTokens(tok.guidedUncachedMedian)}</strong></span>
-                    ${renderDeltaPill(tok.uncachedMedianDeltaPct, 'uncached tokens')}
+                    ${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })}
                 </div>
                 <div class="eff-cell-sub">Incl. cache: ${formatTokens(tok.unguidedTotalMedian)} <span aria-hidden="true">→</span><span class="visually-hidden">to</span> ${formatTokens(tok.guidedTotalMedian)} (${tok.guidedCachedSharePct}% cached)</div>
             `
@@ -814,14 +854,15 @@ function renderSuites() {
                 <td class="model-cell">${(escapeHtml(testInfo.model) || '').replaceAll('-', '-<wbr>')}</td>
                 <td class="tasks-cell">${taskCount}${maxRuns > 1 ? ` <span class="tasks-runs">×${maxRuns}</span>` : ''}</td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}">
-                    <a href="${localLink}" class="uplift-link" aria-label="Per-guide results for ${escapeHtml(label)}">
-                        ${renderRateComparison(uRate, gRate, 'Pass rate')}
+                    <a href="${localLink}" class="uplift-link">
+                        ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate')}
+                        <span class="visually-hidden">— open per-guide results</span>
                     </a>
                 </td>
                 <td class="metric-cell">${a11yCellHtml}</td>
                 <td class="metric-cell">${timeCellHtml}</td>
                 <td class="metric-cell tokens-cell">${tokenCellHtml}</td>
-                ${showSource ? `<td class="source-cell">${escapeHtml(testInfo.source)}</td>` : ''}
+                <td class="source-cell">${escapeHtml(testInfo.source)}</td>
             </tr>
         `;
     });
@@ -833,6 +874,21 @@ function renderSuites() {
     if (!(drawer instanceof HTMLDetailsElement) || drawer.open) {
         renderPivotInsights();
     }
+}
+
+/**
+ * Columns whose value is identical for every loaded run carry no information, so
+ * hide them (Serving, Source) to keep the table within the page width. Cells stay
+ * in the DOM so the stacked-layout labels (nth-child) keep lining up.
+ */
+function syncOptionalColumns() {
+    const table = document.querySelector('.suites-table');
+    if (!table) return;
+    const all = Object.values(allTestData);
+    const servings = new Set(all.map(t => t.serving));
+    const sources = new Set(all.map(t => t.source));
+    table.classList.toggle('hide-serving', servings.size <= 1 && currentServingFilter === 'all');
+    table.classList.toggle('hide-source', isRemoteDashboard() || (sources.size <= 1 && currentSourceFilter === 'all'));
 }
 
 /**
@@ -1081,14 +1137,16 @@ function renderPivotInsights() {
         /** @type {PivotItem | null} */
         let item = null;
         if (onlyA11y) {
-            const a11y = testInfo.a11yStats;
-            if (a11y && (a11y.guidedTotal > 0 || a11y.unguidedTotal > 0)) {
-                item = { uplift: a11y.uplift, uRate: a11y.unguidedRate, gRate: a11y.guidedRate };
+            const pair = a11yPair(testInfo.a11yStats);
+            if (pair) {
+                item = { uplift: upliftPp(pair.u, pair.g), uRate: toRate(pair.u), gRate: toRate(pair.g) };
             }
         } else {
-            const gRate = toRate(testInfo.guidedStats);
-            const uRate = toRate(testInfo.unguidedStats);
-            item = { uplift: gRate - uRate, uRate, gRate };
+            item = {
+                uplift: upliftPp(testInfo.unguidedStats, testInfo.guidedStats),
+                uRate: toRate(testInfo.unguidedStats),
+                gRate: toRate(testInfo.guidedStats)
+            };
         }
         if (item) {
             (grouped.model[testInfo.model] ||= []).push(item);
@@ -1099,8 +1157,10 @@ function renderPivotInsights() {
             const gEntry = suiteGuides[guide];
             const src = onlyA11y ? gEntry.a11y : gEntry;
             if (!src) return;
-            const { guidedRate = 0, unguidedRate = 0, uplift = 0 } = src;
-            (grouped.guide[guide] ||= []).push({ uplift, uRate: unguidedRate, gRate: guidedRate });
+            const u = { passed: src.unguidedPassed || 0, total: src.unguidedTotal || 0 };
+            const g = { passed: src.guidedPassed || 0, total: src.guidedTotal || 0 };
+            if (u.total === 0 && g.total === 0) return;
+            (grouped.guide[guide] ||= []).push({ uplift: upliftPp(u, g), uRate: toRate(u), gRate: toRate(g) });
         });
     });
 
@@ -1222,13 +1282,17 @@ function renderPivotInsights() {
             `;
         });
 
-        return `
+        const table = `
             <table class="insights-table">
                 <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption>
                 <thead class="visually-hidden"><tr><th scope="col">${escapeHtml(captionNoun === 'guide' ? 'Guide' : 'Model')}</th><th scope="col">${escapeHtml(metricName)}</th></tr></thead>
                 <tbody>${rowsHtml}</tbody>
             </table>
         `;
+        // Long lists scroll inside a focusable region instead of stretching the page.
+        return filterKey === 'guide'
+            ? `<div class="pivot-scroll" tabindex="0" role="region" aria-label="By guide table (scrolls vertically)">${table}</div>`
+            : table;
     };
 
     const sortOptions = [

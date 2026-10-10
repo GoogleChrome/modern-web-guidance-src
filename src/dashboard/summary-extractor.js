@@ -116,6 +116,32 @@ export const SUMMARY_SCHEMA_VERSION = 2;
  */
 
 /**
+ * A `SuiteSummary` without the two bulky per-guide / per-task payloads (`guides`, `chartData`),
+ * ~2 KB per suite instead of ~55 KB. Enough for the landing page table, scorecards, and the
+ * pooled pass-rate / accessibility insights; pooled per-task medians need the full summary.
+ * @typedef {Omit<SuiteSummary, 'guides' | 'chartData'>} SlimSuiteSummary
+ */
+
+/** Manifest file names served next to each other (bucket root, out/dashboard, static dist). */
+export const MANIFEST_FILES = /** @type {const} */ ({
+    full: 'suites.gen.json',
+    slim: 'suites.slim.gen.json',
+    insights: 'headline-insights.gen.json'
+});
+
+/**
+ * Strips `guides` and `chartData` from a summary (or legacy manifest entry) for the slim manifest.
+ * @template {{ guides?: unknown, chartData?: unknown }} T
+ * @param {T} summary
+ * @returns {Omit<T, 'guides' | 'chartData'>}
+ */
+export function toSlimSuiteSummary(summary) {
+    // eslint-disable-next-line no-unused-vars
+    const { guides, chartData, ...slim } = summary;
+    return slim;
+}
+
+/**
  * Extracts a compact summary object from an evals.json payload.
  *
  * @param {string} testId

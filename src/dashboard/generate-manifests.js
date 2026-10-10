@@ -54,10 +54,10 @@ export function generateMapping(outputDir = defaultOutputDir) {
  */
 export async function generateSuitesManifest(outputDir = defaultOutputDir, resultsSourceDir = suitesDir) {
     fs.mkdirSync(outputDir, { recursive: true });
-    const { extractSuiteSummary } = await import('./summary-extractor.js');
+    const { extractSuiteSummary, toSlimSuiteSummary, MANIFEST_FILES } = await import('./summary-extractor.js');
     /** @type {Map<string, Record<string, any>>} */
     const suitesMap = new Map();
-    const outputPath = path.join(outputDir, 'suites.gen.json');
+    const outputPath = path.join(outputDir, MANIFEST_FILES.full);
 
     // Add suites from results dir
     if (fs.existsSync(resultsSourceDir)) {
@@ -86,6 +86,8 @@ export async function generateSuitesManifest(outputDir = defaultOutputDir, resul
         return (a.testId || '').localeCompare(b.testId || '');
     });
     fs.writeFileSync(outputPath, JSON.stringify(sortedSuites, null, 2));
+    // Slim twin (no guides/chartData) for first-paint consumers such as the landing table.
+    fs.writeFileSync(path.join(outputDir, MANIFEST_FILES.slim), JSON.stringify(sortedSuites.map(toSlimSuiteSummary), null, 2));
     return sortedSuites;
 }
 
@@ -101,13 +103,14 @@ export async function generateSuitesManifest(outputDir = defaultOutputDir, resul
 export async function generateHeadlineInsightsManifest(outputDir = defaultOutputDir, suites = null, options = {}) {
     fs.mkdirSync(outputDir, { recursive: true });
     const { computeHeadlineInsights } = await import('./insights.js');
+    const { MANIFEST_FILES } = await import('./summary-extractor.js');
     let entries = suites;
     if (!entries) {
-        const manifestPath = path.join(outputDir, 'suites.gen.json');
+        const manifestPath = path.join(outputDir, MANIFEST_FILES.full);
         entries = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : [];
     }
     const insights = computeHeadlineInsights(/** @type {any[]} */ (entries), options);
-    const outputPath = path.join(outputDir, 'headline-insights.gen.json');
+    const outputPath = path.join(outputDir, MANIFEST_FILES.insights);
     fs.writeFileSync(outputPath, JSON.stringify({ generatedAt: new Date().toISOString(), ...insights }, null, 2));
     return insights;
 }

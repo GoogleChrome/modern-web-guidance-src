@@ -580,9 +580,17 @@ function renderSummary(data) {
     });
 
     const tasksCount = baseKeys.size;
-    const unguidedPassRate = unguidedStats.total > 0 ? Math.round((unguidedStats.passed / unguidedStats.total) * 100) : 0;
-    const guidedPassRate = guidedStats.total > 0 ? Math.round((guidedStats.passed / guidedStats.total) * 100) : 0;
-    const upliftDelta = guidedPassRate - unguidedPassRate;
+    const exactRate = (/** @type {{ passed: number, total: number }} */ st) => st.total > 0 ? (st.passed / st.total) * 100 : 0;
+    const unguidedPassRate = Math.round(exactRate(unguidedStats));
+    const guidedPassRate = Math.round(exactRate(guidedStats));
+    // pp from unrounded rates, rounded once (avoids round(G) - round(U) drift of ±1 pp)
+    const upliftDelta = Math.round(exactRate(guidedStats) - exactRate(unguidedStats));
+    const a11yUpliftPp = Math.round(
+        exactRate({ passed: a11yStats.guidedPassed, total: a11yStats.guidedTotal }) -
+        exactRate({ passed: a11yStats.unguidedPassed, total: a11yStats.unguidedTotal })
+    );
+    /** "693/1,059 → 952/1,062" — U and G denominators differ when runs fail before grading. */
+    const fraction = (/** @type {number} */ passed, /** @type {number} */ total) => `${passed.toLocaleString()}/${total.toLocaleString()}`;
     const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
     const guideUsageRate = tasksCount > 0 ? Math.round((tasksWithGuides.size / tasksCount) * 100) : 0;
 
@@ -593,12 +601,13 @@ function renderSummary(data) {
     const a11yDimensionsHtml = A11Y_SUBCATEGORIES.map(sub => {
         const sc = a11yStats.bySubCategory?.[sub.id];
         if (!sc || (sc.unguidedTotal === 0 && sc.guidedTotal === 0)) return '';
-        const deltaSign = sc.uplift >= 0 ? '+' : '';
+        const dimPp = Math.round(exactRate({ passed: sc.guidedPassed, total: sc.guidedTotal }) - exactRate({ passed: sc.unguidedPassed, total: sc.unguidedTotal }));
+        const deltaSign = dimPp >= 0 ? '+' : '';
         return `
             <div class="a11y-dim-row">
                 <div class="a11y-dim-header">
                     <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span>
-                    <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${sc.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${sc.uplift < 0 ? 'negative' : ''}">(${deltaSign}${sc.uplift}pp)</span></span>
+                    <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${sc.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : ''}">(${deltaSign}${dimPp} pp)</span></span>
                 </div>
                 <div class="a11y-dim-track" aria-hidden="true">
                     <div class="a11y-dim-fill-unguided" style="width: ${sc.unguidedRate}%;"></div>
@@ -609,15 +618,25 @@ function renderSummary(data) {
     }).join('');
 
     /**
-     * Relative-change pill for "lower is better" metrics. Shape (▼/▲) + sign carry
-     * the meaning; color only reinforces it.
+     * Relative-change pill for "lower is better" metrics. Glyph + a visible word
+     * ("faster"/"slower") carry the meaning; color only reinforces it.
      * @param {number} deltaPct
+     * @param {{ less: string, more: string, noun: string }} words
+     */
+    const deltaPill = (deltaPct, words) => {
+        if (deltaPct < 0) return `<span class="efficiency-delta-pill positive"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}% ${escapeHtml(words.less)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
+        if (deltaPct === 0) return `<span class="efficiency-delta-pill neutral">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
+        return `<span class="efficiency-delta-pill neutral"><span aria-hidden="true">▲ </span>${deltaPct}% ${escapeHtml(words.more)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
+    };
+    /**
+     * Percentage-point pill for pass rates (higher is better).
+     * @param {number} deltaPp
      * @param {string} noun
      */
-    const deltaPill = (deltaPct, noun) => {
-        if (deltaPct < 0) return `<span class="efficiency-delta-pill positive"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}%<span class="visually-hidden"> less ${escapeHtml(noun)}</span></span>`;
-        if (deltaPct === 0) return `<span class="efficiency-delta-pill neutral">±0%<span class="visually-hidden"> ${escapeHtml(noun)}, no change</span></span>`;
-        return `<span class="efficiency-delta-pill neutral"><span aria-hidden="true">▲ </span>${deltaPct}%<span class="visually-hidden"> more ${escapeHtml(noun)}</span></span>`;
+    const ratePill = (deltaPp, noun) => {
+        const cls = deltaPp > 0 ? 'positive' : (deltaPp < 0 ? 'negative' : 'neutral');
+        const glyph = deltaPp > 0 ? '▲ ' : (deltaPp < 0 ? '▼ ' : '');
+        return `<span class="efficiency-delta-pill ${cls}"><span aria-hidden="true">${glyph}</span>${deltaPp > 0 ? '+' : ''}${deltaPp} pp<span class="visually-hidden"> ${escapeHtml(noun)}</span></span>`;
     };
     const suiteTokSign = tok.suiteUncachedDeltaPct > 0 ? '+' : '';
     const hasRuntime = rt.unguidedMedianMs > 0 || rt.guidedMedianMs > 0;
@@ -627,12 +646,12 @@ function renderSummary(data) {
         <!-- Card 1: Overall Uplift & Adoption -->
         <div class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">Pass rate, unguided → guided</span>
-                <span class="meta-value-highlight ${upliftDelta < 0 ? 'negative' : ''}">${upliftDelta >= 0 ? '+' : ''}${upliftDelta} pp</span>
+                <span class="meta-label">Pass rate</span>
+                ${ratePill(upliftDelta, 'pass rate change')}
             </div>
             <div class="sparkline-container">
                 ${renderSparkline(unguidedPassRate, guidedPassRate)}
-                <span class="sparkline-labels"><span class="visually-hidden">Unguided </span>${unguidedPassRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${guidedPassRate}%</strong> <span class="narrative-subtext">(${unguidedStats.passed} → ${guidedStats.passed} / ${Math.max(unguidedStats.total, guidedStats.total)} checks)</span></span>
+                <span class="sparkline-labels"><span class="visually-hidden">Unguided </span>${unguidedPassRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${guidedPassRate}%</strong> <span class="narrative-subtext">(${fraction(unguidedStats.passed, unguidedStats.total)} → ${fraction(guidedStats.passed, guidedStats.total)} checks)</span></span>
             </div>
             <div class="narrative-metrics-list">
                 <div class="narrative-metric-row">
@@ -662,11 +681,11 @@ function renderSummary(data) {
         <div class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
                 <span class="meta-label"><span aria-hidden="true">♿</span> Accessibility subscore</span>
-                <span class="meta-value-highlight ${a11yStats.uplift < 0 ? 'negative' : ''}">${a11yStats.uplift >= 0 ? '+' : ''}${a11yStats.uplift} pp</span>
+                ${ratePill(a11yUpliftPp, 'accessibility subscore change')}
             </div>
             <div class="sparkline-container">
                 ${renderSparkline(a11yStats.unguidedRate, a11yStats.guidedRate)}
-                <span class="sparkline-labels"><span class="visually-hidden">Unguided </span>${a11yStats.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${a11yStats.guidedRate}%</strong> <span class="narrative-subtext">(${a11yStats.unguidedPassed} → ${a11yStats.guidedPassed} / ${Math.max(a11yStats.unguidedTotal, a11yStats.guidedTotal)} checks, ${a11yStats.guideCount} guides)</span></span>
+                <span class="sparkline-labels"><span class="visually-hidden">Unguided </span>${a11yStats.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${a11yStats.guidedRate}%</strong> <span class="narrative-subtext">(${fraction(a11yStats.unguidedPassed, a11yStats.unguidedTotal)} → ${fraction(a11yStats.guidedPassed, a11yStats.guidedTotal)} checks, ${a11yStats.guideCount} guides)</span></span>
             </div>
             <div class="a11y-dimensions-grid">
                 ${a11yDimensionsHtml}
@@ -677,7 +696,7 @@ function renderSummary(data) {
         <div class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
                 <span class="meta-label"><span aria-hidden="true">⏱</span> Median agent time</span>
-                ${hasRuntime ? deltaPill(rt.medianDeltaPct, 'time') : ''}
+                ${hasRuntime ? deltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median agent time' }) : ''}
             </div>
             <div class="narrative-hero-pair">
                 <span><span class="visually-hidden">Unguided </span>${formatDuration(rt.unguidedMedianMs)}</span>
@@ -694,8 +713,8 @@ function renderSummary(data) {
                     <strong>${rt.fasterTaskPct}% (${rt.fasterTasksCount}/${rt.pairedTaskCount} tasks)</strong>
                 </div>
                 <div class="narrative-metric-row">
-                    <span>Timeouts (≥300s)</span>
-                    <strong>${rt.unguidedTimeouts} Unguided → ${rt.guidedTimeouts} Guided</strong>
+                    <span>Timed-out runs (≥10 min)</span>
+                    <strong>${rt.unguidedTimeouts} unguided → ${rt.guidedTimeouts} guided</strong>
                 </div>
             </div>
         </div>
@@ -704,7 +723,7 @@ function renderSummary(data) {
         <div class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
                 <span class="meta-label"><span aria-hidden="true">🪙</span> Median uncached tokens</span>
-                ${hasTokens ? deltaPill(tok.uncachedMedianDeltaPct, 'uncached tokens') : ''}
+                ${hasTokens ? deltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' }) : ''}
             </div>
             <div class="narrative-hero-pair">
                 <span><span class="visually-hidden">Unguided </span>${formatTokens(tok.unguidedUncachedMedian)}</span>

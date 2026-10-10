@@ -25,7 +25,7 @@
   --color-on-primary: light-dark(#ffffff, #0b1a3f);
   --color-outline: light-dark(#747686, #8b8f9c);
   --color-outline-variant: light-dark(rgba(196, 197, 215, 0.4), rgba(196, 197, 215, 0.18));
-  --color-accent-success: light-dark(#15803d, #5fd38a);
+  --color-accent-success: light-dark(#166534, #5fd38a);
   --color-accent-success-bg: light-dark(rgba(22, 163, 74, 0.14), rgba(95, 211, 138, 0.16));
   --color-accent-failure: light-dark(#ba1a1a, #ff8a80);
   --color-accent-failure-bg: light-dark(rgba(186, 26, 26, 0.12), rgba(255, 138, 128, 0.16));
@@ -101,7 +101,7 @@
     --color-on-primary: #ffffff;
     --color-outline: #747686;
     --color-outline-variant: rgba(196, 197, 215, 0.4);
-    --color-accent-success: #15803d;
+    --color-accent-success: #166534;
     --color-accent-success-bg: rgba(22, 163, 74, 0.14);
     --color-accent-failure: #ba1a1a;
     --color-accent-failure-bg: rgba(186, 26, 26, 0.12);
@@ -1439,6 +1439,26 @@ dialog#modal.diff-modal {
   color: var(--color-accent-success);
 }
 
+.efficiency-delta-pill.negative {
+  background: var(--color-accent-failure-bg);
+  color: var(--color-accent-failure);
+}
+
+.efficiency-delta-pill {
+  white-space: nowrap;
+}
+
+/* Summary cards share one header layout: label on the left, change pill on the right. */
+.narrative-card .meta-item-header {
+  gap: 8px;
+  align-items: flex-start;
+  min-block-size: 24px;
+}
+
+.narrative-card::before {
+  content: none; /* no decorative corner bracket on the summary cards */
+}
+
 /* 5-Dimension Accessibility Breakdown Bars */
 .a11y-dimensions-grid {
   display: flex;
@@ -1709,4 +1729,50 @@ dialog#modal.diff-modal {
 
 .run-chip-meta.small {
   font-size: var(--font-xs);
+}
+
+/* Suite page header / layout (replaces inline styles in dashboard.html) */
+.suite-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.suite-test-header {
+  font-size: var(--font-lg);
+  color: var(--text-secondary);
+}
+
+.suite-header-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.suite-header-actions .secondary-btn,
+.dashboard-footer .secondary-btn {
+  text-decoration: none;
+}
+
+.suite-chart-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.suite-chart-section.hidden {
+  display: none;
+}
+
+.suite-dumbbell-chart {
+  width: 100%;
+}
+
+.guide-evals-heading {
+  margin: 16px 0;
+  color: var(--text-primary);
 }
