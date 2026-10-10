@@ -1,14 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { parseJsonlFile } from './agent-shared.ts';
 import { Agents } from '../config.ts';
 
 // Colocated agent parsers
-import { parseClaudeTrajectory } from '../agents/claude-code-agent.ts';
-import { parseGeminiTrajectory } from '../agents/gemini-cli-agent.ts';
-import { parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
+import { parseClaudeTrajectory, loadClaudeLogs } from '../agents/claude-code-agent.ts';
+import { parseGeminiTrajectory, loadGeminiLogs } from '../agents/gemini-cli-agent.ts';
+import { parseCodexTrajectory, loadCodexLogs } from '../agents/codex-cli-agent.ts';
 import { parseJetskiTrajectory } from '../agents/jetski-cli-agent.ts';
-import { parsePiTrajectory } from '../agents/pi-agent.ts';
+import { parsePiTrajectory, loadPiLogs } from '../agents/pi-agent.ts';
 import { parseAntigravityTrajectory } from '../agents/antigravity-cli-agent.ts';
 
 // Re-export for test compatibility and legacy callers
@@ -64,7 +63,7 @@ export {
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
 
-const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
+const TRAJECTORY_GLOB = '{session,subagent}-*.{json,jsonl}';
 
 export function getSessionFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
@@ -235,67 +234,26 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       summary = await parseJetskiTrajectory(targetDir);
     } else if (agentName === Agents.ANTIGRAVITY_CLI) {
       summary = await parseAntigravityTrajectory(targetDir);
-    } else {
-      let allFiles: string[] = [];
-      try {
-        allFiles = fs.readdirSync(targetDir);
-      } catch (err) {
-        if (!isEnoent(err)) throw err;
+    } else if (agentName === Agents.CLAUDE_CODE) {
+      const { logData, subagentsMap } = loadClaudeLogs(targetDir);
+      if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
+        summary = parseClaudeTrajectory(logData, subagentsMap);
       }
-
-      const mainSessionFiles = allFiles
-        .filter(f => f.startsWith('session-') && !f.includes('-subagents-') && (f.endsWith('.json') || f.endsWith('.jsonl')))
-        .sort((a, b) => a.localeCompare(b));
-
-      const subagentFiles = allFiles
-        .filter(f => (f.startsWith('subagent-') || f.includes('-subagents-')) && (f.endsWith('.json') || f.endsWith('.jsonl')))
-        .sort((a, b) => a.localeCompare(b));
-
-      const subagentsMap: Record<string, any[]> = {};
-      for (const file of subagentFiles) {
-        const filePath = path.join(targetDir, file);
-        try {
-          const logData = file.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
-          let key = file.replace(/\.jsonl?$/, '');
-          const agentMatch = key.match(/(?:^|[-_])agent[-_]([a-zA-Z0-9_-]+)$/);
-          if (agentMatch) {
-            key = agentMatch[1];
-          } else {
-            key = key.replace(/^(?:subagent-|session-)/, '');
-          }
-          subagentsMap[key] = Array.isArray(logData) ? logData : ((logData as any)?.messages || []);
-        } catch (e) {
-          console.warn(`[TrajectoryParser] Failed to parse subagent file ${file}:`, e);
-        }
+    } else if (agentName === Agents.GEMINI_CLI) {
+      const { logData, subagentsMap } = loadGeminiLogs(targetDir);
+      const msgs = Array.isArray(logData) ? logData : (logData?.messages || []);
+      if (msgs.length > 0 || Object.keys(subagentsMap).length > 0) {
+        summary = parseGeminiTrajectory(logData, subagentsMap);
       }
-
-      const allMainEntries: any[] = [];
-      for (const file of mainSessionFiles) {
-        const filePath = path.join(targetDir, file);
-        try {
-          const logData = file.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
-          if (Array.isArray(logData)) {
-            allMainEntries.push(...logData);
-          } else if (logData && Array.isArray((logData as any).messages)) {
-            allMainEntries.push(...(logData as any).messages);
-          } else if (logData) {
-            allMainEntries.push(logData);
-          }
-        } catch (e) {
-          console.warn(`[TrajectoryParser] Failed to parse main session file ${file}:`, e);
-        }
+    } else if (agentName === Agents.CODEX_CLI) {
+      const { logData, subagentsMap } = loadCodexLogs(targetDir);
+      if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
+        summary = parseCodexTrajectory(logData, subagentsMap);
       }
-
-      if (allMainEntries.length > 0 || Object.keys(subagentsMap).length > 0) {
-        if (agentName === Agents.CLAUDE_CODE) {
-          summary = parseClaudeTrajectory(allMainEntries, subagentsMap);
-        } else if (agentName === Agents.GEMINI_CLI) {
-          summary = parseGeminiTrajectory(allMainEntries, subagentsMap);
-        } else if (agentName === Agents.CODEX_CLI) {
-          summary = parseCodexTrajectory(allMainEntries, subagentsMap);
-        } else if (agentName === Agents.PI) {
-          summary = parsePiTrajectory(allMainEntries, subagentsMap);
-        }
+    } else if (agentName === Agents.PI) {
+      const { logData, subagentsMap } = loadPiLogs(targetDir);
+      if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
+        summary = parsePiTrajectory(logData, subagentsMap);
       }
     }
 
@@ -307,12 +265,4 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
   } catch (err) {
     console.error(`[TrajectoryParser] Failed to generate normalized trajectory for ${agentName}:`, err);
   }
-}
-
-function isNodeError(err: unknown): err is NodeJS.ErrnoException {
-  return err instanceof Error && 'code' in err;
-}
-
-function isEnoent(err: unknown): boolean {
-  return isNodeError(err) && err.code === 'ENOENT';
 }

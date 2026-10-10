@@ -45,6 +45,42 @@ function getSessionFiles(dir: string): string[] {
   return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
 }
 
+export function coalesceClaudeEntries(entries: any[]): any[] {
+  const result: any[] = [];
+  const entriesById = new Map<string, any>();
+
+  for (const entry of entries) {
+    const messageId = entry?.message ? (entry.message.id || entry.messageId) : undefined;
+    if (!messageId) {
+      result.push(entry);
+      continue;
+    }
+
+    const prev = entriesById.get(messageId);
+    if (!prev) {
+      const cloned = {
+        ...entry,
+        message: entry.message && {
+          ...entry.message,
+          content: Array.isArray(entry.message.content) ? [...entry.message.content] : entry.message.content
+        }
+      };
+      entriesById.set(messageId, cloned);
+      result.push(cloned);
+    } else if (prev.message && entry.message) {
+      if (Array.isArray(entry.message.content)) {
+        prev.message.content = Array.isArray(prev.message.content)
+          ? [...prev.message.content, ...entry.message.content]
+          : [...entry.message.content];
+      }
+      if (entry.message.usage) prev.message.usage = entry.message.usage;
+      if (entry.message.model && !prev.message.model) prev.message.model = entry.message.model;
+    }
+  }
+
+  return result;
+}
+
 function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void {
   const tempHome = path.dirname(workDir);
   const claudeLogDir = path.join(tempHome, '.claude', 'projects');
@@ -66,16 +102,7 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
     const rawDestName = isSubagent ? `subagent-${baseName}.jsonl` : `session-${baseName}.jsonl`;
     fs.copyFileSync(src, path.join(targetDir, rawDestName));
 
-    const logContent = fs.readFileSync(src, 'utf8');
-    const jsonLines = logContent.split(/\r?\n/).filter(Boolean);
-    const logData = jsonLines.map(line => {
-      try {
-        return JSON.parse(line);
-      } catch (e) {
-        console.error("Failed to parse JSONL line:", e);
-        return { error: "Failed to parse line", raw: line };
-      }
-    });
+    const logData = coalesceClaudeEntries(parseJsonlFile(src));
 
     parsedSessions.push({ relativePath, baseName, logData });
 
@@ -145,126 +172,154 @@ async function run() {
   }
 }
 
-/**
- * Helper to parse a list of Claude JSONL entries into StandardizedSteps.
- */
-function parseClaudeLogEntries(
-  logData: ClaudeLogEntry[],
-  subagentId?: string,
-  subagentsMap: Record<string, ClaudeLogEntry[]> = {},
-  consumedSubagents: Set<string> = new Set()
-): StandardizedStep[] {
-  const steps: StandardizedStep[] = [];
-  const toolUseToStepMap = new Map<string, number>();
+export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
+  const modelCounts: Record<string, number> = {};
+  let totalTokens = 0;
+  let cachedTokens = 0;
+  let hasTokenData = false;
+  const toolsUsed = new Set<string>();
+  const retrievedGuides = new Set<string>();
+  const fileReadGuides = new Set<string>();
+  const consumedSubagents = new Set<string>();
 
-  for (const entry of logData) {
-    const rawEntry = entry as Record<string, any>;
-    const timestamp = extractTimestamp(rawEntry);
-    let role = rawEntry.role || rawEntry.type || 'unknown';
-    let content = rawEntry.message?.content || rawEntry.content || rawEntry;
-    if (rawEntry.message) {
-      role = rawEntry.message.role || role;
-    }
+  const parseEntries = (entries: ClaudeLogEntry[], subagentId?: string): StandardizedStep[] => {
+    const steps: StandardizedStep[] = [];
+    const toolUseToStepMap = new Map<string, number>();
 
-    if (role === 'assistant' && Array.isArray(content)) {
-      let thought = '';
-      const thinkingBlock = content.find((b: any) => b.type === 'thinking');
-      const textBlock = content.find((b: any) => b.type === 'text');
-      
-      if (thinkingBlock?.thinking) {
-        thought = thinkingBlock.thinking;
-      } else if (textBlock?.text) {
-        const match = textBlock.text.match(/<thinking>([\s\S]*?)<\/thinking>/);
-        if (match) {
-          thought = match[1];
-        } else {
-          thought = textBlock.text;
-        }
+    for (const entry of coalesceClaudeEntries(entries)) {
+      const rawEntry = entry as Record<string, any>;
+      const timestamp = extractTimestamp(rawEntry);
+
+      if (rawEntry.message?.model) {
+        modelCounts[rawEntry.message.model] = (modelCounts[rawEntry.message.model] || 0) + 1;
+      }
+      if (rawEntry.message?.usage) {
+        const u = rawEntry.message.usage;
+        totalTokens += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+        cachedTokens += u.cache_read_input_tokens || 0;
+        hasTokenData = true;
       }
 
-      const toolUses = content.filter((b: any) => b.type === 'tool_use');
-      
-      if (toolUses.length === 0) {
-        steps.push({
-          stepNumber: 0,
-          timestamp,
-          subagentId,
-          thought,
-          action: {
-            type: 'other',
-            name: 'respond_to_user',
-            params: textBlock?.text ? { response: truncateMessage(textBlock.text, 150) } : undefined
-          },
-          outcome: { status: 'success' }
-        });
-      } else {
-        for (const tool of toolUses) {
-          const isSubagentCall = ['task', 'agent', 'stitch', 'dispatch'].includes((tool.name || '').toLowerCase());
-          const stepIdx = steps.push({
+      let role = rawEntry.role || rawEntry.type || rawEntry.message?.role;
+      const content = rawEntry.message?.content || rawEntry.content || rawEntry;
+      if (!role && (rawEntry.message || Array.isArray(content))) {
+        role = 'assistant';
+      }
+
+      if (role === 'assistant' && Array.isArray(content)) {
+        let thought = '';
+        const thinkingBlock = content.find((b: any) => b.type === 'thinking');
+        const textBlock = content.find((b: any) => b.type === 'text');
+
+        if (thinkingBlock?.thinking) {
+          thought = thinkingBlock.thinking;
+        } else if (textBlock?.text) {
+          const match = textBlock.text.match(/<thinking>([\s\S]*?)<\/thinking>/);
+          thought = match ? match[1] : textBlock.text;
+        }
+
+        const toolUses = content.filter((b: any) => b.type === 'tool_use');
+
+        if (toolUses.length === 0) {
+          steps.push({
             stepNumber: 0,
             timestamp,
             subagentId,
             thought,
             action: {
-              type: mapToolType(tool.name || ''),
-              name: tool.name || 'unknown',
-              params: tool.input
+              type: 'other',
+              name: 'respond_to_user',
+              params: textBlock?.text ? { response: truncateMessage(textBlock.text, 150) } : undefined
+            },
+            outcome: { status: 'success' }
+          });
+        } else {
+          for (const tool of toolUses) {
+            if (tool.name === 'Skill' && tool.input?.skill) {
+              toolsUsed.add(tool.input.skill);
+            } else if (tool.name === 'activate_skill' && tool.input?.name) {
+              toolsUsed.add(tool.input.name);
+            } else if (tool.name === 'Bash' && tool.input?.command) {
+              const command = tool.input.command;
+              if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
+                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+                if (match) {
+                  for (const g of match[1].split(',').map((s: string) => s.trim())) {
+                    retrievedGuides.add(g);
+                  }
+                }
+              }
+            } else if (tool.name === 'Read' && tool.input?.file_path) {
+              const filePath = tool.input.file_path;
+              if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
+                const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+                if (match) {
+                  fileReadGuides.add(match[1]);
+                }
+              }
             }
-          }) - 1;
 
-          if (tool.id) {
-            toolUseToStepMap.set(tool.id, stepIdx);
+            const isSubagentCall = ['task', 'agent', 'stitch', 'dispatch'].includes((tool.name || '').toLowerCase());
+            const stepIdx = steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought,
+              action: {
+                type: mapToolType(tool.name || ''),
+                name: tool.name || 'unknown',
+                params: tool.input
+              }
+            }) - 1;
+
+            if (tool.id) {
+              toolUseToStepMap.set(tool.id, stepIdx);
+            }
+
+            if (isSubagentCall && subagentsMap) {
+              const subId = tool.input?.subagent_id || tool.input?.agent_id || tool.id;
+              for (const [key, subLogs] of Object.entries(subagentsMap)) {
+                if (!consumedSubagents.has(key) && (key === subId || key.includes(tool.id) || JSON.stringify(tool.input || {}).includes(key))) {
+                  consumedSubagents.add(key);
+                  steps.push(...parseEntries(subLogs, key));
+                  break;
+                }
+              }
+            }
           }
+        }
+      } else if (role === 'user' || role === 'system') {
+        const contentList = Array.isArray(content) ? content : [content];
+        for (const block of contentList) {
+          if (block && block.type === 'tool_result' && block.tool_use_id) {
+            const stepIdx = toolUseToStepMap.get(block.tool_use_id);
+            if (stepIdx !== undefined && steps[stepIdx]) {
+              const outText = typeof block.content === 'string' ? block.content : JSON.stringify(block.content ?? '');
+              steps[stepIdx].outcome = {
+                status: block.is_error ? 'error' : 'success',
+                message: truncateMessage(outText)
+              };
 
-          if (isSubagentCall && subagentsMap) {
-            const subId = tool.input?.subagent_id || tool.input?.agent_id || tool.id;
-            for (const [key, subLogs] of Object.entries(subagentsMap)) {
-              if (!consumedSubagents.has(key) && (key === subId || key.includes(tool.id) || JSON.stringify(tool.input || {}).includes(key))) {
-                consumedSubagents.add(key);
-                const subSteps = parseClaudeLogEntries(subLogs, key, subagentsMap, consumedSubagents);
-                steps.push(...subSteps);
-                break;
+              const match = outText.match(/agentId:\s*([a-zA-Z0-9_-]+)/);
+              if (match && match[1] && subagentsMap[match[1]] && !consumedSubagents.has(match[1])) {
+                const matchedId = match[1];
+                consumedSubagents.add(matchedId);
+                steps.push(...parseEntries(subagentsMap[matchedId], matchedId));
               }
             }
           }
         }
       }
-    } else if (role === 'user' || role === 'system') {
-      const contentList = Array.isArray(content) ? content : [content];
-      for (const block of contentList) {
-        if (block && block.type === 'tool_result' && block.tool_use_id) {
-          const stepIdx = toolUseToStepMap.get(block.tool_use_id);
-          if (stepIdx !== undefined && steps[stepIdx]) {
-            const outText = typeof block.content === 'string' ? block.content : JSON.stringify(block.content);
-            steps[stepIdx].outcome = {
-              status: block.is_error ? 'error' : 'success',
-              message: truncateMessage(outText)
-            };
-
-            const match = outText.match(/agentId:\s*([a-zA-Z0-9_-]+)/);
-            if (match && match[1] && subagentsMap[match[1]] && !consumedSubagents.has(match[1])) {
-              const matchedId = match[1];
-              consumedSubagents.add(matchedId);
-              const subSteps = parseClaudeLogEntries(subagentsMap[matchedId], matchedId, subagentsMap, consumedSubagents);
-              steps.push(...subSteps);
-            }
-          }
-        }
-      }
     }
-  }
-  return steps;
-}
+    return steps;
+  };
 
-export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
-  const consumedSubagents = new Set<string>();
-  const steps = parseClaudeLogEntries(logData, undefined, subagentsMap, consumedSubagents);
+  const steps = parseEntries(logData);
 
   for (const [subId, subLogs] of Object.entries(subagentsMap)) {
     if (!consumedSubagents.has(subId)) {
       consumedSubagents.add(subId);
-      const subSteps = parseClaudeLogEntries(subLogs, subId, subagentsMap, consumedSubagents);
-      steps.push(...subSteps);
+      steps.push(...parseEntries(subLogs, subId));
     }
   }
 
@@ -280,17 +335,17 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
     }
   }
 
-  const meta = extractClaudeMetadata(logData, subagentsMap);
+  const topModel = Object.entries(modelCounts).sort((a, b) => b[1] - a[1])[0];
 
   return finalizeTrajectorySummary({
     agent: Agents.CLAUDE_CODE,
     steps,
     subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined,
-    model: meta.model,
-    tokenUsage: meta.tokenUsage,
-    toolsUsed: meta.toolsUsed,
-    retrievedGuides: meta.retrievedGuides,
-    fileReadGuides: meta.fileReadGuides
+    model: topModel ? topModel[0] : 'unknown',
+    tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
+    toolsUsed: Array.from(toolsUsed),
+    retrievedGuides: Array.from(retrievedGuides),
+    fileReadGuides: Array.from(fileReadGuides)
   });
 }
 
@@ -301,85 +356,18 @@ export function extractClaudeMetadata(logData: any[], subagentsMap: Record<strin
   retrievedGuides: string[];
   fileReadGuides: string[];
 } {
-  const modelCounts: Record<string, number> = {};
-  let totalTokens = 0;
-  let cachedTokens = 0;
-  let hasTokenData = false;
-  const toolsUsed = new Set<string>();
-  const retrievedGuides = new Set<string>();
-  const fileReadGuides = new Set<string>();
-
-  const processEntries = (entries: any[]) => {
-    const usagesById = new Map<string, any>();
-    const standaloneUsages: any[] = [];
-
-    for (const obj of entries) {
-      if (obj.message?.model) {
-        modelCounts[obj.message.model] = (modelCounts[obj.message.model] || 0) + 1;
-      }
-      if (obj.message?.usage) {
-        const messageId = obj.message.id || obj.messageId;
-        if (messageId) {
-          usagesById.set(messageId, obj.message.usage);
-        } else {
-          standaloneUsages.push(obj.message.usage);
-        }
-      }
-      const content = obj.message?.content;
-      for (const item of Array.isArray(content) ? content : []) {
-        if (item.type === 'tool_use') {
-          if (item.name === 'Skill' && item.input?.skill) {
-            toolsUsed.add(item.input.skill);
-          } else if (item.name === 'activate_skill' && item.input?.name) {
-            toolsUsed.add(item.input.name);
-          } else if (item.name === 'Bash' && item.input?.command) {
-            const command = item.input.command;
-            if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
-              const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-              if (match) {
-                for (const g of match[1].split(',').map((s: string) => s.trim())) {
-                  retrievedGuides.add(g);
-                }
-              }
-            }
-          } else if (item.name === 'Read' && item.input?.file_path) {
-            const filePath = item.input.file_path;
-            if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-              const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-              if (match) {
-                fileReadGuides.add(match[1]);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    for (const u of [...usagesById.values(), ...standaloneUsages]) {
-      totalTokens += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
-      cachedTokens += u.cache_read_input_tokens || 0;
-      hasTokenData = true;
-    }
-  };
-
-  processEntries(logData);
-  for (const subLogs of Object.values(subagentsMap)) {
-    processEntries(subLogs);
-  }
-
-  const topModel = Object.entries(modelCounts).sort((a, b) => b[1] - a[1])[0];
-
+  const summary = parseClaudeTrajectory(logData, subagentsMap);
   return {
-    model: topModel ? topModel[0] : 'unknown',
-    tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
-    toolsUsed: Array.from(toolsUsed),
-    retrievedGuides: Array.from(retrievedGuides),
-    fileReadGuides: Array.from(fileReadGuides)
+    model: summary.model || 'unknown',
+    tokenUsage: summary.tokenUsage,
+    toolsUsed: summary.toolsUsed || [],
+    retrievedGuides: summary.retrievedGuides || [],
+    fileReadGuides: summary.fileReadGuides || []
   };
 }
 
 export function loadClaudeLogs(dir: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
-  let logData: any[] = [];
+  const logData: any[] = [];
   const subagentsMap: Record<string, any[]> = {};
   const files = getSessionFiles(dir);
 
@@ -387,16 +375,12 @@ export function loadClaudeLogs(dir: string): { logData: any[]; subagentsMap: Rec
   const subFiles = files.filter(f => f.startsWith('subagent-')).sort();
 
   for (const file of mainFiles) {
-    try {
-      logData.push(...parseJsonlFile(path.join(dir, file)));
-    } catch {}
+    logData.push(...parseJsonlFile(path.join(dir, file)));
   }
 
   for (const file of subFiles) {
-    try {
-      const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
-      subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
-    } catch {}
+    const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+    subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
   }
 
   return { logData, subagentsMap };

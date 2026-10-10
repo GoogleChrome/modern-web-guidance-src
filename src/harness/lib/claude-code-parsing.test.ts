@@ -5,6 +5,7 @@ import path from 'path';
 import os from 'os';
 import {
   generateNormalizedTrajectory,
+  readTrajectorySummary,
   collectClaudeGuidesFromTrajectory,
   collectClaudeToolsFromTrajectory,
   extractClaudeCodeModel,
@@ -445,6 +446,25 @@ test('Claude Code token deduplication across streaming chunks and cache_creation
   const tempDir = createTempDir();
   try {
     const lines = [
+      // Non-message snapshot event sharing messageId with Turn 1 (should not collide)
+      JSON.stringify({
+        type: 'attribution-snapshot',
+        messageId: 'msg_turn_1',
+        fileStates: {}
+      }),
+      // Turn 1, Chunk 0 (initial metadata chunk without content array)
+      JSON.stringify({
+        message: {
+          id: 'msg_turn_1',
+          model: 'claude-3-7-sonnet',
+          usage: {
+            input_tokens: 150,
+            cache_creation_input_tokens: 50,
+            cache_read_input_tokens: 100,
+            output_tokens: 1
+          }
+        }
+      }),
       // Turn 1, Chunk 1 (thinking)
       JSON.stringify({
         message: {
@@ -473,6 +493,13 @@ test('Claude Code token deduplication across streaming chunks and cache_creation
           content: [{ type: 'tool_use', id: 'c1', name: 'Bash', input: { command: 'echo hello' } }]
         }
       }),
+      // User tool_result with undefined content (should not throw)
+      JSON.stringify({
+        role: 'user',
+        message: {
+          content: [{ type: 'tool_result', tool_use_id: 'c1' }]
+        }
+      }),
       // Turn 2, single chunk
       JSON.stringify({
         message: {
@@ -496,6 +523,22 @@ test('Claude Code token deduplication across streaming chunks and cache_creation
     // Turn 2: 200 + 0 + 250 + 60 = 510 total, 250 cached
     // Combined: 345 + 510 = 855 total, 100 + 250 = 350 cached
     assert.deepStrictEqual(tokens, { total: 855, cached: 350 });
+
+    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Run task');
+
+    const summary = readTrajectorySummary(tempDir);
+    assert.ok(summary, 'trajectory_summary.json should be generated');
+    assert.strictEqual(summary.steps.length, 2, 'Should coalesce streaming chunks into exactly 2 steps');
+
+    // Step 1: Tool step coalesced from split thinking + tool_use chunks
+    assert.strictEqual(summary.steps[0].action?.name, 'Bash');
+    assert.strictEqual(summary.steps[0].thought, 'Thinking about the task');
+    assert.strictEqual(summary.steps[0].action?.params?.command, 'echo hello');
+    assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+
+    // Step 2: Final response to user
+    assert.strictEqual(summary.steps[1].action?.name, 'respond_to_user');
+    assert.strictEqual(summary.steps[1].action?.params?.response, 'Task completed');
   } finally {
     removeTempDir(tempDir);
   }
