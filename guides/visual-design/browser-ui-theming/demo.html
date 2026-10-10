@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Theming Browser-Generated UI Demo</title>
+    <style>
+      :root {
+        /* Adapt native browser UI to light and dark mode */
+        color-scheme: light dark;
+
+        --bg: light-dark(#f8fafc, #0f172a);
+        --surface: light-dark(#ffffff, #1e293b);
+        --surface-muted: light-dark(#f1f5f9, #334155);
+        --text: light-dark(#0f172a, #f8fafc);
+        --text-muted: light-dark(#475569, #cbd5e1);
+        --border: light-dark(#cbd5e1, #475569);
+        --accent: light-dark(#4f46e5, #818cf8);
+        --accent-contrast: light-dark(#ffffff, #0f172a);
+        --selection-bg: light-dark(#c7d2fe, #3730a3);
+        --selection-text: light-dark(#1e1b4b, #e0e7ff);
+        --valid: light-dark(#15803d, #4ade80);
+        --valid-bg: light-dark(#f0fdf4, #052e16);
+        --invalid: light-dark(#b91c1c, #f87171);
+        --invalid-bg: light-dark(#fef2f2, #450a0a);
+
+        /* Scrollbar colors with >= 3:1 contrast between thumb and track */
+        --scrollbar-thumb: light-dark(#4f46e5, #818cf8);
+        --scrollbar-track: light-dark(#e2e8f0, #1e293b);
+
+        /* Apply the page's accent color to native browser-generated UI */
+        accent-color: var(--accent);
+      }
+
+      /* Customize highlighted text colors */
+      ::selection {
+        background-color: var(--selection-bg);
+        color: var(--selection-text);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+        margin: 0;
+        padding: 2rem;
+      }
+
+      main {
+        max-width: 48rem;
+        margin-inline: auto;
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      .card {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      /* Limit user-select: none strictly to non-content chrome (never on <p> or ancestors) */
+      .chrome-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        background-color: var(--surface-muted);
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        user-select: none;
+      }
+
+      .drag-handle {
+        cursor: grab;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        user-select: none;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--text-muted);
+      }
+
+      /* Scrollable region with customized scrollbar-color and scrollbar-width */
+      .scrollable-notes {
+        max-height: 7.5rem;
+        overflow-y: auto;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        background-color: var(--surface-muted);
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+        scrollbar-gutter: stable;
+      }
+
+      .scrollable-notes p + p {
+        margin-block-start: 0.5rem;
+      }
+
+      form {
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .field {
+        display: grid;
+        gap: 0.375rem;
+      }
+
+      label,
+      legend {
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+
+      fieldset {
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 0;
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      /* Textual fields (<input> & <textarea>) styled as normal text containers */
+      input[type="text"],
+      input[type="email"],
+      textarea {
+        font: inherit;
+        font-size: 1rem;
+        color: var(--text);
+        background-color: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.625rem 0.75rem;
+        width: 100%;
+        transition: border-color 0.15s ease, background-color 0.15s ease;
+      }
+
+      /* Style placeholders and inputs currently showing their placeholder */
+      input::placeholder,
+      textarea::placeholder {
+        color: var(--text-muted);
+        opacity: 0.75;
+        font-style: italic;
+      }
+
+      input:placeholder-shown,
+      textarea:placeholder-shown {
+        border-style: dashed;
+      }
+
+      /* Auto-growing text fields using field-sizing: content */
+      .auto-grow,
+      textarea {
+        field-sizing: content;
+      }
+
+      input.auto-grow {
+        width: auto;
+        justify-self: start;
+        min-inline-size: 14rem;
+        max-inline-size: 100%;
+      }
+
+      /* Disable horizontal resizing on <textarea> while keeping vertical resizing */
+      textarea {
+        resize: vertical;
+        min-block-size: 4.5rem;
+      }
+
+      /* Post-interaction validity styling using :user-invalid and :user-valid (NOT :invalid / :valid) */
+      input:user-invalid,
+      textarea:user-invalid {
+        border-color: var(--invalid);
+        background-color: var(--invalid-bg);
+        border-style: solid;
+      }
+
+      input:user-valid,
+      textarea:user-valid {
+        border-color: var(--valid);
+        background-color: var(--valid-bg);
+        border-style: solid;
+      }
+
+      .hint {
+        font-size: 0.825rem;
+        color: var(--text-muted);
+      }
+
+      /* Customizable <select> with appearance: base-select and ::picker(select) */
+      select,
+      ::picker(select) {
+        appearance: base-select;
+      }
+
+      select {
+        font: inherit;
+        font-size: 1rem;
+        color: var(--text);
+        background-color: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.625rem 0.75rem;
+        cursor: pointer;
+      }
+
+      ::picker(select) {
+        background-color: var(--surface);
+        color: var(--text);
+        border: 1.5px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.375rem;
+        box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.2);
+      }
+
+      select::picker-icon {
+        color: var(--accent);
+      }
+
+      option {
+        padding: 0.5rem 0.625rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+      }
+
+      option:hover {
+        background-color: var(--surface-muted);
+      }
+
+      option::checkmark {
+        color: var(--accent);
+      }
+
+      /* Inline multiple-choice options styled via label:has(:checked) */
+      .choice-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.625rem;
+      }
+
+      .choice-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.875rem;
+        border: 1.5px solid var(--border);
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: border-color 0.15s ease, background-color 0.15s ease;
+      }
+
+      .choice-pill:has(:checked) {
+        border-color: var(--accent);
+        background-color: var(--selection-bg);
+        color: var(--selection-text);
+      }
+
+      /* Custom checkbox drawn via appearance: none + generated content */
+      .custom-check-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.625rem;
+        cursor: pointer;
+      }
+
+      input[type="checkbox"].custom-check {
+        appearance: none;
+        width: 1.25rem;
+        height: 1.25rem;
+        margin: 0;
+        border: 2px solid var(--border);
+        border-radius: 0.3rem;
+        background-color: var(--surface);
+        display: inline-grid;
+        place-content: center;
+        cursor: pointer;
+      }
+
+      input[type="checkbox"].custom-check::before {
+        content: "";
+        width: 0.65rem;
+        height: 0.65rem;
+        transform: scale(0);
+        transition: transform 0.12s ease-in-out;
+        box-shadow: inset 1rem 1rem var(--accent-contrast);
+        clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+      }
+
+      input[type="checkbox"].custom-check:checked {
+        background-color: var(--accent);
+        border-color: var(--accent);
+      }
+
+      input[type="checkbox"].custom-check:checked::before {
+        transform: scale(1);
+      }
+
+      /* File input styled via ::file-selector-button */
+      input[type="file"] {
+        font: inherit;
+        font-size: 0.95rem;
+        color: var(--text-muted);
+      }
+
+      input[type="file"]::file-selector-button {
+        font: inherit;
+        font-weight: 600;
+        color: var(--accent-contrast);
+        background-color: var(--accent);
+        border: none;
+        border-radius: 0.375rem;
+        padding: 0.5rem 0.875rem;
+        margin-inline-end: 0.75rem;
+        cursor: pointer;
+      }
+
+      /* Range slider styled via appearance: none and track/thumb pseudo-elements */
+      input[type="range"] {
+        appearance: none;
+        width: 100%;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      input[type="range"]::-webkit-slider-runnable-track {
+        height: 0.5rem;
+        border-radius: 999px;
+        background: var(--scrollbar-track);
+      }
+
+      input[type="range"]::-moz-range-track {
+        height: 0.5rem;
+        border-radius: 999px;
+        background: var(--scrollbar-track);
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 50%;
+        background: var(--accent);
+        border: 2px solid var(--surface);
+        margin-top: -0.375rem;
+        box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 50%;
+        background: var(--accent);
+        border: 2px solid var(--surface);
+        box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+      }
+
+      /* Use <button> elements (not <input type="submit|reset|button">) styled as normal elements */
+      .actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      button {
+        font: inherit;
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.5rem;
+        border: 1.5px solid transparent;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      button[type="submit"] {
+        background-color: var(--accent);
+        color: var(--accent-contrast);
+      }
+
+      button[type="reset"] {
+        background-color: var(--surface-muted);
+        color: var(--text);
+        border-color: var(--border);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <div class="chrome-bar">
+          <span>Profile &amp; Workspace Preferences</span>
+          <span class="drag-handle" aria-hidden="true">⋮⋮</span>
+        </div>
+
+        <h1>Theming Browser-Generated UI</h1>
+        <p>
+          Highlight this paragraph to preview the custom <code>::selection</code> colors. Content
+          paragraphs remain selectable so copy-paste, translation tools, and assistive technologies
+          work as expected.
+        </p>
+
+        <div class="scrollable-notes" tabindex="0" aria-label="Release notes">
+          <p>
+            <strong>Scrollable region:</strong> This container uses <code>scrollbar-width: thin</code>
+            and <code>scrollbar-color</code> with a high-contrast thumb and track.
+          </p>
+          <p>
+            Native scrollbars, form controls, and light/dark palettes automatically adapt via
+            <code>color-scheme</code> and <code>accent-color</code>.
+          </p>
+          <p>
+            Scroll further down to verify the custom scrollbar thumb stays visibly distinct against
+            its track.
+          </p>
+        </div>
+
+        <form id="preferences-form" action="#preferences-form">
+          <div class="field">
+            <label for="display-name">Display name (required)</label>
+            <input
+              id="display-name"
+              name="displayName"
+              type="text"
+              class="auto-grow"
+              required
+              minlength="3"
+              placeholder="e.g. Ada Lovelace"
+            />
+            <span class="hint">
+              Uses <code>field-sizing: content</code> and <code>:user-invalid</code> /
+              <code>:user-valid</code> (no premature error state on load).
+            </span>
+          </div>
+
+          <div class="field">
+            <label for="contact-email">Notification email (required)</label>
+            <input
+              id="contact-email"
+              name="contactEmail"
+              type="email"
+              required
+              placeholder="ada@example.com"
+            />
+          </div>
+
+          <div class="field">
+            <label for="bio">Short bio (auto-growing textarea)</label>
+            <textarea
+              id="bio"
+              name="bio"
+              required
+              minlength="10"
+              placeholder="Tell us about your work (grows with content, vertical resize only)..."
+            ></textarea>
+          </div>
+
+          <div class="field">
+            <label for="role-select">Primary role</label>
+            <select id="role-select" name="role">
+              <option value="design">Design Engineer</option>
+              <option value="frontend">Frontend Developer</option>
+              <option value="accessibility">Accessibility Specialist</option>
+              <option value="product">Product Manager</option>
+            </select>
+          </div>
+
+          <fieldset>
+            <legend>Theme density (inline radio options with <code>label:has(:checked)</code>)</legend>
+            <div class="choice-pills">
+              <label class="choice-pill">
+                <input type="radio" name="density" value="comfortable" checked />
+                Comfortable
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="density" value="compact" />
+                Compact
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="density" value="spacious" />
+                Spacious
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label class="custom-check-label">
+              <input type="checkbox" class="custom-check" name="highContrast" checked />
+              <span>Enable enhanced focus indicators (custom <code>appearance: none</code> checkbox)</span>
+            </label>
+          </div>
+
+          <div class="field">
+            <label for="avatar-upload">Profile avatar (styled via <code>::file-selector-button</code>)</label>
+            <input id="avatar-upload" name="avatar" type="file" accept="image/*" />
+          </div>
+
+          <div class="field">
+            <label for="ui-scale">Interface scale</label>
+            <input id="ui-scale" name="uiScale" type="range" min="80" max="140" step="10" value="100" />
+          </div>
+
+          <div class="actions">
+            <button type="submit">Save preferences</button>
+            <button type="reset">Reset</button>
+          </div>
+        </form>
+      </section>
+    </main>
+    <script type="module">
+      const form = document.getElementById('preferences-form');
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+      });
+    </script>
+  </body>
+</html>
