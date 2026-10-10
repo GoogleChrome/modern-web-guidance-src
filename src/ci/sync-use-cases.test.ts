@@ -597,7 +597,7 @@ describe('buildIssueContent', () => {
 
   test('generates correct issue title', () => {
     const { issueTitle } = buildIssueContent('my-use-case', 'A description', [], 'guides/ux/my-use-case', emptyMap, makeInventory());
-    assert.strictEqual(issueTitle, 'Create guide and evals for the my-use-case use case');
+    assert.strictEqual(issueTitle, 'Create guide for the my-use-case use case');
   });
 
   test('includes description in issue body', () => {
@@ -953,7 +953,7 @@ describe('preserveTemplateUseCases', () => {
         number: 25,
         state: 'open',
         title: 'Create guide for the Custom-Scrollbars use case',
-        body: '### Use case slug\n\nCustom-Scrollbars\n\n### Category\n\nvisual-design\n\n### Affected web-feature IDs\n\nscrollbar-color, tmp-scroll-axis-lock\n',
+        body: '### Use case slug\n\nCustom-Scrollbars\n\n### Category\n\nvisual-design\n\n### web-feature-id\n\nscrollbar-color, tmp-scroll-axis-lock\n',
       },
       {
         number: 26,

@@ -164,7 +164,7 @@ export function buildIssueContent(
   const checklistSection = `\n\n${REQUIRED_FILES_START}\n**Required files:**\n${checklist}\n${REQUIRED_FILES_END}`;
 
   return {
-    issueTitle: `Create guide and evals for the ${name} use case`,
+    issueTitle: `Create guide for the ${name} use case`,
     issueBody: `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}${checklistSection}`,
     priorityLabel,
     milestoneNumber,
@@ -665,7 +665,7 @@ async function processUseCases(
     }
 
     let statusChanged = false;
-    if (statusName && (issueNumber > 0 || IS_DRY_RUN)) {
+    if (statusName && existingIssue?.state !== 'closed' && (issueNumber > 0 || IS_DRY_RUN)) {
       if (projectDetails) {
         const currentStatus = projectDetails.issueStatusMap.get(issueNumber);
         if (currentStatus?.toLowerCase() !== statusName.toLowerCase()) {

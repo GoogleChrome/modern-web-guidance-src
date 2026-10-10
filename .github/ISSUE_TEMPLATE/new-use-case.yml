@@ -15,7 +15,6 @@ body:
         - forms
         - html
         - js
-        - motion
         - performance
         - privacy
         - pwa
@@ -42,7 +41,7 @@ body:
     id: web-feature-id
     attributes:
       label: web-feature-id
-      description: Provide the web-feature ID(s) from https://webstatus.dev/ (or `tmp-*` ID from `features/pending-web-features.json`).
+      description: Provide the web-feature ID(s) from https://webstatus.dev/ (or `tmp-*` ID from `features/pending-web-features.json`), comma-separated if multiple.
       placeholder: e.g. scroll-driven-animations
     validations:
       required: true
@@ -52,7 +51,7 @@ body:
     attributes:
       label: Scope & description
       description: 1–2 sentence description of the developer task and what the guide should cover.
-      placeholder: Style list markers using `::marker` and custom `@counter-style` rules.
+      placeholder: Customize the bullets and numbering of lists with custom shapes, colors, and counter formats.
     validations:
       required: true
 

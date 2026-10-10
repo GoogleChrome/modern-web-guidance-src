@@ -2,28 +2,13 @@ export function extractFeatureIds(description: string): string[] {
   const featureIds = new Set<string>();
 
   // Pattern 1: GitHub form template:
-  // ### web-feature-id
-  //
-  // value
-  const formRegex = /### web-feature-id\s*\r?\n\s*([^\r\n#]+)/gi;
+  // ### web-feature-id (single or comma-separated list)
+  const formRegex = /### web-feature-ids?\s*\r?\n\s*([^\r\n#]+)/gi;
   let match;
   while ((match = formRegex.exec(description)) !== null) {
-    const val = match[1].trim();
-    if (val && val !== '_No response_') featureIds.add(val);
-  }
-
-  // Pattern 1b: new-use-case form template:
-  // ### Affected web-feature IDs
-  //
-  // dialog-closedby, popover
-  const affectedFeaturesRegex = /### Affected web-feature IDs\s*\r?\n\s*([^\r\n#]+)/gi;
-  while ((match = affectedFeaturesRegex.exec(description)) !== null) {
-    const raw = match[1].trim();
-    if (raw && raw !== '_No response_') {
-      for (const token of raw.split(',')) {
-        const val = token.trim();
-        if (val) featureIds.add(val);
-      }
+    for (const token of match[1].split(',')) {
+      const val = token.trim();
+      if (val && val !== '_No response_') featureIds.add(val);
     }
   }
 
