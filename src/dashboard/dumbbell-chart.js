@@ -21,6 +21,12 @@
  * @property {number} gVal
  * @property {number} uTokens
  * @property {number} gTokens
+ * @property {number} uUncachedTokens
+ * @property {number} gUncachedTokens
+ * @property {number} uCachedPct
+ * @property {number} gCachedPct
+ * @property {number} uRuntimeMs
+ * @property {number} gRuntimeMs
  * @property {boolean} uFailed
  * @property {boolean} gFailed
  * @property {number} originalIndex
@@ -31,6 +37,9 @@
  * @property {string} label
  * @property {number[]} data
  * @property {number[]} [tokens]
+ * @property {number[]} [uncachedTokens]
+ * @property {number[]} [cachedPct]
+ * @property {number[]} [runtimeMs]
  * @property {boolean[]} [failed]
  * @property {(index: number, label: string) => void} [onClick]
  */
@@ -133,6 +142,12 @@ export class DumbbellChart {
         const gVal = guidedSet.data[i] || 0;
         const uTokens = unguidedSet.tokens ? (unguidedSet.tokens[i] || 0) : 0;
         const gTokens = guidedSet.tokens ? (guidedSet.tokens[i] || 0) : 0;
+        const uUncachedTokens = unguidedSet.uncachedTokens ? (unguidedSet.uncachedTokens[i] || 0) : 0;
+        const gUncachedTokens = guidedSet.uncachedTokens ? (guidedSet.uncachedTokens[i] || 0) : 0;
+        const uCachedPct = unguidedSet.cachedPct ? (unguidedSet.cachedPct[i] || 0) : 0;
+        const gCachedPct = guidedSet.cachedPct ? (guidedSet.cachedPct[i] || 0) : 0;
+        const uRuntimeMs = unguidedSet.runtimeMs ? (unguidedSet.runtimeMs[i] || 0) : 0;
+        const gRuntimeMs = guidedSet.runtimeMs ? (guidedSet.runtimeMs[i] || 0) : 0;
         const uFailed = unguidedSet.failed ? !!unguidedSet.failed[i] : false;
         const gFailed = guidedSet.failed ? !!guidedSet.failed[i] : false;
         
@@ -146,6 +161,12 @@ export class DumbbellChart {
             gVal,
             uTokens,
             gTokens,
+            uUncachedTokens,
+            gUncachedTokens,
+            uCachedPct,
+            gCachedPct,
+            uRuntimeMs,
+            gRuntimeMs,
             uFailed,
             gFailed,
             originalIndex: i
@@ -421,28 +442,47 @@ export class DumbbellChart {
             
             const uTokens = item.uTokens || 0;
             const gTokens = item.gTokens || 0;
-            const tokenDelta = Math.round(gTokens - uTokens);
-            const tokenDeltaSign = tokenDelta > 0 ? "+" : "";
-            const tokenDeltaColor = tokenDelta <= 0 ? "#7ee787" : "#ffa198"; // Using fewer tokens is good (green)
+            const uUncached = item.uUncachedTokens || uTokens;
+            const gUncached = item.gUncachedTokens || gTokens;
+            const gCachedPct = item.gCachedPct || 0;
+            const uRuntimeMs = item.uRuntimeMs || 0;
+            const gRuntimeMs = item.gRuntimeMs || 0;
+
+            const uncachedDeltaPct = uUncached > 0 ? Math.round(((gUncached - uUncached) / uUncached) * 100) : 0;
+            const uncachedDeltaSign = uncachedDeltaPct > 0 ? "+" : "";
+            const uncachedDeltaColor = uncachedDeltaPct <= 0 ? "var(--color-accent-success, #22c55e)" : "var(--color-on-surface-variant)";
+
+            const runtimeDeltaPct = uRuntimeMs > 0 ? Math.round(((gRuntimeMs - uRuntimeMs) / uRuntimeMs) * 100) : 0;
+            const runtimeDeltaSign = runtimeDeltaPct > 0 ? "+" : "";
+            const runtimeDeltaColor = runtimeDeltaPct <= 0 ? "var(--color-accent-success, #22c55e)" : "var(--color-on-surface-variant)";
+
+            const fmtTime = (/** @type {number} */ ms) => {
+              if (!ms || ms <= 0) return '-';
+              const sec = Math.round(ms / 1000);
+              return sec >= 60 ? `${Math.floor(sec / 60)}m ${sec % 60}s` : `${sec}s`;
+            };
 
             this.tooltip.style.display = 'block';
             this.tooltip.style.left = (e.clientX + 15) + 'px';
             this.tooltip.style.top = (e.clientY + 15) + 'px';
-            const costPct = uTokens > 0 ? Math.round((gTokens / uTokens) * 100) : 0;
 
             this.tooltip.innerHTML = `
-                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 280px; color: var(--color-on-surface);">
+                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 310px; color: var(--color-on-surface);">
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                          <div style="font-weight: bold; font-size: 14px; white-space: nowrap; color: ${item.uFailed || item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
                           <div style="font-size: 11px; color: var(--color-outline);">feature: ${featureName}</div>
-                         ${uTokens > 0 || gTokens > 0 ? `
-                         <div style="font-size: 11px; color: #8b949e; margin-top: 8px;">
-                            Avg Tokens:<br/>
-                            Guided: <strong>${gTokens.toLocaleString()}</strong><br/>
-                            Unguided: <strong>${uTokens.toLocaleString()}</strong><br/>
-                            Diff: <strong style="color: ${tokenDeltaColor}">${tokenDeltaSign}${tokenDelta.toLocaleString()}</strong><br/>
-                            Cost Ratio: <strong style="color: ${tokenDeltaColor}">${costPct}%</strong>
+                         ${(uRuntimeMs > 0 || gRuntimeMs > 0 || uTokens > 0 || gTokens > 0) ? `
+                         <div style="font-size: 11px; color: var(--color-on-surface-variant); margin-top: 6px; display: flex; flex-direction: column; gap: 3px;">
+                            ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `
+                            <div>Time (U → G): <strong>${fmtTime(uRuntimeMs)} → ${fmtTime(gRuntimeMs)}</strong> <span style="color: ${runtimeDeltaColor}; font-weight: 600;">(${runtimeDeltaSign}${runtimeDeltaPct}%)</span></div>
+                            ` : ''}
+                            ${(uUncached > 0 || gUncached > 0) ? `
+                            <div>Uncached Tokens: <strong>${uUncached.toLocaleString()} → ${gUncached.toLocaleString()}</strong> <span style="color: ${uncachedDeltaColor}; font-weight: 600;">(${uncachedDeltaSign}${uncachedDeltaPct}%)</span></div>
+                            ` : ''}
+                            ${(uTokens > 0 || gTokens > 0) ? `
+                            <div>Total Tokens: <strong>${uTokens.toLocaleString()} → ${gTokens.toLocaleString()}</strong>${gCachedPct > 0 ? ` <span style="opacity: 0.85;">(${gCachedPct}% cached)</span>` : ''}</div>
+                            ` : ''}
                          </div>
                          ` : ''}
                     </div>

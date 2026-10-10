@@ -1,4 +1,4 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, isLocalDashboardHost, $ } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
@@ -79,7 +79,7 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
 }
 
 async function loadLocalTests() {
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    if (!isLocalDashboardHost()) {
         return; 
     }
     

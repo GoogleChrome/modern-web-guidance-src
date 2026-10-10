@@ -1,4 +1,6 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens } from './utils.js';
+import { getRunStats, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getRunDurationMs, isLocalDashboardHost } from './utils.js';
+import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
+import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { loadStabilityTrend } from './stability-trend.js';
@@ -41,6 +43,10 @@ let currentRunTypes = ['unguided', 'guided'];
 let currentTestID = null;
 /** @type {ApiClient} */
 let api;
+/** @type {'all' | 'a11y'} */
+let currentMetricMode = 'all';
+/** @type {string} */
+let currentTaskSort = 'default';
 
 // Module-scoped state
 let dashboardLoaded = false;
@@ -48,6 +54,35 @@ let dashboardLoaded = false;
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize API Client
     api = new ApiClient();
+
+    // Wire up All Checks vs. Accessibility Subscore toggle
+    const modeAllBtn = document.getElementById('dash-mode-all-btn');
+    const modeA11yBtn = document.getElementById('dash-mode-a11y-btn');
+    if (modeAllBtn && modeA11yBtn) {
+        const setMode = (/** @type {'all' | 'a11y'} */ mode) => {
+            if (currentMetricMode === mode) return;
+            currentMetricMode = mode;
+            modeAllBtn.setAttribute('aria-pressed', mode === 'all' ? 'true' : 'false');
+            modeA11yBtn.setAttribute('aria-pressed', mode === 'a11y' ? 'true' : 'false');
+            if (allTestData && currentTestID) {
+                renderDashboardDumbbellChart(allTestData);
+                renderGrid(allTestData, currentTestID);
+            }
+        };
+        modeAllBtn.addEventListener('click', () => setMode('all'));
+        modeA11yBtn.addEventListener('click', () => setMode('a11y'));
+    }
+
+    // Wire up Task Sort dropdown
+    const sortSelect = document.getElementById('task-sort-select');
+    if (sortSelect instanceof HTMLSelectElement) {
+        sortSelect.addEventListener('change', () => {
+            currentTaskSort = sortSelect.value;
+            if (allTestData && currentTestID) {
+                renderGrid(allTestData, currentTestID);
+            }
+        });
+    }
 
     // Auth Button Handling (only for remote)
     if (api.source === 'remote') {
@@ -516,25 +551,25 @@ function renderSummary(data) {
         return;
     }
 
+    const extracted = extractSuiteSummary(currentTestID || 'suite', data);
+    if (!extracted) return;
+    const { guidedStats, unguidedStats, a11yStats, efficiencyStats } = extracted;
+    const rt = efficiencyStats.runtime;
+    const tok = efficiencyStats.tokens;
+
     const results = data.results;
-    let totalUnguidedPassed = 0;
-    let totalUnguidedChecks = 0;
-    let totalGuidedPassed = 0;
-    let totalGuidedChecks = 0;
-    let guidedRunsCount = 0;
-
-
     const baseKeys = new Set();
     const tasksWithTools = new Set();
     const tasksWithGuides = new Set();
 
+    let totalAllRunsCount = 0;
     Object.keys(results).forEach(key => {
         const base = key.replace(' - guided', '').replace(' - unguided', '');
         baseKeys.add(base);
 
-        const runs = results[key];
+        const runs = results[key] || [];
+        totalAllRunsCount += runs.length;
         const isGuided = key.endsWith(' - guided');
-        if (isGuided) guidedRunsCount += runs.length;
 
         runs.forEach((/** @type {DashboardRunResult} */ run) => {
             const hasTools = run.guidanceToolsUsed && run.guidanceToolsUsed.length > 0;
@@ -542,123 +577,146 @@ function renderSummary(data) {
 
             if (isGuided && hasTools) tasksWithTools.add(base);
             if (isGuided && hasGuides) tasksWithGuides.add(base);
-
-            const stats = getRunStats(run.results);
-            if (isGuided) {
-                totalGuidedPassed += stats.passed;
-                totalGuidedChecks += stats.total;
-
-            } else {
-                totalUnguidedPassed += stats.passed;
-                totalUnguidedChecks += stats.total;
-            }
         });
     });
 
     const tasksCount = baseKeys.size;
-    const unguidedPassRate = totalUnguidedChecks > 0 ? Math.round((totalUnguidedPassed / totalUnguidedChecks) * 100) : 0;
-    const guidedPassRate = totalGuidedChecks > 0 ? Math.round((totalGuidedPassed / totalGuidedChecks) * 100) : 0;
+    const unguidedPassRate = unguidedStats.total > 0 ? Math.round((unguidedStats.passed / unguidedStats.total) * 100) : 0;
+    const guidedPassRate = guidedStats.total > 0 ? Math.round((guidedStats.passed / guidedStats.total) * 100) : 0;
+    const upliftDelta = guidedPassRate - unguidedPassRate;
     const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
     const guideUsageRate = tasksCount > 0 ? Math.round((tasksWithGuides.size / tasksCount) * 100) : 0;
 
-    const upliftDelta = guidedPassRate - unguidedPassRate;
-
     const totalEarlyFailures = (summary.unguidedEarlyFailures || 0) + (summary.guidedEarlyFailures || 0);
-
-    let totalAllRunsCount = 0;
-    Object.keys(data.results || {}).forEach(key => {
-        totalAllRunsCount += (data.results[key] || []).length;
-    });
-
     const rawRate = totalAllRunsCount > 0 ? (totalEarlyFailures / totalAllRunsCount) * 100 : 0;
     const totalEarlyFailureRate = rawRate > 0 && rawRate < 1 ? Number(rawRate.toFixed(1)) : Math.round(rawRate);
 
+    const a11yDimensionsHtml = A11Y_SUBCATEGORIES.map(sub => {
+        const sc = a11yStats.bySubCategory?.[sub.id];
+        if (!sc || (sc.unguidedTotal === 0 && sc.guidedTotal === 0)) return '';
+        const deltaSign = sc.uplift >= 0 ? '+' : '';
+        return `
+            <div class="a11y-dim-row">
+                <div class="a11y-dim-header">
+                    <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span>
+                    <span class="a11y-dim-values">${sc.unguidedRate}% → <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${sc.uplift < 0 ? 'negative' : ''}">(${deltaSign}${sc.uplift}pp)</span></span>
+                </div>
+                <div class="a11y-dim-track">
+                    <div class="a11y-dim-fill-unguided" style="width: ${sc.unguidedRate}%;" title="Unguided: ${sc.unguidedRate}%"></div>
+                    <div class="a11y-dim-fill-guided" style="width: ${sc.guidedRate}%;" title="Guided: ${sc.guidedRate}%"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const rtSign = rt.medianDeltaPct > 0 ? '+' : '';
+    const rtBadgeClass = rt.medianDeltaPct <= 0 ? 'positive' : 'neutral';
+    const tokSign = tok.uncachedMedianDeltaPct > 0 ? '+' : '';
+    const tokBadgeClass = tok.uncachedMedianDeltaPct <= 0 ? 'positive' : 'neutral';
+    const suiteTokSign = tok.suiteUncachedDeltaPct > 0 ? '+' : '';
+
     container.innerHTML = `
-        <div class="header-meta-item dog-ear-card">
+        <!-- Card 1: Overall Uplift & Adoption -->
+        <div class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">Average Uplift</span>
-                <span class="meta-value-highlight">+${upliftDelta}%</span>
+                <span class="meta-label">Overall Uplift</span>
+                <span class="meta-value-highlight ${upliftDelta < 0 ? 'negative' : ''}">${upliftDelta >= 0 ? '+' : ''}${upliftDelta}%</span>
             </div>
             <div class="sparkline-container">
-                    ${renderSparkline(unguidedPassRate, guidedPassRate, false, `Unguided: ${unguidedPassRate}%`, `Guided: ${guidedPassRate}%`)}
-                <span class="sparkline-labels">${unguidedPassRate}% → <span>${guidedPassRate}%</span></span>
+                ${renderSparkline(unguidedPassRate, guidedPassRate, false, `Unguided: ${unguidedPassRate}%`, `Guided: ${guidedPassRate}%`)}
+                <span class="sparkline-labels">${unguidedPassRate}% → <strong>${guidedPassRate}%</strong> <span class="narrative-subtext">(${unguidedStats.passed} → ${guidedStats.passed} / ${Math.max(unguidedStats.total, guidedStats.total)} checks)</span></span>
             </div>
-            ${summary.expectedTotalRuns !== undefined ? `
-            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
-                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
-            </div>
-            ` : ''}
-            ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined) ? `
-            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
-                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - totalEarlyFailureRate)}">${totalEarlyFailureRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(100 - totalEarlyFailureRate)}">(${totalEarlyFailures} run${totalEarlyFailures === 1 ? '' : 's'})</span>
-            </div>
-            ` : ''}
-
-        </div>
-
-        <div class="summary-subgrid">
-        <div class="header-meta-item dog-ear-card">
-            <div class="meta-item-header">
-                <span class="meta-label">Assertions Passed</span>
-            </div>
-            <div class="sparkline-container">
-                    ${(() => {
-                        const uPct = (totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100;
-                        const gPct = (totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100;
-                        return renderSparkline(uPct, gPct, true, `Unguided Count: ${totalUnguidedPassed}`, `Guided Count: ${totalGuidedPassed}`);
-                    })()}
-                <span class="sparkline-labels-small">${totalUnguidedPassed} → <span>${totalGuidedPassed}</span> <span>/ ${Math.max(totalUnguidedChecks, totalGuidedChecks)}</span></span>
-            </div>
-        </div>
-
-        <div class="header-meta-item dog-ear-card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="meta-label">Activation</span>
-                <span style="color: var(--text-secondary); font-size: 1rem;">${toolActivationRate}%</span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
-                <div class="custom-progress-bar">
-                    <div class="custom-progress-fill" style="width: ${toolActivationRate}%;"></div>
+            <div class="narrative-metrics-list">
+                <div class="narrative-metric-row">
+                    <span>Tool Activation</span>
+                    <strong>${toolActivationRate}% (${tasksWithTools.size}/${tasksCount} tasks)</strong>
                 </div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">(${tasksWithTools.size}/${tasksCount}) tasks</div>
-            </div>
-        </div>
-
-        <div class="header-meta-item dog-ear-card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="meta-label">Guidance Consumed</span>
-                <span style="color: var(--text-secondary); font-size: 1rem;">${guideUsageRate}%</span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
-                <div class="custom-progress-bar">
-                    <div class="custom-progress-fill" style="width: ${guideUsageRate}%;"></div>
+                <div class="narrative-metric-row">
+                    <span>Guidance Consumed</span>
+                    <strong>${guideUsageRate}% (${tasksWithGuides.size}/${tasksCount} tasks)</strong>
                 </div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">(${tasksWithGuides.size}/${tasksCount}) tasks</div>
-            </div>
-        </div>
-
-        ${summary.guidedTotalTokens || summary.unguidedTotalTokens ? `
-        <div class="header-meta-item dog-ear-card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="meta-label">Tokens Consumed</span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
-                ${summary.unguidedTotalTokens ? `
-                <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
-                    <span style="color: var(--text-secondary);">Unguided</span>
-                    <span style="color: var(--text-primary); font-weight: bold;">${(summary.unguidedTotalTokens.total - (summary.unguidedTotalTokens.cached || 0)).toLocaleString()}</span>
+                ${summary.expectedTotalRuns !== undefined ? `
+                <div class="narrative-metric-row">
+                    <span>Expected Runs</span>
+                    <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong>
                 </div>
                 ` : ''}
-                ${summary.guidedTotalTokens ? `
-                <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
-                    <span style="color: var(--text-secondary);">Guided</span>
-                    <span style="color: var(--text-primary); font-weight: bold;">${(summary.guidedTotalTokens.total - (summary.guidedTotalTokens.cached || 0)).toLocaleString()}</span>
+                ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined) ? `
+                <div class="narrative-metric-row">
+                    <span>Generation Errors</span>
+                    <strong style="color: ${getColor(100 - totalEarlyFailureRate)}">${totalEarlyFailureRate}% (${totalEarlyFailures} run${totalEarlyFailures === 1 ? '' : 's'})</strong>
                 </div>
                 ` : ''}
             </div>
         </div>
-        ` : ''}
+
+        <!-- Card 2: Cross-Cutting Accessibility Subscore -->
+        <div class="header-meta-item dog-ear-card narrative-card">
+            <div class="meta-item-header">
+                <span class="meta-label">♿ Accessibility Subscore</span>
+                <span class="meta-value-highlight ${a11yStats.uplift < 0 ? 'negative' : ''}">${a11yStats.uplift >= 0 ? '+' : ''}${a11yStats.uplift}%</span>
+            </div>
+            <div class="sparkline-container">
+                ${renderSparkline(a11yStats.unguidedRate, a11yStats.guidedRate, false, `Unguided A11y: ${a11yStats.unguidedRate}%`, `Guided A11y: ${a11yStats.guidedRate}%`)}
+                <span class="sparkline-labels">${a11yStats.unguidedRate}% → <strong>${a11yStats.guidedRate}%</strong> <span class="narrative-subtext">(${a11yStats.unguidedPassed} → ${a11yStats.guidedPassed} / ${Math.max(a11yStats.unguidedTotal, a11yStats.guidedTotal)} checks, ${a11yStats.guideCount} guides)</span></span>
+            </div>
+            <div class="a11y-dimensions-grid">
+                ${a11yDimensionsHtml}
+            </div>
+        </div>
+
+        <!-- Card 3: Completion Time (U → G) -->
+        <div class="header-meta-item dog-ear-card narrative-card">
+            <div class="meta-item-header">
+                <span class="meta-label">⏱ Completion Time (Med.)</span>
+                <span class="efficiency-delta-pill ${rtBadgeClass}">${rtSign}${rt.medianDeltaPct}%</span>
+            </div>
+            <div class="narrative-hero-pair">
+                <span>${formatDuration(rt.unguidedMedianMs)}</span>
+                <span class="pair-arrow">→</span>
+                <strong>${formatDuration(rt.guidedMedianMs)}</strong>
+            </div>
+            <div class="narrative-metrics-list">
+                <div class="narrative-metric-row">
+                    <span>Mean Task Duration</span>
+                    <strong>${formatDuration(rt.unguidedMeanMs)} → ${formatDuration(rt.guidedMeanMs)}</strong>
+                </div>
+                <div class="narrative-metric-row">
+                    <span>Faster or Equal Tasks</span>
+                    <strong>${rt.fasterTaskPct}% (${rt.fasterTasksCount}/${rt.pairedTaskCount} tasks)</strong>
+                </div>
+                <div class="narrative-metric-row">
+                    <span>Timeouts (≥300s)</span>
+                    <strong>${rt.unguidedTimeouts} Unguided → ${rt.guidedTimeouts} Guided</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Token Efficiency (U → G) -->
+        <div class="header-meta-item dog-ear-card narrative-card">
+            <div class="meta-item-header">
+                <span class="meta-label">🪙 Uncached Tokens (Med.)</span>
+                <span class="efficiency-delta-pill ${tokBadgeClass}">${tokSign}${tok.uncachedMedianDeltaPct}%</span>
+            </div>
+            <div class="narrative-hero-pair">
+                <span>${formatTokens(tok.unguidedUncachedMedian)}</span>
+                <span class="pair-arrow">→</span>
+                <strong>${formatTokens(tok.guidedUncachedMedian)}</strong>
+            </div>
+            <div class="narrative-metrics-list">
+                <div class="narrative-metric-row">
+                    <span>Suite Uncached Total</span>
+                    <strong>${formatTokens(tok.unguidedUncachedTotal)} → ${formatTokens(tok.guidedUncachedTotal)} (${suiteTokSign}${tok.suiteUncachedDeltaPct}%)</strong>
+                </div>
+                <div class="narrative-metric-row">
+                    <span>Suite Total (incl. cache)</span>
+                    <strong>${formatTokens(tok.unguidedTotal)} → ${formatTokens(tok.guidedTotal)} (${tok.guidedCachedSharePct}% cached)</strong>
+                </div>
+                <div class="narrative-metric-row">
+                    <span>Fewer/Equal Uncached Tasks</span>
+                    <strong>${tok.fewerUncachedTokensTaskPct}% (${tok.fewerUncachedTasksCount}/${rt.pairedTaskCount} tasks)</strong>
+                </div>
+            </div>
         </div>
     `;
 }
@@ -692,8 +750,31 @@ function renderGrid(data, testId) {
         return a.localeCompare(b);
     });
 
-    console.log('sortedAppNames:', sortedAppNames);
-    console.log('sortedGuides count:', sortedGuides.length);
+    /**
+     * @typedef {Object} ScenarioItem
+     * @property {string} appName
+     * @property {string} guide
+     * @property {string} scenarioName
+     * @property {DashboardRunResult[] | undefined} unguidedRuns
+     * @property {DashboardRunResult[] | undefined} guidedRuns
+     * @property {number} unguidedAvg
+     * @property {number} guidedAvg
+     * @property {number} uplift
+     * @property {number} a11yUnguidedAvg
+     * @property {number} a11yGuidedAvg
+     * @property {number} a11yUplift
+     * @property {number} a11yCheckCount
+     * @property {number} uRuntimeMs
+     * @property {number} gRuntimeMs
+     * @property {number} runtimeDeltaMs
+     * @property {number} uUncachedTokens
+     * @property {number} gUncachedTokens
+     * @property {number} uncachedDeltaTokens
+     * @property {boolean} hasFailure
+     */
+
+    /** @type {ScenarioItem[]} */
+    const scenarios = [];
 
     sortedAppNames.forEach(appName => {
         sortedGuides.forEach(guide => {
@@ -704,13 +785,8 @@ function renderGrid(data, testId) {
             const unguidedRuns = results[unguidedKey];
             const guidedRuns = results[guidedKey];
 
-            console.log(`Checking ${scenarioName}: unguided=${!!unguidedRuns}, guided=${!!guidedRuns}`);
+            if (!unguidedRuns && !guidedRuns) return;
 
-            if (!unguidedRuns && !guidedRuns) return; // Skip if neither exists
-
-            sortedScenarios.push(scenarioName);
-
-            // Calculate averages
             /**
              * @param {DashboardRunResult[] | undefined} runs
              * @returns {number}
@@ -718,90 +794,238 @@ function renderGrid(data, testId) {
             const getAvg = (runs) => {
                 if (!runs || runs.length === 0) return 0;
                 const totalPassed = runs.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
-                const totalChecks = runs.reduce((acc, run) => acc + run.results.length, 0);
+                const totalChecks = runs.reduce((acc, run) => acc + (run.results ? run.results.length : 0), 0);
                 return totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
+            };
+
+            /**
+             * @param {DashboardRunResult[] | undefined} runs
+             * @returns {{ rate: number, count: number }}
+             */
+            const getA11yAvg = (runs) => {
+                if (!runs || runs.length === 0) return { rate: 0, count: 0 };
+                let passed = 0;
+                let total = 0;
+                let maxChecksInRun = 0;
+                runs.forEach(run => {
+                    const s = getA11yRunStats(run.results, guide);
+                    passed += s.passed;
+                    total += s.total;
+                    if (s.total > maxChecksInRun) maxChecksInRun = s.total;
+                });
+                return {
+                    rate: total > 0 ? Math.round((passed / total) * 100) : 0,
+                    count: maxChecksInRun
+                };
+            };
+
+            /**
+             * @param {DashboardRunResult[] | undefined} runs
+             * @returns {number}
+             */
+            const getAvgRuntime = (runs) => {
+                if (!runs || runs.length === 0) return 0;
+                let sum = 0;
+                let count = 0;
+                runs.forEach(r => {
+                    const ms = getRunDurationMs(r);
+                    if (ms > 0) {
+                        sum += ms;
+                        count++;
+                    }
+                });
+                return count > 0 ? Math.round(sum / count) : 0;
+            };
+
+            /**
+             * @param {DashboardRunResult[] | undefined} runs
+             * @returns {number}
+             */
+            const getAvgUncached = (runs) => {
+                if (!runs || runs.length === 0) return 0;
+                let sum = 0;
+                let count = 0;
+                runs.forEach(r => {
+                    const tb = getTokenBreakdown(r.tokenUsage);
+                    if (tb.total > 0) {
+                        sum += tb.uncached;
+                        count++;
+                    }
+                });
+                return count > 0 ? Math.round(sum / count) : 0;
             };
 
             const unguidedAvg = getAvg(unguidedRuns);
             const guidedAvg = getAvg(guidedRuns);
             const uplift = guidedAvg - unguidedAvg;
 
+            const uA11y = getA11yAvg(unguidedRuns);
+            const gA11y = getA11yAvg(guidedRuns);
+            const a11yCheckCount = Math.max(uA11y.count, gA11y.count);
+            const a11yUnguidedAvg = uA11y.rate;
+            const a11yGuidedAvg = gA11y.rate;
+            const a11yUplift = a11yGuidedAvg - a11yUnguidedAvg;
+
+            const uRuntimeMs = getAvgRuntime(unguidedRuns);
+            const gRuntimeMs = getAvgRuntime(guidedRuns);
+            const runtimeDeltaMs = gRuntimeMs - uRuntimeMs;
+
+            const uUncachedTokens = getAvgUncached(unguidedRuns);
+            const gUncachedTokens = getAvgUncached(guidedRuns);
+            const uncachedDeltaTokens = gUncachedTokens - uUncachedTokens;
+
             /**
              * @param {DashboardRunResult[] | undefined} runs
              * @returns {boolean}
              */
             const isRunEarlyFailure = (runs) => !!(runs && runs.some(r => r.results?.some(c => c.isEarlyFailure)));
-            const unguidedFailed = isRunEarlyFailure(unguidedRuns);
-            const guidedFailed = isRunEarlyFailure(guidedRuns);
-            const hasFailure = unguidedFailed || guidedFailed;
+            const hasFailure = isRunEarlyFailure(unguidedRuns) || isRunEarlyFailure(guidedRuns);
 
-            const accordion = document.createElement('div');
-            accordion.className = 'task-accordion';
-            accordion.id = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
-            accordion.setAttribute('data-guide', guide);
-
-            const minVal = Math.min(unguidedAvg, guidedAvg);
-            const maxVal = Math.max(unguidedAvg, guidedAvg);
-            const trackWidth = 250; // matches css
-            const scale = (/** @type {number} */ val) => (val / 100) * trackWidth;
-
-            const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
-            const trendLinkHtml = `
-                <a href="${trendUrl}" class="trend-link" title="View trend over time" style="margin-left: 8px; text-decoration: none; color: var(--color-primary); display: inline-flex; align-items: center; vertical-align: middle;" onclick="event.stopPropagation();">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="7" y1="17" x2="17" y2="7"></line>
-                        <polyline points="7 7 17 7 17 17"></polyline>
-                    </svg>
-                </a>
-            `;
-
-            accordion.innerHTML = `
-                <div class="task-accordion-header">
-                    <div class="left-section">
-                        <span class="chevron" style="display: inline-block; transition: transform 0.2s; margin-right: 10px;">▶</span>
-                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
-                        <span class="task-title" style="${hasFailure ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
-                        ${trendLinkHtml}
-                        ${hasFailure ? `<span style="font-size: 0.8rem; color: var(--color-accent-failure, #da3633); margin-left: 8px; border: 1px solid currentColor; padding: 2px 6px; border-radius: 4px;">Generation Failed</span>` : ''}
-                    </div>
-                    <div class="right-section">
-                        <div class="mini-dumbbell-track">
-                            <div class="connector" style="left: ${scale(minVal)}px; width: ${scale(maxVal - minVal)}px;"></div>
-                            <div class="dot unguided" style="left: ${scale(unguidedAvg)}px;"></div>
-                            <div class="dot guided" style="left: ${scale(guidedAvg)}px;"></div>
-                        </div>
-                        <div class="uplift-score ${uplift < 0 ? 'negative' : ''}" style="${uplift === 0 ? 'color: var(--text-secondary);' : ''}">
-                            ${uplift >= 0 ? '+' : ''}${uplift}%
-                        </div>
-                    </div>
-                </div>
-                <div class="task-accordion-content">
-                    <div class="expansion-loading" style="color: var(--text-secondary);">Loading details...</div>
-                </div>
-            `;
-
-            const header = $('.task-accordion-header', accordion);
-            const content = $('.task-accordion-content', accordion);
-            const chevron = $('.chevron', accordion);
-
-            header.onclick = async () => {
-                const isOpen = accordion.classList.toggle('open');
-                chevron.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
-
-                if (isOpen && content.querySelector('.expansion-loading')) {
-                    await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
-                }
-            };
-
-            if (guideGrid) {
-                guideGrid.appendChild(accordion);
-            } else if (grid) {
-                grid.appendChild(accordion);
-            }
+            scenarios.push({
+                appName,
+                guide,
+                scenarioName,
+                unguidedRuns,
+                guidedRuns,
+                unguidedAvg,
+                guidedAvg,
+                uplift,
+                a11yUnguidedAvg,
+                a11yGuidedAvg,
+                a11yUplift,
+                a11yCheckCount,
+                uRuntimeMs,
+                gRuntimeMs,
+                runtimeDeltaMs,
+                uUncachedTokens,
+                gUncachedTokens,
+                uncachedDeltaTokens,
+                hasFailure
+            });
         });
     });
 
+    const filteredScenarios = currentMetricMode === 'a11y'
+        ? scenarios.filter(s => s.a11yCheckCount > 0)
+        : scenarios;
 
+    if (currentTaskSort === 'uplift-desc') {
+        filteredScenarios.sort((a, b) => (b.uplift - a.uplift) || (b.guidedAvg - a.guidedAvg));
+    } else if (currentTaskSort === 'uplift-asc') {
+        filteredScenarios.sort((a, b) => (a.uplift - b.uplift) || (a.guidedAvg - b.guidedAvg));
+    } else if (currentTaskSort === 'a11y-desc') {
+        filteredScenarios.sort((a, b) => (b.a11yCheckCount > 0 ? 1 : 0) - (a.a11yCheckCount > 0 ? 1 : 0) || (b.a11yUplift - a.a11yUplift) || (b.a11yCheckCount - a.a11yCheckCount));
+    } else if (currentTaskSort === 'time-saved') {
+        filteredScenarios.sort((a, b) => a.runtimeDeltaMs - b.runtimeDeltaMs);
+    } else if (currentTaskSort === 'time-overhead') {
+        filteredScenarios.sort((a, b) => b.runtimeDeltaMs - a.runtimeDeltaMs);
+    } else if (currentTaskSort === 'tokens-saved') {
+        filteredScenarios.sort((a, b) => a.uncachedDeltaTokens - b.uncachedDeltaTokens);
+    }
+
+    filteredScenarios.forEach(item => {
+        const {
+            appName, guide, scenarioName, unguidedRuns, guidedRuns,
+            unguidedAvg, guidedAvg, uplift,
+            a11yUnguidedAvg, a11yGuidedAvg, a11yUplift, a11yCheckCount,
+            uRuntimeMs, gRuntimeMs, uUncachedTokens, gUncachedTokens,
+            hasFailure
+        } = item;
+
+        sortedScenarios.push(scenarioName);
+
+        const displayU = currentMetricMode === 'a11y' ? a11yUnguidedAvg : unguidedAvg;
+        const displayG = currentMetricMode === 'a11y' ? a11yGuidedAvg : guidedAvg;
+        const displayUplift = currentMetricMode === 'a11y' ? a11yUplift : uplift;
+
+        const accordion = document.createElement('div');
+        accordion.className = 'task-accordion';
+        accordion.id = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
+        accordion.setAttribute('data-guide', guide);
+
+        const minVal = Math.min(displayU, displayG);
+        const maxVal = Math.max(displayU, displayG);
+        const trackWidth = 250; // matches css
+        const scale = (/** @type {number} */ val) => (val / 100) * trackWidth;
+
+        const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
+        const trendLinkHtml = `
+            <a href="${trendUrl}" class="trend-link" title="View trend over time" style="margin-left: 8px; text-decoration: none; color: var(--color-primary); display: inline-flex; align-items: center; vertical-align: middle;" onclick="event.stopPropagation();">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="7" y1="17" x2="17" y2="7"></line>
+                    <polyline points="7 7 17 7 17 17"></polyline>
+                </svg>
+            </a>
+        `;
+
+        const a11yPillHtml = a11yCheckCount > 0 ? `
+            <span class="a11y-task-pill" title="Accessibility checks in this guide: ${a11yUnguidedAvg}% → ${a11yGuidedAvg}%">
+                ♿ ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift}%)
+            </span>
+        ` : '';
+
+        const metaChipsHtml = `
+            <div class="task-efficiency-meta">
+                ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<span class="task-eff-chip" title="Avg completion time (Unguided → Guided)">⏱ ${formatDuration(uRuntimeMs)} → ${formatDuration(gRuntimeMs)}</span>` : ''}
+                ${(uUncachedTokens > 0 || gUncachedTokens > 0) ? `<span class="task-eff-chip" title="Avg uncached tokens (Unguided → Guided)">🪙 ${formatTokens(uUncachedTokens)} → ${formatTokens(gUncachedTokens)}</span>` : ''}
+            </div>
+        `;
+
+        accordion.innerHTML = `
+            <div class="task-accordion-header" role="button" tabindex="0" aria-expanded="false">
+                <div class="left-section">
+                    <span class="chevron" aria-hidden="true" style="display: inline-block; transition: transform 0.2s; margin-right: 10px;">▶</span>
+                    <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
+                    <span class="task-title" style="${hasFailure ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
+                    ${trendLinkHtml}
+                    ${a11yPillHtml}
+                    ${hasFailure ? `<span style="font-size: 0.8rem; color: var(--color-accent-failure, #da3633); margin-left: 8px; border: 1px solid currentColor; padding: 2px 6px; border-radius: 4px;">Generation Failed</span>` : ''}
+                </div>
+                <div class="right-section">
+                    ${metaChipsHtml}
+                    <div class="mini-dumbbell-track" title="Unguided: ${displayU}% → Guided: ${displayG}%">
+                        <div class="connector" style="left: ${scale(minVal)}px; width: ${scale(maxVal - minVal)}px;"></div>
+                        <div class="dot unguided" style="left: ${scale(displayU)}px;"></div>
+                        <div class="dot guided" style="left: ${scale(displayG)}px;"></div>
+                    </div>
+                    <div class="uplift-score ${displayUplift < 0 ? 'negative' : ''}" style="${displayUplift === 0 ? 'color: var(--text-secondary);' : ''}">
+                        ${displayUplift >= 0 ? '+' : ''}${displayUplift}%
+                    </div>
+                </div>
+            </div>
+            <div class="task-accordion-content">
+                <div class="expansion-loading" style="color: var(--text-secondary);">Loading details...</div>
+            </div>
+        `;
+
+        const header = $('.task-accordion-header', accordion);
+        const content = $('.task-accordion-content', accordion);
+        const chevron = $('.chevron', accordion);
+
+        const toggleAccordion = async () => {
+            const isOpen = accordion.classList.toggle('open');
+            header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            chevron.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+
+            if (isOpen && content.querySelector('.expansion-loading')) {
+                await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
+            }
+        };
+
+        header.onclick = toggleAccordion;
+        header.onkeydown = (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleAccordion();
+            }
+        };
+
+        if (guideGrid) {
+            guideGrid.appendChild(accordion);
+        } else if (grid) {
+            grid.appendChild(accordion);
+        }
+    });
 }
 
 /**
@@ -929,24 +1153,32 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         }
         truthMatrixHtml += `</thead><tbody>`;
 
+        const guideName = scenarioName.split(' - ')[1] || '';
+
         assertionMap.forEach((status, message) => {
-            truthMatrixHtml += `<tr>`;
+            const a11yInfo = classifyAccessibilityCheck('', guideName, message);
+            const subCatMeta = a11yInfo.subCategory ? A11Y_SUBCATEGORY_MAP[a11yInfo.subCategory] : null;
+            const a11yBadge = a11yInfo.isAccessibility && subCatMeta
+                ? ` <span class="a11y-check-badge" title="${escapeHtml(subCatMeta.label)}: ${escapeHtml(a11yInfo.rationale)}">♿ ${escapeHtml(subCatMeta.shortLabel)}</span>`
+                : '';
+
+            truthMatrixHtml += `<tr class="${a11yInfo.isAccessibility ? 'a11y-assertion-row' : ''}">`;
             if (maxRuns > 1) {
                 for (let i = 0; i < maxRuns; i++) {
                     const pass = status.unguided[i];
-                    truthMatrixHtml += `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
+                    truthMatrixHtml += `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
                 }
                 for (let i = 0; i < maxRuns; i++) {
                     const pass = status.guided[i];
-                    truthMatrixHtml += `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
+                    truthMatrixHtml += `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
                 }
             } else {
                 const uPass = status.unguided[0];
                 const gPass = status.guided[0];
-                truthMatrixHtml += `<td class="center ${uPass !== undefined ? (uPass ? 'pass' : 'fail') : ''}">${uPass !== undefined ? (uPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
-                truthMatrixHtml += `<td class="center ${gPass !== undefined ? (gPass ? 'pass' : 'fail') : ''}">${gPass !== undefined ? (gPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
+                truthMatrixHtml += `<td class="center ${uPass !== undefined ? (uPass ? 'pass' : 'fail') : ''}">${uPass !== undefined ? (uPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
+                truthMatrixHtml += `<td class="center ${gPass !== undefined ? (gPass ? 'pass' : 'fail') : ''}">${gPass !== undefined ? (gPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
             }
-            truthMatrixHtml += `<td>${escapeHtml(message)}</td></tr>`;
+            truthMatrixHtml += `<td>${escapeHtml(message)}${a11yBadge}</td></tr>`;
         });
         truthMatrixHtml += '</tbody></table></div>';
 
@@ -998,7 +1230,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const runtimeFile = files.includes('runtime.json') ? 'runtime.json' : null;
                  const isEarlyFailure = run.results && run.results.some(c => c.isEarlyFailure);
                  const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
-                 const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                 const isLocalServer = isLocalDashboardHost();
                  const appUrl = (api.source === 'remote' && !isLocalServer)
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
                       : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;
@@ -1008,21 +1240,22 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                      : api.getAbsoluteUrl ? api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`) : `${usedBasePath}/grade-report/index.html`;
 
                  const taskRuntime = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : null;
+                 const tb = getTokenBreakdown(run.tokenUsage);
 
                  chips.push(`
                      <div style="display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 4px;">
                          <span style="font-weight: bold; font-size: 0.85rem; color: ${getColor(s.rate)};">${s.rate}%</span>
-                         ${taskRuntime ? `<span style="font-size: 0.75rem; color: var(--text-secondary);">${formatRuntime(taskRuntime)}</span>` : ''}
-                         ${run.tokenUsage ? `<span style="font-size: 0.75rem; color: var(--text-secondary);">${formatTokens(run.tokenUsage.total)}</span>` : ''}
+                         ${taskRuntime ? `<span style="font-size: 0.75rem; color: var(--text-secondary);" title="Completion Time">${formatRuntime(taskRuntime)}</span>` : ''}
+                         ${tb.total > 0 ? `<span style="font-size: 0.72rem; color: var(--text-secondary);" title="Total: ${tb.total.toLocaleString()} (${tb.cachedPct}% cached)">${formatTokens(tb.uncached)} uncached</span>` : ''}
                          <div style="display: flex; flex-direction: column; gap: 2px; width: 100%;">
-                             ${sessionFile ? `<button class="tfoot-action-btn" onclick="openTrajectory('${escapeHtml(usedBasePath)}', '${escapeHtml(sessionFile)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
-                             ${patchFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${patchFile}`)}', '${escapeHtml(`${usedBasePath}/${patchFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : `<button class="tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
-                             <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(appUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
-                             ${jsonFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${jsonFile}`)}', '${escapeHtml(`${usedBasePath}/${jsonFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
-                             ${runtimeFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${runtimeFile}`)}', '${escapeHtml(`${usedBasePath}/${runtimeFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
-                             ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
-                             ${failureFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${failureFile}`)}', '${escapeHtml(`${usedBasePath}/${failureFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Failure Log</button>` : ''}
-                             <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>
+                             ${sessionFile ? `<button class="tfoot-action-btn" onclick="openTrajectory('${escapeHtml(usedBasePath)}', '${escapeHtml(sessionFile)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
+                             ${patchFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${patchFile}`)}', '${escapeHtml(`${usedBasePath}/${patchFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : `<button class="tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
+                             <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(appUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
+                             ${jsonFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${jsonFile}`)}', '${escapeHtml(`${usedBasePath}/${jsonFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
+                             ${runtimeFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${runtimeFile}`)}', '${escapeHtml(`${usedBasePath}/${runtimeFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
+                             ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
+                             ${failureFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${failureFile}`)}', '${escapeHtml(`${usedBasePath}/${failureFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Failure Log</button>` : ''}
+                             <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>
                          </div>
                      </div>
                  `);
@@ -1521,7 +1754,21 @@ function renderDashboardDumbbellChart(data) {
 
     disciplines.forEach(discipline => {
         const disciplineResults = groupedByDiscipline[discipline];
-        const { labels, guided, unguided, guided_tokens, unguided_tokens, guided_failed, unguided_failed } = calculateChartData(disciplineResults);
+        const {
+            labels,
+            guided,
+            unguided,
+            guided_tokens,
+            unguided_tokens,
+            guided_uncached_tokens,
+            unguided_uncached_tokens,
+            guided_cached_pct,
+            unguided_cached_pct,
+            guided_runtime_ms,
+            unguided_runtime_ms,
+            guided_failed,
+            unguided_failed
+        } = calculateChartData(disciplineResults, { onlyA11y: currentMetricMode === 'a11y' });
 
         if (labels.length === 0) return;
 
@@ -1530,7 +1777,7 @@ function renderDashboardDumbbellChart(data) {
 
         const titleEl = document.createElement('div');
         titleEl.className = 'meta-label';
-        titleEl.textContent = discipline;
+        titleEl.textContent = currentMetricMode === 'a11y' ? `${discipline} (Accessibility Checks)` : discipline;
         titleEl.style.padding = '12px 16px 0'; // Padding top and horizontal
         chartDiv.appendChild(titleEl);
 
@@ -1566,8 +1813,26 @@ function renderDashboardDumbbellChart(data) {
         };
 
         const datasets = [
-            { label: 'Unguided', data: unguided, tokens: unguided_tokens, failed: unguided_failed, onClick: handlePointClick },
-            { label: 'Guided', data: guided, tokens: guided_tokens, failed: guided_failed, onClick: handlePointClick }
+            {
+                label: 'Unguided',
+                data: unguided,
+                tokens: unguided_tokens,
+                uncachedTokens: unguided_uncached_tokens,
+                cachedPct: unguided_cached_pct,
+                runtimeMs: unguided_runtime_ms,
+                failed: unguided_failed,
+                onClick: handlePointClick
+            },
+            {
+                label: 'Guided',
+                data: guided,
+                tokens: guided_tokens,
+                uncachedTokens: guided_uncached_tokens,
+                cachedPct: guided_cached_pct,
+                runtimeMs: guided_runtime_ms,
+                failed: guided_failed,
+                onClick: handlePointClick
+            }
         ];
 
         const chart = new DumbbellChart(svgContainer, {

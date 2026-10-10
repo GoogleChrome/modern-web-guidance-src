@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, accessibility subscores, completion time, and token efficiency across suites.">
   <title>Results - All Runs</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
@@ -12,6 +13,7 @@
 <body>
   <div class="landing-container">
     <header class="header-nav">
+      <a href="#main-content" class="skip-link visually-hidden">Skip to main content</a>
       <div>
         <h1 class="landing-title">Modern Web Guidance Evals</h1>
       </div>
@@ -19,8 +21,8 @@
         <button id="auth-btn" class="secondary-btn" style="display: none;">
           Sign in with Google
         </button>
-        <button id="filter-btn" class="secondary-btn">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
+        <button id="filter-btn" class="secondary-btn" type="button">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
             style="vertical-align: text-bottom; margin-right: 4px;">
             <path
               d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z" />
@@ -31,13 +33,14 @@
           <div class="filter-header">
             <span class="filter-header-title">Select Test Runs</span>
             <div class="filter-actions">
-              <button id="select-all-btn" class="text-btn">All</button>
-              <button id="deselect-all-btn" class="text-btn">None</button>
+              <button id="select-all-btn" class="text-btn" type="button">All</button>
+              <button id="deselect-all-btn" class="text-btn" type="button">None</button>
             </div>
           </div>
           <div style="padding: 10px; border-bottom: 1px solid var(--border-color);">
+            <label for="filter-search" class="visually-hidden">Search test runs</label>
             <input type="text" id="filter-search" placeholder="Search tests..."
-              style="width: 100%; box-sizing: border-box; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9em; outline: none;">
+              style="width: 100%; box-sizing: border-box; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9em;">
           </div>
           <div id="filter-list" class="filter-list">
             <!-- Checkboxes injected by JS -->
@@ -46,78 +49,111 @@
       </div>
     </header>
 
-    <!-- Suites Tab -->
-    <div id="suites-tab" class="tab-content active">
-      <details class="insights-drawer">
-        <summary class="insights-summary">Uplift Comparisons</summary>
-        <div class="timeline-filter-controls" style="margin: 12px 0 6px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <label for="insights-limit-input" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Show most recent</label>
-            <input type="number" id="insights-limit-input" value="15" min="1" max="365" style="width: 60px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem; font-weight: 600; text-align: center; outline: none;">
-            <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">days of data</span>
+    <main id="main-content" tabindex="-1">
+      <!-- Suites Tab -->
+      <div id="suites-tab" class="tab-content active">
+        <details class="insights-drawer" open>
+          <summary class="insights-summary">Uplift &amp; Efficiency Comparisons</summary>
+          <div class="timeline-filter-controls" style="margin: 12px 0 10px; display: flex; gap: 15px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+            <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label for="insights-limit-input" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Show most recent</label>
+                <input type="number" id="insights-limit-input" value="15" min="1" max="365" style="width: 60px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem; font-weight: 600; text-align: center;">
+                <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">days of data</span>
+              </div>
+              <label for="insights-show-all-check" style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                <input type="checkbox" id="insights-show-all-check" style="cursor: pointer;">
+                <span>Show all</span>
+              </label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div class="metric-mode-toggle" role="group" aria-label="Comparison check scope">
+                <button type="button" id="insights-mode-all" class="metric-mode-btn" aria-pressed="true">All Checks</button>
+                <button type="button" id="insights-mode-a11y" class="metric-mode-btn" aria-pressed="false">Accessibility Subscore (~107 Checks)</button>
+              </div>
+              <button type="button" class="info-hint-btn" interestfor="tooltip-a11y-subscore" aria-label="About Accessibility Subscore">?</button>
+              <button type="button" class="info-hint-btn" interestfor="tooltip-token-efficiency" aria-label="About Normalized Uncached Tokens">i</button>
+            </div>
           </div>
-          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
-            <input type="checkbox" id="insights-show-all-check" style="cursor: pointer;">
-            <span>Show all</span>
-          </label>
-        </div>
-        <div id="insights-container" class="insights-grid">
-          <!-- Populated by JS -->
-        </div>
-      </details>
+          <div id="agent-scorecard-strip" class="agent-scorecard-strip">
+            <!-- Populated by JS -->
+          </div>
+          <div id="insights-container" class="insights-grid">
+            <!-- Populated by JS -->
+          </div>
+        </details>
 
-      <div class="suites-table-container">
-        <table class="suites-table">
-          <thead>
-            <tr>
-              <th style="text-align: left;">Suite ID & Date</th>
-              <th>
-                <select id="filter-agent" class="header-filter-select">
-                  <option value="all">Agent</option>
-                  <optgroup label="Select Agent" id="filter-agent-group">
-                    <!-- populated dynamically -->
-                  </optgroup>
-                </select>
-              </th>
-              <th>
-                <select id="filter-serving" class="header-filter-select">
-                  <option value="all">Serving</option>
-                  <optgroup label="Select Architecture" id="filter-serving-group">
-                    <!-- populated dynamically -->
-                  </optgroup>
-                </select>
-              </th>
-              <th>
-                <select id="filter-model" class="header-filter-select">
-                  <option value="all">Model</option>
-                  <optgroup label="Select Model" id="filter-model-group">
-                    <!-- populated dynamically -->
-                  </optgroup>
-                </select>
-              </th>
-              <th># Tasks</th>
-              <th style="text-align: center; padding-right: 15px;">Uplift</th>
-              <th id="header-source">
-                <select id="filter-source" class="header-filter-select">
-                  <option value="all">Source</option>
-                  <optgroup label="Select Source">
-                    <option value="local">Local</option>
-                    <option value="remote">Remote</option>
-                  </optgroup>
-                </select>
-              </th>
-            </tr>
-          </thead>
-          <tbody id="suites-list">
-            <!-- populated by JS -->
-          </tbody>
+        <div class="suites-table-container">
+          <table class="suites-table">
+            <caption class="visually-hidden">Evaluation test suite runs</caption>
+            <thead>
+              <tr>
+                <th scope="col" style="text-align: left;">Suite ID &amp; Date</th>
+                <th scope="col">
+                  <label for="filter-agent" class="visually-hidden">Filter by Agent</label>
+                  <select id="filter-agent" class="header-filter-select">
+                    <option value="all">Agent</option>
+                    <optgroup label="Select Agent" id="filter-agent-group">
+                      <!-- populated dynamically -->
+                    </optgroup>
+                  </select>
+                </th>
+                <th scope="col">
+                  <label for="filter-serving" class="visually-hidden">Filter by Serving</label>
+                  <select id="filter-serving" class="header-filter-select">
+                    <option value="all">Serving</option>
+                    <optgroup label="Select Architecture" id="filter-serving-group">
+                      <!-- populated dynamically -->
+                    </optgroup>
+                  </select>
+                </th>
+                <th scope="col">
+                  <label for="filter-model" class="visually-hidden">Filter by Model</label>
+                  <select id="filter-model" class="header-filter-select">
+                    <option value="all">Model</option>
+                    <optgroup label="Select Model" id="filter-model-group">
+                      <!-- populated dynamically -->
+                    </optgroup>
+                  </select>
+                </th>
+                <th scope="col"># Tasks</th>
+                <th scope="col" style="text-align: center; padding-right: 15px;">Overall Uplift</th>
+                <th scope="col" style="text-align: center;">A11y Subscore</th>
+                <th scope="col" style="text-align: center;">Med. Time (U → G)</th>
+                <th scope="col" style="text-align: center;">Med. Tokens (U → G)</th>
+                <th scope="col" id="header-source">
+                  <label for="filter-source" class="visually-hidden">Filter by Source</label>
+                  <select id="filter-source" class="header-filter-select">
+                    <option value="all">Source</option>
+                    <optgroup label="Select Source">
+                      <option value="local">Local</option>
+                      <option value="remote">Remote</option>
+                    </optgroup>
+                  </select>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="suites-list">
+              <!-- populated by JS -->
+            </tbody>
           </table>
+        </div>
       </div>
-    </div>
 
-    <div id="empty-state" class="empty-state" style="display: none;">
-      <p>No test runs found yet. Run the test suite to get started.</p>
-    </div>
+      <div id="empty-state" class="empty-state" style="display: none;">
+        <p>No test runs found yet. Run the test suite to get started.</p>
+      </div>
+    </main>
+  </div>
+
+  <div popover="hint" id="tooltip-a11y-subscore" class="hint-popover">
+    <strong>Cross-Cutting Accessibility Subscore</strong><br>
+    Aggregates ~107 deterministic accessibility assertions across 51 guides (focus &amp; <code>inert</code> management, reduced motion &amp; contrast, ARIA roles &amp; live regions, form labels, and keyboard operability)—not just the 5 checks in <code>guides/accessibility/</code>.
+  </div>
+
+  <div popover="hint" id="tooltip-token-efficiency" class="hint-popover">
+    <strong>Normalized Uncached Tokens (<code>total - cached</code>)</strong><br>
+    Raw total token counts are dominated (86%–98%) by cached prompt re-reads on each tool turn. Normalized uncached tokens measure actual new input, output, and reasoning tokens consumed.
   </div>
 
   <div id="tooltip-container" class="tooltip-container hidden">
@@ -125,6 +161,17 @@
     <div id="tooltip-chart"></div>
   </div>
 
+  <script type="module">
+    if (!("popover" in HTMLElement.prototype)) {
+      import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js").catch(() => {});
+    }
+    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+      import("https://unpkg.com/interestfor@latest").catch(() => {});
+    }
+    if (!("anchorName" in document.documentElement.style)) {
+      import("https://unpkg.com/@oddbird/css-anchor-positioning").catch(() => {});
+    }
+  </script>
   <script type="module" src="landing.js"></script>
 </body>
 </html>

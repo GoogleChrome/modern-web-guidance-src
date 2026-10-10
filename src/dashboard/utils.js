@@ -1,8 +1,80 @@
 /// <reference path="./evals.d.ts" />
+import { classifyScenarioCheck } from './a11y-classifier.js';
 
 /**
  * Utility functions shared between Dashboard and Landing pages.
  */
+
+/**
+ * Returns true if the dashboard is running on a local dev host or cloudtop proxy.
+ * @param {string} [hostname]
+ * @returns {boolean}
+ */
+export function isLocalDashboardHost(hostname = (typeof window !== 'undefined' ? window.location.hostname : '')) {
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.googlers.com');
+}
+
+/**
+ * Computes the median of a numeric array.
+ * @param {number[]} values
+ * @returns {number}
+ */
+export function median(values) {
+    if (!values || values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Formats a duration in milliseconds into a concise human-readable string (e.g., "1m 39s", "59s").
+ * @param {number | undefined | null} ms
+ * @returns {string}
+ */
+export function formatDuration(ms) {
+    if (!ms || ms <= 0) return '0s';
+    const totalSec = Math.round(ms / 1000);
+    if (totalSec < 60) return `${totalSec}s`;
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    if (mins < 60) {
+        return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    }
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return remMins > 0 ? `${hrs}h ${remMins}m` : `${hrs}h`;
+}
+
+/**
+ * Calculates normalized (uncached) tokens (`total - cached`) from a tokenUsage object.
+ * @param {{ total?: number, cached?: number } | undefined | null} tokenUsage
+ * @returns {{ total: number, cached: number, uncached: number, cachedPct: number }}
+ */
+export function getTokenBreakdown(tokenUsage) {
+    const total = Math.max(0, tokenUsage?.total || 0);
+    const cached = Math.max(0, Math.min(total, tokenUsage?.cached || 0));
+    const uncached = Math.max(0, total - cached);
+    const cachedPct = total > 0 ? Math.round((cached / total) * 100) : 0;
+    return { total, cached, uncached, cachedPct };
+}
+
+/**
+ * Extracts total run duration in milliseconds from either `run.runtimeMs` or `run.runtime.{agentRuntime,graderRuntime}`.
+ * @param {(Partial<import('../harness/lib/metrics.ts').RunResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} run
+ * @returns {number}
+ */
+export function getRunDurationMs(run) {
+    if (!run) return 0;
+    if (typeof run.runtimeMs === 'number' && run.runtimeMs > 0) {
+        return run.runtimeMs;
+    }
+    if (run.runtime && typeof run.runtime === 'object') {
+        return (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0);
+    }
+    return 0;
+}
 
 /**
  * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
@@ -17,15 +89,32 @@ export function getRunStats(checks) {
 }
 
 /**
+ * Computes pass rate and check list filtered strictly to cross-cutting accessibility checks.
+ * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
+ * @param {string} guideName
+ * @returns {{ rate: number, passed: number, total: number, checks: Array<import('../harness/lib/metrics.ts').ScenarioCheck & { a11y: ReturnType<typeof classifyScenarioCheck> }> }}
+ */
+export function getA11yRunStats(checks, guideName) {
+    if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0, checks: [] };
+    const classified = checks
+        .map(c => ({ ...c, a11y: classifyScenarioCheck(c, guideName) }))
+        .filter(c => c.a11y.isAccessibility);
+    const passed = classified.filter(c => c.passed).length;
+    const total = classified.length;
+    const rate = total > 0 ? Math.round((passed / total) * 100) : 0;
+    return { rate, passed, total, checks: classified };
+}
+
+/**
  * @param {number} percentage
  * @returns {string}
  */
 export function getColor(percentage) {
     const p = Math.max(0, Math.min(100, percentage));
     
-    const RED = 'oklch(53% 0.18 26)';
-    const YELLOW = 'oklch(72% 0.15 74)';
-    const GREEN = 'oklch(52% 0.13 145)';
+    const RED = 'oklch(45% 0.18 26)';
+    const YELLOW = 'oklch(45% 0.13 74)';
+    const GREEN = 'oklch(44% 0.13 145)';
 
     if (p <= 30) return RED;
     if (p >= 90) return GREEN;
@@ -129,23 +218,38 @@ export function parseResultKey(key) {
  * @property {number[]} unguided
  * @property {number[]} guided_tokens
  * @property {number[]} unguided_tokens
+ * @property {number[]} guided_uncached_tokens
+ * @property {number[]} unguided_uncached_tokens
+ * @property {number[]} guided_cached_pct
+ * @property {number[]} unguided_cached_pct
+ * @property {number[]} guided_runtime_ms
+ * @property {number[]} unguided_runtime_ms
  * @property {boolean} guided_failed
  * @property {boolean} unguided_failed
+ * @property {number} a11y_total
  */
 
 /**
  * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
+ * @param {{ onlyA11y?: boolean }} [options={}]
  * @returns {{
  *   labels: string[],
  *   guided: number[],
  *   unguided: number[],
  *   guided_tokens: number[],
  *   unguided_tokens: number[],
+ *   guided_uncached_tokens: number[],
+ *   unguided_uncached_tokens: number[],
+ *   guided_cached_pct: number[],
+ *   unguided_cached_pct: number[],
+ *   guided_runtime_ms: number[],
+ *   unguided_runtime_ms: number[],
  *   guided_failed: boolean[],
  *   unguided_failed: boolean[]
  * }}
  */
-export function calculateChartData(results) {
+export function calculateChartData(results, options = {}) {
+    const onlyA11y = Boolean(options?.onlyA11y);
     /** @type {Record<string, ChartAppData>} */
     const apps = {};
     /** @type {Record<string, string>} */
@@ -161,6 +265,9 @@ export function calculateChartData(results) {
         const rType = runType;
         const failedKey = rType === 'guided' ? 'guided_failed' : 'unguided_failed';
         const tokensKey = rType === 'guided' ? 'guided_tokens' : 'unguided_tokens';
+        const uncachedKey = rType === 'guided' ? 'guided_uncached_tokens' : 'unguided_uncached_tokens';
+        const cachedPctKey = rType === 'guided' ? 'guided_cached_pct' : 'unguided_cached_pct';
+        const runtimeKey = rType === 'guided' ? 'guided_runtime_ms' : 'unguided_runtime_ms';
 
         const scenario = `${taskName} (${guide})`;
         if (!apps[scenario]) {
@@ -169,8 +276,15 @@ export function calculateChartData(results) {
                 unguided: [], 
                 guided_tokens: [], 
                 unguided_tokens: [], 
+                guided_uncached_tokens: [],
+                unguided_uncached_tokens: [],
+                guided_cached_pct: [],
+                unguided_cached_pct: [],
+                guided_runtime_ms: [],
+                unguided_runtime_ms: [],
                 guided_failed: false, 
-                unguided_failed: false 
+                unguided_failed: false,
+                a11y_total: 0
             };
         }
         
@@ -184,51 +298,66 @@ export function calculateChartData(results) {
             apps[scenario][failedKey] = true;
         }
         
-        const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
-        const total = runs.reduce((acc, r) => acc + (r.results?.length || 0), 0);
+        let passed = 0;
+        let total = 0;
+        if (onlyA11y) {
+            runs.forEach(r => {
+                const a11yStats = getA11yRunStats(r.results, guide);
+                passed += a11yStats.passed;
+                total += a11yStats.total;
+            });
+            apps[scenario].a11y_total += total;
+        } else {
+            passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
+            total = runs.reduce((acc, r) => acc + (r.results?.length || 0), 0);
+        }
         apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
 
-        const totalTokens = runs.reduce((acc, r) => acc + (r.tokenUsage?.total || 0), 0);
+        const totalTokens = runs.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).total, 0);
+        const uncachedTokens = runs.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).uncached, 0);
+        const cachedTokens = runs.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).cached, 0);
         const avgTokens = runs.length > 0 ? Math.round(totalTokens / runs.length) : 0;
-        if (!apps[scenario][tokensKey]) {
-            apps[scenario][tokensKey] = [];
-        }
+        const avgUncached = runs.length > 0 ? Math.round(uncachedTokens / runs.length) : 0;
+        const cachedPct = totalTokens > 0 ? Math.round((cachedTokens / totalTokens) * 100) : 0;
+        const totalRuntime = runs.reduce((acc, r) => acc + getRunDurationMs(r), 0);
+        const avgRuntime = runs.length > 0 ? Math.round(totalRuntime / runs.length) : 0;
+
         apps[scenario][tokensKey].push(avgTokens);
+        apps[scenario][uncachedKey].push(avgUncached);
+        apps[scenario][cachedPctKey].push(cachedPct);
+        apps[scenario][runtimeKey].push(avgRuntime);
     });
     
-    const labels = Object.keys(apps).sort((a, b) => {
-        const taskA = taskNames[a] || a;
-        const taskB = taskNames[b] || b;
-        return taskA.localeCompare(taskB);
-    });
+    const labels = Object.keys(apps)
+        .filter(scenario => !onlyA11y || apps[scenario].a11y_total > 0)
+        .sort((a, b) => {
+            const taskA = taskNames[a] || a;
+            const taskB = taskNames[b] || b;
+            return taskA.localeCompare(taskB);
+        });
 
     /**
      * @param {string} l
-     * @param {'guided' | 'unguided'} type
+     * @param {'guided' | 'unguided' | 'guided_tokens' | 'unguided_tokens' | 'guided_uncached_tokens' | 'unguided_uncached_tokens' | 'guided_cached_pct' | 'unguided_cached_pct' | 'guided_runtime_ms' | 'unguided_runtime_ms'} key
      * @returns {number}
      */
-    const getAvg = (l, type) => {
-        const s = apps[l][type];
-        return s && s.length > 0 ? Math.round(s.reduce((/** @type {number} */ acc, /** @type {number} */ b) => acc + b, 0) / s.length) : 0;
-    };
-
-    /**
-     * @param {string} l
-     * @param {'guided' | 'unguided'} type
-     * @returns {number}
-     */
-    const getAvgTokens = (l, type) => {
-        const tokensKey = type === 'guided' ? 'guided_tokens' : 'unguided_tokens';
-        const s = apps[l][tokensKey];
+    const getAvgField = (l, key) => {
+        const s = apps[l][key];
         return s && s.length > 0 ? Math.round(s.reduce((/** @type {number} */ acc, /** @type {number} */ b) => acc + b, 0) / s.length) : 0;
     };
 
     return { 
         labels, 
-        guided: labels.map(l => getAvg(l, 'guided')), 
-        unguided: labels.map(l => getAvg(l, 'unguided')),
-        guided_tokens: labels.map(l => getAvgTokens(l, 'guided')),
-        unguided_tokens: labels.map(l => getAvgTokens(l, 'unguided')),
+        guided: labels.map(l => getAvgField(l, 'guided')), 
+        unguided: labels.map(l => getAvgField(l, 'unguided')),
+        guided_tokens: labels.map(l => getAvgField(l, 'guided_tokens')),
+        unguided_tokens: labels.map(l => getAvgField(l, 'unguided_tokens')),
+        guided_uncached_tokens: labels.map(l => getAvgField(l, 'guided_uncached_tokens')),
+        unguided_uncached_tokens: labels.map(l => getAvgField(l, 'unguided_uncached_tokens')),
+        guided_cached_pct: labels.map(l => getAvgField(l, 'guided_cached_pct')),
+        unguided_cached_pct: labels.map(l => getAvgField(l, 'unguided_cached_pct')),
+        guided_runtime_ms: labels.map(l => getAvgField(l, 'guided_runtime_ms')),
+        unguided_runtime_ms: labels.map(l => getAvgField(l, 'unguided_runtime_ms')),
         guided_failed: labels.map(l => apps[l].guided_failed),
         unguided_failed: labels.map(l => apps[l].unguided_failed)
     };

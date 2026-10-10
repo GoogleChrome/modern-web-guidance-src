@@ -1,4 +1,4 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, formatDuration, formatTokens, median, isLocalDashboardHost, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
@@ -12,6 +12,7 @@ import { extractSuiteSummary } from './summary-extractor.js';
 /** @typedef {'all' | import('./api.js').DataSource} SourceFilter */
 /** @typedef {'alphabetic' | 'uplift' | 'unguided' | 'guided' | 'variance'} GuideSortKey */
 /** @typedef {'asc' | 'desc'} SortDirection */
+/** @typedef {'all' | 'a11y'} InsightsMode */
 
 /** @type {Record<string, LandingSuiteSummary>} */
 let allTestData = {}; // Cache all test data by testId
@@ -31,9 +32,11 @@ let currentModelFilter = 'all';
 let currentGuideSort = 'alphabetic';
 /** @type {SortDirection} */
 let currentGuideSortDir = 'asc';
+/** @type {InsightsMode} */
+let currentInsightsMode = 'all';
 
 function isRemoteDashboard() {
-    return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    return !isLocalDashboardHost();
 }
 
 /** @type {Record<string, string>} */
@@ -199,6 +202,8 @@ function setupTableFilters() {
 function setupInsightsTimelineFilters() {
     const limitInput = /** @type {HTMLInputElement} */ (document.getElementById('insights-limit-input'));
     const showAllCheck = /** @type {HTMLInputElement} */ (document.getElementById('insights-show-all-check'));
+    const modeAllBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('insights-mode-all'));
+    const modeA11yBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('insights-mode-a11y'));
 
     if (limitInput) {
         limitInput.addEventListener('change', () => {
@@ -222,6 +227,20 @@ function setupInsightsTimelineFilters() {
             }
             renderPivotInsights();
         });
+    }
+
+    const setMode = (/** @type {InsightsMode} */ mode) => {
+        currentInsightsMode = mode;
+        if (modeAllBtn) modeAllBtn.setAttribute('aria-pressed', String(mode === 'all'));
+        if (modeA11yBtn) modeA11yBtn.setAttribute('aria-pressed', String(mode === 'a11y'));
+        renderPivotInsights();
+    };
+
+    if (modeAllBtn) {
+        modeAllBtn.addEventListener('click', () => setMode('all'));
+    }
+    if (modeA11yBtn) {
+        modeA11yBtn.addEventListener('click', () => setMode('a11y'));
     }
 }
 
@@ -315,7 +334,7 @@ function renderAll() {
 
 
 async function loadLocalTests() {
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    if (!isLocalDashboardHost()) {
         return; // Avoid 404s by skipping local network fetches when hosted on GitHub Pages
     }
     
@@ -562,6 +581,22 @@ function renderSuites() {
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
 
+        const a11y = testInfo.a11yStats;
+        const hasA11y = Boolean(a11y && (a11y.guidedTotal > 0 || a11y.unguidedTotal > 0));
+        const a11yGRate = a11y ? a11y.guidedRate : 0;
+        const a11yURate = a11y ? a11y.unguidedRate : 0;
+        const a11yUplift = a11y ? a11y.uplift : 0;
+
+        const rt = testInfo.efficiencyStats?.runtime;
+        const hasRuntime = Boolean(rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0));
+        const timeDeltaPct = rt ? rt.medianDeltaPct : 0;
+        const timePillClass = timeDeltaPct < 0 ? 'eff-pill positive' : (timeDeltaPct === 0 ? 'eff-pill neutral' : 'eff-pill muted');
+
+        const tok = testInfo.efficiencyStats?.tokens;
+        const hasTokens = Boolean(tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0));
+        const tokDeltaPct = tok ? tok.uncachedMedianDeltaPct : 0;
+        const tokPillClass = tokDeltaPct < 0 ? 'eff-pill positive' : (tokDeltaPct <= 15 ? 'eff-pill neutral' : 'eff-pill muted');
+
         const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
         const timeAgoStr = timeAgo(_date);
 
@@ -572,30 +607,70 @@ function renderSuites() {
 
         const { label, ldap } = formatSuiteLabel(testInfo);
 
+        const a11yCellHtml = hasA11y
+            ? `
+                <div class="suite-dumbbell-track" style="max-width: 120px; margin: 0 auto;">
+                    <div class="connector" style="left: calc(${Math.min(a11yURate, a11yGRate)}% + 2px); width: calc(${Math.abs(a11yGRate - a11yURate)}% - 4px);"></div>
+                    <div class="dot unguided" style="left: calc(${a11yURate}% - 3px);"></div>
+                    <div class="dot guided" style="left: calc(${a11yGRate}% - 4px);"></div>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
+                    <span>${a11yURate}% → ${a11yGRate}%</span>
+                    <span style="font-weight: 700; color: var(--text-primary); margin-left: 4px;">(${a11yUplift >= 0 ? '+' : ''}${a11yUplift}%)</span>
+                </div>
+            `
+            : `<span style="color: var(--text-secondary); font-size: 0.8rem;">—</span>`;
+
+        const timeCellHtml = hasRuntime && rt
+            ? `
+                <div class="eff-cell-main">
+                    <span>${formatDuration(rt.unguidedMedianMs)} → <strong>${formatDuration(rt.guidedMedianMs)}</strong></span>
+                    <span class="${timePillClass}">${timeDeltaPct > 0 ? '+' : ''}${timeDeltaPct}%</span>
+                </div>
+                ${rt.fasterTaskPct > 0 ? `<div class="eff-cell-sub">${rt.fasterTaskPct}% of tasks faster</div>` : ''}
+            `
+            : `<span style="color: var(--text-secondary); font-size: 0.8rem;">—</span>`;
+
+        const tokenCellHtml = hasTokens && tok
+            ? `
+                <div class="eff-cell-main" title="Normalized uncached tokens (total - cached)">
+                    <span>${formatTokens(tok.unguidedUncachedMedian)} → <strong>${formatTokens(tok.guidedUncachedMedian)}</strong></span>
+                    <span class="${tokPillClass}">${tokDeltaPct > 0 ? '+' : ''}${tokDeltaPct}%</span>
+                </div>
+                <div class="eff-cell-sub" title="Raw total tokens including cached prompt re-reads">
+                    Total: ${formatTokens(tok.unguidedTotalMedian)} → ${formatTokens(tok.guidedTotalMedian)} (${tok.guidedCachedSharePct}% cached)
+                </div>
+            `
+            : `<span style="color: var(--text-secondary); font-size: 0.8rem;">—</span>`;
+
         html += `
             <tr class="suite-table-row ${isFaulty ? 'faulty' : ''}">
-                <td style="text-align: left; font-weight: 600;">
+                <th scope="row" style="text-align: left; font-weight: 600;">
                     <a href="${localLink}" class="suite-link" style="color: inherit; text-decoration: none;">
                         <div style="color: var(--text-primary); font-size: 0.95rem;" title="${escapeHtml(testId)}">${escapeHtml(label)}</div>
                         <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span>${ldap ? ` • <span>${escapeHtml(ldap)}</span>` : ''}</div>
                     </a>
-                </td>
+                </th>
                 <td>${getAgentBadge(testInfo.agent)}${escapeHtml(testInfo.agent)}</td>
                 <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
                 <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${(escapeHtml(testInfo.model) || '').replaceAll('-', '-<wbr>')}</td>
                 <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
-                <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
+                <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 170px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
                     <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
                         <div class="suite-dumbbell-track">
                             <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px);"></div>
                             <div class="dot unguided" style="left: calc(${uRate}% - 3px);"></div>
                             <div class="dot guided" style="left: calc(${gRate}% - 4px);"></div>
                         </div>
-                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
-                            <span style="font-weight: bold; color: var(--text-primary);">${gRate - uRate >= 0 ? '+' : ''}${gRate - uRate}%</span>
+                        <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
+                            <span>${uRate}% → ${gRate}%</span>
+                            <span style="font-weight: bold; color: var(--text-primary); margin-left: 4px;">(${gRate - uRate >= 0 ? '+' : ''}${gRate - uRate}%)</span>
                         </div>
                     </a>
                 </td>
+                <td style="width: 155px; padding: 8px 10px; vertical-align: middle;">${a11yCellHtml}</td>
+                <td style="width: 155px; padding: 8px 10px; vertical-align: middle;">${timeCellHtml}</td>
+                <td style="width: 185px; padding: 8px 10px; vertical-align: middle;">${tokenCellHtml}</td>
                 ${isRemoteDashboard() ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
             </tr>
         `;
@@ -805,6 +880,166 @@ function getSortedTestIds() {
     });
 }
 
+/**
+ * Renders the per-agent Uplift, Accessibility Subscore, and Efficiency scorecard strip.
+ * @param {string[]} testIds
+ */
+function renderAgentScorecardStrip(testIds) {
+    const stripEl = document.getElementById('agent-scorecard-strip');
+    if (!stripEl) return;
+
+    /**
+     * @type {Record<string, {
+     *   suites: number,
+     *   overallU: number[],
+     *   overallG: number[],
+     *   a11yU: number[],
+     *   a11yG: number[],
+     *   timeU: number[],
+     *   timeG: number[],
+     *   fasterPct: number[],
+     *   uncachedU: number[],
+     *   uncachedG: number[],
+     *   totalU: number[],
+     *   totalG: number[],
+     *   cachedPctG: number[]
+     * }>}
+     */
+    const byAgent = {};
+
+    testIds.forEach(compoundKey => {
+        const t = allTestData[compoundKey];
+        if (!t || !t.agent) return;
+        const agent = t.agent;
+        if (!byAgent[agent]) {
+            byAgent[agent] = {
+                suites: 0,
+                overallU: [],
+                overallG: [],
+                a11yU: [],
+                a11yG: [],
+                timeU: [],
+                timeG: [],
+                fasterPct: [],
+                uncachedU: [],
+                uncachedG: [],
+                totalU: [],
+                totalG: [],
+                cachedPctG: []
+            };
+        }
+        const b = byAgent[agent];
+        b.suites += 1;
+
+        const gStats = t.guidedStats || { passed: 0, total: 0 };
+        const uStats = t.unguidedStats || { passed: 0, total: 0 };
+        if (gStats.total > 0 || uStats.total > 0) {
+            b.overallG.push(gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0);
+            b.overallU.push(uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0);
+        }
+
+        if (t.a11yStats && (t.a11yStats.guidedTotal > 0 || t.a11yStats.unguidedTotal > 0)) {
+            b.a11yG.push(t.a11yStats.guidedRate);
+            b.a11yU.push(t.a11yStats.unguidedRate);
+        }
+
+        const rt = t.efficiencyStats?.runtime;
+        if (rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0)) {
+            b.timeG.push(rt.guidedMedianMs);
+            b.timeU.push(rt.unguidedMedianMs);
+            if (rt.fasterTaskPct > 0) b.fasterPct.push(rt.fasterTaskPct);
+        }
+
+        const tok = t.efficiencyStats?.tokens;
+        if (tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0)) {
+            b.uncachedG.push(tok.guidedUncachedMedian);
+            b.uncachedU.push(tok.unguidedUncachedMedian);
+            b.totalG.push(tok.guidedTotalMedian);
+            b.totalU.push(tok.unguidedTotalMedian);
+            if (tok.guidedCachedSharePct > 0) b.cachedPctG.push(tok.guidedCachedSharePct);
+        }
+    });
+
+    const agents = Object.keys(byAgent).sort((a, b) => a.localeCompare(b));
+    if (agents.length === 0) {
+        stripEl.innerHTML = '';
+        return;
+    }
+
+    stripEl.innerHTML = agents.map(agent => {
+        const b = byAgent[agent];
+        const medOverallU = Math.round(median(b.overallU));
+        const medOverallG = Math.round(median(b.overallG));
+        const overallUplift = medOverallG - medOverallU;
+
+        const medA11yU = Math.round(median(b.a11yU));
+        const medA11yG = Math.round(median(b.a11yG));
+        const a11yUplift = medA11yG - medA11yU;
+
+        const medTimeU = Math.round(median(b.timeU));
+        const medTimeG = Math.round(median(b.timeG));
+        const timeDeltaPct = medTimeU > 0 ? Math.round(((medTimeG - medTimeU) / medTimeU) * 100) : 0;
+        const medFasterPct = Math.round(median(b.fasterPct));
+        const timePillClass = timeDeltaPct < 0 ? 'eff-pill positive' : (timeDeltaPct === 0 ? 'eff-pill neutral' : 'eff-pill muted');
+
+        const medUncachedU = Math.round(median(b.uncachedU));
+        const medUncachedG = Math.round(median(b.uncachedG));
+        const uncachedDeltaPct = medUncachedU > 0 ? Math.round(((medUncachedG - medUncachedU) / medUncachedU) * 100) : 0;
+        const tokPillClass = uncachedDeltaPct < 0 ? 'eff-pill positive' : (uncachedDeltaPct <= 15 ? 'eff-pill neutral' : 'eff-pill muted');
+
+        const medTotalU = Math.round(median(b.totalU));
+        const medTotalG = Math.round(median(b.totalG));
+        const medCachedPct = Math.round(median(b.cachedPctG));
+
+        const isActive = currentAgentFilter === agent;
+
+        return `
+            <div class="agent-scorecard ${isActive ? 'active-filter' : ''}" onclick="setInsightFilter('agent', '${escapeHtml(agent)}')" title="Click to filter suites by ${escapeHtml(agent)}">
+                <div class="agent-scorecard-header">
+                    <div>
+                        <span class="agent-scorecard-name">${getAgentBadge(agent)}${escapeHtml(agent)}</span>
+                    </div>
+                    <span class="agent-scorecard-trials">${b.suites} ${b.suites === 1 ? 'suite' : 'suites'}</span>
+                </div>
+                <div class="agent-scorecard-metrics">
+                    <div class="agent-metric-row">
+                        <span class="agent-metric-label">Overall Uplift</span>
+                        <span class="agent-metric-val">
+                            ${medOverallU}% → <strong>${medOverallG}%</strong>
+                            <span class="eff-pill positive">${overallUplift >= 0 ? '+' : ''}${overallUplift}%</span>
+                        </span>
+                    </div>
+                    <div class="agent-metric-row">
+                        <span class="agent-metric-label">A11y Subscore</span>
+                        <span class="agent-metric-val">
+                            ${b.a11yG.length > 0
+                                ? `${medA11yU}% → <strong>${medA11yG}%</strong> <span class="eff-pill positive">${a11yUplift >= 0 ? '+' : ''}${a11yUplift}%</span>`
+                                : '—'}
+                        </span>
+                    </div>
+                    <div class="agent-metric-row">
+                        <span class="agent-metric-label">Med. Time</span>
+                        <span class="agent-metric-val">
+                            ${medTimeU > 0 || medTimeG > 0
+                                ? `${formatDuration(medTimeU)} → <strong>${formatDuration(medTimeG)}</strong> <span class="${timePillClass}">${timeDeltaPct > 0 ? '+' : ''}${timeDeltaPct}%</span>`
+                                : '—'}
+                        </span>
+                    </div>
+                    <div class="agent-metric-row">
+                        <span class="agent-metric-label">Uncached Tok</span>
+                        <span class="agent-metric-val">
+                            ${medUncachedU > 0 || medUncachedG > 0
+                                ? `${formatTokens(medUncachedU)} → <strong>${formatTokens(medUncachedG)}</strong> <span class="${tokPillClass}">${uncachedDeltaPct > 0 ? '+' : ''}${uncachedDeltaPct}%</span>`
+                                : '—'}
+                        </span>
+                    </div>
+                    ${medTotalG > 0 ? `<div class="agent-metric-sub">Total: ${formatTokens(medTotalU)} → ${formatTokens(medTotalG)} (${medCachedPct}% cached)${medFasterPct > 0 ? ` • ${medFasterPct}% faster` : ''}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 function renderPivotInsights() {
     let testIds = getSortedTestIds(); // Uses selected filters!
 
@@ -838,15 +1073,18 @@ function renderPivotInsights() {
             return activeDates.has(dateKey);
         });
     }
+
+    renderAgentScorecardStrip(testIds);
+
+    const onlyA11y = currentInsightsMode === 'a11y';
+
     /** @type {{
      *   agent: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
-     *   serving: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
      *   model: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
      *   guide: Record<string, { uplift: number, uRate: number, gRate: number }[]>
      * }} */
     const grouped = {
         agent: {},
-        serving: {},
         model: {},
         guide: {}
     };
@@ -855,26 +1093,43 @@ function renderPivotInsights() {
         const testInfo = allTestData[compoundKey];
         if (!testInfo) return;
         
-        const gStats = testInfo.guidedStats || { passed: 0, total: 0 };
-        const uStats = testInfo.unguidedStats || { passed: 0, total: 0 };
-        const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
-        const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
-        const uplift = gRate - uRate;
+        let gRate = 0;
+        let uRate = 0;
+        let uplift = 0;
+
+        if (onlyA11y) {
+            const a11y = testInfo.a11yStats;
+            if (!a11y || (a11y.guidedTotal === 0 && a11y.unguidedTotal === 0)) return;
+            gRate = a11y.guidedRate;
+            uRate = a11y.unguidedRate;
+            uplift = a11y.uplift;
+        } else {
+            const gStats = testInfo.guidedStats || { passed: 0, total: 0 };
+            const uStats = testInfo.unguidedStats || { passed: 0, total: 0 };
+            gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
+            uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
+            uplift = gRate - uRate;
+        }
 
         if (!grouped.agent[testInfo.agent]) grouped.agent[testInfo.agent] = [];
         grouped.agent[testInfo.agent].push({ uplift, uRate, gRate });
-
-        if (!grouped.serving[testInfo.serving]) grouped.serving[testInfo.serving] = [];
-        grouped.serving[testInfo.serving].push({ uplift, uRate, gRate });
 
         if (!grouped.model[testInfo.model]) grouped.model[testInfo.model] = [];
         grouped.model[testInfo.model].push({ uplift, uRate, gRate });
 
         const suiteGuides = testInfo.guides || {};
         Object.keys(suiteGuides).forEach(guide => {
-            const { guidedRate = 0, unguidedRate = 0, uplift = 0 } = suiteGuides[guide];
-            if (!grouped.guide[guide]) grouped.guide[guide] = [];
-            grouped.guide[guide].push({ uplift, uRate: unguidedRate, gRate: guidedRate });
+            const gEntry = suiteGuides[guide];
+            if (onlyA11y) {
+                if (!gEntry.a11y) return;
+                const { guidedRate = 0, unguidedRate = 0, uplift: gUplift = 0 } = gEntry.a11y;
+                if (!grouped.guide[guide]) grouped.guide[guide] = [];
+                grouped.guide[guide].push({ uplift: gUplift, uRate: unguidedRate, gRate: guidedRate });
+            } else {
+                const { guidedRate = 0, unguidedRate = 0, uplift: gUplift = 0 } = gEntry;
+                if (!grouped.guide[guide]) grouped.guide[guide] = [];
+                grouped.guide[guide].push({ uplift: gUplift, uRate: unguidedRate, gRate: guidedRate });
+            }
         });
     });
 
@@ -998,7 +1253,7 @@ function renderPivotInsights() {
                             <div class="dot unguided" style="left: calc(${uRate}% - 2px);"></div>
                             <div class="dot guided" style="left: calc(${gRate}% - 3px);"></div>
                         </div>
-                        <div style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 2px;">${medUplift >= 0 ? '+' : ''}${medUplift}%</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 2px;">${uRate}% → ${gRate}% (${medUplift >= 0 ? '+' : ''}${medUplift}%)</div>
                     </td>
                 </tr>
             `;
@@ -1021,32 +1276,30 @@ function renderPivotInsights() {
         ).join('');
 
         const dirArrow = currentGuideSortDir === 'asc' ? '↑' : '↓';
+        const modeSuffix = onlyA11y ? ' <span class="mode-badge-inline">Accessibility Checks</span>' : '';
+        const guideCountLabel = Object.keys(grouped.guide).length;
 
         container.innerHTML = `
             <div class="insights-top-row">
                 <div class="insights-panel">
-                    <div class="insights-panel-title">By Agent</div>
+                    <div class="insights-panel-title">By Agent${modeSuffix}</div>
                     ${renderPivotTable(grouped.agent, 'agent')}
                 </div>
                 <div class="insights-panel">
-                    <div class="insights-panel-title">By Serving</div>
-                    ${renderPivotTable(grouped.serving, 'serving')}
-                </div>
-                <div class="insights-panel">
-                    <div class="insights-panel-title">By Model</div>
+                    <div class="insights-panel-title">By Model${modeSuffix}</div>
                     ${renderPivotTable(grouped.model, 'model')}
                 </div>
             </div>
             <div class="insights-panel insights-panel-full">
                 <div class="insights-panel-header-row">
-                    <div class="insights-panel-title" style="margin-bottom: 0;">By Guide</div>
+                    <div class="insights-panel-title" style="margin-bottom: 0;">By Guide (${guideCountLabel})${modeSuffix}</div>
                     <div class="guide-sort-controls">
-                        <span class="sort-label">Sort:</span>
+                        <label for="guide-sort-select" class="sort-label">Sort:</label>
                         <select id="guide-sort-select" class="sort-select">
                             ${sortOptionsHtml}
                         </select>
-                        <button id="guide-sort-dir-btn" class="sort-direction-btn" title="Toggle Direction">
-                            <span style="font-size: 1rem; font-weight: bold;">${dirArrow}</span>
+                        <button id="guide-sort-dir-btn" class="sort-direction-btn" type="button" aria-label="Toggle sort direction" title="Toggle Direction">
+                            <span aria-hidden="true" style="font-size: 1rem; font-weight: bold;">${dirArrow}</span>
                         </button>
                     </div>
                 </div>
@@ -1090,7 +1343,7 @@ window.setInsightFilter = (filterKey, value) => {
     };
     const select = selects[filterKey];
     if (select) {
-        select.value = value;
+        select.value = select.value === value ? 'all' : value;
         select.dispatchEvent(new Event('change')); // Trigger table refresh!
     }
 };

@@ -1,4 +1,4 @@
-import { authenticatedFetch, parseResultKey } from './utils.js';
+import { authenticatedFetch, parseResultKey, isLocalDashboardHost } from './utils.js';
 
 /**
  * @typedef {'local' | 'remote' | 'static'} DataSource
@@ -12,7 +12,7 @@ export class ApiClient {
         let source;
         if (sourceParam === 'remote' || sourceParam === 'local' || sourceParam === 'static') {
             source = sourceParam;
-        } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        } else if (!isLocalDashboardHost()) {
             source = 'remote';
         } else {
             source = 'local';
@@ -385,8 +385,7 @@ export class ApiClient {
     getAbsoluteUrl(path) {
         if (this.source === 'remote') {
             let fixedPath = path.split('?')[0];
-            const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            if (isLocalServer) {
+            if (isLocalDashboardHost()) {
                 return `/gcs-proxy/${fixedPath}`;
             }
             return `${this.gcsPrefix}${encodeURIComponent(fixedPath)}?alt=media`;
