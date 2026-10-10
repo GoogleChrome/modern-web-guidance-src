@@ -19,13 +19,30 @@ test.describe('Resilient Context Menus and Nested Dropdowns Grader', () => {
     await expect(trigger).toHaveAttribute('popovertarget', 'action-panel');
   });
 
-  test('The stylesheet uses anchor() on inset properties to position the target relative to the anchor', async ({ page }) => {
+  test('The stylesheet uses position-area or anchor() on inset properties to position the target relative to the anchor', async ({ page }) => {
     await page.goto(targetFileUrl);
-    const usesAnchor = await page.evaluate(() => {
+    const usesAnchorOrPositionArea = await page.evaluate(() => {
+      const checkRule = (rule: CSSRule): boolean => {
+        const text = rule.cssText;
+        if (text.includes('anchor(') || text.includes('position-area') || text.includes('inset-area')) {
+          return true;
+        }
+        if ('cssRules' in rule) {
+          try {
+            for (const nestedRule of Array.from((rule as CSSGroupingRule).cssRules)) {
+              if (checkRule(nestedRule)) return true;
+            }
+          } catch {
+            // Ignore errors reading nested rules
+          }
+        }
+        return false;
+      };
+
       for (const sheet of Array.from(document.styleSheets)) {
         try {
           for (const rule of Array.from(sheet.cssRules)) {
-            if (rule.cssText.includes('anchor(')) {
+            if (checkRule(rule)) {
               return true;
             }
           }
@@ -33,9 +50,21 @@ test.describe('Resilient Context Menus and Nested Dropdowns Grader', () => {
           // Ignore cross-origin stylesheet errors
         }
       }
+
+      const panel = document.querySelector('#action-panel') as HTMLElement | null;
+      if (panel) {
+        const style = window.getComputedStyle(panel) as any;
+        const posArea = style.positionArea || style.getPropertyValue('position-area') || style.insetArea || style.getPropertyValue('inset-area');
+        if (posArea && posArea !== 'none') return true;
+        const inline = panel.getAttribute('style') || '';
+        if (inline.includes('anchor(') || inline.includes('position-area') || inline.includes('inset-area')) {
+          return true;
+        }
+      }
+
       return false;
     });
-    expect(usesAnchor).toBe(true);
+    expect(usesAnchorOrPositionArea).toBe(true);
   });
 
   test('The stylesheet defines position-try-fallbacks for overflow handling', async ({ page }) => {

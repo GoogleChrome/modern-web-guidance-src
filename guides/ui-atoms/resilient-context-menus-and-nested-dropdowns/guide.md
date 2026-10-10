@@ -63,8 +63,9 @@ To prevent the panel from being cut off at the edge of the screen, define "try t
   /* 
      If the panel overflows the bottom, flip it to the top (flip-block).
      If it overflows the inline edges, flip it horizontally (flip-inline).
+     If it overflows both (e.g., in a corner), flip on both axes (flip-block flip-inline).
   */
-  position-try-fallbacks: flip-block, flip-inline;
+  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
 }
 ```
 
@@ -91,11 +92,10 @@ For some use cases, you may be able to use the `@oddbird/css-anchor-positioning`
 .panel {
   /* Mandatory: use explicit anchor name */
   position-anchor: --kebab-anchor;
-  /* Mandatory: use insets rather that position-area for positioning */
-  bottom: auto;
-  right: auto;
-  top: anchor(bottom);
-  left: anchor(left);
+  /* Mandatory: use insets rather than position-area for positioning */
+  inset: auto;
+  inset-block-start: anchor(end);
+  inset-inline-start: anchor(start);
   margin: 0;
 }
 ```
