@@ -1122,6 +1122,12 @@
     "animation",
     "scrolling"
   ],
+  "tmp-text-decoration-inset": [
+    "css"
+  ],
+  "tmp-text-decoration-skip-spaces": [
+    "css"
+  ],
   "tmp-webcrypto-modern-algos": [
     "security"
   ],

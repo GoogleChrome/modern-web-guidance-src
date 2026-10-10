@@ -1,6 +1,21 @@
 ---
 name: css-layout
 description: Modern CSS layouts such as flexbox, grid, subgrid, container queries, anchor positioning, and intrinsic sizing. Use this skill when architecting responsive UI components or page layouts.
+web-feature-ids:
+  - flexbox
+  - flexbox-flex-wrap-balance
+  - grid
+  - subgrid
+  - container-queries
+  - dialog
+  - popover
+  - anchor-positioning
+  - scrollbar-gutter
+  - line-clamp
+  - viewport-unit-variants
+  - grid-lanes
+  - aspect-ratio
+  - logical-properties
 ---
 
 # CSS Layouts and Responsive Design
@@ -54,12 +69,15 @@ body.centered  { display: grid; place-content: center; min-block-size: 100dvb; }
 
 ## 2 Flexbox
 
+{{ BASELINE_STATUS("flexbox-flex-wrap-balance") }}
+
 One-dimensional layout — items flow along a single **main** axis with alignment on the **cross** axis. Reach for it for navbars, toolbars, item rows, and any single-row-or-column distribution.
 
 **Do:**
 
 - Establish a context with `display: flex` and set the main axis with `flex-direction` (`row` default).
 - Use `flex-wrap: wrap` whenever overflow is a possibility — `nowrap` without `overflow: auto/hidden` will spill on narrow viewports.
+- Layer `flex-wrap: balance` after `flex-wrap: wrap` on wrapped rows of compact items (such as tag clouds, filter pills, button groups, or navigation links) to distribute items evenly across lines and prevent a single orphaned item on the final row; browsers without support fall back to `wrap`.
 - Use the `flex` shorthand `<grow> <shrink> <basis>` (e.g., `flex: 1 1 250px`) on items rather than setting `flex-grow`/`flex-shrink`/`flex-basis` individually.
 - Use `gap` (or the `row-gap`/`column-gap` longhand) for spacing between items instead of child margins.
 - Prefix positional alignment with `safe` (e.g., `align-items: safe center`) so focusable content isn't clipped when the container is narrower than its content.
@@ -82,6 +100,7 @@ One-dimensional layout — items flow along a single **main** axis with alignmen
 .card-item        { flex: 1 1 250px; }                  /* grow, shrink, basis */
 .card-item-action { margin-inline-start: auto; }        /* Push to main-axis end. */
 .toolbar          { display: flex; align-items: safe center; }
+.tag-list         { display: flex; flex-wrap: wrap; flex-wrap: balance; gap: 0.5rem; }
 ```
 
 ## 3 Grid and subgrid
@@ -276,8 +295,7 @@ Manage layout shifts, scrollbars, and clipping predictably.
 
 {{ BASELINE_STATUS("grid-lanes") }}
 
-
-The spec is in development. The currently agreed-upon name is "grid lanes" (e.g., `display: grid-lanes`). Firefox ships `grid-template-rows: masonry` behind a flag; no other engines ship it in stable as of this writing.
+The specification is in development under the name "grid lanes" (e.g., `display: grid-lanes`), while earlier experimental prototypes used `grid-template-rows: masonry`.
 
 **Do:**
 
@@ -303,3 +321,5 @@ The spec is in development. The currently agreed-upon name is "grid lanes" (e.g.
   }
 }
 ```
+
+{# Once guides/css/masonry-layout is authored, migrate §8 into it and replace this section with {{ GUIDE_REF("masonry-layout") }}. #}

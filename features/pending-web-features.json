@@ -98,5 +98,23 @@
     "issue": "https://github.com/web-platform-dx/web-features/issues/4307",
     "group": "css",
     "compat_features": "css.properties.path-length"
+  },
+  "tmp-text-decoration-skip-spaces": {
+    "issue": "https://github.com/web-platform-dx/web-features/pull/4406",
+    "group": "css",
+    "compat_features": "css.properties.text-decoration-skip-spaces"
+  },
+  "tmp-text-decoration-inset": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4462",
+    "group": "css",
+    "compat_features": "css.properties.text-decoration-inset"
+  },
+  "tmp-camera-microphone": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4199",
+    "group": "html",
+    "compat_features": [
+      "html.elements.camera",
+      "html.elements.microphone"
+    ]
   }
 }
