@@ -1,0 +1,63 @@
+name: New use case
+description: Propose a new task-based use case guide (no stub PR required).
+title: "Create guide for the <slug> use case"
+labels: ["new-use-case"]
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Select the category under `guides/<category>/` for this use case.
+      options:
+        - accessibility
+        - built-in-ai
+        - css
+        - forms
+        - html
+        - js
+        - performance
+        - privacy
+        - pwa
+        - security
+        - ui-atoms
+        - ui-behaviors
+        - ui-components
+        - visual-design
+        - wasm
+        - webmcp
+    validations:
+      required: true
+
+  - type: input
+    id: slug
+    attributes:
+      label: Use case slug
+      description: Kebab-case directory name under `guides/<category>/<slug>` (e.g. `custom-list-markers`).
+      placeholder: e.g. custom-list-markers
+    validations:
+      required: true
+
+  - type: input
+    id: web-feature-id
+    attributes:
+      label: web-feature-id
+      description: Provide the web-feature ID(s) from https://webstatus.dev/ (or `tmp-*` ID from `features/pending-web-features.json`), comma-separated if multiple.
+      placeholder: e.g. scroll-driven-animations
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Scope & description
+      description: 1–2 sentence description of the developer task and what the guide should cover.
+      placeholder: Customize the bullets and numbering of lists with custom shapes, colors, and counter formats.
+    validations:
+      required: true
+
+  - type: input
+    id: related-features
+    attributes:
+      label: Related feature issue(s)
+      description: Optional link(s) to parent `new-feature` issue(s).
+      placeholder: e.g. #1265

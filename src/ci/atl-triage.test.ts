@@ -464,6 +464,12 @@ Affected web-feature IDs: [canvas-html](https://webstatus.dev/features/canvas-ht
     assert.deepStrictEqual(result.sort(), ['malchata', 'override-issue-reviewer'].sort());
   });
 
+  it('assigns the category ATL when new-use-case issue uses the issue template ### Category format', () => {
+    const description = `### Use case slug\n\nsome-use-case\n\n### Category\n\ncss-layout\n`;
+    const result = handleIssue(123, ['new-use-case'], description, mockConfig);
+    assert.deepStrictEqual(result, ['malchata']);
+  });
+
   it('skips auto-assigning ATLs who have previously been unassigned from the issue', () => {
     unassignedMock.mock.mockImplementation(() => ['RVISCOMI']); // Test mixed-case matching
 
@@ -685,7 +691,7 @@ describe('handlePR', () => {
     assert.deepStrictEqual(handlePR(99999, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-eval']), []);
   });
 
-  it('assigns corresponding ATL when gd-dev-content label is present even if only target eval files were touched', () => {
+  it('does NOT request Content ATL review when gd-dev-content label is present if only target eval files were touched', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/grader.ts',
       'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/patches/zero-passrate.patch',
@@ -693,12 +699,24 @@ describe('handlePR', () => {
     ];
 
     const result = handlePR(99999, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-content']);
-    // 'deliver-optimized-decorative-images' has 'image-set' -> override-pr-reviewer + rviscomi, paulirish (performance)
-    // 'carousel-slide-effects' -> philipwalton (motion)
-    assert.deepStrictEqual(
-      result.sort(),
-      ['override-pr-reviewer', 'rviscomi', 'paulirish', 'philipwalton'].sort()
+    assert.deepStrictEqual(result, []);
+  });
+
+  it('requests review from configured skill owners when skills-src/<skill>/** is modified', () => {
+    const configWithExtensions = {
+      ...mockConfig,
+      default: {
+        ...mockConfig.default,
+        'chrome-extensions': ['oliverdunk', 'patrickkettner']
+      }
+    };
+    const result = handlePR(
+      99999,
+      'some-contributor',
+      configWithExtensions,
+      ['skills-src/chrome-extensions/SKILL.md']
     );
+    assert.deepStrictEqual(result.sort(), ['oliverdunk', 'patrickkettner'].sort());
   });
 
   it('filters out already requested and reviewed ATLs case-insensitively', () => {

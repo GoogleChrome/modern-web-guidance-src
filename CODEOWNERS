@@ -4,6 +4,7 @@
 # Blanket ownerless overrides for content (rely entirely on atl-triage bot instead)
 guides/
 features/
+skills-src/
 
 # CODEOWNERS config
 CODEOWNERS @paulirish @rviscomi @micahjo7

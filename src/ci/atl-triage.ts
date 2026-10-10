@@ -98,10 +98,16 @@ export function isSmeContentFile(file: string): boolean {
     normalized = path.relative(rootDir, normalized);
   }
   const parts = normalized.split(/[/\\]/);
+  if (parts.some(p => p === '..')) {
+    return false;
+  }
   if (parts[0] === 'features' && parts.length === 2 && (file.endsWith('.md') || file.endsWith('.json'))) {
     return true;
   }
-  if (parts[0] !== 'guides' || parts.length < 3 || parts.some(p => p === '..')) {
+  if (parts[0] === 'skills-src' && parts.length >= 3) {
+    return true;
+  }
+  if (parts[0] !== 'guides' || parts.length < 3) {
     return false;
   }
   const filename = parts[parts.length - 1];
@@ -148,7 +154,11 @@ export function normalizeLabel(label: string): string {
   if (clean.startsWith('guides:')) {
     clean = clean.slice('guides:'.length);
   }
-  return clean.trim();
+  clean = clean.trim();
+  if (clean === 'extensions') {
+    return 'chrome-extensions';
+  }
+  return clean;
 }
 
 export function isContentRelatedIssue(
@@ -170,8 +180,8 @@ export function isContentRelatedIssue(
     if (label.startsWith('category:') || label.startsWith('guide:') || label.startsWith('guides:')) return true;
   }
 
-  // Check description for use case subdir
-  if (/Use case subdir:\s*\[guides\/([^/\]]+)/i.test(issueDescription)) {
+  // Check description for use case subdir or template Category field
+  if (/Use case subdir:\s*\[guides\/([^/\]]+)/i.test(issueDescription) || /###\s+Category\s*\r?\n+([^\r\n#]+)/i.test(issueDescription)) {
     return true;
   }
 
@@ -592,13 +602,15 @@ export function handleIssue(
     descriptionAtls.forEach(a => assignedAtls.add(a));
   }
 
-  // 3. Check issue description for use case category
-  const categoryMatch = issueDescription.match(/Use case subdir:\s*\[guides\/([^/\]]+)/i);
+  // 3. Check issue description for use case category (subdir link or issue template Category field)
+  const categoryMatch =
+    issueDescription.match(/Use case subdir:\s*\[guides\/([^/\]]+)/i) ||
+    issueDescription.match(/###\s+Category\s*\r?\n+([^\r\n#]+)/i);
   if (categoryMatch) {
     const category = categoryMatch[1].trim().toLowerCase();
     if (atlConfig.default[category]) {
       const atls = Array.isArray(atlConfig.default[category]) ? atlConfig.default[category] : [atlConfig.default[category]];
-      console.log(`Found category "${category}" from use case subdir in description. ATL: ${atls.join(', ')}`);
+      console.log(`Found category "${category}" from description. ATL: ${atls.join(', ')}`);
       atls.forEach(a => assignedAtls.add(a));
     }
   }
@@ -833,7 +845,6 @@ export function handlePR(
 
   console.log(`PR modified ${files.length} files.`);
   
-  const isContentLabelled = labels.includes('content') || labels.includes('gd-dev-content');
   const matchedAtls = new Set<string>();
   const allResolvedAtls = new Set<string>();
   let hasEvaluatedContent = false;
@@ -855,7 +866,7 @@ export function handlePR(
       }
       const guideName = parts[2];
       const filename = parts[parts.length - 1];
-      if (SME_CONTENT_FILENAMES.has(filename) || isContentLabelled) {
+      if (SME_CONTENT_FILENAMES.has(filename)) {
         hasEvaluatedContent = true;
         const relativeGuidePath = `guides/${category}/${guideName}/${GUIDE_FILE}`;
         const guideDir = path.join(guidesRootDir, category, guideName);
@@ -890,7 +901,19 @@ export function handlePR(
       }
     }
 
-    // 2. Feature definition files (features/<feature-id>.md)
+    // 2. Standalone skill files under skills-src/<skill-name>/...
+    if (parts[0] === 'skills-src' && parts.length >= 3 && !parts.some(p => p === '..')) {
+      const skillName = parts[1].toLowerCase();
+      hasEvaluatedContent = true;
+      const skillAtls = resolveAtl(skillName, [], atlConfig);
+      for (const a of skillAtls) {
+        console.log(`File "${file}" is in standalone skill "${skillName}". ATL: @${a}`);
+        matchedAtls.add(a);
+        allResolvedAtls.add(a);
+      }
+    }
+
+    // 3. Feature definition files (features/<feature-id>.md)
     if (parts[0] === 'features' && file.endsWith('.md')) {
       hasEvaluatedContent = true;
       const featureId = path.basename(file, '.md');

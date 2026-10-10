@@ -16,7 +16,6 @@ export const ProjectStatus = {
   NeedsGuidance: 'Needs guidance',
   NeedsEvals: 'Needs evals',
   NeedsUseCases: 'Needs use cases',
-  NeedsInvestigation: 'Needs investigation',
 } as const;
 
 export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
@@ -183,10 +182,20 @@ interface ValidationResult {
  * Returns null when the use case is complete.
  * @param guidance The guide body, or a precomputed has-guidance flag.
  */
-export function getStatusName(guidance: string | boolean, hasGrader: boolean, hasTask: boolean, isDraft: boolean = false, hasExpectations: boolean = true): ProjectStatus | null {
+export function getStatusName(
+  guidance: string | boolean,
+  hasGrader: boolean,
+  hasTask: boolean,
+  isDraft: boolean = false,
+  hasExpectations: boolean = true,
+  isDisciplineGuide: boolean = false
+): ProjectStatus | null {
   const hasGuidance = typeof guidance === 'string' ? guidance.trim().length > 0 : guidance;
-  if (!hasGuidance || isDraft || !hasExpectations) {
+  if (!hasGuidance || isDraft || (!hasExpectations && !isDisciplineGuide)) {
     return ProjectStatus.NeedsGuidance;
+  }
+  if (isDisciplineGuide) {
+    return null;
   }
   if (!hasGrader || !hasTask) {
     return ProjectStatus.NeedsEvals;
@@ -196,7 +205,14 @@ export function getStatusName(guidance: string | boolean, hasGrader: boolean, ha
 
 /** The project status of an inventoried guide; see getStatusName. */
 export function getGuideStatus(inv: GuideInventory): ProjectStatus | null {
-  return getStatusName(inv.hasGuide, inv.hasGrader, inv.hasTask, Boolean(inv.draft), inv.hasExpectations && !inv.expectationsEmpty);
+  return getStatusName(
+    inv.hasGuide,
+    inv.hasGrader,
+    inv.hasTask,
+    Boolean(inv.draft),
+    inv.hasExpectations && !inv.expectationsEmpty,
+    Boolean(inv.isDisciplineGuide)
+  );
 }
 
 /**
@@ -360,9 +376,14 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
     const isIncomplete = !hasGuide && !inv.isStub;
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
-    const isDraft = Boolean(inv.draft);
     const hasExpectations = inv.hasExpectations && !inv.expectationsEmpty;
-    const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasTask, isDraft, hasExpectations) : null;
+    const isContentComplete =
+      guideBody.trim().length > 0 &&
+      !inv.draft &&
+      (hasExpectations || isDisciplineGuide);
+    const statusName = !isIncomplete && guideErrors.length === 0 && !isContentComplete
+      ? ProjectStatus.NeedsGuidance
+      : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
