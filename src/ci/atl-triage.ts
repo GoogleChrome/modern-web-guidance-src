@@ -154,7 +154,11 @@ export function normalizeLabel(label: string): string {
   if (clean.startsWith('guides:')) {
     clean = clean.slice('guides:'.length);
   }
-  return clean.trim();
+  clean = clean.trim();
+  if (clean === 'extensions') {
+    return 'chrome-extensions';
+  }
+  return clean;
 }
 
 export function isContentRelatedIssue(
