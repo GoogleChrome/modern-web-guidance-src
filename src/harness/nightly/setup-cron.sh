@@ -29,7 +29,7 @@ EOF
 SCHEDULE="0 2 * * *"
 PREFIX="nightly"
 AGENTS="antigravity_cli claude_code codex_cli"
-WORKERS="20"
+WORKERS=""
 
 # Parse flags
 while [[ $# -gt 0 ]]; do

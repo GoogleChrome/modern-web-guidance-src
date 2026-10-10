@@ -4,7 +4,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawn, spawnSync } from 'child_process';
-import { getGraderScriptContent, runCliAgentCommand } from './agent-shared.ts';
+import { createWorkDir, getGraderScriptContent, runCliAgentCommand } from './agent-shared.ts';
+import { initGitRepo } from '../../core/patch-utils.ts';
 import { UNSAFE_NO_SANDBOX_ENV } from './sandbox.ts';
 
 describe('getGraderScriptContent', () => {
@@ -34,6 +35,27 @@ describe('getGraderScriptContent', () => {
       if (fs.existsSync(tempFile)) {
         fs.unlinkSync(tempFile);
       }
+    }
+  });
+});
+
+describe('createWorkDir', () => {
+  test('does not create a duplicate init commit when templateDir already contains .git', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-workdir-'));
+    const templateDir = path.join(tempDir, 'template_app');
+    const homeDir = path.join(tempDir, 'home');
+    fs.mkdirSync(templateDir, { recursive: true });
+    fs.mkdirSync(homeDir, { recursive: true });
+    fs.writeFileSync(path.join(templateDir, 'index.js'), 'console.log("hello");\n');
+
+    try {
+      initGitRepo(templateDir);
+      const workDir = createWorkDir(templateDir, homeDir, 'guided');
+      const logResult = spawnSync('git', ['log', '--oneline'], { cwd: workDir, encoding: 'utf8' });
+      const commits = logResult.stdout.trim().split('\n').filter(Boolean);
+      assert.strictEqual(commits.length, 1, `Expected exactly 1 initial commit, got: ${logResult.stdout}`);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
 });

@@ -69,5 +69,32 @@ describe('calculateMetrics', () => {
     assert.deepStrictEqual(metrics.sortedKeys, []);
   });
 
+  test('should not exceed 100% guideUsageRate or toolActivationRate when an early-failure run invoked the guide before failing', () => {
+    const allResults: Record<string, RunResult[]> = {
+      'greenfield - task1 - guided': [
+        {
+          runNumber: 1,
+          guideName: 'popover',
+          guidesUsed: ['popover'],
+          guidanceToolsUsed: ['npx modern-web-guidance@latest'],
+          expectedToolPrefixes: ['npx modern-web-guidance'],
+          results: [{ id: 'check1', passed: true, message: 'ok' }]
+        },
+        {
+          runNumber: 2,
+          guideName: 'popover',
+          guidesUsed: ['popover'],
+          guidanceToolsUsed: ['npx modern-web-guidance@latest'],
+          expectedToolPrefixes: ['npx modern-web-guidance'],
+          results: [{ id: 'generation-failed', passed: false, message: 'TIMEOUT (10m)', isEarlyFailure: true }]
+        }
+      ]
+    };
 
+    const metrics = calculateMetrics(allResults, 2);
+    assert.strictEqual(metrics.summary.guideUsageCount, 1);
+    assert.strictEqual(metrics.summary.guideUsageRate, 100);
+    assert.strictEqual(metrics.summary.toolActivationCount, 1);
+    assert.strictEqual(metrics.summary.toolActivationRate, 100);
+  });
 });

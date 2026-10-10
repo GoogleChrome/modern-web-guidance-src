@@ -31,6 +31,8 @@ export interface SandboxPolicy {
   writablePaths: string[];
   /** Additional directories outside hiddenDir that are hidden from the agent. */
   extraHiddenPaths?: string[];
+  /** Individual files inside writablePaths (such as grade.mjs/run.mjs) masked from the agent. */
+  hiddenFiles?: string[];
 }
 
 function realpathOrSelf(p: string): string {
@@ -49,10 +51,42 @@ function realpathOrSelf(p: string): string {
  * - On macOS (`sandbox-exec` cannot mount a writable tmpfs over `/tmp`), we deny
  *   Playwright's compile cache directory directly (creating it first so the deny
  *   rule applies even before grading populates it).
- * - The real user's `~/.gemini` directory (conversation logs and scratch files).
+ * - The real user's agent/eval dot-directories (`.gemini`, `.claude`, `.codex`,
+ *   `.jetski`, `.jetski-server`, `.pi`, `.guidance_logs`) and top-level non-dot
+ *   directories in the user's home directory (e.g. an additional checkout of `modern-web-guidance-src`).
  */
 export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.platform): string[] {
-  const dirs = [path.join(os.userInfo().homedir, '.gemini')];
+  const homedir = os.userInfo().homedir;
+  const resolvedRoot = realpathOrSelf(rootDir);
+  const resolvedExec = realpathOrSelf(process.execPath);
+  const hiddenDotDirs = [
+    '.gemini',
+    '.claude',
+    '.codex',
+    '.jetski',
+    '.jetski-server',
+    '.pi',
+    '.guidance_logs',
+  ];
+  const dirs = hiddenDotDirs.map(name => path.join(homedir, name));
+  try {
+    for (const entry of fs.readdirSync(homedir, { withFileTypes: true })) {
+      if ((entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.')) {
+        const dirPath = path.join(homedir, entry.name);
+        const resolvedDir = realpathOrSelf(dirPath);
+        if (!fs.existsSync(resolvedDir) || !fs.statSync(resolvedDir).isDirectory()) {
+          continue;
+        }
+        const protectsRoot = resolvedDir === resolvedRoot || resolvedRoot.startsWith(resolvedDir + path.sep);
+        const protectsExec = resolvedDir === resolvedExec || resolvedExec.startsWith(resolvedDir + path.sep);
+        if (!protectsRoot && !protectsExec) {
+          dirs.push(dirPath);
+        }
+      }
+    }
+  } catch {
+    // Ignore if homedir cannot be enumerated
+  }
   if (platform === 'linux') {
     dirs.unshift('/tmp');
   } else {
@@ -116,11 +150,18 @@ export function buildSandboxPolicy(
   const resolveExisting = (paths: string[]) =>
     [...new Set(paths.filter(p => fs.existsSync(p)).map(realpathOrSelf).filter(isInside))];
 
+  // Mask harness runner/grader scripts inside targetDir so the agent cannot read grade.mjs or run.mjs.
+  const hiddenFiles = ['grade.mjs', 'run.mjs']
+    .map(name => path.join(targetDir, name))
+    .filter(p => fs.existsSync(p))
+    .map(realpathOrSelf);
+
   return {
     hiddenDir,
     readOnlyPaths: resolveExisting(readOnlyPaths),
     writablePaths: resolveExisting(writablePaths),
     extraHiddenPaths,
+    hiddenFiles,
   };
 }
 
@@ -200,10 +241,11 @@ function appendRunDirMounts(args: string[], runDir: string = '/run'): void {
 }
 
 export function buildBwrapArgs(command: string, commandArgs: string[], policy: SandboxPolicy, runDir: string = '/run'): string[] {
-  const args = ['--dev-bind', '/', '/', '--die-with-parent', '--tmpfs', policy.hiddenDir];
+  const args = ['--dev-bind', '/', '/', '--unshare-pid', '--proc', '/proc', '--die-with-parent', '--tmpfs', policy.hiddenDir];
   for (const p of policy.extraHiddenPaths ?? []) args.push('--tmpfs', p);
   for (const p of policy.readOnlyPaths) args.push('--ro-bind', p, p);
   for (const p of policy.writablePaths) args.push('--bind', p, p);
+  for (const f of policy.hiddenFiles ?? []) args.push('--ro-bind', '/dev/null', f);
   appendRunDirMounts(args, runDir);
   args.push('--', command, ...commandArgs);
   return args;
@@ -253,6 +295,7 @@ export function buildSeatbeltArgs(command: string, commandArgs: string[], policy
   for (const a of ancestors) rules.push(`(allow file-read-metadata (literal ${addParam(a)}))`);
   for (const p of policy.readOnlyPaths) rules.push(`(allow file-read* (subpath ${addParam(p)}))`);
   for (const p of policy.writablePaths) rules.push(`(allow file-read* file-write* (subpath ${addParam(p)}))`);
+  for (const f of policy.hiddenFiles ?? []) rules.push(`(deny file-read* file-write* (literal ${addParam(f)}))`);
 
   return [...params, '-p', rules.join('\n'), command, ...commandArgs];
 }
