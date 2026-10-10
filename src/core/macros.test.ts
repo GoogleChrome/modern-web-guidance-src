@@ -64,6 +64,12 @@ describe('replaceMacros (Functional with real data)', () => {
       );
     });
 
+    it('preserves partial support when expanding anchor-positioning for skills', () => {
+      const result = replaceMacros('{{ BASELINE_STATUS("anchor-positioning") }}', 'test.md', { target: 'skills-cli' });
+      assert.match(result, /Partially supported by: Chrome, Edge, and Firefox\./);
+      assert.doesNotMatch(result, /Unsupported in:/);
+    });
+
     it('replaces macro with declarative-webmcp status', () => {
       const content = '{{ BASELINE_STATUS("declarative-webmcp") }}';
       const result = replaceMacros(content, 'test.md');

@@ -48,6 +48,34 @@ describe('baseline data', () => {
       );
     });
 
+    it('distinguishes partial anchor-positioning support from full support', () => {
+      const message = getStatusMessage('anchor-positioning')!;
+      assert.match(message, /Limited availability/);
+      assert.match(message, /\nSupported by: Safari 27\./);
+      assert.match(message, /\nPartially supported by: Chrome, Edge, and Firefox\./);
+      assert.doesNotMatch(message, /Unsupported in:/);
+    });
+
+    it('reports partial support when no browser supports the whole feature', () => {
+      const message = getStatusMessage('display-contents')!;
+      assert.match(message, /\nPartially supported by: Chrome, Edge, Firefox, and Safari\./);
+      assert.doesNotMatch(message, /not natively supported|Unsupported in:/);
+    });
+
+    it('still identifies unsupported browsers alongside partial support', () => {
+      const message = getStatusMessage('network-information')!;
+      assert.match(message, /\nPartially supported by: Chrome and Edge\./);
+      assert.match(message, /\nUnsupported in: Firefox and Safari\./);
+      assert.doesNotMatch(message, /not natively supported/);
+    });
+
+    it('keeps individual capabilities separate from whole-feature partial support', () => {
+      const message = getStatusMessage('anchor-positioning', 'css.properties.anchor-name')!;
+      assert.match(message, /Baseline status for the css\.properties\.anchor-name capability: Newly available/);
+      assert.match(message, /Supported by: Chrome 125/);
+      assert.doesNotMatch(message, /Partially supported by:|Unsupported in:/);
+    });
+
     it('returns status message for a zero-support feature', () => {
       assert.strictEqual(
         getStatusMessage('declarative-webmcp'),

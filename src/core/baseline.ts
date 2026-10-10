@@ -6,6 +6,7 @@ import pendingWebFeatures from '../../features/pending-web-features.json' with {
 export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
 
 type Feature = typeof features[string];
+type CapabilitySupportMap = Record<string, { support: Partial<Record<BrowserName, string>> }>;
 
 /**
  * A `tmp-*` feature awaiting an upstream web-features ID. Optional fields
@@ -322,14 +323,16 @@ function formatVersionWithMonth(browserKey: BrowserName, version: string): strin
  * (~92–96% identical rollout dates). Therefore, cleanly consolidating mobile targets into desktop engine labels
  * when identical maximizes token density, dynamically splitting them out only upon divergence.
  */
-function formatSupportMap(support: Record<string, any> | undefined): string {
+function formatSupportMap(support: Record<string, any> | undefined, byCompatKey: CapabilitySupportMap = {}): string {
   if (!support) return '';
   const supportedParts: string[] = [];
+  const partiallySupportedParts: string[] = [];
   const unsupportedParts: string[] = [];
+  const capabilities = Object.values(byCompatKey);
 
-  const keys = ['chrome', 'edge', 'firefox', 'safari'] as BrowserName[];
+  const keys: BrowserName[] = ['chrome', 'edge', 'firefox', 'safari'];
   if (support.safari_ios && support.safari_ios !== support.safari) {
-    keys.push('safari_ios' as BrowserName);
+    keys.push('safari_ios');
   }
 
   for (const key of keys) {
@@ -338,6 +341,9 @@ function formatSupportMap(support: Record<string, any> | undefined): string {
     if (ver && ver !== '-') {
       const formatted = formatVersionWithMonth(key, String(ver));
       supportedParts.push(`${label} ${formatted}`);
+    } else if (capabilities.some(({ support }) => support[key] && support[key] !== '-')) {
+      // The aggregate version requires every capability, so its absence can mean partial support.
+      partiallySupportedParts.push(label);
     } else {
       if (key !== 'safari_ios') {
         unsupportedParts.push(label);
@@ -348,6 +354,11 @@ function formatSupportMap(support: Record<string, any> | undefined): string {
   let res = '';
   if (supportedParts.length > 0) {
     res += `\nSupported by: ${listFormatter.format(supportedParts)}.`;
+  }
+  if (partiallySupportedParts.length > 0) {
+    res += `\nPartially supported by: ${listFormatter.format(partiallySupportedParts)}.`;
+  }
+  if (supportedParts.length > 0 || partiallySupportedParts.length > 0) {
     if (unsupportedParts.length > 0) {
       res += `\nUnsupported in: ${listFormatter.format(unsupportedParts)}.`;
     }
@@ -360,10 +371,10 @@ function formatSupportMap(support: Record<string, any> | undefined): string {
 /**
  * Internal helper to format status messages consistently.
  */
-function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string; support?: Record<string, any> }): string {
-  const { baseline, releaseDate, shortLabel, support } = status;
+function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string; support?: Record<string, any>; byCompatKey?: CapabilitySupportMap }): string {
+  const { baseline, releaseDate, shortLabel, support, byCompatKey } = status;
   const resolvedSupport = (baseline === false && !support) ? {} : support;
-  const supportStr = formatSupportMap(resolvedSupport);
+  const supportStr = formatSupportMap(resolvedSupport, byCompatKey);
 
   if (baseline !== false && releaseDate && releaseDate !== "-") {
     return `Baseline status for ${featureName}: ${shortLabel}. It's been Baseline since ${releaseDate}.${supportStr}`;
@@ -402,10 +413,12 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
 
   const resolvedIds = resolveFeatureId(featureId);
   let support: Record<string, any> | undefined;
+  let byCompatKey: CapabilitySupportMap | undefined;
   for (const id of resolvedIds) {
     const f = features[id] as Feature;
     if (f?.kind === 'feature' && f.status?.support) {
       support = f.status.support;
+      byCompatKey = f.status.by_compat_key;
       break;
     }
   }
@@ -414,11 +427,12 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
 
   const mapped = {
     ...baselineStatus,
-    support
+    support,
+    byCompatKey
   };
 
   if (baselineStatus.baseline === false) {
-    return formatStatusMessage(subject, { baseline: false, support });
+    return formatStatusMessage(subject, { baseline: false, support, byCompatKey });
   }
 
   return formatStatusMessage(subject, mapped);
