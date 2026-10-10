@@ -1,0 +1,1 @@
+- Support dragging to move a floating element around the page.
