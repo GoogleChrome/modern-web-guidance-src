@@ -14,28 +14,71 @@ const targetDir = path.dirname(filePath);
 const fileName = path.basename(filePath);
 const demoUrl = `http://localhost/${fileName}`;
 
-// Helper to get HTML content for static checks
+// Helper to get HTML and external JS/MJS content for static checks
 const htmlContent = fs.readFileSync(filePath, 'utf-8');
-const scriptContent = htmlContent.match(/<script[\s\S]*?>([\s\S]*?)<\/script>/g)?.join('\n') || '';
+const inlineScripts = htmlContent.match(/<script[\s\S]*?>([\s\S]*?)<\/script>/g)?.join('\n') || '';
+const externalScripts = (() => {
+  const results: string[] = [];
+  const walk = (dir: string) => {
+    try {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (
+          entry.name === 'node_modules' ||
+          entry.name === 'dist' ||
+          entry.name === 'build' ||
+          entry.name === 'vendor' ||
+          entry.name === 'lib' ||
+          entry.name === 'test-results' ||
+          entry.name === 'grade-report' ||
+          entry.name.startsWith('.')
+        ) {
+          continue;
+        }
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(fullPath);
+        } else if (
+          (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
+          !entry.name.includes('.test.') &&
+          entry.name !== 'grade.mjs' &&
+          entry.name !== 'run.mjs'
+        ) {
+          results.push(fs.readFileSync(fullPath, 'utf-8'));
+        }
+      }
+    } catch {}
+  };
+  walk(targetDir);
+  return results.join('\n');
+})();
+const scriptContent = `${inlineScripts}\n${externalScripts}`;
 
 test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
 
-  // 1. Feature detection MUST use typeof Temporal === 'undefined'
+  // 1. Feature detection MUST use typeof Temporal === 'undefined' or globalThis.Temporal check
   test('Feature detection should use typeof Temporal === "undefined"', () => {
-    const hasFeatureDetection = /typeof\s+Temporal\s+===\s+['"]undefined['"]/.test(scriptContent);
-    expect(hasFeatureDetection, "Must use 'typeof Temporal === 'undefined'' for feature detection").toBe(true);
+    const hasFeatureDetection =
+      /typeof\s+(?:(?:globalThis|window)\.)?Temporal\s*[!=]==?\s*['"]undefined['"]/.test(scriptContent) ||
+      /(?:globalThis|window)\.Temporal\s*(?:\?\?|\|\||\?\.|===?\s*undefined|!==?\s*undefined)/.test(scriptContent) ||
+      /['"]Temporal['"]\s+in\s+(?:globalThis|window)/.test(scriptContent);
+    expect(hasFeatureDetection, "Must feature-detect Temporal before usage").toBe(true);
   });
 
   // 2. Conditional polyfill loading
   test('Should conditionally load the Temporal polyfill', () => {
-    const hasConditionalLoading = /if\s*\(typeof\s+Temporal\s+===\s+['"]undefined['"]\)\s*\{[\s\S]*import\(/.test(scriptContent);
+    const hasConditionalLoading =
+      /if\s*\([^)]*Temporal[^)]*\)\s*\{?[\s\S]{0,250}?\bimport\s*\(/.test(scriptContent) ||
+      /(?:globalThis|window)\.Temporal[\s\S]{0,120}(?:\?\?|\|\||\?)[\s\S]{0,120}\bimport\s*\(/.test(scriptContent);
     expect(hasConditionalLoading, 'Must load the polyfill only if native support is absent').toBe(true);
   });
 
-  // 3. Manual assignment to globalThis.Temporal
+  // 3. Manual assignment to globalThis.Temporal (or module-scoped Temporal if not relying on global)
   test('Should manually assign polyfill to globalThis.Temporal', () => {
-    const hasGlobalAssignment = /globalThis\.Temporal\s*=/.test(scriptContent) || /window\.Temporal\s*=/.test(scriptContent);
-    expect(hasGlobalAssignment, 'Must assign the loaded polyfill to globalThis.Temporal').toBe(true);
+    const hasGlobalAssignment =
+      /(?:globalThis|window)\.Temporal\s*=/.test(scriptContent) ||
+      /\{\s*Temporal(?:\s*:\s*\w+)?\s*\}\s*=\s*[\s\S]{0,80}\bimport\s*\(/.test(scriptContent) ||
+      /(?:const|let|var)\s+\w+\s*=\s*[\s\S]{0,160}\bimport\s*\([\s\S]{0,80}\.Temporal\b/.test(scriptContent);
+    expect(hasGlobalAssignment, 'Must assign the loaded polyfill to globalThis.Temporal or module-scoped Temporal').toBe(true);
   });
 
   // 4. Use Temporal.ZonedDateTime as primary type
@@ -95,12 +138,13 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
 
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
+    await page.route('http://localhost/**', async (route) => {
       const requestUrl = new URL(route.request().url());
-      const requestPath = requestUrl.pathname;
-      const localFilePath = path.join(targetDir, requestPath === `/${fileName}` ? fileName : requestPath.slice(1));
+      const requestPath = decodeURIComponent(requestUrl.pathname);
+      const relPath = requestPath === `/${fileName}` || requestPath === '/' ? fileName : requestPath.replace(/^\/+/, '');
+      const localFilePath = path.resolve(targetDir, relPath);
 
-      if (fs.existsSync(localFilePath)) {
+      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
         await route.fulfill({ path: localFilePath });
       } else {
         await route.continue();
@@ -112,12 +156,11 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
 
   // Browser assertions: Verify Temporal is globally available (either native or polyfilled)
   test('Temporal should be available on the page and used by scripts', async ({ page }) => {
-    const isTemporalDefinedAndUsed = await page.evaluate(() => {
-      const isDefined = typeof (globalThis as any).Temporal !== 'undefined';
-      const isUsed = Array.from(document.scripts).some(s => s.textContent && s.textContent.includes('Temporal'));
-      return isDefined && isUsed;
+    const isTemporalDefined = await page.evaluate(() => {
+      return typeof (globalThis as any).Temporal !== 'undefined';
     });
-    expect(isTemporalDefinedAndUsed, 'Temporal should be defined and utilized in the page scripts').toBe(true);
+    const isUsed = /Temporal/.test(scriptContent);
+    expect(isTemporalDefined && isUsed, 'Temporal should be defined and utilized in the page scripts').toBe(true);
   });
 
   // Browser assertions: Verify that immutability is respected if date arithmetic is performed

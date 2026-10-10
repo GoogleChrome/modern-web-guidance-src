@@ -69,15 +69,22 @@ document.querySelector('form').addEventListener('submit', (event) => {
 
 ## Lifecycle Events
 
-The window emits events when agents start or stop interacting with a tool:
+`document.modelContext` emits events when agents start or stop interacting with a tool: `toolactivated` fires when tool execution starts, and `toolcancel` fires when it is canceled.
 
 ```javascript
-window.addEventListener('toolactivated', ({ toolName }) => {
-  console.log(`Tool "${toolName}" was activated by the agent.`);
+// Starting in Chrome 156, these events are dispatched on `document.modelContext`.
+// Older versions dispatch them on `window`. Feature-detect the event handler
+// property to pick the right target for backward compatibility.
+const targetFor = (type, listener, options) =>
+  (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
+    .addEventListener(type, listener, options);
+
+targetFor('toolactivated', ({ toolName }) => {
+  console.log(`Tool "${toolName}" started execution.`);
 });
 
-window.addEventListener('toolcancel', ({ toolName }) => {
-  console.log(`Tool "${toolName}" interaction was cancelled.`);
+targetFor('toolcancel', ({ toolName }) => {
+  console.log(`Tool "${toolName}" execution is cancelled.`);
 });
 ```
 

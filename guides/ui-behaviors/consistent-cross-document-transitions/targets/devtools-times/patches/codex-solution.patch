@@ -1,0 +1,400 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..d1ce1b1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,13 +4,17 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
++  mobileCriticalContentId?: string;
++  desktopCriticalContentId?: string;
+ }
+ 
+-const { title } = Astro.props;
++const {
++  title,
++  mobileCriticalContentId = "critical-content-mobile",
++  desktopCriticalContentId = "critical-content",
++} = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -34,7 +38,23 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    <!--
++      Native cross-document transitions can take their new-page snapshot as soon
++      as rendering is unblocked. These expectations keep that snapshot from being
++      captured until the content visible at the current viewport size is parsed.
++    -->
++    <link
++      rel="expect"
++      href={`#${mobileCriticalContentId}`}
++      blocking="render"
++      media="screen and (width <= 768px)"
++    />
++    <link
++      rel="expect"
++      href={`#${desktopCriticalContentId}`}
++      blocking="render"
++      media="screen and (width > 768px)"
++    />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..42453a7 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -9,7 +9,11 @@ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++        <div id="critical-content">
++            <div id="critical-content-mobile">
++                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++            </div>
++        </div>
+         <div class="prose max-w-none">
+             <slot />
+         </div>
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..8ac25bc 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -4,12 +4,14 @@ import Layout from '../layouts/Layout.astro';
+ ---
+ 
+ <Layout title="Page Not Found">
+-    <div class="flex flex-col items-center justify-center text-center py-20">
+-        <h1 class="text-6xl font-bold text-amber-400">404</h1>
+-        <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+-        <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
+-        <a href={import.meta.env.BASE_URL} class="mt-6 px-6 py-3 bg-amber-400 text-white font-semibold hover:bg-amber-700 transition-colors">
+-            Zurück zur Startseite
+-        </a>
++    <div id="critical-content" class="flex flex-col items-center justify-center text-center py-20">
++        <div id="critical-content-mobile" class="flex flex-col items-center">
++            <h1 class="text-6xl font-bold text-amber-400">404</h1>
++            <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
++            <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
++            <a href={import.meta.env.BASE_URL} class="mt-6 px-6 py-3 bg-amber-400 text-white font-semibold hover:bg-amber-700 transition-colors">
++                Zurück zur Startseite
++            </a>
++        </div>
+     </div>
+ </Layout>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..5d9aab6 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -37,55 +37,59 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+ <Layout title={article.data.title}>
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+-        </div>
++        <div id="critical-content">
++            <div id="critical-content-mobile">
++                <!-- Breadcrumbs/Category -->
++                <div class="text-base text-gray-600 font-semibold mb-2">
++                    <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++                </div>
++
++                <!-- Headline -->
++                <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++                    {article.data.title}
++                </h1>
++
++                <!-- Sub-headline / Lead Paragraph -->
++                <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++                    {article.data.summary}
++                </p>
++
++                <!-- Author / Date -->
++                <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
++                    By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++                </div>
++            </div>
+ 
+-        <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+-            {article.data.title}
+-        </h1>
+-        
+-        <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
+-            {article.data.summary}
+-        </p>
+-
+-        <!-- Author / Date -->
+-        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++            <!-- The hero enters the initial viewport on wide screens. -->
++            <figure class="mb-5">
++                {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
++                {article.data.prompt_comment ? (
++                    <img
++                        src={article.data.image}
++                        alt={article.data.title}
++                        width="1200"
++                        height="675"
++                        class="w-full h-auto"
++                        crossorigin="use-credentials"
++                    />
++                ) : (
++                    <Image
++                        src={articleImage}
++                        alt={article.data.title}
++                        width={1200}
++                        height={675}
++                        format="webp"
++                        class="w-full h-auto"
++                    />
++                )}
++                {article.data.image_caption && (
++                    <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                        {article.data.image_caption}
++                    </figcaption>
++                )}
++            </figure>
+         </div>
+ 
+-        <!-- Main Article Image -->
+-        <figure class="mb-5">
+-            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+-            {article.data.prompt_comment ? (
+-                <img 
+-                    src={article.data.image}
+-                    alt={article.data.title}
+-                    width="1200"
+-                    height="675"
+-                    class="w-full h-auto"
+-                    crossorigin="use-credentials"
+-                />
+-            ) : (
+-                <Image 
+-                    src={articleImage} 
+-                    alt={article.data.title} 
+-                    width={1200}
+-                    height={675}
+-                    format="webp"
+-                    class="w-full h-auto"
+-                />
+-            )}
+-            {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
+-                    {article.data.image_caption}
+-                </figcaption>
+-            )}
+-        </figure>
+-
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+             <!-- Social Share Icons (Placeholders) -->
+@@ -123,4 +127,4 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..86a9a23 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -40,7 +40,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ <Layout title={`Category: ${capitalizedCategory}`}>
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header id="critical-content" class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+@@ -53,7 +53,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                 />
+             )}
+             <div class="absolute w-full h-full bg-black opacity-50 z-1"></div>
+-            <div class="absolute w-full h-full flex items-center justify-center z-2">
++            <div id="critical-content-mobile" class="absolute w-full h-full flex items-center justify-center z-2">
+                 <div class="text-center text-white">
+                     <p class="text-lg font-semibold uppercase tracking-widest">Category</p>
+                     <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..157fb41 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -38,26 +38,30 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++    <div id="critical-content">
++        <div id="critical-content-mobile">
++            <!-- Top Stories Bar: this fills the initial view on narrow screens. -->
++            <div class="bg-white border-b border-gray-300">
++                <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                        {topStories.map(article => (
++                            <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                    <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                                </a>
++                                <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                            </div>
++                        ))}
+                     </div>
+-                ))}
++                </div>
+             </div>
+         </div>
+-    </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++        <!-- The lead story is also above the fold on wide screens. -->
++        <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++            <ArticleTeaser article={topArticle} large={true} />
++        </main>
++    </div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -81,4 +85,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..0b46645 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -6,9 +6,13 @@ const multimedia = await getCollection('multimedia');
+ ---
+ <Layout title="Multimedia">
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
++        <div id="critical-content">
++            <div id="critical-content-mobile">
++                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
++                <p>Watch our latest multimedia content.</p>
++            </div>
++        </div>
+         <div class="prose max-w-none">
+-            <p>Watch our latest multimedia content.</p>
+             <ul>
+                 {multimedia.map(item => (
+                     <li>
+@@ -18,4 +22,4 @@ const multimedia = await getCollection('multimedia');
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..5536efc 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -6,9 +6,13 @@ const reports = await getCollection('reports');
+ ---
+ <Layout title="Reports">
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
++        <div id="critical-content">
++            <div id="critical-content-mobile">
++                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
++                <p>Read our latest reports.</p>
++            </div>
++        </div>
+         <div class="prose max-w-none">
+-            <p>Read our latest reports.</p>
+             <ul>
+                 {reports.map(report => (
+                     <li>
+@@ -18,4 +22,4 @@ const reports = await getCollection('reports');
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..72d128a 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -4,7 +4,9 @@ import SignInForm from '../components/SignInForm';
+ ---
+ 
+ <Layout title="Sign In | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
+-    <SignInForm client:load />
++  <div id="critical-content" class="py-12 px-4 sm:px-6 lg:px-8">
++    <div id="critical-content-mobile">
++      <SignInForm client:load />
++    </div>
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..96d1cf1 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -4,7 +4,9 @@ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+ <Layout title="Sign Up | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
+-    <SignUpForm client:load />
++  <div id="critical-content" class="py-12 px-4 sm:px-6 lg:px-8">
++    <div id="critical-content-mobile">
++      <SignUpForm client:load />
++    </div>
+   </div>
+ </Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ce3e6ae 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,17 @@
+ @import "tailwindcss";
+ 
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

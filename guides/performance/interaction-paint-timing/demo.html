@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interaction and Soft-Navigation Paint Timing Demo</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    body {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.5;
+    }
+    header {
+      margin-block-end: 1.5rem;
+    }
+    nav ul {
+      display: flex;
+      gap: 0.75rem;
+      list-style: none;
+      padding: 0;
+      margin: 1rem 0;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: 1px solid currentColor;
+      background: transparent;
+      font: inherit;
+      cursor: pointer;
+    }
+    button:focus-visible {
+      outline: 3px solid #005fcc;
+      outline-offset: 2px;
+    }
+    .panel {
+      border: 1px solid #8884;
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-block-end: 1.5rem;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-block-start: 1rem;
+    }
+    .metric-card {
+      border: 1px solid #8884;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+    }
+    .metric-label {
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .metric-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-block-start: 0.25rem;
+    }
+    .hero-block {
+      padding: 1.5rem;
+      border-radius: 8px;
+      background: #005fcc1a;
+      margin-block-start: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Interaction &amp; Soft-Navigation Paint Timing</h1>
+    <p id="support-banner" data-testid="support-banner">Checking browser support…</p>
+    <nav aria-label="Demo views">
+      <ul>
+        <li><button type="button" id="nav-overview" data-testid="nav-overview" data-route="/overview">Navigate: Overview</button></li>
+        <li><button type="button" id="nav-Analytics" data-testid="nav-analytics" data-route="/analytics">Navigate: Analytics</button></li>
+        <li><button type="button" id="load-details" data-testid="load-details">Interaction: Load Details Card</button></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="content" tabindex="-1">
+    <section class="panel" aria-labelledby="view-heading">
+      <h2 id="view-heading" data-testid="view-heading">Initial Hard Load View</h2>
+      <div id="view-container" data-testid="view-container">
+        <p>Select a navigation button above to trigger a client-side route change, or load the details card to trigger an interaction contentful paint without changing the URL.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="telemetry-heading">
+      <h2 id="telemetry-heading">Observed Paint Telemetry</h2>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Latest Interaction ID</div>
+          <div class="metric-value" id="metric-interaction-id" data-testid="metric-interaction-id">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Interaction Paint Duration</div>
+          <div class="metric-value" id="metric-icp-duration" data-testid="metric-icp-duration">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Largest Painted Element Size</div>
+          <div class="metric-value" id="metric-lcp-size" data-testid="metric-lcp-size">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Soft Nav Route &amp; LCP</div>
+          <div class="metric-value" id="metric-soft-nav-lcp" data-testid="metric-soft-nav-lcp">—</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    const supportBanner = document.getElementById('support-banner');
+    const interactionIdEl = document.getElementById('metric-interaction-id');
+    const icpDurationEl = document.getElementById('metric-icp-duration');
+    const lcpSizeEl = document.getElementById('metric-lcp-size');
+    const softNavLcpEl = document.getElementById('metric-soft-nav-lcp');
+    const viewHeading = document.getElementById('view-heading');
+    const viewContainer = document.getElementById('view-container');
+
+    const supportsICP =
+      typeof PerformanceObserver !== 'undefined' &&
+      Boolean(PerformanceObserver.supportedEntryTypes?.includes('interaction-contentful-paint'));
+    const supportsSoftNav =
+      typeof PerformanceObserver !== 'undefined' &&
+      Boolean(PerformanceObserver.supportedEntryTypes?.includes('soft-navigation'));
+
+    supportBanner.textContent = supportsICP && supportsSoftNav
+      ? 'InteractionContentfulPaint and PerformanceSoftNavigation are supported in this browser.'
+      : 'This browser does not support InteractionContentfulPaint / PerformanceSoftNavigation; running in fallback mode.';
+
+    let activeSoftNav = null;
+    let activeSoftNavLcpEntry = null;
+
+    function updateSoftNavDisplay() {
+      if (!activeSoftNav) return;
+      const lcpDuration = activeSoftNavLcpEntry
+        ? `${Math.round(activeSoftNavLcpEntry.duration)}ms`
+        : `${Math.round(activeSoftNav.duration)}ms`;
+      const pathname = new URL(activeSoftNav.name, location.origin).pathname;
+      softNavLcpEl.textContent = `${pathname} (${lcpDuration})`;
+    }
+
+    function updateIcpDisplay(icpEntry) {
+      interactionIdEl.textContent = String(icpEntry.interactionId);
+      // Use entry.duration (presentationTime - startTime) so the timing is relative
+      // to the interaction start rather than the initial hard navigation time origin.
+      icpDurationEl.textContent = `${Math.round(icpEntry.duration)}ms`;
+      const size = icpEntry.largestContentfulPaint?.size;
+      lcpSizeEl.textContent = typeof size === 'number' ? `${size}px²` : '—';
+    }
+
+    if (supportsSoftNav) {
+      const softNavObserver = new PerformanceObserver((list) => {
+        for (const softNavEntry of list.getEntries()) {
+          activeSoftNav = softNavEntry;
+          // Seed initial LCP candidate using getLargestInteractionContentfulPaint()
+          // in case contentful paints occurred prior to the URL change.
+          const initialLcp = softNavEntry.getLargestInteractionContentfulPaint?.() ?? null;
+          if (initialLcp) {
+            activeSoftNavLcpEntry = initialLcp;
+            updateIcpDisplay(initialLcp);
+          }
+          updateSoftNavDisplay();
+        }
+      });
+      softNavObserver.observe({ type: 'soft-navigation', buffered: true });
+    }
+
+    if (supportsICP) {
+      const icpObserver = new PerformanceObserver((list) => {
+        for (const icpEntry of list.getEntries()) {
+          updateIcpDisplay(icpEntry);
+          // Match by interactionId rather than navigationId to accurately attribute
+          // paints to the soft navigation's initiating interaction.
+          if (activeSoftNav && icpEntry.interactionId === activeSoftNav.interactionId) {
+            activeSoftNavLcpEntry = icpEntry;
+            updateSoftNavDisplay();
+          }
+        }
+      });
+      icpObserver.observe({ type: 'interaction-contentful-paint', buffered: true });
+    }
+
+    // Simulate async SPA route transitions and interactive content updates.
+    async function handleRouteNavigation(route, title, bodyText) {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      history.pushState({ route }, title, route);
+      document.title = `${title} | Paint Timing Demo`;
+      viewHeading.textContent = title;
+
+      const block = document.createElement('div');
+      block.className = 'hero-block';
+      const p = document.createElement('p');
+      p.textContent = bodyText;
+      block.appendChild(p);
+      viewContainer.replaceChildren(block);
+    }
+
+    document.getElementById('nav-overview').addEventListener('click', () => {
+      handleRouteNavigation(
+        '/overview',
+        'System Overview',
+        'Real-time overview of interaction-attributed contentful paint timings across client-side routes.',
+      );
+    });
+
+    document.getElementById('nav-Analytics').addEventListener('click', () => {
+      handleRouteNavigation(
+        '/analytics',
+        'Route Analytics Report',
+        'Detailed breakdown of Largest Contentful Paint candidates attributed by interactionId for SPA navigations.',
+      );
+    });
+
+    document.getElementById('load-details').addEventListener('click', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      const details = document.createElement('div');
+      details.className = 'hero-block';
+      details.setAttribute('data-testid', 'details-card');
+      const heading = document.createElement('h3');
+      heading.textContent = 'Async Interaction Content Card';
+      const copy = document.createElement('p');
+      copy.textContent =
+        'This contentful block was inserted asynchronously after a button click without changing the URL, emitting an interaction-contentful-paint entry.';
+      details.append(heading, copy);
+      viewContainer.appendChild(details);
+    });
+  </script>
+</body>
+</html>
