@@ -416,12 +416,50 @@ window.__featuresMapping = {
     "fedcm",
     "ua-client-hints"
   ],
+  "app-badging-and-notifications": [
+    "badging",
+    "notifications-apps",
+    "push"
+  ],
+  "background-sync-and-transfers": [
+    "background-sync",
+    "periodic-background-sync",
+    "background-fetch",
+    "indexeddb",
+    "online"
+  ],
   "custom-window-title-bar": [
     "window-drag",
     "window-controls-overlay"
   ],
+  "installable-web-app-metadata": [
+    "manifest",
+    "manifest-localization",
+    "display-mode",
+    "app-shortcuts"
+  ],
   "migrate-web-app-origin": [
     "app-migration"
+  ],
+  "offline-loading-and-updates": [
+    "service-workers",
+    "js-modules-service-workers",
+    "online"
+  ],
+  "os-content-sharing": [
+    "share",
+    "app-share-targets"
+  ],
+  "os-launch-and-file-handling": [
+    "app-file-handlers",
+    "app-launch-handler",
+    "app-protocol-handlers",
+    "file-system-access"
+  ],
+  "pwa": [
+    "manifest",
+    "service-workers",
+    "display-mode"
   ],
   "client-side-encryption": [
     "tmp-webcrypto-modern-algos",
