@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+index 66c9173..2957897 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,10 @@
+       color: var(--primary);
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -176,7 +180,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/package.json b/package.json
+index 2bd4d77..9a4e468 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "node --check server.mjs",
++    "start": "node server.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..418272e
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,141 @@
++import { createReadStream, statSync } from 'node:fs';
++import { createServer } from 'node:http';
++import { extname, join, normalize, resolve, sep } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const root = fileURLToPath(new URL('.', import.meta.url));
++const port = Number(process.env.PORT || 11222);
++const reportPath = '/.well-known/reports';
++
++const csp = [
++  "script-src 'strict-dynamic' 'report-sample' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",
++  "object-src 'none'",
++  "base-uri 'none'",
++  "frame-ancestors 'self'",
++  "require-trusted-types-for 'script'",
++  "trusted-types daily-grind",
++  'report-to default',
++].join('; ');
++
++const documentHeaders = {
++  'Content-Security-Policy': csp,
++  'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': 'camera=(), geolocation=(), microphone=()',
++  'Reporting-Endpoints': `default="${reportPath}"`,
++  'X-Frame-Options': 'SAMEORIGIN',
++};
++
++const baseHeaders = {
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
++  'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++  'X-Content-Type-Options': 'nosniff',
++};
++
++const contentTypes = new Map([
++  ['.css', 'text/css; charset=utf-8'],
++  ['.html', 'text/html; charset=utf-8'],
++  ['.ico', 'image/x-icon'],
++  ['.js', 'application/javascript; charset=utf-8'],
++  ['.json', 'application/json; charset=utf-8'],
++  ['.png', 'image/png'],
++  ['.svg', 'image/svg+xml'],
++  ['.txt', 'text/plain; charset=utf-8'],
++]);
++
++function send(res, status, headers, body = '') {
++  res.writeHead(status, { ...baseHeaders, ...headers });
++  res.end(body);
++}
++
++function isAllowedByFetchMetadata(req, pathname) {
++  const site = req.headers['sec-fetch-site'];
++  const mode = req.headers['sec-fetch-mode'];
++  const dest = req.headers['sec-fetch-dest'];
++
++  if (!site || site === 'same-origin' || site === 'same-site' || site === 'none') {
++    return true;
++  }
++
++  if (pathname === '/logout') {
++    return false;
++  }
++
++  return site === 'cross-site'
++    && req.method === 'GET'
++    && mode === 'navigate'
++    && dest !== 'object'
++    && dest !== 'embed';
++}
++
++function resolveStaticPath(pathname) {
++  const decodedPath = decodeURIComponent(pathname);
++  const requestedPath = normalize(decodedPath).replace(/^(\.\.[/\\])+/, '');
++  const filePath = resolve(join(root, requestedPath === sep ? 'index.html' : requestedPath));
++
++  if (!filePath.startsWith(root)) {
++    return null;
++  }
++
++  try {
++    const fileStat = statSync(filePath);
++    if (fileStat.isFile()) {
++      return filePath;
++    }
++  } catch {
++    return null;
++  }
++
++  return resolve(join(root, 'index.html'));
++}
++
++function serveFile(res, filePath) {
++  const extension = extname(filePath);
++  const contentType = contentTypes.get(extension) || 'application/octet-stream';
++  const headers = {
++    'Content-Type': contentType,
++    ...(extension === '.html' ? documentHeaders : {}),
++  };
++
++  res.writeHead(200, { ...baseHeaders, ...headers });
++  createReadStream(filePath).pipe(res);
++}
++
++createServer((req, res) => {
++  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
++
++  if (!isAllowedByFetchMetadata(req, url.pathname)) {
++    send(res, 403, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Forbidden');
++    return;
++  }
++
++  if (req.url === reportPath && req.method === 'POST') {
++    send(res, 204, { 'Content-Type': 'text/plain; charset=utf-8' });
++    return;
++  }
++
++  if (url.pathname === '/logout') {
++    send(res, 303, {
++      'Clear-Site-Data': '"cookies", "storage", "cache"',
++      'Content-Type': 'text/plain; charset=utf-8',
++      'Location': '/',
++    });
++    return;
++  }
++
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    send(res, 405, { 'Allow': 'GET, HEAD', 'Content-Type': 'text/plain; charset=utf-8' }, 'Method Not Allowed');
++    return;
++  }
++
++  const filePath = resolveStaticPath(url.pathname);
++  if (!filePath) {
++    send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not Found');
++    return;
++  }
++
++  serveFile(res, filePath);
++}).listen(port, 'localhost', () => {
++  console.log(`Daily Grind running at http://localhost:${port}`);
++});
