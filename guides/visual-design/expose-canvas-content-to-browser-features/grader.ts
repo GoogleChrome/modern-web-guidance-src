@@ -24,14 +24,36 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
     expect(drawElementImageErrors.length).toBe(0);
   });
 
-  test('The <canvas> element MUST include the layoutsubtree attribute', async ({ page }) => {
+  test('The <canvas> element MUST include the content="drawable" attribute', async ({ page }) => {
+    await page.addInitScript(() => {
+      if (!('requestPaint' in HTMLCanvasElement.prototype)) {
+        (HTMLCanvasElement.prototype as any).requestPaint = function() {};
+      }
+    });
+
     const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
     await page.goto(filePath);
     
     const canvas = page.locator('canvas#canvas');
     await expect(canvas).toBeVisible();
-    const hasLayoutSubtree = await canvas.evaluate(el => el.hasAttribute('layoutsubtree'));
-    expect(hasLayoutSubtree).toBe(true);
+    const hasDrawableContent = await canvas.evaluate(el => el.getAttribute('content') === 'drawable');
+    expect(hasDrawableContent).toBe(true);
+  });
+
+  test('Every direct child of the <canvas> element MUST include the drawable attribute', async ({ page }) => {
+    await page.addInitScript(() => {
+      if (!('requestPaint' in HTMLCanvasElement.prototype)) {
+        (HTMLCanvasElement.prototype as any).requestPaint = function() {};
+      }
+    });
+
+    const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
+    await page.goto(filePath);
+
+    const canvas = page.locator('canvas#canvas');
+    await expect(canvas).toBeVisible();
+    const hasDrawableChildren = await canvas.evaluate(el => el.children.length > 0 && Array.from(el.children).every(child => child.hasAttribute('drawable')));
+    expect(hasDrawableChildren).toBe(true);
   });
 
   test('Canvas rendering MUST be executed inside an onpaint event handler', async ({ page }) => {
@@ -56,7 +78,7 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
     expect(hasOnPaint).toBe(true);
   });
 
-  test('The rendering logic MUST use drawElementImage, texElementImage2D, or copyElementImageToTexture inside onpaint', async ({ page }) => {
+  test('The rendering logic MUST use drawElementImage, texElementSubImage2D, or drawElementImageToTexture inside onpaint', async ({ page }) => {
     await page.addInitScript(() => {
       (window as any).renderingApiCalled = null;
       (window as any).isInsideOnPaint = false;
@@ -69,17 +91,17 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
       };
 
       if (typeof WebGLRenderingContext !== 'undefined') {
-        (WebGLRenderingContext.prototype as any).texElementImage2D = function() {
+        (WebGLRenderingContext.prototype as any).texElementSubImage2D = function() {
           if ((window as any).isInsideOnPaint) {
-            (window as any).renderingApiCalled = 'texElementImage2D';
+            (window as any).renderingApiCalled = 'texElementSubImage2D';
           }
         };
       }
 
       if (typeof (window as any).GPUQueue !== 'undefined') {
-        (window as any).GPUQueue.prototype.copyElementImageToTexture = function() {
+        (window as any).GPUQueue.prototype.drawElementImageToTexture = function() {
           if ((window as any).isInsideOnPaint) {
-            (window as any).renderingApiCalled = 'copyElementImageToTexture';
+            (window as any).renderingApiCalled = 'drawElementImageToTexture';
           }
         };
       }
@@ -103,24 +125,35 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
     await page.waitForTimeout(500);
 
     const calledApi = await page.evaluate(() => (window as any).renderingApiCalled);
-    expect(['drawElementImage', 'texElementImage2D', 'copyElementImageToTexture']).toContain(calledApi);
+    expect(['drawElementImage', 'texElementSubImage2D', 'drawElementImageToTexture']).toContain(calledApi);
   });
 
-  test('The CSS transform property of the descendant HTML element MUST be updated based on the transform matrix', async ({ page }) => {
+  test('The DOM position of each drawn HTML element MUST match where it is drawn', async ({ page }) => {
     await page.addInitScript(() => {
+      (window as any).paintErrors = [];
+      (window as any).isInsideOnPaint = false;
+
       (CanvasRenderingContext2D.prototype as any).drawElementImage = function(element: any, x: any, y: any) {
-        (window as any).__lastDrawElementImageParams = { x, y };
-        // Return a unique DOMMatrix translating by x + 500, y + 500
-        return new DOMMatrix([1, 0, 0, 1, x + 500, y + 500]);
+        if ((window as any).isInsideOnPaint) {
+          (window as any).__lastDrawElementImageParams = { x, y };
+        }
+        // Like the latest API, return undefined: the browser syncs the element's DOM position
+        return undefined;
       };
 
       (HTMLCanvasElement.prototype as any).requestPaint = function() {
         if (typeof (this as any).onpaint === 'function') {
+          (window as any).isInsideOnPaint = true;
           try {
             (this as any).onpaint({
               changedElements: [this.firstElementChild]
             });
-          } catch (e) {}
+          } catch (e) {
+            // Record errors, for example from using the return value of drawElementImage()
+            (window as any).paintErrors.push(String(e));
+          } finally {
+            (window as any).isInsideOnPaint = false;
+          }
         }
       };
     });
@@ -129,39 +162,37 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
     await page.goto(filePath);
     await page.waitForTimeout(500);
 
-    // Find if any descendant of the canvas has style.transform updated to match the expected translation
-    const hasUpdatedTransform = await page.evaluate(() => {
+    // In 2D, drawElementImage() syncs the DOM position, so its return value isn't applied to the
+    // style.transform of any descendant of the canvas. In WebGL and WebGPU, updateElementGeometry() syncs it.
+    const isPositionSynced = await page.evaluate(() => {
       const canvas = document.querySelector('canvas#canvas');
       if (!canvas) return false;
       
       const params = (window as any).__lastDrawElementImageParams;
-      if (!params) return false;
+      if (!params) {
+        const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent || '').join('\n');
+        return scripts.includes('updateElementGeometry') && scripts.includes('canvasTransform');
+      }
       
-      const expectedX = params.x + 500;
-      const expectedY = params.y + 500;
+      if ((window as any).paintErrors.length > 0) return false;
 
       const descendants = canvas.querySelectorAll('*');
       for (const el of descendants) {
-        const transformStyle = (el as HTMLElement).style.transform || '';
-        // Parse matrix(1, 0, 0, 1, tx, ty)
-        const match = transformStyle.match(/matrix\([^,]+,[^,]+,[^,]+,[^,]+,\s*([^,]+),\s*([^)]+)\)/);
-        if (match) {
-          const tx = parseFloat(match[1]);
-          const ty = parseFloat(match[2]);
-          // Check if they match our expected translation, permitting floating point errors
-          if (Math.abs(tx - expectedX) < 1 && Math.abs(ty - expectedY) < 1) {
-            return true;
-          }
+        if ((el as HTMLElement).style.transform) {
+          return false;
         }
       }
-      return false;
+      return true;
     });
 
-    expect(hasUpdatedTransform).toBe(true);
+    expect(isPositionSynced).toBe(true);
   });
 
   test('A ResizeObserver MUST be used to update canvas dimensions to prevent blurriness', async ({ page }) => {
     await page.addInitScript(() => {
+      if (!('requestPaint' in HTMLCanvasElement.prototype)) {
+        (HTMLCanvasElement.prototype as any).requestPaint = function() {};
+      }
       if (typeof ResizeObserverEntry !== 'undefined') {
         try {
           delete (ResizeObserverEntry.prototype as any).devicePixelContentBoxSize;
@@ -196,7 +227,8 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
     await page.goto(filePath);
     
     const canvas = page.locator('canvas#canvas');
-    await expect(canvas).toBeVisible();
+    // The fallback can hide the canvas, and show its content in its place.
+    await expect(canvas).toBeAttached();
 
     // Grader resilience: The fallback elements must either sit statically inside the canvas element,
     // or (if the fallback is interactive and reparented dynamically for visual overlays styling) float on its outer container stage.
