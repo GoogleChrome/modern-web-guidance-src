@@ -376,12 +376,13 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
     const isIncomplete = !hasGuide && !inv.isStub;
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
-    const isDraft = Boolean(inv.draft);
     const hasExpectations = inv.hasExpectations && !inv.expectationsEmpty;
-    // Eval files (task.md/grader.ts) no longer gate use-case issue completion;
-    // getGuideStatus() still surfaces NeedsEvals for `gd dev-gap` and expectations-watch.
-    const statusName = !isIncomplete && guideErrors.length === 0
-      ? getStatusName(guideBody, true, true, isDraft, hasExpectations, isDisciplineGuide)
+    const isContentComplete =
+      guideBody.trim().length > 0 &&
+      !inv.draft &&
+      (hasExpectations || isDisciplineGuide);
+    const statusName = !isIncomplete && guideErrors.length === 0 && !isContentComplete
+      ? ProjectStatus.NeedsGuidance
       : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 

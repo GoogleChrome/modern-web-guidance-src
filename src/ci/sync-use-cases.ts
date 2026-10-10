@@ -90,24 +90,6 @@ const projectOctokit: any = new Octokit({ auth: PROJECT_GITHUB_TOKEN });
 
 // --- Pure helpers ---
 
-
-/**
- * Determines the project status name for a use case based on its completeness.
- * Returns null when the use case is complete.
- */
-
-/**
- * Determines whether an existing issue needs to be closed or reopened.
- * Once a new-use-case issue is closed, it stays closed permanently.
- */
-export function getIssueStateChanges(currentState: 'open' | 'closed', statusName: ProjectStatus | null): { needsClose: boolean; needsReopen: boolean } {
-  const shouldBeOpen = statusName !== null;
-  return {
-    needsClose: !shouldBeOpen && currentState === 'open',
-    needsReopen: false,
-  };
-}
-
 /**
  * Computes the desired label set for a use case issue.
  * Ensures `new-use-case` is always present and adds a priority label if
@@ -520,7 +502,7 @@ async function syncIssue(
       return { issueNumber, changed: false };
     }
 
-    const { needsClose } = getIssueStateChanges(existingIssue.state, statusName);
+    const needsClose = statusName === null;
     const currentLabels = (existingIssue.labels as any[]).map(l => typeof l === 'string' ? l : l.name);
     const desiredLabels = getDesiredLabels(currentLabels, priorityLabel);
     const labelsChanged = desiredLabels.length !== currentLabels.length || desiredLabels.some(l => !currentLabels.includes(l));
