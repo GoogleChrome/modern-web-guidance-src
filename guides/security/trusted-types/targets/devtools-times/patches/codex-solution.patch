@@ -1,0 +1,191 @@
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..24297e6 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -10,6 +10,8 @@ export default defineConfig({
+   site: 'https://astro-news-pytrpecapa-uc.a.run.app/',
+   base: 'devtools-times/',
+   integrations: [react()],
++  // Astro's development toolbar writes raw HTML to Trusted Types sinks.
++  devToolbar: { enabled: false },
+   vite: {
+     plugins: [tailwindcss()],
+   },
+@@ -44,4 +46,4 @@ export default defineConfig({
+       }
+     ]
+   }
+-});
+\ No newline at end of file
++});
+diff --git a/src/components/TrustedTypesDemo.astro b/src/components/TrustedTypesDemo.astro
+new file mode 100644
+index 0000000..1b8025d
+--- /dev/null
++++ b/src/components/TrustedTypesDemo.astro
+@@ -0,0 +1,58 @@
++<section class="border-b border-gray-300 p-4 md:p-6" aria-labelledby="trusted-types-title">
++  <h1 id="trusted-types-title" class="text-2xl font-bold mb-2">Trusted Types playground</h1>
++  <p class="mb-4">Try an unsafe HTML update, or use the policy to allow basic formatting and replace “pretzel” with “popcorn”. Attributes and other markup are displayed as text.</p>
++  <label for="input-field" class="block font-semibold mb-2">HTML content</label>
++  <textarea id="input-field" rows="3" class="block w-full border border-gray-400 rounded p-3 mb-3">{'<p>I love a soft <strong>pretzel</strong>.</p>'}</textarea>
++  <div class="flex flex-wrap gap-3 mb-4">
++    <button id="btn-unsafe" type="button" class="border border-gray-500 rounded px-4 py-2">Unsafe update</button>
++    <button id="btn-safe" type="button" class="bg-gray-900 text-white rounded px-4 py-2">Safe update</button>
++  </div>
++  <p id="fallback-notice" class="mb-3" hidden>This browser does not enforce Trusted Types. Safe updates still sanitize the HTML; unsafe updates are disabled.</p>
++  <p id="error-log" role="alert" class="text-red-700 mb-3" style="display: none"></p>
++  <h2 class="font-semibold mb-2">Output</h2>
++  <div id="output" aria-live="polite" class="border border-gray-300 rounded p-3 min-h-12"></div>
++</section>
++
++<script>
++  import { htmlPolicy, supportsTrustedTypes } from '../utils/trusted-types';
++
++  const input = document.querySelector<HTMLTextAreaElement>('#input-field');
++  const output = document.querySelector<HTMLDivElement>('#output');
++  const errorLog = document.querySelector<HTMLParagraphElement>('#error-log');
++  const unsafeButton = document.querySelector<HTMLButtonElement>('#btn-unsafe');
++  const safeButton = document.querySelector<HTMLButtonElement>('#btn-safe');
++  const fallbackNotice = document.querySelector<HTMLParagraphElement>('#fallback-notice');
++
++  if (input && output && errorLog && unsafeButton && safeButton) {
++    if (fallbackNotice) fallbackNotice.hidden = supportsTrustedTypes;
++    const showError = (error: unknown) => {
++      errorLog.textContent = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
++      errorLog.style.display = 'block';
++    };
++
++    unsafeButton.addEventListener('click', () => {
++      try {
++        // Without native enforcement, never send untrusted input to an HTML sink.
++        if (!supportsTrustedTypes) {
++          throw new TypeError('Unsafe HTML updates require native Trusted Types enforcement.');
++        }
++        // Intentionally demonstrate the browser's rejection of a raw string.
++        output.innerHTML = input.value;
++      } catch (error) {
++        showError(error);
++      }
++    });
++
++    safeButton.addEventListener('click', () => {
++      try {
++        // lib.dom declares this sink as string-only. The assertion preserves the
++        // actual TrustedHTML object at runtime; it does not stringify it.
++        output.innerHTML = htmlPolicy.createHTML(input.value) as string;
++        errorLog.textContent = '';
++        errorLog.style.display = 'none';
++      } catch (error) {
++        showError(error);
++      }
++    });
++  }
++</script>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..dd547a1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,8 +4,6 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
+ }
+@@ -17,6 +15,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
++    <meta http-equiv="Content-Security-Policy" content="require-trusted-types-for 'script'; trusted-types my-no-pretzel-policy;" />
+     <meta charset="UTF8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+@@ -34,7 +33,6 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..8deed03 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
++import TrustedTypesDemo from '../components/TrustedTypesDemo.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+@@ -38,6 +39,7 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <TrustedTypesDemo />
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -81,4 +83,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/utils/trusted-types.ts b/src/utils/trusted-types.ts
+new file mode 100644
+index 0000000..e238be9
+--- /dev/null
++++ b/src/utils/trusted-types.ts
+@@ -0,0 +1,46 @@
++interface HTMLPolicy {
++  createHTML(input: string): string | TrustedHTMLValue;
++}
++
++interface TrustedHTMLValue {
++  readonly __trustedHTML: unique symbol;
++}
++
++interface HTMLPolicyFactory {
++  createPolicy(name: string, rules: { createHTML(input: string): string }): HTMLPolicy;
++}
++
++declare global {
++  interface Window {
++    trustedTypes?: HTMLPolicyFactory;
++  }
++}
++
++export const supportsTrustedTypes = typeof window.trustedTypes?.createPolicy === 'function';
++
++if (!window.trustedTypes) {
++  // Tinyfill: still run the policy transformation in browsers without the API.
++  window.trustedTypes = {
++    createPolicy: (_name, rules) => ({ createHTML: (input) => rules.createHTML(input) }),
++  };
++}
++
++/**
++ * Escape everything first, then restore only exact, attribute-free formatting
++ * tags. No untrusted input is parsed in an HTML sink during sanitization.
++ * Scripts, event handlers, URLs, SVG, and malformed tags remain inert text.
++ */
++export function sanitizeHTML(input: string): string {
++  return input
++    .replace(/pretzel/g, 'popcorn')
++    .replace(/&/g, '&amp;')
++    .replace(/</g, '&lt;')
++    .replace(/>/g, '&gt;')
++    .replace(/"/g, '&quot;')
++    .replace(/'/g, '&#39;')
++    .replace(/&lt;(\/?(?:p|b|strong|i|em|u|s|small|mark|sub|sup|code|pre|blockquote|ul|ol|li|h[1-6])|br\s*\/?)&gt;/gi, '<$1>');
++}
++
++export const htmlPolicy = window.trustedTypes.createPolicy('my-no-pretzel-policy', {
++  createHTML: sanitizeHTML,
++});

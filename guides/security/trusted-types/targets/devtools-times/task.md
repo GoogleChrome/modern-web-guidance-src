@@ -1,0 +1,1 @@
+- Help prevent DOM-based XSS attacks by ensuring all untrusted content is sanitized before being inserted into the page.
