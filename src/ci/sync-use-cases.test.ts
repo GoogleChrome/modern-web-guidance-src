@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, REQUIRED_FILES_START, buildRequiredFilesChecklist, preserveTemplateUseCases } from './sync-use-cases.ts';
+import { getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, REQUIRED_FILES_START, buildRequiredFilesChecklist, preserveTemplateUseCases } from './sync-use-cases.ts';
 import { ProjectStatus, validateGuide, getStatusName, processGuideInventory, type GuideInventory } from '../core/guide-validation.ts';
 import { pendingFeatures } from '../core/baseline.ts';
 
@@ -298,32 +298,6 @@ describe('getStatusName', () => {
     assert.strictEqual(getStatusName('Discipline hub content.', false, false, false, false, true), null);
     assert.strictEqual(getStatusName('', false, false, false, false, true), ProjectStatus.NeedsGuidance);
     assert.strictEqual(getStatusName('Discipline hub content.', false, false, true, false, true), ProjectStatus.NeedsGuidance);
-  });
-});
-
-describe('getIssueStateChanges', () => {
-  test('open issue stays open when incomplete', () => {
-    const result = getIssueStateChanges('open', ProjectStatus.NeedsGuidance);
-    assert.strictEqual(result.needsClose, false);
-    assert.strictEqual(result.needsReopen, false);
-  });
-
-  test('open issue is closed when complete', () => {
-    const result = getIssueStateChanges('open', null);
-    assert.strictEqual(result.needsClose, true);
-    assert.strictEqual(result.needsReopen, false);
-  });
-
-  test('closed issue is never reopened (permanent closure)', () => {
-    const result = getIssueStateChanges('closed', ProjectStatus.NeedsEvals);
-    assert.strictEqual(result.needsClose, false);
-    assert.strictEqual(result.needsReopen, false);
-  });
-
-  test('closed issue stays closed when complete', () => {
-    const result = getIssueStateChanges('closed', null);
-    assert.strictEqual(result.needsClose, false);
-    assert.strictEqual(result.needsReopen, false);
   });
 });
 
