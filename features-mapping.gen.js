@@ -608,7 +608,7 @@ window.__featuresMapping = {
     "dialog"
   ],
   "diagonal-panning": [
-    "tmp-scroll-axis-lock"
+    "scroll-axis-lock"
   ],
   "directional-navigation-transitions": [
     "view-transitions",
@@ -956,7 +956,7 @@ window.__featuresMapping = {
     "text-decoration-skip-ink",
     "text-decoration-skip-ink-all",
     "tmp-text-decoration-inset",
-    "tmp-text-decoration-skip-spaces",
+    "text-decoration-skip-spaces",
     "background-clip-border-area",
     "tmp-path-length",
     "border-shape"
