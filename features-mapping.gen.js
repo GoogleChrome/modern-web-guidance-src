@@ -818,9 +818,12 @@ window.__featuresMapping = {
   ],
   "hovercard": [
     "popover",
+    "popover-hint",
     "anchor-positioning",
     "interest-invokers",
-    "cross-document-view-transitions"
+    "cross-document-view-transitions",
+    "blocking-render",
+    "link-rel-expect"
   ],
   "media-player-controls": [
     "media-pseudos",
