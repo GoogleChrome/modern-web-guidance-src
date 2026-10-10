@@ -224,7 +224,7 @@
     function updateData() {
       const selectedDate = birthdateInput.value;
       const selectedTz = timezoneSelect.value;
-      const dateObj = new Date(selectedDate);
+      const dateObj = new Date(`${selectedDate}T00:00:00Z`);
       
       const formatter = new Intl.DateTimeFormat('en-GB', {
         year: 'numeric',
@@ -233,7 +233,11 @@
         timeZone: selectedTz
       });
 
-      birthdateValue.textContent = formatter.format(dateObj);
+      const parts = formatter.formatToParts(dateObj);
+      const day = parts.find(p => p.type === 'day').value;
+      const month = parts.find(p => p.type === 'month').value;
+      const year = parts.find(p => p.type === 'year').value;
+      birthdateValue.textContent = `${day}/${month}/${year}`;
 
       const alarmTime = alarmTimeInput.value;
       const [hours, minutes] = alarmTime.split(':');
