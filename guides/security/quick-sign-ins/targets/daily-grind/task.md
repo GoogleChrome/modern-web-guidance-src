@@ -1,0 +1,1 @@
+- Update The Daily Grind app so returning users can sign in directly in place using their saved passkeys or passwords before being sent to a separate sign-in page or interrupting their workflow.

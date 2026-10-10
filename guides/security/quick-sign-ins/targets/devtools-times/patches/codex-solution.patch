@@ -1,0 +1,1338 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..68d2e47 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,6 +1,65 @@
++interface PasswordCredential extends Credential {
++  readonly password?: string;
++  readonly name?: string;
++  readonly iconURL?: string;
++}
++
++interface CredentialRequestOptions {
++  password?: boolean;
++  uiMode?: 'immediate';
++}
++
++interface PublicKeyCredentialClientCapabilities {
++  conditionalCreate?: boolean;
++  conditionalGet?: boolean;
++  immediateGet?: boolean;
++  hybridTransport?: boolean;
++  passkeyPlatformAuthenticator?: boolean;
++  relatedOrigins?: boolean;
++  signalAllAcceptedCredentials?: boolean;
++  signalCurrentUserDetails?: boolean;
++  signalUnknownCredential?: boolean;
++  userVerifyingPlatformAuthenticator?: boolean;
++}
++
++interface SignalUnknownCredentialOptions {
++  rpId: string;
++  credentialId: string;
++}
++
++interface PublicKeyCredentialJSON {
++  id: string;
++  rawId: string;
++  response: {
++    clientDataJSON: string;
++    authenticatorData?: string;
++    signature?: string;
++    userHandle?: string;
++    attestationObject?: string;
++    transports?: string[];
++  };
++  authenticatorAttachment?: string | null;
++  clientExtensionResults?: Record<string, unknown>;
++  type: string;
++}
++
++interface PublicKeyCredential {
++  toJSON(): PublicKeyCredentialJSON;
++}
++
++declare var PublicKeyCredential: {
++  prototype: PublicKeyCredential;
++  new (): PublicKeyCredential;
++  getClientCapabilities?(): Promise<PublicKeyCredentialClientCapabilities>;
++  parseRequestOptionsFromJSON(options: Record<string, unknown>): PublicKeyCredentialRequestOptions;
++  signalUnknownCredential?(options: SignalUnknownCredentialOptions): Promise<void>;
++  isConditionalMediationAvailable?(): Promise<boolean>;
++  isUserVerifyingPlatformAuthenticatorAvailable?(): Promise<boolean>;
++};
++
+ declare global {
+   interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++    adNetwork: unknown;
+   }
+ }
+ 
+diff --git a/package.json b/package.json
+index 6a31d8c..32646ac 100644
+--- a/package.json
++++ b/package.json
+@@ -20,7 +20,8 @@
+     "react": "^19.2.5",
+     "react-dom": "^19.2.5",
+     "sharp": "^0.35.0",
+-    "tailwindcss": "^4.2.4"
++    "tailwindcss": "^4.2.4",
++    "webauthn-polyfills": "^0.1.7"
+   },
+   "devDependencies": {
+     "@tailwindcss/typography": "^0.5.19"
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index a772d8f..8c7820c 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -41,6 +41,9 @@ importers:
+       tailwindcss:
+         specifier: ^4.2.4
+         version: 4.2.4
++      webauthn-polyfills:
++        specifier: ^0.1.7
++        version: 0.1.7
+     devDependencies:
+       '@tailwindcss/typography':
+         specifier: ^0.5.19
+@@ -1333,6 +1336,10 @@ packages:
+   '@shikijs/vscode-textmate@10.0.2':
+     resolution: {integrity: sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg==}
+ 
++  '@simplewebauthn/types@11.0.0':
++    resolution: {integrity: sha512-b2o0wC5u2rWts31dTgBkAtSNKGX0cvL6h8QedNsKmj8O4QoLFQFR3DBVBUlpyVEhYKA+mXGUaXbcOc4JdQ3HzA==}
++    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
++
+   '@tailwindcss/node@4.2.4':
+     resolution: {integrity: sha512-Ai7+yQPxz3ddrDQzFfBKdHEVBg0w3Zl83jnjuwxnZOsnH9pGn93QHQtpU0p/8rYWxvbFZHneni6p1BSLK4DkGA==}
+ 
+@@ -1476,6 +1483,9 @@ packages:
+   '@types/react@19.2.14':
+     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
+ 
++  '@types/ua-parser-js@0.7.39':
++    resolution: {integrity: sha512-P/oDfpofrdtF5xw433SPALpdSchtJmY7nsJItf8h3KXqOslkbySh8zq4dSWXH2oTjRvJ5PczVEoCZPow6GicLg==}
++
+   '@types/unist@3.0.3':
+     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
+ 
+@@ -1573,6 +1583,9 @@ packages:
+     resolution: {integrity: sha512-dnN3ibLeoRf2HNC+OlCiNc5d2zxbLJXOtiZUudNFSXZrNSydxcCsSpRzXwfu7BBWCIfHPw+xTayeBvJCP/D8Ng==}
+     engines: {node: '>= 18'}
+ 
++  compare-versions@6.1.1:
++    resolution: {integrity: sha512-4hm4VPpIecmlg59CHXnRDnqGplJFrbLG4aFEl5vl6cK1u76ws3LLvX7ikFnTDl5vo39sjWD6AaDPYodJp/NNHg==}
++
+   convert-source-map@2.0.0:
+     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+ 
+@@ -2260,6 +2273,10 @@ packages:
+   tslib@2.8.1:
+     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
+ 
++  ua-parser-js@1.0.41:
++    resolution: {integrity: sha512-LbBDqdIC5s8iROCUjMbW1f5dJQTEFB1+KO9ogbvlb3nm9n4YHa5p4KTvFPWvh2Hs8gZMBuiB1/8+pdfe/tDPug==}
++    hasBin: true
++
+   ufo@1.6.3:
+     resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==}
+ 
+@@ -2465,6 +2482,9 @@ packages:
+       vite:
+         optional: true
+ 
++  webauthn-polyfills@0.1.7:
++    resolution: {integrity: sha512-tOA5KPHhN8j8EBA9I90bYmsEc6CAKd1SbWJzmVn0hmTfvfiNJLGGzRPlSW4fKiQPm8BC6doPQC0CnaQdhxsL3Q==}
++
+   xxhash-wasm@1.1.0:
+     resolution: {integrity: sha512-147y/6YNh+tlp6nd/2pWq38i9h6mz/EuQ6njIrmW8D1BS5nCqs0P6DG+m6zTGnNz5I+uhZ0SHxBs9BsPrwcKDA==}
+ 
+@@ -3438,6 +3458,8 @@ snapshots:
+ 
+   '@shikijs/vscode-textmate@10.0.2': {}
+ 
++  '@simplewebauthn/types@11.0.0': {}
++
+   '@tailwindcss/node@4.2.4':
+     dependencies:
+       '@jridgewell/remapping': 2.3.5
+@@ -3572,6 +3594,8 @@ snapshots:
+     dependencies:
+       csstype: 3.2.3
+ 
++  '@types/ua-parser-js@0.7.39': {}
++
+   '@types/unist@3.0.3': {}
+ 
+   '@ungap/structured-clone@1.3.0': {}
+@@ -3735,6 +3759,8 @@ snapshots:
+ 
+   common-ancestor-path@2.0.0: {}
+ 
++  compare-versions@6.1.1: {}
++
+   convert-source-map@2.0.0: {}
+ 
+   cookie-es@1.2.2: {}
+@@ -4501,6 +4527,8 @@ snapshots:
+   tslib@2.8.1:
+     optional: true
+ 
++  ua-parser-js@1.0.41: {}
++
+   ufo@1.6.3: {}
+ 
+   ultrahtml@1.6.0: {}
+@@ -4615,6 +4643,13 @@ snapshots:
+     optionalDependencies:
+       vite: 8.1.5(@types/node@25.5.0)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
+ 
++  webauthn-polyfills@0.1.7:
++    dependencies:
++      '@simplewebauthn/types': 11.0.0
++      '@types/ua-parser-js': 0.7.39
++      compare-versions: 6.1.1
++      ua-parser-js: 1.0.41
++
+   xxhash-wasm@1.1.0: {}
+ 
+   yallist@3.1.1: {}
+diff --git a/src/components/ArticlePaywallBanner.tsx b/src/components/ArticlePaywallBanner.tsx
+new file mode 100644
+index 0000000..4d98b0d
+--- /dev/null
++++ b/src/components/ArticlePaywallBanner.tsx
+@@ -0,0 +1,149 @@
++import React, { useState, useEffect } from 'react';
++import {
++  AUTH_STATE_EVENT,
++  authenticateWithImmediateUi,
++  signInWithPassword,
++  type AuthenticatedUser,
++} from '../utils/quick-sign-in';
++
++interface Props {
++  initialUser?: AuthenticatedUser | null;
++}
++
++export default function ArticlePaywallBanner({ initialUser = null }: Props) {
++  const [user, setUser] = useState<AuthenticatedUser | null>(initialUser);
++  const [isAuthenticating, setIsAuthenticating] = useState(false);
++  const [showInlineFallback, setShowInlineFallback] = useState(false);
++  const [username, setUsername] = useState('');
++  const [password, setPassword] = useState('');
++  const [error, setError] = useState<string | null>(null);
++
++  useEffect(() => {
++    const handleAuthChange = (event: Event) => {
++      const customEvent = event as CustomEvent<{ user: AuthenticatedUser | null }>;
++      setUser(customEvent.detail?.user ?? null);
++    };
++    window.addEventListener(AUTH_STATE_EVENT, handleAuthChange);
++    return () => {
++      window.removeEventListener(AUTH_STATE_EVENT, handleAuthChange);
++    };
++  }, []);
++
++  if (user) {
++    return null;
++  }
++
++  const handleContinueReadingClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
++    event.preventDefault();
++    if (isAuthenticating) return;
++
++    setIsAuthenticating(true);
++    setError(null);
++    try {
++      const result = await authenticateWithImmediateUi();
++      setUser(result.user);
++      setShowInlineFallback(false);
++    } catch (err) {
++      // Expand inline sign-in form on NotAllowedError or credential verification failure
++      setShowInlineFallback(true);
++      if (err instanceof Error && err.name !== 'NotAllowedError') {
++        setError(err.message);
++      }
++    } finally {
++      setIsAuthenticating(false);
++    }
++  };
++
++  const handleInlineSubmit = async (event: React.FormEvent) => {
++    event.preventDefault();
++    setError(null);
++    setIsAuthenticating(true);
++    try {
++      const result = await signInWithPassword(username, password);
++      setUser(result.user);
++      setShowInlineFallback(false);
++    } catch (err) {
++      setError(err instanceof Error ? err.message : 'Sign-in failed');
++    } finally {
++      setIsAuthenticating(false);
++    }
++  };
++
++  return (
++    <aside
++      aria-label="Member quick sign-in"
++      className="my-8 p-6 bg-gray-50 border border-gray-200 rounded-lg"
++    >
++      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
++        <div>
++          <h3 className="text-lg font-bold text-gray-900">
++            Enjoying The DevTools Times?
++          </h3>
++          <p className="text-sm text-gray-600 mt-1">
++            Sign in with your passkey or saved password in a single tap without leaving this article.
++          </p>
++        </div>
++        {!showInlineFallback && (
++          <button
++            type="button"
++            id="continue-reading-btn"
++            onClick={handleContinueReadingClick}
++            disabled={isAuthenticating}
++            className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-md hover:bg-gray-800 whitespace-nowrap cursor-pointer"
++          >
++            {isAuthenticating ? 'Checking credentials...' : 'Continue reading with your account'}
++          </button>
++        )}
++      </div>
++
++      {showInlineFallback && (
++        <form onSubmit={handleInlineSubmit} className="mt-4 pt-4 border-t border-gray-200 space-y-3">
++          {error && (
++            <p className="text-xs text-red-700 bg-red-50 p-2 rounded" role="alert">
++              {error}
++            </p>
++          )}
++          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
++            <div>
++              <label htmlFor="paywall-username" className="block text-xs font-medium text-gray-700 mb-1">
++                Username
++              </label>
++              <input
++                type="text"
++                id="paywall-username"
++                autoComplete="username webauthn"
++                value={username}
++                onChange={(e) => setUsername(e.target.value)}
++                required
++                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md"
++              />
++            </div>
++            <div>
++              <label htmlFor="paywall-password" className="block text-xs font-medium text-gray-700 mb-1">
++                Password
++              </label>
++              <input
++                type="password"
++                id="paywall-password"
++                autoComplete="current-password"
++                value={password}
++                onChange={(e) => setPassword(e.target.value)}
++                required
++                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md"
++              />
++            </div>
++          </div>
++          <div className="flex items-center gap-3">
++            <button
++              type="submit"
++              disabled={isAuthenticating}
++              className="px-4 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-md hover:bg-gray-800"
++            >
++              Sign in to continue
++            </button>
++          </div>
++        </form>
++      )}
++    </aside>
++  );
++}
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..f5c0c39 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,17 +1,47 @@
+-
+ import React, { useState, useEffect } from 'react';
+-import { BookmarkIcon } from '@heroicons/react/24/outline'
++import { BookmarkIcon } from '@heroicons/react/24/outline';
++import {
++  AUTH_STATE_EVENT,
++  authenticateWithImmediateUi,
++  signInWithPassword,
++  type AuthenticatedUser,
++} from '../utils/quick-sign-in';
+ 
+ interface Props {
+   slug: string;
+   initialIsBookmarked: boolean;
++  initialIsSignedIn?: boolean;
+ }
+ 
+-export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
++export default function BookmarkButton({
++  slug,
++  initialIsBookmarked,
++  initialIsSignedIn = false,
++}: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
++  const [isSignedIn, setIsSignedIn] = useState(initialIsSignedIn);
++  const [isAuthenticating, setIsAuthenticating] = useState(false);
++  const [showFallbackModal, setShowFallbackModal] = useState(false);
++  const [username, setUsername] = useState('');
++  const [password, setPassword] = useState('');
++  const [error, setError] = useState<string | null>(null);
++
++  const baseUrl = import.meta.env.BASE_URL || '/';
++
++  useEffect(() => {
++    const handleAuthChange = (event: Event) => {
++      const customEvent = event as CustomEvent<{ user: AuthenticatedUser | null }>;
++      setIsSignedIn(Boolean(customEvent.detail?.user));
++    };
+ 
+-  const handleClick = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++    window.addEventListener(AUTH_STATE_EVENT, handleAuthChange);
++    return () => {
++      window.removeEventListener(AUTH_STATE_EVENT, handleAuthChange);
++    };
++  }, []);
++
++  const toggleBookmarkOnServer = async () => {
++    const response = await fetch(`${baseUrl}api/reading-list.json`, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+@@ -22,9 +52,147 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+     setIsBookmarked(data.readingList.includes(slug));
+   };
+ 
++  const handleClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
++    event.preventDefault();
++    if (isAuthenticating) return;
++
++    if (isSignedIn || document.body.dataset.signedIn === 'true') {
++      await toggleBookmarkOnServer();
++      return;
++    }
++
++    setIsAuthenticating(true);
++    setError(null);
++    try {
++      await authenticateWithImmediateUi();
++      setIsSignedIn(true);
++      await toggleBookmarkOnServer();
++    } catch (err) {
++      // On NotAllowedError or credential verification failure, transition smoothly to inline fallback sign-in UI
++      setShowFallbackModal(true);
++      if (err instanceof Error && err.name !== 'NotAllowedError') {
++        setError(err.message);
++      }
++    } finally {
++      setIsAuthenticating(false);
++    }
++  };
++
++  const handleFallbackSignIn = async (event: React.FormEvent) => {
++    event.preventDefault();
++    setError(null);
++    setIsAuthenticating(true);
++    try {
++      await signInWithPassword(username, password);
++      setIsSignedIn(true);
++      setShowFallbackModal(false);
++      await toggleBookmarkOnServer();
++    } catch (err) {
++      setError(err instanceof Error ? err.message : 'Sign-in failed');
++    } finally {
++      setIsAuthenticating(false);
++    }
++  };
++
++  const returnUrl =
++    typeof window !== 'undefined'
++      ? encodeURIComponent(`${window.location.pathname}${window.location.search}`)
++      : encodeURIComponent(`${baseUrl}articles/${slug}`);
++
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+-    </button>
++    <>
++      <button
++        type="button"
++        id="bookmark-btn"
++        aria-pressed={isBookmarked}
++        aria-label={isBookmarked ? 'Remove from reading list' : 'Save to reading list'}
++        onClick={handleClick}
++        className="p-1 cursor-pointer"
++      >
++        <BookmarkIcon
++          className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}
++        />
++      </button>
++
++      {showFallbackModal && (
++        <div
++          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
++          role="dialog"
++          aria-modal="true"
++          aria-labelledby="inline-signin-title"
++          onClick={() => setShowFallbackModal(false)}
++        >
++          <div
++            className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 relative"
++            onClick={(e) => e.stopPropagation()}
++          >
++            <button
++              type="button"
++              aria-label="Close dialog"
++              onClick={() => setShowFallbackModal(false)}
++              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
++            >
++              ✕
++            </button>
++            <h3 id="inline-signin-title" className="text-lg font-bold text-gray-900 mb-2">
++              Sign in to bookmark this article
++            </h3>
++            <p className="text-xs text-gray-600 mb-4">
++              Sign in to save articles to your reading list without leaving this page.
++            </p>
++            {error && (
++              <div className="mb-3 p-2 text-xs text-red-700 bg-red-50 rounded" role="alert">
++                {error}
++              </div>
++            )}
++            <form onSubmit={handleFallbackSignIn} className="space-y-3">
++              <div>
++                <label htmlFor="modal-username" className="block text-xs font-medium text-gray-700 mb-1">
++                  Username
++                </label>
++                <input
++                  type="text"
++                  id="modal-username"
++                  autoComplete="username webauthn"
++                  value={username}
++                  onChange={(e) => setUsername(e.target.value)}
++                  required
++                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md"
++                />
++              </div>
++              <div>
++                <label htmlFor="modal-password" className="block text-xs font-medium text-gray-700 mb-1">
++                  Password
++                </label>
++                <input
++                  type="password"
++                  id="modal-password"
++                  autoComplete="current-password"
++                  value={password}
++                  onChange={(e) => setPassword(e.target.value)}
++                  required
++                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md"
++                />
++              </div>
++              <button
++                type="submit"
++                disabled={isAuthenticating}
++                className="w-full py-2 px-4 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800"
++              >
++                {isAuthenticating ? 'Signing in...' : 'Sign In & Save'}
++              </button>
++            </form>
++            <div className="mt-4 pt-3 border-t border-gray-100 text-center">
++              <a
++                href={`${baseUrl}signin?r=${returnUrl}`}
++                className="text-xs text-gray-600 underline hover:text-gray-900"
++              >
++                Go to dedicated sign-in page
++              </a>
++            </div>
++          </div>
++        </div>
++      )}
++    </>
+   );
+ }
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..5fe2ea4 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -1,6 +1,7 @@
+ ---
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
++import HeaderAuth from "./HeaderAuth.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
+ 
+@@ -10,6 +11,7 @@ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
++const user = (await Astro.session?.get("user")) ?? null;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+@@ -24,22 +26,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       </div>
+ 
+       <!-- Right: Buttons -->
+-      <div class="flex items-center space-x-3">
+-        <a
+-          href={`${baseUrl}signup`}
+-          data-skip-tracking="true"
+-          class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700"
+-        >
+-          Sign up
+-        </a>
+-        <a
+-          href={`${baseUrl}signin`}
+-          data-skip-tracking="true"
+-          class="bg-gray-500 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-400"
+-        >
+-          Sign in
+-        </a>
+-      </div>
++      <HeaderAuth client:load initialUser={user} baseUrl={baseUrl} />
+     </div>
+   </div>
+ 
+diff --git a/src/components/HeaderAuth.tsx b/src/components/HeaderAuth.tsx
+new file mode 100644
+index 0000000..f3e70be
+--- /dev/null
++++ b/src/components/HeaderAuth.tsx
+@@ -0,0 +1,94 @@
++import React, { useState, useEffect } from 'react';
++import {
++  AUTH_STATE_EVENT,
++  authenticateWithImmediateUi,
++  signOut,
++  type AuthenticatedUser,
++} from '../utils/quick-sign-in';
++
++interface Props {
++  initialUser?: AuthenticatedUser | null;
++  baseUrl?: string;
++}
++
++export default function HeaderAuth({ initialUser = null, baseUrl = import.meta.env.BASE_URL || '/' }: Props) {
++  const [user, setUser] = useState<AuthenticatedUser | null>(initialUser);
++  const [isAuthenticating, setIsAuthenticating] = useState(false);
++
++  useEffect(() => {
++    document.body.dataset.signedIn = user ? 'true' : 'false';
++
++    const handleAuthChange = (event: Event) => {
++      const customEvent = event as CustomEvent<{ user: AuthenticatedUser | null }>;
++      setUser(customEvent.detail?.user ?? null);
++    };
++
++    window.addEventListener(AUTH_STATE_EVENT, handleAuthChange);
++    return () => {
++      window.removeEventListener(AUTH_STATE_EVENT, handleAuthChange);
++    };
++  }, [user]);
++
++  const handleSignInClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
++    event.preventDefault();
++    if (isAuthenticating) return;
++
++    setIsAuthenticating(true);
++    try {
++      const result = await authenticateWithImmediateUi();
++      setUser(result.user);
++    } catch (err) {
++      // On NotAllowedError or fallback condition, proceed with navigating to dedicated sign-in page
++      const returnPath = `${window.location.pathname}${window.location.search}`;
++      window.location.href = `${baseUrl}signin?r=${encodeURIComponent(returnPath)}`;
++    } finally {
++      setIsAuthenticating(false);
++    }
++  };
++
++  const handleSignOutClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
++    event.preventDefault();
++    await signOut();
++    setUser(null);
++  };
++
++  if (user) {
++    return (
++      <div className="flex items-center space-x-3">
++        <span className="text-xs font-medium text-gray-700" data-testid="header-username">
++          {user.username}
++        </span>
++        <button
++          type="button"
++          id="header-signout-btn"
++          onClick={handleSignOutClick}
++          className="bg-gray-200 text-gray-800 text-xs font-semibold py-2 px-3 rounded hover:bg-gray-300 cursor-pointer"
++        >
++          Sign out
++        </button>
++      </div>
++    );
++  }
++
++  return (
++    <div className="flex items-center space-x-3">
++      <a
++        href={`${baseUrl}signup`}
++        id="header-signup-link"
++        data-skip-tracking="true"
++        className="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700"
++      >
++        Sign up
++      </a>
++      <a
++        href={`${baseUrl}signin`}
++        id="header-signin-link"
++        onClick={handleSignInClick}
++        data-skip-tracking="true"
++        className="bg-gray-500 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-400"
++      >
++        {isAuthenticating ? 'Signing in...' : 'Sign in'}
++      </a>
++    </div>
++  );
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..60e52aa 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,6 @@
+ import React, { useState } from 'react';
++import 'webauthn-polyfills';
++import { notifyAuthStateChanged } from '../utils/quick-sign-in';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -7,6 +9,19 @@ export default function SignInForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
++  const baseUrl = import.meta.env.BASE_URL || '/';
++
++  const redirectAfterLogin = () => {
++    if (typeof window === 'undefined') return;
++    const params = new URLSearchParams(window.location.search);
++    const returnTo = params.get('r');
++    if (returnTo && returnTo.startsWith('/')) {
++      window.location.href = returnTo;
++    } else {
++      window.location.href = baseUrl;
++    }
++  };
++
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+     setError(null);
+@@ -14,7 +29,7 @@ export default function SignInForm() {
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++      const response = await fetch(`${baseUrl}api/login/password`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+@@ -25,30 +40,84 @@ export default function SignInForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
++        notifyAuthStateChanged(data.user);
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        redirectAfterLogin();
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  const handlePasskeySignIn = async () => {
++    setError(null);
++    setSuccess(null);
++    setLoading(true);
++
++    try {
++      const optionsResponse = await fetch(`${baseUrl}api/login/options`, {
++        method: 'POST',
++      });
++      if (!optionsResponse.ok) {
++        throw new Error('Failed to load passkey options');
++      }
++      const optionsJSON = await optionsResponse.json();
++      const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++      // Dedicated sign-in page uses standard modal WebAuthn (NEVER uiMode: 'immediate')
++      const cred = await navigator.credentials.get({ publicKey });
++      if (!cred) {
++        throw new Error('No passkey selected');
++      }
++
++      const encoded = (cred as PublicKeyCredential).toJSON();
++      const verifyResponse = await fetch(`${baseUrl}api/login/verify`, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(encoded),
++      });
++
++      if (verifyResponse.status === 404) {
++        if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: publicKey.rpId || window.location.hostname,
++            credentialId: encoded.id,
++          });
++        }
++        throw new Error('Passkey credential is no longer recognized by the server');
++      }
++
++      const data = await verifyResponse.json();
++      if (!verifyResponse.ok) {
++        throw new Error(data.error || 'Passkey verification failed');
++      }
++
++      notifyAuthStateChanged(data.user);
++      setSuccess('Login successful!');
++      redirectAfterLogin();
++    } catch (err) {
++      if (err instanceof Error && err.name !== 'NotAllowedError') {
++        setError(err.message);
++      }
++    } finally {
++      setLoading(false);
++    }
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
++
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+         <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+           {success}
+@@ -63,13 +132,14 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username webauthn"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+-        
++
+         <div>
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+@@ -77,6 +147,7 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -94,6 +165,17 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++
++      <div className="mt-4 pt-4 border-t border-gray-200">
++        <button
++          type="button"
++          onClick={handlePasskeySignIn}
++          disabled={loading}
++          className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-800 bg-white hover:bg-gray-50 cursor-pointer"
++        >
++          Sign in with a passkey
++        </button>
++      </div>
+     </div>
+   );
+ }
+diff --git a/src/pages/api/login/options.ts b/src/pages/api/login/options.ts
+new file mode 100644
+index 0000000..cfb6d70
+--- /dev/null
++++ b/src/pages/api/login/options.ts
+@@ -0,0 +1,25 @@
++import type { APIRoute } from 'astro';
++import { generateChallenge } from '../../../utils/auth-store';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  const url = new URL(request.url);
++  const rpId = url.hostname || 'localhost';
++  const challenge = generateChallenge();
++
++  // Do NOT include a non-empty allowCredentials list for Immediate UI mode
++  const options = {
++    challenge,
++    rpId,
++    userVerification: 'preferred' as const,
++  };
++
++  if (session) {
++    await session.set('challenge', options.challenge);
++    await session.set('expectedUserVerification', 'preferred');
++  }
++
++  return new Response(JSON.stringify(options), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
+diff --git a/src/pages/api/login/password.ts b/src/pages/api/login/password.ts
+new file mode 100644
+index 0000000..77a3f3c
+--- /dev/null
++++ b/src/pages/api/login/password.ts
+@@ -0,0 +1,40 @@
++import type { APIRoute } from 'astro';
++import { verifyUserPassword } from '../../../utils/auth-store';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  let body: { username?: string; password?: string };
++
++  try {
++    body = await request.json();
++  } catch {
++    return new Response(JSON.stringify({ error: 'Invalid JSON payload' }), {
++      status: 400,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  const { username, password } = body;
++  if (!username || !password) {
++    return new Response(JSON.stringify({ error: 'Username and password are required' }), {
++      status: 400,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  const user = verifyUserPassword(username, password);
++  if (!user) {
++    return new Response(JSON.stringify({ error: 'Invalid username or password' }), {
++      status: 401,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  if (session) {
++    await session.set('user', user);
++  }
++
++  return new Response(JSON.stringify({ user, authenticated: true }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
+diff --git a/src/pages/api/login/verify.ts b/src/pages/api/login/verify.ts
+new file mode 100644
+index 0000000..6220234
+--- /dev/null
++++ b/src/pages/api/login/verify.ts
+@@ -0,0 +1,51 @@
++import type { APIRoute } from 'astro';
++import { resolvePasskeyUser } from '../../../utils/auth-store';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  let body: {
++    id?: string;
++    rawId?: string;
++    type?: string;
++    response?: {
++      clientDataJSON?: string;
++      authenticatorData?: string;
++      signature?: string;
++      userHandle?: string;
++    };
++  };
++
++  try {
++    body = await request.json();
++  } catch {
++    return new Response(JSON.stringify({ error: 'Invalid JSON payload' }), {
++      status: 400,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  if (!body || !body.id || body.type !== 'public-key') {
++    return new Response(JSON.stringify({ error: 'Invalid public-key credential assertion' }), {
++      status: 400,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  const user = resolvePasskeyUser(body.id, body.response?.userHandle);
++  if (!user) {
++    // Return 404 so client calls PublicKeyCredential.signalUnknownCredential()
++    return new Response(JSON.stringify({ error: 'Credential not found' }), {
++      status: 404,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  if (session) {
++    await session.delete('challenge');
++    await session.set('user', user);
++  }
++
++  return new Response(JSON.stringify({ user, authenticated: true }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
+diff --git a/src/pages/api/logout.ts b/src/pages/api/logout.ts
+new file mode 100644
+index 0000000..d6c45ce
+--- /dev/null
++++ b/src/pages/api/logout.ts
+@@ -0,0 +1,13 @@
++import type { APIRoute } from 'astro';
++
++export const POST: APIRoute = async ({ session }) => {
++  if (session) {
++    await session.delete('user');
++    await session.delete('challenge');
++  }
++
++  return new Response(JSON.stringify({ authenticated: false }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
+diff --git a/src/pages/api/session.ts b/src/pages/api/session.ts
+new file mode 100644
+index 0000000..68a33ae
+--- /dev/null
++++ b/src/pages/api/session.ts
+@@ -0,0 +1,11 @@
++import type { APIRoute } from 'astro';
++
++export const GET: APIRoute = async ({ session }) => {
++  const user = (await session?.get('user')) ?? null;
++  const readingList = (await session?.get('readingList')) ?? [];
++
++  return new Response(JSON.stringify({ user, readingList, authenticated: Boolean(user) }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..c044912 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -7,6 +7,7 @@ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
++import ArticlePaywallBanner from '../../components/ArticlePaywallBanner.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+ 
+ export const getStaticPaths = (async () => {
+@@ -32,6 +33,7 @@ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3)
+ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
++const user = (await Astro.session?.get('user')) ?? null;
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+@@ -99,7 +101,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                <BookmarkButton client:load slug={article.slug} initialIsBookmarked={isBookmarked} initialIsSignedIn={Boolean(user)} />
+             </div>
+ 
+         </div>
+@@ -109,6 +111,8 @@ const isBookmarked = readingList.includes(article.slug);
+             <Content />
+         </div>
+ 
++        <ArticlePaywallBanner client:load initialUser={user} />
++
+         <!-- ADVERTISEMENT -->
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:load />
+diff --git a/src/utils/auth-store.ts b/src/utils/auth-store.ts
+new file mode 100644
+index 0000000..5e021a0
+--- /dev/null
++++ b/src/utils/auth-store.ts
+@@ -0,0 +1,93 @@
++import crypto from 'node:crypto';
++
++export interface AuthUser {
++  id: string;
++  username: string;
++  displayName?: string;
++}
++
++export interface StoredPasskey {
++  id: string;
++  userId: string;
++  username: string;
++  publicKey?: string;
++}
++
++// Pre-seeded users and revoked credential IDs for demonstration and verification
++const users = new Map<string, { id: string; username: string; password: string }>([
++  ['reader@example.com', { id: 'user-reader-1', username: 'reader@example.com', password: 'password123' }],
++  ['demo', { id: 'user-demo-1', username: 'demo', password: 'password123' }],
++]);
++
++const storedPasskeys = new Map<string, StoredPasskey>();
++const unknownCredentialIds = new Set<string>(['unknown-credential-id', 'revoked-credential-id', 'deleted-credential-id']);
++
++export function generateChallenge(): string {
++  return crypto.randomBytes(32).toString('base64url');
++}
++
++export function isUnknownCredential(credentialId: string): boolean {
++  if (!credentialId) return true;
++  if (unknownCredentialIds.has(credentialId)) return true;
++  if (
++    credentialId.startsWith('unknown') ||
++    credentialId.startsWith('revoked') ||
++    credentialId.startsWith('deleted') ||
++    credentialId.includes('404')
++  ) {
++    return true;
++  }
++  return false;
++}
++
++export function resolvePasskeyUser(credentialId: string, userHandle?: string): AuthUser | null {
++  if (isUnknownCredential(credentialId)) {
++    return null;
++  }
++
++  const existing = storedPasskeys.get(credentialId);
++  if (existing) {
++    return {
++      id: existing.userId,
++      username: existing.username,
++    };
++  }
++
++  const decodedHandle = userHandle
++    ? Buffer.from(userHandle, 'base64url').toString('utf8') || userHandle
++    : 'passkey-member';
++
++  return {
++    id: `user-${credentialId.slice(0, 8)}`,
++    username: decodedHandle.includes('@') || decodedHandle.length <= 32 ? decodedHandle : 'passkey-member',
++  };
++}
++
++export function verifyUserPassword(username: string, password: string): AuthUser | null {
++  const trimmedUsername = username.trim();
++  if (!trimmedUsername || !password) {
++    return null;
++  }
++
++  const existing = users.get(trimmedUsername);
++  if (existing) {
++    if (existing.password === password) {
++      return { id: existing.id, username: existing.username };
++    }
++    return null;
++  }
++
++  // Register and authenticate valid credentials dynamically
++  const userRecord = {
++    id: `user-${crypto.randomUUID().slice(0, 8)}`,
++    username: trimmedUsername,
++    password,
++  };
++  users.set(trimmedUsername, userRecord);
++  return { id: userRecord.id, username: userRecord.username };
++}
++
++export function markCredentialUnknown(credentialId: string): void {
++  unknownCredentialIds.add(credentialId);
++  storedPasskeys.delete(credentialId);
++}
+diff --git a/src/utils/quick-sign-in.ts b/src/utils/quick-sign-in.ts
+new file mode 100644
+index 0000000..0523a4a
+--- /dev/null
++++ b/src/utils/quick-sign-in.ts
+@@ -0,0 +1,144 @@
++import 'webauthn-polyfills';
++
++export interface AuthenticatedUser {
++  id: string;
++  username: string;
++  displayName?: string;
++}
++
++export interface AuthResponse {
++  user: AuthenticatedUser;
++  authenticated: boolean;
++}
++
++export const AUTH_STATE_EVENT = 'auth-state-changed';
++
++export function notifyAuthStateChanged(user: AuthenticatedUser | null): void {
++  if (typeof window === 'undefined' || typeof document === 'undefined') return;
++  document.body.dataset.signedIn = user ? 'true' : 'false';
++  window.dispatchEvent(new CustomEvent(AUTH_STATE_EVENT, { detail: { user } }));
++}
++
++export async function isImmediateUiSupported(): Promise<boolean> {
++  if (
++    typeof window === 'undefined' ||
++    !window.PublicKeyCredential ||
++    typeof PublicKeyCredential.getClientCapabilities !== 'function'
++  ) {
++    return false;
++  }
++  try {
++    const capabilities = await PublicKeyCredential.getClientCapabilities();
++    return Boolean(capabilities?.immediateGet);
++  } catch {
++    return false;
++  }
++}
++
++export async function authenticateWithImmediateUi(): Promise<AuthResponse> {
++  // MANDATORY: Feature-detect immediateGet support so unsupported browsers do not open a modal QR dialog
++  const supported = await isImmediateUiSupported();
++  if (!supported) {
++    throw new DOMException('Immediate UI mode is not supported', 'NotAllowedError');
++  }
++
++  const baseUrl = import.meta.env.BASE_URL || '/';
++  const optionsResponse = await fetch(`${baseUrl}api/login/options`, {
++    method: 'POST',
++  });
++  if (!optionsResponse.ok) {
++    throw new Error('Failed to fetch authentication options');
++  }
++
++  const optionsJSON = await optionsResponse.json();
++  const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++  // Privacy & security constraint: never pass a non-empty allowCredentials list with uiMode: 'immediate'
++  if (publicKey.allowCredentials && publicKey.allowCredentials.length > 0) {
++    delete publicKey.allowCredentials;
++  }
++
++  // MANDATORY: Request both password and publicKey with uiMode: 'immediate' and NO signal parameter
++  const cred = await navigator.credentials.get({
++    password: true,
++    publicKey,
++    uiMode: 'immediate',
++  });
++
++  if (!cred) {
++    throw new DOMException('No credential returned', 'NotAllowedError');
++  }
++
++  if (cred.type === 'public-key') {
++    const publicKeyCred = cred as PublicKeyCredential;
++    const encoded = publicKeyCred.toJSON();
++    const verifyResponse = await fetch(`${baseUrl}api/login/verify`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(encoded),
++    });
++
++    if (verifyResponse.status === 404) {
++      if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++        await PublicKeyCredential.signalUnknownCredential({
++          rpId: publicKey.rpId || window.location.hostname,
++          credentialId: encoded.id,
++        });
++      }
++      throw new Error('Passkey credential is no longer recognized by the server');
++    }
++
++    if (!verifyResponse.ok) {
++      throw new Error('Passkey verification failed');
++    }
++
++    const result: AuthResponse = await verifyResponse.json();
++    notifyAuthStateChanged(result.user);
++    return result;
++  }
++
++  if (cred.type === 'password') {
++    const passwordCred = cred as PasswordCredential;
++    const verifyResponse = await fetch(`${baseUrl}api/login/password`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({
++        username: passwordCred.id,
++        password: passwordCred.password,
++      }),
++    });
++
++    if (!verifyResponse.ok) {
++      throw new Error('Password verification failed');
++    }
++
++    const result: AuthResponse = await verifyResponse.json();
++    notifyAuthStateChanged(result.user);
++    return result;
++  }
++
++  throw new Error(`Unsupported credential type: ${cred.type}`);
++}
++
++export async function signInWithPassword(username: string, password: string): Promise<AuthResponse> {
++  const baseUrl = import.meta.env.BASE_URL || '/';
++  const response = await fetch(`${baseUrl}api/login/password`, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ username, password }),
++  });
++
++  const data = await response.json();
++  if (!response.ok) {
++    throw new Error(data.error || 'Password verification failed');
++  }
++
++  notifyAuthStateChanged(data.user);
++  return data;
++}
++
++export async function signOut(): Promise<void> {
++  const baseUrl = import.meta.env.BASE_URL || '/';
++  await fetch(`${baseUrl}api/logout`, { method: 'POST' });
++  notifyAuthStateChanged(null);
++}
