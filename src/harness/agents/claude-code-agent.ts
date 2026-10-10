@@ -310,15 +310,20 @@ export function extractClaudeMetadata(logData: any[], subagentsMap: Record<strin
   const fileReadGuides = new Set<string>();
 
   const processEntries = (entries: any[]) => {
+    const usagesById = new Map<string, any>();
+    const standaloneUsages: any[] = [];
+
     for (const obj of entries) {
       if (obj.message?.model) {
         modelCounts[obj.message.model] = (modelCounts[obj.message.model] || 0) + 1;
       }
       if (obj.message?.usage) {
-        const u = obj.message.usage;
-        totalTokens += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0);
-        cachedTokens += u.cache_read_input_tokens || 0;
-        hasTokenData = true;
+        const messageId = obj.message.id || obj.messageId;
+        if (messageId) {
+          usagesById.set(messageId, obj.message.usage);
+        } else {
+          standaloneUsages.push(obj.message.usage);
+        }
       }
       const content = obj.message?.content;
       for (const item of Array.isArray(content) ? content : []) {
@@ -348,6 +353,12 @@ export function extractClaudeMetadata(logData: any[], subagentsMap: Record<strin
           }
         }
       }
+    }
+
+    for (const u of [...usagesById.values(), ...standaloneUsages]) {
+      totalTokens += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+      cachedTokens += u.cache_read_input_tokens || 0;
+      hasTokenData = true;
     }
   };
 

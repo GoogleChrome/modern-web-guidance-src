@@ -134,12 +134,12 @@ base_app: test-app
         const runPayload = allResults[testKey][0];
 
         assert.ok(runPayload.tokenUsage, 'tokenUsage should be extracted');
-        // Expected total = (6 + 204 + 0) + (6 + 248 + 36344) = 36808
-        assert.strictEqual(runPayload.tokenUsage.total, 36808, 'Total tokens should include cache_read_input_tokens');
+        // Expected total = (6 + 36344 + 0 + 204) + (6 + 841 + 36344 + 248) = 73993
+        assert.strictEqual(runPayload.tokenUsage.total, 73993, 'Total tokens should include cache_read_input_tokens and cache_creation_input_tokens');
         // Expected cached = 36344
         assert.strictEqual(runPayload.tokenUsage.cached, 36344, 'Cached tokens should accumulate cache_read_input_tokens');
-        // Total - Cached should be 464 (which is positive)
-        assert.strictEqual(runPayload.tokenUsage.total - runPayload.tokenUsage.cached, 464, 'Net tokens should be positive and equal output + uncached input');
+        // Total - Cached should be 37649 (which is positive)
+        assert.strictEqual(runPayload.tokenUsage.total - runPayload.tokenUsage.cached, 37649, 'Net tokens should be positive and equal output + uncached input + cache creation');
 
     } finally {
         if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
