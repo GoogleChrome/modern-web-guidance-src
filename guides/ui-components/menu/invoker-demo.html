@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Command invoker menu prototype</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --surface: Canvas;
+        --ink: CanvasText;
+        --accent: #006b58;
+        --line: color-mix(in srgb, CanvasText, transparent 65%);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-block-size: 120vh;
+        font:
+          1rem/1.5 system-ui,
+          sans-serif;
+        color: var(--ink);
+      }
+      .bar {
+        display: flex;
+        gap: 0.5rem;
+        padding: 1rem;
+        border-block-end: 1px solid var(--line);
+        background: var(--surface);
+      }
+      button {
+        font: inherit;
+      }
+      .trigger {
+        padding: 0.5rem 0.8rem;
+        border: 1px solid var(--line);
+        border-radius: 0.3rem;
+        background: var(--surface);
+        color: inherit;
+        cursor: pointer;
+      }
+      .trigger:focus-visible,
+      [focusgroup~="menu"] > button:focus-visible {
+        outline: 0.2rem solid #f90;
+        outline-offset: 0.15rem;
+      }
+      .trigger[aria-expanded="true"],
+      [focusgroup~="menu"] > button[aria-expanded="true"] {
+        border-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+      }
+      [popover] {
+        min-inline-size: 14rem;
+        margin: 0;
+        padding: 0.3rem;
+        border: 1px solid var(--line);
+        border-radius: 0.4rem;
+        background: var(--surface);
+        color: var(--ink);
+        box-shadow: 0 0.7rem 1.8rem #0004;
+      }
+      .menu:not(.submenu) {
+        position-area: block-end span-inline-end;
+        inset: auto;
+      }
+      .submenu {
+        position-area: inline-end span-block-end;
+        position-try-fallbacks: flip-inline, flip-block;
+        inset: auto;
+      }
+      [focusgroup~="menu"] {
+        display: grid;
+        gap: 0.1rem;
+        min-inline-size: 14rem;
+      }
+      [focusgroup~="menu"] > button {
+        display: flex;
+        justify-content: space-between;
+        inline-size: 100%;
+        padding: 0.55rem 0.7rem;
+        border: 0;
+        border-radius: 0.2rem;
+        background: transparent;
+        color: inherit;
+        text-align: start;
+        cursor: pointer;
+      }
+      [focusgroup~="menu"] > button:hover,
+      [focusgroup~="menu"] > button:focus-visible {
+        background: var(--accent);
+        color: white;
+      }
+      main {
+        max-inline-size: 48rem;
+        margin: auto;
+        padding: 2rem 1rem;
+      }
+      .unsupported {
+        padding: 0.7rem;
+        border-inline-start: 0.3rem solid #c60;
+        background: color-mix(in srgb, #c60 12%, Canvas);
+      }
+      [hidden] {
+        display: none !important;
+      }
+
+      @media (max-width: 40rem) {
+        .submenu {
+          position-area: block-end span-inline-end;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="bar" role="menubar" aria-label="Document commands">
+      <button
+        id="file-trigger"
+        class="trigger"
+        type="button"
+        aria-haspopup="menu"
+        commandfor="file-menu"
+        command="toggle-popover"
+      >
+        File
+      </button>
+      <button
+        id="edit-trigger"
+        class="trigger"
+        type="button"
+        aria-haspopup="menu"
+        tabindex="-1"
+        commandfor="edit-menu"
+        command="toggle-popover"
+      >
+        Edit
+      </button>
+    </header>
+
+    <main>
+      <h1>Command invoker menu prototype</h1>
+      <p id="support" class="unsupported" hidden></p>
+    </main>
+
+    <div id="file-menu" class="menu" popover="auto">
+      <div focusgroup="menu no-memory" aria-labelledby="file-trigger">
+        <button type="button" data-action="New file">New file</button>
+        <button type="button" data-action="Save">Save</button>
+        <button
+          id="preferences-trigger"
+          type="button"
+          aria-haspopup="menu"
+          commandfor="preferences-menu"
+          command="toggle-popover"
+        >
+          Preferences
+          <span aria-hidden="true">›</span>
+        </button>
+      </div>
+      <div id="preferences-menu" class="menu submenu" popover="manual">
+        <div focusgroup="menu no-memory" aria-labelledby="preferences-trigger">
+          <button type="button" data-action="Appearance">Appearance</button>
+          <button type="button" data-action="Keyboard shortcuts">
+            Keyboard shortcuts
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="edit-menu" class="menu" popover="auto">
+      <div focusgroup="menu no-memory" aria-labelledby="edit-trigger">
+        <button type="button" data-action="Undo">Undo</button>
+        <button type="button" data-action="Redo">Redo</button>
+        <button type="button" data-action="Copy">Copy</button>
+      </div>
+    </div>
+
+    <script type="module">
+      const support = document.querySelector("#support");
+      const menus = [...document.querySelectorAll("[popover]")];
+      const triggers = [...document.querySelectorAll("[commandfor]")];
+      const roots = [...document.querySelectorAll(".bar [commandfor]")];
+      const previewed = new WeakSet();
+      const enterOnOpen = new WeakSet();
+      let switching = false;
+      const menuFor = (trigger) => trigger.commandForElement;
+      const triggerFor = (menu) =>
+        triggers.find((trigger) => menuFor(trigger) === menu);
+      const itemsFor = (menu) =>
+        [
+          ...menu
+            .querySelector(':scope > [focusgroup~="menu"]')
+            .querySelectorAll(":scope > button")
+        ].filter(
+          (item) =>
+            !item.disabled && item.getAttribute("aria-disabled") !== "true"
+        );
+      const focusFirst = (menu) =>
+        itemsFor(menu)[0]?.focus({ preventScroll: true });
+
+      if (
+        !("commandForElement" in HTMLButtonElement.prototype) ||
+        !("command" in HTMLButtonElement.prototype)
+      ) {
+        support.hidden = false;
+        support.textContent =
+          "This browser does not expose the Invoker Commands API properties used by this prototype.";
+      }
+
+      function switchRootMenu(from, direction, enter = true) {
+        const next =
+          roots[
+            (roots.indexOf(from) + direction + roots.length) % roots.length
+          ];
+        const open = menus.filter((menu) => menu.matches(":popover-open"));
+        const closed = Promise.all(
+          open.map(
+            (menu) =>
+              new Promise((resolve) => {
+                menu.addEventListener(
+                  "toggle",
+                  (event) => event.newState === "closed" && resolve(),
+                  { once: true }
+                );
+              })
+          )
+        );
+        switching = true;
+        open.reverse().forEach((menu) => menu.hidePopover());
+        closed.then(() =>
+          requestAnimationFrame(() => {
+            next.focus();
+            const menu = menuFor(next);
+            menu.showPopover({ source: next });
+            if (enter) focusFirst(menu);
+            else previewed.add(menu);
+            switching = false;
+          })
+        );
+      }
+
+      menus.forEach((menu) => {
+        menu.addEventListener("toggle", (event) => {
+          if (event.newState === "closed") previewed.delete(menu);
+          else if (enterOnOpen.has(menu)) {
+            enterOnOpen.delete(menu);
+            focusFirst(menu);
+          }
+        });
+
+        menu.addEventListener("keydown", (event) => {
+          const item = document.activeElement;
+          const items = itemsFor(menu);
+          const index = items.indexOf(item);
+
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            const delta = event.key === "ArrowDown" ? 1 : -1;
+            items[(index + delta + items.length) % items.length]?.focus({
+              preventScroll: true
+            });
+          } else if (event.key === "Home" || event.key === "End") {
+            event.preventDefault();
+            items[event.key === "Home" ? 0 : items.length - 1]?.focus({
+              preventScroll: true
+            });
+          } else if (
+            event.key === "ArrowRight" &&
+            item.matches("[commandfor]")
+          ) {
+            event.preventDefault();
+            const submenu = menuFor(item);
+            if (!submenu.matches(":popover-open")) {
+              enterOnOpen.add(submenu);
+              submenu.showPopover({ source: item });
+            } else focusFirst(submenu);
+          } else if (
+            event.key === "ArrowLeft" &&
+            menu.classList.contains("submenu")
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            menu.hidePopover();
+            triggerFor(menu)?.focus();
+          } else if (
+            (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+            !menu.classList.contains("submenu")
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            switchRootMenu(
+              triggerFor(menu),
+              event.key === "ArrowRight" ? 1 : -1
+            );
+          } else if (
+            event.key === "ArrowRight" &&
+            menu.classList.contains("submenu")
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            let root = menu;
+            while (root.parentElement.closest("[popover]"))
+              root = root.parentElement.closest("[popover]");
+            switchRootMenu(triggerFor(root), 1, false);
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            menu.hidePopover();
+            triggerFor(menu)?.focus();
+          }
+        });
+
+        menu.addEventListener("click", (event) => {
+          const command = event.target.closest("[data-action]");
+          if (!command) return;
+          menus.forEach(
+            (openMenu) =>
+              openMenu.matches(":popover-open") && openMenu.hidePopover()
+          );
+        });
+      });
+
+      triggers.forEach((trigger) => {
+        const menu = menuFor(trigger);
+        trigger.addEventListener("focus", () => {
+          if (!switching && !menu.matches(":popover-open")) {
+            menu.showPopover({ source: trigger });
+            previewed.add(menu);
+          }
+        });
+        trigger.addEventListener("blur", (event) => {
+          if (previewed.has(menu) && !menu.contains(event.relatedTarget))
+            menu.hidePopover();
+        });
+        trigger.addEventListener("command", (event) => {
+          if (previewed.has(menu) && menu.matches(":popover-open")) {
+            event.preventDefault();
+            previewed.delete(menu);
+            focusFirst(menu);
+          } else if (!menu.matches(":popover-open")) enterOnOpen.add(menu);
+        });
+        trigger.addEventListener("keydown", (event) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            if (previewed.has(menu)) previewed.delete(menu);
+            if (menu.matches(":popover-open")) focusFirst(menu);
+            else {
+              enterOnOpen.add(menu);
+              menu.showPopover({ source: trigger });
+            }
+          } else if (
+            (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+            roots.includes(trigger)
+          ) {
+            event.preventDefault();
+            const index = roots.indexOf(trigger);
+            roots[
+              (index + (event.key === "ArrowRight" ? 1 : -1) + roots.length) %
+                roots.length
+            ].focus();
+          }
+        });
+      });
+
+      document.addEventListener("pointerdown", (event) => {
+        if (event.target.closest("[popover], [commandfor]")) return;
+        menus
+          .filter((menu) => menu.matches(":popover-open"))
+          .forEach((menu) => menu.hidePopover());
+      });
+    </script>
+  </body>
+</html>
