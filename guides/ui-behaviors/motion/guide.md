@@ -14,7 +14,7 @@ web-feature-ids:
   - display-animation
   - overlay
   - prefers-reduced-motion
-  - registered-custom-properties
+  - nesting
 ---
 
 # Motion
@@ -57,28 +57,14 @@ Use `prefers-reduced-motion` media queries to turn off heavy motion for users wh
 }
 ```
 
-**DO NOT** globally apply `animation-duration: 0.01ms;` globally as it can cause certain animations to become _more_ jarring.
-Either apply reduced motion versions on a case by case basis, or use a custom property like:
-
-```css
-@property --animation-reduced {
-  syntax: "*";
-  inherits: false;
-  initial-value: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation: var(--animation-reduced) !important;
-  }
-}
-```
-
-Then, reduced motion versions can be kept together with the original animations:
+**DO NOT** globally apply `animation-duration: 0.01ms;` as it can cause certain animations to become _more_ jarring.
+Instead, apply reduced motion versions on a case by case basis by nesting `@media (prefers-reduced-motion: reduce)` inside the rule so reduced motion versions are kept together with the original animations:
 
 ```css
 progress:not([value]) {
   animation: slide 1s infinite linear;
-  --animation-reduced: slide 20s infinite linear;
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 20s;
+  }
 }
 ```
