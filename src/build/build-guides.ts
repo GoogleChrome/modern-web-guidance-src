@@ -18,7 +18,16 @@ export interface StoreUseCase {
 }
 import { replaceMacros, type BuildTarget, formatTitle } from "../core/macros.ts";
 
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub } from "../core/guide-validation.ts";
+import {
+  scanAllGuides,
+  type GuideInventory,
+  getGuideMarkdownPath,
+  extractH1Heading,
+  stripAllComments,
+  isDraftStub,
+  getGuideOriginTrials,
+  type OriginTrialMetadata,
+} from "../core/guide-validation.ts";
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
 import { rootDir, outDir } from "../core/paths.ts";
@@ -32,6 +41,7 @@ interface UseCase {
   category: string;
   featuresUsed: string[];
   tokenCount?: number;
+  originTrials?: OriginTrialMetadata[];
 }
 
 export interface BuildOptions {
@@ -324,6 +334,7 @@ category: ${category}
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
+  const originTrials = getGuideOriginTrials(featureIds);
   const tokenCount = await embedder.countTokens(processedMarkdown);
 
   useCases.push({
@@ -332,6 +343,7 @@ category: ${category}
     category,
     featuresUsed,
     tokenCount,
+    ...(originTrials.length > 0 ? { originTrials } : {}),
   });
 
   const chunks = IS_NO_CHUNKING
