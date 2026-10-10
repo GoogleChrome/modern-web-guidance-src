@@ -110,4 +110,4 @@ The following steps are REQUIRED for creating a new use case:
 
   Submit the use case for review by creating a Pull Request containing the authored `guide.md` and `expectations.md` along with the generated `targets/` directory.
 
-After the use case is approved, you can proceed to refining the guidance and expectations as needed. Additional guidance for these stages is provided by the `project-guides` and `project-evals` skills.
+After the use case is approved, you can proceed to refining the guidance and expectations as needed. Additional guidance is provided by the `project-guides` skill; evaluation capsules are then generated automatically by `gd dev`.

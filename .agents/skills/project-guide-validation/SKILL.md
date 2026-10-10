@@ -20,31 +20,49 @@ When assigned to validate a guide, create a task list artifact based on this che
 
 ---
 
-## 1. Familiarization
+## 1. Familiarization & Automated Inspection
 
-Before performing any verification, read the `guide.md` file in its entirety:
-*   **Understand the Problem**: Identify the core issue the guide is addressing (e.g., reactive state drift, layout shift, performance bottleneck).
-*   **Identify the Solution**: Understand the recommended API, property, or architectural approach (e.g., Temporal API, container queries, scheduler.yield).
-*   **Contextualize**: Get familiar with the overall structure and flow of the guidance before checking external sources or running tests.
+Before performing qualitative or browser verification, read the `guide.md` file in its entirety and run the automated guide inspector:
+*   **Understand the Problem & Solution**: Identify the core developer problem the guide addresses and the recommended API, property, or architectural approach.
+*   **Run Automated Validation & Macro Inspection**: Run [scripts/inspect-guide.ts](./scripts/inspect-guide.ts) to validate frontmatter, `web-feature-ids`, markdown soundness, transclusion macros, and grader expectation coverage, and to inspect the exact macro-expanded markdown served to coding agents (`skills-cli` target):
+    ```bash
+    node .agents/skills/project-guide-validation/scripts/inspect-guide.ts guides/<category>/<slug>
+    ```
+*   **When Reviewing a PR (Splits, Merges, & Reorgs)**: Inspect existing review threads first to avoid duplicating open feedback or rehashing settled discussions. Compare full `BASE` and `HEAD` files (`git show <base_sha>:<path>`) bullet-by-bullet and code-block-by-code-block to catch silently dropped guidance or duplicate bullets, and check for stale `GUIDE_REF` or `INCLUDE` targets across `guides/` and `features/`.
 
 ## 2. Qualitative & Best Practices Review
 
-Critically evaluate the guide's content to ensure it follows established best practices and does not introduce anti-patterns:
-*   **Discipline Guides**: Check if there is a discipline guide for the relevant discipline, either a category root guide at `guides/<category>/<category>/guide.md` or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). If one exists, ensure the guide complies with it.
+Critically evaluate the guide's content against the authoring standards in [project-use-cases](../project-use-cases/SKILL.md) and [project-guides](../project-guides/SKILL.md):
+*   **Discipline Guides**: Check if there is a discipline guide for the relevant discipline, either a category root guide at `guides/<category>/<category>/guide.md` or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). If one exists, ensure the guide complies with it (and ensure any new orientation guide is added to `DISCIPLINE_GUIDES`).
 *   **Accessibility (A11y)**: Accessibility is a distinct concern that MUST **always** be evaluated. The canonical reference is `guides/accessibility/accessibility/guide.md`. Read it first, then apply it as follows:
     *   **`guide.md` under review**: MUST adhere to every applicable best practice across all sections of the canonical guide (landmarks/headings, ARIA roles, names/descriptions, focus management, keyboard navigation, alt text and SVG treatment, hints and validation, live regions, non-color state indicators, reduced motion, dialog/overlay semantics, and visibility hiding decisions). Recommendations and code samples must not contradict the canonical guide. Pay particular attention to copy-paste safety (code examples must embed the rules they mention, e.g. `prefers-reduced-motion`, `:focus-visible`, `aria-hidden`), multi-indicator state communication, AT-tree synchronization with visibility changes, and post-transition focus management.
     *   **`demo.html` under review**: NOT held to general a11y best practices — only required to faithfully demonstrate the patterns the `guide.md` prescribes. If the guide mandates a specific a11y pattern (e.g., `aria-live="polite"` on toasts, `aria-pressed` on a toggle, `prefers-reduced-motion` in CSS), the demo MUST show it. Do not flag demos for missing a11y features that the guide does not call out.
     *   **`expectations.md` under review**: SHOULD encode the a11y patterns that the guide prescribes as testable expectations, but MUST NOT include prose-only or manual-verification-only requirements that the grader cannot assert.
 *   **Avoid Gating Critical Content**: Verify that the guide does not recommend interactive reveal patterns (e.g., following the cursor) that are inaccessible to non-pointer users. Ensure accessible alternatives are provided if such patterns are discussed.
-*   **Internal Consistency**: Ensure no deviations from existing skills or established patterns in the project.
+*   **Internal Consistency & Spec Rigor**: Verify API/CSS claims against primary specs and [project-guides](../project-guides/SKILL.md) (token economy, `{# ... #}` maintainer comments vs. inline rationale, `BASELINE_STATUS` vs. `FEATURE_FALLBACKS`, upfront `GUIDE_REF` disambiguation, and no hard-coded browser support claims).
 *   **Copy-Paste Safety**: Ensure that code examples are complete and safe to copy. If the text recommends a fallback or a constraint (like reduced motion), the code example **MUST** implement it.
 
 ## 3. Expectation Alignment
 
-Ensure that the `expectations.md` file (used for evaluation) aligns perfectly with `guide.md`:
-*   **Traceability**: Every expectation should be traceable back to a specific recommendation in the guide. Do not create expectations for behaviors not covered in the guidance.
-*   **Actionability**: The guide must provide clear instructions on *how* to meet each expectation. An agent should not have to guess the implementation to satisfy an expectation.
-*   **Outcome Focus**: Expectations should focus on the observable output and behavior (e.g., "The UI correctly updates when the date is modified"), not the specific implementation approach (unless strictly required by the guide's constraints).
+Review `expectations.md` against `guide.md`, `demo.html`, and primary specs/MDN/BCD to prevent both **false failures** (rejecting valid code) and **false passes** (passing broken code). Follow the authoring rules in [project-guides](../project-guides/SKILL.md#writing-expectationsmd); sibling `expectations.md` files are useful for calibrating scope and length but not phrasing, since many predate the plain-declarative convention.
+*   **Accuracy & Contradictions**:
+    *   **Traceability & Strength**: Map each expectation to the `guide.md` section it comes from. Flag expectations absent from the guide, expectations that strengthen or narrow guide wording (e.g., turning a *"Prefer"* or snippet detail into a required rule, or *"preceding"* into *"immediately before"*), and rules that the guide's own code examples, decision trees, or `demo.html` would fail.
+    *   **Actionability**: The guide must provide clear instructions on *how* to meet each expectation. An agent should not have to guess the implementation to satisfy an expectation.
+    *   **Spec & BCD Verification (`guide.md` is not infallible)**: Verify technical claims against specs (W3C, WHATWG, CSSWG), MDN, and BCD. Flag valid alternatives the expectation would reject, deprecated or renamed syntax (`masonry` vs. `grid-lanes`, `interesttarget` vs. `interestfor`), unit and property edge cases, and flawed feature-detection strings. Report `guide.md` errors separately from expectation issues.
+    *   **Internal Consistency**: Flag direct contradictions or redundant overlaps between bullets in `expectations.md`.
+*   **Coverage (Missing & Unnecessary)**:
+    *   **Missing**: Identify core guide rules (`DO` / `DO NOT` / decision-tree branches, accessibility, overflow, focus order, fallbacks) and `demo.html` behaviors with no corresponding expectation, prioritized by how likely an agent is to get them wrong and how deterministically testable they are.
+    *   **Unnecessary**: Cut items that are absent from `guide.md`, redundant, subjective or untestable (*"where content should determine the size"*), off-scenario, or so strict that they reject idiomatic correct code.
+*   **Per-Expectation Grader Read**: Evaluate each bullet as the grader generator (`gd dev`) will interpret it when writing a test that must pass every golden solution patch and fail the zero-passrate patch:
+
+| Check | Question |
+|---|---|
+| **Clear** | Is there one unambiguous reading with self-evident terms in plain declarative phrasing (no `MUST` / `SHOULD` boilerplate)? |
+| **Succinct** | Is it a single requirement per bullet (no compound assertions)? |
+| **Scoped** | Does every correct implementation of this use case satisfy it? If it is a discipline-guide bullet, does it name the element or feature it governs so the grader generator can judge relevance per base app? |
+| **Correct** | Does it match both `guide.md` and the underlying spec/MDN/BCD without rejecting valid alternatives? |
+| **Achievable** | Would all golden solutions (written by different agents) satisfy it, or would the generated test overfit to an example value or *"such as"* clause? |
+| **Gradable** | Can it be verified deterministically—statically (DOM, CSSOM, or JS AST) or in-browser (computed style, accessibility tree, runtime behavior)—without human judgment or site-specific locators? |
 
 ## 4. Testing and Verification with DevTools MCP
 
