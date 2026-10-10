@@ -89,15 +89,14 @@
         min-width: 160px;
 
         position-anchor: --kebab-anchor;
-        /* Mandatory: use insets rather that position-area for positioning */
-        bottom: auto;
-        right: auto;
-        top: anchor(bottom);
-        left: anchor(left);
+        /* Mandatory: use insets rather than position-area for positioning */
+        inset: auto;
+        inset-block-start: anchor(end);
+        inset-inline-start: anchor(start);
         margin: 0;
 
         /* Edge collision handling */
-        position-try-fallbacks: flip-block, flip-inline;
+        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
       }
 
       .subpanel {
@@ -110,14 +109,13 @@
 
         position-anchor: --subpanel-trigger;
 
-        /* Mandatory: use insets rather that position-area for positioning */
-        bottom: auto;
-        right: auto;
-        top: anchor(top);
-        left: anchor(right);
+        /* Mandatory: use insets rather than position-area for positioning */
+        inset: auto;
+        inset-block-start: anchor(start);
+        inset-inline-start: anchor(end);
         margin: 0;
 
-        position-try-fallbacks: flip-inline, flip-block;
+        position-try-fallbacks: flip-inline, flip-block, flip-inline flip-block;
       }
 
       .action-item {
