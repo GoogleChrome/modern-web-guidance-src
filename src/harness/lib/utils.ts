@@ -56,11 +56,10 @@ export async function runAgent(
   agent: Agents,
   prompt: string,
   workDir?: string,
-  options: { captureOutput?: boolean } = {}
+  options: { captureOutput?: boolean; homeDir?: string } = {}
 ): Promise<string> {
   const { command, commandArgs } = getAgentCommandAndArgs(agent, prompt);
-  const tempHome = workDir ? path.dirname(workDir) : undefined;
-  const env = tempHome ? { ...process.env, HOME: tempHome } : { ...process.env };
+  const env = options.homeDir ? { ...process.env, HOME: options.homeDir } : { ...process.env };
 
   if (options.captureOutput) {
     return runCommand(command, commandArgs, workDir, env);
@@ -79,7 +78,11 @@ export async function runAgent(
   return '';
 }
 
-export function setupGuideDevWorkDir(suffix: string, relativeWorkSubdir?: string, agent?: Agents): string {
+export function setupGuideDevWorkDir(
+  suffix: string,
+  relativeWorkSubdir?: string,
+  agent?: Agents
+): { workDir: string; tempHome: string } {
   const tempHome = createIsolatedHome(`gd-gen-${suffix}`);
   const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
@@ -102,7 +105,7 @@ export function setupGuideDevWorkDir(suffix: string, relativeWorkSubdir?: string
     JSON.stringify({ type: 'module' }, null, 2)
   );
   
-  return workDir;
+  return { workDir, tempHome };
 }
 
 export function escapeLeftAngleBracket(text: string): string {

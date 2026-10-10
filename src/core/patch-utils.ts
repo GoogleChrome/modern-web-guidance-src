@@ -4,16 +4,33 @@ import { execSync } from 'node:child_process';
 
 const MAX_BUFFER = 50 * 1024 * 1024; // 50MB buffer to handle large diffs/assets
 
+const LOCKFILE_RE = /(?:^|\/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$/;
+
+const EXCLUDED_PATCH_PATHSPECS = [
+  ':(exclude)package-lock.json',
+  ':(exclude)**/package-lock.json',
+  ':(exclude)pnpm-lock.yaml',
+  ':(exclude)**/pnpm-lock.yaml',
+  ':(exclude)yarn.lock',
+  ':(exclude)**/yarn.lock',
+  ':(exclude)bun.lockb',
+  ':(exclude)**/bun.lockb',
+  ':(exclude)bun.lock',
+  ':(exclude)**/bun.lock',
+];
+
 /**
  * Extracts target modified file paths directly from unified diff headers (+++ b/<path>).
- * Ignores deleted files (/dev/null).
+ * Ignores deleted files (/dev/null) and package manager lockfiles.
  */
 export function extractTargetFilesFromPatch(patchPath: string): string[] {
   try {
     if (!fs.existsSync(patchPath)) return [];
     const content = fs.readFileSync(patchPath, 'utf8');
     const matches = Array.from(content.matchAll(/^\+\+\+ (?:b\/)?(.+)$/gm));
-    return matches.map((m) => m[1].trim()).filter((f) => f && f !== '/dev/null');
+    return matches
+      .map((m) => m[1].trim())
+      .filter((f) => f && f !== '/dev/null' && !LOCKFILE_RE.test(f));
   } catch (e) {
     console.warn(`Failed to extract target files from patch ${patchPath}: ${e}`);
     return [];
@@ -55,7 +72,7 @@ export function applyPatchSync(targetDir: string, patchPath: string): PatchResul
 
 /**
  * Captures git modifications (both tracked changes and untracked new files) from a working directory
- * into a relative patch file.
+ * into a relative patch file, excluding package manager lockfiles.
  */
 export function capturePatchFromGit(
   workDir: string,
@@ -65,13 +82,14 @@ export function capturePatchFromGit(
   try {
     const relFlag = relativeSubdir ? ` --relative="${relativeSubdir}"` : '';
     const targetPath = relativeSubdir ? `"${relativeSubdir}"` : '.';
+    const excludeSpecs = EXCLUDED_PATCH_PATHSPECS.map((spec) => `"${spec}"`).join(' ');
 
     // Stage untracked files with intent-to-add so git diff includes them
     execSync(`git add -N --ignore-removal ${targetPath}`, { cwd: workDir, stdio: 'ignore' });
 
     // Diff against the initial root commit to include any commits made by the agent
     const rootCommit = execSync('git rev-list --max-parents=0 HEAD', { cwd: workDir, encoding: 'utf8', maxBuffer: MAX_BUFFER }).trim();
-    const diff = execSync(`git diff ${rootCommit}${relFlag} -- ${targetPath}`, { cwd: workDir, encoding: 'utf8', maxBuffer: MAX_BUFFER });
+    const diff = execSync(`git diff ${rootCommit}${relFlag} -- ${targetPath} ${excludeSpecs}`, { cwd: workDir, encoding: 'utf8', maxBuffer: MAX_BUFFER });
 
     if (!diff.trim()) {
       return { success: false, diff: '' };

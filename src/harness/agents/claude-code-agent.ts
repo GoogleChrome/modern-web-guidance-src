@@ -22,6 +22,9 @@ export function setupClaudeCodeCredentials(tempHome: string): void {
   const gcloudConfigDest = path.join(tempHome, '.config', 'gcloud');
   fs.mkdirSync(gcloudConfigDest, { recursive: true });
   copyFileIfExists(config.environment.gcpCredentials, path.join(gcloudConfigDest, 'application_default_credentials.json'));
+  if (process.platform === 'darwin' && !process.env.NODE_EXTRA_CA_CERTS && fs.existsSync('/etc/ssl/cert.pem')) {
+    process.env.NODE_EXTRA_CA_CERTS = '/etc/ssl/cert.pem';
+  }
 }
 
 export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
