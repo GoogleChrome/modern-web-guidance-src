@@ -71,6 +71,22 @@ window.__featuresMapping = {
     "light-dark",
     "tmp-revert-rule"
   ],
+  "css-layout": [
+    "flexbox",
+    "flexbox-flex-wrap-balance",
+    "grid",
+    "subgrid",
+    "container-queries",
+    "dialog",
+    "popover",
+    "anchor-positioning",
+    "scrollbar-gutter",
+    "line-clamp",
+    "viewport-unit-variants",
+    "grid-lanes",
+    "aspect-ratio",
+    "logical-properties"
+  ],
   "design-token-reactivity": [
     "container-style-queries"
   ],
@@ -83,6 +99,9 @@ window.__featuresMapping = {
   ],
   "individual-transform-properties": [
     "individual-transforms"
+  ],
+  "masonry-layout": [
+    "grid-lanes"
   ],
   "overflow-clipping-control": [
     "overflow-clip",
@@ -218,6 +237,11 @@ window.__featuresMapping = {
     "aria-attribute-reflection",
     "shadow-dom"
   ],
+  "camera-and-microphone-capture": [
+    "usermedia",
+    "tmp-camera-microphone",
+    "media-capture"
+  ],
   "custom-elements": [
     "autonomous-custom-elements"
   ],
@@ -239,6 +263,10 @@ window.__featuresMapping = {
     "host-context",
     "cascade-layers",
     "container-queries"
+  ],
+  "user-location": [
+    "geolocation-element",
+    "geolocation"
   ],
   "web-components": [
     "autonomous-custom-elements",
@@ -387,6 +415,10 @@ window.__featuresMapping = {
     "partitioned-cookies",
     "fedcm",
     "ua-client-hints"
+  ],
+  "custom-window-title-bar": [
+    "window-drag",
+    "window-controls-overlay"
   ],
   "migrate-web-app-origin": [
     "app-migration"
@@ -582,6 +614,10 @@ window.__featuresMapping = {
   "light-dismiss-a-dialog": [
     "dialog-closedby"
   ],
+  "line-drawing-animation": [
+    "tmp-path-length",
+    "svg"
+  ],
   "motion": [
     "transitions",
     "animations-css",
@@ -748,6 +784,13 @@ window.__featuresMapping = {
     "interest-invokers",
     "cross-document-view-transitions"
   ],
+  "media-player-controls": [
+    "media-pseudos",
+    "video",
+    "audio",
+    "media-session",
+    "picture-in-picture"
+  ],
   "menu": [
     "container-scroll-state-queries",
     "popover",
@@ -867,6 +910,16 @@ window.__featuresMapping = {
   "contrast-color": [
     "contrast-color"
   ],
+  "custom-text-decorations": [
+    "text-decoration",
+    "text-decoration-skip-ink",
+    "text-decoration-skip-ink-all",
+    "tmp-text-decoration-inset",
+    "tmp-text-decoration-skip-spaces",
+    "background-clip-border-area",
+    "tmp-path-length",
+    "border-shape"
+  ],
   "customize-scrollbar-color-and-thickness": [
     "scrollbar-color",
     "scrollbar-width"
@@ -911,6 +964,9 @@ window.__featuresMapping = {
   ],
   "interactive-content-in-3d-scenes": [
     "canvas-html"
+  ],
+  "layout-dividers": [
+    "gap-decorations"
   ],
   "precise-text-alignment": [
     "text-box"
