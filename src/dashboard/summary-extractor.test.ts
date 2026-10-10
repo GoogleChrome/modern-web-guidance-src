@@ -88,11 +88,54 @@ test('extractSuiteSummary computes cross-cutting a11yStats and runtime/token eff
     assert.strictEqual(summary.efficiencyStats.runtime.guidedMedianMs, 90000);
     assert.strictEqual(summary.efficiencyStats.runtime.medianDeltaPct, -25);
     assert.strictEqual(summary.efficiencyStats.runtime.fasterTaskPct, 100);
+    assert.strictEqual(summary.efficiencyStats.runtime.pairedTaskCount, 1);
 
     // Uncached tokens: unguided = 50,000, guided = 40,000 (-20%)
     assert.strictEqual(summary.efficiencyStats.tokens.unguidedUncachedMedian, 50000);
     assert.strictEqual(summary.efficiencyStats.tokens.guidedUncachedMedian, 40000);
     assert.strictEqual(summary.efficiencyStats.tokens.uncachedMedianDeltaPct, -20);
     assert.strictEqual(summary.efficiencyStats.tokens.fewerUncachedTokensTaskPct, 100);
+    assert.strictEqual(summary.efficiencyStats.tokens.pairedTaskCount, 1);
+});
+
+test('extractSuiteSummary efficiency uses agent runtime only and excludes token-less runs from pairs', () => {
+    const summary = extractSuiteSummary('run-4', {
+        results: {
+            'task - popover - unguided': [{
+                runtime: { agentRuntime: 650000, graderRuntime: 9000 }, // timed out (>= 600s), no tokens recorded
+                results: [{ passed: false, message: 'Generation failed', isEarlyFailure: true }],
+            }],
+            'task - popover - guided': [{
+                runtime: { agentRuntime: 200000, graderRuntime: 9000 },
+                tokenUsage: { total: 100000, cached: 20000 },
+                results: [{ passed: true, message: 'Uses popover', testId: 'p1' }],
+            }],
+            'task - dialog - unguided': [{
+                runtime: { agentRuntime: 100000, graderRuntime: 9000 },
+                tokenUsage: { total: 50000, cached: 10000 },
+                results: [{ passed: true, message: 'Opens dialog', testId: 'd1' }],
+            }],
+            'task - dialog - guided': [{
+                runtime: { agentRuntime: 120000, graderRuntime: 9000 },
+                tokenUsage: { total: 60000, cached: 10000 },
+                results: [{ passed: true, message: 'Opens dialog', testId: 'd1' }],
+            }],
+        },
+    } as never);
+
+    assert.ok(summary);
+    const { runtime, tokens } = summary.efficiencyStats;
+    // Grader time is excluded: medians are agent-only.
+    assert.strictEqual(runtime.unguidedMedianMs, 375000);
+    assert.strictEqual(runtime.guidedMedianMs, 160000);
+    assert.strictEqual(runtime.unguidedTimeouts, 1);
+    assert.strictEqual(runtime.guidedTimeouts, 0);
+    assert.strictEqual(runtime.pairedTaskCount, 2);
+    assert.strictEqual(runtime.fasterTasksCount, 1);
+    // The timed-out unguided run has no tokens, so only `dialog` forms a token pair.
+    assert.strictEqual(tokens.pairedTaskCount, 1);
+    assert.strictEqual(tokens.fewerUncachedTasksCount, 0);
+    assert.strictEqual(tokens.unguidedUncachedMedian, 40000);
+    assert.strictEqual(tokens.guidedUncachedMedian, 65000);
 });
 

@@ -1,0 +1,496 @@
+/*
+ * Hero / headline takeaways for the landing page (index.html).
+ *
+ * Reuses the design tokens from dashboard.css (--color-*, --space-*, --font-*).
+ * Patterns follow MWG guides: `typography` (rem + clamp(), text-wrap),
+ * `size-aware-styling` (container queries), `motion` (prefers-reduced-motion),
+ * `color` (contrast, prefers-contrast, forced colors), `search-hidden-content`
+ * (native <details> disclosure).
+ */
+
+.hero {
+  container: hero / inline-size;
+  margin-block: var(--space-4) var(--space-8);
+}
+
+/* Header row ------------------------------------------------------------- */
+
+.hero-eyebrow {
+  margin: 0 0 var(--space-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-on-surface-variant);
+}
+
+.hero-heading {
+  /* Fluid type: scales with the viewport but stays within a legible range (MWG `typography`). */
+  font-size: clamp(1.75rem, 1.1rem + 2.6vw, 3rem);
+  line-height: 1.1;
+  margin: 0;
+  max-inline-size: 30ch;
+  /* Balanced line breaks for a short multi-line headline; no visible box on this element. */
+  text-wrap: balance;
+}
+
+.hero-lede {
+  margin: var(--space-3) 0 0;
+  max-inline-size: 70ch;
+  font-size: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
+  color: var(--color-on-surface-variant);
+  text-wrap: pretty;
+}
+
+.hero-lede strong {
+  color: var(--color-on-surface);
+}
+
+/* Status / auth / loading messages ---------------------------------------- */
+
+.hero-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-default);
+  background: var(--color-surface-container-low);
+  font-size: 0.9rem;
+  color: var(--color-on-surface-variant);
+}
+
+.hero-status[hidden] {
+  display: none;
+}
+
+.hero-status .primary-btn {
+  background: var(--color-primary);
+  color: #fff;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-default);
+  padding: 6px 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hero-status .primary-btn:hover {
+  background: var(--color-primary-container);
+}
+
+/* Takeaway cards ---------------------------------------------------------- */
+
+.hero-takeaways {
+  list-style: none;
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+  /* 1 column on narrow containers, up to 4 on wide ones; min() keeps the track from overflowing at 360px. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+}
+
+.takeaway {
+  container: takeaway / inline-size;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--color-outline-variant);
+  border-block-start: 4px solid var(--takeaway-accent, var(--color-primary));
+  border-radius: 8px;
+  min-inline-size: 0;
+}
+
+.takeaway[data-metric="overall"] { --takeaway-accent: var(--color-primary); }
+.takeaway[data-metric="a11y"] { --takeaway-accent: #6d28d9; }
+.takeaway[data-metric="tokens"] { --takeaway-accent: #0f766e; }
+.takeaway[data-metric="time"] { --takeaway-accent: #b45309; }
+
+.takeaway-label {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-on-surface-variant);
+}
+
+.takeaway-figure {
+  margin: 0;
+  font-size: clamp(2rem, 1.4rem + 2.2vw, 3rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--color-on-surface);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.takeaway-figure .unit {
+  font-size: 0.5em;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--color-on-surface-variant);
+}
+
+.takeaway-figure .prefix {
+  font-size: 0.55em;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+  margin-inline-end: 0.15em;
+}
+
+.takeaway-statement {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-on-surface);
+  text-wrap: pretty;
+}
+
+.takeaway-qualifier {
+  margin: var(--space-2) 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--color-on-surface-variant);
+  text-wrap: pretty;
+}
+
+.takeaway-qualifier .range {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Skeleton state while numbers load (no animation under reduced motion). */
+.hero[aria-busy="true"] .takeaway-figure {
+  color: transparent;
+  background: var(--color-surface-container);
+  border-radius: 6px;
+  inline-size: 6ch;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero[aria-busy="true"] .takeaway-figure {
+    animation: hero-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes hero-pulse {
+    50% { opacity: 0.55; }
+  }
+}
+
+/* Per-agent comparison ---------------------------------------------------- */
+
+.hero-agents {
+  margin-block-start: var(--space-6);
+}
+
+.hero-agents-heading {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.hero-agents-note {
+  margin: 0 0 var(--space-3);
+  font-size: 0.85rem;
+  color: var(--color-on-surface-variant);
+  text-wrap: pretty;
+}
+
+.agent-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 8px;
+  background: var(--color-surface-container-lowest);
+}
+
+.agent-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-table caption {
+  text-align: start;
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.8rem;
+  color: var(--color-on-surface-variant);
+}
+
+.agent-table th,
+.agent-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: start;
+  vertical-align: top;
+  border-block-start: 1px solid var(--color-outline-variant);
+}
+
+.agent-table thead th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-on-surface-variant);
+  background: var(--color-surface-container-low);
+  text-wrap: balance;
+}
+
+.agent-table tbody th {
+  font-weight: 700;
+  color: var(--color-on-surface);
+  white-space: nowrap;
+}
+
+.agent-table .agent-meta {
+  display: block;
+  margin-block-start: 2px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-on-surface-variant);
+  white-space: normal;
+}
+
+.agent-table .metric-pair {
+  display: block;
+  white-space: nowrap;
+  color: var(--color-on-surface-variant);
+}
+
+.agent-table .metric-pair strong {
+  color: var(--color-on-surface);
+}
+
+.agent-table .metric-sub {
+  display: block;
+  margin-block-start: 2px;
+  font-size: 0.75rem;
+  color: var(--color-on-surface-variant);
+}
+
+/* Delta chips: sign + glyph + text, never color alone. */
+.delta {
+  display: inline-block;
+  margin-block-start: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.delta.good {
+  background: rgba(22, 163, 74, 0.14);
+  color: #14532d;
+  border-color: rgba(22, 163, 74, 0.25);
+}
+
+.delta.cost {
+  background: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+  border-color: var(--color-outline-variant);
+}
+
+.delta.flat {
+  background: var(--color-surface-container-low);
+  color: var(--color-on-surface-variant);
+  border-color: var(--color-outline-variant);
+}
+
+.delta .glyph {
+  margin-inline-end: 2px;
+}
+
+.na {
+  color: var(--color-on-surface-variant);
+}
+
+/* Narrow containers: stack each agent row as a labeled block (MWG responsive table pattern). */
+@container hero (width < 46rem) {
+  .agent-table thead {
+    display: none;
+  }
+
+  .agent-table,
+  .agent-table caption,
+  .agent-table tbody,
+  .agent-table tr,
+  .agent-table th,
+  .agent-table td {
+    display: block;
+  }
+
+  .agent-table caption {
+    inline-size: 100%;
+  }
+
+  .agent-table tr + tr {
+    border-block-start: 2px solid var(--color-outline-variant);
+  }
+
+  .agent-table th,
+  .agent-table td {
+    border-block-start: 0;
+  }
+
+  .agent-table tbody th {
+    padding-block-end: var(--space-1);
+    background: var(--color-surface-container-low);
+    white-space: normal;
+  }
+
+  .agent-table td {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, 38%) 1fr;
+    column-gap: var(--space-2);
+    row-gap: 2px;
+    align-items: start;
+    padding-block: var(--space-1);
+  }
+
+  .agent-table td::before {
+    content: attr(data-label);
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-on-surface-variant);
+    padding-block-start: 2px;
+  }
+
+  /* Every value fragment (pair, delta chip, footnote) stacks in the value column. */
+  .agent-table td > * {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .agent-table .metric-pair {
+    white-space: normal;
+  }
+
+  .agent-table td:last-child {
+    padding-block-end: var(--space-3);
+  }
+}
+
+/* How we measure ---------------------------------------------------------- */
+
+.hero-method {
+  margin-block-start: var(--space-4);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 8px;
+  background: var(--color-surface-container-lowest);
+}
+
+.hero-method summary {
+  cursor: pointer;
+  padding: var(--space-3) var(--space-4);
+  font-weight: 600;
+  color: var(--color-on-surface);
+  list-style-position: inside;
+}
+
+.hero-method summary:hover {
+  background: var(--color-surface-container-low);
+}
+
+.hero-method-body {
+  padding: 0 var(--space-4) var(--space-4);
+  font-size: 0.9rem;
+  color: var(--color-on-surface-variant);
+  max-inline-size: 80ch;
+  text-wrap: pretty;
+}
+
+.hero-method-body dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: var(--space-4);
+  row-gap: var(--space-2);
+}
+
+.hero-method-body dt {
+  font-weight: 700;
+  color: var(--color-on-surface);
+}
+
+.hero-method-body dd {
+  margin: 0;
+}
+
+.hero-method-body code {
+  font-size: 0.85em;
+  background: var(--color-surface-container-low);
+  padding: 0 0.3em;
+  border-radius: 3px;
+}
+
+@container hero (width < 36rem) {
+  .hero-method-body dl {
+    grid-template-columns: 1fr;
+    row-gap: var(--space-1);
+  }
+
+  .hero-method-body dd {
+    margin-block-end: var(--space-2);
+  }
+}
+
+/* Preference & forced-color adjustments ----------------------------------- */
+
+/* The default outline-variant token is a 40%-alpha gray; reinforce it when the user asks for more contrast (MWG `color`). */
+@media (prefers-contrast: more) {
+  .takeaway,
+  .agent-table-wrap,
+  .hero-method,
+  .hero-status,
+  .delta {
+    border-color: var(--color-outline);
+  }
+
+  .delta.good {
+    background: transparent;
+  }
+
+  .hero-eyebrow,
+  .takeaway-label,
+  .takeaway-qualifier,
+  .hero-agents-note,
+  .agent-table thead th {
+    color: var(--color-on-surface);
+  }
+}
+
+/* In Forced Colors Mode the accent border and chip backgrounds are stripped; keep real borders so structure survives. */
+@media (forced-colors: active) {
+  .takeaway {
+    border-block-start-width: 1px;
+  }
+
+  .delta {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Print: the hero is the summary people want on paper; hide interactive affordances. */
+@media print {
+  .hero-status {
+    display: none;
+  }
+
+  .hero-method[open] summary {
+    pointer-events: none;
+  }
+}

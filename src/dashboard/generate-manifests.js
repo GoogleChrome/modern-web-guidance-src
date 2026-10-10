@@ -89,6 +89,29 @@ export async function generateSuitesManifest(outputDir = defaultOutputDir, resul
     return sortedSuites;
 }
 
+/**
+ * Writes headline-insights.gen.json: the landing-page hero numbers precomputed from a suites
+ * manifest (same shape as `computeHeadlineInsights()` output), so static/Pages builds can render
+ * the hero without re-deriving it client-side.
+ *
+ * @param {string} [outputDir]
+ * @param {Array<Record<string, any>> | null} [suites] Manifest entries; defaults to reading suites.gen.json from `outputDir`.
+ * @param {import('./insights.js').InsightOptions} [options]
+ */
+export async function generateHeadlineInsightsManifest(outputDir = defaultOutputDir, suites = null, options = {}) {
+    fs.mkdirSync(outputDir, { recursive: true });
+    const { computeHeadlineInsights } = await import('./insights.js');
+    let entries = suites;
+    if (!entries) {
+        const manifestPath = path.join(outputDir, 'suites.gen.json');
+        entries = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : [];
+    }
+    const insights = computeHeadlineInsights(/** @type {any[]} */ (entries), options);
+    const outputPath = path.join(outputDir, 'headline-insights.gen.json');
+    fs.writeFileSync(outputPath, JSON.stringify({ generatedAt: new Date().toISOString(), ...insights }, null, 2));
+    return insights;
+}
+
 export async function generateGroupedTasksManifest(outputDir = defaultOutputDir) {
     fs.mkdirSync(outputDir, { recursive: true });
     const { getTaskMap } = await import('../core/guide-validation.ts');
@@ -150,7 +173,9 @@ export async function runAllManifests({ resultsOnly = false, outputDir = default
     }
 
     console.log('🔄 Generating suites manifests...');
-    await generateSuitesManifest(outputDir);
+    const suites = await generateSuitesManifest(outputDir);
+    console.log('🔄 Generating headline insights snapshot...');
+    await generateHeadlineInsightsManifest(outputDir, suites);
 }
 
 // CLI Runner

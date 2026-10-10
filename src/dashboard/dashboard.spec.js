@@ -177,3 +177,100 @@ test.describe('Eval View Dashboard', () => {
     expect([400, 403, 404]).toContain(res.status);
   });
 });
+
+/**
+ * Hero / headline takeaways (index.html + hero.js + insights.js).
+ *
+ * The mock results used by the e2e server contain a single ad-hoc suite
+ * (`example-result`), which is NOT a nightly suite, so the hero renders its
+ * empty state there. To exercise the populated hero we intercept `/api/suites`
+ * and answer with a fixture manifest captured from real nightly suites
+ * (fixtures/hero-suites.fixture.json: one suite per agent family, with
+ * a11yStats + efficiencyStats already present so no hydration is needed).
+ */
+test.describe('Hero headline takeaways', () => {
+  const METRICS = ['overall', 'a11y', 'tokens', 'time'];
+
+  test('renders a graceful empty state when no nightly suites exist', async ({ page }) => {
+    await page.goto('/');
+    const hero = page.locator('#hero');
+    await expect(hero).toHaveAttribute('aria-busy', 'false');
+
+    // Four takeaway cards still render, with placeholders instead of numbers.
+    const cards = hero.locator('#hero-takeaways .takeaway');
+    await expect(cards).toHaveCount(4);
+    for (const metric of METRICS) {
+      await expect(hero.locator(`.takeaway[data-metric="${metric}"]`)).toBeVisible();
+    }
+    await expect(hero.locator('.takeaway-figure').first()).toContainText('—');
+
+    // Status row explains why, and does not offer sign-in for the local source.
+    const status = hero.locator('#hero-status');
+    await expect(status).toBeVisible();
+    await expect(status).toContainText(/no nightly evaluation runs/i);
+    await expect(hero.locator('#hero-auth-btn')).toBeHidden();
+    await expect(page.locator('#agent-table-body')).toContainText('No data loaded');
+  });
+
+  test('renders four numeric takeaways and a per-agent table from a manifest with a11y/efficiency stats', async ({ page }) => {
+    await page.route('**/api/suites*', route => route.fulfill({ path: new URL('./fixtures/hero-suites.fixture.json', import.meta.url).pathname, contentType: 'application/json' }));
+    await page.goto('/');
+    const hero = page.locator('#hero');
+    await expect(hero).toHaveAttribute('aria-busy', 'false');
+    await expect(hero.locator('#hero-status')).toBeHidden();
+
+    // Every card has a number-forward figure and a non-empty qualifier.
+    for (const metric of METRICS) {
+      const card = hero.locator(`.takeaway[data-metric="${metric}"]`);
+      await expect(card).toBeVisible();
+      await expect(card.locator('.takeaway-figure')).toHaveText(/\d/);
+      await expect(card.locator('.takeaway-qualifier')).not.toHaveText(/loading|appear once/i);
+    }
+    // Pass-rate uplifts are expressed in percentage points; efficiency as a percentage.
+    await expect(hero.locator('.takeaway[data-metric="overall"] .takeaway-figure')).toContainText('pp');
+    await expect(hero.locator('.takeaway[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
+    await expect(hero.locator('.takeaway[data-metric="tokens"] .takeaway-figure')).toContainText('%');
+    await expect(hero.locator('.takeaway[data-metric="time"] .takeaway-figure')).toContainText('%');
+
+    // Eyebrow states the sample and the latest date so the claim is attributable.
+    await expect(hero.locator('#hero-eyebrow')).toContainText(/3 recent runs across 3 agent families/);
+    await expect(hero.locator('#hero-eyebrow')).toContainText(/Oct 9, 2026/);
+
+    // Per-agent table: one row per family, each with a row header and four metric cells.
+    const rows = page.locator('#agent-table-body tr');
+    await expect(rows).toHaveCount(3);
+    const families = await rows.locator('th[scope="row"]').allInnerTexts();
+    expect(families.join(' ')).toMatch(/Claude Code/);
+    expect(families.join(' ')).toMatch(/Codex CLI/);
+    // antigravity_cli (the Gemini-based CLI that succeeded jetski_cli) is labeled "Antigravity CLI".
+    expect(families.join(' ')).toMatch(/Antigravity CLI|Gemini CLI/);
+    for (let i = 0; i < 3; i++) {
+      await expect(rows.nth(i).locator('td')).toHaveCount(4);
+      await expect(rows.nth(i).locator('td').first()).toHaveText(/\d+%\s*→\s*\d+%/);
+    }
+    // Delta chips are not color-only: each carries a glyph and the signed value.
+    await expect(rows.first().locator('.delta .glyph').first()).toBeAttached();
+  });
+
+  test('"How we measure" is a keyboard-operable disclosure with the recent-N value filled in', async ({ page }) => {
+    await page.route('**/api/suites*', route => route.fulfill({ path: new URL('./fixtures/hero-suites.fixture.json', import.meta.url).pathname, contentType: 'application/json' }));
+    await page.goto('/');
+    await expect(page.locator('#hero')).toHaveAttribute('aria-busy', 'false');
+
+    const details = page.locator('#hero-method');
+    const summary = details.locator('summary');
+    await expect(details).not.toHaveAttribute('open', '');
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    await expect(details).toHaveAttribute('open', '');
+    await expect(details.locator('#method-recent-n')).toHaveText(/^\d+$/);
+    await expect(details).toContainText(/uncached/i);
+  });
+
+  test('heading hierarchy: one h1, hero h2, takeaway h3s', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(page.locator('#hero h2#hero-heading')).toHaveCount(1);
+    await expect(page.locator('#hero-takeaways h3')).toHaveCount(4);
+  });
+});

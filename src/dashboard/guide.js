@@ -215,30 +215,42 @@ function setupNavigationControls(currentGuide) {
 
     let currentFocus = -1;
 
+    /** Combobox state: keep aria-expanded / aria-activedescendant in sync with the list. */
+    const closeList = () => {
+        list.classList.add('hidden');
+        searchInput.setAttribute('aria-expanded', 'false');
+        searchInput.removeAttribute('aria-activedescendant');
+        currentFocus = -1;
+    };
+
     searchInput.oninput = () => {
         const val = searchInput.value.trim().toLowerCase();
         list.innerHTML = '';
         currentFocus = -1;
 
         if (!val) {
-            list.classList.add('hidden');
+            closeList();
             return;
         }
 
         const matches = allGuides.filter(g => g.toLowerCase().includes(val)).slice(0, 10);
         if (matches.length === 0) {
-            list.classList.add('hidden');
+            closeList();
             return;
         }
 
         list.classList.remove('hidden');
-        matches.forEach(match => {
+        searchInput.setAttribute('aria-expanded', 'true');
+        matches.forEach((match, i) => {
             const div = document.createElement('div');
             div.className = 'autocomplete-item';
+            div.id = `autocomplete-option-${i}`;
+            div.setAttribute('role', 'option');
+            div.setAttribute('aria-selected', 'false');
             div.textContent = match;
             div.onclick = () => {
                 searchInput.value = match;
-                list.classList.add('hidden');
+                closeList();
                 goBtn.click();
             };
             list.appendChild(div);
@@ -267,7 +279,7 @@ function setupNavigationControls(currentGuide) {
                 goBtn.click();
             }
         } else if (e.key === 'Escape') {
-            list.classList.add('hidden');
+            closeList();
         }
     };
 
@@ -276,17 +288,22 @@ function setupNavigationControls(currentGuide) {
      */
     function setActive(items) {
         if (!items) return;
-        items.forEach(item => item.classList.remove('active'));
+        items.forEach(item => {
+            item.classList.remove('active');
+            item.setAttribute('aria-selected', 'false');
+        });
         if (currentFocus >= items.length) currentFocus = 0;
         if (currentFocus < 0) currentFocus = items.length - 1;
         items[currentFocus].classList.add('active');
+        items[currentFocus].setAttribute('aria-selected', 'true');
+        searchInput.setAttribute('aria-activedescendant', items[currentFocus].id);
         items[currentFocus].scrollIntoView({ block: 'nearest' });
     }
 
     document.addEventListener('click', (e) => {
         const target = /** @type {Node} */ (e.target);
         if (!searchInput.contains(target) && !list.contains(target)) {
-            list.classList.add('hidden');
+            closeList();
         }
     });
 }

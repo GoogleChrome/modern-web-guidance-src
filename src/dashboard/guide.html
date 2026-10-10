@@ -3,12 +3,85 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
   <title>Guide Performance Trend</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
-  <link rel="stylesheet" href="dashboard-layout.css">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
+    .guide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+    .guide-header h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+      overflow-wrap: anywhere;
+    }
+    .guide-header-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    .guide-header-actions .secondary-btn {
+      margin-bottom: 0;
+      text-decoration: none;
+    }
+    .guide-nav-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      position: relative;
+    }
+    .guide-nav-controls .secondary-btn {
+      margin-bottom: 0;
+      padding: 6px 12px;
+      font-size: var(--font-lg);
+    }
+    .guide-search-wrap {
+      position: relative;
+      inline-size: min(280px, 100%);
+    }
+    .guide-search {
+      inline-size: 100%;
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background: var(--color-surface-container-lowest);
+      color: var(--text-primary);
+      font: inherit;
+      font-size: var(--font-lg);
+    }
+    .guide-subtitle {
+      font-size: var(--font-lg);
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+    .timeline-filter-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: var(--font-md);
+      color: var(--text-primary);
+    }
+    .timeline-filter-controls input[type="number"] {
+      inline-size: 60px;
+      padding: 4px 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: var(--color-surface-container-lowest);
+      color: var(--text-primary);
+      font: inherit;
+    }
     .autocomplete-list {
       position: absolute;
       top: 100%;
@@ -20,75 +93,84 @@
       border-radius: 4px;
       max-height: 250px;
       overflow-y: auto;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 12px var(--color-shadow);
     }
     .autocomplete-item {
       padding: 8px 12px;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: var(--font-md);
       color: var(--text-primary);
     }
     .autocomplete-item:hover, .autocomplete-item.active {
       background: var(--hover-bg);
       color: var(--color-primary);
     }
-    .guide-nav-controls button.secondary-btn {
-      margin-bottom: 0 !important;
-      padding: 6px 12px;
-      font-size: 0.9rem;
+    #graphs-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      margin-top: 20px;
+    }
+    #tooltip-content {
+      padding: 8px 12px;
+      font-size: var(--font-md);
     }
   </style>
 </head>
 <body>
+  <a href="#main-content" class="skip-link visually-hidden">Skip to main content</a>
   <div class="container">
-    <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
+    <header class="guide-header">
       <div>
-        <h1 style="margin: 0;">Guide: <span id="guide-name-header">...</span></h1>
-        
-        <div class="guide-nav-controls" style="display: flex; align-items: center; gap: 10px; margin-top: 12px; position: relative;">
-          <button id="prev-guide-btn" class="secondary-btn" title="Previous Guide" style="margin-bottom: 0;">←</button>
-          <button id="next-guide-btn" class="secondary-btn" title="Next Guide" style="margin-bottom: 0;">→</button>
-          
-          <div style="position: relative; width: 280px;">
-            <input type="text" id="guide-search" placeholder="Search guides..." autocomplete="off"
-                   style="width: 100%; box-sizing: border-box; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9em; outline: none;">
-            <div id="autocomplete-list" class="autocomplete-list hidden"></div>
+        <h1>Guide: <span id="guide-name-header">...</span></h1>
+
+        <nav class="guide-nav-controls" aria-label="Guide navigation">
+          <button id="prev-guide-btn" class="secondary-btn" type="button" aria-label="Previous guide"><span aria-hidden="true">←</span></button>
+          <button id="next-guide-btn" class="secondary-btn" type="button" aria-label="Next guide"><span aria-hidden="true">→</span></button>
+
+          <div class="guide-search-wrap">
+            <label for="guide-search" class="visually-hidden">Search guides</label>
+            <input type="search" id="guide-search" class="guide-search" placeholder="Search guides..." autocomplete="off"
+                   role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="autocomplete-list">
+            <div id="autocomplete-list" class="autocomplete-list hidden" role="listbox" aria-label="Matching guides"></div>
           </div>
-          <button id="go-guide-btn" class="secondary-btn" style="margin-bottom: 0; padding: 6px 16px;">Go</button>
-        </div>
+          <button id="go-guide-btn" class="secondary-btn" type="button">Go</button>
+        </nav>
 
-        <div style="font-size: 0.9em; color: var(--text-secondary); margin-top: 8px;">Performance over time by agent and model combination</div>
+        <p class="guide-subtitle">Guided vs. unguided pass rate over time, by agent and model combination</p>
 
-        <div class="timeline-filter-controls" style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.85em; color: var(--text-primary);">
-          <span>Show last</span>
-          <input type="number" id="timeline-limit-input" value="30" min="1" style="width: 50px; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); outline: none;">
+        <div class="timeline-filter-controls">
+          <label for="timeline-limit-input">Show last</label>
+          <input type="number" id="timeline-limit-input" value="30" min="1">
           <span>days</span>
-          <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; margin-left: 8px;">
+          <label class="toggle-label" for="timeline-show-all-check">
             <input type="checkbox" id="timeline-show-all-check">
-            <span>Show all</span>
+            Show all
           </label>
         </div>
       </div>
-      <div style="display: flex; gap: 12px; justify-content: flex-end;">
-        <a href="./" class="secondary-btn" style="text-decoration: none; margin-bottom: 0;">← Back to Results</a>
-        <button id="auth-btn" class="secondary-btn" style="display: none; margin-bottom: 0;">
+      <div class="guide-header-actions">
+        <a href="./" class="secondary-btn">← Back to results</a>
+        <button id="auth-btn" class="secondary-btn" type="button" style="display: none;">
           Sign in with Google
         </button>
       </div>
     </header>
 
-    <div id="graphs-grid" style="display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 20px;">
-      <!-- Graph cards injected by JS -->
-    </div>
+    <main id="main-content" tabindex="-1">
+      <div id="graphs-grid">
+        <!-- Graph cards injected by JS -->
+      </div>
 
-    <div id="empty-state" class="empty-state" style="display: none;">
-      <p>No historical runs found for this guide.</p>
-    </div>
+      <div id="empty-state" class="empty-state" style="display: none;">
+        <p>No historical runs found for this guide.</p>
+      </div>
+    </main>
   </div>
 
   <div id="tooltip-container" class="tooltip-container hidden">
     <div id="tooltip-header"></div>
-    <div id="tooltip-content" style="padding: 8px 12px; font-size: 0.85rem;"></div>
+    <div id="tooltip-content"></div>
   </div>
 
   <script src="features-mapping.gen.js"></script>

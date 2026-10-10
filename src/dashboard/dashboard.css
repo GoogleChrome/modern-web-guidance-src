@@ -6,33 +6,50 @@
 }
 
 :root {
-  /* Design Tokens - Colors from Mockup */
-  --color-surface: #f8f9fa;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f3f4f5;
-  --color-surface-container: #edeeef;
-  --color-on-surface: #191c1d;
-  --color-on-surface-variant: #434654;
-  --color-primary: #003cb2;
-  --color-primary-container: #2454d4;
-  --color-outline: #747686;
-  --color-outline-variant: rgba(196, 197, 215, 0.4);
-  --color-accent-success: #22c55e;
-  --color-accent-failure: #ba1a1a;
+  /*
+   * Design tokens (light values first, dark second). The page follows the OS
+   * color scheme (MWG `dark-mode` / `color` guides): `color-scheme: light dark`
+   * also switches native form controls and scrollbars. Success/failure text
+   * tokens are chosen for >= 4.5:1 against their surfaces.
+   */
+  color-scheme: light dark;
+
+  --color-surface: light-dark(#f8f9fa, #111418);
+  --color-surface-container-lowest: light-dark(#ffffff, #1b1f25);
+  --color-surface-container-low: light-dark(#f3f4f5, #1f242b);
+  --color-surface-container: light-dark(#edeeef, #272d35);
+  --color-on-surface: light-dark(#191c1d, #e4e7ec);
+  --color-on-surface-variant: light-dark(#434654, #aeb4c0);
+  --color-primary: light-dark(#003cb2, #a9c4ff);
+  --color-primary-container: light-dark(#2454d4, #2e62e0);
+  --color-on-primary: light-dark(#ffffff, #0b1a3f);
+  --color-outline: light-dark(#747686, #8b8f9c);
+  --color-outline-variant: light-dark(rgba(196, 197, 215, 0.4), rgba(196, 197, 215, 0.18));
+  --color-accent-success: light-dark(#15803d, #5fd38a);
+  --color-accent-success-bg: light-dark(rgba(22, 163, 74, 0.14), rgba(95, 211, 138, 0.16));
+  --color-accent-failure: light-dark(#ba1a1a, #ff8a80);
+  --color-accent-failure-bg: light-dark(rgba(186, 26, 26, 0.12), rgba(255, 138, 128, 0.16));
+  --color-shadow: light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.55));
+  --color-grid-dot: light-dark(rgba(196, 197, 215, 0.3), rgba(196, 197, 215, 0.08));
 
   /* Border Radius */
   --radius-default: 6px;
 
   /* Legacy Mapping for Smooth Transition */
   --bg-color: var(--color-surface);
+  --bg-primary: var(--color-surface);
+  --bg-secondary: var(--color-surface-container-low);
+  --bg-tertiary: var(--color-surface-container);
   --card-bg: var(--color-surface-container-lowest);
   --text-primary: var(--color-on-surface);
   --text-secondary: var(--color-on-surface-variant);
+  --accent-color: var(--color-primary);
+  --accent-primary: var(--color-primary);
   --accent-success: var(--color-accent-success);
   --accent-failure: var(--color-accent-failure);
   --border-color: var(--color-outline-variant);
   --hover-bg: var(--color-surface-container-low);
-  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-bg: light-dark(rgba(255, 255, 255, 0.7), rgba(27, 31, 37, 0.7));
 
   /* Typography Fallbacks */
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -67,6 +84,83 @@
   --font-xl: 1rem;
 }
 
+/*
+ * Fallback for browsers without light-dark() (Baseline Newly Available 2024-05):
+ * mirror the dark values behind prefers-color-scheme so the page still adapts.
+ */
+@supports not (color: light-dark(#000, #fff)) {
+  :root {
+    --color-surface: #f8f9fa;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #f3f4f5;
+    --color-surface-container: #edeeef;
+    --color-on-surface: #191c1d;
+    --color-on-surface-variant: #434654;
+    --color-primary: #003cb2;
+    --color-primary-container: #2454d4;
+    --color-on-primary: #ffffff;
+    --color-outline: #747686;
+    --color-outline-variant: rgba(196, 197, 215, 0.4);
+    --color-accent-success: #15803d;
+    --color-accent-success-bg: rgba(22, 163, 74, 0.14);
+    --color-accent-failure: #ba1a1a;
+    --color-accent-failure-bg: rgba(186, 26, 26, 0.12);
+    --color-shadow: rgba(0, 0, 0, 0.15);
+    --color-grid-dot: rgba(196, 197, 215, 0.3);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-surface: #111418;
+      --color-surface-container-lowest: #1b1f25;
+      --color-surface-container-low: #1f242b;
+      --color-surface-container: #272d35;
+      --color-on-surface: #e4e7ec;
+      --color-on-surface-variant: #aeb4c0;
+      --color-primary: #a9c4ff;
+      --color-primary-container: #2e62e0;
+      --color-on-primary: #0b1a3f;
+      --color-outline: #8b8f9c;
+      --color-outline-variant: rgba(196, 197, 215, 0.18);
+      --color-accent-success: #5fd38a;
+      --color-accent-success-bg: rgba(95, 211, 138, 0.16);
+      --color-accent-failure: #ff8a80;
+      --color-accent-failure-bg: rgba(255, 138, 128, 0.16);
+      --color-shadow: rgba(0, 0, 0, 0.55);
+      --color-grid-dot: rgba(196, 197, 215, 0.08);
+      --glass-bg: rgba(27, 31, 37, 0.7);
+    }
+  }
+}
+
+/*
+ * Reduced motion (MWG `motion` guide): hover lifts and fades are decorative,
+ * so switch them off per component instead of a blanket near-zero duration.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .secondary-btn,
+  .stat-card,
+  .task-accordion,
+  .task-accordion-header,
+  .dog-ear-card,
+  .hint-popover,
+  .mode-toggle-btn,
+  .metric-mode-btn,
+  .suite-table-row,
+  .suite-table-row th,
+  .insights-table tr,
+  .pivot-filter-btn,
+  .sort-btn,
+  .header-filter-select,
+  .tooltip-container,
+  .sort-direction-btn {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
 body {
   font-family: var(--font-sans);
   color: var(--color-on-surface);
@@ -74,7 +168,7 @@ body {
   min-height: 100vh;
   margin: 0;
   padding: 20px;
-  background-image: radial-gradient(rgba(196, 197, 215, 0.3) 1px, transparent 1px);
+  background-image: radial-gradient(var(--color-grid-dot) 1px, transparent 1px);
   background-size: 20px 20px;
   line-height: 1.5;
 }
@@ -226,7 +320,7 @@ h1 {
 
 .details-btn {
   display: inline-block;
-  color: #58a6ff;
+  color: var(--color-primary);
   text-decoration: none;
   margin-top: 10px;
   font-size: 0.9rem;
@@ -360,7 +454,7 @@ dialog#modal[open] {
 }
 
 .run-header a {
-  color: #58a6ff;
+  color: var(--color-primary);
   text-decoration: none;
   font-size: 0.9rem;
 }
@@ -406,9 +500,9 @@ dialog#modal[open] {
 }
 
 .matching-guide {
-  background-color: rgba(35, 134, 54, 0.15);
+  background-color: var(--color-accent-success-bg);
   color: var(--accent-success);
-  border: 1px solid rgba(35, 134, 54, 0.3);
+  border: 1px solid var(--color-accent-success);
 }
 
 .default-guide {
@@ -479,13 +573,13 @@ dialog#modal[open] {
 }
 
 .diff-added {
-  background-color: rgba(34, 197, 94, 0.15);
+  background-color: var(--color-accent-success-bg);
   color: var(--color-accent-success);
   display: block;
 }
 
 .diff-removed {
-  background-color: rgba(186, 26, 26, 0.15);
+  background-color: var(--color-accent-failure-bg);
   color: var(--color-accent-failure);
   display: block;
   text-decoration: line-through;
@@ -493,7 +587,7 @@ dialog#modal[open] {
 }
 
 .diff-unchanged {
-  color: #8b949e;
+  color: var(--color-outline);
   display: block;
 }
 
@@ -671,20 +765,82 @@ dialog#modal.diff-modal {
 .uplift-score {
   font-size: 1.25rem;
   font-weight: bold;
-  color: #15803d;
+  color: var(--color-accent-success);
   min-width: 100px;
   text-align: right;
 }
 
 .uplift-score.negative {
-  color: #b91c1c;
+  color: var(--color-accent-failure);
+}
+
+.uplift-score.flat {
+  color: var(--text-secondary);
+}
+
+/* Accordion toggle is a real button; it inherits the header's text styling. */
+.task-toggle {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.task-toggle .feature-chip {
+  margin-right: 0;
+}
+
+.chevron {
+  display: inline-block;
+  font-size: 0.7rem;
+  transition: rotate 0.2s;
+}
+
+.task-accordion.open .chevron {
+  rotate: 90deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}
+
+.task-title.has-failure {
+  color: var(--color-accent-failure);
+}
+
+.generation-failed-badge {
+  font-size: var(--font-base);
+  color: var(--color-accent-failure);
+  border: 1px solid currentColor;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.expansion-loading {
+  color: var(--text-secondary);
 }
 
 .trend-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-inline-size: 24px;
   min-block-size: 24px;
-  justify-content: center;
   border-radius: 4px;
+  color: var(--color-primary);
+  text-decoration: none;
 }
 
 /* Assertion Truth Matrix */
@@ -1279,8 +1435,8 @@ dialog#modal.diff-modal {
 }
 
 .efficiency-delta-pill.positive {
-  background: rgba(22, 163, 74, 0.14);
-  color: #14532d;
+  background: var(--color-accent-success-bg);
+  color: var(--color-accent-success);
 }
 
 /* 5-Dimension Accessibility Breakdown Bars */
@@ -1316,7 +1472,7 @@ dialog#modal.diff-modal {
 }
 
 .a11y-dim-delta {
-  color: #15803d;
+  color: var(--color-accent-success);
   font-weight: 600;
 }
 
@@ -1395,7 +1551,7 @@ dialog#modal.diff-modal {
 
 .mode-toggle-btn[aria-pressed="true"] {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
 }
 
 .mode-toggle-btn:hover:not([aria-pressed="true"]) {
@@ -1447,9 +1603,9 @@ dialog#modal.diff-modal {
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgba(0, 60, 178, 0.08);
+  background: color-mix(in oklch, var(--color-primary) 10%, transparent);
   color: var(--color-primary);
-  border: 1px solid rgba(0, 60, 178, 0.2);
+  border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent);
 }
 
 .task-efficiency-meta {
@@ -1479,9 +1635,9 @@ dialog#modal.diff-modal {
   font-size: 0.7rem;
   font-weight: 600;
   border-radius: 999px;
-  background: rgba(0, 60, 178, 0.1);
+  background: color-mix(in oklch, var(--color-primary) 12%, transparent);
   color: var(--color-primary);
-  border: 1px solid rgba(0, 60, 178, 0.22);
+  border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent);
   vertical-align: middle;
 }
 
@@ -1527,7 +1683,7 @@ dialog#modal.diff-modal {
   border-radius: 6px;
   background: var(--color-surface-container-lowest);
   color: var(--color-on-surface);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 8px 24px var(--color-shadow);
   font-family: var(--font-sans);
   font-size: 0.76rem;
   font-weight: 400;
@@ -1544,3 +1700,13 @@ dialog#modal.diff-modal {
   display: block;
 }
 
+
+/* Per-run chips in the task detail footer */
+.run-chip-meta {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.run-chip-meta.small {
+  font-size: var(--font-xs);
+}

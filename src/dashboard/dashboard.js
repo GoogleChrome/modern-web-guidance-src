@@ -1,4 +1,4 @@
-import { getRunStats, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getRunDurationMs, isLocalDashboardHost } from './utils.js';
+import { getRunStats, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, isLocalDashboardHost } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
@@ -517,21 +517,20 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
  * @param {number} uRate
  * @param {number} gRate
  * @param {boolean} [isSmall]
- * @param {string} [uTitle]
- * @param {string} [gTitle]
  */
-function renderSparkline(uRate, gRate, isSmall = false, uTitle = '', gTitle = '') {
+function renderSparkline(uRate, gRate, isSmall = false) {
     const barClass = isSmall ? 'sparkline-bar small' : 'sparkline-bar';
     const dotClass = isSmall ? 'sparkline-dot small' : 'sparkline-dot';
     const rangeClass = isSmall ? 'sparkline-range small' : 'sparkline-range';
     const min = Math.min(uRate, gRate);
     const abs = Math.abs(gRate - uRate);
     const leftOffset = uRate < gRate ? 3 : 4;
-    
+
+    // Decorative: the adjacent text ("U% → G%") is the accessible encoding.
     return `
-        <div class="${barClass}">
-            <div class="${dotClass} unguided" style="left: calc(${uRate}% - 3px);" title="${escapeHtml(uTitle)}"></div>
-            <div class="${dotClass} guided" style="left: calc(${gRate}% - 4px);" title="${escapeHtml(gTitle)}"></div>
+        <div class="${barClass}" aria-hidden="true">
+            <div class="${dotClass} unguided" style="left: calc(${uRate}% - 3px);"></div>
+            <div class="${dotClass} guided" style="left: calc(${gRate}% - 4px);"></div>
             <div class="${rangeClass}" style="left: calc(${min}% + ${leftOffset}px); width: calc(${abs}% - 7px);"></div>
         </div>
     `;
@@ -599,51 +598,60 @@ function renderSummary(data) {
             <div class="a11y-dim-row">
                 <div class="a11y-dim-header">
                     <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span>
-                    <span class="a11y-dim-values">${sc.unguidedRate}% → <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${sc.uplift < 0 ? 'negative' : ''}">(${deltaSign}${sc.uplift}pp)</span></span>
+                    <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${sc.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${sc.uplift < 0 ? 'negative' : ''}">(${deltaSign}${sc.uplift}pp)</span></span>
                 </div>
-                <div class="a11y-dim-track">
-                    <div class="a11y-dim-fill-unguided" style="width: ${sc.unguidedRate}%;" title="Unguided: ${sc.unguidedRate}%"></div>
-                    <div class="a11y-dim-fill-guided" style="width: ${sc.guidedRate}%;" title="Guided: ${sc.guidedRate}%"></div>
+                <div class="a11y-dim-track" aria-hidden="true">
+                    <div class="a11y-dim-fill-unguided" style="width: ${sc.unguidedRate}%;"></div>
+                    <div class="a11y-dim-fill-guided" style="width: ${sc.guidedRate}%;"></div>
                 </div>
             </div>
         `;
     }).join('');
 
-    const rtSign = rt.medianDeltaPct > 0 ? '+' : '';
-    const rtBadgeClass = rt.medianDeltaPct <= 0 ? 'positive' : 'neutral';
-    const tokSign = tok.uncachedMedianDeltaPct > 0 ? '+' : '';
-    const tokBadgeClass = tok.uncachedMedianDeltaPct <= 0 ? 'positive' : 'neutral';
+    /**
+     * Relative-change pill for "lower is better" metrics. Shape (▼/▲) + sign carry
+     * the meaning; color only reinforces it.
+     * @param {number} deltaPct
+     * @param {string} noun
+     */
+    const deltaPill = (deltaPct, noun) => {
+        if (deltaPct < 0) return `<span class="efficiency-delta-pill positive"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}%<span class="visually-hidden"> less ${escapeHtml(noun)}</span></span>`;
+        if (deltaPct === 0) return `<span class="efficiency-delta-pill neutral">±0%<span class="visually-hidden"> ${escapeHtml(noun)}, no change</span></span>`;
+        return `<span class="efficiency-delta-pill neutral"><span aria-hidden="true">▲ </span>${deltaPct}%<span class="visually-hidden"> more ${escapeHtml(noun)}</span></span>`;
+    };
     const suiteTokSign = tok.suiteUncachedDeltaPct > 0 ? '+' : '';
+    const hasRuntime = rt.unguidedMedianMs > 0 || rt.guidedMedianMs > 0;
+    const hasTokens = tok.unguidedTotalMedian > 0 || tok.guidedTotalMedian > 0;
 
     container.innerHTML = `
         <!-- Card 1: Overall Uplift & Adoption -->
         <div class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">Overall Uplift</span>
-                <span class="meta-value-highlight ${upliftDelta < 0 ? 'negative' : ''}">${upliftDelta >= 0 ? '+' : ''}${upliftDelta}%</span>
+                <span class="meta-label">Pass rate, unguided → guided</span>
+                <span class="meta-value-highlight ${upliftDelta < 0 ? 'negative' : ''}">${upliftDelta >= 0 ? '+' : ''}${upliftDelta} pp</span>
             </div>
             <div class="sparkline-container">
-                ${renderSparkline(unguidedPassRate, guidedPassRate, false, `Unguided: ${unguidedPassRate}%`, `Guided: ${guidedPassRate}%`)}
-                <span class="sparkline-labels">${unguidedPassRate}% → <strong>${guidedPassRate}%</strong> <span class="narrative-subtext">(${unguidedStats.passed} → ${guidedStats.passed} / ${Math.max(unguidedStats.total, guidedStats.total)} checks)</span></span>
+                ${renderSparkline(unguidedPassRate, guidedPassRate)}
+                <span class="sparkline-labels"><span class="visually-hidden">Unguided </span>${unguidedPassRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${guidedPassRate}%</strong> <span class="narrative-subtext">(${unguidedStats.passed} → ${guidedStats.passed} / ${Math.max(unguidedStats.total, guidedStats.total)} checks)</span></span>
             </div>
             <div class="narrative-metrics-list">
                 <div class="narrative-metric-row">
-                    <span>Tool Activation</span>
+                    <span>Tool activation</span>
                     <strong>${toolActivationRate}% (${tasksWithTools.size}/${tasksCount} tasks)</strong>
                 </div>
                 <div class="narrative-metric-row">
-                    <span>Guidance Consumed</span>
+                    <span>Guidance consumed</span>
                     <strong>${guideUsageRate}% (${tasksWithGuides.size}/${tasksCount} tasks)</strong>
                 </div>
                 ${summary.expectedTotalRuns !== undefined ? `
                 <div class="narrative-metric-row">
-                    <span>Expected Runs</span>
+                    <span>Expected runs</span>
                     <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong>
                 </div>
                 ` : ''}
                 ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined) ? `
                 <div class="narrative-metric-row">
-                    <span>Generation Errors</span>
+                    <span>Generation errors</span>
                     <strong style="color: ${getColor(100 - totalEarlyFailureRate)}">${totalEarlyFailureRate}% (${totalEarlyFailures} run${totalEarlyFailures === 1 ? '' : 's'})</strong>
                 </div>
                 ` : ''}
@@ -653,12 +661,12 @@ function renderSummary(data) {
         <!-- Card 2: Cross-Cutting Accessibility Subscore -->
         <div class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">♿ Accessibility Subscore</span>
-                <span class="meta-value-highlight ${a11yStats.uplift < 0 ? 'negative' : ''}">${a11yStats.uplift >= 0 ? '+' : ''}${a11yStats.uplift}%</span>
+                <span class="meta-label"><span aria-hidden="true">♿</span> Accessibility subscore</span>
+                <span class="meta-value-highlight ${a11yStats.uplift < 0 ? 'negative' : ''}">${a11yStats.uplift >= 0 ? '+' : ''}${a11yStats.uplift} pp</span>
             </div>
             <div class="sparkline-container">
-                ${renderSparkline(a11yStats.unguidedRate, a11yStats.guidedRate, false, `Unguided A11y: ${a11yStats.unguidedRate}%`, `Guided A11y: ${a11yStats.guidedRate}%`)}
-                <span class="sparkline-labels">${a11yStats.unguidedRate}% → <strong>${a11yStats.guidedRate}%</strong> <span class="narrative-subtext">(${a11yStats.unguidedPassed} → ${a11yStats.guidedPassed} / ${Math.max(a11yStats.unguidedTotal, a11yStats.guidedTotal)} checks, ${a11yStats.guideCount} guides)</span></span>
+                ${renderSparkline(a11yStats.unguidedRate, a11yStats.guidedRate)}
+                <span class="sparkline-labels"><span class="visually-hidden">Unguided </span>${a11yStats.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${a11yStats.guidedRate}%</strong> <span class="narrative-subtext">(${a11yStats.unguidedPassed} → ${a11yStats.guidedPassed} / ${Math.max(a11yStats.unguidedTotal, a11yStats.guidedTotal)} checks, ${a11yStats.guideCount} guides)</span></span>
             </div>
             <div class="a11y-dimensions-grid">
                 ${a11yDimensionsHtml}
@@ -668,21 +676,21 @@ function renderSummary(data) {
         <!-- Card 3: Completion Time (U → G) -->
         <div class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">⏱ Completion Time (Med.)</span>
-                <span class="efficiency-delta-pill ${rtBadgeClass}">${rtSign}${rt.medianDeltaPct}%</span>
+                <span class="meta-label"><span aria-hidden="true">⏱</span> Median agent time</span>
+                ${hasRuntime ? deltaPill(rt.medianDeltaPct, 'time') : ''}
             </div>
             <div class="narrative-hero-pair">
-                <span>${formatDuration(rt.unguidedMedianMs)}</span>
-                <span class="pair-arrow">→</span>
-                <strong>${formatDuration(rt.guidedMedianMs)}</strong>
+                <span><span class="visually-hidden">Unguided </span>${formatDuration(rt.unguidedMedianMs)}</span>
+                <span class="pair-arrow" aria-hidden="true">→</span>
+                <strong><span class="visually-hidden">guided </span>${formatDuration(rt.guidedMedianMs)}</strong>
             </div>
             <div class="narrative-metrics-list">
                 <div class="narrative-metric-row">
-                    <span>Mean Task Duration</span>
+                    <span>Mean task duration</span>
                     <strong>${formatDuration(rt.unguidedMeanMs)} → ${formatDuration(rt.guidedMeanMs)}</strong>
                 </div>
                 <div class="narrative-metric-row">
-                    <span>Faster or Equal Tasks</span>
+                    <span>Tasks faster or equal</span>
                     <strong>${rt.fasterTaskPct}% (${rt.fasterTasksCount}/${rt.pairedTaskCount} tasks)</strong>
                 </div>
                 <div class="narrative-metric-row">
@@ -695,25 +703,25 @@ function renderSummary(data) {
         <!-- Card 4: Token Efficiency (U → G) -->
         <div class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">🪙 Uncached Tokens (Med.)</span>
-                <span class="efficiency-delta-pill ${tokBadgeClass}">${tokSign}${tok.uncachedMedianDeltaPct}%</span>
+                <span class="meta-label"><span aria-hidden="true">🪙</span> Median uncached tokens</span>
+                ${hasTokens ? deltaPill(tok.uncachedMedianDeltaPct, 'uncached tokens') : ''}
             </div>
             <div class="narrative-hero-pair">
-                <span>${formatTokens(tok.unguidedUncachedMedian)}</span>
-                <span class="pair-arrow">→</span>
-                <strong>${formatTokens(tok.guidedUncachedMedian)}</strong>
+                <span><span class="visually-hidden">Unguided </span>${formatTokens(tok.unguidedUncachedMedian)}</span>
+                <span class="pair-arrow" aria-hidden="true">→</span>
+                <strong><span class="visually-hidden">guided </span>${formatTokens(tok.guidedUncachedMedian)}</strong>
             </div>
             <div class="narrative-metrics-list">
                 <div class="narrative-metric-row">
-                    <span>Suite Uncached Total</span>
+                    <span>Suite uncached</span>
                     <strong>${formatTokens(tok.unguidedUncachedTotal)} → ${formatTokens(tok.guidedUncachedTotal)} (${suiteTokSign}${tok.suiteUncachedDeltaPct}%)</strong>
                 </div>
                 <div class="narrative-metric-row">
-                    <span>Suite Total (incl. cache)</span>
+                    <span>Suite total, incl. cache</span>
                     <strong>${formatTokens(tok.unguidedTotal)} → ${formatTokens(tok.guidedTotal)} (${tok.guidedCachedSharePct}% cached)</strong>
                 </div>
                 <div class="narrative-metric-row">
-                    <span>Fewer/Equal Uncached Tasks</span>
+                    <span>Tasks with fewer or equal</span>
                     <strong>${tok.fewerUncachedTokensTaskPct}% (${tok.fewerUncachedTasksCount}/${rt.pairedTaskCount} tasks)</strong>
                 </div>
             </div>
@@ -828,7 +836,7 @@ function renderGrid(data, testId) {
                 let sum = 0;
                 let count = 0;
                 runs.forEach(r => {
-                    const ms = getRunDurationMs(r);
+                    const ms = getAgentRuntimeMs(r); // agent-only time, matching the hero and suites table
                     if (ms > 0) {
                         sum += ms;
                         count++;
@@ -950,7 +958,7 @@ function renderGrid(data, testId) {
 
         const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
         const trendLinkHtml = `
-            <a href="${trendUrl}" class="trend-link" title="View trend over time" style="margin-left: 8px; text-decoration: none; color: var(--color-primary); display: inline-flex; align-items: center; vertical-align: middle;" onclick="event.stopPropagation();">
+            <a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(formatTestName(scenarioName))}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <line x1="7" y1="17" x2="17" y2="7"></line>
                     <polyline points="7 7 17 7 17 17"></polyline>
@@ -959,66 +967,71 @@ function renderGrid(data, testId) {
         `;
 
         const a11yPillHtml = a11yCheckCount > 0 ? `
-            <span class="a11y-task-pill" title="Accessibility checks in this guide: ${a11yUnguidedAvg}% → ${a11yGuidedAvg}%">
-                ♿ ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift}%)
+            <span class="a11y-task-pill">
+                <span aria-hidden="true">♿</span> ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp)
+                <span class="visually-hidden">accessibility checks: unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%</span>
             </span>
         ` : '';
 
         const metaChipsHtml = `
             <div class="task-efficiency-meta">
-                ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<span class="task-eff-chip" title="Avg completion time (Unguided → Guided)">⏱ ${formatDuration(uRuntimeMs)} → ${formatDuration(gRuntimeMs)}</span>` : ''}
-                ${(uUncachedTokens > 0 || gUncachedTokens > 0) ? `<span class="task-eff-chip" title="Avg uncached tokens (Unguided → Guided)">🪙 ${formatTokens(uUncachedTokens)} → ${formatTokens(gUncachedTokens)}</span>` : ''}
+                ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average completion time, unguided to guided: </span><span aria-hidden="true">⏱</span> ${formatDuration(uRuntimeMs)} → ${formatDuration(gRuntimeMs)}</span>` : ''}
+                ${(uUncachedTokens > 0 || gUncachedTokens > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span aria-hidden="true">🪙</span> ${formatTokens(uUncachedTokens)} → ${formatTokens(gUncachedTokens)}</span>` : ''}
             </div>
         `;
 
+        const contentId = `${accordion.id}-content`;
+        // The toggle is a real <button>; the trend link and pills are siblings so no
+        // interactive control is nested inside another (axe: nested-interactive).
         accordion.innerHTML = `
-            <div class="task-accordion-header" role="button" tabindex="0" aria-expanded="false">
+            <div class="task-accordion-header">
                 <div class="left-section">
-                    <span class="chevron" aria-hidden="true" style="display: inline-block; transition: transform 0.2s; margin-right: 10px;">▶</span>
-                    <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
-                    <span class="task-title" style="${hasFailure ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
+                    <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}">
+                        <span class="chevron" aria-hidden="true">▶</span>
+                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
+                        <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
+                    </button>
                     ${trendLinkHtml}
                     ${a11yPillHtml}
-                    ${hasFailure ? `<span style="font-size: 0.8rem; color: var(--color-accent-failure, #da3633); margin-left: 8px; border: 1px solid currentColor; padding: 2px 6px; border-radius: 4px;">Generation Failed</span>` : ''}
+                    ${hasFailure ? `<span class="generation-failed-badge">Generation Failed</span>` : ''}
                 </div>
                 <div class="right-section">
                     ${metaChipsHtml}
-                    <div class="mini-dumbbell-track" title="Unguided: ${displayU}% → Guided: ${displayG}%">
+                    <div class="mini-dumbbell-track" aria-hidden="true">
                         <div class="connector" style="left: ${scale(minVal)}px; width: ${scale(maxVal - minVal)}px;"></div>
                         <div class="dot unguided" style="left: ${scale(displayU)}px;"></div>
                         <div class="dot guided" style="left: ${scale(displayG)}px;"></div>
                     </div>
-                    <div class="uplift-score ${displayUplift < 0 ? 'negative' : ''}" style="${displayUplift === 0 ? 'color: var(--text-secondary);' : ''}">
-                        ${displayUplift >= 0 ? '+' : ''}${displayUplift}%
+                    <div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}">
+                        <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp
                     </div>
                 </div>
             </div>
-            <div class="task-accordion-content">
-                <div class="expansion-loading" style="color: var(--text-secondary);">Loading details...</div>
+            <div class="task-accordion-content" id="${contentId}">
+                <div class="expansion-loading">Loading details...</div>
             </div>
         `;
 
         const header = $('.task-accordion-header', accordion);
+        const toggleBtn = $('.task-toggle', accordion);
         const content = $('.task-accordion-content', accordion);
-        const chevron = $('.chevron', accordion);
 
         const toggleAccordion = async () => {
             const isOpen = accordion.classList.toggle('open');
-            header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            chevron.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+            toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 
             if (isOpen && content.querySelector('.expansion-loading')) {
                 await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
             }
         };
 
-        header.onclick = toggleAccordion;
-        header.onkeydown = (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                toggleAccordion();
-            }
-        };
+        // Clicking anywhere on the header row toggles (mouse convenience); the button
+        // is the keyboard/AT control and its click bubbles here. Links/pills opt out.
+        header.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target instanceof Element && target.closest('a')) return;
+            toggleAccordion();
+        });
 
         if (guideGrid) {
             guideGrid.appendChild(accordion);
@@ -1239,14 +1252,14 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}/grade-report/index.html`
                      : api.getAbsoluteUrl ? api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`) : `${usedBasePath}/grade-report/index.html`;
 
-                 const taskRuntime = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : null;
+                 const taskRuntime = getAgentRuntimeMs(run) || null; // agent-only (grader time is fixed harness overhead)
                  const tb = getTokenBreakdown(run.tokenUsage);
 
                  chips.push(`
                      <div style="display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 4px;">
                          <span style="font-weight: bold; font-size: 0.85rem; color: ${getColor(s.rate)};">${s.rate}%</span>
-                         ${taskRuntime ? `<span style="font-size: 0.75rem; color: var(--text-secondary);" title="Completion Time">${formatRuntime(taskRuntime)}</span>` : ''}
-                         ${tb.total > 0 ? `<span style="font-size: 0.72rem; color: var(--text-secondary);" title="Total: ${tb.total.toLocaleString()} (${tb.cachedPct}% cached)">${formatTokens(tb.uncached)} uncached</span>` : ''}
+                         ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent time: </span>${formatRuntime(taskRuntime)}</span>` : ''}
+                         ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)} uncached<span class="visually-hidden">, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
                          <div style="display: flex; flex-direction: column; gap: 2px; width: 100%;">
                              ${sessionFile ? `<button class="tfoot-action-btn" onclick="openTrajectory('${escapeHtml(usedBasePath)}', '${escapeHtml(sessionFile)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
                              ${patchFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${patchFile}`)}', '${escapeHtml(`${usedBasePath}/${patchFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : `<button class="tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}

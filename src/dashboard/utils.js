@@ -77,6 +77,27 @@ export function getRunDurationMs(run) {
 }
 
 /**
+ * Extracts the time the coding agent itself spent on the task, in milliseconds.
+ *
+ * Grader time is fixed harness overhead that MWG cannot influence, so efficiency
+ * comparisons (unguided vs. guided) use this value rather than {@link getRunDurationMs}.
+ * Legacy runs that only recorded a combined `runtimeMs` fall back to that number.
+ *
+ * @param {(Partial<import('../harness/lib/metrics.ts').RunResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} run
+ * @returns {number}
+ */
+export function getAgentRuntimeMs(run) {
+    if (!run) return 0;
+    if (run.runtime && typeof run.runtime === 'object' && typeof run.runtime.agentRuntime === 'number' && run.runtime.agentRuntime > 0) {
+        return run.runtime.agentRuntime;
+    }
+    if (typeof run.runtimeMs === 'number' && run.runtimeMs > 0) {
+        return run.runtimeMs;
+    }
+    return 0;
+}
+
+/**
  * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
  * @returns {{ rate: number, passed: number, total: number }}
  */
@@ -319,7 +340,8 @@ export function calculateChartData(results, options = {}) {
         const avgTokens = runs.length > 0 ? Math.round(totalTokens / runs.length) : 0;
         const avgUncached = runs.length > 0 ? Math.round(uncachedTokens / runs.length) : 0;
         const cachedPct = totalTokens > 0 ? Math.round((cachedTokens / totalTokens) * 100) : 0;
-        const totalRuntime = runs.reduce((acc, r) => acc + getRunDurationMs(r), 0);
+        // Agent-only time, consistent with efficiencyStats (grader time is harness overhead).
+        const totalRuntime = runs.reduce((acc, r) => acc + getAgentRuntimeMs(r), 0);
         const avgRuntime = runs.length > 0 ? Math.round(totalRuntime / runs.length) : 0;
 
         apps[scenario][tokensKey].push(avgTokens);

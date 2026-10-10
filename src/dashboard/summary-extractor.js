@@ -1,5 +1,17 @@
-import { getRunStats, parseResultKey, calculateChartData, median, getTokenBreakdown, getRunDurationMs } from './utils.js';
+import { getRunStats, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
 import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js';
+
+/** Per-attempt agent timeout enforced by the harness (src/harness/run_suite.ts). */
+const TIMEOUT_MS = 600000;
+
+/**
+ * Bump when the shape or semantics of `SuiteSummary` change, so stale manifest entries
+ * (`suites.gen.json`) can be detected and regenerated (`pnpm upload --reconcile-manifest`).
+ *
+ * 1: guidedStats/unguidedStats/guides/chartData (implicit, entries without `schemaVersion`)
+ * 2: + a11yStats, efficiencyStats (agent-only runtime, uncached tokens), per-task runtime/token chartData
+ */
+export const SUMMARY_SCHEMA_VERSION = 2;
 
 /**
  * @typedef {Object} GuideSummary
@@ -40,6 +52,14 @@ import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js'
  */
 
 /**
+ * Runtime/token efficiency of guided vs. unguided runs within one suite.
+ *
+ * Runtime values are agent-only wall-clock time (grader time excluded, see `getAgentRuntimeMs`).
+ * "Paired" counts compare the guided and unguided run(s) of the same task; a task counts as
+ * faster / using fewer tokens when its guided average is <= its unguided average.
+ * Token medians use "uncached" tokens (`total - cached`), the fair cross-agent metric because
+ * Claude Code / Codex CLI report large volumes of cheap cached prompt re-reads.
+ *
  * @typedef {Object} SuiteEfficiencyStats
  * @property {{
  *   guidedMedianMs: number,
@@ -53,7 +73,7 @@ import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js'
  *   pairedTaskCount: number,
  *   guidedTimeouts: number,
  *   unguidedTimeouts: number
- * }} runtime
+ * }} runtime `guidedTimeouts`/`unguidedTimeouts` count runs at or beyond the 600s per-attempt harness timeout.
  * @property {{
  *   guidedUncachedMedian: number,
  *   unguidedUncachedMedian: number,
@@ -71,12 +91,14 @@ import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js'
  *   guidedCachedSharePct: number,
  *   unguidedCachedSharePct: number,
  *   fewerUncachedTokensTaskPct: number,
- *   fewerUncachedTasksCount: number
+ *   fewerUncachedTasksCount: number,
+ *   pairedTaskCount: number
  * }} tokens
  */
 
 /**
  * @typedef {Object} SuiteSummary
+ * @property {number} schemaVersion See `SUMMARY_SCHEMA_VERSION`.
  * @property {string} testId
  * @property {string} timestamp
  * @property {string} agent
@@ -256,18 +278,18 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
                     }
                 });
 
-                // Runtime & token tracking
+                // Runtime & token tracking (agent time only; the 600s threshold is the harness per-attempt timeout)
                 const pairKey = `${task}|||${guide}`;
                 const pairBucket = pairedTaskEfficiency[pairKey];
-                const runtimeMs = getRunDurationMs(run);
+                const runtimeMs = getAgentRuntimeMs(run);
                 if (runtimeMs > 0) {
                     if (runType === 'guided') {
                         guidedRuntimes.push(runtimeMs);
-                        if (runtimeMs >= 300000) guidedTimeouts += 1;
+                        if (runtimeMs >= TIMEOUT_MS) guidedTimeouts += 1;
                         if (pairBucket) pairBucket.guidedMs.push(runtimeMs);
                     } else {
                         unguidedRuntimes.push(runtimeMs);
-                        if (runtimeMs >= 300000) unguidedTimeouts += 1;
+                        if (runtimeMs >= TIMEOUT_MS) unguidedTimeouts += 1;
                         if (pairBucket) pairBucket.unguidedMs.push(runtimeMs);
                     }
                 }
@@ -428,7 +450,8 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             guidedCachedSharePct: guidedTotalTokenSum > 0 ? Math.round((guidedCachedTokenSum / guidedTotalTokenSum) * 100) : 0,
             unguidedCachedSharePct: unguidedTotalTokenSum > 0 ? Math.round((unguidedCachedTokenSum / unguidedTotalTokenSum) * 100) : 0,
             fewerUncachedTokensTaskPct: pairedTokensCount > 0 ? Math.round((fewerUncachedCount / pairedTokensCount) * 100) : 0,
-            fewerUncachedTasksCount: fewerUncachedCount
+            fewerUncachedTasksCount: fewerUncachedCount,
+            pairedTaskCount: pairedTokensCount
         }
     };
 
@@ -441,6 +464,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     const chartData = calculateChartData(results);
 
     return {
+        schemaVersion: SUMMARY_SCHEMA_VERSION,
         testId: testId,
         timestamp: evalsData.timestamp || forcedTimestamp || new Date().toISOString(),
         agent: evalsData.agent || 'unknown',
