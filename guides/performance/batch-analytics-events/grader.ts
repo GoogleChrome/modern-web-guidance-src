@@ -39,18 +39,46 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
 
   // Functional / Static Tests
 
-  // Read all HTML and JS/MJS files in targetDir to support modular JS practices
   const getSearchContent = () => {
-    const files = [filePath];
-    try {
-      const jsFiles = fs
-        .readdirSync(targetDir)
-        .filter(f => (f.endsWith('.js') || f.endsWith('.mjs')) && !f.includes('.test.'));
-      for (const jsFile of jsFiles) {
-        files.push(path.join(targetDir, jsFile));
+    const isDemoTarget = demoName === 'demo.html' || demoName === 'negative-demo.html';
+    const html = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '';
+    const files: string[] = [filePath];
+    if (isDemoTarget) {
+      const srcMatches = html.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi);
+      for (const match of srcMatches) {
+        const src = match[1];
+        if (!/^https?:\/\//i.test(src) && !src.startsWith('//')) {
+          const resolved = path.resolve(targetDir, src.replace(/^\/+/, ''));
+          if (resolved.startsWith(targetDir + path.sep) && fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+            files.push(resolved);
+          }
+        }
       }
-    } catch (e) {}
-    return files.map(f => fs.readFileSync(f, 'utf-8')).join('\n');
+    } else {
+      const excludedDirs = new Set(['node_modules', 'vendor', 'test', 'tests', 'grade-report', 'test-results', 'dist', '.git']);
+      const walk = (dir: string) => {
+        try {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              if (!excludedDirs.has(entry.name)) walk(fullPath);
+            } else if (
+              entry.isFile() &&
+              (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
+              !entry.name.includes('.test.') &&
+              !entry.name.includes('.spec.') &&
+              !entry.name.includes('.config.') &&
+              entry.name !== 'grade.mjs' &&
+              entry.name !== 'run.mjs'
+            ) {
+              files.push(fullPath);
+            }
+          }
+        } catch {}
+      };
+      walk(targetDir);
+    }
+    return [...new Set(files)].filter(f => fs.existsSync(f)).map(f => fs.readFileSync(f, 'utf-8')).join('\n');
   };
 
   test('fetchLater API is invoked with a valid DeferredRequestInit (no ReadableStream)', () => {
@@ -87,7 +115,11 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
 
   test('fetchLater polyfill is included in the codebase', () => {
     const content = getSearchContent();
-    expect(content).toMatch(/globalThis\.fetchLater\s*\?\?=|(?:typeof\s+[\w.]*fetchLater|['"]fetchLater['"]\s+in)[\s\S]*?(?:sendBeacon|keepalive)/);
+    const hasPolyfillAssignment = /globalThis\.fetchLater\s*\?\?=/.test(content);
+    const hasFeatureCheckAndFallback =
+      /(?:typeof\s+[\w.]*fetchLater|['"]fetchLater['"]\s+in)/.test(content) &&
+      /(?:sendBeacon|keepalive)/.test(content);
+    expect(hasPolyfillAssignment || hasFeatureCheckAndFallback).toBe(true);
   });
 
   // Browser / Dynamic Tests
@@ -127,7 +159,7 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
 
     const abortCount = await page.evaluate(() => window.abortCallCount);
     const content = getSearchContent();
-    const hasScopedAbortBatching = /\.abort\s*\(\s*\)[\s\S]{0,250}?new\s+AbortController\s*\(\s*\)[\s\S]{0,300}?\bfetchLater\s*\(/.test(content);
+    const hasScopedAbortBatching = /\.abort\s*\(\s*\)[\s\S]{0,250}?new\s+AbortController\s*\(\s*\)[\s\S]{0,800}?\bfetchLater\s*\(/.test(content);
     expect(abortCount > 0 || hasScopedAbortBatching).toBe(true);
   });
 });

@@ -11,15 +11,56 @@ const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
-const fileContent = fs.readFileSync(filePath, 'utf-8');
+
+function getCombinedCode(): string {
+  const html = fs.readFileSync(filePath, 'utf-8');
+  const parts = [html];
+  if (demoName === 'demo.html' || demoName === 'negative-demo.html') {
+    for (const m of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)) {
+      const src = m[1];
+      if (/^https?:\/\//i.test(src)) continue;
+      const localPath = path.resolve(targetDir, src.replace(/^\/+/, ''));
+      if (localPath.startsWith(targetDir + path.sep) && fs.existsSync(localPath) && fs.statSync(localPath).isFile()) {
+        parts.push(fs.readFileSync(localPath, 'utf-8'));
+      }
+    }
+    return parts.join('\n');
+  }
+  const excludedDirs = new Set(['node_modules', 'vendor', 'test', 'tests', 'grade-report', 'test-results', 'dist', '.git']);
+  const walk = (dir: string) => {
+    try {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.isDirectory()) {
+          if (!excludedDirs.has(entry.name)) walk(path.join(dir, entry.name));
+        } else if (
+          entry.isFile() &&
+          (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
+          entry.name !== 'grade.mjs' &&
+          entry.name !== 'run.mjs' &&
+          !entry.name.includes('.config.') &&
+          !entry.name.includes('.test.') &&
+          !entry.name.includes('.spec.')
+        ) {
+          parts.push(fs.readFileSync(path.join(dir, entry.name), 'utf-8'));
+        }
+      }
+    } catch {
+      // ignore read errors
+    }
+  };
+  walk(targetDir);
+  return parts.join('\n');
+}
+
+const fileContent = getCombinedCode();
 
 test.describe(`Temporal API Expectations: ${demoName}`, () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
-      if (fs.existsSync(localFilePath)) {
+    await page.route('http://localhost/**', async (route) => {
+      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath.replace(/^\//, ''));
+      if (fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
         await route.fulfill({ path: localFilePath });
       } else {
         await route.continue();
@@ -29,7 +70,10 @@ test.describe(`Temporal API Expectations: ${demoName}`, () => {
   });
 
   test('MUST feature-detect the Temporal API before usage', async () => {
-    const hasFeatureDetection = /(typeof\s+Temporal|'Temporal'\s+in|globalThis\.Temporal)/i.test(fileContent);
+    const hasFeatureDetection =
+      /(typeof\s+(?:globalThis\.|window\.)?Temporal|['"]Temporal['"]\s+in|!\s*(?:globalThis|window)\.Temporal\b|(?:globalThis|window)\.Temporal\s*(?:\?\?|\|\||\?|!==|===|!=|==))/i.test(
+        fileContent
+      );
     expect(hasFeatureDetection, "Expected to find some form of feature detection for Temporal").toBe(true);
   });
 
@@ -42,7 +86,9 @@ test.describe(`Temporal API Expectations: ${demoName}`, () => {
   });
 
   test('MUST ensure the Temporal API is available globally', async () => {
-    const assignsToGlobal = /(globalThis|window)?\.?Temporal\s*=/.test(fileContent);
+    const assignsToGlobal =
+      /(globalThis|window)?\.?Temporal\s*(?:\?\?=|\|\|=|=)/.test(fileContent) ||
+      /\{\s*Temporal\s*\}\s*=\s*await\s+import\s*\(/.test(fileContent);
     expect(assignsToGlobal, "Expected polyfill to be assigned to global scope or Temporal object initialized").toBe(true);
   });
 

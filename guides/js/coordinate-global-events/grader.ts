@@ -144,17 +144,23 @@ test.beforeEach(async ({ page }) => {
 test('should conditionally load polyfill only if native support is absent', async ({ page }) => {
   // Inject the native mock BEFORE loading the page so that typeof Temporal !== 'undefined'
   await page.addInitScript(() => {
+    const mockZdt = {
+      withTimeZone: () => ({
+        toString: () => '2025-07-01T14:00:00-04:00[UTC]',
+        offset: '+00:00',
+        toPlainTime: () => ({ hour: 14, minute: 0, equals: () => true })
+      }),
+      offset: '+00:00',
+      toPlainTime: () => ({ hour: 14, minute: 0, equals: () => true })
+    };
     (window as any).__nativeTemporalMock = {
       ZonedDateTime: {
-        from: () => ({
-          withTimeZone: () => ({
-            toString: () => '2025-07-01T14:00:00-04:00[UTC]',
-            offset: '+00:00',
-            toPlainTime: () => ({ hour: 14, minute: 0, equals: () => true })
-          }),
-          offset: '+00:00',
-          toPlainTime: () => ({ hour: 14, minute: 0, equals: () => true })
-        })
+        from: () => mockZdt,
+        compare: () => 0,
+        prototype: {
+          withTimeZone: mockZdt.withTimeZone,
+          toPlainTime: mockZdt.toPlainTime
+        }
       }
     };
   });

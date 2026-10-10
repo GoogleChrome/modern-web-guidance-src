@@ -85,6 +85,11 @@ test.describe('Temporal Interval Manager Grader', () => {
           from: (_str: string) => {
             window.__mockTemporalCalled = true;
             return mockPlainDate;
+          },
+          prototype: {
+            add: () => mockPlainDate,
+            until: () => ({ days: 30 }),
+            since: () => ({ days: 30 })
           }
         }
       };
@@ -149,15 +154,45 @@ test.describe('Temporal Interval Manager Grader', () => {
     const isGlobalTemporalDefined = await page.evaluate(() => {
       return typeof globalThis.Temporal !== 'undefined' && typeof globalThis.Temporal.PlainDate === 'function';
     });
-    const codeFiles = [targetFile];
-    try {
-      for (const f of fs.readdirSync(targetDir)) {
-        if ((f.endsWith('.js') || f.endsWith('.mjs')) && !f.includes('.test.')) {
-          codeFiles.push(path.join(targetDir, f));
+    const isDemoTarget = targetFileName === 'demo.html' || targetFileName === 'negative-demo.html';
+    const html = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, 'utf-8') : '';
+    const files: string[] = [targetFile];
+    if (isDemoTarget) {
+      const srcMatches = html.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi);
+      for (const match of srcMatches) {
+        const src = match[1];
+        if (!/^https?:\/\//i.test(src) && !src.startsWith('//')) {
+          const resolved = path.resolve(targetDir, src.replace(/^\/+/, ''));
+          if (resolved.startsWith(targetDir + path.sep) && fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+            files.push(resolved);
+          }
         }
       }
-    } catch {}
-    const allCode = codeFiles.map(f => fs.readFileSync(f, 'utf-8')).join('\n');
+    } else {
+      const excludedDirs = new Set(['node_modules', 'vendor', 'test', 'tests', 'grade-report', 'test-results', 'dist', '.git']);
+      const walk = (dir: string) => {
+        try {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              if (!excludedDirs.has(entry.name)) walk(fullPath);
+            } else if (
+              entry.isFile() &&
+              (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
+              !entry.name.includes('.test.') &&
+              !entry.name.includes('.spec.') &&
+              !entry.name.includes('.config.') &&
+              entry.name !== 'grade.mjs' &&
+              entry.name !== 'run.mjs'
+            ) {
+              files.push(fullPath);
+            }
+          }
+        } catch {}
+      };
+      walk(targetDir);
+    }
+    const allCode = [...new Set(files)].filter(f => fs.existsSync(f)).map(f => fs.readFileSync(f, 'utf-8')).join('\n');
     const assignsModuleTemporal =
       polyfillRequested &&
       (/(?:globalThis\.Temporal|window\.Temporal|\{\s*Temporal(?:\s*:\s*\w+)?\s*\})\s*=\s*[\s\S]{0,80}\bimport\s*\(/.test(allCode) ||
