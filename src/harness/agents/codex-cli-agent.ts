@@ -249,7 +249,8 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
       if (typeof entry.payload?.model === 'string') {
         modelCounts[entry.payload.model] = (modelCounts[entry.payload.model] || 0) + 1;
       }
-      const info = (entry.type === 'token_count' ? entry : entry.payload)?.info?.total_token_usage;
+      const info = (entry.type === 'token_count' ? entry : entry.payload)?.info?.total_token_usage
+        || (entry.type === 'token_usage_record' ? entry.payload?.thread_token_usage : undefined);
       if (info) {
         lastTotal = info.total_tokens || 0;
         lastCached = info.cached_input_tokens || 0;
@@ -437,7 +438,7 @@ export function loadCodexLogs(dir: string): { logData: any[]; subagentsMap: Reco
   }
 
   for (const file of subFiles) {
-    const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+    const subId = file.replace(/^(?:subagent-.*subagents-agent-|subagent-(?:subagents-)?(?:agent-)?)/, '').replace(/\.jsonl$/, '');
     subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
   }
 
