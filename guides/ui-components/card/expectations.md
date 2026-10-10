@@ -1,0 +1,11 @@
+- Independently understandable content uses an `<article>`; a single-destination link may wrap that article if it contains no other interactive elements.
+- Each card's ancestor wrapper establishes an inline-size query container (`container-type: inline-size`).
+- A card with media stacks its media above its text content in a single column when its container is narrow, regardless of viewport width.
+- A card with media places its media in a side column beside its text content when its container is wide.
+- A card without media renders in a single-column layout at both narrow and wide container widths.
+- When card images or video fill a fixed-ratio area, `aspect-ratio` defines the area and `object-fit` prevents distortion; otherwise, media preserves its intrinsic ratio.
+- Informative card images have a non-empty `alt` attribute.
+- When a content card has a primary destination and secondary actions, its heading contains the primary `<a>` link, and secondary actions remain separate native controls outside the link.
+- Choice cards use native radio buttons or checkboxes with associated labels; dropdown choices use a native `<select>` and `<option>` elements.
+- Focusing an interactive control inside a card displays a visible focus indicator on the focused control itself and a focus indicator on the parent card.
+- The visual order of card regions matches their DOM reading order across container sizes.
