@@ -1,0 +1,250 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..037700f 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,29 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  // Out-of-order HTML streaming: imperative setters/streaming setters.
++  // Not yet part of lib.dom.d.ts, so declared here until they reach Baseline.
++  interface HTMLSetterOptions {
++    sanitizer?: unknown;
++  }
++
++  interface HTMLStreamingSetterOptions extends HTMLSetterOptions {
++    runScripts?: boolean;
++  }
++
++  interface Element {
++    setHTML(html: string, options?: HTMLSetterOptions): void;
++    setHTMLUnsafe(html: string, options?: HTMLStreamingSetterOptions): void;
++    streamHTML(options?: HTMLSetterOptions): WritableStream<string>;
++    streamHTMLUnsafe(options?: HTMLStreamingSetterOptions): WritableStream<string>;
++  }
++
++  interface Response {
++    // Convenience method that decodes the response body to a stream of text
++    // chunks without a manual TextDecoderStream step.
++    textStream(): ReadableStream<string>;
++  }
+ }
+ 
+ export {};
+\ No newline at end of file
+diff --git a/src/pages/api/trending-fragment.ts b/src/pages/api/trending-fragment.ts
+new file mode 100644
+index 0000000..50e3fe5
+--- /dev/null
++++ b/src/pages/api/trending-fragment.ts
+@@ -0,0 +1,17 @@
++import type { APIRoute } from 'astro';
++import { computePopularity, renderTrendingContent } from '../../utils/popularity';
++
++// Returns an HTML fragment (not JSON) so the client can pipe it straight
++// into the DOM with the imperative HTML streaming setters, instead of
++// fetching JSON and re-building markup by hand.
++export const GET: APIRoute = async ({ url }) => {
++  const id = url.searchParams.get('id') ?? 'unknown';
++  const popularity = await computePopularity(id);
++
++  return new Response(renderTrendingContent(popularity), {
++    status: 200,
++    headers: {
++      'Content-Type': 'text/html; charset=utf-8',
++    },
++  });
++};
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..8deb99d 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import { computePopularity, renderTrendingContent, renderTrendingSkeleton } from '../../utils/popularity';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -115,6 +116,48 @@ const isBookmarked = readingList.includes(article.slug);
+         </section>
+     </article>
+ 
++    <!-- TRENDING NOW WIDGET -->
++    <!--
++        Demonstrates out-of-order HTML streaming: the skeleton below is sent
++        to the client immediately inside a <?start>/<?end> range. The real
++        content (which depends on a slow, database-heavy lookup) is rendered
++        further down this same template and streamed in later in the
++        response, patching the placeholder via a matching <template for>.
++    -->
++    <section
++        id="trending-now-widget"
++        data-trending-widget
++        data-article-id={article.id}
++        aria-live="polite"
++        class="max-w-3xl mx-auto px-4 mb-8"
++    >
++        <div class="rounded-lg border border-gray-200 p-4 md:p-6 transition-colors" style="min-height: 108px">
++            <div class="flex items-center justify-between mb-3">
++                <h2 class="text-lg font-brand text-gray-900">Trending Now</h2>
++                <button
++                    id="trending-refresh-button"
++                    type="button"
++                    class="text-xs font-semibold text-amber-600 hover:text-amber-500 hover:underline disabled:opacity-50"
++                >
++                    Refresh
++                </button>
++            </div>
++            <!-- Stable min-height on both the placeholder and the real content below prevents layout shift when the patch happens. -->
++            <div id="trending-now-content" style="min-height: 56px">
++                <Fragment set:html={`<?start name="trending-now">${renderTrendingSkeleton()}<?end>`} />
++            </div>
++        </div>
++    </section>
++
++    {(async () => {
++        // This await happens while rendering the template body (not in the
++        // frontmatter), so everything above has already been flushed to the
++        // client before we wait on the slow lookup below.
++        const popularity = await computePopularity(article.id);
++        const patch = `<template for="trending-now"><div id="trending-now-content" style="min-height: 56px">${renderTrendingContent(popularity)}</div></template>`;
++        return <Fragment set:html={patch} />;
++    })()}
++
+     <!-- RELATED ARTICLES SECTION -->
+     <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
+         <div class="grid md:grid-cols-3 gap-6">
+@@ -123,4 +166,40 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
++
++<script>
++    // Imperative counterpart to the declarative streaming above: refreshing
++    // pipes a fetch response straight into the DOM instead of the
++    // fetch-JSON-then-rebuild-markup approach used elsewhere in this app.
++    const widget = document.getElementById('trending-now-widget');
++    const button = document.getElementById('trending-refresh-button');
++    const target = document.getElementById('trending-now-content');
++
++    button?.addEventListener('click', async () => {
++        if (!(button instanceof HTMLButtonElement) || !widget || !target) return;
++
++        button.disabled = true;
++        try {
++            const articleId = widget.dataset.articleId ?? '';
++            const response = await fetch(
++                `${import.meta.env.BASE_URL}api/trending-fragment?id=${encodeURIComponent(articleId)}`,
++            );
++
++            if (typeof target.streamHTMLUnsafe === 'function' && typeof response.textStream === 'function' && response.body) {
++                // The fragment is generated server-side from trusted data and
++                // contains a <script>, which a "safe" setter would strip. It's
++                // trusted content, so we use the unsafe streaming setter and
++                // explicitly opt in to running that script.
++                await response.textStream().pipeTo(target.streamHTMLUnsafe({ runScripts: true }));
++            } else {
++                // Fallback for browsers without the native (or polyfilled)
++                // HTML streaming setters: fetch the whole fragment and set it
++                // without executing its script.
++                target.innerHTML = await response.text();
++            }
++        } finally {
++            button.disabled = false;
++        }
++    });
++</script>
+\ No newline at end of file
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..77029cc 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,9 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++/* Briefly highlights a widget after out-of-order streamed content patches it in. */
++[data-trending-widget].trending-pulse > div {
++  background-color: var(--color-amber-50, #fffbeb);
+ }
+\ No newline at end of file
+diff --git a/src/utils/popularity.ts b/src/utils/popularity.ts
+new file mode 100644
+index 0000000..5adb285
+--- /dev/null
++++ b/src/utils/popularity.ts
+@@ -0,0 +1,66 @@
++export interface PopularityData {
++  id: string;
++  views: number;
++  trending: boolean;
++}
++
++/**
++ * Simulates an expensive, database-heavy readership lookup. This is
++ * deliberately slow so it's a good candidate to stream in after the rest of
++ * the article shell, rather than blocking the whole page on it.
++ */
++export async function computePopularity(id: string): Promise<PopularityData> {
++  await new Promise((resolve) => setTimeout(resolve, 700));
++
++  return {
++    id,
++    views: Math.floor(Math.random() * 10000) + 500,
++    trending: Math.random() > 0.3,
++  };
++}
++
++// Renders the loading placeholder for the trending widget. Kept the same
++// height as the real content (see renderTrendingContent) so patching it in
++// later doesn't shift the layout.
++export function renderTrendingSkeleton(): string {
++  return `
++    <div class="flex items-center justify-between gap-4" aria-hidden="true">
++      <div class="space-y-2">
++        <div class="h-3 w-28 animate-pulse rounded bg-gray-200"></div>
++        <div class="h-7 w-36 animate-pulse rounded bg-gray-200"></div>
++      </div>
++      <div class="h-6 w-24 animate-pulse rounded-full bg-gray-200"></div>
++    </div>
++  `;
++}
++
++// Renders the final readership content, generated entirely from trusted,
++// server-computed data (no user input is interpolated). Because this markup
++// includes a <script>, it must be patched in with an "unsafe" HTML setter
++// (a safe setter would strip the script tag).
++export function renderTrendingContent(data: PopularityData): string {
++  const views = data.views.toLocaleString();
++  const badge = data.trending
++    ? `<span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">🔥 Trending</span>`
++    : `<span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">Steady</span>`;
++
++  return `
++    <div class="flex items-center justify-between gap-4">
++      <div>
++        <p class="text-sm text-gray-500">Live readership</p>
++        <p class="text-3xl font-brand text-gray-900">${views} views</p>
++      </div>
++      ${badge}
++    </div>
++    <script>
++      (function () {
++        var widget = document.currentScript && document.currentScript.closest('[data-trending-widget]');
++        if (!widget) return;
++        widget.classList.add('trending-pulse');
++        window.setTimeout(function () {
++          widget.classList.remove('trending-pulse');
++        }, 1200);
++      })();
++    </script>
++  `;
++}
