@@ -4,17 +4,19 @@ description: |
   Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip — web APIs evolve rapidly and training weights contain obsolete patterns.
 
   Trigger immediately for:
-  - UI/Layout: Modals, dialogs, popovers, Glassmorphism/backdrop-filters, anchor positioning, container queries, `:has()`, `:user-valid`.
-  - Scroll/Motion: View Transitions, Scroll-driven animations, scroll parallax/reveals.
-  - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization.
-  - System/APIs: Local filesystem access, WebUSB, WebSockets sync, WebAssembly widgets.
-  - Frameworks: Adapting layout/styles in React, Vue, Angular.
+  - UI/Layout: Modals, dialogs, popovers, responsive tables, dark mode, anchor positioning, container queries, `:has()`, `:user-valid`, etc.
+  - Scroll/Motion: View Transitions, Scroll-driven animations, scroll parallax/reveals, etc.
+  - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization, etc.
+  - System/APIs: Passkeys/WebAuthn, WebUSB, WebSockets sync, WebAssembly widgets, etc.
+  - Frameworks: Implementing standard HTML/CSS/DOM capabilities inside React, Vue, Angular, Svelte, etc. (search for the web capability, not the framework).
   - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.
 
   DO NOT trigger for:
-  - Backend: Database SQL, ORMs, Express API routes.
-  - Pipelines: CI/CD deployment, Docker, Actions.
-  - Generic: Local scripts (Python/Go tools), ESLint, Git.
+  - Backend: Database SQL, ORMs, Express API routes, etc.
+  - Build & Test Tooling: Vite, Webpack, tsconfig, ESLint, Playwright/Vitest/Jest configs, package.json dependency upgrades, etc.
+  - Pipelines: CI/CD deployment, Docker, Actions, etc.
+  - Trivial App Edits: Copy/text changes, variable/component renames, dead-code removal, third-party doc lookups, etc.
+  - Generic: Local scripts (Python/Go tools), Git, etc.
 ---
 
 # Modern Web Guidance
@@ -32,7 +34,9 @@ Must use this skill:
 
 ### Step 1. Search Use Cases
 
-Search with an action-oriented query summarizing what you want to achieve using the `search` command. Run `modern-web-guidance` directly with `npx`.
+Run `modern-web-guidance` directly with `npx` using a **2–5 word action-oriented query** for a **single web platform capability or UI pattern**:
+- **Keep queries focused and generic**: Omit framework/library names (`React`, `Vue`, `Tailwind`, etc.) and app-specific context (product/route/asset names). Split multi-feature tasks into separate `search` calls.
+- **Example**: Search `"light dismiss dialog"` or `"responsive data table"`, **not** `"dialog"` (too terse) or `"close React settings modal on outside click"` (framework/app noise).
 
 ```sh
 npx -y modern-web-guidance@latest search "<query>" --skill-version SKILL_VERSION
