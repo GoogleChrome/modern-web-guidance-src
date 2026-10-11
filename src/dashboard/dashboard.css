@@ -526,17 +526,25 @@ dialog#modal[open] {
   background-color: var(--card-bg);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   margin-bottom: 2rem;
-  padding: 0.75rem;
+  padding: 0.65rem 0.9rem;
   font-family: var(--font-label);
   font-size: 0.75rem;
+  line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;
   transition: transform 0.2s;
 }
 
+.secondary-btn svg {
+  display: block;
+  flex-shrink: 0;
+}
 
 .secondary-btn:hover {
   background-color: var(--hover-bg);

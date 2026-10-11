@@ -9,7 +9,7 @@
  *
  * The hero never touches the browse UI below it (landing.js owns that).
  */
-import { getAccessToken, escapeHtml, formatDuration, formatTokens } from './utils.js';
+import { getAccessToken, escapeHtml, formatDuration, formatTokens, getAgentBadge } from './utils.js';
 import { ApiClient } from './api.js';
 
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
@@ -167,10 +167,10 @@ function renderPending() {
     const list = document.getElementById('hero-takeaways');
     if (list) {
         list.innerHTML = [
-            ['overall', 'Web best practices', 'more best-practice checks passed with MWG'],
-            ['a11y', 'Accessibility', 'more accessibility checks passed with MWG'],
-            ['tokens', 'Tokens', 'fewer uncached tokens per task for some agents'],
-            ['time', 'Time', 'faster task completion for some agents']
+            ['overall', 'Web best practices', 'pass-rate lift across all tasks'],
+            ['a11y', 'Accessibility', 'pass-rate lift on a11y checks'],
+            ['tokens', 'Tokens', 'uncached tokens per task'],
+            ['time', 'Time', 'median task completion']
         ].map(([metric, label, statement]) => pendingCard(metric, label, statement)).join('');
     }
     const body = document.getElementById('agent-table-body');
@@ -184,14 +184,74 @@ function renderPending() {
 /** @param {HeadlineInsights} insights */
 function renderEyebrow(insights) {
     const agentsEl = document.getElementById('hero-lede-agents');
-    if (agentsEl && insights.families.length) agentsEl.textContent = joinNames(insights.families.map(f => FAMILY_HINT[f.id] ? `${f.label} (${FAMILY_HINT[f.id]})` : f.label));
+    if (agentsEl && insights.families.length) {
+        agentsEl.innerHTML = joinNames(insights.families.map(f => {
+            const label = FAMILY_HINT[f.id] ? `${escapeHtml(f.label)} (${escapeHtml(FAMILY_HINT[f.id])})` : escapeHtml(f.label);
+            return `<span class="nowrap">${getAgentBadge(f.id)}${label}</span>`;
+        }));
+    }
     const el = document.getElementById('hero-eyebrow');
     if (!el) return;
     const latest = latestDateOf(insights);
     const n = insights.pooled?.suiteCount || 0;
     // The run-count segment is hidden on phones (hero.css) — it is repeated in the first card's qualifier.
     const detail = n > 0 ? `<span class="eyebrow-detail"> · ${n} recent ${n === 1 ? 'run' : 'runs'} across ${insights.families.length} agent ${insights.families.length === 1 ? 'family' : 'families'}</span>` : '';
-    el.innerHTML = `Nightly evaluations${detail}${latest ? ` · latest data <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
+    el.innerHTML = `<span class="hero-live-dot" aria-hidden="true"></span>Nightly evaluations${detail}${latest ? ` · latest data <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
+}
+
+/**
+ * Renders the visual dumbbell bar + unguided → guided rate pair inside a hero takeaway column.
+ * @param {number} uRate
+ * @param {number} gRate
+ */
+function renderTakeawayDumbbell(uRate, gRate) {
+    const u = Math.max(0, Math.min(100, Math.round(uRate || 0)));
+    const g = Math.max(0, Math.min(100, Math.round(gRate || 0)));
+    const lo = Math.min(u, g);
+    const span = Math.max(0, Math.abs(g - u));
+    return `
+        <div class="takeaway-dumbbell" aria-hidden="true">
+            <div class="suite-dumbbell-track takeaway-track">
+                <div class="connector" style="left: calc(${lo}% + 2px); width: calc(${span}% - 4px);"></div>
+                <div class="dot unguided" style="left: calc(${u}% - 4px);"></div>
+                <div class="dot guided" style="left: calc(${g}% - 4px);"></div>
+            </div>
+            <div class="takeaway-dumbbell-rates">
+                <span class="rate-u">${u}%</span>
+                <span class="rate-arrow">→</span>
+                <strong class="rate-g">${g}%</strong>
+            </div>
+        </div>`;
+}
+
+/**
+ * Renders a compact 3-row agent list with colored glyphs and semantic delta pills for Tokens / Time.
+ * @param {FamilyInsight[]} fams
+ * @param {'tokens' | 'runtime'} key
+ */
+function renderTakeawayAgentRows(fams, key) {
+    const sorted = [...fams].sort((a, b) => {
+        const da = key === 'tokens' ? tokDelta(a) : rtDelta(a);
+        const db = key === 'tokens' ? tokDelta(b) : rtDelta(b);
+        return da - db;
+    });
+    return `<span class="takeaway-agent-rows">${sorted.map(f => {
+        if (key === 'tokens' && f.tokens) {
+            const d = Math.round(tokDelta(f));
+            const isWin = d < 0;
+            const pillClass = isWin ? 'eff-pill positive' : 'eff-pill muted';
+            const pillText = isWin ? `▼ ${Math.abs(d)}% fewer` : `▲ +${Math.abs(d)}% more`;
+            return `<span class="takeaway-agent-row"><span class="takeaway-agent-name">${getAgentBadge(f.id)}${escapeHtml(f.label)}</span><span class="${pillClass}">${pillText}</span></span>`;
+        }
+        if (key === 'runtime' && f.runtime) {
+            const deltaS = Math.round((f.runtime.guidedMedianMs - f.runtime.unguidedMedianMs) / 1000);
+            const isWin = deltaS < 0;
+            const pillClass = isWin ? 'eff-pill positive' : 'eff-pill muted';
+            const pillText = isWin ? `▼ −${Math.abs(deltaS)}s median` : `▲ +${Math.abs(deltaS)}s median`;
+            return `<span class="takeaway-agent-row"><span class="takeaway-agent-name">${getAgentBadge(f.id)}${escapeHtml(f.label)}</span><span class="${pillClass}">${pillText}</span></span>`;
+        }
+        return '';
+    }).filter(Boolean).join('')}</span>`;
 }
 
 /** @param {HeadlineInsights} insights */
@@ -213,34 +273,36 @@ function renderTakeaways(insights) {
         cards.push(takeawayCard({
             metric: 'overall',
             label: 'Web best practices',
-            figure: `${signed(o.upliftPp, 0)}<span class="unit"> pp</span>`,
+            figure: `<span class="figure-val">${signed(o.upliftPp, 0)}</span><span class="unit"> pp</span>`,
             figureText: `${signed(o.upliftPp, 0)} percentage points`,
-            statement: 'more best-practice checks passed with MWG',
+            statement: 'pass-rate lift across all tasks',
+            visual: renderTakeawayDumbbell(o.unguidedRate, o.guidedRate),
             qualifier: `<span class="range">${pct(o.unguidedRate)} → ${pct(o.guidedRate)}</span> of ~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} graded checks per mode (deterministic Playwright and static-analysis tests written from each guide's expectations). ${familyNames}; ${runsPhrase}.`,
-            short: `<span class="range">${pct(o.unguidedRate)} → ${pct(o.guidedRate)}</span> of ~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${insights.pooled?.suiteCount || 0} nightly runs, 3 agents`
+            short: `<span class="visually-hidden">${pct(o.unguidedRate)} → ${pct(o.guidedRate)} · </span>~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${insights.pooled?.suiteCount || 0} nightly runs`
         }));
     }
 
     // 2. Accessibility subscore (pooled)
     if (!pooled?.a11y) {
-        cards.push(pendingCard('a11y', 'Accessibility', 'more accessibility checks passed with MWG'));
+        cards.push(pendingCard('a11y', 'Accessibility', 'pass-rate lift on a11y checks'));
     } else {
         const a = pooled.a11y;
         cards.push(takeawayCard({
             metric: 'a11y',
             label: 'Accessibility',
-            figure: `${signed(a.upliftPp, 0)}<span class="unit"> pp</span>`,
+            figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span>`,
             figureText: `${signed(a.upliftPp, 0)} percentage points`,
-            statement: 'more accessibility checks passed with MWG',
+            statement: 'pass-rate lift on a11y checks',
+            visual: renderTakeawayDumbbell(a.unguidedRate, a.guidedRate),
             qualifier: `<span class="range">${pct(a.unguidedRate)} → ${pct(a.guidedRate)}</span> on ~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} accessibility checks per mode${a.guideCount ? ` from ${a.guideCount} guides` : ''} (focus, ARIA, labels, keyboard, motion &amp; contrast). Same agents and runs.`,
-            short: `<span class="range">${pct(a.unguidedRate)} → ${pct(a.guidedRate)}</span> on ~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} a11y checks · same runs`
+            short: `<span class="visually-hidden">${pct(a.unguidedRate)} → ${pct(a.guidedRate)} · </span>~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} a11y checks${a.guideCount ? ` · ${a.guideCount} guides` : ''}`
         }));
     }
 
     // 3. Tokens: per family only (never pooled across families). Name winners and non-winners.
     const tokenFams = fams.filter(f => f.tokens);
     if (!tokenFams.length) {
-        cards.push(pendingCard('tokens', 'Tokens', 'fewer uncached tokens per task for some agents'));
+        cards.push(pendingCard('tokens', 'Tokens', 'uncached tokens per task'));
     } else {
         const winners = tokenFams.filter(f => tokDelta(f) < 0).sort((x, y) => tokDelta(x) - tokDelta(y));
         const others = tokenFams.filter(f => tokDelta(f) >= 0);
@@ -249,21 +311,22 @@ function renderTakeaways(insights) {
             const upTo = winners.length > 1 ? 'up to ' : '';
             cards.push(takeawayCard({
                 metric: 'tokens',
-                label: 'Tokens',
-                figure: `${upTo ? '<span class="prefix">up to </span>' : ''}${bestPct}<span class="unit">% fewer</span>`,
+                label: 'Uncached tokens',
+                figure: `${upTo ? '<span class="prefix">up to </span>' : ''}<span class="figure-val">${bestPct}%</span><span class="unit"> fewer</span>`,
                 figureText: `${upTo}${bestPct} percent fewer`,
-                statement: `uncached tokens per task with MWG on ${joinNames(winners.map(f => f.label))}`,
+                statement: `per task on ${joinNames(winners.map(f => f.label))}`,
                 qualifier: `Median per task: ${winnersDetail(winners, 'tokens')}. ${others.length ? `${joinNames(others.map(f => f.label))} used more uncached tokens overall (${othersDetail(others, 'tokens')})${dissentingModels(others, 'tokens', 'used', 'fewer') ? `, though ${dissentingModels(others, 'tokens', 'used', 'fewer')}` : ''}; raw totals rise far more because ${cachedShareRange(others)} of their tokens are cached prompt re-reads.` : ''}`,
-                short: others.length ? `Median per task · ${othersDetail(others, 'tokens')} (more)` : 'Median per task'
+                short: renderTakeawayAgentRows(tokenFams, 'tokens')
             }));
         } else {
             cards.push(takeawayCard({
                 metric: 'tokens',
-                label: 'Tokens',
+                label: 'Uncached tokens',
                 figure: '<span class="unit">No reduction</span>',
                 figureText: 'No reduction',
                 statement: 'in median uncached tokens for the agents measured',
-                qualifier: `${othersDetail(others, 'tokens')}.`
+                qualifier: `${othersDetail(others, 'tokens')}.`,
+                short: renderTakeawayAgentRows(tokenFams, 'tokens')
             }));
         }
     }
@@ -271,7 +334,7 @@ function renderTakeaways(insights) {
     // 4. Time: per family only.
     const timeFams = fams.filter(f => f.runtime);
     if (!timeFams.length) {
-        cards.push(pendingCard('time', 'Time', 'faster task completion for some agents'));
+        cards.push(pendingCard('time', 'Time', 'median task completion'));
     } else {
         const winners = timeFams.filter(f => rtDelta(f) < 0).sort((x, y) => rtDelta(x) - rtDelta(y));
         const others = timeFams.filter(f => rtDelta(f) >= 0);
@@ -280,21 +343,22 @@ function renderTakeaways(insights) {
             const upTo = winners.length > 1 ? 'up to ' : '';
             cards.push(takeawayCard({
                 metric: 'time',
-                label: 'Time',
-                figure: `${upTo ? '<span class="prefix">up to </span>' : ''}${bestPct}<span class="unit">% faster</span>`,
+                label: 'Completion time',
+                figure: `${upTo ? '<span class="prefix">up to </span>' : ''}<span class="figure-val">${bestPct}%</span><span class="unit"> faster</span>`,
                 figureText: `${upTo}${bestPct} percent faster`,
-                statement: `median task completion with MWG on ${joinNames(winners.map(f => f.label))}`,
+                statement: `median task on ${joinNames(winners.map(f => f.label))}`,
                 qualifier: `${winnersDetail(winners, 'runtime')}. ${others.length ? `${joinNames(others.map(f => f.label))} pay a per-task lookup cost: ${othersDetail(others, 'runtime')}${dissentingModels(others, 'runtime', 'finished', 'faster') ? ` (${dissentingModels(others, 'runtime', 'finished', 'faster')})` : ''}.` : ''}`,
-                short: others.length ? `Median per task · ${othersShort(others)} (slower)` : 'Median per task'
+                short: renderTakeawayAgentRows(timeFams, 'runtime')
             }));
         } else {
             cards.push(takeawayCard({
                 metric: 'time',
-                label: 'Time',
+                label: 'Completion time',
                 figure: '<span class="unit">No speedup</span>',
                 figureText: 'No speedup',
                 statement: 'in median task time for the agents measured',
-                qualifier: `${othersDetail(others, 'runtime')}.`
+                qualifier: `${othersDetail(others, 'runtime')}.`,
+                short: renderTakeawayAgentRows(timeFams, 'runtime')
             }));
         }
     }
@@ -319,9 +383,8 @@ function pendingCard(metric, label, statement) {
 }
 
 /**
- * @param {{ metric: string, label: string, figure: string, figureText: string, statement: string, qualifier: string, short?: string }} c
- *   `short` is a one-line qualifier used on narrow containers (phones) so all four figures fit one screen;
- *   the full qualifier is shown at ≥40rem (see hero.css).
+ * @param {{ metric: string, label: string, figure: string, figureText: string, statement: string, visual?: string, qualifier: string, short?: string }} c
+ *   `short` is a compact visual/scannable summary; `qualifier` is the full screen-reader / detailed text.
  */
 function takeawayCard(c) {
     const short = c.short || c.qualifier;
@@ -330,6 +393,7 @@ function takeawayCard(c) {
             <h3 class="takeaway-label">${c.label}</h3>
             <p class="takeaway-figure"><span aria-hidden="true">${c.figure}</span><span class="visually-hidden">${escapeHtml(c.figureText)}</span></p>
             <p class="takeaway-statement">${c.statement}</p>
+            ${c.visual || ''}
             <p class="takeaway-qualifier takeaway-qualifier-full">${c.qualifier}</p>
             <p class="takeaway-qualifier takeaway-qualifier-short">${short}</p>
         </li>`;
@@ -358,7 +422,7 @@ function renderAgentTable(insights) {
 
         return `
             <tr>
-                <th scope="row">${escapeHtml(f.label)}</th>
+                <th scope="row">${getAgentBadge(f.id)}${escapeHtml(f.label)}</th>
                 <td data-label="Pass rate">${rateCell(f.overall)}</td>
                 <td data-label="Accessibility">${rateCell(f.a11y)}</td>
                 <td data-label="Median time">${runtimeCell(f)}</td>
@@ -586,18 +650,6 @@ function cachedShareRange(fams) {
 /** @param {number} v */
 function fmtCompact(v) {
     return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(Math.round(v || 0)).toLowerCase();
-}
-
-/**
- * Compact "Claude Code +5s, Codex CLI +17s" for the phone-sized qualifier.
- * @param {FamilyInsight[]} fams
- */
-function othersShort(fams) {
-    return fams.map(f => {
-        if (!f.runtime) return '';
-        const deltaS = Math.round((f.runtime.guidedMedianMs - f.runtime.unguidedMedianMs) / 1000);
-        return `${f.label} ${deltaS >= 0 ? '+' : '−'}${Math.abs(deltaS)}s`;
-    }).filter(Boolean).join(', ');
 }
 
 /** @param {string[]} names */

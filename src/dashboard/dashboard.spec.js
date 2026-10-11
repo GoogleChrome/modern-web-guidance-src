@@ -372,3 +372,51 @@ test.describe('Browse all runs', () => {
     await expect(page.locator('.task-accordion-header').first()).toBeVisible();
   });
 });
+
+test.describe('A/B Task Spotlight & Progressive Disclosure IA', () => {
+  test('renders 6 real eval tasks and switches tasks/agents cleanly with zero console errors', async ({ page }) => {
+    /** @type {string[]} */
+    const consoleErrors = [];
+    page.on('console', msg => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text());
+    });
+    page.on('pageerror', err => consoleErrors.push(err.message));
+
+    await page.goto('/');
+
+    const spotlight = page.locator('#ab-spotlight');
+    await expect(spotlight).toBeVisible();
+    await expect(spotlight).toHaveAttribute('aria-busy', 'false');
+    await expect(spotlight.locator('#ab-spotlight-heading')).toContainText('See it on a real task: Unguided vs. Guided');
+
+    // 6 curated task tabs and 3 agent family buttons
+    const taskPills = spotlight.locator('#ab-task-pills .ab-task-pill');
+    await expect(taskPills).toHaveCount(6);
+    const agentPills = spotlight.locator('#ab-agent-pills .ab-agent-pill');
+    await expect(agentPills).toHaveCount(3);
+
+    // Default task is swipe-to-remove on Claude Code (0/21 -> 21/21, +21 checks)
+    await expect(taskPills.first()).toHaveAttribute('aria-pressed', 'true');
+    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+21 checks');
+    await expect(spotlight.locator('#ab-run-provenance a[href*="guide.html"]')).toHaveAttribute('href', /guide\.html\?guide=swipe-to-remove/);
+
+    // Grader assertions table is shown directly with no preview/diff tabs or filter buttons
+    await expect(spotlight.locator('#ab-lens-tablist')).toHaveCount(0);
+    await expect(spotlight.locator('.ab-checks-filters')).toHaveCount(0);
+    const checkRows = spotlight.locator('.ab-checks-table tbody tr');
+    await expect(checkRows).toHaveCount(21);
+
+    // Switch task to Custom select (branded-select-styling, 0/12 -> 12/12, +12 checks)
+    await taskPills.nth(1).click();
+    await expect(taskPills.nth(1)).toHaveAttribute('aria-pressed', 'true');
+    await expect(spotlight.locator('#ab-run-provenance a[href*="guide.html"]')).toHaveAttribute('href', /guide\.html\?guide=branded-select-styling/);
+    await expect(checkRows).toHaveCount(12);
+
+    // Switch agent family to Antigravity CLI (2/12 -> 12/12, +10 checks)
+    await agentPills.nth(1).click();
+    await expect(agentPills.nth(1)).toHaveAttribute('aria-pressed', 'true');
+    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+10 checks');
+
+    expect(consoleErrors).toEqual([]);
+  });
+});

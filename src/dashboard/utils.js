@@ -421,6 +421,13 @@ export function getAccessToken() {
  * @param {(() => void) | undefined} [onAuthSuccess]
  */
 export function initGoogleAuth(onAuthSuccess) {
+    if (typeof document !== 'undefined' && !window.google?.accounts && !document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+    }
     const init = () => {
         if (!window.google || !window.google.accounts) {
             // Wait for script to load
@@ -515,5 +522,24 @@ export function $(query, context) {
     throw new Error(`querySelector('${query}') not found`);
   }
   return /** @type {E} */ (result);
+}
+
+/**
+ * Returns the colored decorative glyph badge for an agent family or agent string.
+ * @param {string} agentName
+ * @returns {string}
+ */
+export function getAgentBadge(agentName) {
+    const name = (agentName || '').toLowerCase();
+    if (name.includes('gemini') || name.includes('jetski') || name.includes('antigravity')) {
+        return '<span class="agent-badge gemini" aria-hidden="true">✦</span>';
+    }
+    if (name.includes('codex') || name.includes('openai')) {
+        return '<span class="agent-badge openai" aria-hidden="true">❂</span>';
+    }
+    if (name.includes('claude')) {
+        return '<span class="agent-badge claude" aria-hidden="true">✱</span>';
+    }
+    return '';
 }
 

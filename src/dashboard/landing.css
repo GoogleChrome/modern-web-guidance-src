@@ -91,6 +91,11 @@
   gap: var(--space-2) var(--space-3);
 }
 
+.header-actions .secondary-btn,
+.browse-controls .secondary-btn {
+  margin-bottom: 0;
+}
+
 .toggle-label {
   display: inline-flex;
   align-items: center;
@@ -204,6 +209,11 @@
 /* Columns with a single distinct value are hidden by landing.js (see syncOptionalColumns). */
 .suites-table.hide-serving :is(th, td):nth-child(3),
 .suites-table.hide-source :is(th, td):nth-child(10) {
+  display: none;
+}
+
+/* Desktop pagination: default to the latest 9 runs (3 per agent family) until "Show all N runs" is clicked. */
+.suites-table.paged-desktop tbody tr:nth-child(n + 10) {
   display: none;
 }
 

@@ -1,0 +1,556 @@
+/*
+ * Use-case Evaluation Spotlight for the landing page (index.html).
+ *
+ * Uses design tokens from dashboard.css (--color-*, --space-*, --font-*).
+ * Distilled per Impeccable craft-floor, distill, and quieter guidelines:
+ * - No outer card wrapper around nested cards; open editorial section with 1px hairlines.
+ * - Single unified comparison frame (.ab-comparison-frame) housing prompt,
+ *   side-by-side scorecard, grader assertion table, and provenance footer.
+ * - Strict 4px/8px spacing scale.
+ */
+
+.ab-spotlight {
+  container: spotlight / inline-size;
+  margin-block-start: var(--space-8);
+  padding-block-start: var(--space-6);
+  border-block-start: 1px solid var(--color-outline-variant);
+}
+
+.ab-spotlight[hidden] {
+  display: none;
+}
+
+/* Header & top control bar ------------------------------------------------ */
+
+.ab-spotlight-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+  margin-block-end: var(--space-4);
+}
+
+.ab-spotlight-heading {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: clamp(1.15rem, 1rem + 0.5vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-on-surface);
+}
+
+.ab-spotlight-sub {
+  margin: var(--space-1) 0 0;
+  font-size: 0.9rem;
+  color: var(--color-on-surface-variant);
+  max-inline-size: 65ch;
+  text-wrap: pretty;
+}
+
+.ab-toolbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Segmented Agent control ------------------------------------------------- */
+
+.ab-agent-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--color-surface-container-low);
+  border: 1px solid var(--color-outline-variant);
+}
+
+.ab-agent-pill {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ab-agent-pill:hover {
+  color: var(--color-on-surface);
+}
+
+.ab-agent-pill[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface-container-lowest));
+  color: var(--color-on-surface);
+  border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-outline-variant));
+  font-weight: 600;
+}
+
+/* Horizontal task tab strip ----------------------------------------------- */
+
+.ab-task-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  border-block-end: 1px solid var(--color-outline-variant);
+  margin-block-end: var(--space-3);
+}
+
+.ab-task-pill {
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) 0;
+  margin-block-end: -1px;
+  border: 0;
+  border-block-end: 2px solid transparent;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.ab-task-pill:hover {
+  color: var(--color-on-surface);
+}
+
+.ab-task-pill[aria-pressed="true"] {
+  color: var(--color-on-surface);
+  font-weight: 600;
+  border-block-end-color: var(--color-primary);
+}
+
+.ab-task-delta {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-accent-success-bg);
+  color: var(--color-accent-success);
+}
+
+/* Unified Comparison Frame ------------------------------------------------ */
+
+.ab-comparison-frame {
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-surface-container-lowest);
+}
+
+/* Shared Prompt Banner (full-width header at top of comparison frame) ----- */
+
+.ab-prompt-banner {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: 10px var(--space-3);
+  border-block-end: 1px solid var(--color-outline-variant);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface-container-lowest));
+}
+
+.ab-prompt-kicker {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.ab-prompt-text {
+  margin: 0;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--color-on-surface);
+}
+
+.ab-prompt-text.clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.ab-prompt-toggle {
+  appearance: none;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-container-lowest);
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ab-prompt-toggle[hidden] {
+  display: none;
+}
+
+.ab-prompt-toggle:hover {
+  background: var(--color-surface-container-low);
+}
+
+/* Prominent 2-Column Eval Verdict Scorecard ------------------------------- */
+
+.ab-scorecard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-block-end: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-container-lowest);
+}
+
+.ab-score-card {
+  grid-row: 1 / span 3;
+  display: grid;
+  grid-template-rows: subgrid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  min-inline-size: 0;
+  align-items: start;
+}
+
+.ab-score-card.unguided {
+  background: var(--color-surface-container-low);
+}
+
+.ab-score-card.guided {
+  border-inline-start: 1px solid var(--color-outline-variant);
+  background: color-mix(in srgb, var(--color-accent-success) 5%, var(--color-surface-container-lowest));
+}
+
+.ab-score-top {
+  align-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.ab-score-top-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ab-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-on-surface);
+}
+
+.ab-mode-badge .legend-dot {
+  position: static;
+  translate: none;
+  margin-inline-end: 0;
+}
+
+.ab-score-secondary {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface-variant);
+}
+
+.ab-score-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ab-score-pct {
+  flex-shrink: 0;
+  font-size: clamp(1.6rem, 1.35rem + 0.8vw, 2rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.ab-score-denom {
+  font-size: 0.65em;
+  font-weight: 600;
+  opacity: 0.72;
+}
+
+.ab-score-pct.low {
+  color: var(--color-accent-failure);
+}
+
+.ab-score-pct.mid {
+  color: var(--color-on-surface);
+}
+
+.ab-score-pct.high {
+  color: var(--color-accent-success);
+}
+
+.ab-score-hero-detail {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ab-score-counts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface-variant);
+}
+
+.ab-pass-summary strong {
+  color: var(--color-on-surface);
+  font-weight: 700;
+}
+
+.ab-score-a11y {
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.ab-score-a11y.pass {
+  background: var(--color-accent-success-bg);
+  color: var(--color-accent-success);
+}
+
+.ab-score-a11y.fail {
+  background: var(--color-accent-failure-bg);
+  color: var(--color-accent-failure);
+}
+
+/* Segmented Grader Check Meter -------------------------------------------- */
+
+.ab-check-meter {
+  display: flex;
+  gap: 2px;
+  inline-size: 100%;
+  block-size: 8px;
+}
+
+.ab-meter-seg {
+  flex: 1 1 0;
+  min-inline-size: 2px;
+  border-radius: 2px;
+}
+
+.ab-meter-seg.pass {
+  background: var(--color-accent-success);
+}
+
+.ab-meter-seg.fail {
+  background: color-mix(in srgb, var(--color-accent-failure) 55%, var(--color-surface-container-low));
+}
+
+/* Approach Summary -------------------------------------------------------- */
+
+.ab-verdict-summary {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-on-surface);
+}
+
+/* Grader Checks Table ----------------------------------------------------- */
+
+.ab-checks-table-wrap {
+  overflow: auto;
+  max-block-size: 294px;
+}
+
+.ab-checks-table-wrap:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.ab-checks-table {
+  inline-size: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+}
+
+.ab-checks-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  padding: var(--space-2) var(--space-3);
+  text-align: start;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+  background: var(--color-surface-container-low);
+  border-block-end: 1px solid var(--color-outline-variant);
+}
+
+.ab-checks-table :is(td, th) {
+  padding: 7px var(--space-3);
+  border-block-end: 1px solid var(--color-outline-variant);
+  vertical-align: middle;
+  text-align: start;
+}
+
+.ab-checks-table tbody tr:last-child :is(td, th) {
+  border-block-end: 0;
+}
+
+.ab-col-num,
+.ab-check-num {
+  inline-size: 2.5rem;
+  color: var(--color-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+.ab-col-status,
+.ab-check-cell {
+  inline-size: 6.5rem;
+  white-space: nowrap;
+}
+
+.ab-check-msg {
+  font-weight: 400;
+  color: var(--color-on-surface);
+}
+
+.ab-check-row.is-flipped {
+  background: color-mix(in srgb, var(--color-accent-success) 4%, transparent);
+}
+
+.ab-check-status {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.ab-check-status.pass {
+  background: var(--color-accent-success-bg);
+  color: var(--color-accent-success);
+}
+
+.ab-check-status.fail {
+  background: var(--color-accent-failure-bg);
+  color: var(--color-accent-failure);
+}
+
+.ab-a11y-tag {
+  display: inline-block;
+  margin-inline-start: var(--space-2);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+}
+
+/* Frame Footer (Provenance) ----------------------------------------------- */
+
+.ab-frame-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-block-start: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-container-low);
+  font-size: 0.75rem;
+  color: var(--color-on-surface-variant);
+}
+
+.ab-run-provenance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.ab-prov-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.ab-prov-link:hover {
+  text-decoration: underline;
+}
+
+/* Responsive container queries -------------------------------------------- */
+
+@container spotlight (width < 52rem) {
+  .ab-scorecard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ab-score-card {
+    grid-row: auto;
+    grid-template-rows: none;
+  }
+
+  .ab-score-card.guided {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--color-outline-variant);
+  }
+}
+
+/* Motion & contrast preferences ------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .ab-task-pill,
+  .ab-agent-pill {
+    transition: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .ab-comparison-frame,
+  .ab-scorecard-grid,
+  .ab-frame-footer {
+    border-color: var(--color-outline);
+  }
+}
+
+@media (forced-colors: active) {
+  .ab-task-pill[aria-pressed="true"],
+  .ab-agent-pill[aria-pressed="true"] {
+    outline: 2px solid SelectedItem;
+  }
+}

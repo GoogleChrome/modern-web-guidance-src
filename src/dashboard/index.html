@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
   <link rel="stylesheet" href="hero.css">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link rel="stylesheet" href="showcase.css">
 </head>
 <body>
   <div class="landing-container">
@@ -30,7 +30,10 @@
       <!-- HERO: headline takeaways (owned by hero.js / hero.css) -->
       <section id="hero" class="hero" aria-labelledby="hero-heading" aria-busy="true">
         <p id="hero-eyebrow" class="hero-eyebrow">Nightly evaluations · loading latest results…</p>
-        <h2 id="hero-heading" class="hero-heading">Same agent, same task, better web code with Modern Web Guidance.</h2>
+        <h2 id="hero-heading" class="hero-heading">Same agent, same task, <span class="hero-accent nowrap">better web code</span> with Modern Web Guidance.</h2>
+        <p class="hero-lede">
+          Nightly paired runs across <span id="hero-lede-agents"><span class="agent-badge claude" aria-hidden="true">✱</span>Claude Code, <span class="agent-badge openai" aria-hidden="true">❂</span>Codex CLI, and <span class="agent-badge gemini" aria-hidden="true">✦</span>Antigravity CLI</span> — <span class="mode-inline unguided"><span class="legend-dot unguided" aria-hidden="true"></span><strong>unguided</strong></span> vs. <span class="mode-inline guided"><span class="legend-dot guided" aria-hidden="true"></span><strong>guided</strong></span> with MWG.
+        </p>
 
         <!-- Always-present live region so status changes are announced; the visible box below is purely presentational. -->
         <p id="hero-live" class="visually-hidden" role="status" aria-live="polite"></p>
@@ -43,35 +46,64 @@
           <li class="takeaway" data-metric="overall">
             <h3 class="takeaway-label">Web best practices</h3>
             <p class="takeaway-figure">…</p>
-            <p class="takeaway-statement">more best-practice checks passed with MWG</p>
+            <p class="takeaway-statement">pass-rate lift across all tasks</p>
             <p class="takeaway-qualifier">Loading…</p>
           </li>
           <li class="takeaway" data-metric="a11y">
             <h3 class="takeaway-label">Accessibility</h3>
             <p class="takeaway-figure">…</p>
-            <p class="takeaway-statement">more accessibility checks passed with MWG</p>
+            <p class="takeaway-statement">pass-rate lift on a11y checks</p>
             <p class="takeaway-qualifier">Loading…</p>
           </li>
           <li class="takeaway" data-metric="tokens">
             <h3 class="takeaway-label">Tokens</h3>
             <p class="takeaway-figure">…</p>
-            <p class="takeaway-statement">uncached tokens per task with MWG</p>
+            <p class="takeaway-statement">uncached tokens per task</p>
             <p class="takeaway-qualifier">Loading…</p>
           </li>
           <li class="takeaway" data-metric="time">
             <h3 class="takeaway-label">Time</h3>
             <p class="takeaway-figure">…</p>
-            <p class="takeaway-statement">median task completion with MWG</p>
+            <p class="takeaway-statement">median task completion</p>
             <p class="takeaway-qualifier">Loading…</p>
           </li>
         </ul>
 
-        <p class="hero-lede">
-          On a nightly schedule we run <span id="hero-lede-agents">Claude Code, Codex CLI, and Antigravity CLI</span> on the same web development tasks twice:
-          <strong>unguided</strong> (the agent on its own) and <strong>guided</strong> (with the MWG skill installed).
-          Guided runs pass more best-practice and accessibility checks, and some agents also finish faster with fewer tokens.
-        </p>
+        <!-- STAGE 2: Use-case Evaluation Spotlight (owned by showcase.js / showcase.css) -->
+        <div id="ab-spotlight" class="ab-spotlight" role="region" aria-labelledby="ab-spotlight-heading" aria-busy="true">
+          <div class="ab-spotlight-header">
+            <div class="ab-spotlight-titles">
+              <h3 id="ab-spotlight-heading" class="ab-spotlight-heading">See it on a real task: Unguided vs. Guided</h3>
+              <p class="ab-spotlight-sub">Actual evaluation results from the latest nightly runs — pick a use case or agent to compare.</p>
+            </div>
+            <div class="ab-toolbar-controls">
+              <div id="ab-agent-pills" class="ab-agent-pills" role="group" aria-label="Select coding agent"></div>
+            </div>
+          </div>
 
+          <div id="ab-task-pills" class="ab-task-pills" role="group" aria-label="Select evaluation task"></div>
+
+          <div class="ab-comparison-frame">
+            <div class="ab-prompt-banner">
+              <span class="ab-prompt-kicker">Prompt</span>
+              <p id="ab-prompt-text" class="ab-prompt-text">Loading task prompt…</p>
+              <button type="button" id="ab-prompt-toggle" class="ab-prompt-toggle" aria-expanded="false" hidden>More</button>
+            </div>
+
+            <div class="ab-scorecard-grid">
+              <div id="ab-score-unguided" class="ab-score-card unguided" aria-label="Unguided run evaluation result"></div>
+              <div id="ab-score-guided" class="ab-score-card guided" aria-label="Guided run evaluation result"></div>
+            </div>
+
+            <div id="ab-checks-content"></div>
+
+            <div class="ab-frame-footer">
+              <div id="ab-run-provenance" class="ab-run-provenance"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STAGE 3: Aggregate breakdowns by agent family, methodology, model, and guide -->
         <div class="hero-agents">
           <h3 class="hero-agents-heading">By agent family</h3>
           <p class="hero-agents-note">Within every run the agent, model, and tasks are identical; only MWG changes. Rows pool the latest runs per agent (models listed). <span id="hero-agents-cost"></span></p>
@@ -116,9 +148,28 @@
             </dl>
           </div>
         </details>
+
+        <details class="insights-drawer" id="breakdowns">
+          <summary class="insights-summary">Breakdowns by model and guide</summary>
+          <div class="insights-controls">
+            <div class="insights-window">
+              <label for="insights-limit-input">Most recent</label>
+              <input type="number" id="insights-limit-input" value="15" min="1" max="365" autocomplete="off">
+              <span>days of data</span>
+              <label class="toggle-label" for="insights-show-all-check"><input type="checkbox" id="insights-show-all-check"> Show all</label>
+            </div>
+            <div class="metric-mode-toggle" role="group" aria-label="Comparison check scope">
+              <button type="button" id="insights-mode-all" class="metric-mode-btn" aria-pressed="true">All checks</button>
+              <button type="button" id="insights-mode-a11y" class="metric-mode-btn" aria-pressed="false">Accessibility subscore</button>
+            </div>
+            <button type="button" class="info-hint-btn" interestfor="tooltip-a11y-subscore" aria-label="About the accessibility subscore">?</button>
+            <button type="button" class="info-hint-btn" interestfor="tooltip-token-efficiency" aria-label="About uncached tokens">?</button>
+          </div>
+          <div id="insights-container" class="insights-grid"></div>
+        </details>
       </section>
 
-      <!-- BROWSE: full results (owned by landing.js / landing.css) -->
+      <!-- STAGE 4: BROWSE: full results (owned by landing.js / landing.css) -->
       <section id="browse-section" class="browse-section" aria-labelledby="browse-heading">
         <div class="browse-header">
           <div class="browse-intro">
@@ -133,7 +184,7 @@
             <button type="button" class="info-hint-btn" interestfor="tooltip-scheduled-runs" aria-label="About scheduled runs">?</button>
             <div class="filter-container-nav">
               <button id="filter-btn" class="secondary-btn" type="button" aria-expanded="false" aria-controls="filter-menu">
-                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 4h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1 0-1zm2 3.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1zm2 3.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1 0-1z"/></svg>
                 Filter runs
               </button>
               <div id="filter-menu" class="filter-menu hidden">
@@ -193,25 +244,6 @@
           </table>
         </div>
         <p id="suites-count" class="suites-count" aria-live="polite"></p>
-
-        <details class="insights-drawer" id="breakdowns">
-          <summary class="insights-summary">Breakdowns by model and guide</summary>
-          <div class="insights-controls">
-            <div class="insights-window">
-              <label for="insights-limit-input">Most recent</label>
-              <input type="number" id="insights-limit-input" value="15" min="1" max="365">
-              <span>days of data</span>
-              <label class="toggle-label" for="insights-show-all-check"><input type="checkbox" id="insights-show-all-check"> Show all</label>
-            </div>
-            <div class="metric-mode-toggle" role="group" aria-label="Comparison check scope">
-              <button type="button" id="insights-mode-all" class="metric-mode-btn" aria-pressed="true">All checks</button>
-              <button type="button" id="insights-mode-a11y" class="metric-mode-btn" aria-pressed="false">Accessibility subscore</button>
-            </div>
-            <button type="button" class="info-hint-btn" interestfor="tooltip-a11y-subscore" aria-label="About the accessibility subscore">?</button>
-            <button type="button" class="info-hint-btn" interestfor="tooltip-token-efficiency" aria-label="About uncached tokens">?</button>
-          </div>
-          <div id="insights-container" class="insights-grid"></div>
-        </details>
       </section>
 
       <div id="empty-state" class="empty-state" hidden>
@@ -254,6 +286,7 @@
     }
   </script>
   <script type="module" src="hero.js"></script>
+  <script type="module" src="showcase.js"></script>
   <script type="module" src="landing.js"></script>
 </body>
 </html>

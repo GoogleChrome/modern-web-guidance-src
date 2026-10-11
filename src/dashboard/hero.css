@@ -11,36 +11,16 @@
 .hero {
   container: hero / inline-size;
   margin-block: var(--space-4) var(--space-8);
-
-  /* Card accent borders (non-text, 3:1+ against both surfaces). Light values first; light-dark() below
-     is a progressive enhancement with the required fallback (MWG `dark-mode`). */
-  --accent-a11y: #6d28d9;
-  --accent-tokens: #0f766e;
-  --accent-time: #b45309;
-}
-
-@supports (color: light-dark(#000, #fff)) {
-  .hero {
-    --accent-a11y: light-dark(#6d28d9, #c4b5fd);
-    --accent-tokens: light-dark(#0f766e, #5eead4);
-    --accent-time: light-dark(#b45309, #fdba74);
-  }
-}
-
-@supports not (color: light-dark(#000, #fff)) {
-  @media (prefers-color-scheme: dark) {
-    .hero {
-      --accent-a11y: #c4b5fd;
-      --accent-tokens: #5eead4;
-      --accent-time: #fdba74;
-    }
-  }
 }
 
 /* Header row ------------------------------------------------------------- */
 
 .nowrap {
   white-space: nowrap;
+}
+
+#auth-btn[hidden] {
+  display: none;
 }
 
 /* The sign-in button lives in the page header (index.html); on phones the long label wraps to
@@ -56,33 +36,62 @@
 }
 
 .hero-eyebrow {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   margin: 0 0 var(--space-2);
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--color-on-surface-variant);
+}
+
+.hero-live-dot {
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--color-accent-success);
+  flex-shrink: 0;
 }
 
 .hero-heading {
   /* Fluid type: scales with the viewport but stays within a legible range (MWG `typography`). */
-  font-size: clamp(1.5rem, 1rem + 2.6vw, 3rem);
-  line-height: 1.1;
+  font-size: clamp(1.5rem, 1rem + 2.4vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
   margin: 0;
-  max-inline-size: 30ch;
-  /* Balanced line breaks for a short multi-line headline; no visible box on this element. */
+  max-inline-size: 32ch;
   text-wrap: balance;
 }
 
+.hero-accent {
+  color: var(--color-primary);
+}
+
 .hero-lede {
-  margin: var(--space-4) 0 0;
-  max-inline-size: 70ch;
-  font-size: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
+  margin: var(--space-3) 0 0;
+  font-size: 0.925rem;
+  line-height: 1.5;
   color: var(--color-on-surface-variant);
-  text-wrap: pretty;
 }
 
 .hero-lede strong {
   color: var(--color-on-surface);
+  font-weight: 600;
+}
+
+.mode-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.mode-inline .legend-dot {
+  position: static;
+  translate: none;
+  margin-inline-end: 0;
 }
 
 /* Status / auth / loading messages ---------------------------------------- */
@@ -107,10 +116,10 @@
 
 .hero-status .primary-btn {
   background: var(--color-primary);
-  color: var(--color-on-primary, #fff);
+  color: var(--color-on-primary);
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-default);
-  padding: 6px 14px;
+  padding: 8px 16px;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -120,50 +129,44 @@
   background: var(--color-primary-container);
 }
 
-/* Takeaway cards ---------------------------------------------------------- */
+/* Takeaway stat strip ----------------------------------------------------- */
 
 .hero-takeaways {
   list-style: none;
-  margin: var(--space-6) 0 0;
-  padding: 0;
+  margin: var(--space-5) 0 0;
+  padding: var(--space-5) 0;
   display: grid;
-  gap: var(--space-3);
-  /* 1 column on narrow containers, up to 4 on wide ones; min() keeps the track from overflowing at 360px. */
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-6);
+  border-block: 1px solid var(--color-outline-variant);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
 }
 
 .takeaway {
   container: takeaway / inline-size;
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-4) var(--space-4) var(--space-3);
-  background: var(--color-surface-container-lowest);
-  border: 1px solid var(--color-outline-variant);
-  border-block-start: 4px solid var(--takeaway-accent, var(--color-primary));
-  border-radius: 8px;
+  padding: 0;
   min-inline-size: 0;
 }
 
-.takeaway[data-metric="overall"] { --takeaway-accent: var(--color-primary); }
-.takeaway[data-metric="a11y"] { --takeaway-accent: var(--accent-a11y); }
-.takeaway[data-metric="tokens"] { --takeaway-accent: var(--accent-tokens); }
-.takeaway[data-metric="time"] { --takeaway-accent: var(--accent-time); }
+.takeaway + .takeaway {
+  padding-inline-start: var(--space-5);
+  border-inline-start: 1px solid var(--color-outline-variant);
+}
 
 .takeaway-label {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--color-on-surface-variant);
 }
 
 .takeaway-figure {
   margin: 0;
   /* Scales with the card's own width (cqi) so "up to 13% fewer" stays on one line in 2- and 4-up layouts. */
-  font-size: clamp(1.75rem, 0.9rem + 7cqi, 3rem);
+  font-size: clamp(1.75rem, 0.9rem + 7cqi, 2.75rem);
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.02em;
@@ -172,15 +175,19 @@
   overflow-wrap: anywhere;
 }
 
+.takeaway-figure .figure-val {
+  color: var(--color-accent-success);
+}
+
 .takeaway-figure .unit {
-  font-size: 0.5em;
+  font-size: 0.52em;
   font-weight: 600;
   letter-spacing: 0;
-  color: var(--color-on-surface-variant);
+  color: var(--color-on-surface);
 }
 
 .takeaway-figure .prefix {
-  font-size: 0.55em;
+  font-size: 0.52em;
   font-weight: 600;
   color: var(--color-on-surface-variant);
   margin-inline-end: 0.15em;
@@ -188,16 +195,82 @@
 
 .takeaway-statement {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 500;
   line-height: 1.35;
-  color: var(--color-on-surface);
+  color: var(--color-on-surface-variant);
   text-wrap: pretty;
 }
 
+/* Visual dumbbell bar inside pass-rate / a11y takeaway columns ------------ */
+
+.takeaway-dumbbell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-start: var(--space-2);
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--color-surface-container-low);
+  border: 1px solid var(--color-outline-variant);
+}
+
+.takeaway-dumbbell .takeaway-track {
+  flex: 1 1 auto;
+  max-inline-size: none;
+  margin-inline: 4px;
+  block-size: 6px;
+  border-radius: 9999px;
+}
+
+.takeaway-dumbbell .takeaway-track .dot {
+  inline-size: 10px;
+  block-size: 10px;
+}
+
+.takeaway-dumbbell .takeaway-track .connector {
+  block-size: 3px;
+}
+
+.takeaway-dumbbell-rates {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface-variant);
+  white-space: nowrap;
+}
+
+.takeaway-dumbbell-rates .rate-g {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* Scannable 3-agent mini list inside Tokens & Time columns ---------------- */
+
+.takeaway-agent-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-block-start: var(--space-1);
+}
+
+.takeaway-agent-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.78rem;
+  color: var(--color-on-surface);
+}
+
+.takeaway-agent-name {
+  white-space: nowrap;
+  font-weight: 500;
+}
+
 .takeaway-qualifier {
-  margin: var(--space-2) 0 0;
-  font-size: 0.8rem;
+  margin: var(--space-1) 0 0;
+  font-size: 0.78rem;
   line-height: 1.4;
   color: var(--color-on-surface-variant);
   text-wrap: pretty;
@@ -208,14 +281,19 @@
   white-space: nowrap;
 }
 
-/* Two qualifier lengths: full sentence on wide containers, one line on phones (swapped in the
-   narrow @container block below) so all four figures fit the first screen. */
-.takeaway-qualifier-short {
+/* Show the concise one-line qualifier on all viewports so the hero cards stay scannable
+   and don't duplicate the per-agent comparison table below. */
+.takeaway-qualifier-full {
   display: none;
 }
 
+.takeaway-qualifier-short {
+  display: block;
+}
+
 /* Skeleton state while numbers load (no animation under reduced motion). */
-.hero[aria-busy="true"] .takeaway-figure {
+.hero[aria-busy="true"] .takeaway-figure,
+.hero[aria-busy="true"] .takeaway-figure .figure-val {
   color: transparent;
   background: var(--color-surface-container);
   border-radius: 6px;
@@ -235,13 +313,15 @@
 /* Per-agent comparison ---------------------------------------------------- */
 
 .hero-agents {
-  margin-block-start: var(--space-6);
+  margin-block-start: var(--space-8);
+  padding-block-start: var(--space-6);
+  border-block-start: 1px solid var(--color-outline-variant);
 }
 
 .hero-agents-heading {
   margin: 0 0 var(--space-2);
   font-family: var(--font-sans);
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 700;
 }
 
@@ -283,9 +363,7 @@
 
 .agent-table thead th {
   font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  font-weight: 600;
   color: var(--color-on-surface-variant);
   background: var(--color-surface-container-low);
   text-wrap: balance;
@@ -327,10 +405,10 @@
 .delta {
   display: inline-block;
   margin-block-start: 2px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
   white-space: nowrap;
   border: 1px solid transparent;
 }
@@ -481,7 +559,7 @@
   font-size: 0.85em;
   background: var(--color-surface-container-low);
   padding: 0 0.3em;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 @container hero (width < 36rem) {
@@ -508,7 +586,8 @@
 
   .hero-takeaways {
     margin-block-start: var(--space-4);
-    gap: var(--space-2);
+    padding: var(--space-3) 0;
+    gap: var(--space-3);
   }
 
   /* Figure and statement side by side so two takeaways fit above the fold at 390×844. */
@@ -517,9 +596,14 @@
     grid-template-rows: auto auto auto;
     column-gap: var(--space-3);
     row-gap: 2px;
-    padding: var(--space-3);
-    border-block-start-width: 1px;
-    border-inline-start: 4px solid var(--takeaway-accent, var(--color-primary));
+    padding: 0;
+  }
+
+  .takeaway + .takeaway {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+    padding-block-start: var(--space-3);
+    border-block-start: 1px solid var(--color-outline-variant);
   }
 
   .takeaway-label {

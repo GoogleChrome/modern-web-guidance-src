@@ -1,4 +1,4 @@
-import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, formatDuration, formatTokens, isLocalDashboardHost, $ } from './utils.js';
+import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, formatDuration, formatTokens, isLocalDashboardHost, $, getAgentBadge } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { ApiClient } from './api.js';
 
@@ -273,6 +273,8 @@ function setupScheduledToggle() {
 const STACKED_MAX_WIDTH = 640;
 /** How many stacked cards to show before the "Show all" button on phones. */
 const STACKED_PAGE_SIZE = 10;
+/** Default rows shown on desktop (9 = 3 recent nightly runs × 3 agent families, matching the hero window). */
+const DESKTOP_PAGE_SIZE = 9;
 let isStacked = false;
 let showAllStacked = false;
 
@@ -776,12 +778,14 @@ function renderSuites() {
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
     const colCount = 10;
 
-    // Phones: stacked cards are ~1 screen each, so page them.
+    // Page both desktop (9 rows = 3 per agent family) and stacked phone cards (10 rows) by default.
     const table = document.querySelector('.suites-table');
-    const paged = isStacked && !showAllStacked && visibleKeys.length > STACKED_PAGE_SIZE;
-    table?.classList.toggle('paged', paged);
+    const pageSize = isStacked ? STACKED_PAGE_SIZE : DESKTOP_PAGE_SIZE;
+    const paged = !showAllStacked && visibleKeys.length > pageSize;
+    table?.classList.toggle('paged', paged && isStacked);
+    table?.classList.toggle('paged-desktop', paged && !isStacked);
 
-    renderSuitesCount(visibleKeys.length, filteredKeys.length, hiddenAdHoc, paged);
+    renderSuitesCount(visibleKeys.length, filteredKeys.length, hiddenAdHoc, paged, pageSize);
     syncOptionalColumns();
 
     if (visibleKeys.length === 0) {
@@ -905,15 +909,16 @@ function syncOptionalColumns() {
  * @param {number} matching
  * @param {number} hiddenAdHoc
  * @param {boolean} paged
+ * @param {number} pageSize
  */
-function renderSuitesCount(shown, matching, hiddenAdHoc, paged) {
+function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKTOP_PAGE_SIZE) {
     const el = document.getElementById('suites-count');
     if (!el) return;
     const total = Object.keys(allTestData).length;
     el.innerHTML = '';
     if (total === 0) return;
 
-    const visibleNow = paged ? Math.min(STACKED_PAGE_SIZE, shown) : shown;
+    const visibleNow = paged ? Math.min(pageSize, shown) : shown;
     const parts = [`Showing ${visibleNow} of ${total} run${total === 1 ? '' : 's'}`];
     if (hiddenAdHoc > 0) {
         parts.push(`${hiddenAdHoc} ad-hoc run${hiddenAdHoc === 1 ? '' : 's'} hidden by "Scheduled runs only"`);
@@ -932,7 +937,7 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged) {
             renderSuites();
             // Keep keyboard users oriented: move focus to the first newly revealed row.
             const rows = document.querySelectorAll('#suites-list .suite-table-row');
-            const next = rows[STACKED_PAGE_SIZE]?.querySelector('a');
+            const next = rows[pageSize]?.querySelector('a');
             if (next instanceof HTMLElement) next.focus();
         });
         el.append(document.createTextNode(' · '), btn);
@@ -1126,24 +1131,6 @@ function formatSuiteLabel(testInfo) {
         finalLabel += '-' + otherTags.join('-');
     }
     return { label: finalLabel, ldap };
-}
-
-/**
- * @param {string} agentName
- * @returns {string}
- */
-function getAgentBadge(agentName) {
-    const name = (agentName || '').toLowerCase();
-    if (name.includes('gemini') || name.includes('jetski') || name.includes('antigravity')) {
-        return '<span class="agent-badge gemini" aria-hidden="true">✦</span>';
-    }
-    if (name.includes('codex') || name.includes('openai')) {
-        return '<span class="agent-badge openai" aria-hidden="true">❂</span>';
-    }
-    if (name.includes('claude')) {
-        return '<span class="agent-badge claude" aria-hidden="true">✱</span>';
-    }
-    return '';
 }
 
 // ==========================================
