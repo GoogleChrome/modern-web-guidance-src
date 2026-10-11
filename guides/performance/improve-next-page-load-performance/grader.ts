@@ -24,6 +24,64 @@ function getSpeculationRules(html: string) {
   }
 }
 
+// Helper to inspect where clause for state-changing URLs (e.g., logout)
+function checkWhereClauseForLogout(clause: unknown, isNegated = false): { hasPositiveLogout: boolean; hasNegatedLogout: boolean } {
+  let hasPositiveLogout = false;
+  let hasNegatedLogout = false;
+
+  if (!clause || typeof clause !== 'object') {
+    return { hasPositiveLogout, hasNegatedLogout };
+  }
+
+  const record = clause as Record<string, unknown>;
+
+  if (record.not) {
+    const res = checkWhereClauseForLogout(record.not, !isNegated);
+    if (res.hasPositiveLogout) hasPositiveLogout = true;
+    if (res.hasNegatedLogout) hasNegatedLogout = true;
+  }
+
+  if (Array.isArray(record.and)) {
+    for (const sub of record.and) {
+      const res = checkWhereClauseForLogout(sub, isNegated);
+      if (res.hasPositiveLogout) hasPositiveLogout = true;
+      if (res.hasNegatedLogout) hasNegatedLogout = true;
+    }
+  }
+
+  if (Array.isArray(record.or)) {
+    for (const sub of record.or) {
+      const res = checkWhereClauseForLogout(sub, isNegated);
+      if (res.hasPositiveLogout) hasPositiveLogout = true;
+      if (res.hasNegatedLogout) hasNegatedLogout = true;
+    }
+  }
+
+  const valueContainsLogout = (val: unknown): boolean => {
+    if (typeof val === 'string') {
+      return val.toLowerCase().includes('logout');
+    }
+    if (Array.isArray(val)) {
+      return val.some((item) => valueContainsLogout(item));
+    }
+    if (typeof val === 'object' && val !== null) {
+      return JSON.stringify(val).toLowerCase().includes('logout');
+    }
+    return false;
+  };
+
+  const matchesLogout = valueContainsLogout(record.href_matches) || valueContainsLogout(record.selector_matches);
+  if (matchesLogout) {
+    if (isNegated) {
+      hasNegatedLogout = true;
+    } else {
+      hasPositiveLogout = true;
+    }
+  }
+
+  return { hasPositiveLogout, hasNegatedLogout };
+}
+
 test.describe(`Improve next page load performance Expectations: ${demoName}`, () => {
   
   // 1. Check for <script type="speculationrules">
@@ -124,12 +182,14 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
       for (const set of ruleSets) {
         if (set.urls) {
-          expect(set.urls.some((url: string) => url.includes('logout'))).toBe(false);
+          expect(set.urls.some((url: string) => url.toLowerCase().includes('logout'))).toBe(false);
         }
         if (set.where) {
-          // Simplistic check for /logout in where clause
-          const whereStr = JSON.stringify(set.where);
-          expect(whereStr.includes('logout')).toBe(false);
+          const { hasPositiveLogout, hasNegatedLogout } = checkWhereClauseForLogout(set.where);
+          expect(hasPositiveLogout).toBe(false);
+          if (JSON.stringify(set.where).toLowerCase().includes('logout')) {
+            expect(hasNegatedLogout).toBe(true);
+          }
         }
       }
     } else {
