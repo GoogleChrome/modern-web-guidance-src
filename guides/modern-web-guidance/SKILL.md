@@ -62,7 +62,10 @@ npx -y modern-web-guidance@latest search "<query>" --skill-version SKILL_VERSION
 ]
 ```
 
-> **Note**: Inspect the returned `description` fields. If a clean 2–5 word search returns no relevant use-case or discipline guide `description` (or top similarity `< 0.45`), the topic is not covered—proceed directly with your implementation without retry searches or `list`. Only run `npx -y modern-web-guidance@latest list` when a broad UI goal could map to multiple guide categories.
+> **Note**: Judge results by their `description` fields (not raw `similarity` scores):
+> - **Match found**: Call `retrieve` directly—do not also run `list`.
+> - **No match on a web UI/CSS/DOM behavior (or broad UI audit)**: If `search` returns `[]` or unrelated descriptions because your phrasing differed from the catalog (or your task spans multiple categories), run `npx -y modern-web-guidance@latest list` once to check if the pattern is covered under more general terminology.
+> - **Topic not covered**: If no guide `description` directly matches your task, proceed with your implementation without retry loops or retrieving unrelated guides.
 
 ---
 
