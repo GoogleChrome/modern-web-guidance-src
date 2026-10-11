@@ -49,6 +49,10 @@
   .auth-btn-long {
     display: none;
   }
+
+  #auth-btn {
+    white-space: nowrap;
+  }
 }
 
 .hero-eyebrow {

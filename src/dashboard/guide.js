@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     } catch (error) {
         console.error('Error:', error);
-        $('#empty-state').style.display = 'block';
+        $('#empty-state').hidden = false;
     }
 });
 
@@ -345,10 +345,10 @@ function renderGraphs(guideName) {
     });
 
     if (filteredKeys.length === 0) {
-        $('#empty-state').style.display = 'block';
+        $('#empty-state').hidden = false;
         return;
     }
-    $('#empty-state').style.display = 'none';
+    $('#empty-state').hidden = true;
 
     /** @type {Record<string, GuideSuiteSummary[]>} */
     const combinations = {};
@@ -437,10 +437,10 @@ function renderGraphs(guideName) {
     });
 
     if (activeCombKeys.length === 0) {
-        $('#empty-state').style.display = 'block';
+        $('#empty-state').hidden = false;
         return;
     }
-    $('#empty-state').style.display = 'none';
+    $('#empty-state').hidden = true;
 
     activeCombKeys.forEach(combKey => {
         const [agent, model] = combKey.split('|||');

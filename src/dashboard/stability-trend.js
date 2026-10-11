@@ -24,6 +24,8 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
     if (!container) return;
 
     container.innerHTML = `<div class="stability-loading">Loading historical data...</div>`;
+    // This trend only exists for the local dev server (/api/suites), so links stay on the same source.
+    const sourceParam = new URLSearchParams(window.location.search).get('source') || 'local';
 
     try {
         const response = await fetch('/api/suites');
@@ -255,13 +257,15 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                             });
                         }
 
+                        // SVG <a> is focusable, so each run is reachable by keyboard (was a click-only <g onclick>).
+                        const pointHref = `dashboard.html?testId=${encodeURIComponent(h.testId)}&source=${encodeURIComponent(sourceParam)}`;
                         return `
-                            <g class="stability-point-group" onclick="window.location.href='dashboard.html?testId=${h.testId}&source=local'">
+                            <a class="stability-point-group" href="${pointHref}" aria-label="Open suite ${h.testId}">
                                 <line x1="${x}" y1="${paddingY}" x2="${x}" y2="${gOffset + paddingY + graphHeight}" stroke="${h.isCurrent ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}" stroke-width="${h.isCurrent ? 1.5 : 1}" />
                                 ${uTrialPoints}
                                 ${gTrialPoints}
                                 <text x="${x}" y="${gOffset + paddingY + graphHeight + 20}" fill="${h.isCurrent ? '#fff' : 'var(--text-secondary)'}" font-size="0.7rem" font-weight="${h.isCurrent ? 'bold' : 'normal'}" text-anchor="middle">${displayId}</text>
-                            </g>
+                            </a>
                         `;
                     }).join('')}
                 </svg>

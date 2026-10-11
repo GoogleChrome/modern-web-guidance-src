@@ -374,6 +374,13 @@ export class DumbbellChart {
         text.setAttribute("text-anchor", "start");
         text.setAttribute("alignment-baseline", "middle");
         text.textContent = featureName;
+        if (hasFailure) {
+          // Red alone would be color-only; give AT (and the hover title) the reason.
+          const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+          title.textContent = `${featureName}: at least one run failed before grading`;
+          text.appendChild(title);
+          text.setAttribute("aria-label", `${featureName} (had failed runs)`);
+        }
         
         // Add hover effects to highlight the row
         text.style.cursor = "pointer";
@@ -470,10 +477,10 @@ export class DumbbellChart {
                 <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 310px; color: var(--color-on-surface);">
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                         <div style="font-weight: bold; font-size: 14px; white-space: nowrap; color: ${item.uFailed || item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
-                          <div style="font-size: 11px; color: var(--color-outline);">feature: ${featureName}</div>
+                         <div style="font-weight: bold; font-size: 0.875rem; white-space: nowrap; color: ${item.uFailed || item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
+                          <div style="font-size: 0.7rem; color: var(--color-outline);">feature: ${featureName}</div>
                          ${(uRuntimeMs > 0 || gRuntimeMs > 0 || uTokens > 0 || gTokens > 0) ? `
-                         <div style="font-size: 11px; color: var(--color-on-surface-variant); margin-top: 6px; display: flex; flex-direction: column; gap: 3px;">
+                         <div style="font-size: 0.7rem; color: var(--color-on-surface-variant); margin-top: 6px; display: flex; flex-direction: column; gap: 3px;">
                             ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `
                             <div>Time (U → G): <strong>${fmtTime(uRuntimeMs)} → ${fmtTime(gRuntimeMs)}</strong> <span style="color: ${runtimeDeltaColor}; font-weight: 600;">(${runtimeDeltaSign}${runtimeDeltaPct}%)</span></div>
                             ` : ''}
@@ -487,8 +494,8 @@ export class DumbbellChart {
                          ` : ''}
                     </div>
                     <!-- Right Column -->
-                    <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 12px;">
-                         <div style="font-weight: bold; color: ${deltaColor}; font-size: 14px;">Uplift: ${deltaSign}${delta}%</div>
+                    <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 0.75rem;">
+                         <div style="font-weight: bold; color: ${deltaColor}; font-size: 0.875rem;">Uplift: ${deltaSign}${delta}%</div>
                          <div style="white-space: nowrap; color: ${item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">Guided: ${Math.round(gVal)}% ${item.gFailed ? '(Failed)' : ''}</div>
                          <div style="white-space: nowrap; color: ${item.uFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">Unguided: ${Math.round(uVal)}% ${item.uFailed ? '(Failed)' : ''}</div>
                      </div>

@@ -409,7 +409,7 @@ dialog#modal[open] {
   position: absolute;
   top: 20px;
   right: 20px;
-  font-size: 28px;
+  font-size: 1.75rem;
   font-weight: bold;
   cursor: pointer;
   line-height: 1;
@@ -619,7 +619,7 @@ dialog#modal.diff-modal {
   color: var(--color-on-surface);
   padding: 10px 14px;
   border-radius: 0;
-  font-size: 13px;
+  font-size: 0.8rem;
   pointer-events: none;
   display: none;
   z-index: 2000;
@@ -963,18 +963,29 @@ dialog#modal.diff-modal {
 }
 
 /* Header Meta Grid */
+/*
+ * Meta strip: first column (test ID = the page's identity) takes the slack and wraps;
+ * the other cells size to their content so nothing is ellipsized.
+ */
 .header-meta-grid {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: minmax(26ch, 1fr);
+  grid-auto-columns: max-content;
+  column-gap: 4px;
   border-radius: 12px;
   max-inline-size: 100%;
 }
 
 .header-meta-grid .header-meta-item {
-  flex: 1 1 0;
   min-inline-size: 0;
+  width: auto;
 }
 
 .header-meta-grid .meta-value {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
   overflow-wrap: anywhere;
 }
 
@@ -982,6 +993,7 @@ dialog#modal.diff-modal {
 @media (width < 40rem) {
   .header-meta-grid {
     display: grid;
+    grid-auto-flow: row;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 2px 12px;
   }
@@ -1052,7 +1064,7 @@ dialog#modal.diff-modal {
 }
 
 .tfoot-action-btn {
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 1px 4px;
   display: flex !important;
   border: 1px solid var(--border-color);
@@ -1197,6 +1209,12 @@ dialog#modal.diff-modal {
 
 .stability-point-group {
   cursor: pointer;
+}
+
+/* SVG links: visible focus ring on the whole run column */
+.stability-point-group:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .stability-error {
@@ -1819,7 +1837,7 @@ dialog#modal.diff-modal {
 }
 
 .suite-header-row > div:first-child {
-  flex: 1 1 60%;
+  flex: 1 1 auto;
   min-inline-size: 0;
 }
 

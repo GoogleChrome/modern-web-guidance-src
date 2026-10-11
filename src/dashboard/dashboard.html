@@ -86,7 +86,7 @@
 
     <footer class="dashboard-footer">
       <a href="./" class="secondary-btn">← Back to results</a>
-      <button id="view-gcs-artifacts-btn" class="secondary-btn" style="display: none;">View source</button>
+      <button id="view-gcs-artifacts-btn" class="secondary-btn" hidden>View source</button>
       <button id="view-log-btn" class="secondary-btn">View full run log</button>
     </footer>
   </div>
@@ -101,7 +101,7 @@
     <code>Uncached tokens = total − cached</code> (fresh input + output + thinking tokens). Multi-turn agents re-read cached prompt prefixes on every tool turn (roughly 85–96% cached for Claude Code and Codex CLI, ~20% for Antigravity CLI), so both uncached tokens and totals with cache share are shown.
   </div>
 
-  <dialog id="modal" aria-labelledby="modal-title">
+  <dialog id="modal" aria-labelledby="modal-title" closedby="any">
     <div class="modal-content">
       <button class="close-modal" aria-label="Close modal">&times;</button>
       <h2 id="modal-title">Test Details</h2>

@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const source = params.get('source');
         const testId = params.get('testId');
         if (source === 'remote') {
-            gcsBtn.style.display = 'inline-block';
+            gcsBtn.hidden = false;
             gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${testId}?project=chrome-kiwi-air-force-dev`, '_blank');
         }
     }
@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             try {
                                 const text = await api.getFileText(`${testId}/test_suite.log`);
-                                body.innerHTML = `<div class="log-content">${escapeHtml(text)}</div>`;
+                                body.innerHTML = `<div class="log-content" tabindex="0">${escapeHtml(text)}</div>`;
                             } catch (e) {
                                 const msg = (e instanceof Error) ? e.message : String(e);
                                 body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading log: ${escapeHtml(msg)}</div>`;
@@ -1194,7 +1194,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             const a11yInfo = classifyAccessibilityCheck('', guideName, message);
             const subCatMeta = a11yInfo.subCategory ? A11Y_SUBCATEGORY_MAP[a11yInfo.subCategory] : null;
             const a11yBadge = a11yInfo.isAccessibility && subCatMeta
-                ? ` <span class="a11y-check-badge" title="${escapeHtml(subCatMeta.label)}: ${escapeHtml(a11yInfo.rationale)}">♿ ${escapeHtml(subCatMeta.shortLabel)}</span>`
+                ? ` <span class="a11y-check-badge"><span aria-hidden="true">♿</span> ${escapeHtml(subCatMeta.shortLabel)}<span class="visually-hidden"> — ${escapeHtml(subCatMeta.label)}: ${escapeHtml(a11yInfo.rationale)}</span></span>`
                 : '';
 
             truthMatrixHtml += `<tr class="${a11yInfo.isAccessibility ? 'a11y-assertion-row' : ''}">`;
@@ -1535,6 +1535,7 @@ async function viewContent(fileName, filePath) {
 
     const pre = document.createElement('pre');
     pre.className = 'log-content';
+    pre.tabIndex = 0; // scrollable region must be keyboard reachable
     body.appendChild(pre);
 
     try {
@@ -1570,6 +1571,7 @@ async function viewContent(fileName, filePath) {
 
                 const preEl = document.createElement('pre');
                 preEl.className = 'diff-container diff-file-pre';
+                preEl.tabIndex = 0;
                 preEl.style.padding = '0';
                 preEl.style.fontSize = '0.75rem';
 
@@ -1654,7 +1656,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 
         const resultText = await api.getFileText(resultPath);
 
-        let diffHtml = '<div class="diff-container">';
+        let diffHtml = '<div class="diff-container" tabindex="0">';
 
         if (setupText === null) {
             diffHtml += `<div style="background-color: rgba(218, 165, 32, 0.2); border-left: 4px solid #daa520; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
