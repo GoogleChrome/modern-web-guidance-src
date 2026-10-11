@@ -318,6 +318,8 @@ async function main() {
     }
 
     case 'dashboard': {
+      const { runAllManifests } = await import('../src/dashboard/generate-manifests.js');
+      await runAllManifests();
       await import('../src/dashboard/server.js');
       break;
     }
@@ -331,6 +333,8 @@ async function main() {
 
       if (values['ui']) {
         process.env.LAUNCH_UI = 'true';
+        const { runAllManifests } = await import('../src/dashboard/generate-manifests.js');
+        await runAllManifests();
         await import('../src/dashboard/server.js');
         break;
       }

@@ -5,6 +5,9 @@
   "main": "index.js",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "bin": {
     "gd": "bin/gd.ts"
   },
