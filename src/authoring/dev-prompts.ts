@@ -248,7 +248,7 @@ Diagnose each target according to its assigned flag:
 2. **\`MISSING_GUIDANCE_TOOL\`**:
    - The guided agent did not invoke \`modern-web-guidance\`.
    - **Diagnosis**: State that the test prompt in \`task.md\` failed to activate modern web guidance during the agent's run.
-   - **Recommendation**: Recommend that the prompt in \`targets/<target>/task.md\` be revised so that the request more clearly prompts an agent to look up modern web platform guidance.
+   - **Recommendation**: Recommend that the prompt in \`targets/<target>/task.md\` be revised so the desired user outcome in the target app more naturally triggers modern web guidance lookup.
 
 3. **\`MISSING_EXPECTED_GUIDE\`**:
    - The guided agent invoked guidance tools, but \`${opts.guideName}\` was not among the consumed guides.
@@ -259,9 +259,9 @@ Diagnose each target according to its assigned flag:
 4. **\`LOW_GUIDED_PASS_RATE\`**:
    - The guided agent pass rate is under 90%.
    - **Root Cause Investigation**: Review the failed assertions in \`${REPORT_FILE}\` and examine \`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, and \`targets/<target>/grader.ts\` to understand why the agent fell short. Consider:
+     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader failing valid implementations due to overly rigid syntax checks, hardcoded selectors/names, or fragile AST queries?
      - **Guidance Quality (\`${GUIDE_FILE}\`)**: Does the guide lack essential modern web practices, clear syntax examples, fallback patterns, or common pitfalls?
      - **Expectations Alignment (\`${EXPECTATIONS_FILE}\`)**: Are the must-pass expectations ambiguous, conflicting, or missing key constraints?
-     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader failing valid implementations due to overly rigid syntax checks, hardcoded selectors/names, or fragile AST queries?
      - **Miscellaneous Issues**: Any other issues discovered.
    - **Recommendation Rules**:
      - **Source-of-Truth Fixes**: If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` needs changes, recommend modifications **ONLY** to those files and **DO NOT** recommend edits to any files in \`targets/\`. Always append:
@@ -277,7 +277,7 @@ Diagnose each target according to its assigned flag:
 
 # REPORT OUTPUT REQUIREMENTS
 
-For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching this structure:
+For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching this structure. Whenever recommending a change to a file (\`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, \`targets/<target>/task.md\`, or \`targets/<target>/grader.ts\`), include a fenced \`diff\` block directly beneath that bullet showing the exact lines to remove (\`-\`) and add (\`+\`) so reviewers can see and apply the concrete suggestion:
 
 \`\`\`markdown
 ### Diagnostic Analysis & Actionable Recommendations
@@ -288,6 +288,10 @@ For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching 
 
 #### Actionable Recommendations:
 - \`[relative_path_to_file]\`: [Actionable recommendation]
+  \`\`\`diff
+  - [exact existing line(s) from the file]
+  + [exact proposed replacement line(s)]
+  \`\`\`
 \`\`\`
 
 # INSTRUCTION

@@ -298,7 +298,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
       }>;
 
       let fileInput = 0;
-      let fileLastCached = 0;
+      let fileCached = 0;
       let fileOutput = 0;
       let fileHasTokens = false;
 
@@ -423,7 +423,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
             const cached = (usageNode[USAGE_TAG_CACHED] && typeof usageNode[USAGE_TAG_CACHED][0] === 'number') ? usageNode[USAGE_TAG_CACHED][0] : 0;
             if (input > 0 || output > 0 || cached > 0) {
               fileInput += input;
-              fileLastCached = Math.max(fileLastCached, cached);
+              fileCached += cached;
               fileOutput += output;
               fileHasTokens = true;
             }
@@ -432,8 +432,8 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
       }
 
       if (fileHasTokens) {
-        totalTokens += (fileInput + fileLastCached + fileOutput);
-        totalCached += fileLastCached;
+        totalTokens += (fileInput + fileCached + fileOutput);
+        totalCached += fileCached;
         hasTokens = true;
       }
 

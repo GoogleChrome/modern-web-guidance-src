@@ -26,7 +26,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
   const relativeGuidePath = path.relative(repoRoot, guideDirAbs);
   const relativeWorkSubdir = path.join(relativeGuidePath, 'targets', baseApp);
 
-  const workDir = setupGuideDevWorkDir(`${baseApp}-grader`, relativeWorkSubdir);
+  const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-grader`, relativeWorkSubdir);
   try {
     fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
       recursive: true,
@@ -34,8 +34,6 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     });
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
-
-    const tempHome = path.resolve(workDir, '../../../../..'); // workDir is tempHome/guides/cat/guide/targets/app
     
     // =========================================================================
     // 1. RUNTIME EXECUTION DEPENDENCIES (in tempHome)
@@ -123,7 +121,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
     });
 
-    await runAgent(getDefaultSolutionAgent(), prompt, workDir);
+    await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
 
     const generatedGrader = path.join(workDir, GRADER_FILE);
     if (fs.existsSync(generatedGrader)) {
@@ -140,9 +138,9 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     }
   } finally {
     try {
-      fs.rmSync(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+      fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
     } catch (e) {
-      console.warn(`Warning: failed to remove workDir ${workDir}: ${(e as Error).message}`);
+      console.warn(`Warning: failed to remove tempHome ${tempHome}: ${(e as Error).message}`);
     }
   }
 }

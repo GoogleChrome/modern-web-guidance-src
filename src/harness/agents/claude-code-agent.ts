@@ -22,6 +22,9 @@ export function setupClaudeCodeCredentials(tempHome: string): void {
   const gcloudConfigDest = path.join(tempHome, '.config', 'gcloud');
   fs.mkdirSync(gcloudConfigDest, { recursive: true });
   copyFileIfExists(config.environment.gcpCredentials, path.join(gcloudConfigDest, 'application_default_credentials.json'));
+  if (process.platform === 'darwin' && !process.env.NODE_EXTRA_CA_CERTS && fs.existsSync('/etc/ssl/cert.pem')) {
+    process.env.NODE_EXTRA_CA_CERTS = '/etc/ssl/cert.pem';
+  }
 }
 
 export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
@@ -310,15 +313,20 @@ export function extractClaudeMetadata(logData: any[], subagentsMap: Record<strin
   const fileReadGuides = new Set<string>();
 
   const processEntries = (entries: any[]) => {
+    const usagesById = new Map<string, any>();
+    const standaloneUsages: any[] = [];
+
     for (const obj of entries) {
       if (obj.message?.model) {
         modelCounts[obj.message.model] = (modelCounts[obj.message.model] || 0) + 1;
       }
       if (obj.message?.usage) {
-        const u = obj.message.usage;
-        totalTokens += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0);
-        cachedTokens += u.cache_read_input_tokens || 0;
-        hasTokenData = true;
+        const messageId = obj.message.id || obj.messageId;
+        if (messageId) {
+          usagesById.set(messageId, obj.message.usage);
+        } else {
+          standaloneUsages.push(obj.message.usage);
+        }
       }
       const content = obj.message?.content;
       for (const item of Array.isArray(content) ? content : []) {
@@ -348,6 +356,12 @@ export function extractClaudeMetadata(logData: any[], subagentsMap: Record<strin
           }
         }
       }
+    }
+
+    for (const u of [...usagesById.values(), ...standaloneUsages]) {
+      totalTokens += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+      cachedTokens += u.cache_read_input_tokens || 0;
+      hasTokenData = true;
     }
   };
 

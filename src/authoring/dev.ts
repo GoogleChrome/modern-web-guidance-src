@@ -215,7 +215,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
   const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
-  const workDir = setupGuideDevWorkDir(`${baseApp}-${patchType}`, undefined, agent);
+  const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-${patchType}`, undefined, agent);
   try {
     await copyBaseAppToWorkspace(baseApp, workDir);
 
@@ -235,7 +235,7 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
       ? buildZeroPassratePrompt(promptOpts)
       : buildSolutionPrompt(promptOpts);
 
-    await runAgent(agent, prompt, workDir);
+    await runAgent(agent, prompt, workDir, { homeDir: tempHome });
 
     const patchRelFile = patchType === 'zero-passrate' ? ZERO_PASSRATE_PATCH_FILE : SOLUTION_PATCH_FILES[patchType];
     const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchRelFile);
@@ -246,15 +246,15 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
     }
   } finally {
     try {
-      fs.rmSync(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+      fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
     } catch (e) {
-      console.warn(`Warning: failed to remove workDir ${workDir}: ${(e as Error).message}`);
+      console.warn(`Warning: failed to remove tempHome ${tempHome}: ${(e as Error).message}`);
     }
   }
 }
 
 async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
-  const workDir = setupGuideDevWorkDir(`${baseApp}-task`);
+  const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-task`);
   try {
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
@@ -267,7 +267,7 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
     });
 
-    await runAgent(getDefaultSolutionAgent(), prompt, workDir);
+    await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
 
     const generatedTask = path.join(workDir, TASK_FILE);
     if (fs.existsSync(generatedTask)) {
@@ -277,9 +277,9 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
     }
   } finally {
     try {
-      fs.rmSync(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+      fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
     } catch (e) {
-      console.warn(`Warning: failed to remove workDir ${workDir}: ${(e as Error).message}`);
+      console.warn(`Warning: failed to remove tempHome ${tempHome}: ${(e as Error).message}`);
     }
   }
 }
