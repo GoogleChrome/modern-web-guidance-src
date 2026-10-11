@@ -27,6 +27,17 @@ export interface EmbedderLike {
   embed(text: string): Promise<number[]>;
 }
 
+export const DEFAULT_MIN_SIMILARITY = 0.35;
+export const DEFAULT_TOP1_MIN_SIMILARITY = 0.38;
+export const DEFAULT_HIGH_CONFIDENCE_SIMILARITY = 0.42;
+export const DEFAULT_MAX_DROP_FROM_TOP1 = 0.12;
+
+export interface SearchOptions {
+  top1MinSimilarity?: number;
+  highConfidenceSimilarity?: number;
+  maxDropFromTop1?: number;
+}
+
 let cachedVectors: UseCaseVector[] | null = null;
 
 const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -75,8 +86,9 @@ function loadVectors(): UseCaseVector[] {
 export async function searchUseCases(
   query: string,
   limit = 5,
-  minSimilarity = 0.3,
-  embedder?: EmbedderLike
+  minSimilarity = DEFAULT_MIN_SIMILARITY,
+  embedder?: EmbedderLike,
+  options?: SearchOptions
 ): Promise<UseCaseResult[]> {
   const actualEmbedder = embedder ?? TfjsEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
@@ -103,7 +115,28 @@ export async function searchUseCases(
   // Sort by similarity descending
   results.sort((a, b) => b.similarity - a.similarity);
 
-  const limitedResults = results.slice(0, limit).map(r => ({
+  const useDefaultTwoStage = minSimilarity === DEFAULT_MIN_SIMILARITY;
+  const top1Min =
+    options?.top1MinSimilarity ??
+    (useDefaultTwoStage ? DEFAULT_TOP1_MIN_SIMILARITY : minSimilarity);
+  const highConfSim =
+    options?.highConfidenceSimilarity ?? DEFAULT_HIGH_CONFIDENCE_SIMILARITY;
+  const maxDrop =
+    options?.maxDropFromTop1 ??
+    (useDefaultTwoStage ? DEFAULT_MAX_DROP_FROM_TOP1 : Infinity);
+
+  const top1Sim = results[0]?.similarity ?? -Infinity;
+  const filteredResults =
+    results.length === 0 || top1Sim < top1Min
+      ? []
+      : results.filter(
+          (r, idx) =>
+            idx === 0 ||
+            r.similarity >= highConfSim ||
+            top1Sim - r.similarity <= maxDrop
+        );
+
+  const limitedResults = filteredResults.slice(0, limit).map(r => ({
     id: r.item.id,
     description: r.item.description,
     category: r.item.category,

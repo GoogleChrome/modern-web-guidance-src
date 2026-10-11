@@ -45,4 +45,29 @@ describe("searchUseCases", () => {
     const results = await searchUseCases("test query", 5, 0.0, mockEmbedder);
     assert.ok(Array.isArray(results));
   });
+
+  it("returns empty array when top-1 similarity is below top1MinSimilarity", async () => {
+    const mockEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 384 }, () => 0),
+    };
+    const results = await searchUseCases("test query", 5, 0.0, mockEmbedder, {
+      top1MinSimilarity: 0.38,
+    });
+    assert.strictEqual(results.length, 0);
+  });
+
+  it("prunes weak tail results that exceed maxDropFromTop1 while keeping high-confidence matches", async () => {
+    // "WebAssembly canvas render" hits expose-canvas-content-to-browser-features at >0.60 and cpp-on-the-web at >=0.42
+    const results = await searchUseCases("WebAssembly canvas render", 5);
+    assert.ok(results.length > 0, "Should return results for WebAssembly canvas render");
+    assert.ok(results[0].similarity >= 0.38, "Top-1 result must clear 0.38");
+    for (let i = 1; i < results.length; i++) {
+      const r = results[i];
+      assert.ok(r.similarity >= 0.35, `Result ${r.id} (${r.similarity}) must clear 0.35 floor`);
+      assert.ok(
+        r.similarity >= 0.42 || results[0].similarity - r.similarity <= 0.1201,
+        `Result ${r.id} (${r.similarity}) must either be >= 0.42 or within 0.12 of top-1 (${results[0].similarity})`
+      );
+    }
+  });
 });
