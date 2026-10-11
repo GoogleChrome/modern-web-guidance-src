@@ -4,11 +4,11 @@ description: |
   Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip — web APIs evolve rapidly and training weights contain obsolete patterns.
 
   Trigger immediately for:
-  - UI/Layout: Dialogs/popovers, tables, dark mode, anchor positioning, container queries, `:has()`, etc.
+  - UI/Layout: Modals/dialogs/popovers, tables, dark mode, anchor positioning, container queries, `:has()`, etc.
   - Scroll/Motion: View Transitions, Scroll-driven animations, parallax/reveals, etc.
   - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization, etc.
   - System/APIs: Security, passkeys, HTML sanitization, Web Components, dates/timezones, Built-in AI, WebAssembly, etc.
-  - Frameworks: Standard HTML/CSS/DOM in React, Vue, Angular, Svelte, etc.
+  - Frameworks: Standard HTML/CSS/DOM in React, Vue, Angular, etc.
   - General Frontend: Forms, validation (`:user-valid`), autofill, accessibility, custom selects, scrollbars, etc.
 
   DO NOT trigger for:
@@ -24,8 +24,8 @@ A skill to search for specific web development use cases and retrieve their corr
 ## When to use
 
 Must use this skill:
-- At the **start** of implementing any web feature.
-- Before creating a new component, to check if a standardized pattern already exists.
+- At the **start** of implementing any web UI, CSS layout/animation, or client-side JS logic (dates/timezones, sanitization, performance, accessibility)—including when fixing UX symptoms (e.g., janky interactions, layout shifts).
+- Before creating or updating a component, to check if a standardized modern web pattern already exists.
 - To avoid implementing ad-hoc solutions or loading large dependencies unnecessarily.
 
 ## Usage Instructions
@@ -33,8 +33,8 @@ Must use this skill:
 ### Step 1. Search Use Cases
 
 Run `modern-web-guidance` directly with `npx` using a **2–5 word action-oriented query** for a **single web platform capability or UI pattern**:
-- **Keep queries focused and generic**: Omit framework/library names (`React`, `Vue`, `Tailwind`, etc.) and app-specific context (product/route/asset names). Split multi-feature tasks into separate `search` calls.
-- **Example**: Search `"light dismiss dialog"` or `"responsive data table"`, **not** `"dialog"` (too terse) or `"close React settings modal on outside click"` (framework/app noise).
+- **Keep queries focused and generic**: Describe the user-visible capability (`<verb> + <UI/platform object>`, optionally paired with the target HTML/CSS/JS feature name if known). Omit framework/library names (`React`, `Vue`, `Tailwind`, etc.) and app/domain nouns (product, route, or component/file names). Split multi-feature tasks into separate `search` calls.
+- **Example**: Search `"light dismiss dialog"` or `"responsive data table"`, **not** `"dialog"` (too terse), `"responsive table dark mode"` (compound — split into two searches), or `"close React settings modal on outside click"` (framework/app noise).
 
 ```sh
 npx -y modern-web-guidance@latest search "<query>" --skill-version SKILL_VERSION
@@ -62,16 +62,13 @@ npx -y modern-web-guidance@latest search "<query>" --skill-version SKILL_VERSION
 ]
 ```
 
-> **Note**: If search results are vague, return no matches, or show low similarity scores, run the `list` command to browse all guides:
-> ```sh
-> npx -y modern-web-guidance@latest list
-> ```
+> **Note**: Inspect the returned `description` fields. If a clean 2–5 word search returns no matching `description` (or top similarity `< 0.45`), the topic is not covered—proceed directly with your implementation without retry searches or `list`. Only run `npx -y modern-web-guidance@latest list` when a broad UI goal could map to multiple guide categories.
 
 ---
 
 ### Step 2. Retrieve Best Practices
 
-Once you have a relevant `id` from the search results, call this script using the `retrieve` command to get the full guide. You can pass multiple IDs separated by commas.
+Once you have a relevant `id` from the search results, call `retrieve` for **only the 1–2 `id`(s) whose `description` directly matches your task** (do not bulk-retrieve all 5 search results). You can pass 2 matching IDs separated by a comma.
 
 ```sh
 npx -y modern-web-guidance@latest retrieve "<id>"
