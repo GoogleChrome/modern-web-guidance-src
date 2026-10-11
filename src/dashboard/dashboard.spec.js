@@ -224,7 +224,12 @@ test.describe('Hero headline takeaways', () => {
       const card = hero.locator(`.takeaway[data-metric="${metric}"]`);
       await expect(card).toBeVisible();
       await expect(card.locator('.takeaway-figure')).toHaveText(/\d/);
-      await expect(card.locator('.takeaway-qualifier')).not.toHaveText(/loading|appear once/i);
+      // Cards may render a compact (phone) and a full qualifier; none may be a placeholder.
+      const qualifiers = card.locator('.takeaway-qualifier');
+      expect(await qualifiers.count()).toBeGreaterThan(0);
+      for (const text of await qualifiers.allInnerTexts()) {
+        expect(text).not.toMatch(/loading|appear once/i);
+      }
     }
     // Pass-rate uplifts are expressed in percentage points; efficiency as a percentage.
     await expect(hero.locator('.takeaway[data-metric="overall"] .takeaway-figure')).toContainText('pp');
@@ -273,5 +278,97 @@ test.describe('Hero headline takeaways', () => {
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('#hero h2#hero-heading')).toHaveCount(1);
     await expect(page.locator('#hero-takeaways h3')).toHaveCount(4);
+  });
+});
+
+/**
+ * "Browse all runs" (landing.js / landing.css) and the per-suite summary
+ * (dashboard.js). Uses the same nightly fixture manifest as the hero tests
+ * where real nightly rows are needed.
+ */
+test.describe('Browse all runs', () => {
+  const FIXTURE = new URL('./fixtures/hero-suites.fixture.json', import.meta.url).pathname;
+
+  test('is a labeled secondary section below the hero with an accessible table', async ({ page }) => {
+    await page.goto('/');
+    const section = page.locator('#browse-section');
+    await expect(section).toHaveAttribute('aria-labelledby', 'browse-heading');
+    await expect(section.locator('h2#browse-heading')).toHaveText(/Browse all runs/);
+    // Hero comes first in document order.
+    const order = await page.evaluate(() => {
+      const hero = document.getElementById('hero');
+      const browse = document.getElementById('browse-section');
+      return hero && browse ? hero.compareDocumentPosition(browse) & Node.DOCUMENT_POSITION_FOLLOWING : 0;
+    });
+    expect(order).toBeTruthy();
+
+    const table = section.locator('table.suites-table');
+    await expect(table.locator('caption')).toHaveCount(1);
+    await expect(table.locator('thead th[scope="col"]').first()).toBeAttached();
+    await expect(page.locator('.suite-table-row').first()).toBeVisible();
+    await expect(page.locator('.suite-table-row th[scope="row"]').first()).toBeVisible();
+    // Legend explains the dumbbell encoding in words, not just color.
+    await expect(section.locator('#dumbbell-legend')).toContainText(/Unguided/);
+    await expect(section.locator('#dumbbell-legend')).toContainText(/Guided/);
+  });
+
+  test('metric cells carry text equivalents (pp for pass rates, % words for time/tokens)', async ({ page }) => {
+    await page.route('**/api/suites*', route => route.fulfill({ path: FIXTURE, contentType: 'application/json' }));
+    await page.goto('/');
+    const rows = page.locator('.suite-table-row');
+    await expect(rows).toHaveCount(3);
+    await expect(page.locator('#suites-count')).toHaveText(/Showing 3 of 3 runs/);
+
+    const first = rows.first();
+    // Text includes the visually-hidden "Pass rate: unguided …, guided …" prefixes.
+    await expect(first.locator('.uplift-cell .rate-text')).toHaveText(/\d+%[^%]*→[^%]*\d+%\s*\([+−-]?\d+ pp\)/);
+    await expect(first.locator('.uplift-cell .uplift-link')).toHaveAttribute('href', /dashboard\.html\?testId=nightly-/);
+    // Efficiency pills name the direction in words.
+    await expect(first.locator('.eff-pill').first()).toHaveText(/(faster|slower|fewer|more|no change)/i);
+    // Dumbbell graphics are decorative; the numbers are in text.
+    await expect(first.locator('.suite-dumbbell-track').first()).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  test('sortable column headers expose aria-sort and reorder rows', async ({ page }) => {
+    await page.route('**/api/suites*', route => route.fulfill({ path: FIXTURE, contentType: 'application/json' }));
+    await page.goto('/');
+    await expect(page.locator('.suite-table-row')).toHaveCount(3);
+
+    const dateHeader = page.locator('.suites-table th:has(.sort-btn[data-sort="date"])');
+    await expect(dateHeader).toHaveAttribute('aria-sort', 'descending');
+    const before = await page.locator('.suite-table-row').evaluateAll(rows => rows.map(r => r.getAttribute('data-test-id')));
+
+    await page.locator('.sort-btn[data-sort="date"]').click();
+    await expect(dateHeader).toHaveAttribute('aria-sort', 'ascending');
+    const after = await page.locator('.suite-table-row').evaluateAll(rows => rows.map(r => r.getAttribute('data-test-id')));
+    expect(after).toEqual([...before].reverse());
+
+    // Sorting by time moves aria-sort to that column and clears it from date.
+    await page.locator('.sort-btn[data-sort="time"]').click();
+    await expect(page.locator('.suites-table th:has(.sort-btn[data-sort="time"])')).toHaveAttribute('aria-sort', /ascending|descending/);
+    await expect(dateHeader).not.toHaveAttribute('aria-sort', /ascending|descending/);
+  });
+
+  test('"Scheduled runs only" hides ad-hoc suites and is announced in the live count', async ({ page }) => {
+    await page.goto('/');
+    // The mock data set has only an ad-hoc suite, so the toggle must not hide everything.
+    await expect(page.locator('.suite-table-row')).toHaveCount(1);
+    await expect(page.locator('#suites-count')).toHaveAttribute('aria-live', 'polite');
+    await expect(page.locator('#suites-count')).toHaveText(/Showing 1 of 1 runs?/);
+  });
+
+  test('per-suite page leads with pass rate, a11y, time, and token summary cards', async ({ page }) => {
+    await page.goto('/dashboard.html?testId=example-result');
+    await expect(page.locator('#suite-summary-heading')).toHaveText(/Suite summary/);
+    const cards = page.locator('#summary-side-panel .narrative-card');
+    await expect(cards).toHaveCount(4);
+    // Pass-rate card: pp delta pill + U → G with per-mode denominators.
+    const pass = cards.first();
+    await expect(pass.locator('.meta-label')).toHaveText(/Pass rate/);
+    await expect(pass.locator('.efficiency-delta-pill')).toHaveText(/[+−-]?\d+ pp/);
+    await expect(pass.locator('.sparkline-labels')).toHaveText(/\d+%[^%]*→[^%]*\d+%/);
+    await expect(cards.nth(1).locator('.meta-label')).toHaveText(/Accessibility subscore/);
+    // Diagnostics stay intact for internal users.
+    await expect(page.locator('.task-accordion-header').first()).toBeVisible();
   });
 });

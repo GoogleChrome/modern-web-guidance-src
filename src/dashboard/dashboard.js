@@ -662,6 +662,9 @@ function renderSummary(data) {
                     <span>Guidance consumed</span>
                     <strong>${guideUsageRate}% (${tasksWithGuides.size}/${tasksCount} tasks)</strong>
                 </div>
+                <div class="narrative-metric-row narrative-note">
+                    <span>Graded checks per mode differ when a run fails before grading (counted as one failed check).</span>
+                </div>
                 ${summary.expectedTotalRuns !== undefined ? `
                 <div class="narrative-metric-row">
                     <span>Expected runs</span>
@@ -972,8 +975,8 @@ function renderGrid(data, testId) {
 
         const minVal = Math.min(displayU, displayG);
         const maxVal = Math.max(displayU, displayG);
-        const trackWidth = 250; // matches css
-        const scale = (/** @type {number} */ val) => (val / 100) * trackWidth;
+        // Percent positions so the track can shrink on narrow screens (dots use translateX(-50%)).
+        const scale = (/** @type {number} */ val) => `${val}%`;
 
         const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
         const trendLinkHtml = `
@@ -1017,9 +1020,9 @@ function renderGrid(data, testId) {
                 <div class="right-section">
                     ${metaChipsHtml}
                     <div class="mini-dumbbell-track" aria-hidden="true">
-                        <div class="connector" style="left: ${scale(minVal)}px; width: ${scale(maxVal - minVal)}px;"></div>
-                        <div class="dot unguided" style="left: ${scale(displayU)}px;"></div>
-                        <div class="dot guided" style="left: ${scale(displayG)}px;"></div>
+                        <div class="connector" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>
+                        <div class="dot unguided" style="left: ${scale(displayU)};"></div>
+                        <div class="dot guided" style="left: ${scale(displayG)};"></div>
                     </div>
                     <div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}">
                         <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp

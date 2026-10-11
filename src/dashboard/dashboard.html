@@ -40,6 +40,13 @@
       <section id="chart-section" class="chart-container hidden suite-chart-section" aria-labelledby="suite-summary-heading">
         <h2 id="suite-summary-heading" class="visually-hidden">Suite summary</h2>
         <div id="summary-side-panel" class="narrative-summary-grid"></div>
+        <p class="dumbbell-legend suite-legend">
+          <span class="legend-item"><span class="legend-dot unguided" aria-hidden="true"></span>Unguided (without MWG)</span>
+          <span class="legend-item"><span class="legend-dot guided" aria-hidden="true"></span>Guided (with MWG)</span>
+          <span class="legend-item"><span class="legend-line improved" aria-hidden="true"></span>Improved</span>
+          <span class="legend-item"><span class="legend-line regressed" aria-hidden="true"></span>Regressed</span>
+          <span class="legend-item legend-note">Pass-rate change in percentage points (pp); time and token change in %, lower is better.</span>
+        </p>
         <div class="chart-toolbar">
           <div class="chart-toolbar-left">
             <span class="meta-label">Chart &amp; task view:</span>
@@ -87,7 +94,7 @@
   <!-- Hint popovers (interestfor + popover="hint"); keep the text in the element, never in attributes -->
   <div id="dash-tooltip-a11y" popover="hint" class="hint-popover">
     <strong>Cross-cutting accessibility subscore</strong><br>
-    Aggregates the deterministic grader assertions that test accessibility requirements across both dedicated <code>accessibility/</code> guides and UI, CSS, and HTML component guides. Each check is classified into one of six dimensions: Focus &amp; <code>inert</code> management; Motion, contrast &amp; visual; ARIA, roles &amp; live regions; Form labels &amp; grouping; Keyboard &amp; non-gesture operability; and checks from dedicated <code>accessibility/</code> guides.
+    Aggregates the deterministic grader assertions that test accessibility requirements across both dedicated <code>accessibility/</code> guides and UI, CSS, and HTML component guides. Each check is classified into one of six dimensions: Focus &amp; <code>inert</code> management; Motion, contrast &amp; visual; ARIA, roles &amp; live regions; Form labels &amp; grouping; Keyboard &amp; non-gesture operability; and checks from dedicated <code>accessibility/</code> guides. Graded-check counts differ between modes when a run fails before grading (counted as one failed check).
   </div>
   <div id="dash-tooltip-tokens" popover="hint" class="hint-popover">
     <strong>Uncached vs. total token accounting</strong><br>

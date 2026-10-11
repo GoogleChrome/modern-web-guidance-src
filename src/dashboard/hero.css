@@ -39,6 +39,18 @@
 
 /* Header row ------------------------------------------------------------- */
 
+.nowrap {
+  white-space: nowrap;
+}
+
+/* The sign-in button lives in the page header (index.html); on phones the long label wraps to
+   three lines beside the title, so show the short form (aria-label keeps the full name). */
+@media (width < 40rem) {
+  .auth-btn-long {
+    display: none;
+  }
+}
+
 .hero-eyebrow {
   margin: 0 0 var(--space-2);
   font-size: 0.85rem;
@@ -190,6 +202,12 @@
 .takeaway-qualifier .range {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* Two qualifier lengths: full sentence on wide containers, one line on phones (swapped in the
+   narrow @container block below) so all four figures fit the first screen. */
+.takeaway-qualifier-short {
+  display: none;
 }
 
 /* Skeleton state while numbers load (no animation under reduced motion). */
@@ -476,6 +494,10 @@
 /* Narrow containers (phones, 200% zoom): numbers first, compact row cards ---- */
 
 @container hero (width < 40rem) {
+  .eyebrow-detail {
+    display: none;
+  }
+
   .hero-lede {
     font-size: 0.95rem;
   }
@@ -517,6 +539,14 @@
     grid-column: 1 / -1;
     margin-block-start: var(--space-1);
     font-size: 0.75rem;
+  }
+
+  .takeaway-qualifier-full {
+    display: none;
+  }
+
+  .takeaway-qualifier-short {
+    display: block;
   }
 }
 

@@ -712,6 +712,36 @@ dialog#modal.diff-modal {
   display: flex;
   align-items: center;
   gap: 30px;
+  min-inline-size: 0;
+}
+
+/* Narrow screens: the header wraps into a title row and a metrics row instead of forcing the viewport wider. */
+.task-accordion-header {
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.task-accordion-header .left-section {
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
+
+.task-accordion-header .right-section {
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin-inline-start: auto;
+}
+
+@media (width < 48rem) {
+  .task-accordion-header .right-section {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    margin-inline-start: 0;
+  }
+
+  .task-efficiency-meta {
+    flex-wrap: wrap;
+  }
 }
 
 .task-accordion-content {
@@ -727,7 +757,10 @@ dialog#modal.diff-modal {
 
 /* Mini Dumbbell Slider Track */
 .mini-dumbbell-track {
-  width: 250px;
+  inline-size: 250px;
+  max-inline-size: 100%;
+  min-inline-size: 80px;
+  flex: 0 1 250px;
   height: 4px;
   background: var(--border-color);
   border-radius: 2px;
@@ -933,6 +966,44 @@ dialog#modal.diff-modal {
 .header-meta-grid {
   display: flex;
   border-radius: 12px;
+  max-inline-size: 100%;
+}
+
+.header-meta-grid .header-meta-item {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.header-meta-grid .meta-value {
+  overflow-wrap: anywhere;
+}
+
+/* Phones: two-column meta strip instead of eight stacked 160px cells. */
+@media (width < 40rem) {
+  .header-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 12px;
+  }
+
+  .header-meta-grid .header-meta-item {
+    padding: 8px 4px;
+    min-inline-size: 0;
+  }
+
+  .header-meta-grid .header-meta-item:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .header-meta-grid .meta-value {
+    overflow-wrap: anywhere;
+  }
+}
+
+.narrative-note span {
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
 .summary-subgrid {
@@ -1591,8 +1662,14 @@ dialog#modal.diff-modal {
 
 .guide-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  min-inline-size: 0;
+}
+
+.guide-controls .sort-select {
+  max-inline-size: 100%;
 }
 
 .sort-label {
@@ -1741,6 +1818,15 @@ dialog#modal.diff-modal {
   margin-bottom: 25px;
 }
 
+.suite-header-row > div:first-child {
+  flex: 1 1 60%;
+  min-inline-size: 0;
+}
+
+.suite-header-actions {
+  flex: 0 0 auto;
+}
+
 .suite-test-header {
   font-size: var(--font-lg);
   color: var(--text-secondary);
@@ -1775,4 +1861,58 @@ dialog#modal.diff-modal {
 .guide-evals-heading {
   margin: 16px 0;
   color: var(--text-primary);
+}
+
+/* Legend shared with the landing table (shapes carry meaning; color reinforces) */
+.dumbbell-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--font-md);
+  color: var(--text-secondary);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.legend-note {
+  white-space: normal;
+}
+
+.legend-dot {
+  display: inline-block;
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.legend-dot.unguided {
+  border: 2px solid var(--color-outline);
+  background: var(--color-surface-container-lowest);
+}
+
+.legend-dot.guided {
+  background: var(--color-primary);
+}
+
+.legend-line {
+  display: inline-block;
+  inline-size: 18px;
+  block-size: 3px;
+  border-radius: 2px;
+}
+
+.legend-line.improved {
+  background: var(--color-primary);
+}
+
+.legend-line.regressed {
+  background: var(--color-accent-failure);
 }

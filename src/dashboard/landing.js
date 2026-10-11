@@ -1,11 +1,16 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, formatDuration, formatTokens, isLocalDashboardHost, $ } from './utils.js';
+import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, formatDuration, formatTokens, isLocalDashboardHost, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
-import { extractSuiteSummary } from './summary-extractor.js';
+import { ApiClient } from './api.js';
 
 /**
- * @typedef {import('./summary-extractor.js').SuiteSummary & {
+ * A manifest entry as shown in the table. Slim manifests omit `guides`/`chartData`;
+ * those are merged in lazily from the full manifest (see ensureFullManifest).
+ * @typedef {import('./insights.js').ManifestSuite & {
  *   source: import('./api.js').DataSource;
- *   data?: any;
+ *   timestamp: string;
+ *   agent: string;
+ *   serving: string;
+ *   model: string;
  * }} LandingSuiteSummary
  */
 
@@ -62,6 +67,11 @@ let currentGuideSortDir = 'asc';
 /** @type {InsightsMode} */
 let currentInsightsMode = 'all';
 
+/** Single data source per page load (`?source=local|remote|static`, else inferred from the host). */
+const api = new ApiClient();
+/** @type {Promise<void> | null} */
+let fullManifestPromise = null;
+
 /** @type {Record<string, string>} */
 const servingDisplayNames = {
     'skills': 'Skills',
@@ -97,16 +107,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const params = new URLSearchParams(window.location.search);
 
-        // Load local immediately; remote once the user is signed in.
-        initGoogleAuth(async () => {
-            await loadRemoteTests();
-        });
-
-        await loadLocalTests();
-        if (getAccessToken()) {
-            await loadRemoteTests();
+        // Remote (GCS) needs a Google sign-in token; local/static load immediately.
+        if (api.source === 'remote' && !getAccessToken()) {
+            setEmptyState('Sign in with Google to load evaluation runs.');
+            renderSuites();
+            initGoogleAuth(async () => {
+                await loadSuites();
+                selectedTestIds = new Set(Object.keys(allTestData));
+                applyTestsParam(params.get('tests'));
+                renderFilterMenuItems();
+                renderSuites();
+            });
+            return;
+        }
+        if (api.source === 'remote') {
+            initGoogleAuth(() => {});
         }
 
+        await loadSuites();
         selectedTestIds = new Set(Object.keys(allTestData));
         applyTestsParam(params.get('tests'));
 
@@ -251,9 +269,17 @@ function setupScheduledToggle() {
     });
 }
 
+/** Below this container width the table renders as stacked cards (mirrors the @container rule in landing.css). */
+const STACKED_MAX_WIDTH = 640;
+/** How many stacked cards to show before the "Show all" button on phones. */
+const STACKED_PAGE_SIZE = 10;
+let isStacked = false;
+let showAllStacked = false;
+
 /**
  * The table wrapper scrolls horizontally on narrow viewports; making it a focusable,
  * labeled region lets keyboard users scroll it (MWG `accessibility`: scroll containers).
+ * It also tells us when the stacked-card layout is active (ResizeObserver == container query).
  */
 function setupScrollRegion() {
     const wrap = document.querySelector('.suites-table-container');
@@ -261,6 +287,19 @@ function setupScrollRegion() {
     wrap.setAttribute('tabindex', '0');
     wrap.setAttribute('role', 'region');
     wrap.setAttribute('aria-label', 'All runs table (scrolls horizontally)');
+
+    if ('ResizeObserver' in window) {
+        const ro = new ResizeObserver(entries => {
+            const width = entries[0]?.contentRect.width ?? wrap.clientWidth;
+            const stacked = width < STACKED_MAX_WIDTH;
+            if (stacked !== isStacked) {
+                isStacked = stacked;
+                renderSuites();
+            }
+        });
+        ro.observe(wrap);
+        isStacked = wrap.clientWidth < STACKED_MAX_WIDTH;
+    }
 }
 
 function setupSortButtons() {
@@ -419,114 +458,79 @@ function updateUrlParams() {
 // DATA LOADING
 // ==========================================
 
-async function loadLocalTests() {
-    if (!isLocalDashboardHost()) {
-        return; // Avoid 404s by skipping local network fetches when hosted on GitHub Pages
-    }
-
-    try {
-        let response = await fetch(`/api/suites?t=${Date.now()}`);
-        let manifest;
-        let useResultsPrefix = false;
-
-        if (!response.ok) {
-            // Try fetching suites.gen.json as fallback for static mode
-            const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
-            if (!staticRes.ok) return; // Silent fail if both fail
-            const suitesData = await staticRes.json();
-            manifest = Array.isArray(suitesData) ? { suites: suitesData } : suitesData;
-            useResultsPrefix = true;
-        } else {
-            manifest = await response.json();
-        }
-
-        if (manifest.suites && manifest.suites.length > 0) {
-            const emptyState = document.getElementById('empty-state');
-            if (emptyState) emptyState.style.display = 'none';
-        }
-
-        const sourceName = useResultsPrefix ? 'static' : 'local';
-        for (const suite of manifest.suites) {
-            if (typeof suite === 'object' && suite.testId && suite.guidedStats) {
-                registerSuiteSummary(suite, sourceName);
-            } else {
-                const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
-                const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
-                if (!testId) continue;
-                try {
-                    const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
-                    const response = await fetch(`${fetchPath}?source=${sourceName}&t=${Date.now()}`);
-                    if (response.ok) {
-                        const parsed = await response.json();
-                        registerTestData(testId, sourceName, parsed, suiteTimestamp);
-                    }
-                } catch (e) {
-                    console.warn(`Failed to load local test ${testId}:`, e);
-                }
-            }
-        }
-    } catch {
-        console.warn('Local proxy not available');
-    }
+/**
+ * @param {string | null} message null hides the empty state.
+ */
+function setEmptyState(message) {
+    const emptyState = document.getElementById('empty-state');
+    if (!emptyState) return;
+    emptyState.style.display = message ? 'block' : 'none';
+    const p = emptyState.querySelector('p');
+    if (p && message) p.textContent = message;
 }
 
-async function loadRemoteTests() {
+/**
+ * Loads the slim manifest (or the full one when slim is unavailable — ApiClient falls back
+ * transparently) and registers every suite for the table.
+ */
+async function loadSuites() {
     try {
-        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
-        const response = await authenticatedFetch(fileUrl);
-        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
-
-        const manifest = await response.json();
-        if (Array.isArray(manifest) && manifest.length > 0) {
-            const emptyState = document.getElementById('empty-state');
-            if (emptyState) emptyState.style.display = 'none';
-            for (const item of manifest) {
-                if (item && item.testId) {
-                    registerSuiteSummary(item, 'remote');
-                }
+        const { suites } = await api.getManifest('slim');
+        const list = Array.isArray(suites) ? suites : [];
+        for (const suite of list) {
+            if (suite && suite.testId && suite.guidedStats) {
+                registerSuiteSummary(suite, api.source);
             }
         }
-
-        // Re-render now that we have remote data
-        const params = new URLSearchParams(window.location.search);
-        const initialTests = params.get('tests');
-        if (!initialTests || initialTests.trim() === '') {
-            selectedTestIds = new Set(Object.keys(allTestData));
-        }
-        renderFilterMenuItems();
-        renderSuites();
+        setEmptyState(list.length > 0 ? null : 'No test runs found yet. Run the test suite to get started.');
     } catch (error) {
-        console.error('Error loading remote suites:', error);
+        console.error('Error loading suites manifest:', error);
+        setEmptyState('Could not load evaluation runs.');
     }
 }
 
 /**
- * @param {import('./summary-extractor.js').SuiteSummary & { data?: any }} summary
+ * Per-guide data (`guides`, `chartData`) lives only in the full manifest. Fetch it once,
+ * on demand (breakdowns drawer, pass-rate preview), and merge it into the table entries.
+ * @returns {Promise<void>}
+ */
+function ensureFullManifest() {
+    if (!fullManifestPromise) {
+        fullManifestPromise = (async () => {
+            const { suites, fallback } = await api.getManifest('full');
+            // When slim was already served from the full manifest the entries are the same objects.
+            if (fallback) return;
+            for (const suite of suites || []) {
+                const key = `${suite.testId}|||${api.source}`;
+                if (allTestData[key]) {
+                    allTestData[key] = { ...allTestData[key], ...suite, source: api.source };
+                }
+            }
+        })().catch(err => {
+            console.warn('Full manifest unavailable:', err);
+            fullManifestPromise = null;
+        });
+    }
+    return fullManifestPromise;
+}
+
+/**
+ * @param {import('./insights.js').ManifestSuite} summary
  * @param {import('./api.js').DataSource} source
  */
 function registerSuiteSummary(summary, source) {
     const compoundKey = `${summary.testId}|||${source}`;
     allTestData[compoundKey] = {
         ...summary,
-        source: source,
-        data: summary.data || null
+        source,
+        timestamp: summary.timestamp || '',
+        agent: summary.agent || 'unknown',
+        serving: summary.serving || 'unknown',
+        model: summary.model || 'unknown'
     };
     updateFilterOptions('filter-model-group', 'model');
     updateFilterOptions('filter-agent-group', 'agent');
     updateFilterOptions('filter-serving-group', 'serving', servingDisplayNames);
-}
-
-/**
- * @param {string} testId
- * @param {import('./api.js').DataSource} source
- * @param {import('../harness/lib/metrics.ts').EvalsReport} parsed
- * @param {string} [forcedTimestamp]
- */
-function registerTestData(testId, source, parsed, forcedTimestamp) {
-    const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
-    if (summary) {
-        registerSuiteSummary({ ...summary, data: parsed }, source);
-    }
 }
 
 /**
@@ -539,7 +543,7 @@ function updateFilterOptions(groupId, key, displayNames = {}) {
     const group = document.getElementById(groupId);
     if (!group) return;
 
-    const values = [...new Set(Object.values(allTestData).map(t => t[key]).filter(Boolean))].sort();
+    const values = /** @type {string[]} */ ([...new Set(Object.values(allTestData).map(t => t[key]).filter(Boolean))]).sort();
     const currentOptions = Array.from(group.querySelectorAll('option')).map(o => o.value);
     if (JSON.stringify(currentOptions) === JSON.stringify(values)) return;
 
@@ -772,7 +776,12 @@ function renderSuites() {
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
     const colCount = 10;
 
-    renderSuitesCount(visibleKeys.length, filteredKeys.length, hiddenAdHoc);
+    // Phones: stacked cards are ~1 screen each, so page them.
+    const table = document.querySelector('.suites-table');
+    const paged = isStacked && !showAllStacked && visibleKeys.length > STACKED_PAGE_SIZE;
+    table?.classList.toggle('paged', paged);
+
+    renderSuitesCount(visibleKeys.length, filteredKeys.length, hiddenAdHoc, paged);
     syncOptionalColumns();
 
     if (visibleKeys.length === 0) {
@@ -830,7 +839,7 @@ function renderSuites() {
                     <span><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatTokens(tok.guidedUncachedMedian)}</strong></span>
                     ${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })}
                 </div>
-                <div class="eff-cell-sub">Incl. cache: ${formatTokens(tok.unguidedTotalMedian)} <span aria-hidden="true">→</span><span class="visually-hidden">to</span> ${formatTokens(tok.guidedTotalMedian)} (${tok.guidedCachedSharePct}% cached)</div>
+                <div class="eff-cell-sub">Incl. cache: <span class="nowrap">${formatTokens(tok.unguidedTotalMedian)} <span aria-hidden="true">→</span><span class="visually-hidden">to</span> ${formatTokens(tok.guidedTotalMedian)}</span> <span class="nowrap">(${tok.guidedCachedSharePct}% cached)</span></div>
             `
             : renderNotAvailable('Median uncached tokens');
 
@@ -895,22 +904,39 @@ function syncOptionalColumns() {
  * @param {number} shown
  * @param {number} matching
  * @param {number} hiddenAdHoc
+ * @param {boolean} paged
  */
-function renderSuitesCount(shown, matching, hiddenAdHoc) {
+function renderSuitesCount(shown, matching, hiddenAdHoc, paged) {
     const el = document.getElementById('suites-count');
     if (!el) return;
     const total = Object.keys(allTestData).length;
-    if (total === 0) {
-        el.textContent = '';
-        return;
-    }
-    const parts = [`Showing ${shown} of ${total} run${total === 1 ? '' : 's'}`];
+    el.innerHTML = '';
+    if (total === 0) return;
+
+    const visibleNow = paged ? Math.min(STACKED_PAGE_SIZE, shown) : shown;
+    const parts = [`Showing ${visibleNow} of ${total} run${total === 1 ? '' : 's'}`];
     if (hiddenAdHoc > 0) {
         parts.push(`${hiddenAdHoc} ad-hoc run${hiddenAdHoc === 1 ? '' : 's'} hidden by "Scheduled runs only"`);
     } else if (matching < total) {
         parts.push(`${total - matching} filtered out`);
     }
-    el.textContent = parts.join(' · ');
+    el.append(document.createTextNode(parts.join(' · ')));
+
+    if (paged) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'text-btn show-all-rows-btn';
+        btn.textContent = `Show all ${shown} runs`;
+        btn.addEventListener('click', () => {
+            showAllStacked = true;
+            renderSuites();
+            // Keep keyboard users oriented: move focus to the first newly revealed row.
+            const rows = document.querySelectorAll('#suites-list .suite-table-row');
+            const next = rows[STACKED_PAGE_SIZE]?.querySelector('a');
+            if (next instanceof HTMLElement) next.focus();
+        });
+        el.append(document.createTextNode(' · '), btn);
+    }
 }
 
 // ---- Hover/focus mini chart for the pass-rate cell ----
@@ -956,6 +982,10 @@ function setupRateCellHovers() {
             show(r.right, r.top);
         });
         link?.addEventListener('blur', () => hideTooltipChart());
+        // WCAG 1.4.13: the preview must be dismissible without moving focus.
+        link?.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideTooltipChart(true);
+        });
     });
 }
 
@@ -981,8 +1011,18 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
         `;
     }
 
-    const chartData = testInfo.chartData || (testInfo.data?.results ? calculateChartData(testInfo.data.results) : null);
-    if (!chartData || !chartData.labels || chartData.labels.length < 1) return;
+    const chartData = testInfo.chartData;
+    if (!chartData || !chartData.labels || chartData.labels.length < 1) {
+        // Slim manifest: pull per-guide data once, then retry while the pointer/focus is still here.
+        ensureFullManifest().then(() => {
+            if (currentDumbbellKey === compoundKey) {
+                currentDumbbellKey = null;
+                const refreshed = allTestData[compoundKey];
+                if (refreshed?.chartData) showTooltipChart(refreshed, x, y, compoundKey);
+            }
+        });
+        return;
+    }
     const { labels, guided, unguided } = chartData;
 
     tooltipContainer.classList.remove('hidden');
@@ -1020,15 +1060,27 @@ function updateTooltipPosition(x, y) {
     tooltipContainer.style.top = `${Math.max(8, finalY)}px`;
 }
 
-function hideTooltipChart() {
+/** @param {boolean} [immediate] */
+function hideTooltipChart(immediate = false) {
     if (!tooltipContainer) return;
     if (hideTimeout) window.clearTimeout(hideTimeout);
-    hideTimeout = window.setTimeout(() => {
+    const hide = () => {
         currentDumbbellKey = null;
         tooltipContainer.classList.add('hidden');
         hideTimeout = null;
-    }, 50);
+    };
+    if (immediate) {
+        hide();
+        return;
+    }
+    hideTimeout = window.setTimeout(hide, 50);
 }
+// Escape anywhere on the page also dismisses a hover-opened preview.
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && tooltipContainer && !tooltipContainer.classList.contains('hidden')) {
+        hideTooltipChart(true);
+    }
+});
 
 // ==========================================
 // HELPERS
@@ -1123,6 +1175,12 @@ function getInsightKeys() {
 function renderPivotInsights() {
     const container = document.getElementById('insights-container');
     if (!container) return;
+
+    // Guide-level rows need the full manifest; render what we have and refresh when it lands.
+    const needsFull = Object.values(allTestData).some(t => !t.guides);
+    if (needsFull && !fullManifestPromise) {
+        ensureFullManifest().then(() => renderPivotInsights());
+    }
 
     const keys = getInsightKeys();
     const onlyA11y = currentInsightsMode === 'a11y';
@@ -1285,7 +1343,7 @@ function renderPivotInsights() {
         const table = `
             <table class="insights-table">
                 <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption>
-                <thead class="visually-hidden"><tr><th scope="col">${escapeHtml(captionNoun === 'guide' ? 'Guide' : 'Model')}</th><th scope="col">${escapeHtml(metricName)}</th></tr></thead>
+                <thead class="${filterKey === 'guide' ? 'pivot-head' : 'visually-hidden'}"><tr><th scope="col">${escapeHtml(captionNoun === 'guide' ? 'Guide' : 'Model')}</th><th scope="col">${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead>
                 <tbody>${rowsHtml}</tbody>
             </table>
         `;

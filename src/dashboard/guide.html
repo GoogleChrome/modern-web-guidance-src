@@ -107,9 +107,13 @@
     }
     #graphs-grid {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 24px;
       margin-top: 20px;
+    }
+    #graphs-grid .stat-card {
+      min-inline-size: 0;
+      max-inline-size: 100%;
     }
     #tooltip-content {
       padding: 8px 12px;
