@@ -4,19 +4,17 @@ description: |
   Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip — web APIs evolve rapidly and training weights contain obsolete patterns.
 
   Trigger immediately for:
-  - UI/Layout: Modals, dialogs, popovers, responsive tables, dark mode, anchor positioning, container queries, `:has()`, `:user-valid`, etc.
-  - Scroll/Motion: View Transitions, Scroll-driven animations, scroll parallax/reveals, etc.
+  - UI/Layout: Dialogs/popovers, tables, dark mode, anchor positioning, container queries, `:has()`, etc.
+  - Scroll/Motion: View Transitions, Scroll-driven animations, parallax/reveals, etc.
   - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization, etc.
-  - System/APIs: Passkeys/WebAuthn, WebUSB, WebSockets sync, WebAssembly widgets, etc.
-  - Frameworks: Implementing standard HTML/CSS/DOM capabilities inside React, Vue, Angular, Svelte, etc. (search for the web capability, not the framework).
-  - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.
+  - System/APIs: Security, passkeys, HTML sanitization, Web Components, dates/timezones, Built-in AI, WebAssembly, etc.
+  - Frameworks: Standard HTML/CSS/DOM in React, Vue, Angular, Svelte, etc.
+  - General Frontend: Forms, validation (`:user-valid`), autofill, accessibility, custom selects, scrollbars, etc.
 
   DO NOT trigger for:
-  - Backend: Database SQL, ORMs, Express API routes, etc.
-  - Build & Test Tooling: Vite, Webpack, tsconfig, ESLint, Playwright/Vitest/Jest configs, package.json dependency upgrades, etc.
-  - Pipelines: CI/CD deployment, Docker, Actions, etc.
-  - Trivial App Edits: Copy/text changes, variable/component renames, dead-code removal, third-party doc lookups, etc.
-  - Generic: Local scripts (Python/Go tools), Git, etc.
+  - Backend: SQL, ORMs, API routes, etc.
+  - Infra/Scripts: CI/CD, Docker, Actions, Python/Go, Git, etc.
+  - Tooling/Trivial: Vite, tsconfig, ESLint, tests, copy/renames, 3P docs, etc.
 ---
 
 # Modern Web Guidance
