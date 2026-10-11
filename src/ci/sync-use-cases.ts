@@ -33,7 +33,6 @@ export interface UseCaseEntry {
 export interface FeatureToSync {
   featureId: string;
   issueNumber: number;
-  needsReopen: boolean;
   closeReason: 'completed' | null;
   targetStatus: ProjectStatus | null;
 }
@@ -222,8 +221,8 @@ export function updateFeatureIssueBody(currentBody: string, useCases: UseCaseEnt
 }
 
 /**
- * Returns the list of feature issues that need to be synced because they have
- * at least one active (incomplete) use case depending on them.
+ * Returns the list of open feature issues that need state or project status updates.
+ * Once a `new-feature` issue is closed, it is never auto-reopened.
  */
 export function getFeaturesNeedingSync(
   featureToIssueMap: Map<string, FeatureIssueData>,
@@ -236,6 +235,8 @@ export function getFeaturesNeedingSync(
   };
   const result: FeatureToSync[] = [];
   for (const [featureId, featureData] of featureToIssueMap) {
+    if (featureData.state === 'closed') continue;
+
     const hasActiveUseCases = hasFeature(featuresWithActiveUseCases, featureId);
     const hasCompletedUseCases = !hasActiveUseCases && hasFeature(featuresWithAnyUseCases, featureId);
 
@@ -243,23 +244,20 @@ export function getFeaturesNeedingSync(
       result.push({
         featureId,
         issueNumber: featureData.number,
-        needsReopen: featureData.state === 'closed',
         closeReason: null,
         targetStatus: ProjectStatus.NeedsUseCases,
       });
-    } else if (hasCompletedUseCases && featureData.state === 'open') {
+    } else if (hasCompletedUseCases) {
       result.push({
         featureId,
         issueNumber: featureData.number,
-        needsReopen: false,
         closeReason: 'completed',
         targetStatus: null,
       });
-    } else if (!hasFeature(featuresWithAnyUseCases, featureId) && featureData.state === 'open') {
+    } else if (!hasFeature(featuresWithAnyUseCases, featureId)) {
       result.push({
         featureId,
         issueNumber: featureData.number,
-        needsReopen: false,
         closeReason: null,
         targetStatus: ProjectStatus.NeedsUseCases,
       });
@@ -689,21 +687,11 @@ async function syncFeatureIssues(
   if (!GITHUB_TOKEN && !IS_DRY_RUN) return;
 
   const featuresToSync = getFeaturesNeedingSync(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases);
-  if (featuresToSync.length === 0) return;
-
-  console.log('🔄 Syncing feature issue states based on use case progress...');
-  for (const { featureId, issueNumber, needsReopen, closeReason, targetStatus } of featuresToSync) {
-    if (needsReopen) {
-      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would reopen' : 'Reopening'} feature issue #${issueNumber} (${featureId}) — has active use cases...`);
-      if (!IS_DRY_RUN) {
-        await octokit.rest.issues.update({
-          owner: ORG,
-          repo: REPO,
-          issue_number: issueNumber,
-          state: 'open'
-        });
-      }
-    } else if (closeReason) {
+  if (featuresToSync.length > 0) {
+    console.log('🔄 Syncing feature issue states based on use case progress...');
+  }
+  for (const { featureId, issueNumber, closeReason, targetStatus } of featuresToSync) {
+    if (closeReason) {
       console.log(`${IS_DRY_RUN ? '[DRY RUN] Would close' : 'Closing'} feature issue #${issueNumber} (${featureId}) as completed — all use cases implemented...`);
       if (!IS_DRY_RUN) {
         await octokit.rest.issues.update({
