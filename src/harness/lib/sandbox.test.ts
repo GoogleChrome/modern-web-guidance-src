@@ -68,6 +68,16 @@ test('defaultExtraHiddenPaths isolates /tmp on Linux, Playwright cache on macOS,
   }
   const resolvedCwd = fs.realpathSync(process.cwd());
   const resolvedExec = fs.realpathSync(process.execPath);
+  const resolvedPathEntries = (process.env.PATH ?? '')
+    .split(path.delimiter)
+    .filter(Boolean)
+    .map(p => {
+      try {
+        return fs.realpathSync(p);
+      } catch {
+        return path.resolve(p);
+      }
+    });
   for (const entry of fs.readdirSync(homedir, { withFileTypes: true })) {
     if ((entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.')) {
       const dirPath = path.join(homedir, entry.name);
@@ -80,13 +90,19 @@ test('defaultExtraHiddenPaths isolates /tmp on Linux, Playwright cache on macOS,
       if (!fs.existsSync(resolvedDir) || !fs.statSync(resolvedDir).isDirectory()) continue;
       const protectsRoot = resolvedDir === resolvedCwd || resolvedCwd.startsWith(resolvedDir + path.sep);
       const protectsExec = resolvedDir === resolvedExec || resolvedExec.startsWith(resolvedDir + path.sep);
-      if (!protectsRoot && !protectsExec) {
+      const protectsPath = resolvedPathEntries.some(
+        p => p === resolvedDir || p.startsWith(resolvedDir + path.sep)
+      );
+      if (!protectsRoot && !protectsExec && !protectsPath) {
         assert.ok(linuxPaths.includes(dirPath), `Expected ${entry.name} in defaultExtraHiddenPaths`);
+      } else {
+        assert.ok(!linuxPaths.includes(dirPath), `Did not expect protected ${entry.name} in defaultExtraHiddenPaths`);
       }
     }
   }
 
   const darwinPaths = defaultExtraHiddenPaths('darwin');
+  assert.ok(!darwinPaths.includes(path.join(homedir, 'Library')), 'macOS ~/Library must not be hidden (breaks Keychain access)');
   for (const dotDir of expectedDotDirs) {
     assert.ok(darwinPaths.includes(dotDir));
   }

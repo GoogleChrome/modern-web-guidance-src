@@ -301,7 +301,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const slug = parts[1] || parts[0];
   const calibrationBase = path.join(outDir, 'guides', category, slug, baseApp);
   const gradeReportDir = path.join(calibrationBase, 'grade-report');
-  const testResultsDir = path.join(calibrationBase, 'test-results');
+  const testResultsBaseDir = path.join(calibrationBase, 'test-results');
 
   const zeroPassrateOutDir = path.join(gradeReportDir, 'zero-passrate');
 
@@ -314,9 +314,10 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     const solPatchFile = SOLUTION_PATCH_FILES[agent];
     const solutionPatch = path.join(targetDir, solPatchFile);
     const solutionOutDir = path.join(gradeReportDir, `solution-${agent}`);
+    const solutionTestResultsDir = path.join(testResultsBaseDir, `solution-${agent}`);
     let unexpected = 0;
     console.log(cYellow(`\nRunning against ${baseApp} with ${solPatchFile} (${agent})... (Expecting 100% pass)`));
-    const solutionResults = await runPlaywrightCalibration(targetDir, graderPath, solutionOutDir, solutionPatch, result, undefined, testResultsDir);
+    const solutionResults = await runPlaywrightCalibration(targetDir, graderPath, solutionOutDir, solutionPatch, result, undefined, solutionTestResultsDir);
 
     if (!solutionResults) {
       allSolutionsPassed = false;
@@ -353,8 +354,9 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   let zeroPassrateFailed = false;
   const zeroPassrateTask = (async () => {
     let passed = 0;
+    const zeroPassrateTestResultsDir = path.join(testResultsBaseDir, 'zero-passrate');
     console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
-    const zeroPassrateResults = await runPlaywrightCalibration(targetDir, graderPath, zeroPassrateOutDir, zeroPassratePatch, result, undefined, testResultsDir);
+    const zeroPassrateResults = await runPlaywrightCalibration(targetDir, graderPath, zeroPassrateOutDir, zeroPassratePatch, result, undefined, zeroPassrateTestResultsDir);
 
     if (!zeroPassrateResults) {
       zeroPassrateFailed = true;

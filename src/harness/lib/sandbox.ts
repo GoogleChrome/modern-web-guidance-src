@@ -59,6 +59,10 @@ export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.plat
   const homedir = os.userInfo().homedir;
   const resolvedRoot = realpathOrSelf(rootDir);
   const resolvedExec = realpathOrSelf(process.execPath);
+  const resolvedPathEntries = (process.env.PATH ?? '')
+    .split(path.delimiter)
+    .filter(Boolean)
+    .map(realpathOrSelf);
   const hiddenDotDirs = [
     '.gemini',
     '.claude',
@@ -72,6 +76,9 @@ export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.plat
   try {
     for (const entry of fs.readdirSync(homedir, { withFileTypes: true })) {
       if ((entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.')) {
+        if (platform === 'darwin' && entry.name === 'Library') {
+          continue;
+        }
         const dirPath = path.join(homedir, entry.name);
         const resolvedDir = realpathOrSelf(dirPath);
         if (!fs.existsSync(resolvedDir) || !fs.statSync(resolvedDir).isDirectory()) {
@@ -79,7 +86,10 @@ export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.plat
         }
         const protectsRoot = resolvedDir === resolvedRoot || resolvedRoot.startsWith(resolvedDir + path.sep);
         const protectsExec = resolvedDir === resolvedExec || resolvedExec.startsWith(resolvedDir + path.sep);
-        if (!protectsRoot && !protectsExec) {
+        const protectsPath = resolvedPathEntries.some(
+          p => p === resolvedDir || p.startsWith(resolvedDir + path.sep)
+        );
+        if (!protectsRoot && !protectsExec && !protectsPath) {
           dirs.push(dirPath);
         }
       }
