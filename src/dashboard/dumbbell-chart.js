@@ -206,52 +206,7 @@ export class DumbbellChart {
     // If we have a maxHeight constraint (like tooltip), use 'none' so it locks to width without downscaling. Otherwise use meet.
     this.svg.setAttribute("preserveAspectRatio", (this.options.maxHeight || this.options.height) ? "none" : "xMidYMin meet");
     
-    // Add Gradients in defs
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-    
-    const gradients = [
-        { id: "purple-neon", start: "oklch(65% 0.25 290)", end: "oklch(75% 0.15 210)" }, // Violet to Cyan
-        { id: "purple-magik", start: "oklch(60% 0.28 320)", end: "oklch(70% 0.20 280)" }, // Magenta to Lavender
-        { id: "purple-deep", start: "oklch(55% 0.25 295)", end: "oklch(65% 0.20 305)" }, // Vivid Grape to Orchid
-        { id: "purple-gold", start: "oklch(60% 0.25 310)", end: "oklch(80% 0.15 85)" }   // Purp-Pink to Warm Amber 
-    ];
-
-    gradients.forEach(grad => {
-        const linearGrad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-        linearGrad.setAttribute("id", grad.id);
-        linearGrad.setAttribute("gradientUnits", "userSpaceOnUse");
-        linearGrad.setAttribute("x1", "0%");
-        linearGrad.setAttribute("y1", "0%");
-        linearGrad.setAttribute("x2", "100%");
-        linearGrad.setAttribute("y2", "0%");
-
-        const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-        stop1.setAttribute("offset", "0%");
-        stop1.setAttribute("stop-color", grad.start);
-
-        const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-        stop2.setAttribute("offset", "100%");
-        stop2.setAttribute("stop-color", grad.end);
-
-        linearGrad.appendChild(stop1);
-        linearGrad.appendChild(stop2);
-        defs.appendChild(linearGrad);
-    });
-
-    // Add Glow Filter for expensive token usage
-    const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
-    filter.setAttribute("id", "red-glow");
-    const shadow = document.createElementNS("http://www.w3.org/2000/svg", "feDropShadow");
-    if (shadow) {
-        shadow.setAttribute("dx", "0");
-        shadow.setAttribute("dy", "0");
-        shadow.setAttribute("stdDeviation", "3");
-        shadow.setAttribute("flood-color", "#da3633");
-        shadow.setAttribute("flood-opacity", "0.8");
-        filter.appendChild(shadow);
-    }
-    defs.appendChild(filter);
-
     this.svg.appendChild(defs);
     this.svg.style.display = "block";
     this.svg.style.fontFamily = "inherit";
@@ -274,7 +229,7 @@ export class DumbbellChart {
       unguidedCircle.setAttribute("cy", "-5");
       unguidedCircle.setAttribute("r", "5");
       unguidedCircle.setAttribute("fill", "transparent");
-      unguidedCircle.setAttribute("stroke", "#8b949e");
+      unguidedCircle.setAttribute("stroke", "var(--color-outline)");
       unguidedCircle.setAttribute("stroke-width", "2");
 
       const uText = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -287,7 +242,7 @@ export class DumbbellChart {
       guidedCircle.setAttribute("cx", "80");
       guidedCircle.setAttribute("cy", "-5");
       guidedCircle.setAttribute("r", "5");
-      guidedCircle.setAttribute("fill", "oklch(65% 0.25 290)");
+      guidedCircle.setAttribute("fill", "var(--color-primary)");
 
       const gText = document.createElementNS("http://www.w3.org/2000/svg", "text");
       gText.setAttribute("x", "90");
@@ -347,7 +302,7 @@ export class DumbbellChart {
         sep.setAttribute("y1", currentY.toString());
         sep.setAttribute("x2", scale(100).toString());
         sep.setAttribute("y2", currentY.toString());
-        sep.setAttribute("stroke", "rgba(255, 255, 255, 0.1)");
+        sep.setAttribute("stroke", "var(--color-outline-variant)");
         sep.setAttribute("stroke-width", "1");
         svg.appendChild(sep);
       }
@@ -367,7 +322,7 @@ export class DumbbellChart {
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
         text.setAttribute("x", (scale(100) + 15).toString());
         text.setAttribute("y", rowY.toString());
-        text.setAttribute("fill", hasFailure ? "var(--color-accent-failure, #da3633)" : "var(--color-outline)");
+        text.setAttribute("fill", hasFailure ? "var(--color-accent-failure, #da3633)" : "var(--color-on-surface-variant)");
         text.setAttribute("font-size", "11");
         text.setAttribute("font-family", "var(--font-sans)");
         text.setAttribute("font-weight", hasFailure ? "bold" : "600");
@@ -420,7 +375,7 @@ export class DumbbellChart {
           uDot.setAttribute("cy", y.toString());
           uDot.setAttribute("r", "3");
           uDot.setAttribute("fill", "var(--color-surface-container-lowest)");
-          uDot.setAttribute("stroke", item.uFailed ? "var(--color-accent-failure, #da3633)" : "var(--color-primary)");
+          uDot.setAttribute("stroke", item.uFailed ? "var(--color-accent-failure, #da3633)" : "var(--color-outline)");
           uDot.setAttribute("stroke-width", "1.5");
           svg.appendChild(uDot);
 
@@ -478,7 +433,7 @@ export class DumbbellChart {
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                          <div style="font-weight: bold; font-size: 0.875rem; white-space: nowrap; color: ${item.uFailed || item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
-                          <div style="font-size: 0.7rem; color: var(--color-outline);">feature: ${featureName}</div>
+                          <div style="font-size: 0.7rem; color: var(--color-on-surface-variant);">feature: ${featureName}</div>
                          ${(uRuntimeMs > 0 || gRuntimeMs > 0 || uTokens > 0 || gTokens > 0) ? `
                          <div style="font-size: 0.7rem; color: var(--color-on-surface-variant); margin-top: 6px; display: flex; flex-direction: column; gap: 3px;">
                             ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `

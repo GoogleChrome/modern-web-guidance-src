@@ -118,6 +118,8 @@ let activeTaskId = 'swipe-to-remove';
 let activeAgentId = 'claude_code';
 /** @type {boolean} */
 let promptExpanded = false;
+/** @type {boolean} */
+let checksExpanded = false;
 
 const rootEl = /** @type {HTMLElement | null} */ (document.getElementById('ab-spotlight'));
 
@@ -190,8 +192,8 @@ function renderTaskPills(currentTask) {
         const shortLabel = SHORT_TASK_LABELS[t.id] || t.label;
         const pair = t.agents[activeAgentId] || Object.values(t.agents)[0];
         const deltaChecks = pair ? pair.guided.passed - pair.unguided.passed : 0;
-        const deltaHtml = deltaChecks > 0
-            ? `<span class="ab-task-delta" aria-hidden="true" title="+${deltaChecks} passing checks with MWG">+${deltaChecks} checks</span>`
+        const deltaHtml = (isCurrent && deltaChecks > 0)
+            ? `<span class="ab-task-delta" aria-hidden="true" title="+${deltaChecks} passing checks with MWG">+${deltaChecks}</span>`
             : '';
         return `<button type="button" class="ab-task-pill" data-task-id="${escapeHtml(t.id)}" aria-pressed="${isCurrent}"><span>${escapeHtml(shortLabel)}</span>${deltaHtml}</button>`;
     }).join('');
@@ -202,6 +204,7 @@ function renderTaskPills(currentTask) {
             if (id && id !== activeTaskId) {
                 activeTaskId = id;
                 promptExpanded = false;
+                checksExpanded = false;
                 renderAll();
                 announceSelection();
             }
@@ -241,17 +244,21 @@ function renderAgentPills(currentTask, currentPair) {
  * @param {ShowcaseAgentPair} pair
  */
 function renderPromptBar(task, pair) {
+    const kickerEl = rootEl ? rootEl.querySelector('.ab-prompt-kicker') : null;
+    if (kickerEl) {
+        kickerEl.textContent = 'Task prompt';
+    }
     const promptEl = document.getElementById('ab-prompt-text');
     const toggleBtn = document.getElementById('ab-prompt-toggle');
     const metaEl = document.getElementById('ab-run-provenance');
     if (promptEl) {
         promptEl.textContent = `“${task.prompt}”`;
-        const isLong = task.prompt.length > 260;
+        const isLong = task.prompt.length > 240;
         promptEl.classList.toggle('clamped', isLong && !promptExpanded);
         if (toggleBtn) {
             toggleBtn.hidden = !isLong;
             toggleBtn.setAttribute('aria-expanded', String(promptExpanded));
-            toggleBtn.textContent = promptExpanded ? 'Show less' : 'Full prompt';
+            toggleBtn.textContent = promptExpanded ? 'Collapse' : 'Full prompt';
         }
     }
     if (metaEl) {
@@ -320,41 +327,30 @@ function renderScorecard(task, pair) {
         : '';
 
     uEl.innerHTML = `
-        <div class="ab-score-top">
-            <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span>
+        <div class="ab-score-header">
+            <div class="ab-score-header-main">
+                <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span>
+                <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span>
+                <span class="ab-pass-summary">${uFailed > 0 ? `${uFailed} failed` : 'all passed'}</span>
+                ${uA11yHtml}
+            </div>
             <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)}</span>
         </div>
-        <div class="ab-score-hero">
-            <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span>
-            <div class="ab-score-hero-detail">
-                <div class="ab-score-counts">
-                    <span class="ab-pass-summary">checks passed${uFailed > 0 ? ` · ${uFailed} failed` : ''}</span>
-                    ${uA11yHtml}
-                </div>
-                <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div>
-            </div>
-        </div>
+        <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div>
         <p class="ab-verdict-summary">${escapeHtml(contrast.unguided)}</p>
     `;
 
     gEl.innerHTML = `
-        <div class="ab-score-top">
-            <div class="ab-score-top-left">
+        <div class="ab-score-header">
+            <div class="ab-score-header-main">
                 <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span>
+                <span class="ab-score-pct high">${g.passed}<span class="ab-score-denom">/${g.total}</span></span>
                 <span class="delta ${deltaChecks > 0 ? 'good' : 'flat'}"><span class="glyph" aria-hidden="true">${deltaChecks > 0 ? '▲' : '•'}</span>${deltaSign} ${deltaWord}</span>
+                ${gA11yHtml}
             </div>
             <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)}</span>
         </div>
-        <div class="ab-score-hero">
-            <span class="ab-score-pct high">${g.passed}<span class="ab-score-denom">/${g.total}</span></span>
-            <div class="ab-score-hero-detail">
-                <div class="ab-score-counts">
-                    <span class="ab-pass-summary">checks passed</span>
-                    ${gA11yHtml}
-                </div>
-                <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div>
-            </div>
-        </div>
+        <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div>
         <p class="ab-verdict-summary">${escapeHtml(contrast.guided)}</p>
     `;
 }
@@ -368,13 +364,18 @@ function renderChecks(task, pair) {
     const container = document.getElementById('ab-checks-content');
     if (!container) return;
 
+    const totalChecks = pair.checks.length;
+    const previewCount = 3;
+    const canCollapse = totalChecks > previewCount;
+    const collapsed = canCollapse && !checksExpanded;
+
     const rowsHtml = pair.checks.map(c => {
         const uBadge = c.unguidedPassed
-            ? '<span class="ab-check-status pass">Pass</span>'
-            : '<span class="ab-check-status fail">Fail</span>';
+            ? '<span class="ab-check-status pass"><span class="ab-status-glyph" aria-hidden="true">✓</span>Pass</span>'
+            : '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>';
         const gBadge = c.guidedPassed
-            ? '<span class="ab-check-status pass">Pass</span>'
-            : '<span class="ab-check-status fail">Fail</span>';
+            ? `<span class="ab-check-status pass${c.flipped ? ' is-flipped' : ''}"><span class="ab-status-glyph" aria-hidden="true">✓</span>Pass</span>`
+            : '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>';
         const a11yTag = c.isA11y
             ? `<span class="ab-a11y-tag">${escapeHtml(c.a11yLabel || 'Accessibility')}</span>`
             : '';
@@ -391,8 +392,16 @@ function renderChecks(task, pair) {
             </tr>`;
     }).join('');
 
+    const toggleHtml = canCollapse
+        ? `<div class="ab-checks-toggle-bar">
+             <button type="button" id="ab-checks-toggle" class="ab-checks-toggle" aria-expanded="${checksExpanded}">
+               ${checksExpanded ? 'Show fewer checks' : `Show all ${totalChecks} checks`}
+             </button>
+           </div>`
+        : '';
+
     container.innerHTML = `
-        <div class="ab-checks-table-wrap" tabindex="0" role="region" aria-label="Deterministic grader checks for ${escapeHtml(task.label)}">
+        <div class="ab-checks-table-wrap${collapsed ? ' is-collapsed' : ''}" tabindex="0" role="region" aria-label="Deterministic grader checks for ${escapeHtml(task.label)}">
             <table class="ab-checks-table">
                 <caption class="visually-hidden">Playwright grader assertions comparing unguided and guided runs for ${escapeHtml(task.label)} on ${escapeHtml(pair.agentLabel)}</caption>
                 <thead>
@@ -406,7 +415,15 @@ function renderChecks(task, pair) {
                 <tbody>${rowsHtml}</tbody>
             </table>
         </div>
+        ${toggleHtml}
     `;
+
+    const toggleBtn = document.getElementById('ab-checks-toggle');
+    toggleBtn?.addEventListener('click', () => {
+        checksExpanded = !checksExpanded;
+        renderChecks(task, pair);
+        document.getElementById('ab-checks-toggle')?.focus();
+    });
 }
 
 function announceSelection() {

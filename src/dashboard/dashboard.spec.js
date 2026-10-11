@@ -91,18 +91,21 @@ test.describe('Eval View Dashboard', () => {
   test('should show By Guide panel and navigate to guide.html on click', async ({ page }) => {
     await page.goto('/');
 
-    // Expand the drawer if it's closed
+    // Expand the Breakdowns drawer if it's closed
     const insightsDrawer = page.locator('.insights-drawer');
     if (!(await insightsDrawer.getAttribute('open') !== null)) {
       await page.locator('.insights-summary').click();
     }
 
-    // Verify By Guide panel is visible and has the correct title
-    const guidePanel = page.locator('.insights-panel', { hasText: 'By Guide' });
-    await expect(guidePanel).toBeVisible();
+    // By Model is shown by default; open the nested By Guide disclosure
+    const guideDrawer = page.locator('.insights-guide-drawer');
+    await expect(guideDrawer).toBeVisible();
+    if (!(await guideDrawer.getAttribute('open') !== null)) {
+      await page.locator('.insights-guide-summary').click();
+    }
 
     // Verify guides are listed under By Guide
-    const contentVisRow = guidePanel.locator('tr', { hasText: 'content-vis' });
+    const contentVisRow = guideDrawer.locator('tr', { hasText: 'content-vis' });
     await expect(contentVisRow).toBeVisible();
 
     // Click the row to navigate to guide.html
@@ -196,7 +199,7 @@ test.describe('Hero headline takeaways', () => {
     const hero = page.locator('#hero');
     await expect(hero).toHaveAttribute('aria-busy', 'false');
 
-    // Four takeaway cards still render, with placeholders instead of numbers.
+    // Four takeaway items render, with placeholders instead of numbers.
     const cards = hero.locator('#hero-takeaways .takeaway');
     await expect(cards).toHaveCount(4);
     for (const metric of METRICS) {
@@ -212,50 +215,65 @@ test.describe('Hero headline takeaways', () => {
     await expect(page.locator('#agent-table-body')).toContainText('No data loaded');
   });
 
-  test('renders four numeric takeaways and a per-agent table from a manifest with a11y/efficiency stats', async ({ page }) => {
+  test('renders primary pass-rate takeaway, three supporting stats, and a 4-column per-agent table', async ({ page }) => {
     await page.route('**/api/suites*', route => route.fulfill({ path: new URL('./fixtures/hero-suites.fixture.json', import.meta.url).pathname, contentType: 'application/json' }));
     await page.goto('/');
     const hero = page.locator('#hero');
     await expect(hero).toHaveAttribute('aria-busy', 'false');
     await expect(hero.locator('#hero-status')).toBeHidden();
 
-    // Every card has a number-forward figure and a non-empty qualifier.
+    // Every takeaway item has a number-forward figure and a non-empty qualifier.
     for (const metric of METRICS) {
       const card = hero.locator(`.takeaway[data-metric="${metric}"]`);
       await expect(card).toBeVisible();
       await expect(card.locator('.takeaway-figure')).toHaveText(/\d/);
-      // Cards may render a compact (phone) and a full qualifier; none may be a placeholder.
       const qualifiers = card.locator('.takeaway-qualifier');
       expect(await qualifiers.count()).toBeGreaterThan(0);
       for (const text of await qualifiers.allInnerTexts()) {
         expect(text).not.toMatch(/loading|appear once/i);
       }
     }
-    // Pass-rate uplifts are expressed in percentage points; efficiency as a percentage.
-    await expect(hero.locator('.takeaway[data-metric="overall"] .takeaway-figure')).toContainText('pp');
-    await expect(hero.locator('.takeaway[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
-    await expect(hero.locator('.takeaway[data-metric="tokens"] .takeaway-figure')).toContainText('%');
-    await expect(hero.locator('.takeaway[data-metric="time"] .takeaway-figure')).toContainText('%');
+    // Primary pass-rate uplift is in percentage points; supporting stats carry pp or %.
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-figure')).toContainText('pp');
+    await expect(hero.locator('.takeaway-secondary[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
+    await expect(hero.locator('.takeaway-secondary[data-metric="tokens"] .takeaway-figure')).toContainText('%');
+    await expect(hero.locator('.takeaway-secondary[data-metric="time"] .takeaway-figure')).toContainText('%');
 
-    // Eyebrow states the sample and the latest date so the claim is attributable.
+    // Eyebrow states the sample and the latest date so the claim is attributable,
+    // and sits below h2#hero-heading (no uppercase kicker above the heading).
     await expect(hero.locator('#hero-eyebrow')).toContainText(/3 recent runs across 3 agent families/);
     await expect(hero.locator('#hero-eyebrow')).toContainText(/Oct 9, 2026/);
+    const headingBeforeEyebrow = await page.evaluate(() => {
+      const h2 = document.getElementById('hero-heading');
+      const eyebrow = document.getElementById('hero-eyebrow');
+      return Boolean(h2 && eyebrow && (h2.compareDocumentPosition(eyebrow) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    expect(headingBeforeEyebrow).toBe(true);
 
-    // Per-agent table: one row per family, each with a row header and four metric cells.
+    // Per-agent table: one row per family, each with a row header and three cells (Pass rate, Accessibility, Runs).
     const rows = page.locator('#agent-table-body tr');
     await expect(rows).toHaveCount(3);
     const families = await rows.locator('th[scope="row"]').allInnerTexts();
     expect(families.join(' ')).toMatch(/Claude Code/);
     expect(families.join(' ')).toMatch(/Codex CLI/);
-    // antigravity_cli (the Gemini-based CLI that succeeded jetski_cli) is labeled "Antigravity CLI".
     expect(families.join(' ')).toMatch(/Antigravity CLI|Gemini CLI/);
     for (let i = 0; i < 3; i++) {
-      // Pass rate, Accessibility, Median time, Median uncached tokens, Runs
-      await expect(rows.nth(i).locator('td')).toHaveCount(5);
+      await expect(rows.nth(i).locator('td')).toHaveCount(3);
       await expect(rows.nth(i).locator('td[data-label="Pass rate"]')).toHaveText(/\d+%\s*→\s*\d+%/);
+      await expect(rows.nth(i).locator('td[data-label="Accessibility"]')).toHaveText(/\d+%\s*→\s*\d+%/);
     }
     // Delta chips are not color-only: each carries a glyph and the signed value.
     await expect(rows.first().locator('.delta .glyph').first()).toBeAttached();
+
+    // At 1280x800 and 1440x900, .agent-table-wrap fits without horizontal overflow
+    // and the entire hero fits cleanly in the upper half of the viewport.
+    for (const vp of [{ width: 1280, height: 800 }, { width: 1440, height: 900 }]) {
+      await page.setViewportSize(vp);
+      const agentTableFits = await page.locator('.agent-table-wrap').evaluate(el => el.scrollWidth <= el.clientWidth);
+      expect(agentTableFits).toBe(true);
+    }
+    const heroBottom = await hero.evaluate(el => el.getBoundingClientRect().bottom);
+    expect(heroBottom).toBeLessThanOrEqual(560);
   });
 
   test('"How we measure" is a keyboard-operable disclosure with the recent-N value filled in', async ({ page }) => {
@@ -273,10 +291,13 @@ test.describe('Hero headline takeaways', () => {
     await expect(details).toContainText(/uncached/i);
   });
 
-  test('heading hierarchy: one h1, hero h2, takeaway h3s', async ({ page }) => {
+  test('heading hierarchy: one h1, peer h2 section headings, takeaway h3s', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('#hero h2#hero-heading')).toHaveCount(1);
+    await expect(page.locator('#ab-spotlight h2#ab-spotlight-heading')).toHaveCount(1);
+    await expect(page.locator('#agents-section h2#agents-heading')).toHaveCount(1);
+    await expect(page.locator('#browse-section h2#browse-heading')).toHaveCount(1);
     await expect(page.locator('#hero-takeaways h3')).toHaveCount(4);
   });
 });
@@ -294,32 +315,47 @@ test.describe('Browse all runs', () => {
     const section = page.locator('#browse-section');
     await expect(section).toHaveAttribute('aria-labelledby', 'browse-heading');
     await expect(section.locator('h2#browse-heading')).toHaveText(/Browse all runs/);
-    // Hero comes first in document order.
+    // Story arc order: #hero -> #ab-spotlight -> #agents-section -> #browse-section.
     const order = await page.evaluate(() => {
-      const hero = document.getElementById('hero');
+      const takeaways = document.getElementById('hero-takeaways');
+      const spotlight = document.getElementById('ab-spotlight');
+      const agents = document.getElementById('agents-section');
       const browse = document.getElementById('browse-section');
-      return hero && browse ? hero.compareDocumentPosition(browse) & Node.DOCUMENT_POSITION_FOLLOWING : 0;
+      if (!takeaways || !spotlight || !agents || !browse) return false;
+      return Boolean(
+        (takeaways.compareDocumentPosition(spotlight) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        (spotlight.compareDocumentPosition(agents) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        (agents.compareDocumentPosition(browse) & Node.DOCUMENT_POSITION_FOLLOWING)
+      );
     });
-    expect(order).toBeTruthy();
+    expect(order).toBe(true);
 
     const table = section.locator('table.suites-table');
     await expect(table.locator('caption')).toHaveCount(1);
+    await expect(table.locator('caption')).toContainText(/unguided and guided/i);
     await expect(table.locator('thead th[scope="col"]').first()).toBeAttached();
     await expect(page.locator('.suite-table-row').first()).toBeVisible();
     await expect(page.locator('.suite-table-row th[scope="row"]').first()).toBeVisible();
-    // Legend explains the dumbbell encoding in words, not just color.
-    await expect(section.locator('#dumbbell-legend')).toContainText(/Unguided/);
-    await expect(section.locator('#dumbbell-legend')).toContainText(/Guided/);
   });
 
-  test('metric cells carry text equivalents (pp for pass rates, % words for time/tokens)', async ({ page }) => {
+  test('metric cells carry single-line text equivalents, human-readable agent labels, and zero horizontal overflow at 1280px', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
     await page.route('**/api/suites*', route => route.fulfill({ path: FIXTURE, contentType: 'application/json' }));
     await page.goto('/');
     const rows = page.locator('.suite-table-row');
     await expect(rows).toHaveCount(3);
     await expect(page.locator('#suites-count')).toHaveText(/Showing 3 of 3 runs/);
 
+    // Human-readable agent names instead of raw snake_case identifiers.
+    const agentLabels = await rows.locator('.agent-cell').allInnerTexts();
+    expect(agentLabels.join(' ')).toMatch(/Claude Code/);
+    expect(agentLabels.join(' ')).toMatch(/Codex CLI/);
+    expect(agentLabels.join(' ')).toMatch(/Antigravity CLI/);
+    expect(agentLabels.join(' ')).not.toMatch(/claude_code|codex_cli|antigravity_cli/);
+
     const first = rows.first();
+    // Task count is folded into the Suite & date meta line.
+    await expect(first.locator('.suite-meta')).toHaveText(/\d+\s+tasks/);
     // Text includes the visually-hidden "Pass rate: unguided …, guided …" prefixes.
     await expect(first.locator('.uplift-cell .rate-text')).toHaveText(/\d+%[^%]*→[^%]*\d+%\s*\([+−-]?\d+ pp\)/);
     await expect(first.locator('.uplift-cell .uplift-link')).toHaveAttribute('href', /dashboard\.html\?testId=nightly-/);
@@ -327,6 +363,10 @@ test.describe('Browse all runs', () => {
     await expect(first.locator('.eff-pill').first()).toHaveText(/(faster|slower|fewer|more|no change)/i);
     // Dumbbell graphics are decorative; the numbers are in text.
     await expect(first.locator('.suite-dumbbell-track').first()).toHaveAttribute('aria-hidden', 'true');
+
+    // Table container fits at 1280px without horizontal overflow.
+    const tableFits = await page.locator('.suites-table-container').evaluate(el => el.scrollWidth <= el.clientWidth);
+    expect(tableFits).toBe(true);
   });
 
   test('sortable column headers expose aria-sort and reorder rows', async ({ page }) => {
@@ -374,7 +414,7 @@ test.describe('Browse all runs', () => {
 });
 
 test.describe('A/B Task Spotlight & Progressive Disclosure IA', () => {
-  test('renders 6 real eval tasks and switches tasks/agents cleanly with zero console errors', async ({ page }) => {
+  test('renders 6 real eval tasks, collapses check rows to 3 by default, and switches tasks/agents cleanly with zero console errors', async ({ page }) => {
     /** @type {string[]} */
     const consoleErrors = [];
     page.on('console', msg => {
@@ -382,6 +422,7 @@ test.describe('A/B Task Spotlight & Progressive Disclosure IA', () => {
     });
     page.on('pageerror', err => consoleErrors.push(err.message));
 
+    await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
     const spotlight = page.locator('#ab-spotlight');
@@ -389,33 +430,62 @@ test.describe('A/B Task Spotlight & Progressive Disclosure IA', () => {
     await expect(spotlight).toHaveAttribute('aria-busy', 'false');
     await expect(spotlight.locator('#ab-spotlight-heading')).toContainText('See it on a real task: Unguided vs. Guided');
 
-    // 6 curated task tabs and 3 agent family buttons
+    // 6 curated task tabs (on a single horizontal row at 1280px) and 3 agent family buttons;
+    // only the active task tab carries the green delta badge.
     const taskPills = spotlight.locator('#ab-task-pills .ab-task-pill');
     await expect(taskPills).toHaveCount(6);
+    await expect(spotlight.locator('#ab-task-pills .ab-task-delta')).toHaveCount(1);
+    const pillRowCount = await taskPills.evaluateAll(els => new Set(els.map(e => Math.round(e.getBoundingClientRect().top))).size);
+    expect(pillRowCount).toBe(1);
+
     const agentPills = spotlight.locator('#ab-agent-pills .ab-agent-pill');
     await expect(agentPills).toHaveCount(3);
+
+    // Sentence-case task prompt label and expandable prompt toggle
+    await expect(spotlight.locator('.ab-prompt-kicker')).toHaveText('Task prompt');
+    const promptToggle = spotlight.locator('#ab-prompt-toggle');
+    await expect(promptToggle).toBeVisible();
+    await expect(promptToggle).toHaveAttribute('aria-expanded', 'false');
+    await promptToggle.click();
+    await expect(promptToggle).toHaveAttribute('aria-expanded', 'true');
+    await promptToggle.click();
+    await expect(promptToggle).toHaveAttribute('aria-expanded', 'false');
 
     // Default task is swipe-to-remove on Claude Code (0/21 -> 21/21, +21 checks)
     await expect(taskPills.first()).toHaveAttribute('aria-pressed', 'true');
     await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+21 checks');
     await expect(spotlight.locator('#ab-run-provenance a[href*="guide.html"]')).toHaveAttribute('href', /guide\.html\?guide=swipe-to-remove/);
 
-    // Grader assertions table is shown directly with no preview/diff tabs or filter buttons
-    await expect(spotlight.locator('#ab-lens-tablist')).toHaveCount(0);
-    await expect(spotlight.locator('.ab-checks-filters')).toHaveCount(0);
+    // Grader assertions table collapses to 3 visible preview rows by default, expandable via #ab-checks-toggle
     const checkRows = spotlight.locator('.ab-checks-table tbody tr');
     await expect(checkRows).toHaveCount(21);
+    await expect(checkRows.nth(2)).toBeVisible();
+    await expect(checkRows.nth(3)).toBeHidden();
+    const checksToggle = spotlight.locator('#ab-checks-toggle');
+    await expect(checksToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(checksToggle).toContainText('Show all 21 checks');
+    await checksToggle.click();
+    await expect(checksToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(checkRows.nth(20)).toBeVisible();
 
-    // Switch task to Custom select (branded-select-styling, 0/12 -> 12/12, +12 checks)
+    // Switch task to Custom select (branded-select-styling, 0/12 -> 12/12, +12 checks) — resets to collapsed preview
     await taskPills.nth(1).click();
     await expect(taskPills.nth(1)).toHaveAttribute('aria-pressed', 'true');
     await expect(spotlight.locator('#ab-run-provenance a[href*="guide.html"]')).toHaveAttribute('href', /guide\.html\?guide=branded-select-styling/);
     await expect(checkRows).toHaveCount(12);
+    await expect(checkRows.nth(3)).toBeHidden();
 
     // Switch agent family to Antigravity CLI (2/12 -> 12/12, +10 checks)
     await agentPills.nth(1).click();
     await expect(agentPills.nth(1)).toHaveAttribute('aria-pressed', 'true');
     await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+10 checks');
+
+    // Verify zero horizontal page overflow across desktop (1440px, 1280px) and mobile (390px)
+    for (const vp of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(vp);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(0);
+    }
 
     expect(consoleErrors).toEqual([]);
   });

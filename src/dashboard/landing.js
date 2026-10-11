@@ -79,6 +79,17 @@ const servingDisplayNames = {
     'mcp': 'MCP'
 };
 
+/** @type {Record<string, string>} */
+const agentDisplayNames = {
+    'claude_code': 'Claude Code',
+    'claude': 'Claude Code',
+    'codex_cli': 'Codex CLI',
+    'codex': 'Codex CLI',
+    'antigravity_cli': 'Antigravity CLI',
+    'jetski_cli': 'Jetski CLI',
+    'gemini_cli': 'Gemini CLI'
+};
+
 function isRemoteDashboard() {
     return !isLocalDashboardHost();
 }
@@ -531,7 +542,7 @@ function registerSuiteSummary(summary, source) {
         model: summary.model || 'unknown'
     };
     updateFilterOptions('filter-model-group', 'model');
-    updateFilterOptions('filter-agent-group', 'agent');
+    updateFilterOptions('filter-agent-group', 'agent', agentDisplayNames);
     updateFilterOptions('filter-serving-group', 'serving', servingDisplayNames);
 }
 
@@ -754,12 +765,12 @@ function renderRateComparison(uRate, gRate, delta, label) {
  */
 function renderDeltaPill(deltaPct, words) {
     if (deltaPct < 0) {
-        return `<span class="eff-pill positive"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}% ${escapeHtml(words.less)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
+        return `<span class="eff-pill metric-delta positive"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}% ${escapeHtml(words.less)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
     }
     if (deltaPct === 0) {
-        return `<span class="eff-pill neutral">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
+        return `<span class="eff-pill metric-delta neutral">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
     }
-    return `<span class="eff-pill muted"><span aria-hidden="true">▲ </span>${deltaPct}% ${escapeHtml(words.more)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
+    return `<span class="eff-pill metric-delta muted"><span aria-hidden="true">▲ </span>${deltaPct}% ${escapeHtml(words.more)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
 }
 
 /** @param {string} what */
@@ -776,7 +787,7 @@ function renderSuites() {
     const filteredKeys = getFilteredKeys();
     const visibleKeys = getVisibleKeys();
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
-    const colCount = 10;
+    const colCount = 9;
 
     // Page both desktop (9 rows = 3 per agent family) and stacked phone cards (10 rows) by default.
     const table = document.querySelector('.suites-table');
@@ -822,6 +833,7 @@ function renderSuites() {
         const isFaulty = (testInfo.earlyFailureRate || 0) === 100;
         const scheduled = isScheduledSuite(testId);
         const { label, ldap } = formatSuiteLabel(testInfo);
+        const agentDisplay = agentDisplayNames[testInfo.agent] || testInfo.agent;
 
         const a11yCellHtml = a11y
             ? renderRateComparison(toRate(a11y.u), toRate(a11y.g), upliftPp(a11y.u, a11y.g), 'Accessibility subscore')
@@ -830,20 +842,18 @@ function renderSuites() {
         const timeCellHtml = hasRuntime && rt
             ? `
                 <div class="eff-cell-main">
-                    <span><span class="visually-hidden">Median time: unguided </span>${formatDuration(rt.unguidedMedianMs)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatDuration(rt.guidedMedianMs)}</strong></span>
+                    <span class="metric-primary"><span class="visually-hidden">Median time: unguided </span>${formatDuration(rt.unguidedMedianMs)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatDuration(rt.guidedMedianMs)}</strong></span>
                     ${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median time' })}
                 </div>
-                ${rt.pairedTaskCount > 0 ? `<div class="eff-cell-sub">faster or equal in ${rt.fasterTaskPct}% of tasks</div>` : ''}
             `
             : renderNotAvailable('Median time');
 
         const tokenCellHtml = hasTokens && tok
             ? `
                 <div class="eff-cell-main">
-                    <span><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatTokens(tok.guidedUncachedMedian)}</strong></span>
+                    <span class="metric-primary"><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatTokens(tok.guidedUncachedMedian)}</strong></span>
                     ${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })}
                 </div>
-                <div class="eff-cell-sub">Incl. cache: <span class="nowrap">${formatTokens(tok.unguidedTotalMedian)} <span aria-hidden="true">→</span><span class="visually-hidden">to</span> ${formatTokens(tok.guidedTotalMedian)}</span> <span class="nowrap">(${tok.guidedCachedSharePct}% cached)</span></div>
             `
             : renderNotAvailable('Median uncached tokens');
 
@@ -852,20 +862,25 @@ function renderSuites() {
             isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''
         ].join('');
 
+        const dateDisplay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const metaParts = [
+            !scheduled && label ? escapeHtml(label) : '',
+            taskCount > 0 ? `${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}` : '',
+            escapeHtml(timeAgo(date)),
+            ldap ? escapeHtml(ldap) : ''
+        ].filter(Boolean).join(' · ');
+
         html += `
             <tr class="suite-table-row${isFaulty ? ' faulty' : ''}${scheduled ? '' : ' adhoc'}" data-test-id="${escapeHtml(testId)}">
                 <th scope="row" class="suite-cell">
                     <a href="${localLink}" class="suite-link">
-                        <time class="suite-label" datetime="${date.toISOString()}">${escapeHtml(formatSuiteDate(date))}</time>
-                        <span class="suite-meta">
-                            <span class="suite-name">${escapeHtml(label)}</span>${badges} · ${escapeHtml(timeAgo(date))}${ldap ? ` · <span>${escapeHtml(ldap)}</span>` : ''}
-                        </span>
+                        <time class="suite-label" datetime="${date.toISOString()}">${escapeHtml(dateDisplay)}</time>${badges}
+                        <span class="suite-meta">${metaParts}</span>
                     </a>
                 </th>
-                <td class="agent-cell"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(testInfo.agent)}</span></td>
+                <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
                 <td>${escapeHtml(servingDisplayNames[testInfo.serving] || testInfo.serving)}</td>
                 <td class="model-cell">${(escapeHtml(testInfo.model) || '').replaceAll('-', '-<wbr>')}</td>
-                <td class="tasks-cell">${taskCount}${maxRuns > 1 ? ` <span class="tasks-runs">×${maxRuns}</span>` : ''}</td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}">
                     <a href="${localLink}" class="uplift-link">
                         ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate')}
@@ -1012,7 +1027,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
     if (headerDiv) {
         headerDiv.innerHTML = `
             <div class="tooltip-title">${escapeHtml(testInfo.testId)}</div>
-            <div class="tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(servingDisplayNames[testInfo.serving] || testInfo.serving)} • per-guide pass rate, unguided → guided</div>
+            <div class="tooltip-subtitle">${escapeHtml(agentDisplayNames[testInfo.agent] || testInfo.agent)} • ${escapeHtml(servingDisplayNames[testInfo.serving] || testInfo.serving)} • per-guide pass rate, unguided → guided</div>
         `;
     }
 
@@ -1157,11 +1172,18 @@ function getInsightKeys() {
     return keys;
 }
 
-/** @typedef {{ uplift: number, uRate: number, gRate: number }} PivotItem */
+/** @typedef {{ uplift: number, uRate: number, gRate: number, rtDeltaPct?: number | null, tokDeltaPct?: number | null }} PivotItem */
+let guideSubdrawerOpen = false;
 
 function renderPivotInsights() {
     const container = document.getElementById('insights-container');
     if (!container) return;
+
+    // Preserve whether the nested guide drawer was opened by the user across re-renders.
+    const existingGuideDrawer = container.querySelector('.insights-guide-drawer');
+    if (existingGuideDrawer instanceof HTMLDetailsElement) {
+        guideSubdrawerOpen = existingGuideDrawer.open;
+    }
 
     // Guide-level rows need the full manifest; render what we have and refresh when it lands.
     const needsFull = Object.values(allTestData).some(t => !t.guides);
@@ -1179,18 +1201,25 @@ function renderPivotInsights() {
         const testInfo = allTestData[compoundKey];
         if (!testInfo) return;
 
+        const rt = testInfo.efficiencyStats?.runtime;
+        const rtDeltaPct = (rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0)) ? rt.medianDeltaPct : null;
+        const tok = testInfo.efficiencyStats?.tokens;
+        const tokDeltaPct = (tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0)) ? tok.uncachedMedianDeltaPct : null;
+
         /** @type {PivotItem | null} */
         let item = null;
         if (onlyA11y) {
             const pair = a11yPair(testInfo.a11yStats);
             if (pair) {
-                item = { uplift: upliftPp(pair.u, pair.g), uRate: toRate(pair.u), gRate: toRate(pair.g) };
+                item = { uplift: upliftPp(pair.u, pair.g), uRate: toRate(pair.u), gRate: toRate(pair.g), rtDeltaPct, tokDeltaPct };
             }
         } else {
             item = {
                 uplift: upliftPp(testInfo.unguidedStats, testInfo.guidedStats),
                 uRate: toRate(testInfo.unguidedStats),
-                gRate: toRate(testInfo.guidedStats)
+                gRate: toRate(testInfo.guidedStats),
+                rtDeltaPct,
+                tokDeltaPct
             };
         }
         if (item) {
@@ -1214,6 +1243,13 @@ function renderPivotInsights() {
         if (arr.length === 0) return { uRate: 0, gRate: 0, uplift: 0 };
         const sorted = [...arr].sort((a, b) => a.uplift - b.uplift);
         return sorted[Math.floor(sorted.length / 2)];
+    };
+
+    /** @param {number[]} vals */
+    const getMedianNumber = (vals) => {
+        if (vals.length === 0) return null;
+        const sorted = [...vals].sort((a, b) => a - b);
+        return Math.round(sorted[Math.floor(sorted.length / 2)]);
     };
 
     /** @param {number[]} vals */
@@ -1302,12 +1338,27 @@ function renderPivotInsights() {
                 ? `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}">${escapeHtml(key)}</a>`
                 : `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(key)}" aria-pressed="${isActive}">${escapeHtml(key)}</button>`;
 
+            let effSummary = '';
+            if (filterKey === 'model') {
+                const rtMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.rtDeltaPct).filter(v => typeof v === 'number')));
+                const tokMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.tokDeltaPct).filter(v => typeof v === 'number')));
+                const fmtSignedPct = (/** @type {number} */ v) => v > 0 ? `+${v}%` : (v < 0 ? `−${Math.abs(v)}%` : '0%');
+                const parts = [
+                    `${items.length} ${items.length === 1 ? 'run' : 'runs'}`,
+                    rtMed !== null ? `time ${fmtSignedPct(rtMed)}` : '',
+                    tokMed !== null ? `tokens ${fmtSignedPct(tokMed)}` : ''
+                ].filter(Boolean);
+                effSummary = `<span class="pivot-trials">${escapeHtml(parts.join(' · '))}</span>`;
+            } else {
+                effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
+            }
+
             const sign = medUplift > 0 ? '+' : '';
             rowsHtml += `
                 <tr class="pivot-row${isActive ? ' active-filter' : ''}">
                     <th scope="row" class="pivot-name">
                         ${nameHtml}
-                        <span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>
+                        ${effSummary}
                     </th>
                     <td class="insight-dumbbell-cell">
                         <div class="insight-dumbbell-track" aria-hidden="true">
@@ -1357,25 +1408,36 @@ function renderPivotInsights() {
     const runCount = keys.length;
 
     container.innerHTML = `
-        <p class="insights-scope">Based on the ${runCount} run${runCount === 1 ? '' : 's'} shown in the table above${runCount > 0 ? ', medians across runs' : ''}.</p>
+        <p class="insights-scope">Based on ${runCount} run${runCount === 1 ? '' : 's'} matching current filters (medians across runs).</p>
         <div class="insights-panel">
             <h3 class="insights-panel-title">By Model${modeSuffix}</h3>
             ${renderPivotTable(grouped.model, 'model')}
         </div>
-        <div class="insights-panel insights-panel-full">
-            <div class="insights-panel-header-row">
-                <h3 class="insights-panel-title">By Guide (${guideCount})${modeSuffix}</h3>
-                <div class="guide-sort-controls">
-                    <label for="guide-sort-select" class="sort-label">Sort:</label>
-                    <select id="guide-sort-select" class="sort-select">${sortOptionsHtml}</select>
-                    <button id="guide-sort-dir-btn" class="sort-direction-btn" type="button" aria-label="Sort direction: ${dirLabel}. Toggle." aria-pressed="${currentGuideSortDir === 'desc'}">
-                        <span aria-hidden="true">${dirArrow}</span>
-                    </button>
+        <details class="insights-panel insights-panel-full insights-guide-drawer"${guideSubdrawerOpen ? ' open' : ''}>
+            <summary class="insights-guide-summary">
+                <span class="insights-panel-title">By Guide (${guideCount})${modeSuffix}</span>
+            </summary>
+            <div class="insights-guide-body">
+                <div class="insights-panel-header-row">
+                    <div class="guide-sort-controls">
+                        <label for="guide-sort-select" class="sort-label">Sort:</label>
+                        <select id="guide-sort-select" class="sort-select">${sortOptionsHtml}</select>
+                        <button id="guide-sort-dir-btn" class="sort-direction-btn" type="button" aria-label="Sort direction: ${dirLabel}. Toggle." aria-pressed="${currentGuideSortDir === 'desc'}">
+                            <span aria-hidden="true">${dirArrow}</span>
+                        </button>
+                    </div>
                 </div>
+                ${renderPivotTable(grouped.guide, 'guide')}
             </div>
-            ${renderPivotTable(grouped.guide, 'guide')}
-        </div>
+        </details>
     `;
+
+    const guideDrawer = container.querySelector('.insights-guide-drawer');
+    if (guideDrawer instanceof HTMLDetailsElement) {
+        guideDrawer.addEventListener('toggle', () => {
+            guideSubdrawerOpen = guideDrawer.open;
+        });
+    }
 
     const sortSelect = document.getElementById('guide-sort-select');
     sortSelect?.addEventListener('change', (e) => {

@@ -23,7 +23,7 @@
   --color-primary: light-dark(#003cb2, #a9c4ff);
   --color-primary-container: light-dark(#2454d4, #2e62e0);
   --color-on-primary: light-dark(#ffffff, #0b1a3f);
-  --color-outline: light-dark(#747686, #8b8f9c);
+  --color-outline: light-dark(#656878, #8b8f9c);
   --color-outline-variant: light-dark(rgba(196, 197, 215, 0.4), rgba(196, 197, 215, 0.18));
   --color-accent-success: light-dark(#166534, #5fd38a);
   --color-accent-success-bg: light-dark(rgba(22, 163, 74, 0.14), rgba(95, 211, 138, 0.16));
@@ -99,7 +99,7 @@
     --color-primary: #003cb2;
     --color-primary-container: #2454d4;
     --color-on-primary: #ffffff;
-    --color-outline: #747686;
+    --color-outline: #656878;
     --color-outline-variant: rgba(196, 197, 215, 0.4);
     --color-accent-success: #166534;
     --color-accent-success-bg: rgba(22, 163, 74, 0.14);
@@ -132,6 +132,11 @@
       --glass-bg: rgba(27, 31, 37, 0.7);
     }
   }
+}
+
+::selection {
+  background: color-mix(in oklch, var(--color-primary) 22%, transparent);
+  color: var(--color-on-surface);
 }
 
 /*
@@ -192,7 +197,7 @@ h1, h2 {
 
 h1 {
   font-size: 2.5rem;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 #summary-stats {
@@ -204,7 +209,6 @@ h1 {
   background: var(--color-surface-container-lowest);
   padding: 1.5rem;
   border-radius: var(--radius-default);
-  box-shadow: 0 40px 60px -15px rgba(36,84,212,0.05);
   border: 1px solid var(--color-outline-variant);
   position: relative;
   flex: 1;
@@ -213,12 +217,12 @@ h1 {
 .stat-card::before {
   content: '';
   position: absolute;
-  top: -2px;
-  left: -2px;
+  top: -1px;
+  left: -1px;
   width: 12px;
   height: 12px;
-  border-top: 2px solid var(--color-primary);
-  border-left: 2px solid var(--color-primary);
+  border-top: 1px solid var(--color-primary);
+  border-left: 1px solid var(--color-primary);
   pointer-events: none;
 }
 
@@ -248,12 +252,11 @@ h1 {
 
 .discipline-chart-segment {
   break-inside: avoid;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
   background: var(--color-surface-container-lowest);
-  padding-bottom:10px;
+  padding-bottom: 8px;
   /* i have no idea why the 'hidden auto' inline style is there but whatever */
   overflow: visible !important
-
 }
 
 .dog-ear-card::before {
@@ -263,8 +266,8 @@ h1 {
   left: -6px;
   width: 12px;
   height: 12px;
-  border-top: 2px solid var(--color-primary);
-  border-left: 2px solid var(--color-primary);
+  border-top: 1px solid var(--color-primary);
+  border-left: 1px solid var(--color-primary);
   pointer-events: none;
   z-index: 100;
 }
@@ -276,7 +279,7 @@ h1 {
 #dumbbell-chart {
   width: 100%;
   height: 100%;
-  margin: 5px 0;
+  margin: 4px 0;
 }
 
 #dashboard-grid {
@@ -310,7 +313,7 @@ h1 {
   background: var(--border-color);
   border-radius: 4px;
   overflow: hidden;
-  margin: 10px 0;
+  margin: 8px 0;
 }
 
 .pass-rate-fill {
@@ -322,7 +325,7 @@ h1 {
   display: inline-block;
   color: var(--color-primary);
   text-decoration: none;
-  margin-top: 10px;
+  margin-top: 8px;
   font-size: 0.9rem;
 }
 
@@ -357,7 +360,6 @@ dialog#modal:not([open]) {
 
 dialog#modal::backdrop {
   background-color: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(5px);
   opacity: 0;
   animation: fade-in 0.3s ease-out forwards;
   will-change: opacity;
@@ -392,9 +394,9 @@ dialog#modal[open] {
 
 .modal-content {
   background-color: var(--card-bg);
-  border: 1px solid var(--border-color);
+  outline: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 30px;
+  padding: 32px;
   position: relative;
   max-height: 90vh;
   overflow-y: auto;
@@ -413,7 +415,7 @@ dialog#modal[open] {
   font-weight: bold;
   cursor: pointer;
   line-height: 1;
-  padding: 5px;
+  padding: 4px;
   border-radius: 50%;
   transition: background 0.2s, color 0.2s;
   display: flex;
@@ -447,7 +449,7 @@ dialog#modal[open] {
 
 .run-header {
   background: var(--hover-bg);
-  padding: 10px 15px;
+  padding: 8px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -466,11 +468,11 @@ dialog#modal[open] {
 }
 
 .check-item {
-  padding: 8px 15px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
 }
 
 .check-item:last-child {
@@ -525,20 +527,20 @@ dialog#modal[open] {
 .secondary-btn {
   background-color: var(--card-bg);
   border: 1px solid var(--border-color);
+  border-radius: var(--radius-default);
   color: var(--text-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   margin-bottom: 2rem;
-  padding: 0.65rem 0.9rem;
-  font-family: var(--font-label);
-  font-size: 0.75rem;
-  line-height: 1;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  padding: 8px 12px;
+  font-family: var(--font-sans);
+  font-size: var(--font-md);
+  font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: background-color 0.15s ease-out, border-color 0.15s ease-out;
 }
 
 .secondary-btn svg {
@@ -555,7 +557,7 @@ dialog#modal[open] {
 .log-content {
   background: #0d1117;
   color: #c9d1d9;
-  padding: 15px;
+  padding: 16px;
   border-radius: 6px;
   font-family: monospace;
   font-size: 0.9rem;
@@ -573,7 +575,7 @@ dialog#modal[open] {
   overflow-wrap: anywhere;
   background: #0d1117;
   color: #c9d1d9;
-  padding: 15px;
+  padding: 16px;
   border-radius: 6px;
   overflow-x: auto;
   border: 1px solid var(--border-color);
@@ -625,13 +627,13 @@ dialog#modal.diff-modal {
   position: fixed;
   background: var(--color-surface-container-lowest);
   color: var(--color-on-surface);
-  padding: 10px 14px;
-  border-radius: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
   font-size: 0.8rem;
   pointer-events: none;
   display: none;
   z-index: 2000;
-  border: 1px solid var(--color-outline-variant);
+  outline: 1px solid var(--color-outline-variant);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   line-height: 1.4;
 }
@@ -665,7 +667,7 @@ dialog#modal.diff-modal {
 }
 
 .task-accordion.open {
-  box-shadow: inset 4px 0 0 0 var(--color-primary);
+  box-shadow: inset 2px 0 0 0 var(--color-primary);
 }
 
 .feature-chip {
@@ -674,7 +676,7 @@ dialog#modal.diff-modal {
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
   background: rgba(255, 255, 255, 0.05);
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
@@ -707,7 +709,7 @@ dialog#modal.diff-modal {
 .task-accordion-header .left-section {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
 }
 
 .task-accordion-header h3 {
@@ -965,7 +967,7 @@ dialog#modal.diff-modal {
 .custom-progress-fill {
   height: 100%;
   border: 1.5px solid var(--color-primary);
-  border-radius: 5px;
+  border-radius: 4px;
   background: transparent;
   box-sizing: border-box;
 }
@@ -1037,9 +1039,9 @@ dialog#modal.diff-modal {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  gap: 30px;
+  gap: 32px;
   width: 100%;
-  margin-top: 15px;
+  margin-top: 16px;
   background: rgba(255, 255, 255, 0.02);
   padding: 12px 16px;
   border-radius: 12px;
@@ -1050,8 +1052,8 @@ dialog#modal.diff-modal {
 .header-meta-item {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 13px;
+  gap: 2px;
+  padding: 12px;
   width: 100%;
 }
 
@@ -1073,7 +1075,7 @@ dialog#modal.diff-modal {
 
 .tfoot-action-btn {
   font-size: 0.75rem;
-  padding: 1px 4px;
+  padding: 2px 4px;
   display: flex !important;
   border: 1px solid var(--border-color);
   background-color: var(--card-bg);
@@ -1142,7 +1144,7 @@ dialog#modal.diff-modal {
   #chart-section {
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 30px !important;
+    gap: 32px !important;
   }
 
   #dumbbell-chart {
@@ -1211,7 +1213,7 @@ dialog#modal.diff-modal {
   overflow-x: auto;
   background: rgba(0,0,0,0.3);
   border-radius: 6px;
-  padding: 15px;
+  padding: 16px;
   border: 1px solid var(--border-color);
 }
 
@@ -1261,7 +1263,7 @@ dialog#modal.diff-modal {
 .sparkline-bar.small {
   height: 4px;
   border-radius: 2px;
-  margin: 7px 0;
+  margin: 8px 0;
 }
 
 .sparkline-dot {
@@ -1325,7 +1327,7 @@ dialog#modal.diff-modal {
 
 .error-message {
   text-align: center;
-  padding: 50px;
+  padding: 48px;
   color: var(--accent-failure);
 }
 
@@ -1340,7 +1342,7 @@ dialog#modal.diff-modal {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .blueprint-framed {
@@ -1354,12 +1356,12 @@ dialog#modal.diff-modal {
 .blueprint-framed::before {
   content: '';
   position: absolute;
-  top: -2px;
-  left: -2px;
+  top: -1px;
+  left: -1px;
   width: 12px;
   height: 12px;
-  border-top: 2px solid var(--color-primary);
-  border-left: 2px solid var(--color-primary);
+  border-top: 1px solid var(--color-primary);
+  border-left: 1px solid var(--color-primary);
   pointer-events: none;
 }
 
@@ -1372,7 +1374,7 @@ dialog#modal.diff-modal {
 
 .task-prompt-meta {
   background: var(--color-surface-container-lowest);
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-radius: 4px;
   font-size: 0.8rem;
   border: 1px solid var(--color-outline-variant);
@@ -1402,8 +1404,8 @@ dialog#modal.diff-modal {
 .quote-icon {
   font-size: 4rem;
   position: absolute;
-  top: -15px;
-  left: 5px;
+  top: -16px;
+  left: 4px;
   opacity: 0.15;
   font-family: Georgia, serif;
   color: var(--color-primary);
@@ -1415,7 +1417,7 @@ dialog#modal.diff-modal {
   white-space: pre-wrap;
   font-family: Georgia, 'Times New Roman', serif;
   margin: 0;
-  margin-left: 30px;
+  margin-left: 32px;
   color: var(--text-primary);
   font-size: 0.95rem;
   line-height: 1.5;
@@ -1438,14 +1440,14 @@ dialog#modal.diff-modal {
 .diff-file-pre {
   background: transparent !important;
   border: none !important;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 /* Visually hidden utility (accessible skip link & labels) */
 .visually-hidden:where(:not(:focus-within, :active)) {
   clip-path: inset(50%);
   height: 1px;
-  overflow: hidden;
+  overflow: clip;
   position: absolute;
   white-space: nowrap;
   width: 1px;
@@ -1468,7 +1470,7 @@ dialog#modal.diff-modal {
 .narrative-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 16px;
   justify-content: space-between;
 }
@@ -1501,7 +1503,7 @@ dialog#modal.diff-modal {
 .narrative-metrics-list {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   padding-top: 8px;
   border-top: 1px solid var(--color-outline-variant);
   font-size: 0.78rem;
@@ -1526,7 +1528,7 @@ dialog#modal.diff-modal {
   font-size: 0.78rem;
   font-weight: 700;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 16px;
   background: var(--color-surface-container);
   color: var(--text-secondary);
 }
@@ -1599,9 +1601,9 @@ dialog#modal.diff-modal {
 
 .a11y-dim-track {
   position: relative;
-  height: 5px;
+  height: 6px;
   background: var(--color-surface-container);
-  border-radius: 999px;
+  border-radius: 16px;
   overflow: hidden;
 }
 
@@ -1629,7 +1631,7 @@ dialog#modal.diff-modal {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: var(--color-surface-container-lowest);
   border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-default);
@@ -1639,7 +1641,7 @@ dialog#modal.diff-modal {
 .chart-toolbar-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -1660,7 +1662,7 @@ dialog#modal.diff-modal {
   font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 5px 10px;
+  padding: 4px 12px;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
@@ -1709,7 +1711,7 @@ dialog#modal.diff-modal {
 .sort-select {
   font-family: var(--font-sans);
   font-size: 0.82rem;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border: 1px solid var(--color-outline-variant);
   border-radius: 4px;
   background: var(--color-surface-container-lowest);
@@ -1724,8 +1726,8 @@ dialog#modal.diff-modal {
   gap: 4px;
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 999px;
+  padding: 2px 8px;
+  border-radius: 16px;
   background: color-mix(in oklch, var(--color-primary) 10%, transparent);
   color: var(--color-primary);
   border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent);
@@ -1742,7 +1744,7 @@ dialog#modal.diff-modal {
   color: var(--text-secondary);
   background: var(--color-surface-container-low);
   border: 1px solid var(--color-outline-variant);
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 4px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -1752,12 +1754,12 @@ dialog#modal.diff-modal {
 .a11y-check-badge {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   margin-left: 8px;
-  padding: 1px 7px;
+  padding: 2px 8px;
   font-size: 0.7rem;
   font-weight: 600;
-  border-radius: 999px;
+  border-radius: 16px;
   background: color-mix(in oklch, var(--color-primary) 12%, transparent);
   color: var(--color-primary);
   border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent);
@@ -1801,8 +1803,9 @@ dialog#modal.diff-modal {
 .hint-popover[popover] {
   margin: unset;
   max-width: 340px;
-  padding: 10px 12px;
-  border: 1px solid var(--color-outline-variant);
+  padding: 8px 12px;
+  border: none;
+  outline: 1px solid var(--color-outline-variant);
   border-radius: 6px;
   background: var(--color-surface-container-lowest);
   color: var(--color-on-surface);

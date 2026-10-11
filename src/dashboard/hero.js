@@ -167,15 +167,15 @@ function renderPending() {
     const list = document.getElementById('hero-takeaways');
     if (list) {
         list.innerHTML = [
-            ['overall', 'Web best practices', 'pass-rate lift across all tasks'],
-            ['a11y', 'Accessibility', 'pass-rate lift on a11y checks'],
-            ['tokens', 'Tokens', 'uncached tokens per task'],
-            ['time', 'Time', 'median task completion']
-        ].map(([metric, label, statement]) => pendingCard(metric, label, statement)).join('');
+            pendingCard('overall', 'Web best practices pass rate', 'pass-rate lift across all tasks', true),
+            pendingCard('a11y', 'Accessibility', '', false),
+            pendingCard('time', 'Completion time', '', false),
+            pendingCard('tokens', 'Uncached tokens', '', false)
+        ].join('');
     }
     const body = document.getElementById('agent-table-body');
     if (body) {
-        body.innerHTML = `<tr><th scope="row">No data loaded</th><td data-label="Pass rate">${naCell()}</td><td data-label="Accessibility">${naCell()}</td><td data-label="Median time">${naCell()}</td><td data-label="Median uncached tokens">${naCell()}</td><td data-label="Runs">${naCell()}</td></tr>`;
+        body.innerHTML = `<tr><th scope="row">No data loaded</th><td data-label="Pass rate">${naCell()}</td><td data-label="Accessibility">${naCell()}</td><td data-label="Runs">${naCell()}</td></tr>`;
     }
     const eyebrow = document.getElementById('hero-eyebrow');
     if (eyebrow) eyebrow.textContent = 'Nightly evaluations';
@@ -194,13 +194,12 @@ function renderEyebrow(insights) {
     if (!el) return;
     const latest = latestDateOf(insights);
     const n = insights.pooled?.suiteCount || 0;
-    // The run-count segment is hidden on phones (hero.css) — it is repeated in the first card's qualifier.
     const detail = n > 0 ? `<span class="eyebrow-detail"> · ${n} recent ${n === 1 ? 'run' : 'runs'} across ${insights.families.length} agent ${insights.families.length === 1 ? 'family' : 'families'}</span>` : '';
     el.innerHTML = `<span class="hero-live-dot" aria-hidden="true"></span>Nightly evaluations${detail}${latest ? ` · latest data <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
 }
 
 /**
- * Renders the visual dumbbell bar + unguided → guided rate pair inside a hero takeaway column.
+ * Renders the visual dumbbell bar + self-labeled unguided → guided rate pair inside the primary hero takeaway.
  * @param {number} uRate
  * @param {number} gRate
  */
@@ -217,41 +216,11 @@ function renderTakeawayDumbbell(uRate, gRate) {
                 <div class="dot guided" style="left: calc(${g}% - 4px);"></div>
             </div>
             <div class="takeaway-dumbbell-rates">
-                <span class="rate-u">${u}%</span>
+                <span class="rate-u">${u}% unguided</span>
                 <span class="rate-arrow">→</span>
-                <strong class="rate-g">${g}%</strong>
+                <strong class="rate-g">${g}% with MWG</strong>
             </div>
         </div>`;
-}
-
-/**
- * Renders a compact 3-row agent list with colored glyphs and semantic delta pills for Tokens / Time.
- * @param {FamilyInsight[]} fams
- * @param {'tokens' | 'runtime'} key
- */
-function renderTakeawayAgentRows(fams, key) {
-    const sorted = [...fams].sort((a, b) => {
-        const da = key === 'tokens' ? tokDelta(a) : rtDelta(a);
-        const db = key === 'tokens' ? tokDelta(b) : rtDelta(b);
-        return da - db;
-    });
-    return `<span class="takeaway-agent-rows">${sorted.map(f => {
-        if (key === 'tokens' && f.tokens) {
-            const d = Math.round(tokDelta(f));
-            const isWin = d < 0;
-            const pillClass = isWin ? 'eff-pill positive' : 'eff-pill muted';
-            const pillText = isWin ? `▼ ${Math.abs(d)}% fewer` : `▲ +${Math.abs(d)}% more`;
-            return `<span class="takeaway-agent-row"><span class="takeaway-agent-name">${getAgentBadge(f.id)}${escapeHtml(f.label)}</span><span class="${pillClass}">${pillText}</span></span>`;
-        }
-        if (key === 'runtime' && f.runtime) {
-            const deltaS = Math.round((f.runtime.guidedMedianMs - f.runtime.unguidedMedianMs) / 1000);
-            const isWin = deltaS < 0;
-            const pillClass = isWin ? 'eff-pill positive' : 'eff-pill muted';
-            const pillText = isWin ? `▼ −${Math.abs(deltaS)}s median` : `▲ +${Math.abs(deltaS)}s median`;
-            return `<span class="takeaway-agent-row"><span class="takeaway-agent-name">${getAgentBadge(f.id)}${escapeHtml(f.label)}</span><span class="${pillClass}">${pillText}</span></span>`;
-        }
-        return '';
-    }).filter(Boolean).join('')}</span>`;
 }
 
 /** @param {HeadlineInsights} insights */
@@ -267,98 +236,100 @@ function renderTakeaways(insights) {
     /** @type {string[]} */
     const cards = [];
 
-    // 1. Web best practices (overall pass rate, pooled across families)
+    // 1. Primary focal figure: Web best practices (overall pass rate, pooled across families)
     if (pooled?.overall) {
         const o = pooled.overall;
         cards.push(takeawayCard({
             metric: 'overall',
-            label: 'Web best practices',
+            primary: true,
+            label: 'Web best practices pass rate',
             figure: `<span class="figure-val">${signed(o.upliftPp, 0)}</span><span class="unit"> pp</span>`,
             figureText: `${signed(o.upliftPp, 0)} percentage points`,
             statement: 'pass-rate lift across all tasks',
             visual: renderTakeawayDumbbell(o.unguidedRate, o.guidedRate),
-            qualifier: `<span class="range">${pct(o.unguidedRate)} → ${pct(o.guidedRate)}</span> of ~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} graded checks per mode (deterministic Playwright and static-analysis tests written from each guide's expectations). ${familyNames}; ${runsPhrase}.`,
+            qualifier: `<span class="range">${pct(o.unguidedRate)} → ${pct(o.guidedRate)}</span> of ~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} graded checks per mode. ${familyNames}; ${runsPhrase}.`,
             short: `<span class="visually-hidden">${pct(o.unguidedRate)} → ${pct(o.guidedRate)} · </span>~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${insights.pooled?.suiteCount || 0} nightly runs`
         }));
     }
 
-    // 2. Accessibility subscore (pooled)
+    // 2. Quiet secondary stat: Accessibility subscore (pooled)
     if (!pooled?.a11y) {
-        cards.push(pendingCard('a11y', 'Accessibility', 'pass-rate lift on a11y checks'));
+        cards.push(pendingCard('a11y', 'Accessibility', '', false));
     } else {
         const a = pooled.a11y;
         cards.push(takeawayCard({
             metric: 'a11y',
+            primary: false,
             label: 'Accessibility',
-            figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span>`,
-            figureText: `${signed(a.upliftPp, 0)} percentage points`,
-            statement: 'pass-rate lift on a11y checks',
-            visual: renderTakeawayDumbbell(a.unguidedRate, a.guidedRate),
-            qualifier: `<span class="range">${pct(a.unguidedRate)} → ${pct(a.guidedRate)}</span> on ~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} accessibility checks per mode${a.guideCount ? ` from ${a.guideCount} guides` : ''} (focus, ARIA, labels, keyboard, motion &amp; contrast). Same agents and runs.`,
-            short: `<span class="visually-hidden">${pct(a.unguidedRate)} → ${pct(a.guidedRate)} · </span>~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} a11y checks${a.guideCount ? ` · ${a.guideCount} guides` : ''}`
+            figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${pct(a.unguidedRate)} → <strong>${pct(a.guidedRate)}</strong>)</span>`,
+            figureText: `${signed(a.upliftPp, 0)} percentage points (${pct(a.unguidedRate)} to ${pct(a.guidedRate)})`,
+            qualifier: `<span class="range">${pct(a.unguidedRate)} → ${pct(a.guidedRate)}</span> across ~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} accessibility checks${a.guideCount ? ` in ${a.guideCount} guides` : ''}.`,
+            short: `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} a11y checks${a.guideCount ? ` across ${a.guideCount} guides` : ''}`
         }));
     }
 
-    // 3. Tokens: per family only (never pooled across families). Name winners and non-winners.
-    const tokenFams = fams.filter(f => f.tokens);
-    if (!tokenFams.length) {
-        cards.push(pendingCard('tokens', 'Tokens', 'uncached tokens per task'));
-    } else {
-        const winners = tokenFams.filter(f => tokDelta(f) < 0).sort((x, y) => tokDelta(x) - tokDelta(y));
-        const others = tokenFams.filter(f => tokDelta(f) >= 0);
-        if (winners.length) {
-            const bestPct = roundAbs(tokDelta(winners[0]));
-            const upTo = winners.length > 1 ? 'up to ' : '';
-            cards.push(takeawayCard({
-                metric: 'tokens',
-                label: 'Uncached tokens',
-                figure: `${upTo ? '<span class="prefix">up to </span>' : ''}<span class="figure-val">${bestPct}%</span><span class="unit"> fewer</span>`,
-                figureText: `${upTo}${bestPct} percent fewer`,
-                statement: `per task on ${joinNames(winners.map(f => f.label))}`,
-                qualifier: `Median per task: ${winnersDetail(winners, 'tokens')}. ${others.length ? `${joinNames(others.map(f => f.label))} used more uncached tokens overall (${othersDetail(others, 'tokens')})${dissentingModels(others, 'tokens', 'used', 'fewer') ? `, though ${dissentingModels(others, 'tokens', 'used', 'fewer')}` : ''}; raw totals rise far more because ${cachedShareRange(others)} of their tokens are cached prompt re-reads.` : ''}`,
-                short: renderTakeawayAgentRows(tokenFams, 'tokens')
-            }));
-        } else {
-            cards.push(takeawayCard({
-                metric: 'tokens',
-                label: 'Uncached tokens',
-                figure: '<span class="unit">No reduction</span>',
-                figureText: 'No reduction',
-                statement: 'in median uncached tokens for the agents measured',
-                qualifier: `${othersDetail(others, 'tokens')}.`,
-                short: renderTakeawayAgentRows(tokenFams, 'tokens')
-            }));
-        }
-    }
-
-    // 4. Time: per family only.
+    // 3. Quiet secondary stat: Completion time (per family only, honest summary of both sides)
     const timeFams = fams.filter(f => f.runtime);
     if (!timeFams.length) {
-        cards.push(pendingCard('time', 'Time', 'median task completion'));
+        cards.push(pendingCard('time', 'Completion time', '', false));
     } else {
         const winners = timeFams.filter(f => rtDelta(f) < 0).sort((x, y) => rtDelta(x) - rtDelta(y));
         const others = timeFams.filter(f => rtDelta(f) >= 0);
         if (winners.length) {
             const bestPct = roundAbs(rtDelta(winners[0]));
-            const upTo = winners.length > 1 ? 'up to ' : '';
+            const winnerNames = joinNames(winners.map(f => f.label));
+            const otherSummary = others.length ? othersTimeRange(others) : '';
             cards.push(takeawayCard({
                 metric: 'time',
+                primary: false,
                 label: 'Completion time',
-                figure: `${upTo ? '<span class="prefix">up to </span>' : ''}<span class="figure-val">${bestPct}%</span><span class="unit"> faster</span>`,
-                figureText: `${upTo}${bestPct} percent faster`,
-                statement: `median task on ${joinNames(winners.map(f => f.label))}`,
-                qualifier: `${winnersDetail(winners, 'runtime')}. ${others.length ? `${joinNames(others.map(f => f.label))} pay a per-task lookup cost: ${othersDetail(others, 'runtime')}${dissentingModels(others, 'runtime', 'finished', 'faster') ? ` (${dissentingModels(others, 'runtime', 'finished', 'faster')})` : ''}.` : ''}`,
-                short: renderTakeawayAgentRows(timeFams, 'runtime')
+                figure: `<span class="figure-val">${bestPct}%</span><span class="unit"> faster on ${escapeHtml(winnerNames)}</span>`,
+                figureText: `${bestPct} percent faster on ${winnerNames}`,
+                qualifier: `${winnersDetail(winners, 'runtime')}. ${others.length ? `${othersDetail(others, 'runtime')}.` : ''}`,
+                short: otherSummary ? `Faster on ${Math.round(winners[0].runtime?.fasterTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks · ${escapeHtml(otherSummary)}` : `Faster on ${Math.round(winners[0].runtime?.fasterTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks`
             }));
         } else {
             cards.push(takeawayCard({
                 metric: 'time',
+                primary: false,
                 label: 'Completion time',
                 figure: '<span class="unit">No speedup</span>',
                 figureText: 'No speedup',
-                statement: 'in median task time for the agents measured',
                 qualifier: `${othersDetail(others, 'runtime')}.`,
-                short: renderTakeawayAgentRows(timeFams, 'runtime')
+                short: `${escapeHtml(othersDetail(others, 'runtime'))}`
+            }));
+        }
+    }
+
+    // 4. Quiet secondary stat: Uncached tokens (per family only, honest summary of both sides)
+    const tokenFams = fams.filter(f => f.tokens);
+    if (!tokenFams.length) {
+        cards.push(pendingCard('tokens', 'Uncached tokens', '', false));
+    } else {
+        const winners = tokenFams.filter(f => tokDelta(f) < 0).sort((x, y) => tokDelta(x) - tokDelta(y));
+        const others = tokenFams.filter(f => tokDelta(f) >= 0);
+        if (winners.length) {
+            const bestPct = roundAbs(tokDelta(winners[0]));
+            const winnerNames = joinNames(winners.map(f => f.label));
+            const otherSummary = others.length ? othersTokenRange(others) : '';
+            cards.push(takeawayCard({
+                metric: 'tokens',
+                primary: false,
+                label: 'Uncached tokens',
+                figure: `<span class="figure-val">${bestPct}%</span><span class="unit"> fewer on ${escapeHtml(winnerNames)}</span>`,
+                figureText: `${bestPct} percent fewer on ${winnerNames}`,
+                qualifier: `Median per task: ${winnersDetail(winners, 'tokens')}. ${others.length ? `${othersDetail(others, 'tokens')}.` : ''}`,
+                short: otherSummary ? `Fewer on ${Math.round(winners[0].tokens?.fewerTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks · ${escapeHtml(otherSummary)}` : `Fewer on ${Math.round(winners[0].tokens?.fewerTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks`
+            }));
+        } else {
+            cards.push(takeawayCard({
+                metric: 'tokens',
+                primary: false,
+                label: 'Uncached tokens',
+                figure: '<span class="unit">No reduction</span>',
+                figureText: 'No reduction',
+                qualifier: `${othersDetail(others, 'tokens')}.`,
+                short: `${escapeHtml(othersDetail(others, 'tokens'))}`
             }));
         }
     }
@@ -371,10 +342,13 @@ function renderTakeaways(insights) {
  * @param {string} metric
  * @param {string} label
  * @param {string} statement
+ * @param {boolean} [primary]
  */
-function pendingCard(metric, label, statement) {
+function pendingCard(metric, label, statement, primary = false) {
     return takeawayCard({
-        metric, label,
+        metric,
+        primary,
+        label,
         figure: '<span class="unit">—</span>',
         figureText: 'not loaded',
         statement,
@@ -383,16 +357,17 @@ function pendingCard(metric, label, statement) {
 }
 
 /**
- * @param {{ metric: string, label: string, figure: string, figureText: string, statement: string, visual?: string, qualifier: string, short?: string }} c
+ * @param {{ metric: string, primary?: boolean, label: string, figure: string, figureText: string, statement?: string, visual?: string, qualifier: string, short?: string }} c
  *   `short` is a compact visual/scannable summary; `qualifier` is the full screen-reader / detailed text.
  */
 function takeawayCard(c) {
     const short = c.short || c.qualifier;
+    const roleCls = c.primary ? 'takeaway takeaway-primary' : 'takeaway takeaway-secondary';
     return `
-        <li class="takeaway" data-metric="${c.metric}">
+        <li class="${roleCls}" data-metric="${c.metric}">
             <h3 class="takeaway-label">${c.label}</h3>
             <p class="takeaway-figure"><span aria-hidden="true">${c.figure}</span><span class="visually-hidden">${escapeHtml(c.figureText)}</span></p>
-            <p class="takeaway-statement">${c.statement}</p>
+            ${c.statement ? `<p class="takeaway-statement">${c.statement}</p>` : ''}
             ${c.visual || ''}
             <p class="takeaway-qualifier takeaway-qualifier-full">${c.qualifier}</p>
             <p class="takeaway-qualifier takeaway-qualifier-short">${short}</p>
@@ -407,17 +382,14 @@ function renderAgentTable(insights) {
 
     const n = insights.options.perAgentRecentN;
     if (caption) {
-        caption.textContent = `Latest ${n} nightly ${n === 1 ? 'run' : 'runs'} per agent family, pooled. Unguided → guided; change in percentage points (pp) for pass rates and percent for time and tokens. Higher is better for pass rates; lower is better for time and tokens.`;
+        caption.textContent = `Latest ${n} nightly ${n === 1 ? 'run' : 'runs'} per agent family, pooled. Unguided → guided; change in percentage points (pp).`;
     }
 
-    const costEl = document.getElementById('hero-agents-cost');
-    if (costEl) costEl.textContent = describeCost(insights.families);
-
     body.innerHTML = insights.families.map(f => {
-        const meta = [
-            f.models.length ? f.models.join(', ') : '',
-            `${f.suiteCount} ${f.suiteCount === 1 ? 'run' : 'runs'}${taskRange(f)}`,
-            f.latest?.date ? `latest ${formatDate(f.latest.date)}` : ''
+        const metaParts = [
+            `${f.suiteCount} ${f.suiteCount === 1 ? 'run' : 'runs'}`,
+            f.models.length ? f.models.map(shortModelName).join(', ') : '',
+            f.latest?.date ? formatDateShort(f.latest.date) : ''
         ].filter(Boolean).join(' · ');
 
         return `
@@ -425,9 +397,7 @@ function renderAgentTable(insights) {
                 <th scope="row">${getAgentBadge(f.id)}${escapeHtml(f.label)}</th>
                 <td data-label="Pass rate">${rateCell(f.overall)}</td>
                 <td data-label="Accessibility">${rateCell(f.a11y)}</td>
-                <td data-label="Median time">${runtimeCell(f)}</td>
-                <td data-label="Median uncached tokens">${tokenCell(f)}</td>
-                <td data-label="Runs"><span class="agent-meta">${escapeHtml(meta)}</span></td>
+                <td data-label="Runs"><span class="agent-meta-inline">${escapeHtml(metaParts)}</span></td>
             </tr>`;
     }).join('');
 }
@@ -436,29 +406,10 @@ function renderAgentTable(insights) {
 function rateCell(r) {
     if (!r || (r.guidedTotal === 0 && r.unguidedTotal === 0)) return naCell();
     return `
-        <span class="metric-pair">${pct(r.unguidedRate)} → <strong>${pct(r.guidedRate)}</strong></span>
-        ${deltaChip(r.upliftPp, 'pp', 'higher')}`;
-}
-
-/** @param {FamilyInsight} f */
-function runtimeCell(f) {
-    const rt = f.runtime;
-    if (!rt || (rt.guidedMedianMs === 0 && rt.unguidedMedianMs === 0)) return naCell();
-    return `
-        <span class="metric-pair">${formatDuration(rt.unguidedMedianMs)} → <strong>${formatDuration(rt.guidedMedianMs)}</strong></span>
-        ${deltaChip(rtDelta(f), '%', 'lower', ['faster', 'slower'])}
-        <span class="metric-sub">${Math.round(rt.fasterTaskPct)}% of ${fmtInt(rt.pairedTaskCount)} paired tasks faster</span>${perModelLine(f, 'runtime')}`;
-}
-
-/** @param {FamilyInsight} f */
-function tokenCell(f) {
-    const tk = f.tokens;
-    if (!tk || (tk.guidedUncachedMedian === 0 && tk.unguidedUncachedMedian === 0)) return naCell();
-    const cached = tk.guidedCachedSharePct > 0 ? ` · ${Math.round(tk.guidedCachedSharePct)}% of raw total was cached` : '';
-    return `
-        <span class="metric-pair">${formatTokens(tk.unguidedUncachedMedian)} → <strong>${formatTokens(tk.guidedUncachedMedian)}</strong></span>
-        ${deltaChip(tokDelta(f), '%', 'lower', ['fewer', 'more'])}
-        <span class="metric-sub">${Math.round(tk.fewerTaskPct)}% of ${fmtInt(tk.pairedTaskCount)} paired tasks used fewer${cached}</span>${perModelLine(f, 'tokens')}`;
+        <div class="metric-main">
+            <span class="metric-pair">${pct(r.unguidedRate)} → <strong>${pct(r.guidedRate)}</strong></span>
+            ${deltaChip(r.upliftPp, 'pp', 'higher')}
+        </div>`;
 }
 
 function naCell() {
@@ -544,107 +495,47 @@ function othersDetail(fams, key) {
 }
 
 /**
- * Per-suite deltas grouped by model, e.g. [{ model: 'claude-sonnet-5-5', deltas: [-11, -13] }, ...].
- * Only meaningful when a family pools more than one model.
- * @param {FamilyInsight} f
- * @param {'runtime' | 'tokens'} key
- * @returns {{ model: string, deltas: number[] }[]}
+ * Shortens model identifiers when displayed inside a family row where the vendor is already known.
+ * @param {string} model
  */
-function perModelDeltas(f, key) {
-    const points = key === 'runtime' ? (f.runtime?.perSuite || []) : (f.tokens?.perSuite || []);
-    const modelById = new Map((f.suites || []).map(s => [s.testId, s.model]));
-    /** @type {Map<string, number[]>} */
-    const grouped = new Map();
-    points.forEach(p => {
-        const model = modelById.get(p.testId) || 'unknown';
-        if (!grouped.has(model)) grouped.set(model, []);
-        const raw = 'guidedMedianMs' in p ? pctChange(p.guidedMedianMs, p.unguidedMedianMs) : pctChange(p.guidedUncachedMedian, p.unguidedUncachedMedian);
-        /** @type {number[]} */ (grouped.get(model)).push(raw);
-    });
-    return Array.from(grouped, ([model, deltas]) => ({ model, deltas }));
+function shortModelName(model) {
+    return (model || '').replace(/^(claude-|gemini-)/i, '');
 }
 
 /**
- * "By model: claude-sonnet-5-5 −11%, −13% · claude-opus-5-5 +84%" when models are mixed; '' otherwise.
- * Surfaces when one model's runs go the other way from the pooled median, so a mix cannot hide it.
- * @param {FamilyInsight} f
- * @param {'runtime' | 'tokens'} key
+ * Concise summary of non-winning families' time cost, e.g. "+5–17s on Claude Code & Codex CLI".
+ * @param {FamilyInsight[]} others
  */
-function perModelLine(f, key) {
-    const groups = perModelDeltas(f, key);
-    if (groups.length < 2) return '';
-    const text = groups.map(g => `${g.model} ${g.deltas.map(d => `${signed(d, 0)}%`).join(', ')}`).join(' · ');
-    return `<span class="metric-sub">By model: ${escapeHtml(text)}</span>`;
+function othersTimeRange(others) {
+    const secs = others.map(f => Math.round(((f.runtime?.guidedMedianMs ?? 0) - (f.runtime?.unguidedMedianMs ?? 0)) / 1000));
+    if (!secs.length) return '';
+    const lo = Math.min(...secs);
+    const hi = Math.max(...secs);
+    const range = lo === hi ? `+${hi}s` : `+${lo}–${hi}s`;
+    return `${range} median on ${others.map(f => f.label).join(' & ')}`;
 }
 
 /**
- * For the takeaway qualifiers: names models whose every run went against the family's pooled sign,
- * e.g. "Claude Code's claude-sonnet-5-5 runs used 11–13% fewer". '' when nothing to report.
- * @param {FamilyInsight[]} fams Families on the "other" side of the headline.
- * @param {'runtime' | 'tokens'} key
- * @param {string} verb e.g. "used" / "finished"
- * @param {string} word e.g. "fewer" / "faster"
+ * Concise summary of non-winning families' token delta, e.g. "+10–28% on Claude Code & Codex CLI".
+ * @param {FamilyInsight[]} others
  */
-function dissentingModels(fams, key, verb, word) {
-    /** @type {string[]} */
-    const notes = [];
-    fams.forEach(f => {
-        perModelDeltas(f, key).filter(g => g.deltas.length && g.deltas.every(d => d < 0)).forEach(g => {
-            const mags = g.deltas.map(d => roundAbs(d));
-            const lo = Math.min(...mags);
-            const hi = Math.max(...mags);
-            notes.push(`${f.label}'s ${g.model} ${g.deltas.length === 1 ? 'run' : 'runs'} ${verb} ${lo === hi ? `${hi}%` : `${lo}–${hi}%`} ${word}`);
-        });
-    });
-    return notes.join('; ');
+function othersTokenRange(others) {
+    const pcts = others.map(f => Math.round(tokDelta(f)));
+    if (!pcts.length) return '';
+    const lo = Math.min(...pcts);
+    const hi = Math.max(...pcts);
+    const range = lo === hi ? `+${hi}%` : `+${lo}–${hi}%`;
+    return `${range} on ${others.map(f => f.label).join(' & ')}`;
 }
 
 /**
- * One sentence on who saves time/tokens and who pays a lookup cost, from live data.
- * @param {FamilyInsight[]} fams
+ * Compact date ("Oct 9") for secondary row metadata.
+ * @param {string} iso
  */
-function describeCost(fams) {
-    const withRt = fams.filter(f => f.runtime);
-    if (!withRt.length) return '';
-    const savers = withRt.filter(f => rtDelta(f) < 0 && tokDelta(f) < 0).map(f => f.label);
-    const fasterOnly = withRt.filter(f => rtDelta(f) < 0 && !(tokDelta(f) < 0)).map(f => f.label);
-    const payers = withRt.filter(f => rtDelta(f) >= 0);
-    /** @type {string[]} */
-    const parts = [];
-    if (savers.length) parts.push(`Time and token savings show up for ${joinNames(savers)}`);
-    if (fasterOnly.length) parts.push(`${joinNames(fasterOnly)} ${fasterOnly.length === 1 ? 'finishes' : 'finish'} faster but ${fasterOnly.length === 1 ? 'uses' : 'use'} more uncached tokens`);
-    if (payers.length) {
-        const secs = payers.map(f => Math.round(((f.runtime?.guidedMedianMs ?? 0) - (f.runtime?.unguidedMedianMs ?? 0)) / 1000));
-        const lo = Math.min(...secs);
-        const hi = Math.max(...secs);
-        const range = lo === hi ? `about ${hi}s` : `${lo}–${hi}s`;
-        parts.push(`${joinNames(payers.map(f => f.label))} ${payers.length === 1 ? 'pays' : 'pay'} a per-task lookup cost (${range} at the median)`);
-    }
-    return parts.length ? `${parts.join('; ')}.` : '';
-}
-
-/**
- * "145–153 tasks per run" (or "153 tasks" when every run had the same count).
- * @param {FamilyInsight} f
- */
-function taskRange(f) {
-    const counts = (f.suites || []).map(s => s.taskCount).filter(n => n > 0);
-    if (!counts.length) return '';
-    const lo = Math.min(...counts);
-    const hi = Math.max(...counts);
-    return lo === hi ? ` · ${hi} tasks per run` : ` · ${lo}–${hi} tasks per run`;
-}
-
-/**
- * "86–96%" cached share across the given families (guided), or a single value.
- * @param {FamilyInsight[]} fams
- */
-function cachedShareRange(fams) {
-    const shares = fams.map(f => Math.round(f.tokens?.guidedCachedSharePct ?? 0)).filter(n => n > 0);
-    if (!shares.length) return 'most';
-    const lo = Math.min(...shares);
-    const hi = Math.max(...shares);
-    return lo === hi ? `${hi}%` : `${lo}–${hi}%`;
+function formatDateShort(iso) {
+    const d = new Date(`${iso.slice(0, 10)}T00:00:00`);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 /** @param {number} v */
