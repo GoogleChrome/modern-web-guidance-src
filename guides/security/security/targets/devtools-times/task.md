@@ -1,1 +1,0 @@
-- Audit the web application and implement preventative security policies to protect it against common web vulnerabilities such as cross-site scripting, insecure cookies, and cross-origin attacks, and roll them out safely.
