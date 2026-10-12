@@ -21,14 +21,15 @@ const PORT = process.env.PORT || 8081;
 const STATIC = parseBooleanEnv(process.env.STATIC, false);
 
 /**
- * Resolves a path relative to resultsDir, ensuring it does not escape resultsDir.
+ * Resolves a path relative to suitesDir (or mock-results), ensuring it does not escape baseDir.
  * @param {string | null | undefined} relDir
  * @returns {string | null}
  */
 function resolveSafeResultDir(relDir) {
   if (!relDir) return null;
-  const base = path.resolve(resultsDir);
-  const target = path.resolve(resultsDir, relDir);
+  const baseDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+  const base = path.resolve(baseDir);
+  const target = path.resolve(baseDir, relDir);
   const rel = path.relative(base, target);
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
     return null;

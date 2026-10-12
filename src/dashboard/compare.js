@@ -498,6 +498,7 @@ function populateSidebar() {
   availableTasks.forEach(task => {
     const btn = document.createElement('button');
     btn.className = `task-btn ${task === activeTask ? 'active' : ''}`;
+    btn.dataset.task = task;
     
     const inA = sideA.suiteData ? checkTaskInSuite(sideA.suiteData, task) : true;
     const inB = sideB.suiteData ? checkTaskInSuite(sideB.suiteData, task) : true;
@@ -604,7 +605,7 @@ async function switchTask(task) {
   
   // Update sidebar active state
   document.querySelectorAll('.task-btn').forEach(btn => {
-    btn.classList.toggle('active', (btn.textContent || '').trim() === activeTask);
+    btn.classList.toggle('active', btn.getAttribute('data-task') === activeTask);
   });
 
   await loadActiveTaskDetails();
@@ -1420,11 +1421,17 @@ async function runDiagnosticAgent() {
     // If in static mode, we fetch pre-generated markdown
     if (isStatic) {
       const resultsBase = 'results';
-      const fileName = `${guideName}-${activeTask}-guided.md`;
-      const url = `${resultsBase}/${sideA.testId}/variance_diagnoses/${fileName}`;
+      const sameSuite = sideA.testId === sideB.testId;
+      const labelA = sameSuite ? `${sideA.runNumber}-${sideA.runType}` : `${sideA.testId}-${sideA.runNumber}-${sideA.runType}`;
+      const labelB = sameSuite ? `${sideB.runNumber}-${sideB.runType}` : `${sideB.testId}-${sideB.runNumber}-${sideB.runType}`;
+      const primaryFile = `${guideName}-${activeTask}-${labelA}-vs-${labelB}.md`;
+      const legacyFile = `${guideName}-${activeTask}-guided.md`;
       
       try {
-        const response = await fetch(url);
+        let response = await fetch(`${resultsBase}/${sideA.testId}/variance_diagnoses/${primaryFile}`);
+        if (!response.ok) {
+          response = await fetch(`${resultsBase}/${sideA.testId}/variance_diagnoses/${legacyFile}`);
+        }
         if (response.ok) {
           const markdown = await response.text();
           diagnosisText.innerHTML = renderMarkdown(markdown);
@@ -1436,7 +1443,7 @@ async function runDiagnosticAgent() {
             <div style="font-size:0.9em; margin-top:5px; color:#475569;">
               Running in STATIC mode. On-the-fly LLM comparison is only available when running the dashboard locally via <code>pnpm dashboard</code>.
               To generate this report locally, run:
-              <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare ${getTrialPath(sideA)} ${getTrialPath(sideB)}</pre>
+              <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare results/suites/${relativeA} results/suites/${relativeB}</pre>
             </div>
           `;
           statusSpan.innerText = 'Not Pre-generated';
@@ -1533,7 +1540,7 @@ async function runDiagnosticAgent() {
       <div style="font-size:0.9em; color:#64748b; margin-top:5px;">Error: ${escapeHtml(errorMsg)}</div>
       <div style="font-size:0.9em; margin-top:10px; color:#475569;">
         You can try running the comparison manually in your terminal:
-        <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare ../harness/results/${relativeA} ../harness/results/${relativeB}</pre>
+        <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare results/suites/${relativeA} results/suites/${relativeB}</pre>
       </div>
     `;
     statusSpan.innerText = 'Failed';
