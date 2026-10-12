@@ -18,7 +18,7 @@ This guide implements a horizontal progress bar with style customizations beyond
     *   **Determinate**: Set the `value` attribute. Setting the `max` value is optional unless a scale different from the default 0-1 scale is needed. 
     *   **Indeterminate**: Omit the `value` attribute for tasks of unknown duration to set the progress bar into an indeterminate state. 
 3. **Standardize Styles**: Use `appearance: none` to normalize the progress bar across different browsers before applying more customized styles. 
-4.  **Style the progress bar**: Use targeted pseudo selectors for extensive cross-browser customizations.
+4.  **Style the progress bar**: Use targeted pseudo-elements for extensive cross-browser customizations.
 
 **If fully customized styles are not needed,** use `accent-color` for simply changing the color of the progress bar.
 
@@ -44,25 +44,32 @@ progress {
 }
 ```
 
-2. **Tint the progress bar:** Use browser targeted pseudo selectors to apply color to the progress bar and track. 
+2. **Tint the progress bar:** Use browser targeted pseudo-elements to apply color to the progress bar and track. 
 
 ```css
 progress {
   --progress-color: var(--accent-color);
   --progress-track-color: lightgrey;
+  /* Oversized hard-stop gradient so its movement is visible */
+  --indeterminate-bg: linear-gradient(to right,
+    transparent 0% 15%,
+    var(--progress-color, currentColor) 15% 45%,
+    transparent 45% 100%
+  ) 0 0 / 200% 100%;
+  --indeterminate-animation-duration: 1.5s;
   --_progress-bar-active: var(--progress-bar-active, var(--progress-color));
-  --_indeterminate-bg: var(--indeterminate-bg, transparent);
+  --_progress-bar-bg: transparent;
   --_progress-bar-active-animation: var(--progress-bar-active-animation, none);
   /* Apply color for custom progress track (background) */
   background: var(--progress-track-color);
   animation: var(--_progress-bar-active-animation, none);
 }
 
-/* Browser prefixed pseudo selectors MUST NOT be grouped. If grouped one of the selectors will be ignored. */
-/* Use browser target pseudo selector to make the default progress background transparent */
+/* Browser prefixed pseudo-elements MUST NOT be grouped. If grouped one of the selectors will be ignored. */
+/* Use browser targeted pseudo-elements to make the default progress background transparent */
 progress::-webkit-progress-bar {
-  /* Defaults to transparent in determinate mode and receives the indeterminate background on progress:indeterminate */
-  background: var(--_indeterminate-bg);
+  /* Transparent in determinate mode and receives the indeterminate background on progress:indeterminate */
+  background: var(--_progress-bar-bg);
   animation: var( --_progress-bar-active-animation);
 }
 /* Apply background for custom progress bar */
@@ -83,13 +90,8 @@ progress::-moz-progress-bar {
 ```css
 /* Use the :indeterminate pseudo-class to target the progress element in its indeterminate state */
 progress:indeterminate {
-  --indeterminate-bg: linear-gradient(to right, 
-    transparent 0% 15%, 
-    var(--progress-color, currentColor) 15% 45%, 
-    transparent 45% 100%
-  ) / 200% 100%; /*  Oversized gradient background to make gradient visible
-  movement is invisible*/
-  --progress-bar-active-animation: loading var(--indeterminate-animation-length, 1.5s) infinite linear;
+  --_progress-bar-bg: var(--indeterminate-bg);
+  --progress-bar-active-animation: loading var(--indeterminate-animation-duration) infinite linear;
   --progress-bar-active: var(--indeterminate-bg);
 }
 
@@ -100,8 +102,8 @@ progress:indeterminate {
 
 /* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  progress:indeterminate {
-    --indeterminate-animation-length: 10s;
+  progress {
+    --indeterminate-animation-duration: 10s;
   }
 }
 ```
