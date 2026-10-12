@@ -1,0 +1,34 @@
+diff --git a/index.html b/index.html
+index 66c9173..6199ac9 100644
+--- a/index.html
++++ b/index.html
+@@ -151,6 +151,29 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      display: inline-block;
++      min-inline-size: 24px;
++      min-block-size: 24px;
++    }
++
++    nav a {
++      display: inline-block;
++      min-inline-size: 24px;
++      min-block-size: 24px;
++    }
++
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .btn:focus-visible,
++    .footer-links a:focus-visible {
++      outline-color: var(--primary);
++    }
++
++    nav a:focus-visible {
++      outline-color: var(--accent);
+     }
+   </style>
+ </head>
