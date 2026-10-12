@@ -444,7 +444,9 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
   // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
   execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   const workDir = path.join(homeDir, path.basename(templateDir));
-  initGitRepo(workDir);
+  if (!fs.existsSync(path.join(workDir, '.git'))) {
+    initGitRepo(workDir);
+  }
   return workDir;
 }
 
