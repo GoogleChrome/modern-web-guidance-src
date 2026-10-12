@@ -42,6 +42,7 @@ progress {
   /* You MUST set overflow to hidden if applying a border radius to the progress element so the inner fill pseudo-element doesn't overflow the rounded corners  */
   overflow: hidden;
 }
+```
 
 2. **Tint the progress bar:** Use browser targeted pseudo selectors to apply color to the progress bar and track. 
 
