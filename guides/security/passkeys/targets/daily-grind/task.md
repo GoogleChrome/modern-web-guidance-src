@@ -1,0 +1,1 @@
+- Implement passkeys in the application for registration, authentication, management, and reauthentication.

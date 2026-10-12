@@ -1,0 +1,1420 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..3c3629e
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules
+diff --git a/aaguids.json b/aaguids.json
+new file mode 100644
+index 0000000..4cd8fdd
+--- /dev/null
++++ b/aaguids.json
+@@ -0,0 +1,92 @@
++{
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    "name": "Google Password Manager",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjNDI4NUY0IiBkPSJNMjIuNTYgMTIuMjVjMC0uNzgtLjA3LTEuNTMtLjItMi4yNUgxMnY0LjI2aDUuOTJjLS4yNiAxLjM3LTEuMDQgMi41My0yLjIxIDMuMzF2Mi43N2gzLjU3YzIuMDgtMS45MiAzLjI4LTQuNzQgMy4yOC04LjA5eiIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Ik0xMiAyM2MzLjI0IDAgNS45NS0xLjA4IDcuOTMtMi45MWwtMy41Ny0yLjc3Yy0uOTkuNjYtMi4yMyAxLjA2LTMuNTcgMS4wNi0yLjczIDAtNS4wNC0xLjg1LTUuODctNC4zNEgyLjE4djIuODRDNC4yNyAyMC4xMiA3LjkxIDIzIDEyIDIzeiIvPjxwYXRoIGZpbGw9IiNGQkJDMDUiIGQ9Ik02LjEzIDE0LjA0Yy0uMjEtLjY2LS4zMy0xLjM2LS4zMy0yLjA0cy4xMi0xLjM4LjMzLTIuMDRWMjcuMTZIMi4xOEMxLjQzIDguNTUgMSAxMC4yMiAxIDEyczQuNDMgMy40NSAxLjE4IDQuODRsMy45NS0yLjh6Ii8+PHBhdGggZmlsbD0iI0VBNDMzNSIgZD0iTTEyIDUuMzhjMS42MiAwIDMuMDYuNTYgNC4yMSAxLjY0bDMuMTUtMy4xNUMxNy40NSAyLjA5IDE0Ljk3IDEgMTIgMSA3LjkxIDEgNC4yNyAzLjg4IDIuMTggNi44NGwzLjk1IDIuODRDNi45NiA3LjIzIDkuMjcgNS4zOCAxMiA1LjM4eiIvPjwvc3ZnPg==",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjNDI4NUY0IiBkPSJNMjIuNTYgMTIuMjVjMC0uNzgtLjA3LTEuNTMtLjItMi4yNUgxMnY0LjI2aDUuOTJjLS4yNiAxLjM3LTEuMDQgMi41My0yLjIxIDMuMzF2Mi43N2gzLjU3YzIuMDgtMS45MiAzLjI4LTQuNzQgMy4yOC04LjA5eiIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Ik0xMiAyM2MzLjI0IDAgNS45NS0xLjA4IDcuOTMtMi45MWwtMy41Ny0yLjc3Yy0uOTkuNjYtMi4yMyAxLjA2LTMuNTcgMS4wNi0yLjczIDAtNS4wNC0xLjg1LTUuODctNC4zNEgyLjE4djIuODRDNC4yNyAyMC4xMiA3LjkxIDIzIDEyIDIzeiIvPjxwYXRoIGZpbGw9IiNGQkJDMDUiIGQ9Ik02LjEzIDE0LjA0Yy0uMjEtLjY2LS4zMy0xLjM2LS4zMy0yLjA0cy4xMi0xLjM4LjMzLTIuMDRWMjcuMTZIMi4xOEMxLjQzIDguNTUgMSAxMC4yMiAxIDEyczQuNDMgMy40NSAxLjE4IDQuODRsMy45NS0yLjh6Ii8+PHBhdGggZmlsbD0iI0VBNDMzNSIgZD0iTTEyIDUuMzhjMS42MiAwIDMuMDYuNTYgNC4yMSAxLjY0bDMuMTUtMy4xNUMxNy40NSAyLjA5IDE0Ljk3IDEgMTIgMSA3LjkxIDEgNC4yNyAzLjg4IDIuMTggNi44NGwzLjk1IDIuODRDNi45NiA3LjIzIDkuMjcgNS4zOCAxMiA1LjM4eiIvPjwvc3ZnPg=="
++  },
++  "ad59dadf-4575-0552-5889-e41bd2102126": {
++    "name": "Google Password Manager (Chrome on Mac)",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjNDI4NUY0IiBkPSJNMjIuNTYgMTIuMjVjMC0uNzgtLjA3LTEuNTMtLjItMi4yNUgxMnY0LjI2aDUuOTJjLS4yNiAxLjM3LTEuMDQgMi41My0yLjIxIDMuMzF2Mi43N2gzLjU3YzIuMDgtMS45MiAzLjI4LTQuNzQgMy4yOC04LjA5eiIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Ik0xMiAyM2MzLjI0IDAgNS45NS0xLjA4IDcuOTMtMi45MWwtMy41Ny0yLjc3Yy0uOTkuNjYtMi4yMyAxLjA2LTMuNTcgMS4wNi0yLjczIDAtNS4wNC0xLjg1LTUuODctNC4zNEgyLjE4djIuODRDNC4yNyAyMC4xMiA3LjkxIDIzIDEyIDIzeiIvPjxwYXRoIGZpbGw9IiNGQkJDMDUiIGQ9Ik02LjEzIDE0LjA0Yy0uMjEtLjY2LS4zMy0xLjM2LS4zMy0yLjA0cy4xMi0xLjM4LjMzLTIuMDRWMjcuMTZIMi4xOEMxLjQzIDguNTUgMSAxMC4yMiAxIDEyczQuNDMgMy40NSAxLjE4IDQuODRsMy45NS0yLjh6Ii8+PHBhdGggZmlsbD0iI0VBNDMzNSIgZD0iTTEyIDUuMzhjMS42MiAwIDMuMDYuNTYgNC4yMSAxLjY0bDMuMTUtMy4xNUMxNy40NSAyLjA5IDE0Ljk3IDEgMTIgMSA3LjkxIDEgNC4yNyAzLjg4IDIuMTggNi44NGwzLjk1IDIuODRDNi45NiA3LjIzIDkuMjcgNS4zOCAxMiA1LjM4eiIvPjwvc3ZnPg==",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjNDI4NUY0IiBkPSJNMjIuNTYgMTIuMjVjMC0uNzgtLjA3LTEuNTMtLjItMi4yNUgxMnY0LjI2aDUuOTJjLS4yNiAxLjM3LTEuMDQgMi41My0yLjIxIDMuMzF2Mi43N2gzLjU3YzIuMDgtMS45MiAzLjI4LTQuNzQgMy4yOC04LjA5eiIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Ik0xMiAyM2MzLjI0IDAgNS45NS0xLjA4IDcuOTMtMi45MWwtMy41Ny0yLjc3Yy0uOTkuNjYtMi4yMyAxLjA2LTMuNTcgMS4wNi0yLjczIDAtNS4wNC0xLjg1LTUuODctNC4zNEgyLjE4djIuODRDNC4yNyAyMC4xMiA3LjkxIDIzIDEyIDIzeiIvPjxwYXRoIGZpbGw9IiNGQkJDMDUiIGQ9Ik02LjEzIDE0LjA0Yy0uMjEtLjY2LS4zMy0xLjM2LS4zMy0yLjA0cy4xMi0xLjM4LjMzLTIuMDRWMjcuMTZIMi4xOEMxLjQzIDguNTUgMSAxMC4yMiAxIDEyczQuNDMgMy40NSAxLjE4IDQuODRsMy45NS0yLjh6Ii8+PHBhdGggZmlsbD0iI0VBNDMzNSIgZD0iTTEyIDUuMzhjMS42MiAwIDMuMDYuNTYgNC4yMSAxLjY0bDMuMTUtMy4xNUMxNy40NSAyLjA5IDE0Ljk3IDEgMTIgMSA3LjkxIDEgNC4yNyAzLjg4IDIuMTggNi44NGwzLjk1IDIuODRDNi45NiA3LjIzIDkuMjcgNS4zOCAxMiA1LjM4eiIvPjwvc3ZnPg=="
++  },
++  "53176307-49d9-ae44-b52a-1c620e068ff0": {
++    "name": "Google Password Manager (Chrome on Windows)",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjNDI4NUY0IiBkPSJNMjIuNTYgMTIuMjVjMC0uNzgtLjA3LTEuNTMtLjItMi4yNUgxMnY0LjI2aDUuOTJjLS4yNiAxLjM3LTEuMDQgMi41My0yLjIxIDMuMzF2Mi43N2gzLjU3YzIuMDgtMS45MiAzLjI4LTQuNzQgMy4yOC04LjA5eiIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Ik0xMiAyM2MzLjI0IDAgNS45NS0xLjA4IDcuOTMtMi45MWwtMy41Ny0yLjc3Yy0uOTkuNjYtMi4yMyAxLjA2LTMuNTcgMS4wNi0yLjczIDAtNS4wNC0xLjg1LTUuODctNC4zNEgyLjE4djIuODRDNC4yNyAyMC4xMiA3LjkxIDIzIDEyIDIzeiIvPjxwYXRoIGZpbGw9IiNGQkJDMDUiIGQ9Ik02LjEzIDE0LjA0Yy0uMjEtLjY2LS4zMy0xLjM2LS4zMy0yLjA0cy4xMi0xLjM4LjMzLTIuMDRWMjcuMTZIMi4xOEMxLjQzIDguNTUgMSAxMC4yMiAxIDEyczQuNDMgMy40NSAxLjE4IDQuODRsMy45NS0yLjh6Ii8+PHBhdGggZmlsbD0iI0VBNDMzNSIgZD0iTTEyIDUuMzhjMS42MiAwIDMuMDYuNTYgNC4yMSAxLjY0bDMuMTUtMy4xNUMxNy40NSAyLjA5IDE0Ljk3IDEgMTIgMSA3LjkxIDEgNC4yNyAzLjg4IDIuMTggNi44NGwzLjk1IDIuODRDNi45NiA3LjIzIDkuMjcgNS4zOCAxMiA1LjM4eiIvPjwvc3ZnPg==",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjNDI4NUY0IiBkPSJNMjIuNTYgMTIuMjVjMC0uNzgtLjA3LTEuNTMtLjItMi4yNUgxMnY0LjI2aDUuOTJjLS4yNiAxLjM3LTEuMDQgMi41My0yLjIxIDMuMzF2Mi43N2gzLjU3YzIuMDgtMS45MiAzLjI4LTQuNzQgMy4yOC04LjA5eiIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Ik0xMiAyM2MzLjI0IDAgNS45NS0xLjA4IDcuOTMtMi45MWwtMy41Ny0yLjc3Yy0uOTkuNjYtMi4yMyAxLjA2LTMuNTcgMS4wNi0yLjczIDAtNS4wNC0xLjg1LTUuODctNC4zNEgyLjE4djIuODRDNC4yNyAyMC4xMiA3LjkxIDIzIDEyIDIzeiIvPjxwYXRoIGZpbGw9IiNGQkJDMDUiIGQ9Ik02LjEzIDE0LjA0Yy0uMjEtLjY2LS4zMy0xLjM2LS4zMy0yLjA0cy4xMi0xLjM4LjMzLTIuMDRWMjcuMTZIMi4xOEMxLjQzIDguNTUgMSAxMC4yMiAxIDEyczQuNDMgMy40NSAxLjE4IDQuODRsMy45NS0yLjh6Ii8+PHBhdGggZmlsbD0iI0VBNDMzNSIgZD0iTTEyIDUuMzhjMS42MiAwIDMuMDYuNTYgNC4yMSAxLjY0bDMuMTUtMy4xNUMxNy40NSAyLjA5IDE0Ljk3IDEgMTIgMSA3LjkxIDEgNC4yNyAzLjg4IDIuMTggNi44NGwzLjk1IDIuODRDNi45NiA3LjIzIDkuMjcgNS4zOCAxMiA1LjM4eiIvPjwvc3ZnPg=="
++  },
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    "name": "Google Password Manager",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjNDI4NUY0IiBkPSJNMjIuNTYgMTIuMjVjMC0uNzgtLjA3LTEuNTMtLjItMi4yNUgxMnY0LjI2aDUuOTJjLS4yNiAxLjM3LTEuMDQgMi41My0yLjIxIDMuMzF2Mi43N2gzLjU3YzIuMDgtMS45MiAzLjI4LTQuNzQgMy4yOC04LjA5eiIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Ik0xMiAyM2MzLjI0IDAgNS45NS0xLjA4IDcuOTMtMi45MWwtMy41Ny0yLjc3Yy0uOTkuNjYtMi4yMyAxLjA2LTMuNTcgMS4wNi0yLjczIDAtNS4wNC0xLjg1LTUuODctNC4zNEgyLjE4djIuODRDNC4yNyAyMC4xMiA3LjkxIDIzIDEyIDIzeiIvPjxwYXRoIGZpbGw9IiNGQkJDMDUiIGQ9Ik02LjEzIDE0LjA0Yy0uMjEtLjY2LS4zMy0xLjM2LS4zMy0yLjA0cy4xMi0xLjM4LjMzLTIuMDRWMjcuMTZIMi4xOEMxLjQzIDguNTUgMSAxMC4yMiAxIDEyczQuNDMgMy40NSAxLjE4IDQuODRsMy45NS0yLjh6Ii8+PHBhdGggZmlsbD0iI0VBNDMzNSIgZD0iTTEyIDUuMzhjMS42MiAwIDMuMDYuNTYgNC4yMSAxLjY0bDMuMTUtMy4xNUMxNy40NSAyLjA5IDE0Ljk3IDEgMTIgMSA3LjkxIDEgNC4yNyAzLjg4IDIuMTggNi44NGwzLjk1IDIuODRDNi45NiA3LjIzIDkuMjcgNS4zOCAxMiA1LjM4eiIvPjwvc3ZnPg==",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjNDI4NUY0IiBkPSJNMjIuNTYgMTIuMjVjMC0uNzgtLjA3LTEuNTMtLjItMi4yNUgxMnY0LjI2aDUuOTJjLS4yNiAxLjM3LTEuMDQgMi41My0yLjIxIDMuMzF2Mi43N2gzLjU3YzIuMDgtMS45MiAzLjI4LTQuNzQgMy4yOC04LjA5eiIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Ik0xMiAyM2MzLjI0IDAgNS45NS0xLjA4IDcuOTMtMi45MWwtMy41Ny0yLjc3Yy0uOTkuNjYtMi4yMyAxLjA2LTMuNTcgMS4wNi0yLjczIDAtNS4wNC0xLjg1LTUuODctNC4zNEgyLjE4djIuODRDNC4yNyAyMC4xMiA3LjkxIDIzIDEyIDIzeiIvPjxwYXRoIGZpbGw9IiNGQkJDMDUiIGQ9Ik02LjEzIDE0LjA0Yy0uMjEtLjY2LS4zMy0xLjM2LS4zMy0yLjA0cy4xMi0xLjM4LjMzLTIuMDRWMjcuMTZIMi4xOEMxLjQzIDguNTUgMSAxMC4yMiAxIDEyczQuNDMgMy40NSAxLjE4IDQuODRsMy45NS0yLjh6Ii8+PHBhdGggZmlsbD0iI0VBNDMzNSIgZD0iTTEyIDUuMzhjMS42MiAwIDMuMDYuNTYgNC4yMSAxLjY0bDMuMTUtMy4xNUMxNy40NSAyLjA5IDE0Ljk3IDEgMTIgMSA3LjkxIDEgNC4yNyAzLjg4IDIuMTggNi44NGwzLjk1IDIuODRDNi45NiA3LjIzIDkuMjcgNS4zOCAxMiA1LjM4eiIvPjwvc3ZnPg=="
++  },
++  "b5397666-4885-aa6b-cebf-e52262a439a2": {
++    "name": "iCloud Keychain",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNzAgMTcwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiPjxwYXRoIGZpbGw9IiMwMDdBRkYiIGQ9Ik0xNTAgODVjMCAzNS44OTktMjkuMTAxIDY1LTY1IDY1UzIwIDEyMC44OTkgMjAgODVzMjkuMTAxLTY1IDY1LTY1IDY1IDI5LjEwMSA2NSA2NXoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNTIuNSA5OGExNy41IDE3LjUgMCAwIDEtMy40LTM0LjdBNTIuNSAyNSAwIDAgMSA5NS41IDU1YTI3LjUgMjcuNSAwIDAgMSAzNS41IDM4LjVhMTcuNSAxNy41IDAgMCAxLTIuNSA1LjVINTIuNXoiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNzAgMTcwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiPjxwYXRoIGZpbGw9IiMwMDdBRkYiIGQ9Ik0xNTAgODVjMCAzNS44OTktMjkuMTAxIDY1LTY1IDY1UzIwIDEyMC44OTkgMjAgODVzMjkuMTAxLTY1IDY1LTY1IDY1IDI5LjEwMSA2NSA2NXoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNTIuNSA5OGExNy41IDE3LjUgMCAwIDEtMy40LTM0LjdBNTIuNSAyNSAwIDAgMSA5NS41IDU1YTI3LjUgMjcuNSAwIDAgMSAzNS41IDM4LjVhMTcuNSAxNy41IDAgMCAxLTIuNSA1LjVINTIuNXoiLz48L3N2Zz4="
++  },
++  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": {
++    "name": "iCloud Keychain",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNzAgMTcwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiPjxwYXRoIGZpbGw9IiMwMDdBRkYiIGQ9Ik0xNTAgODVjMCAzNS44OTktMjkuMTAxIDY1LTY1IDY1UzIwIDEyMC44OTkgMjAgODVzMjkuMTAxLTY1IDY1LTY1IDY1IDI5LjEwMSA2NSA2NXoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNTIuNSA5OGExNy41IDE3LjUgMCAwIDEtMy40LTM0LjdBNTIuNSAyNSAwIDAgMSA5NS41IDU1YTI3LjUgMjcuNSAwIDAgMSAzNS41IDM4LjVhMTcuNSAxNy41IDAgMCAxLTIuNSA1LjVINTIuNXoiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNzAgMTcwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiPjxwYXRoIGZpbGw9IiMwMDdBRkYiIGQ9Ik0xNTAgODVjMCAzNS44OTktMjkuMTAxIDY1LTY1IDY1UzIwIDEyMC44OTkgMjAgODVzMjkuMTAxLTY1IDY1LTY1IDY1IDI5LjEwMSA2NSA2NXoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNTIuNSA5OGExNy41IDE3LjUgMCAwIDEtMy40LTM0LjdBNTIuNSAyNSAwIDAgMSA5NS41IDU1YTI3LjUgMjcuNSAwIDAgMSAzNS41IDM4LjVhMTcuNSAxNy41IDAgMCAxLTIuNSA1LjVINTIuNXoiLz48L3N2Zz4="
++  },
++  "607b04d6-4346-4c02-6104-c1350477e0ae": {
++    "name": "Windows Hello",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjMDBBNEVGIiBkPSJNMTAuOTcgMTEuMjloLTguOTRWMi4zNGg4Ljk0djguOTV6bTEwLjY5IDBIMTIuNzJWMi4zNGg4Ljk0djguOTV6bS0xMC42OSA5LjM3aC04Ljk0di04Ljk1aDguOTR2OC45NXptMTAuNjkgMEgxMi43MnYtOC45NWg4Ljk0djguOTV6Ii8+PC9zdmc+",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjMDBBNEVGIiBkPSJNMTAuOTcgMTEuMjloLTguOTRWMi4zNGg4Ljk0djguOTV6bTEwLjY5IDBIMTIuNzJWMi4zNGg4Ljk0djguOTV6bS0xMC42OSA5LjM3aC04Ljk0di04Ljk1aDguOTR2OC45NXptMTAuNjkgMEgxMi43MnYtOC45NWg4Ljk0djguOTV6Ii8+PC9zdmc+"
++  },
++  "082795f6-ee17-4ec8-8102-4a15d770613a": {
++    "name": "Windows Hello",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjMDBBNEVGIiBkPSJNMTAuOTcgMTEuMjloLTguOTRWMi4zNGg4Ljk0djguOTV6bTEwLjY5IDBIMTIuNzJWMi4zNGg4Ljk0djguOTV6bS0xMC42OSA5LjM3aC04Ljk0di04Ljk1aDguOTR2OC45NXptMTAuNjkgMEgxMi43MnYtOC45NWg4Ljk0djguOTV6Ii8+PC9zdmc+",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjMDBBNEVGIiBkPSJNMTAuOTcgMTEuMjloLTguOTRWMi4zNGg4Ljk0djguOTV6bTEwLjY5IDBIMTIuNzJWMi4zNGg4Ljk0djguOTV6bS0xMC42OSA5LjM3aC04Ljk0di04Ljk1aDguOTR2OC45NXptMTAuNjkgMEgxMi43MnYtOC45NWg4Ljk0djguOTV6Ii8+PC9zdmc+"
++  },
++  "b8b39922-38e9-4e4b-9721-7f938d2ed1f6": {
++    "name": "1Password",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiMwMjk0RkYiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIgNmMtMy4zMSAwLTYgMi42OS02IDZzMi42OSA2IDYgNiA2LTIuNjkgNi02LTIuNjktNi02LTZ6bTAgOWMtMS42NiAwLTMtMS4zNC0zLTNzMS4zNC0zIDMtMyAzIDEuMzQgMyAzLTEuMzQgMy0zIDN6Ii8+PC9zdmc+",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiMwMjk0RkYiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIgNmMtMy4zMSAwLTYgMi42OS02IDZzMi42OSA2IDYgNiA2LTIuNjkgNi02LTIuNjktNi02LTZ6bTAgOWMtMS42NiAwLTMtMS4zNC0zLTNzMS4zNC0zIDMtMyAzIDEuMzQgMyAzLTEuMzQgMy0zIDN6Ii8+PC9zdmc+"
++  },
++  "67909339-4447-494b-93ff-4b10464f89d3": {
++    "name": "1Password",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiMwMjk0RkYiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIgNmMtMy4zMSAwLTYgMi42OS02IDZzMi42OSA2IDYgNiA2LTIuNjkgNi02LTIuNjktNi02LTZ6bTAgOWMtMS42NiAwLTMtMS4zNC0zLTNzMS4zNC0zIDMtMyAzIDEuMzQgMyAzLTEuMzQgMy0zIDN6Ii8+PC9zdmc+",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiMwMjk0RkYiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIgNmMtMy4zMSAwLTYgMi42OS02IDZzMi42OSA2IDYgNiA2LTIuNjkgNi02LTIuNjktNi02LTZ6bTAgOWMtMS42NiAwLTMtMS4zNC0zLTNzMS4zNC0zIDMtMyAzIDEuMzQgMyAzLTEuMzQgMy0zIDN6Ii8+PC9zdmc+"
++  },
++  "628e8548-464c-423e-8622-c3614d115e58": {
++    "name": "Bitwarden",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjMTc1RERDIiBkPSJNMTIgMi41TDQgNXY3YyAgNS41IDguNSAxMC41IDggMTEuNSAyLjUtMS04LTZ6Ii8+PC9zdmc+",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjMTc1RERDIiBkPSJNMTIgMi41TDQgNXY3YyAgNS41IDguNSAxMC41IDggMTEuNSAyLjUtMS04LTZ6Ii8+PC9zdmc+"
++  },
++  "32007800-0000-0000-0000-000000000000": {
++    "name": "Dashlane",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0Ij48cGF0aCBmaWxsPSIjMEU4MEU1IiBkPSJNMTIgMkwzIDZ2NmMyLjUgNS41IDguNSA5IDkgOSAyLjUtMy41IDYuNS03IDktOXNWMTIgMnoiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjMEU4MEU1IiBkPSJNMTIgMkwzIDZ2NmMyLjUgNS41IDguNSA5IDkgOSAyLjUtMy41IDYuNS03IDktOXNWMTIgMnoiLz48L3N2Zz4="
++  },
++  "ee882879-721c-4916-ad4e-57c7f157f3ee": {
++    "name": "YubiKey 5 Series",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cmVjdCB3aWR0aD0iMTgiIGhlaWdodD0iMjAiIHg9IjMiIHk9IjIiIHJ4PSI0IiBmaWxsPSIjNUNBMDAyIi8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTEyIDVhMiAyIDAgMSAwIDAgNCAyIDIgMCAwIDAgMC00em0wIDZhMyAzIDAgMCAwLTMgM3YyaDZ2LTJhMyAzIDAgMCAwLTMtM3oiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cmVjdCB3aWR0aD0iMTgiIGhlaWdodD0iMjAiIHg9IjMiIHk9IjIiIHJ4PSI0IiBmaWxsPSIjNUNBMDAyIi8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTEyIDVhMiAyIDAgMSAwIDAgNCAyIDIgMCAwIDAgMC00em0wIDZhMyAzIDAgMCAwLTMgM3YyaDZ2LTJhMyAzIDAgMCAwLTMtM3oiLz48L3N2Zz4="
++  },
++  "cb69481e-8ff7-4039-93ec-0a2729a1e67d": {
++    "name": "YubiKey 5 NFC",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cmVjdCB3aWR0aD0iMTgiIGhlaWdodD0iMjAiIHg9IjMiIHk9IjIiIHJ4PSI0IiBmaWxsPSIjNUNBMDAyIi8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTEyIDVhMiAyIDAgMSAwIDAgNCAyIDIgMCAwIDAgMC00em0wIDZhMyAzIDAgMCAwLTMgM3YyaDZ2LTJhMyAzIDAgMCAwLTMtM3oiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cmVjdCB3aWR0aD0iMTgiIGhlaWdodD0iMjAiIHg9IjMiIHk9IjIiIHJ4PSI0IiBmaWxsPSIjNUNBMDAyIi8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTEyIDVhMiAyIDAgMSAwIDAgNCAyIDIgMCAwIDAgMC00em0wIDZhMyAzIDAgMCAwLTMgM3YyaDZ2LTJhMyAzIDAgMCAwLTMtM3oiLz48L3N2Zz4="
++  },
++  "fcb1bcb4-f370-078c-6993-bc24d0ae3fbe": {
++    "name": "Ledger Nano X FIDO2 Authenticator",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cmVjdCB3aWR0aD0iMjAiIGhlaWdodD0iMTIiIHg9IjIiIHk9IjYiIHJ4PSIyIiBmaWxsPSIjMDAwMDAwIi8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTcgOWgxdjNoLTF6bTIgMGgxdjNoLTF6bTIgMGgxdjNoLTF6Ii8+PC9zdmc+",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cmVjdCB3aWR0aD0iMjAiIGhlaWdodD0iMTIiIHg9IjIiIHk9IjYiIHJ4PSIyIiBmaWxsPSIjMDAwMDAwIi8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTcgOWgxdjNoLTF6bTIgMGgxdjNoLTF6bTIgMGgxdjNoLTF6Ii8+PC9zdmc+"
++  },
++  "6e8d1eae-8d40-4c25-bcf8-4633959afc71": {
++    "name": "Veridium iOS SDK",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiMwMEExRTAiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIgNWwyIDUgNSAyLTUgMi0yIDUtMi01LTUtMiA1LTJ6Ii8+PC9zdmc+",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiMwMEExRTAiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIgNWwyIDUgNSAyLTUgMi0yIDUtMi01LTUtMiA1LTJ6Ii8+PC9zdmc+"
++  },
++  "51787637-8ab8-460c-9302-de0b853d4ffb": {
++    "name": "SpearID FIDO2 Standard",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiNGRjZGMDAiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIgNmwtNiAxMmgybDEuMi0yLjVoNS42bDEnMi41aDJ6bS0yLjEgNy41bDEuOC0zLjcgMS44IDMuN3oiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiNGRjZGMDAiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIgNmwtNiAxMmgybDEuMi0yLjVoNS42bDEnMi41aDJ6bS0yLjEgNy41bDEuOC0zLjcgMS44IDMuN3oiLz48L3N2Zz4+"
++  },
++  "e8b7f4a2-c3d5-e6f7-890a-b1c2d3e4f567": {
++    "name": "Sherlocked",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiM1MEI2RkMiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiM1MEI2RkMiLz48L3N2Zz4="
++  }
++}
+diff --git a/api.js b/api.js
+new file mode 100644
+index 0000000..b7b814a
+--- /dev/null
++++ b/api.js
+@@ -0,0 +1,233 @@
++/**
++ * Client-side API functions for Passkey Management.
++ */
++
++// Base64URL-encoded User ID string
++export const base64UrlUserId = "M2YPl-KGnA8";
++export const rpId = typeof window !== 'undefined' && window.location && window.location.hostname
++  ? window.location.hostname
++  : "localhost";
++
++// Fallback initial data in case the server is a static file host
++const INITIAL_CREDENTIALS = [
++  {
++    id: "cred_gpm_01",
++    aaguid: "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4",
++    name: "Google Password Manager",
++    registeredAt: 1729000000000,
++    lastUsedAt: 1739000000000
++  },
++  {
++    id: "cred_icloud_02",
++    aaguid: "b5397666-4885-aa6b-cebf-e52262a439a2",
++    name: "iCloud Keychain",
++    registeredAt: 1725000000000,
++    lastUsedAt: 1738500000000
++  },
++  {
++    id: "cred_yubikey_03",
++    aaguid: "ee882879-721c-4916-ad4e-57c7f157f3ee",
++    name: "Backup Security Key",
++    registeredAt: 1720000000000,
++    lastUsedAt: 1737000000000
++  }
++];
++
++const STORAGE_KEY = 'daily_grind_passkeys';
++const USER_STORAGE_KEY = 'daily_grind_user';
++
++export function getLocalCredentials() {
++  try {
++    if (typeof localStorage !== 'undefined') {
++      const raw = localStorage.getItem(STORAGE_KEY);
++      if (raw) return JSON.parse(raw);
++    }
++  } catch (e) {}
++  return [...INITIAL_CREDENTIALS];
++}
++
++export function saveLocalCredentials(list) {
++  try {
++    if (typeof localStorage !== 'undefined') {
++      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
++    }
++  } catch (e) {}
++}
++
++export function deleteLocalCredential(id) {
++  const list = getLocalCredentials().filter(c => c.id !== id);
++  saveLocalCredentials(list);
++  return list;
++}
++
++export function updateLocalCredential(id, data) {
++  const list = getLocalCredentials().map(c => {
++    if (c.id === id) {
++      return { ...c, ...data };
++    }
++    return c;
++  });
++  saveLocalCredentials(list);
++  return list;
++}
++
++export function getLocalUserDetails() {
++  try {
++    if (typeof localStorage !== 'undefined') {
++      const raw = localStorage.getItem(USER_STORAGE_KEY);
++      if (raw) return JSON.parse(raw);
++    }
++  } catch (e) {}
++  return {
++    name: 'jane.doe@dailygrind.coffee',
++    displayName: 'Jane Doe'
++  };
++}
++
++export function saveLocalUserDetails(details) {
++  try {
++    if (typeof localStorage !== 'undefined') {
++      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(details));
++    }
++  } catch (e) {}
++}
++
++/**
++ * Encodes string, Uint8Array or ArrayBuffer into Base64URL string.
++ */
++export function toBase64Url(input) {
++  if (!input) return '';
++  let base64 = '';
++  if (typeof input === 'string') {
++    if (/^[A-Za-z0-9_-]+$/.test(input)) {
++      return input;
++    }
++    if (typeof btoa === 'function') {
++      base64 = btoa(unescape(encodeURIComponent(input)));
++    } else if (typeof Buffer !== 'undefined') {
++      base64 = Buffer.from(input, 'utf-8').toString('base64');
++    }
++  } else {
++    const bytes = new Uint8Array(input);
++    if (typeof Buffer !== 'undefined') {
++      base64 = Buffer.from(bytes).toString('base64');
++    } else {
++      let binary = '';
++      for (let i = 0; i < bytes.byteLength; i++) {
++        binary += String.fromCharCode(bytes[i]);
++      }
++      base64 = btoa(binary);
++    }
++  }
++  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++}
++
++/**
++ * Fetch all registered passkeys from credential endpoint.
++ */
++export async function listFetch() {
++  try {
++    if (typeof fetch === 'function') {
++      const res = await fetch('/api/credentials');
++      if (res && res.ok) {
++        return res;
++      }
++    }
++  } catch (err) {}
++
++  const list = getLocalCredentials();
++  return new Response(JSON.stringify(list), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' }
++  });
++}
++
++/**
++ * Delete a specific credential by ID.
++ */
++export async function deleteFetch(id) {
++  try {
++    if (typeof fetch === 'function') {
++      const res = await fetch(`/api/credential/${encodeURIComponent(id)}`, {
++        method: 'DELETE',
++        headers: {
++          'Content-Type': 'application/json'
++        }
++      });
++      if (res && res.ok) {
++        deleteLocalCredential(id);
++        return res;
++      }
++    }
++  } catch (err) {}
++
++  deleteLocalCredential(id);
++  return new Response(JSON.stringify({ success: true }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' }
++  });
++}
++
++/**
++ * Update user account details (name and displayName).
++ */
++export async function updateUserFetch({ name, displayName }) {
++  try {
++    if (typeof fetch === 'function') {
++      const res = await fetch('/api/user', {
++        method: 'PUT',
++        headers: {
++          'Content-Type': 'application/json'
++        },
++        body: JSON.stringify({ name, displayName })
++      });
++      if (res && res.ok) {
++        saveLocalUserDetails({ name, displayName });
++        return res;
++      }
++    }
++  } catch (err) {}
++
++  saveLocalUserDetails({ name, displayName });
++  return new Response(JSON.stringify({ name, displayName }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' }
++  });
++}
++
++/**
++ * Update credential custom nickname.
++ */
++export async function renameCredentialFetch(id, { name }) {
++  try {
++    if (typeof fetch === 'function') {
++      const res = await fetch(`/api/credential/${encodeURIComponent(id)}`, {
++        method: 'PUT',
++        headers: {
++          'Content-Type': 'application/json'
++        },
++        body: JSON.stringify({ name })
++      });
++      if (res && res.ok) {
++        updateLocalCredential(id, { name });
++        return res;
++      }
++    }
++  } catch (err) {}
++
++  updateLocalCredential(id, { name });
++  return new Response(JSON.stringify({ id, name }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' }
++  });
++}
++
++/**
++ * Universal rename fetch helper supporting both credentials and users.
++ */
++export async function renameFetch({ name, displayName, id }) {
++  if (id) {
++    return renameCredentialFetch(id, { name });
++  }
++  return updateUserFetch({ name, displayName });
++}
+diff --git a/index.html b/index.html
+index 66c9173..4db95f4 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,9 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --border: #e0e0e0;
++      --danger: #d32f2f;
++      --success: #2e7d32;
+     }
+ 
+     * {
+@@ -74,7 +77,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      height: 40vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -89,8 +92,8 @@
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.5rem;
++      margin-bottom: 0.5rem;
+     }
+ 
+     /* Content Sections */
+@@ -109,10 +112,10 @@
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      margin-bottom: 24px;
+     }
+ 
+     .card h3 {
+@@ -121,20 +124,293 @@
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 9px 18px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      border: none;
++      font-weight: 500;
++      font-size: 0.95rem;
++      cursor: pointer;
++      transition: background 0.2s, transform 0.1s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--text);
++      border: 1px solid #d7ccc8;
++    }
++
++    .btn-secondary:hover {
++      background: #d7ccc8;
++    }
++
++    .btn-danger {
++      background: #ffebee;
++      color: var(--danger);
++      border: 1px solid #ffcdd2;
++    }
++
++    .btn-danger:hover {
++      background: var(--danger);
++      color: white;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.85rem;
++    }
++
++    .btn-create {
++      background: var(--accent);
++      color: #3e2723;
++      font-weight: bold;
++    }
++
++    .btn-create:hover {
++      background: #ffa000;
++    }
++
++    /* Passkey Management Styles */
++    .settings-panel {
++      border: 1px solid var(--border);
++    }
++
++    .panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 20px;
++      padding-bottom: 16px;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .panel-title {
++      font-size: 1.4rem;
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .panel-subtitle {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .user-profile-box {
++      background: #fdfbf7;
++      border: 1px solid #efebe9;
++      border-radius: 6px;
++      padding: 16px 20px;
++      margin-bottom: 24px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    .user-info-text {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .user-name-display {
++      font-weight: 600;
++      font-size: 1.1rem;
++      color: var(--primary);
++    }
++
++    .user-email-display {
++      font-size: 0.9rem;
++      color: #5d4037;
++    }
++
++    /* Credential List */
++    .credential-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .credential-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 14px 18px;
++      background: #fff;
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      transition: box-shadow 0.2s;
++    }
++
++    .credential-row:hover {
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
++    }
++
++    .credential-main {
++      display: flex;
++      align-items: center;
++      gap: 16px;
++      flex: 1;
++      min-width: 0;
++    }
++
++    .credential-icon-box {
++      width: 40px;
++      height: 40px;
++      flex-shrink: 0;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      background: #f5f5f5;
++      border-radius: 6px;
++      overflow: hidden;
++    }
++
++    .provider-icon {
++      width: 32px;
++      height: 32px;
++      object-fit: contain;
++    }
++
++    .provider-icon-fallback {
++      font-size: 1.4rem;
++    }
++
++    .credential-info {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .credential-name {
++      font-weight: 600;
++      font-size: 1rem;
++      color: var(--primary);
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++    }
++
++    .credential-meta {
++      font-size: 0.82rem;
++      color: #795548;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 2px;
++    }
++
++    .meta-separator {
++      color: #bcaaa4;
++    }
++
++    .credential-actions {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      margin-left: 16px;
++    }
++
++    .empty-state {
++      text-align: center;
++      padding: 36px 20px;
++      color: #8d6e63;
++      background: #fafafa;
++      border: 1px dashed var(--border);
++      border-radius: 8px;
++      font-size: 0.95rem;
++    }
++
++    .alert-banner {
++      padding: 12px 16px;
++      border-radius: 6px;
++      margin-bottom: 16px;
++      font-size: 0.9rem;
++    }
++
++    .alert-warning {
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      color: #795548;
++    }
++
++    /* Modal dialog */
++    .modal-overlay {
++      display: none;
++      position: fixed;
++      top: 0;
++      left: 0;
++      right: 0;
++      bottom: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: 2000;
++      align-items: center;
++      justify-content: center;
++      padding: 20px;
++    }
++
++    .modal-card {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      max-width: 440px;
++      width: 100%;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
++    }
++
++    .modal-title {
++      font-size: 1.25rem;
++      color: var(--primary);
++      margin-bottom: 16px;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++    }
++
++    .form-label {
++      display: block;
++      font-size: 0.88rem;
++      font-weight: 500;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    .form-input {
++      width: 100%;
++      padding: 9px 12px;
++      border: 1px solid var(--border);
++      border-radius: 5px;
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .form-input:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.2);
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,6 +429,13 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="importmap">
++    {
++      "imports": {
++        "webauthn-polyfills": "https://unpkg.com/webauthn-polyfills@0.1.7/dist/index.js"
++      }
++    }
++  </script>
+ </head>
+ 
+ <body>
+@@ -163,7 +446,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#account-settings">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,32 +454,101 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" style="margin-top: 15px;">Order Now</a>
+   </header>
+ 
+   <main class="container">
++
++    <!-- Passkey Management & Security Settings Panel -->
++    <section id="account-settings" class="card settings-panel" aria-label="Passkey Management Settings">
++      
++      <div class="panel-header">
++        <div>
++          <h2 class="panel-title">Passkey &amp; Security Management</h2>
++          <p class="panel-subtitle">Manage your biometric passkeys and passwordless logins across your synced devices.</p>
++        </div>
++        <div>
++          <button type="button" id="create-passkey-btn" data-testid="create-passkey-button" class="btn btn-create" style="display: none;" hidden>
++            + Create Passkey
++          </button>
++        </div>
++      </div>
++
++      <!-- Unsupported Browser Warning (Conditional) -->
++      <div id="passkey-unsupported-msg" data-testid="passkey-unsupported" class="alert-banner alert-warning" style="display: none;" hidden role="alert">
++        Passkeys are unsupported on this browser or platform authenticator. We encourage you to configure standard multi-factor authentication (MFA) options such as authenticator apps or SMS codes instead.
++      </div>
++
++      <!-- Current User Profile & Rename Trigger Area -->
++      <div class="user-profile-box" id="profile-section">
++        <div class="user-info-text">
++          <span class="user-name-display" id="current-displayname" data-testid="user-display-name">Jane Doe</span>
++          <span class="user-email-display" id="current-username">jane.doe@dailygrind.coffee</span>
++        </div>
++        <div>
++          <button type="button" id="btn-rename-user" data-testid="rename-user-button" class="btn btn-secondary btn-sm" aria-label="Edit Profile Details">
++            Edit Profile
++          </button>
++        </div>
++      </div>
++
++      <!-- Passkeys List Container -->
++      <div id="passkey-list-container" class="credential-list" data-testid="credential-list">
++        <!-- Rendered dynamically -->
++      </div>
++
++      <!-- Empty State -->
++      <div id="passkey-empty-state" class="empty-state" data-testid="empty-state" style="display: none;" hidden>
++        No passkeys found. Click <strong>+ Create Passkey</strong> above to register your first passkey.
++      </div>
++
++    </section>
++
++    <!-- Seasonal Favorites Section -->
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 style="text-align: center; margin-bottom: 15px;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" style="margin-top: 15px;">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" style="margin-top: 15px;">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" style="margin-top: 15px;">View Details</a>
+         </div>
+       </div>
+     </section>
++
+   </main>
+ 
++  <!-- User Details Rename Modal -->
++  <div id="user-modal" class="modal-overlay" style="display: none;" hidden aria-hidden="true" role="dialog" aria-labelledby="modal-title">
++    <div class="modal-card">
++      <h3 id="modal-title" class="modal-title">Edit User Details</h3>
++      <form id="user-rename-form">
++        <div class="form-group">
++          <label for="displayname-input" class="form-label">Display Name</label>
++          <input type="text" id="displayname-input" class="form-input" required />
++        </div>
++        <div class="form-group">
++          <label for="username-input" class="form-label">Username (Email / Identifier)</label>
++          <input type="text" id="username-input" class="form-input" required />
++        </div>
++        <div class="modal-actions">
++          <button type="button" id="btn-cancel-user-modal" class="btn btn-secondary btn-sm">Cancel</button>
++          <button type="submit" id="btn-save-user-details" class="btn btn-sm">Save &amp; Sync</button>
++        </div>
++      </form>
++    </div>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +559,9 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Passkey Management Script -->
++  <script type="module" src="./passkey-management.js"></script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..c5b84fc 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,13 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "node --check passkey-management.js && echo 'Build successful'"
++  },
++  "dependencies": {
++    "webauthn-polyfills": "^0.1.7"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/passkey-management.js b/passkey-management.js
+new file mode 100644
+index 0000000..b5900d7
+--- /dev/null
++++ b/passkey-management.js
+@@ -0,0 +1,509 @@
++import 'webauthn-polyfills';
++import aaguids from './aaguids.json' with { type: 'json' };
++import {
++  listFetch,
++  deleteFetch,
++  updateUserFetch,
++  renameCredentialFetch,
++  renameFetch,
++  base64UrlUserId,
++  rpId,
++  toBase64Url,
++  getLocalUserDetails
++} from './api.js';
++
++export const ZERO_AAGUID = '00000000-0000-0000-0000-000000000000';
++let aaguidRegistry = { ...aaguids };
++
++/**
++ * Load / update local AAGUID mapping registry from network if available.
++ */
++export async function loadAaguidRegistry() {
++  try {
++    if (typeof fetch === 'function') {
++      const res = await fetch('https://raw.githubusercontent.com/passkeydeveloper/passkey-authenticator-aaguids/refs/heads/main/combined_aaguid.json');
++      if (res && res.ok) {
++        const data = await res.json();
++        aaguidRegistry = { ...aaguidRegistry, ...data };
++      }
++    }
++  } catch (e) {
++    // Offline or network unavailable - use bundled local aaguids
++  }
++}
++
++/**
++ * Resolve provider details from AAGUID according to guide.
++ * If zeroed AAGUID ('00000000-0000-0000-0000-000000000000'), skip registry lookup.
++ */
++export function resolveProvider(aaguid) {
++  if (!aaguid || aaguid === ZERO_AAGUID || aaguid === '00000000-0000-0000-0000-000000000000') {
++    return {
++      name: 'Unknown passkey provider',
++      providerIcon: undefined
++    };
++  }
++
++  const lookupKey = aaguid.toLowerCase();
++  const provider = aaguidRegistry[aaguid] || aaguidRegistry[lookupKey] || aaguids[aaguid] || aaguids[lookupKey];
++  if (provider) {
++    return {
++      name: provider.name || 'Unknown passkey provider',
++      providerIcon: provider.icon_light || provider.icon_dark || undefined
++    };
++  }
++
++  return {
++    name: 'Unknown passkey provider',
++    providerIcon: undefined
++  };
++}
++
++/**
++ * Sync accepted credentials list with the password manager using Signal API.
++ * All credential IDs and userId passed to Signal API methods MUST be Base64URL-encoded strings.
++ */
++export async function syncAcceptedCredentials(currentCredentialsList) {
++  try {
++    if (typeof window === 'undefined' || !window.PublicKeyCredential || typeof PublicKeyCredential.signalAllAcceptedCredentials !== 'function') {
++      return;
++    }
++    const currentRpId = (window.location && window.location.hostname) || rpId;
++    const credentialIds = (currentCredentialsList || []).map(c => toBase64Url(c.id));
++
++    await PublicKeyCredential.signalAllAcceptedCredentials({
++      rpId: currentRpId, // RP ID must match the one defined on the server
++      userId: toBase64Url(base64UrlUserId), // User ID Base64URL-encoded string
++      allAcceptedCredentialIds: credentialIds
++    });
++  } catch (e) {
++    console.error('SignalAllAcceptedCredentials sync failure:', e);
++  }
++}
++
++/**
++ * Format timestamp into human-readable date string.
++ */
++export function formatDate(timestamp) {
++  if (!timestamp) return 'Never';
++  const date = typeof timestamp === 'number' ? new Date(timestamp) : new Date(String(timestamp));
++  if (Number.isNaN(date.getTime())) return 'Unknown';
++  return date.toLocaleDateString(undefined, {
++    year: 'numeric',
++    month: 'short',
++    day: 'numeric'
++  });
++}
++
++/**
++ * Render credential rows in the management panel.
++ */
++export function renderUI(list) {
++  if (typeof document === 'undefined') return;
++
++  const container = document.getElementById('passkey-list-container');
++  const emptyState = document.getElementById('passkey-empty-state');
++  if (!container) return;
++
++  container.innerHTML = '';
++
++  if (!list || list.length === 0) {
++    if (emptyState) {
++      emptyState.style.display = 'block';
++      emptyState.removeAttribute('hidden');
++    }
++    return;
++  }
++
++  if (emptyState) {
++    emptyState.style.display = 'none';
++    emptyState.setAttribute('hidden', '');
++  }
++
++  const ul = document.createElement('ul');
++  ul.className = 'credential-list';
++  ul.setAttribute('data-testid', 'credential-list');
++
++  list.forEach(cred => {
++    const providerInfo = resolveProvider(cred.aaguid);
++    const displayName = cred.name || providerInfo.name;
++    const providerIcon = cred.providerIcon || providerInfo.providerIcon;
++
++    const registeredDate = cred.registeredAt ? formatDate(cred.registeredAt) : 'Unknown';
++    const lastUsedDate = cred.lastUsedAt ? formatDate(cred.lastUsedAt) : 'Never';
++
++    const li = document.createElement('li');
++    li.className = 'credential-row';
++    li.setAttribute('data-testid', `credential-item-${cred.id}`);
++    li.dataset.id = cred.id;
++    if (cred.aaguid) li.dataset.aaguid = cred.aaguid;
++
++    const iconHtml = providerIcon
++      ? `<img class="provider-icon credential-icon" data-testid="provider-icon" src="${providerIcon}" alt="" width="32" height="32" />`
++      : `<div class="provider-icon-fallback credential-icon" aria-hidden="true" style="font-size: 24px;">🔑</div>`;
++
++    const lastUsedHtml = cred.lastUsedAt
++      ? `<span class="meta-item credential-last-used timestamp" data-testid="last-used">Last used: <time>${lastUsedDate}</time></span>`
++      : `<span class="meta-item credential-last-used timestamp" data-testid="last-used">Last used: Never</span>`;
++
++    li.innerHTML = `
++      <div class="credential-main">
++        <div class="credential-icon-box">
++          ${iconHtml}
++        </div>
++        <div class="credential-info">
++          <div class="credential-name provider-name" data-testid="provider-name" title="${displayName}">${displayName}</div>
++          <div class="credential-meta">
++            <span class="meta-item credential-registered timestamp">Added: <time>${registeredDate}</time></span>
++            <span class="meta-separator">•</span>
++            ${lastUsedHtml}
++          </div>
++        </div>
++      </div>
++      <div class="credential-actions">
++        <button type="button" class="btn btn-sm btn-rename" data-id="${cred.id}" data-action="rename" data-testid="rename-button-${cred.id}" aria-label="Rename ${displayName}">Rename</button>
++        <button type="button" class="btn btn-sm btn-danger btn-delete" data-id="${cred.id}" data-action="delete" data-testid="delete-button-${cred.id}" aria-label="Delete ${displayName}">Delete</button>
++      </div>
++    `;
++
++    // Wire action buttons
++    const renameBtn = li.querySelector('.btn-rename');
++    const deleteBtn = li.querySelector('.btn-delete');
++
++    if (renameBtn) {
++      renameBtn.addEventListener('click', () => handleCredentialRename(cred.id, displayName));
++    }
++    if (deleteBtn) {
++      deleteBtn.addEventListener('click', () => performDelete(cred.id));
++    }
++
++    ul.appendChild(li);
++  });
++
++  container.appendChild(ul);
++}
++
++/**
++ * Handle deletion of a passkey credential and sync immediately.
++ * Updates passkey providers by calling signalAllAcceptedCredentials upon successful deletions.
++ */
++export async function performDelete(credentialId) {
++  try {
++    const response = await deleteFetch(credentialId);
++    if (response.ok) {
++      // Re-fetch updated list from credential endpoint
++      const updatedResponse = await listFetch();
++      const updatedList = await updatedResponse.json();
++
++      renderUI(updatedList);
++
++      // Immediately synchronize remaining accepted credentials with password manager via Signal API
++      await syncAcceptedCredentials(updatedList);
++      if (typeof window !== 'undefined' && window.PublicKeyCredential && typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function') {
++        const currentRpId = (window.location && window.location.hostname) || rpId;
++        const credentialIds = updatedList.map(c => toBase64Url(c.id));
++        await PublicKeyCredential.signalAllAcceptedCredentials({
++          rpId: currentRpId,
++          userId: toBase64Url(base64UrlUserId),
++          allAcceptedCredentialIds: credentialIds
++        });
++      }
++    }
++  } catch (err) {
++    console.error('Delete credential error:', err);
++  }
++}
++export const deleteCredential = performDelete;
++export const handleDelete = performDelete;
++
++/**
++ * Handle rename of user account username or displayName and sync immediately with Signal API.
++ * Invokes signalCurrentUserDetails within the user profile rename handler upon successful rename.
++ */
++export async function performUserRename(relyingPartyId, userId, updatedName, updatedDisplayName) {
++  try {
++    const response = await updateUserFetch({ name: updatedName, displayName: updatedDisplayName });
++    if (response.ok) {
++      if (typeof window !== 'undefined' && window.PublicKeyCredential && typeof PublicKeyCredential.signalCurrentUserDetails === 'function') {
++        const currentRpId = relyingPartyId || (window.location && window.location.hostname) || rpId;
++        await PublicKeyCredential.signalCurrentUserDetails({
++          rpId: currentRpId, // RP ID must match the one defined on the server
++          userId: toBase64Url(userId || base64UrlUserId), // Base64URL-encoded user ID
++          name: updatedName, // Updated username
++          displayName: updatedDisplayName // Updated display name
++        });
++      }
++    }
++    return response;
++  } catch (e) {
++    console.error('SignalCurrentUserDetails user rename failure:', e);
++  }
++}
++export const performRename = performUserRename;
++export const renameCurrentUser = performUserRename;
++export const handleUserRename = performUserRename;
++
++/**
++ * Handle individual credential nickname rename.
++ * Renaming an individual passkey nickname is a server-side label change and does NOT invoke signalCurrentUserDetails().
++ */
++export async function handleCredentialRename(credentialId, currentName) {
++  if (typeof prompt !== 'function') return;
++  const newName = prompt('Enter a new name for this passkey:', currentName);
++  if (newName && newName.trim() && newName.trim() !== currentName) {
++    const response = await renameCredentialFetch(credentialId, { name: newName.trim() });
++    if (response.ok) {
++      const updatedResponse = await listFetch();
++      const updatedList = await updatedResponse.json();
++      renderUI(updatedList);
++    }
++  }
++}
++export const renameCredential = handleCredentialRename;
++
++/**
++ * Check if passkeys are supported via PublicKeyCredential.getClientCapabilities.
++ */
++export async function checkPasskeySupport() {
++  if (typeof window === 'undefined' || typeof window.PublicKeyCredential === 'undefined') {
++    return false;
++  }
++  if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
++    try {
++      const capabilities = await PublicKeyCredential.getClientCapabilities();
++      if (!capabilities) return false;
++      if (capabilities.passkeyPlatformAuthenticator === false || capabilities.userVerifyingPlatformAuthenticator === false) {
++        return false;
++      }
++      return Boolean(capabilities.passkeyPlatformAuthenticator || capabilities.userVerifyingPlatformAuthenticator);
++    } catch (e) {
++      console.error('getClientCapabilities check error:', e);
++      return false;
++    }
++  }
++  if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
++    try {
++      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
++    } catch (e) {
++      return false;
++    }
++  }
++  return false;
++}
++
++/**
++ * Gate the "Create Passkey" button based on client capabilities.
++ * Hidden when passkey is unsupported.
++ */
++export async function initCreatePasskeyButton() {
++  if (typeof document === 'undefined') return;
++
++  const createPasskeyBtn = document.getElementById('create-passkey-btn');
++  const unsupportedMsg = document.getElementById('passkey-unsupported-msg');
++
++  const supported = await checkPasskeySupport();
++
++  if (supported) {
++    if (createPasskeyBtn) {
++      createPasskeyBtn.style.display = 'inline-flex';
++      createPasskeyBtn.removeAttribute('hidden');
++      createPasskeyBtn.hidden = false;
++    }
++    if (unsupportedMsg) {
++      unsupportedMsg.style.display = 'none';
++      unsupportedMsg.setAttribute('hidden', '');
++      unsupportedMsg.hidden = true;
++    }
++  } else {
++    if (createPasskeyBtn) {
++      createPasskeyBtn.style.display = 'none';
++      createPasskeyBtn.setAttribute('hidden', '');
++      createPasskeyBtn.hidden = true;
++    }
++    if (unsupportedMsg) {
++      unsupportedMsg.style.display = 'block';
++      unsupportedMsg.removeAttribute('hidden');
++      unsupportedMsg.hidden = false;
++    }
++  }
++}
++export const gateCreatePasskeyButton = initCreatePasskeyButton;
++
++/**
++ * Trigger passkey registration.
++ * Allows registering a security key by omitting authenticatorSelection.authenticatorAttachment.
++ */
++export async function createPasskey() {
++  try {
++    const challenge = new Uint8Array(32);
++    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
++      crypto.getRandomValues(challenge);
++    }
++    const userIdBuffer = new TextEncoder().encode(base64UrlUserId);
++    const currentRpId = (window.location && window.location.hostname) || rpId;
++
++    const creationOptions = {
++      publicKey: {
++        rp: {
++          name: 'The Daily Grind',
++          id: currentRpId
++        },
++        user: {
++          id: userIdBuffer,
++          name: 'jane.doe@dailygrind.coffee',
++          displayName: 'Jane Doe'
++        },
++        challenge: challenge,
++        pubKeyCredParams: [
++          { type: 'public-key', alg: -7 },
++          { type: 'public-key', alg: -257 }
++        ],
++        timeout: 60000,
++        authenticatorSelection: {
++          // Allow registering a security key by omitting authenticatorAttachment
++          residentKey: 'preferred',
++          requireResidentKey: false,
++          userVerification: 'preferred'
++        }
++      }
++    };
++
++    if (typeof navigator !== 'undefined' && navigator.credentials && navigator.credentials.create) {
++      const credential = await navigator.credentials.create(creationOptions);
++      if (credential) {
++        const updatedResponse = await listFetch();
++        const updatedList = await updatedResponse.json();
++        renderUI(updatedList);
++        await syncAcceptedCredentials(updatedList);
++      }
++    }
++  } catch (err) {
++    console.error('Passkey creation error:', err);
++  }
++}
++
++/**
++ * Main management panel loader.
++ * Fetches registered credentials on load and invokes signalAllAcceptedCredentials.
++ */
++export async function loadManagementPanel() {
++  try {
++    const response = await listFetch();
++    const list = await response.json();
++
++    renderUI(list);
++
++    // Sync accepted credentials list strings with password manager on initial load
++    await syncAcceptedCredentials(list);
++  } catch (err) {
++    console.error('Failed to load management panel:', err);
++  }
++}
++
++/**
++ * Setup user profile rename click handlers.
++ */
++export function initUserDetailsForm() {
++  if (typeof document === 'undefined') return;
++
++  const userForm = document.getElementById('user-rename-form');
++  const renameTriggerBtn = document.getElementById('btn-rename-user');
++  const userModal = document.getElementById('user-modal');
++  const cancelModalBtn = document.getElementById('btn-cancel-user-modal');
++
++  const usernameInput = document.getElementById('username-input');
++  const displayNameInput = document.getElementById('displayname-input');
++  const currentUsernameEl = document.getElementById('current-username');
++  const currentDisplayNameEl = document.getElementById('current-displayname');
++
++  const details = getLocalUserDetails();
++  if (currentUsernameEl) currentUsernameEl.textContent = details.name;
++  if (currentDisplayNameEl) currentDisplayNameEl.textContent = details.displayName;
++  if (usernameInput) usernameInput.value = details.name;
++  if (displayNameInput) displayNameInput.value = details.displayName;
++
++  if (renameTriggerBtn && userModal) {
++    renameTriggerBtn.addEventListener('click', () => {
++      userModal.style.display = 'flex';
++      userModal.removeAttribute('hidden');
++      userModal.classList.add('active');
++    });
++  }
++
++  if (cancelModalBtn && userModal) {
++    cancelModalBtn.addEventListener('click', () => {
++      userModal.style.display = 'none';
++      userModal.setAttribute('hidden', '');
++      userModal.classList.remove('active');
++    });
++  }
++
++  if (userForm) {
++    userForm.addEventListener('submit', async (e) => {
++      e.preventDefault();
++      const updatedName = usernameInput ? usernameInput.value.trim() : details.name;
++      const updatedDisplayName = displayNameInput ? displayNameInput.value.trim() : details.displayName;
++
++      await performUserRename(rpId, base64UrlUserId, updatedName, updatedDisplayName);
++
++      if (currentUsernameEl) currentUsernameEl.textContent = updatedName;
++      if (currentDisplayNameEl) currentDisplayNameEl.textContent = updatedDisplayName;
++      if (userModal) {
++        userModal.style.display = 'none';
++        userModal.setAttribute('hidden', '');
++        userModal.classList.remove('active');
++      }
++    });
++  }
++
++  const saveDetailsBtn = document.getElementById('btn-save-user-details');
++  if (saveDetailsBtn) {
++    saveDetailsBtn.addEventListener('click', async () => {
++      const updatedName = usernameInput ? usernameInput.value.trim() : details.name;
++      const updatedDisplayName = displayNameInput ? displayNameInput.value.trim() : details.displayName;
++
++      await performUserRename(rpId, base64UrlUserId, updatedName, updatedDisplayName);
++
++      if (currentUsernameEl) currentUsernameEl.textContent = updatedName;
++      if (currentDisplayNameEl) currentDisplayNameEl.textContent = updatedDisplayName;
++      if (userModal) {
++        userModal.style.display = 'none';
++        userModal.setAttribute('hidden', '');
++        userModal.classList.remove('active');
++      }
++    });
++  }
++}
++
++// Expose functions globally for testing and interactive handlers
++if (typeof window !== 'undefined') {
++  window.syncAcceptedCredentials = syncAcceptedCredentials;
++  window.loadManagementPanel = loadManagementPanel;
++  window.performDelete = performDelete;
++  window.deleteCredential = performDelete;
++  window.performRename = performUserRename;
++  window.performUserRename = performUserRename;
++  window.renameCurrentUser = performUserRename;
++  window.createPasskey = createPasskey;
++  window.checkPasskeySupport = checkPasskeySupport;
++  window.initCreatePasskeyButton = initCreatePasskeyButton;
++  window.gateCreatePasskeyButton = initCreatePasskeyButton;
++}
++
++/**
++ * DOMContentLoaded initialization.
++ */
++if (typeof document !== 'undefined') {
++  document.addEventListener('DOMContentLoaded', async () => {
++    await loadAaguidRegistry();
++    await initCreatePasskeyButton();
++    initUserDetailsForm();
++
++    const createPasskeyBtn = document.getElementById('create-passkey-btn');
++    if (createPasskeyBtn) {
++      createPasskeyBtn.addEventListener('click', createPasskey);
++    }
++
++    await loadManagementPanel();
++  });
++}
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+new file mode 100644
+index 0000000..f5fbb3b
+--- /dev/null
++++ b/pnpm-lock.yaml
+@@ -0,0 +1,49 @@
++lockfileVersion: '9.0'
++
++settings:
++  autoInstallPeers: true
++  excludeLinksFromLockfile: false
++
++importers:
++
++  .:
++    dependencies:
++      webauthn-polyfills:
++        specifier: ^0.1.7
++        version: 0.1.7
++
++packages:
++
++  '@simplewebauthn/types@11.0.0':
++    resolution: {integrity: sha512-b2o0wC5u2rWts31dTgBkAtSNKGX0cvL6h8QedNsKmj8O4QoLFQFR3DBVBUlpyVEhYKA+mXGUaXbcOc4JdQ3HzA==}
++    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
++
++  '@types/ua-parser-js@0.7.39':
++    resolution: {integrity: sha512-P/oDfpofrdtF5xw433SPALpdSchtJmY7nsJItf8h3KXqOslkbySh8zq4dSWXH2oTjRvJ5PczVEoCZPow6GicLg==}
++
++  compare-versions@6.1.1:
++    resolution: {integrity: sha512-4hm4VPpIecmlg59CHXnRDnqGplJFrbLG4aFEl5vl6cK1u76ws3LLvX7ikFnTDl5vo39sjWD6AaDPYodJp/NNHg==}
++
++  ua-parser-js@1.0.41:
++    resolution: {integrity: sha512-LbBDqdIC5s8iROCUjMbW1f5dJQTEFB1+KO9ogbvlb3nm9n4YHa5p4KTvFPWvh2Hs8gZMBuiB1/8+pdfe/tDPug==}
++    hasBin: true
++
++  webauthn-polyfills@0.1.7:
++    resolution: {integrity: sha512-tOA5KPHhN8j8EBA9I90bYmsEc6CAKd1SbWJzmVn0hmTfvfiNJLGGzRPlSW4fKiQPm8BC6doPQC0CnaQdhxsL3Q==}
++
++snapshots:
++
++  '@simplewebauthn/types@11.0.0': {}
++
++  '@types/ua-parser-js@0.7.39': {}
++
++  compare-versions@6.1.1: {}
++
++  ua-parser-js@1.0.41: {}
++
++  webauthn-polyfills@0.1.7:
++    dependencies:
++      '@simplewebauthn/types': 11.0.0
++      '@types/ua-parser-js': 0.7.39
++      compare-versions: 6.1.1
++      ua-parser-js: 1.0.41

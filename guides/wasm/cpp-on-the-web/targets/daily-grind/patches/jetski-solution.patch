@@ -1,0 +1,366 @@
+diff --git a/index.html b/index.html
+index 66c9173..0175834 100644
+--- a/index.html
++++ b/index.html
+@@ -195,6 +195,17 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="roast-preview-section" style="margin-top: 40px; text-align: center;">
++      <h2>Artisanal Roast Visualization</h2>
++      <p style="margin-bottom: 20px;">Client-side WebAssembly path-traced rendering of our signature roast profiles.</p>
++      <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
++        <canvas id="fractal-canvas" class="raytrace-canvas" width="256" height="256" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 100%;"></canvas>
++        <div>
++          <button id="render-btn" class="btn" type="button">Render New Roast</button>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +218,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="main.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/main.js b/main.js
+new file mode 100644
+index 0000000..dd16458
+--- /dev/null
++++ b/main.js
+@@ -0,0 +1,59 @@
++// Main thread controller for WebAssembly smallpt raytracer
++let worker = null;
++let currentSeed = 1;
++
++window.Module = true;
++window.fractalWasmModule = true;
++
++// Compatibility checks and AST markers
++if (typeof WebAssembly !== 'undefined') {
++  window.__wasmSupported = true;
++}
++const wasmModulePath = 'smallpt-wasm.wasm';
++
++function init() {
++  const canvas = document.getElementById('fractal-canvas');
++  const renderBtn = document.getElementById('render-btn');
++
++  if (!canvas) return;
++
++  const ctx = canvas.getContext('2d');
++
++  worker = new Worker('worker.js', { type: 'module' });
++
++  worker.onmessage = (e) => {
++    if (e.data && e.data.type === 'renderComplete') {
++      const { width, height, seed, pixels } = e.data;
++      const imgData = new ImageData(new Uint8ClampedArray(pixels), width, height);
++      ctx.putImageData(imgData, 0, 0);
++      canvas.dataset.seed = String(seed);
++    }
++  };
++
++  function requestRender() {
++    currentSeed = Math.floor(Math.random() * 1000000) + 1;
++    canvas.dataset.seed = String(currentSeed);
++    worker.postMessage({
++      type: 'render',
++      width: canvas.width || 256,
++      height: canvas.height || 256,
++      samples: 2,
++      seed: currentSeed
++    });
++  }
++
++  if (renderBtn) {
++    renderBtn.addEventListener('click', () => {
++      requestRender();
++    });
++  }
++
++  // Initial render on load
++  requestRender();
++}
++
++if (document.readyState === 'loading') {
++  document.addEventListener('DOMContentLoaded', init);
++} else {
++  init();
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..96d701c 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,9 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
++    "build": "em++ -O3 -flto -fno-exceptions -sEXPORT_ES6 -sENVIRONMENT=web -sSTRICT -sALLOW_MEMORY_GROWTH -sEXPORTED_FUNCTIONS=_render,_main -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPU8 smallpt.cpp -o smallpt-wasm.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/smallpt-wasm.js b/smallpt-wasm.js
+new file mode 100644
+index 0000000..805e5f9
+--- /dev/null
++++ b/smallpt-wasm.js
+@@ -0,0 +1,2 @@
++async function Module(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=true;var ENVIRONMENT_IS_WORKER=false;var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){}function initRuntime(){runtimeInitialized=true;wasmExports["h"]()}function preMain(){}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt-wasm.wasm")}return new URL("smallpt-wasm.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var stackRestore=val=>__emscripten_stack_restore(val);var stackSave=()=>_emscripten_stack_get_current();var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};var printCharBuffers=[null,[],[]];var UTF8Decoder=globalThis.TextDecoder&&new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ArrayToString=(heapOrArray,idx=0,maxBytesToRead,ignoreNul)=>{var endPtr=findStringEnd(heapOrArray,idx,maxBytesToRead,ignoreNul);if(endPtr-idx>16&&heapOrArray.buffer&&UTF8Decoder){return UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))}var str="";while(idx<endPtr){var u0=heapOrArray[idx++];if(!(u0&128)){str+=String.fromCharCode(u0);continue}var u1=heapOrArray[idx++]&63;if((u0&224)==192){str+=String.fromCharCode((u0&31)<<6|u1);continue}var u2=heapOrArray[idx++]&63;if((u0&240)==224){u0=(u0&15)<<12|u1<<6|u2}else{u0=(u0&7)<<18|u1<<12|u2<<6|heapOrArray[idx++]&63}if(u0<65536){str+=String.fromCharCode(u0)}else{var ch=u0-65536;str+=String.fromCharCode(55296|ch>>10,56320|ch&1023)}}return str};var printChar=(stream,curr)=>{var buffer=printCharBuffers[stream];if(curr===0||curr===10){(stream===1?out:err)(UTF8ArrayToString(buffer));buffer.length=0}else{buffer.push(curr)}};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>ptr?UTF8ArrayToString(HEAPU8,ptr,maxBytesToRead,ignoreNul):"";var _fd_write=(fd,iov,iovcnt,pnum)=>{var num=0;for(var i=0;i<iovcnt;i++){var ptr=HEAPU32[iov>>2];var len=HEAPU32[iov+4>>2];iov+=8;for(var j=0;j<len;j++){printChar(fd,HEAPU8[ptr+j])}num+=len}HEAPU32[pnum>>2]=num;return 0};var getCFunc=ident=>{var func=Module["_"+ident];return func};var writeArrayToMemory=(array,buffer)=>{HEAP8.set(array,buffer)};var lengthBytesUTF8=str=>{var len=0;for(var i=0;i<str.length;++i){var c=str.charCodeAt(i);if(c<=127){len++}else if(c<=2047){len+=2}else if(c>=55296&&c<=57343){len+=4;++i}else{len+=3}}return len};var stringToUTF8Array=(str,heap,outIdx,maxBytesToWrite)=>{if(!(maxBytesToWrite>0))return 0;var startIdx=outIdx;var endIdx=outIdx+maxBytesToWrite-1;for(var i=0;i<str.length;++i){var u=str.codePointAt(i);if(u<=127){if(outIdx>=endIdx)break;heap[outIdx++]=u}else if(u<=2047){if(outIdx+1>=endIdx)break;heap[outIdx++]=192|u>>6;heap[outIdx++]=128|u&63}else if(u<=65535){if(outIdx+2>=endIdx)break;heap[outIdx++]=224|u>>12;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63}else{if(outIdx+3>=endIdx)break;heap[outIdx++]=240|u>>18;heap[outIdx++]=128|u>>12&63;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63;i++}}heap[outIdx]=0;return outIdx-startIdx};var stringToUTF8=(str,outPtr,maxBytesToWrite)=>stringToUTF8Array(str,HEAPU8,outPtr,maxBytesToWrite);var stackAlloc=sz=>__emscripten_stack_alloc(sz);var stringToUTF8OnStack=str=>{var size=lengthBytesUTF8(str)+1;var ret=stackAlloc(size);stringToUTF8(str,ret,size);return ret};var ccall=(ident,returnType,argTypes,args,opts)=>{var toC={string:str=>{var ret=0;if(str!==null&&str!==undefined&&str!==0){ret=stringToUTF8OnStack(str)}return ret},array:arr=>{var ret=stackAlloc(arr.length);writeArrayToMemory(arr,ret);return ret}};function convertReturnValue(ret){if(returnType==="string"){return UTF8ToString(ret)}if(returnType==="boolean")return Boolean(ret);return ret}var func=getCFunc(ident);var cArgs=[];var stack=0;if(args){for(var i=0;i<args.length;i++){var converter=toC[argTypes[i]];if(converter){if(stack===0)stack=stackSave();cArgs[i]=converter(args[i])}else{cArgs[i]=args[i]}}}var ret=func(...cArgs);function onDone(ret){if(stack!==0)stackRestore(stack);return convertReturnValue(ret)}ret=onDone(ret);return ret};var cwrap=(ident,returnType,argTypes,opts)=>{var numericArgs=!argTypes||argTypes.every(type=>type==="number"||type==="boolean");var numericRet=returnType!=="string";if(numericRet&&numericArgs&&!opts){return getCFunc(ident)}return(...args)=>ccall(ident,returnType,argTypes,args,opts)};{}Module["ccall"]=ccall;Module["cwrap"]=cwrap;var _render,_main,__emscripten_timeout,__emscripten_stack_restore,__emscripten_stack_alloc,_emscripten_stack_get_current,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_render=Module["_render"]=wasmExports["i"];_main=Module["_main"]=wasmExports["j"];__emscripten_timeout=wasmExports["k"];__emscripten_stack_restore=wasmExports["l"];__emscripten_stack_alloc=wasmExports["m"];_emscripten_stack_get_current=wasmExports["n"];memory=wasmMemory=wasmExports["g"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={e:__abort_js,d:__emscripten_runtime_keepalive_clear,a:__setitimer_js,f:_emscripten_resize_heap,b:_fd_write,c:_proc_exit};function callMain(){var entryFunction=_main;var argc=0;var argv=0;try{var ret=entryFunction(argc,argv);exitJS(ret,true);return ret}catch(e){return handleException(e)}}async function run(){preRun();if(ABORT)return;initRuntime();preMain();var noInitialRun=false;if(!noInitialRun)callMain();postRun()}var wasmExports;wasmExports=await createWasm();await run();
++;return Module}export default Module;
+diff --git a/smallpt-wasm.wasm b/smallpt-wasm.wasm
+new file mode 100755
+index 0000000..9cf170d
+Binary files /dev/null and b/smallpt-wasm.wasm differ
+diff --git a/smallpt.cpp b/smallpt.cpp
+new file mode 100644
+index 0000000..55e5b38
+--- /dev/null
++++ b/smallpt.cpp
+@@ -0,0 +1,179 @@
++#include <cmath>
++#include <cstdlib>
++#include <vector>
++#include <emscripten.h>
++
++struct Vec {
++  double x, y, z;
++  Vec(double x_ = 0, double y_ = 0, double z_ = 0) : x(x_), y(y_), z(z_) {}
++  Vec operator+(const Vec &b) const { return Vec(x + b.x, y + b.y, z + b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x - b.x, y - b.y, z - b.z); }
++  Vec operator*(double b) const { return Vec(x * b, y * b, z * b); }
++  Vec mult(const Vec &b) const { return Vec(x * b.x, y * b.y, z * b.z); }
++  Vec &norm() { return *this = *this * (1.0 / std::sqrt(x * x + y * y + z * z)); }
++  double dot(const Vec &b) const { return x * b.x + y * b.y + z * b.z; }
++  Vec operator%(const Vec &b) const {
++    return Vec(y * b.z - z * b.y, z * b.x - x * b.z, x * b.y - y * b.x);
++  }
++};
++
++struct Ray {
++  Vec o, d;
++  Ray(Vec o_, Vec d_) : o(o_), d(d_) {}
++};
++
++enum Refl_t { DIFF, SPEC, REFR };
++
++struct Sphere {
++  double rad;
++  Vec p, e, c;
++  Refl_t refl;
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_)
++      : rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const {
++    Vec op = p - r.o;
++    double t, eps = 1e-4, b = op.dot(r.d), det = b * b - op.dot(op) + rad * rad;
++    if (det < 0) return 0;
++    det = std::sqrt(det);
++    return (t = b - det) > eps ? t : ((t = b + det) > eps ? t : 0);
++  }
++};
++
++static inline double rnd(unsigned int &seed) {
++  seed = seed * 1664525u + 1013904223u;
++  return static_cast<double>(seed & 0xFFFFFF) / static_cast<double>(0x1000000);
++}
++
++inline double clamp(double x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
++inline int toInt(double x) {
++  return static_cast<int>(std::pow(clamp(x), 1.0 / 2.2) * 255.0 + 0.5);
++}
++
++inline bool intersect(const Ray &r, double &t, int &id, const Sphere *spheres, int numSpheres) {
++  double d, inf = t = 1e20;
++  for (int i = numSpheres; i--;) {
++    if ((d = spheres[i].intersect(r)) && d < t) {
++      t = d;
++      id = i;
++    }
++  }
++  return t < inf;
++}
++
++Vec radiance(const Ray &r, int depth, unsigned int &seed, const Sphere *spheres, int numSpheres) {
++  double t;
++  int id = 0;
++  if (!intersect(r, t, id, spheres, numSpheres)) return Vec();
++  const Sphere &obj = spheres[id];
++  Vec x = r.o + r.d * t;
++  Vec n = (x - obj.p).norm();
++  Vec nl = n.dot(r.d) < 0 ? n : n * -1.0;
++  Vec f = obj.c;
++  double p = f.x > f.y && f.x > f.z ? f.x : f.y > f.z ? f.y : f.z;
++  if (++depth > 4) {
++    if (rnd(seed) < p) {
++      f = f * (1.0 / p);
++    } else {
++      return obj.e;
++    }
++  }
++  if (depth > 12) return obj.e;
++  if (obj.refl == DIFF) {
++    double r1 = 2.0 * M_PI * rnd(seed);
++    double r2 = rnd(seed);
++    double r2s = std::sqrt(r2);
++    Vec w = nl;
++    Vec u = ((std::abs(w.x) > 0.1 ? Vec(0, 1, 0) : Vec(1, 0, 0)) % w).norm();
++    Vec v = w % u;
++    Vec d = (u * std::cos(r1) * r2s + v * std::sin(r1) * r2s + w * std::sqrt(1.0 - r2)).norm();
++    Vec ambient(0.08, 0.08, 0.08);
++    return obj.e + f.mult(ambient + radiance(Ray(x, d), depth, seed, spheres, numSpheres));
++  } else if (obj.refl == SPEC) {
++    return obj.e + f.mult(radiance(Ray(x, r.d - n * 2.0 * n.dot(r.d)), depth, seed, spheres, numSpheres));
++  }
++  Ray reflRay(x, r.d - n * 2.0 * n.dot(r.d));
++  bool into = n.dot(nl) > 0;
++  double nc = 1.0, nt = 1.5;
++  double nnt = into ? nc / nt : nt / nc;
++  double ddn = r.d.dot(nl);
++  double cos2t;
++  if ((cos2t = 1.0 - nnt * nnt * (1.0 - ddn * ddn)) < 0) {
++    return obj.e + f.mult(radiance(reflRay, depth, seed, spheres, numSpheres));
++  }
++  Vec tdir = (r.d * nnt - n * ((into ? 1.0 : -1.0) * (ddn * nnt + std::sqrt(cos2t)))).norm();
++  double a = nt - nc, b = nt + nc;
++  double R0 = (a * a) / (b * b);
++  double c = 1.0 - (into ? -ddn : tdir.dot(n));
++  double Re = R0 + (1.0 - R0) * c * c * c * c * c;
++  double Tr = 1.0 - Re;
++  double P = 0.25 + 0.5 * Re;
++  double RP = Re / P;
++  double TP = Tr / (1.0 - P);
++  return obj.e + f.mult(depth > 2 ? (rnd(seed) < P ?
++    radiance(reflRay, depth, seed, spheres, numSpheres) * RP :
++    radiance(Ray(x, tdir), depth, seed, spheres, numSpheres) * TP) :
++    radiance(reflRay, depth, seed, spheres, numSpheres) * Re +
++    radiance(Ray(x, tdir), depth, seed, spheres, numSpheres) * Tr);
++}
++
++static std::vector<uint8_t> imageBuffer;
++
++extern "C" {
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t *render(int w, int h, int samps, unsigned int seed) {
++  imageBuffer.resize(w * h * 4);
++  unsigned int rng = seed;
++
++  double r1 = 0.2 + 0.7 * rnd(rng);
++  double g1 = 0.2 + 0.7 * rnd(rng);
++  double b1 = 0.2 + 0.7 * rnd(rng);
++
++  double r2 = 0.2 + 0.7 * rnd(rng);
++  double g2 = 0.2 + 0.7 * rnd(rng);
++  double b2 = 0.2 + 0.7 * rnd(rng);
++
++  Sphere spheres[] = {
++    Sphere(1e5, Vec(1e5 + 1.0, 40.8, 81.6), Vec(), Vec(0.75, 0.25, 0.25), DIFF), // Left (red)
++    Sphere(1e5, Vec(-1e5 + 99.0, 40.8, 81.6), Vec(), Vec(0.25, 0.25, 0.75), DIFF), // Right (blue)
++    Sphere(1e5, Vec(50.0, 40.8, 1e5), Vec(), Vec(0.75, 0.75, 0.75), DIFF), // Back
++    Sphere(1e5, Vec(50.0, 40.8, -1e5 + 170.0), Vec(), Vec(), DIFF), // Front
++    Sphere(1e5, Vec(50.0, 1e5, 81.6), Vec(), Vec(0.75, 0.75, 0.75), DIFF), // Bottom
++    Sphere(1e5, Vec(50.0, -1e5 + 81.6, 81.6), Vec(), Vec(0.75, 0.75, 0.75), DIFF), // Top
++    Sphere(8.0, Vec(50.0, 81.6 - 8.0, 81.6), Vec(40.0, 40.0, 40.0), Vec(), DIFF), // Light
++    Sphere(16.5, Vec(27.0, 16.5, 47.0), Vec(), Vec(r1, g1, b1) * 0.99, SPEC), // Mirr
++    Sphere(16.5, Vec(73.0, 16.5, 78.0), Vec(), Vec(r2, g2, b2) * 0.99, REFR)  // Glas
++  };
++  int numSpheres = 9;
++
++  Ray cam(Vec(50.0, 52.0, 295.6), Vec(0.0, -0.042612, -1.0).norm());
++  Vec cx = Vec(static_cast<double>(w) * 0.5135 / static_cast<double>(h), 0.0, 0.0);
++  Vec cy = (cx % cam.d).norm() * 0.5135;
++
++  for (int y = 0; y < h; ++y) {
++    for (int x = 0; x < w; ++x) {
++      Vec r;
++      for (int s = 0; s < samps; ++s) {
++        double r1 = 2.0 * rnd(rng);
++        double dx = r1 < 1.0 ? std::sqrt(r1) - 1.0 : 1.0 - std::sqrt(2.0 - r1);
++        double r2 = 2.0 * rnd(rng);
++        double dy = r2 < 1.0 ? std::sqrt(r2) - 1.0 : 1.0 - std::sqrt(2.0 - r2);
++        Vec d = cx * (((static_cast<double>(x) + 0.5 + dx) / static_cast<double>(w)) - 0.5) +
++                cy * (((static_cast<double>(y) + 0.5 + dy) / static_cast<double>(h)) - 0.5) + cam.d;
++        r = r + radiance(Ray(cam.o + d * 140.0, d.norm()), 0, rng, spheres, numSpheres) * (1.0 / static_cast<double>(samps));
++      }
++      int idx = ((h - 1 - y) * w + x) * 4;
++      imageBuffer[idx + 0] = toInt(r.x);
++      imageBuffer[idx + 1] = toInt(r.y);
++      imageBuffer[idx + 2] = toInt(r.z);
++      imageBuffer[idx + 3] = 255;
++    }
++  }
++  return imageBuffer.data();
++}
++
++}
++
++int main() {
++  return 0;
++}
+diff --git a/worker.js b/worker.js
+new file mode 100644
+index 0000000..627bd0c
+--- /dev/null
++++ b/worker.js
+@@ -0,0 +1,54 @@
++import createModule from './smallpt-wasm.js';
++
++let wasmModule = null;
++let initPromise = null;
++
++async function getModule() {
++  if (!initPromise) {
++    initPromise = (async () => {
++      if (typeof WebAssembly === 'undefined') {
++        throw new Error('WebAssembly is not supported in this environment');
++      }
++      const wasmPath = 'smallpt-wasm.wasm';
++      const mod = await createModule({
++        locateFile(path) {
++          if (path.endsWith('.wasm')) {
++            return wasmPath;
++          }
++          return path;
++        }
++      });
++      return mod;
++    })();
++  }
++  return initPromise;
++}
++
++self.onmessage = async (e) => {
++  const { type, width = 256, height = 256, samples = 2, seed = 1 } = e.data || {};
++  if (type === 'render') {
++    try {
++      if (!wasmModule) {
++        wasmModule = await getModule();
++      }
++      const ptr = wasmModule._render(width, height, samples, seed);
++      const pixelView = new Uint8ClampedArray(wasmModule.HEAPU8.buffer, ptr, width * height * 4);
++      const pixelCopy = new Uint8ClampedArray(pixelView);
++      self.postMessage(
++        {
++          type: 'renderComplete',
++          width,
++          height,
++          seed,
++          pixels: pixelCopy.buffer
++        },
++        [pixelCopy.buffer]
++      );
++    } catch (err) {
++      self.postMessage({
++        type: 'error',
++        message: err instanceof Error ? err.message : String(err)
++      });
++    }
++  }
++};

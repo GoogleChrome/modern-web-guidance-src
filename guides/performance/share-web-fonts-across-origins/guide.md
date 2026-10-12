@@ -1,5 +1,6 @@
 ---
 name: share-web-fonts-across-origins
+draft: true
 description: Serve large, popular web fonts from a shared cross-origin cache instead of re-downloading them from a font CDN on every site that references them.
 web-feature-ids:
   - tmp-cross-origin-storage

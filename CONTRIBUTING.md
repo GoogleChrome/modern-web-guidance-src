@@ -29,7 +29,7 @@ To foster an open-source contributor environment while maintaining a stable, cle
 
 # How to contribute
 We want to encourage contributions while maintaining high standards. Our policy is:
-* **Proposal first**: For non-trivial changes, contributors need to to [open an issue first](https://github.com/GoogleChrome/modern-web-guidance-src/issues) to align on design before coding.
+* **Proposal first**: For non-trivial changes, contributors need to [open an issue first](https://github.com/GoogleChrome/modern-web-guidance-src/issues) to align on design before coding.
 
 ## Project Roles
 
@@ -63,7 +63,7 @@ Content ATLs are responsible for the overall quality, completeness, and health o
   * Align all guidance and expectations with a **Baseline Widely available** target. If a recommended feature is not yet widely available, the guide **must** specify (and the expectations/grader **must** test for) proper fallback strategies and progressive enhancement.
 * **Discipline Guide Decomposition**:
   * Ensure discipline-level guides (e.g., CSS, JS) are broken up into modular "subguides" (i.e., smaller, focused guides) rather than structured as a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously.
-  * The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for how to approach the discipline, explaining when and how to reference each granular subguide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
+  * The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for how to approach the discipline, explaining when and how to reference each granular subguide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
 
 ### Infrastructure Engineers
 Infrastructure engineers focus on the tooling, CLI, test harness reliability, LLM generation pipelines, and dashboard interfaces. They ensure that the evaluation runner is stable, calibration retries function correctly, and maintain the Skills CLI distribution path.
@@ -77,7 +77,7 @@ pnpm install
 pnpm setup:playwright
 ```
 
-For a walkthrough of the project architecture, see [CONTEXT.md](./CONTEXT.md).
+For a walkthrough of the project architecture, see [docs/CONTEXT.md](./docs/CONTEXT.md).
 
 ### Quality Control
 
@@ -90,15 +90,15 @@ pnpm preflight
 ## Project Structure
 
 - **`guides/`**: Curated guide content organized by discipline (performance, user-experience, etc.), along with core development pipeline orchestration scripts.
-- **`harness/`**: The evaluation harness for executing and scoring agent tests. Contains agent runners, evaluation orchestration, and base applications.
-- **`serving/`**: Serving infrastructure that compiles guides into semantic search indexes, builds the standalone RAG CLI distribution (`skills-cli`), and orchestrates publishing all Skills to both the public npm registry and the GitHub distribution repository.
+- **`src/harness/`**: The evaluation harness for executing and scoring agent tests. Contains agent runners, evaluation orchestration, and base applications.
+- **`src/build/`**, **`src/cli/`**, **`src/rag/`**: Infrastructure that compiles guides into semantic search indexes, builds the standalone CLI distribution, and orchestrates publishing all Skills to both the public npm registry and the GitHub distribution repository.
 - **`skills-src/`**: Source files and templates for standalone, topic-specific Agent Skills.
 - **`features/`**: Feature definitions and documentation snippets for specific web platform capabilities, used for transclusion and baseline status tracking.
-- **`eval-view/`**: A static web dashboard for visualizing and analyzing evaluation suite results.
-- **`nightly/`**: Automation scripts for configuring and executing scheduled nightly evaluation runs across multiple agents.
+- **`src/dashboard/`**: A static web dashboard for visualizing and analyzing evaluation suite results.
+- **`src/harness/nightly/`**: Automation scripts for configuring and executing scheduled nightly evaluation runs across multiple agents.
 - **`bin/gd.ts`**: The unified CLI entry point for all development and evaluation workflows.
 
-See [CONTEXT.md](./CONTEXT.md) for a comprehensive project overview, architecture details, and contributor workflow. It also somewhat overlaps with this contributing file. ;)
+See [docs/CONTEXT.md](./docs/CONTEXT.md) for a comprehensive project overview, architecture details, and contributor workflow. It also somewhat overlaps with this contributing file. ;)
 
 ## Guide Development
 
@@ -117,15 +117,15 @@ For core guides under `guides/<discipline>/` (e.g. `guides/performance/my-featur
 
 ## Serving
 
-The `modern-web-guidance` **Skill** is served through a standalone CLI distribution (`serving/skills-cli`), enabling AI agents to perform local semantic searches and retrieve targeted implementation patterns on demand. This is the only supported serving approach; the evaluation harness always installs this distribution for guided runs.
+The `modern-web-guidance` **Skill** is served through a standalone CLI distribution (`dist/skills-cli`), enabling AI agents to perform local semantic searches and retrieve targeted implementation patterns on demand. This is the only supported serving approach; the evaluation harness always installs this distribution for guided runs.
 
 ## Evaluation Harness & Dashboard
 
-#### Prompt Benchmarking Harness (`harness/`)
+#### Prompt Benchmarking Harness (`src/harness/`)
 
 The evaluation harness is a matrix-driven runner that measures how effectively coding agents adopt modern web APIs. It executes tasks across various AI agents in isolated environments and scores their output against browser-based test assertions.
 
-#### Evaluation Dashboard (`eval-view/`)
+#### Evaluation Dashboard (`src/dashboard/`)
 
 The evaluation dashboard provides a web interface to visualize pass rates, inspect agent trajectories, and review grade reports. It supports both a dynamic local development mode and a fully static deployment hosted on GitHub Pages.
 
@@ -176,24 +176,23 @@ Utilities & Setup
 
 ## Configuration
 
-All evaluation and environment configuration is centralized in [`harness/config.ts`](./harness/config.ts). This file defines two primary configuration structures:
+All evaluation and environment configuration is centralized in [`src/harness/config.ts`](./src/harness/config.ts). This file defines two primary configuration structures:
 
 - **Environment Configuration (`environmentConfig`)**: Resolves absolute paths to AI agent binaries/CLIs, GCP credentials, and required API keys. Values are populated via environment variables loaded automatically from `.env` at the repository root.
 - **Suite Configuration (`defaultSuiteConfig`)**: Controls evaluation execution parameters such as agent selection (`agent`), serving mode (`serving`), task filters (`tasks`), etc.
 
 ### API Keys & Environment Setup
 
-For setup of core guide development workflows (`gd dev`), configure your Gemini API key and model in your environment or `.env` file:
+For setup of core guide development workflows (`gd dev`), install and sign in to Antigravity CLI (the default `gd dev` agent; see [docs/EVALS.md](./docs/EVALS.md#antigravity-cli)). Optionally configure your environment or `.env` file:
 
 ```bash
-GEMINI_API_KEY='your_api_key_here'
-GEMINI_MODEL='gemini-3-flash-preview'
-GD_DEV_USE_GEMINI=1 # Required to use Gemini CLI for 'gd dev'
+# ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID> # Optional: only if you use agy through a GCP project
+# GD_DEV_USE_JETSKI=1 # Optional: use Jetski CLI instead of Antigravity CLI for 'gd dev'
 ```
 
 ### Runtime Configuration Overrides
 
-You can override suite configurations without modifying `harness/config.ts` directly. The `gd eval` command automatically looks for a `config.ts` file in the project root. If this file doesn't exist and no `--config` flag is provided, it safely falls back to the defaults in `harness/config.ts`.
+You can override suite configurations without modifying `src/harness/config.ts` directly. The `gd eval` command automatically looks for a `config.ts` file in the project root. If this file doesn't exist and no `--config` flag is provided, it safely falls back to the defaults in `src/harness/config.ts`.
 
 To get started, copy the template:
 ```bash
@@ -205,4 +204,4 @@ If you want to maintain multiple configuration profiles, you can specify a custo
 gd eval --config my_custom_config.ts
 ```
 
-For configuration details on running evaluations across other agents, see [EVALS.md](./EVALS.md).
+For configuration details on running evaluations across other agents, see [docs/EVALS.md](./docs/EVALS.md).

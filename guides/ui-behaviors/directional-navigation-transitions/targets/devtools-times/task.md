@@ -1,0 +1,1 @@
+- turn the top stories section on the homepage into a slider that shows one story at a time, with Next and Previous buttons. when switching stories, slide the content in the direction of travel (next slides the new story in from the right, previous from the left). disable the animation for users who prefer reduced motion.
