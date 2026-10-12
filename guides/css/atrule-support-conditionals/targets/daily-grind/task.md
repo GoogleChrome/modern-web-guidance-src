@@ -1,0 +1,1 @@
+- Update the application styles to conditionally apply certain CSS rules or declarations only if a certain at-rule is supported by the browser.
