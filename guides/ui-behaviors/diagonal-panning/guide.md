@@ -120,11 +120,12 @@ if (!CSS.supports('scroll-axis-lock', 'none')) {
   // 2. Touch and pointer drag fallback
   viewport.addEventListener('pointerdown', (e) => {
     // Ignore non-primary buttons and clicks on native scrollbars
+    const rect = viewport.getBoundingClientRect();
     if (
       !e.isPrimary ||
       e.button !== 0 ||
-      e.offsetX >= viewport.clientWidth ||
-      e.offsetY >= viewport.clientHeight
+      e.clientX - rect.left - viewport.clientLeft >= viewport.clientWidth ||
+      e.clientY - rect.top - viewport.clientTop >= viewport.clientHeight
     ) {
       return;
     }
