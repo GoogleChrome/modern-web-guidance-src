@@ -70,6 +70,8 @@ Because a 2D panning surface often lacks focusable child controls (for example, 
 
 ## Fallback strategies
 
+{{ BASELINE_STATUS("scroll-axis-lock") }}
+
 Choose between **progressive enhancement** and a **JavaScript fallback** based on your application's requirements:
 
 ### Option 1: Progressive Enhancement (No JavaScript)
