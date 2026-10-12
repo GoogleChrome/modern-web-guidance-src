@@ -405,7 +405,7 @@ export const githubApi = {
   getIssueBody(issueNumber: number): string {
     return child_process.execFileSync(
       'gh',
-      ['issue', 'view', String(issueNumber), '--json', 'body', '--jq', '.body'],
+      ['issue', 'view', String(issueNumber), '--json', 'body', '--jq', '.body // ""'],
       { encoding: 'utf8' }
     ).trim();
   },
@@ -551,7 +551,7 @@ export const githubApi = {
   getPrBody(prNumber: number): string {
     return child_process.execFileSync(
       'gh',
-      ['pr', 'view', String(prNumber), '--json', 'body', '--jq', '.body'],
+      ['pr', 'view', String(prNumber), '--json', 'body', '--jq', '.body // ""'],
       { encoding: 'utf8' }
     ).trim();
   }
@@ -559,7 +559,12 @@ export const githubApi = {
 
 export function hasNoAtlTriageDirective(body?: string | null): boolean {
   if (!body) return false;
-  return /<!--\s*no-atl-triage\s*-->/i.test(body);
+  // Strip fenced code blocks (``` or ~~~) and inline code spans (`...`)
+  // so prose mentions like `<!-- no-atl-triage -->` do not trigger the directive.
+  const withoutCode = body
+    .replace(/^(?:`{3,}|~{3,})[\s\S]*?^(?:`{3,}|~{3,})/gm, '')
+    .replace(/`+[^`]*`+/g, '');
+  return /<!--\s*no-atl-triage\s*-->/i.test(withoutCode);
 }
 
 export interface HandleIssueOptions {
@@ -824,6 +829,16 @@ export function handlePR(
   const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
   console.log(`Triaging PR #${prNumber} by author: @${prAuthor}`);
 
+  if (hasNoAtlTriageDirective(options?.prBody)) {
+    console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+    return [];
+  }
+
+  if (options?.isDraft) {
+    console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
+    return [];
+  }
+
   let prBody = options?.prBody;
   if (prBody === undefined && !mockFiles) {
     try {
@@ -831,11 +846,10 @@ export function handlePR(
     } catch (err) {
       console.warn(`Failed to fetch body for PR #${prNumber}:`, err);
     }
-  }
-
-  if (hasNoAtlTriageDirective(prBody)) {
-    console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
-    return [];
+    if (hasNoAtlTriageDirective(prBody)) {
+      console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+      return [];
+    }
   }
 
   let isDraft = options?.isDraft;
@@ -845,11 +859,10 @@ export function handlePR(
     } catch (err) {
       console.warn(`Failed to check if PR #${prNumber} is draft:`, err);
     }
-  }
-
-  if (isDraft) {
-    console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
-    return [];
+    if (isDraft) {
+      console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
+      return [];
+    }
   }
   
   let files: string[] = [];

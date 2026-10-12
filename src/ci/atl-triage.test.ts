@@ -1347,6 +1347,21 @@ describe('hasNoAtlTriageDirective', () => {
     assert.strictEqual(hasNoAtlTriageDirective(undefined), false);
     assert.strictEqual(hasNoAtlTriageDirective('Add support for no-atl-triage in descriptions'), false);
   });
+
+  it('does not match directive inside inline code or fenced code blocks', () => {
+    assert.strictEqual(
+      hasNoAtlTriageDirective('Support `<!-- no-atl-triage -->` comment directive to skip ATL triage'),
+      false
+    );
+    assert.strictEqual(
+      hasNoAtlTriageDirective('Example:\n```markdown\n<!-- no-atl-triage -->\n```'),
+      false
+    );
+    assert.strictEqual(
+      hasNoAtlTriageDirective('Mentions `<!-- no-atl-triage -->` in prose\n\n<!-- no-atl-triage -->'),
+      true
+    );
+  });
 });
 
 describe('extractFeatureIdsFromContent', () => {
