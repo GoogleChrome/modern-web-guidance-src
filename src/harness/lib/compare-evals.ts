@@ -7,7 +7,6 @@ import { getComparisonPrompts } from './compare-prompts.ts';
 import { generateUnifiedDiff, extractTargetFilesFromPatch } from '../../core/patch-utils.ts';
 import {
   categorizeAction,
-  ensureFreshTrajectorySummary,
   ensureFreshTrajectorySummarySync,
   type CanonicalCategory,
   type TrajectorySummary
@@ -74,26 +73,14 @@ async function callAgentCli(
 
   console.log(`[${label}] Executing via ${agent}...`);
 
-  const prevJetskiDir = process.env.JETSKI_DIR;
-  const ownsWorkDir = !workDir;
-  const effectiveWorkDir = workDir ?? setupGuideDevWorkDir('compare');
-
-  try {
-    const rawOutput = await runAgent(agent, combinedPrompt, effectiveWorkDir, { captureOutput: true });
-    if (!rawOutput) {
-      throw new Error(`[${label}] Empty response received from ${agent}`);
-    }
-    return rawOutput;
-  } finally {
-    if (ownsWorkDir) {
-      cleanupIsolatedHome(path.dirname(effectiveWorkDir));
-      if (prevJetskiDir === undefined) {
-        delete process.env.JETSKI_DIR;
-      } else {
-        process.env.JETSKI_DIR = prevJetskiDir;
-      }
-    }
+  const rawOutput = await runAgent(agent, combinedPrompt, workDir, {
+    captureOutput: true,
+    homeDir: workDir ? path.dirname(workDir) : undefined
+  });
+  if (!rawOutput) {
+    throw new Error(`[${label}] Empty response received from ${agent}`);
   }
+  return rawOutput;
 }
 
 export interface TaggedStep {
@@ -707,11 +694,6 @@ export async function runComparison(
     downloadRunFromGcsIfMissing(runDirB)
   ]);
 
-  await Promise.all([
-    ensureFreshTrajectorySummary(runDirA),
-    ensureFreshTrajectorySummary(runDirB)
-  ]);
-
   const ctxA = loadRunContext(runDirA);
   const ctxB = loadRunContext(runDirB);
 
@@ -739,7 +721,7 @@ export async function runComparison(
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
 
   const prevJetskiDir = process.env.JETSKI_DIR;
-  const workDir = setupGuideDevWorkDir('compare');
+  const { workDir } = setupGuideDevWorkDir('compare');
 
   try {
     console.log(cBold(`[Compare Agent] Phase 1: Pre-processed trajectories into tagged milestones.`));

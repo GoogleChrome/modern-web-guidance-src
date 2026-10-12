@@ -525,6 +525,8 @@ export function ensureFreshTrajectorySummarySync(runDir: string): TrajectorySumm
     }
   } else if (!existing) {
     console.warn(`[Trajectory] No trajectory_summary.json or raw logs in ${runDir}; trajectory unavailable`);
+  } else if (existing.normalizerVersion === NORMALIZER_VERSION) {
+    console.warn(`[Trajectory] Summary in ${runDir} has 0 steps and no raw logs to regenerate`);
   } else {
     console.warn(`[Trajectory] Using stale summary (v${existing.normalizerVersion ?? 'none'}) in ${runDir}; no raw logs to regenerate`);
   }

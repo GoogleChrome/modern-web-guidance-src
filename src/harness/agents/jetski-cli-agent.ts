@@ -387,7 +387,6 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Modifying target file',
                 action: standardizeAction('write_file', toolName, {
-                  ...obj,
                   path: targetFile,
                   targetFile,
                   content: truncateMessage(obj.CodeContent || obj.ReplacementChunks || '', MAX_PAYLOAD_PREVIEW_LENGTH)
