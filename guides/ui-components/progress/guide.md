@@ -8,25 +8,30 @@ web-feature-ids:
 
 # Build a Styled Progress Bar
 
-The `<progress>` element is the semantic way to represent the completion progress of a task, like downloading or uploading information or completing part of a multi-step process. Using the native element helps with accessibility, as screen readers have an implicit `role="progressbar"` and can announce values.  
+The `<progress>` element is the semantic way to represent the completion progress of a task, like downloading or uploading information or completing part of a multi-step process. Using the native element helps with accessibility, as screen readers have an implicit `role="progressbar"` and can announce values.
 
-This guide implements a horizontal progress bar with style customizations beyond just changing the color of `progress` with `accent-color`. For guidance on implementing a circular progress bar in the determinate state see {{ GUIDE_REF("progress-ring") }}. For circular progress bars in the indeterminate state, see {{ GUIDE_REF("spinner") }}.
+This guide implements a fully styled horizontal progress bar with style customizations.
 
-## How to implement a fully styled progress bar
-1.  **Use the native `<progress>` element**: It provides built-in accessibility and platform-consistent behavior.
-2.  **Define the state**:
-    *   **Determinate**: Set the `value` attribute. Setting the `max` value is optional unless a scale different from the default 0-1 scale is needed. 
-    *   **Indeterminate**: Omit the `value` attribute for tasks of unknown duration to set the progress bar into an indeterminate state. 
-3. **Standardize Styles**: Use `appearance: none` to normalize the progress bar across different browsers before applying more customized styles. 
-4.  **Style the progress bar**: Use targeted pseudo-elements for extensive cross-browser customizations.
+## Progress bar or progress ring?
 
-**If fully customized styles are not needed,** use `accent-color` for simply changing the color of the progress bar.
+- If space is constrained or a square aspect ratio is preferable, consider using a circular progress bar (progress ring): {{ GUIDE_REF("progress-ring") }}
+- Prefer spinners for most indeterminate progress scenarios ({{ GUIDE_REF("spinner") }}). Use indeterminate progress bars when the indeterminate state is temporary and will soon be replaced by a determinate progress bar (e.g. waiting for metadata around an upload before a progress % can be shown)
+
+## Implementation
+
+**To simply change the color of the progress bar**, use `accent-color` and skip the more extensive customizations described below.
 
 ```css
 progress {
   accent-color: var(--brand-color);
 }
 ```
+
+1.  **Use a native `<progress>` element**: It provides built-in accessibility and platform-consistent behavior.
+2. Use `max` if a scale different from the default 0-1 scale is needed.**
+3. For a specific progress value, set a `value` attribute. Omit `value` for an indeterminate state (e.g. before more concrete feedback starts).
+4. **Standardize Styles**: Use `appearance: none` to normalize the progress bar across different browsers before applying more customized styles.
+5. **Style the progress bar**: Use targeted pseudo-elements for extensive cross-browser customizations.
 
 ### Customized Styling
 
