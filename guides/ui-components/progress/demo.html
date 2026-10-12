@@ -113,8 +113,8 @@
         }
 
         @keyframes loading {
-            from { background-position: 200% 0; }
-            to { background-position: 100% 0; }
+            from { background-position: 90% 0; }
+            to { background-position: -110% 0; }
         }
 
         /* Respect prefers-reduced-motion */
@@ -183,11 +183,10 @@
         
         <!-- The progress bar is physically separate from the region it describes -->
         <label for="upload-progress">Upload Progress:</label>
-        <progress id="upload-progress" class="advanced-progress" tabindex="-1"></progress>
+        <progress id="upload-progress" class="advanced-progress" value="40" max="100"></progress>
         
-        <!-- The region being updated references the progress bar using aria-describedby -->
-        <div id="loading-region" aria-busy="false" aria-describedby="upload-progress">
-            <p id="status-text">Ready to upload...</p>
+        <div id="loading-region">
+            <p id="status-text" role="status">40% uploaded</p>
             <div class="controls">
                 <button id="start-btn">Simulate Upload</button>
             </div>
@@ -219,14 +218,12 @@
         });
 
         function simulateTask() {
-            region.setAttribute('aria-busy', 'true');
             status.textContent = "Uploading...";
             advBar.removeAttribute('value'); // Set to indeterminate
 
             setTimeout(() => {
                 advBar.max = 100;
                 advBar.value = 0;
-                advBar.focus(); // Force screen reader announcement
 
                 const interval = setInterval(() => {
                     advBar.value += 10;
@@ -234,8 +231,6 @@
                     if (advBar.value >= 100) {
                         clearInterval(interval);
                         status.textContent = "Task Complete!";
-                        region.setAttribute('aria-busy', 'false');
-                        advBar.focus();
                         startBtn.disabled = false;
                     } else {
                         status.textContent = `Progress: ${advBar.value}%`;
