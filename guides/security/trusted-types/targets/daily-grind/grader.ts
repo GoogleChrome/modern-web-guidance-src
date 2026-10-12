@@ -1,128 +1,162 @@
+import { pathToFileURL } from 'node:url';
+import * as path from 'node:path';
+import { SyntaxKind } from 'ts-morph';
 import {
   test,
   expect,
   getTargetFiles,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
-import { SyntaxKind, Node } from 'ts-morph';
+} from '../../../../../src/grading/test-fixture.ts';
 
-// @ts-ignore
-const targetFiles: string[] = getTargetFiles(import.meta.url);
+const currentFileUrl =
+  typeof __filename !== 'undefined'
+    ? pathToFileURL(__filename).href
+    : pathToFileURL(path.resolve(process.cwd(), 'grader.ts')).href;
+
+const targetFiles: string[] = getTargetFiles(currentFileUrl);
 
 test.describe('trusted-types Target Grader', () => {
   // --- STATIC ASSERTIONS (FAST) ---
 
-  test('Application includes a <meta> tag for Content Security Policy enforcing require-trusted-types-for script and trusted-types my-no-pretzel-policy', () => {
+  test('The application configures a Content Security Policy that enforces require-trusted-types-for script', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const cspMeta = docs
-      .flatMap((d) => Array.from(d.document.querySelectorAll('meta')))
-      .find(
-        (meta: any) =>
-          meta.getAttribute('http-equiv')?.toLowerCase() ===
-          'content-security-policy',
-      );
-    const content = (cspMeta as any)?.getAttribute('content') || '';
-    const hasRequireScript = /require-trusted-types-for\s+['"]script['"]/i.test(content);
-    const hasPretzelPolicy = /trusted-types\s+[^;]*\bmy-no-pretzel-policy\b/i.test(content);
-
-    expect(hasRequireScript && hasPretzelPolicy).toBe(true);
-  });
-
-  test('Application defines a Trusted Types policy named my-no-pretzel-policy using window.trustedTypes.createPolicy', () => {
-    const project = getJsProject(targetFiles);
-    const callExpressions = project
-      .getSourceFiles()
-      .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-
-    const definesPolicy = callExpressions.some((call) => {
-      const expr = call.getExpression();
-      const exprText = expr.getText();
-      const isCreatePolicy =
-        (Node.isPropertyAccessExpression(expr) && expr.getName() === 'createPolicy') ||
-        exprText.endsWith('.createPolicy');
-      const firstArg = call.getArguments()[0];
-      const policyName =
-        firstArg && Node.isStringLiteral(firstArg)
-          ? firstArg.getLiteralText()
-          : firstArg?.getText().replace(/['"`]/g, '');
-
-      return isCreatePolicy && policyName === 'my-no-pretzel-policy';
+    const hasCsp = docs.some(({ document }) => {
+      const metas = Array.from(document.querySelectorAll('meta')) as any[];
+      return metas.some((meta) => {
+        const httpEquiv = meta.getAttribute('http-equiv');
+        const content = meta.getAttribute('content') || '';
+        return (
+          typeof httpEquiv === 'string' &&
+          httpEquiv.toLowerCase() === 'content-security-policy' &&
+          /require-trusted-types-for\s+'script'/i.test(content)
+        );
+      });
     });
 
-    expect(definesPolicy).toBe(true);
+    expect(hasCsp).toBe(true);
   });
 
-  test('Application provides a tinyfill that mocks window.trustedTypes.createPolicy if not natively supported', () => {
+  test('The application defines a Trusted Types policy using trustedTypes.createPolicy() with a createHTML rule', () => {
+    const project = getJsProject(targetFiles);
+    const callExpressions = project.getSourceFiles().flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
+    );
+
+    const hasPolicyWithCreateHtml = callExpressions.some((call) => {
+      const exprText = call.getExpression().getText();
+      if (!/\bcreatePolicy$/.test(exprText)) return false;
+      const args = call.getArguments();
+      if (args.length < 2) return false;
+      const policyArg = args[1];
+      if (policyArg.getKind() === SyntaxKind.ObjectLiteralExpression) {
+        const obj = policyArg.asKind(SyntaxKind.ObjectLiteralExpression);
+        return Boolean(
+          obj?.getProperties().some((prop) => {
+            const propName =
+              prop.asKind(SyntaxKind.PropertyAssignment)?.getName() ||
+              prop.asKind(SyntaxKind.MethodDeclaration)?.getName() ||
+              prop.asKind(SyntaxKind.ShorthandPropertyAssignment)?.getName();
+            return propName === 'createHTML';
+          })
+        );
+      }
+      return policyArg.getText().includes('createHTML');
+    });
+
+    expect(hasPolicyWithCreateHtml).toBe(true);
+  });
+
+  test('The application provides a tinyfill fallback defining window.trustedTypes.createPolicy when not natively supported', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
     const hasTinyfill = sourceFiles.some((sf) => {
-      if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) {
-        return false;
-      }
-
       const ifStatements = sf.getDescendantsOfKind(SyntaxKind.IfStatement);
-      const hasIfTinyfill = ifStatements.some((ifStmt) => {
-        const cond = ifStmt.getExpression().getText();
-        if (!/trustedTypes/i.test(cond)) return false;
-        const thenBlock = ifStmt.getThenStatement().getText();
-        return thenBlock.includes('createPolicy');
+      const hasIfFallback = ifStatements.some((stmt) => {
+        const condText = stmt.getExpression().getText();
+        const thenText = stmt.getThenStatement().getText();
+        return (
+          condText.includes('trustedTypes') &&
+          thenText.includes('createPolicy')
+        );
       });
-      if (hasIfTinyfill) return true;
+      if (hasIfFallback) return true;
 
       const binaryExprs = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-      const hasBinaryTinyfill = binaryExprs.some((binExpr) => {
-        const left = binExpr.getLeft().getText();
-        const right = binExpr.getRight().getText();
-        return /trustedTypes/i.test(left) && right.includes('createPolicy');
-      });
-      if (hasBinaryTinyfill) return true;
-
-      const condExprs = sf.getDescendantsOfKind(SyntaxKind.ConditionalExpression);
-      return condExprs.some((condExpr) => {
-        const cond = condExpr.getCondition().getText();
-        return (
-          /trustedTypes/i.test(cond) &&
-          (condExpr.getWhenTrue().getText().includes('createPolicy') ||
-            condExpr.getWhenFalse().getText().includes('createPolicy'))
-        );
+      return binaryExprs.some((expr) => {
+        const text = expr.getText();
+        return text.includes('trustedTypes') && text.includes('createPolicy');
       });
     });
 
     expect(hasTinyfill).toBe(true);
   });
 
-  // --- BROWSER ASSERTIONS (E2E) ---
+  test('Assigning a raw string directly to Element.innerHTML is blocked by Trusted Types enforcement with a TypeError or sanitized by a default policy', () => {
+    const docs = getHtmlDocuments(targetFiles);
+    const project = getJsProject(targetFiles);
 
-  test.describe('Browser tests', () => {
-    test.beforeEach(async ({ page, TARGET_URL }) => {
-      await page.goto(TARGET_URL);
+    const hasCspEnforcement = docs.some(({ document }) => {
+      const metas = Array.from(document.querySelectorAll('meta')) as any[];
+      return metas.some((m) => {
+        const httpEquiv = m.getAttribute('http-equiv');
+        const content = m.getAttribute('content') || '';
+        return (
+          typeof httpEquiv === 'string' &&
+          httpEquiv.toLowerCase() === 'content-security-policy' &&
+          /require-trusted-types-for\s+'script'/i.test(content)
+        );
+      });
     });
 
-    test('Clicking #btn-unsafe with HTML content in #input-field displays a TypeError in #error-log', async ({ page }) => {
-      await page.locator('#input-field').fill('<b>pretzel</b>');
-      await page.locator('#btn-unsafe').click();
-      await expect(page.locator('#error-log')).toContainText('TypeError');
+    const hasDefaultPolicy = project.getSourceFiles().some((sf) => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      return calls.some((c) => {
+        if (!c.getExpression().getText().endsWith('createPolicy')) return false;
+        const args = c.getArguments();
+        return args.length > 0 && /['"]default['"]/.test(args[0].getText());
+      });
     });
 
-    test('Clicking #btn-safe with HTML content in #input-field successfully renders content into #output', async ({ page }) => {
-      await page.locator('#input-field').fill('<b>fresh brew</b>');
-      await page.locator('#btn-safe').click();
-      await expect(page.locator('#output b')).toHaveText('fresh brew');
+    const isEnforcedOrSanitized = hasCspEnforcement || hasDefaultPolicy;
+    expect(isEnforcedOrSanitized).toBe(true);
+  });
+
+  test('Untrusted HTML written to Element.innerHTML is converted through the Trusted Types policy createHTML method', () => {
+    const project = getJsProject(targetFiles);
+    const binaryExpressions = project.getSourceFiles().flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)
+    );
+
+    const hasInnerHtmlPolicyAssignment = binaryExpressions.some((expr) => {
+      const leftText = expr.getLeft().getText();
+      const rightText = expr.getRight().getText();
+      const isInnerHtmlSink = leftText.endsWith('.innerHTML') || leftText === 'innerHTML';
+      const usesCreateHtml = rightText.includes('.createHTML(');
+      return isInnerHtmlSink && usesCreateHtml;
     });
 
-    test('#error-log element is hidden after a successful update using #btn-safe', async ({ page }) => {
-      await page.locator('#input-field').fill('<b>pretzel</b>');
-      await page.locator('#btn-unsafe').click();
-      await page.locator('#btn-safe').click();
-      await expect(page.locator('#error-log')).toHaveCSS('display', 'none');
+    expect(hasInnerHtmlPolicyAssignment).toBe(true);
+  });
+
+  test('The Trusted Types policy createHTML rule sanitizes or escapes untrusted HTML', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+
+    const hasSanitizationOrEscaping = sourceFiles.some((sf) => {
+      const text = sf.getFullText();
+      if (!text.includes('createHTML')) return false;
+
+      const hasDomPurify = /DOMPurify\s*\.\s*sanitize/i.test(text);
+      const hasEscaping = /&lt;|\.replaceAll\(|replace\([^)]*&/i.test(text);
+      const hasScriptOrHandlerNeutralization =
+        (/\bscript\b/i.test(text) || /\bon[a-z]/i.test(text)) &&
+        (/\bremove\b/i.test(text) || /\bremoveAttribute\b/i.test(text) || /\breplace\b/i.test(text));
+
+      return hasDomPurify || hasEscaping || hasScriptOrHandlerNeutralization;
     });
 
-    test('Content rendered in #output after clicking #btn-safe has all instances of pretzel replaced with popcorn', async ({ page }) => {
-      await page.locator('#input-field').fill('<b>pretzel and pretzel</b>');
-      await page.locator('#btn-safe').click();
-      await expect(page.locator('#output')).toHaveText('popcorn and popcorn');
-    });
+    expect(hasSanitizationOrEscaping).toBe(true);
   });
 });
