@@ -7,7 +7,7 @@ web-feature-ids:
   - image-set
   - container-style-queries
   - registered-custom-properties
-  - tmp-link-parameters
+  # - tmp-link-parameters
 guides:
   - precise-text-alignment
 ---
