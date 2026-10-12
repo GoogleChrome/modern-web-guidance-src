@@ -17,25 +17,27 @@ This guide implements a fully styled horizontal progress bar with style customiz
 - If space is constrained or a square aspect ratio is preferable, consider using a circular progress bar (progress ring): {{ GUIDE_REF("progress-ring") }}
 - Prefer spinners for most indeterminate progress scenarios ({{ GUIDE_REF("spinner") }}). Use indeterminate progress bars when the indeterminate state is temporary and will soon be replaced by a determinate progress bar (e.g. waiting for metadata around an upload before a progress % can be shown)
 
-## Implementation
-
-**To simply change the color of the progress bar**, use `accent-color` and skip the more extensive customizations described below.
-
-```css
-progress {
-  accent-color: var(--brand-color);
-}
-```
+## Markup
 
 1.  **Use a native `<progress>` element**: It provides built-in accessibility and platform-consistent behavior.
 2. Use `max` if a scale different from the default 0-1 scale is needed.**
 3. For a specific progress value, set a `value` attribute. Omit `value` for an indeterminate state (e.g. before more concrete feedback starts).
-4. **Standardize Styles**: Use `appearance: none` to normalize the progress bar across different browsers before applying more customized styles.
-5. **Style the progress bar**: Use targeted pseudo-elements for extensive cross-browser customizations.
+4. Use `<label for="...">`, `aria-labelledby`, or `aria-label` to associate the progress element with a label.
 
-### Customized Styling
+## What type of customization is needed?
 
-Browsers have different default styles for `<progress>`. To achieve a truly custom design, you must override the browser's default styling. 
+For limited styling, these properties are sufficient:
+- `accent-color` to change the color of the progress bar
+- `width` / `inline-size` to change the width of the progress bar
+- `height`/`block-size` applies inconsistently — test first
+- `writing-mode: vertical-lr` for vertical bars.
+- Effects that apply after painting: `opacity`, `filter`, `clip-path`, masks, transforms, `box-shadow`, etc.
+
+If limited styling suffices, skip the next section.
+
+WARNING: Certain properties (e.g. `border-radius`, `background`, `border`) will silently disable the default progress bar styling. If you need styling beyond the properties above, you must implement fully custom styling as described in the next section. Do NOT apply more extensive styling "just in case it works".
+
+## Fully custom styling
 
 1. **Reset browser styles:** For deeper customizations to the progress element that work across browsers, first turn off the default UI styles with `appearance: none`. 
 
@@ -113,8 +115,9 @@ progress:indeterminate {
 }
 ```
 
-### 3. Accessibility Considerations
-* **Mandatory:** Use `<label for="...">`, `aria-labelledby`, or `aria-label` to associate the progress element with a label. 
+### Additional Accessibility Considerations
+
+In addition to the guidelines mentioned above:
 * **Announce completion without stealing focus**: Do not set `tabindex` or call `.focus()` on `<progress>`, as it is non-interactive and moving focus to it disrupts keyboard users. To announce when a background task finishes, update a polite status element (`role="status"` or `aria-live="polite"`).
 * Avoid `aria-busy` + `aria-describedby` on an unlabelled generic `<div>`. `aria-busy` has inconsistent screen reader support, and `aria-describedby` on an unnamed `<div>` without a role is ignored by assistive technologies. If a region's content is not ready while loading, hide it with `hidden` or `aria-hidden="true"`.
 * **DO** respect `prefers-reduced-motion` if you apply custom animations.
