@@ -1,0 +1,10 @@
+- The implementation MUST use a native `<input type="range">` element rather than recreating the slider with generic elements, custom pointer handlers, or a second interactive control.
+- The range input MUST have an accessible name, preferably through a programmatically associated `<label>`; `aria-labelledby` is acceptable when a label element is not suitable.
+- The implementation MUST configure an initial `value` and, when the use case differs from the native defaults (`min="0"`, `max="100"`, `step="1"`), appropriate `min`, `max`, and `step` attributes.
+- The implementation MUST preserve a usable interaction area and MUST provide a visible `:focus-visible` indicator with sufficient contrast after changing the native appearance.
+- For custom visual styling, the implementation MUST use `appearance: none` and the established browser-specific slider pseudo-elements, including the relevant `::-webkit-slider-runnable-track`, `::-webkit-slider-thumb`, `::-moz-range-track`, `::-moz-range-thumb`, or `::-moz-range-progress` selectors.
+- Each of the `::-moz-` or `::-webkit-` prefixed pseudo-elements must only be used once, with variations going through custom properties.
+- If the implementation calculates custom track-fill progress, it MUST derive it from the control’s actual `min`, `max`, and `value`, not assume a 0–100 range.
+- The implementation MUST NOT use generated content on slider pseudo-elements to provide labels, current values, instructions, or functionality.
+- The implementation MUST account for right-to-left layouts and MUST NOT hard-code a left-to-right active-track direction without an explicit RTL strategy.
+- If `aria-valuetext` is provided, it MUST differ from the slider’s plain numeric value.

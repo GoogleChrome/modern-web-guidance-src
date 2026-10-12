@@ -1,0 +1,1 @@
+- Refactor the site to follow modern HTML architecture and semantics, ensuring proper document structure, native overlays, focus management, and optimized resource loading order.

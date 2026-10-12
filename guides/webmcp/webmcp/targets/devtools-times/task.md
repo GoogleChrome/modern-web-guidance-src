@@ -1,0 +1,1 @@
+- Implement WebMCP in this application to expose client-side functionality as tools to AI agents.

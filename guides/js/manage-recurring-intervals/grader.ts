@@ -1,6 +1,7 @@
 /// <reference types="node" />
 
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 
 declare global {
@@ -19,9 +20,23 @@ declare global {
 
 const targetFileRaw = process.env.TARGET_FILE || 'demo.html';
 const targetFile = path.isAbsolute(targetFileRaw) ? targetFileRaw : path.resolve(process.cwd(), targetFileRaw);
-const targetUrl = `file://${targetFile}`;
+const targetDir = path.dirname(targetFile);
+const targetFileName = path.basename(targetFile);
+const targetUrl = `http://localhost/${targetFileName}`;
 
 test.describe('Temporal Interval Manager Grader', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('http://localhost/**', async (route) => {
+      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+      const relPath = requestPath === '/' ? targetFileName : requestPath.replace(/^\/+/, '');
+      const localFilePath = path.resolve(targetDir, relPath);
+      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+        await route.fulfill({ path: localFilePath });
+      } else {
+        await route.continue();
+      }
+    });
+  });
 
   // 1. Feature Detect Temporal
   test('should feature-detect Temporal via typeof Temporal', async ({ page }) => {
@@ -50,16 +65,26 @@ test.describe('Temporal Interval Manager Grader', () => {
     });
     await page.addInitScript(() => {
       window.__mockTemporalCalled = false;
+      const mockPlainDate = {
+        day: 31,
+        add: () => ({
+          toString: () => '2024-02-29',
+          toLocaleString: () => 'February 29, 2024'
+        }),
+        toString: () => '2024-01-31',
+        toLocaleString: () => 'January 31, 2024'
+      };
       window.Temporal = {
+        Now: {
+          plainDateISO: () => {
+            window.__mockTemporalCalled = true;
+            return mockPlainDate;
+          }
+        },
         PlainDate: {
           from: (_str: string) => {
             window.__mockTemporalCalled = true;
-            return {
-              add: () => ({
-                toString: () => '2024-02-29',
-                toLocaleString: () => 'February 29, 2024'
-              })
-            };
+            return mockPlainDate;
           }
         }
       };
@@ -100,8 +125,13 @@ test.describe('Temporal Interval Manager Grader', () => {
     expect(polyfillRequested).toBe(true);
   });
 
-  // 4. Assign loaded polyfill to globalThis.Temporal
+  // 4. Assign loaded polyfill to globalThis.Temporal (or module-scoped Temporal if not relying on global)
   test('should manually assign loaded polyfill to globalThis.Temporal', async ({ page }) => {
+    let polyfillRequested = false;
+    await page.route('**/@js-temporal/polyfill*', route => {
+      polyfillRequested = true;
+      route.continue();
+    });
     await page.addInitScript(() => {
       Object.defineProperty(window, 'Temporal', {
         value: undefined,
@@ -119,7 +149,20 @@ test.describe('Temporal Interval Manager Grader', () => {
     const isGlobalTemporalDefined = await page.evaluate(() => {
       return typeof globalThis.Temporal !== 'undefined' && typeof globalThis.Temporal.PlainDate === 'function';
     });
-    expect(isGlobalTemporalDefined).toBe(true);
+    const codeFiles = [targetFile];
+    try {
+      for (const f of fs.readdirSync(targetDir)) {
+        if ((f.endsWith('.js') || f.endsWith('.mjs')) && !f.includes('.test.')) {
+          codeFiles.push(path.join(targetDir, f));
+        }
+      }
+    } catch {}
+    const allCode = codeFiles.map(f => fs.readFileSync(f, 'utf-8')).join('\n');
+    const assignsModuleTemporal =
+      polyfillRequested &&
+      (/(?:globalThis\.Temporal|window\.Temporal|\{\s*Temporal(?:\s*:\s*\w+)?\s*\})\s*=\s*[\s\S]{0,80}\bimport\s*\(/.test(allCode) ||
+        /\b\w+\s*=\s*[\s\S]{0,160}\bimport\s*\([\s\S]{0,80}\.Temporal\b/.test(allCode));
+    expect(isGlobalTemporalDefined || assignsModuleTemporal).toBe(true);
   });
 
   // 5. Use Temporal.PlainDate

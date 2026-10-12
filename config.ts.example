@@ -1,4 +1,4 @@
-import { Agents, type SuiteConfig } from './harness/config.ts';
+import { Agents, type SuiteConfig } from './src/harness/config.ts';
 
 const customConfig: Partial<SuiteConfig> = {
   agent: Agents.ANTIGRAVITY_CLI,
