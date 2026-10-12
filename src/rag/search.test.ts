@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { outDir } from "../core/paths.ts";
-import { searchUseCases, type UseCaseVector, type EmbedderLike } from "./search.ts";
+import { searchUseCases, applySimilarityGates, type UseCaseVector, type EmbedderLike } from "./search.ts";
 
 describe("searchUseCases", () => {
   it("should return autofill-address-form as the best match for 'autofill address form'", async () => {
@@ -56,18 +56,34 @@ describe("searchUseCases", () => {
     assert.strictEqual(results.length, 0);
   });
 
-  it("prunes weak tail results that exceed maxDropFromTop1 while keeping high-confidence matches", async () => {
-    // "WebAssembly canvas render" hits expose-canvas-content-to-browser-features at >0.60 and cpp-on-the-web at >=0.42
-    const results = await searchUseCases("WebAssembly canvas render", 5);
-    assert.ok(results.length > 0, "Should return results for WebAssembly canvas render");
-    assert.ok(results[0].similarity >= 0.38, "Top-1 result must clear 0.38");
-    for (let i = 1; i < results.length; i++) {
-      const r = results[i];
-      assert.ok(r.similarity >= 0.35, `Result ${r.id} (${r.similarity}) must clear 0.35 floor`);
-      assert.ok(
-        r.similarity >= 0.42 || results[0].similarity - r.similarity <= 0.1201,
-        `Result ${r.id} (${r.similarity}) must either be >= 0.42 or within 0.12 of top-1 (${results[0].similarity})`
+  describe("applySimilarityGates", () => {
+    const mk = (...sims: number[]) => sims.map((similarity, i) => ({ id: `g${i}`, similarity }));
+
+    it("returns [] when the top-1 result is below top1MinSimilarity", () => {
+      assert.deepStrictEqual(applySimilarityGates(mk(0.379, 0.36)), []);
+      assert.deepStrictEqual(applySimilarityGates([]), []);
+    });
+
+    it("keeps high-confidence matches and results within maxDropFromTop1, prunes the weak tail", () => {
+      // 0.45 clears 0.42 outright; 0.39 is within 0.12 of 0.5; 0.37 and 0.36 are neither
+      const kept = applySimilarityGates(mk(0.5, 0.45, 0.39, 0.37, 0.36)).map((r) => r.id);
+      assert.deepStrictEqual(kept, ["g0", "g1", "g2"]);
+    });
+
+    it("can be disabled explicitly for raw ranking", () => {
+      const raw = mk(0.2, 0.1);
+      assert.deepStrictEqual(
+        applySimilarityGates(raw, { top1MinSimilarity: -Infinity, maxDropFromTop1: Infinity }),
+        raw
       );
-    }
+    });
+  });
+
+  it("keeps sibling guides on a cluster query", async () => {
+    const ids = (await searchUseCases("tooltip on hover")).map((r) => r.id);
+    assert.ok(
+      ids.includes("hovercard") && ids.includes("interest-triggered-tooltips"),
+      `Expected both tooltip siblings, got: ${ids.join(", ")}`
+    );
   });
 });

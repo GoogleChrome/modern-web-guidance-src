@@ -344,7 +344,7 @@ category: ${category}
   const summaryChunk = `# ${title}\n\n${data.description}`;
 
   const chunks = IS_NO_CHUNKING
-    ? [`${summaryChunk}\n\n${processedMarkdown}`]
+    ? [`${summaryChunk}\n\n${processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "")}`]
     : [...chunkMarkdown(processedMarkdown), summaryChunk];
 
   for (const chunk of chunks) {

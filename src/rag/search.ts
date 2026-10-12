@@ -27,15 +27,48 @@ export interface EmbedderLike {
   embed(text: string): Promise<number[]>;
 }
 
+// Cosine-similarity gates for all-MiniLM-L6-v2 against the current corpus. Re-tune whenever the embedding
+// model or chunking changes: replay src/rag/benchmarks/data/eval-queries-pool.json for recall and a set of
+// out-of-scope queries for false positives.
+/** Per-chunk floor applied before per-guide max-pooling. */
 export const DEFAULT_MIN_SIMILARITY = 0.35;
+/** Below this top-1 score the query is treated as out of scope and `[]` is returned. */
 export const DEFAULT_TOP1_MIN_SIMILARITY = 0.38;
+/** Secondary results at or above this score are kept regardless of their distance from top-1. */
 export const DEFAULT_HIGH_CONFIDENCE_SIMILARITY = 0.42;
+/** Secondary results below the high-confidence score are kept only within this distance of top-1. */
 export const DEFAULT_MAX_DROP_FROM_TOP1 = 0.12;
 
 export interface SearchOptions {
+  /** Set to `-Infinity` to disable the top-1 gate (e.g., for raw-ranking benchmarks). */
   top1MinSimilarity?: number;
   highConfidenceSimilarity?: number;
+  /** Set to `Infinity` to disable tail pruning. */
   maxDropFromTop1?: number;
+}
+
+/**
+ * Two-stage similarity gate over per-guide best matches sorted by similarity (descending):
+ * 1. If the top-1 result is below `top1MinSimilarity`, nothing in the corpus is a confident match: return `[]`.
+ * 2. Otherwise keep top-1 plus every result that is either a high-confidence match on its own or within
+ *    `maxDropFromTop1` of the top-1 score, so compound queries keep their secondary guides while weak tails are pruned.
+ */
+export function applySimilarityGates<T extends { similarity: number }>(
+  sorted: T[],
+  {
+    top1MinSimilarity = DEFAULT_TOP1_MIN_SIMILARITY,
+    highConfidenceSimilarity = DEFAULT_HIGH_CONFIDENCE_SIMILARITY,
+    maxDropFromTop1 = DEFAULT_MAX_DROP_FROM_TOP1,
+  }: SearchOptions = {}
+): T[] {
+  const top1 = sorted[0];
+  if (!top1 || top1.similarity < top1MinSimilarity) return [];
+  return sorted.filter(
+    (r, idx) =>
+      idx === 0 ||
+      r.similarity >= highConfidenceSimilarity ||
+      top1.similarity - r.similarity <= maxDropFromTop1
+  );
 }
 
 let cachedVectors: UseCaseVector[] | null = null;
@@ -115,26 +148,7 @@ export async function searchUseCases(
   // Sort by similarity descending
   results.sort((a, b) => b.similarity - a.similarity);
 
-  const useDefaultTwoStage = minSimilarity === DEFAULT_MIN_SIMILARITY;
-  const top1Min =
-    options?.top1MinSimilarity ??
-    (useDefaultTwoStage ? DEFAULT_TOP1_MIN_SIMILARITY : minSimilarity);
-  const highConfSim =
-    options?.highConfidenceSimilarity ?? DEFAULT_HIGH_CONFIDENCE_SIMILARITY;
-  const maxDrop =
-    options?.maxDropFromTop1 ??
-    (useDefaultTwoStage ? DEFAULT_MAX_DROP_FROM_TOP1 : Infinity);
-
-  const top1Sim = results[0]?.similarity ?? -Infinity;
-  const filteredResults =
-    results.length === 0 || top1Sim < top1Min
-      ? []
-      : results.filter(
-          (r, idx) =>
-            idx === 0 ||
-            r.similarity >= highConfSim ||
-            top1Sim - r.similarity <= maxDrop
-        );
+  const filteredResults = applySimilarityGates(results, options);
 
   const limitedResults = filteredResults.slice(0, limit).map(r => ({
     id: r.item.id,
