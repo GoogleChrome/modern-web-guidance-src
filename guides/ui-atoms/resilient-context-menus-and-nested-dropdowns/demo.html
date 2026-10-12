@@ -90,9 +90,10 @@
 
         position-anchor: --kebab-anchor;
         /* Mandatory: use insets rather than position-area for positioning */
-        inset: auto;
-        inset-block-start: anchor(end);
-        inset-inline-start: anchor(start);
+        bottom: auto;
+        right: auto;
+        top: anchor(bottom);
+        left: anchor(left);
         margin: 0;
 
         /* Edge collision handling */
@@ -110,9 +111,10 @@
         position-anchor: --subpanel-trigger;
 
         /* Mandatory: use insets rather than position-area for positioning */
-        inset: auto;
-        inset-block-start: anchor(start);
-        inset-inline-start: anchor(end);
+        bottom: auto;
+        right: auto;
+        top: anchor(top);
+        left: anchor(right);
         margin: 0;
 
         position-try-fallbacks: flip-inline, flip-block, flip-inline flip-block;
