@@ -25,7 +25,7 @@
 - The implementation MUST apply explicit CSS containment (`contain: layout style paint`) for isolated UI components.
 - The implementation MUST NOT apply `content-visibility: auto` to above-the-fold content or on small, simpler pages.
 - The implementation MUST NOT overuse `will-change` globally.
-- The implementation MUST serve modern image formats (AVIF / WebP) via the `<picture>` element or equivalent CDN auto-formatting.
+- The implementation MUST serve modern image formats (AVIF / WebP / JPEG XL) via the `<picture>` element or equivalent CDN auto-formatting.
 - The implementation MUST apply explicit `width` and `height` attributes to images.
 - The implementation MUST utilize `loading="lazy"` on all below-the-fold images.
 - The implementation MUST implement responsive images with `srcset` and `sizes`.

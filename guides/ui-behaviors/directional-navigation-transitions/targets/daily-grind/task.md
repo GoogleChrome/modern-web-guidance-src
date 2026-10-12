@@ -1,0 +1,1 @@
+- make the seasonal favorites section show one item at a time, with Next and Previous buttons to step through them. animate each change so it reflects the direction of travel: going next, the new item comes in from the right; going previous, it comes in from the left. turn off the animation for users who prefer reduced motion.

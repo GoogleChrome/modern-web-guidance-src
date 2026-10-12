@@ -5,18 +5,38 @@ import * as fs from 'fs';
 const targetFile = process.env.TARGET_FILE 
   ? path.resolve(process.env.TARGET_FILE) 
   : path.join(import.meta.dirname, 'demo.html');
-const fileUrl = `file://${targetFile}`;
+const targetDir = path.dirname(targetFile);
+const targetFileName = path.basename(targetFile);
+const fileUrl = `http://localhost/${targetFileName}`;
 
 function getScriptContent(): string {
+  const parts: string[] = [];
   if (fs.existsSync(targetFile)) {
-    return fs.readFileSync(targetFile, 'utf8');
+    parts.push(fs.readFileSync(targetFile, 'utf8'));
   }
-  return '';
+  try {
+    for (const f of fs.readdirSync(targetDir)) {
+      if ((f.endsWith('.js') || f.endsWith('.mjs')) && !f.includes('.test.')) {
+        parts.push(fs.readFileSync(path.join(targetDir, f), 'utf8'));
+      }
+    }
+  } catch {}
+  return parts.join('\n');
 }
 
 test.describe('Interactive 3D Content Grader', () => {
 
   test.beforeEach(async ({ page }) => {
+    await page.route('http://localhost/**', async (route) => {
+      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+      const relPath = requestPath === '/' ? targetFileName : requestPath.replace(/^\/+/, '');
+      const localFilePath = path.resolve(targetDir, relPath);
+      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+        await route.fulfill({ path: localFilePath });
+      } else {
+        await route.continue();
+      }
+    });
     await page.addInitScript(() => {
       (window as any).__featureChecked = false;
       (window as any).__texElementImage2D_called = false;
@@ -153,9 +173,72 @@ test.describe('Interactive 3D Content Grader', () => {
   });
 
   test('Fallback UI strategy MUST be implemented to prevent unhandled exceptions', async ({ page }) => {
+    await page.addInitScript(() => {
+      if (typeof WebGLRenderingContext !== 'undefined') {
+        delete (WebGLRenderingContext.prototype as any).texElementImage2D;
+        delete (WebGLRenderingContext.prototype as any).copyElementImageToTexture;
+      }
+      if (typeof WebGL2RenderingContext !== 'undefined') {
+        delete (WebGL2RenderingContext.prototype as any).texElementImage2D;
+        delete (WebGL2RenderingContext.prototype as any).copyElementImageToTexture;
+      }
+      if (typeof GPUQueue !== 'undefined') {
+        delete (GPUQueue.prototype as any).copyElementImageToTexture;
+      }
+      if (typeof HTMLCanvasElement !== 'undefined') {
+        delete (HTMLCanvasElement.prototype as any).getElementTransform;
+        HTMLCanvasElement.prototype.requestPaint = function () {
+          if (typeof (this as any).onpaint === 'function') {
+            (this as any).onpaint({ changedElements: [] });
+          }
+        };
+      }
+    });
+
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => {
+      if (!/Tainted canvases may not be loaded/i.test(err.message)) {
+        pageErrors.push(err.message);
+      }
+    });
+
     await page.goto(fileUrl).catch(() => {});
     await page.waitForTimeout(200);
-    expect(true).toBe(true);
+
+    expect(pageErrors).toEqual([]);
+
+    const polyfillInstalledAtRuntime = await page
+      .evaluate(() => {
+        return (
+          (typeof WebGLRenderingContext !== 'undefined' &&
+            typeof (WebGLRenderingContext.prototype as any).texElementImage2D === 'function') ||
+          (typeof WebGL2RenderingContext !== 'undefined' &&
+            typeof (WebGL2RenderingContext.prototype as any).texElementImage2D === 'function')
+        );
+      })
+      .catch(() => false);
+
+    const html = getScriptContent();
+    const parts = [html];
+    const baseDir = path.dirname(targetFile);
+    const scriptSrcRegex = /<script\b[^>]*?\bsrc\s*=\s*["']([^"']+)["'][^>]*>/gi;
+    let match;
+    while ((match = scriptSrcRegex.exec(html)) !== null) {
+      const src = match[1];
+      if (!/^https?:\/\//i.test(src) && !src.startsWith('//')) {
+        const jsPath = path.resolve(baseDir, src);
+        if (fs.existsSync(jsPath)) {
+          parts.push(fs.readFileSync(jsPath, 'utf8'));
+        }
+      }
+    }
+    const code = parts.join('\n');
+    const hasFallbackStrategy =
+      polyfillInstalledAtRuntime ||
+      /typeof\s+[^;]*(?:texElementImage2D|copyElementImageToTexture)|\brequestPaint['"]?\s+in\b|!(?:gl\.texElementImage2D|[\w.]+\.copyElementImageToTexture)|if\s*\(\s*(?:gl\.texElementImage2D|[\w.]+\.copyElementImageToTexture)\s*\)|three-html-render|installHtmlInCanvasPolyfill/i.test(
+        code
+      );
+    expect(hasFallbackStrategy).toBe(true);
   });
 
 });

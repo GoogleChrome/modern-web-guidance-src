@@ -1,0 +1,1 @@
+- Compile the open-source smallpt C++ path tracer (http://www.kevinbeason.com/smallpt/) to WebAssembly so it runs client-side in the browser. Then show its output on index.html, with a button that runs it again with randomized sphere colors.

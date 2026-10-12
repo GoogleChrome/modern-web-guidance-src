@@ -26,7 +26,7 @@ This will automatically execute the 5-step pipeline:
 2. **Grader Generation**: Generates `grader.ts` Playwright tests based on `expectations.md` and your guide.
 3. **Grader Calibration**: Calibrates the grader (ensures golden patches pass 100% and zero-passrate baseline fails 100%).
 4. **Agent Evaluations**: Executes guided and unguided agent runs against the target apps to measure pass rates and guidance tool consumption.
-5. **Evaluation Report (`report.md`)**: Invokes an evaluator agent to analyze failed assertions, diagnose root causes, and output actionable recommendations into `<guide_dir>/test-app-results/report.md`.
+5. **Evaluation Report (`report.md`)**: Invokes an evaluator agent to analyze failed assertions, diagnose root causes, and output actionable recommendations into `results/guides/<category>/<slug>/report.md`.
 
 To skip agent evaluations and report generation after calibration, add `--no-test`:
 
@@ -34,9 +34,15 @@ To skip agent evaluations and report generation after calibration, add `--no-tes
 gd dev <path/to/guide_dir> --no-test
 ```
 
+To run against only specific base applications (comma-separated), pass `--targets`:
+
+```bash
+gd dev <path/to/guide_dir> --targets daily-grind
+```
+
 ### Submitting a Pull Request: `gd pr`
 
-Once `gd dev` completes and generates `test-app-results/report.md`, you can create a Pull Request directly from your terminal:
+Once `gd dev` completes and generates `results/guides/<category>/<slug>/report.md`, you can create a Pull Request directly from your terminal:
 
 ```bash
 gd pr <path/to/guide_dir>
@@ -51,7 +57,28 @@ This will automatically:
 4. Analyze `report.md` to automatically detect and apply PR labels:
    - **`gd-dev-content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
    - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`.
-5. Open a new draft Pull Request (or update the existing PR description and sync labels if a PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description.
+5. Open a new Pull Request (or update the existing PR description and sync labels if an open PR already exists for the branch, removing any `needs-eval-gen` or `needs-eval-run` rerun labels) with the full evaluation report (`report.md`) as the PR body description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
+
+### Fixing Missing Evals: `gd dev-gap`
+
+`gd dev-gap` scans `guides/` on disk for non-draft guides that have populated `guide.md` and `expectations.md` but are missing evals (`grader.ts` or `task.md`, in legacy format or `targets/`), then runs `gd dev` (defaulting to `--targets daily-grind`) and `gd pr` for each guide in turn. It also reruns open `gd pr` PRs labeled `needs-eval-gen` or `needs-eval-run`.
+
+```bash
+gd dev-gap --dry-run                           # show which guides/PRs would run and why any are skipped
+gd dev-gap --limit 1                           # process at most one guide
+gd dev-gap --targets daily-grind,devtools-times # override target base apps (defaults to daily-grind)
+gd dev-gap                                     # process all of them
+```
+
+Run it from a clean, up-to-date `main`. For each guide it runs `gd dev`, opens or updates a PR on its `gd-dev/<guide-name>` branch, then returns to `main` and deletes the local branch. If a guide fails, its changes are discarded and the batch moves on; it stops only if it can't get back to a clean `main`.
+
+It skips guides that already have an open `grader updates: <guide-name>` PR (unless labeled `needs-eval-gen` or `needs-eval-run`) and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` without an open PR (delete the branch to retry).
+
+To rerun an open `gd pr` PR after editing `guide.md`, `expectations.md`, `task.md`, or `grader.ts` on the PR branch:
+- Label the PR **`needs-eval-gen`** to delete `targets/<target>/` for the configured target(s), regenerate solutions, tasks, and graders, and re-run evaluations.
+- Label the PR **`needs-eval-run`** to keep existing target evals and re-run calibration, agent evaluations, and report generation.
+
+Separately, `src/ci/expectations-watch.ts` files an "Expectations changed for the \<guide-name\> guide" issue (label `expectations-changed`) whenever a push edits `expectations.md` on a guide that already has evals without updating them.
 
 ### Checking Status: `gd audit`
 
@@ -122,7 +149,7 @@ gd dev <path/to/guide_dir>
 
 This runs the following pipeline after the grader calibrates successfully:
 
-1. **Generate `tasks/task.md`** if missing — uses the default solution agent (Jetski CLI, or Gemini CLI with `GD_DEV_USE_GEMINI=1`) to create a set of developer-facing prompts derived from the guide and adds `base_app: daily-grind` frontmatter.
+1. **Generate `tasks/task.md`** if missing — uses the default solution agent (Antigravity CLI, or Jetski CLI with `GD_DEV_USE_JETSKI=1`) to create a set of developer-facing prompts derived from the guide and adds `base_app: daily-grind` frontmatter.
 2. **Grade the base app as-is** (pre-score) — establishes a baseline before any agent runs
 3. **Run the agent** in both `unguided` (no guide access) and `guided` (with guidance access) modes against the base app
 4. **Grade both outputs** and print a comparison:
@@ -135,7 +162,7 @@ Agent test results:
   Guide impact:     +56% (vs unguided)
 ```
 
-The agent is selected from the `config.ts` if it exists (see [config.ts.example](../config.ts.example) for setup), otherwise uses the configured default in [harness config](../harness/config.ts) and `gd dev`.
+The agent is selected from the `config.ts` if it exists (see [config.ts.example](../config.ts.example) for setup), otherwise uses the configured default in [harness config](../src/harness/config.ts) and `gd dev`.
 The base app is selected from the generated `tasks/task.md` file (which defaults to `daily-grind`).
 
 ### Negative Evals
@@ -150,20 +177,19 @@ gd eval <guideName>/negative
 
 If you need more control, you can run each step individually:
 
-1. Configure the following settings for your run in the [harness config](../harness/config.ts):
+1. Configure the following settings for your run in the [harness config](../src/harness/config.ts):
 
 ```
-mcpServersToEnable: ['modern-web-guidance'],
-serving: Serving.MCP,
+skillsToEnable: ['modern-web-guidance'],
 agent: Agents.GEMINI_CLI
 ```
 
-> Note: to test the agent without any guide access, set `mcpServersToEnable` to `[]` (and step `2` can be skipped).
+> Note: to test the agent without any guide access, set `skillsToEnable` to `[]` (and step `2` can be skipped).
 
-2. Build the MCP index with the guide:
+2. Build the guide index with the guide:
 
 ```sh
-pnpm build:mcp <path/to/guide_dir>
+pnpm build:guides <path/to/guide_dir>
 ```
 
 3. Create a `test-app` directory in the `<guide_dir>`:

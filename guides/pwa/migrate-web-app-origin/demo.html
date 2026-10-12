@@ -1,10 +1,13 @@
-This demo will not be functional, but will contain the correct files for migration:
-
-/demo.html > Site with <link> to manifest.json
-/manifest.json > Simple manifest with `migrate_to` as ordered map
-/.well-known/web-app-origin-association > Pointer to new site
-
-/new-site/demo.html > Site with <link> to new-site/manifest.json
-/new-site/manifest.json > Simple manifest with `migrate_from`
-
-Fallback will be to recommend a UI element instructing them to reinstall.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Old App Name - Web App Migration</title>
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <h1>Old App Name</h1>
+  <p>This application has moved to a new location. If you have this app installed, it should automatically update to the new version.</p>
+  <p>New location: <a href="new-site/demo.html">New App Name Site</a></p>
+</body>
+</html>

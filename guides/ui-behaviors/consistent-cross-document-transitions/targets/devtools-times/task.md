@@ -1,0 +1,1 @@
+- Ensure critical page state is loaded and stable before initiating cross-document view transitions in the application, making sure critical CSS styles are loaded and applied, critical JavaScript is loaded and run, and the HTML visible for the user's initial view of the page has been parsed before the transition runs.

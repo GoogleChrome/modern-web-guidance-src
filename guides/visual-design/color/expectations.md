@@ -1,0 +1,1 @@
+- The implementation MUST provide high-contrast fallbacks using `@media (forced-colors: active)` for components that rely on `box-shadow` or `background-image` to convey boundaries or state.

@@ -24,9 +24,9 @@ Guidelines for implementing preventative security measures on the web safely and
   - 2.3 Data Hygiene for Reports
   - 2.4 Automated Discovery via Browser APIs and DevTools
 - Phase 3: Interpreting Results & Enforcement
-  - Core enforcement (data-driven rollouts)
+  - Core enforcement
     - 3.1 Analyzing CSP Reports
-    - 3.2 Transitioning to CSP Enforcement
+    - 3.2 Enforcing Content Security Policy (CSP)
     - 3.3 Trusted Types Enforcement
     - 3.4 Cross-Origin Opener Policy (COOP)
     - 3.5 Cross-Origin Resource Policy (CORP)
@@ -43,15 +43,13 @@ Guidelines for implementing preventative security measures on the web safely and
 
 ## When to apply this skill
 
-The right starting point depends on the application:
+The right starting point depends on the application and whether you can update the codebase directly:
 
-- **Retrofitting an existing app**: Always start at Phase 1. Strict policies applied without discovery will break the app. Treat Phase 2 (report-only) as a prerequisite for any Phase 3 enforcement.
-- **Greenfield app or new feature**: You can adopt Phase 3 enforced policies directly, but still wire up reporting from day one.
-- **SaaS template / framework defaults**: Ship Phase 1 hygiene and Phase 3 policies enabled by default, with Phase 2 reporting on so downstream users can detect regressions.
+- **Auditing and hardening a codebase directly**: Apply Phase 1 code hygiene, wire up Phase 2 reporting (`Reporting-Endpoints` and `report-to`), and enforce Phase 3 headers (`Content-Security-Policy` with nonces/hashes, `'strict-dynamic'`, `'report-sample'`, `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'self'`, and `require-trusted-types-for 'script'`, plus COOP, CORP, Fetch Metadata, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy`) directly by updating `<script>` tags, cookies, and server middleware in the same pass.
+- **Staged rollout on a large production site with unknown third-party dependencies**: Start with Phase 1 quick wins and deploy Phase 2 report-only headers alongside enforced companion policies while collecting violation telemetry, then promote the report-only policies to Phase 3 enforcement.
+- **Greenfield app or SaaS template / framework defaults**: Ship Phase 1 hygiene and Phase 3 enforced policies by default, with Phase 2 reporting configured so regressions are captured immediately.
 
-If you are unsure which case applies, default to Phase 1 → 2 → 3 in order.
-
-**Focusing on Leverage**: While Phase 1 and 2 establish baseline hygiene and data gathering, Phase 3 core enforcement represents the highest-leverage security work. Specifically, Injection/XSS mitigation through CSP (§3.2) and Trusted Types (§3.3) addresses the largest practical threat, while companion policies and isolation defenses provide important defense-in-depth.
+**Focusing on Leverage**: While Phase 1 and 2 establish baseline hygiene and violation visibility, Phase 3 core enforcement represents the highest-leverage security work. Specifically, Injection/XSS mitigation through enforced CSP (§3.2) and Trusted Types (§3.3) addresses the largest practical threat, while companion policies and isolation defenses provide important defense-in-depth.
 
 ## Phase 1: Quick Wins & Obvious Anti-Patterns
 
@@ -64,7 +62,7 @@ Before attempting to deploy global security policies, focus on code-level hygien
 
 ### 1.2 Avoid Dangerous DOM Sinks
 - **DO**: Prefer `textContent` or `innerText` over `innerHTML` when setting text content.
-- **DO**: Use `setHTML` (part of the Sanitizer API) when available to safely insert HTML.
+- **DO**: Use `setHTML()` (part of the Sanitizer API; see {{ GUIDE_REF("sanitize-untrusted-html") }}) when available to safely insert untrusted HTML without going through `innerHTML`.
 - **DO NOT**: Use `innerHTML` or `setHTMLUnsafe` with untrusted or unsanitized input.
 - **DO**: Use DOMParser or create elements programmatically (`document.createElement`) instead of concatenating HTML strings.
 
@@ -82,10 +80,10 @@ element.textContent = `Hello, ${untrustedName}!`;
 Trusted Types can enforce this pattern at runtime by blocking string assignments to dangerous sinks. Deploying it is a CSP enforcement step with real breakage risk — see §3.3.
 
 ### 1.3 Secure Cookies
-Ensure new cookies are configured securely by default.
-- **DO**: Prefer naming cookies with the `__Host-` prefix when they'll only be used by one domain. This requires the `Secure` and `Path=/` attributes to be set, and the `Domain` attribute to be omitted. This protects against same-site and network attackers.
+Ensure session and application cookies are configured securely by default, whether set via `Set-Cookie` headers or framework session configuration (such as Astro or Express session middleware).
+- **DO**: Name first-party session cookies with the `__Host-` prefix (`name: '__Host-session'`) when used by a single domain. This requires `Secure` (`secure: true`), `Path=/` (`path: '/'`), and omitting the `Domain` attribute, protecting against same-site and network attackers.
 - **DO**: Prefer naming cookies with the `__Secure-` prefix when `__Host-` isn't appropriate. This requires the `Secure` attribute, and protects against network attackers.
-- **DO**: Explicitly set `SameSite=Lax` for standard first-party cookies.
+- **DO**: Set `HttpOnly` (`httpOnly: true`) on session and authentication cookies unless the cookie must be read by client-side script, and explicitly set `SameSite=Lax` (`sameSite: 'lax'`) for standard first-party cookies.
 - **DO**: If your application will be embedded as an iframe in third-party contexts, use `SameSite=None; Secure; Partitioned`.
 - **DO NOT**: Rely on unpartitioned `SameSite=None` — these are being systematically blocked for tracking prevention.
 
@@ -106,7 +104,7 @@ Content-Security-Policy: frame-ancestors 'self' https://trusted-partner.com;
 
 ### 1.5 Secure Window Messaging (postMessage)
 If your application communicates with other origins using `window.postMessage`, you must strictly validate the sender and receiver.
-- **DO**: Always validate the `event.origin` of incoming messages on the receiver side using strict equality against a list of trusted origins. Do **not** trust wildcards (`*`) or unverified payloads.
+- **DO**: Always validate the `event.origin` of incoming messages on the receiver side using strict equality against a list of trusted origins (or use the `Origin` API when comparing against URLs/elements, checking schemeful same-site relationships, or distinguishing opaque sandboxed iframe origins; see {{ GUIDE_REF("validate-origins") }}). Do **not** trust wildcards (`*`), substring checks, or unverified payloads.
 - **DO**: Always specify a target origin (rather than the wildcard `*`) when calling `postMessage` to send sensitive data, ensuring only the intended origin can receive it.
 - **DO**: Validate and sanitize the properties of incoming message payloads before performing operations or writing them to DOM sinks. Manual JSON serialization is unnecessary as `postMessage` handles object cloning internally.
 
@@ -152,7 +150,7 @@ Use "Report-Only" headers to identify potential breakages before they happen.
 **Example headers:**
 ```http
 Reporting-Endpoints: default="https://reports.example/default", main-endpoint="https://reports.example/main"
-Content-Security-Policy-Report-Only: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
+Content-Security-Policy-Report-Only: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; require-trusted-types-for 'script'; report-to main-endpoint;
 ```
 
 The `'strict-dynamic'`, `https:`, and `'unsafe-inline'` tokens together form a backwards-compatibility ladder: modern browsers honor `'strict-dynamic'` (nonce-propagating) and ignore the others; older browsers fall back to `https:`; very old browsers fall back to `'unsafe-inline'`. The fallbacks are harmless on any browser that supports a stricter token.
@@ -171,12 +169,12 @@ The `'strict-dynamic'`, `https:`, and `'unsafe-inline'` tokens together form a b
 
 ## Phase 3: Interpreting Results & Enforcement
 
-After collecting data, decide how to proceed with enforcement. Phase 3 has two tracks that run in parallel, not in sequence:
+After inspecting the application (or collecting report-only data), enforce your security policies. Phase 3 has two tracks that are enforced together:
 
-- **Core enforcement (data-driven rollouts)** — high-breakage-risk policies that depend on Phase 2 report-only data. These are the rollouts you stage and watch.
-- **Companion policies (deploy in parallel)** — lower-risk headers that can be turned on alongside or before the core work, with little or no Phase 2 discovery required.
+- **Core enforcement** — high-leverage XSS and isolation defenses (`Content-Security-Policy`, Trusted Types, COOP, CORP, and Fetch Metadata).
+- **Companion policies (deploy in parallel)** — low-risk headers (`Strict-Transport-Security`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Clear-Site-Data`) that should always be enabled alongside core enforcement.
 
-### Core enforcement (data-driven rollouts)
+### Core enforcement
 
 #### 3.1 Analyzing CSP Reports
 
@@ -196,22 +194,22 @@ Once filtered and triaged, analyze the reports against the following common scen
   - **Condition**: Legacy code paths still write strings to `innerHTML` etc.
   - **Decision**: Refactor those sinks (per §1.2) or route them through a Trusted Types policy (§3.3) before enforcing.
 
-#### 3.2 Transitioning to CSP Enforcement
-Only move to enforced mode when:
-1. Violations in the report-only logs have dropped to near zero or are accounted for.
-2. Reporting remains wired up after the switch — keep `report-to` on the enforced header so regressions are visible.
+#### 3.2 Enforcing Content Security Policy (CSP)
+When enforcing `Content-Security-Policy`, always keep `Reporting-Endpoints` and `report-to` wired up on the enforced header so any regressions remain visible.
 
-**Key directives to set:**
-- `script-src` with nonces or hashes — this is the core directive of any CSP and the primary mechanism to prevent XSS.
-- `base-uri 'none'` to block `<base>` hijacking. Legacy directives like `object-src 'none'` can be omitted in modern, post-Flash web environments.
-- *Optional but potentially breaking*: `default-src 'self'` is sometimes used as a fallback for unspecified fetch directives, but it dramatically complicates deployment and has little security value beyond `script-src`. It is generally safer to focus on robust `script-src` enforcement first.
+**Mandatory directives to set:**
+- `script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'` (or SHA-256/384/512 script hashes for static HTML) — the core directive of any CSP and the primary mechanism to prevent XSS.
+- `object-src 'none'` — blocks plugin-based code execution (`<object>`, `<embed>`).
+- `base-uri 'none'` — blocks `<base>` tag hijacking of relative URLs.
+- `frame-ancestors 'self'` — prevents clickjacking alongside `X-Frame-Options: SAMEORIGIN` (§1.4).
+- `require-trusted-types-for 'script'` — enforces Trusted Types runtime checks on DOM XSS sinks (§3.3).
+- `report-to <endpoint>` — sends violation reports to the endpoint defined in `Reporting-Endpoints`.
 - *Optional*: `form-action 'self'` prevents form submissions to attacker-controlled origins.
-- *Optional*: `upgrade-insecure-requests` auto-upgrades subresource HTTP loads to HTTPS, though modern browsers largely auto-upgrade mixed content anyway.
 
 **Enforced Header Example (CSP with reporting):**
 ```http
 Reporting-Endpoints: main-endpoint="https://reports.example/main"
-Content-Security-Policy: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
+Content-Security-Policy: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; require-trusted-types-for 'script'; report-to main-endpoint;
 ```
 
 HTML for nonce-based CSP:
@@ -219,27 +217,53 @@ HTML for nonce-based CSP:
 <script nonce="{RANDOM}" src="https://example.com/script.js"></script>
 ```
 
-For static/cached HTML (SPAs) where a per-response nonce is not possible, use hash-based CSP: hash each inline script and list the hashes in `script-src`.
-
-**Avoid**: URL allowlists like `script-src https://cdn.example.com` — they are easily bypassed by open redirects, JSONP endpoints, and dependency injection on the allowed origin.
-
-#### 3.3 Trusted Types Enforcement
-Trusted Types enforces the §1.2 source-level guidance at runtime: once enabled, the browser blocks string assignments to dangerous sinks unless they pass through a named policy.
-
-- **Incremental Rollout Strategy**: While full enforcement carries real breakage risk, you do not need to do everything at once. A highly viable approach is to define and roll out a policy for a small portion of the application under refactoring, and slowly expand its usage as you replace sinks. This simplifies eventual global enforcement without short-term breakage risk.
-- **Prerequisite**: Trusted Types requires framework cooperation. If the app's framework (or any third-party widget that writes to DOM sinks) does not produce `TrustedHTML` / `TrustedScript` values, the policy cannot be enforced without breaking that code. Audit framework support before starting the report-only rollout.
-- **Prerequisite**: The code-level sink refactor from Phase 1 is a prerequisite for complete Trusted Types enforcement. (Standard CSP `script-src` enforcement, by contrast, does not police DOM sinks and can be deployed without refactoring them.)
-- **DO**: Roll out via `Content-Security-Policy-Report-Only: require-trusted-types-for 'script'` first to find every offending sink.
-- **DO**: Define a single named policy that performs sanitization (or escaping) and route all sink writes through it.
-- **DO**: Move to full global `Content-Security-Policy: require-trusted-types-for 'script'` enforcement once the policy has been successfully integrated and violations in report-only logs drop to zero.
+**Server / Middleware Per-Request Nonce Generation:**
+In server-rendered or SSR middleware (such as Node.js, Express, or Astro middleware), generate a fresh cryptographic nonce on every request, attach it to `Content-Security-Policy`, and stamp `nonce` onto `<script>` tags in HTML responses:
 
 ```javascript
-if (window.trustedTypes && trustedTypes.createPolicy) {
-  const policy = trustedTypes.createPolicy('escapePolicy', {
-    createHTML: str => str.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  });
-  el.innerHTML = policy.createHTML(untrustedString);
-}
+const bytes = new Uint8Array(16);
+crypto.getRandomValues(bytes);
+const nonce = btoa(String.fromCharCode(...bytes));
+
+const csp = [
+  `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'self'",
+  "require-trusted-types-for 'script'",
+  'report-to main-endpoint',
+].join('; ');
+
+headers.set('Reporting-Endpoints', 'main-endpoint="https://reports.example/main"');
+headers.set('Content-Security-Policy', csp);
+
+// If transforming rendered HTML in middleware, inject the per-request nonce onto <script> tags:
+html = html.replace(/<script\b(?![^>]*\bnonce=)/gi, `<script nonce="${nonce}"`);
+```
+
+For static/cached HTML (SPAs) where a per-response nonce is not possible, use hash-based CSP: compute the `sha256-` hash of each script and list the hashes in `script-src` alongside `'strict-dynamic' 'report-sample'`.
+
+**Avoid**: Broad scheme or domain allowlists (such as `https:` alone or `script-src https://cdn.example.com` without `'strict-dynamic'`) as the primary `script-src` protection — they are easily bypassed by open redirects, JSONP endpoints, and dependency injection on the allowed origin.
+
+#### 3.3 Trusted Types Enforcement
+Trusted Types enforces source-level guidance at runtime by blocking raw string assignments to dangerous DOM XSS sinks (`innerHTML`, `outerHTML`, `document.write`, `script.src`, `script.textContent`) unless they pass through a named policy.
+
+- **DO**: Enforce Trusted Types in your `Content-Security-Policy` header by including the `require-trusted-types-for 'script'` directive.
+- **DO**: Sanitize any HTML sink assignments through a named `trustedTypes.createPolicy(...)` instance rather than assigning raw strings (or prefer `element.setHTML()` directly, which sanitizes HTML without needing a Trusted Types policy).
+- **DO NOT**: Create a pass-through policy (such as `createHTML: (s) => s`) that returns unsanitized input unchanged, as this neutralizes Trusted Types protection.
+- **DO**: Consult the dedicated {{ GUIDE_REF("trusted-types") }} guide for full implementation details, including `trusted-types` policy allowlisting and rollout strategies.
+
+```javascript
+const htmlPolicy = window.trustedTypes?.createPolicy('app-html', {
+  createHTML(input) {
+    return String(input)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+});
 ```
 
 #### 3.4 Cross-Origin Opener Policy (COOP)
@@ -281,6 +305,8 @@ Server-side enforcement that uses `Sec-Fetch-*` request headers to reject suspic
 
 ```javascript
 app.use((req, res, next) => {
+  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
+
   const site = req.get('Sec-Fetch-Site');
   const mode = req.get('Sec-Fetch-Mode');
   const dest = req.get('Sec-Fetch-Dest');
@@ -315,15 +341,16 @@ These carry significantly lower breakage risk than the core enforcement track. T
 
 #### Permissions Policy
 - **DO**: Disable unused browser features (camera, geolocation, microphone) for the page and iframes using Structured Fields syntax.
+- **DO**: Disable `focus-without-user-activation` for third-party iframes to prevent focus stealing.
 - **DO**: When delegating features to an iframe, use the `allow` attribute in HTML *in addition* to the header.
 - **CAUTION**: Unintentionally blocking a delegated feature will cause silent failures in third-party widgets (like embedded video players or payment gateways). Audit third-party dependencies before blocking.
 
 ```http
-Permissions-Policy: camera=(), geolocation=(), microphone=()
+Permissions-Policy: camera=(), geolocation=(), microphone=(), focus-without-user-activation=()
 ```
 
 ```html
-<iframe src="https://trusted-video.com/player" allow="fullscreen; camera"></iframe>
+<iframe src="https://trusted-video.com/player" allow="fullscreen; camera; focus-without-user-activation 'none'"></iframe>
 ```
 
 #### Subresource Integrity (SRI)

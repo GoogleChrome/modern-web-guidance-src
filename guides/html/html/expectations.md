@@ -1,0 +1,30 @@
+- The implementation MUST declare `<!DOCTYPE html>` and set a valid `lang` attribute on the `<html>` element.
+- The implementation MUST include `<meta name="viewport" content="width=device-width, initial-scale=1.0">` without disabling user zooming (`user-scalable=no` or `maximum-scale=1`).
+- The implementation MUST use a single `<h1>` per document view and maintain a sequential, non-skipping heading hierarchy (`<h2>` to `<h3>`).
+- The implementation MUST structure page regions using semantic landmark elements (`<header>`, `<nav>`, `<main>`, `<aside>`, `<footer>`).
+- The implementation MUST use the native `<search>` element to wrap search and filtering controls instead of `<div role="search">`.
+- The implementation MUST use `<button>` elements for triggered actions and `<a>` elements strictly for URL navigation.
+- The implementation MUST explicitly set a `type` attribute on every `<button>` inside forms.
+- The implementation MUST use semantic list elements (`<ul>`, `<ol>`, `<dl>`) for list content.
+- The implementation MUST give every `<img>` an `alt` attribute and every `<svg>` either `aria-hidden="true"` or an accessible name.
+- The implementation MUST NOT use redundant values on boolean attributes (e.g., use `disabled` or `required`, not `disabled="disabled"`).
+- The implementation MUST use `<figure>` and `<figcaption>` to group self-contained diagrams, images, or code listings that require captions.
+- The implementation MUST wrap multi-line code blocks in `<pre><code>` and add `tabindex="0"` to scrollable `<pre>` containers.
+- The implementation MUST use `<blockquote>` with a `cite` attribute for block quotations and `<cite>` strictly for the title of a referenced work.
+- The implementation MUST apply `fetchpriority="high"` to the primary Largest Contentful Paint (LCP) hero image and MUST NOT apply `loading="lazy"` to it.
+- The implementation MUST specify explicit `width` and `height` attributes on all `<img>` and `<video>` elements to prevent Cumulative Layout Shift (CLS).
+- The implementation MUST apply `loading="lazy"` to below-the-fold `<img>` elements.
+- The implementation MUST use `<picture>` or `srcset` and `sizes` attributes for responsive image delivery.
+- The implementation MUST use the native `<dialog>` element opened via `.showModal()` for modal dialogs.
+- The implementation MUST use `<form method="dialog">` or buttons with `formmethod="dialog"` to natively dismiss modal `<dialog>` elements.
+- The implementation MUST use the native Popover API (`popover` and `popovertarget` attributes) for non-modal transient overlays such as tooltips or menus.
+- The implementation MUST NOT call `.showModal()` on elements that possess a `popover` attribute.
+- The implementation MUST use `<details>` with `<summary>` as its first child for native inline disclosure widgets.
+- The implementation MUST NOT nest interactive controls (`<a>` or `<button>`) directly inside a `<summary>` element.
+- The implementation MUST apply the global `inert` attribute to background sections when custom non-dialog overlays or off-screen drawers are open.
+- The implementation MUST NOT use positive `tabindex` values (`tabindex="1"` or greater).
+- The implementation MUST NOT set `autocomplete="off"` on credential, contact, or address inputs, and MUST use specific tokens (`email`, `current-password`, `new-password`, `street-address`).
+- The implementation MUST pair `autocomplete` tokens with matching `type` and `inputmode` attributes on form inputs.
+- The implementation MUST include a `poster` attribute and `<track kind="captions">` inside content `<video controls>` elements.
+- The implementation MUST pass dynamic runtime values from JavaScript to CSS using CSS Custom Properties (`style.setProperty('--name', value)`) rather than setting static inline visual styles.
+- The implementation MUST NOT use inline HTML event handler attributes (such as `onclick` or `onsubmit`) and MUST attach event listeners via `addEventListener()`.
