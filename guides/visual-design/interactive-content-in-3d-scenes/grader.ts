@@ -5,18 +5,38 @@ import * as fs from 'fs';
 const targetFile = process.env.TARGET_FILE 
   ? path.resolve(process.env.TARGET_FILE) 
   : path.join(import.meta.dirname, 'demo.html');
-const fileUrl = `file://${targetFile}`;
+const targetDir = path.dirname(targetFile);
+const targetFileName = path.basename(targetFile);
+const fileUrl = `http://localhost/${targetFileName}`;
 
 function getScriptContent(): string {
+  const parts: string[] = [];
   if (fs.existsSync(targetFile)) {
-    return fs.readFileSync(targetFile, 'utf8');
+    parts.push(fs.readFileSync(targetFile, 'utf8'));
   }
-  return '';
+  try {
+    for (const f of fs.readdirSync(targetDir)) {
+      if ((f.endsWith('.js') || f.endsWith('.mjs')) && !f.includes('.test.')) {
+        parts.push(fs.readFileSync(path.join(targetDir, f), 'utf8'));
+      }
+    }
+  } catch {}
+  return parts.join('\n');
 }
 
 test.describe('Interactive 3D Content Grader', () => {
 
   test.beforeEach(async ({ page }) => {
+    await page.route('http://localhost/**', async (route) => {
+      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+      const relPath = requestPath === '/' ? targetFileName : requestPath.replace(/^\/+/, '');
+      const localFilePath = path.resolve(targetDir, relPath);
+      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+        await route.fulfill({ path: localFilePath });
+      } else {
+        await route.continue();
+      }
+    });
     await page.addInitScript(() => {
       (window as any).__featureChecked = false;
       (window as any).__texElementImage2D_called = false;
