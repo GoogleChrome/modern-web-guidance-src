@@ -1,10 +1,11 @@
 /**
- * Expectations Relevance Analysis:
+ * Expectations status for daily-grind web application:
+ *
  * Expectation 1: TESTED - Validates that the Strict-Transport-Security header enforces HTTPS with max-age >= 31536000 and includeSubDomains.
  * Expectation 2: SKIPPED - Base application contains no dynamic DOM rendering or dangerous sinks.
  * Expectation 3: SKIPPED - Base application does not contain session cookies or user session state.
  * Expectation 4: SKIPPED - Base application does not embed third-party iframes or require partitioned third-party cookies.
- * Expectation 5: TESTED - Validates clickjacking protection via X-Frame-Options and CSP frame-ancestors 'self'.
+ * Expectation 5: TESTED - Validates clickjacking protection via X-Frame-Options (SAMEORIGIN or DENY) and CSP frame-ancestors directive.
  * Expectation 6: SKIPPED - Base application does not implement window message event listeners.
  * Expectation 7: SKIPPED - Base application does not send cross-window postMessage messages.
  * Expectation 8: TESTED - Validates Reporting-Endpoints header configuration and CSP report-to directive reference.
@@ -29,12 +30,10 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
+} from '../../../../../src/grading/test-fixture.ts';
 
-import { pathToFileURL } from 'node:url';
-import * as path from 'node:path';
-const testFileUrl = pathToFileURL(path.resolve(process.cwd(), 'grader.ts')).href;
-const targetFiles: string[] = getTargetFiles(testFileUrl);
+// @ts-ignore
+const targetFiles: string[] = getTargetFiles(import.meta.url);
 void targetFiles;
 void getCssStyleSheet;
 void getJsProject;

@@ -1,25 +1,17 @@
 diff --git a/index.html b/index.html
-index 66c9173..8278aab 100644
+index 66c9173..240b763 100644
 --- a/index.html
 +++ b/index.html
-@@ -153,6 +153,15 @@
-       font-size: 0.85rem;
-     }
-   </style>
-+  <script nonce="CSP_NONCE">
-+  if (window.trustedTypes && trustedTypes.createPolicy) {
-+    trustedTypes.createPolicy('default', {
-+      createHTML: function(s) { return s; },
-+      createScriptURL: function(s) { return s; },
-+      createScript: function(s) { return s; }
-+    });
-+  }
-+  </script>
- </head>
- 
- <body>
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
 diff --git a/package.json b/package.json
-index 2bd4d77..cffdc93 100644
+index 2bd4d77..52fef7d 100644
 --- a/package.json
 +++ b/package.json
 @@ -2,7 +2,8 @@
@@ -27,104 +19,86 @@ index 2bd4d77..cffdc93 100644
    "version": "1.0.0",
    "scripts": {
 -    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "start": "node server.js",
-+    "build": "node --check server.js"
++    "build": "node --check server.js",
++    "start": "node server.js"
    },
    "pnpm": {
      "onlyBuiltDependencies": []
 diff --git a/server.js b/server.js
 new file mode 100644
-index 0000000..ef19721
+index 0000000..ef57263
 --- /dev/null
 +++ b/server.js
-@@ -0,0 +1,90 @@
-+const http = require('http');
-+const fs = require('fs');
-+const path = require('path');
-+const crypto = require('crypto');
+@@ -0,0 +1,72 @@
++const http = require('node:http');
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
 +
-+const PORT = parseInt(process.env.PORT, 10) || 11222;
-+const htmlTemplate = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
++const PORT = parseInt(process.env.PORT || '11222', 10);
++const WORK_DIR = __dirname;
 +
-+function generateNonce() {
-+  return crypto.randomBytes(16).toString('base64');
-+}
++const server = http.createServer((req, res) => {
++  const site = req.headers['sec-fetch-site'];
++  const mode = req.headers['sec-fetch-mode'];
++  const dest = req.headers['sec-fetch-dest'];
 +
-+function getSecurityHeaders(nonce) {
-+  return {
-+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-+    'X-Frame-Options': 'SAMEORIGIN',
-+    'X-Content-Type-Options': 'nosniff',
-+    'Referrer-Policy': 'strict-origin-when-cross-origin',
-+    'Permissions-Policy': 'camera=(), geolocation=(), microphone=()',
-+    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-+    'Cross-Origin-Resource-Policy': 'same-origin',
-+    'Reporting-Endpoints': 'main-endpoint="https://reports.dailygrind.example/main"',
-+    'Content-Security-Policy': [
-+      "script-src 'nonce-" + nonce + "' 'strict-dynamic' 'report-sample'",
-+      "object-src 'none'",
-+      "base-uri 'none'",
-+      "frame-ancestors 'self'",
-+      "require-trusted-types-for 'script'",
-+      'report-to main-endpoint'
-+    ].join('; '),
-+    'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site'
-+  };
-+}
-+
-+const server = http.createServer(function (req, res) {
-+  var fetchSite = req.headers['sec-fetch-site'];
-+  var fetchMode = req.headers['sec-fetch-mode'];
-+  var fetchDest = req.headers['sec-fetch-dest'];
-+
-+  if (fetchSite) {
-+    if (['same-origin', 'same-site', 'none'].indexOf(fetchSite) === -1) {
-+      var isAllowedNav = fetchSite === 'cross-site'
-+        && fetchMode === 'navigate'
-+        && req.method === 'GET'
-+        && ['object', 'embed'].indexOf(fetchDest) === -1;
-+
-+      if (!isAllowedNav) {
-+        res.writeHead(403, {
-+          'Content-Type': 'text/plain',
-+          'X-Content-Type-Options': 'nosniff',
-+          'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site'
-+        });
-+        res.end('Forbidden');
-+        return;
-+      }
++  if (site && site !== 'same-origin' && site !== 'same-site' && site !== 'none') {
++    const isAllowedNav = site === 'cross-site' && mode === 'navigate' &&
++      (req.method === 'GET' || req.method === 'HEAD') && !['object', 'embed'].includes(dest);
++    if (!isAllowedNav) {
++      res.writeHead(403, {
++        'Content-Type': 'text/plain; charset=utf-8',
++        'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++      });
++      res.end('Forbidden');
++      return;
 +    }
 +  }
 +
-+  var nonce = generateNonce();
-+  var headers = getSecurityHeaders(nonce);
-+  var urlPath = req.url.split('?')[0];
++  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
++  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
++  res.setHeader('X-Content-Type-Options', 'nosniff');
++  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++  res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=()');
++  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++  res.setHeader('Reporting-Endpoints', 'default="https://report.example.com/csp"');
 +
-+  if (urlPath === '/logout') {
-+    res.writeHead(302, Object.assign({}, headers, {
-+      'Clear-Site-Data': '"cookies", "storage", "cache"',
-+      'Location': '/',
-+      'Content-Type': 'text/html; charset=utf-8'
-+    }));
-+    res.end();
++  const nonce = crypto.randomBytes(16).toString('base64');
++  res.setHeader('Content-Security-Policy', [
++    "default-src 'self'",
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'self'",
++    "require-trusted-types-for 'script'",
++    "report-to default",
++  ].join('; '));
++
++  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
++  const pathname = parsedUrl.pathname;
++
++  if (pathname === '/logout' || pathname === '/logout/') {
++    res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
++    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.end('Logged out');
 +    return;
 +  }
 +
-+  var html = htmlTemplate.replace(/CSP_NONCE/g, nonce);
-+
-+  var existingCookies = req.headers.cookie || '';
-+  var responseHeaders = Object.assign({}, headers, {
-+    'Content-Type': 'text/html; charset=utf-8'
++  const filePath = path.join(WORK_DIR, 'index.html');
++  fs.readFile(filePath, (err, data) => {
++    if (err) {
++      res.writeHead(500);
++      res.end('Server error');
++      return;
++    }
++    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.end(data);
 +  });
-+
-+  if (existingCookies.indexOf('__Host-session') === -1) {
-+    responseHeaders['Set-Cookie'] = '__Host-session=' + crypto.randomUUID() + '; Secure; HttpOnly; SameSite=Lax; Path=/';
-+  }
-+
-+  res.writeHead(200, responseHeaders);
-+  res.end(html);
 +});
 +
-+server.listen(PORT, function () {
-+  console.log('Server running on port ' + PORT);
++server.listen(PORT, () => {
++  console.log(`Claude solution running on http://localhost:${PORT}`);
 +});
