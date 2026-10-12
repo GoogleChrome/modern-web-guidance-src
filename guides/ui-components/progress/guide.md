@@ -86,9 +86,10 @@ progress:indeterminate {
     transparent 0% 15%, 
     var(--progress-color, currentColor) 15% 45%, 
     transparent 45% 100%
-  );
+  ) / 200% 100%; /*  Oversized gradient background to make gradient visible
+  movement is invisible*/
   --progress-bar-active-animation: loading var(--indeterminate-animation-length, 1.5s) infinite linear;
-  --progress-bar-active: var(--indeterminate-bg) 90% 0 / 200% 100%;
+  --progress-bar-active: var(--indeterminate-bg);
 }
 
 @keyframes loading {

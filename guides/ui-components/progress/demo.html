@@ -8,10 +8,8 @@
         :root {
             /* Automatic theme adaptation */
             color-scheme: light dark;
-            --color-dark-accent: oklch(52.451% 0.159 325);
-            --accent-color: var(--color-dark-accent, AccentColor); 
-            /* Fixed: Light-dark colors should be light in light mode and dark in dark mode for track/surface */
-            --color-surface: light-dark(oklch(95.6% 0.027 340), oklch(30% 0.027 340));
+            --accent-color: oklch(52.451% 0.159 325);
+            --track-color: light-dark(oklch(95.6% 0.027 340), oklch(30% 0.027 340));
         }
 
         body {
@@ -36,19 +34,7 @@
             font-size: 1.25rem;
         }
 
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border-width: 0;
-        }
-
-        /* Basic progress styling used in Determinate/Indeterminate examples */
+        /* Basic progress styling using accent-color as recommended in the guide */
         .basic-progress {
             accent-color: var(--accent-color);
             display: block;
@@ -57,59 +43,61 @@
             margin-block: 0.5rem;
         }
 
-        /* Advanced styling from the guide */
-        .advanced-progress {
+        /* Customized Styling from the guide */
+        .custom-progress {
+            /* 1. Reset browser styles */
             appearance: none;
-            block-size: 0.5lh;
+            border: 0;
+            /* MUST set overflow to hidden if applying a border radius */
+            overflow: hidden;
+            border-radius: 1e5px;
+            
+            block-size: 1rem;
             inline-size: 100%;
             max-inline-size: 400px;
             margin-block: 0.5rem;
             display: block;
-            border-radius: 1e5px;
-            overflow: hidden;
 
+            /* 2. Tint the progress bar */
+            --progress-color: var(--accent-color);
+            --progress-track-color: var(--track-color);
+            --_progress-bar-active: var(--progress-bar-active, var(--progress-color));
+            --_indeterminate-bg: var(--indeterminate-bg, transparent);
+            --_progress-bar-active-animation: var(--progress-bar-active-animation, none);
+            
             /* Apply color for custom progress track (background) */
-            background: var(--color-surface);
+            background: var(--progress-track-color);
+            animation: var(--_progress-bar-active-animation, none);
+        }
 
-            /* Use browser target pseudo selector to make the default progress background transparent */
-            &::-webkit-progress-bar {
-                background: transparent;
-            }
+        /* Browser prefixed pseudo selectors MUST NOT be grouped. */
+        .custom-progress::-webkit-progress-bar {
+            /* Defaults to transparent in determinate mode and receives the indeterminate background on progress:indeterminate */
+            background: var(--_indeterminate-bg);
+            animation: var(--_progress-bar-active-animation);
+        }
 
-            /* Apply color for custom progress bar */
-            &::-webkit-progress-value {
-                background: var(--progress-color, var(--accent-color));
-            }
-            &::-moz-progress-bar {
-                background: var(--progress-color, var(--accent-color));
-            }
+        /* Apply background for custom progress bar */
+        /* Webkit, Chrome */
+        .custom-progress::-webkit-progress-value {
+            background: var(--_progress-bar-active);
+        }
 
-            /* Indeterminate state animation */
-            --indeterminate-track: linear-gradient(to right, 
+        /* Firefox */
+        .custom-progress::-moz-progress-bar {
+            background: var(--_progress-bar-active);
+            animation: var(--_progress-bar-active-animation);
+        }
+
+        /* 3. Add a custom animation for the indeterminate state */
+        .custom-progress:indeterminate {
+            --indeterminate-bg: linear-gradient(to right, 
                 transparent 0% 15%, 
-                var(--accent-color, currentColor) 15% 45%, 
+                var(--progress-color, currentColor) 15% 45%, 
                 transparent 45% 100%
-            );
-            --indeterminate-track-size: 200% 100%;
-            --indeterminate-track-animation: loading 1.5s infinite linear;
-
-            &:indeterminate::-webkit-progress-bar {
-                background: var(--indeterminate-track);
-                background-size: var(--indeterminate-track-size);
-                animation: var(--indeterminate-track-animation);
-            }
-
-            /* **Mandatory**: -moz- and -webkit- pseudo selectors cannot be grouped. If grouped one of the selectors will be ignored.  */
-            &:indeterminate::-moz-progress-bar {
-                background: var(--indeterminate-track);
-                background-size: var(--indeterminate-track-size);
-                animation: var(--indeterminate-track-animation);
-            }
-
-            &:focus-visible {
-                outline: 1px solid canvasText;
-                outline-offset: 4px;
-            }
+            ) 90% 0 / 200% 100%;
+            --progress-bar-active-animation: loading var(--indeterminate-animation-length, 1.5s) infinite linear;
+            --progress-bar-active: var(--indeterminate-bg);
         }
 
         @keyframes loading {
@@ -119,29 +107,9 @@
 
         /* Respect prefers-reduced-motion */
         @media (prefers-reduced-motion: reduce) {
-            .advanced-progress {
-                /* Use a centered static gradient for reduced motion */
-                --indeterminate-track: linear-gradient(to right, 
-                    transparent 0% 35%, 
-                    var(--accent-color, currentColor) 35% 65%, 
-                    transparent 65% 100%
-                );
-                --indeterminate-track-size: 100% 100%;
+            .custom-progress:indeterminate {
+                --indeterminate-animation-length: 10s;
             }
-
-            .advanced-progress:indeterminate::-webkit-progress-bar {
-                /* Replace movement with a slow, subtle pulse */
-                animation: pulse 3s infinite ease-in-out;
-            }
-
-            .advanced-progress:indeterminate::-moz-progress-bar {
-                animation: pulse 3s infinite ease-in-out;
-            }
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
         }
 
         .controls {
@@ -159,12 +127,13 @@
     </style>
 </head>
 <body>
-    <h1>Native Progress Bars</h1>
+    <h1>Build a Styled Progress Bar</h1>
 
     <section>
-        <h2>Determinate State</h2>
-        <label for="det-progress">File progress:</label>
-        <progress id="det-progress" class="basic-progress" value="20" max="100"></progress>
+        <h2>Using <code>accent-color</code></h2>
+        <p>The simplest way to change the color of a progress bar.</p>
+        <label for="accent-progress">File progress:</label>
+        <progress id="accent-progress" class="basic-progress" value="20" max="100"></progress>
         
         <div class="controls">
             <button id="update-btn">Add 10%</button>
@@ -172,18 +141,11 @@
     </section>
 
     <section>
-        <h2>Indeterminate State</h2>
-        <label for="indet-progress">Downloading...</label>
-        <!-- Omit value attribute for indeterminate state -->
-        <progress id="indet-progress" class="basic-progress" max="100"></progress>
-    </section>
-
-    <section>
-        <h2>Advanced Styling & Accessibility</h2>
+        <h2>Customized Styling</h2>
+        <p>Using pseudo-selectors for deeper customization and custom indeterminate animations.</p>
         
-        <!-- The progress bar is physically separate from the region it describes -->
-        <label for="upload-progress">Upload Progress:</label>
-        <progress id="upload-progress" class="advanced-progress" value="40" max="100"></progress>
+        <label for="custom-progress">Upload Progress:</label>
+        <progress id="custom-progress" class="custom-progress" value="40" max="100"></progress>
         
         <div id="loading-region">
             <p id="status-text" role="status">40% uploaded</p>
@@ -193,22 +155,28 @@
         </div>
     </section>
 
+    <section>
+        <h2>Indeterminate State</h2>
+        <p>Omit the <code>value</code> attribute for tasks of unknown duration.</p>
+        <label for="indet-progress">Downloading...</label>
+        <progress id="indet-progress" class="custom-progress" max="100"></progress>
+    </section>
+
     <script>
         // Determinate example logic
-        const detBar = document.getElementById('det-progress');
+        const accentBar = document.getElementById('accent-progress');
         const updateBtn = document.getElementById('update-btn');
 
         updateBtn.addEventListener('click', () => {
-            if (detBar.value < detBar.max) {
-                detBar.value += 10;
+            if (accentBar.value < accentBar.max) {
+                accentBar.value += 10;
             } else {
-                detBar.value = 0;
+                accentBar.value = 0;
             }
         });
 
-        // Advanced example logic
-        const region = document.getElementById('loading-region');
-        const advBar = document.getElementById('upload-progress');
+        // Custom example logic
+        const customBar = document.getElementById('custom-progress');
         const status = document.getElementById('status-text');
         const startBtn = document.getElementById('start-btn');
 
@@ -219,21 +187,21 @@
 
         function simulateTask() {
             status.textContent = "Uploading...";
-            advBar.removeAttribute('value'); // Set to indeterminate
+            customBar.removeAttribute('value'); // Set to indeterminate
 
             setTimeout(() => {
-                advBar.max = 100;
-                advBar.value = 0;
+                customBar.max = 100;
+                customBar.value = 0;
 
                 const interval = setInterval(() => {
-                    advBar.value += 10;
+                    customBar.value += 10;
 
-                    if (advBar.value >= 100) {
+                    if (customBar.value >= 100) {
                         clearInterval(interval);
                         status.textContent = "Task Complete!";
                         startBtn.disabled = false;
                     } else {
-                        status.textContent = `Progress: ${advBar.value}%`;
+                        status.textContent = `Progress: ${customBar.value}%`;
                     }
                 }, 400);
             }, 2000);
