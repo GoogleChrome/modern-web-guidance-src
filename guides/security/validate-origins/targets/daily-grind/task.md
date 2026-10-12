@@ -1,0 +1,1 @@
+- Compare and validate web origins and sites safely across cross-document messages and URLs without error-prone string parsing.
