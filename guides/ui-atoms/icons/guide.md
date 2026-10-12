@@ -258,3 +258,26 @@ Safari has two bugs affecting icons (WebKit #301609, #320220): icons don't rende
 ```
 
 The `@supports` query targets Safari only, and `@layer` reduces animation conflicts.
+
+WebKit bug #325900 can prevent a direct override of `--icon-start` from taking effect in some cases, such as changing the icon on hover. This affects the workaround for non-inheriting registered properties. For Safari, register `--icon-start` as inheriting and reset it on descendants inside the style query:
+
+```css
+@supports ((-webkit-nbsp-mode: normal) or
+           (-webkit-touch-callout: none) or
+           (font: -apple-system-body)) and (content-visibility: auto) {
+  @property --icon-start {
+    syntax: "*";
+    inherits: true;
+  }
+
+  @layer webkit-325900-fix {
+    @container style(--icon-start) {
+      * {
+        --icon-start: initial;
+      }
+    }
+  }
+}
+```
+
+The reset prevents the icon value from propagating to descendants. Keeping it in a layer lets unlayered icon declarations take precedence over the reset.
