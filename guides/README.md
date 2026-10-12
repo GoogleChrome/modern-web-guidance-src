@@ -34,6 +34,12 @@ To skip agent evaluations and report generation after calibration, add `--no-tes
 gd dev <path/to/guide_dir> --no-test
 ```
 
+To run against only specific base applications (comma-separated), pass `--targets`:
+
+```bash
+gd dev <path/to/guide_dir> --targets daily-grind
+```
+
 ### Submitting a Pull Request: `gd pr`
 
 Once `gd dev` completes and generates `results/guides/<category>/<slug>/report.md`, you can create a Pull Request directly from your terminal:
@@ -50,22 +56,29 @@ This will automatically:
 3. Push your feature branch to `origin`.
 4. Analyze `report.md` to automatically detect and apply PR labels:
    - **`gd-dev-content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
-   - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`. When the PR is marked ready for review, the ATL triage bot requests review from `EVAL_PR_REVIEWER` in `src/ci/atl-triage.ts`.
-5. Open a new draft Pull Request (or update the existing PR description and sync labels if an open PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
+   - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`.
+5. Open a new Pull Request (or update the existing PR description and sync labels if an open PR already exists for the branch, removing any `needs-eval-gen` or `needs-eval-run` rerun labels) with the full evaluation report (`report.md`) as the PR body description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
 
-### Fixing Open Eval Gaps: `gd dev-gap`
+### Fixing Missing Evals: `gd dev-gap`
 
-`eval-gap-watch` files an "Evals missing for the \<guide-name\> guide" issue (label `eval-gap`) for each guide that needs evals. `gd dev-gap` works through those issues, running `gd dev` and `gd pr` for each guide in turn. It doesn't handle "Expectations changed" issues yet.
+`gd dev-gap` scans `guides/` on disk for non-draft guides that have populated `guide.md` and `expectations.md` but are missing evals (`grader.ts` or `task.md`, in legacy format or `targets/`), then runs `gd dev` (defaulting to `--targets daily-grind`) and `gd pr` for each guide in turn. It also reruns open `gd pr` PRs labeled `needs-eval-gen` or `needs-eval-run`.
 
 ```bash
-gd dev-gap --dry-run   # show which guides would run and why the rest are skipped
-gd dev-gap --limit 1   # process at most one guide
-gd dev-gap             # process all of them
+gd dev-gap --dry-run                           # show which guides/PRs would run and why any are skipped
+gd dev-gap --limit 1                           # process at most one guide
+gd dev-gap --targets daily-grind,devtools-times # override target base apps (defaults to daily-grind)
+gd dev-gap                                     # process all of them
 ```
 
-Run it from a clean, up-to-date `main`. For each guide it runs `gd dev`, opens a PR from a fresh `gd-dev/<guide-name>` branch, then returns to `main` and deletes the local branch. If a guide fails, its changes are discarded and the batch moves on; it stops only if it can't get back to a clean `main`. The issue closes on its own once the PR merges.
+Run it from a clean, up-to-date `main`. For each guide it runs `gd dev`, opens or updates a PR on its `gd-dev/<guide-name>` branch, then returns to `main` and deletes the local branch. If a guide fails, its changes are discarded and the batch moves on; it stops only if it can't get back to a clean `main`.
 
-It skips guides that already have an open `grader updates: <guide-name>` PR and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` (delete the branch to retry).
+It skips guides that already have an open `grader updates: <guide-name>` PR (unless labeled `needs-eval-gen` or `needs-eval-run`) and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` without an open PR (delete the branch to retry).
+
+To rerun an open `gd pr` PR after editing `guide.md`, `expectations.md`, `task.md`, or `grader.ts` on the PR branch:
+- Label the PR **`needs-eval-gen`** to delete `targets/<target>/` for the configured target(s), regenerate solutions, tasks, and graders, and re-run evaluations.
+- Label the PR **`needs-eval-run`** to keep existing target evals and re-run calibration, agent evaluations, and report generation.
+
+Separately, `src/ci/expectations-watch.ts` files an "Expectations changed for the \<guide-name\> guide" issue (label `expectations-changed`) whenever a push edits `expectations.md` on a guide that already has evals without updating them.
 
 ### Checking Status: `gd audit`
 

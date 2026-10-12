@@ -1,15 +1,10 @@
-name: Eval Gap Watch
+name: Expectations Watch
 
 on:
-  # Any of these can open or close an issue: guidance/expectations can create
-  # gaps, and grader/task changes (legacy or targets layout) can resolve them.
   push:
     branches: [main]
     paths:
-      - 'guides/**/guide.md'
       - 'guides/**/expectations.md'
-      - 'guides/**/grader.ts'
-      - 'guides/**/task.md'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -25,10 +20,8 @@ permissions:
 # This job reads the existing issues and then writes new ones, so parallel runs
 # could both see an empty list and file the same issue twice. Serialize them,
 # and never cancel an in-flight run, which could leave issues half-filed.
-# GitHub keeps at most one pending run per group, so a burst of pushes can drop
-# a waiting run's expectations check; missing-evals is recomputed next run.
 concurrency:
-  group: eval-gap-watch
+  group: expectations-watch
   cancel-in-progress: false
 
 env:
@@ -57,10 +50,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run eval gap watch
-        run: node src/ci/eval-gap-watch.ts
+      - name: Run expectations watch
+        run: node src/ci/expectations-watch.ts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
-          # Empty on manual runs, which then only check for missing evals.
-          EVAL_GAP_BEFORE: ${{ github.event.before }}
+          EXPECTATIONS_WATCH_BEFORE: ${{ github.event.before }}

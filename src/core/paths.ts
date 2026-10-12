@@ -23,18 +23,40 @@ export const dashboardDir = path.join(rootDir, 'src/dashboard');
 
 export interface GuideResultsInventory {
   category: string;
-  slug?: string;
-  name?: string;
+  name: string;
 }
 
 /**
  * Returns the path to the results directory for a specific guide:
- * results/guides/<category>/<slug>/
+ * results/guides/<category>/<name>/
  */
 export function getGuideResultsDir(inv: GuideResultsInventory): string {
-  const slug = inv.slug || inv.name;
-  if (!slug) {
-    throw new Error(`getGuideResultsDir: missing slug/name in inventory for category "${inv.category}"`);
+  if (!inv.name) {
+    throw new Error(`getGuideResultsDir: missing name in inventory for category "${inv.category}"`);
   }
-  return path.join(resultsDir, 'guides', inv.category, slug);
+  return path.join(resultsDir, 'guides', inv.category, inv.name);
+}
+
+/**
+ * Resolves the results directory for a guide from its directory path or optional guide info.
+ */
+export function resolveGuideResultsDir(targetDir: string, guideInfo?: Partial<GuideResultsInventory>): string {
+  if (guideInfo?.category && guideInfo?.name) {
+    return getGuideResultsDir({ category: guideInfo.category, name: guideInfo.name });
+  }
+  const resolvedTarget = path.resolve(targetDir);
+  const rel = path.relative(guidesDir, resolvedTarget);
+  if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+    const parts = rel.split(path.sep);
+    if (parts.length >= 2) {
+      return getGuideResultsDir({ category: parts[0], name: parts[1] });
+    }
+    if (parts.length === 1) {
+      return getGuideResultsDir({ category: parts[0], name: parts[0] });
+    }
+  }
+  const parts = resolvedTarget.split(path.sep);
+  const name = parts[parts.length - 1];
+  const category = parts[parts.length - 2] || 'cat';
+  return getGuideResultsDir({ category, name });
 }

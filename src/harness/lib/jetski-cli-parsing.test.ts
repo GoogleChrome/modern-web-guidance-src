@@ -229,3 +229,44 @@ test('parseJetskiCliSession sanitizes pipe-delimited experimental model names', 
     removeTempDir(tempDir);
   }
 });
+
+test('parseJetskiCliSession accumulates cached tokens across turns instead of peak Math.max', () => {
+  const tempDir = createTempDir();
+  try {
+    const dbPath = path.join(tempDir, 'session-accum-cache.db');
+    const db = new DatabaseSync(dbPath);
+    db.exec(`
+      CREATE TABLE steps (idx INTEGER, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);
+      CREATE TABLE gen_metadata (idx INTEGER, data BLOB);
+    `);
+
+    // Turn 1: input=1000, output=100, cached=400
+    const statsInner1 = Buffer.concat([
+      encodeField(2, 0, 1000),
+      encodeField(3, 0, 100),
+      encodeField(5, 0, 400)
+    ]);
+    const metadataProto1 = encodeField(9, 2, statsInner1);
+
+    // Turn 2: input=800, output=200, cached=600
+    const statsInner2 = Buffer.concat([
+      encodeField(2, 0, 800),
+      encodeField(3, 0, 200),
+      encodeField(5, 0, 600)
+    ]);
+    const metadataProto2 = encodeField(9, 2, statsInner2);
+
+    const insertStep = db.prepare('INSERT INTO steps (idx, step_type, status, metadata, step_payload) VALUES (?, ?, ?, ?, ?)');
+    insertStep.run(1, 21, 1, metadataProto1, null);
+    insertStep.run(2, 21, 1, metadataProto2, null);
+    db.close();
+
+    const parsed = parseJetskiCliSession(tempDir);
+    // Cumulative cached: 400 + 600 = 1000
+    // Cumulative total: (1000 + 800) + (400 + 600) + (100 + 200) = 3100
+    assert.deepStrictEqual(parsed.tokenUsage, { total: 3100, cached: 1000 });
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+

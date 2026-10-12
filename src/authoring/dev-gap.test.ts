@@ -5,9 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { planFixes, fixEvalGaps, evalGapFixCli, type OpenPr, type FixEvalGapsOptions } from './dev-gap.ts';
-import { buildIssue, type ExistingIssue, type Gap } from '../ci/eval-gap-watch.ts';
 import { rootDir, getGuideResultsDir } from '../core/paths.ts';
-import { REPORT_FILE, type GuideInventory } from '../core/guide-validation.ts';
+import { REPORT_FILE, TARGETS_DIR, type GuideInventory } from '../core/guide-validation.ts';
 
 function makeGuide(name: string, overrides: Partial<GuideInventory> = {}): GuideInventory {
   return {
@@ -24,48 +23,78 @@ function makeGuide(name: string, overrides: Partial<GuideInventory> = {}): Guide
   } as GuideInventory;
 }
 
-function issueFor(name: string, number: number, kind: Gap['kind'] = 'missing-evals', guidePath = `guides/css/${name}`): ExistingIssue {
-  const { title, body } = buildIssue({ kind, guidePath, guideName: name });
-  return { number, title, body };
-}
-
-const pr = (number: number, title: string): OpenPr => ({ number, title });
+const pr = (number: number, title: string, labels: string[] = [], headRefName?: string): OpenPr => ({
+  number,
+  title,
+  headRefName,
+  labels: labels.map(name => ({ name })),
+});
 
 describe('planFixes', () => {
-  it('queues a missing-evals issue whose guide still needs evals and has no PR', () => {
-    const { toFix, skipped } = planFixes([issueFor('scrollspy', 1)], [], [makeGuide('scrollspy')], new Set());
-    assert.deepStrictEqual(toFix.map(g => [g.issueNumber, g.guidePath]), [[1, 'guides/css/scrollspy']]);
+  it('queues a guide with guidance and expectations but no evals and no PR', () => {
+    const { toFix, skipped } = planFixes([makeGuide('scrollspy')], [], new Set());
+    assert.deepStrictEqual(toFix.map(g => g.guidePath), ['guides/css/scrollspy']);
     assert.deepStrictEqual(skipped, []);
   });
 
-  it('skips guides with an open gd pr PR, matching the exact title', () => {
+  it('ignores drafts, incomplete guides, and complete guides', () => {
+    const guides = [
+      makeGuide('draft-bool', { draft: true }),
+      makeGuide('draft-str', { draft: 'blocked' }),
+      makeGuide('no-guide', { hasGuide: false }),
+      makeGuide('no-expectations', { hasExpectations: false }),
+      makeGuide('empty-expectations', { expectationsEmpty: true }),
+      makeGuide('complete', { hasGrader: true, hasTask: true }),
+      makeGuide('needs-evals'),
+      makeGuide('missing-task', { hasGrader: true, hasTask: false }),
+    ];
+    const { toFix, skipped } = planFixes(guides, [], new Set());
+    assert.deepStrictEqual(toFix.map(g => g.guidePath), ['guides/css/needs-evals', 'guides/css/missing-task']);
+    assert.deepStrictEqual(skipped, []);
+  });
+
+  it('skips guides with an open gd pr PR without rerun labels, matching the exact title', () => {
     const openPrs = [pr(5, 'grader updates: spinner'), pr(6, 'grader updates: spinner-large'), pr(7, 'Fix scrollspy typo')];
-    const { toFix, skipped } = planFixes([issueFor('spinner', 1), issueFor('scrollspy', 2)], openPrs, [makeGuide('spinner'), makeGuide('scrollspy')], new Set());
-    assert.deepStrictEqual(skipped.map(s => [s.issueNumber, s.reason]), [[1, 'already has PR #5']]);
-    assert.deepStrictEqual(toFix.map(g => g.issueNumber), [2]);
+    const { toFix, skipped } = planFixes([makeGuide('spinner'), makeGuide('scrollspy')], openPrs, new Set());
+    assert.deepStrictEqual(skipped, [{ guidePath: 'guides/css/spinner', reason: 'already has PR #5' }]);
+    assert.deepStrictEqual(toFix.map(g => g.guidePath), ['guides/css/scrollspy']);
+  });
+
+  it('queues an open PR with needs-eval-run or needs-eval-gen instead of skipping it', () => {
+    const openPrs = [
+      pr(5, 'grader updates: spinner', ['needs-eval-run'], 'gd-dev/spinner'),
+      pr(6, 'grader updates: scrollspy', ['needs-eval-gen', 'needs-eval-run'], 'gd-dev/scrollspy'),
+    ];
+    const { toFix, skipped } = planFixes(
+      [makeGuide('spinner'), makeGuide('scrollspy')],
+      openPrs,
+      new Set(['gd-dev/spinner', 'gd-dev/scrollspy'])
+    );
+    assert.deepStrictEqual(skipped, []);
+    assert.deepStrictEqual(
+      toFix.map(g => ({ guidePath: g.guidePath, prNumber: g.prNumber, branch: g.branch, rerunMode: g.rerunMode })),
+      [
+        { guidePath: 'guides/css/spinner', prNumber: 5, branch: 'gd-dev/spinner', rerunMode: 'needs-eval-run' },
+        { guidePath: 'guides/css/scrollspy', prNumber: 6, branch: 'gd-dev/scrollspy', rerunMode: 'needs-eval-gen' },
+      ]
+    );
+  });
+
+  it('queues an open PR with a rerun label even when the guide already has evals on main', () => {
+    const completeGuide = makeGuide('popover', { hasGrader: true, hasTask: true });
+    const openPrs = [pr(12, 'grader updates: popover', ['needs-eval-run'], 'gd-dev/popover')];
+    const { toFix, skipped } = planFixes([completeGuide], openPrs, new Set(['gd-dev/popover']));
+    assert.deepStrictEqual(skipped, []);
+    assert.deepStrictEqual(
+      toFix.map(g => ({ guidePath: g.guidePath, prNumber: g.prNumber, branch: g.branch, rerunMode: g.rerunMode })),
+      [{ guidePath: 'guides/css/popover', prNumber: 12, branch: 'gd-dev/popover', rerunMode: 'needs-eval-run' }]
+    );
   });
 
   it('skips guides whose gd-dev branch already exists', () => {
-    const { toFix, skipped } = planFixes([issueFor('spinner', 1)], [], [makeGuide('spinner')], new Set(['gd-dev/spinner']));
+    const { toFix, skipped } = planFixes([makeGuide('spinner')], [], new Set(['gd-dev/spinner']));
     assert.deepStrictEqual(toFix, []);
-    assert.strictEqual(skipped[0].reason, 'branch gd-dev/spinner already exists (delete it to retry)');
-  });
-
-  it('skips expectations-changed issues, unmarked issues, and guides that no longer need evals', () => {
-    const issues = [
-      issueFor('a', 1, 'expectations-changed'),
-      { number: 2, title: 'Manual', body: 'no marker' },
-      issueFor('b', 3),
-      issueFor('missing', 4),
-    ];
-    const { toFix, skipped } = planFixes(issues, [], [makeGuide('a'), makeGuide('b', { hasGrader: true, hasTask: true })], new Set());
-    assert.deepStrictEqual(toFix, []);
-    assert.deepStrictEqual(skipped.map(s => s.reason), [
-      'expectations-changed issues are not handled',
-      'not filed by eval-gap-watch',
-      'guide no longer needs evals',
-      'guide not found',
-    ]);
+    assert.deepStrictEqual(skipped, [{ guidePath: 'guides/css/spinner', reason: 'branch gd-dev/spinner already exists (delete it to retry)' }]);
   });
 });
 
@@ -100,10 +129,8 @@ describe('fixEvalGaps', () => {
   /** Calls for one guide that reached `gd pr`. */
   const prCalls = (name: string) => [`branch gd-dev/${name}`, `pr ${name}`, `reset ${name}`, `delete gd-dev/${name}`];
 
-  /** Runs fixEvalGaps with one missing-evals issue per guide. */
+  /** Runs fixEvalGaps against the given guides on disk. */
   function run(guides: GuideInventory[], options: FixEvalGapsOptions = {}): Promise<boolean> {
-    // planFixes keys guides by repo-relative path, so point the issues at the temp dirs.
-    evalGapFixCli.listGapIssues = () => guides.map((g, i) => issueFor(g.name, i + 1, 'missing-evals', path.relative(rootDir, g.dir)));
     evalGapFixCli.scanGuides = () => guides;
     return fixEvalGaps(options);
   }
@@ -119,6 +146,7 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.treeStatus = () => treeStatus;
     evalGapFixCli.pullMain = () => { calls.push('pull'); };
     evalGapFixCli.createBranch = b => { calls.push(`branch ${b}`); branch = b; };
+    evalGapFixCli.checkoutPrBranch = b => { calls.push(`checkout-pr ${b}`); branch = b; };
     evalGapFixCli.resetToMain = dir => { calls.push(`reset ${path.basename(dir)}`); branch = 'main'; };
     evalGapFixCli.deleteLocalBranch = b => { calls.push(`delete ${b}`); };
     evalGapFixCli.listDevBranches = () => new Set();
@@ -133,8 +161,8 @@ describe('fixEvalGaps', () => {
   afterEach(() => {
     Object.assign(evalGapFixCli, originalCli);
     fs.rmSync(tempGuidesRoot, { recursive: true, force: true });
-    for (const name of ['scrollspy', 'spinner', 'progress-ring']) {
-      fs.rmSync(getGuideResultsDir({ category: 'css', slug: name }), { recursive: true, force: true });
+    for (const name of ['scrollspy', 'spinner', 'progress-ring', 'a', 'b']) {
+      fs.rmSync(getGuideResultsDir({ category: 'css', name }), { recursive: true, force: true });
     }
   });
 
@@ -144,6 +172,70 @@ describe('fixEvalGaps', () => {
 
     assert.strictEqual(await run([guide]), true);
     assert.deepStrictEqual(calls, ['pull', ...prCalls('scrollspy')]);
+  });
+
+  it('checks out the PR branch and preserves existing evals when rerunning a PR with needs-eval-run', async () => {
+    const guide = tempGuide('scrollspy');
+    const targetDir = path.join(guide.dir, TARGETS_DIR, 'daily-grind');
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.writeFileSync(path.join(targetDir, 'grader.ts'), '// existing grader\n');
+    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-eval-run'], 'gd-dev/scrollspy')];
+    stubDev([guide]);
+
+    assert.strictEqual(await run([guide]), true);
+    assert.strictEqual(fs.existsSync(path.join(targetDir, 'grader.ts')), true);
+    assert.deepStrictEqual(calls, [
+      'pull',
+      'checkout-pr gd-dev/scrollspy',
+      'pr scrollspy',
+      'reset scrollspy',
+      'delete gd-dev/scrollspy',
+    ]);
+  });
+
+  it('deletes target evals before running gd dev when rerunning a PR with needs-eval-gen', async () => {
+    const guide = tempGuide('scrollspy');
+    const dailyGrindDir = path.join(guide.dir, TARGETS_DIR, 'daily-grind');
+    const devtoolsTimesDir = path.join(guide.dir, TARGETS_DIR, 'devtools-times');
+    fs.mkdirSync(dailyGrindDir, { recursive: true });
+    fs.mkdirSync(devtoolsTimesDir, { recursive: true });
+    fs.writeFileSync(path.join(dailyGrindDir, 'grader.ts'), '// old daily-grind grader\n');
+    fs.writeFileSync(path.join(devtoolsTimesDir, 'grader.ts'), '// devtools-times grader untouched\n');
+    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-eval-gen'], 'gd-dev/scrollspy')];
+
+    let dailyGrindExistedDuringDev = true;
+    evalGapFixCli.runDevGuide = async inv => {
+      dailyGrindExistedDuringDev = fs.existsSync(dailyGrindDir);
+      fs.mkdirSync(resultsDir(inv), { recursive: true });
+      fs.writeFileSync(path.join(resultsDir(inv), REPORT_FILE), '# Report\n');
+      return true;
+    };
+
+    assert.strictEqual(await run([guide]), true);
+    assert.strictEqual(dailyGrindExistedDuringDev, false);
+    assert.strictEqual(fs.existsSync(path.join(devtoolsTimesDir, 'grader.ts')), true);
+    assert.deepStrictEqual(calls, [
+      'pull',
+      'checkout-pr gd-dev/scrollspy',
+      'pr scrollspy',
+      'reset scrollspy',
+      'delete gd-dev/scrollspy',
+    ]);
+  });
+
+  it('defaults targets to daily-grind and respects custom targets', async () => {
+    const guide = tempGuide('scrollspy');
+    const seenTargets: (readonly string[] | undefined)[] = [];
+    evalGapFixCli.runDevGuide = async (inv, opts) => {
+      seenTargets.push(opts.targets);
+      fs.mkdirSync(resultsDir(inv), { recursive: true });
+      fs.writeFileSync(path.join(resultsDir(inv), REPORT_FILE), '# Report\n');
+      return true;
+    };
+
+    assert.strictEqual(await run([guide]), true);
+    assert.strictEqual(await run([guide], { targets: ['daily-grind', 'devtools-times'] }), true);
+    assert.deepStrictEqual(seenTargets, [['daily-grind'], ['daily-grind', 'devtools-times']]);
   });
 
   it('discards changes and skips the PR when gd dev fails, then continues', async () => {
@@ -221,7 +313,7 @@ describe('fixEvalGaps', () => {
     assert.strictEqual(await run([first, second]), false);
     assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/scrollspy', 'pr scrollspy']);
     const output = log.mock.calls.map(c => String(c.arguments[0])).join('\n');
-    assert.match(output, /pr-opened.*#1 .*scrollspy.*cleanup failed: checkout failed/);
+    assert.match(output, /pr-opened.*scrollspy.*cleanup failed: checkout failed/);
   });
 
   it('stops the batch when the reset leaves files dirty', async () => {

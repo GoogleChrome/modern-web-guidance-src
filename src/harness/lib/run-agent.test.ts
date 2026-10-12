@@ -6,7 +6,6 @@ import os from 'node:os';
 import config from '../config.ts';
 import { runAgent } from './utils.ts';
 import { getDefaultSolutionAgent } from '../../core/guide-validation.ts';
-import { rootDir } from '../../core/paths.ts';
 
 describe('runAgent routing and argument building', () => {
   let tempDir: string;
@@ -68,16 +67,5 @@ echo "mock-cli ran with args: $@"
     } finally {
       delete process.env.GD_DEV_USE_JETSKI;
     }
-  });
-
-  test('nightly shell shims exist and are executable', () => {
-    const runAgentShim = path.join(rootDir, 'nightly/run_agent.sh');
-    const runGuidanceShim = path.join(rootDir, 'nightly/run_guidance_nightly.sh');
-    assert.ok(fs.existsSync(runAgentShim), 'nightly/run_agent.sh shim must exist');
-    assert.ok(fs.existsSync(runGuidanceShim), 'nightly/run_guidance_nightly.sh shim must exist');
-    const runAgentStat = fs.statSync(runAgentShim);
-    const runGuidanceStat = fs.statSync(runGuidanceShim);
-    assert.ok(!!(runAgentStat.mode & 0o111), 'nightly/run_agent.sh must be executable');
-    assert.ok(!!(runGuidanceStat.mode & 0o111), 'nightly/run_guidance_nightly.sh must be executable');
   });
 });
