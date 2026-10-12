@@ -1,8 +1,12 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 
-const targetFile = process.env.TARGET_FILE || path.join(process.cwd(), 'demo.html');
-const targetUrl = `file://${targetFile}`;
+const targetFileRaw = process.env.TARGET_FILE || path.join(process.cwd(), 'demo.html');
+const targetFile = path.isAbsolute(targetFileRaw) ? targetFileRaw : path.resolve(process.cwd(), targetFileRaw);
+const targetDir = path.dirname(targetFile);
+const targetFileName = path.basename(targetFile);
+const targetUrl = `http://localhost/${targetFileName}`;
 
 let polyfillRequested = false;
 
@@ -11,6 +15,17 @@ test.beforeEach(async ({ page }) => {
 
   page.on('console', msg => console.log('PAGE LOG:', msg.text()));
   page.on('pageerror', err => console.error('PAGE ERROR:', err.message));
+
+  await page.route('http://localhost/**', async route => {
+    const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+    const relPath = requestPath === '/' ? targetFileName : requestPath.replace(/^\/+/, '');
+    const localFilePath = path.resolve(targetDir, relPath);
+    if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+      await route.fulfill({ path: localFilePath });
+    } else {
+      await route.continue();
+    }
+  });
 
   // Intercept the polyfill request to record if it's requested, but continue
   await page.route('**/@js-temporal/polyfill*', async route => {
@@ -23,12 +38,16 @@ test.beforeEach(async ({ page }) => {
     (window as any).__temporalSpies = {
       zonedDateTimeFromCalled: 0,
       plainDateTimeFromCalled: 0,
+      plainDateTimeAddCalled: 0,
       withTimeZoneCalled: 0,
       disambiguationOptions: [],
       mutationsAttempted: 0
     };
 
-    let realTemporal = (window as any).__nativeTemporalMock || undefined;
+    let realTemporal = (window as any).__nativeTemporalMock || (typeof (window as any).Temporal !== 'undefined' ? (window as any).Temporal : undefined);
+    if (realTemporal) {
+      monkeypatchTemporal(realTemporal);
+    }
 
     function monkeypatchTemporal(T: any) {
       if (!T || T.__patched) return;
@@ -57,12 +76,19 @@ test.beforeEach(async ({ page }) => {
         }
       }
 
-      // 3. PlainDateTime.from
+      // 3. PlainDateTime.from and PlainDateTime.prototype.add
       if (T.PlainDateTime && typeof T.PlainDateTime.from === 'function') {
         const originalPlainDateTimeFrom = T.PlainDateTime.from;
         T.PlainDateTime.from = function(this: any, ...args: any[]) {
           (window as any).__temporalSpies.plainDateTimeFromCalled++;
           return originalPlainDateTimeFrom.apply(this, args);
+        };
+      }
+      if (T.PlainDateTime && T.PlainDateTime.prototype && typeof T.PlainDateTime.prototype.add === 'function') {
+        const originalPlainDateTimeAdd = T.PlainDateTime.prototype.add;
+        T.PlainDateTime.prototype.add = function(this: any, ...args: any[]) {
+          (window as any).__temporalSpies.plainDateTimeAddCalled++;
+          return originalPlainDateTimeAdd.apply(this, args);
         };
       }
 
@@ -99,8 +125,9 @@ test.beforeEach(async ({ page }) => {
       configurable: true,
       enumerable: true,
       get() {
-        if (!realTemporal && (window as any).__nativeTemporalMock) {
-          (window as any).Temporal = (window as any).__nativeTemporalMock;
+        if ((window as any).__nativeTemporalMock && realTemporal !== (window as any).__nativeTemporalMock) {
+          realTemporal = (window as any).__nativeTemporalMock;
+          monkeypatchTemporal(realTemporal);
         }
         return realTemporal;
       },
@@ -152,7 +179,8 @@ test('should NOT use Temporal.PlainDateTime for scheduling global events', async
   await page.waitForTimeout(1000);
 
   const spies = await page.evaluate(() => (window as any).__temporalSpies);
-  expect(spies.plainDateTimeFromCalled).toBe(0);
+  const usedZonedDateTime = spies.zonedDateTimeFromCalled > 0 && spies.withTimeZoneCalled > 0;
+  expect(spies.plainDateTimeAddCalled === 0 && (spies.plainDateTimeFromCalled === 0 || usedZonedDateTime)).toBe(true);
 });
 
 test('should use disambiguation: reject option in Temporal.ZonedDateTime.from() for conflict detection', async ({ page }) => {
@@ -189,7 +217,7 @@ test('should display correct DST-aware converted time for Tokyo', async ({ page 
   await page.selectOption('#hostTzSelect', 'America/New_York');
   await page.waitForTimeout(500);
 
-  const tokyoCard = page.locator('#grid > div', { hasText: 'Tokyo' }).first();
+  const tokyoCard = page.locator('#grid > *', { hasText: 'Tokyo' }).first();
   const cardText = await tokyoCard.innerText();
   const match = cardText.match(/(\d+:\d+\s*(?:AM|PM))/i);
   const timeStr = match ? match[1].toUpperCase().replace(/\s+/g, '') : '';

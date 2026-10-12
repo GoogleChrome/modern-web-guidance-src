@@ -13,7 +13,7 @@ Local Network Access splits access into two granular permissions and `Permission
 - **`local-network`**: Required when connecting from a `public` origin to the `local` address space (RFC 1918 private IPv4 ranges `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, link-local `169.254.0.0/16` / `fe80::/10`, IPv6 Unique Local Addresses `fc00::/7`, and `.local` mDNS hostnames).
 - **`loopback-network`**: Required when connecting from a `public` or `local` origin to the `loopback` address space (`127.0.0.0/8`, `::1/128`, or `localhost`).
 
-Because `localhost` (`127.0.0.1`) is already in the most private (`loopback`) address space, serving your web app from `http://localhost` during local development will **not** trigger LNA checks by default. To test LNA prompts and permission states locally without deploying to a public server, either override your local dev server's address space to `public` using the `--ip-address-space-overrides=127.0.0.1:8080=public` Chromium flag, or manually toggle **Local network** and **Loopback network** between `Ask`, `Allow`, and `Block` in browser **Site settings**.
+Because `localhost` (`127.0.0.1` and `[::1]`) is already in the most private (`loopback`) address space, serving your web app from `http://localhost` during local development will **not** trigger LNA checks by default. To test LNA prompts and permission states locally without deploying to a public server, either override your local dev server's IPv4 and IPv6 address space to `public` using the `--ip-address-space-overrides=127.0.0.1:8080=public,[::1]:8080=public` Chromium flag, or manually toggle **Local network** and **Loopback network** between `Ask`, `Allow`, and `Block` in browser **Site settings**.
 
 **MANDATORY:** Serve any web application that initiates local or loopback network requests from a **Secure Context (`https://`)**. Local Network Access permissions are denied automatically in insecure (`http://`) top-level contexts.
 
@@ -112,20 +112,18 @@ export async function fetchLoopbackDaemon(daemonUrl = 'http://127.0.0.1:45678/he
 
 Local Network Access restrictions also govern `WebSocket` and `WebTransport` connections:
 
-- **`WebSocket`**: Pass a `WebSocketInit` options dictionary as the second argument (`{ protocols, targetAddressSpace: 'local' | 'loopback' }`) when opening a `ws://` connection to a local or loopback endpoint from an `https://` page.
+- **`WebSocket`**: The `WebSocket(url, protocols)` constructor only accepts a subprotocol string or array as its second argument—do **not** pass a `{ targetAddressSpace }` options object, which throws a `SyntaxError`. Instead, the browser inspects the `WebSocket` URL before DNS resolution: `ws://` connections initiated from an `https://` page are exempted from Mixed Content blocking when the URL host is syntactically recognizable as local or loopback—specifically a private or loopback IP literal (`ws://192.168.1.100:8080`, `ws://127.0.0.1:8080`, `ws://[::1]:8080`), `localhost` (`*.localhost`), or a `.local` mDNS hostname (`ws://device.local:8080`)—and gated behind the `local-network` or `loopback-network` permission prompt. If a local endpoint is addressed via a custom non-`.local` DNS hostname, connect over `wss://`.
 - **`WebTransport`**: Because `WebTransport` strictly requires `https://` (HTTP/3 over QUIC with TLS or `serverCertificateHashes` for local self-signed certificates), it never triggers Mixed Content blocks and does not accept a `targetAddressSpace` option. Instead, the browser automatically verifies the resolved IP address space and gates the `transport.ready` promise behind the `local-network` or `loopback-network` permission prompt.
 
 ```javascript
 /**
- * Opens a WebSocket connection to a local network device with targetAddressSpace.
+ * Opens a WebSocket connection to a local network device (IP literal, .local, or localhost).
  */
 export function openLocalWebSocket(wsUrl = 'ws://192.168.1.100:8080/stream') {
-  // Pass WebSocketInit with targetAddressSpace so ws:// from an https:// page
-  // is permitted once the user grants 'local-network' permission.
-  const socket = new WebSocket(wsUrl, {
-    protocols: ['v1.telemetry'],
-    targetAddressSpace: 'local',
-  });
+  // Pass only subprotocol string(s) as the second argument (never an options object).
+  // Browsers exempt ws:// from Mixed Content when the host is a local/loopback IP literal,
+  // .local, or localhost, and gate the connection on 'local-network' or 'loopback-network'.
+  const socket = new WebSocket(wsUrl, ['v1.telemetry']);
   return socket;
 }
 
@@ -170,14 +168,13 @@ Permissions-Policy: local-network=(self "https://setup.partner.example.com"), lo
 
 ## Fallback Strategies
 
-{{ FEATURE_FALLBACKS("local-network-access") }}
+{{ BASELINE_STATUS("local-network-access") }}
 
-Because Local Network Access permissions and `targetAddressSpace` options are not yet supported across all browsers (and older browser versions only accepted a protocol string/array in `new WebSocket(url, protocols)`), implement **feature detection with progressive fallback**:
+If your Baseline target does not support Local Network Access permissions and `targetAddressSpace` options, implement **feature detection with progressive fallback**:
 
 1. **Permission Query Fallback**: Wrap `navigator.permissions.query({ name: permissionName })` in a `try / catch`. If the browser throws a `TypeError` because `'local-network'` or `'loopback-network'` is an unrecognized `PermissionName`, treat the state as `'prompt'` so the request still runs on an explicit user click (the connection attempt itself triggers the browser prompt where LNA is supported).
 2. **DO NOT** query the legacy combined permission name `{ name: 'local-network-access' }`. In older Chrome versions this query crashes the renderer process, and `try / catch` cannot prevent it. Newer Chrome versions treat `'local-network-access'` only as a legacy alias for the granular permissions.
-3. **`WebSocket` Constructor Fallback**: Wrap `new WebSocket(url, { protocols, targetAddressSpace })` in a `try / catch` and fall back to `new WebSocket(url, protocols)` when the browser does not support the `WebSocketInit` options dictionary.
-4. **Graceful Rejection Handling**: Always wrap `fetch()`, `WebSocket` error events, and `transport.ready` in error handlers that catch `TypeError` / connection failures and present clear remediation steps (checking that the local device is powered on, connected to the same network, and allowed in browser permissions).
+3. **Graceful Rejection Handling**: Always wrap `fetch()`, `WebSocket` error events, and `transport.ready` in error handlers that catch `TypeError` / connection failures and present clear remediation steps (checking that the local device is powered on, connected to the same network, and allowed in browser permissions).
 
 ```javascript
 /**
@@ -195,18 +192,6 @@ export async function queryLnaPermissionSafe(permissionName) {
   } catch {
     // Unrecognized permission name; proceed on user gesture
     return 'prompt';
-  }
-}
-
-/**
- * Cross-browser WebSocket helper that uses WebSocketInit ({ protocols, targetAddressSpace })
- * when supported and falls back to standard new WebSocket(url, protocols).
- */
-export function connectLocalWebSocketSafe(url, { protocols = [], targetAddressSpace = 'local' } = {}) {
-  try {
-    return new WebSocket(url, { protocols, targetAddressSpace });
-  } catch {
-    return new WebSocket(url, protocols);
   }
 }
 ```

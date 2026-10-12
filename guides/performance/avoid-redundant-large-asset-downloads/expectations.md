@@ -1,10 +1,10 @@
-- The app feature-detects `navigator.crossOriginStorage?.requestFileHandle` once, up front, and falls back to a normal network fetch immediately when it's absent, rather than attempting a call unconditionally.
-- Before fetching a large shared asset (an AI model, Wasm module, fully-bundled JS library, or game engine core) from the network, the app calls `navigator.crossOriginStorage.requestFileHandle(hash)` to check whether it is already available locally.
-- The `hash` object passed to `requestFileHandle()` has a `value` that is a lowercase hexadecimal string and an `algorithm` naming a Web Crypto API hash algorithm (e.g. `'SHA-256'`).
-- A `NotFoundError` thrown by `requestFileHandle()` is treated as a cache miss and triggers a fallback to a normal network fetch, never as definitive proof the file is absent from storage.
+- The app feature-detects `navigator.crossOriginStorage?.getFileHandle` once, up front, and falls back to a normal network fetch immediately when it's absent, rather than attempting a call unconditionally.
+- Before fetching a large shared asset (an AI model, Wasm module, fully-bundled JS library, or game engine core) from the network, the app calls `navigator.crossOriginStorage.getFileHandle(hash)` to check whether it is already available locally.
+- The `hash` object passed to `getFileHandle()` has a `value` that is a lowercase hexadecimal string and an `algorithm` naming a Web Crypto API hash algorithm (e.g. `'SHA-256'`).
+- A `NotFoundError` thrown by `getFileHandle()` is treated as a cache miss and triggers a fallback to a normal network fetch, never as definitive proof the file is absent from storage.
 - When storing a newly-downloaded file, the app requests a writable handle with `{ create: true }`, then writes the complete file via `createWritable()` / `write()` / `close()` (or `pipeTo()`), regardless of whether the file might already exist.
 - The app makes an explicit choice for the `origins` option based on the resource's real sharing scope: omitted for same-site-only, an explicit array of origin strings for a small trusted set, or `'*'` only for genuinely popular, non-proprietary resources — never using an enumerated origin list as a substitute for `'*'`.
 - The app does not assume `origins: '*'` guarantees a resource is retrievable by any origin; it still handles `NotFoundError` from a `'*'`-scoped lookup as an expected outcome, since availability gating can withhold confirmation even for globally-scoped resources.
 - The app does not call `getFile()` on a handle it just obtained via a `create: true` request until after that handle's `write()`/`close()` has resolved.
-- `NotAllowedError` from `requestFileHandle()` or `getFile()` is handled distinctly from `NotFoundError`, not treated as "asset absent."
-- Concurrent lookups or writes for multiple distinct hashes use `Promise.all()` over individual `requestFileHandle()` calls, not a single batched call.
+- `NotAllowedError` from `getFileHandle()` or `getFile()` is handled distinctly from `NotFoundError`, not treated as "asset absent."
+- Concurrent lookups or writes for multiple distinct hashes use `Promise.all()` over individual `getFileHandle()` calls, not a single batched call.

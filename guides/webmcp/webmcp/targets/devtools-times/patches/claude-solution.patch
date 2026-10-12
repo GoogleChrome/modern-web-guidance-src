@@ -1,0 +1,266 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..8012f11 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,39 @@
+ declare global {
+   interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++    adNetwork: any;
++  }
++
++  interface ModelContextToolAnnotations {
++    readOnlyHint?: boolean;
++    consequentialHint?: boolean;
++    untrustedContentHint?: boolean;
++  }
++
++  interface ModelContextToolDefinition {
++    name: string;
++    description: string;
++    inputSchema?: Record<string, unknown>;
++    annotations?: ModelContextToolAnnotations;
++    execute: (params: Record<string, unknown>) => Promise<unknown>;
++  }
++
++  interface ModelContext {
++    registerTool(
++      tool: ModelContextToolDefinition,
++      options?: { signal?: AbortSignal }
++    ): void;
++  }
++
++  interface Document {
++    modelContext?: ModelContext;
++  }
++}
++
++declare module "react" {
++  interface FormHTMLAttributes<T> {
++    toolname?: string;
++    tooldescription?: string;
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/pnpm-workspace.yaml b/pnpm-workspace.yaml
+new file mode 100644
+index 0000000..b9a5d61
+--- /dev/null
++++ b/pnpm-workspace.yaml
+@@ -0,0 +1,3 @@
++allowBuilds:
++  '@parcel/watcher': set this to true or false
++  esbuild: set this to true or false
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..6c64f11 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -55,7 +55,7 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form onSubmit={handleSubmit} className="space-y-4" toolname="sign-in" tooldescription="Sign in to The DevTools Times with a username and password">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..37d1f11 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -56,7 +56,7 @@ export default function SignUpForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form onSubmit={handleSubmit} className="space-y-4" toolname="sign-up" tooldescription="Create a new account on The DevTools Times with a username and password">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+diff --git a/src/components/WebMCPTools.tsx b/src/components/WebMCPTools.tsx
+new file mode 100644
+index 0000000..3bf7f73
+--- /dev/null
++++ b/src/components/WebMCPTools.tsx
+@@ -0,0 +1,158 @@
++import { useEffect } from "react";
++
++export default function WebMCPTools() {
++  useEffect(() => {
++    if (!document.modelContext) {
++      return;
++    }
++
++    const controller = new AbortController();
++    const { signal } = controller;
++    const baseUrl = import.meta.env.BASE_URL;
++
++    document.modelContext.registerTool(
++      {
++        name: "search-articles",
++        description:
++          "Search for articles by keyword across titles and summaries",
++        inputSchema: {
++          type: "object",
++          properties: {
++            query: {
++              type: "string",
++              description:
++                "The search term to find articles matching by title or summary",
++            },
++          },
++          required: ["query"],
++        },
++        annotations: {
++          readOnlyHint: true,
++          untrustedContentHint: true,
++        },
++        execute: async (params) => {
++          const query = params.query as string;
++          const response = await fetch(`${baseUrl}api/articles.json`);
++          const articles: Array<{
++            slug: string;
++            title: string;
++            summary: string;
++          }> = await response.json();
++          const lowerQuery = query.toLowerCase();
++          const results = articles.filter(
++            (article) =>
++              article.title.toLowerCase().includes(lowerQuery) ||
++              article.summary.toLowerCase().includes(lowerQuery)
++          );
++          return { results };
++        },
++      },
++      { signal }
++    );
++
++    document.modelContext.registerTool(
++      {
++        name: "get-reading-list",
++        description:
++          "Get the current reading list with saved article slug identifiers",
++        annotations: {
++          readOnlyHint: true,
++          untrustedContentHint: true,
++        },
++        execute: async () => {
++          const response = await fetch(`${baseUrl}api/reading-list.json`);
++          const data = await response.json();
++          return data;
++        },
++      },
++      { signal }
++    );
++
++    document.modelContext.registerTool(
++      {
++        name: "add-to-reading-list",
++        description: "Add an article to the reading list by its slug identifier",
++        inputSchema: {
++          type: "object",
++          properties: {
++            slug: {
++              type: "string",
++              description:
++                "The unique slug identifier of the article to bookmark",
++            },
++          },
++          required: ["slug"],
++        },
++        execute: async (params) => {
++          const slug = params.slug as string;
++          const getResponse = await fetch(`${baseUrl}api/reading-list.json`);
++          const { readingList } = await getResponse.json();
++          if (readingList.includes(slug)) {
++            return {
++              success: true,
++              message: "Article is already in the reading list",
++              readingList,
++            };
++          }
++          const response = await fetch(`${baseUrl}api/reading-list.json`, {
++            method: "POST",
++            headers: { "Content-Type": "application/json" },
++            body: JSON.stringify({ slug }),
++          });
++          const data = await response.json();
++          window.dispatchEvent(new CustomEvent("reading-list-updated"));
++          return { success: true, readingList: data.readingList };
++        },
++      },
++      { signal }
++    );
++
++    document.modelContext.registerTool(
++      {
++        name: "remove-from-reading-list",
++        description: "Remove an article from the reading list",
++        inputSchema: {
++          type: "object",
++          properties: {
++            slug: {
++              type: "string",
++              description:
++                "The unique slug identifier of the article to remove from the reading list",
++            },
++          },
++          required: ["slug"],
++        },
++        annotations: {
++          consequentialHint: true,
++        },
++        execute: async (params) => {
++          const slug = params.slug as string;
++          const getResponse = await fetch(`${baseUrl}api/reading-list.json`);
++          const { readingList } = await getResponse.json();
++          if (!readingList.includes(slug)) {
++            return {
++              success: true,
++              message: "Article is not in the reading list",
++              readingList,
++            };
++          }
++          const response = await fetch(`${baseUrl}api/reading-list.json`, {
++            method: "POST",
++            headers: { "Content-Type": "application/json" },
++            body: JSON.stringify({ slug }),
++          });
++          const data = await response.json();
++          window.dispatchEvent(new CustomEvent("reading-list-updated"));
++          return { success: true, readingList: data.readingList };
++        },
++      },
++      { signal }
++    );
++
++    return () => {
++      controller.abort();
++    };
++  }, []);
++
++  return null;
++}
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..6e28be9 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -2,6 +2,7 @@
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
++import WebMCPTools from "../components/WebMCPTools.tsx";
+ import "../styles/global.css";
+ 
+ import { ClientRouter } from "astro:transitions";
+@@ -37,6 +38,7 @@ const baseUrl = import.meta.env.BASE_URL;
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
++    <WebMCPTools client:load />
+     <div class="mx-auto">
+       <AdSlotFireplace client:load />
+       <div
