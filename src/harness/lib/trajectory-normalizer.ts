@@ -157,12 +157,24 @@ export function standardizeAction(
     case 'write_file': {
       const filePath = (p.path as string) || (p.file_path as string) || '';
       const rawContent = p.content ?? p.new_string ?? p.newText ?? undefined;
-      const content = rawContent !== undefined ? String(rawContent) : undefined;
+      const content = rawContent !== undefined ? truncateMessage(String(rawContent), 300) : undefined;
+      const {
+        content: _c,
+        new_string: _ns,
+        old_string: _os,
+        newText: _nt,
+        oldText: _ot,
+        CodeContent: _cc,
+        ReplacementChunks: _rc,
+        ReplacementContent: _rc2,
+        TargetContent: _tc,
+        ...rest
+      } = p;
       return {
         type: 'write_file',
         name,
         params: {
-          ...p,
+          ...rest,
           path: String(filePath),
           ...(content !== undefined ? { content } : {})
         }

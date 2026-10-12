@@ -354,6 +354,16 @@ describe('compare-evals pipeline', () => {
     const pathOutside = buildComparisonReportPath(outsideA, outsideB, 'details-styling', 'task');
     assert.strictEqual(path.dirname(pathOutside), path.join(resultsDir, 'variance_diagnoses'));
     assert.ok(pathOutside.endsWith('details-styling-task-trial-1-guided-vs-trial-2-unguided.md'));
+
+    // 4. Suite paths under results/suites/<suiteName>/... resolve the suiteName directly instead of "suites"
+    const suiteSubA = '/repo/results/suites/nightly-2026-09-08/1/details-styling/task/guided';
+    const suiteSubB = '/repo/results/suites/nightly-2026-09-08/2/details-styling/task/guided';
+    const pathSuites = buildComparisonReportPath(suiteSubA, suiteSubB, 'details-styling', 'task');
+    assert.strictEqual(
+      path.dirname(pathSuites),
+      '/repo/results/suites/nightly-2026-09-08/variance_diagnoses'
+    );
+    assert.ok(pathSuites.endsWith('details-styling-task-1-guided-vs-2-guided.md'));
   });
 
   test('runs runComparison using agent.patch when present', async () => {

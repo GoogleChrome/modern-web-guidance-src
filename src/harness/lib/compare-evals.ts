@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { cGreen, cRed, cCyan, cBold } from '../../core/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
-import { baseAppsDir, guidesDir, resultsDir } from '../../core/paths.ts';
+import { baseAppsDir, guidesDir, resultsDir, suitesDir } from '../../core/paths.ts';
 import { getComparisonPrompts } from './compare-prompts.ts';
 import { generateUnifiedDiff, extractTargetFilesFromPatch } from '../../core/patch-utils.ts';
 import {
@@ -59,6 +59,14 @@ export function stripAgentNarration(rawOutput: string): string {
   return trimmed;
 }
 
+export type AgentCaller = (
+  systemInstruction: string,
+  prompt: string,
+  label?: string,
+  workDir?: string,
+  homeDir?: string
+) => Promise<string>;
+
 /**
  * Calls the local agent CLI (Jetski or Gemini CLI based on repository config) inside an isolated workspace.
  */
@@ -66,7 +74,8 @@ async function callAgentCli(
   systemInstruction: string,
   prompt: string,
   label = 'Compare Agent',
-  workDir?: string
+  workDir?: string,
+  homeDir?: string
 ): Promise<string> {
   const combinedPrompt = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
   const agent = getDefaultSolutionAgent();
@@ -75,7 +84,7 @@ async function callAgentCli(
 
   const rawOutput = await runAgent(agent, combinedPrompt, workDir, {
     captureOutput: true,
-    homeDir: workDir ? path.dirname(workDir) : undefined
+    homeDir: homeDir ?? (workDir ? path.dirname(workDir) : undefined)
   });
   if (!rawOutput) {
     throw new Error(`[${label}] Empty response received from ${agent}`);
@@ -461,10 +470,13 @@ function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
 export function loadRunContext(runDir: string): RunContext {
   let absoluteDir = path.resolve(runDir);
   if (!fs.existsSync(absoluteDir)) {
-    const stripped = runDir.replace(/^(\.\/)?(harness\/)?results\/?/, '');
-    const candidate = path.resolve(resultsDir, stripped);
-    if (fs.existsSync(candidate)) {
-      absoluteDir = candidate;
+    const stripped = runDir.replace(/^(\.\/)?(harness\/)?results\/(suites\/)?/, '');
+    const suiteCandidate = path.resolve(suitesDir, stripped);
+    const resultsCandidate = path.resolve(resultsDir, stripped);
+    if (fs.existsSync(suiteCandidate)) {
+      absoluteDir = suiteCandidate;
+    } else if (fs.existsSync(resultsCandidate)) {
+      absoluteDir = resultsCandidate;
     }
   }
 
@@ -536,7 +548,7 @@ function sanitizeLabelSegment(raw: string): string {
 }
 
 function inferSuiteDir(runDir: string): string | null {
-  const resultsMatch = runDir.match(/(.*[/\\]results[/\\][^/\\]+)/);
+  const resultsMatch = runDir.match(/(.*[/\\]results[/\\](?:suites[/\\])?(?!suites(?:[/\\]|$))[^/\\]+)/);
   if (resultsMatch) return resultsMatch[1];
 
   const normalized = runDir.replace(/\\/g, '/').replace(/\/+$/, '');
@@ -683,7 +695,7 @@ ${JSON.stringify(ctxB.preprocessed.taggedSteps, null, 2)}
 export async function runComparison(
   runDirA: string,
   runDirB: string,
-  agentCaller: (sys: string, prompt: string, label?: string, workDir?: string) => Promise<string> = callAgentCli
+  agentCaller: AgentCaller = callAgentCli
 ): Promise<string> {
   console.log(cCyan(`\n=== Starting Run Comparison (Unified Subagent-Orchestrated Pipeline) ===`));
   console.log(`Run A: ${runDirA}`);
@@ -720,8 +732,7 @@ export async function runComparison(
   const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
 
-  const prevJetskiDir = process.env.JETSKI_DIR;
-  const { workDir } = setupGuideDevWorkDir('compare');
+  const { workDir, tempHome } = setupGuideDevWorkDir('compare');
 
   try {
     console.log(cBold(`[Compare Agent] Phase 1: Pre-processed trajectories into tagged milestones.`));
@@ -742,7 +753,7 @@ export async function runComparison(
       statusB
     );
 
-    const rawReport = await agentCaller(systemInstruction, prompt, 'Compare Agent', workDir);
+    const rawReport = await agentCaller(systemInstruction, prompt, 'Compare Agent', workDir, tempHome);
     const markdownReport = stripAgentNarration(rawReport);
 
     const savedPath = buildComparisonReportPath(ctxA.dir, ctxB.dir, guideName, taskName);
@@ -759,11 +770,6 @@ export async function runComparison(
     console.error(cRed(`❌ Diagnosis failed: ${err.message}`));
     throw err;
   } finally {
-    cleanupIsolatedHome(path.dirname(workDir));
-    if (prevJetskiDir === undefined) {
-      delete process.env.JETSKI_DIR;
-    } else {
-      process.env.JETSKI_DIR = prevJetskiDir;
-    }
+    cleanupIsolatedHome(tempHome);
   }
 }

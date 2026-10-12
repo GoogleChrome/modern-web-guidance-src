@@ -120,4 +120,19 @@ describe('gcs-downloader', () => {
     assert.strictEqual(resolved2.relativeRunPath, relativeSuite);
     assert.ok(resolved2.absoluteRunDir.endsWith(relativeSuite));
   });
+
+  test('resolveRunPath handles results/suites paths without prefixing suites/ to relativeRunPath', async () => {
+    const { resolveRunPath } = await import('./gcs-downloader.ts');
+    const suiteRun = 'nightly-2026-09-08_12-00-00-claude_code/1/details-styling/task/guided';
+
+    const resolved = resolveRunPath(`results/suites/${suiteRun}`);
+    assert.ok(resolved);
+    assert.strictEqual(resolved.relativeRunPath, suiteRun);
+    assert.ok(resolved.absoluteRunDir.endsWith(path.join('results', 'suites', ...suiteRun.split('/'))));
+
+    const resolved2 = resolveRunPath(`harness/results/suites/${suiteRun}`);
+    assert.ok(resolved2);
+    assert.strictEqual(resolved2.relativeRunPath, suiteRun);
+    assert.ok(resolved2.absoluteRunDir.endsWith(path.join('results', 'suites', ...suiteRun.split('/'))));
+  });
 });

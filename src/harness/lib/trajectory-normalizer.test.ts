@@ -213,6 +213,25 @@ test('standardizeAction enforces strictly typed parameter shapes per action type
   assert.strictEqual(write3.params.path, '/path/to/main.ts');
   assert.strictEqual(write3.params.content, 'const b = 2;');
 
+  // write_file strips raw untruncated content fields and truncates long content to 300 chars
+  const writeTruncated = standardizeAction('write_file', 'write_to_file', {
+    path: 'big.js',
+    content: 'x'.repeat(400),
+    CodeContent: 'raw-code',
+    ReplacementChunks: 'raw-chunks',
+    ReplacementContent: 'raw-repl',
+    TargetContent: 'raw-target',
+    otherProp: 'keep'
+  });
+  assertActionType(writeTruncated, 'write_file');
+  assert.strictEqual(writeTruncated.params.path, 'big.js');
+  assert.strictEqual(writeTruncated.params.content, 'x'.repeat(300) + '... [truncated]');
+  assert.strictEqual((writeTruncated.params as any).otherProp, 'keep');
+  assert.strictEqual((writeTruncated.params as any).CodeContent, undefined);
+  assert.strictEqual((writeTruncated.params as any).ReplacementChunks, undefined);
+  assert.strictEqual((writeTruncated.params as any).ReplacementContent, undefined);
+  assert.strictEqual((writeTruncated.params as any).TargetContent, undefined);
+
   // other preserves raw properties
   const other1 = standardizeAction('other', 'respond_to_user', { response: 'Done' });
   assertActionType(other1, 'other');

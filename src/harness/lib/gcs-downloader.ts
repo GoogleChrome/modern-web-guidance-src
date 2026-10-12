@@ -97,13 +97,18 @@ async function downloadFileBatch<T>(
  * Downloads a suite-level evals.json file from GCS if it is missing locally.
  * Deduplicates concurrent requests for the same suiteName using an in-flight Promise map.
  */
-export async function downloadSuiteEvalsIfMissing(suiteName: string, token: string | undefined): Promise<void> {
-  const destPath = path.join(baseResultsDir, suiteName, 'evals.json');
+export async function downloadSuiteEvalsIfMissing(
+  suiteName: string,
+  token: string | undefined,
+  suiteDirOverride?: string
+): Promise<void> {
+  const destPath = path.join(suiteDirOverride || path.join(baseResultsDir, suiteName), 'evals.json');
   if (fs.existsSync(destPath)) {
     return;
   }
 
-  const inflight = inflightSuiteEvalsDownloads.get(suiteName);
+  const inflightKey = suiteDirOverride ? `${suiteName}:${suiteDirOverride}` : suiteName;
+  const inflight = inflightSuiteEvalsDownloads.get(inflightKey);
   if (inflight) {
     return inflight;
   }
@@ -148,10 +153,10 @@ export async function downloadSuiteEvalsIfMissing(suiteName: string, token: stri
       console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via SDK: ${msg}`);
     }
   })().finally(() => {
-    inflightSuiteEvalsDownloads.delete(suiteName);
+    inflightSuiteEvalsDownloads.delete(inflightKey);
   });
 
-  inflightSuiteEvalsDownloads.set(suiteName, downloadPromise);
+  inflightSuiteEvalsDownloads.set(inflightKey, downloadPromise);
   return downloadPromise;
 }
 
@@ -173,8 +178,9 @@ export function resolveRunPath(runDir: string): { absoluteRunDir: string; relati
   let relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
 
   if (relativeRunPath.startsWith('..') || path.isAbsolute(relativeRunPath)) {
-    const stripped = normalizedRunDir.replace(/^(\.\/)?(harness\/)?results\/?/, '');
-    const candidate = path.resolve(baseResultsDir, stripped);
+    const hasSuites = /(^|[/\\])suites([/\\]|$)/.test(normalizedRunDir);
+    const stripped = normalizedRunDir.replace(/^(\.\/)?(harness\/)?results\/(suites\/)?/, '');
+    const candidate = path.resolve(hasSuites ? path.join(baseResultsDir, 'suites') : baseResultsDir, stripped);
     const candidateRel = path.relative(absoluteResultsDir, normalizePath(candidate));
     if (!candidateRel.startsWith('..') && !path.isAbsolute(candidateRel)) {
       absoluteRunDir = candidate;
@@ -184,6 +190,8 @@ export function resolveRunPath(runDir: string): { absoluteRunDir: string; relati
       return null;
     }
   }
+
+  relativeRunPath = relativeRunPath.replace(/^suites[/\\]/, '');
 
   return { absoluteRunDir, relativeRunPath };
 }
@@ -286,14 +294,19 @@ export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boole
   if (!resolved) return false;
   const { absoluteRunDir, relativeRunPath } = resolved;
 
-  const suiteName = relativeRunPath.split(/[/\\]/)[0];
+  const parts = relativeRunPath.split(/[/\\]/).filter(Boolean);
+  const suiteName = parts[0];
   const token = process.env.GD_GCS_TOKEN;
 
+  const localSuiteDir = parts.length > 1
+    ? path.resolve(absoluteRunDir, ...Array(parts.length - 1).fill('..'))
+    : absoluteRunDir;
+
   // 1. Lazily download the suite-level evals.json
-  await downloadSuiteEvalsIfMissing(suiteName, token);
+  await downloadSuiteEvalsIfMissing(suiteName, token, localSuiteDir);
 
   // If runDir points to a top-level suite directory rather than a specific task run, we only need evals.json
-  if (!relativeRunPath.includes('/') && !relativeRunPath.includes('\\')) {
+  if (parts.length <= 1) {
     return true;
   }
 
