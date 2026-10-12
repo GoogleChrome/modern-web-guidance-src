@@ -197,10 +197,11 @@ If your Baseline target includes browsers without `@property` support, `--icon-s
 
 {{ BASELINE_STATUS("container-style-queries") }}
 
-To support browsers without Container Style Queries, pair the `@container style(...)` rules with style attribute substring selectors so icons still render when `--icon-start`, `--icon-end`, or `--icon` are set inline:
+To support browsers without Container Style Queries, use classes or component selectors as fallback hooks. These identify where an icon can appear, while custom properties determine which icon to display. Inline-style selectors alone miss icons assigned through CSS rules.
 
 ```css
-[style*="--icon-start"]::before {
+/* Fallback hooks for browsers without Container Style Queries */
+.icon-start::before {
   --icon-start: inherit;
   content: "";
   display: inline-block;
@@ -211,11 +212,11 @@ To support browsers without Container Style Queries, pair the `@container style(
   vertical-align: middle;
 }
 
-[style*="--icon-start"]:not(.icon, :empty)::before {
+.icon-start:not(.icon, :empty)::before {
   margin-inline-end: 0.4em;
 }
 
-[style*="--icon-end"]::after {
+.icon-end::after {
   --icon-end: inherit;
   content: "";
   display: inline-block;
@@ -226,11 +227,11 @@ To support browsers without Container Style Queries, pair the `@container style(
   vertical-align: middle;
 }
 
-[style*="--icon-end"]:not(.icon, :empty)::after {
+.icon-end:not(.icon, :empty)::after {
   margin-inline-start: 0.4em;
 }
 
-.icon:empty[style*="--icon"]::before {
+.icon:empty::before {
   content: "";
   display: inline-block;
   width: var(--icon-size);
@@ -238,6 +239,18 @@ To support browsers without Container Style Queries, pair the `@container style(
   background-color: currentColor;
   mask: var(--icon) no-repeat center / contain;
   vertical-align: middle;
+}
+```
+
+For example, the `icon-start` class enables the fallback, while the stylesheet sets the icon itself:
+
+```html
+<button class="icon-start delete">Delete</button>
+```
+
+```css
+button.delete {
+  --icon-start: var(--icon-trash);
 }
 ```
 
