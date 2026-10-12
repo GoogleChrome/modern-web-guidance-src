@@ -459,7 +459,13 @@
       }
 
       scroller.addEventListener('pointerdown', (e) => {
-        if (e.offsetX >= scroller.clientWidth || e.offsetY >= scroller.clientHeight) return;
+        const rect = scroller.getBoundingClientRect();
+        if (
+          e.clientX - rect.left - scroller.clientLeft >= scroller.clientWidth ||
+          e.clientY - rect.top - scroller.clientTop >= scroller.clientHeight
+        ) {
+          return;
+        }
         lastPointerX = e.clientX;
         lastPointerY = e.clientY;
         lastKnownClientX = e.clientX;
