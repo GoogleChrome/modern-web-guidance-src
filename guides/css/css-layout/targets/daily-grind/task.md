@@ -1,0 +1,1 @@
+- Update the page layouts and UI components to use modern responsive layouts.
