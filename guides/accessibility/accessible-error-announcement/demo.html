@@ -105,7 +105,7 @@
       <span class="hint" id="username-hint">Type 1-2 chars and tab away to see error.</span>
       <input type="text" id="username" name="username" required minlength="3" aria-describedby="username-hint"
         aria-errormessage="username-error">
-      <div id="username-error" class="error-message">
+      <div id="username-error" class="error-message" aria-live="polite">
         Username must be at least 3 characters long.
       </div>
       <div class="debug-info" id="username-debug">aria-invalid: null</div>
@@ -114,7 +114,7 @@
     <div class="form-group">
       <label for="email">Email Address</label>
       <input type="email" id="email" name="email" required aria-errormessage="email-error">
-      <div id="email-error" class="error-message">
+      <div id="email-error" class="error-message" aria-live="polite">
         Please enter a valid email address.
       </div>
       <div class="debug-info" id="email-debug">aria-invalid: null</div>
@@ -283,6 +283,20 @@
                   // Update debug info for the demo
                   updateDebugInfo(e.target);
                 }, true);
+
+                  document.addEventListener('invalid', (e) => {
+                    if (!e.target.matches?.('input, textarea, select')) return;
+                    if (useNativeLogic && e.target.checkValidity) {
+                      const isInvalid = e.target.matches(':user-invalid');
+                      if (isInvalid) {
+                        e.target.setAttribute('aria-invalid', 'true');
+                      } else {
+                        e.target.removeAttribute('aria-invalid');
+                      }
+                    }
+                    // Update debug info for the demo
+                    updateDebugInfo(e.target);
+                  }, true);
 
                   document.addEventListener('input', (e) => {
                     if (!e.target.matches?.('input, textarea, select')) return;
