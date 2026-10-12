@@ -4,4 +4,4 @@
 - When the custom element has a toggleable state, clicking the control toggles its state in the accessibility tree.
 - When the custom element has a toggleable state, pressing `Space` while the control has focus toggles its state in the accessibility tree.
 - No `aria-*` state attribute is added to the host when the state changes.
-- The custom element has a non-empty accessible name. When the name comes from `aria-labelledby`, the referenced `id` is in the same tree as the attribute; when the label crosses a shadow boundary, it uses `ariaLabelledByElements` pointing outward to the Light DOM or an ancestor tree, never into the host's own shadow root.
+- When the custom element is an interactive control or has a role that requires an accessible name, it has a non-empty accessible name. When the name comes from `aria-labelledby`, the referenced `id` is in the same tree as the attribute; when the label crosses a shadow boundary, it uses `ariaLabelledByElements` pointing outward to the Light DOM or an ancestor tree, never into the host's own shadow root.
