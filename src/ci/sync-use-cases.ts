@@ -70,16 +70,16 @@ const PROJECT_GITHUB_TOKEN = process.env.PROJECT_GITHUB_TOKEN || GITHUB_TOKEN;
 const ORG = 'GoogleChrome';
 const REPO = 'modern-web-guidance-src';
 const PROJECT_NUMBER = 30;
-// Default to dry run mode unless explicitly disabled via --write, --live, or DRY_RUN=false/0/no.
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 const hasWriteFlag = process.argv.includes('--write') || process.argv.includes('--live');
 const isDryRunEnv = parseBooleanEnv(process.env.DRY_RUN, true);
 const IS_DRY_RUN = hasWriteFlag ? false : isDryRunEnv;
 
-if (IS_DRY_RUN) {
+if (isMain && IS_DRY_RUN) {
   console.log('🏃 Dry run mode enabled. No changes will be made to GitHub.');
 }
 
-if (!GITHUB_TOKEN && !IS_DRY_RUN) {
+if (isMain && !GITHUB_TOKEN && !IS_DRY_RUN) {
   console.error('Error: GITHUB_TOKEN environment variable is required.');
   process.exit(1);
 }
@@ -808,7 +808,6 @@ async function run() {
   console.log('✨ Finished use case sync.');
 }
 
-const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
   run().catch(err => {
     console.error('Fatal error:', err);

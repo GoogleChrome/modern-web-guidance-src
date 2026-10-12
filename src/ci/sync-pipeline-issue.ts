@@ -26,6 +26,7 @@ import {
   type GuideInventory,
 } from '../core/guide-validation.ts';
 import { rootDir } from '../core/paths.ts';
+import { buildUseCaseMaps } from './sync-use-cases.ts';
 
 export const ORG = 'GoogleChrome';
 export const REPO = 'modern-web-guidance-src';
@@ -132,7 +133,6 @@ export interface NeedsGuidanceIssueItem {
 export interface OpenEvalPrItem {
   slug: string;
   prNumber: number;
-  isDraft: boolean;
   metrics: EvalPrMetrics;
   author: string;
   reviewers: string[];
@@ -309,7 +309,7 @@ export function collectGitGuideHistory(cwd: string = rootDir): Map<string, GitFi
   try {
     output = child_process.execFileSync(
       'git',
-      ['log', '--no-renames', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
+      ['log', '-M', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
       { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
     );
   } catch {
@@ -618,7 +618,7 @@ function fetchOpenPrs(): PrSummary[] {
       '--limit',
       '150',
       '--json',
-      'number,title,body,isDraft,headRefName,author,reviewRequests,labels,files',
+      'number,title,body,isDraft,headRefName,author,reviewRequests,latestReviews,labels,files',
     ],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
   );
@@ -630,6 +630,7 @@ function fetchOpenPrs(): PrSummary[] {
     headRefName?: string;
     author?: { login?: string };
     reviewRequests?: Array<{ login?: string; name?: string }>;
+    latestReviews?: Array<{ author?: { login?: string } }>;
     labels?: Array<{ name?: string }>;
     files?: Array<{ path?: string }>;
   }>;
@@ -641,7 +642,12 @@ function fetchOpenPrs(): PrSummary[] {
     isDraft: Boolean(p.isDraft),
     headRefName: p.headRefName ?? '',
     author: p.author?.login ?? 'unknown',
-    reviewers: (p.reviewRequests ?? []).map(r => r.login ?? r.name ?? '').filter(Boolean),
+    reviewers: [
+      ...new Set([
+        ...(p.reviewRequests ?? []).map(r => r.login ?? r.name ?? ''),
+        ...(p.latestReviews ?? []).map(r => r.author?.login ?? ''),
+      ]),
+    ].filter(Boolean),
     labels: (p.labels ?? []).map(l => l.name ?? '').filter(Boolean),
     files: (p.files ?? []).map(f => f.path ?? '').filter(Boolean),
   }));
@@ -708,32 +714,11 @@ export function buildUseCaseIssueIndex(
   useCaseIssues: IssueSummary[],
   featureIssues: IssueSummary[]
 ): UseCaseIssueIndex {
-  const nameToIssueMap = new Map<string, IssueSummary>();
-  const subdirToIssueMap = new Map<string, IssueSummary>();
+  const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(useCaseIssues) as {
+    nameToIssueMap: Map<string, IssueSummary>;
+    subdirToIssueMap: Map<string, IssueSummary>;
+  };
   const featureIdToIssueMap = new Map<string, IssueSummary>();
-
-  for (const issue of useCaseIssues) {
-    const titleMatch = /Create guide(?: and evals)? for the (.+) use case/i.exec(issue.title);
-    if (titleMatch) {
-      nameToIssueMap.set(titleMatch[1].trim(), issue);
-    }
-    const bodyMatch = /Use case subdir: \[([^\]]+)\]/.exec(issue.body);
-    if (bodyMatch) {
-      subdirToIssueMap.set(bodyMatch[1].trim(), issue);
-    }
-    const templateCategoryMatch = /###\s+Category\s*\r?\n+([^\r\n#]+)/i.exec(issue.body);
-    const templateSlugMatch = /###\s+Use case slug\s*\r?\n+([^\r\n#]+)/i.exec(issue.body);
-    if (templateCategoryMatch && templateSlugMatch) {
-      const category = templateCategoryMatch[1].trim().toLowerCase();
-      const tSlug = templateSlugMatch[1].trim().toLowerCase();
-      if (category && tSlug) {
-        if (!nameToIssueMap.has(tSlug)) nameToIssueMap.set(tSlug, issue);
-        if (!subdirToIssueMap.has(`guides/${category}/${tSlug}`)) {
-          subdirToIssueMap.set(`guides/${category}/${tSlug}`, issue);
-        }
-      }
-    }
-  }
 
   for (const featIssue of featureIssues) {
     for (const fid of extractFeatureIds(featIssue.body)) {
@@ -821,7 +806,6 @@ function resolveEvalPrs(
       openEvalPrs.push({
         slug,
         prNumber: pr.number,
-        isDraft: pr.isDraft,
         metrics: parseEvalReportFromPrBody(pr.body),
         author: pr.author,
         reviewers: filterCatchAllReviewers(pr.reviewers, 'evals'),

@@ -11,9 +11,6 @@ on:
       - opened
       - synchronize
       - reopened
-      - closed
-      - ready_for_review
-      - converted_to_draft
     paths:
       - 'guides/**'
   schedule:
