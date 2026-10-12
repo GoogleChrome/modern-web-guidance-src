@@ -1,6 +1,6 @@
 # Noise reduction strategy:
 # 1. Weekly updates on Sundays to avoid daily interruptions.
-# 2. Group ALL updates (major, minor, patch) into a single PR per project.
+# 2. Group minor and patch updates into a single PR per project (major updates ignored).
 # 3. Limit total open PRs to prevent backlog accumulation.
 
 version: 2
@@ -8,23 +8,23 @@ updates:
   - package-ecosystem: "npm"
     directories:
       - "/"
-      - "/serving"
-      - "/harness"
-      - "/harness/base_apps/devtools-times"
-      - "/guides"
-      - "/eval-view"
+      - "/src/harness/base-apps/devtools-times"
     schedule:
       interval: "weekly"
       day: "sunday"
     open-pull-requests-limit: 3
+    versioning-strategy: "increase"
     ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    allow:
+      # Handled by dedicated updater workflow: .github/workflows/update-web-features.yml
       - dependency-name: "web-features"
       - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     cooldown:
-      default-days: 14
+      default-days: 7
+      # Fast-moving AI SDKs/CLIs that need immediate updates
+      exclude:
+        - "@anthropic-ai/*"
+        - "@openai/*"
     groups:
       everything:
         patterns:

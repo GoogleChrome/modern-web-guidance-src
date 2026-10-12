@@ -43,7 +43,7 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
 }
 
 /* Exit animation: transition TO these values when hidden */
-.card:where(.hidden, [hidden]) {
+.card[hidden] {
   display: none;
   opacity: 0;
   translate: 0 -20px;
@@ -63,7 +63,7 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
     }
   }
 
-  .card:where(.hidden, [hidden]) {
+  .card[hidden] {
     translate: none;
   }
 }
@@ -74,11 +74,11 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
 For elements added via `appendChild()` or removed via `remove()`:
 
 - **Entry**: Use `@starting-style` as shown above. The browser will automatically detect the style change from "nothing" to the element's initial styles and trigger the transition from the `@starting-style` values.
-- **Removal**: Since `element.remove()` is instantaneous and doesn't trigger a CSS transition on its own, you must trigger the exit transition first (e.g., by adding a class) and wait for it to finish before removing the node from the DOM.
+- **Removal**: Since `element.remove()` is instantaneous and doesn't trigger a CSS transition on its own, you must trigger the exit transition first and wait for it to finish before removing the node from the DOM.
 
 ```javascript
-// Trigger exit transition
-element.setAttribute('hidden', true);
+// 1. Trigger exit transition
+element.hidden = true;
 
 // 2. Wait for all active transitions/animations to finish,
 //    with a failsafe timeout in case an animation never ends (e.g. for looping animations)
@@ -108,33 +108,59 @@ element.remove();
 
 {{ BASELINE_STATUS("starting-style") }}
 
-For browsers that do not support these features, elements will toggle `display: none` instantly. You can detect support in JavaScript using `CSS.supports()` to conditionally apply manual animation logic.
+{{ FEATURE_FALLBACKS("transition-behavior") }}
 
-```javascript
-// Detect support for discrete transitions and starting-style
-const supportsModernTransitions =
-  window.CSS &&
-  CSS.supports('transition-behavior', 'allow-discrete');
+### Exit fallback when discrete `display` transitions are unsupported
 
-if (!supportsModernTransitions) {
-  // Implement manual JS-based fallback for entry/exit
+Entry animations using `@starting-style` work across all modern browsers without JavaScript. When discrete `display` transitions are unsupported (`!canTransitionDisplay()`), setting `hidden` applies `display: none` immediately and skips the exit animation (both when hiding and before `element.remove()`). Separate the visual exit state (`[data-closing]`) from `display: none` (`[hidden]`) so `opacity` and `translate` finish animating before hiding or removing the element. Replace the `.card[hidden]` rules from step 1 (including the `prefers-reduced-motion` override) with:
+
+```css
+.card:where([hidden], [data-closing]) {
+  opacity: 0;
+  translate: 0 -20px;
+}
+
+.card[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card:where([hidden], [data-closing]) {
+    translate: none;
+  }
 }
 ```
 
-### Manual Entry Animation (JS Fallback)
-
 ```javascript
-// To show:
-el.style.display = '';
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    el.classList.remove('hidden');
-  });
-});
+async function hideElement(el) {
+  if (canTransitionDisplay()) {
+    el.hidden = true;
+  } else {
+    el.setAttribute('data-closing', '');
+  }
 
-// To hide:
-el.setAttribute('hidden', true);
-el.addEventListener('transitionend', () => {
-  if (el.classList.contains('hidden')) el.style.display = 'none';
-}, { once: true });
+  const animations = el.getAnimations();
+  if (animations.length > 0) {
+    await Promise.race([
+      Promise.allSettled(animations.map((a) => a.finished)),
+      new Promise((r) => setTimeout(r, 2000)),
+    ]);
+  }
+
+  // Skipped if showElement() cancelled the close mid-animation.
+  if (el.hasAttribute('data-closing')) {
+    el.removeAttribute('data-closing');
+    el.hidden = true;
+  }
+}
+
+function showElement(el) {
+  el.removeAttribute('data-closing');
+  el.hidden = false;
+}
+
+async function removeElement(el) {
+  await hideElement(el);
+  el.remove();
+}
 ```

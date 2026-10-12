@@ -24,7 +24,7 @@
         (Note: Because <code>localhost</code> is already in the <code>loopback</code> address space,
         to test permission denial locally toggle <strong>Local network</strong> /
         <strong>Loopback network</strong> in Chrome <strong>Site settings</strong> or launch Chrome
-        with <code>--ip-address-space-overrides=127.0.0.1:PORT=public</code>.)
+        with <code>--ip-address-space-overrides=127.0.0.1:PORT=public,[::1]:PORT=public</code>.)
       </small>
     </p>
 
@@ -178,19 +178,11 @@
       }
 
       function connectWebSocketSafe(wsUrl, outputEl, remediationEl) {
-        let socket;
-        try {
-          socket = new WebSocket(wsUrl, {
-            protocols: ['v1.telemetry'],
-            targetAddressSpace: 'local',
-          });
-        } catch {
-          socket = new WebSocket(wsUrl, ['v1.telemetry']);
-        }
+        const socket = new WebSocket(wsUrl, ['v1.telemetry']);
 
         outputEl.textContent = 'Opening local WebSocket...';
         socket.addEventListener('open', () => {
-          outputEl.textContent = 'WebSocket connected (targetAddressSpace: local)';
+          outputEl.textContent = 'WebSocket connected (local-network)';
           remediationEl.hidden = true;
           socket.close();
         });

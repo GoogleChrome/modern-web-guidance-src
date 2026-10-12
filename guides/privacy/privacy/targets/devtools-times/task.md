@@ -1,0 +1,1 @@
+- Update the application to implement privacy by design, data minimization, third-party audits, and secure data handling across user data handling, third-party service integrations, and security headers.

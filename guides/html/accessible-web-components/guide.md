@@ -40,15 +40,19 @@ This avoids polluting the DOM with ARIA attributes and prevents consumers from a
 - Attach the shadow root with `delegatesFocus: true` when the component wraps focusable controls. Focusing the host then forwards focus to the first focusable child, and `:focus`/label clicks behave as users expect.
 - For roving focus or moving focus into a newly revealed region, give the target `tabindex="-1"` and call `.focus()`; make programmatically-focusable targets explicit rather than relying on tab order.
 
-## ARIA relationships cannot cross shadow roots
+## ARIA relationships across shadow roots
 
-- **MANDATORY**: an `id` referenced by `aria-labelledby`, `aria-describedby`, `aria-controls`, etc. must live in the **same** tree as the referencing element. An attribute in the Light DOM cannot point at an `id` inside the shadow tree, and vice versa; the reference is silently ignored.
-- Keep each ARIA relationship within one root. If a label in the shadow tree must describe a slotted Light DOM element, move the relationship into one tree (e.g. render the label in the Light DOM, or use `aria-label` text instead of an `id` reference).
-- For element-to-element references that genuinely must cross roots, the emerging **Reference Target** mechanism is the standards direction, but it is not yet broadly available; design to keep references within a single tree today.
-- The reflected ARIA *element* properties — `ariaLabelledByElements`, `ariaDescribedByElements`, and siblings — let you set these relationships to actual element references in JS, with no `id` needed. Browser support is still limited and the rules for referencing across shadow roots are constrained and evolving, so verify before relying on them; today, treat them mainly as a cleaner way to wire *same-tree* relationships without minting ids.
+- **MANDATORY**: an `id` referenced by `aria-labelledby`, `aria-describedby`, `aria-controls`, etc. resolves only within the referencing element's **own** tree. An `id`-based attribute in the Light DOM cannot point at an `id` inside a shadow tree, and vice versa; the reference is silently ignored.
+- To cross the boundary, use the reflected ARIA *element* properties (e.g. `ariaLabelledByElements`, `ariaDescribedByElements`, etc), which take direct JS element references instead of ids. They resolve **outward**: an element inside a shadow tree can point at a target in the Light DOM or any ancestor tree (including slotted content), so you can label a shadow-internal control from Light DOM content — something `id` references can't express.
+- They do **not** resolve **inward**: an element can't reference *into* a descendant shadow tree (e.g. a host can't be labelled by its own shadow content). For that direction the emerging **Reference Target** mechanism is the standards direction, but it is not yet broadly available.
+- When a relationship can't be expressed either way, keep it within one tree (render the label in the same tree) or use `aria-label` text instead of an `id` reference.
 
 ## Fallback strategies
 
 {{ BASELINE_STATUS("aria-attribute-reflection") }}
 
 Where the `ElementInternals` ARIA mixin is unavailable, set the role and ARIA state as attributes on the host instead (`this.setAttribute('role', 'switch')`). It works everywhere, at the cost of putting attributes in the DOM that a consumer could override.
+
+{{ BASELINE_STATUS("aria-attribute-reflection", "api.Element.ariaLabelledByElements") }}
+
+Where the reflected ARIA *element* properties are unavailable, use an `id`-based `aria-*` attribute for same-tree relationships; a cross-boundary label has no `id`-based equivalent, so fall back to `aria-label` text.

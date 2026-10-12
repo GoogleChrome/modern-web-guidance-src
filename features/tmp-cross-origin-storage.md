@@ -12,12 +12,12 @@ Every Cross-Origin Storage (COS) surface takes a sharing scope that controls whi
 
 | Surface | Same-site only | Origin list | Global |
 |---|---|---|---|
-| `requestFileHandle()` `origins` option | Omit `origins` | Array of origin strings | `'*'` |
+| `getFileHandle()` `origins` option | Omit `origins` | Array of origin strings | `'*'` |
 | HTML `crossoriginstorage` attribute | Valueless attribute | Space-separated origins | `"*"` |
 | `crossOriginStorage` import attribute | Empty string (`''`) | Space-separated origins | `'*'` |
 | CSS `cross-origin-storage()` modifier | No arguments | Comma-separated origin strings | `*` |
 
-**MANDATORY:** An origin list only takes effect for origins that a `Cross-Origin-Storage-Allow-Origin` response header also names, for example `Cross-Origin-Storage-Allow-Origin: https://a.example, https://b.example`. The header comes from whoever supplies the bytes: the response of the page that calls `requestFileHandle()`, or the response of the fetched resource itself (the script, stylesheet, module, or font) for the HTML, import attribute, and CSS forms. Origins the header doesn't name are dropped, and if none remain, the file is stored with the same-site default. The same-site default and `*` need no header.
+**MANDATORY:** An origin list only takes effect for origins that a `Cross-Origin-Storage-Allow-Origin` response header also names, for example `Cross-Origin-Storage-Allow-Origin: https://a.example, https://b.example`. The header comes from whoever supplies the bytes: the response of the page that calls `getFileHandle()`, or the response of the fetched resource itself (the script, stylesheet, module, or font) for the HTML, import attribute, and CSS forms. Origins the header doesn't name are dropped, and if none remain, the file is stored with the same-site default. The same-site default and `*` need no header.
 
 ## Naming
 

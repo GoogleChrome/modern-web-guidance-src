@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prevent Page Scroll Under Modal Dialog Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 70ch;
+      margin: 0 auto;
+      padding: 2rem;
+      min-height: 200vh;
+    }
+
+    dialog {
+      max-width: 30rem;
+      max-height: min(50vh, 15rem);
+    }
+
+    /* Prevent scroll events inside the modal dialog from chaining to the page */
+    dialog:modal {
+      overscroll-behavior: contain;
+    }
+
+    /* Make ::backdrop a non-scrollable scroll container and contain its scroll */
+    dialog::backdrop {
+      overflow: hidden;
+      overscroll-behavior: contain;
+      background-color: rgb(0 0 0 / 50%);
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Modal Dialog Scroll Containment Demo</h1>
+    <p>
+      Open a modal dialog below and try scrolling both inside the dialog and over the
+      backdrop. The page underneath will not scroll.
+    </p>
+
+    <p>
+      <button type="button" id="open-short-dialog">Open Short Dialog</button>
+      <button type="button" id="open-scrollable-dialog">Open Scrollable Dialog</button>
+    </p>
+  </main>
+
+  <dialog id="short-dialog" aria-labelledby="short-dialog-title">
+    <h2 id="short-dialog-title">Short Dialog</h2>
+    <p>
+      This modal dialog does not overflow, yet <code>overscroll-behavior: contain</code>
+      still prevents scroll events inside the dialog or on its backdrop from scrolling the
+      page underneath.
+    </p>
+    <form method="dialog">
+      <button type="submit">Close</button>
+    </form>
+  </dialog>
+
+  <dialog id="scrollable-dialog" aria-labelledby="scrollable-dialog-title">
+    <h2 id="scrollable-dialog-title">Scrollable Dialog</h2>
+    <p>
+      This modal dialog contains overflowing content. When you scroll to the top or bottom
+      boundary, scroll chaining to the background page is prevented.
+    </p>
+    <p>
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+      incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
+      exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+    </p>
+    <p>
+      Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
+      fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa
+      qui officia deserunt mollit anim id est laborum.
+    </p>
+    <p>
+      Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis
+      et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin
+      mauris.
+    </p>
+    <form method="dialog">
+      <button type="submit">Close</button>
+    </form>
+  </dialog>
+
+  <script type="module">
+    const shortDialog = document.getElementById('short-dialog');
+    const scrollableDialog = document.getElementById('scrollable-dialog');
+
+    document.getElementById('open-short-dialog').addEventListener('click', () => {
+      shortDialog.showModal();
+    });
+
+    document.getElementById('open-scrollable-dialog').addEventListener('click', () => {
+      scrollableDialog.showModal();
+    });
+  </script>
+</body>
+
+</html>
