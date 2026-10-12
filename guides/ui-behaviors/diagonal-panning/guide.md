@@ -62,11 +62,11 @@ Because a 2D panning surface often lacks focusable child controls (for example, 
 
 ## Best Practices & Constraints
 
-- **MANDATORY**: Apply `scroll-axis-lock: none` directly to the scroll container element itself, never to an ancestor wrapper. `scroll-axis-lock` is **not inherited**, so setting it on a wrapper has no effect on descendant scroll containers.
-- **DO**: Take advantage of non-inheritance when nesting UI panels inside a 2D canvas. Because `scroll-axis-lock` does not inherit, any one-dimensional scroll containers nested inside `.pan-viewport` (such as a sidebar or inspector panel) automatically retain the default `scroll-axis-lock: auto` behavior.
-- **DO**: Keep `scroll-axis-lock: auto` on standard vertical feeds, articles, and one-dimensional lists. Axis-locking is an accessibility feature for unidirectional content that prevents unintentional perpendicular drift.
-- **DO NOT**: Set `touch-action: none` unconditionally when `scroll-axis-lock: none` is supported. `touch-action` controls whether the browser handles touch gestures at all (and has no effect on trackpad or wheel input); setting `touch-action: none` disables native compositor touch scrolling. Only apply `touch-action: none` inside an `@supports not (scroll-axis-lock: none)` block when implementing a JavaScript pointer fallback.
-- **DO NOT**: Replace native scrolling (`scrollLeft` and `scrollTop`) with CSS `transform` translations (`translate3d(...)`), even in a JavaScript fallback. Using `transform` stops the element from functioning as a scroll container—breaking native scrollbars, automatic boundary clamping, keyboard Arrow-key scrolling, `scroll` events, `IntersectionObserver`, and scroll-driven animations.
+- **Apply it to the scroll container itself, not an ancestor wrapper**: `scroll-axis-lock` is not inherited, so setting it on a wrapper has no effect on descendant scroll containers.
+- **Nested one-dimensional panels keep railing automatically**: Because `scroll-axis-lock` does not inherit, a sidebar or inspector panel nested inside `.pan-viewport` retains the default `scroll-axis-lock: auto` behavior.
+- **Keep `auto` on standard vertical feeds, articles, and one-dimensional lists**: Axis-locking prevents unintentional perpendicular drift in unidirectional content.
+- **Do not set `touch-action: none` unconditionally**: `touch-action` controls whether the browser handles touch gestures at all (and has no effect on trackpad or wheel input), so setting it disables native compositor touch scrolling. Only apply it inside `@supports not (scroll-axis-lock: none)` when implementing the JavaScript pointer fallback.
+- **Pan with `scrollLeft` / `scrollTop`, never CSS `transform`**: Translating the surface with `transform` stops the element from functioning as a scroll container—breaking native scrollbars, boundary clamping, keyboard Arrow-key scrolling, `scroll` events, `IntersectionObserver`, and scroll-driven animations.
 
 ## Fallback strategies
 
