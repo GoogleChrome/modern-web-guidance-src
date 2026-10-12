@@ -165,6 +165,16 @@
         <progress id="indet-progress" class="custom-progress" max="100"></progress>
     </section>
 
+    <section dir="rtl">
+        <h2>RTL</h2>
+        <p>Same styles under <code>dir="rtl"</code>: the fill grows from the inline start and the indeterminate segment travels toward the inline end.</p>
+        <label for="rtl-progress">Upload Progress:</label>
+        <progress id="rtl-progress" class="custom-progress" value="40" max="100"></progress>
+
+        <label for="rtl-indet-progress">Downloading...</label>
+        <progress id="rtl-indet-progress" class="custom-progress" max="100"></progress>
+    </section>
+
     <script>
         // Determinate example logic
         const accentBar = document.getElementById('accent-progress');
