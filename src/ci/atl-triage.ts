@@ -546,8 +546,21 @@ export const githubApi = {
       { encoding: 'utf8' }
     ).trim();
     return output === 'true';
+  },
+
+  getPrBody(prNumber: number): string {
+    return child_process.execFileSync(
+      'gh',
+      ['pr', 'view', String(prNumber), '--json', 'body', '--jq', '.body'],
+      { encoding: 'utf8' }
+    ).trim();
   }
 };
+
+export function hasNoAtlTriageDirective(body?: string | null): boolean {
+  if (!body) return false;
+  return /<!--\s*no-atl-triage\s*-->/i.test(body);
+}
 
 export interface HandleIssueOptions {
   dryRun?: boolean;
@@ -564,6 +577,11 @@ export function handleIssue(
 ): string[] {
   const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
   console.log(`Triaging issue #${issueNumber} with labels: ${labels.join(', ')}`);
+
+  if (hasNoAtlTriageDirective(issueDescription)) {
+    console.log(`Issue #${issueNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+    return [];
+  }
   
   const assignedAtls = new Set<string>();
   
@@ -791,6 +809,7 @@ export function findGuidesTranscludingFeature(
 export interface HandlePrOptions {
   dryRun?: boolean;
   isDraft?: boolean;
+  prBody?: string;
 }
 
 export function handlePR(
@@ -804,6 +823,20 @@ export function handlePR(
 ) {
   const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
   console.log(`Triaging PR #${prNumber} by author: @${prAuthor}`);
+
+  let prBody = options?.prBody;
+  if (prBody === undefined && !mockFiles) {
+    try {
+      prBody = githubApi.getPrBody(prNumber);
+    } catch (err) {
+      console.warn(`Failed to fetch body for PR #${prNumber}:`, err);
+    }
+  }
+
+  if (hasNoAtlTriageDirective(prBody)) {
+    console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+    return [];
+  }
 
   let isDraft = options?.isDraft;
   if (isDraft === undefined && !mockFiles) {
@@ -1070,7 +1103,8 @@ export function main() {
       const prAuthor = event.pull_request.user.login;
       const prLabels = (event.pull_request.labels || []).map((l: any) => l.name);
       const isDraft = Boolean(event.pull_request.draft);
-      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft });
+      const prBody = event.pull_request.body || '';
+      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft, prBody });
     } 
     else {
       console.log('Event is neither an issue nor a pull request event. Skipping.');
