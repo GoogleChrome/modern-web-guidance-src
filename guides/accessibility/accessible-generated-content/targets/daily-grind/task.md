@@ -1,0 +1,1 @@
+- Update the site to use CSS generated content in ways that stay accessible, including alternative text for decorative content.
