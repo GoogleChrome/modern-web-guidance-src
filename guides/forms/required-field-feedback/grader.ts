@@ -104,6 +104,16 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     expect(differs(initialStyle, errorStyle) || errorStyle.hasUserInvalid).toBe(true);
   });
 
+  test('Tabbing through a required field without changing its value must NOT set aria-invalid', async ({ page }) => {
+    const input = page.locator('form input[required]').first();
+
+    await input.focus();
+    await input.blur();
+
+    const ariaInvalid = await input.getAttribute('aria-invalid');
+    expect(['false', null]).toContain(ariaInvalid);
+  });
+
   test('Typing into the field MUST remove the error state immediately', async ({ page }) => {
     const input = page.locator('form input[required]').first();
     const initialStyle = await getStyling(input);

@@ -4,4 +4,5 @@
 - Clicking "Submit" with empty fields MUST trigger the error state on all of them.
 - "Force Fallback Mode" must replicate this exact behavior.
 - The implementation MUST dynamically synchronize the `aria-invalid="true"` attribute via JavaScript when an element enters an error state, and remove it when the field becomes valid.
+- Tabbing through a required field (focus, then blur) without changing its value MUST NOT set `aria-invalid`; the ARIA state must mirror `:user-invalid` / `:user-valid`, not raw validity.
 - Visual error feedback MUST incorporate multiple state indicators (e.g. an icon alongside the error text) to avoid communicating state through color alone.
