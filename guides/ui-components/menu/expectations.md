@@ -2,30 +2,39 @@
 
 - Each menu list has `focusgroup="menu no-memory"` on an element inside its popover, not on the popover element.
 - Each trigger is a button with `aria-haspopup="menu"`.
+- Each trigger uses `commandfor` and `command="toggle-popover"` to control its menu.
+- Each popover is the immediate next sibling of its trigger, so no `aria-details` is exposed on the trigger.
+- Each submenu is a `popover="auto"` placed after its trigger inside the parent menu's focusgroup.
+- Each command-invoker trigger has no `popovertarget` or `popovertargetaction` attribute.
 - Focusing a top-level trigger shows its menu without moving focus from the trigger.
 - A previewed menu does not show a menu item as focused.
 - Blurring a trigger that is only previewing closes that menu.
 - Focusing a trigger sets its `aria-expanded` to true for both preview and open states.
 - Pressing Enter on a previewed trigger closes that menu without moving focus from the trigger.
 - Pressing Space on a previewed trigger closes that menu without moving focus from the trigger.
+- Pressing Enter or Space on a closed trigger opens its menu and moves focus to the first item.
+- Pressing Enter or Space on a previewed submenu trigger closes that submenu without moving focus from the trigger.
 - Pressing ArrowDown on a previewed top-level trigger converts it to open and moves focus to the first item in the same turn.
 - Pressing ArrowUp and ArrowDown moves focus between enabled items.
 - Pressing Home moves focus to the first enabled item.
 - Pressing End moves focus to the last enabled item.
+- Focusing a submenu trigger previews its submenu without moving focus from the trigger.
+- Pressing ArrowRight on a submenu trigger opens the submenu and moves focus to its first item.
+- Pressing ArrowRight on a submenu item without a child submenu previews the next top-level menu, with focus on its trigger.
+- A closed submenu is not rendered inline inside its parent menu.
 - From an open top-level menu, ArrowRight closes it, opens the next top-level menu, and focuses that menu's first item.
 - From an open top-level menu, ArrowLeft closes it, opens the previous top-level menu, and focuses that menu's first item.
 - ArrowLeft and ArrowRight wrap from the last top-level menu to the first, and from the first to the last.
-- Pressing ArrowRight on a submenu trigger converts its preview to open and moves focus to the submenu's first item.
-- Pressing ArrowRight on a submenu item with no child submenu closes the menu hierarchy and moves to the next top-level trigger's preview.
 - After ArrowRight moves to the next trigger, its menu is previewed and focus stays on the trigger.
 - Pressing ArrowLeft in a submenu closes that submenu and restores focus to its parent trigger.
-- Pressing Escape closes only the current menu level and restores focus to the trigger that opened it.
+- Pressing Escape closes only the current menu level and restores focus to the trigger that opened it, including for nested submenus.
 - Pressing Tab leaves the menu system instead of moving through every command.
-- Clicking a previewed trigger opens it.
+- Clicking a previewed trigger enters its menu and focuses the first item.
 - Clicking an open trigger closes it.
 - Clicking outside closes every open menu level.
 - Closing a menu does not leave focus inside hidden content.
-- Each menu is shown with its trigger passed as the `source` option to `showPopover()`, establishing an implicit anchor without per-menu anchor rules.
+- Menus opened by focus preview are shown with their trigger passed as the `source` option to `showPopover()`, establishing an implicit anchor without per-menu anchor rules. Menus opened by an invoker are anchored by the invoker.
+- Submenus are positioned beside their trigger, not below the parent menu.
 - An open top-level menu is positioned below its trigger.
 - An open submenu is positioned beside its trigger.
 - Activating a command closes the open menus.
