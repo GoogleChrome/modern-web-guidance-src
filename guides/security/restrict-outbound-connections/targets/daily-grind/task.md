@@ -1,0 +1,1 @@
+- Restrict the page to communicating only with an explicit allowlist of network endpoints to prevent unauthorized third-party requests and client-side data exfiltration.
