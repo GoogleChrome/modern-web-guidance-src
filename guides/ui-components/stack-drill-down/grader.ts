@@ -1,11 +1,14 @@
 /// <reference types="node" />
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const targetFile = process.env.TARGET_FILE || path.join(__dirname, 'demo.html');
-const targetUrl = `file://${targetFile}`;
+const targetFile = path.resolve(process.env.TARGET_FILE || path.join(__dirname, 'demo.html'));
+const targetDir = path.dirname(targetFile);
+const demoName = path.basename(targetFile);
+const targetUrl = `http://localhost/${demoName}`;
 
 // Helper to click a link inside the currently active (non-inert) view
 const clickActiveLink = async (page: any) => {
@@ -31,6 +34,17 @@ const clickBackButton = async (page: any) => {
 };
 
 test.describe('Stack Drill Down', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('http://localhost/**', async (route) => {
+      const requestPath = new URL(route.request().url()).pathname;
+      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      if (fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+        await route.fulfill({ path: localFilePath });
+      } else {
+        await route.fulfill({ path: targetFile });
+      }
+    });
+  });
 
   // --- Stack container and views ---
 

@@ -110,6 +110,7 @@ test.describe(`Autofill Payment Form Expectations: ${demoName}`, () => {
 
   test('The placeholder attribute must not be used to convey data entry constraints or format examples', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/autocomplete=["']cc-exp["']/i.test(html)).toBe(true);
     expect(/placeholder=["']MM\/YY["']/i.test(html)).toBe(false);
   });
 

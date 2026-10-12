@@ -5,4 +5,4 @@
 * The implementation includes feature detection using `@supports` for scroll-driven animations.
 * The implementation respects user preferences for reduced motion using `@media (prefers-reduced-motion: no-preference)`.
 * The purely decorative progress indicator element MUST define `aria-hidden="true"` to hide it from assistive technology reading trees.
-* The implementation DOES NOT add any `scroll` event listeners.
+* The implementation DOES NOT attach any `scroll` event listeners when `CSS.supports('animation-timeline', 'scroll()')` is supported.

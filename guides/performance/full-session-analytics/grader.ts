@@ -41,11 +41,16 @@ test.describe(`Full-Session Analytics Expectations: ${demoName}`, () => {
 
   test('The fetchLater() API is the only API used for beacons (no direct fetch, sendBeacon, XMLHttpRequest, or new Image)', () => {
     const code = getCombinedCode();
-    const usesXhr = code.includes('XMLHttpRequest');
-    const usesImage = code.includes('new Image');
-    const directFetch = code.includes('fetch(ANALYTICS_ENDPOINT');
-    const directSendBeacon = code.includes('sendBeacon(ANALYTICS_ENDPOINT');
-    
+    const fetchLaterCalls = code.match(/\bfetchLater\s*\(/g) || [];
+    expect(fetchLaterCalls.length).toBeGreaterThan(0);
+
+    const usesXhr = /\bnew\s+XMLHttpRequest\b/.test(code);
+    const usesImage = /\bnew\s+Image\b/.test(code);
+    // Strip the globalThis.fetchLater polyfill block before checking for direct sendBeacon / fetch calls
+    const codeWithoutPolyfill = code.replace(/globalThis\.fetchLater\s*\?\?=\s*function[\s\S]*?\n\};?/g, '');
+    const directSendBeacon = /\bsendBeacon\s*\(/.test(codeWithoutPolyfill);
+    const directFetch = /\bfetch\s*\(\s*(?:ANALYTICS_ENDPOINT|['"`][^'"`]*analytics)/i.test(codeWithoutPolyfill);
+
     const hasForbiddenUsage = usesXhr || usesImage || directFetch || directSendBeacon;
     expect(hasForbiddenUsage).toBeFalsy();
   });

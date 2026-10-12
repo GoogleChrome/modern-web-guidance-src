@@ -15,37 +15,50 @@ function getFileContent(): string {
   return '';
 }
 
+function getPseudoElementRuleBodies(code: string): string[] {
+  const clean = code.replace(/\/\*[\s\S]*?\*\//g, '');
+  const bodies: string[] = [];
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  let m;
+  while ((m = re.exec(clean)) !== null) {
+    const selector = m[1].trim();
+    if (/::?(?:before|after)\b/i.test(selector)) {
+      bodies.push(m[2]);
+    }
+  }
+  return bodies;
+}
+
 test.describe('Resolution Optimized Pseudo Elements Grader', () => {
 
   test('A pseudo-element (::before or ::after) is used on a target element', async () => {
     const code = getFileContent();
-    const hasPseudoInCode = code.includes('::before') || code.includes('::after') || code.includes(':before') || code.includes(':after');
-    expect(hasPseudoInCode).toBe(true);
+    const bodies = getPseudoElementRuleBodies(code);
+    expect(bodies.length).toBeGreaterThan(0);
   });
 
-  test('The pseudo-element has a standard image declaration acting as a fallback for the content or background-image property', async () => {
+  test('The pseudo-element uses the image-set() function for its content or background-image property', async () => {
     const code = getFileContent();
-    const hasFallback = /url\([^)]+\)/i.test(code) && (code.includes('::before') || code.includes('::after') || code.includes(':before') || code.includes(':after'));
-    expect(hasFallback).toBe(true);
-  });
-
-  test('The pseudo-element uses the image-set() function for the same property, defined after the fallback', async () => {
-    const code = getFileContent();
-    const fallbackMatch = code.match(/(content|background|background-image):\s*url\([^)]+\)/i);
-    const imageSetMatch = code.match(/(content|background|background-image):\s*(-webkit-)?image-set\(/i);
-    
-    expect(!!imageSetMatch).toBe(true);
-    if (fallbackMatch && imageSetMatch) {
-      expect(imageSetMatch.index!).toBeGreaterThan(fallbackMatch.index!);
-    }
+    const bodies = getPseudoElementRuleBodies(code);
+    const hasImageSetOnPseudo = bodies.some((body) =>
+      /(?:content|background|background-image)\s*:\s*[^;]*(-webkit-)?image-set\(/i.test(body)
+    );
+    expect(hasImageSetOnPseudo).toBe(true);
   });
 
   test('The image-set() function includes multiple pixel density descriptors (e.g., 1x and 2x)', async () => {
     const code = getFileContent();
-    const hasImageSet = code.includes('image-set(') || code.includes('-webkit-image-set(');
-    const has1x = code.includes('1x');
-    const has2x = code.includes('2x') || code.includes('dppx');
-    expect(hasImageSet && has1x && has2x).toBe(true);
+    const bodies = getPseudoElementRuleBodies(code);
+    const hasDensities = bodies.some((body) => {
+      const m = body.match(/(-webkit-)?image-set\(([\s\S]*?)\)\s*;/i);
+      const target = m ? m[2] : body;
+      return (
+        /(-webkit-)?image-set\(/i.test(body) &&
+        /\b1x\b|\b1dppx\b/i.test(target) &&
+        /\b2x\b|\b2dppx\b/i.test(target)
+      );
+    });
+    expect(hasDensities).toBe(true);
   });
 
 });

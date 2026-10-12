@@ -36,7 +36,8 @@ function getSourceContent(): string {
 test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
 
   test.beforeEach(async ({ page, TARGET_URL }) => {
-    if (TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`) {
+    const isLocalDemo = TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`;
+    if (isLocalDemo) {
       await page.route('http://localhost/*', async (route) => {
         const requestPath = new URL(route.request().url()).pathname;
         const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
@@ -52,8 +53,10 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
           await route.continue();
         }
       });
+      await page.goto(TARGET_URL).catch(() => {});
+    } else {
+      await page.goto(`${TARGET_URL.replace(/\/$/, '')}/signin`).catch(() => {});
     }
-    await page.goto(TARGET_URL).catch(() => {});
   });
 
   test('All sign-in inputs must be within a <form> element', async ({ page }) => {
@@ -121,12 +124,12 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     if (isVisible) {
       const attr = await page.locator('input[type="email"], input[name="username"], input[name="email"]').first().getAttribute('autocomplete', { timeout: 500 }).catch(() => null);
       if (attr) {
-        expect(attr.includes('username') || attr.includes('email')).toBe(true);
+        expect(attr.split(/\s+/).includes('username')).toBe(true);
         return;
       }
     }
     const code = getSourceContent();
-    expect(/autoComplete=[{"']?(username|email)[}"']?|autocomplete=[{"']?(username|email)[}"']?/i.test(code)).toBe(true);
+    expect(/autoComplete=[{"']?username[}"']?|autocomplete=[{"']?username[}"']?/i.test(code)).toBe(true);
   });
 
   test('Password input must have type="password"', async ({ page }) => {
@@ -144,12 +147,12 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     if (isVisible) {
       const attr = await page.locator('input[type="password"]').first().getAttribute('autocomplete', { timeout: 500 }).catch(() => null);
       if (attr) {
-        expect(attr.includes('current-password') || attr.includes('password')).toBe(true);
+        expect(attr.split(/\s+/).includes('current-password')).toBe(true);
         return;
       }
     }
     const code = getSourceContent();
-    expect(/autoComplete=[{"']?(current-password|password)[}"']?|autocomplete=[{"']?(current-password|password)[}"']?/i.test(code)).toBe(true);
+    expect(/autoComplete=[{"']?current-password[}"']?|autocomplete=[{"']?current-password[}"']?/i.test(code)).toBe(true);
   });
 
   test('Password input must have id="current-password"', async ({ page }) => {
@@ -157,12 +160,12 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     if (isVisible) {
       const id = await page.locator('input[type="password"]').first().getAttribute('id', { timeout: 500 }).catch(() => null);
       if (id) {
-        expect(id.includes('current-password') || id.includes('password')).toBe(true);
+        expect(id).toBe('current-password');
         return;
       }
     }
     const code = getSourceContent();
-    expect(/id=[{"']?(current-password|password)[}"']?/i.test(code)).toBe(true);
+    expect(/id=[{"']?current-password[}"']?/i.test(code)).toBe(true);
   });
 
   test('Email input must be required', async ({ page }) => {
@@ -199,7 +202,7 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     }
     const code = getSourceContent();
     const matches = code.match(/type=[{"']?email[}"']?/gi) || [];
-    expect(matches.length <= 1).toBe(true);
+    expect(matches.length).toBe(1);
   });
 
   test('There must be exactly one password input', async ({ page }) => {
@@ -210,7 +213,7 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     }
     const code = getSourceContent();
     const matches = code.match(/type=[{"']?password[}"']?/gi) || [];
-    expect(matches.length <= 1).toBe(true);
+    expect(matches.length).toBe(1);
   });
 
 });

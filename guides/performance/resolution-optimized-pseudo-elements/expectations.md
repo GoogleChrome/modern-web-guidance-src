@@ -1,4 +1,3 @@
 - A pseudo-element (`::before` or `::after`) is used on a target element.
-- The pseudo-element has a standard image declaration (like `url()`) acting as a fallback for the `content` or `background-image` property.
-- The pseudo-element uses the `image-set()` function for the same property, defined after the fallback.
+- The pseudo-element uses the `image-set()` function for its `content` or `background-image` property.
 - The `image-set()` function includes multiple pixel density descriptors (e.g., `1x` and `2x`).

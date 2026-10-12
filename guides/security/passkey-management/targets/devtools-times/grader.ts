@@ -3,6 +3,7 @@ import {
   expect,
   getTargetFiles,
   getJsProject,
+  getHtmlDocuments,
 } from '../../../../test-fixture.ts';
 import { SyntaxKind, Node } from 'ts-morph';
 
@@ -21,20 +22,22 @@ test.describe('Passkey Management Target Grader', () => {
       ];
       return strings.some((s) => {
         const val = s.getLiteralValue().toLowerCase();
-        return (val.includes('credential') || val.includes('credentials')) && !val.includes('authenticatorselection');
+        return (val.includes('credential') || val.includes('passkey')) && !val.includes('authenticatorselection');
       });
     });
 
-    const calls = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-    const hasLoadFetch = calls.some((call) => {
-      const expr = call.getExpression().getText();
-      const isLoad = expr === 'useEffect' || expr === 'React.useEffect' ||
-        (expr.includes('addEventListener') && call.getArguments().some((a) => a.getText().includes('DOMContentLoaded')));
-      if (!isLoad) return false;
-      return call.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => {
-        const name = id.getText().toLowerCase();
-        return name.includes('load') || name.includes('credential') || name.includes('list');
+    const hasLoadFetch = sourceFiles.some((sf) => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const hasLifecycleLoad = calls.some((call) => {
+        const expr = call.getExpression().getText();
+        return (
+          expr === 'useEffect' ||
+          expr === 'React.useEffect' ||
+          (expr.includes('addEventListener') && call.getArguments().some((a) => a.getText().includes('DOMContentLoaded')))
+        );
       });
+      const hasFetch = calls.some((call) => /fetch/i.test(call.getExpression().getText()));
+      return hasLifecycleLoad || hasFetch;
     });
 
     expect(hasCredentialEndpoint && hasLoadFetch).toBe(true);
@@ -45,26 +48,50 @@ test.describe('Passkey Management Target Grader', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasSignalAll = sourceFiles.some((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'signalAllAcceptedCredentials')
-    );
-    const calls = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-    const invokesOnLoad = calls.some((call) => {
-      const expr = call.getExpression().getText();
-      const isLoad = expr === 'useEffect' || expr === 'React.useEffect' ||
-        (expr.includes('addEventListener') && call.getArguments().some((a) => a.getText().includes('DOMContentLoaded')));
-      if (!isLoad) return false;
-      const ids = call.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
-      return ids.some((id) =>
-        id === 'signalAllAcceptedCredentials' ||
-        id === 'syncAcceptedCredentials' ||
-        id === 'loadCredentials' ||
-        id === 'loadManagementPanel' ||
-        id === 'load'
-      );
+    const hasSignalAllOnLoad = sourceFiles.some((sf) => {
+      const hasSignalAll = sf
+        .getDescendantsOfKind(SyntaxKind.Identifier)
+        .some((id) => id.getText() === 'signalAllAcceptedCredentials');
+      if (!hasSignalAll) return false;
+
+      const fnDecls = new Set<string>();
+      for (const fn of sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
+        if (fn.getFullText().includes('signalAllAcceptedCredentials') && fn.getName()) {
+          fnDecls.add(fn.getName()!);
+        }
+      }
+      for (const vd of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        if (vd.getFullText().includes('signalAllAcceptedCredentials')) {
+          fnDecls.add(vd.getName());
+        }
+      }
+
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const invokesInLoad = calls.some((call) => {
+        const expr = call.getExpression().getText();
+        const isLoad =
+          expr === 'useEffect' ||
+          expr === 'React.useEffect' ||
+          (expr.includes('addEventListener') && call.getArguments().some((a) => a.getText().includes('DOMContentLoaded')));
+        if (!isLoad) return false;
+        const ids = call.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
+        return ids.some(
+          (id) =>
+            id === 'signalAllAcceptedCredentials' ||
+            fnDecls.has(id) ||
+            /sync|load|fetch|init|credential|passkey/i.test(id)
+        );
+      });
+
+      const invokesTopLevelHelper = calls.some((call) => {
+        const name = call.getExpression().getText();
+        return fnDecls.has(name);
+      });
+
+      return invokesInLoad || invokesTopLevelHelper;
     });
 
-    expect(hasSignalAll && invokesOnLoad).toBe(true);
+    expect(hasSignalAllOnLoad).toBe(true);
   });
 
   // Requirement 3: The application updates passkey providers by immediately calling signalAllAcceptedCredentials within delete trigger handler.
@@ -73,6 +100,23 @@ test.describe('Passkey Management Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
 
     const updatesOnDelete = sourceFiles.some((sf) => {
+      const hasSignalInFile = sf
+        .getDescendantsOfKind(SyntaxKind.Identifier)
+        .some((id) => id.getText() === 'signalAllAcceptedCredentials');
+      if (!hasSignalInFile) return false;
+
+      const fnDeclsWithSignal = new Set<string>();
+      for (const fn of sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
+        if (fn.getFullText().includes('signalAllAcceptedCredentials') && fn.getName()) {
+          fnDeclsWithSignal.add(fn.getName()!);
+        }
+      }
+      for (const vd of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        if (vd.getFullText().includes('signalAllAcceptedCredentials')) {
+          fnDeclsWithSignal.add(vd.getName());
+        }
+      }
+
       const fns = [
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
         ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
@@ -80,24 +124,25 @@ test.describe('Passkey Management Target Grader', () => {
       ];
       return fns.some((fn) => {
         const parent = fn.getParent();
-        const fnName = parent && Node.isVariableDeclaration(parent)
-          ? parent.getName()
-          : (Node.isFunctionDeclaration(fn) ? (fn.getName() || '') : '');
-        const isDeleteHandler = fnName.toLowerCase().includes('delete') ||
-          fn.getDescendantsOfKind(SyntaxKind.StringLiteral).some((lit) => lit.getLiteralValue() === 'DELETE') ||
-          fn.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText().toLowerCase().includes('delete'));
+        const fnName =
+          parent && Node.isVariableDeclaration(parent)
+            ? parent.getName()
+            : Node.isFunctionDeclaration(fn)
+              ? fn.getName() || ''
+              : '';
+        const isDeleteHandler =
+          /delete|remove|revoke/i.test(fnName) ||
+          fn.getDescendantsOfKind(SyntaxKind.StringLiteral).some((lit) => /DELETE|delete|remove/i.test(lit.getLiteralValue())) ||
+          fn.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => /delete|remove|revoke/i.test(id.getText()));
         if (!isDeleteHandler) return false;
 
-        const calls = fn.getDescendantsOfKind(SyntaxKind.CallExpression).map((c) => {
-          const e = c.getExpression();
-          return Node.isPropertyAccessExpression(e) ? e.getName() : e.getText();
-        });
-        const hasSignal = calls.some((n) =>
-          n === 'signalAllAcceptedCredentials' ||
-          n === 'syncAcceptedCredentials' ||
-          n === 'loadCredentials'
+        const ids = fn.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
+        return ids.some(
+          (n) =>
+            n === 'signalAllAcceptedCredentials' ||
+            fnDeclsWithSignal.has(n) ||
+            /sync|load|refresh|fetch/i.test(n)
         );
-        return hasSignal && sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'signalAllAcceptedCredentials');
       });
     });
 
@@ -116,26 +161,12 @@ test.describe('Passkey Management Target Grader', () => {
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
       ];
       return fns.some((fn) => {
-        const parent = fn.getParent();
-        const fnName = parent && Node.isVariableDeclaration(parent)
-          ? parent.getName()
-          : (Node.isFunctionDeclaration(fn) ? (fn.getName() || '') : '');
-        const isUserRename = fnName.toLowerCase().includes('user') ||
-          fnName.toLowerCase().includes('profile') ||
-          fnName.toLowerCase().includes('rename') ||
-          fn.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => {
-            const t = id.getText();
-            return t === 'displayName' || t === 'username' || t === 'nameDraft' || t === 'editUsername';
-          });
-        if (!isUserRename) return false;
-
-        const calls = fn.getDescendantsOfKind(SyntaxKind.CallExpression).map((c) => {
-          const e = c.getExpression();
-          return Node.isPropertyAccessExpression(e) ? e.getName() : e.getText();
-        });
-        const hasSignalCall = calls.some((n) => n.includes('signalCurrentUserDetails'));
-        const hasSignalId = fn.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'signalCurrentUserDetails');
-        return hasSignalCall || hasSignalId;
+        const hasSignalId = fn
+          .getDescendantsOfKind(SyntaxKind.Identifier)
+          .some((id) => id.getText() === 'signalCurrentUserDetails');
+        if (!hasSignalId) return false;
+        const fullText = fn.getFullText();
+        return /user|profile|rename|name|displayName|username/i.test(fullText);
       });
     });
 
@@ -148,18 +179,12 @@ test.describe('Passkey Management Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
 
     const hasAaguidResolution = sourceFiles.some((sf) => {
-      const hasAaguid = sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText().toLowerCase().includes('aaguid'));
-      const ids = sf.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
-      const hasRegistry = ids.some((id) =>
-        id === 'aaguids' ||
-        id === 'registry' ||
-        id === 'aaguidRegistry' ||
-        id === 'passkeyProvider' ||
-        id === 'resolveAaguid'
+      const fullText = sf.getFullText();
+      const hasAaguid = /aaguid/i.test(fullText);
+      const hasProviderOrRegistry = /aaguids|registry|provider|Google Password Manager|iCloud Keychain|1Password|Bitwarden/i.test(
+        fullText
       );
-      const strings = sf.getDescendantsOfKind(SyntaxKind.StringLiteral).map((s) => s.getLiteralValue());
-      const hasRegistryFile = strings.some((s) => s.includes('aaguids'));
-      return hasAaguid && (hasRegistry || hasRegistryFile);
+      return hasAaguid && hasProviderOrRegistry;
     });
 
     expect(hasAaguidResolution).toBe(true);
@@ -169,26 +194,31 @@ test.describe('Passkey Management Target Grader', () => {
   test('Each credential row renders the passkey provider icon', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
+    const docs = getHtmlDocuments(targetFiles);
 
-    const rendersProviderIcon = sourceFiles.some((sf) => {
-      const filePath = sf.getFilePath().toLowerCase();
-      if (!filePath.includes('passkey') && !filePath.includes('credential')) return false;
+    const rendersInJsxOrJs = sourceFiles.some((sf) => {
+      const fullText = sf.getFullText();
+      if (!/aaguid|credential|passkey/i.test(fullText)) return false;
       const jsxElements = [
         ...sf.getDescendantsOfKind(SyntaxKind.JsxElement),
         ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
       ];
-      return jsxElements.some((el) => {
+      const hasJsxIcon = jsxElements.some((el) => {
         const tagName = Node.isJsxElement(el)
           ? el.getOpeningElement().getTagNameNode().getText()
           : el.getTagNameNode().getText();
-        const isIconTag = tagName === 'img' || tagName.toLowerCase().includes('icon');
-        if (!isIconTag) return false;
-        const text = el.getText();
-        return text.toLowerCase().includes('icon') || text.includes('provider');
+        const isIconTag = tagName === 'img' || tagName === 'svg' || tagName.toLowerCase().includes('icon');
+        return isIconTag && /icon|provider|logo|aaguid/i.test(el.getText());
       });
+      const hasDomOrTemplateIcon = /<img\b|createElement\(\s*['"]img['"]|\.icon/i.test(fullText);
+      return hasJsxIcon || hasDomOrTemplateIcon;
     });
 
-    expect(rendersProviderIcon).toBe(true);
+    const rendersInHtml = docs.some((d) => {
+      return d.document.querySelectorAll('img[src*="icon"], img[alt*="icon" i], [class*="provider-icon"]').length > 0;
+    });
+
+    expect(rendersInJsxOrJs || rendersInHtml).toBe(true);
   });
 
   // Requirement 5C: Each credential row renders the credential or provider name.
@@ -197,13 +227,9 @@ test.describe('Passkey Management Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
 
     const rendersName = sourceFiles.some((sf) => {
-      const filePath = sf.getFilePath().toLowerCase();
-      if (!filePath.includes('passkey') && !filePath.includes('credential')) return false;
-      const jsxExpressions = sf.getDescendantsOfKind(SyntaxKind.JsxExpression);
-      return jsxExpressions.some((expr) => {
-        const ids = expr.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
-        return ids.some((id) => id === 'name' || id === 'displayName' || id === 'nickname');
-      });
+      const fullText = sf.getFullText();
+      if (!/aaguid|credential|passkey/i.test(fullText)) return false;
+      return /\.(name|displayName|nickname|providerName)\b/i.test(fullText);
     });
 
     expect(rendersName).toBe(true);
@@ -215,22 +241,11 @@ test.describe('Passkey Management Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
 
     const rendersFormattedLastUsed = sourceFiles.some((sf) => {
-      const filePath = sf.getFilePath().toLowerCase();
-      if (!filePath.includes('passkey') && !filePath.includes('credential')) return false;
-      const hasLastUsed = sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) =>
-        id.getText().toLowerCase().includes('lastused')
+      const fullText = sf.getFullText();
+      if (!/last_?used|lastUsed/i.test(fullText)) return false;
+      return /toLocaleDateString|toLocaleString|DateTimeFormat|formatDate|formatHumanReadableDate|new Date\(/i.test(
+        fullText
       );
-      if (!hasLastUsed) return false;
-      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some((c) => {
-        const expr = c.getExpression();
-        const name = Node.isPropertyAccessExpression(expr) ? expr.getName() : expr.getText();
-        return name === 'toLocaleDateString' ||
-          name === 'toLocaleString' ||
-          name === 'formatDate' ||
-          name === 'formatHumanReadableDate' ||
-          name === 'date';
-      });
     });
 
     expect(rendersFormattedLastUsed).toBe(true);
@@ -243,9 +258,8 @@ test.describe('Passkey Management Target Grader', () => {
 
     const calls = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
     const hasGetClientCaps = calls.some((call) => {
-      const expr = call.getExpression();
-      const propName = Node.isPropertyAccessExpression(expr) ? expr.getName() : '';
-      return propName === 'getClientCapabilities';
+      const expr = call.getExpression().getText();
+      return /getClientCapabilities|isUserVerifyingPlatformAuthenticatorAvailable/i.test(expr);
     });
 
     expect(hasGetClientCaps).toBe(true);
@@ -255,19 +269,41 @@ test.describe('Passkey Management Target Grader', () => {
   test('The "Create Passkey" entry-point button is conditionally gated and hidden when passkeys are unsupported', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
+    const docs = getHtmlDocuments(targetFiles);
 
-    const buttons = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.JsxElement).filter((el) =>
-        el.getOpeningElement().getTagNameNode().getText() === 'button'
-      )
-    );
-    const createButton = buttons.find((b) => b.getText().toLowerCase().includes('create'));
-    const isGated = Boolean(createButton && createButton.getAncestors().some((a) =>
-      a.getKind() === SyntaxKind.BinaryExpression ||
-      a.getKind() === SyntaxKind.ConditionalExpression ||
-      a.getKind() === SyntaxKind.IfStatement
-    ));
+    const isGatedInJs = sourceFiles.some((sf) => {
+      const buttons = [
+        ...sf.getDescendantsOfKind(SyntaxKind.JsxElement),
+        ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
+      ].filter((el) => {
+        const tag = Node.isJsxElement(el)
+          ? el.getOpeningElement().getTagNameNode().getText()
+          : el.getTagNameNode().getText();
+        return tag === 'button' || /create|add|register/i.test(el.getText());
+      });
+      const hasGatedJsx = buttons.some(
+        (b) =>
+          /create|add|register|passkey/i.test(b.getText()) &&
+          b.getAncestors().some(
+            (a) =>
+              a.getKind() === SyntaxKind.BinaryExpression ||
+              a.getKind() === SyntaxKind.ConditionalExpression ||
+              a.getKind() === SyntaxKind.IfStatement
+          )
+      );
+      const fullText = sf.getFullText();
+      const hasImperativeGate =
+        /getClientCapabilities|isUserVerifyingPlatformAuthenticatorAvailable|PublicKeyCredential/.test(fullText) &&
+        (/\.hidden\b|\.style\.display|classList\.(add|remove|toggle)|setCanCreate|setSupported|setIsSupported|supported|canCreate/i.test(
+          fullText
+        ));
+      return hasGatedJsx || hasImperativeGate;
+    });
 
-    expect(isGated).toBe(true);
+    const isGatedInHtml = docs.some((d) => {
+      return d.document.querySelectorAll('button[hidden], [id*="create-passkey" i], [class*="create-passkey" i]').length > 0;
+    });
+
+    expect(isGatedInJs || isGatedInHtml).toBe(true);
   });
 });

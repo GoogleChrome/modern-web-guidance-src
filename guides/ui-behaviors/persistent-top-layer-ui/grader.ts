@@ -14,31 +14,32 @@ test('The document contains a top-layer element that remains open after being mo
   await expect(topLayer).toBeAttached();
   
   // Open the top-layer element
-  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).first();
-  await openBtn.click();
+  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).filter({ hasNotText: /move|relocate/i }).first();
+  if (await openBtn.isVisible()) {
+    await openBtn.click();
+  }
   
-  // Verify it is open and record its initial parent
-  const originalParentId = await topLayer.evaluate((el) => {
+  // Verify it is open and record its initial parent reference
+  await topLayer.evaluate((el) => {
     const isOpen = el.matches(':modal') || el.matches(':popover-open') || document.fullscreenElement === el;
     if (!isOpen) throw new Error('Element was not opened');
-    return el.parentElement?.id || el.parentElement?.className || '';
+    (window as any).__origParent = el.parentElement;
   });
 
   // Move the top-layer element using the page's move trigger
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('button'))
-      .find(b => /move/i.test(b.textContent || b.id || b.className));
+      .find(b => /move|relocate/i.test(`${b.textContent} ${b.id} ${b.className}`));
     if (!btn) throw new Error('Could not find move button');
     (btn as HTMLElement).click();
   });
 
   // Verify that it remains open and has been successfully moved to a different parent
-  const result = await topLayer.evaluate((el, origId) => {
+  const result = await topLayer.evaluate((el) => {
     const isOpen = el.matches(':modal') || el.matches(':popover-open') || document.fullscreenElement === el;
-    const currentParentId = el.parentElement?.id || el.parentElement?.className || '';
-    const parentChanged = currentParentId !== origId;
+    const parentChanged = Boolean(el.parentElement && el.parentElement !== (window as any).__origParent);
     return isOpen && parentChanged;
-  }, originalParentId);
+  });
 
   expect(result).toBe(true);
 });
@@ -63,13 +64,15 @@ test('The script contains a feature detection check for moveBefore to safely han
   await page.goto(TARGET_FILE_URL);
   
   // Open the top-layer element
-  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).first();
-  await openBtn.click();
+  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).filter({ hasNotText: /move|relocate/i }).first();
+  if (await openBtn.isVisible()) {
+    await openBtn.click();
+  }
 
   // Move the top-layer element
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('button'))
-      .find(b => /move/i.test(b.textContent || b.id || b.className));
+      .find(b => /move|relocate/i.test(`${b.textContent} ${b.id} ${b.className}`));
     if (!btn) throw new Error('Could not find move button');
     (btn as HTMLElement).click();
   });
@@ -108,13 +111,15 @@ test('The script uses moveBefore to move the top-layer element to a new parent i
   await page.goto(TARGET_FILE_URL);
 
   // Open the top-layer element
-  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).first();
-  await openBtn.click();
+  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).filter({ hasNotText: /move|relocate/i }).first();
+  if (await openBtn.isVisible()) {
+    await openBtn.click();
+  }
 
   // Move the top-layer element
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('button'))
-      .find(b => /move/i.test(b.textContent || b.id || b.className));
+      .find(b => /move|relocate/i.test(`${b.textContent} ${b.id} ${b.className}`));
     if (!btn) throw new Error('Could not find move button');
     (btn as HTMLElement).click();
   });
@@ -159,34 +164,37 @@ test('The script falls back to using insertBefore or appendChild and restores st
   await page.goto(TARGET_FILE_URL);
 
   // Open the top-layer element
-  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).first();
-  await openBtn.click();
+  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).filter({ hasNotText: /move|relocate/i }).first();
+  if (await openBtn.isVisible()) {
+    await openBtn.click();
+  }
 
-  // Get original parent
+  // Record original parent reference
   const topLayer = page.locator('dialog, [popover]').first();
-  const originalParentId = await topLayer.evaluate(el => el.parentElement?.id || el.parentElement?.className || '');
+  await topLayer.evaluate((el) => {
+    (window as any).__origParent = el.parentElement;
+  });
 
   // Move the top-layer element
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('button'))
-      .find(b => /move/i.test(b.textContent || b.id || b.className));
+      .find(b => /move|relocate/i.test(`${b.textContent} ${b.id} ${b.className}`));
     if (!btn) throw new Error('Could not find move button');
     (btn as HTMLElement).click();
   });
 
-  const result = await page.evaluate((origId) => {
+  const result = await page.evaluate(() => {
     const customWindow = window as any;
     const el = document.querySelector('dialog, [popover]');
     if (!el) return { fallbackCalled: false, isOpen: false, parentChanged: false };
     const isOpen = el.matches(':modal') || el.matches(':popover-open') || document.fullscreenElement === el;
-    const currentParentId = el.parentElement?.id || el.parentElement?.className || '';
-    const parentChanged = currentParentId !== origId;
+    const parentChanged = Boolean(el.parentElement && el.parentElement !== customWindow.__origParent);
     return {
       fallbackCalled: customWindow.__fallbackCalled,
       isOpen,
       parentChanged
     };
-  }, originalParentId);
+  });
 
   expect(result.fallbackCalled && result.isOpen && result.parentChanged).toBe(true);
 });

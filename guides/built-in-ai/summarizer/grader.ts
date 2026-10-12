@@ -98,8 +98,7 @@ test.describe(`Summarizer Expectations: ${demoName}`, () => {
   test('Summarizer API should be available on window.Summarizer, not window.ai.summarizer', async ({ page }) => {
     const calls = await page.evaluate(() => (window as any).__summarizer_calls);
     expect(calls.ai_summarizer_called).toBe(false);
-    // Also check if Summarizer was at least attempted to be used if we are in demo.html
-    // but the main requirement is that ai.summarizer is NOT used.
+    expect(calls.availability.length + calls.create.length).toBeGreaterThan(0);
   });
 
   test('Summarizer.availability() should be called', async ({ page }) => {

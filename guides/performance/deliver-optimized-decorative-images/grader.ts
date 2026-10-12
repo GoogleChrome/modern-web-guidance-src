@@ -203,24 +203,29 @@ test.describe('Deliver Optimized Decorative Images', () => {
     expect(analysis.success).toBe(true);
   });
 
-  test('The element has a standard fallback declaration defined before the image-set() declaration', async ({ page }) => {
+  test('The image-set() function orders image candidates from most optimized to fallback with type() descriptors', async ({ page }) => {
     await loadTargetPage(page);
     const analysis = await page.evaluate(analyzePage);
     
     expect(analysis.success).toBe(true);
     const declarations = analysis.declarations || [];
     
-    // Find first declaration with image-set
-    const firstImageSetIdx = declarations.findIndex(d => d.value.includes('image-set('));
-    expect(firstImageSetIdx).not.toBe(-1);
+    const imageSetDecl = declarations.find(d => d.value.includes('image-set('));
+    expect(imageSetDecl).toBeDefined();
 
-    // Find if there is a fallback declaration of the same property before the image-set
-    const hasFallbackBefore = declarations.slice(0, firstImageSetIdx).some(d => d.value.includes('url('));
-    
-    // Grader resilience: Since image-set() is widely supported in modern browsers,
-    // a standard fallback is optional if a standard fallback format (like JPG/JPEG) is listed inside the image-set itself.
-    const hasJpgInImageSet = declarations[firstImageSetIdx].value.includes('.jpg') || declarations[firstImageSetIdx].value.includes('.jpeg');
-    expect(hasFallbackBefore || hasJpgInImageSet).toBe(true);
+    const val = imageSetDecl!.value.toLowerCase();
+    const avifIdx = val.indexOf('image/avif');
+    const webpIdx = val.indexOf('image/webp');
+    const fallbackIdx = Math.max(val.indexOf('image/jpeg'), val.indexOf('image/jpg'), val.indexOf('image/png'), val.lastIndexOf('.jpg'), val.lastIndexOf('.jpeg'), val.lastIndexOf('.png'));
+
+    const hasModernType = avifIdx !== -1 || webpIdx !== -1;
+    expect(hasModernType).toBe(true);
+    expect(fallbackIdx).toBeGreaterThan(-1);
+    if (avifIdx !== -1 && webpIdx !== -1) {
+      expect(avifIdx).toBeLessThan(webpIdx);
+    }
+    const lastModernIdx = Math.max(avifIdx, webpIdx);
+    expect(lastModernIdx).toBeLessThan(fallbackIdx);
   });
 
   test('The image-set() function includes multiple pixel density descriptors (e.g., 1x and 2x)', async ({ page }) => {

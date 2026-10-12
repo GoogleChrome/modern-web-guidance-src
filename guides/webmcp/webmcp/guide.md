@@ -18,13 +18,57 @@ Currently, WebMCP **only supports Tools**. It does not support the "Resources" o
 - **Imperative API**: Use `document.modelContext.registerTool()` for complex logic and dynamic interactions.
 - **Declarative API**: Annotate standard HTML `<form>` elements with `toolname` and `tooldescription` to turn them into tools.
 
+```js
+if ('modelContext' in document && document.modelContext) {
+  const controller = new AbortController();
+
+  document.modelContext.registerTool(
+    {
+      name: 'search-items',
+      description: 'Search catalog items by keyword.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Keyword to match against item names and descriptions.',
+          },
+        },
+        required: ['query'],
+      },
+      async execute({ query }) {
+        const results = await filterCatalogUI(query);
+        return { content: [{ type: 'text', text: JSON.stringify(results) }] };
+      },
+      annotations: {
+        readOnlyHint: true,
+      },
+    },
+    { signal: controller.signal },
+  );
+
+  // Clean up on teardown or navigation via AbortController (never call unregisterTool directly)
+  window.addEventListener('pagehide', () => controller.abort(), { once: true });
+}
+```
+
+```html
+<form toolname="subscribe-newsletter" tooldescription="Subscribe an email address to the newsletter">
+  <input type="email" name="email" required toolparamdescription="Subscriber email address" />
+  <button type="submit">Subscribe</button>
+</form>
+```
+
 ## Best Practices
 
 * **Naming and Semantics**: Use specific verbs describing exact behavior (e.g. `create-event` vs `start-event-creation-process`). Favor positive descriptions over listing limitations.
-* **Schema Design**: Accept raw user input (avoid agent math/calculation). Ensure all parameters have specific types and explain the purpose of options.
-* **Reliability**: Validate constraints in code and return descriptive errors for retries. Handle rate limiting gracefully. Ensure the function returns *after* UI state updates for consistency.
-* **Tool Strategy**: Tools should be atomic, composable, and distinct. Do not force flow control instructions ("Don't call B after A") — let the agent decide. Register/unregister tools dynamically depending on the current page context. Use `annotations: { readOnlyHint: true }` (placed after `execute`) for tools that do not modify state to inform the agent of safe execution.
-* **Clean Up**: Always use `AbortSignal` to unregister tools when pages transition or resources are released to avoid leaks and collisions. Do not use `unregisterTool`.
+* **Schema Design**: Accept raw user input (avoid agent math/calculation). Ensure all parameters in `inputSchema.properties` have an explicit `type` and descriptive `description`.
+* **Reliability**: Validate constraints in code and return descriptive errors for retries. Handle rate limiting gracefully. Ensure the `execute` function resolves only *after* corresponding UI state updates have completed.
+* **Tool Strategy & Annotations**: Tools should be atomic, composable, and distinct. Do not force flow control instructions ("Don't call B after A") — let the agent decide. Register/unregister tools dynamically depending on the current page context. Include appropriate `annotations` on tool definitions:
+  * `annotations: { readOnlyHint: true }` on tools that read or query state without mutating application data.
+  * `annotations: { consequentialHint: true }` on tools that perform high-stakes or irreversible actions.
+  * `annotations: { untrustedContentHint: true }` on tools whose results can contain user-generated or third-party content.
+* **Clean Up**: Always pass `{ signal: controller.signal }` from an `AbortController` to `document.modelContext.registerTool()` and call `controller.abort()` to unregister tools when pages transition or resources are released. Do not call `unregisterTool()` directly.
 * **Web Development Best Practices**: WebMCP tools run as client-side JavaScript in the browser tab. They must adhere to regular web development best practices (e.g., keeping secrets out of client-side code, accessing backend databases through secure API layers, and using Web Workers, WASM, or WebGPU for heavy compute).
 
 ### When to Discourage WebMCP

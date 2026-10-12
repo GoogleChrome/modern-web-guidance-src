@@ -78,22 +78,7 @@ test.beforeEach(async ({ page }) => {
       setIntervalCalls: [],
     };
 
-    // 1. Mock CSS.supports to return false for scroll-state-queries by default.
-    // This triggers the fallback path under the tests to verify the fallback logic works.
-    const originalSupports = CSS.supports;
-    CSS.supports = function(property: string, value?: string) {
-      const propLower = property.toLowerCase();
-      const valLower = value ? value.toLowerCase() : '';
-      if (propLower === 'container-type' && valLower === 'scroll-state') {
-        return false;
-      }
-      if (propLower.includes('scroll-state')) {
-        return false;
-      }
-      return originalSupports.apply(this, arguments as any);
-    };
-
-    // 2. Spy on IntersectionObserver
+    // 1. Spy on IntersectionObserver
     const OriginalIntersectionObserver = window.IntersectionObserver;
     if (OriginalIntersectionObserver) {
       window.IntersectionObserver = function(this: any, callback: any, options: any) {
@@ -194,32 +179,26 @@ test('The implementation uses CSS container-scroll-state-queries as the primary 
 });
 
 test('The implementation includes a fallback for browsers that do not support the feature', async ({ page }) => {
-  // Overwrite the init script specifically for this test to mock CSS.supports as TRUE
-  await page.addInitScript(() => {
-    (window as any).__spied = {
-      intersectionObserversCreated: 0,
-      observedElements: [],
-      scrollListenersCount: 0,
-      getBoundingClientRectCallsAfterInit: 0,
-      setIntervalCalls: [],
-    };
-    CSS.supports = function(property: string, value?: string) {
-      const propLower = property.toLowerCase();
-      const valLower = value ? value.toLowerCase() : '';
-      if (propLower === 'container-type' && valLower === 'scroll-state') {
-        return true;
-      }
-      return true;
-    };
-  });
-
   await page.goto(url);
   await page.waitForTimeout(500);
 
   const spied = await page.evaluate(() => (window as any).__spied);
-  
-  // No JS-based scroll tracking fallback should run if container queries are supported.
-  const isFallbackInactiveWhenSupported = 
+  const usesContainerQueries = await page.evaluate(() => {
+    for (const sheet of Array.from(document.styleSheets)) {
+      try {
+        for (const rule of Array.from(sheet.cssRules || [])) {
+          const cssText = rule.cssText.toLowerCase();
+          if (cssText.includes('scroll-state')) return true;
+        }
+      } catch {}
+    }
+    return false;
+  });
+
+  // No JS-based scroll tracking fallback should run if container queries are supported,
+  // and the CSS scroll-state feature must actually be implemented.
+  const isFallbackInactiveWhenSupported =
+    usesContainerQueries &&
     spied.intersectionObserversCreated === 0 &&
     spied.scrollListenersCount === 0 &&
     spied.setIntervalCalls.length === 0;
@@ -228,11 +207,37 @@ test('The implementation includes a fallback for browsers that do not support th
 });
 
 test('The fallback uses the IntersectionObserver API on sentinel elements, NOT continuous scroll event listeners or polling with getBoundingClientRect()', async ({ page }) => {
+  await page.addInitScript(() => {
+    const originalSupports = CSS.supports;
+    CSS.supports = function(property: string, value?: string) {
+      const propLower = property.toLowerCase();
+      const valLower = value ? value.toLowerCase() : '';
+      if (propLower === 'container-type' && valLower === 'scroll-state') {
+        return false;
+      }
+      if (propLower.includes('scroll-state')) {
+        return false;
+      }
+      return originalSupports.apply(this, arguments as any);
+    };
+  });
+
   await page.goto(url);
   await page.waitForTimeout(500);
 
   const elements = await getPageElements(page);
   const spied = await page.evaluate(() => (window as any).__spied);
+  const usesContainerQueries = await page.evaluate(() => {
+    for (const sheet of Array.from(document.styleSheets)) {
+      try {
+        for (const rule of Array.from(sheet.cssRules || [])) {
+          const cssText = rule.cssText.toLowerCase();
+          if (cssText.includes('scroll-state')) return true;
+        }
+      } catch {}
+    }
+    return false;
+  });
 
   const hasIntersectionObserver = spied.intersectionObserversCreated >= 1;
   const hasAtLeastTwoSentinels = spied.observedElements.length >= 2;
@@ -245,12 +250,13 @@ test('The fallback uses the IntersectionObserver API on sentinel elements, NOT c
   const noScrollListeners = spied.scrollListenersCount === 0;
   const noPollingIntervals = spied.setIntervalCalls.length === 0;
 
-  const fallbackRequirementsPassed = 
-    !!elements && 
-    hasIntersectionObserver && 
-    hasAtLeastTwoSentinels && 
-    allAreSentinels && 
-    noScrollListeners && 
+  const validFallbackOrGracefulOmission =
+    hasIntersectionObserver ? (hasAtLeastTwoSentinels && allAreSentinels) : usesContainerQueries;
+
+  const fallbackRequirementsPassed =
+    !!elements &&
+    validFallbackOrGracefulOmission &&
+    noScrollListeners &&
     noPollingIntervals;
 
   expect(fallbackRequirementsPassed).toBe(true);

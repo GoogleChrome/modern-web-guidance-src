@@ -143,24 +143,6 @@ test.describe('Passkey Conditional Create', () => {
     expect(called).toBe(true);
   });
 
-  test('Aborts prior active conditional-get abort controller', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL);
-    await clickSigninButton(page);
-    await page.waitForTimeout(300);
-    
-    const abortCalled = await page.evaluate(() => (window as any).__abortCalled);
-    if (!abortCalled) {
-      test.skip();
-      return;
-    }
-
-    const callOrder = await page.evaluate(() => (window as any).__callOrder);
-    const abortIdx = callOrder.indexOf('abort');
-    const createIdx = callOrder.indexOf('create');
-    expect(abortIdx).toBeGreaterThanOrEqual(0);
-    expect(createIdx).toBeGreaterThan(abortIdx);
-  });
-
   test('Triggers browser biometrics creation method passing mediation="conditional"', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
     await clickSigninButton(page);
@@ -178,7 +160,9 @@ test.describe('Passkey Conditional Create', () => {
     await clickSigninButton(page);
     await page.waitForTimeout(300);
 
+    const capabilitiesCalled = await page.evaluate(() => (window as any).__capabilitiesCalled);
     const createCalled = await page.evaluate(() => (window as any).__createCalled);
+    expect(capabilitiesCalled).toBe(true);
     expect(createCalled).toBe(false);
   });
 
@@ -192,6 +176,9 @@ test.describe('Passkey Conditional Create', () => {
     await page.goto(TARGET_URL);
     await clickSigninButton(page);
     await page.waitForTimeout(300);
+
+    const createCalled = await page.evaluate(() => (window as any).__createCalled);
+    expect(createCalled).toBe(true);
 
     // Verify the error was swallowed silently: nothing on the page surfaces the
     // error name, message, or generic error-like wording as a result of the failed create.

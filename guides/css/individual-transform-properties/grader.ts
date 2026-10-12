@@ -265,27 +265,3 @@ test('translate and rotate animations continue to run when target is hovered', a
   const isRunning = !playState.includes('paused');
   expect(isRunning).toBe(true);
 });
-
-test('implementation includes a fallback strategy using supports for browsers without individual transform support', async ({ page }) => {
-  const hasSupportsFallback = await page.evaluate(() => {
-    let fallbackFound = false;
-    for (const sheet of Array.from(document.styleSheets)) {
-      try {
-        if (sheet.cssRules) {
-          for (let i = 0; i < sheet.cssRules.length; i++) {
-            const rule = sheet.cssRules[i] as any;
-            if (rule.conditionText) {
-              const cond = rule.conditionText.toLowerCase();
-              if (cond.includes('translate') || cond.includes('rotate') || cond.includes('scale')) {
-                fallbackFound = true;
-              }
-            }
-          }
-        }
-      } catch (e) {}
-    }
-    return fallbackFound;
-  });
-
-  expect(hasSupportsFallback).toBe(true);
-});

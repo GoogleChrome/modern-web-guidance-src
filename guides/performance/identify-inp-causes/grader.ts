@@ -11,7 +11,6 @@ if (!targetFile) {
 const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
-const demoUrl = `http://localhost/${demoName}`;
 
 function getCodeContent(): string {
   const files = [filePath];
@@ -59,11 +58,13 @@ test.describe(`identify-inp-causes Expectations: ${demoName}`, () => {
 
   test('Should avoid using the JS Self-Profiling API (Profiler) as per best practices', async () => {
     const html = getCodeContent();
+    expect(html).toContain('onINP');
     expect(html).not.toContain('new Profiler');
   });
 
   test('Should not manually re-implement INP using raw Event Timing API', async () => {
     const html = getCodeContent();
+    expect(html).toContain('onINP');
     // Detecting manual PerformanceObserver usage for events
     expect(html).not.toMatch(/observe\(\s*{\s*type:\s*['"]event['"]/);
   });
@@ -73,65 +74,8 @@ test.describe(`identify-inp-causes Expectations: ${demoName}`, () => {
     expect(html).toContain('onINP');
   });
 
-  // Browser assertions
-  
-  test.beforeEach(async ({ page }) => {
-    // Route local file requests
-    await page.route('http://localhost/**', async (route) => {
-      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
-      const relPath = requestPath === '/' ? demoName : requestPath.replace(/^\/+/, '');
-      const localFilePath = path.resolve(targetDir, relPath);
-
-      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
-        await route.fulfill({ path: localFilePath });
-      } else {
-        await route.continue();
-      }
-    });
-
-    await page.goto(demoUrl);
-  });
-
-  test('Page should import the attribution build of web-vitals', async ({ page }) => {
-    const scriptContent = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('script')).map(s => s.textContent || s.src).join(' ');
-    });
-    expect(scriptContent.trim().length).toBeGreaterThan(0);
-    const combined = `${scriptContent}\n${getCodeContent()}`;
-    expect(combined).toMatch(/web-vitals[/.].*attribution/);
-  });
-
-  test('Page scripts should handle longestScript.entry safely', async ({ page }) => {
-    const scriptContent = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('script')).map(s => s.textContent || s.src).join(' ');
-    });
-    expect(scriptContent.trim().length).toBeGreaterThan(0);
-    const combined = `${scriptContent}\n${getCodeContent()}`;
-    expect(combined).toMatch(/(?:longestScript\?\.entry|longestScript\.entry\?\.|longestScript[\s\S]{0,1000}?(?:\?\.entry\b|\.entry\?\.))/);
-  });
-
-  test('Page should not use Profiler API in its scripts', async ({ page }) => {
-    const scriptContent = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('script')).map(s => s.textContent || s.src).join(' ');
-    });
-    const combined = `${scriptContent}\n${getCodeContent()}`;
-    expect(combined).not.toContain('new Profiler');
-  });
-
-  test('Page should not have a manual PerformanceObserver for event timing', async ({ page }) => {
-    const scriptContent = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('script')).map(s => s.textContent || s.src).join(' ');
-    });
-    const combined = `${scriptContent}\n${getCodeContent()}`;
-    expect(combined).not.toMatch(/observe\(\s*{\s*type:\s*['"]event['"]/);
-  });
-
-  test('Page should use onINP for metric collection', async ({ page }) => {
-    const scriptContent = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('script')).map(s => s.textContent || s.src).join(' ');
-    });
-    expect(scriptContent.trim().length).toBeGreaterThan(0);
-    const combined = `${scriptContent}\n${getCodeContent()}`;
-    expect(combined).toContain('onINP');
+  test('Should import the attribution build of web-vitals', async () => {
+    const html = getCodeContent();
+    expect(html).toMatch(/web-vitals[/.].*attribution/);
   });
 });

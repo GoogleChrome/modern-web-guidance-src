@@ -39,19 +39,4 @@ The `image-set()` function is used anywhere CSS expects an `<image>` value, most
 
 {{ BASELINE_STATUS("image-set") }}
 
-For older browsers that do not support the `image-set()` function, you **MUST** provide a standard image declaration *before* the `image-set()` rule. This progressive enhancement strategy relies on CSS's cascading nature: unsupported rules are ignored.
-
-```css
-.gallery-item {
-  /* MANDATORY: Fallback for browsers that do not support image-set() */
-  background-image: url("gallery.jpg");
-  
-  /* Modern browsers will apply this and override the fallback */
-  background-image: image-set(
-    url("gallery.avif") type("image/avif") 1x,
-    url("gallery-2x.avif") type("image/avif") 2x,
-    url("gallery.jpg") type("image/jpeg") 1x,
-    url("gallery-2x.jpg") type("image/jpeg") 2x
-  );
-}
-```
+A separate fallback `background-image: url(...)` declaration before `image-set()` is not required. Include a universally supported format (such as `image/jpeg` or `image/png`) as the final candidate inside `image-set()` so browsers always have a compatible format to fall back to.

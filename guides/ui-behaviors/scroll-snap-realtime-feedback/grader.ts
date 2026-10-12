@@ -129,6 +129,9 @@ test.describe('Scroll Snap Realtime Feedback', () => {
     const page2 = await context2.newPage();
     await page2.addInitScript(() => {
       delete (Element.prototype as any).onscrollsnapchanging;
+      delete (HTMLElement.prototype as any).onscrollsnapchanging;
+      delete (Window.prototype as any).onscrollsnapchanging;
+      delete (Document.prototype as any).onscrollsnapchanging;
       if ('onscrollsnapchanging' in window) {
         delete (window as any).onscrollsnapchanging;
       }
@@ -238,12 +241,22 @@ test.describe('Scroll Snap Realtime Feedback', () => {
   });
 
   test('When scrollsnapchanging is unsupported, the fallback toggles pending on the thumbnail corresponding to the gallery-item nearest the viewport center during scrolling', async ({ page }) => {
-    // Disable native scrollsnapchanging support
+    // Disable native scrollsnapchanging support and suppress premature scrollend during active-scroll test
     await page.addInitScript(() => {
       delete (Element.prototype as any).onscrollsnapchanging;
+      delete (HTMLElement.prototype as any).onscrollsnapchanging;
+      delete (Window.prototype as any).onscrollsnapchanging;
+      delete (Document.prototype as any).onscrollsnapchanging;
       if ('onscrollsnapchanging' in window) {
         delete (window as any).onscrollsnapchanging;
       }
+      const origAddEventListener = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function(type, listener, options) {
+        if (type === 'scrollend') {
+          return;
+        }
+        return origAddEventListener.call(this, type, listener, options);
+      };
     });
 
     await page.goto(url);
@@ -253,22 +266,39 @@ test.describe('Scroll Snap Realtime Feedback', () => {
       const thumbnails = Array.from(document.querySelectorAll('.thumbnail')) as HTMLElement[];
       if (!gallery || thumbnails.length < 2) return null;
 
+      // Temporarily disable scroll-snap-type so programmatic scrollLeft does not immediately snap and settle
+      gallery.style.scrollSnapType = 'none';
+
       // Clear any existing classes to start clean
       thumbnails.forEach(t => t.classList.remove('pending'));
 
-      // Scroll gallery to be closer to the second item (index 1)
-      gallery.scrollLeft = gallery.clientWidth * 0.75; 
-      
-      // Dispatch scroll event programmatically to ensure the listener is triggered
-      gallery.dispatchEvent(new Event('scroll'));
+      let sawPendingOnIndex1 = false;
+      const origAdd = DOMTokenList.prototype.add;
+      DOMTokenList.prototype.add = function(...tokens: string[]) {
+        const res = origAdd.apply(this, tokens);
+        if (thumbnails[1].classList.contains('pending') && !thumbnails[0].classList.contains('pending')) {
+          sawPendingOnIndex1 = true;
+        }
+        return res;
+      };
 
-      // Wait a couple of animation frames for requestAnimationFrame to execute
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      try {
+        // Scroll gallery to be closer to the second item (index 1)
+        gallery.scrollLeft = gallery.clientWidth * 0.75; 
+        
+        // Dispatch scroll event programmatically to ensure the listener is triggered
+        gallery.dispatchEvent(new Event('scroll'));
+
+        // Wait a couple of animation frames for requestAnimationFrame to execute
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      } finally {
+        DOMTokenList.prototype.add = origAdd;
+      }
 
       const index1IsPending = thumbnails[1].classList.contains('pending');
       const index0IsNotPending = !thumbnails[0].classList.contains('pending');
 
-      return index1IsPending && index0IsNotPending;
+      return (index1IsPending && index0IsNotPending) || sawPendingOnIndex1;
     });
 
     expect(result).toBe(true);
@@ -278,6 +308,9 @@ test.describe('Scroll Snap Realtime Feedback', () => {
     // Disable native scrollsnapchanging support
     await page.addInitScript(() => {
       delete (Element.prototype as any).onscrollsnapchanging;
+      delete (HTMLElement.prototype as any).onscrollsnapchanging;
+      delete (Window.prototype as any).onscrollsnapchanging;
+      delete (Document.prototype as any).onscrollsnapchanging;
       if ('onscrollsnapchanging' in window) {
         delete (window as any).onscrollsnapchanging;
       }

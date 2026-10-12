@@ -323,14 +323,27 @@ test.describe('Format Human-Readable Durations Requirements', () => {
   });
 
   test('Does not use legacy manual calculations for duration balancing when Temporal is available', async ({ page }) => {
+    await page.addInitScript(defineMockTemporal);
+
     await page.goto(`file://${process.env.TARGET_FILE}`);
     await page.waitForTimeout(500);
 
-    const scripts = await page.locator('script').allTextContents();
-    const combinedScripts = scripts.join('\n');
-    const hasManualBalancingMath = /\/\s*3600|%\s*3600|\/\s*60|%\s*60/.test(combinedScripts);
+    const hoursInput = page.locator('#hoursInput');
+    const minutesInput = page.locator('#minutesInput');
+    await hoursInput.fill('0');
+    await minutesInput.fill('90');
+    const radioHours = page.locator('input[name="largestUnit"][value="hours"]');
+    if (await radioHours.count() > 0) {
+      await radioHours.check();
+    }
+    await page.waitForTimeout(200);
 
-    expect(hasManualBalancingMath).toBe(false);
+    const roundCalledWith = await page.evaluate(() => (window as any).__roundCalledWith);
+    expect(roundCalledWith).toEqual(expect.objectContaining({ largestUnit: 'hours' }));
+
+    const displayValue = (await page.locator('#humanValue').textContent())?.trim() || '';
+    expect(displayValue).toMatch(/\b1\b/);
+    expect(displayValue).toMatch(/\b30\b/);
   });
 
 });

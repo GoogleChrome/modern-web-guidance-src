@@ -89,9 +89,9 @@ This code grows the `#progress` element on scroll using a named scroll-timeline,
 
 When using scroll-driven animations, it's important to follow a few best practices to ensure a smooth and accessible experience:
 
-- **DO** include feature detection: Not all browsers support scroll-driven animations. Use `@supports (animation-timeline: scroll())` to check for support and provide a fallback for browsers that don't support it.
+- **DO** include feature detection: Not all browsers support scroll-driven animations. Use `@supports (animation-timeline: scroll())` to check for support so browsers that don't support it degrade gracefully.
   - **DO NOT** use the `scroll-timeline-polyfill` package for the fallback strategy as it is not feature complete and has a lot of known issues.
-  - If the animation is only considered to be decorative, opt for Progressive Enhancement and **DO NOT** provide a fallback.
+  - For purely decorative scroll progress indicators, opt for Progressive Enhancement with `@supports (animation-timeline: scroll())` and **DO NOT** attach JavaScript `scroll` event listeners when native scroll-driven animations are supported.
 - **DO** remove purely decorative elements from assistive technology reading flows: Apply `aria-hidden="true"` to purely visual scroll indicators to ensure screen readers do not encounter empty, unnamed nodes.
 - **DO** respect user preferences: Some users prefer to have less motion on the web. Use the `prefers-reduced-motion` media query to disable or reduce your animations for these users.
 - **DO** try to animate only performant CSS properties: For the smoothest animations, stick to animating properties that can be handled by the browser's compositor thread, such as `transform` and `opacity`. Animating other properties like `width` or `height` can lead to performance issues.

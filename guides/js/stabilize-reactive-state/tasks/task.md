@@ -1,4 +1,4 @@
 ---
 base_app: daily-grind
 ---
-- Add an event deadline tracker to the homepage to stabilize reactive state using the Temporal API and immutable date updates. Display the date value in `#temporal-value`, with a button `#extend-temporal-btn` that updates the date without mutating state in place, logging "Yes" in `#temporal-ref-changed` and incrementing the re-render count in `#temporal-render-count`.
+- Add a roasting batch deadline tracker to the homepage that manages task deadlines in a reactive state view without unexpected side effects from shared mutable state. Display the deadline in `#temporal-value`, with a button `#extend-temporal-btn` that extends the deadline by 1 hour, displaying "Yes" in `#temporal-ref-changed` when the state reference changes and incrementing the re-render count in `#temporal-render-count`.

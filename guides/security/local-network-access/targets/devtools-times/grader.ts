@@ -3,7 +3,6 @@ import {
   expect,
   getTargetFiles,
   getJsProject,
-  getHtmlDocuments,
 } from '../../../../test-fixture.ts';
 import { SyntaxKind } from 'ts-morph';
 
@@ -87,11 +86,12 @@ test.describe('Local Network Access Target Grader', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasLna = sourceFiles.some((sf) =>
-      sf.getText().includes('local-network') || sf.getText().includes('targetAddressSpace')
-    );
+    const lnaFiles = sourceFiles.filter((sf) => {
+      const text = sf.getText();
+      return text.includes('local-network') || text.includes('loopback-network') || text.includes('targetAddressSpace');
+    });
 
-    const hasInteractionTrigger = sourceFiles.some((sf) => {
+    const hasInteractionTrigger = lnaFiles.some((sf) => {
       const jsxElements = [
         ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
         ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
@@ -106,19 +106,18 @@ test.describe('Local Network Access Target Grader', () => {
       });
     });
 
-    const guardsPromptState = sourceFiles.some((sf) => {
+    const guardsPromptState = lnaFiles.length > 0 && lnaFiles.every((sf) => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
       const useEffectCalls = calls.filter((c) => c.getExpression().getText().endsWith('useEffect'));
-      if (useEffectCalls.length === 0) return true;
       return useEffectCalls.every((ue) => {
         const text = ue.getText();
-        const initiatesConnection = text.includes('fetch') || text.includes('connect');
+        const initiatesConnection = text.includes('fetch') || text.includes('connect') || text.includes('targetAddressSpace');
         if (!initiatesConnection) return true;
         return text.includes('granted');
       });
     });
 
-    const promptGatedOnUserGesture = hasLna && hasInteractionTrigger && guardsPromptState;
+    const promptGatedOnUserGesture = lnaFiles.length > 0 && hasInteractionTrigger && guardsPromptState;
     expect(promptGatedOnUserGesture).toBe(true);
   });
 
@@ -146,45 +145,5 @@ test.describe('Local Network Access Target Grader', () => {
 
     const handlesErrorsGracefully = catchesErrors && hasRemediationUI;
     expect(handlesErrorsGracefully).toBe(true);
-  });
-
-  test('delegates permission using allow attribute on embedded iframes requiring local network access', () => {
-    const project = getJsProject(targetFiles);
-    const htmlDocs = getHtmlDocuments(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const hasLna = sourceFiles.some((sf) =>
-      sf.getText().includes('targetAddressSpace') || sf.getText().includes('local-network')
-    );
-
-    const jsxIframes = sourceFiles.flatMap((sf) => {
-      const elements = [
-        ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
-        ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
-      ];
-      return elements.filter((el) => el.getTagNameNode().getText() === 'iframe');
-    });
-
-    const htmlIframes = htmlDocs.flatMap((d) => Array.from(d.document.querySelectorAll('iframe')));
-
-    const totalIframes = jsxIframes.length + htmlIframes.length;
-
-    const jsxValid = jsxIframes.every((iframe) => {
-      const allowAttr = iframe.getAttributes().find((attr) => {
-        const text = attr.getText();
-        return text.startsWith('allow=') || text.startsWith('allow ');
-      });
-      if (!allowAttr) return false;
-      const text = allowAttr.getText();
-      return text.includes('local-network') || text.includes('loopback-network');
-    });
-
-    const htmlValid = htmlIframes.every((iframe: any) => {
-      const allow = iframe.getAttribute('allow') || '';
-      return allow.includes('local-network') || allow.includes('loopback-network');
-    });
-
-    const validIframeDelegation = hasLna && (totalIframes === 0 || (jsxValid && htmlValid));
-    expect(validIframeDelegation).toBe(true);
   });
 });

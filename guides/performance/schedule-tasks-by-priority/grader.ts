@@ -92,26 +92,15 @@ test.describe('Prioritized Task Scheduling API Grader', () => {
     await page.waitForTimeout(500);
 
     const calls = await page.evaluate(() => (window as any).__postTaskCalls || []);
-    const priorities = calls.map((c: any) => c.priority);
-    const hasMultiple = ['user-blocking', 'user-visible', 'background'].some(p => priorities.includes(p)) || priorities.length >= 2;
-
-    if (hasMultiple) {
-      expect(hasMultiple).toBe(true);
-      return;
-    }
-
-    const code = getScriptContent();
-    const hasCodePriorities = code.includes('user-blocking') || code.includes('user-visible') || code.includes('background');
-    expect(hasCodePriorities).toBe(true);
+    const validPriorities = new Set(
+      calls
+        .map((c: any) => c.priority)
+        .filter((p: string) => ['user-blocking', 'user-visible', 'background'].includes(p))
+    );
+    expect(validPriorities.size).toBeGreaterThanOrEqual(2);
   });
 
-  test('The application uses a polyfill to support task prioritization in browsers that do not support the Scheduler API natively', async () => {
-    const code = getScriptContent();
-    const hasPolyfillCode = code.includes('scheduler-polyfill') || code.includes('postTask') || (code.includes('scheduler') && code.includes('import'));
-    expect(hasPolyfillCode).toBe(true);
-  });
-
-  test('The application conditionally loads the polyfill only when needed', async ({ page }) => {
+  test('The application uses a polyfill to support task prioritization in browsers that do not support the Scheduler API natively', async ({ page }) => {
     let polyfillRequested = false;
     page.on('request', request => {
       if (request.url().includes('scheduler-polyfill')) {
@@ -119,30 +108,86 @@ test.describe('Prioritized Task Scheduling API Grader', () => {
       }
     });
 
+    await page.addInitScript(() => {
+      delete (window as any).scheduler;
+      delete (Window.prototype as any).scheduler;
+    });
+
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(300);
+
+    const code = getScriptContent();
+    expect(polyfillRequested || code.includes('scheduler-polyfill')).toBe(true);
+  });
+
+  test('The application conditionally loads the polyfill only when needed', async ({ page, context }) => {
+    let polyfillRequestedWhenSupported = false;
+    page.on('request', request => {
+      if (request.url().includes('scheduler-polyfill')) {
+        polyfillRequestedWhenSupported = true;
+      }
+    });
+
     await injectSpy(page);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(300);
 
-    expect(polyfillRequested).toBe(false);
+    expect(polyfillRequestedWhenSupported).toBe(false);
+
+    const unsupportedPage = await context.newPage();
+    await unsupportedPage.route(url => url.href.includes('scheduler-polyfill'), async (route) => {
+      await route.fulfill({
+        contentType: 'application/javascript',
+        body: 'window.scheduler = { postTask: (cb) => Promise.resolve().then(cb) };'
+      });
+    });
+    let polyfillRequestedWhenUnsupported = false;
+    unsupportedPage.on('request', request => {
+      if (request.url().includes('scheduler-polyfill')) {
+        polyfillRequestedWhenUnsupported = true;
+      }
+    });
+    await unsupportedPage.addInitScript(() => {
+      delete (window as any).scheduler;
+      delete (Window.prototype as any).scheduler;
+    });
+    await unsupportedPage.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+    await unsupportedPage.waitForTimeout(300);
+    await unsupportedPage.close();
+
+    expect(polyfillRequestedWhenUnsupported).toBe(true);
   });
 
   test('The application ensures that tasks are executed in priority order (higher priority tasks before lower priority ones)', async ({ page }) => {
     await injectSpy(page);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
-    const buttons = await page.locator('button').all();
-    for (const btn of buttons) {
-      await btn.click().catch(() => {});
+    const batchBtn = page.locator('button', { hasText: /batch|mixed|all|queue/i }).first();
+    if (await batchBtn.count() > 0) {
+      await page.evaluate(() => {
+        (window as any).__executionOrder = [];
+        (window as any).__postTaskCalls = [];
+      });
+      await batchBtn.click().catch(() => {});
+    } else {
+      const buttons = await page.locator('button').all();
+      for (const btn of buttons) {
+        await btn.click().catch(() => {});
+      }
     }
     await page.waitForTimeout(500);
 
-    const order = await page.evaluate(() => (window as any).__executionOrder || []);
-    if (order.length >= 2) {
-      expect(order.length).toBeGreaterThanOrEqual(2);
-      return;
+    const order: string[] = await page.evaluate(() => (window as any).__executionOrder || []);
+    expect(order.length).toBeGreaterThanOrEqual(2);
+    const blockingIdx = order.indexOf('user-blocking');
+    const visibleIdx = order.indexOf('user-visible');
+    const backgroundIdx = order.lastIndexOf('background');
+    expect(blockingIdx).toBeGreaterThanOrEqual(0);
+    expect(backgroundIdx).toBeGreaterThan(blockingIdx);
+    if (visibleIdx !== -1) {
+      expect(blockingIdx).toBeLessThan(visibleIdx);
+      expect(visibleIdx).toBeLessThan(backgroundIdx);
     }
-    const code = getScriptContent();
-    expect(code.includes('postTask') || code.includes('scheduler.postTask')).toBe(true);
   });
 
 });

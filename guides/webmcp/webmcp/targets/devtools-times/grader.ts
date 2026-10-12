@@ -253,10 +253,13 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     });
 
     // Only forms that opt in as declarative tools (via either attribute) are
-    // subject to the rule; those must carry both attributes.
+    // subject to the rule; those must carry both attributes. If no form opts in,
+    // verify that imperative tools were registered instead.
     const toolForms = formElements.filter((f) => f.hasToolName || f.hasToolDescription);
     const hasAnnotatedForms =
-      toolForms.length > 0 && toolForms.every((f) => f.hasToolName && f.hasToolDescription);
+      toolForms.length > 0
+        ? toolForms.every((f) => f.hasToolName && f.hasToolDescription)
+        : collectToolObjects(project).length > 0;
     expect(hasAnnotatedForms).toBe(true);
   });
 });

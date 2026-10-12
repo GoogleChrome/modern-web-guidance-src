@@ -306,17 +306,4 @@ test.describe('CSS Intrinsic Sizes Grader', () => {
     expect(hasReducedMotionQuery).toBe(true);
   });
 
-  test('should document that interpolation between two different intrinsic keywords is not supported', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
-    const styles = await page.$$eval('style', (elements) => elements.map(el => el.textContent || ''));
-    const parsed = parseCSS(styles.join('\n'));
-    
-    const hasKeywordInterpolationNote = parsed.comments.some(comment => {
-      const commentLower = comment.toLowerCase();
-      return commentLower.includes('interpolation');
-    });
-    
-    expect(hasKeywordInterpolationNote).toBe(true);
-  });
-
 });

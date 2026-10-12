@@ -11,7 +11,32 @@ const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
-const fileContent = fs.readFileSync(filePath, 'utf-8');
+
+function getCombinedSource(): { fullText: string; jsText: string } {
+  const html = fs.readFileSync(filePath, 'utf-8');
+  let fullText = html;
+  const inlineScripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).join('\n');
+  let jsText = inlineScripts;
+  try {
+    for (const entry of fs.readdirSync(targetDir)) {
+      if (/\.(?:m?js|ts)$/i.test(entry) && entry !== 'grader.ts') {
+        const extContent = fs.readFileSync(path.join(targetDir, entry), 'utf-8');
+        fullText += '\n' + extContent;
+        jsText += '\n' + extContent;
+      }
+    }
+  } catch {}
+  const stripComments = (str: string) =>
+    str
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+  return {
+    fullText: stripComments(fullText),
+    jsText: stripComments(jsText || fullText),
+  };
+}
+
+const { fullText: fileContent, jsText: cleanJsContent } = getCombinedSource();
 
 test.describe(`Temporal API Expectations: ${demoName}`, () => {
 
@@ -59,12 +84,16 @@ test.describe(`Temporal API Expectations: ${demoName}`, () => {
   });
 
   test('MUST NOT use Temporal.PlainDate or Temporal.PlainTime for data that represents a specific moment in physical time', async () => {
-    const badUsage = /const\s+[a-zA-Z0-9_]*(log|instant|timestamp)[a-zA-Z0-9_]*\s*=\s*Temporal\.(PlainDate|PlainTime)/i.test(fileContent);
+    const usesTemporalPlain = /Temporal\.(PlainDate|PlainTime)/i.test(cleanJsContent);
+    const badUsage = /(?:const|let|var)\s+[a-zA-Z0-9_]*(log|instant|timestamp)[a-zA-Z0-9_]*\s*=\s*Temporal\.(PlainDate|PlainTime)/i.test(cleanJsContent);
+    expect(usesTemporalPlain, "Expected Temporal.PlainDate or Temporal.PlainTime to be used").toBe(true);
     expect(badUsage, "Expected Temporal.PlainDate/Time NOT to be used for server logs or physical moments").toBe(false);
   });
 
   test('MUST NOT attempt to modify Temporal instances directly', async () => {
-    const modifiesDirectly = /\.\s*(year|month|day|hour|minute|second|microsecond|nanosecond)\s*=[^=]/i.test(fileContent);
+    const usesTemporalPlain = /Temporal\.(PlainDate|PlainTime)/i.test(cleanJsContent);
+    const modifiesDirectly = /\.\s*(year|month|day|hour|minute|second|microsecond|nanosecond)\s*=[^=]/i.test(cleanJsContent);
+    expect(usesTemporalPlain, "Expected Temporal.PlainDate or Temporal.PlainTime to be used").toBe(true);
     expect(modifiesDirectly, "Expected NO direct modification of Temporal instances (they are immutable)").toBe(false);
   });
 

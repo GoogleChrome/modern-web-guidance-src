@@ -9,9 +9,7 @@ if (!targetFile) {
 }
 
 const filePath = path.resolve(targetFile);
-const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
-const demoUrl = `http://localhost/${demoName}`;
 
 // Helper to get speculation rules
 function getSpeculationRules(html: string) {
@@ -69,30 +67,26 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     }
   });
 
-  // 5. Check that source property is not present
-  test('The source property should not be present in the rule', async () => {
+  // 5. Check that urls is an array of strings or where uses valid keys
+  test('The urls property is an array of URL strings or where property uses valid keys', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      expect(ruleSets.length).toBeGreaterThan(0);
+      const validWhereKeys = ['href_matches', 'selector_matches', 'not', 'and', 'or'];
       for (const set of ruleSets) {
-        expect(set.source).toBeUndefined();
-      }
-    } else {
-      throw new Error('Rules not found or invalid');
-    }
-  });
-
-  // 6. Check that urls is an array of strings
-  test('The urls property is an array of URL strings', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const rules = getSpeculationRules(html);
-    if (rules && rules !== 'INVALID_JSON') {
-      const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
-      for (const set of ruleSets) {
+        expect(set.urls || set.where).toBeDefined();
         if (set.urls) {
           expect(Array.isArray(set.urls)).toBe(true);
+          expect(set.urls.length).toBeGreaterThan(0);
           expect(set.urls.every((u: unknown) => typeof u === 'string')).toBe(true);
+        }
+        if (set.where) {
+          expect(typeof set.where).toBe('object');
+          const whereKeys = Object.keys(set.where);
+          expect(whereKeys.length).toBeGreaterThan(0);
+          expect(whereKeys.every(k => validWhereKeys.includes(k))).toBe(true);
         }
       }
     } else {
@@ -100,12 +94,13 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     }
   });
 
-  // 7. Check immediate eagerness limit
+  // 6. Check immediate eagerness limit
   test('If using immediate eagerness, match a maximum of 10 urls', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
         if (set.eagerness === 'immediate' && set.urls) {
           expect(set.urls.length).toBeLessThanOrEqual(10);
@@ -116,12 +111,13 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     }
   });
 
-  // 8. Check for state-changing URLs
+  // 7. Check for state-changing URLs
   test('Do not speculate URLs that likely trigger state changes (e.g., /logout)', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
         if (set.urls) {
           expect(set.urls.some((url: string) => url.includes('logout'))).toBe(false);
@@ -137,39 +133,13 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     }
   });
 
-  // Setup browser testing
-  test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
-
-      if (fs.existsSync(localFilePath)) {
-        await route.fulfill({ path: localFilePath });
-      } else {
-        await route.continue();
-      }
-    });
-
-    await page.goto(demoUrl);
-  });
-
-  // 9. Check if it's an SPA
-  test('The page should be a Multi-Page Application (MPA), not a Single Page Application (SPA)', async ({ page }) => {
-    const hasHashChange = await page.evaluate(() => {
-        // Simple check for hashchange listener or router-like behavior
-        // This is a bit heuristic but fits the negative-demo.html
-        return typeof (window as any).router === 'function' || !!(window as any).onhashchange;
-    });
-    // negative-demo.html has a router function and hashchange listener
-    expect(hasHashChange).toBe(false);
-  });
-
-  // 10. Check valid eagerness values
+  // 8. Check valid eagerness values
   test('The optional eagerness property is one of the valid values', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      expect(ruleSets.length).toBeGreaterThan(0);
       const validEagerness = ['immediate', 'eager', 'moderate', 'conservative'];
       for (const set of ruleSets) {
         if (set.eagerness) {

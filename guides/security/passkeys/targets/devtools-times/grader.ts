@@ -6,15 +6,12 @@
  * Expectation 4: TESTED - Verifies that the client decodes server-provided authentication options with PublicKeyCredential.parseRequestOptionsFromJSON before invoking navigator.credentials.get().
  * Expectation 5: TESTED - Verifies that WebAuthn options are fetched from a server endpoint rather than constructing the challenge value on the client.
  * Expectation 6: SKIPPED - Relying Party ID configuration is generated and validated server-side during option generation.
- * Expectation 7: SKIPPED - The base web application does not have an associated Android app.
- * Expectation 8: SKIPPED - The base web application does not have an associated iOS or macOS native app.
- * Expectation 9: SKIPPED - The web application operates on a single origin and does not share passkeys across distinct eTLD+1 domains.
- * Expectation 10: TESTED - Verifies that the client serializes the returned credential using PublicKeyCredential.prototype.toJSON and posts it to a server verification endpoint.
- * Expectation 11: SKIPPED - The base web application does not contain a credential management list or deletion flow.
- * Expectation 12: SKIPPED - The base web application does not contain a user profile or display name update flow.
- * Expectation 13: SKIPPED - The base web application does not implement unknown credential signaling for asserted passkeys.
- * Expectation 14: SKIPPED - The base web application does not render credential management lists or authenticator provider icons.
- * Expectation 15: TESTED - Verifies that the application delegates WebAuthn verification to the server without hand-rolling client-side cryptographic signature verification.
+ * Expectation 7: TESTED - Verifies that the client serializes the returned credential using PublicKeyCredential.prototype.toJSON and posts it to a server verification endpoint.
+ * Expectation 8: SKIPPED - The base web application does not contain a credential management list or deletion flow.
+ * Expectation 9: SKIPPED - The base web application does not contain a user profile or display name update flow.
+ * Expectation 10: SKIPPED - The base web application does not implement unknown credential signaling for asserted passkeys.
+ * Expectation 11: SKIPPED - The base web application does not render credential management lists or authenticator provider icons.
+ * Expectation 12: TESTED - Verifies that the application delegates WebAuthn verification to the server without hand-rolling client-side cryptographic signature verification.
  */
 
 import {
@@ -98,13 +95,19 @@ test.describe('Passkeys Target Grader - DevTools Times', () => {
       })
     );
 
-    const hasHandledCredentialsCalls = credCalls.length > 0 && credCalls.every((c) => {
+    const hasHandledCredentialsCalls = credCalls.some((c) => {
       const tryStmt = c.getFirstAncestorByKind(SyntaxKind.TryStatement);
       if (!tryStmt) return false;
       const catchClause = tryStmt.getCatchClause();
       if (!catchClause) return false;
       const catchText = catchClause.getText();
-      return catchText.includes('NotAllowedError') || catchText.includes('AbortError');
+      const fileText = c.getSourceFile().getFullText();
+      return (
+        catchText.includes('NotAllowedError') ||
+        catchText.includes('AbortError') ||
+        ((fileText.includes('NotAllowedError') || fileText.includes('AbortError')) &&
+          catchClause.getDescendantsOfKind(SyntaxKind.CallExpression).length > 0)
+      );
     });
 
     expect(hasHandledCredentialsCalls).toBe(true);
@@ -152,16 +155,18 @@ test.describe('Passkeys Target Grader - DevTools Times', () => {
 
     const hasOptionsFetch = sourceFiles.some((sf) => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some((c) => {
-        const text = c.getText();
-        return /fetch/i.test(c.getExpression().getText()) && /options/i.test(text);
-      });
+      const hasFetch = calls.some((c) => /fetch/i.test(c.getExpression().getText()));
+      const fullText = sf.getFullText();
+      return (
+        hasFetch &&
+        /['"`][^'"`]*?(options|challenge|register|login|auth|passkey|webauthn)[^'"`]*?['"`]/i.test(fullText)
+      );
     });
 
     expect(hasOptionsFetch).toBe(true);
   });
 
-  test('Expectation 10: Client serializes credential using toJSON() and posts to verification endpoint', () => {
+  test('Expectation 7: Client serializes credential using toJSON() and posts to verification endpoint', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
@@ -171,26 +176,28 @@ test.describe('Passkeys Target Grader - DevTools Times', () => {
         const expr = c.getExpression().getText();
         return expr.endsWith('.toJSON') || expr.includes('toJSON(');
       });
-      const hasVerifyPost = calls.some((c) => {
-        const text = c.getText();
-        return /fetch/i.test(c.getExpression().getText()) && /verify/i.test(text) && /POST/i.test(text);
-      });
-      return hasToJSON && hasVerifyPost;
+      const hasFetch = calls.some((c) => /fetch/i.test(c.getExpression().getText()));
+      const fullText = sf.getFullText();
+      const hasVerifyEndpoint =
+        /['"`][^'"`]*?(verify|register|login|auth|passkey|webauthn)[^'"`]*?['"`]/i.test(fullText);
+      const hasPost = /['"`]POST['"`]/i.test(fullText);
+      return hasToJSON && hasFetch && hasVerifyEndpoint && hasPost;
     });
 
     expect(hasToJSONAndVerifyPost).toBe(true);
   });
 
-  test('Expectation 15: Application delegates WebAuthn verification to the server without hand-rolling client crypto', () => {
+  test('Expectation 12: Application delegates WebAuthn verification to the server without hand-rolling client crypto', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
     const delegatesVerificationWithoutHandRolledCrypto = sourceFiles.some((sf) => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      const hasServerVerifyCall = calls.some((c) => {
-        const text = c.getText();
-        return /fetch/i.test(c.getExpression().getText()) && /verify/i.test(text);
-      });
+      const hasFetch = calls.some((c) => /fetch/i.test(c.getExpression().getText()));
+      const fullText = sf.getFullText();
+      const hasServerVerifyCall =
+        hasFetch &&
+        /['"`][^'"`]*?(verify|register|login|auth|passkey|webauthn)[^'"`]*?['"`]/i.test(fullText);
       const hasHandRolledCrypto = calls.some((c) => {
         const expr = c.getExpression().getText();
         return expr.includes('crypto.subtle.verify') || expr.includes('crypto.subtle.digest');

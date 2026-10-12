@@ -75,13 +75,13 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
   });
 
   test(`includes transition-behavior: allow-discrete or allow-discrete keyword for display`, async ({ page }) => {
-    const el = page.locator('.card').first();
+    const el = page.locator('#toggleCard, #domContainer .card').first();
     const transitionBehavior = await el.evaluate(e => window.getComputedStyle(e).transitionBehavior);
     expect(transitionBehavior).toMatch(/allow-discrete/);
   });
 
   test(`includes display property in transition list`, async ({ page }) => {
-    const el = page.locator('.card').first();
+    const el = page.locator('#toggleCard, #domContainer .card').first();
     const transitionProperty = await el.evaluate(e => window.getComputedStyle(e).transitionProperty);
     expect(transitionProperty).toContain('display');
   });
@@ -143,7 +143,7 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
   });
 
   test(`transition durations for entry and exit are reasonable (0.3s to 1s)`, async ({ page }) => {
-    const el = page.locator('.card').first();
+    const el = page.locator('#toggleCard, #domContainer .card').first();
     const transitionDuration = await el.evaluate(e => window.getComputedStyle(e).transitionDuration);
     const durations = transitionDuration.split(',').map(s => parseFloat(s));
 

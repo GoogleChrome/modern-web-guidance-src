@@ -11,6 +11,5 @@
 1. The result of `session.prompt()` with `responseConstraint` should be parsed with `JSON.parse()`.
 1. A separate `JSON.stringify()` call to convert the schema to a string is not needed — the schema is passed as a plain object.
 1. `session.destroy()` should be called when a session is no longer needed, to free device memory.
-1. When using `AbortController` to cancel a prompt, the same signal should be passed to the `prompt()` or `promptStreaming()` call, not to `LanguageModel.create()`.
-1. Session clones created with `session.clone()` share the base session's initial context but accumulate their own separate conversation history afterwards. The base session should be destroyed after cloning if it will not be used further.
+1. Session clones created with `session.clone()` share the base session's initial context but accumulate their own separate conversation history afterwards. Any unused base or superseded cloned sessions should be destroyed with `session.destroy()`.
 1. `session.contextUsage` and `session.contextWindow` reflect the current token count and maximum respectively. Code should not assume a fixed token limit.

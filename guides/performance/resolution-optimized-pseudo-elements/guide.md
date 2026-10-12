@@ -37,19 +37,4 @@ You can use the `image-set()` function directly within the `content` property of
 
 {{ BASELINE_STATUS("image-set") }}
 
-For older browsers that do not support the `image-set()` function, you **MUST** provide a standard image declaration *before* the `image-set()` rule. This progressive enhancement strategy relies on CSS's cascading nature: unsupported rules are ignored.
-
-```css
-.icon-button::before {
-  /* MANDATORY: Fallback for browsers that do not support image-set() */
-  content: url("icon.png");
-  
-  /* Modern browsers will apply this and override the fallback */
-  content: image-set(
-    url("icon.avif") type("image/avif") 1x,
-    url("icon-2x.avif") type("image/avif") 2x,
-    url("icon.png") type("image/png") 1x,
-    url("icon-2x.png") type("image/png") 2x
-  );
-}
-```
+A separate `content: url(...)` fallback declaration before `image-set()` is not required. Include a universally supported format (such as `image/png` or `image/jpeg`) as the final candidate inside `image-set()` when offering multiple image formats.

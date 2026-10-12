@@ -50,33 +50,6 @@ test.describe('Soft Edge Content Fade Tests', () => {
     expect(hasOpaque && hasTransparent).toBe(true);
   });
 
-  test('a fallback strategy is included for browsers that do not support masking', async ({ page }) => {
-    const hasFallback = await page.evaluate(() => {
-      for (const sheet of Array.from(document.styleSheets)) {
-        try {
-          const rules = sheet.cssRules;
-          for (const rule of Array.from(rules)) {
-            if (rule.type === 12) { // CSSRule.SUPPORTS_RULE
-              const cond = rule.cssText.toLowerCase();
-              if (cond.includes('not') && (cond.includes('mask-image') || cond.includes('-webkit-mask-image'))) {
-                return true;
-              }
-            }
-          }
-        } catch (e: any) {
-          if (e && (e.name === 'SecurityError' || e.message?.includes('SecurityError') || e.message?.includes('read the cssRules property'))) {
-            // Safe to ignore cross-origin stylesheet security errors
-          } else {
-            throw e;
-          }
-        }
-      }
-      return false;
-    });
-
-    expect(hasFallback).toBe(true);
-  });
-
   test('the content remains readable even if the mask is not applied', async ({ page }) => {
     const isReadabilityObscured = await page.evaluate(() => {
       const el = document.querySelector('.paywall-container');

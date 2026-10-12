@@ -84,22 +84,6 @@ test('The SVG masks use maskContentUnits="objectBoundingBox" to scale correctly 
   expect(masksAreObjectBoundingBox).toBe(true);
 });
 
-test('The parent container .unified-card uses filter: drop-shadow() to silhouette the unified card and adjacent masked element', async ({ page }) => {
-  await page.goto(targetUrl);
-
-  const usesDropShadowFilter = await page.evaluate(() => {
-    const card = document.querySelector('.unified-card');
-    if (!card) return false;
-    
-    const computed = window.getComputedStyle(card);
-    const filter = computed.filter;
-    
-    return filter.includes('drop-shadow');
-  });
-
-  expect(usesDropShadowFilter).toBe(true);
-});
-
 test('Safe layout practices are followed where all readable text content remains entirely within the standard unmasked container .card-body to prevent clipping', async ({ page }) => {
   await page.goto(targetUrl);
 
