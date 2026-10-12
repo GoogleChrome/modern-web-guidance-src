@@ -65,7 +65,7 @@ The engine uses three CSS capabilities to render icons:
 
 ### 2. Defining Icon Assets as Design Tokens
 
-Define SVG icons and the default `--icon-size` as reusable custom properties using inline SVG data URIs or root-relative URLs (e.g., `url("/icons/trash.svg")`):
+Define SVG icons and the default `--icon-size` as reusable custom properties using inline SVG data URIs or root-relative URLs (e.g., `url("/icons/trash.svg")`). When an icon is loaded from an external SVG file, use a root-relative URL or an embedded data URI. A relative URL used through a custom property can resolve relative to the stylesheet where the icon is used, rather than the stylesheet where the custom property is defined. If those stylesheets are in different directories, the URL may resolve to the wrong file.
 
 ```css
 :root {
