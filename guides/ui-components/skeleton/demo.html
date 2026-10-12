@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skeleton loading patterns</title>
+  <style>
+    @layer reset, page, skeleton;
+
+    @layer reset {
+      * { box-sizing: border-box; }
+      h2, p, figure { margin: 0; }
+      a { color: inherit; text-decoration: underline .12em var(--accent); text-underline-offset: .18em; }
+    }
+
+    @layer page {
+      :root {
+        color-scheme: light dark;
+        --page: light-dark(#f5f6f8, #17191d);
+        --surface: light-dark(#fff, #22252b);
+        --ink: light-dark(#17191d, #f4f5f7);
+        --muted: light-dark(#626873, #aeb4bf);
+        --line: light-dark(#dfe2e7, #3b404a);
+        --accent: light-dark(#075fe6, #72a8ff);
+        --pad: 1.25rem;
+      }
+
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font: 1rem/1.5 system-ui, sans-serif;
+      }
+
+      main { max-inline-size: 70rem; margin: auto; padding: 2rem var(--pad); }
+      button { margin-block-end: 1.5rem; border: 0; padding: .7rem 1rem; background: var(--accent); color: white; font: inherit; font-weight: 700; cursor: pointer; }
+
+      section { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); gap: 1rem; }
+      article { overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+
+      article:not(:has(> figure)) { padding: var(--pad); }
+      article:has(> figure) > div { padding: var(--pad); }
+      article:has(> .avatar) { display: flex; align-items: flex-start; gap: 1rem; }
+      article:has(> .avatar) > div { min-inline-size: 0; }
+      article:has(> .avatar) h2 { margin-block-start: 0; }
+
+      figure { aspect-ratio: 16 / 10; }
+      figure img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
+      .avatar { inline-size: 4rem; block-size: 4rem; display: grid; place-items: center; flex: none; background: var(--accent); color: white; font-weight: 800; }
+
+      .meta { min-block-size: 1lh; color: var(--muted); font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+      h2 { margin-block: .6rem .4rem; min-block-size: 2lh; font-size: 1.35rem; line-height: 1.2; }
+      h2 + p { min-block-size: 3lh; color: var(--muted); }
+      article > a { display: inline-block; margin-block-start: 1.5rem; font-weight: 700; }
+      p:has(> a) { margin-block-start: 1rem; }
+    }
+
+    @layer skeleton {
+      @property --skeleton-x {
+        syntax: '<percentage>';
+        inherits: false;
+        initial-value: -100%;
+      }
+
+      @property --skeleton-tone {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #c7cbd2;
+      }
+
+      :root {
+        --skeleton-base: light-dark(#c7cbd2, #30353d);
+        --skeleton-pulse: light-dark(#d9dce1, #3a4049);
+        --skeleton-highlight: light-dark(#eceef1, #4a525d);
+      }
+
+      .skeleton[aria-busy="true"] {
+        --skeleton-tone: var(--skeleton-base);
+        animation: pulse 1.6s ease-in-out infinite alternate;
+      }
+
+      .skeleton[aria-busy="true"] :is(h1, h2, h3, h4, h5, h6, p, a, li, dt, dd, th, td, figcaption, label, legend, summary, blockquote, time, small) {
+        color: transparent;
+        text-decoration: underline .8em var(--skeleton-tone);
+        text-decoration-skip-ink: none;
+        text-underline-offset: -.75em;
+      }
+
+      .skeleton[aria-busy="true"] :is(figure, picture, .avatar, button, input, select, textarea, .skeleton-block) {
+  color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+        background:
+          linear-gradient(110deg, transparent 20%, var(--skeleton-highlight) 45%, transparent 70%)
+            var(--skeleton-x) 0 / 200% 100% no-repeat,
+          var(--skeleton-tone);
+        animation: shimmer 1.8s linear infinite;
+      }
+
+      .skeleton[aria-busy="true"] :is(img, svg, video, canvas, iframe) { visibility: hidden; }
+      .skeleton[aria-busy="true"] :is(input, select, textarea)::placeholder { color: transparent; }
+      .skeleton[aria-busy="true"] figure {
+        mask:
+          linear-gradient(#000 0 0),
+          linear-gradient(#000 0 0) center / 3.5rem 2.75rem no-repeat,
+          radial-gradient(circle, #000 .45rem, transparent calc(.45rem + 1px)) center / 100% 100% no-repeat;
+        mask-composite: exclude;
+      }
+
+      @keyframes shimmer { to { --skeleton-x: 100%; } }
+      @keyframes pulse { to { --skeleton-tone: var(--skeleton-pulse); } }
+
+      @media (prefers-reduced-motion: reduce) {
+        .skeleton[aria-busy="true"],
+        .skeleton[aria-busy="true"] :is(figure, picture, .avatar, button, input, select, textarea, .skeleton-block) { animation: none; }
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <button type="button">Show loaded state</button>
+
+    <section id="demos" class="skeleton" aria-busy="true" inert>
+      <article>
+        <figure>
+          <img src="https://picsum.photos/seed/skeleton-demo/640/400" width="640" height="400" alt="A bottle of Molten Mango hot sauce">
+        </figure>
+        <div>
+          <p class="meta">Hot sauce · Heat 7/10</p>
+          <h2><a href="#">Molten Mango Habanero Blaze</a></h2>
+          <p>Ripe mango and smoked habanero with a slow, warm finish that works on almost anything.</p>
+        </div>
+      </article>
+
+      <article>
+        <p class="meta">New this week</p>
+        <h2><a href="#">Ghost Pepper Garlic Inferno</a></h2>
+        <p>Roasted garlic, black vinegar and enough ghost pepper to make you question your choices.</p>
+        <a href="#">See the full range</a>
+      </article>
+
+      <article>
+        <div class="avatar" aria-hidden="true">SC</div>
+        <div>
+          <h2><a href="#">Scorch Co.</a></h2>
+          <p>Small-batch hot sauce from a shed in Hampshire</p>
+          <p><a href="#">Shop</a> · <a href="#">Stockists</a></p>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const demos = document.getElementById('demos');
+    const toggle = document.querySelector('button');
+
+    function setLoading(loading) {
+      demos.setAttribute('aria-busy', String(loading));
+      demos.toggleAttribute('inert', loading);
+      toggle.textContent = loading ? 'Show loaded state' : 'Show loading state';
+    }
+
+    toggle.addEventListener('click', () => {
+      setLoading(demos.getAttribute('aria-busy') !== 'true');
+    });
+  </script>
+</body>
+</html>
