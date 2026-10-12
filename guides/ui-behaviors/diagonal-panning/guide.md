@@ -15,12 +15,7 @@ While axis-locking prevents accidental sideways drift in one-dimensional reading
 
 ### 1. Disable axis-locking on the 2D scroll container
 
-Apply `scroll-axis-lock: none` directly to the element that establishes the two-dimensional scroll container (`overflow: auto` or `overflow: scroll`).
-
-### Property Values
-
-- `auto`: The browser may lock the scroll gesture to a single axis when it determines the gesture is predominantly one-dimensional. This is the default value.
-- `none`: Disables scroll axis-locking. The scroll container applies scroll deltas on both axes simultaneously from the start of the gesture across touchscreens, trackpads, and mouse wheels.
+Apply `scroll-axis-lock: none` directly to the element that establishes the two-dimensional scroll container (`overflow: auto` or `overflow: scroll`). With `none`, the container applies scroll deltas on both axes simultaneously from the start of the gesture across touchscreens, trackpads, and mouse wheels; the default `auto` lets the browser rail predominantly one-dimensional gestures.
 
 ### 2. Preserve keyboard focusability and accessibility
 
