@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+index 66c9173..e864104 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,13 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { observeInteractionPaints, trackSoftNavigationLCP } from '/paint-timing.js';
++
++    observeInteractionPaints((paint) => console.debug('[ICP]', paint));
++    trackSoftNavigationLCP((report) => console.debug('[Soft nav]', report));
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/paint-timing.js b/paint-timing.js
+new file mode 100644
+index 0000000..a1a7608
+--- /dev/null
++++ b/paint-timing.js
+@@ -0,0 +1,90 @@
++/**
++ * Observes contentful paints caused by user interactions.
++ * entry.duration is (presentationTime - startTime): time from interaction to paint.
++ */
++export function observeInteractionPaints(onInteractionPaint) {
++  if (
++    typeof PerformanceObserver === 'undefined' ||
++    !PerformanceObserver.supportedEntryTypes?.includes('interaction-contentful-paint')
++  ) {
++    return null;
++  }
++
++  const observer = new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      onInteractionPaint({
++        interactionId: entry.interactionId,
++        duration: entry.duration,
++        element: entry.largestContentfulPaint?.element ?? null,
++        size: entry.largestContentfulPaint?.size ?? null,
++      });
++    }
++  });
++
++  observer.observe({ type: 'interaction-contentful-paint', buffered: true });
++  return observer;
++}
++
++/**
++ * Tracks FCP and LCP for each soft navigation, reporting when the user
++ * navigates again or the page is hidden.
++ */
++export function trackSoftNavigationLCP(onSoftNavReport) {
++  const supported =
++    typeof PerformanceObserver !== 'undefined' &&
++    PerformanceObserver.supportedEntryTypes?.includes('soft-navigation') &&
++    PerformanceObserver.supportedEntryTypes?.includes('interaction-contentful-paint');
++
++  if (!supported) {
++    return null;
++  }
++
++  let activeSoftNav = null;
++  let activeLcpEntry = null;
++
++  function finalizeCurrentSoftNav() {
++    if (!activeSoftNav) return;
++
++    onSoftNavReport({
++      url: activeSoftNav.name,
++      navigationId: activeSoftNav.navigationId,
++      interactionId: activeSoftNav.interactionId,
++      fcpDuration: activeSoftNav.duration,
++      lcpDuration: activeLcpEntry ? activeLcpEntry.duration : null,
++      lcpElement: activeLcpEntry?.largestContentfulPaint?.element ?? null,
++      lcpSize: activeLcpEntry?.largestContentfulPaint?.size ?? null,
++    });
++
++    activeSoftNav = null;
++    activeLcpEntry = null;
++  }
++
++  const softNavObserver = new PerformanceObserver((list) => {
++    for (const softNavEntry of list.getEntries()) {
++      finalizeCurrentSoftNav();
++      activeSoftNav = softNavEntry;
++      // Include paints that happened before the URL update.
++      activeLcpEntry = softNavEntry.getLargestInteractionContentfulPaint();
++    }
++  });
++
++  const icpObserver = new PerformanceObserver((list) => {
++    for (const icpEntry of list.getEntries()) {
++      // Match by interactionId, not navigationId.
++      if (activeSoftNav && icpEntry.interactionId === activeSoftNav.interactionId) {
++        activeLcpEntry = icpEntry;
++      }
++    }
++  });
++
++  softNavObserver.observe({ type: 'soft-navigation', buffered: true });
++  icpObserver.observe({ type: 'interaction-contentful-paint', buffered: true });
++
++  document.addEventListener('visibilitychange', () => {
++    if (document.visibilityState === 'hidden') {
++      finalizeCurrentSoftNav();
++    }
++  });
++
++  return { softNavObserver, icpObserver, finalizeCurrentSoftNav };
++}

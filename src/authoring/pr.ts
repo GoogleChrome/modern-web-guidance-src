@@ -3,31 +3,17 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { cGreen, cCyan, cRed, cDim } from '../core/colors.ts';
 import { REPORT_FILE } from '../core/guide-validation.ts';
-import { getGuideResultsDir, guidesDir } from '../core/paths.ts';
-
-export function resolveGuideResultsDir(targetDir: string, guideInfo?: { category?: string; slug?: string }): string {
-  if (guideInfo?.category && guideInfo?.slug) {
-    return getGuideResultsDir({ category: guideInfo.category, slug: guideInfo.slug });
-  }
-  const resolvedTarget = path.resolve(targetDir);
-  const rel = path.relative(guidesDir, resolvedTarget);
-  if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
-    const parts = rel.split(path.sep);
-    if (parts.length >= 2) {
-      return getGuideResultsDir({ category: parts[0], slug: parts[1] });
-    }
-    if (parts.length === 1) {
-      return getGuideResultsDir({ category: parts[0], slug: parts[0] });
-    }
-  }
-  const parts = resolvedTarget.split(path.sep);
-  const slug = parts[parts.length - 1];
-  const category = parts[parts.length - 2] || 'cat';
-  return getGuideResultsDir({ category, slug });
-}
+import { resolveGuideResultsDir, type GuideResultsInventory } from '../core/paths.ts';
 
 export type DevPrLabel = 'gd-dev-content' | 'gd-dev-eval';
-export const ALL_DEV_PR_LABELS: readonly DevPrLabel[] = ['gd-dev-content', 'gd-dev-eval'];
+export type DevPrRerunLabel = 'needs-eval-gen' | 'needs-eval-run';
+
+const MANAGED_PR_LABELS: readonly string[] = [
+  'gd-dev-content',
+  'gd-dev-eval',
+  'needs-eval-gen',
+  'needs-eval-run',
+];
 
 interface OpenDevPr {
   number: number;
@@ -107,11 +93,11 @@ export const devPrCli = {
   },
   createPr(title: string, bodyPath: string, labels: DevPrLabel[]): string {
     const labelFlags = labels.map(l => `--label "${l}"`).join(' ');
-    return execSync(`gh pr create --draft --title "${title}" --body-file "${bodyPath}" ${labelFlags}`.trim(), {
+    return execSync(`gh pr create --title "${title}" --body-file "${bodyPath}" ${labelFlags}`.trim(), {
       encoding: 'utf-8',
     }).trim();
   },
-  editPr(prNumber: number, bodyPath: string, addLabels: DevPrLabel[], removeLabels: DevPrLabel[]): void {
+  editPr(prNumber: number, bodyPath: string, addLabels: DevPrLabel[], removeLabels: string[]): void {
     execSync(`gh api repos/{owner}/{repo}/pulls/${prNumber} --method PATCH -F body=@"${bodyPath}"`, { stdio: 'ignore' });
     for (const label of removeLabels) {
       try {
@@ -126,16 +112,17 @@ export const devPrCli = {
 
 /**
  * Computes which gd-dev labels to add or remove based on new recommendations vs existing PR labels.
+ * Also removes any trigger rerun labels (`needs-eval-gen`, `needs-eval-run`).
  */
 export function computeLabelDiff(
   newLabels: DevPrLabel[],
   existingLabels: { name: string }[] = []
-): { addLabels: DevPrLabel[]; removeLabels: DevPrLabel[] } {
+): { addLabels: DevPrLabel[]; removeLabels: string[] } {
   const current = new Set((existingLabels || []).map(l => l.name));
-  const next = new Set(newLabels);
+  const next = new Set<string>(newLabels);
   return {
     addLabels: newLabels.filter(l => !current.has(l)),
-    removeLabels: ALL_DEV_PR_LABELS.filter(l => current.has(l) && !next.has(l)),
+    removeLabels: MANAGED_PR_LABELS.filter(l => current.has(l) && !next.has(l)),
   };
 }
 
@@ -184,7 +171,7 @@ export function devPrTitle(guideName: string): string {
  * Orchestrates branch push, label determination, and GitHub PR creation or update.
  * Returns the PR URL, or null on failure.
  */
-export async function runDevPr(guideDir: string, guideInfo?: { category?: string; slug?: string }): Promise<string | null> {
+export async function runDevPr(guideDir: string, guideInfo?: Partial<GuideResultsInventory>): Promise<string | null> {
   const resolvedGuideDir = path.resolve(guideDir);
   const guideResultsDir = resolveGuideResultsDir(resolvedGuideDir, guideInfo);
   const reportPath = path.join(guideResultsDir, REPORT_FILE);

@@ -33,6 +33,33 @@ describe('extractTargetFilesFromPatch', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('ignores package manager lockfiles in patch headers', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-lockfile-test-'));
+    const patchPath = path.join(tmpDir, 'demo.patch');
+    const patchContent = `--- a/index.html
++++ b/index.html
+@@ -1 +1 @@
+-old
++new
+--- /dev/null
++++ b/package-lock.json
+@@ -0,0 +1,3 @@
++{}
+--- /dev/null
++++ b/pnpm-lock.yaml
+@@ -0,0 +1,2 @@
++lockfileVersion: '9.0'
+`;
+    fs.writeFileSync(patchPath, patchContent);
+
+    try {
+      const files = extractTargetFilesFromPatch(patchPath);
+      assert.deepStrictEqual(files, ['index.html']);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('applyPatchSync', () => {
@@ -68,7 +95,7 @@ describe('applyPatchSync', () => {
 });
 
 describe('capturePatchFromGit', () => {
-  test('captures untracked modifications from git repo into patch file', () => {
+  test('captures untracked modifications from git repo into patch file and excludes lockfiles', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capture-patch-'));
     const repoDir = path.join(tmpDir, 'repo');
     const patchDest = path.join(tmpDir, 'out', 'change.patch');
@@ -80,8 +107,10 @@ describe('capturePatchFromGit', () => {
       fs.writeFileSync(path.join(repoDir, 'existing.txt'), 'hello\n');
       execSync('git add . && git commit -m "init"', { cwd: repoDir, stdio: 'ignore' });
 
-      // Create untracked change
+      // Create untracked change plus lockfiles that should be excluded
       fs.writeFileSync(path.join(repoDir, 'newfile.txt'), 'world\n');
+      fs.writeFileSync(path.join(repoDir, 'package-lock.json'), '{"lockfileVersion": 3}\n');
+      fs.writeFileSync(path.join(repoDir, 'pnpm-lock.yaml'), 'lockfileVersion: 9.0\n');
 
       const result = capturePatchFromGit(repoDir, patchDest);
       assert.strictEqual(result.success, true);
@@ -89,6 +118,8 @@ describe('capturePatchFromGit', () => {
       const patchContent = fs.readFileSync(patchDest, 'utf8');
       assert.match(patchContent, /newfile\.txt/);
       assert.match(patchContent, /\+world/);
+      assert.doesNotMatch(patchContent, /package-lock\.json/);
+      assert.doesNotMatch(patchContent, /pnpm-lock\.yaml/);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -142,5 +173,45 @@ describe('capturePatchFromGit', () => {
   });
 });
 
+describe('generateUnifiedDiff', () => {
+  test('returns "No differences detected." for identical content', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    assert.strictEqual(generateUnifiedDiff('const a = 1;\n', 'const a = 1;\n'), 'No differences detected.');
+    assert.strictEqual(generateUnifiedDiff('', ''), 'No differences detected.');
+  });
+
+  test('generates unified diff for modified lines with custom labels', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    const oldText = 'line 1\nline 2\nline 3';
+    const newText = 'line 1\nline 2 modified\nline 3';
+    const diff = generateUnifiedDiff(oldText, newText, 'OldFile', 'NewFile');
+
+    assert.match(diff, /^--- OldFile/m);
+    assert.match(diff, /^\+\+\+ NewFile/m);
+    assert.match(diff, /^@@ -\d+,\d+ \+\d+,\d+ @@/m);
+    assert.match(diff, /^-line 2/m);
+    assert.match(diff, /^\+line 2 modified/m);
+  });
+
+  test('handles insertions at beginning, middle, and end correctly with prefix/suffix trimming', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    const oldText = 'header\nshared 1\nshared 2\nfooter';
+    const newText = 'top new\nheader\nshared 1\nmiddle inserted\nshared 2\nfooter\nbottom new';
+    const diff = generateUnifiedDiff(oldText, newText);
+
+    assert.match(diff, /^\+top new/m);
+    assert.match(diff, /^\+middle inserted/m);
+    assert.match(diff, /^\+bottom new/m);
+  });
+
+  test('handles empty string edge cases correctly', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    const diffFromEmpty = generateUnifiedDiff('', 'new content\n');
+    assert.match(diffFromEmpty, /^\+new content/m);
+
+    const diffToEmpty = generateUnifiedDiff('old content\n', '');
+    assert.match(diffToEmpty, /^-old content/m);
+  });
+});
 
 
