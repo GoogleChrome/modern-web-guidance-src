@@ -206,8 +206,8 @@ Alternatively, you can allow the outer transition to capture the children. In or
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("view-transitions-element-scoped") }}
-{{ FEATURE_FALLBACKS("view-transitions") }}
+{{ BASELINE_STATUS("view-transitions-element-scoped") }}
+{{ BASELINE_STATUS("view-transitions") }}
 
 If your Baseline target does not support element-scoped view transitions, degrade gracefully by running the DOM update callback immediately without animation. While you could fall back to `document.startViewTransition()` this is not recommended for isolated component updates, as a document-scoped transition blocks concurrent component transitions and obscures `position: fixed` and `[popover]` elements in the top layer.
 
