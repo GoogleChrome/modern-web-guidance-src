@@ -141,6 +141,7 @@ export interface OpenEvalPrItem {
 export interface PipelineReportData {
   completeCount: number;
   evalCompleteCount: number;
+  gen2CompleteCount: number;
   burndown: BurndownData;
   needsGuidancePrs: NeedsGuidancePrItem[];
   needsGuidanceIssues: NeedsGuidanceIssueItem[];
@@ -433,19 +434,25 @@ export function findStaleEvals(
 }
 
 /**
- * Finds guides still using legacy root `grader.ts` instead of `targets/{daily-grind,devtools-times}/`.
+ * Finds guides still using Gen 1 legacy root `grader.ts` instead of Gen 2 `targets/`,
+ * and counts Gen 2 (`targets/`) and dual-target complete guides.
  */
 export function findLegacyFormatGuides(guides: GuideInventory[]): {
   legacyEvals: LegacyEvalItem[];
+  gen2CompleteCount: number;
   dualTargetCompleteCount: number;
 } {
   const legacyEvals: LegacyEvalItem[] = [];
+  let gen2CompleteCount = 0;
   let dualTargetCompleteCount = 0;
 
   for (const g of guides) {
-    const hasDualTargets = Boolean(g.targets && g.targets.length >= 2 && g.hasGrader);
-    if (hasDualTargets) {
-      dualTargetCompleteCount++;
+    const hasGen2Targets = Boolean(g.targets && g.targets.length >= 1 && g.hasGrader);
+    if (hasGen2Targets) {
+      gen2CompleteCount++;
+      if ((g.targets?.length ?? 0) >= 2) {
+        dualTargetCompleteCount++;
+      }
       continue;
     }
 
@@ -471,7 +478,7 @@ export function findLegacyFormatGuides(guides: GuideInventory[]): {
   }
 
   legacyEvals.sort((a, b) => a.slug.localeCompare(b.slug));
-  return { legacyEvals, dualTargetCompleteCount };
+  return { legacyEvals, gen2CompleteCount, dualTargetCompleteCount };
 }
 
 /**
@@ -483,11 +490,15 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     ...data.openEvalPrs.map(p => p.slug),
     ...data.readyForEvalSlugs,
   ]).size;
+  const finishedFeatureGuides = data.evalCompleteCount + totalNeedsEvals;
+  const evalCoveragePct =
+    finishedFeatureGuides > 0 ? Math.round((data.evalCompleteCount / finishedFeatureGuides) * 100) : 100;
 
   const lines: string[] = [
     '# Content & Eval Pipeline',
     '',
     `**${totalNeedsGuidance}** ${ProjectStatus.NeedsGuidance} (\`${data.needsGuidancePrs.length}\` open PRs · \`${data.needsGuidanceIssues.length}\` open issues) · **${totalNeedsEvals}** ${ProjectStatus.NeedsEvals} (\`${data.openEvalPrs.length}\` open PRs · \`${data.readyForEvalSlugs.length}\` ready) · **${data.completeCount}** Complete`,
+    `**Eval Coverage (${finishedFeatureGuides} finished guides):** **${data.evalCompleteCount} / ${finishedFeatureGuides} (${evalCoveragePct}%)** covered — **${data.gen2CompleteCount} Gen 2** (\`targets/\`) · **${data.legacyEvals.length} Gen 1** (legacy root \`grader.ts\`) · **${totalNeedsEvals} Missing evals**`,
     '',
     `### Current Batch Burndown (\`${data.burndown.remaining} / ${data.burndown.initial}\` remaining)`,
     '',
@@ -586,10 +597,12 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     '---',
     '',
-    `### Legacy eval format (${data.legacyEvals.length})`,
+    `### Gen 1 → Gen 2 Eval Migration (\`${data.gen2CompleteCount}\` Gen 2 · \`${data.legacyEvals.length}\` Gen 1)`,
+    '',
+    `> **Note:** Paused while \`gd dev-gap\` prioritizes covering the **${totalNeedsEvals} finished guides missing evals** above with Gen 2 (\`targets/\`) evals.`,
     '',
     '<details>',
-    `<summary>Show ${data.legacyEvals.length} guides using root <code>grader.ts</code> instead of <code>targets/{daily-grind,devtools-times}/</code> (${data.dualTargetCompleteCount} dual-target complete)</summary>`,
+    `<summary>Show ${data.legacyEvals.length} guides on Gen 1 evals (root <code>grader.ts</code> + <code>tasks/task.md</code> · ${data.gen2CompleteCount} on Gen 2 <code>targets/</code>, ${data.dualTargetCompleteCount} dual-target)</summary>`,
     ''
   );
 
@@ -931,11 +944,12 @@ export function buildPipelineReportData(params: {
   );
   const needsGuidanceIssues = resolveNeedsGuidanceIssues(validGuides, slugsWithContentPr, issueIndex);
   const staleEvals = findStaleEvals(validGuides, params.gitHistory, params.openExpectationsChangedIssues);
-  const { legacyEvals, dualTargetCompleteCount } = findLegacyFormatGuides(validGuides);
+  const { legacyEvals, gen2CompleteCount, dualTargetCompleteCount } = findLegacyFormatGuides(validGuides);
 
   return {
     completeCount: completeGuides.length,
     evalCompleteCount,
+    gen2CompleteCount,
     burndown,
     needsGuidancePrs,
     needsGuidanceIssues,
