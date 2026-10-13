@@ -34,7 +34,7 @@ Place each popover immediately after its trigger. Browsers add an implicit `aria
 <!-- Immediately after its trigger, so browsers add no implicit aria-details -->
 <div id="file-menu" popover="auto">
   <!-- Nested, not on the popover: Chromium otherwise drops focusgroup keyboard behavior -->
-  <div focusgroup="menu no-memory" aria-labelledby="file-trigger">
+  <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
     <button type="button">New file</button>
     <button type="button">Save</button>
     <button id="export-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
@@ -43,7 +43,7 @@ Place each popover immediately after its trigger. Browsers add an implicit `aria
     </button>
     <!-- Submenu: popover="auto" directly after its trigger, inside the parent focusgroup -->
     <div id="export-menu" popover="auto">
-      <div focusgroup="menu no-memory" aria-labelledby="export-trigger">
+      <div focusgroup="menu nomemory" aria-labelledby="export-trigger">
         <button type="button">PDF</button>
         <button type="button">Plain Text</button>
       </div>
