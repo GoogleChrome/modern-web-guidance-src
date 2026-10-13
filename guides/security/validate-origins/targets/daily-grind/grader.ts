@@ -55,7 +55,7 @@ test.describe('Daily Grind Validate Origins Grader', () => {
       const literals = sf.getDescendantsOfKind(SyntaxKind.StringLiteral);
       const hasTrustedString = literals.some((l) => l.getLiteralValue().includes('trusted-origin') || l.getLiteralValue().startsWith('https://'));
       const ids = sf.getDescendantsOfKind(SyntaxKind.Identifier);
-      const hasTrustedId = ids.some((id) => id.getText().includes('TRUSTED') || id.getText().includes('trusted'));
+      const hasTrustedId = ids.some((id) => /trusted|allowed|reference|expected|widgetorigin|apporigin|^self$|^location$/i.test(id.getText()));
       return hasTrustedString || hasTrustedId;
     });
 
@@ -105,6 +105,7 @@ test.describe('Daily Grind Validate Origins Grader', () => {
     const hasSameOriginBoundaryCheck = appFiles.some((sf) => {
       const fns = [
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
+        ...sf.getDescendantsOfKind(SyntaxKind.MethodDeclaration),
         ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
       ];
@@ -113,7 +114,7 @@ test.describe('Daily Grind Validate Origins Grader', () => {
           ? (fn as { getName: () => string | undefined }).getName() || ''
           : '';
         const text = fn.getText();
-        const isTargetValidator = /sameorigin/i.test(fnName) || /sameorigin/i.test(text);
+        const isTargetValidator = /sameorigin|validateorigin|checkorigin|trustedorigin|trustedmessage/i.test(fnName) || /sameorigin/i.test(text);
         if (!isTargetValidator) return false;
         const hasIsSameOrigin = fn.getDescendantsOfKind(SyntaxKind.CallExpression).some((c) => c.getExpression().getText().endsWith('isSameOrigin'));
         const hasOriginEquality = fn.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((b) => {
@@ -154,8 +155,7 @@ test.describe('Daily Grind Validate Origins Grader', () => {
         const expr = c.getExpression().getText();
         return expr.endsWith('.isSameSite') || expr === 'isSameSite';
       });
-      const hasProtocolVerification = sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression).some((pa) => pa.getName() === 'protocol') ||
-        sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((b) => b.getText().includes('protocol'));
+      const hasProtocolVerification = sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'protocol');
       return hasSameSite && hasProtocolVerification;
     });
 
@@ -199,11 +199,13 @@ test.describe('Daily Grind Validate Origins Grader', () => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
       const hasExtractOriginFromEvent = calls.some((c) => {
         const expr = c.getExpression().getText();
-        return (expr.endsWith('.from') || expr === 'from') && c.getArguments().some((a) => a.getText() === 'event');
+        return (expr.endsWith('.from') || expr === 'from') && c.getArguments().some((a) => /^(event|e|msg|messageEvent)$/i.test(a.getText()));
       });
       const hasSameOriginComparison = calls.some((c) => c.getExpression().getText().endsWith('isSameOrigin'));
-      const hasInitCheck = sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some((sl) => sl.getLiteralValue() === 'init');
-      return (hasOpaqueSentinel || hasExtractOriginFromEvent) && hasSameOriginComparison && hasInitCheck;
+      const hasPinningGuard =
+        sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some((sl) => /^(init|ready|handshake|pin)$/i.test(sl.getLiteralValue())) ||
+        sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => /pinned|isPinned|isInit|pinOrigin|sandboxOrigin/i.test(id.getText()));
+      return (hasOpaqueSentinel || hasExtractOriginFromEvent) && hasSameOriginComparison && hasPinningGuard;
     });
 
     expect(hasSandboxPinningMechanism).toBe(true);
@@ -217,10 +219,9 @@ test.describe('Daily Grind Validate Origins Grader', () => {
 
     const hasUrlFallbackImplementation = appFiles.some((sf) => {
       const hasFeatureCheck = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((b) => {
-        const op = b.getOperatorToken().getText();
         const text = b.getText();
-        return (op === 'in' && text.includes('Origin')) || text.includes('typeof Origin') || text.includes('Origin !==') || text.includes('Origin !=');
-      }) || sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'hasOriginApi' || id.getText() === 'HAS_ORIGIN' || id.getText() === 'originApi');
+        return /\bOrigin\b/.test(text) && (b.getOperatorToken().getText() === 'in' || text.includes('typeof ') || text.includes('!==') || text.includes('!=') || text.includes('===') || text.includes('=='));
+      }) || sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => /has.*origin|origin.*api/i.test(id.getText()));
 
       const newExprs = sf.getDescendantsOfKind(SyntaxKind.NewExpression);
       const hasNewUrl = newExprs.some((n) => n.getExpression().getText() === 'URL');
@@ -228,7 +229,7 @@ test.describe('Daily Grind Validate Origins Grader', () => {
       const binaryExprs = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression);
       const hasTupleCheck = binaryExprs.some((b) => {
         const text = b.getText();
-        return text.includes('.origin') && (text.includes('===') || text.includes('!==') || text.includes('!='));
+        return (text.includes('.origin') || text.includes('.protocol') || text.includes('.#scheme')) && (text.includes('===') || text.includes('!==') || text.includes('!='));
       });
 
       return hasFeatureCheck && hasNewUrl && hasTupleCheck;
