@@ -14,7 +14,6 @@ guides:
 
 # SVG Icon Implementation
 
-Use CSS Masks and Container Style Queries to inject scalable vector icons into any element via CSS variables. This approach delivers zero-markup injection, dynamic color control, and automatic transitions without altering HTML structure.
 
 ## Choosing an Icon Technique
 
