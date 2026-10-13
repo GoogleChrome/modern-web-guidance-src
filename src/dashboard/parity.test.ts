@@ -1,14 +1,22 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert';
 import { generateSuitesManifest } from './generate-manifests.js';
 import { suitesDir } from '../core/paths.ts';
 
-const mockResultsDir = path.resolve('./test-mock-results');
+let tempDir = '';
+let mockResultsDir = '';
+let manifestOutDir = '';
 let targetResultsDir = suitesDir;
 
 before(async () => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'parity-test-'));
+    mockResultsDir = path.join(tempDir, 'test-mock-results');
+    manifestOutDir = path.join(tempDir, 'manifests');
+    fs.mkdirSync(manifestOutDir, { recursive: true });
+
     // Setup mock results dir if real results missing (e.g. in CI)
     if (!fs.existsSync(suitesDir)) {
         console.log('⚠️ results/suites missing. Creating mock results for test...');
@@ -18,24 +26,18 @@ before(async () => {
     }
 
     // Generate manifests for standard tests
-    await generateSuitesManifest('.', targetResultsDir);
+    await generateSuitesManifest(manifestOutDir, targetResultsDir);
 });
 
 after(async () => {
-    // Cleanup mock dir
-    if (targetResultsDir === mockResultsDir) {
-        fs.rmSync(mockResultsDir, { recursive: true, force: true });
-    }
-    // Also cleanup generated manifest file
-    const suitesPath = path.resolve('./suites.gen.json');
-    if (fs.existsSync(suitesPath)) {
-        fs.unlinkSync(suitesPath);
+    if (tempDir) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
     }
 });
 
 test('Parity: Static manifests should be correctly generated and accessible', async () => {
     // Verify suites.gen.json exists and contains data
-    const suitesPath = path.resolve('./suites.gen.json');
+    const suitesPath = path.join(manifestOutDir, 'suites.gen.json');
     assert.strictEqual(fs.existsSync(suitesPath), true, 'suites.gen.json should exist');
     const suitesData = JSON.parse(fs.readFileSync(suitesPath, 'utf8'));
     assert.strictEqual(Array.isArray(suitesData), true, 'suites.gen.json should be an array');
@@ -50,9 +52,9 @@ test('Parity: Static manifests should be correctly generated and accessible', as
 });
 
 test('Parity: evals.json should be valid in all completed suites', async () => {
-    const suitesPath = path.resolve('./suites.gen.json');
+    const suitesPath = path.join(manifestOutDir, 'suites.gen.json');
     // Re-generate to ensure we have a valid file for this test if previous one was cleaned up
-    await generateSuitesManifest('.', targetResultsDir);
+    await generateSuitesManifest(manifestOutDir, targetResultsDir);
     
     assert.ok(fs.existsSync(suitesPath), 'suites.gen.json should exist');
     

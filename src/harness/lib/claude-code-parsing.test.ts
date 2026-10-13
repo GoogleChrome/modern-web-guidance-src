@@ -440,3 +440,64 @@ test('collectClaude metrics and token extraction from trajectory files', async (
     removeTempDir(tempDir);
   }
 });
+
+test('Claude Code token deduplication across streaming chunks and cache_creation inclusion', async () => {
+  const tempDir = createTempDir();
+  try {
+    const lines = [
+      // Turn 1, Chunk 1 (thinking)
+      JSON.stringify({
+        message: {
+          id: 'msg_turn_1',
+          model: 'claude-3-7-sonnet',
+          usage: {
+            input_tokens: 150,
+            cache_creation_input_tokens: 50,
+            cache_read_input_tokens: 100,
+            output_tokens: 10
+          },
+          content: [{ type: 'thinking', thinking: 'Thinking about the task' }]
+        }
+      }),
+      // Turn 1, Chunk 2 (tool_use - final chunk for turn 1)
+      JSON.stringify({
+        message: {
+          id: 'msg_turn_1',
+          model: 'claude-3-7-sonnet',
+          usage: {
+            input_tokens: 150,
+            cache_creation_input_tokens: 50,
+            cache_read_input_tokens: 100,
+            output_tokens: 45
+          },
+          content: [{ type: 'tool_use', id: 'c1', name: 'Bash', input: { command: 'echo hello' } }]
+        }
+      }),
+      // Turn 2, single chunk
+      JSON.stringify({
+        message: {
+          id: 'msg_turn_2',
+          model: 'claude-3-7-sonnet',
+          usage: {
+            input_tokens: 200,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 250,
+            output_tokens: 60
+          },
+          content: [{ type: 'text', text: 'Task completed' }]
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-dedup.jsonl'), lines.join('\n'));
+
+    const tokens = extractClaudeCodeTokenUsage(tempDir);
+    // Turn 1 (final entry only): 150 + 50 + 100 + 45 = 345 total, 100 cached
+    // Turn 2: 200 + 0 + 250 + 60 = 510 total, 250 cached
+    // Combined: 345 + 510 = 855 total, 100 + 250 = 350 cached
+    assert.deepStrictEqual(tokens, { total: 855, cached: 350 });
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
