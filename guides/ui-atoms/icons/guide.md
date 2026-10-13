@@ -168,9 +168,6 @@ For reusable SVG icons stored in an external sprite, reference a symbol with `<u
 
 The sprite file defines the `icon-trash` symbol once, and pages can reference it where needed. External sprites can be cached and reused, but styling the referenced SVG's internals is limited compared with inline SVG.
 
-{{ FEATURE_ISSUES("masks") }}
-{{ FEATURE_ISSUES("container-style-queries") }}
-
 ## Fallback Strategies
 
 ### Registered Custom Properties
