@@ -1,0 +1,77 @@
+diff --git a/index.html b/index.html
+index 66c9173..5d1b043 100644
+--- a/index.html
++++ b/index.html
+@@ -46,6 +46,10 @@
+       letter-spacing: 1px;
+     }
+ 
++    .logo::before {
++      content: "☕ " / "";
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+@@ -72,6 +76,10 @@
+       border-radius: 4px;
+     }
+ 
++    .logout-link::before {
++      content: "↪ " / "";
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -135,6 +143,10 @@
+       background: #3e2723;
+     }
+ 
++    .btn::after {
++      content: " →" / "";
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -152,6 +164,12 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:not(:last-child)::after {
++      content: " |" / "";
++      margin-left: 10px;
++      color: var(--text);
++    }
+   </style>
+ </head>
+ 
+@@ -199,9 +217,9 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
++      <a href="/about">Our Story</a>
++      <a href="/careers">Join the Team</a>
++      <a href="/contact">Contact Us</a>
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+diff --git a/package.json b/package.json
+index 2bd4d77..b68d9f5 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "echo 'Build clean'"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
