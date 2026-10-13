@@ -179,7 +179,8 @@ The `accent-color` property is a progressive enhancement. Browsers that do not s
 
 If `accent-color` is not supported and styling the progress bar is required, use the customized styling method to apply preferred styling to the progress bar.
 
-{{ BASELINE_STATUS('tmp-revert-rule') }}
+{# See https://github.com/GoogleChrome/modern-web-guidance-src/issues/2004
+{{ BASELINE_STATUS('tmp-revert-rule') }} #}
 
 If `revert-rule` is not supported, the declaration becomes IACVT (invalid at computed-value time) and behaves as `unset`. Here `animation` computes to `none`, same as the UA, so no guard is needed.
 
