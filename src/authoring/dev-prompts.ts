@@ -61,9 +61,10 @@ If the codebase already contains partial, complete, or conflicting implementatio
 # RULES
 1. **No-Op by Default**: If the clean codebase does not have the feature implemented, do NOT modify any files.
 2. **Realistic Baseline**: If you make modifications, make sure they resemble a realistic baseline state of the application where the feature is absent. Do NOT write buggy or obviously broken code, and do NOT add any comments, messages, or placeholders indicating that this is a simulated, test, or baseline state.
-3. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
-4. Ensure your modifications are robust, complete, and type-safe.
-5. Your changes MUST compile cleanly. You can run \`npm run build\` inside your workspace to verify.
+3. **Genuinely Violate Each Expectation**: When disabling, unsetting, or removing implementations, ensure you genuinely violate each relevant requirement in \`${opts.expectationsFile}\`. Do NOT rely on compound boolean guards or missing prerequisite elements to cause tests to fail; ensure that if a test inspects a specific behavior, attribute, or fallback, the codebase realistically fails that inspection.
+4. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
+5. Ensure your modifications are robust, complete, and type-safe.
+6. Your changes MUST compile cleanly. You can run \`npm run build\` inside your workspace to verify.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
@@ -136,12 +137,12 @@ ${solutionList}
 ## 1. Strictly Follow the Boilerplate Template
 Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`getTargetFiles\`, \`getCssStyleSheet\`, \`getJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
 
-## 2. Assertion Hierarchy
-- **Static Analysis First**: Prioritize static AST analysis over browser execution for structural assertions. Always avoid regex on HTML, CSS, and JavaScript files.
+## 2. Assertion Hierarchy & Behavioral Balance
+- **Static Analysis First (Balanced Verification)**: Choose the right verification tool for each requirement. Prioritize static AST analysis for structural patterns, declarations, and DOM hierarchy, but use behavioral / runtime Playwright E2E tests for interactive behaviors, state changes, or when AST checking would be overly rigid or prescribe internal implementation structure. Do not reject valid, spec-compliant code due to rigid AST shapes or incidental implementation details. Always avoid regex on HTML, CSS, and JavaScript files.
   - Use **Linkedom** for HTML structure and DOM querying (\`getHtmlDocuments\`).
   - Use **CSSOMNom** for CSS rules, at-rules (@media, @supports, @container, @view-transition), and declarations (\`getCssStyleSheet\`).
   - Use **ts-morph** for JavaScript/TypeScript syntax, AST analysis, and function/variable querying (\`getJsProject\`).
-- **Browser Checks Only When Necessary**: Only write browser-based Playwright E2E tests when strictly necessary (for requirements that cannot be verified statically, such as runtime click events or dynamic state updates). Omit browser test blocks entirely if static checks are sufficient.
+- **Browser Checks for Runtime Behaviors**: Write browser-based Playwright E2E tests for requirements that involve runtime interactions (clicks, form submits, modal opening/closing), dynamic DOM mutations, or computed style changes that are more reliably verified behaviorally than via AST inspection. Omit browser test blocks entirely if static checks are sufficient.
 - **Reference Examples & API Definitions**: Before writing tests, use your file-viewing tools to inspect these reference pattern libraries and API type definitions for implementation patterns:
   - **Test Fixture Helper Signatures (Reference Only)**: [test-fixture.reference.ts](file://${opts.testFixtureReferencePath})
   - **Static Analysis Patterns (Linkedom, CSSOMNom, ts-morph)**: [parser-pattern-library.test.ts](file://${opts.parserPatternLibraryPath})
@@ -153,11 +154,31 @@ Base your grader's imports, workspace setup, helper function usage, and test str
 ## 3. Granular Assertions: Single Assertion per Test
 Write only one assertion per \`test('...', ...)\` block across both static and browser tests. Do not combine multiple assertions into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
 
-## 4. Precision & Matching Rules
+## 4. Anti-Overfitting & AST Robustness Rules
+- **No Overfitting to Golden Solution Patches**: The 3 golden solution diffs (\`claude-code-solution.patch\`, \`codex-cli-solution.patch\`, \`jetski-cli-solution.patch\`) are examples of valid implementations, NOT exhaustive specifications.
+  - NEVER hardcode allowlists of helper function names (e.g. \`syncAcceptedCredentials\`, \`loadCredentials\`, \`loadManagementPanel\`, \`load\`), React state variable names, or newly created filenames / paths (e.g. \`filePath.includes('passkey')\`) from the solution patches.
+  - Match conceptual roles (e.g. any function calling fetch / API endpoints or registered in event listeners) rather than specific names used in calibration patches.
+- **Robust ts-morph AST Traversal**:
+  - **Unwrap Type Assertions & Wrappers**: Always unwrap TypeScript type assertions (\`AsExpression\`, \`TypeAssertion\`), satisfies expressions (\`SatisfiesExpression\`), and parenthesized expressions (\`ParenthesizedExpression\`) when inspecting arguments or expressions. For example:
+    \`\`\`ts
+    function unwrapExpr(node: Node): Node {
+      let curr = node;
+      while (Node.isAsExpression(curr) || Node.isSatisfiesExpression(curr) || Node.isParenthesizedExpression(curr) || Node.isTypeAssertion(curr)) {
+        curr = curr.getExpression();
+      }
+      return curr;
+    }
+    \`\`\`
+    Never assume an argument is directly an inline \`ObjectLiteralExpression\` without unwrapping.
+  - **Follow Identifier & Variable Indirection**: Do not assume options objects, configuration dictionaries, or arguments are defined inline as object literals at the call site. Resolve local variable references (\`VariableDeclaration\`, \`BindingElement\`, parameter) if an identifier is passed.
+  - **Flexible Error Handling**: When testing error handling, accept both \`try/catch\` blocks (\`TryStatement\`) and promise \`.catch()\` handler calls.
+- **No Swallowed Errors & No Vacuous Conditional Checks**:
+  - Do NOT wrap assertions in generic try/catch blocks that swallow exceptions.
+  - NEVER use \`test.skip()\` in the grader. Unconditionally run assertions or use deterministic mocks.
+  - NEVER write compound checks or conditional guards that pass vacuously when a feature or element is missing. Specifically, never do \`hasFeature && (items.length === 0 || ...)\` or \`if (items.length > 0) { expect(...); }\`. Every test block must independently verify its own target requirement and assert \`expect(items.length).toBeGreaterThan(0)\` (or equivalent existence) before asserting properties or \`.every(...)\` on those items.
 - **Outcome-Based Assertions**: Verify structural and functional requirements in static checks rather than forcing a single narrow implementation when valid alternatives exist.
 - **Utility CSS Flexibility**: In apps using utility-first CSS frameworks (e.g., Tailwind), accept either standard CSS declarations (\`getCssStyleSheet\`) or equivalent utility classes on elements in template markup (\`getHtmlDocuments\`).
 - **Flexible Pattern Matching**: Avoid exact-string equality for dynamic names or classes. Use loose matches, inclusion checks, and word boundaries (e.g., \`/\\bname\\b/\`) to avoid substring false positives.
-- **No Swallowed Errors**: Do not wrap assertions in generic try/catch blocks that swallow exceptions.
 
 ## 5. Dependencies & Sandbox Constraints
 Do not install any npm packages or execute application dev, build, or test commands in your workspace. However, you MUST verify that your generated grader code compiles cleanly and passes linting. Run ONLY these verification commands in your workspace and fix any errors before ending your turn:
@@ -172,29 +193,34 @@ export interface TaskPromptOptions {
   guideFile: string;
   taskFile: string;
   baseApp: string;
+  expectationsFile?: string;
   isDisciplineGuide?: boolean;
 }
 
 export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
   const target = opts.isDisciplineGuide ? 'discipline guidance' : 'use case';
+  const expectationsFile = opts.expectationsFile || EXPECTATIONS_FILE;
 
   return `# GOAL
 Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the ${target}.
 Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to apply the ${target} inside the application.
 
 # INPUTS
-1. **Standard Guidance**: \`${opts.guideFile}\`
-2. **Target File Name**: \`${opts.taskFile}\`
+1. **Standard Guidance**: \`${opts.guideFile}\` (contains the high-level capability boundary in its frontmatter \`description\`)
+2. **Requirements**: \`${expectationsFile}\` (used strictly as a **Negative Constraint / Spoiler Blocklist**)
+3. **Target File Name**: \`${opts.taskFile}\`
 
 # RULES
 1. **Focus on the Guide Description**: The prompt must request the overall desired user outcome based specifically on the **description** in the frontmatter of \`${opts.guideFile}\`, keeping the request simple, high-level, and generic.
-2. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcomes instead.
-3. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the frontmatter description of \`${opts.guideFile}\`.
-4. **Format**: Format \`${opts.taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
-5. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant.
-6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "implement X", "modify Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
-7. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.
-8. **No Internal Project References**: Do NOT name the guide itself or indicate that guidance exists.
+2. **Preserve High-Level Capability Boundary**: DO preserve the high-level capability boundary from the frontmatter \`description\` so the implementing agent knows the functional domain and execution context (e.g., distinguishing on-device / built-in browser capabilities vs. external third-party cloud services or REST APIs).
+3. **Expectations as a Negative Constraint / Spoiler Blocklist**: Treat \`${expectationsFile}\` strictly as a blocklist of spoilers. Do NOT mention or copy secondary accessibility requirements, \`prefers-reduced-motion\`, fallback strategies, ARIA attributes, focus management, or edge cases from \`${expectationsFile}\` unless they are the explicit primary subject of \`${opts.guideFile}\`'s frontmatter \`description\`. The implementing agent must discover and apply these best practices from the guidance itself, not because the prompt spoiled them.
+4. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcomes instead.
+5. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the frontmatter description of \`${opts.guideFile}\`.
+6. **Format**: Format \`${opts.taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
+7. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant.
+8. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "implement X", "modify Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
+9. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.
+10. **No Internal Project References**: Do NOT name the guide itself or indicate that guidance exists.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;

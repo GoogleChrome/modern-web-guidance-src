@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import matter from 'gray-matter';
 import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
@@ -253,12 +254,22 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
   }
 }
 
-async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
+export const devInternals = {
+  runAgent,
+  copyBaseAppToWorkspace,
+};
+
+export async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
   const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-task`);
   try {
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    const rawGuide = fs.readFileSync(path.join(guideDirAbs, GUIDE_FILE), 'utf-8');
+    const { data: guideData } = matter(rawGuide);
+    const description = guideData?.description || '';
+    const strippedGuideContent = `---\ndescription: ${JSON.stringify(description)}\n---\n`;
+    fs.writeFileSync(path.join(workDir, GUIDE_FILE), strippedGuideContent);
+
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
-    await copyBaseAppToWorkspace(baseApp, workDir);
+    await devInternals.copyBaseAppToWorkspace(baseApp, workDir);
 
     const prompt = buildTargetTaskPrompt({
       guideFile: GUIDE_FILE,
@@ -267,7 +278,7 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
     });
 
-    await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
+    await devInternals.runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
 
     const generatedTask = path.join(workDir, TASK_FILE);
     if (!fs.existsSync(generatedTask) || !fs.readFileSync(generatedTask, 'utf-8').trim()) {
