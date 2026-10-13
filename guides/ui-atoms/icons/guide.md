@@ -183,10 +183,6 @@ If you need multi-color icons or arbitrary path-level animations, use Inline SVG
 
 ## Fallback Strategies
 
-### CSS Masks
-
-{{ BASELINE_STATUS("masks") }}
-
 ### Registered Custom Properties
 
 {{ BASELINE_STATUS("registered-custom-properties") }}
