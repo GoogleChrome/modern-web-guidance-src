@@ -152,16 +152,21 @@ Put the `.icon` class and `--icon` property directly on an icon-only button. Giv
 <span class="icon" style="--icon: var(--icon-favorite);" role="img" aria-label="Favorite"></span>
 ```
 
-## When to Use Inline SVG Instead
+## Alternatives to the CSS Icon System
 
-If you need multi-color icons or arbitrary path-level animations, use Inline SVG. It provides full DOM access but requires more markup:
+Use inline SVG when you need direct access to individual paths, such as for multi-color icons or path-level animations. No example is needed here: the key distinction is that inline SVG exposes the icon's elements in the document.
+
+For reusable SVG icons stored in an external sprite, reference a symbol with `<use>`:
 
 ```html
-<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-  <path d="..." fill="currentColor" />
-  <circle cx="12" cy="12" r="3" fill="var(--icon-accent, gold)" />
-</svg>
+<button aria-label="Delete item">
+  <svg aria-hidden="true" width="24" height="24">
+    <use href="/icons.svg#icon-trash"></use>
+  </svg>
+</button>
 ```
+
+The sprite file defines the `icon-trash` symbol once, and pages can reference it where needed. External sprites can be cached and reused, but styling the referenced SVG's internals is limited compared with inline SVG.
 
 ## Common Pitfalls
 
