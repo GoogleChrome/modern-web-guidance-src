@@ -11,6 +11,7 @@ import {
 } from './agent-shared.ts';
 import { Agents } from '../config.ts';
 import { getDefaultSolutionAgent } from '../../core/guide-validation.ts';
+import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
 
 export async function copyBaseAppToWorkspace(baseApp: string, destDir: string): Promise<void> {
   const refBaseAppDir = path.join(baseAppsDir, baseApp);
@@ -58,8 +59,15 @@ export async function runAgent(
   workDir?: string,
   options: { captureOutput?: boolean; homeDir?: string } = {}
 ): Promise<string> {
-  const { command, commandArgs } = getAgentCommandAndArgs(agent, prompt);
-  const env = options.homeDir ? { ...process.env, HOME: options.homeDir } : { ...process.env };
+  const raw = getAgentCommandAndArgs(agent, prompt);
+  const { command, commandArgs } = options.homeDir
+    ? wrapCommandInSandbox(raw.command, raw.commandArgs, buildSandboxPolicy(options.homeDir, 'unguided'))
+    : raw;
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    ...(options.homeDir ? { HOME: options.homeDir, ZDOTDIR: options.homeDir } : {}),
+    ...(workDir ? { PWD: workDir } : {}),
+  };
 
   if (options.captureOutput) {
     return runCommand(command, commandArgs, workDir, env);

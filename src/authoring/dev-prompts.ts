@@ -160,7 +160,7 @@ Write only one assertion per \`test('...', ...)\` block across both static and b
 - **No Swallowed Errors**: Do not wrap assertions in generic try/catch blocks that swallow exceptions.
 
 ## 5. Dependencies & Sandbox Constraints
-Do not install any npm packages or execute application dev/build commands (like astro build or vite build) in your workspace. However, you MUST verify that your generated grader code compiles cleanly and passes linting. Run these verification commands in your workspace and fix any errors before ending your turn:
+Do not install any npm packages or execute application dev, build, or test commands in your workspace. However, you MUST verify that your generated grader code compiles cleanly and passes linting. Run ONLY these verification commands in your workspace and fix any errors before ending your turn:
 1. \`npx tsc --noEmit --skipLibCheck --target esnext --module nodenext --moduleResolution nodenext --allowImportingTsExtensions --esModuleInterop grader.ts\`
 2. \`npx oxlint grader.ts\`
 
