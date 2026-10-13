@@ -199,6 +199,8 @@ menus.forEach(menu => {
       focusFirst(menu);
     } else if (!isOpen(menu)) {
       enterOnOpen.add(menu);
+    } else {
+      event.source?.focus({ preventScroll: true });
     }
   });
 
