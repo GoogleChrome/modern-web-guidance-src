@@ -345,6 +345,11 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     assert.match(markdown, /## Stage 3: Needs evals \(2\)/);
     assert.match(
       markdown,
+      /\*\*Eval Coverage \(3 finished guides\):\*\* \*\*1 \/ 3 \(33%\)\*\* covered — \*\*1 Gen 2\*\* \(`targets\/`\) · \*\*0 Gen 1\*\* \(legacy root `grader\.ts`\) · \*\*2 Missing evals\*\*/
+    );
+    assert.match(markdown, /### Gen 1 → Gen 2 Eval Migration \(`1` Gen 2 · `0` Gen 1\)/);
+    assert.match(
+      markdown,
       /- \[ \] \[\*\*ui-behaviors\/drag\*\*\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\/ui-behaviors\/drag\) · \[PR #1741\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/pull\/1741\) · `HEALTHY` · Pass@1: dg 100%, dt 100% · `micahjo7` → `TravenReese`/
     );
 
@@ -389,10 +394,25 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       fs.writeFileSync(path.join(dtDir, 'tasks', 'task.md'), '---\nbase_app: devtools-times\n---\n- Prompt');
 
       const dualTarget = makeGuide({ category: 'forms', name: 'dual-target' });
+      const singleTarget = makeGuide({
+        category: 'forms',
+        name: 'single-target',
+        targets: [
+          {
+            name: 'daily-grind',
+            dir: '/tmp/guides/forms/single-target/targets/daily-grind',
+            hasSolution: true,
+            hasZeroPassrate: true,
+            hasGrader: true,
+            hasTask: true,
+          },
+        ],
+      });
       const legacyDg = makeGuide({ category: 'css', name: 'legacy-dg', dir: dgDir, targets: [] });
       const legacyDt = makeGuide({ category: 'html', name: 'legacy-dt', dir: dtDir, targets: [] });
 
-      const result = findLegacyFormatGuides([dualTarget, legacyDt, legacyDg]);
+      const result = findLegacyFormatGuides([dualTarget, singleTarget, legacyDt, legacyDg]);
+      assert.equal(result.gen2CompleteCount, 2);
       assert.equal(result.dualTargetCompleteCount, 1);
       assert.deepEqual(result.legacyEvals, [
         { slug: 'css/legacy-dg', missingTarget: 'devtools-times' },
