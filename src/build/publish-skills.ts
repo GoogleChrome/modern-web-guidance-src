@@ -235,7 +235,7 @@ async function main() {
     execSync(`git tag v${newVersion}`, { stdio: 'inherit', cwd: ROOT_DIR });
     execSync(`git push origin v${newVersion}`, { stdio: 'inherit', cwd: ROOT_DIR });
 
-    console.log(`\nv${newVersion} published.  https://github.com/GoogleChrome/modern-web-guidance  and [GoB repo](https://user.git.corp.google.com/rviscomi/modern-web-guidance/)`);
+    console.log(`\nv${newVersion} published to https://github.com/GoogleChrome/modern-web-guidance (and internal GoB mirror repo)`);
     console.log(`${useCasesCount} usecases.`);
     console.log(`${featuresCount} features`);
     console.log(`${skillsCount} skills (${skillNames.join(', ')})`);

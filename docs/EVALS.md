@@ -53,7 +53,7 @@ To use the Codex CLI agent, you will need to request an exception, which appears
 node_modules/.bin/codex
 ```
 
-1. This request should file a bug similar to [`b/492300931`](https://b.corp.google.com/issues/492300931).
+1. This request should file an internal exception bug for your account.
 2. After approval, restart the CLI locally and log in to your account.
 3. Set your preferred model in your environment:
    ```bash

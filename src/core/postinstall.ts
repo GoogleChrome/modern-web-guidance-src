@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { rootDir } from './paths.ts';
@@ -44,5 +45,14 @@ for (const dir of LEGACY_EMPTY_DIRS) {
     fs.rmdirSync(path.join(rootDir, dir));
   } catch {
     // Ignore if directory does not exist or is non-empty
+  }
+}
+
+// Install local git hooks (e.g. secretlint pre-commit) if inside a git repository
+if (!process.env.CI && fs.existsSync(path.join(rootDir, '.git'))) {
+  try {
+    execSync('npx simple-git-hooks', { cwd: rootDir, stdio: 'ignore' });
+  } catch {
+    // Ignore if simple-git-hooks is not available
   }
 }

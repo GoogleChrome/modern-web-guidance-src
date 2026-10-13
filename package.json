@@ -25,7 +25,7 @@
     "plot:serve": "npx serve src/rag/benchmarks/data",
     "baselinestatus": "node src/cli/baseline-status.ts",
     "typecheck": "tsc && tsc -p src/dashboard/tsconfig.json",
-    "lint": "oxlint --ignore-path .oxlintignore",
+    "lint": "oxlint --ignore-path .oxlintignore && secretlint --secretlintignore .gitignore \"**/*\"",
     "preflight": "pnpm build && pnpm typecheck && pnpm lint && pnpm test",
     "suite": "node src/harness/run-suite.ts",
     "qsmoke": "node src/harness/quick-smoke.ts",
@@ -53,6 +53,7 @@
       "onnxruntime-node",
       "protobufjs",
       "sharp",
+      "simple-git-hooks",
       "tree-sitter-bash",
       "@anthropic-ai/claude-code"
     ],
@@ -75,6 +76,8 @@
     "@google/gemini-cli-core": "0.61.0",
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
+    "@secretlint/secretlint-rule-pattern": "^13.0.7",
+    "@secretlint/secretlint-rule-preset-recommend": "^13.0.7",
     "@types/gh-pages": "^6.1.0",
     "@types/minimatch": "^6.0.0",
     "@types/node": "^25.6.0",
@@ -84,9 +87,12 @@
     "esbuild": "^0.28.1",
     "gh-pages": "^6.3.0",
     "linkedom": "^0.18.12",
+    "lint-staged": "^17.6.0",
     "minimatch": "^10.2.5",
     "oxlint": "1.55.0",
     "playwright": "^1.58.2",
+    "secretlint": "^13.0.7",
+    "simple-git-hooks": "^2.14.0",
     "ts-morph": "^27.0.2",
     "typescript": "^5.9.3"
   },
@@ -113,5 +119,11 @@
     "mdn-data": "2.29.0",
     "omelette": "^0.4.17",
     "web-features": "^3.42.0"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx lint-staged"
+  },
+  "lint-staged": {
+    "*": "secretlint --secretlintignore .gitignore"
   }
 }
