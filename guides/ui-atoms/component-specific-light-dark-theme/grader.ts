@@ -50,6 +50,7 @@ test('light-dark() outside of supports uses var references and not raw colors', 
   const result = await page.evaluate((getLightDarkCallsStr) => {
     const getLightDarkCallsFn = new Function(`return ${getLightDarkCallsStr}`)();
     const violations: { selector: string; cssText: string; callArgs: string[] }[] = [];
+    let totalLightDarkCalls = 0;
     
     function traverse(cssRules: CSSRuleList, insideSupportsLightDark = false) {
       for (let i = 0; i < cssRules.length; i++) {
@@ -64,12 +65,13 @@ test('light-dark() outside of supports uses var references and not raw colors', 
           traverse(mediaRule.cssRules, insideSupportsLightDark);
         } else if (rule.type === 1) { // CSSRule.STYLE_RULE
           const styleRule = rule as CSSStyleRule;
-          if (!insideSupportsLightDark) {
-            for (let j = 0; j < styleRule.style.length; j++) {
-              const prop = styleRule.style[j];
-              const val = styleRule.style.getPropertyValue(prop);
-              if (val && val.includes('light-dark')) {
-                const calls = getLightDarkCallsFn(val);
+          for (let j = 0; j < styleRule.style.length; j++) {
+            const prop = styleRule.style[j];
+            const val = styleRule.style.getPropertyValue(prop);
+            if (val && val.includes('light-dark')) {
+              const calls = getLightDarkCallsFn(val);
+              totalLightDarkCalls += calls.length;
+              if (!insideSupportsLightDark) {
                 for (const args of calls) {
                   const hasRawColor = args.some((arg: string) => {
                     const trimmed = arg.trim();
@@ -101,10 +103,11 @@ test('light-dark() outside of supports uses var references and not raw colors', 
       }
     }
 
-    return violations;
+    return { totalLightDarkCalls, violations };
   }, getLightDarkCalls.toString());
 
-  expect(result).toEqual([]);
+  expect(result.totalLightDarkCalls).toBeGreaterThan(0);
+  expect(result.violations).toEqual([]);
 });
 
 // 2. The implementation uses the color-scheme property to force a specific theme on a component or section
@@ -151,25 +154,28 @@ test('uses color-scheme property to force a theme on a component or section', as
 
 // 3. color-scheme overrides are only applied to elements that also have a background-color
 test('color-scheme overrides are only applied to elements with a background-color', async ({ page }) => {
-  const violationElements = await page.evaluate(() => {
+  const result = await page.evaluate(() => {
     const elements = Array.from(document.querySelectorAll('*'));
     const violations: string[] = [];
+    let totalColorSchemeOverrides = 0;
     for (const el of elements) {
       const parent = el.parentElement;
       if (!parent) continue;
       const style = window.getComputedStyle(el);
       const parentStyle = window.getComputedStyle(parent);
       if (style.colorScheme !== parentStyle.colorScheme) {
+        totalColorSchemeOverrides++;
         const bg = style.backgroundColor;
         if (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent' || !bg) {
           violations.push(`${el.tagName.toLowerCase()}.${el.className}`);
         }
       }
     }
-    return violations;
+    return { totalColorSchemeOverrides, violations };
   });
 
-  expect(violationElements).toEqual([]);
+  expect(result.totalColorSchemeOverrides).toBeGreaterThan(0);
+  expect(result.violations).toEqual([]);
 });
 
 // 4. Inherited properties that use light-dark() tokens are explicitly re-applied on elements that force color-scheme
@@ -271,7 +277,7 @@ test('uses progressive enhancement via @supports for light-dark() support', asyn
 
 // 7. light-dark() is only used for supported types (colors) and not for non-color properties like padding or margin
 test('only uses light-dark() on color properties or custom variables', async ({ page }) => {
-  const invalidProps = await page.evaluate(() => {
+  const result = await page.evaluate(() => {
     const rawText = Array.from(document.querySelectorAll('style')).map(s => s.textContent || '').join(String.fromCharCode(10));
     const stylesText = rawText.replace(/\/\*[\s\S]*?\*\//g, '');
     const declarations = stylesText.match(/([a-zA-Z0-9-]+)\s*:\s*([^;}]*light-dark[^;}]*)/g) || [];
@@ -291,15 +297,16 @@ test('only uses light-dark() on color properties or custom variables', async ({ 
         violations.push(dec);
       }
     }
-    return violations;
+    return { totalLightDarkCalls: declarations.length, violations };
   });
 
-  expect(invalidProps).toEqual([]);
+  expect(result.totalLightDarkCalls).toBeGreaterThan(0);
+  expect(result.violations).toEqual([]);
 });
 
 // 8. Custom properties intended to dynamically resolve with light-dark() are NOT registered using @property with a <color> type
 test('does not register light-dark properties as CSS @property with color type', async ({ page }) => {
-  const registeredColorVarsWithLightDark = await page.evaluate(() => {
+  const result = await page.evaluate(() => {
     const rawText = Array.from(document.querySelectorAll('style')).map(s => s.textContent || '').join(String.fromCharCode(10));
     const stylesText = rawText.replace(/\/\*[\s\S]*?\*\//g, '');
     const propertyBlocks = stylesText.match(/@property\s+(--[a-zA-Z0-9_-]+)\s*\{[^}]+\}/g) || [];
@@ -317,30 +324,33 @@ test('does not register light-dark properties as CSS @property with color type',
 
     const violations: string[] = [];
     const assignMatches = stylesText.match(/(--[a-zA-Z0-9_-]+)\s*:\s*[^;]*light-dark/g) || [];
+    const totalLightDarkCalls = (stylesText.match(/light-dark\s*\(/g) || []).length;
     for (const match of assignMatches) {
       const varName = match.split(':')[0].trim();
       if (colorProperties.includes(varName)) {
         violations.push(varName);
       }
     }
-    return violations;
+    return { totalLightDarkCalls, violations };
   });
 
-  expect(registeredColorVarsWithLightDark).toEqual([]);
+  expect(result.totalLightDarkCalls).toBeGreaterThan(0);
+  expect(result.violations).toEqual([]);
 });
 
 // 9. Each light-dark() call contains exactly two color arguments
 test('each light-dark() call contains exactly two arguments', async ({ page }) => {
-  const invalidCalls = await page.evaluate((getLightDarkCallsStr) => {
+  const result = await page.evaluate((getLightDarkCallsStr) => {
     const getLightDarkCallsFn = new Function(`return ${getLightDarkCallsStr}`)();
     const rawText = Array.from(document.querySelectorAll('style')).map(s => s.textContent || '').join(String.fromCharCode(10));
     const stylesText = rawText.replace(/\/\*[\s\S]*?\*\//g, '');
     const calls = getLightDarkCallsFn(stylesText);
     const badCalls = calls.filter((args: string[]) => args.length !== 2);
-    return badCalls;
+    return { totalLightDarkCalls: calls.length, badCalls };
   }, getLightDarkCalls.toString());
 
-  expect(invalidCalls).toEqual([]);
+  expect(result.totalLightDarkCalls).toBeGreaterThan(0);
+  expect(result.badCalls).toEqual([]);
 });
 
 // 10. Forced dark component retains dark-theme computed colors even when system theme is light

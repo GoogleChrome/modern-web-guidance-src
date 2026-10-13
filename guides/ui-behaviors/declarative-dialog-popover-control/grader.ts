@@ -147,7 +147,7 @@ test.describe(`Declarative Dialog and Popover Expectations: ${demoName}`, () => 
       expect(exists).toBe(true);
     });
 
-    test('Invokers polyfill is loaded conditionally if present', async ({ page }) => {
+    test('Invokers polyfill is loaded conditionally', async ({ page }) => {
       const scriptInfo = await page.locator('script').evaluateAll(tags =>
         tags.map(t => ({ src: t.getAttribute('src') || '', text: t.textContent || '' }))
       );
@@ -156,21 +156,16 @@ test.describe(`Declarative Dialog and Popover Expectations: ${demoName}`, () => 
 
       const externalScripts = getExternalFiles(['.js', '.mjs'], /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi);
       const scripts = [...scriptInfo.map(s => s.text), ...externalScripts];
-      const hasInvokersPolyfill = scripts.some(s => s.includes('invokers') || s.includes('commandForElement'));
-      if (hasInvokersPolyfill) {
-        const conditionMet = scripts.some(
-          s =>
-            /['"]commandForElement['"]\s*in\s*HTMLButtonElement\.prototype/.test(s) &&
-            (/\bif\s*\(/.test(s) || /\?/.test(s))
-        );
-        expect(conditionMet).toBe(true);
-      } else {
-        const hasDeclarativeInvoker = (await page.locator('button[commandfor]').count()) > 0;
-        expect(hasDeclarativeInvoker).toBe(true);
-      }
+      const hasInvokersPolyfill = scripts.some(s => s.includes('invokers') && s.includes('commandForElement'));
+      const conditionMet = scripts.some(
+        s =>
+          /['"]commandForElement['"]\s*in\s*HTMLButtonElement\.prototype/.test(s) &&
+          (/\bif\s*\(/.test(s) || /\?/.test(s))
+      );
+      expect(hasInvokersPolyfill && conditionMet).toBe(true);
     });
 
-    test('Popover polyfill is loaded conditionally if present', async ({ page }) => {
+    test('Popover polyfill is loaded conditionally', async ({ page }) => {
       const scriptInfo = await page.locator('script').evaluateAll(tags =>
         tags.map(t => ({ src: t.getAttribute('src') || '', text: t.textContent || '' }))
       );
@@ -180,46 +175,29 @@ test.describe(`Declarative Dialog and Popover Expectations: ${demoName}`, () => 
       const externalScripts = getExternalFiles(['.js', '.mjs'], /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi);
       const scripts = [...scriptInfo.map(s => s.text), ...externalScripts];
       const hasPopoverPolyfill = scripts.some(s => s.includes('popover') && (s.includes('polyfill') || s.includes('esm') || s.includes('unpkg')));
-      if (hasPopoverPolyfill) {
-        const conditionMet = scripts.some(
-          s =>
-            /['"]popover['"]\s*in\s*HTMLElement\.prototype/.test(s) &&
-            (/\bif\s*\(/.test(s) || /\?/.test(s))
-        );
-        expect(conditionMet).toBe(true);
-      } else {
-        const hasPopover = (await page.locator('[popover]').count()) > 0;
-        expect(hasPopover).toBe(true);
-      }
+      const conditionMet = scripts.some(
+        s =>
+          /['"]popover['"]\s*in\s*HTMLElement\.prototype/.test(s) &&
+          (/\bif\s*\(/.test(s) || /\?/.test(s))
+      );
+      expect(hasPopoverPolyfill && conditionMet).toBe(true);
     });
 
-    test('CSS rules for :popover-open and .\\:popover-open are separate if polyfill class is used', async ({ page }) => {
+    test('CSS rules for :popover-open and .\\:popover-open use :is() or :where() or separate rules rather than a plain comma-separated selector list', async ({ page }) => {
       const styles = await page.locator('style').evaluateAll(tags => tags.map(t => t.textContent || ''));
       const externalStyles = getExternalFiles(['.css'], /<link\b[^>]*\bhref\s*=\s*["']([^"']+)["']/gi);
       const combinedStyle = [...styles, ...externalStyles].join('\n');
-      const hasPolyfillClass = combinedStyle.includes('.\\:popover-open') || combinedStyle.includes('.popover-open');
-      if (hasPolyfillClass) {
-        // Ignore :is(...) or :where(...) which have forgiving selector parsing
-        const strippedForgiving = combinedStyle.replace(/:(?:is|where)\([^)]*\)/g, '');
-        const combinedRule = /[,]\s*:popover-open|:popover-open\s*[,]/;
-        expect(strippedForgiving).not.toMatch(combinedRule);
-      } else {
-        const hasUnforgivingCombined = /\.visible\s*,\s*:popover-open/.test(combinedStyle);
-        expect(hasUnforgivingCombined).toBe(false);
-      }
+      expect(combinedStyle).toMatch(/\.\\:popover-open/);
+      const withoutForgiving = combinedStyle.replace(/:(?:is|where)\s*\([^)]*\)/g, '');
+      const combinedRule = /[,]\s*:popover-open|:popover-open\s*[,]/;
+      expect(withoutForgiving).not.toMatch(combinedRule);
     });
 
-    test('CSS includes rule for the polyfill class .\\:popover-open if polyfill class is used', async ({ page }) => {
+    test('CSS includes rule for the polyfill class .\\:popover-open', async ({ page }) => {
       const styles = await page.locator('style').evaluateAll(tags => tags.map(t => t.textContent || ''));
       const externalStyles = getExternalFiles(['.css'], /<link\b[^>]*\bhref\s*=\s*["']([^"']+)["']/gi);
       const combinedStyle = [...styles, ...externalStyles].join('\n');
-      const hasPolyfillClass = combinedStyle.includes('.\\:popover-open') || combinedStyle.includes('.popover-open');
-      if (hasPolyfillClass) {
-        expect(combinedStyle).toMatch(/\.\\:popover-open/);
-      } else {
-        const hasPopover = (await page.locator('[popover]').count()) > 0;
-        expect(hasPopover).toBe(true);
-      }
+      expect(combinedStyle).toMatch(/\.\\:popover-open/);
     });
   });
 

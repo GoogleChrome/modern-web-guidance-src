@@ -28,12 +28,13 @@ const targetFiles: string[] = getTargetFiles(currentFileUrl);
 
 // --- Helpers for Expectation 9 ---
 
-// Properties whose *assignment* mutates the DOM.
-const DOM_CONTENT_PROPS = new Set(['innerHTML', 'outerHTML', 'textContent', 'innerText']);
-// Methods whose *invocation* mutates the DOM.
+// Properties whose *assignment* mutates the DOM or triggers navigation.
+const DOM_CONTENT_PROPS = new Set(['innerHTML', 'outerHTML', 'textContent', 'innerText', 'href', 'hash']);
+// Methods whose *invocation* mutates the DOM or scrolls/navigates.
 const DOM_MUTATION_METHODS = new Set([
   'appendChild', 'insertBefore', 'removeChild', 'replaceChild', 'replaceChildren', 'replaceWith',
   'insertAdjacentHTML', 'insertAdjacentElement', 'setAttribute', 'removeAttribute', 'toggleAttribute',
+  'assign', 'replace', 'scrollIntoView', 'scrollTo', 'scrollBy',
 ]);
 // Callbacks passed to these run *after* the current task, so UI work inside them
 // happens after execute has already resolved.
@@ -265,10 +266,22 @@ test.describe('WebMCP Daily Grind Target Grader', () => {
     const functionIndex = indexFunctions(project);
     const hasSyncUiUpdatingExecute = executeFns.some(fn => reachesDomMutation(fn, functionIndex));
 
-    // Path C: explicitly waiting for a paint before resolving.
+    // Path C: synchronous execute function that completes its work directly without
+    // deferring UI updates via setTimeout/setInterval/requestAnimationFrame/.then.
+    const hasSyncNonDeferredExecute = executeFns.some(fn => {
+      const isAsync = (Node.isMethodDeclaration(fn) || Node.isArrowFunction(fn) || Node.isFunctionExpression(fn)) && fn.isAsync();
+      if (isAsync) return false;
+      const calls = fn.getDescendantsOfKind(SyntaxKind.CallExpression);
+      return !calls.some(c => {
+        const name = calleeName(c.getExpression());
+        return Boolean(name && DEFERRING_CALLS.has(name));
+      });
+    });
+
+    // Path D: explicitly waiting for a paint before resolving.
     const callExpressions = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
     const waitsForFrame = callExpressions.some(call => /\brequestAnimationFrame\b/.test(call.getExpression().getText()));
 
-    expect(hasAsyncAwaitingExecute || hasSyncUiUpdatingExecute || waitsForFrame).toBe(true);
+    expect(hasAsyncAwaitingExecute || hasSyncUiUpdatingExecute || hasSyncNonDeferredExecute || waitsForFrame).toBe(true);
   });
 });

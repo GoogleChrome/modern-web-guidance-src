@@ -69,8 +69,9 @@ test.describe(`Scroll Initial Target Expectations: ${demoName}`, () => {
 
   test(`The fallback script MUST NOT use 'behavior: smooth'`, async ({ page }) => {
     const fallbackCalls = await page.evaluate(() => (window as any).__scrollIntoViewCalls);
+    expect(fallbackCalls.length).toBeGreaterThan(0);
     for (const call of fallbackCalls) {
-      expect(call.options.behavior).not.toBe('smooth');
+      expect(call.options?.behavior).not.toBe('smooth');
     }
   });
 
@@ -166,7 +167,7 @@ test.describe(`Scroll Initial Target Expectations: ${demoName}`, () => {
       const searchRoot = container || document.body;
       const images = searchRoot.querySelectorAll('img');
       
-      if (images.length === 0) return true;
+      if (images.length === 0) return false;
 
       return Array.from(images).every(img => {
         // Check for width and height attributes or explicit inline styles

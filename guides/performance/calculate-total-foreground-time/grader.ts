@@ -50,7 +50,6 @@ test.describe('Total Foreground Time Grader', () => {
       // Also mock PerformanceObserver
       const OriginalPerformanceObserver = window.PerformanceObserver;
       (window as any).PerformanceObserver = function(callback: any) {
-        (window as any)._visibilityAPIUsed = true; // Simple detection
         const observerInstance = new (OriginalPerformanceObserver as any)(callback);
         const origObserve = observerInstance.observe;
         observerInstance.observe = function(options: any) {
@@ -140,20 +139,64 @@ test.describe('Total Foreground Time Grader', () => {
   });
 
   test('should check for VisibilityStateEntry support before falling back', async ({ page, TARGET_URL }) => {
+    await page.addInitScript(() => {
+      (window as any)._visibilitySupportChecked = false;
+      const origGetEntriesByType = Performance.prototype.getEntriesByType;
+      Performance.prototype.getEntriesByType = function(type: string) {
+        if (type === 'visibility-state') {
+          (window as any)._visibilitySupportChecked = true;
+          return [] as any;
+        }
+        return origGetEntriesByType.apply(this, arguments as any);
+      };
+      try {
+        delete (window as any).VisibilityStateEntry;
+        Object.defineProperty(window, 'VisibilityStateEntry', {
+          get() {
+            (window as any)._visibilitySupportChecked = true;
+            return undefined;
+          },
+          configurable: true,
+        });
+      } catch {}
+      try {
+        Object.defineProperty(window.PerformanceObserver, 'supportedEntryTypes', {
+          get() {
+            (window as any)._visibilitySupportChecked = true;
+            return ['navigation', 'resource', 'paint'];
+          },
+          configurable: true,
+        });
+      } catch {}
+    });
     await page.goto(TARGET_URL);
+    await page.waitForTimeout(300);
     const buttons = await page.locator('button').all();
     for (const btn of buttons) {
       if (await btn.isVisible()) await btn.click().catch(() => {});
     }
-    await page.evaluate(() => {
+    const result = await page.evaluate(() => {
+      let fallbackVal = 0;
       if (typeof (window as any).getTotalForegroundTime === 'function') {
-        (window as any).getTotalForegroundTime();
+        fallbackVal = Number((window as any).getTotalForegroundTime()) || 0;
       }
+      if (!fallbackVal) {
+        const elements = Array.from(document.querySelectorAll('*'));
+        for (const el of elements) {
+          const text = el.textContent || '';
+          if (text.includes('ms') || text.includes('s') || el.id.includes('time') || el.className.includes('time')) {
+            const match = text.match(/(\d+(?:\.\d+)?)/);
+            if (match && parseFloat(match[1]) > 0) {
+              fallbackVal = parseFloat(match[1]);
+              break;
+            }
+          }
+        }
+      }
+      const checked = Boolean((window as any)._visibilitySupportChecked || (window as any)._visibilityAPIUsed);
+      return { checked, fallbackVal };
     });
-    await page.waitForFunction(() => (window as any)._visibilityAPIUsed === true || performance.now() > 2000);
-    const checked = await page.evaluate(() => {
-      return (window as any)._visibilityAPIUsed;
-    });
-    expect(checked).toBe(true);
+    expect(result.checked).toBe(true);
+    expect(result.fallbackVal).toBeGreaterThan(0);
   });
 });

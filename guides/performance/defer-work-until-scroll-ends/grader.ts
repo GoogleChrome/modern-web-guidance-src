@@ -62,10 +62,13 @@ test.describe('Defer Work Until Scroll Ends', () => {
       delete (HTMLElement.prototype as any).onscrollend;
 
       (window as any).__scrollendTimerCreated = false;
+      (window as any).__scrollingActive = false;
       const originalSetTimeout = window.setTimeout;
       window.setTimeout = function (this: any, _callback: any, _delay: any) {
         const timer = originalSetTimeout.apply(this, arguments as any);
-        (window as any).__scrollendTimerCreated = true;
+        if ((window as any).__scrollingActive) {
+          (window as any).__scrollendTimerCreated = true;
+        }
         return timer;
       } as any;
     });
@@ -74,6 +77,9 @@ test.describe('Defer Work Until Scroll Ends', () => {
     await page.goto(targetUrl);
 
     // 3. Trigger a scroll event on the scroll container
+    await page.evaluate(() => {
+      (window as any).__scrollingActive = true;
+    });
     const scroller = page.locator('#scroller');
     await triggerScroll(scroller, 50);
 
@@ -86,11 +92,35 @@ test.describe('Defer Work Until Scroll Ends', () => {
   });
 
   test('should dispatch a custom scrollend event in fallback mode after scroll ceases', async ({ page }) => {
-    // 1. Mock missing scrollend support
+    // 1. Mock missing scrollend support and block native trusted scrollend events so only
+    // synthetic dispatchEvent(new CustomEvent('scrollend')) triggers scrollend listeners.
     await page.addInitScript(() => {
       delete (window as any).onscrollend;
       delete (Document.prototype as any).onscrollend;
       delete (HTMLElement.prototype as any).onscrollend;
+
+      (window as any).__customScrollendDispatched = false;
+      const origDispatch = EventTarget.prototype.dispatchEvent;
+      EventTarget.prototype.dispatchEvent = function (event: Event) {
+        if (event && event.type === 'scrollend') {
+          (window as any).__customScrollendDispatched = true;
+        }
+        return origDispatch.call(this, event);
+      };
+
+      const origAdd = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function (type: string, listener: any, options: any) {
+        if (type === 'scrollend' && typeof listener === 'function') {
+          const wrapped = function (this: any, ev: Event) {
+            if (ev && ev.isTrusted && !(window as any).__customScrollendDispatched) {
+              return;
+            }
+            return listener.call(this, ev);
+          };
+          return origAdd.call(this, type, wrapped, options);
+        }
+        return origAdd.call(this, type, listener, options);
+      };
     });
 
     // 2. Load the page
@@ -101,10 +131,12 @@ test.describe('Defer Work Until Scroll Ends', () => {
     await triggerScroll(scroller, 100);
 
     // 4. Wait for debounce timeout to fire
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(250);
 
-    // 5. Verify the status text changed indicating scroll completion
+    // 5. Verify custom scrollend was dispatched OR the status text changed via fallback
+    const customDispatched = await page.evaluate(() => (window as any).__customScrollendDispatched === true);
     const statusText = await page.locator('#status').textContent();
+    expect(customDispatched).toBe(true);
     expect(statusText).toContain('Scroll ended');
   });
 
@@ -191,9 +223,21 @@ test.describe('Defer Work Until Scroll Ends', () => {
   });
 
   test('should not use scroll debouncing fallback when native scrollend is supported', async ({ page }) => {
-    // 1. Inject addEventListener spy before the page scripts run
+    // 1. Inject addEventListener and setTimeout spies before the page scripts run
     await page.addInitScript(() => {
       (window as any).__registeredListeners = [];
+      (window as any).__scrollendTimerCreated = false;
+      (window as any).__scrollingActive = false;
+
+      const originalSetTimeout = window.setTimeout;
+      window.setTimeout = function (this: any, _callback: any, _delay: any) {
+        const timer = originalSetTimeout.apply(this, arguments as any);
+        if ((window as any).__scrollingActive) {
+          (window as any).__scrollendTimerCreated = true;
+        }
+        return timer;
+      } as any;
+
       const original = EventTarget.prototype.addEventListener;
       EventTarget.prototype.addEventListener = function (type: string, _listener: any, _options: any) {
         (window as any).__registeredListeners.push({
@@ -212,6 +256,9 @@ test.describe('Defer Work Until Scroll Ends', () => {
     await page.goto(targetUrl);
 
     // 3. Trigger scroll
+    await page.evaluate(() => {
+      (window as any).__scrollingActive = true;
+    });
     const scroller = page.locator('#scroller');
     await triggerScroll(scroller, 50);
 

@@ -88,18 +88,19 @@ test.describe('Efficient Background Processing Grader', () => {
     await page.waitForLoadState('networkidle');
 
     // Trigger skipped: true on the content-visibility element
-    await page.evaluate(() => {
+    const hasTarget = await page.evaluate(() => {
       const allElements = Array.from(document.querySelectorAll('*'));
       const target = allElements.find(el => {
         const style = window.getComputedStyle(el);
         return style.contentVisibility === 'auto';
       });
-      if (target) {
-        const event = new Event('contentvisibilityautostatechange');
-        Object.defineProperty(event, 'skipped', { value: true, enumerable: true });
-        target.dispatchEvent(event);
-      }
+      if (!target) return false;
+      const event = new Event('contentvisibilityautostatechange');
+      Object.defineProperty(event, 'skipped', { value: true, enumerable: true });
+      target.dispatchEvent(event);
+      return true;
     });
+    expect(hasTarget, 'Expected an element with content-visibility: auto').toBe(true);
 
     // Let any initial or pending frames settle, then reset
     await page.waitForTimeout(300);

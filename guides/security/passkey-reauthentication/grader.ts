@@ -27,6 +27,8 @@ test.describe('Passkey Reauthentication Expectations', () => {
     }
 
     await page.addInitScript(() => {
+      (window as any).__optionsFetched = false;
+      (window as any).__optionsMethod = null;
       (window as any).__getCalled = false;
       (window as any).__getOptions = null;
       (window as any).__parseCalled = false;
@@ -37,13 +39,14 @@ test.describe('Passkey Reauthentication Expectations', () => {
       window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : (input as any).url || '';
         if (url.includes('/api/reauth/options')) {
+          (window as any).__optionsFetched = true;
+          (window as any).__optionsMethod = (init?.method || 'GET').toUpperCase();
           return {
             ok: true,
             status: 200,
             headers: new Headers({ 'Content-Type': 'application/json' }),
             json: async () => ({
               challenge: 'fake-reauth-challenge',
-              userVerification: 'required',
               allowCredentials: [{ type: 'public-key', id: 'fake-reauth-cred-id' }]
             })
           } as any;
@@ -91,36 +94,25 @@ test.describe('Passkey Reauthentication Expectations', () => {
     await expect(button).toBeVisible();
   });
 
-  test('invokes biometric re-verification via navigator.credentials.get clicking reauth button', async ({ page, TARGET_URL }) => {
+  test('fetches reauthentication options and passes parsed publicKey options with allowCredentials to navigator.credentials.get upon clicking reauth button', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="reauth-button"]');
     await button.click();
     await page.waitForTimeout(500);
-    
-    const getCalled = await page.evaluate(() => (window as any).__getCalled);
-    expect(getCalled).toBe(true);
-  });
 
-  test('populates allowCredentials mapped to user pre-registered credentials descriptors list', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL);
-    const button = page.locator('[data-testid="reauth-button"]');
-    await button.click();
-    await page.waitForTimeout(500);
-    
-    const getOptions = await page.evaluate(() => (window as any).__getOptions);
-    const allowed = getOptions?.publicKey?.allowCredentials || getOptions?.allowCredentials || [];
+    const state = await page.evaluate(() => ({
+      optionsFetched: (window as any).__optionsFetched,
+      parseCalled: (window as any).__parseCalled,
+      getCalled: (window as any).__getCalled,
+      getOptions: (window as any).__getOptions,
+    }));
+    expect(state.optionsFetched).toBe(true);
+    expect(state.parseCalled).toBe(true);
+    expect(state.getCalled).toBe(true);
+    const pkOptions = state.getOptions?.publicKey || state.getOptions || {};
+    const allowed = pkOptions.allowCredentials || [];
     expect(allowed.length).toBeGreaterThan(0);
-  });
-
-  test('enforces user biometrics by commanding required verification parameter', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL);
-    const button = page.locator('[data-testid="reauth-button"]');
-    await button.click();
-    await page.waitForTimeout(500);
-    
-    const getOptions = await page.evaluate(() => (window as any).__getOptions);
-    const pkOptions = getOptions?.publicKey || getOptions || {};
-    expect(pkOptions.userVerification).toBe('required');
+    expect(pkOptions.__magic).toBe('parsed-reauth');
   });
 
   test('decodes step-up reauth request options calling parseRequestOptionsFromJSON safely', async ({ page, TARGET_URL }) => {

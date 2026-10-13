@@ -72,9 +72,10 @@ test.describe(`Search Hidden Content Expectations: ${demoName}`, () => {
 
   // 4. The `coupon-panel` MUST NOT have `display: none` or `visibility: hidden` applied to it directly.
   test('The `coupon-panel` MUST NOT have `display: none` or `visibility: hidden`', async ({ page }) => {
+    await expect(page.locator('#coupon-panel'), 'Missing #coupon-panel element').toBeAttached();
     const isHiddenIncorrectly = await page.evaluate(() => {
       const el = document.getElementById('coupon-panel');
-      if (!el) return false;
+      if (!el) return true;
       
       // Temporarily remove hidden to see if CSS is improperly overriding its visibility
       const origHidden = el.getAttribute('hidden');
@@ -91,9 +92,10 @@ test.describe(`Search Hidden Content Expectations: ${demoName}`, () => {
 
   // 5. The `coupon-panel` MUST NOT be used to hide sensitive information.
   test('The `coupon-panel` MUST NOT hide sensitive information', async ({ page }) => {
+    await expect(page.locator('#coupon-panel'), 'Missing #coupon-panel element').toBeAttached();
     const hasSensitiveInfo = await page.evaluate(() => {
       const el = document.getElementById('coupon-panel');
-      if (!el) return false;
+      if (!el) return true;
       const text = el.textContent || '';
       // We flag ADMIN_TOKEN or AX-992 as sensitive.
       // We don't flag "secret discount" because it's marketing copy.
@@ -113,7 +115,7 @@ test.describe(`Search Hidden Content Expectations: ${demoName}`, () => {
   // 7. A fallback strategy MUST be used for unsupported browsers.
   test('Implementation MUST include explicit fallback strategy with feature detection', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    const hasFeatureDetection = html.includes('onbeforematch') || html.includes('beforematch') || html.includes('HTMLElement.prototype');
+    const hasFeatureDetection = /['"]onbeforematch['"]\s+in\s+(?:HTMLElement\.prototype|Element\.prototype|window|document)/.test(html);
     expect(hasFeatureDetection, 'Missing explicit fallback strategy or feature detection for unsupported browsers').toBe(true);
   });
 

@@ -98,6 +98,7 @@ Make sure to add appropriate `autocomplete` values in payment card forms. Withou
 
 <!-- cc-exp autofills the full expiry date as MM/YY -->
 <!-- MANDATORY: Place format hints above the input so autocomplete popovers or virtual keyboards do not obscure them during editing -->
+<!-- DO NOT use placeholder="MM/YY" to convey format hints or constraints, as placeholders disappear on input -->
 <span id="exp-hint" class="hint">Format: MM/YY</span>
 <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp"
        aria-describedby="exp-hint" maxlength="5" required>

@@ -13,23 +13,41 @@ test("The transition from list view to detail view is wrapped in a document.star
   await page.evaluate(() => {
     (window as any).transitionCalled = false;
     (window as any).wrappedCorrectly = false;
+    const isVisible = (el: Element | null) => {
+      if (!el) return false;
+      const s = window.getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return s.display !== 'none' && s.visibility !== 'hidden' && (r.width > 0 || r.height > 0);
+    };
+    const getDetailState = () => ({
+      bodyDetail: document.body.classList.contains('detail'),
+      detailVisible: isVisible(document.querySelector('#detail-page, #hero')),
+      htmlSnap: document.body.innerHTML,
+    });
     const original = document.startViewTransition;
     if (original) {
-      document.startViewTransition = function(callback) {
+      document.startViewTransition = function(arg: any) {
         (window as any).transitionCalled = true;
-        const beforeClass = document.body.classList.contains('detail');
+        const before = getDetailState();
+        const callback = typeof arg === 'function' ? arg : arg?.update;
         if (typeof callback === 'function') {
-          const wrappedCallback = () => {
-            const res = callback();
-            const afterClass = document.body.classList.contains('detail');
-            if (!beforeClass && afterClass) {
+          const wrappedCallback = async () => {
+            const res = await callback();
+            const after = getDetailState();
+            if (
+              (!before.bodyDetail && after.bodyDetail) ||
+              (!before.detailVisible && after.detailVisible) ||
+              before.htmlSnap !== after.htmlSnap
+            ) {
               (window as any).wrappedCorrectly = true;
             }
             return res;
           };
-          return original.call(document, wrappedCallback);
+          return typeof arg === 'object' && arg !== null
+            ? original.call(document, { ...arg, update: wrappedCallback })
+            : original.call(document, wrappedCallback);
         }
-        return original.call(document, callback);
+        return original.call(document, arg);
       };
     }
   });

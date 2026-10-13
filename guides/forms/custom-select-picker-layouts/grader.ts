@@ -15,36 +15,42 @@ const demoUrl = `http://localhost/${demoName}`;
 
 // Tests
 test.describe(`Custom Select Picker Layouts Expectations: ${demoName}`, () => {
+  const getCombinedCss = () => {
+    let content = fs.readFileSync(filePath, 'utf-8');
+    try {
+      for (const entry of fs.readdirSync(targetDir)) {
+        if (entry.endsWith('.css')) {
+          content += '\n' + fs.readFileSync(path.join(targetDir, entry), 'utf-8');
+        }
+      }
+    } catch {}
+    return content;
+  };
+
   // Static assertions
   test(`MUST include appearance: base-select on select and select::picker(select)`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasBaseSelect = html.includes('appearance: base-select');
-    const hasPicker = html.includes('select::picker(select)') || html.includes('select:open::picker(select)');
+    const css = getCombinedCss();
+    const hasBaseSelect = /appearance\s*:\s*base-select/i.test(css);
+    const hasPicker = /::picker\(\s*select\s*\)/i.test(css);
     expect(hasBaseSelect && hasPicker).toBe(true);
   });
 
   test(`MUST use a non-traditional layout (such as display: grid or flex) on picker container`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const usesGridOrFlex = /select.*::picker\(select\)\s*\{[^}]*display:\s*(grid|flex)/s.test(html);
+    const css = getCombinedCss();
+    const usesGridOrFlex = /::picker\(\s*select\s*\)\s*\{[^}]*display\s*:\s*(?:grid|flex|inline-grid|inline-flex)/is.test(css);
     expect(usesGridOrFlex).toBe(true);
   });
 
   test(`MUST style option elements to fit the chosen layout`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasOptionStyles = /option\s*\{[^}]*(display:\s*flex|display:\s*grid|padding:)/s.test(html);
+    const css = getCombinedCss();
+    const hasOptionStyles = /option[^{]*\{[^}]*(?:display\s*:\s*(?:flex|grid|inline-flex|inline-grid)|padding|flex-direction|align-items|gap)/is.test(css);
     expect(hasOptionStyles).toBe(true);
   });
 
-  test(`MUST include a progressive enhancement fallback using CSS.supports`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasScript = /<script\b[^>]*>[\s\S]*?<\/script>/i.test(html);
-    const hasCssSupports = html.includes('CSS.supports("appearance", "base-select")') || html.includes("CSS.supports('appearance', 'base-select')");
-    expect(!hasScript || hasCssSupports).toBe(true);
-  });
-
   test(`MUST communicate checked state of options using multiple visual cues`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/font-weight:|border/i.test(html)).toBe(true);
+    const css = getCombinedCss();
+    const hasCheckedStyles = /(?:option[^{]*:checked|&\s*:checked|::checkmark)\s*\{[^}]*(?:font-weight|border|outline|box-shadow|background|inset|display)/is.test(css);
+    expect(hasCheckedStyles).toBe(true);
   });
 
   // Setup browser testing

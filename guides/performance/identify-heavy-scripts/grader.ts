@@ -59,6 +59,7 @@ test.describe(`Identify Heavy Scripts Expectations: ${demoName}`, () => {
   // Static assertions
   test('No polyfill for Long Animation Frames should be included', async () => {
     const code = getCombinedCode();
+    expect(code).toMatch(/PerformanceObserver/);
     // Check for explicit polyfill attempts for PerformanceLongAnimationFrame
     const polyfillPattern = /PerformanceLongAnimationFrame\s*=/;
     expect(code).not.toMatch(polyfillPattern);
@@ -134,6 +135,7 @@ test.describe(`Identify Heavy Scripts Expectations: ${demoName}`, () => {
 
     test('should not use the legacy "entryTypes" property for this API', async ({ page }) => {
       const calls = await page.evaluate(() => (window as any)._observeCalls);
+      expect(calls.length).toBeGreaterThan(0);
       const usesEntryTypes = calls.some((opt: any) => opt && 'entryTypes' in opt);
       expect(usesEntryTypes).toBe(false);
     });

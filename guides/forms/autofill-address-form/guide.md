@@ -65,6 +65,13 @@ Use a single `<textarea>` element for the street address if possible.
 
 This is the most flexible option for a variety of local and international address formats.
 
+For postal or ZIP codes, use `<input type="text" autocomplete="postal-code">`. Never use `type="number"` for postal codes, as postal codes are identifiers (not quantities) and can contain leading zeros, spaces, hyphens, or letters depending on the country.
+
+```html
+<label for="postal-code">Postal or ZIP code</label>
+<input type="text" id="postal-code" name="postal-code" autocomplete="postal-code" required>
+```
+
 ### Help save users from accidentally missing data fields
 
 Add the `required` attribute to mandatory fields.

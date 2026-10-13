@@ -1,3 +1,3 @@
-- The element has a standard background image or mask image declaration acting as a fallback.
-- The element uses the `image-set()` function for the same property, defined after the fallback.
+- The element uses the `image-set()` function for its background or mask image.
+- The `image-set()` function orders image candidates from most optimized (`image/avif` or `image/webp`) to fallback (`image/jpeg` or `image/png`) with `type()` descriptors.
 - The `image-set()` function includes multiple pixel density descriptors (e.g., `1x` and `2x`).

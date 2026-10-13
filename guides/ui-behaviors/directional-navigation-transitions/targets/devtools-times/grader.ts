@@ -9,8 +9,10 @@ import {
   CSSKeyframesRule,
   CSSKeyframeRule,
   CSSMediaRule,
+  parse,
   type CSSRule,
 } from 'cssomnom';
+import * as fs from 'node:fs';
 import type { Page } from '@playwright/test';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
@@ -19,34 +21,12 @@ const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 const REDUCED_MOTION = /prefers-reduced-motion\s*:\s*reduce/i;
 
-/**
- * Flattens every rule in the sheet, descending into any grouping rule
- * (@media, @layer, @supports, …) but not into @keyframes.
- * When `skipReducedMotion` is set, rules inside `prefers-reduced-motion: reduce`
- * blocks are omitted (so `animation: none` overrides don't mask the real settings).
- */
-function flattenRules(rules: Iterable<CSSRule>, skipReducedMotion = false): CSSRule[] {
-  const out: CSSRule[] = [];
-  for (const rule of Array.from(rules)) {
-    if (skipReducedMotion && rule instanceof CSSMediaRule && REDUCED_MOTION.test(rule.conditionText)) {
-      continue;
-    }
-    out.push(rule);
-    if (!(rule instanceof CSSKeyframesRule) && 'cssRules' in rule && (rule as any).cssRules) {
-      out.push(...flattenRules((rule as any).cssRules, skipReducedMotion));
-    }
-  }
-  return out;
-}
+const TYPE_ALIASES: Record<'forward' | 'backward', string[]> = {
+  forward: ['forward', 'forwards', 'next'],
+  backward: ['backward', 'backwards', 'previous', 'prev', 'back'],
+};
 
-function getRules(skipReducedMotion = false) {
-  const all = flattenRules(getCssStyleSheet(targetFiles).cssRules, skipReducedMotion);
-  return {
-    styleRules: all.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule),
-    keyframes: all.filter((r): r is CSSKeyframesRule => r instanceof CSSKeyframesRule),
-    mediaRules: all.filter((r): r is CSSMediaRule => r instanceof CSSMediaRule),
-  };
-}
+const effectiveSelectors = new WeakMap<CSSStyleRule, string>();
 
 /** Splits on `sep` while ignoring separators nested inside parentheses. */
 function splitTopLevel(value: string, sep: RegExp): string[] {
@@ -70,6 +50,79 @@ function splitTopLevel(value: string, sep: RegExp): string[] {
 const splitLayers = (v: string) => splitTopLevel(v, /,/);
 const splitTokens = (v: string) => splitTopLevel(v, /\s/);
 
+function resolveNestedSelector(parentSel: string, childSel: string): string {
+  if (!parentSel) return childSel;
+  const parents = splitLayers(parentSel);
+  const children = splitLayers(childSel);
+  return parents
+    .flatMap((p) =>
+      children.map((c) => (c.includes('&') ? c.replace(/&/g, p) : `${p} ${c}`)),
+    )
+    .join(', ');
+}
+
+function getSelectorText(rule: CSSStyleRule): string {
+  return effectiveSelectors.get(rule) ?? rule.selectorText;
+}
+
+/**
+ * Flattens every rule in the sheet, descending into any grouping rule
+ * (@media, @layer, @supports, …) or nested style rule, but not into @keyframes.
+ * Resolves `&` parent selectors for nested CSSStyleRules.
+ * When `skipReducedMotion` is set, rules inside `prefers-reduced-motion: reduce`
+ * blocks are omitted (so `animation: none` overrides don't mask the real settings).
+ */
+function flattenRules(
+  rules: Iterable<CSSRule>,
+  skipReducedMotion = false,
+  parentSelector = '',
+): CSSRule[] {
+  const out: CSSRule[] = [];
+  for (const rule of Array.from(rules)) {
+    if (skipReducedMotion && rule instanceof CSSMediaRule && REDUCED_MOTION.test(rule.conditionText)) {
+      continue;
+    }
+    let nextParentSelector = parentSelector;
+    if (rule instanceof CSSStyleRule) {
+      const resolved = resolveNestedSelector(parentSelector, rule.selectorText);
+      effectiveSelectors.set(rule, resolved);
+      nextParentSelector = resolved;
+    }
+    out.push(rule);
+    if (!(rule instanceof CSSKeyframesRule) && 'cssRules' in rule && (rule as any).cssRules) {
+      out.push(...flattenRules((rule as any).cssRules, skipReducedMotion, nextParentSelector));
+    }
+  }
+  return out;
+}
+
+function getAllRawCssRules(): CSSRule[] {
+  const rules: CSSRule[] = Array.from(getCssStyleSheet(targetFiles).cssRules);
+  for (const file of targetFiles) {
+    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
+    const content = fs.readFileSync(file, 'utf8');
+    const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+    if (styleMatches) {
+      for (const match of styleMatches) {
+        const cssText = match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, '');
+        try {
+          rules.push(...Array.from(parse(cssText).cssRules));
+        } catch {}
+      }
+    }
+  }
+  return rules;
+}
+
+function getRules(skipReducedMotion = false) {
+  const all = flattenRules(getAllRawCssRules(), skipReducedMotion);
+  return {
+    styleRules: all.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule),
+    keyframes: all.filter((r): r is CSSKeyframesRule => r instanceof CSSKeyframesRule),
+    mediaRules: all.filter((r): r is CSSMediaRule => r instanceof CSSMediaRule),
+  };
+}
+
 function getAnimationNames(rule: CSSStyleRule, keyframeNames: Set<string>): string[] {
   const longhand = rule.style.getPropertyValue('animation-name');
   if (longhand.trim()) return splitLayers(longhand);
@@ -79,18 +132,22 @@ function getAnimationNames(rule: CSSStyleRule, keyframeNames: Set<string>): stri
     .filter((t) => keyframeNames.has(t));
 }
 
-/** Keyframes referenced by `:active-view-transition-type(<type>)::view-transition-<pseudo>(root)`. */
+/** Keyframes referenced by `:active-view-transition-type(<type>)::view-transition-<pseudo>(...)`. */
 function findDirectionalKeyframes(
   type: 'forward' | 'backward',
   pseudo: 'old' | 'new',
 ): CSSKeyframesRule[] {
   const { styleRules, keyframes } = getRules(true);
-  const typeRe = new RegExp(`:active-view-transition-type\\([^)]*\\b${type}\\b[^)]*\\)`, 'i');
-  const pseudoRe = new RegExp(`::view-transition-${pseudo}\\(\\s*(root|\\*)\\s*\\)`, 'i');
+  const aliases = TYPE_ALIASES[type].join('|');
+  const typeRe = new RegExp(`:active-view-transition-type\\([^)]*\\b(?:${aliases})\\b[^)]*\\)`, 'i');
+  const pseudoRe = new RegExp(`::view-transition-${pseudo}\\(\\s*([^)]+?)\\s*\\)`, 'i');
   const names = new Set(keyframes.map((k) => k.name));
   const referenced = new Set(
     styleRules
-      .filter((r) => typeRe.test(r.selectorText) && pseudoRe.test(r.selectorText))
+      .filter((r) => {
+        const sel = getSelectorText(r);
+        return typeRe.test(sel) && pseudoRe.test(sel);
+      })
       .flatMap((r) => getAnimationNames(r, names)),
   );
   return keyframes.filter((k) => referenced.has(k.name));
@@ -108,10 +165,33 @@ function findKeyframe(rule: CSSKeyframesRule, offset: 'from' | 'to'): CSSKeyfram
 /** Returns the X translation of a keyframe from either `translate` or `transform`. */
 function getTranslateX(kf: CSSKeyframeRule): string | undefined {
   const translate = kf.style.getPropertyValue('translate').trim();
-  if (translate && translate !== 'none') return splitTokens(translate)[0]?.toLowerCase();
+  if (translate && translate !== 'none') return splitTokens(translate)[0]?.toLowerCase().replace(/\s+/g, '');
   const transform = kf.style.getPropertyValue('transform');
-  const match = /translate(?:x|3d)?\(\s*([^,\s)]+)/i.exec(transform);
-  return match?.[1].toLowerCase();
+  const match = /translate(?:x|3d)?\(([^)]+)\)/i.exec(transform);
+  if (!match) return undefined;
+  return splitLayers(match[1])[0]?.trim().toLowerCase().replace(/\s+/g, '');
+}
+
+function matchesExpectedSign(x: string, sign: '-' | '+'): boolean {
+  const norm = x.replace(/\s+/g, '').toLowerCase();
+  if (sign === '-') {
+    return (
+      norm === '-100%' ||
+      norm === '-100vw' ||
+      norm === 'calc(-1*100%)' ||
+      norm === 'calc(-100%)' ||
+      /^-[1-9]\d*(?:\.\d+)?(%|vw|px|rem|em|cqw|cqi)$/.test(norm)
+    );
+  }
+  return (
+    norm === '100%' ||
+    norm === '+100%' ||
+    norm === '100vw' ||
+    norm === '+100vw' ||
+    norm === 'calc(100%)' ||
+    norm === 'calc(1*100%)' ||
+    /^\+?[1-9]\d*(?:\.\d+)?(%|vw|px|rem|em|cqw|cqi)$/.test(norm)
+  );
 }
 
 function slidesTo(
@@ -120,17 +200,21 @@ function slidesTo(
   offset: 'from' | 'to',
   sign: '-' | '+',
 ): boolean {
-  const expected = sign === '-' ? ['-100%', '-100vw'] : ['100%', '100vw'];
   return findDirectionalKeyframes(type, pseudo).some((rule) => {
     const kf = findKeyframe(rule, offset);
     const x = kf && getTranslateX(kf);
-    return Boolean(x && expected.includes(x));
+    return Boolean(x && matchesExpectedSign(x, sign));
   });
 }
 
 function getGroupRules(): CSSStyleRule[] {
-  return getRules(true).styleRules.filter((r) =>
-    /::view-transition-group\(\s*root\s*\)/i.test(r.selectorText),
+  const rules = getRules(true).styleRules;
+  const groupRules = rules.filter((r) =>
+    /::view-transition-group\(\s*[^)]+\s*\)/i.test(getSelectorText(r)),
+  );
+  if (groupRules.length > 0) return groupRules;
+  return rules.filter((r) =>
+    /::view-transition-(?:old|new|group)\(\s*[^)]+\s*\)/i.test(getSelectorText(r)),
   );
 }
 
@@ -155,7 +239,7 @@ async function installTransitionSpy(page: Page) {
       if (arg && typeof arg === 'object' && Array.isArray(arg.types)) record.types.push(...arg.types);
       const userUpdate = typeof arg === 'function' ? arg : arg?.update;
       const update = async () => {
-        for (const t of ['forward', 'backward']) {
+        for (const t of ['forward', 'forwards', 'next', 'backward', 'backwards', 'previous', 'prev', 'back']) {
           try {
             if (document.documentElement.matches(`:active-view-transition-type(${t})`)) {
               record.activeTypesDuringUpdate.push(t);
@@ -232,8 +316,12 @@ async function clickAndCapture(page: Page, which: 'next' | 'prev'): Promise<Tran
   return page.evaluate(() => (window as any).__transitions as TransitionRecord[]);
 }
 
-const hasType = (t: { types: string[]; activeTypesDuringUpdate: string[] }, type: string) =>
-  t.types.includes(type) || t.activeTypesDuringUpdate.includes(type);
+const hasType = (t: { types: string[]; activeTypesDuringUpdate: string[] }, type: 'forward' | 'backward') =>
+  TYPE_ALIASES[type].some(
+    (alias) =>
+      t.types.some((x) => x.toLowerCase() === alias) ||
+      t.activeTypesDuringUpdate.some((x) => x.toLowerCase() === alias),
+  );
 
 test.describe('directional-navigation-transitions Target Grader', () => {
   // --- STATIC ASSERTIONS (FAST) ---
@@ -307,7 +395,7 @@ test.describe('directional-navigation-transitions Target Grader', () => {
         flattenRules(m.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule),
       )
       .some((r) => {
-        if (!/::view-transition|\*/.test(r.selectorText)) return false;
+        if (!/::view-transition|\*/.test(getSelectorText(r))) return false;
         const anim = r.style.getPropertyValue('animation');
         const name = r.style.getPropertyValue('animation-name');
         const dur = r.style.getPropertyValue('animation-duration');

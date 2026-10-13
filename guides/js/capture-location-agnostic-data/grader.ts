@@ -12,47 +12,65 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-function getCombinedCode(): string {
+function getCombinedSource(): { fullText: string; jsText: string } {
   const html = fs.readFileSync(filePath, 'utf-8');
-  const parts = [html];
+  const fullParts = [html];
+  const inlineScripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).join('\n');
+  const jsParts = [inlineScripts];
+
   if (demoName === 'demo.html' || demoName === 'negative-demo.html') {
     for (const m of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)) {
       const src = m[1];
       if (/^https?:\/\//i.test(src)) continue;
       const localPath = path.resolve(targetDir, src.replace(/^\/+/, ''));
       if (localPath.startsWith(targetDir + path.sep) && fs.existsSync(localPath) && fs.statSync(localPath).isFile()) {
-        parts.push(fs.readFileSync(localPath, 'utf-8'));
+        const extContent = fs.readFileSync(localPath, 'utf-8');
+        fullParts.push(extContent);
+        jsParts.push(extContent);
       }
     }
-    return parts.join('\n');
-  }
-  const excludedDirs = new Set(['node_modules', 'vendor', 'test', 'tests', 'grade-report', 'test-results', 'dist', '.git']);
-  const walk = (dir: string) => {
-    try {
-      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        if (entry.isDirectory()) {
-          if (!excludedDirs.has(entry.name)) walk(path.join(dir, entry.name));
-        } else if (
-          entry.isFile() &&
-          (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
-          entry.name !== 'grade.mjs' &&
-          entry.name !== 'run.mjs' &&
-          !entry.name.includes('.config.') &&
-          !entry.name.includes('.test.') &&
-          !entry.name.includes('.spec.')
-        ) {
-          parts.push(fs.readFileSync(path.join(dir, entry.name), 'utf-8'));
+  } else {
+    const excludedDirs = new Set(['node_modules', 'vendor', 'test', 'tests', 'grade-report', 'test-results', 'dist', '.git']);
+    const walk = (dir: string) => {
+      try {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (entry.isDirectory()) {
+            if (!excludedDirs.has(entry.name)) walk(path.join(dir, entry.name));
+          } else if (
+            entry.isFile() &&
+            /\.(?:m?js|ts)$/i.test(entry.name) &&
+            entry.name !== 'grader.ts' &&
+            entry.name !== 'grade.mjs' &&
+            entry.name !== 'run.mjs' &&
+            !entry.name.includes('.config.') &&
+            !entry.name.includes('.test.') &&
+            !entry.name.includes('.spec.')
+          ) {
+            const extContent = fs.readFileSync(path.join(dir, entry.name), 'utf-8');
+            fullParts.push(extContent);
+            jsParts.push(extContent);
+          }
         }
+      } catch {
+        // ignore read errors
       }
-    } catch {
-      // ignore read errors
-    }
+    };
+    walk(targetDir);
+  }
+
+  const stripComments = (str: string) =>
+    str
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+  const fullText = fullParts.join('\n');
+  const jsText = jsParts.join('\n');
+  return {
+    fullText: stripComments(fullText),
+    jsText: stripComments(jsText || fullText),
   };
-  walk(targetDir);
-  return parts.join('\n');
 }
 
-const fileContent = getCombinedCode();
+const { fullText: fileContent, jsText: cleanJsContent } = getCombinedSource();
 
 test.describe(`Temporal API Expectations: ${demoName}`, () => {
 
@@ -105,12 +123,16 @@ test.describe(`Temporal API Expectations: ${demoName}`, () => {
   });
 
   test('MUST NOT use Temporal.PlainDate or Temporal.PlainTime for data that represents a specific moment in physical time', async () => {
-    const badUsage = /const\s+[a-zA-Z0-9_]*(log|instant|timestamp)[a-zA-Z0-9_]*\s*=\s*Temporal\.(PlainDate|PlainTime)/i.test(fileContent);
+    const usesTemporalPlain = /Temporal\.(PlainDate|PlainTime)/i.test(cleanJsContent);
+    const badUsage = /(?:const|let|var)\s+[a-zA-Z0-9_]*(log|instant|timestamp)[a-zA-Z0-9_]*\s*=\s*Temporal\.(PlainDate|PlainTime)/i.test(cleanJsContent);
+    expect(usesTemporalPlain, "Expected Temporal.PlainDate or Temporal.PlainTime to be used").toBe(true);
     expect(badUsage, "Expected Temporal.PlainDate/Time NOT to be used for server logs or physical moments").toBe(false);
   });
 
   test('MUST NOT attempt to modify Temporal instances directly', async () => {
-    const modifiesDirectly = /\.\s*(year|month|day|hour|minute|second|microsecond|nanosecond)\s*=[^=]/i.test(fileContent);
+    const usesTemporalPlain = /Temporal\.(PlainDate|PlainTime)/i.test(cleanJsContent);
+    const modifiesDirectly = /\.\s*(year|month|day|hour|minute|second|microsecond|nanosecond)\s*=[^=]/i.test(cleanJsContent);
+    expect(usesTemporalPlain, "Expected Temporal.PlainDate or Temporal.PlainTime to be used").toBe(true);
     expect(modifiesDirectly, "Expected NO direct modification of Temporal instances (they are immutable)").toBe(false);
   });
 

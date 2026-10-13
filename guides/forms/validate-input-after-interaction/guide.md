@@ -156,6 +156,7 @@ input:user-valid {
 1.  **Accessibility**:
     *   MANDATORY: Use `aria-describedby` to link the rules list to the input.
     *   DO NOT: Hide rules lists entirely until the input is valid; users need to know what to type!
+    *   DO NOT: Use the `placeholder` attribute to communicate format rules, constraints, or examples (e.g., `placeholder="you@example.com"`), as placeholder text disappears as soon as the user starts typing.
 2.  **Pattern Attribute Limits**: MANDATORY: The `pattern` attribute performs a full match (implied `^...$`). Ensure your password regex accounts for the entire string.
 3.  **Validation Strictness**: DO note that the browser's default `type="email"` validation is quite permissive (e.g., `user@localserver` might pass). If you need stricter validation, you may need to use a more robust validation library or a custom validation function alongside `type="email"`.
 4.  **Focus Management**: MANDATORY: If a user submits the form with an invalid field, the browser will automatically focus the first invalid field. Your `:user-invalid` styles will apply immediately because a submission attempt counts as an interaction.

@@ -184,7 +184,10 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasMedia).toBe(true);
   });
 
-  test(`MANDATORY: The implementation DOES NOT add any scroll event listeners.`, async ({ page }) => {
+  test(`MANDATORY: The implementation DOES NOT attach any scroll event listeners when CSS.supports('animation-timeline', 'scroll()') is supported.`, async ({ page }) => {
+    const handle = await findProgressElementHandle(page);
+    const hasProgressEl = await handle.evaluate((el: Element | null) => el !== null);
+
     const client = await page.context().newCDPSession(page);
     
     const { result } = await client.send('Runtime.evaluate', { expression: 'window' });
@@ -195,7 +198,7 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     
     const hasScrollListener = windowListeners.some(l => l.type === 'scroll') || docListeners.some(l => l.type === 'scroll');
     
-    expect(hasScrollListener).toBe(false);
+    expect(hasProgressEl && !hasScrollListener).toBe(true);
   });
 
   test(`MANDATORY: Purely decorative scroll progress indicators must define aria-hidden="true"`, async () => {

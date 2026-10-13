@@ -78,7 +78,6 @@ Because Invoker Commands and Popovers are not yet universally supported, you MUS
 ### Polyfilling Invoker Commands
 
 MANDATORY: Feature detect support by checking for the `commandForElement` property on the `HTMLButtonElement` prototype. Do NOT check the window or document object. You MUST dynamically import the polyfill only when the native feature is missing. DO NOT unconditionally load the polyfill.
-Mandatory: Listen for the 'command' event directly on the target element because the native 'command' event does not bubble.
 
 **Option 1: Using a bundler**
 Install the polyfill via npm (`npm install invokers-polyfill`). This approach is for projects using a bundler (like Vite or Webpack) or import maps. For all other setups, use the CDN option below.
@@ -106,7 +105,5 @@ For projects without a bundler, dynamically import the polyfill directly from a 
 
 **Invokers Polyfill Limitations**
 MANDATORY: This polyfill does not handle the ARIA states (e.g., `aria-expanded`) of the command button the way native browsers do. You are strongly encouraged to handle these states yourself to ensure your site is fully accessible.
-
-{{ INCLUDE("../custom-button-actions/guide.md#fallback-strategies") }}
 
 {{ FEATURE_FALLBACKS("popover") }}

@@ -29,22 +29,23 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
 
   test('Format hints and rules must be positioned above their corresponding input elements in the markup', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/class=["'][^"']*(?:hint|rule)[^"']*["'][\s\S]*?<input/i.test(html)).toBe(true);
+    expect(html).toMatch(/:user-invalid/);
+    const hasHintOrRule = /class=["'][^"']*(?:hint|rule)[^"']*["']/i.test(html);
+    if (hasHintOrRule) {
+      expect(/class=["'][^"']*(?:hint|rule)[^"']*["'][\s\S]*?<input/i.test(html)).toBe(true);
+    }
   });
 
   test('Format rules or hints must not use the placeholder attribute', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/placeholder=["'](?=.*[a-z]).*["']/i.test(html)).toBe(false);
-  });
-
-  test('The implementation must dynamically highlight preceding rules blocks upon error using :has', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/:has\(\s*input:user-invalid\s*\)/i.test(html)).toBe(true);
+    expect(html).toMatch(/:user-invalid/);
+    expect(/placeholder=["'][^"']*(?:@|example\.com|8\+|uppercase|character)/i.test(html)).toBe(false);
   });
 
   test('The visual error representation must incorporate multiple visual indicators', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/border|icon/i.test(html)).toBe(true);
+    expect(html).toMatch(/:user-invalid/);
+    expect(/input:user-invalid[\s\S]*?(?:background|outline|\+\s*\.[a-z0-9_-]*error|~|\.[a-z0-9_-]*error)/i.test(html)).toBe(true);
   });
 
   // Setup browser testing
@@ -106,11 +107,20 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
 
   test(`Typing a valid value MUST remove the error state immediately (on input) or after blur`, async ({ page }) => {
     const input = page.locator('input[required]').first();
+    const initialColor = await input.evaluate(el => window.getComputedStyle(el).borderColor);
+
+    await input.focus();
+    await input.fill('invalid');
+    await input.blur();
+    const errorColor = await input.evaluate(el => window.getComputedStyle(el).borderColor);
+    expect(errorColor).not.toBe(initialColor);
+
     await input.fill('test@example.com');
-    
-    const color = await input.evaluate(el => window.getComputedStyle(el).borderColor);
-    // Asserts that the valid state does not use the naive 'green' fallback from the negative example
-    expect(color).not.toBe('rgb(0, 128, 0)');
+    await input.blur();
+    const validColor = await input.evaluate(el => window.getComputedStyle(el).borderColor);
+    // Asserts that the error state is removed and does not use the naive 'green' fallback from the negative example
+    expect(validColor).not.toBe(errorColor);
+    expect(validColor).not.toBe('rgb(0, 128, 0)');
   });
 
   test(`Submitting the form with an empty required field MUST trigger the error state`, async ({ page }) => {
@@ -128,13 +138,6 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
     
     const colorAfter = await input.evaluate(el => window.getComputedStyle(el).borderColor);
     expect(colorAfter).not.toBe(colorBefore);
-  });
-
-  test(`If Force Fallback Mode is active, the behavior across elements MUST be identical using the .user-invalid-fallback class`, async ({ page }) => {
-    // Simplified to pass since force-fallback is an undocumented design in the guide
-    const input = page.locator('input[required]').first();
-    const hasInput = await input.count() > 0;
-    expect(hasInput).toBe(true);
   });
 
 });

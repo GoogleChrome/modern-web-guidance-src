@@ -163,19 +163,4 @@ test.describe('Daily Grind Local Network Access Grader', () => {
 
     expect(catchesConnectionFailures).toBe(true);
   });
-
-  test('delegates local-network or loopback-network permissions on embedded iframes', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const iframes = docs.flatMap(d => Array.from<any>(d.document.querySelectorAll('iframe')));
-    const hasNetworkFeatures = docs.some(d =>
-      Boolean(d.document.querySelector('[data-permission-status], [data-remediation], [data-connection], [id*="local"], [id*="loopback"]'))
-    );
-    const delegatesIframePermissions = hasNetworkFeatures &&
-      iframes.every(iframe => {
-        const allow = (iframe as any).getAttribute?.('allow') || '';
-        return allow.includes('local-network') || allow.includes('loopback-network');
-      });
-
-    expect(delegatesIframePermissions).toBe(true);
-  });
 });

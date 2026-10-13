@@ -14,7 +14,7 @@ Carousel slide effects are a great way to add visual interest to a carousel. As 
 
 Here’s how to create carousel slide effects:
 
-1.  **Create a scroller:** This element will act as the container for your carousel slides. In this example it uses `overflow-x: scroll` to allow horizontal scrolling.
+1.  **Create a scroll-snapping scroller:** This element will act as the container for your carousel slides. Use `overflow-x: scroll` (or `auto`) to allow horizontal scrolling, `scroll-snap-type: x mandatory` on the scroller, and `scroll-snap-align: center` on the slide items so slides snap cleanly into the center of the scrollport.
 
     ```html
     <ul class="scroller">
@@ -28,6 +28,11 @@ Here’s how to create carousel slide effects:
     ```css
     .scroller {
       overflow-x: scroll;
+      scroll-snap-type: x mandatory;
+    }
+
+    .scroller > * {
+      scroll-snap-align: center;
     }
     ```
 

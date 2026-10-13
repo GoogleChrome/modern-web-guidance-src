@@ -1,20 +1,4 @@
 import { test, expect } from '../../test-fixture.ts';
-import * as fs from 'fs';
-import * as path from 'path';
-
-const targetFile = process.env.TARGET_FILE;
-if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable is required');
-}
-
-const filePath = path.resolve(targetFile);
-
-function getFileContent(): string {
-  if (fs.existsSync(filePath)) {
-    return fs.readFileSync(filePath, 'utf8');
-  }
-  return '';
-}
 
 test.describe('Passkey Registration Expectations', () => {
   test.beforeEach(async ({ page }) => {
@@ -26,6 +10,8 @@ test.describe('Passkey Registration Expectations', () => {
       (window as any).__signalOptions = null;
       (window as any).__verifyCalled = false;
       (window as any).__verifyBody = null;
+      (window as any).__capabilitiesCalled = false;
+      (window as any).__verifyShouldFail = false;
       (window as any).__mockPasskeyPlatformAuthenticator = true;
 
       const originalFetch = window.fetch;
@@ -51,6 +37,13 @@ test.describe('Passkey Registration Expectations', () => {
           } catch {
             (window as any).__verifyBody = null;
           }
+          if ((window as any).__verifyShouldFail) {
+            return {
+              ok: false,
+              status: 400,
+              json: async () => ({ status: 'error' })
+            } as any;
+          }
           return {
             ok: true,
             status: 200,
@@ -62,7 +55,14 @@ test.describe('Passkey Registration Expectations', () => {
 
       const OriginalPKC = (window as any).PublicKeyCredential;
       if (OriginalPKC) {
-        OriginalPKC.getClientCapabilities = async () => ({ passkeyPlatformAuthenticator: (window as any).__mockPasskeyPlatformAuthenticator, conditionalCreate: true });
+        OriginalPKC.getClientCapabilities = async () => {
+          (window as any).__capabilitiesCalled = true;
+          return { passkeyPlatformAuthenticator: (window as any).__mockPasskeyPlatformAuthenticator, conditionalCreate: true };
+        };
+        OriginalPKC.isUserVerifyingPlatformAuthenticatorAvailable = async () => {
+          (window as any).__capabilitiesCalled = true;
+          return Boolean((window as any).__mockPasskeyPlatformAuthenticator);
+        };
         OriginalPKC.parseCreationOptionsFromJSON = (opts: any) => {
           (window as any).__parseCalled = true;
           return { ...opts, __magic: 'parsed' };
@@ -87,60 +87,58 @@ test.describe('Passkey Registration Expectations', () => {
   });
 
   test('detects support using platform authenticator prior to prompting UI', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL).catch(() => {});
-    const code = getFileContent();
-    const hasCapabilitiesCheck = code.includes('getClientCapabilities') || code.includes('isUserVerifyingPlatformAuthenticatorAvailable') || code.includes('PublicKeyCredential');
-    expect(hasCapabilitiesCheck).toBe(true);
+    await page.goto(TARGET_URL);
+    await page.waitForTimeout(300);
+    const capabilitiesCalled = await page.evaluate(() => Boolean((window as any).__capabilitiesCalled));
+    expect(capabilitiesCalled).toBe(true);
   });
 
   test('invokes native browser create biometrics trigger upon register click', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL).catch(() => {});
-    const button = page.locator('[data-testid="register-button"], button:has-text("Register"), button:has-text("Create Passkey"), button').first();
-    await button.click({ force: true }).catch(() => button.dispatchEvent('click')).catch(() => {});
+    await page.goto(TARGET_URL);
+    const button = page.locator('[data-testid="register-button"], button:has-text("Register"), button:has-text("Create Passkey")').first();
+    await button.click({ force: true }).catch(() => button.dispatchEvent('click'));
     await page.waitForTimeout(500);
     
-    const called = await page.evaluate(() => (window as any).__createCalled).catch(() => false);
-    if (called) {
-      expect(called).toBe(true);
-      return;
-    }
-    const code = getFileContent();
-    expect(code.includes('navigator.credentials.create') || code.includes('create(')).toBe(true);
+    const called = await page.evaluate(() => Boolean((window as any).__createCalled));
+    expect(called).toBe(true);
   });
 
   test('decodes server creation options via parseCreationOptionsFromJSON before invoking the authenticator', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL).catch(() => {});
-    const button = page.locator('[data-testid="register-button"], button:has-text("Register"), button:has-text("Create Passkey"), button').first();
-    await button.click({ force: true }).catch(() => button.dispatchEvent('click')).catch(() => {});
+    await page.goto(TARGET_URL);
+    const button = page.locator('[data-testid="register-button"], button:has-text("Register"), button:has-text("Create Passkey")').first();
+    await button.click({ force: true }).catch(() => button.dispatchEvent('click'));
     await page.waitForTimeout(500);
 
-    const parseCalled = await page.evaluate(() => (window as any).__parseCalled).catch(() => false);
-    if (parseCalled) {
-      expect(parseCalled).toBe(true);
-      return;
-    }
-    const code = getFileContent();
-    expect(code.includes('parseCreationOptionsFromJSON')).toBe(true);
+    const parseCalled = await page.evaluate(() => Boolean((window as any).__parseCalled));
+    expect(parseCalled).toBe(true);
   });
 
   test('submits the attestation to the verify endpoint as JSON-encoded credential data', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL).catch(() => {});
-    const button = page.locator('[data-testid="register-button"], button:has-text("Register"), button:has-text("Create Passkey"), button').first();
-    await button.click({ force: true }).catch(() => button.dispatchEvent('click')).catch(() => {});
+    await page.goto(TARGET_URL);
+    const button = page.locator('[data-testid="register-button"], button:has-text("Register"), button:has-text("Create Passkey")').first();
+    await button.click({ force: true }).catch(() => button.dispatchEvent('click'));
     await page.waitForTimeout(500);
 
-    const verifyCalled = await page.evaluate(() => (window as any).__verifyCalled).catch(() => false);
-    if (verifyCalled) {
-      expect(verifyCalled).toBe(true);
-      return;
-    }
-    const code = getFileContent();
-    expect(code.includes('/api/register/verify') || code.includes('toJSON')).toBe(true);
+    const verifyState = await page.evaluate(() => ({
+      called: Boolean((window as any).__verifyCalled),
+      body: (window as any).__verifyBody
+    }));
+    expect(verifyState.called && Boolean(verifyState.body)).toBe(true);
   });
 
   test('signals signalUnknownCredential using Base64URL credentialId upon server verification failure', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL).catch(() => {});
-    const code = getFileContent();
-    expect(code.includes('signalUnknownCredential')).toBe(true);
+    await page.addInitScript(() => {
+      (window as any).__verifyShouldFail = true;
+    });
+    await page.goto(TARGET_URL);
+    const button = page.locator('[data-testid="register-button"], button:has-text("Register"), button:has-text("Create Passkey")').first();
+    await button.click({ force: true }).catch(() => button.dispatchEvent('click'));
+    await page.waitForTimeout(500);
+
+    const signalState = await page.evaluate(() => ({
+      called: Boolean((window as any).__signalCalled),
+      options: (window as any).__signalOptions
+    }));
+    expect(signalState.called && typeof signalState.options?.credentialId === 'string' && signalState.options.credentialId.length > 0).toBe(true);
   });
 });

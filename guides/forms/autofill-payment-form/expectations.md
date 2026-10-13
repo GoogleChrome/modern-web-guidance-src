@@ -15,4 +15,4 @@
 - **DO NOT** enforce Latin-only characters for the cardholder name input (e.g. do not use a `pattern` that only matches `[a-zA-Z]`).
 - All required payment form fields **MUST** have the `required` attribute.
 - Input format hints **MUST** be positioned above their corresponding input elements in the markup to prevent mobile keyboards from obscuring them.
-- The `placeholder` attribute **MUST NOT** be used to convey data entry constraints or format examples.
+- The `placeholder` attribute **MUST NOT** be used to convey expiry format hints or constraints (such as `placeholder="MM/YY"`).

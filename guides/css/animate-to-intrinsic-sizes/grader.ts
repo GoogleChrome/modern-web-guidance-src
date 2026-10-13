@@ -104,7 +104,7 @@ test.describe('Animate to Intrinsic Sizes Expectations', () => {
 
   test('should smoothly animate size property when triggered', async ({ page }) => {
     const trigger = page.locator('#faq-trigger');
-    const target = page.locator('.faq-item, details').first();
+    const target = page.locator('#faq-content, .faq-item, details').first();
 
     const initialHeight = await target.evaluate(el => el.getBoundingClientRect().height);
 

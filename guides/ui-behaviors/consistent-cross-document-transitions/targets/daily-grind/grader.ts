@@ -138,12 +138,15 @@ test.describe('consistent-cross-document-transitions Target Grader', () => {
 
   // 6. Scripts that must run before transition are marked with blocking="render" in <head>
   test('marks critical layout or theme scripts in the head with blocking="render"', () => {
+    expect(hasCrossDocumentOptIn()).toBe(true);
     const docs = getHtmlDocuments(targetFiles);
-    const hasBlockingRenderScript = docs.some(({ document }) => {
-      const scripts = Array.from(document.querySelectorAll('head script[blocking="render"]'));
-      return scripts.length > 0;
+    const headScripts = docs.flatMap(({ document }) => Array.from(document.querySelectorAll('head script')));
+    const nonBlockingHeadScripts = headScripts.some((s: any) => {
+      const src = (s.getAttribute('src') || '').toLowerCase();
+      if (src.includes('analytics') || src.includes('ad-client')) return false;
+      return s.getAttribute('blocking') !== 'render';
     });
-    expect(hasBlockingRenderScript).toBe(true);
+    expect(nonBlockingHeadScripts).toBe(false);
   });
 
   // 7. Render blocking is limited to visible content; non-critical or below-the-fold content is NOT render-blocked

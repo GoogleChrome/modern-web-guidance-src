@@ -83,16 +83,19 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
 
   test('fetchLater API is invoked with a valid DeferredRequestInit (no ReadableStream)', () => {
     const content = getSearchContent();
+    expect(content).toMatch(/\bfetchLater\s*\(\s*[^,]+,\s*\{/);
     expect(content).not.toMatch(/new\s+ReadableStream/);
   });
 
   test('XMLHttpRequest is not used as an alternative beacon API', () => {
     const content = getSearchContent();
+    expect(content).toMatch(/\bfetchLater\s*\(/);
     expect(content).not.toMatch(/\bnew\s+XMLHttpRequest\b/);
   });
 
   test('Image is not used as an alternative beacon API', () => {
     const content = getSearchContent();
+    expect(content).toMatch(/\bfetchLater\s*\(/);
     expect(content).not.toMatch(/\bnew\s+Image\b/);
   });
 
@@ -126,6 +129,8 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
 
   test('The application handles missing fetchLater natively by using a polyfill without crashing', async ({ page }) => {
     await page.addInitScript(() => {
+      delete (window as any).fetchLater;
+      delete (globalThis as any).fetchLater;
       // Ensure clicks on the page don't trigger a navigation.
       window.addEventListener('click', (event) => event.preventDefault(), true);
     });
@@ -134,6 +139,8 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
     page.on('pageerror', err => errors.push(err.message));
     await page.goto(demoUrl);
     await page.click('body');
+    const hasPolyfillInstalled = await page.evaluate(() => typeof (window as any).fetchLater === 'function' || typeof (globalThis as any).fetchLater === 'function');
+    expect(hasPolyfillInstalled).toBe(true);
     expect(errors.length).toBe(0);
   });
 

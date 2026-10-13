@@ -29,6 +29,7 @@ test.describe('Passkey Authentication Expectations', () => {
     await page.addInitScript(() => {
       (window as any).__getCalled = false;
       (window as any).__getOptions = null;
+      (window as any).__capabilitiesCalled = false;
       (window as any).__parseCalled = false;
       (window as any).__signalCalled = false;
       (window as any).__signalOptions = null;
@@ -65,10 +66,13 @@ test.describe('Passkey Authentication Expectations', () => {
 
       const OriginalPKC = (window as any).PublicKeyCredential;
       if (OriginalPKC) {
-        OriginalPKC.getClientCapabilities = async () => ({
-          passkeyPlatformAuthenticator: (window as any).__mockPasskeyPlatformAuthenticator,
-          conditionalGet: (window as any).__mockConditionalGet
-        });
+        OriginalPKC.getClientCapabilities = async () => {
+          (window as any).__capabilitiesCalled = true;
+          return {
+            passkeyPlatformAuthenticator: (window as any).__mockPasskeyPlatformAuthenticator,
+            conditionalGet: (window as any).__mockConditionalGet
+          };
+        };
         OriginalPKC.parseRequestOptionsFromJSON = (opts: any) => {
           (window as any).__parseCalled = true;
           return { ...opts, __magic: 'parsed' };
@@ -121,6 +125,24 @@ test.describe('Passkey Authentication Expectations', () => {
   });
 
   test('The client feature detects capabilities using PublicKeyCredential.getClientCapabilities before initializing Conditional UI', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
+    await page.waitForTimeout(100);
+    const capabilitiesCalled = await page.evaluate(() => (window as any).__capabilitiesCalled);
+    expect(capabilitiesCalled).toBe(true);
+
+    // Verify Conditional UI is skipped when conditionalGet is false
+    await page.addInitScript(() => {
+      (window as any).__mockConditionalGet = false;
+    });
+    await page.goto(TARGET_URL);
+    await page.waitForTimeout(100);
+    const conditionalGetCalledWhenUnsupported = await page.evaluate(
+      () => (window as any).__getCalled && (window as any).__getOptions?.mediation === 'conditional'
+    );
+    expect(conditionalGetCalledWhenUnsupported).toBe(false);
+  });
+
+  test('The client decodes fetched credential options via parseRequestOptionsFromJSON before invoking navigator.credentials.get', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
     await page.waitForTimeout(100);
     const parseCalled = await page.evaluate(() => (window as any).__parseCalled);

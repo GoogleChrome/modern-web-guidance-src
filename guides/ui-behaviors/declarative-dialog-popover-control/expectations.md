@@ -1,5 +1,5 @@
 - The document uses buttons with `commandfor` and `command` attributes to declaratively control UI elements.
-- A button used to toggle a popover has `command="toggle-popover"` and an initial `aria-expanded="false"` attribute.
+- A button used to toggle a popover has `command="toggle-popover"`.
 - Buttons for explicit popover control use `command="show-popover"` and `command="hide-popover"`.
 - The target element for popover commands has the `popover` attribute.
 - A button used to open a modal dialog has `command="show-modal"` and targets a `<dialog>` element.
@@ -7,8 +7,6 @@
 - The fallback strategy MUST feature detect support by checking for `commandForElement` in `HTMLButtonElement.prototype` and `popover` in `HTMLElement.prototype`.
 - Polyfills MUST be loaded via dynamic `import()` only when native support is missing (or forced for testing).
 - The `invokers-polyfill` is dynamically imported from a CDN (e.g., `https://esm.run/invokers-polyfill`).
-- The `@oddbird/popover-polyfill` is dynamically imported and its `apply()` method is called.
+- The `@oddbird/popover-polyfill` is dynamically imported.
 - CSS styling for the open state of a popover uses `:is()` or `:where()` to combine `:popover-open` with the polyfill class `.\:popover-open`.
 - The target element for explicit popover control (show/hide) has the `popover="manual"` attribute.
-- A `command` event listener is attached directly to each target element (not delegated via bubbling) when using the polyfill.
-- The `command` event listener identifies the command name via `event.command` (native) or `event.detail.command` (polyfill).

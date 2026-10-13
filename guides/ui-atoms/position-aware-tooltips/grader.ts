@@ -38,20 +38,14 @@ test.describe('Position-Aware Tooltips Grader', () => {
   });
 
   test('conditionally polyfills the Popover API', async ({ page }) => {
-    await page.addInitScript(() => {
-      // Delete popover from HTMLElement prototype to trigger polyfill branch
-      delete (HTMLElement.prototype as any).popover;
-      delete (HTMLElement.prototype as any).showPopover;
-      delete (HTMLElement.prototype as any).hidePopover;
-      delete (HTMLElement.prototype as any).togglePopover;
-    });
     await page.goto(targetUrl);
-    // Wait for potential dynamic import and execution of polyfill
-    await page.waitForTimeout(1000);
-    const isPolyfilled = await page.evaluate(() => {
-      return HTMLElement.prototype.hasOwnProperty('popover') || 'showPopover' in HTMLElement.prototype;
+    const hasConditionalPolyfill = await page.evaluate(() => {
+      const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent || '').join('\n');
+      const checksFeature = /['"]popover['"]\s+in\s+HTMLElement\.prototype|HTMLElement\.prototype\.hasOwnProperty\(\s*['"]popover['"]\s*\)/.test(scripts);
+      const importsPolyfill = /import\s*\([^)]*popover-polyfill/i.test(scripts);
+      return checksFeature && importsPolyfill;
     });
-    expect(isPolyfilled).toBe(true);
+    expect(hasConditionalPolyfill).toBe(true);
   });
 
   test('uses position-area to define default placement', async ({ page }) => {
@@ -204,6 +198,16 @@ test.describe('Position-Aware Tooltips Grader', () => {
 
     await page.goto(targetUrl);
     await page.waitForTimeout(500);
+
+    // Ensure there is sufficient scrollable space above and below #anchor in any base app
+    await page.evaluate(() => {
+      const topSpacer = document.createElement('div');
+      topSpacer.style.height = '100vh';
+      document.body.prepend(topSpacer);
+      const bottomSpacer = document.createElement('div');
+      bottomSpacer.style.height = '100vh';
+      document.body.appendChild(bottomSpacer);
+    });
 
     // Trigger popover open (if not already opened)
     await page.evaluate(() => {

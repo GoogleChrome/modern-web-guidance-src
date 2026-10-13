@@ -106,7 +106,10 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
   });
 
   test('Popover polyfill must be conditionally installed', async () => {
-    const hasPolyfill = html.includes('popover-polyfill') && html.includes('hasOwnProperty("popover")');
+    const hasPolyfill =
+      /popover-polyfill/i.test(html) &&
+      (/['"]popover['"]\s+in\s+HTMLElement\.prototype/.test(html) ||
+        /hasOwnProperty\(\s*['"]popover['"]\s*\)/.test(html));
     expect(hasPolyfill).toBe(true);
   });
 
@@ -117,13 +120,16 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
 
   test('Tooltip content must NOT be in attributes on the trigger', async ({ page }) => {
     const result = await page.evaluate(() => {
+      if (document.querySelectorAll('[interestfor]').length === 0) return false;
       const triggers = Array.from(document.querySelectorAll('button, a, .tooltip, [interestfor]'));
       return triggers.length > 0 && !triggers.some(el => el.hasAttribute('data-tooltip'));
     });
     expect(result).toBe(true);
   });
 
-  test('Tooltip content must NOT be displayed using pseudo-elements', async () => {
+  test('Tooltip content must NOT be displayed using pseudo-elements', async ({ page }) => {
+    const hasInterestTriggers = await page.evaluate(() => document.querySelectorAll('[interestfor]').length > 0);
+    expect(hasInterestTriggers).toBe(true);
     const hasPseudoTooltip = /::after\s*{[^}]*content:[^}]*attr\(data-tooltip\)/.test(html) || /::before\s*{[^}]*content:[^}]*attr\(data-tooltip\)/.test(html);
     expect(hasPseudoTooltip).toBe(false);
   });

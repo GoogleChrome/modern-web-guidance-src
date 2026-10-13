@@ -2,6 +2,4 @@
 base_app: daily-grind
 ---
 
-- Add a script tag at the bottom that calculates how long until a user's credit card expires (set it to December 2027). It is absolutely critical to avoid weird leap year bugs.
-- We want to give out a free cold brew on the customer's birthday. Write some code to check if today is October 31st using whatever the new js feature is for partial dates that ignores the year. Log a happy birthday message if it matches.
-- Can you build a store hours checker? Set our open time to 08:00:00 using a time-only object. Then add 10 minutes to it to simulate a snooze/delay, and print both times to the console.
+- Add a coffee club membership script to the page that models partial date and time concepts without arbitrary placeholder days or years: (1) a stored card expiration month and year (December 2027), (2) an annual recurring member birthday reward date (October 31) without a specific year (converting it to a full date in the current year to calculate days until the next occurrence), and (3) a daily store opening wall-clock time (08:00:00) with a 10-minute delay calculation.

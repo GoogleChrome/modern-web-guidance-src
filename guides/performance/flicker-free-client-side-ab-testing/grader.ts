@@ -18,18 +18,19 @@ const isNonVisualScript = (scriptTag: string) => {
   return /analytics|tracking|gtm|pixel|ads|facebook|google-tag-manager/i.test(scriptTag);
 };
 
+const hasHeadExperimentScript = (html: string) => {
+  const headMatch = html.match(/<head>([\s\S]*?)<\/head>/i);
+  const headContent = headMatch ? headMatch[1] : '';
+  const scriptsInHead = headContent.match(/<script[^>]*>/gi) || [];
+  return scriptsInHead.some(s => /blocking=["']render["']/i.test(s) && !isNonVisualScript(s));
+};
+
 // Tests
 test.describe(`Flicker-Free Client-Side A/B Testing: ${demoName}`, () => {
 
   test(`The experiment script is placed in the document <head>`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    const headMatch = html.match(/<head>([\s\S]*?)<\/head>/i);
-    const headContent = headMatch ? headMatch[1] : '';
-    const scriptsInHead = headContent.match(/<script[^>]*>/gi) || [];
-    const hasExperimentScriptInHead = scriptsInHead.some(s => 
-      /blocking=["']render["']/i.test(s) && !isNonVisualScript(s)
-    );
-    expect(hasExperimentScriptInHead).toBe(true);
+    expect(hasHeadExperimentScript(html)).toBe(true);
   });
 
   test(`The experiment script has the blocking="render" attribute`, async () => {
@@ -60,6 +61,7 @@ test.describe(`Flicker-Free Client-Side A/B Testing: ${demoName}`, () => {
 
   test(`No anti-flicker snippet (unconditional opacity: 0 hack) is used`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
+    expect(hasHeadExperimentScript(html)).toBe(true);
     const hasUnconditionalOpacity = /(body|html)\s*\{\s*opacity:\s*0/i.test(html);
     expect(hasUnconditionalOpacity).toBe(false);
   });
@@ -76,6 +78,7 @@ test.describe(`Flicker-Free Client-Side A/B Testing: ${demoName}`, () => {
 
   test(`The blocking="render" attribute is NOT applied to non-visual scripts`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
+    expect(hasHeadExperimentScript(html)).toBe(true);
     const scriptsWithBlocking = html.match(/<script[^>]*blocking=["']render["'][^>]*>/gi) || [];
     const hasNonVisualWithBlocking = scriptsWithBlocking.some(s => isNonVisualScript(s));
     expect(hasNonVisualWithBlocking).toBe(false);
@@ -93,15 +96,32 @@ test.describe(`Flicker-Free Client-Side A/B Testing: ${demoName}`, () => {
 
   // Browser testing setup
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
-
-      if (fs.existsSync(localFilePath)) {
-        await route.fulfill({ path: localFilePath });
-      } else {
-        await route.continue();
+    await page.route('**/*', async (route) => {
+      const reqUrl = route.request().url();
+      const parsed = new URL(reqUrl);
+      if (/experiment.*\.js/i.test(parsed.pathname) || parsed.hostname === 'cdn.example.com') {
+        await route.fulfill({
+          contentType: 'application/javascript',
+          body: `document.documentElement.dataset.variant = 'b'; document.documentElement.classList.remove('ab-loading'); if (typeof window.onExperimentReady === 'function') window.onExperimentReady();`,
+        });
+        return;
       }
+      if (parsed.pathname.includes('/api/experiment')) {
+        await route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({ variant: 'b' }),
+        });
+        return;
+      }
+      if (parsed.hostname === 'localhost') {
+        const requestPath = parsed.pathname;
+        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+        if (fs.existsSync(localFilePath)) {
+          await route.fulfill({ path: localFilePath });
+          return;
+        }
+      }
+      await route.continue();
     });
   });
 
@@ -118,6 +138,8 @@ test.describe(`Flicker-Free Client-Side A/B Testing: ${demoName}`, () => {
   });
 
   test(`The page does not remain hidden by anti-flicker hacks after load`, async ({ page }) => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(hasHeadExperimentScript(html)).toBe(true);
     await page.goto(demoUrl);
     const opacity = await page.evaluate(() => window.getComputedStyle(document.body).opacity);
     expect(opacity).toBe('1');

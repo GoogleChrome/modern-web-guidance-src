@@ -64,34 +64,36 @@ test.describe('Pull-to-Reveal Grader', () => {
 
   test('The scroll container must have overflow-y and mandatory snapping', async ({ page }) => {
     const containerStyle = await page.evaluate(() => {
-      const findFeatureElements = () => {
-        const elements = Array.from(document.querySelectorAll('*'));
-        const snapPoints = elements.filter(el => {
-          const style = window.getComputedStyle(el);
-          return style.scrollSnapAlign === 'start' || style.scrollSnapAlign.startsWith('start ');
-        });
-        if (snapPoints.length < 2) return null;
-        const target = snapPoints[1];
-        let container = target.parentElement;
-        while (container) {
-          const style = window.getComputedStyle(container);
-          if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
-            return { el: container, style };
-          }
-          container = container.parentElement;
+      const elements = Array.from(document.querySelectorAll('*'));
+      const snapPoints = elements.filter(el => {
+        const style = window.getComputedStyle(el);
+        return style.scrollSnapAlign === 'start' || style.scrollSnapAlign.startsWith('start ');
+      });
+      if (snapPoints.length < 2) return null;
+      const target = snapPoints[1];
+      let container = target.parentElement;
+      while (container && container !== document.body && container !== document.documentElement) {
+        const style = window.getComputedStyle(container);
+        if (style.overflowY === 'auto' || style.overflowY === 'scroll' || style.scrollSnapType.includes('mandatory')) {
+          return {
+            overflowY: style.overflowY,
+            scrollSnapType: style.scrollSnapType
+          };
         }
-        const htmlStyle = window.getComputedStyle(document.documentElement);
-        if (htmlStyle.overflowY === 'auto' || htmlStyle.overflowY === 'scroll') {
-          return { el: document.documentElement, style: htmlStyle };
-        }
-        return null;
-      };
-
-      const result = findFeatureElements();
-      if (!result) return null;
+        container = container.parentElement;
+      }
+      const htmlStyle = window.getComputedStyle(document.documentElement);
+      const bodyStyle = window.getComputedStyle(document.body);
+      const scrollSnapType = htmlStyle.scrollSnapType !== 'none' ? htmlStyle.scrollSnapType : bodyStyle.scrollSnapType;
+      const overflowY =
+        htmlStyle.overflowY === 'auto' || htmlStyle.overflowY === 'scroll'
+          ? htmlStyle.overflowY
+          : bodyStyle.overflowY === 'auto' || bodyStyle.overflowY === 'scroll'
+            ? bodyStyle.overflowY
+            : 'auto';
       return {
-        overflowY: result.style.overflowY,
-        scrollSnapType: result.style.scrollSnapType
+        overflowY,
+        scrollSnapType
       };
     });
 
@@ -138,8 +140,8 @@ test.describe('Pull-to-Reveal Grader', () => {
       if (snapPoints.length < 2) return null;
       
       const target = snapPoints[1];
-      let container: HTMLElement | null = target.parentElement;
-      while (container) {
+      let container: Element | null = target.parentElement;
+      while (container && container !== document.body && container !== document.documentElement) {
         const style = window.getComputedStyle(container);
         if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
           break;
@@ -147,26 +149,20 @@ test.describe('Pull-to-Reveal Grader', () => {
         container = container.parentElement;
       }
       
-      if (!container) {
-        const htmlStyle = window.getComputedStyle(document.documentElement);
-        if (htmlStyle.overflowY === 'auto' || htmlStyle.overflowY === 'scroll') {
-          container = document.documentElement;
-        }
+      if (!container || container === document.body || container === document.documentElement) {
+        container = document.scrollingElement || document.documentElement;
       }
-      
-      if (!container) return null;
 
-      const cRect = container === document.documentElement ? { top: 0, left: 0 } : container.getBoundingClientRect();
+      const isRoot = container === document.documentElement || container === document.body || container === document.scrollingElement;
+      const cRect = isRoot ? { top: 0, left: 0 } : container.getBoundingClientRect();
       const tRect = target.getBoundingClientRect();
-      
-      // The top of the target should be at the top of the container's visible area.
-      // container.clientTop is the border width.
-      const topDiff = Math.abs(tRect.top - (cRect.top + (container === document.documentElement ? 0 : container.clientTop)));
+      const topDiff = Math.abs(tRect.top - (cRect.top + (isRoot ? 0 : container.clientTop)));
+      const scrollTop = Math.max(container.scrollTop, window.scrollY, document.documentElement.scrollTop, document.body.scrollTop);
       
       return {
-        scrollTop: container.scrollTop,
+        scrollTop,
         topDiff,
-        hasScrolled: container.scrollTop > 0 || window.scrollY > 0
+        hasScrolled: scrollTop > 0
       };
     });
 

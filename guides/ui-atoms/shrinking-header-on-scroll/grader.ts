@@ -64,10 +64,12 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
   test(`MANDATORY: The header or nav element has position: fixed or position: sticky.`, async ({ page }) => {
     const position = await page.evaluate(() => {
       const elements = Array.from(document.querySelectorAll('header, nav'));
-      const pos = elements.map(el => window.getComputedStyle(el).position);
-      return pos.includes('fixed') || pos.includes('sticky') ? 'sticky' : 'static'; // simplified return
+      const el = elements.find(e => window.getComputedStyle(e).animationName !== 'none');
+      if (!el) return 'static';
+      const pos = window.getComputedStyle(el).position;
+      return pos === 'fixed' || pos === 'sticky' ? 'sticky' : 'static';
     });
-    expect(position).toBe('sticky'); // or fixed, but we just check it found at least one
+    expect(position).toBe('sticky');
   });
 
   test(`MANDATORY: The implementation includes feature detection using @supports or CSS.supports for scroll-driven animations.`, async () => {

@@ -73,6 +73,10 @@ test.describe(`Dynamic Sibling Animations Expectations: ${demoName}`, () => {
   });
 
   test('The fallback is applied conditionally only when `sibling-index()` is not supported.', async ({ page }) => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    const hasFallbackVar = /(animation-delay|transition-delay):[^;]*--sibling-index/.test(html);
+    expect(hasFallbackVar).toBe(true);
+
     await page.addInitScript(() => {
       const originalSupports = CSS.supports;
       (window as any).CSS.supports = function(condition: any, value: any) {

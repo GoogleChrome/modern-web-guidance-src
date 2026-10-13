@@ -104,8 +104,7 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
             }
         }
       }
-      const hasJsFallback = document.querySelectorAll('script').length > 0;
-      return hasSupports || !hasJsFallback;
+      return hasSupports;
     });
     expect(isCompliant).toBe(true);
   });
@@ -135,8 +134,7 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
             }
         }
       }
-      const hasJsFallback = document.querySelectorAll('script').length > 0;
-      return hasMedia || !hasJsFallback;
+      return hasMedia;
     });
     expect(isCompliant).toBe(true);
   });

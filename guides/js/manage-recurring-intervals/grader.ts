@@ -74,6 +74,17 @@ test.describe('Temporal Interval Manager Grader', () => {
         toString: () => '2024-01-31',
         toLocaleString: () => 'January 31, 2024'
       };
+      function MockPlainDate() {
+        window.__mockTemporalCalled = true;
+        return mockPlainDate;
+      }
+      MockPlainDate.from = (_str: string) => {
+        window.__mockTemporalCalled = true;
+        return mockPlainDate;
+      };
+      MockPlainDate.prototype.add = () => mockPlainDate;
+      MockPlainDate.prototype.until = () => ({ days: 30 });
+      MockPlainDate.prototype.since = () => ({ days: 30 });
       window.Temporal = {
         Now: {
           plainDateISO: () => {
@@ -81,23 +92,26 @@ test.describe('Temporal Interval Manager Grader', () => {
             return mockPlainDate;
           }
         },
-        PlainDate: {
-          from: (_str: string) => {
-            window.__mockTemporalCalled = true;
-            return mockPlainDate;
-          },
-          prototype: {
-            add: () => mockPlainDate,
-            until: () => ({ days: 30 }),
-            since: () => ({ days: 30 })
-          }
-        }
+        PlainDate: MockPlainDate
       };
     });
     await page.goto(targetUrl);
     const startDateInput = page.locator('#startDateInput');
     await startDateInput.fill('2024-01-31');
+    await startDateInput.dispatchEvent('input');
     await startDateInput.dispatchEvent('change');
+    const yearsInput = page.locator('#yearsInput');
+    if (await yearsInput.count() > 0) {
+      await yearsInput.fill('0');
+      await yearsInput.dispatchEvent('input');
+      await yearsInput.dispatchEvent('change');
+    }
+    const monthsInput = page.locator('#monthsInput');
+    if (await monthsInput.count() > 0) {
+      await monthsInput.fill('1');
+      await monthsInput.dispatchEvent('input');
+      await monthsInput.dispatchEvent('change');
+    }
     await page.waitForTimeout(500);
 
     const result = await page.evaluate(() => {
@@ -231,6 +245,25 @@ test.describe('Temporal Interval Manager Grader', () => {
     });
     await page.goto(targetUrl);
     await page.waitForTimeout(1000);
+    const startDateInput = page.locator('#startDateInput');
+    const yearsInput = page.locator('#yearsInput');
+    const monthsInput = page.locator('#monthsInput');
+    if (await startDateInput.count() > 0) {
+      await startDateInput.fill('2024-01-31');
+      await startDateInput.dispatchEvent('input');
+      await startDateInput.dispatchEvent('change');
+    }
+    if (await yearsInput.count() > 0) {
+      await yearsInput.fill('0');
+      await yearsInput.dispatchEvent('input');
+      await yearsInput.dispatchEvent('change');
+    }
+    if (await monthsInput.count() > 0) {
+      await monthsInput.fill('1');
+      await monthsInput.dispatchEvent('input');
+      await monthsInput.dispatchEvent('change');
+    }
+    await page.waitForTimeout(300);
     const accessed = await page.evaluate(() => window.__temporalPlainDateAccessed);
     expect(accessed).toBe(true);
   });
@@ -277,6 +310,25 @@ test.describe('Temporal Interval Manager Grader', () => {
     });
     await page.goto(targetUrl);
     await page.waitForTimeout(1000);
+    const startDateInput = page.locator('#startDateInput');
+    const yearsInput = page.locator('#yearsInput');
+    const monthsInput = page.locator('#monthsInput');
+    if (await startDateInput.count() > 0) {
+      await startDateInput.fill('2024-01-31');
+      await startDateInput.dispatchEvent('input');
+      await startDateInput.dispatchEvent('change');
+    }
+    if (await yearsInput.count() > 0) {
+      await yearsInput.fill('0');
+      await yearsInput.dispatchEvent('input');
+      await yearsInput.dispatchEvent('change');
+    }
+    if (await monthsInput.count() > 0) {
+      await monthsInput.fill('1');
+      await monthsInput.dispatchEvent('input');
+      await monthsInput.dispatchEvent('change');
+    }
+    await page.waitForTimeout(300);
     const called = await page.evaluate(() => window.__plainDateFromCalled);
     expect(called).toBe(true);
   });
@@ -333,6 +385,25 @@ test.describe('Temporal Interval Manager Grader', () => {
     });
     await page.goto(targetUrl);
     await page.waitForTimeout(1000);
+    const startDateInput = page.locator('#startDateInput');
+    const yearsInput = page.locator('#yearsInput');
+    const monthsInput = page.locator('#monthsInput');
+    if (await startDateInput.count() > 0) {
+      await startDateInput.fill('2024-01-31');
+      await startDateInput.dispatchEvent('input');
+      await startDateInput.dispatchEvent('change');
+    }
+    if (await yearsInput.count() > 0) {
+      await yearsInput.fill('0');
+      await yearsInput.dispatchEvent('input');
+      await yearsInput.dispatchEvent('change');
+    }
+    if (await monthsInput.count() > 0) {
+      await monthsInput.fill('1');
+      await monthsInput.dispatchEvent('input');
+      await monthsInput.dispatchEvent('change');
+    }
+    await page.waitForTimeout(300);
     const called = await page.evaluate(() => window.__plainDateAddCalled);
     expect(called).toBe(true);
   });
@@ -340,6 +411,7 @@ test.describe('Temporal Interval Manager Grader', () => {
   // 8. Handle month-end transitions by default by clamping
   test('should handle month-end transitions by default by clamping to end of month', async ({ page }) => {
     await page.goto(targetUrl);
+    await page.waitForTimeout(1000);
     const startDateInput = page.locator('#startDateInput');
     const yearsInput = page.locator('#yearsInput');
     const monthsInput = page.locator('#monthsInput');
@@ -348,7 +420,11 @@ test.describe('Temporal Interval Manager Grader', () => {
     await yearsInput.fill('0');
     await monthsInput.fill('1');
 
+    await startDateInput.dispatchEvent('input');
     await startDateInput.dispatchEvent('change');
+    await yearsInput.dispatchEvent('input');
+    await yearsInput.dispatchEvent('change');
+    await monthsInput.dispatchEvent('input');
     await monthsInput.dispatchEvent('change');
 
     const resultDate = page.locator('#resultDate');
@@ -358,15 +434,26 @@ test.describe('Temporal Interval Manager Grader', () => {
   // 9. Support reject overflow strategy
   test('should support reject overflow strategy and display an error message', async ({ page }) => {
     await page.goto(targetUrl);
+    await page.waitForTimeout(1000);
     const overflowSelect = page.locator('#overflowSelect');
     await overflowSelect.selectOption('reject');
+    await overflowSelect.dispatchEvent('input');
+    await overflowSelect.dispatchEvent('change');
 
     const startDateInput = page.locator('#startDateInput');
     await startDateInput.fill('2024-01-31');
+    const yearsInput = page.locator('#yearsInput');
+    if (await yearsInput.count() > 0) {
+      await yearsInput.fill('0');
+      await yearsInput.dispatchEvent('input');
+      await yearsInput.dispatchEvent('change');
+    }
     const monthsInput = page.locator('#monthsInput');
     await monthsInput.fill('1');
 
+    await startDateInput.dispatchEvent('input');
     await startDateInput.dispatchEvent('change');
+    await monthsInput.dispatchEvent('input');
     await monthsInput.dispatchEvent('change');
 
     const resultDate = page.locator('#resultDate');
@@ -435,6 +522,25 @@ test.describe('Temporal Interval Manager Grader', () => {
     });
     await page.goto(targetUrl);
     await page.waitForTimeout(1000);
+    const startDateInput = page.locator('#startDateInput');
+    const yearsInput = page.locator('#yearsInput');
+    const monthsInput = page.locator('#monthsInput');
+    if (await startDateInput.count() > 0) {
+      await startDateInput.fill('2024-01-31');
+      await startDateInput.dispatchEvent('input');
+      await startDateInput.dispatchEvent('change');
+    }
+    if (await yearsInput.count() > 0) {
+      await yearsInput.fill('0');
+      await yearsInput.dispatchEvent('input');
+      await yearsInput.dispatchEvent('change');
+    }
+    if (await monthsInput.count() > 0) {
+      await monthsInput.fill('1');
+      await monthsInput.dispatchEvent('input');
+      await monthsInput.dispatchEvent('change');
+    }
+    await page.waitForTimeout(300);
     const called = await page.evaluate(() => window.__newTemporalInstanceUsed);
     expect(called).toBe(true);
   });

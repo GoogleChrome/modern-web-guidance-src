@@ -1,6 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Project, SyntaxKind, Node } from 'ts-morph';
 
 function getModuleScriptContents(targetFilePath: string): string[] {
   if (!fs.existsSync(targetFilePath)) {
@@ -32,6 +33,57 @@ function getModuleScriptContents(targetFilePath: string): string[] {
   return contents;
 }
 
+function getAllModuleScripts(targetFilePath: string): string[] {
+  const visited = new Set<string>();
+  const initialScripts = getModuleScriptContents(targetFilePath);
+  const rawScripts = [...initialScripts];
+
+  function collectImportedModules(code: string, baseDir: string) {
+    const importRegex = /\bimport\s+(?:[\s\S]*?\s+from\s+)?['"](\.[^'"]+)['"]/g;
+    let m;
+    while ((m = importRegex.exec(code)) !== null) {
+      const absPath = path.resolve(baseDir, m[1]);
+      if (!visited.has(absPath) && fs.existsSync(absPath)) {
+        visited.add(absPath);
+        const importedCode = fs.readFileSync(absPath, 'utf-8');
+        rawScripts.push(importedCode);
+        collectImportedModules(importedCode, path.dirname(absPath));
+      }
+    }
+  }
+
+  for (const script of initialScripts) {
+    collectImportedModules(script, path.dirname(path.resolve(targetFilePath)));
+  }
+
+  return rawScripts;
+}
+
+async function gotoTargetOverLocalhost(page: Page, targetFile: string): Promise<void> {
+  const absFile = path.resolve(targetFile);
+  const targetDir = path.dirname(absFile);
+  const fileName = path.basename(absFile);
+
+  await page.route('http://localhost/**', async (route) => {
+    const reqPath = new URL(route.request().url()).pathname;
+    const localPath = path.join(targetDir, reqPath === '/' ? fileName : reqPath);
+    if (fs.existsSync(localPath) && fs.statSync(localPath).isFile()) {
+      const ext = path.extname(localPath).toLowerCase();
+      const contentType =
+        ext === '.js' || ext === '.mjs'
+          ? 'application/javascript'
+          : ext === '.css'
+            ? 'text/css'
+            : 'text/html';
+      await route.fulfill({ path: localPath, contentType });
+    } else {
+      await route.fulfill({ status: 200, contentType: 'application/javascript', body: 'export default {};' });
+    }
+  });
+
+  await page.goto(`http://localhost/${fileName}`);
+}
+
 test.describe('Conditional Async Dependencies Grader', () => {
 
   test('A button with a popovertarget or commandfor attribute is present in the document', async ({ page }) => {
@@ -39,7 +91,7 @@ test.describe('Conditional Async Dependencies Grader', () => {
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is not set');
     }
-    await page.goto(`file://${path.resolve(targetFile)}`);
+    await gotoTargetOverLocalhost(page, targetFile);
     
     const button = page.locator('button[popovertarget], button[commandfor], [popovertarget], [commandfor]').first();
     await expect(button).toBeVisible();
@@ -50,7 +102,7 @@ test.describe('Conditional Async Dependencies Grader', () => {
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is not set');
     }
-    await page.goto(`file://${path.resolve(targetFile)}`);
+    await gotoTargetOverLocalhost(page, targetFile);
     
     const button = page.locator('button[popovertarget], button[commandfor], [popovertarget], [commandfor]').first();
     await expect(button).toBeVisible();
@@ -67,7 +119,7 @@ test.describe('Conditional Async Dependencies Grader', () => {
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is not set');
     }
-    await page.goto(`file://${path.resolve(targetFile)}`);
+    await gotoTargetOverLocalhost(page, targetFile);
     
     const button = page.locator('button[popovertarget], button[commandfor], [popovertarget], [commandfor]').first();
     const targetId = (await button.getAttribute('popovertarget')) || (await button.getAttribute('commandfor'));
@@ -111,7 +163,7 @@ test.describe('Conditional Async Dependencies Grader', () => {
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is not set');
     }
-    await page.goto(`file://${path.resolve(targetFile)}`);
+    await gotoTargetOverLocalhost(page, targetFile);
 
     const checked = await page.evaluate(() => (window as any).__popoverCheckedHTMLElement);
     if (checked) {
@@ -119,8 +171,12 @@ test.describe('Conditional Async Dependencies Grader', () => {
       return;
     }
 
-    const htmlContent = fs.readFileSync(path.resolve(targetFile), 'utf-8');
-    const hasCheck = htmlContent.includes('popover') && (htmlContent.includes('HTMLElement.prototype') || htmlContent.includes('in HTMLElement') || htmlContent.includes('!('));
+    const rawScripts = getAllModuleScripts(targetFile);
+    const hasCheck = rawScripts.some((code) =>
+      /['"]popover['"]\s+in\s+HTMLElement\.prototype|HTMLElement\.prototype\.hasOwnProperty\(\s*['"]popover['"]\s*\)|Object\.hasOwn\(\s*HTMLElement\.prototype\s*,\s*['"]popover['"]\s*\)|typeof\s+HTMLElement\.prototype\.popover/.test(
+        code
+      )
+    );
     expect(hasCheck).toBe(true);
   });
 
@@ -130,10 +186,11 @@ test.describe('Conditional Async Dependencies Grader', () => {
       throw new Error('TARGET_FILE environment variable is not set');
     }
     
-    const rawScripts = getModuleScriptContents(targetFile);
-    const hasConditionalImport = rawScripts.some(code => 
-      code.includes('import(') || code.includes('popover')
-    );
+    const rawScripts = getAllModuleScripts(targetFile);
+    const hasConditionalImport = rawScripts.some((code) => {
+      const withoutStaticImports = code.replace(/^\s*import\s+(?:[\s\S]*?\s+from\s+)?['"][^'"]+['"]\s*;?/gm, '');
+      return /\bimport\s*\(/.test(withoutStaticImports) && /popover/.test(withoutStaticImports) && /\bif\s*\(/.test(withoutStaticImports);
+    });
     expect(hasConditionalImport).toBe(true);
   });
 
@@ -142,8 +199,18 @@ test.describe('Conditional Async Dependencies Grader', () => {
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is not set');
     }
-    const htmlContent = fs.readFileSync(path.resolve(targetFile), 'utf-8');
-    const hasTopLevelAwait = htmlContent.includes('await') && htmlContent.includes('import(');
+    const rawScripts = getAllModuleScripts(targetFile);
+    const project = new Project({ useInMemoryFileSystem: true });
+    const hasTopLevelAwait = rawScripts.some((code, idx) => {
+      const sf = project.createSourceFile(`module_${idx}.ts`, code, { overwrite: true });
+      const awaits = sf.getDescendantsOfKind(SyntaxKind.AwaitExpression);
+      return awaits.some((awaitExpr) => {
+        const exprText = awaitExpr.getExpression().getText();
+        if (!/\bimport\s*\(/.test(exprText)) return false;
+        const enclosingFn = awaitExpr.getFirstAncestor((a) => Node.isFunctionLikeDeclaration(a));
+        return !enclosingFn;
+      });
+    });
     expect(hasTopLevelAwait).toBe(true);
   });
 
@@ -152,27 +219,7 @@ test.describe('Conditional Async Dependencies Grader', () => {
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is not set');
     }
-    const visited = new Set<string>();
-    const initialScripts = getModuleScriptContents(targetFile);
-    const rawScripts = [...initialScripts];
-
-    function collectImportedModules(code: string, baseDir: string) {
-      const importRegex = /\bimport\s+(?:[\s\S]*?\s+from\s+)?['"](\.[^'"]+)['"]/g;
-      let m;
-      while ((m = importRegex.exec(code)) !== null) {
-        const absPath = path.resolve(baseDir, m[1]);
-        if (!visited.has(absPath) && fs.existsSync(absPath)) {
-          visited.add(absPath);
-          const importedCode = fs.readFileSync(absPath, 'utf-8');
-          rawScripts.push(importedCode);
-          collectImportedModules(importedCode, path.dirname(absPath));
-        }
-      }
-    }
-
-    for (const script of initialScripts) {
-      collectImportedModules(script, path.dirname(targetFile));
-    }
+    const rawScripts = getAllModuleScripts(targetFile);
 
     expect(rawScripts.length).toBeGreaterThan(0);
 

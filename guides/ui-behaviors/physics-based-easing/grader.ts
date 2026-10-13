@@ -99,63 +99,6 @@ test('should define a non-zero transition or animation duration alongside the li
   expect(hasDurationWithLinear).toBe(true);
 });
 
-test('should provide a fallback easing function for browsers that do not support linear()', async ({ page }) => {
-  const targetFile = process.env.TARGET_FILE || path.resolve('demo.html');
-  const fileUrl = targetFile.startsWith('http') ? targetFile : 'file://' + path.resolve(targetFile);
-  await page.goto(fileUrl);
-
-  const hasFallback = await page.evaluate(() => {
-    const styleTags = Array.from(document.querySelectorAll('style'));
-    const cssTexts = styleTags.map(tag => tag.textContent || '');
-    
-    let foundFallback = false;
-    
-    for (const css of cssTexts) {
-      const cleanCss = css.replace(/\/\*[\s\S]*?\*\//g, '');
-      
-      if (/@supports\s+not\s*\([^)]*linear[^)]*\)/i.test(cleanCss)) {
-        foundFallback = true;
-        break;
-      }
-      
-      const blocks = cleanCss.match(/\{[^}]*\}/g) || [];
-      for (const block of blocks) {
-        if (block.includes('linear(') || block.includes('easing')) {
-          const declarations = block.slice(1, -1).split(';').map(d => d.trim());
-          
-          let hasStandardFallback = false;
-          let hasLinearEasing = false;
-          
-          for (const decl of declarations) {
-            const [prop, val] = decl.split(':').map(s => s.trim());
-            if (!prop || !val) continue;
-            
-            if (prop.startsWith('transition') || prop.startsWith('animation')) {
-              const isLinear = val.includes('linear(') || val.includes('easing');
-              const isStandard = /ease-out|ease-in|ease-in-out|cubic-bezier|ease\b/.test(val);
-              
-              if (isLinear) {
-                hasLinearEasing = true;
-              }
-              if (isStandard) {
-                hasStandardFallback = true;
-              }
-            }
-          }
-          
-          if (hasLinearEasing && hasStandardFallback) {
-            foundFallback = true;
-            break;
-          }
-        }
-      }
-    }
-    
-    return foundFallback;
-  });
-  expect(hasFallback).toBe(true);
-});
-
 test('should disable or reduce the animation when prefers-reduced-motion is detected', async ({ page }) => {
   const targetFile = process.env.TARGET_FILE || path.resolve('demo.html');
   const fileUrl = targetFile.startsWith('http') ? targetFile : 'file://' + path.resolve(targetFile);

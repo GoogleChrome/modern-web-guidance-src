@@ -257,14 +257,24 @@ test('Feature detection checks for CSS.highlights before using the API', async (
 });
 
 test('A fallback strategy is implemented for browsers that do not support the API', async ({ page }) => {
+  // First verify that CSS.highlights is used when supported (and does not create <mark> elements)
+  await page.goto(targetUrl);
+  const term = await getSearchTerm(page);
+  await page.fill('#search-input', term);
+  const supportedState = await page.evaluate(() => ({
+    highlightsSetCalled: Boolean((window as any).__instrumentation?.highlightsSetCalled),
+    marksWhenSupported: document.querySelectorAll('mark').length,
+  }));
+  expect(supportedState.highlightsSetCalled).toBe(true);
+  expect(supportedState.marksWhenSupported).toBe(0);
+
   // Override CSS.highlights to undefined to simulate lack of support
   await page.addInitScript(() => {
     if (window.CSS) {
       delete (window.CSS as any).highlights;
     }
   });
-  await page.goto(targetUrl);
-  const term = await getSearchTerm(page);
+  await page.reload();
   await page.fill('#search-input', term);
   
   const hasFallbackMarks = await page.evaluate(() => {
@@ -275,24 +285,40 @@ test('A fallback strategy is implemented for browsers that do not support the AP
 });
 
 test('If the fallback builds matches dynamically search input is escaped or inserted via textContent to avoid injection', async ({ page }) => {
+  // First verify CSS.highlights is used when supported
+  await page.goto(targetUrl);
+  const term = await getSearchTerm(page);
+  await page.fill('#search-input', term);
+  const highlightsSetCalled = await page.evaluate(() => Boolean((window as any).__instrumentation?.highlightsSetCalled));
+  expect(highlightsSetCalled).toBe(true);
+
   // Override CSS.highlights to undefined to simulate lack of support
   await page.addInitScript(() => {
     if (window.CSS) {
       delete (window.CSS as any).highlights;
     }
   });
-  await page.goto(targetUrl);
+  await page.reload();
   
   let threwError = false;
   page.on('pageerror', () => {
     threwError = true;
   });
 
+  // Verify fallback actually creates <mark> elements first
+  await page.fill('#search-input', term);
+  const hasFallbackMarks = await page.evaluate(() => document.querySelectorAll('mark').length > 0);
+  expect(hasFallbackMarks).toBe(true);
+
+  // Test regex special character and HTML injection payload
   await page.fill('#search-input', '[');
-  // Wait a small moment to let event handlers run
+  await page.waitForTimeout(50);
+  await page.fill('#search-input', '<img id="xss-probe" src=x>');
   await page.waitForTimeout(100);
 
+  const injected = await page.evaluate(() => Boolean(document.getElementById('xss-probe')));
   expect(threwError).toBe(false);
+  expect(injected).toBe(false);
 });
 
 test('The highlight visually changes the appearance of matched text', async ({ page }) => {

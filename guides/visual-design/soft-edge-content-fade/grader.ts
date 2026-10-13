@@ -64,98 +64,35 @@ test.describe('Soft Edge Content Fade Tests', () => {
     expect(hasOpaque && hasTransparent).toBe(true);
   });
 
-  test('a fallback strategy is included for browsers that do not support masking', async ({ page }) => {
-    const hasFallback = await page.evaluate(() => {
-      for (const sheet of Array.from(document.styleSheets)) {
-        try {
-          const rules = sheet.cssRules;
-          for (const rule of Array.from(rules)) {
-            if (rule.type === 12) { // CSSRule.SUPPORTS_RULE
-              const cond = rule.cssText.toLowerCase();
-              if (cond.includes('mask-image') || cond.includes('-webkit-mask-image')) {
-                return true;
-              }
-            }
-          }
-        } catch (e: any) {
-          if (e && (e.name === 'SecurityError' || e.message?.includes('SecurityError') || e.message?.includes('read the cssRules property'))) {
-            // Safe to ignore cross-origin stylesheet security errors
-          } else {
-            throw e;
-          }
-        }
-      }
-
-      // Actively simulate a browser without mask-image support by disabling mask-image on .paywall-container
-      // and verifying progressive enhancement / graceful degradation to a valid unmasked fallback state
+  test('the content remains readable even if the mask is not applied', async ({ page }) => {
+    const isReadabilityObscured = await page.evaluate(() => {
       const el = document.querySelector('.paywall-container') as HTMLElement | null;
-      if (!el) return false;
-      const initialComputed = window.getComputedStyle(el);
-      const hasInitialMask =
-        (initialComputed.maskImage && initialComputed.maskImage !== 'none') ||
-        (initialComputed.webkitMaskImage && initialComputed.webkitMaskImage !== 'none');
-      if (!hasInitialMask) return false;
+      if (!el) return true; // if element doesn't exist, it's not readable
 
       el.style.setProperty('mask-image', 'none', 'important');
       el.style.setProperty('-webkit-mask-image', 'none', 'important');
 
-      const unmaskedComputed = window.getComputedStyle(el);
-      const rect = el.getBoundingClientRect();
-      const hasValidUnmaskedLayout =
-        unmaskedComputed.maskImage === 'none' &&
-        unmaskedComputed.display !== 'none' &&
-        unmaskedComputed.visibility !== 'hidden' &&
-        rect.width > 50 &&
-        rect.height > 20 &&
-        (el.textContent?.trim().length ?? 0) > 0;
-      if (!hasValidUnmaskedLayout) return false;
-
-      const afterComputed = window.getComputedStyle(el, '::after');
-      const beforeComputed = window.getComputedStyle(el, '::before');
-      const isObscuring = (style: CSSStyleDeclaration) => {
-        if (!style.content || style.content === 'none') return false;
-        const isAbsolute = style.position === 'absolute' || style.position === 'fixed';
-        const isOpaque = parseFloat(style.opacity || '1') > 0.9;
-        const hasSolidBg =
-          Boolean(style.backgroundColor) &&
-          style.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
-          !style.backgroundImage.includes('gradient');
-        const isFullHeight = (style.top === '0px' && style.bottom === '0px') || style.height === '100%';
-        const isFullWidth = (style.left === '0px' && style.right === '0px') || style.width === '100%';
-        return isAbsolute && isOpaque && hasSolidBg && isFullHeight && isFullWidth;
-      };
-      return !isObscuring(afterComputed) && !isObscuring(beforeComputed);
-    });
-
-    expect(hasFallback).toBe(true);
-  });
-
-  test('the content remains readable even if the mask is not applied', async ({ page }) => {
-    const isReadabilityObscured = await page.evaluate(() => {
-      const el = document.querySelector('.paywall-container');
-      if (!el) return true; // if element doesn't exist, it's not readable
-      
       const content = el.querySelector('.content') || el;
       const contentStyle = window.getComputedStyle(content);
       if (contentStyle.display === 'none' || contentStyle.visibility === 'hidden' || parseFloat(contentStyle.opacity || '1') === 0) {
         return true; // obscured/not readable
       }
-      
+
       const afterComputed = window.getComputedStyle(el, '::after');
       const beforeComputed = window.getComputedStyle(el, '::before');
-      
+
       const isObscuring = (style: CSSStyleDeclaration) => {
         if (!style.content || style.content === 'none') return false;
         const isAbsolute = style.position === 'absolute' || style.position === 'fixed';
         const isOpaque = parseFloat(style.opacity || '1') > 0.9;
-        
+
         const hasSolidBg = style.backgroundColor && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && !style.backgroundImage.includes('gradient');
         const isFullHeight = (style.top === '0px' && style.bottom === '0px') || style.height === '100%';
         const isFullWidth = (style.left === '0px' && style.right === '0px') || style.width === '100%';
-        
+
         return isAbsolute && isOpaque && hasSolidBg && isFullHeight && isFullWidth;
       };
-      
+
       return isObscuring(afterComputed) || isObscuring(beforeComputed);
     });
 

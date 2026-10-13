@@ -166,13 +166,15 @@ test.describe(`Visually Texture Content Expectations: ${demoName}`, () => {
           ((parentStyle.backgroundImage && parentStyle.backgroundImage !== 'none') ||
             (parentStyle.backgroundColor && parentStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' && parentStyle.backgroundColor !== 'transparent'))
         );
-        const elMask = elStyle.maskImage || elStyle.getPropertyValue('mask-image');
-        const hasDirectMaskWithParentFallback =
+        const hasSelfBaseBg = Boolean(
+          (elStyle.backgroundImage && elStyle.backgroundImage !== 'none') ||
+            (elStyle.backgroundColor && elStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' && elStyle.backgroundColor !== 'transparent')
+        );
+        const elMask = elStyle.maskImage || elStyle.getPropertyValue('mask-image') || elStyle.webkitMaskImage || elStyle.getPropertyValue('-webkit-mask-image');
+        const hasDirectMaskWithFallback =
           Boolean(elMask && elMask !== 'none' && elMask !== '') &&
-          hasParentBaseBg &&
-          el.children.length === 0 &&
-          (el.textContent || '').trim().length === 0;
-        return hasOverlayMask || hasDirectMaskWithParentFallback;
+          (hasSelfBaseBg || hasParentBaseBg);
+        return hasOverlayMask || hasDirectMaskWithFallback;
       });
     });
     expect(hasSupportsFallback).toBe(true);
