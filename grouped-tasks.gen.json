@@ -332,6 +332,9 @@
         "daily-grind",
         "devtools-times"
       ],
+      "drag": [
+        "daily-grind"
+      ],
       "dynamic-sibling-animations": [
         "task"
       ],
@@ -426,6 +429,9 @@
       ],
       "dark-mode": [
         "task"
+      ],
+      "equal-width-text-lines": [
+        "daily-grind"
       ],
       "export-html-media-from-canvas": [
         "task"
