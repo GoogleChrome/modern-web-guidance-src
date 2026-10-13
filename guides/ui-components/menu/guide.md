@@ -163,6 +163,11 @@ triggers.forEach(trigger => {
     event.preventDefault();
     pointerTrigger = trigger;
   });
+
+  // Tab leaves the menu system rather than moving into the previewed menu that follows the trigger.
+  trigger.addEventListener('keydown', event => {
+    if (event.key === 'Tab') closeAllMenus();
+  });
 });
 
 rootTriggers.forEach(trigger => {
