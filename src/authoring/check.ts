@@ -1,25 +1,36 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Project, SyntaxKind, Node, type SourceFile, type Node as TsMorphNode } from 'ts-morph';
+import { GRADER_FILE, TARGETS_DIR } from '../core/guide-validation.ts';
 import { rootDir } from '../core/paths.ts';
+
+const MAX_SNIPPET_LENGTH = 120;
+
+export type GraderRuleId =
+  | 'no-vacuous-boolean-expect'
+  | 'no-tautological-expect'
+  | 'no-test-skip'
+  | 'no-gen2-file-goto'
+  | 'no-unguarded-conditional-assertions';
 
 export interface GraderLintViolation {
   filePath: string;
   line: number;
   column: number;
-  ruleId: string;
+  ruleId: GraderRuleId;
   message: string;
   snippet?: string;
 }
 
-export function isGen2Grader(filePath: string): boolean {
-  const normalized = filePath.replace(/\\/g, '/');
-  return /\/targets\/[^/]+\/grader\.ts$/.test(normalized);
+export function isGraderFile(filePath: string): boolean {
+  return path.posix.basename(filePath.replace(/\\/g, '/')) === GRADER_FILE;
 }
 
-export function isGraderFile(filePath: string): boolean {
+export function isGen2Grader(filePath: string): boolean {
   const normalized = filePath.replace(/\\/g, '/');
-  return /(?:^|\/)grader\.ts$/.test(normalized);
+  if (path.posix.basename(normalized) !== GRADER_FILE) return false;
+  const targetDir = path.posix.dirname(normalized);
+  return path.posix.basename(path.posix.dirname(targetDir)) === TARGETS_DIR;
 }
 
 function isVacuousBoolean(node: TsMorphNode): boolean {
@@ -41,26 +52,51 @@ function isAssertionCall(node: TsMorphNode): boolean {
   if (!isExp && !isAss) return false;
 
   // Exclude vacuous expect(true) / expect(false) from counting as a real assertion
-  const args = node.getArguments();
-  if (args.length > 0 && isVacuousBoolean(args[0])) {
+  const firstArg = node.getArguments()[0];
+  if (firstArg && isVacuousBoolean(firstArg)) {
     return false;
   }
   return true;
 }
 
+function isWithinInnerIf(node: TsMorphNode, boundary: TsMorphNode): boolean {
+  let curr = node.getParent();
+  while (curr && curr !== boundary) {
+    if (Node.isIfStatement(curr)) return true;
+    curr = curr.getParent();
+  }
+  return false;
+}
+
 function branchGuaranteed(node?: TsMorphNode): boolean {
   if (!node) return false;
-  if (node.getDescendantsOfKind(SyntaxKind.ThrowStatement).length > 0) return true;
-  return node.getDescendantsOfKind(SyntaxKind.CallExpression).some(isAssertionCall);
+  if (Node.isThrowStatement(node) || isAssertionCall(node)) return true;
+  if (Node.isIfStatement(node)) {
+    return branchGuaranteed(node.getThenStatement()) && branchGuaranteed(node.getElseStatement());
+  }
+
+  const hasDirectThrow = node
+    .getDescendantsOfKind(SyntaxKind.ThrowStatement)
+    .some(t => !isWithinInnerIf(t, node));
+  if (hasDirectThrow) return true;
+
+  const hasDirectAssertion = node
+    .getDescendantsOfKind(SyntaxKind.CallExpression)
+    .some(c => isAssertionCall(c) && !isWithinInnerIf(c, node));
+  if (hasDirectAssertion) return true;
+
+  return node
+    .getDescendantsOfKind(SyntaxKind.IfStatement)
+    .some(innerIf => !isWithinInnerIf(innerIf, node) && branchGuaranteed(innerIf));
 }
 
 export function checkGraderAst(filePath: string, sourceFile: SourceFile): GraderLintViolation[] {
   const violations: GraderLintViolation[] = [];
   const isGen2 = isGen2Grader(filePath);
 
-  const addViolation = (node: TsMorphNode, ruleId: string, message: string) => {
+  const addViolation = (node: TsMorphNode, ruleId: GraderRuleId, message: string) => {
     const { line, column } = sourceFile.getLineAndColumnAtPos(node.getStart());
-    const snippet = node.getText().slice(0, 120);
+    const snippet = node.getText().slice(0, MAX_SNIPPET_LENGTH);
     violations.push({
       filePath,
       line,
@@ -74,14 +110,13 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
   const calls = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
 
   for (const call of calls) {
-    const exprText = call.getExpression().getText();
+    const callee = call.getExpression();
+    const exprText = callee.getText();
 
     // Rule 1: no-vacuous-boolean-expect & Rule 2: no-tautological-expect
     if (exprText === 'expect' || exprText === 'expect.soft') {
-      const args = call.getArguments();
-      if (args.length > 0) {
-        const firstArg = args[0];
-
+      const firstArg = call.getArguments()[0];
+      if (firstArg) {
         // Rule 1: Vacuous expect(true) / expect(false)
         if (isVacuousBoolean(firstArg)) {
           addViolation(
@@ -92,9 +127,11 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
         }
 
         // Rule 2: Tautological boolean expressions inside expect()
-        const binaries = [firstArg, ...firstArg.getDescendantsOfKind(SyntaxKind.BinaryExpression)];
+        const binaries = Node.isBinaryExpression(firstArg)
+          ? [firstArg, ...firstArg.getDescendantsOfKind(SyntaxKind.BinaryExpression)]
+          : firstArg.getDescendantsOfKind(SyntaxKind.BinaryExpression);
         for (const bin of binaries) {
-          if (Node.isBinaryExpression(bin) && bin.getOperatorToken().getKind() === SyntaxKind.BarBarToken) {
+          if (bin.getOperatorToken().getKind() === SyntaxKind.BarBarToken) {
             if (bin.getRight().getKind() === SyntaxKind.TrueKeyword || bin.getLeft().getKind() === SyntaxKind.TrueKeyword) {
               addViolation(
                 bin,
@@ -105,87 +142,73 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
           }
         }
 
-        const conditionals = [firstArg, ...firstArg.getDescendantsOfKind(SyntaxKind.ConditionalExpression)];
+        const conditionals = Node.isConditionalExpression(firstArg)
+          ? [firstArg, ...firstArg.getDescendantsOfKind(SyntaxKind.ConditionalExpression)]
+          : firstArg.getDescendantsOfKind(SyntaxKind.ConditionalExpression);
         for (const cond of conditionals) {
-          if (Node.isConditionalExpression(cond)) {
-            const whenTrue = cond.getWhenTrue();
-            const whenFalse = cond.getWhenFalse();
-            if (whenTrue.getKind() === SyntaxKind.TrueKeyword && whenFalse.getKind() === SyntaxKind.TrueKeyword) {
-              addViolation(
-                cond,
-                'no-tautological-expect',
-                `Tautological conditional expression: "${cond.getText()}" inside expect() always returns true.`
-              );
-            } else if (whenFalse.getKind() === SyntaxKind.TrueKeyword && whenTrue.getKind() !== SyntaxKind.FalseKeyword) {
-              addViolation(
-                cond,
-                'no-tautological-expect',
-                `Tautological fallback conditional: "${cond.getText()}" falls back to true on failure inside expect().`
-              );
-            }
+          const whenTrue = cond.getWhenTrue();
+          const whenFalse = cond.getWhenFalse();
+          if (whenTrue.getKind() === SyntaxKind.TrueKeyword && whenFalse.getKind() === SyntaxKind.TrueKeyword) {
+            addViolation(
+              cond,
+              'no-tautological-expect',
+              `Tautological conditional expression: "${cond.getText()}" inside expect() always returns true.`
+            );
+          } else if (whenFalse.getKind() === SyntaxKind.TrueKeyword && whenTrue.getKind() !== SyntaxKind.FalseKeyword) {
+            addViolation(
+              cond,
+              'no-tautological-expect',
+              `Tautological fallback conditional: "${cond.getText()}" falls back to true on failure inside expect().`
+            );
           }
         }
       }
     }
 
     // Rule 3: no-test-skip
-    const callee = call.getExpression();
-    if (Node.isPropertyAccessExpression(callee)) {
-      if (callee.getName() === 'skip') {
-        const callerText = callee.getExpression().getText();
-        if (callerText === 'test' || callerText === 'it' || callerText === 'test.describe') {
-          addViolation(
-            call,
-            'no-test-skip',
-            `${callerText}.skip() is disallowed in graders. Graders must run and assert pass or fail; skipping masks defects.`
-          );
-        }
+    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'skip') {
+      const callerText = callee.getExpression().getText();
+      if (callerText === 'test' || callerText === 'it' || callerText === 'test.describe') {
+        addViolation(
+          call,
+          'no-test-skip',
+          `${callerText}.skip() is disallowed in graders. Graders must run and assert pass or fail; skipping masks defects.`
+        );
       }
     }
 
     // Rule 4: no-gen2-file-goto
-    if (isGen2 && Node.isPropertyAccessExpression(callee)) {
-      if (callee.getName() === 'goto') {
-        const args = call.getArguments();
-        if (args.length > 0) {
-          const argText = args[0].getText();
-          if (argText.includes('file://')) {
-            addViolation(
-              call,
-              'no-gen2-file-goto',
-              'Gen 2 target graders must not navigate via file:// in page.goto(). Route over localhost or test server.'
-            );
-          }
-        }
+    if (isGen2 && Node.isPropertyAccessExpression(callee) && callee.getName() === 'goto') {
+      const firstArg = call.getArguments()[0];
+      if (firstArg?.getText().includes('file://')) {
+        addViolation(
+          call,
+          'no-gen2-file-goto',
+          'Gen 2 target graders must not navigate via file:// in page.goto(). Use page.goto(TARGET_URL) from test-fixture.ts.'
+        );
       }
     }
 
     // Rule 5: no-unguarded-conditional-assertions
     if (exprText === 'test' || exprText === 'it') {
-      const args = call.getArguments();
-      const fn = args.find(a => Node.isFunctionExpression(a) || Node.isArrowFunction(a));
-      if (!fn) continue;
+      const fn = call.getArguments().find(a => Node.isFunctionExpression(a) || Node.isArrowFunction(a));
+      if (!fn || branchGuaranteed(fn)) continue;
 
-      const ifStatements = fn.getDescendantsOfKind(SyntaxKind.IfStatement);
-      for (const ifStmt of ifStatements) {
-        const thenBlock = ifStmt.getThenStatement();
-        const thenAssertions = thenBlock.getDescendantsOfKind(SyntaxKind.CallExpression).filter(isAssertionCall);
-        if (thenAssertions.length === 0) continue;
+      const allAssertions = fn.getDescendantsOfKind(SyntaxKind.CallExpression).filter(isAssertionCall);
+      if (allAssertions.length === 0) continue;
 
-        const elseStmt = ifStmt.getElseStatement();
-        const elseGuaranteed = branchGuaranteed(elseStmt);
+      for (const ifStmt of fn.getDescendantsOfKind(SyntaxKind.IfStatement)) {
+        if (isWithinInnerIf(ifStmt, fn)) continue;
 
-        if (!elseGuaranteed) {
-          const allAssertions = fn.getDescendantsOfKind(SyntaxKind.CallExpression).filter(isAssertionCall);
-          const assertionsOutsideThisIf = allAssertions.filter(a => !a.getAncestors().some(anc => anc === ifStmt));
-
-          if (assertionsOutsideThisIf.length === 0) {
-            addViolation(
-              ifStmt,
-              'no-unguarded-conditional-assertions',
-              'Unguarded conditional assertion: assertions in if-branch have no assertions in else-branch and no assertions outside the if statement.'
-            );
-          }
+        const hasBranchAssertions = allAssertions.some(a =>
+          ifStmt.containsRange(a.getPos(), a.getEnd())
+        );
+        if (hasBranchAssertions) {
+          addViolation(
+            ifStmt,
+            'no-unguarded-conditional-assertions',
+            'Unguarded conditional assertion: assertions in if-branch have no assertions in else-branch and no unconditional assertions in the test.'
+          );
         }
       }
     }
@@ -194,50 +217,46 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
   return violations;
 }
 
-export function checkGraderSource(filePath: string, sourceText: string, project?: Project): GraderLintViolation[] {
-  const p = project ?? new Project({ skipAddingFilesFromTsConfig: true, useInMemoryFileSystem: true });
-  const sf = p.createSourceFile(`virtual_${path.basename(filePath)}_${Date.now()}_${Math.random().toString(36).slice(2)}.ts`, sourceText);
+const defaultInMemoryProject = new Project({
+  skipAddingFilesFromTsConfig: true,
+  useInMemoryFileSystem: true,
+});
+
+export function checkGraderSource(
+  filePath: string,
+  sourceText: string,
+  project: Project = defaultInMemoryProject
+): GraderLintViolation[] {
+  const sf = project.createSourceFile(filePath, sourceText, { overwrite: true });
   try {
     return checkGraderAst(filePath, sf);
   } finally {
-    p.removeSourceFile(sf);
+    project.removeSourceFile(sf);
   }
 }
 
-export function checkGraderFile(filePath: string, project?: Project): GraderLintViolation[] {
-  if (project) {
-    let sf = project.getSourceFile(filePath);
-    if (!sf) {
-      sf = project.addSourceFileAtPath(filePath);
-    }
-    return checkGraderAst(filePath, sf);
-  }
-
-  const p = new Project({ skipAddingFilesFromTsConfig: true });
-  const sf = p.addSourceFileAtPath(filePath);
+export function checkGraderFile(
+  filePath: string,
+  project: Project = new Project({ skipAddingFilesFromTsConfig: true })
+): GraderLintViolation[] {
+  const sf = project.getSourceFile(filePath) ?? project.addSourceFileAtPath(filePath);
   return checkGraderAst(filePath, sf);
 }
 
 export function findGraderFiles(repoRootDir: string = rootDir): string[] {
-  const guidesDir = path.join(repoRootDir, 'guides');
-  if (!fs.existsSync(guidesDir)) return [];
-
-  const results: string[] = [];
-
-  function walk(dir: string) {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(fullPath);
-      } else if (entry.isFile() && entry.name === 'grader.ts') {
-        results.push(fullPath);
-      }
-    }
+  const targetGuidesDir = path.join(repoRootDir, 'guides');
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(targetGuidesDir, { withFileTypes: true, recursive: true });
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw err;
   }
 
-  walk(guidesDir);
-  return results;
+  return entries
+    .filter(entry => entry.isFile() && entry.name === GRADER_FILE)
+    .map(entry => path.join(entry.parentPath, entry.name))
+    .sort();
 }
 
 export function checkAllGraders(options?: { repoRoot?: string; project?: Project }): Map<string, GraderLintViolation[]> {

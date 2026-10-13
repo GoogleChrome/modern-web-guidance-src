@@ -1,17 +1,22 @@
 import { describe, it } from 'node:test';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
 import {
   checkGraderSource,
   isGen2Grader,
   isGraderFile,
   formatViolations,
+  type GraderLintViolation,
 } from './check.ts';
 
 describe('Grader Static Checker (src/authoring/check.ts)', () => {
   describe('Path classification helpers', () => {
-    it('correctly identifies Gen 1 and Gen 2 graders', () => {
+    it('correctly identifies Gen 1 and Gen 2 graders across relative and nested paths', () => {
       assert.strictEqual(
         isGen2Grader('guides/built-in-ai/translator/targets/devtools-times/grader.ts'),
+        true
+      );
+      assert.strictEqual(
+        isGen2Grader('targets/devtools-times/grader.ts'),
         true
       );
       assert.strictEqual(
@@ -20,6 +25,10 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
       );
       assert.strictEqual(
         isGraderFile('guides/forms/forms/grader.ts'),
+        true
+      );
+      assert.strictEqual(
+        isGraderFile('grader.ts'),
         true
       );
       assert.strictEqual(
@@ -39,8 +48,10 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-vacuous-boolean-expect');
-      assert.strictEqual(ruleViolations.length, 2);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-vacuous-boolean-expect', 'no-vacuous-boolean-expect']
+      );
     });
 
     it('flags expect(!false) and expect(!true)', () => {
@@ -51,8 +62,10 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-vacuous-boolean-expect');
-      assert.strictEqual(ruleViolations.length, 1);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-vacuous-boolean-expect']
+      );
     });
 
     it('permits dynamic boolean expressions in expect()', () => {
@@ -64,8 +77,7 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-vacuous-boolean-expect');
-      assert.strictEqual(ruleViolations.length, 0);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), []);
     });
   });
 
@@ -78,8 +90,10 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-tautological-expect');
-      assert.strictEqual(ruleViolations.length, 1);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-tautological-expect']
+      );
     });
 
     it('flags ternary fallback to true inside expect()', () => {
@@ -90,8 +104,10 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-tautological-expect');
-      assert.strictEqual(ruleViolations.length, 1);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-tautological-expect']
+      );
     });
 
     it('flags ternary returning true in both branches inside expect()', () => {
@@ -102,8 +118,10 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-tautological-expect');
-      assert.strictEqual(ruleViolations.length, 1);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-tautological-expect']
+      );
     });
 
     it('permits valid boolean conversion cond ? true : false', () => {
@@ -114,8 +132,7 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-tautological-expect');
-      assert.strictEqual(ruleViolations.length, 0);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), []);
     });
   });
 
@@ -132,8 +149,10 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-test-skip');
-      assert.strictEqual(ruleViolations.length, 2);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-test-skip', 'no-test-skip']
+      );
     });
 
     it('flags it.skip() and test.describe.skip()', () => {
@@ -143,8 +162,10 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         test.describe.skip('skip describe', () => {});
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-test-skip');
-      assert.strictEqual(ruleViolations.length, 2);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-test-skip', 'no-test-skip']
+      );
     });
 
     it('permits standard test() calls without skip', () => {
@@ -155,8 +176,7 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-test-skip');
-      assert.strictEqual(ruleViolations.length, 0);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), []);
     });
   });
 
@@ -172,8 +192,10 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         'guides/category/slug/targets/app/grader.ts',
         code
       );
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-gen2-file-goto');
-      assert.strictEqual(ruleViolations.length, 1);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-gen2-file-goto']
+      );
     });
 
     it('allows file:// navigation in Gen 1 graders for backward compatibility', () => {
@@ -187,8 +209,7 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         'guides/category/slug/grader.ts',
         code
       );
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-gen2-file-goto');
-      assert.strictEqual(ruleViolations.length, 0);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), []);
     });
 
     it('allows http:// localhost navigation in Gen 2 target grader', () => {
@@ -202,8 +223,7 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         'guides/category/slug/targets/app/grader.ts',
         code
       );
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-gen2-file-goto');
-      assert.strictEqual(ruleViolations.length, 0);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), []);
     });
   });
 
@@ -219,8 +239,50 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-unguarded-conditional-assertions');
-      assert.strictEqual(ruleViolations.length, 1);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-unguarded-conditional-assertions']
+      );
+    });
+
+    it('flags multiple sibling unguarded if statements that have no unconditional assertion', () => {
+      const code = `
+        import { test, expect } from '@playwright/test';
+        test('two unguarded ifs', async ({ page }) => {
+          const a = await page.locator('.a').count();
+          const b = await page.locator('.b').count();
+          if (a > 0) {
+            expect(a).toBe(1);
+          }
+          if (b > 0) {
+            expect(b).toBe(1);
+          }
+        });
+      `;
+      const violations = checkGraderSource('guides/category/slug/grader.ts', code);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-unguarded-conditional-assertions', 'no-unguarded-conditional-assertions']
+      );
+    });
+
+    it('flags else-if chain without a trailing else branch', () => {
+      const code = `
+        import { test, expect } from '@playwright/test';
+        test('else-if without else', async ({ page }) => {
+          const count = await page.locator('div').count();
+          if (count === 1) {
+            expect(count).toBe(1);
+          } else if (count === 2) {
+            expect(count).toBe(2);
+          }
+        });
+      `;
+      const violations = checkGraderSource('guides/category/slug/grader.ts', code);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-unguarded-conditional-assertions']
+      );
     });
 
     it('flags if statement when else branch is vacuous (expect(true))', () => {
@@ -236,45 +298,45 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-unguarded-conditional-assertions');
-      assert.strictEqual(ruleViolations.length, 1);
+      assert.deepStrictEqual(
+        violations.map(v => v.ruleId),
+        ['no-unguarded-conditional-assertions', 'no-vacuous-boolean-expect']
+      );
     });
 
-    it('permits if statement when else branch throws an error', () => {
+    it('permits if statement when else branch throws an error (block or braceless)', () => {
       const code = `
         import { test, expect } from '@playwright/test';
         test('guarded with throw', async ({ page }) => {
           const count = await page.locator('div').count();
           if (count > 0) {
             expect(count).toBe(1);
-          } else {
-            throw new Error('Elements not found');
-          }
+          } else throw new Error('Elements not found');
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-unguarded-conditional-assertions');
-      assert.strictEqual(ruleViolations.length, 0);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), []);
     });
 
-    it('permits if statement when else branch contains a real assertion', () => {
+    it('permits if / else-if / else chain when all branches assert', () => {
       const code = `
         import { test, expect } from '@playwright/test';
-        test('guarded both branches', async ({ page }) => {
+        test('guarded else-if chain', async ({ page }) => {
           const count = await page.locator('div').count();
-          if (count > 0) {
+          if (count === 1) {
             expect(count).toBe(1);
+          } else if (count === 2) {
+            expect(count).toBe(2);
           } else {
-            expect(count).toBe(0);
+            expect(count).toBeGreaterThan(2);
           }
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-unguarded-conditional-assertions');
-      assert.strictEqual(ruleViolations.length, 0);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), []);
     });
 
-    it('permits if statement when an assertion already exists outside the if statement', () => {
+    it('permits if statement when an unconditional assertion exists outside the if statement', () => {
       const code = `
         import { test, expect } from '@playwright/test';
         test('guarded by top-level assertion', async ({ page }) => {
@@ -286,14 +348,13 @@ describe('Grader Static Checker (src/authoring/check.ts)', () => {
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
-      const ruleViolations = violations.filter(v => v.ruleId === 'no-unguarded-conditional-assertions');
-      assert.strictEqual(ruleViolations.length, 0);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), []);
     });
   });
 
   describe('formatViolations', () => {
     it('formats violations clearly', () => {
-      const sampleMap = new Map([
+      const sampleMap = new Map<string, GraderLintViolation[]>([
         [
           'guides/test/grader.ts',
           [
