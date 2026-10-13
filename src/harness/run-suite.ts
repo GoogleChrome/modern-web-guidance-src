@@ -19,7 +19,7 @@ let logStream: fs.WriteStream | null = null;
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
 export function buildGuidedRetrievalHint(guideName: string): string {
-  return `\n\nUse the \`${guideName}\` guide for this task (\`npx -y modern-web-guidance@latest retrieve ${guideName}\`).`;
+  return `\n\nAlso consult \`npx -y modern-web-guidance retrieve ${guideName}\` when ready.`;
 }
 
 export function buildTaskRunPrompt(taskPrompt: string, runType: string, guideName: string): string {
@@ -412,7 +412,7 @@ export function generateTransientPackage(
     let templateContent = fs.readFileSync(templatePath, 'utf8');
     templateContent = templateContent.replace('__LOCAL_CLI_PATH__', localCliPath);
 
-    for (const binName of ['npx', 'pnpx', 'pnpm']) {
+    for (const binName of ['npx', 'pnpx', 'pnx', 'pnpm']) {
       const wrapperPath = path.join(targetDir, binName);
       fs.writeFileSync(wrapperPath, templateContent);
       fs.chmodSync(wrapperPath, 0o755); // Make executable

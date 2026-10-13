@@ -24,24 +24,26 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
   let templateContent = fs.readFileSync(templatePath, 'utf8');
   templateContent = templateContent.replace('__LOCAL_CLI_PATH__', dummyCliPath);
 
-  for (const binName of ['npx', 'pnpx', 'pnpm']) {
+  for (const binName of ['npx', 'pnpx', 'pnx', 'pnpm']) {
     const shimPath = path.join(tempDir, binName);
     fs.writeFileSync(shimPath, templateContent);
     fs.chmodSync(shimPath, 0o755);
   }
 
   try {
-    // Run commands that should be intercepted across npx, pnpx, and pnpm dlx
+    // Run commands that should be intercepted across npx, pnpx, pnx, and pnpm dlx
     const env = { ...process.env, PATH: `${tempDir}:${process.env.PATH}` };
     const calledFile = path.join(tempDir, 'called.txt');
 
     for (const [cmd, cmdArgs] of [
       ['npx', ['-y', 'modern-web-guidance@latest', 'search', 'foo']],
       ['pnpx', ['modern-web-guidance@latest', 'search', 'foo']],
+      ['pnx', ['modern-web-guidance@latest', 'search', 'foo']],
       ['pnpm', ['dlx', 'modern-web-guidance@latest', 'search', 'foo']],
       ['npx', ['modern-web-guidance', 'retrieve', 'foo']],
       ['npx', ['-y', 'modern-web-guidance', 'retrieve', 'foo']],
       ['pnpx', ['modern-web-guidance', 'retrieve', 'foo']],
+      ['pnx', ['modern-web-guidance', 'retrieve', 'foo']],
       ['pnpm', ['dlx', 'modern-web-guidance', 'retrieve', 'foo']],
     ] as const) {
       const result = spawnSync(cmd, [...cmdArgs], {

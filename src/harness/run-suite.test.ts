@@ -11,7 +11,7 @@ test('buildGuidedRetrievalHint and buildTaskRunPrompt append explicit retrieval 
 
   assert.strictEqual(
     hint,
-    '\n\nUse the `dialog-focus-management` guide for this task (`npx -y modern-web-guidance@latest retrieve dialog-focus-management`).'
+    '\n\nAlso consult `npx -y modern-web-guidance retrieve dialog-focus-management` when ready.'
   );
 
   const guidedPrompt = buildTaskRunPrompt('Build an accessible modal dialog', 'guided', guideName);
@@ -55,6 +55,7 @@ test('generateTransientPackage embeds promptContent and shims correctly', () => 
     assert.ok(fs.existsSync(path.join(guidedDir, 'run.mjs')), 'run.mjs should exist');
     assert.ok(fs.existsSync(path.join(guidedDir, 'npx')), 'npx wrapper should exist');
     assert.ok(fs.existsSync(path.join(guidedDir, 'pnpx')), 'pnpx wrapper should exist');
+    assert.ok(fs.existsSync(path.join(guidedDir, 'pnx')), 'pnx wrapper should exist');
     assert.ok(fs.existsSync(path.join(guidedDir, 'pnpm')), 'pnpm wrapper should exist');
 
     const guidedRunnerContent = fs.readFileSync(path.join(guidedDir, 'run.mjs'), 'utf8');
@@ -62,7 +63,7 @@ test('generateTransientPackage embeds promptContent and shims correctly', () => 
       guidedRunnerContent.includes(JSON.stringify(guidedHint).slice(1, -1)),
       'run.mjs for guided must include the explicit retrieval hint'
     );
-    assert.ok(guidedRunnerContent.includes('npx -y modern-web-guidance@latest retrieve dialog-focus-management'));
+    assert.ok(guidedRunnerContent.includes('npx -y modern-web-guidance retrieve dialog-focus-management'));
     assert.ok(guidedRunnerContent.includes('guided'));
 
     // Check wrapper content matches both modern-web-guidance@latest and modern-web-guidance

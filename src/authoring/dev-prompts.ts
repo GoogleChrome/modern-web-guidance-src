@@ -179,22 +179,22 @@ export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
   const target = opts.isDisciplineGuide ? 'discipline guidance' : 'use case';
 
   return `# GOAL
-Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the ${target}.
-Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to apply the ${target} inside the application.
+Examine the codebase files of the web application \`${opts.baseApp}\` and read \`${opts.guideFile}\` to understand the ${target}.
+Generate a \`${opts.taskFile}\` file containing a single realistic test prompt that a web developer would send to an AI coding assistant to accomplish this goal in the application.
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Target File Name**: \`${opts.taskFile}\`
 
 # RULES
-1. **Natural Request Grounded in Application**: Frame the request naturally around the user-facing feature, UX improvement, or problem in \`${opts.baseApp}\` rather than closely mirroring or paraphrasing the frontmatter \`description\` of \`${opts.guideFile}\` for RAG keyword discovery (RAG discovery is tested separately in \`benchmark:rag\`, and guided evaluation runs receive an explicit retrieval hint). Keep the capability boundary clear so the assistant understands what product/UX outcome to build in \`${opts.baseApp}\`, but express it as an authentic, implicit developer request without echoing guide phrasing.
-2. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcomes instead.
-3. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the frontmatter description of \`${opts.guideFile}\`.
+1. **Grounded in the Application**: Assume the developer is working on the existing app and reference its real pages, components, and content where relevant. If the feature modifies or enhances an existing layout, component, or behavior already in the app, ask the assistant to upgrade, refactor, or modify those existing parts rather than building an isolated demo from scratch.
+2. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcome instead.
+3. **No Specific Details or Sub-Features**: Keep the request high-level. Do NOT list or specify secondary implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences).
 4. **Format**: Format \`${opts.taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
-5. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant.
-6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "implement X", "modify Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
+5. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant — casual, natural, and direct.
+6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "add X", "can you update Y", "implement Z"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
 7. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.
-8. **No Internal Project References**: Do NOT name the guide itself or indicate that guidance exists.
+8. **No Internal Project References**: Do NOT mention the guide itself, indicate that guidance exists, or refer to the app by its internal template name (\`${opts.baseApp}\`).
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;

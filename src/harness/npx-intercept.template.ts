@@ -27,7 +27,7 @@ if (normalizedArgs[0] === 'modern-web-guidance@latest' || normalizedArgs[0] === 
   process.exit(result.status ?? 0);
 }
 
-// Fallback to real binary (npx, pnpx, or pnpm)
+// Fallback to real binary (npx, pnpx, pnx, or pnpm)
 const currentDir = fs.realpathSync(path.dirname(fileURLToPath(import.meta.url)));
 
 // Find all matching binaries in PATH
