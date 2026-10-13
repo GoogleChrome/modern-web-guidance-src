@@ -115,8 +115,6 @@ progress.loading-spinner:indeterminate {
     var(--progress-dash-animation, );
 }
 
-/* Keyframes must be declared at the top level of the stylesheet,
-   not nested inside a style rule. */
 @keyframes progress-spin {
   to {
     rotate: 1turn;
