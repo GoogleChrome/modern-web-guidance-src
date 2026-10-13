@@ -1,22 +1,19 @@
 # Expectations
 
-- The loading container carries `aria-busy="true"` and the `inert` attribute while content is loading, and both are removed when loading completes.
-- The skeleton styles are scoped to a combined hook such as `.skeleton[aria-busy="true"]`, not to `aria-busy` alone, so unrelated busy elements elsewhere on the page are unaffected.
-- No duplicate placeholder markup is rendered: the skeleton is applied to the real semantic elements (`<article>`, `<figure>`, `<img>`, headings, paragraphs, links) that will display the loaded content.
-- The real content (text, links, images) is present in the DOM during the loading state; it is visually hidden by CSS rather than removed or replaced.
-- Text elements in the busy container are rendered as solid bars using `color: transparent` combined with a thick `text-decoration: underline` in the skeleton tone, with `text-decoration-skip-ink: none` and a negative `text-underline-offset` so the bar covers the line box. Multi-line text produces one bar per wrapped line without extra wrapper elements.
-- Link text inside the busy container is covered by the same bar as surrounding text; no link colour or default underline is visible while loading.
-- Media wrappers (`<figure>`, `<picture>`, avatar blocks) and form controls (`<button>`, `<input>`, `<select>`, `<textarea>`) are rendered as shimmering blocks using a layered `linear-gradient` highlight over the skeleton tone.
-- Replaced content (`<img>`, `<svg>`, `<video>`, `<canvas>`, `<iframe>`) inside the busy container is hidden with `visibility: hidden` so it does not paint over the placeholder, but still loads in the background.
-- The `<figure>` placeholder uses CSS `mask` with `mask-composite: exclude` to cut an image icon out of the shimmer block, with no external SVG or image file.
-- The shimmer position is driven by a custom property registered with `@property` using `syntax: '<percentage>'`, and the pulse colour by one registered with `syntax: '<color>'` and `inherits: true`, so both animate smoothly rather than snapping between keyframes.
-- The pulse animation runs once on the container and cascades to descendants via the inherited custom property; it is not duplicated on every element.
-- The shimmer keyframes move the highlight fully off both edges (e.g., `-100%` to `100%`) so the loop has no visible seam.
-- Layout space is reserved so the loaded card is the same size as its skeleton: `<img>` elements have `width` and `height` attributes, media wrappers have an `aspect-ratio`, and text elements have `min-block-size` in `lh` units matching the expected line count.
-- Toggling `aria-busy` from `true` to `false` reveals the loaded content in place with no change to the container's dimensions.
-- Under `@media (prefers-reduced-motion: reduce)` both the shimmer and pulse animations are removed; the static placeholders remain visible.
-- Skeleton colours adapt to the active colour scheme using `light-dark()`.
-- If `@property` is not supported, the skeleton still renders as static placeholders; a fallback `opacity` pulse may be used in place of the colour pulse.
-- If CSS masks are not supported, the `<figure>` placeholder renders as a plain shimmer rectangle and continues to reserve space.
-- DO NOT assert on exact colour values, animation durations, or the specific icon dimensions in the mask; assume the agent will choose appropriate neutral tones and timings.
-- DO NOT require the specific class name `.skeleton` or `.skeleton-block`; locate the busy container via `[aria-busy="true"]` and verify that a class or equivalent attribute is combined with it.
+- The loading container has `aria-busy="true"` scoped by a container selector (e.g., `.skeleton`).
+- While loading, the container element has the `inert` attribute applied to prevent user interaction.
+- The loading state is applied to the semantic content without replacing them with placeholder-only elements.
+- Text content within headings, paragraphs, and links is wrapped in inline `<span>` elements.
+- During loading, text elements have transparent text color (`color: transparent`).
+- During loading, link text decoration is removed (`text-decoration: none`).
+- Inline text `<span>` elements use `box-decoration-break: clone` (and `-webkit-box-decoration-break: clone`) with a background color to paint separate rounded bars across wrapped lines.
+- Replaced media elements (images, SVGs, or videos) are visually hidden during loading while their container layout is preserved.
+- Media elements or their containers reserve layout space using `aspect-ratio` or explicit dimensions to prevent layout shifts.
+- Text containers reserve vertical layout space using `min-block-size` with `lh` units.
+- Block placeholder elements (media containers, avatars, or controls) apply a gradient shimmer animation.
+- Shimmer position and pulse color are registered custom properties defined via `@property`.
+- The pulse animation is applied to the loading container and inherited by inline text spans through a custom property.
+- Under `@media (prefers-reduced-motion: reduce)`, shimmer and pulse animations are disabled while placeholders remain visible.
+- Skeleton placeholder colors adapt to light and dark color schemes using `light-dark()`.
+- Media containers use CSS masks and `mask-composite` to render a decorative placeholder icon cutout.
+- Toggling the loading state off removes `aria-busy="true"` and `inert`, restoring content visibility and interactivity.

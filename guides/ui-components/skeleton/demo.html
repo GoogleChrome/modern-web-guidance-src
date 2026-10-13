@@ -76,25 +76,31 @@
 
       .skeleton[aria-busy="true"] {
         --skeleton-tone: var(--skeleton-base);
-        animation: pulse 1.6s ease-in-out infinite alternate;
+        animation: skeleton-pulse 1.6s ease-in-out infinite alternate;
       }
 
       .skeleton[aria-busy="true"] :is(h1, h2, h3, h4, h5, h6, p, a, li, dt, dd, th, td, figcaption, label, legend, summary, blockquote, time, small) {
         color: transparent;
-        text-decoration: underline .8em var(--skeleton-tone);
-        text-decoration-skip-ink: none;
-        text-underline-offset: -.75em;
+        text-decoration: none;
+      }
+
+      .skeleton[aria-busy="true"] :is(h1, h2, h3, h4, h5, h6, p, a, li, dt, dd, th, td, figcaption, label, legend, summary, blockquote, time, small) > span {
+        padding: .08em .12em;
+        border-radius: .25em;
+        background: var(--skeleton-tone);
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
       }
 
       .skeleton[aria-busy="true"] :is(figure, picture, .avatar, button, input, select, textarea, .skeleton-block) {
-  color: transparent;
-  border-color: transparent;
-  box-shadow: none;
+        color: transparent;
+        border-color: transparent;
+        box-shadow: none;
         background:
           linear-gradient(110deg, transparent 20%, var(--skeleton-highlight) 45%, transparent 70%)
             var(--skeleton-x) 0 / 200% 100% no-repeat,
           var(--skeleton-tone);
-        animation: shimmer 1.8s linear infinite;
+        animation: skeleton-shimmer 1.8s linear infinite;
       }
 
       .skeleton[aria-busy="true"] :is(img, svg, video, canvas, iframe) { visibility: hidden; }
@@ -107,8 +113,8 @@
         mask-composite: exclude;
       }
 
-      @keyframes shimmer { to { --skeleton-x: 100%; } }
-      @keyframes pulse { to { --skeleton-tone: var(--skeleton-pulse); } }
+      @keyframes skeleton-shimmer { to { --skeleton-x: 100%; } }
+      @keyframes skeleton-pulse { to { --skeleton-tone: var(--skeleton-pulse); } }
 
       @media (prefers-reduced-motion: reduce) {
         .skeleton[aria-busy="true"],
@@ -127,25 +133,25 @@
           <img src="https://picsum.photos/seed/skeleton-demo/640/400" width="640" height="400" alt="A bottle of Molten Mango hot sauce">
         </figure>
         <div>
-          <p class="meta">Hot sauce · Heat 7/10</p>
-          <h2><a href="#">Molten Mango Habanero Blaze</a></h2>
-          <p>Ripe mango and smoked habanero with a slow, warm finish that works on almost anything.</p>
+          <p class="meta"><span>Hot sauce · Heat 7/10</span></p>
+          <h2><a href="#"><span>Molten Mango Habanero Blaze</span></a></h2>
+          <p><span>Ripe mango and smoked habanero with a slow, warm finish that works on almost anything.</span></p>
         </div>
       </article>
 
       <article>
-        <p class="meta">New this week</p>
-        <h2><a href="#">Ghost Pepper Garlic Inferno</a></h2>
-        <p>Roasted garlic, black vinegar and enough ghost pepper to make you question your choices.</p>
-        <a href="#">See the full range</a>
+        <p class="meta"><span>New this week</span></p>
+        <h2><a href="#"><span>Ghost Pepper Garlic Inferno</span></a></h2>
+        <p><span>Roasted garlic, black vinegar and enough ghost pepper to make you question your choices.</span></p>
+        <a href="#"><span>See the full range</span></a>
       </article>
 
       <article>
         <div class="avatar" aria-hidden="true">SC</div>
         <div>
-          <h2><a href="#">Scorch Co.</a></h2>
-          <p>Small-batch hot sauce from a shed in Hampshire</p>
-          <p><a href="#">Shop</a> · <a href="#">Stockists</a></p>
+          <h2><a href="#"><span>Scorch Co.</span></a></h2>
+          <p><span>Small-batch hot sauce from a shed in Hampshire</span></p>
+          <p><a href="#"><span>Shop</span></a> · <a href="#"><span>Stockists</span></a></p>
         </div>
       </article>
     </section>
