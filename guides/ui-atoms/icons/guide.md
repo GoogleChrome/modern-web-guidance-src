@@ -174,8 +174,6 @@ The sprite file defines the `icon-trash` symbol once, and pages can reference it
 
 {{ BASELINE_STATUS("registered-custom-properties") }}
 
-If your Baseline target includes browsers without `@property` support, `--icon-start` and `--icon-end` will inherit into child elements by default. Reset them on descendants inside the style query (`* { --icon-start: initial; --icon-end: initial; }`) so nested elements do not render duplicate icons.
-
 ### Container Style Queries
 
 {{ BASELINE_STATUS("container-style-queries") }}
