@@ -720,3 +720,31 @@ The `--config` flag accepts either:
 - A JSON string via `GD_SUITE_CONFIG` environment variable (less convenient)
 
 See `src/harness/config-pi.ts` for an example configuration.
+
+## Diagnosing Performance Variance with `gd compare`
+
+The `gd compare` command compares two evaluation run directories to diagnose behavioral differences and performance variance between agent runs:
+
+```bash
+# Compare two local run directories
+gd compare results/<suite-a>/<run-1>/<guide>/<task>/<run-type> results/<suite-b>/<run-2>/<guide>/<task>/<run-type>
+
+# Example: Compare guided vs unguided runs
+gd compare results/nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided results/nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/unguided
+
+# Compare runs from remote GCS suites (automatically downloaded and cached locally)
+gd compare nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided nightly-2026-08-11_17-00-02-jetski_cli/1/details-styling/task/guided
+```
+
+### Path Formats
+Run directory paths can be:
+- **Local repository paths**: Paths relative to repo root (e.g. `results/<suite-name>/<run-number>/<guide-name>/<task-name>/<run-type>`).
+- **Results-relative or remote suite paths**: Paths relative to `results/` (e.g. `<suite-name>/<run-number>/<guide-name>/<task-name>/<run-type>`).
+- **Remote GCS buckets**: If the specified run directory is not found locally, `gd compare` automatically downloads the run artifacts from Google Cloud Storage (`gs://guidance-evals/<suite-path>`) before launching analysis.
+
+### Analysis Pipeline
+The comparison runs in four steps:
+1. **Loads both runs.** Missing runs are downloaded from GCS. If a `trajectory_summary.json` is missing or from an older normalizer version, it's rebuilt from the raw session logs.
+2. **Pre-processes trajectories** into tagged milestone steps (skill search, guide retrieval, code mutation, noise) and counts error/retry loops.
+3. **Runs one diagnostic prompt** with the configured solution agent CLI in an isolated temp workspace. The full guide, grader, diffs and trajectories are staged there as files. The agent may split the guide-compliance and code/friction audits across its own subagents.
+4. **Writes a four-section markdown report** to `<Run A suite>/variance_diagnoses/<guide>-<task>-<runA>-vs-<runB>.md`. If Run A isn't in a recognizable suite folder, it falls back to Run B's suite, then to `harness/results/variance_diagnoses/`.

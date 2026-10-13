@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { rootDir, guidesDir, outDir } from '../core/paths.ts';
+import { rootDir, outDir } from '../core/paths.ts';
 import { cRed, cYellow, cCyan } from '../core/colors.ts';
 import { TARGETS_DIR, getActiveSolutionAgents, SOLUTION_PATCH_FILES, type SolutionAgent, ZERO_PASSRATE_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../core/guide-validation.ts';
 import { copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
@@ -295,10 +295,10 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     return result;
   }
 
-  const rel = path.relative(guidesDir, path.resolve(guideDirAbs));
-  const parts = rel.split(path.sep);
-  const category = parts[0];
-  const slug = parts[1] || parts[0];
+  const resolvedGuideDir = path.resolve(guideDirAbs);
+  const slug = path.basename(resolvedGuideDir);
+  const parentDir = path.basename(path.dirname(resolvedGuideDir));
+  const category = parentDir === 'guides' ? slug : parentDir;
   const calibrationBase = path.join(outDir, 'guides', category, slug, baseApp);
   const gradeReportDir = path.join(calibrationBase, 'grade-report');
   const testResultsBaseDir = path.join(calibrationBase, 'test-results');
