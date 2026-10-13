@@ -12,6 +12,7 @@
     "gd": "bin/gd.ts"
   },
   "scripts": {
+    "audit-evals": "node bin/gd.ts audit-evals",
     "postinstall": "node src/core/postinstall.ts",
     "test": "node --test --test-reporter ${TEST_REPORTER:-dot} \"src/**/*.test.ts\"",
     "test:e2e": "playwright test -c src/dashboard/playwright.config.js",
