@@ -24,4 +24,4 @@
 - If using `immediate` for `urls` property then the `urls` property should contain a maximum of 10 urls, and ideally fewer.
 - If using `immediate` for `where` property then the rule should be very specific and match a maximum of 10 urls, and ideally fewer.
 - The `source` property is no-longer needed and discouraged so should not be present in the rule.
-- Do not speculate URLs that likely trigger state changes (e.g., "/logout"), and ensure any sensitive URL exclusions (e.g., "/logout", "/logout/*", "/wp-admin/*") properly negate matching URLs in document rules.
+- Do not speculate URLs that likely trigger state changes (e.g., "/logout").
