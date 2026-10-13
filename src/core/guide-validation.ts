@@ -47,6 +47,7 @@ export const DISCIPLINE_GUIDES = new Set([
   'selector-atrule-combinations',
   'typography',
   'visual-effects',
+  'web-components',
 ]);
 
 /**

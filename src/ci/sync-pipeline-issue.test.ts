@@ -8,16 +8,22 @@ import { type GuideInventory } from '../core/guide-validation.ts';
 import { rootDir } from '../core/paths.ts';
 import {
   buildPipelineReportData,
+  classifyPr,
   computeBurndown,
   filterCatchAllReviewers,
   findLegacyFormatGuides,
   findStaleEvals,
   formatShortDate,
   hasSubstantiveExpectationsDiff,
+  isDisciplinePr,
   matchUseCaseIssue,
   parseBurndownCheckpoints,
   parseEvalReportFromPrBody,
   renderPipelineIssueBody,
+  renderProgressBar,
+  renderTrendTable,
+  sparkline,
+  SPARKLINE_TICKS,
   type GitFileHistory,
   type IssueSummary,
   type PrSummary,
@@ -421,5 +427,384 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     } finally {
       fs.rmSync(tmpRoot, { recursive: true, force: true });
     }
+  });
+});
+
+describe('renderProgressBar', () => {
+  it('renders exactly 50 columns with header and only █, ░, · glyphs', () => {
+    const res = renderProgressBar({ complete: 140, inReview: 13, goal: 200, barWidth: 50 });
+    assert.equal(res.header, '140 landed · 13 in review · 47 to go → 200');
+    assert.equal(res.bar.length, 50);
+    // 140/4 = 35 landed complete (█), 13/4 = 3 in review (░), 47/4 = 12 remaining (·)
+    assert.equal(res.bar, '█'.repeat(35) + '░'.repeat(3) + '·'.repeat(12));
+    assert.doesNotMatch(res.text, /▲/);
+    assert.doesNotMatch(res.text, /[\u{1F300}-\u{1F9FF}]/u);
+  });
+
+  it('handles rounding across varied complete and in-review counts preserving exact 50 cols', () => {
+    const testCases = [
+      { complete: 0, inReview: 0, expectedCols: 50 },
+      { complete: 1, inReview: 0, expectedCols: 50 },
+      { complete: 141, inReview: 15, expectedCols: 50 },
+      { complete: 50, inReview: 50, expectedCols: 50 },
+      { complete: 100, inReview: 25, expectedCols: 50 },
+      { complete: 180, inReview: 10, expectedCols: 50 },
+      { complete: 198, inReview: 1, expectedCols: 50 },
+    ];
+    for (const tc of testCases) {
+      const res = renderProgressBar({ complete: tc.complete, inReview: tc.inReview, goal: 200, barWidth: 50 });
+      assert.equal(res.bar.length, tc.expectedCols, `Failed exact width for complete=${tc.complete}, inReview=${tc.inReview}`);
+      assert.equal(res.bar.replace(/[█░·]/g, '').length, 0, `Found unexpected glyph in bar: ${res.bar}`);
+    }
+  });
+
+  it('reserves at least 1 remaining column when not yet reached goal despite rounding', () => {
+    // 199/4 = 49.75 -> 50. Since toGo = 1, should keep 1 remaining column
+    const res = renderProgressBar({ complete: 199, inReview: 0, goal: 200, barWidth: 50 });
+    assert.equal(res.bar.length, 50);
+    assert.equal(res.header, '199 landed · 0 in review · 1 to go → 200');
+    assert.equal(res.bar.endsWith('·'), true);
+  });
+
+  it('handles over-goal cases without breaking and caps at exact barWidth', () => {
+    const overGoal1 = renderProgressBar({ complete: 200, inReview: 0, goal: 200, barWidth: 50 });
+    assert.equal(overGoal1.header, '200 landed · 0 in review · 0 to go → 200');
+    assert.equal(overGoal1.bar, '█'.repeat(50));
+    assert.equal(overGoal1.bar.length, 50);
+
+    const overGoal2 = renderProgressBar({ complete: 215, inReview: 10, goal: 200, barWidth: 50 });
+    assert.equal(overGoal2.header, '215 landed · 10 in review · 0 to go → 200');
+    assert.equal(overGoal2.bar, '█'.repeat(50));
+    assert.equal(overGoal2.bar.length, 50);
+
+    const overGoal3 = renderProgressBar({ complete: 180, inReview: 30, goal: 200, barWidth: 50 });
+    assert.equal(overGoal3.header, '180 landed · 30 in review · 0 to go → 200');
+    assert.equal(overGoal3.bar.length, 50);
+    assert.equal(overGoal3.bar, '█'.repeat(45) + '░'.repeat(5));
+  });
+});
+
+describe('sparkline & renderTrendTable', () => {
+  it('scales values across min and max using standard block glyphs', () => {
+    const values = [0, 1, 2, 3, 4, 5, 6, 7];
+    const spark = sparkline(values);
+    assert.equal(spark, '▁▂▃▄▅▆▇█');
+    assert.equal(spark.length, 8);
+  });
+
+  it('renders constant glyph for flat series where min equals max', () => {
+    const flat = [42, 42, 42, 42, 42];
+    const spark = sparkline(flat);
+    assert.equal(spark, SPARKLINE_TICKS[3].repeat(5));
+    assert.equal(spark.length, 5);
+  });
+
+  it('produces exactly 21 chars for 21 daily data points', () => {
+    const dailyPoints = Array.from({ length: 21 }, (_, i) => 120 + i);
+    const spark = sparkline(dailyPoints);
+    assert.equal(spark.length, 21);
+  });
+
+  it('renders a formatted trend table with headers and 7d delta', () => {
+    const rows = [
+      { label: 'Complete (landed)', values: Array.from({ length: 21 }, (_, i) => 130 + i) },
+      { label: 'Eval PRs in review', values: Array.from({ length: 21 }, () => 10) },
+      { label: 'Ready for evals', values: Array.from({ length: 21 }, (_, i) => 25 - Math.floor(i / 2)) },
+      { label: 'Guide PRs in review', values: Array.from({ length: 21 }, (_, i) => 20 + (i % 3)) },
+      { label: 'Use-case issues open', values: Array.from({ length: 21 }, (_, i) => 80 - i) },
+    ];
+    const table = renderTrendTable(rows);
+    const lines = table.split('\n');
+    assert.equal(lines.length, 6);
+    assert.match(lines[0], /Stage\s+21-day trend\s+Now\s+Δ 7d/);
+    assert.match(lines[1], /Complete \(landed\)\s+[▁-█]{21}\s+150\s+\+7/);
+    assert.match(lines[2], /Eval PRs in review\s+[▄]{21}\s+10\s+0/);
+    assert.match(lines[5], /Use-case issues open\s+[▁-█]{21}\s+60\s+-7/);
+  });
+});
+
+describe('classifyPr & isDisciplinePr', () => {
+  it('classifies PRs adding or modifying guide.md as guide PRs even if touching eval files', () => {
+    assert.equal(
+      classifyPr({
+        headRefName: 'gd-dev/new-feature',
+        title: 'grader updates: new-feature',
+        files: [
+          'guides/html/new-feature/guide.md',
+          'guides/html/new-feature/targets/daily-grind/grader.ts',
+        ],
+      }),
+      'guide'
+    );
+  });
+
+  it('classifies PRs touching only targets/ or grader files as eval PRs', () => {
+    assert.equal(
+      classifyPr({
+        headRefName: 'fix/patch-evals',
+        title: 'update daily-grind tests',
+        files: ['guides/forms/forms/targets/daily-grind/grader.ts'],
+      }),
+      'eval'
+    );
+  });
+
+  it('classifies gd-dev/* branches or grader updates: titles as eval PRs', () => {
+    assert.equal(
+      classifyPr({
+        headRefName: 'gd-dev/styling-web-components',
+        title: 'grader updates: styling-web-components',
+        files: ['guides/html/styling-web-components/targets/daily-grind/grader.ts'],
+      }),
+      'eval'
+    );
+    assert.equal(
+      classifyPr({
+        headRefName: 'feature/something',
+        title: 'grader updates: popover',
+        files: ['guides/ui-components/popover/targets/daily-grind/task.md'],
+      }),
+      'eval'
+    );
+  });
+
+  it('classifies infra or non-guide PRs as other', () => {
+    assert.equal(
+      classifyPr({
+        headRefName: 'refactor/harness-token-accounting',
+        title: 'harness: token accounting fixes',
+        files: ['src/harness/run-suite.ts', 'package.json'],
+      }),
+      'other'
+    );
+  });
+
+  it('identifies discipline orientation PRs across category roots and named hubs', () => {
+    assert.equal(
+      isDisciplinePr({
+        headRefName: 'gd-dev/web-components',
+        files: ['guides/html/web-components/targets/daily-grind/grader.ts'],
+      }),
+      true
+    );
+    assert.equal(
+      isDisciplinePr({
+        headRefName: 'gd-dev/css-layout',
+        files: ['guides/css/css-layout/targets/daily-grind/grader.ts'],
+      }),
+      true
+    );
+    assert.equal(
+      isDisciplinePr({
+        headRefName: 'gd-dev/accessibility',
+        files: ['guides/accessibility/accessibility/targets/daily-grind/grader.ts'],
+      }),
+      true
+    );
+    assert.equal(
+      isDisciplinePr({
+        headRefName: 'gd-dev/shadow-dom',
+        files: ['guides/html/shadow-dom/targets/daily-grind/grader.ts'],
+      }),
+      false
+    );
+  });
+});
+
+describe('Discipline hubs exclusion and issue header rendering', () => {
+  it('excludes discipline hubs from 200 goal counts, progress bar, and burndown', () => {
+    const completeFeatureGuide = makeGuide({ category: 'css', name: 'anchor-pos' });
+    const completeDisciplineHub = makeGuide({
+      category: 'accessibility',
+      name: 'accessibility',
+      isDisciplineGuide: true,
+      hasGrader: true,
+      hasTask: true,
+    });
+    const needsEvalFeature = makeGuide({
+      category: 'forms',
+      name: 'slider',
+      hasGrader: false,
+      hasTask: false,
+    });
+    const needsEvalWithPr = makeGuide({
+      category: 'security',
+      name: 'validate-origins',
+      hasGrader: false,
+      hasTask: false,
+    });
+    const needsEvalDiscipline = makeGuide({
+      category: 'css',
+      name: 'css-layout',
+      isDisciplineGuide: true,
+      hasGrader: false,
+      hasTask: false,
+    });
+
+    const openPrs: PrSummary[] = [
+      {
+        number: 2057,
+        title: 'grader updates: web-components',
+        body: '',
+        isDraft: false,
+        headRefName: 'gd-dev/web-components',
+        author: 'rick',
+        reviewers: [],
+        labels: [],
+        files: ['guides/html/web-components/targets/daily-grind/grader.ts'],
+      },
+      {
+        number: 1878,
+        title: 'grader updates: validate-origins',
+        body: '',
+        isDraft: false,
+        headRefName: 'gd-dev/validate-origins',
+        author: 'traven',
+        reviewers: [],
+        labels: ['gd-dev-eval'],
+        files: ['guides/security/validate-origins/targets/daily-grind/grader.ts'],
+      },
+    ];
+
+    const report = buildPipelineReportData({
+      guides: [completeFeatureGuide, completeDisciplineHub, needsEvalFeature, needsEvalWithPr, needsEvalDiscipline],
+      openPrs,
+      openUseCaseIssues: [],
+      openFeatureIssues: [],
+      openExpectationsChangedIssues: [],
+      gitHistory: new Map(),
+      existingIssueBody: '',
+      nowMs: Date.parse('2026-10-13T12:00:00Z'),
+    });
+
+    // Complete count excludes accessibility/accessibility discipline guide
+    assert.equal(report.completeCount, 1);
+    assert.equal(report.evalCompleteCount, 1);
+
+    // Open eval PRs excludes web-components discipline guide
+    assert.equal(report.openEvalPrs.length, 1);
+    assert.equal(report.openEvalPrs[0].slug, 'security/validate-origins');
+
+    // Ready for eval excludes css/css-layout discipline guide
+    assert.deepEqual(report.readyForEvalSlugs, ['forms/slider']);
+
+    const markdown = renderPipelineIssueBody(report);
+
+    // HTML comment emitted
+    assert.match(
+      markdown,
+      /<!-- Discipline orientation guides do not currently require a grader and are excluded from the 200 goal, the progress bar, and trend counts\. This policy may change\. -->/
+    );
+
+    // Old two-line header is NOT at the top
+    assert.doesNotMatch(markdown, /# Content & Eval Pipeline\n\n\*\*\d+\*\* Needs guidance/);
+
+    // Progress bar code block
+    assert.match(markdown, /```\n1 landed · 1 in review · 198 to go → 200\n[█░·]{50}\n```/);
+
+    // Clickable links line below code block
+    assert.match(
+      markdown,
+      /\[1 landed complete\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\) · \[1 eval PRs in review\]\(#open-eval-prs-1\) · \[1 ready for evals\]\(#ready-for-gd-dev-1\)/
+    );
+
+    // Trend table code block present
+    assert.match(markdown, /```\nStage\s+21-day trend\s+Now\s+Δ 7d/);
+
+    // Exact mermaid init line with height 200
+    assert.match(
+      markdown,
+      /%%\{init: \{'themeVariables': \{'xyChart': \{'plotColorPalette': '#238636, #8b949e, #58a6ff'\}\}, 'xyChart': \{'height': 200\}\}\}%%/
+    );
+
+    // No burndown-checkpoints HTML comment
+    assert.doesNotMatch(markdown, /<!--\s*burndown-checkpoints:/);
+  });
+
+  it('guarantees trend table today points, links line, and section counts match identically', () => {
+    const complete1 = makeGuide({ category: 'css', name: 'guide-1' });
+    const complete2 = makeGuide({ category: 'css', name: 'guide-2' });
+    const needsEval1 = makeGuide({ category: 'forms', name: 'guide-3', hasGrader: false, hasTask: false });
+    const needsEval2 = makeGuide({ category: 'forms', name: 'guide-4', hasGrader: false, hasTask: false });
+    const needsGuidance1 = makeGuide({
+      category: 'html',
+      name: 'guide-5',
+      hasGuide: false,
+      isStub: true,
+      hasGrader: false,
+      hasTask: false,
+    });
+    const needsGuidance2 = makeGuide({
+      category: 'html',
+      name: 'guide-6',
+      hasGuide: false,
+      isStub: true,
+      hasGrader: false,
+      hasTask: false,
+    });
+
+    const openPrs: PrSummary[] = [
+      {
+        number: 101,
+        title: 'grader updates: guide-3',
+        body: '',
+        isDraft: false,
+        headRefName: 'gd-dev/guide-3',
+        author: 'dev',
+        reviewers: [],
+        labels: ['gd-dev-eval'],
+        files: ['guides/forms/guide-3/targets/daily-grind/grader.ts'],
+      },
+      {
+        number: 102,
+        title: 'Add guide-5 content',
+        body: '',
+        isDraft: false,
+        headRefName: 'feat/guide-5',
+        author: 'author',
+        reviewers: [],
+        labels: [],
+        files: ['guides/html/guide-5/guide.md'],
+      },
+    ];
+
+    const openUseCaseIssues: IssueSummary[] = [
+      {
+        number: 501,
+        title: 'New use case: guide-6',
+        body: 'Use case subdir: [guides/html/guide-6]',
+        assignees: [],
+        labels: ['new-use-case'],
+      },
+    ];
+
+    const report = buildPipelineReportData({
+      guides: [complete1, complete2, needsEval1, needsEval2, needsGuidance1, needsGuidance2],
+      openPrs,
+      openUseCaseIssues,
+      openFeatureIssues: [],
+      openExpectationsChangedIssues: [],
+      gitHistory: new Map(),
+      existingIssueBody: '',
+      nowMs: Date.parse('2026-10-13T12:00:00Z'),
+    });
+
+    assert.ok(report.trendHistory);
+    const lastIdx = report.trendHistory.complete.length - 1;
+
+    // Assert trend-today == section counts
+    assert.equal(report.trendHistory.complete[lastIdx], report.completeCount);
+    assert.equal(report.trendHistory.evalPrsInReview[lastIdx], report.openEvalPrs.length);
+    assert.equal(report.trendHistory.readyForEvals[lastIdx], report.readyForEvalSlugs.length);
+    assert.equal(report.trendHistory.guidePrsInReview[lastIdx], report.needsGuidancePrs.length);
+    assert.equal(report.trendHistory.issuesOpen[lastIdx], report.needsGuidanceIssues.length);
+
+    // Assert markdown links line matches the exact same numbers
+    const markdown = renderPipelineIssueBody(report);
+    const expectedLinksLine = `[${report.completeCount} landed complete](https://github.com/GoogleChrome/modern-web-guidance-src/tree/main/guides) · [${report.openEvalPrs.length} eval PRs in review](#open-eval-prs-${report.openEvalPrs.length}) · [${report.readyForEvalSlugs.length} ready for evals](#ready-for-gd-dev-${report.readyForEvalSlugs.length}) · [${report.needsGuidancePrs.length} guide PRs in review](#in-review--open-prs-${report.needsGuidancePrs.length}) · [${report.needsGuidanceIssues.length} use-case issues open](https://github.com/GoogleChrome/modern-web-guidance-src/issues?q=is%3Aissue+is%3Aopen+label%3Anew-use-case)`;
+    assert.ok(
+      markdown.includes(expectedLinksLine),
+      `Expected markdown to contain links line:\n${expectedLinksLine}\nGot:\n${markdown.slice(0, 500)}`
+    );
   });
 });
