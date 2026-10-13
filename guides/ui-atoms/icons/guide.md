@@ -168,10 +168,6 @@ For reusable SVG icons stored in an external sprite, reference a symbol with `<u
 
 The sprite file defines the `icon-trash` symbol once, and pages can reference it where needed. External sprites can be cached and reused, but styling the referenced SVG's internals is limited compared with inline SVG.
 
-## Common Pitfalls
-
-- **Missing or Malformed `viewBox`**: SVG assets must have a valid `viewBox` attribute (e.g., `viewBox="0 0 24 24"`) to render correctly when used as masks or backgrounds. Omitting it causes scale distortion and layout issues.
-
 {{ FEATURE_ISSUES("masks") }}
 {{ FEATURE_ISSUES("container-style-queries") }}
 
