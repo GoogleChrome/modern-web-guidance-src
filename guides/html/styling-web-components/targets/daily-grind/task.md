@@ -1,0 +1,1 @@
+- Refactor the seasonal favorite cards into a web component and style it so that the component and its internal elements can be themed and customized from the page stylesheet, while adapting responsively to its container size.
