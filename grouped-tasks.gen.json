@@ -3,6 +3,9 @@
     "accessibility": {
       "accessible-error-announcement": [
         "task"
+      ],
+      "accessible-generated-content": [
+        "daily-grind"
       ]
     },
     "built-in-ai": {
