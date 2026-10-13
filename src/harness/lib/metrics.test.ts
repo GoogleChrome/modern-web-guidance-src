@@ -97,4 +97,99 @@ describe('calculateMetrics', () => {
     assert.strictEqual(metrics.summary.toolActivationCount, 1);
     assert.strictEqual(metrics.summary.toolActivationRate, 100);
   });
+
+  test('multi-check (N > 1) grader with early failure preserves total check counts and rates', () => {
+    // 5 checks per run
+    const checksRun1 = [
+      { id: 'c1', passed: true, message: 'check 1' },
+      { id: 'c2', passed: true, message: 'check 2' },
+      { id: 'c3', passed: true, message: 'check 3' },
+      { id: 'c4', passed: false, message: 'check 4' },
+      { id: 'c5', passed: false, message: 'check 5' },
+    ];
+    // Early failure with N=5 checks (0/5 passed)
+    const crashedChecksRun2 = [
+      { id: 'c1', passed: false, message: 'check 1: TIMEOUT', isEarlyFailure: true },
+      { id: 'c2', passed: false, message: 'check 2: TIMEOUT', isEarlyFailure: true },
+      { id: 'c3', passed: false, message: 'check 3: TIMEOUT', isEarlyFailure: true },
+      { id: 'c4', passed: false, message: 'check 4: TIMEOUT', isEarlyFailure: true },
+      { id: 'c5', passed: false, message: 'check 5: TIMEOUT', isEarlyFailure: true },
+    ];
+
+    const unguidedRun1 = [
+      { id: 'c1', passed: false, message: 'check 1' },
+      { id: 'c2', passed: false, message: 'check 2' },
+      { id: 'c3', passed: false, message: 'check 3' },
+      { id: 'c4', passed: false, message: 'check 4' },
+      { id: 'c5', passed: false, message: 'check 5' },
+    ];
+    const unguidedRun2 = [
+      { id: 'c1', passed: true, message: 'check 1' },
+      { id: 'c2', passed: false, message: 'check 2' },
+      { id: 'c3', passed: false, message: 'check 3' },
+      { id: 'c4', passed: false, message: 'check 4' },
+      { id: 'c5', passed: false, message: 'check 5' },
+    ];
+
+    const allResults: Record<string, RunResult[]> = {
+      'taskA - guideA - guided': [
+        {
+          runNumber: 1,
+          guideName: 'guideA',
+          guidesUsed: ['guideA'],
+          guidanceToolsUsed: ['modern-web'],
+          expectedToolPrefixes: ['modern-web'],
+          results: checksRun1
+        },
+        {
+          runNumber: 2,
+          guideName: 'guideA',
+          guidesUsed: ['guideA'],
+          guidanceToolsUsed: ['modern-web'],
+          expectedToolPrefixes: ['modern-web'],
+          results: crashedChecksRun2
+        }
+      ],
+      'taskA - guideA - unguided': [
+        { runNumber: 1, results: unguidedRun1 },
+        { runNumber: 2, results: unguidedRun2 }
+      ]
+    };
+
+    const metrics = calculateMetrics(allResults, 2);
+
+    // Invariant: guidedTotal === unguidedTotal (10 each: 2 runs * 5 checks)
+    assert.strictEqual(metrics.summary.guidedTotal, 10);
+    assert.strictEqual(metrics.summary.unguidedTotal, 10);
+    assert.strictEqual(metrics.summary.guidedTotal, metrics.summary.unguidedTotal);
+
+    // Passed checks:
+    // Guided: Run 1 passed 3, Run 2 passed 0 => 3/10 (30%)
+    assert.strictEqual(metrics.summary.guidedPassed, 3);
+    assert.strictEqual(metrics.summary.guidedPassRate, 30);
+
+    // Unguided: Run 1 passed 0, Run 2 passed 1 => 1/10 (10%)
+    assert.strictEqual(metrics.summary.unguidedPassed, 1);
+    assert.strictEqual(metrics.summary.unguidedPassRate, 10);
+
+    // Early failure counts runs, not checks: exactly 1 run failed early
+    assert.strictEqual(metrics.summary.guidedEarlyFailures, 1);
+    assert.strictEqual(metrics.summary.unguidedEarlyFailures, 0);
+    assert.strictEqual(metrics.summary.totalGuidedRuns, 2);
+
+    // Completed rates: Run 1 only (3/5 passed = 60%)
+    assert.strictEqual(metrics.summary.completedGuidedPassed, 3);
+    assert.strictEqual(metrics.summary.completedGuidedTotal, 5);
+    assert.strictEqual(metrics.summary.completedGuidedPassRate, 60);
+
+    assert.strictEqual(metrics.summary.completedUnguidedPassed, 1);
+    assert.strictEqual(metrics.summary.completedUnguidedTotal, 10);
+    assert.strictEqual(metrics.summary.completedUnguidedPassRate, 10);
+
+    // Rates remain bounded in [0, 100]
+    assert.ok(metrics.summary.guideUsageRate! >= 0 && metrics.summary.guideUsageRate! <= 100);
+    assert.ok(metrics.summary.toolActivationRate! >= 0 && metrics.summary.toolActivationRate! <= 100);
+    assert.strictEqual(metrics.summary.guideUsageRate, 100); // 1 completed run used guide
+    assert.strictEqual(metrics.summary.toolActivationRate, 100);
+  });
 });

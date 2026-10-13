@@ -5,6 +5,8 @@ import { collectGuidesUsed, collectGuidanceToolsUsed } from './guide-usage.ts';
 import { type SuiteConfig } from '../config.ts';
 import { getTaskMap } from '../../core/guide-validation.ts';
 import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
+import { extractTestTitles } from '../../core/grader-coverage.ts';
+import { type ScenarioCheck } from './metrics.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
@@ -341,24 +343,41 @@ async function collectGuideUsage(dir: string, runType: string) {
   return { guidesUsedResult, retrievedGuides, fileReadGuides, guidanceToolsUsedResult };
 }
 
-function evaluateScenarioResults(
+export function evaluateScenarioResults(
   dir: string,
   guide: string,
   graderPath: string,
   graderResults: string,
   targetAppExists: boolean,
   targetFile: string
-): any[] {
-  const scenarioResults: any[] = [];
+): ScenarioCheck[] {
+  const titles = extractTestTitles(graderPath);
+
+  const makeEarlyFailures = (reason: string): ScenarioCheck[] => {
+    if (titles.length === 0) {
+      return [{
+        id: 'early-failure-1',
+        passed: false,
+        message: reason,
+        isEarlyFailure: true,
+      }];
+    }
+    return titles.map((title, idx) => ({
+      id: `early-failure-${idx + 1}`,
+      passed: false,
+      message: `${title}: ${reason}`,
+      isEarlyFailure: true,
+    }));
+  };
 
   if (!fs.existsSync(graderPath)) {
     console.warn(`Grader not found for ${guide} at ${graderPath}`);
-    scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
+    return makeEarlyFailures('Grader not found');
   } else if (!targetAppExists) {
-    scenarioResults.push({ name: 'File Check', status: 'fail', message: 'Target app missing' });
+    return makeEarlyFailures('Target app missing');
   } else if (!fs.existsSync(graderResults)) {
     const errorMessage = extractErrorMessage(dir, targetFile);
-    scenarioResults.push({ passed: false, message: errorMessage, isEarlyFailure: true });
+    return makeEarlyFailures(errorMessage);
   } else {
     try {
       let json: any = null;
@@ -381,22 +400,25 @@ function evaluateScenarioResults(
         };
         json.suites.forEach(traverse);
 
-        return specs.map((spec: any) => {
-          const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
-          return {
-            passed: lastResult.status === 'passed',
-            message: spec.title,
-            testId: spec.id
-          };
-        });
+        if (specs.length > 0) {
+          return specs.map((spec: any) => {
+            const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
+            return {
+              id: spec.id,
+              passed: lastResult.status === 'passed',
+              message: spec.title,
+            };
+          });
+        }
       }
+
+      // If graderResults JSON has missing/empty suites or 0 specs (e.g. dev server crashed in beforeAll)
+      return makeEarlyFailures('Playwright test runner failed or produced no test results');
     } catch (err: any) {
       console.error(`Error processing results for ${dir}:`, err);
-      scenarioResults.push({ name: 'System Error', status: 'fail', message: err.message });
+      return makeEarlyFailures(err.message || 'System Error');
     }
   }
-
-  return scenarioResults;
 }
 
 function readRuntimeData(dir: string): any | undefined {

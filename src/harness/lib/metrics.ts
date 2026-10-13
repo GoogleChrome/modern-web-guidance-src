@@ -39,6 +39,13 @@ export interface Metrics {
     toolActivationRate?: number;
     toolActivationCount?: number;
 
+    completedGuidedPassRate?: number;
+    completedUnguidedPassRate?: number;
+    completedGuidedPassed?: number;
+    completedGuidedTotal?: number;
+    completedUnguidedPassed?: number;
+    completedUnguidedTotal?: number;
+
     unguidedEarlyFailures?: number;
     unguidedEarlyFailureRate?: number;
     guidedEarlyFailures?: number;
@@ -189,6 +196,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
 
     let passed = 0;
     let total = 0;
+    let completedPassed = 0;
+    let completedTotal = 0;
     let guideUsageCount = 0;
     let toolActivationCount = 0;
     let totalGuidedRuns = 0;
@@ -202,12 +211,21 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     keys.forEach(k => {
       const [, , runType] = k.split(' - ');
       const stats = testStats[k];
+      const runs = allResults[k] || [];
 
       if (stats) {
         passed += stats.passedChecks;
         total += stats.totalChecks;
         earlyFailures += stats.earlyFailures || 0;
         totalRuns += stats.runCount || 0;
+
+        runs.forEach(run => {
+          const isEarlyFailure = run.results.some(c => c.isEarlyFailure);
+          if (!isEarlyFailure) {
+            completedPassed += run.results.filter(c => c.passed).length;
+            completedTotal += run.results.length;
+          }
+        });
 
         if (stats.avgTokens) {
           totalTokens += stats.avgTokens.total * (stats.runCount || 1);
@@ -231,6 +249,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       passed,
       total,
       rate: total ? Math.round((passed / total) * 100) : 0,
+      completedPassed,
+      completedTotal,
+      completedRate: completedTotal ? Math.round((completedPassed / completedTotal) * 100) : 0,
       guideUsageCount,
       totalGuidedRuns,
       toolActivationCount,
@@ -278,6 +299,13 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       totalGuidedRuns: gStats.totalGuidedRuns,
       toolActivationRate: gStats.toolActivationRate,
       toolActivationCount: gStats.toolActivationCount,
+
+      completedGuidedPassRate: gStats.completedRate,
+      completedUnguidedPassRate: uStats.completedRate,
+      completedGuidedPassed: gStats.completedPassed,
+      completedGuidedTotal: gStats.completedTotal,
+      completedUnguidedPassed: uStats.completedPassed,
+      completedUnguidedTotal: uStats.completedTotal,
 
       unguidedEarlyFailures: uStats.earlyFailures,
       unguidedEarlyFailureRate: uStats.earlyFailureRate,

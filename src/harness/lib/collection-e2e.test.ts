@@ -193,4 +193,55 @@ base_app: test-app
     }
 });
 
+test('collectResults expands early-failure / generation_failed to N checks from grader', async (_t) => {
+    const resultsBase = path.resolve(testDir, 'fixtures-results-e2e-early-failure');
+    const guideName = '_e2e_test_guide_early_fail';
+    const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
+    const tasksDir = path.join(performanceGuideDir, 'tasks');
+    const taskPath = path.join(tasksDir, 'task.md');
+
+    try {
+        if (!fs.existsSync(tasksDir)) fs.mkdirSync(tasksDir, { recursive: true });
+        const graderPath = path.join(performanceGuideDir, 'grader.ts');
+        fs.writeFileSync(graderPath, `
+            import { test, expect } from '@playwright/test';
+            test('test 1: check element exists', async ({ page }) => {});
+            test('test 2: check styling applied', async ({ page }) => {});
+            test('test 3: check interaction behaves', async ({ page }) => {});
+        `);
+
+        fs.writeFileSync(taskPath, `---
+base_app: test-app
+---
+- E2E Mock Prompt`);
+
+        const runNumberDir = path.join(resultsBase, '1');
+        const targetDir = path.join(runNumberDir, guideName, 'task', 'guided');
+        fs.mkdirSync(targetDir, { recursive: true });
+
+        // Simulate target app file present (so targetAppExists is true) but generation failed
+        fs.writeFileSync(path.join(targetDir, 'index.html'), '<html>Mock HTML</html>');
+        fs.writeFileSync(path.join(targetDir, 'generation_failed.json'), JSON.stringify({
+            agentName: 'antigravity_cli',
+            exitCode: 'SIGTERM'
+        }));
+
+        const { allResults, numRuns } = await collectResults(resultsBase, defaultSuiteConfig);
+
+        assert.strictEqual(numRuns, 1);
+        const testKey = `task - ${guideName} - guided`;
+        assert.ok(allResults[testKey], `allResults must contain entry for ${testKey}`);
+
+        const runPayload = allResults[testKey][0];
+        // All 3 checks should be emitted as early failures: 0/3, not 0/1 or 0/0
+        assert.strictEqual(runPayload.results.length, 3, 'Must emit 3 checks corresponding to grader titles');
+        assert.ok(runPayload.results.every((c: any) => !c.passed && c.isEarlyFailure));
+        assert.ok(runPayload.results[0].message.includes('test 1: check element exists'));
+        assert.ok(runPayload.results[0].message.includes('antigravity_cli exited with SIGTERM'));
+    } finally {
+        if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
+        if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
+    }
+});
+
 
