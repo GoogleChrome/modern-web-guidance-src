@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+index 66c9173..5045af3 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,54 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating panel */
++    .floating-panel {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      width: 260px;
++      max-width: calc(100vw - 40px);
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
++      z-index: 900;
++      overflow: hidden;
++    }
++
++    .floating-panel-header {
++      background: var(--primary);
++      color: white;
++      padding: 8px 12px;
++      font-weight: bold;
++      font-size: 0.9rem;
++    }
++
++    .floating-panel-body {
++      padding: 12px;
++      font-size: 0.9rem;
++    }
++
++    .floating-panel-body .btn {
++      margin-top: 8px;
++      padding: 6px 14px;
++    }
++
++    .drag-handle {
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .drag-handle:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    .drag-handle.dragging {
++      cursor: grabbing;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +255,93 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="floating-panel" id="floating-panel" aria-labelledby="floating-panel-title">
++    <div class="floating-panel-header" id="floating-panel-header">
++      <span id="floating-panel-title">Today's Special</span>
++    </div>
++    <div class="floating-panel-body">
++      <p>Try our Maple Oat Latte, freshly made. Select this text freely.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++      <button type="button" class="btn" id="floating-panel-hide" style="border:0;cursor:pointer;font:inherit">Hide</button>
++    </div>
++  </aside>
++
++  <script>
++    (function () {
++      var panel = document.getElementById('floating-panel');
++      var handle = document.getElementById('floating-panel-header');
++      var hideBtn = document.getElementById('floating-panel-hide');
++      if (!panel || !handle) return;
++
++      var STEP = 15;
++      var offsetX = 0, offsetY = 0;
++      var startX = 0, startY = 0;
++      var pending = false, active = false;
++
++      handle.classList.add('drag-handle');
++      handle.tabIndex = 0;
++      handle.setAttribute('aria-label', "Today's Special panel drag handle. Use arrow keys to move the panel.");
++
++      hideBtn.addEventListener('click', function () { panel.hidden = true; });
++
++      function moveTo(left, top) {
++        var maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
++        var maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
++        panel.style.right = 'auto';
++        panel.style.bottom = 'auto';
++        panel.style.left = Math.max(0, Math.min(left, maxLeft)) + 'px';
++        panel.style.top = Math.max(0, Math.min(top, maxTop)) + 'px';
++      }
++
++      handle.addEventListener('pointerdown', function (event) {
++        if (event.button !== 0 || event.target.closest('button, input, select, textarea, a')) return;
++        var rect = panel.getBoundingClientRect();
++        offsetX = event.clientX - rect.left;
++        offsetY = event.clientY - rect.top;
++        startX = event.clientX;
++        startY = event.clientY;
++        pending = true;
++        handle.setPointerCapture(event.pointerId);
++      });
++
++      handle.addEventListener('pointermove', function (event) {
++        if (!pending || !handle.hasPointerCapture(event.pointerId)) return;
++        if (!active) {
++          if (Math.abs(event.clientX - startX) < 4 && Math.abs(event.clientY - startY) < 4) return;
++          active = true;
++          handle.classList.add('dragging');
++        }
++        moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      });
++
++      handle.addEventListener('lostpointercapture', function () {
++        pending = false;
++        active = false;
++        handle.classList.remove('dragging');
++      });
++
++      handle.addEventListener('keydown', function (event) {
++        var dx = 0, dy = 0;
++        switch (event.key) {
++          case 'ArrowLeft': dx = -STEP; break;
++          case 'ArrowRight': dx = STEP; break;
++          case 'ArrowUp': dy = -STEP; break;
++          case 'ArrowDown': dy = STEP; break;
++          default: return;
++        }
++        event.preventDefault();
++        var rect = panel.getBoundingClientRect();
++        moveTo(rect.left + dx, rect.top + dy);
++      });
++
++      window.addEventListener('resize', function () {
++        if (!panel.style.left) return;
++        var rect = panel.getBoundingClientRect();
++        moveTo(rect.left, rect.top);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

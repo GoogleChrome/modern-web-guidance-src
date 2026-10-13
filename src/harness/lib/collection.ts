@@ -62,7 +62,7 @@ function extractErrorMessage(dir: string, targetFile: string): string {
 }
 
 export function parseResultPath(relPath: string): { guide: string, taskName: string, runType: string } | null {
-  const parts = relPath.split(path.sep);
+  const parts = relPath.split(/[/\\]/).filter(Boolean);
   let guide: string, taskName: string, runType: string;
   
   if (parts.length === 2) {
@@ -71,7 +71,7 @@ export function parseResultPath(relPath: string): { guide: string, taskName: str
     runType = parts[1];
     guide = parts[0].replace(/-task(-negative)?$/, '');
   } else if (parts.length >= 3) {
-    [guide, taskName, runType] = parts;
+    [guide, taskName, runType] = parts.slice(-3);
   } else {
     return null;
   }

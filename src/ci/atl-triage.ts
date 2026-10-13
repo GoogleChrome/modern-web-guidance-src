@@ -16,11 +16,6 @@ export const DEMO_FILE = 'demo.html';
 
 export const SME_CONTENT_FILENAMES = new Set([GUIDE_FILE, DEMO_FILE, EXPECTATIONS_FILE, SKILL_FILE]);
 
-// PRs carrying this label (applied by `gd pr` when task.md/grader.ts changes are recommended)
-// get review requested from EVAL_PR_REVIEWER. Other eval owners are covered by CODEOWNERS.
-export const EVAL_PR_LABEL = 'gd-dev-eval';
-export const EVAL_PR_REVIEWER = 'paulirish';
-
 const DEFAULT_GUIDES_DIR = guidesDir;
 const NON_CATEGORY_DIRS = new Set(['lib', 'node_modules', 'modern-web-guidance']);
 
@@ -410,7 +405,7 @@ export const githubApi = {
   getIssueBody(issueNumber: number): string {
     return child_process.execFileSync(
       'gh',
-      ['issue', 'view', String(issueNumber), '--json', 'body', '--jq', '.body'],
+      ['issue', 'view', String(issueNumber), '--json', 'body', '--jq', '.body // ""'],
       { encoding: 'utf8' }
     ).trim();
   },
@@ -551,8 +546,26 @@ export const githubApi = {
       { encoding: 'utf8' }
     ).trim();
     return output === 'true';
+  },
+
+  getPrBody(prNumber: number): string {
+    return child_process.execFileSync(
+      'gh',
+      ['pr', 'view', String(prNumber), '--json', 'body', '--jq', '.body // ""'],
+      { encoding: 'utf8' }
+    ).trim();
   }
 };
+
+export function hasNoAtlTriageDirective(body?: string | null): boolean {
+  if (!body) return false;
+  // Strip fenced code blocks (``` or ~~~) and inline code spans (`...`)
+  // so prose mentions like `<!-- no-atl-triage -->` do not trigger the directive.
+  const withoutCode = body
+    .replace(/^(?:`{3,}|~{3,})[\s\S]*?^(?:`{3,}|~{3,})/gm, '')
+    .replace(/`+[^`]*`+/g, '');
+  return /<!--\s*no-atl-triage\s*-->/i.test(withoutCode);
+}
 
 export interface HandleIssueOptions {
   dryRun?: boolean;
@@ -569,6 +582,11 @@ export function handleIssue(
 ): string[] {
   const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
   console.log(`Triaging issue #${issueNumber} with labels: ${labels.join(', ')}`);
+
+  if (hasNoAtlTriageDirective(issueDescription)) {
+    console.log(`Issue #${issueNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+    return [];
+  }
   
   const assignedAtls = new Set<string>();
   
@@ -796,6 +814,7 @@ export function findGuidesTranscludingFeature(
 export interface HandlePrOptions {
   dryRun?: boolean;
   isDraft?: boolean;
+  prBody?: string;
 }
 
 export function handlePR(
@@ -810,6 +829,29 @@ export function handlePR(
   const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
   console.log(`Triaging PR #${prNumber} by author: @${prAuthor}`);
 
+  if (hasNoAtlTriageDirective(options?.prBody)) {
+    console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+    return [];
+  }
+
+  if (options?.isDraft) {
+    console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
+    return [];
+  }
+
+  let prBody = options?.prBody;
+  if (prBody === undefined && !mockFiles) {
+    try {
+      prBody = githubApi.getPrBody(prNumber);
+    } catch (err) {
+      console.warn(`Failed to fetch body for PR #${prNumber}:`, err);
+    }
+    if (hasNoAtlTriageDirective(prBody)) {
+      console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+      return [];
+    }
+  }
+
   let isDraft = options?.isDraft;
   if (isDraft === undefined && !mockFiles) {
     try {
@@ -817,11 +859,10 @@ export function handlePR(
     } catch (err) {
       console.warn(`Failed to check if PR #${prNumber} is draft:`, err);
     }
-  }
-
-  if (isDraft) {
-    console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
-    return [];
+    if (isDraft) {
+      console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
+      return [];
+    }
   }
   
   let files: string[] = [];
@@ -924,12 +965,6 @@ export function handlePR(
         }
       }
     }
-  }
-
-  // Request review from EVAL_PR_REVIEWER if the PR has the gd-dev-eval label.
-  if (labels.some(l => l.toLowerCase() === EVAL_PR_LABEL)) {
-    console.log(`PR has the "${EVAL_PR_LABEL}" label. Eval reviewer: @${EVAL_PR_REVIEWER}`);
-    matchedAtls.add(EVAL_PR_REVIEWER);
   }
 
   const prLabelsToAdd: string[] = [];
@@ -1081,7 +1116,8 @@ export function main() {
       const prAuthor = event.pull_request.user.login;
       const prLabels = (event.pull_request.labels || []).map((l: any) => l.name);
       const isDraft = Boolean(event.pull_request.draft);
-      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft });
+      const prBody = event.pull_request.body || '';
+      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft, prBody });
     } 
     else {
       console.log('Event is neither an issue nor a pull request event. Skipping.');

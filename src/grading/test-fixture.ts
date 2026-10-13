@@ -152,6 +152,23 @@ const HTML_EXTS = /\.(html|htm|astro)$/i;
 const CSS_EXTS = /\.css$/i;
 const JS_EXTS = /\.(js|ts|tsx|jsx)$/i;
 
+function parseHtmlDocument(file: string, content: string): any {
+  const normalized = file.endsWith('.astro')
+    ? content
+        .replace(/^---[\r\n]+[\s\S]*?[\r\n]+---/, '')
+        .replace(/\b(class(?::list)?)=\{((?:[^{}]|\{[^{}]*\})+)\}/g, (_, attr: string, expr: string) => {
+          const clean = expr.replace(/\$\{[^{}]*\}/g, ' ');
+          const classes = Array.from(clean.matchAll(/['"`]([a-zA-Z0-9_\s-]+)['"`]/g), (m) => m[1].trim()).join(' ');
+          return `${attr}="${classes}"`;
+        })
+    : content;
+  const { document } = parseHTML(normalized);
+  document.querySelectorAll('[class\\:list]').forEach((el: any) => {
+    el.classList.add(...el.getAttribute('class:list').split(/\s+/).filter(Boolean));
+  });
+  return document;
+}
+
 /**
  * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
  * and inline styles into a CSSOMNom CSSStyleSheet object.
@@ -166,13 +183,15 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
       cssBlocks.push(content);
     } else if (HTML_EXTS.test(file)) {
       try {
-        const { document } = parseHTML(content);
+        const document = parseHtmlDocument(file, content);
         document.querySelectorAll('style').forEach((style: any) => {
           if (style.textContent) cssBlocks.push(style.textContent);
         });
         document.querySelectorAll('[style]').forEach((el: any) => {
-          const inlineStyle = el.getAttribute('style');
-          if (inlineStyle) cssBlocks.push(`[style] { ${inlineStyle} }`);
+          const inlineStyle = el.getAttribute('style')?.trim();
+          if (inlineStyle && !inlineStyle.startsWith('{')) {
+            cssBlocks.push(`[style] { ${inlineStyle} }`);
+          }
         });
       } catch {
         const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
@@ -209,7 +228,7 @@ export function populateJsProject(project: Project, files: string[]): void {
             project.createSourceFile(`${file}_frontmatter.ts`, frontmatter[1], { overwrite: true });
           }
         }
-        const { document } = parseHTML(content);
+        const document = parseHtmlDocument(file, content);
         document.querySelectorAll('script').forEach((script: any, idx: number) => {
           if (script.textContent) {
             project.createSourceFile(`${file}_script_${idx}.ts`, script.textContent, { overwrite: true });
@@ -234,7 +253,7 @@ export function getHtmlDocuments(files: string[]): Array<{ file: string; documen
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
     if (HTML_EXTS.test(file)) {
       const content = fs.readFileSync(file, 'utf8');
-      docs.push({ file, document: parseHTML(content).document });
+      docs.push({ file, document: parseHtmlDocument(file, content) });
     }
   }
   return docs;
