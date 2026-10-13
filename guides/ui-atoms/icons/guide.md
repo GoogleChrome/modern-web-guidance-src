@@ -274,6 +274,7 @@ WebKit bug #325900 can prevent a direct override of `--icon-start` from taking e
 @supports ((-webkit-nbsp-mode: normal) or
            (-webkit-touch-callout: none) or
            (font: -apple-system-body)) and (content-visibility: auto) {
+  /* Override previous declaration */
   @property --icon-start {
     syntax: "*";
     inherits: true;
