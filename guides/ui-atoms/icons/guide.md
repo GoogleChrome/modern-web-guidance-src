@@ -178,60 +178,30 @@ The sprite file defines the `icon-trash` symbol once, and pages can reference it
 
 {{ BASELINE_STATUS("container-style-queries") }}
 
-To support browsers without Container Style Queries, use classes or component selectors as fallback hooks. These identify where an icon can appear, while custom properties determine which icon to display. Inline-style selectors alone miss icons assigned through CSS rules.
+To support browsers without Container Style Queries, use classes or component selectors as fallback hooks. Keep icon selection in custom properties; inline-style selectors alone miss icons assigned through CSS rules.
 
 ```css
-/* Fallback hooks for browsers without Container Style Queries */
-.icon-start::before {
+:where(.icon-start)::before {
   --icon-start: inherit;
-  content: "";
-  display: inline-block;
-  width: var(--icon-size);
-  height: var(--icon-size);
-  background-color: currentColor;
-  mask: var(--icon-start) no-repeat center / contain;
-  vertical-align: middle;
+  /* icon styles */
 }
 
-.icon-start:not(.icon, :empty)::before {
+:where(.icon-end)::after {
+  --icon-end: inherit;
+  /* icon styles */
+}
+
+:where(.icon:empty)::before {
+  --icon-start: var(--icon);
+  /* icon styles */
+}
+
+:where(.icon-start:not(.icon, :empty))::before {
   margin-inline-end: 0.4em;
 }
 
-.icon-end::after {
-  --icon-end: inherit;
-  content: "";
-  display: inline-block;
-  width: var(--icon-size);
-  height: var(--icon-size);
-  background-color: currentColor;
-  mask: var(--icon-end) no-repeat center / contain;
-  vertical-align: middle;
-}
-
-.icon-end:not(.icon, :empty)::after {
+:where(.icon-end:not(.icon, :empty))::after {
   margin-inline-start: 0.4em;
-}
-
-.icon:empty::before {
-  content: "";
-  display: inline-block;
-  width: var(--icon-size);
-  height: var(--icon-size);
-  background-color: currentColor;
-  mask: var(--icon) no-repeat center / contain;
-  vertical-align: middle;
-}
-```
-
-For example, the `icon-start` class enables the fallback, while the stylesheet sets the icon itself:
-
-```html
-<button class="icon-start delete">Delete</button>
-```
-
-```css
-button.delete {
-  --icon-start: var(--icon-trash);
 }
 ```
 
