@@ -16,7 +16,7 @@ While axis-locking prevents accidental sideways drift in one-dimensional reading
 
 ### 1. Disable axis-locking and contain overscroll on the two-dimensional scroll container
 
-Apply `scroll-axis-lock: none` directly to the element that establishes the two-dimensional scroll container (`overflow: auto` or `overflow: scroll`). With `none`, the container applies scroll deltas on both axes throughout the gesture across touchscreens, trackpads, and mouse wheels; the default `auto` lets the browser rail predominantly one-dimensional gestures.
+Apply `scroll-axis-lock: none` directly to the element that establishes the two-dimensional scroll container (`overflow: auto` or `overflow: scroll`). While a 2D scroll container can already update scroll deltas along both axes under the default `auto` value, `auto` allows the browser's railing heuristic to kick in when a gesture starts predominantly along one axis. Setting `scroll-axis-lock: none` prevents that railing from engaging across touchscreens, trackpads, and mouse wheels.
 
 Pair `scroll-axis-lock: none` with `overscroll-behavior: none` (or `overscroll-behavior: contain`) on the scroll container so that reaching an edge does not chain scrolling to the parent page or trigger accidental browser overscroll navigations (such as horizontal back/forward swipe navigation or pull-to-refresh).
 
@@ -45,9 +45,8 @@ Because a 2D panning surface often lacks focusable child controls (for example, 
   /* MANDATORY: Establish a scroll container that can overflow on both axes. */
   overflow: auto;
 
-  /* MANDATORY: Disable browser scroll axis-locking ("railing") so gestures
-     can pan freely in two directions (both diagonally and when changing
-     direction mid-gesture). */
+  /* MANDATORY: Prevent browser scroll axis-locking ("railing") from kicking in
+     so 2D gestures never get locked to a single axis. */
   scroll-axis-lock: none;
 
   /* Contain scrolling and prevent accidental swipe navigations at edges
@@ -87,8 +86,8 @@ Choose between **progressive enhancement** and a **JavaScript fallback** based o
 
 Use progressive enhancement when preserving native compositor-thread touch scrolling, inertial fling momentum, and pinch-to-zoom is more important than eliminating axis-locking in unsupported browsers:
 
-- **Supporting browsers**: The browser disables scroll axis-locking on the scroll container, allowing unrestricted 2D panning (both simultaneous diagonal movement and mid-gesture direction changes) from the start of any touch or trackpad gesture.
-- **Unsupported browsers**: Browsers that do not recognize `scroll-axis-lock: none` safely ignore the declaration and keep their standard native 2D scrolling behavior. Users can still scroll and pan across both axes natively.
+- **Supporting browsers**: The browser prevents its axis-locking ("railing") heuristic from kicking in on the 2D scroll container during scroll gestures.
+- **Unsupported browsers**: Browsers that do not recognize `scroll-axis-lock: none` safely ignore the declaration and keep their default `auto` 2D scrolling behavior—scrolling across both axes natively, while still railing gestures that begin predominantly along a single axis.
 
 ### Option 2: JavaScript Fallback (`wheel` + `pointermove` with `scrollLeft`/`scrollTop`)
 
