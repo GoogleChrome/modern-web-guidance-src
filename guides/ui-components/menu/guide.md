@@ -294,7 +294,7 @@ When a row has an icon, label, and shortcut or submenu indicator, define the col
 Each button spans all three columns and inherits the parent's grid via `subgrid`. To place a submenu indicator or shortcut in the third column, nest it in a `<span>` with `grid-column: 3`:
 
 ```html
-<div focusgroup="menu no-memory">
+<div focusgroup="menu nomemory">
   <button type="button">Save</button>
   <button type="button">
     Preferences
