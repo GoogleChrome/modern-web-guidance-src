@@ -1,0 +1,1 @@
+- Update the page to respect the operating system's text scale preference so font sizes, layout, and rem-based measurements follow the user's accessibility settings.

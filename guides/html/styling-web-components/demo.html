@@ -6,7 +6,11 @@
   <title>Styling Web Components: custom properties, ::part theming, and :state()</title>
   <style>
     my-card:not(:defined),
-    favorite-button:not(:defined) { visibility: hidden; }
+    favorite-button:not(:defined) {
+      opacity: 0;
+      animation: defined-fallback 0.2s 2s forwards;
+    }
+    @keyframes defined-fallback { to { opacity: 1; } }
 
     /* Theme from outside via inherited custom properties (they cross the boundary). */
     body { --card-bg: #f6f8fa; --card-fg: #111; font-family: system-ui, sans-serif; }
@@ -90,9 +94,6 @@
         this.#internals = this.attachInternals();
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.append(favTemplate.content.cloneNode(true));
-      }
-
-      connectedCallback() {
         // The inner native <button> provides role, focus, and keyboard activation;
         // the host does not re-declare button semantics.
         this.shadowRoot.querySelector('button')

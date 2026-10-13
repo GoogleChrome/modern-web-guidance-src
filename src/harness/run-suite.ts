@@ -442,11 +442,17 @@ let result;
 let attempts = 0;
 const maxAttempts = 3; // 1 initial attempt + 2 retries with exponential backoff
 const baseDelay = 15000; // 15 seconds base delay
-const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
+const targetDirPath = ${JSON.stringify(targetDir)};
+const failureFile = path.join(targetDirPath, 'generation_failed.json');
+const initialEntries = new Set(fs.readdirSync(targetDirPath).filter(e => e !== 'generation_failed.json'));
 
 while (attempts < maxAttempts) {
   attempts++;
-  fs.rmSync(failureFile, { force: true });
+  for (const entry of fs.readdirSync(targetDirPath)) {
+    if (!initialEntries.has(entry)) {
+      fs.rmSync(path.join(targetDirPath, entry), { recursive: true, force: true });
+    }
+  }
   // Assign the isolated HOME here so it is removed even if the timeout kills the agent
   // wrapper before its own cleanup runs.
   const isolatedHome = '/tmp/ghh-' + ${JSON.stringify(path.basename(agentScript).replace(/-agent\.ts$/, ''))} + '-' + randomUUID().slice(0, 8);

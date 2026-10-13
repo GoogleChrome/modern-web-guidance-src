@@ -68,8 +68,18 @@ describe('determineAgent', () => {
   });
 
   it('normalizes GitHub Copilot variants in AI_AGENT', () => {
-    const result = determineAgent({ AI_AGENT: 'github-copilot-cli' }, () => false);
+    const cliResult = determineAgent({ AI_AGENT: 'github-copilot-cli' }, () => false);
+    assert.strictEqual(cliResult.isAgent, true);
+    assert.strictEqual(cliResult.agent?.name, KNOWN_AGENTS.GITHUB_COPILOT);
+
+    const vscodeResult = determineAgent({ AI_AGENT: 'github_copilot_vscode_agent' }, () => false);
+    assert.strictEqual(vscodeResult.isAgent, true);
+    assert.strictEqual(vscodeResult.agent?.name, KNOWN_AGENTS.GITHUB_COPILOT);
+  });
+
+  it('normalizes versioned Claude Code strings in AI_AGENT', () => {
+    const result = determineAgent({ AI_AGENT: 'claude-code_2-1-292_agent' }, () => false);
     assert.strictEqual(result.isAgent, true);
-    assert.strictEqual(result.agent?.name, KNOWN_AGENTS.GITHUB_COPILOT);
+    assert.strictEqual(result.agent?.name, KNOWN_AGENTS.CLAUDE);
   });
 });
