@@ -147,11 +147,9 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
 
   // Browser assertions: Verify that immutability is respected if date arithmetic is performed
   test('Should use immutability correctly if performing date arithmetic', async () => {
-    const usesDateMath = /add\(|subtract\(/.test(scriptContent);
-    if (usesDateMath) {
-      // Check that they don't just call add/subtract on a standalone line without using the result
-      const isAssignedOrChained = /(=|return|\bconst\b|\blet\b|\bvar\b|\.add\(.*?\)\.|\.subtract\(.*?\)\.)/.test(scriptContent);
-      expect(isAssignedOrChained, 'Must use the returned instance of add() or subtract() because Temporal objects are immutable').toBe(true);
-    }
+    const usesTemporal = /\bTemporal\b/.test(scriptContent);
+    const mutatesTemporalProps = /\.(?:year|month|day|hour|minute|second|millisecond|epochMilliseconds|epochNanoseconds)\s*=[^=]/.test(scriptContent);
+    const hasUncapturedAddSubtract = /(?:^|[;\n{])\s*[a-zA-Z_$][\w$]*\.(?:add|subtract)\s*\([^)]*\)\s*;/.test(scriptContent);
+    expect(usesTemporal && !mutatesTemporalProps && !hasUncapturedAddSubtract, 'Must use the returned instance of add() or subtract() because Temporal objects are immutable').toBe(true);
   });
 });

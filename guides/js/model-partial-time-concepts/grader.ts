@@ -13,49 +13,62 @@ test.describe('Temporal API Expectations', () => {
 
   test('MUST feature-detect the Temporal API using typeof Temporal === "undefined" before usage if polyfills are used', async () => {
     const code = getScriptContent();
-    const hasPolyfill = code.includes('@js-temporal/polyfill') || code.includes('Temporal');
-    expect(hasPolyfill).toBe(true);
+    const hasFeatureDetect =
+      /typeof\s+Temporal\s*===\s*['"]undefined['"]/.test(code) ||
+      /typeof\s+globalThis\.Temporal\s*===\s*['"]undefined['"]/.test(code) ||
+      /!\s*\(\s*['"]Temporal['"]\s+in\s+(?:globalThis|window|self)\s*\)/.test(code) ||
+      /!(?:globalThis|window|self)\.Temporal\b/.test(code);
+    expect(hasFeatureDetect).toBe(true);
   });
 
   test('MUST conditionally load a Temporal polyfill only if native support is absent if polyfills are used', async () => {
     const code = getScriptContent();
-    expect(code.includes('Temporal') || code.includes('import')).toBe(true);
+    const hasConditionalImport =
+      /if\s*\([^{]*Temporal[^{]*\)\s*\{[\s\S]*?import\s*\([^)]*temporal/i.test(code) ||
+      /typeof\s+Temporal\s*===\s*['"]undefined['"][\s\S]*?import\s*\([^)]*temporal/i.test(code);
+    expect(hasConditionalImport).toBe(true);
   });
 
   test('MUST manually assign the loaded polyfill to globalThis.Temporal to ensure it is globally accessible if polyfills are used', async () => {
     const code = getScriptContent();
-    expect(code.includes('Temporal')).toBe(true);
+    const assignsGlobalTemporal =
+      /(?:globalThis|window|self)\.Temporal\s*=/.test(code);
+    expect(assignsGlobalTemporal).toBe(true);
   });
 
   test('MUST use a Temporal partial time concept type (like PlainYearMonth, PlainMonthDay, or PlainTime)', async () => {
     const code = getScriptContent();
-    const usesPlain = code.includes('PlainYearMonth') || code.includes('PlainMonthDay') || code.includes('PlainTime') || code.includes('PlainDate') || code.includes('Temporal');
-    expect(usesPlain).toBe(true);
+    const usesPlainYearMonth = /\bPlainYearMonth\b/.test(code);
+    const usesPlainMonthDay = /\bPlainMonthDay\b/.test(code);
+    const usesPlainTime = /\bPlainTime\b/.test(code);
+    expect(usesPlainYearMonth && usesPlainMonthDay && usesPlainTime).toBe(true);
   });
 
   test('MUST include explicit calendar properties when creating instances from objects', async () => {
     const code = getScriptContent();
-    const createsFromObject = /PlainYearMonth\.from\(\s*\{|PlainMonthDay\.from\(\s*\{|PlainTime\.from\(\s*\{|PlainDate\.from\(\s*\{/.test(code);
-    if (createsFromObject) {
-      const hasExplicitCalendar = /\{[^}]*calendar\s*:\s*['"][^'"]+['"][^}]*\}/.test(code);
-      expect(hasExplicitCalendar || true).toBe(true);
-    } else {
-      expect(true).toBe(true);
-    }
+    const usesTemporal = /\bPlainYearMonth\b|\bPlainMonthDay\b|\bPlainTime\b/.test(code);
+    const objectFromMatches = code.match(/Plain(?:YearMonth|MonthDay|Time|Date)\.from\(\s*\{[\s\S]*?\}\s*\)/g) || [];
+    const allObjectCallsHaveCalendar = objectFromMatches.every((call) =>
+      /calendar\s*:\s*['"]iso8601['"]/i.test(call)
+    );
+    const hasFromCall = /Plain(?:YearMonth|MonthDay|Time)\.from\(/.test(code);
+    expect(usesTemporal && hasFromCall && allObjectCallsHaveCalendar).toBe(true);
   });
 
   test('MUST NOT attempt to perform arithmetic directly on PlainMonthDay without converting it to a PlainDate first', async () => {
     const code = getScriptContent();
-    if (code.includes('PlainMonthDay') && (code.includes('.add(') || code.includes('.subtract('))) {
-      expect(code).toMatch(/toPlainDate\(/);
-    } else {
-      expect(true).toBe(true);
-    }
+    const usesPlainMonthDay = /\bPlainMonthDay\b/.test(code);
+    const convertsToPlainDate = /\.toPlainDate\s*\(/.test(code);
+    expect(usesPlainMonthDay && convertsToPlainDate).toBe(true);
   });
 
   test('MUST NOT use the legacy Date object for representing partial time concepts', async () => {
     const code = getScriptContent();
-    const usesPlain = code.includes('PlainYearMonth') || code.includes('PlainMonthDay') || code.includes('PlainTime') || code.includes('PlainDate') || code.includes('Temporal');
-    expect(usesPlain).toBe(true);
+    const usesAllPartialTypes =
+      /\bPlainYearMonth\b/.test(code) &&
+      /\bPlainMonthDay\b/.test(code) &&
+      /\bPlainTime\b/.test(code);
+    const usesLegacyDateWithArgs = /new\s+Date\s*\(\s*[^)\s]/.test(code);
+    expect(usesAllPartialTypes && !usesLegacyDateWithArgs).toBe(true);
   });
 });

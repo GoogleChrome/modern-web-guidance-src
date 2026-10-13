@@ -231,4 +231,12 @@ describe('Guides Validation (Single Source of Truth)', () => {
       }
     }
   });
+
+  it('validates that all graders conform to static anti-pattern checks', async () => {
+    const { checkAllGraders, formatViolations } = await import('./check.ts');
+    const violations = checkAllGraders({ repoRoot: REPO_ROOT });
+    if (violations.size > 0) {
+      assert.fail(`Static grader anti-pattern violations found in ${violations.size} file(s):\n${formatViolations(violations)}`);
+    }
+  });
 });
