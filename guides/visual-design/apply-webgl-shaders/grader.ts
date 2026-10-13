@@ -230,7 +230,7 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
     }
     const code = parts.join('\n');
     const hasFallbackStrategy =
-      /typeof\s+[^;]*texElementSubImage2D|\brequestPaint['"]?\s+in\b|['"]content['"]\s+in\b|!gl\.texElementSubImage2D|if\s*\(\s*gl\.texElementSubImage2D\s*\)|three-html-render|installHtmlInCanvasPolyfill/i.test(
+      /['"]content['"]\s+in\b|three-html-render|installHtmlInCanvasPolyfill/i.test(
         code
       );
     expect(hasFallbackStrategy).toBe(true);

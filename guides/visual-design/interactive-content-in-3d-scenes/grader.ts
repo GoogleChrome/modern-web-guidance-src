@@ -38,7 +38,6 @@ test.describe('Interactive 3D Content Grader', () => {
       }
     });
     await page.addInitScript(() => {
-      (window as any).__featureChecked = false;
       (window as any).__texElementSubImage2D_called = false;
       (window as any).__drawElementImageToTexture_called = false;
       (window as any).__resizeObserverObserved = false;
@@ -57,27 +56,20 @@ test.describe('Interactive 3D Content Grader', () => {
           });
         }
 
-        const checkFeature = () => {
-          (window as any).__featureChecked = true;
-        };
-
         const origUpdateElementGeometry = (HTMLCanvasElement.prototype as any).updateElementGeometry;
         Object.defineProperty(HTMLCanvasElement.prototype, 'updateElementGeometry', {
           configurable: true,
           get() {
-            checkFeature();
             return origUpdateElementGeometry || function() {};
           }
         });
 
         // The upload path sizes the texture with captureElementImage().
         (HTMLCanvasElement.prototype as any).captureElementImage = function(element: HTMLElement) {
-          checkFeature();
           return { width: element.offsetWidth || 300, height: element.offsetHeight || 150, close() {} };
         };
 
         HTMLCanvasElement.prototype.requestPaint = function() {
-          checkFeature();
           if (typeof this.onpaint === 'function') {
             try { this.onpaint({ changedElements: [] }); } catch (e) {}
           }
@@ -87,7 +79,6 @@ test.describe('Interactive 3D Content Grader', () => {
       if (typeof WebGLRenderingContext !== 'undefined') {
         const origTex = (WebGLRenderingContext.prototype as any).texElementSubImage2D;
         (WebGLRenderingContext.prototype as any).texElementSubImage2D = function(...args: any[]) {
-          (window as any).__featureChecked = true;
           (window as any).__texElementSubImage2D_called = true;
           if (origTex) return origTex.apply(this, args);
         };
@@ -96,7 +87,6 @@ test.describe('Interactive 3D Content Grader', () => {
       if (typeof (window as any).GPUQueue !== 'undefined') {
         const origCopy = (window as any).GPUQueue.prototype.drawElementImageToTexture;
         (window as any).GPUQueue.prototype.drawElementImageToTexture = function(...args: any[]) {
-          (window as any).__featureChecked = true;
           (window as any).__drawElementImageToTexture_called = true;
           if (origCopy) return origCopy.apply(this, args);
         };
@@ -105,7 +95,6 @@ test.describe('Interactive 3D Content Grader', () => {
       if (typeof WebGL2RenderingContext !== 'undefined') {
         const origTex2 = (WebGL2RenderingContext.prototype as any).texElementSubImage2D;
         (WebGL2RenderingContext.prototype as any).texElementSubImage2D = function(...args: any[]) {
-          (window as any).__featureChecked = true;
           (window as any).__texElementSubImage2D_called = true;
           if (origTex2) return origTex2.apply(this, args);
         };
@@ -125,14 +114,10 @@ test.describe('Interactive 3D Content Grader', () => {
 
   test('Feature detection for HTML-in-Canvas MUST be conducted', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
-    await page.waitForTimeout(200);
-    const featureChecked = await page.evaluate(() => {
-      const g = globalThis as any;
-      if (g.__featureChecked) return true;
-      const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent || '').join('\n');
-      return scripts.includes('texElementSubImage2D') || scripts.includes('drawable') || scripts.includes('requestPaint') || scripts.includes('onpaint');
-    }).catch(() => true);
-    expect(featureChecked).toBe(true);
+    // Pages detect the latest API surface with 'content' in HTMLCanvasElement.prototype.
+    // Members such as requestPaint also exist in earlier builds that lack the content attribute.
+    const code = getScriptContent();
+    expect(/['"]content['"]\s+in\b/.test(code)).toBe(true);
   });
 
   test('Canvas element MUST include the content="drawable" attribute', async ({ page }) => {
@@ -280,7 +265,7 @@ test.describe('Interactive 3D Content Grader', () => {
     }
     const code = parts.join('\n');
     const hasFallbackStrategy =
-      /typeof\s+[^;]*(?:texElementSubImage2D|drawElementImageToTexture)|\brequestPaint['"]?\s+in\b|['"]content['"]\s+in\b|!(?:gl\.texElementSubImage2D|[\w.]+\.drawElementImageToTexture)|if\s*\(\s*(?:gl\.texElementSubImage2D|[\w.]+\.drawElementImageToTexture)\s*\)|three-html-render|installHtmlInCanvasPolyfill/i.test(
+      /['"]content['"]\s+in\b|three-html-render|installHtmlInCanvasPolyfill/i.test(
         code
       );
     expect(hasFallbackStrategy).toBe(true);

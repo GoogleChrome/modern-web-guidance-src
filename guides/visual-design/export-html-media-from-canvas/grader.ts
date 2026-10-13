@@ -52,7 +52,6 @@ function getAllScriptContent(): string {
 
 declare global {
   interface Window {
-    __featureDetectionChecked: boolean;
     __renderCalls: Array<{
       method: string;
       arguments?: any[];
@@ -93,7 +92,6 @@ test.beforeEach(async ({ page }) => {
   // Add the HTML-in-Canvas API polyfills and spy hooks before loading the page
   await page.addInitScript(() => {
     // Spies & trackers
-    window.__featureDetectionChecked = false;
     window.__renderCalls = [];
     window.__onpaintCalled = false;
     window.__onpaintActive = false;
@@ -104,18 +102,6 @@ test.beforeEach(async ({ page }) => {
 
     const onpaintMap = new WeakMap<HTMLCanvasElement, any>();
     
-    Object.defineProperty(HTMLCanvasElement.prototype, 'layoutSubtree', {
-      get() {
-        window.__featureDetectionChecked = true;
-        return this.hasAttribute('layoutsubtree');
-      },
-      set(val) {
-        if (val) this.setAttribute('layoutsubtree', '');
-        else this.removeAttribute('layoutsubtree');
-      },
-      configurable: true,
-    });
-
     Object.defineProperty(HTMLCanvasElement.prototype, 'onpaint', {
       get() {
         return onpaintMap.get(this);
@@ -165,7 +151,6 @@ test.beforeEach(async ({ page }) => {
     // Mock HTMLCanvasElement.prototype.requestPaint
     Object.defineProperty(HTMLCanvasElement.prototype, 'requestPaint', {
       get() {
-        window.__featureDetectionChecked = true;
         return function(this: HTMLCanvasElement) {
           const onpaintFn = onpaintMap.get(this);
           if (typeof onpaintFn === 'function') {
@@ -278,20 +263,16 @@ test.beforeEach(async ({ page }) => {
 
 // Test 1: Feature detection is conducted
 test('Feature detection for HTML-in-Canvas MUST be conducted', async ({ page }) => {
+  // Pages detect the latest API surface with 'content' in HTMLCanvasElement.prototype.
+  // Members such as requestPaint also exist in earlier builds that lack the content attribute.
   const allCode = getAllScriptContent();
   const isFeatureDetected = await page.evaluate(() => {
     const scriptText = Array.from(document.querySelectorAll('script'))
       .map(s => s.textContent || '')
       .join(String.fromCharCode(10));
-    return window.__featureDetectionChecked ||
-           /['"`](?:requestPaint|layoutSubtree|drawElementImage|onpaint|devicePixelContentBoxSize)['"`]\s+in\b/.test(scriptText) ||
-           /typeof\s+[\w.?]+\.(?:requestPaint|layoutSubtree|drawElementImage|onpaint)\b/.test(scriptText) ||
-           scriptText.includes('devicePixelContentBoxSize');
+    return /['"`]content['"`]\s+in\b/.test(scriptText);
   });
-  const hasStaticFeatureDetection =
-    /['"`](?:requestPaint|layoutSubtree|drawElementImage|onpaint|devicePixelContentBoxSize)['"`]\s+in\b/.test(allCode) ||
-    /typeof\s+[\w.?]+\.(?:requestPaint|layoutSubtree|drawElementImage|onpaint)\b/.test(allCode) ||
-    /\bif\s*\(\s*!?\s*(?:canvas|ctx|context|HTMLCanvasElement\.prototype|CanvasRenderingContext2D\.prototype)\??\.(?:requestPaint|layoutSubtree|drawElementImage|onpaint)\b/.test(allCode);
+  const hasStaticFeatureDetection = /['"`]content['"`]\s+in\b/.test(allCode);
   expect(isFeatureDetected || hasStaticFeatureDetection).toBe(true);
 });
 
