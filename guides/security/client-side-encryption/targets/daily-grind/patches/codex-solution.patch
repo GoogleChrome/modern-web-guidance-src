@@ -1,0 +1,564 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..11863ad 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,17 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .private-message { margin-top: 40px; padding: 24px; background: white; border-radius: 8px; box-shadow: 0 2px 5px #0002; }
++    .private-message label { display: block; font-weight: 600; margin-top: 16px; }
++    .private-message textarea { width: 100%; padding: 12px; border: 1px solid var(--secondary); border-radius: 5px; font: inherit; resize: vertical; }
++    .private-message button { border: 0; font: inherit; cursor: pointer; margin-right: 10px; }
++    .private-message button:disabled { opacity: .5; cursor: wait; }
++    .private-message output { display: block; white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: var(--light); min-height: 50px; }
++    #crypto-status { margin-top: 16px; }
++    #crypto-status[data-error="true"] { color: #a12518; }
++    #public-key { font-family: monospace; font-size: .8rem; }
++    @media (max-width: 600px) { nav { flex-wrap: wrap; gap: 12px; } nav ul { flex-wrap: wrap; gap: 10px; } nav ul li { margin-left: 0; } .hero h1 { font-size: 2rem; } }
+   </style>
+ </head>
+ 
+@@ -195,6 +206,27 @@
+         </div>
+       </div>
+     </section>
++    <section class="private-message" aria-labelledby="private-message-heading">
++      <h2 id="private-message-heading">Your private message</h2>
++      <p>Try encrypting a note for your next coffee order. This demo runs entirely in your browser; it does not send or place an order.</p>
++      <p id="crypto-suite">Preparing your recipient keys…</p>
++      <details>
++        <summary>Recipient public key</summary>
++        <p>This public key can be shared. Your private key stays in this browser’s local storage as a non-extractable CryptoKey.</p>
++        <label for="public-key">Public key (Base64)</label>
++        <textarea id="public-key" rows="3" readonly></textarea>
++      </details>
++      <label for="plaintext">Message to encrypt</label>
++      <textarea id="plaintext" rows="3" placeholder="Please prepare my latte with oat milk.">Please prepare my latte with oat milk.</textarea>
++      <button id="encrypt-message" class="btn" type="button" disabled>Encrypt message</button>
++      <label for="envelope">Encrypted envelope</label>
++      <p>Save this envelope to decrypt it later in this browser. Editing the ciphertext will cause authentication to fail.</p>
++      <textarea id="envelope" rows="7" spellcheck="false" placeholder="Your encrypted envelope will appear here."></textarea>
++      <button id="decrypt-message" class="btn" type="button" disabled>Decrypt message</button>
++      <label for="recovered-message">Recovered message</label>
++      <output id="recovered-message" aria-live="polite"></output>
++      <p id="crypto-status" role="status" aria-live="polite">Initializing encryption…</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +239,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/src/main.ts"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..28b0457 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,22 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "tsc --noEmit && vite build",
++    "test": "tsx --test tests/*.test.ts",
++    "test:browser": "tsx tests/browser-check.ts"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "@types/node": "^24.0.9",
++    "fake-indexeddb": "^6.0.1",
++    "playwright": "^1.53.0",
++    "tsx": "^4.20.3",
++    "typescript": "^5.9.0-dev.20250429",
++    "vite": "^7.0.6"
+   }
+ }
+diff --git a/src/encryption.ts b/src/encryption.ts
+new file mode 100644
+index 0000000..93f043e
+--- /dev/null
++++ b/src/encryption.ts
+@@ -0,0 +1,170 @@
++const KEM = 'MLKEM768-X25519';
++export type Suite = 'MLKEM768-X25519+ChaCha20-Poly1305' | 'X25519+HKDF+AES-GCM' | 'P-256+HKDF+AES-GCM';
++export interface Recipient {
++  suite: Suite;
++  keyPair: CryptoKeyPair;
++  publicKeyBytes: Uint8Array<ArrayBuffer>;
++}
++export interface Envelope {
++  version: 1;
++  suite: Suite;
++  capsule: string;
++  iv: string;
++  ciphertext: string;
++}
++// Isolate the modern API declarations until they are included in lib.dom.
++export interface ModernSubtle {
++  generateKey(algorithm: string, extractable: boolean, usages: string[]): Promise<CryptoKeyPair>;
++  exportKey(format: 'raw-public', key: CryptoKey): Promise<ArrayBuffer>;
++  importKey(format: 'raw-public', bytes: BufferSource, algorithm: string, extractable: boolean, usages: string[]): Promise<CryptoKey>;
++  encapsulateKey(algorithm: string, publicKey: CryptoKey, sharedAlgorithm: string, extractable: boolean, usages: KeyUsage[]): Promise<{ sharedKey: CryptoKey; ciphertext: ArrayBuffer }>;
++  decapsulateKey(algorithm: string, privateKey: CryptoKey, capsule: BufferSource, sharedAlgorithm: string, extractable: boolean, usages: KeyUsage[]): Promise<CryptoKey>;
++}
++type SupportConstructor = { supports?: (operation: string, algorithm: string, sharedAlgorithm: string) => boolean };
++const modern = () => crypto.subtle as unknown as ModernSubtle;
++const encoder = new TextEncoder();
++const isSuite = (value: unknown): value is Suite => value === 'MLKEM768-X25519+ChaCha20-Poly1305' || value === 'X25519+HKDF+AES-GCM' || value === 'P-256+HKDF+AES-GCM';
++function requireKeyPair(key: CryptoKeyPair | CryptoKey): CryptoKeyPair {
++  if (!('privateKey' in key) || !('publicKey' in key)) throw new Error('Expected an asymmetric key pair.');
++  return key;
++}
++
++export function supportsPostQuantumEnvelope(): boolean {
++  const constructor = globalThis.SubtleCrypto as unknown as SupportConstructor | undefined;
++  try {
++    return typeof constructor?.supports === 'function' &&
++      constructor.supports('encapsulateKey', KEM, 'ChaCha20-Poly1305') &&
++      constructor.supports('decapsulateKey', KEM, 'ChaCha20-Poly1305') &&
++      typeof modern().encapsulateKey === 'function' && typeof modern().decapsulateKey === 'function';
++  } catch {
++    return false;
++  }
++}
++
++export async function generateRecipientKeys(): Promise<Recipient> {
++  if (!globalThis.crypto?.subtle) throw new Error('Encryption requires a secure context (HTTPS or localhost).');
++  if (supportsPostQuantumEnvelope()) {
++    const keyPair = await modern().generateKey(KEM, false, ['encapsulateKey', 'decapsulateKey']);
++    return { suite: 'MLKEM768-X25519+ChaCha20-Poly1305', keyPair,
++      publicKeyBytes: new Uint8Array(await modern().exportKey('raw-public', keyPair.publicKey)) };
++  }
++  try {
++    const keyPair = requireKeyPair(await crypto.subtle.generateKey('X25519', false, ['deriveBits']));
++    return { suite: 'X25519+HKDF+AES-GCM', keyPair,
++      publicKeyBytes: new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey)) };
++  } catch (error) {
++    if (!(error instanceof Error) || error.name !== 'NotSupportedError') throw error;
++    const keyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
++    return { suite: 'P-256+HKDF+AES-GCM', keyPair,
++      publicKeyBytes: new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey)) };
++  }
++}
++
++function agreement(suite: Suite): AlgorithmIdentifier | EcKeyImportParams {
++  return suite === 'P-256+HKDF+AES-GCM' ? { name: 'ECDH', namedCurve: 'P-256' } : 'X25519';
++}
++function context(suite: Suite): Uint8Array<ArrayBuffer> {
++  return new Uint8Array(encoder.encode(JSON.stringify({ version: 1, suite, purpose: 'daily-grind-private-message' })));
++}
++async function deriveKey(privateKey: CryptoKey, publicKey: CryptoKey, suite: Suite): Promise<CryptoKey> {
++  const secret = await crypto.subtle.deriveBits({ name: privateKey.algorithm.name, public: publicKey }, privateKey, 256);
++  const baseKey = await crypto.subtle.importKey('raw', secret, 'HKDF', false, ['deriveKey']);
++  new Uint8Array(secret).fill(0);
++  return crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: context(suite) },
++    baseKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
++}
++
++export function toBase64(bytes: Uint8Array): string {
++  let binary = '';
++  for (const byte of bytes) binary += String.fromCharCode(byte);
++  return btoa(binary);
++}
++function fromBase64(value: string): Uint8Array<ArrayBuffer> {
++  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) throw new Error('Invalid Base64 in envelope.');
++  return Uint8Array.from(atob(value), character => character.charCodeAt(0));
++}
++
++export async function encryptEnvelope(recipient: Recipient, plaintext: string): Promise<Envelope> {
++  let sharedKey: CryptoKey;
++  let capsule: Uint8Array<ArrayBuffer>;
++  if (recipient.suite === 'MLKEM768-X25519+ChaCha20-Poly1305') {
++    const publicKey = await modern().importKey('raw-public', recipient.publicKeyBytes, KEM, true, ['encapsulateKey']);
++    const result = await modern().encapsulateKey(KEM, publicKey, 'ChaCha20-Poly1305', false, ['encrypt', 'decrypt']);
++    sharedKey = result.sharedKey;
++    capsule = new Uint8Array(result.ciphertext);
++  } else {
++    const algorithm = agreement(recipient.suite);
++    const publicKey = await crypto.subtle.importKey('raw', recipient.publicKeyBytes, algorithm, true, []);
++    const ephemeral = requireKeyPair(await crypto.subtle.generateKey(algorithm, false, ['deriveBits']));
++    capsule = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
++    sharedKey = await deriveKey(ephemeral.privateKey, publicKey, recipient.suite);
++  }
++  const iv = crypto.getRandomValues(new Uint8Array(12));
++  const ciphertext = await crypto.subtle.encrypt({ name: sharedKey.algorithm.name, iv, additionalData: context(recipient.suite) }, sharedKey, encoder.encode(plaintext));
++  return { version: 1, suite: recipient.suite, capsule: toBase64(capsule), iv: toBase64(iv), ciphertext: toBase64(new Uint8Array(ciphertext)) };
++}
++
++export function parseEnvelope(json: string): Envelope {
++  const value: unknown = JSON.parse(json);
++  if (typeof value !== 'object' || value === null) throw new Error('Invalid envelope.');
++  const fields = value as Record<string, unknown>;
++  if (fields.version !== 1 || !isSuite(fields.suite) || typeof fields.capsule !== 'string' || typeof fields.iv !== 'string' || typeof fields.ciphertext !== 'string') throw new Error('Invalid envelope version, suite, or fields.');
++  return { version: 1, suite: fields.suite, capsule: fields.capsule, iv: fields.iv, ciphertext: fields.ciphertext };
++}
++
++export async function decryptEnvelope(recipient: Recipient, envelope: Envelope): Promise<string> {
++  if (envelope.version !== 1 || envelope.suite !== recipient.suite) throw new Error('Envelope does not match this recipient’s encryption suite.');
++  const capsule = fromBase64(envelope.capsule);
++  const iv = fromBase64(envelope.iv);
++  const ciphertext = fromBase64(envelope.ciphertext);
++  const capsuleLength = recipient.suite === 'MLKEM768-X25519+ChaCha20-Poly1305' ? 1120 : recipient.suite === 'P-256+HKDF+AES-GCM' ? 65 : 32;
++  if (iv.length !== 12 || capsule.length !== capsuleLength || ciphertext.length < 16) throw new Error('Invalid envelope lengths.');
++  let sharedKey: CryptoKey;
++  if (recipient.suite === 'MLKEM768-X25519+ChaCha20-Poly1305') {
++    sharedKey = await modern().decapsulateKey(KEM, recipient.keyPair.privateKey, capsule, 'ChaCha20-Poly1305', false, ['encrypt', 'decrypt']);
++  } else {
++    const publicKey = await crypto.subtle.importKey('raw', capsule, agreement(recipient.suite), true, []);
++    sharedKey = await deriveKey(recipient.keyPair.privateKey, publicKey, recipient.suite);
++  }
++  const plaintext = await crypto.subtle.decrypt({ name: sharedKey.algorithm.name, iv, additionalData: context(envelope.suite) }, sharedKey, ciphertext);
++  return new TextDecoder('utf-8', { fatal: true }).decode(plaintext);
++}
++
++export async function loadRecipient(): Promise<Recipient> {
++  const database = await new Promise<IDBDatabase>((resolve, reject) => {
++    const request = indexedDB.open('daily-grind-encryption', 1);
++    request.onupgradeneeded = () => request.result.createObjectStore('keys');
++    request.onsuccess = () => resolve(request.result);
++    request.onerror = () => reject(request.error);
++    request.onblocked = () => reject(new Error('Recipient storage is blocked by another tab.'));
++  });
++  try {
++    const saved: unknown = await new Promise((resolve, reject) => {
++      const request = database.transaction('keys').objectStore('keys').get('recipient-kem-key');
++      request.onsuccess = () => resolve(request.result);
++      request.onerror = () => reject(request.error);
++    });
++    if (saved !== undefined) {
++      const recipient = saved as Recipient;
++      if (!isSuite(recipient.suite) || !(recipient.keyPair?.privateKey instanceof CryptoKey) || recipient.keyPair.privateKey.extractable || !(recipient.publicKeyBytes instanceof Uint8Array)) throw new Error('Stored recipient keys are invalid.');
++      if (recipient.suite === 'MLKEM768-X25519+ChaCha20-Poly1305' && !supportsPostQuantumEnvelope()) throw new Error('This browser cannot use the saved post-quantum recipient keys. Open this page in a compatible browser.');
++      return recipient;
++    }
++    const recipient = await generateRecipientKeys();
++    try {
++      await new Promise<void>((resolve, reject) => {
++        // Add prevents concurrent tabs from overwriting a recipient identity.
++        const transaction = database.transaction('keys', 'readwrite');
++        transaction.objectStore('keys').add(recipient, 'recipient-kem-key');
++        transaction.oncomplete = () => resolve();
++        transaction.onabort = () => reject(transaction.error);
++      });
++    } catch (error) {
++      if (error instanceof Error && error.name === 'ConstraintError') return await loadRecipient();
++      throw error;
++    }
++    return recipient;
++  } finally {
++    database.close();
++  }
++}
+diff --git a/src/main.ts b/src/main.ts
+new file mode 100644
+index 0000000..f85045d
+--- /dev/null
++++ b/src/main.ts
+@@ -0,0 +1,74 @@
++import { decryptEnvelope, encryptEnvelope, loadRecipient, parseEnvelope, toBase64, type Recipient } from './encryption';
++
++function element<T extends HTMLElement>(id: string, type: { new(): T }): T {
++  const value = document.getElementById(id);
++  if (!(value instanceof type)) throw new Error(`Missing UI element: ${id}`);
++  return value;
++}
++const encryptButton = element('encrypt-message', HTMLButtonElement);
++const decryptButton = element('decrypt-message', HTMLButtonElement);
++const plaintext = element('plaintext', HTMLTextAreaElement);
++const envelope = element('envelope', HTMLTextAreaElement);
++const publicKey = element('public-key', HTMLTextAreaElement);
++const recovered = element('recovered-message', HTMLOutputElement);
++const status = element('crypto-status', HTMLParagraphElement);
++const suite = element('crypto-suite', HTMLParagraphElement);
++let recipient: Recipient | undefined;
++let busy = false;
++
++function report(message: string, error = false): void {
++  status.textContent = message;
++  status.dataset.error = String(error);
++}
++function updateButtons(): void {
++  encryptButton.disabled = busy || !recipient;
++  decryptButton.disabled = busy || !recipient || !envelope.value.trim();
++}
++async function operate(operation: () => Promise<void>): Promise<void> {
++  busy = true;
++  recovered.textContent = '';
++  report('Working…');
++  updateButtons();
++  try {
++    await operation();
++  } catch (error) {
++    const message = error instanceof Error && error.name === 'OperationError'
++      ? 'Authentication failed. The envelope was changed or belongs to a different recipient.'
++      : error instanceof Error ? error.message : 'Encryption could not complete.';
++    report(message, true);
++  } finally {
++    busy = false;
++    updateButtons();
++  }
++}
++encryptButton.addEventListener('click', () => {
++  if (!recipient || busy) return;
++  const target = recipient;
++  void operate(async () => {
++    envelope.value = '';
++    envelope.value = JSON.stringify(await encryptEnvelope(target, plaintext.value), null, 2);
++    report('Message encrypted with a fresh key and 12-byte IV. Select Decrypt message to recover it.');
++  });
++});
++decryptButton.addEventListener('click', () => {
++  if (!recipient || busy) return;
++  const target = recipient;
++  void operate(async () => {
++    recovered.textContent = await decryptEnvelope(target, parseEnvelope(envelope.value));
++    report('Message decrypted and authenticated successfully.');
++  });
++});
++envelope.addEventListener('input', () => { recovered.textContent = ''; updateButtons(); });
++
++void (async () => {
++  try {
++    recipient = await loadRecipient();
++    suite.textContent = `Encryption: ${recipient.suite}${recipient.suite.startsWith('MLKEM') ? ' (hybrid post-quantum)' : ' (classical fallback; post-quantum WebCrypto unavailable)'}.`;
++    publicKey.value = toBase64(recipient.publicKeyBytes);
++    report('Ready. Your recipient keys are saved on this device for future sessions.');
++    updateButtons();
++  } catch (error) {
++    suite.textContent = 'Encryption unavailable.';
++    report(error instanceof Error ? error.message : 'Unable to initialize browser encryption.', true);
++  }
++})();
+diff --git a/tests/browser-check.ts b/tests/browser-check.ts
+new file mode 100644
+index 0000000..6007a19
+--- /dev/null
++++ b/tests/browser-check.ts
+@@ -0,0 +1,41 @@
++import assert from 'node:assert/strict';
++import { chromium } from 'playwright';
++import { createServer } from 'vite';
++
++const server = await createServer({ server: { host: '127.0.0.1', port: 11223 } });
++await server.listen();
++const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE_PATH });
++try {
++  const page = await browser.newPage();
++  const errors: string[] = [];
++  page.on('pageerror', error => errors.push(error.message));
++  await page.goto('http://127.0.0.1:11223');
++  await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('#encrypt-message')?.disabled);
++  const plaintext = 'My coffee note ☕ <script>alert(1)</script>';
++  await page.locator('#plaintext').fill(plaintext);
++  await page.locator('#encrypt-message').click();
++  await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('#decrypt-message')?.disabled);
++  const envelope = await page.locator('#envelope').inputValue();
++  const publicKey = await page.locator('#public-key').inputValue();
++  await page.locator('#decrypt-message').click();
++  await page.waitForFunction(() => document.querySelector('#crypto-status')?.textContent?.includes('successfully'));
++  assert.equal(await page.locator('#recovered-message').textContent(), plaintext);
++  await page.reload();
++  await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('#encrypt-message')?.disabled);
++  assert.equal(await page.locator('#public-key').inputValue(), publicKey);
++  await page.locator('#envelope').fill(envelope);
++  await page.locator('#decrypt-message').click();
++  await page.waitForFunction(() => document.querySelector('#crypto-status')?.textContent?.includes('successfully'));
++  assert.equal(await page.locator('#recovered-message').textContent(), plaintext);
++  const modified = JSON.parse(envelope) as { ciphertext: string };
++  modified.ciphertext = (modified.ciphertext[0] === 'A' ? 'B' : 'A') + modified.ciphertext.slice(1);
++  await page.locator('#envelope').fill(JSON.stringify(modified));
++  await page.locator('#decrypt-message').click();
++  await page.waitForFunction(() => document.querySelector('#crypto-status')?.textContent?.includes('Authentication failed'));
++  assert.equal(await page.locator('#recovered-message').textContent(), '');
++  assert.deepEqual(errors, []);
++  console.log('Browser verification passed: plaintext recovery, IndexedDB reload, and tamper rejection.');
++} finally {
++  await browser.close();
++  await server.close();
++}
+diff --git a/tests/encryption.test.ts b/tests/encryption.test.ts
+new file mode 100644
+index 0000000..ff646af
+--- /dev/null
++++ b/tests/encryption.test.ts
+@@ -0,0 +1,142 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { webcrypto } from 'node:crypto';
++import { indexedDB } from 'fake-indexeddb';
++import { decryptEnvelope, encryptEnvelope, generateRecipientKeys, loadRecipient, parseEnvelope, supportsPostQuantumEnvelope, type ModernSubtle } from '../src/encryption';
++
++Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
++Object.defineProperty(globalThis, 'SubtleCrypto', { value: webcrypto.subtle.constructor, configurable: true });
++Object.defineProperty(globalThis, 'indexedDB', { value: indexedDB, configurable: true });
++
++test('classical envelopes recover Unicode and empty messages with fresh IVs and capsules', async () => {
++  assert.equal(supportsPostQuantumEnvelope(), false);
++  const recipient = await generateRecipientKeys();
++  assert.equal(recipient.keyPair.privateKey.extractable, false);
++  const plaintext = 'Oat latte ☕ — café\n<script>alert(1)</script>';
++  const first = await encryptEnvelope(recipient, plaintext);
++  const second = await encryptEnvelope(recipient, plaintext);
++  assert.equal(Buffer.from(first.iv, 'base64').length, 12);
++  assert.notEqual(first.iv, second.iv);
++  assert.notEqual(first.capsule, second.capsule);
++  assert.equal(await decryptEnvelope(recipient, parseEnvelope(JSON.stringify(first))), plaintext);
++  assert.equal(await decryptEnvelope(recipient, await encryptEnvelope(recipient, '')), '');
++  const clonedRecipient = structuredClone(recipient);
++  assert.equal(await decryptEnvelope(clonedRecipient, first), plaintext);
++});
++
++test('tampering, wrong recipients, and malformed envelopes are rejected', async () => {
++  const recipient = await generateRecipientKeys();
++  const envelope = await encryptEnvelope(recipient, 'Private coffee order');
++  for (const field of ['ciphertext', 'capsule', 'iv'] as const) {
++    const bytes = Buffer.from(envelope[field], 'base64');
++    bytes[0] = bytes[0]! ^ 1;
++    await assert.rejects(decryptEnvelope(recipient, { ...envelope, [field]: bytes.toString('base64') }));
++  }
++  await assert.rejects(decryptEnvelope(await generateRecipientKeys(), envelope));
++  await assert.rejects(decryptEnvelope(recipient, { ...envelope, iv: 'bad!' }));
++  await assert.rejects(decryptEnvelope(recipient, { ...envelope, version: 2 } as unknown as typeof envelope));
++  assert.throws(() => parseEnvelope('{"version":1,"suite":"unknown"}'));
++});
++
++test('P-256 fallback when X25519 is unavailable', async () => {
++  const original = crypto.subtle.generateKey.bind(crypto.subtle);
++  const generate = crypto.subtle.generateKey;
++  crypto.subtle.generateKey = (async (...args: Parameters<SubtleCrypto['generateKey']>) => {
++    if (args[0] === 'X25519') throw new DOMException('Unsupported', 'NotSupportedError');
++    return original(...args);
++  }) as SubtleCrypto['generateKey'];
++  try {
++    const recipient = await generateRecipientKeys();
++    assert.equal(recipient.suite, 'P-256+HKDF+AES-GCM');
++    assert.equal(await decryptEnvelope(recipient, await encryptEnvelope(recipient, 'P-256 coffee')), 'P-256 coffee');
++  } finally {
++    crypto.subtle.generateKey = generate;
++  }
++});
++
++test('recipient survives IndexedDB structured cloning and reload', async () => {
++  const original = await loadRecipient();
++  const envelope = await encryptEnvelope(original, 'Saved recipient');
++  const reloaded = await loadRecipient();
++  assert.deepEqual(reloaded.publicKeyBytes, original.publicKeyBytes);
++  assert.equal(reloaded.keyPair.privateKey.extractable, false);
++  assert.equal(await decryptEnvelope(reloaded, envelope), 'Saved recipient');
++});
++
++test('hybrid API contracts: static probe, explicit formats, KEM usages, and ChaCha20 round trip', async () => {
++  // Node supports ML-KEM-768 but not the hybrid. Adapt only the KEM name and
++  // capsule size to exercise the hybrid application branch with real crypto.
++  const native = crypto.subtle as unknown as ModernSubtle;
++  const calls: string[] = [];
++  const adapter: ModernSubtle = {
++    async generateKey(algorithm, extractable, usages) {
++      assert.equal(algorithm, 'MLKEM768-X25519');
++      assert.equal(extractable, false);
++      assert.deepEqual(usages, ['encapsulateKey', 'decapsulateKey']);
++      calls.push('generate');
++      return native.generateKey('ML-KEM-768', extractable, usages);
++    },
++    async exportKey(format, key) {
++      assert.equal(format, 'raw-public');
++      calls.push('export');
++      return native.exportKey(format, key);
++    },
++    async importKey(format, bytes, algorithm, extractable, usages) {
++      assert.equal(format, 'raw-public');
++      assert.equal(algorithm, 'MLKEM768-X25519');
++      assert.deepEqual(usages, ['encapsulateKey']);
++      calls.push('import');
++      return native.importKey(format, bytes, 'ML-KEM-768', extractable, usages);
++    },
++    async encapsulateKey(algorithm, key, sharedAlgorithm, extractable, usages) {
++      assert.equal(algorithm, 'MLKEM768-X25519');
++      assert.equal(sharedAlgorithm, 'ChaCha20-Poly1305');
++      assert.equal(extractable, false);
++      assert.deepEqual(usages, ['encrypt', 'decrypt']);
++      calls.push('encapsulate');
++      const result = await native.encapsulateKey('ML-KEM-768', key, sharedAlgorithm, extractable, usages);
++      const capsule = new Uint8Array(1120);
++      capsule.set(new Uint8Array(result.ciphertext));
++      return { sharedKey: result.sharedKey, ciphertext: capsule.buffer };
++    },
++    async decapsulateKey(algorithm, key, capsule, sharedAlgorithm, extractable, usages) {
++      assert.equal(algorithm, 'MLKEM768-X25519');
++      assert.equal(sharedAlgorithm, 'ChaCha20-Poly1305');
++      assert.equal(extractable, false);
++      assert.deepEqual(usages, ['encrypt', 'decrypt']);
++      calls.push('decapsulate');
++      assert.ok(capsule instanceof Uint8Array);
++      return native.decapsulateKey('ML-KEM-768', key, capsule.slice(0, 1088), sharedAlgorithm, extractable, usages);
++    },
++  };
++  Object.defineProperty(globalThis, 'SubtleCrypto', { configurable: true, value: {
++    supports(operation: string, algorithm: string, sharedAlgorithm: string) {
++      assert.ok(['encapsulateKey', 'decapsulateKey'].includes(operation));
++      assert.equal(algorithm, 'MLKEM768-X25519');
++      assert.equal(sharedAlgorithm, 'ChaCha20-Poly1305');
++      calls.push('supports');
++      return true;
++    },
++  } });
++  const subtle = new Proxy(crypto.subtle, {
++    get(target, property) {
++      if (property in adapter) return adapter[property as keyof ModernSubtle];
++      const value: unknown = Reflect.get(target, property);
++      return typeof value === 'function' ? value.bind(target) : value;
++    },
++  });
++  Object.defineProperty(globalThis, 'crypto', { configurable: true, value: { subtle, getRandomValues: webcrypto.getRandomValues.bind(webcrypto) } });
++  try {
++    const recipient = await generateRecipientKeys();
++    assert.equal(recipient.suite, 'MLKEM768-X25519+ChaCha20-Poly1305');
++    const envelope = await encryptEnvelope(recipient, 'Post-quantum coffee ☕');
++    assert.equal(await decryptEnvelope(recipient, envelope), 'Post-quantum coffee ☕');
++    const tampered = Buffer.from(envelope.ciphertext, 'base64');
++    tampered[0] = tampered[0]! ^ 1;
++    await assert.rejects(decryptEnvelope(recipient, { ...envelope, ciphertext: tampered.toString('base64') }));
++    for (const operation of ['supports', 'generate', 'export', 'import', 'encapsulate', 'decapsulate']) assert.ok(calls.includes(operation));
++  } finally {
++    Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
++    Object.defineProperty(globalThis, 'SubtleCrypto', { value: webcrypto.subtle.constructor, configurable: true });
++  }
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..4fa1b6f
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,13 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM"],
++    "strict": true,
++    "noUncheckedIndexedAccess": true,
++    "skipLibCheck": true,
++    "noEmit": true
++  },
++  "include": ["src", "tests"]
++}

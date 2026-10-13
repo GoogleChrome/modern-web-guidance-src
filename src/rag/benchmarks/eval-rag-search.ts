@@ -105,7 +105,10 @@ async function main() {
   for (let i = 0; i < queries.length; i++) {
     const q = queries[i];
     // Ask for top 5 so we can calculate MRR and top-k effectively
-    const results = await searchUseCases(q.query, 5, -1.0, embedder);
+    const results = await searchUseCases(q.query, 5, -1.0, embedder, {
+      top1MinSimilarity: -Infinity,
+      maxDropFromTop1: Infinity,
+    });
 
     // Find the rank (1-indexed) of the correct guideId
     const rankIndex = results.findIndex((r) => r.id === q.guideId);
