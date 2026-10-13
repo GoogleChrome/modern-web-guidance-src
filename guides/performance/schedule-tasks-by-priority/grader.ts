@@ -7,14 +7,51 @@ if (!targetFile) {
   throw new Error('TARGET_FILE environment variable is not defined.');
 }
 
-const targetUrl = `file://${path.resolve(targetFile)}`;
+const filePath = path.resolve(targetFile);
+const targetDir = path.dirname(filePath);
+const targetFileName = path.basename(filePath);
+const targetUrl = `http://localhost/${targetFileName}`;
 
 function getScriptContent(): string {
-  const filePath = path.resolve(targetFile!);
-  if (fs.existsSync(filePath)) {
-    return fs.readFileSync(filePath, 'utf8');
+  const isDemoTarget = targetFileName === 'demo.html' || targetFileName === 'negative-demo.html';
+  const html = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const files: string[] = [filePath];
+  if (isDemoTarget) {
+    const srcMatches = html.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi);
+    for (const match of srcMatches) {
+      const src = match[1];
+      if (!/^https?:\/\//i.test(src) && !src.startsWith('//')) {
+        const resolved = path.resolve(targetDir, src.replace(/^\/+/, ''));
+        if (resolved.startsWith(targetDir + path.sep) && fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+          files.push(resolved);
+        }
+      }
+    }
+  } else {
+    const excludedDirs = new Set(['node_modules', 'vendor', 'test', 'tests', 'grade-report', 'test-results', 'dist', '.git']);
+    const walk = (dir: string) => {
+      try {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            if (!excludedDirs.has(entry.name)) walk(fullPath);
+          } else if (
+            entry.isFile() &&
+            (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
+            !entry.name.includes('.test.') &&
+            !entry.name.includes('.spec.') &&
+            !entry.name.includes('.config.') &&
+            entry.name !== 'grade.mjs' &&
+            entry.name !== 'run.mjs'
+          ) {
+            files.push(fullPath);
+          }
+        }
+      } catch {}
+    };
+    walk(targetDir);
   }
-  return '';
+  return [...new Set(files)].filter(f => fs.existsSync(f)).map(f => fs.readFileSync(f, 'utf8')).join('\n');
 }
 
 async function injectSpy(page: any) {
@@ -45,6 +82,16 @@ async function injectSpy(page: any) {
 test.describe('Prioritized Task Scheduling API Grader', () => {
 
   test.beforeEach(async ({ page }) => {
+    await page.route('http://localhost/**', async (route) => {
+      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+      const relPath = requestPath === '/' ? targetFileName : requestPath.replace(/^\/+/, '');
+      const localFilePath = path.resolve(targetDir, relPath);
+      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+        await route.fulfill({ path: localFilePath });
+      } else {
+        await route.continue();
+      }
+    });
     await page.route(url => url.href.includes('scheduler-polyfill'), async (route) => {
       await route.fulfill({
         contentType: 'application/javascript',
