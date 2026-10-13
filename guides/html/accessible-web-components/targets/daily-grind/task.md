@@ -1,0 +1,1 @@
+- Make custom elements accessible by default, setting their roles and states, managing focus properly, and keeping accessibility relationships within component boundaries.

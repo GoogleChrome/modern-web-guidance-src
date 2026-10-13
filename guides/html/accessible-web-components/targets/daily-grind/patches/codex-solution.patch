@@ -1,0 +1,308 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..bfecf2d 100644
+--- a/index.html
++++ b/index.html
+@@ -182,16 +182,19 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <coffee-favorite label="Save Maple Oat Latte to favorites"></coffee-favorite>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <coffee-favorite label="Save Dark Roast Espresso to favorites"></coffee-favorite>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <coffee-favorite label="Save Cold Brew to favorites"></coffee-favorite>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +210,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/src/coffee-favorite.ts"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..d3abec7 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,14 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "tsc --noEmit && vite build",
++    "test": "node --test tests/*.test.mjs"
++  },
++  "devDependencies": {
++    "playwright": "^1.56.0",
++    "typescript": "^5.9.3",
++    "vite": "^7.1.0"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/src/coffee-favorite.ts b/src/coffee-favorite.ts
+new file mode 100644
+index 0000000..217240c
+--- /dev/null
++++ b/src/coffee-favorite.ts
+@@ -0,0 +1,105 @@
++/** A host-owned toggle button, with a native button fallback for older browsers. */
++export class CoffeeFavorite extends HTMLElement {
++  static observedAttributes = ['pressed', 'label'];
++
++  readonly #internals: ElementInternals | null;
++  readonly #button: HTMLButtonElement | null;
++  readonly #caption: HTMLSpanElement;
++  readonly #icon: HTMLSpanElement;
++
++  constructor() {
++    super();
++    this.#internals = typeof this.attachInternals === 'function'
++      ? this.attachInternals()
++      : null;
++    const hostOwnsSemantics = this.#internals !== null &&
++      'ariaPressed' in this.#internals && 'ariaLabel' in this.#internals;
++
++    if (hostOwnsSemantics && this.#internals) {
++      this.#internals.role = 'button';
++      this.#internals.ariaPressed = 'false';
++      this.#internals.ariaLabel = 'Save coffee to favorites';
++    }
++
++    // Delegation is only for the fallback's internal native control.
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: !hostOwnsSemantics });
++    root.innerHTML = `
++      <style>
++        :host { display: block; width: fit-content; margin: 14px auto 0;
++          border-radius: 5px; color: var(--primary, #4e342e); cursor: pointer; }
++        :host(:focus-visible), button:focus-visible {
++          outline: 3px solid var(--primary, #4e342e); outline-offset: 4px;
++        }
++        .control { display: inline-flex; align-items: center; gap: 8px;
++          border: 1px solid currentColor; border-radius: 5px; padding: 8px 12px;
++          background: transparent; color: inherit; font: inherit; cursor: inherit; }
++        :host([pressed]) .control { background: var(--secondary, #d7ccc8); }
++        :host(:hover) .control { background: var(--secondary, #d7ccc8); }
++      </style>
++    `;
++    const control = document.createElement(hostOwnsSemantics ? 'span' : 'button');
++    control.className = 'control';
++    this.#button = control instanceof HTMLButtonElement ? control : null;
++    if (this.#button) this.#button.type = 'button';
++
++    this.#icon = document.createElement('span');
++    this.#icon.setAttribute('aria-hidden', 'true');
++    this.#caption = document.createElement('span');
++    control.append(this.#icon, this.#caption);
++    root.append(control);
++
++    this.addEventListener('click', (event: MouseEvent) => {
++      if (!event.defaultPrevented) this.toggle();
++    });
++    this.addEventListener('keydown', (event: KeyboardEvent) => {
++      if (this.#button || event.target !== this || event.defaultPrevented) return;
++      if (event.key === ' ' || event.key === 'Enter') {
++        event.preventDefault();
++        if (!event.repeat) this.click();
++      }
++    });
++  }
++
++  connectedCallback(): void {
++    // Constructors must not add host attributes: createElement must also work.
++    if (!this.#button && !this.hasAttribute('tabindex')) this.tabIndex = 0;
++    this.#sync();
++  }
++
++  attributeChangedCallback(): void {
++    this.#sync();
++  }
++
++  get pressed(): boolean {
++    return this.hasAttribute('pressed');
++  }
++
++  set pressed(value: boolean) {
++    this.toggleAttribute('pressed', value);
++  }
++
++  toggle(): void {
++    this.pressed = !this.pressed;
++    this.dispatchEvent(new CustomEvent<{ pressed: boolean }>('change', {
++      bubbles: true,
++      detail: { pressed: this.pressed },
++    }));
++  }
++
++  #sync(): void {
++    const label = this.getAttribute('label')?.trim() || 'Save coffee to favorites';
++    const state = String(this.pressed);
++    if (this.#button) {
++      this.#button.setAttribute('aria-label', label);
++      this.#button.setAttribute('aria-pressed', state);
++    } else if (this.#internals) {
++      // Defaults remain overridable by a consumer's explicit ARIA attributes.
++      this.#internals.ariaLabel = label;
++      this.#internals.ariaPressed = state;
++    }
++    this.#icon.textContent = this.pressed ? '♥' : '♡';
++    this.#caption.textContent = this.pressed ? 'Saved to favorites' : 'Save to favorites';
++  }
++}
++
++customElements.define('coffee-favorite', CoffeeFavorite);
+diff --git a/tests/coffee-favorite.test.mjs b/tests/coffee-favorite.test.mjs
+new file mode 100644
+index 0000000..85d3505
+--- /dev/null
++++ b/tests/coffee-favorite.test.mjs
+@@ -0,0 +1,112 @@
++import assert from 'node:assert/strict';
++import { after, before, test } from 'node:test';
++import { spawn } from 'node:child_process';
++import { chromium } from 'playwright';
++
++let browser;
++let server;
++const origin = 'http://127.0.0.1:14783';
++
++before(async () => {
++  server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '14783', '--strictPort'], { stdio: 'inherit' });
++  let ready = false;
++  for (let attempt = 0; attempt < 100; attempt++) {
++    if (server.exitCode !== null) throw new Error('Test server exited unexpectedly');
++    try { ready = (await fetch(origin, { signal: AbortSignal.timeout(500) })).ok; } catch { /* Wait for startup. */ }
++    if (ready) break;
++    await new Promise(resolve => setTimeout(resolve, 50));
++  }
++  assert.ok(ready, 'Test server started');
++  browser = await chromium.launch({
++    ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
++    args: ['--no-sandbox'],
++  });
++});
++
++after(async () => {
++  await browser?.close();
++  server?.kill();
++});
++
++async function pressedInAccessibilityTree(page, name) {
++  const session = await page.context().newCDPSession(page);
++  try {
++    const { nodes } = await session.send('Accessibility.getFullAXTree');
++    const button = nodes.find(node => !node.ignored && node.role?.value === 'button' && node.name?.value === name);
++    assert.ok(button, `Named button exposed: ${name}`);
++    return button.properties.find(property => property.name === 'pressed')?.value.value;
++  } finally {
++    await session.detach();
++  }
++}
++
++test('host exposes named button and state; click and Space update the accessibility tree', async () => {
++  const page = await browser.newPage();
++  try {
++    await page.goto(origin, { waitUntil: 'domcontentloaded' });
++    await page.evaluate(() => customElements.whenDefined('coffee-favorite'));
++    const labels = [
++      'Save Maple Oat Latte to favorites',
++      'Save Dark Roast Espresso to favorites',
++      'Save Cold Brew to favorites',
++    ];
++    for (const label of labels) assert.equal(await pressedInAccessibilityTree(page, label), 'false');
++    const toggle = page.locator('coffee-favorite').first();
++    await page.locator('a[href="/menu/seasonal"]').focus();
++    await page.keyboard.press('Tab');
++    assert.equal(await toggle.evaluate(element => document.activeElement === element && element.shadowRoot.activeElement === null), true);
++    await toggle.click();
++    assert.equal(await pressedInAccessibilityTree(page, labels[0]), 'true');
++    await page.keyboard.press('Space');
++    assert.equal(await pressedInAccessibilityTree(page, labels[0]), 'false');
++    await page.keyboard.press('Enter');
++    assert.equal(await pressedInAccessibilityTree(page, labels[0]), 'true');
++    assert.equal(await toggle.evaluate(element => element.hasAttribute('role') || element.getAttributeNames().some(name => name.startsWith('aria-'))), false);
++    assert.equal(await pressedInAccessibilityTree(page, labels[1]), 'false');
++  } finally { await page.close(); }
++});
++
++test('dynamic creation, initial state, consumer overrides, and reconnection work', async () => {
++  const page = await browser.newPage();
++  try {
++    await page.goto(origin, { waitUntil: 'domcontentloaded' });
++    await page.evaluate(() => customElements.whenDefined('coffee-favorite'));
++    assert.deepEqual(await page.evaluate(() => {
++      const element = document.createElement('coffee-favorite');
++      const constructorAddedAttributes = element.getAttributeNames();
++      element.setAttribute('label', 'Save test coffee');
++      element.setAttribute('tabindex', '-1');
++      element.setAttribute('pressed', '');
++      document.body.append(element);
++      const preservedTabIndex = element.tabIndex;
++      element.remove();
++      document.body.append(element);
++      return { constructorAddedAttributes, preservedTabIndex, pressed: element.pressed };
++    }), { constructorAddedAttributes: [], preservedTabIndex: -1, pressed: true });
++    assert.equal(await pressedInAccessibilityTree(page, 'Save test coffee'), 'true');
++    await page.locator('coffee-favorite').last().evaluate(element => element.click());
++    assert.equal(await pressedInAccessibilityTree(page, 'Save test coffee'), 'false');
++    await page.locator('coffee-favorite').last().evaluate(element => {
++      element.setAttribute('aria-label', 'My chosen label');
++      element.setAttribute('aria-pressed', 'true');
++    });
++    assert.equal(await pressedInAccessibilityTree(page, 'My chosen label'), 'true');
++  } finally { await page.close(); }
++});
++
++test('native fallback delegates focus and supports Space without host ARIA attributes', async () => {
++  const page = await browser.newPage();
++  try {
++    await page.addInitScript(() => {
++      Object.defineProperty(HTMLElement.prototype, 'attachInternals', { value: undefined, configurable: true });
++    });
++    await page.goto(origin, { waitUntil: 'domcontentloaded' });
++    await page.evaluate(() => customElements.whenDefined('coffee-favorite'));
++    const toggle = page.locator('coffee-favorite').first();
++    await toggle.evaluate(element => element.focus());
++    assert.equal(await toggle.evaluate(element => element.shadowRoot.activeElement?.tagName), 'BUTTON');
++    await page.keyboard.press('Space');
++    assert.equal(await pressedInAccessibilityTree(page, 'Save Maple Oat Latte to favorites'), 'true');
++    assert.equal(await toggle.evaluate(element => element.hasAttribute('tabindex') || element.hasAttribute('role') || element.hasAttribute('aria-pressed')), false);
++  } finally { await page.close(); }
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..006045e
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,13 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "noEmit": true,
++    "useDefineForClassFields": true,
++    "skipLibCheck": true
++  },
++  "include": ["src/**/*.ts"]
++}

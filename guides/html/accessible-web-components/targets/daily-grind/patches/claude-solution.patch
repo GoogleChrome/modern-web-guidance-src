@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+index 66c9173..306e9df 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,25 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    toggle-switch {
++      display: inline-block;
++      vertical-align: middle;
++      cursor: pointer;
++    }
++
++    toggle-switch:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .pref {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 30px;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +214,10 @@
+         </div>
+       </div>
+     </section>
++    <section class="pref">
++      <span id="oat-label">Swap to oat milk</span>
++      <toggle-switch aria-labelledby="oat-label"></toggle-switch>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +230,52 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    class ToggleSwitch extends HTMLElement {
++      #internals;
++      #checked = false;
++      constructor() {
++        super();
++        this.#internals = this.attachInternals();
++        if ('role' in this.#internals) {
++          this.#internals.role = 'switch';
++          this.#internals.ariaChecked = 'false';
++        } else {
++          // Fallback where the ElementInternals ARIA mixin is unavailable
++          this.setAttribute('role', 'switch');
++          this.setAttribute('aria-checked', 'false');
++        }
++        const root = this.attachShadow({ mode: 'open' });
++        root.innerHTML = `
++          <style>
++            .track { display: inline-block; width: 44px; height: 24px; border-radius: 12px;
++              background: #bcaaa4; position: relative; transition: background .2s; }
++            .thumb { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
++              border-radius: 50%; background: #fff; transition: transform .2s; }
++            :host([data-on]) .track { background: #4e342e; }
++            :host([data-on]) .thumb { transform: translateX(20px); }
++          </style>
++          <span class="track" part="track"><span class="thumb"></span></span>`;
++        this.addEventListener('click', () => this.toggle());
++        this.addEventListener('keydown', (e) => {
++          if (e.key === ' ') { e.preventDefault(); this.toggle(); }
++        });
++      }
++      connectedCallback() {
++        if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
++      }
++      toggle() {
++        this.#checked = !this.#checked;
++        if ('ariaChecked' in this.#internals) {
++          this.#internals.ariaChecked = String(this.#checked);
++        } else {
++          this.setAttribute('aria-checked', String(this.#checked));
++        }
++        this.toggleAttribute('data-on', this.#checked);
++      }
++    }
++    customElements.define('toggle-switch', ToggleSwitch);
++  </script>
+ </body>
+ 
+ </html>
