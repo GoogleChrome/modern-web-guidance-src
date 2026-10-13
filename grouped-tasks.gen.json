@@ -124,6 +124,9 @@
         "daily-grind",
         "devtools-times"
       ],
+      "switch": [
+        "daily-grind"
+      ],
       "validate-input-after-interaction": [
         "task"
       ]
