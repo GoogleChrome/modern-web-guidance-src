@@ -346,9 +346,19 @@
       if (enterMenu) focusFirst(menuFor(next));
     }
 
+    // If targeting earlier implementations where showPopover({ source }) does not establish an
+    // implicit anchor, link each trigger and menu in JavaScript instead of per-menu CSS rules.
+    if (!('ToggleEvent' in window && Object.hasOwn(ToggleEvent.prototype, 'source'))) {
+      triggers.forEach((trigger, index) => {
+        const anchorName = `--menu-trigger-${index}`;
+        trigger.style.anchorName = anchorName;
+        menuFor(trigger).style.positionAnchor = anchorName;
+      });
+    }
+
     // Without command invokers, the command attribute does nothing, so a click has to toggle the
-    // popover itself. Mirror the native behaviour: a pointer click on a preview enters the menu.
-    if (!('commandForElement' in HTMLButtonElement.prototype)) {
+    // popover itself. Mirror the native behavior: a pointer click on a preview enters the menu.
+    if (!Object.hasOwn(HTMLButtonElement.prototype, 'commandForElement')) {
       triggers.forEach(trigger => {
         const menu = menuFor(trigger);
         trigger.addEventListener('click', event => {
@@ -357,7 +367,7 @@
           const fromPointer = pointerTrigger === trigger;
           pointerTrigger = null;
           if (isPreviewed(menu) && fromPointer) focusFirst(menu);
-          else if (isOpen(menu)) menu.hidePopover();
+          else if (isOpen(menu)) closeAndRestore(menu);
           else {
             enterOnOpen.add(menu);
             menu.showPopover({ source: trigger });
