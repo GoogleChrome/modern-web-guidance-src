@@ -189,14 +189,14 @@
       }
 
       /* Post-interaction validity styling using :user-invalid and :user-valid (NOT :invalid / :valid) */
-      input:user-invalid,
+      input:not(input[type="range"]):user-invalid,
       textarea:user-invalid {
         border-color: var(--invalid);
         background-color: var(--invalid-bg);
         border-style: solid;
       }
 
-      input:user-valid,
+      input:not(input[type="range"]):user-valid,
       textarea:user-valid {
         border-color: var(--valid);
         background-color: var(--valid-bg);
