@@ -114,6 +114,9 @@
       "select-menu-interaction": [
         "task"
       ],
+      "slider": [
+        "daily-grind"
+      ],
       "sms-otp-form": [
         "daily-grind",
         "devtools-times"
