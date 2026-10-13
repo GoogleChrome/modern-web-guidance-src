@@ -187,7 +187,7 @@ Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-leve
 2. **Target File Name**: \`${opts.taskFile}\`
 
 # RULES
-1. **Focus on the Guide Description**: The prompt must request the overall desired user outcome based specifically on the **description** in the frontmatter of \`${opts.guideFile}\`, keeping the request simple, high-level, and generic.
+1. **Natural Request Grounded in Application**: Frame the request naturally around the user-facing feature, UX improvement, or problem in \`${opts.baseApp}\` rather than closely mirroring or paraphrasing the frontmatter \`description\` of \`${opts.guideFile}\` for RAG keyword discovery (RAG discovery is tested separately in \`benchmark:rag\`, and guided evaluation runs receive an explicit retrieval hint). Keep the capability boundary clear so the assistant understands what product/UX outcome to build in \`${opts.baseApp}\`, but express it as an authentic, implicit developer request without echoing guide phrasing.
 2. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcomes instead.
 3. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the frontmatter description of \`${opts.guideFile}\`.
 4. **Format**: Format \`${opts.taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
@@ -233,7 +233,7 @@ Note: \`${REPORT_FILE}\` is already seeded with each target's \`### Evaluation R
 To accurately diagnose failures, understand how \`gd dev\` generates and executes these components:
 1. **Ground Truth**: \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` define the canonical, framework-agnostic implementation and must-pass requirements.
 2. **Patches**: Golden solution diffs and the zero-passrate baseline are generated from \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\`.
-3. **Task Prompt**: \`task.md\` is generated from the \`description\` frontmatter of \`${GUIDE_FILE}\` and the target app's codebase.
+3. **Task Prompt**: \`task.md\` is generated from \`${GUIDE_FILE}\` and the target app's codebase.
 4. **Grader**: \`grader.ts\` validates the requirements in \`${EXPECTATIONS_FILE}\` against the application workspace and is calibrated against the golden patches (must pass 100%) and zero-passrate patch (must fail 100%).
 5. **Agent Evaluation Run**: The agent executes the \`task.md\` prompt against each target app without guidance (\`unguided\`) and with guidance (\`guided\`), and results are verified with \`grader.ts\`.
 

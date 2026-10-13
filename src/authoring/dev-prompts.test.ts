@@ -134,6 +134,10 @@ test('buildTargetTaskPrompt creates clean developer prompt instructions', () => 
   assert.ok(prompt.includes('understand the use case'));
   assert.ok(prompt.includes('Do NOT name the guide itself'));
   assert.ok(prompt.includes('Write the prompt as a developer talking'));
+  assert.ok(prompt.includes('Natural Request Grounded in Application'));
+  assert.ok(prompt.includes('rather than closely mirroring or paraphrasing'));
+  assert.ok(prompt.includes('capability boundary'));
+  assert.ok(prompt.includes('without echoing guide phrasing'));
 
   const disciplinePrompt = buildTargetTaskPrompt({ ...baseOpts, isDisciplineGuide: true });
   assert.ok(disciplinePrompt.includes('understand the discipline guidance'));

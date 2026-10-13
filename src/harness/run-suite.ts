@@ -18,6 +18,15 @@ let logStream: fs.WriteStream | null = null;
 
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
+export function buildGuidedRetrievalHint(guideName: string): string {
+  return `\n\nUse the \`${guideName}\` guide for this task (\`npx -y modern-web-guidance@latest retrieve ${guideName}\`).`;
+}
+
+export function buildTaskRunPrompt(taskPrompt: string, runType: string, guideName: string): string {
+  const retrievalHint = runType === 'guided' ? buildGuidedRetrievalHint(guideName) : '';
+  return taskPrompt + retrievalHint + COMMON_APPEND_PROMPT;
+}
+
 export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
   const agent = suiteConfig.agent;
@@ -147,8 +156,6 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           continue;
         }
 
-        let promptContent = taskInfo.prompt;
-        promptContent += COMMON_APPEND_PROMPT;
         const agentScript = getAgentScript(agent);
 
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
@@ -162,6 +169,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
+          const promptContent = buildTaskRunPrompt(taskInfo.prompt, runType, guideName);
           generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }

@@ -39,6 +39,10 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
       ['npx', ['-y', 'modern-web-guidance@latest', 'search', 'foo']],
       ['pnpx', ['modern-web-guidance@latest', 'search', 'foo']],
       ['pnpm', ['dlx', 'modern-web-guidance@latest', 'search', 'foo']],
+      ['npx', ['modern-web-guidance', 'retrieve', 'foo']],
+      ['npx', ['-y', 'modern-web-guidance', 'retrieve', 'foo']],
+      ['pnpx', ['modern-web-guidance', 'retrieve', 'foo']],
+      ['pnpm', ['dlx', 'modern-web-guidance', 'retrieve', 'foo']],
     ] as const) {
       const result = spawnSync(cmd, [...cmdArgs], {
         cwd: tempDir,
