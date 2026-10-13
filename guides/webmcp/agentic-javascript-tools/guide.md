@@ -336,6 +336,22 @@ export function createInventoryTool(inventoryManager) {
 }
 ```
 
+## TypeScript Types
+
+In TypeScript projects, **DO NOT** hand-write declarations for `document.modelContext`. Install the official `webmcp-types` package (`npm install --save-dev webmcp-types`) and add it to `tsconfig.json`, since it is not picked up automatically:
+
+```jsonc
+{
+  "compilerOptions": {
+    "types": ["webmcp-types"]
+  }
+}
+```
+
+* `document.modelContext` is typed as optional, so guard it with `if (document.modelContext)` before use.
+* With an inline `inputSchema`, the `execute` input type is inferred from the schema.
+* Named types such as `WebMCP.ModelContextTool` are global (no import needed), useful for typing tool factories.
+
 ## API Notes
 
 *   **annotations**: (Optional) A dictionary for tool metadata.
