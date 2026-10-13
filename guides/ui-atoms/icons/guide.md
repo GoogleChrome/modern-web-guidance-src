@@ -212,7 +212,7 @@ This `image-set()` pattern makes `content` invalid when the custom property is u
 
 ### Safari Browser Workarounds
 
-Safari has two bugs affecting icons (WebKit #301609, #320220): icons don't render until user interaction, and a related rendering issue. Apply this CSS fix to force immediate rendering:
+Safari has two rendering bugs affecting icons: WebKit [#301609](https://bugs.webkit.org/show_bug.cgi?id=301609) can prevent them from appearing until user interaction, and [#320220](https://bugs.webkit.org/show_bug.cgi?id=320220) also affects their rendering. The workaround below addresses both:
 
 ```css
 @keyframes webkit-301609 {}
