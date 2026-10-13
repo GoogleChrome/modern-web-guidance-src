@@ -18,7 +18,12 @@ Use CSS Masks and Container Style Queries to inject scalable vector icons into a
 
 ## Choosing an Icon Technique
 
-Use the **CSS icon system** when CSS should choose when and which icon to show. Use a mask for single-colour icons that should match the text colour, or a background image for full-colour icons. Use an **SVG sprite** to reuse icons from a shared file. Use **inline SVG** when you need to style or animate individual paths. Avoid recolouring `<img>` icons with CSS filters; they are a brittle workaround with limited control.
+Icon storage and rendering are separate choices: an SVG sprite can be used with `<use>` or as a CSS icon source.
+
+* **CSS icon system:** Use when CSS should choose the icon. Use a mask for single-colour icons or a background image for full-colour ones.
+* **Inline SVG:** Use when you need control over individual paths.
+
+With `<use>`, page CSS cannot select paths inside the referenced symbol. Inherited and custom properties can reach them if the paths use those properties, for example `fill="var(--icon-fill, currentColor)"`. For arbitrary path styling or animation, use inline SVG. Avoid recolouring `<img>` icons with CSS filters; they are brittle and offer limited control.
 
 If a page renders thousands of icons at once, benchmark the actual page and assets. In a stress test, inline SVG had a small performance advantage at that scale, but results depend on the browser and implementation. [Cloud Four's SVG icon stress test](https://cloudfour.com/thinks/svg-icon-stress-test/)
 
