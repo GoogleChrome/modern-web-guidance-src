@@ -51,6 +51,9 @@
       "reduce-style-repetition": [
         "task"
       ],
+      "selector-atrule-combinations": [
+        "daily-grind"
+      ],
       "size-aware-styling": [
         "daily-grind",
         "devtools-times"
