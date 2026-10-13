@@ -336,6 +336,21 @@ export function createInventoryTool(inventoryManager) {
 }
 ```
 
+## TypeScript Types
+
+In TypeScript projects, use the `webmcp-types` package (`github.com/webmachinelearning/webmcp-types`) from the `webmachinelearning` GitHub organization, which also hosts the WebMCP specification. **DO NOT** hand-write declarations for `document.modelContext`: they fall out of sync with the evolving specification.
+
+1. Install the package as a dev dependency: `npm install --save-dev webmcp-types`. It contains only type declarations (no runtime code) and requires TypeScript 5.0 or later.
+2. Load the package explicitly. It is not an `@types/*` package, so TypeScript does not pick it up automatically:
+    * If `tsconfig.json` already sets `compilerOptions.types`, add `"webmcp-types"` to that array and keep the existing entries.
+    * Otherwise, add `/// <reference types="webmcp-types" />` at the top of a `.d.ts` file that `tsconfig.json` includes (such as an existing `src/env.d.ts`). Creating a new `types` array can stop TypeScript from loading other `@types/*` packages.
+
+With the package loaded:
+
+* `document.modelContext` is typed as optional. Check it with `if (document.modelContext)` or use optional chaining before you call its methods. The `'modelContext' in document` check from the fallback section does not remove `undefined` from its type.
+* TypeScript infers the `execute` input type from an inline `inputSchema`, so you do not need to annotate it. Properties listed in `required` are required and the rest are optional. For example, in `calculate_area` above, `input` is inferred as `{ width: number; height: number }`.
+* For tool objects defined outside the `registerTool()` call, such as in the tool factory pattern, use the global `WebMCP.ModelContextTool` type. Its `execute` input is typed as `Record<string, unknown>`. To keep the inferred input type, declare the schema `as const` and use `WebMCP.ModelContextToolFromSchema<typeof schema>` instead.
+
 ## API Notes
 
 *   **annotations**: (Optional) A dictionary for tool metadata.
