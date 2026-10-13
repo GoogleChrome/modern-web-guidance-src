@@ -16,28 +16,11 @@ guides:
 
 Use CSS Masks and Container Style Queries to inject scalable vector icons into any element via CSS variables. This approach delivers zero-markup injection, dynamic color control, and automatic transitions without altering HTML structure.
 
-## Choosing the Right Technique
+## Choosing an Icon Technique
 
-Use this decision tree to select the appropriate icon technique for your use case:
+Use the **CSS icon system** for general UI icons that should be selected or changed through CSS, such as component defaults and interaction states. Use an **external SVG sprite with `<svg><use>`** when you want to reuse symbols defined in a shared SVG file. Use **inline SVG** when you need direct access to individual paths, such as for path-level animation or custom multi-color styling.
 
-1. **Does it need to animate internal vector paths, or use multiple colors in a single icon?**
-   * **Yes**: Use **Inline SVG**. This is the only way to gain full DOM access to the icon's internals.
-   * **No**: Proceed to step 2.
-2. **Is browser caching and performance of a long list of static icons a primary goal?**
-   * **Yes**: Keep the icon as an external file. Proceed to step 3.
-   * **No**: Use the **CSS-Driven Icon Engine** (CSS Masks + Style Queries). It is the cleanest, zero-markup approach for general UI.
-3. **Does it need to dynamically change the icon's color via CSS?**
-   * **Yes**: Use the **CSS-Driven Icon Engine** or **`<img>` + CSS filters**.
-   * **No**: Use a **Plain `<img>`** tag. This is the fastest, lowest-overhead method for static, immutable icons.
-
-### Comparison at a glance
-
-| Technique                     | Color Control        | Multi-color |    Animatable    | DOM Overhead | Cachable |
-| :---------------------------- | :------------------- | :---------: | :--------------: | :----------: | :------: |
-| **CSS-Driven Engine (Masks)** | Full (currentColor)  |      ❌      | ✅ (Tints/Sizing) |   0 Nodes    |    ✅     |
-| **Inline SVG**                | Full (CSS/DOM)       |      ✅      | ✅ (Vector paths) |     High     |    ❌     |
-| **`<img>` + CSS Filter**      | Partial (Color math) | ⚠️ (Limited) |   ✅ (Filters)    |    1 Node    |    ✅     |
-| **Plain `<img>`**             | None                 |      ❌      |        ❌         |    1 Node    |    ✅     |
+If a page renders thousands of icons at once, benchmark the actual page and assets. In a stress test, inline SVG had a small performance advantage at that scale, but results depend on the browser and implementation. [Cloud Four's SVG icon stress test](https://cloudfour.com/thinks/svg-icon-stress-test/)
 
 ## Primary Approach: CSS-Driven Icon Engine
 
