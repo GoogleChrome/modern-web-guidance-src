@@ -70,7 +70,7 @@ Infrastructure engineers focus on the tooling, CLI, test harness reliability, LL
 
 ## Development Setup
 
-This project is managed as a **pnpm workspace**. To set up your local environment:
+To set up your local environment (requires Node.js `>=22.18.0`):
 
 ```bash
 pnpm install
@@ -89,7 +89,8 @@ pnpm preflight
 
 ## Project Structure
 
-- **`guides/`**: Curated guide content organized by discipline (performance, user-experience, etc.), along with core development pipeline orchestration scripts.
+- **`guides/`**: Curated guide content organized by category (performance, css, forms, etc.).
+- **`src/authoring/`**, **`src/grading/`**, **`src/ci/`**, **`src/core/`**: Guide authoring pipeline (`gd dev`), Playwright grading engine, CI validation, and shared utilities.
 - **`src/harness/`**: The evaluation harness for executing and scoring agent tests. Contains agent runners, evaluation orchestration, and base applications.
 - **`src/build/`**, **`src/cli/`**, **`src/rag/`**: Infrastructure that compiles guides into semantic search indexes, builds the standalone CLI distribution, and orchestrates publishing all Skills to both the public npm registry and the GitHub distribution repository.
 - **`skills-src/`**: Source files and templates for standalone, topic-specific Agent Skills.

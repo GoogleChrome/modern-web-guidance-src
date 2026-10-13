@@ -37,8 +37,8 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     
     // =========================================================================
     // 1. RUNTIME EXECUTION DEPENDENCIES (in tempHome)
-    // Required so grader.ts runtime import `../../../../test-fixture.ts` (guides/test-fixture.ts proxy)
-    // and `src/grading/test-fixture.ts` -> `../core/patch-utils.ts` resolve during Playwright execution.
+    // Required so grader.ts runtime imports (`../../../../../src/grading/test-fixture.ts` or
+    // legacy `../../../../test-fixture.ts` proxy) and `../core/patch-utils.ts` resolve during Playwright execution.
     // =========================================================================
     fs.mkdirSync(path.join(tempHome, 'src', 'core'), { recursive: true });
     fs.copyFileSync(
