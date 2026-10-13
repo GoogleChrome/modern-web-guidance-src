@@ -1,0 +1,1 @@
+- Refactor the seasonal favorites cards into reusable UI components.
