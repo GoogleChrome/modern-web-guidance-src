@@ -36,12 +36,28 @@
     /* Safari bug workaround (WebKit #301609, #320220): Force ::before/::after recalculation */
     @keyframes webkit-301609 {}
 
-    @supports (-webkit-nbsp-mode: normal) and (content-visibility: auto) {
+    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
       @layer webkit-301609-fix {
 
         ::before,
         ::after {
           animation: webkit-301609 0s;
+        }
+      }
+    }
+
+    /* Safari workaround for WebKit #325900: preserve direct icon overrides */
+    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
+      @property --icon-start {
+        syntax: "*";
+        inherits: true;
+      }
+
+      @layer webkit-325900-fix {
+        @container style(--icon-start) {
+          * {
+            --icon-start: initial;
+          }
         }
       }
     }

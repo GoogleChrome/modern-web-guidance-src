@@ -50,6 +50,18 @@ The engine uses three CSS capabilities to render icons:
 
 Define SVG icons and the default `--icon-size` as reusable custom properties using inline SVG data URIs or root-relative URLs (e.g., `url("/icons/trash.svg")`). When an icon is loaded from an external SVG file, use a root-relative URL or an embedded data URI. A relative URL used through a custom property can resolve relative to the stylesheet where the icon is used, rather than the stylesheet where the custom property is defined. If those stylesheets are in different directories, the URL may resolve to the wrong file.
 
+To keep a URL relative to the stylesheet that defines the icon token, register the token as an `<image>` property and put the URL in `initial-value`:
+
+```css
+@property --icon-caret {
+  syntax: "<image>";
+  inherits: true;
+  initial-value: url("icons/caret.svg");
+}
+```
+
+This requires a registration for each icon token. Registered properties are global and do not work in shadow roots, so use this approach only where that fits; root-relative URLs are simpler otherwise.
+
 ```css
 :root {
   --icon-size: 1em;
@@ -200,7 +212,7 @@ Safari has two rendering bugs affecting icons: WebKit [#301609](https://bugs.web
 ```css
 @keyframes webkit-301609 {}
 
-@supports (-webkit-nbsp-mode: normal) and (content-visibility: auto) {
+@supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
   @layer webkit-301609-fix {
     ::before, ::after {
       animation: webkit-301609 0s;
