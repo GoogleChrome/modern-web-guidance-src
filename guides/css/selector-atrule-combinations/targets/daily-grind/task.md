@@ -1,0 +1,1 @@
+- Target elements based on the intersection or union of selectors and conditional @-rules while minimizing repetition.
