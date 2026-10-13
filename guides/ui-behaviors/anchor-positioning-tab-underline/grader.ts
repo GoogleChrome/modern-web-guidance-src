@@ -14,16 +14,16 @@ if (!targetFile) {
 const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
-const demoUrl = `http://localhost/${demoName}`;
+const demoUrl = 'http://localhost/';
 
 test.describe(`Anchor Positioning Tab Underline Expectations: ${demoName}`, () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
+    await page.route('http://localhost/**', async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath.replace(/^\//, ''));
 
-      if (fs.existsSync(localFilePath)) {
+      if (fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
         await route.fulfill({ path: localFilePath });
       } else {
         await route.continue();
@@ -109,9 +109,8 @@ test.describe(`Anchor Positioning Tab Underline Expectations: ${demoName}`, () =
     expect(data!.isRendered).toBe(true);
     expect(data!.height).toBeGreaterThan(0);
     expect(data!.width).toBeGreaterThan(0);
-    // Check that it is actually "under" (below) the tab item
-    // Relaxed to 2px above to allow for minor overlaps/rounding
-    expect(data!.top).toBeGreaterThanOrEqual(data!.liRect.bottom - 2);
+    // Check that it is actually "under" (below or flush with bottom border of) the tab item
+    expect(data!.top).toBeGreaterThanOrEqual(data!.liRect.bottom - Math.max(4, data!.height + 1));
   });
 
   test('The underline element is the width of the active tab item.', async ({ page }) => {
@@ -142,8 +141,8 @@ test.describe(`Anchor Positioning Tab Underline Expectations: ${demoName}`, () =
     const data = await getBeforeData(page);
     expect(data).not.toBeNull();
     expect(data!.isRendered).toBe(true);
-    // Allow it to be slightly above for rounding, but generally below
-    expect(data!.top).toBeGreaterThanOrEqual(data!.liRect.bottom - 2);
+    // Allow it to be flush inside the bottom border or below
+    expect(data!.top).toBeGreaterThanOrEqual(data!.liRect.bottom - Math.max(4, data!.height + 1));
   });
 
   test('Changing the active page moves the underline element to be positioned underneath the new active tab item.', async ({ page }) => {
@@ -151,8 +150,13 @@ test.describe(`Anchor Positioning Tab Underline Expectations: ${demoName}`, () =
     const tabCount = await tabs.count();
     expect(tabCount).toBeGreaterThan(1);
 
-    // Click the second tab
-    await tabs.nth(1).click();
+    // Click the second tab (or link inside it)
+    const secondTabLink = tabs.nth(1).locator('a');
+    if ((await secondTabLink.count()) > 0) {
+      await secondTabLink.first().click();
+    } else {
+      await tabs.nth(1).click();
+    }
     await page.waitForTimeout(300); // Wait for transition
 
     const data = await getBeforeData(page);

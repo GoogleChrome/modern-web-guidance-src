@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+index 66c9173..953f55b 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,144 @@
+       background: #3e2723;
+     }
+ 
++    /* Brew strength slider */
++    .slider-field {
++      max-width: 500px;
++      margin: 20px auto 0;
++      text-align: center;
++    }
++
++    .slider-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 0.5rem;
++    }
++
++    .slider-field label {
++      display: block;
++      font-weight: bold;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .slider-field output {
++      display: block;
++      font-weight: 600;
++      color: var(--primary);
++      font-variant-numeric: tabular-nums;
++    }
++
++    .slider-scale {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.85rem;
++      color: var(--text);
++      opacity: 0.8;
++      margin-top: 0.25rem;
++    }
++
++    input[type="range"] {
++      --slider-track-size: 0.5rem;
++      --slider-thumb-size: 1.25rem;
++      --slider-track-radius: 999px;
++      --slider-thumb-radius: 50%;
++      --slider-track-color: var(--secondary);
++      --slider-fill-color: var(--primary);
++      --slider-thumb-color: var(--slider-fill-color);
++      --slider-direction: to right;
++
++      /* reverse gradient direction for right-to-left layouts */
++      &:dir(rtl) {
++        --slider-direction: to left;
++      }
++
++      /* Read min and max from attributes; --control-value is synced by the script below. */
++      --attr-min: attr(min type(<number>), 0);
++      --attr-max: attr(max type(<number>), 100);
++      --control-value: attr(value type(<number>), 50);
++      --slider-progress: calc(
++        progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%
++      );
++
++      appearance: none;
++      -webkit-appearance: none;
++      inline-size: 100%;
++      block-size: 2.5rem; /* Preserve a generous interaction area. */
++      margin: 0;
++      padding: 0;
++      border: 0;
++      border-radius: 0;
++      background: transparent;
++      cursor: pointer;
++    }
++
++    input[type="range"]:dir(rtl),
++    [dir="rtl"] input[type="range"] {
++      --slider-direction: to left;
++    }
++
++    @supports not (opacity: progress(1, 0, 100)) {
++      input[type="range"] {
++        --slider-progress: calc(
++          (var(--control-value) - var(--attr-min)) /
++          (var(--attr-max) - var(--attr-min)) * 100%
++        );
++      }
++    }
++
++    /* WebKit/Blink. */
++    input[type="range"]::-webkit-slider-runnable-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: linear-gradient(
++        var(--slider-direction),
++        var(--slider-fill-color) var(--slider-progress),
++        var(--slider-track-color) var(--slider-progress)
++      );
++    }
++
++    input[type="range"]::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      margin-block-start: calc(
++        (var(--slider-track-size) - var(--slider-thumb-size)) / 2
++      );
++      border: 0;
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++    }
++
++    /* Firefox. */
++    input[type="range"]::-moz-range-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-track-color);
++    }
++
++    input[type="range"]::-moz-range-progress {
++      block-size: var(--slider-track-size);
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-fill-color);
++    }
++
++    input[type="range"]::-moz-range-thumb {
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      border: 0;
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++    }
++
++    input[type="range"]:focus-visible {
++      outline: 2px solid var(--slider-fill-color);
++      outline-offset: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +333,29 @@
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Brew Your Way</h2>
++      <div class="slider-field">
++        <div class="slider-header">
++          <label for="range-slider">Brew strength</label>
++          <output for="range-slider" id="strength-output">Medium (3 of 5)</output>
++        </div>
++        <input
++          type="range"
++          id="range-slider"
++          min="1"
++          max="5"
++          step="1"
++          value="3"
++          aria-valuetext="Medium (3 of 5)"
++        >
++        <div class="slider-scale" aria-hidden="true">
++          <span>Mild</span>
++          <span>Extra bold</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +368,43 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const slider = document.querySelector('#range-slider');
++    const output = document.querySelector('#strength-output');
++    const labels = ['Mild', 'Light', 'Medium', 'Strong', 'Extra bold'];
++
++    function syncSliderValue() {
++      if (!slider) return;
++      const min = slider.min === '' ? 0 : Number(slider.min);
++      const max = slider.max === '' ? 100 : Number(slider.max);
++      const val = Number(slider.value);
++
++      slider.style.setProperty('--attr-min', String(slider.min || 0));
++      slider.style.setProperty('--attr-max', String(slider.max || 100));
++      slider.style.setProperty('--control-value', String(slider.value));
++
++      const progress = max > min ? ((val - min) / (max - min)) * 100 : 0;
++      slider.style.setProperty('--slider-progress', `${progress}%`);
++
++      const labelIndex = Math.min(Math.max(val - min, 0), labels.length - 1);
++      const labelText = labels[labelIndex] || 'Custom';
++      const text = `${labelText} (${val} of ${max})`;
++      slider.setAttribute('aria-valuetext', text);
++      if (output) {
++        output.textContent = text;
++        output.value = text;
++      }
++    }
++
++    syncSliderValue();
++    slider.addEventListener('input', syncSliderValue);
++    slider.addEventListener('change', syncSliderValue);
++
++    new MutationObserver(syncSliderValue).observe(slider, {
++      attributes: true,
++      attributeFilter: ['min', 'max', 'value', 'step'],
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..7ed8f13 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "node -e 'process.exit(0)'"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
