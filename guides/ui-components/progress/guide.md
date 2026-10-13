@@ -175,7 +175,7 @@ In addition to the guidelines mentioned above:
 
 {{ FEATURE_FALLBACKS("accent-color") }}
 
-If `accent-color` property is a progressive enhancement. Browsers that do not support it will use their default system colors, maintaining a functional experience.
+The `accent-color` property is a progressive enhancement. Browsers that do not support it will use their default system colors, maintaining a functional experience.
 
 If `accent-color` is not supported and styling the progress bar is required, use the customized styling method to apply preferred styling to the progress bar.
 
