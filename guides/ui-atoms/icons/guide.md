@@ -120,18 +120,9 @@ This block handles the injection, sizing, masking, and automatic layout adjustme
 
 ### 4. Standalone and Icon-Only Element Forwarding
 
-For standalone icons or buttons that have no text (e.g. icon-only controls), establish an empty `.icon` class that forwards a general `--icon` property to `--icon-start`:
+For standalone icons or icon-only buttons, apply `.icon` directly to the empty element (the button itself for an icon-only control) and set its icon with `--icon`. The class forwards `--icon` to `--icon-start`:
 
 ```css
-.icon {
-  display: inline-block;
-  width: var(--icon-size);
-  height: var(--icon-size);
-  vertical-align: middle;
-  flex-shrink: 0;
-  color: inherit;
-}
-
 .icon:empty {
   --icon-start: var(--icon);
 }
@@ -151,13 +142,11 @@ Attach an icon to a button or other element by setting `--icon-start` or `--icon
 
 ### Icon-Only Controls
 
-For icon-only buttons, mark the empty `.icon` element with `aria-hidden="true"` and place `aria-label` on the button. For standalone informative icons, expose the `.icon` element with `role="img"` and `aria-label`:
+Put the `.icon` class and `--icon` property directly on an icon-only button. Give the button an accessible name with `aria-label`; the CSS-generated icon is decorative. For standalone informative icons, expose the `.icon` element with `role="img"` and `aria-label`:
 
 ```html
 <!-- Icon-only interactive control -->
-<button aria-label="Delete item">
-  <span class="icon" style="--icon: var(--icon-trash);" aria-hidden="true"></span>
-</button>
+<button class="icon" style="--icon: var(--icon-trash);" aria-label="Delete item"></button>
 
 <!-- Standalone informative icon -->
 <span class="icon" style="--icon: var(--icon-favorite);" role="img" aria-label="Favorite"></span>

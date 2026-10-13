@@ -75,13 +75,9 @@
       color: #ef4444;
     }
 
-    /* Standalone empty icon element */
+    /* Icon-only buttons and standalone icons */
     .icon {
-      display: inline-block;
-      width: var(--icon-size);
-      height: var(--icon-size);
       vertical-align: middle;
-      flex-shrink: 0;
       color: inherit;
     }
 
@@ -140,8 +136,8 @@
     /* --------------------------------------------------
      ROBUST COMPATIBILITY FALLBACK (Style Queries Lack of Support)
      -------------------------------------------------- */
-    /* Injection fallback for start icons using inline style attribute matching */
-    [style*="--icon-start"]::before {
+    /* Class-hook fallback for start icons */
+    .icon-start::before {
       --icon-start: inherit;
       content: "";
       display: inline-block;
@@ -155,12 +151,12 @@
       transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
     }
 
-    [style*="--icon-start"]:not(.icon, :empty)::before {
+    .icon-start:not(.icon, :empty)::before {
       margin-inline-end: 0.4em;
     }
 
-    /* Injection fallback for end icons */
-    [style*="--icon-end"]::after {
+    /* Class-hook fallback for end icons */
+    .icon-end::after {
       --icon-end: inherit;
       content: "";
       display: inline-block;
@@ -174,12 +170,12 @@
       transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
     }
 
-    [style*="--icon-end"]:not(.icon, :empty)::after {
+    .icon-end:not(.icon, :empty)::after {
       margin-inline-start: 0.4em;
     }
 
     /* Standalone empty icon forwarding logic fallback */
-    .icon:empty[style*="--icon"]::before {
+    .icon:empty::before {
       content: "";
       display: inline-block;
       width: var(--icon-size);
@@ -198,35 +194,27 @@
   <section style="padding: 1rem; font-family: system-ui, sans-serif;">
     <h2>Modern CSS Icons Demo</h2>
 
-    <p><strong>1. Icon-only button</strong> (accessible name via aria-label on the button, empty span inside)</p>
-    <button aria-label="Delete item">
-      <span class="icon" style="--icon: var(--icon-trash);" aria-hidden="true"></span>
-    </button>
+    <p><strong>1. Icon-only button</strong> (icon applied directly; accessible name via aria-label)</p>
+    <button class="icon" style="--icon: var(--icon-trash);" aria-label="Delete item"></button>
     <br />
-    <button aria-label="Favourite item">
-      <span class="icon" style="--icon: var(--icon-favourite);" aria-hidden="true"></span>
-    </button>
+    <button class="icon" style="--icon: var(--icon-favourite);" aria-label="Favourite item"></button>
     <hr />
 
     <p><strong>2. Zero extra markup icons</strong> (icon applied directly via CSS property on the parent container,
       visible text provides accessible name)</p>
-    <button style="--icon-start: var(--icon-trash);">
+    <button class="icon-start" style="--icon-start: var(--icon-trash);">
       delete item
     </button>
     <br />
-    <button style="--icon-end: var(--icon-favourite);">
+    <button class="icon-end" style="--icon-end: var(--icon-favourite);">
       favourite item
     </button>
     <hr />
 
     <p><strong>3. Styled context icon-only buttons</strong> (danger theme, utilizing inheritcurrentColor properties)</p>
-    <button aria-label="Delete item" class="button--danger">
-      <span class="icon" style="--icon: var(--icon-trash);" aria-hidden="true"></span>
-    </button>
+    <button class="icon button--danger" style="--icon: var(--icon-trash);" aria-label="Delete item"></button>
     <br />
-    <button aria-label="Remove from favourites" class="button--danger">
-      <span class="icon" style="--icon: var(--icon-favourite);" aria-hidden="true"></span>
-    </button>
+    <button class="icon button--danger" style="--icon: var(--icon-favourite);" aria-label="Remove from favourites"></button>
     <hr />
 
     <p><strong>4. Standalone meaningful icon</strong> (with role="img" and accessible name)</p>
