@@ -183,16 +183,19 @@ To support browsers without Container Style Queries, use classes or component se
 ```css
 :where(.icon-start)::before {
   --icon-start: inherit;
+  content: image-set(linear-gradient(transparent 0 100%), var(--icon-start));
   /* icon styles */
 }
 
 :where(.icon-end)::after {
   --icon-end: inherit;
+  content: image-set(linear-gradient(transparent 0 100%), var(--icon-end));
   /* icon styles */
 }
 
 :where(.icon:empty)::before {
   --icon-start: var(--icon);
+  content: image-set(linear-gradient(transparent 0 100%), var(--icon-start));
   /* icon styles */
 }
 
@@ -204,6 +207,8 @@ To support browsers without Container Style Queries, use classes or component se
   margin-inline-start: 0.4em;
 }
 ```
+
+This `image-set()` pattern makes `content` invalid when the custom property is unset, so it falls back to `none` and the pseudo-element disappears without adding or removing a class. It does not remove the pseudo-element's other styles or prevent conflicts with other `::before` or `::after` rules, so use these hooks only where those pseudo-elements are available for icons.
 
 ### Safari Browser Workarounds
 

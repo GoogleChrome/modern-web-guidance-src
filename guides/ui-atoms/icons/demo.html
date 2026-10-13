@@ -137,9 +137,9 @@
      ROBUST COMPATIBILITY FALLBACK (Style Queries Lack of Support)
      -------------------------------------------------- */
     /* Class-hook fallback for start icons */
-    .icon-start::before {
+    :where(.icon-start)::before {
       --icon-start: inherit;
-      content: "";
+      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start));
       display: inline-block;
       width: var(--icon-size);
       height: var(--icon-size);
@@ -151,14 +151,14 @@
       transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
     }
 
-    .icon-start:not(.icon, :empty)::before {
+    :where(.icon-start:not(.icon, :empty))::before {
       margin-inline-end: 0.4em;
     }
 
     /* Class-hook fallback for end icons */
-    .icon-end::after {
+    :where(.icon-end)::after {
       --icon-end: inherit;
-      content: "";
+      content: image-set(linear-gradient(transparent 0 100%), var(--icon-end));
       display: inline-block;
       width: var(--icon-size);
       height: var(--icon-size);
@@ -170,13 +170,14 @@
       transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
     }
 
-    .icon-end:not(.icon, :empty)::after {
+    :where(.icon-end:not(.icon, :empty))::after {
       margin-inline-start: 0.4em;
     }
 
     /* Standalone empty icon forwarding logic fallback */
-    .icon:empty::before {
-      content: "";
+    :where(.icon:empty)::before {
+      --icon-start: var(--icon);
+      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start));
       display: inline-block;
       width: var(--icon-size);
       height: var(--icon-size);

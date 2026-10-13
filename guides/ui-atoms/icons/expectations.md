@@ -1,6 +1,6 @@
 - Custom properties `--icon-start` and `--icon-end` are registered using `@property` with `syntax: "*"` and `inherits: false`.
 - CSS Container Style Queries (`@container style(...)`) are used to dynamically detect and render `--icon-start` and `--icon-end` custom properties.
-- A compatibility fallback using class hooks (such as `.icon-start`, `.icon-end`, and `.icon:empty`) is provided so icons assigned by CSS render in environments lacking CSS Container Style Queries support.
+- A compatibility fallback using zero-specificity class hooks (such as `:where(.icon-start)`, `:where(.icon-end)`, and `:where(.icon:empty)`) is provided so CSS-assigned icons render in browsers without Container Style Queries; `content: image-set(linear-gradient(transparent 0 100%), var(--icon-start))` ensures the pseudo-element content becomes `none` when no icon is set.
 - The Safari rendering workaround (WebKit #301609, #320220) applies a zero-duration `@keyframes` animation (e.g., `@keyframes webkit-301609 {}`) to `::before` and `::after` inside `@supports (-webkit-nbsp-mode: normal) and (content-visibility: auto)` so icons render immediately on load.
 - Icons are rendered using CSS `mask` inside the container style query blocks on pseudo-elements (`::before` and `::after`).
 - Icons are colored using `currentColor` (via `background-color: currentColor` on the pseudo-element) so they automatically inherit and transition with the parent element's text color.
