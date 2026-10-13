@@ -195,6 +195,9 @@
       "improve-next-page-load-performance": [
         "task"
       ],
+      "interaction-paint-timing": [
+        "daily-grind"
+      ],
       "interactions-in-complex-layouts": [
         "task"
       ],
