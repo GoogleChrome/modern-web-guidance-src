@@ -48,12 +48,19 @@ interface SkippedGap {
   reason: string;
 }
 
+export interface PrReviewContext {
+  branchCommits?: string;
+  branchDiff?: string;
+  comments?: string;
+}
+
 export interface FixEvalGapsOptions {
   dryRun?: boolean;
   limit?: number;
   verbose?: boolean;
   suiteConfig?: SuiteConfig;
   targets?: readonly string[];
+  prContext?: PrReviewContext;
 }
 
 function getRerunMode(pr: OpenPr): DevPrRerunLabel | undefined {
@@ -169,6 +176,72 @@ export const evalGapFixCli = {
     { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
   )),
   scanGuides: (): GuideInventory[] => scanAllGuides(),
+  fetchPrReviewContext: (prNumber: number, _branch?: string): PrReviewContext => {
+    let branchCommits = '';
+    let branchDiff = '';
+    let comments = '';
+
+    try {
+      branchCommits = git(['log', '--oneline', 'origin/main..HEAD']);
+    } catch {}
+
+    try {
+      branchDiff = git(['diff', 'origin/main..HEAD']);
+    } catch {}
+
+    try {
+      const viewJson = JSON.parse(child_process.execFileSync(
+        'gh',
+        ['pr', 'view', String(prNumber), '--json', 'comments,reviews'],
+        { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+      ));
+
+      const commentLines: string[] = [];
+      if (Array.isArray(viewJson.comments)) {
+        for (const c of viewJson.comments) {
+          const author = c.author?.login || 'unknown';
+          const body = (c.body || '').trim();
+          if (body) {
+            commentLines.push(`- **@${author}** commented:\n${body}`);
+          }
+        }
+      }
+      if (Array.isArray(viewJson.reviews)) {
+        for (const r of viewJson.reviews) {
+          const author = r.author?.login || 'unknown';
+          const body = (r.body || '').trim();
+          const state = r.state || 'REVIEW';
+          if (body) {
+            commentLines.push(`- **@${author}** (${state}):\n${body}`);
+          }
+        }
+      }
+
+      // Also try fetching inline review comments via gh api
+      try {
+        const reviewCommentsJson = JSON.parse(child_process.execFileSync(
+          'gh',
+          ['api', `repos/{owner}/{repo}/pulls/${prNumber}/comments`],
+          { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+        ));
+        if (Array.isArray(reviewCommentsJson)) {
+          for (const rc of reviewCommentsJson) {
+            const author = rc.user?.login || 'unknown';
+            const file = rc.path || 'unknown';
+            const line = rc.line || rc.original_line || '';
+            const body = (rc.body || '').trim();
+            if (body) {
+              commentLines.push(`- **@${author}** on \`${file}${line ? `:${line}` : ''}\`:\n${body}`);
+            }
+          }
+        }
+      } catch {}
+
+      comments = commentLines.join('\n\n');
+    } catch {}
+
+    return { branchCommits, branchDiff, comments };
+  },
   runDevGuide: async (inv: GuideInventory, options: FixEvalGapsOptions): Promise<boolean> => {
     const { devGuide } = await import('./dev.ts');
     return devGuide(inv.dir, {
@@ -176,6 +249,7 @@ export const evalGapFixCli = {
       verbose: options.verbose,
       suiteConfig: options.suiteConfig,
       targets: options.targets ?? ['daily-grind'],
+      prContext: options.prContext,
     });
   },
   runDevPr,
@@ -200,9 +274,13 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
 
   let outcome: Outcome;
   try {
+    let prContext = options.prContext;
     if (gap.rerunMode) {
       createdBranch = true;
       evalGapFixCli.checkoutPrBranch(branch);
+      if (gap.prNumber) {
+        prContext = evalGapFixCli.fetchPrReviewContext(gap.prNumber, branch);
+      }
       if (gap.rerunMode === 'needs-eval-gen') {
         for (const t of targets) {
           fs.rmSync(path.join(inv.dir, TARGETS_DIR, t), { recursive: true, force: true });
@@ -214,7 +292,7 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
     const resultsDir = getGuideResultsDir(inv);
     fs.rmSync(resultsDir, { recursive: true, force: true });
 
-    const devOk = await evalGapFixCli.runDevGuide(inv, { ...options, targets });
+    const devOk = await evalGapFixCli.runDevGuide(inv, { ...options, targets, prContext });
     if (!devOk || !fs.existsSync(path.join(resultsDir, REPORT_FILE))) {
       outcome = { gap, status: 'dev-failed', detail: devOk ? `gd dev wrote no ${REPORT_FILE}` : 'gd dev failed' };
     } else {

@@ -47,6 +47,11 @@ export interface DevGuideOptions {
   verbose?: boolean;
   suiteConfig?: SuiteConfig;
   targets?: readonly string[];
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+  };
 }
 
 function printInventory(inv: GuideInventory, targets: readonly string[] = SUPPORTED_BASE_APPS): void {
@@ -207,7 +212,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 5: Run evaluation report (printed last)
   if (options.test !== false && overallSuccess) {
-    await runDevReport(targetDir, currentInv, targets);
+    await runDevReport(targetDir, currentInv, targets, options.prContext);
   }
 
   return overallSuccess;

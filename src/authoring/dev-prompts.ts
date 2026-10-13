@@ -203,6 +203,11 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 export interface DevReportPromptOptions {
   guideName: string;
   targets: TargetEvalSummary[];
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+  };
 }
 
 export function buildDevReportPrompt(opts: DevReportPromptOptions): string {
@@ -212,8 +217,30 @@ export function buildDevReportPrompt(opts: DevReportPromptOptions): string {
 - **Flag Details**: ${t.flagDetails}`;
   }).join('\n\n');
 
-  return `# GOAL
-Analyze the evaluation test results across all target applications for the guide \`${opts.guideName}\`, conduct a thorough root-cause investigation for each target based on its flagged status, and complete the \`### Diagnostic Analysis & Actionable Recommendations\` section under each target in \`${REPORT_FILE}\`.
+  let prContextBlock = '';
+  if (opts.prContext && (opts.prContext.comments || opts.prContext.branchDiff || opts.prContext.branchCommits)) {
+    const parts: string[] = ['# EXISTING PULL REQUEST & REVIEW CONTEXT'];
+    if (opts.prContext.branchCommits) {
+      parts.push(`## Branch Commits against main:\n\`\`\`\n${opts.prContext.branchCommits.trim()}\n\`\`\``);
+    }
+    if (opts.prContext.branchDiff) {
+      parts.push(`## Branch Diff against main:\n\`\`\`diff\n${opts.prContext.branchDiff.trim()}\n\`\`\``);
+    }
+    if (opts.prContext.comments) {
+      parts.push(`## PR Comments & Reviewer Feedback:\n${opts.prContext.comments.trim()}`);
+    }
+    parts.push(`\n> [!IMPORTANT]\n> This is a subsequent pass on an open pull request. You MUST carefully review the PR comments, ATL/reviewer feedback, and existing branch commits/diff above.\n> - Honor reviewer feedback and requested changes directly in your recommendations and file updates.\n> - Address reviewer concerns without blindly overwriting human-authored changes.\n> - If reviewer feedback conflicts with prior automated suggestions, defer to the human reviewer's guidance.\n`);
+    prContextBlock = '\n' + parts.join('\n\n') + '\n';
+  }
+
+  return `${prContextBlock}# GOAL
+Analyze the evaluation test results across all target applications for the guide \`${opts.guideName}\`, conduct a thorough root-cause investigation for each target based on its flagged status, complete the \`### Diagnostic Analysis & Actionable Recommendations\` section under each target in \`${REPORT_FILE}\`, and directly apply recommended modifications to the relevant files in the workspace (\`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, \`targets/<target>/task.md\`, \`targets/<target>/grader.ts\`).
+
+# DIRECT FILE UPDATES REQUIREMENT
+Whenever you determine that changes are needed in \`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, or any target files (\`targets/<target>/task.md\`, \`targets/<target>/grader.ts\`), you MUST:
+1. Directly modify those files in your workspace using your structured file editing tools.
+2. In addition, document your changes in \`${REPORT_FILE}\` under \`#### Actionable Recommendations:\` with a clear explanation and a unified \`diff\` block illustrating the changes applied.
+Do not leave recommended changes only as diff text in the report; always apply them directly to disk.
 
 # INPUTS
 1. **Guide**: \`${GUIDE_FILE}\`
@@ -295,5 +322,5 @@ For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching 
 \`\`\`
 
 # INSTRUCTION
-When editing the report, you MUST use your built-in structured file editing tools (e.g., replace or write_file) to update \`${REPORT_FILE}\`.`;
+When editing the report and applying recommendations to code or guidance files, you MUST use your built-in structured file editing tools (e.g., replace or write_file). Do not use shell commands (like cat, echo, or heredocs <<) to create or edit files in the terminal. Remember to apply all recommended file modifications directly to the files in your workspace in addition to updating \`${REPORT_FILE}\`.`;
 }

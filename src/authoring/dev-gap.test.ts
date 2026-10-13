@@ -223,6 +223,35 @@ describe('fixEvalGaps', () => {
     ]);
   });
 
+  it('fetches PR review context and passes it to runDevGuide on PR reruns', async () => {
+    const guide = tempGuide('scrollspy');
+    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-eval-run'], 'gd-dev/scrollspy')];
+
+    let passedPrContext: any = null;
+    evalGapFixCli.fetchPrReviewContext = (prNum, branch) => {
+      calls.push(`fetch-context #${prNum} ${branch}`);
+      return {
+        branchCommits: 'commit 123',
+        branchDiff: '+diff',
+        comments: '- **@reviewer**: fix this',
+      };
+    };
+    evalGapFixCli.runDevGuide = async (inv, opts) => {
+      passedPrContext = opts.prContext;
+      fs.mkdirSync(resultsDir(inv), { recursive: true });
+      fs.writeFileSync(path.join(resultsDir(inv), REPORT_FILE), '# Report\n');
+      return true;
+    };
+
+    assert.strictEqual(await run([guide]), true);
+    assert.deepStrictEqual(passedPrContext, {
+      branchCommits: 'commit 123',
+      branchDiff: '+diff',
+      comments: '- **@reviewer**: fix this',
+    });
+    assert.ok(calls.includes('fetch-context #42 gd-dev/scrollspy'));
+  });
+
   it('defaults targets to daily-grind and respects custom targets', async () => {
     const guide = tempGuide('scrollspy');
     const seenTargets: (readonly string[] | undefined)[] = [];

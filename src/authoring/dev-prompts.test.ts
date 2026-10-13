@@ -165,6 +165,36 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('needs-eval-gen'));
   assert.ok(prompt.includes('needs-eval-run'));
   assert.ok(prompt.includes('```diff'));
+  assert.ok(prompt.includes('DIRECT FILE UPDATES REQUIREMENT'));
+});
+
+test('buildDevReportPrompt includes PR context and reviewer feedback instructions when provided', () => {
+  const prompt = buildDevReportPrompt({
+    guideName: 'dialog',
+    targets: [
+      {
+        baseApp: 'daily-grind',
+        flag: 'LOW_GUIDED_PASS_RATE',
+        flagDetails: 'Guided pass rate is 50%',
+        guidedPassRate: 50,
+        unguidedPassRate: 20,
+      },
+    ],
+    prContext: {
+      branchCommits: '2657f38 Rename modal-dialog stub to dialog\n2f85978 Add modal-dialog use case stub',
+      branchDiff: '+# Dialog\n+Some notes...',
+      comments: '- **@LeaVerou** commented:\nOther guides that might be relevant: drag, animate-to-from-top-layer',
+    },
+  });
+
+  assert.ok(prompt.includes('EXISTING PULL REQUEST & REVIEW CONTEXT'));
+  assert.ok(prompt.includes('Branch Commits against main'));
+  assert.ok(prompt.includes('2657f38 Rename modal-dialog stub to dialog'));
+  assert.ok(prompt.includes('Branch Diff against main'));
+  assert.ok(prompt.includes('PR Comments & Reviewer Feedback'));
+  assert.ok(prompt.includes('LeaVerou'));
+  assert.ok(prompt.includes('Honor reviewer feedback'));
+  assert.ok(prompt.includes('without blindly overwriting human-authored changes'));
 });
 
 import { rootDir } from '../core/paths.ts';

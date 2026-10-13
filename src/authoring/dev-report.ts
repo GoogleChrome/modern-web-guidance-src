@@ -139,7 +139,12 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
 export async function runDevReport(
   targetDir: string,
   guideInfo?: Partial<GuideResultsInventory>,
-  targets: readonly string[] = SUPPORTED_BASE_APPS
+  targets: readonly string[] = SUPPORTED_BASE_APPS,
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+  }
 ): Promise<void> {
   console.log(cCyan(`\n--- Running Evaluation Report ---`));
 
@@ -182,12 +187,27 @@ export async function runDevReport(
     const reportPrompt = buildDevReportPrompt({
       guideName,
       targets: summaries,
+      prContext,
     });
 
-    console.log(cCyan(`Invoking ${agent} to perform qualitative evaluation report...`));
+    console.log(cCyan(`Invoking ${agent} to perform qualitative evaluation report and apply recommended file updates...`));
     await runAgent(agent, reportPrompt, workDir, { homeDir: tempHome });
 
     fs.copyFileSync(workReportPath, finalReportPath);
+
+    // Sync any modified guide, expectations, and target files back to targetDir
+    const workGuideFile = path.join(workDir, GUIDE_FILE);
+    if (fs.existsSync(workGuideFile)) {
+      fs.copyFileSync(workGuideFile, path.join(targetDir, GUIDE_FILE));
+    }
+    const workExpFile = path.join(workDir, EXPECTATIONS_FILE);
+    if (fs.existsSync(workExpFile)) {
+      fs.copyFileSync(workExpFile, path.join(targetDir, EXPECTATIONS_FILE));
+    }
+    const workTargetsDir = path.join(workDir, 'targets');
+    if (fs.existsSync(workTargetsDir)) {
+      fs.cpSync(workTargetsDir, path.join(targetDir, TARGETS_DIR), { recursive: true });
+    }
   } finally {
     fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
   }
