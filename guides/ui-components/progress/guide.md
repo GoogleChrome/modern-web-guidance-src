@@ -5,6 +5,8 @@ web-feature-ids:
   - accent-color
   - progress
   - tmp-revert-rule
+  - container-queries
+  - individual-transforms
 ---
 
 # Build a Styled Progress Bar
@@ -89,14 +91,31 @@ progress::-moz-progress-bar {
 
 **Add a custom animation for the indeterminate state:** Turn the fill pseudo-element into a short segment and slide it along the track.
 - Style the fill itself; do NOT recreate it as a background on `progress`.
-- The indeterminate fill exists only through its animation: the keyframes set both its position (`margin-inline-start`) and its length (`inline-size`). Animations beat Chromium's UA inline `inline-size`, so no other sizing is needed. Do NOT set `min-inline-size` or `inline-size` on the pseudo-elements; it would clamp keyframes that vary the length.
+- The indeterminate fill exists only through its animation: the keyframes set its length with a real `inline-size` (this beats Chromium's UA inline `inline-size`) and move it with `translate`. Do NOT use `scale` for the length; it distorts any pattern painted on the fill.
+- `translate` percentages resolve against the fill's own width, so express positions in track units instead: make `progress` an inline-size container and use `cqi` in the keyframes. Include `margin-right: auto` in `from, to` so Chromium lays the fill out at the physical left in RTL too.
+- Use transforms, not margins, to move the fill.
+  - Transforms keep the animation in the compositor (unless `inline-size` is also being animated)
+  - Margins break in RTL, for two separate reasons:
+    - Firefox positions the indeterminate fill using only its physical left margin, so `margin-inline-start` has no effect in RTL and the fill never moves.
+    - In Chromium and WebKit, which lay the fill out as a normal block, once a margin pushes the fill past the end of the track the margins add up to more than the track. Standard CSS resolves that by ignoring `margin-left` in RTL, so the segment jumps to the edge instead of sliding off it.
+  - `translate` is applied after layout, so neither problem applies.
+- To mirror the motion in RTL (as Chrome's native bar does), reverse the animation under `:dir(rtl)`:
+
+```css
+progress:dir(rtl) {
+  --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
+}
+```
+
 - Define the public `--progress-bar-indeterminate-*` properties on `progress` (their name already scopes them to the state) so consumers can override them without knowing about `:indeterminate`.
-- To vary the segment length (e.g. the leading edge races ahead and the trailing edge catches up), supply different keyframes via `--progress-bar-indeterminate-animation` and animate the two edges independently: `margin-inline-end` for the leading edge, `margin-inline-start` for the trailing edge, with `inline-size: auto` in `from, to`. Per-keyframe `animation-timing-function` gives each edge its own easing.
+- To vary the segment length (e.g. the leading edge races ahead and the trailing edge catches up), set `--progress-bar-indeterminate-animation` to two concurrent animations: one whose keyframes animate `translate` in `cqi` (position) and one whose keyframes animate `inline-size` (length), so each gets its own keyframes and easing. Do NOT try to shape both edges in a single keyframe list; per-keyframe `animation-timing-function` applies to every property in that keyframe.
 - `--progress-bar-animation` applies in both states and can be used for effects such as a determinate shimmer. `revert-rule` is used to only override when it is set, to maximize composability.
 - Never disable the indeterminate animation (`animation: none` leaves a zero-width fill in Chromium). For reduced motion, slow it down instead.
 
 ```css
 progress {
+  /* Lets the fill position itself in track units (cqi) */
+  container-type: inline-size;
   /* Segment length relative to the track */
   --progress-bar-indeterminate-size: 30%;
   --progress-bar-indeterminate-animation-duration: 1.5s;
@@ -123,12 +142,15 @@ progress::-moz-progress-bar {
   animation: var(--progress-bar-animation, revert-rule);
 }
 
-/* Logical property: the segment travels from inline-start to inline-end in both LTR and RTL.
-   The keyframes also own the segment length. */
+/* Physical: left to right regardless of direction (reverse under :dir(rtl) to mirror). */
 @keyframes progress-bar-indeterminate {
-  from, to { inline-size: var(--progress-bar-indeterminate-size); }
-  from { margin-inline-start: calc(-1 * var(--progress-bar-indeterminate-size)); }
-  to { margin-inline-start: 100%; }
+  from, to {
+    inline-size: var(--progress-bar-indeterminate-size);
+    /* Pin to the physical left; Chromium would otherwise lay the fill out at the inline start */
+    margin-right: auto;
+  }
+  from { translate: -100%; } /* Own width: fully outside the left edge */
+  to { translate: 100cqi; }  /* Track width: fully outside the right edge */
 }
 ```
 
@@ -147,8 +169,6 @@ In addition to the guidelines mentioned above:
 If `accent-color` property is a progressive enhancement. Browsers that do not support it will use their default system colors, maintaining a functional experience.
 
 If `accent-color` is not supported and styling the progress bar is required, use the customized styling method to apply preferred styling to the progress bar.
-
-**Firefox RTL indeterminate:** Gecko positions the indeterminate fill at the physical left and applies only the physical left margin (`nsProgressFrame::ReflowChildFrame`), so in RTL the sliding segment stays still. Determinate bars are unaffected. Until this is fixed in Firefox, there is no logical-property workaround; if RTL motion in Firefox is required, pin the fill to the physical left in Chromium too (`margin-right: auto` on `::-webkit-progress-value`), animate `translate` instead of `margin-inline-start`, and set `animation-direction: reverse` under `progress:indeterminate:dir(rtl)`.
 
 {{ BASELINE_STATUS('tmp-revert-rule') }}
 
