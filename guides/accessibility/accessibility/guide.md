@@ -17,7 +17,8 @@ Contents:
 - [1. Content Navigability and Structure](#1-content-navigability-and-structure)
   - [Landmarks](#landmarks)
   - [Headings](#headings)
-  - [Lists and tables](#lists-and-tables)
+  - [Lists](#lists)
+  - [Tables](#tables)
   - [Skip links](#skip-links)
 - [2. Semantic HTML and ARIA](#2-semantic-html-and-aria)
   - [Prefer native HTML](#prefer-native-html)
@@ -60,61 +61,88 @@ Contents:
   - [Automated checks](#automated-checks)
   - [Manual testing](#manual-testing)
 
-
 ## 1. Content Navigability and Structure
+
+Related WCAG Success Criteria:
+
+- [WCAG Success Criterion 1.3.1 Info and Relationships (Level A)](https://www.w3.org/TR/WCAG22/#info-and-relationships)
+- [WCAG Success Criterion 1.3.6 Identify Purpose (Level AAA)](https://www.w3.org/TR/WCAG22/#identify-purpose)
+- [WCAG Success Criterion 2.4.1 Bypass Blocks (Level A)](https://www.w3.org/TR/WCAG22/#bypass-blocks)
 
 ### Landmarks
 
-- **Place all content within landmarks**: Wrap each relevant part of the page in `<header>`, `<nav>`, `<main>`, `<aside>`, and `<footer>` elements so assistive-tech users can jump between regions.
-- **Don't overuse landmarks**: Too many landmarks dilute their value. In particular, avoid labeling a `<section>` (which turns it into a `region` landmark) — `region` should be a last resort when no other landmark fits.
+- **Do** place all content within landmarks: Wrap each relevant part of the page in `<header>`, `<nav>`, `<main>`, `<aside>`, and `<footer>` elements so assistive-tech users can jump between regions.
+- **Do** use the correct landmark: Don't include non-navigational content in a `<nav>` element.
+- **Do** use one `<main>` landmark per page: Multiple `<main>` elements on a single page can confuse assistive-tech users trying to locate the page's main content section.
+- **Do** provide easily distinguishable accessible names for navigation regions: If a page contains multiple `<nav>` elements, apply the `aria-label` attribute to each element and set its value to an easily distinguishable accessible name for the region. For example: `<nav aria-label="Primary">`, `<nav aria-label="Secondary">`, and so on
+- **Don't** overuse landmarks: Too many landmarks dilute their value. In particular, avoid labeling a `<section>` (which turns it into a `region` landmark) — `region` should be a last resort when no other landmark fits.
 
 ### Headings
 
-- **Structure main content with headings**: Use `<h1>`–`<h6>` sequentially (no jumping `<h1>` → `<h4>`) so screen-reader users get a navigable outline.
-- **Don't use fake headings**: Never style `<div>` or `<span>` to look like headings without standard `<h1>`–`<h6>` tags.
-- **Don't place headings inside `<summary>`, and avoid relying on headings inside `<details>` content**: Headings inside `<summary>` may be hidden from screen-reader heading lists and heading-navigation shortcuts entirely; headings inside `<details>` content are only reachable via heading navigation when the disclosure is open.
-  - **Caveat**: If a heading must act as a disclosure trigger, use a more robust alternative to `<details>`/`<summary>` instead, e.g. an accordion or a disclosure implemented with ARIA where the heading wraps the button.
+- **Do** structure main content with headings: Use `<h1>`–`<h6>` elements sequentially so screen reader users get a navigable outline.
+- **Do** avoid "skipped" heading levels: While not explicitly a WCAG failure, jumping directly from (for example) `<h1>` → `<h4>` breaks the logical hierarchy, which can confuse screen reader users navigating the page via its heading structure, so should therefore be avoided
+- **Do** use one `<h1>` element per page: Typically, the `<h1>` element is intended for identifying a page's main heading. While not a WCAG failure, having more than one `<h1>` element on a page can make it difficult for screen reader users to identify the actual main heading.
+- **Don't** use "fake" headings: Never style `<div>` or `<span>` elements to act as headings instead of `<h1>`–`<h6>` elements
+- **Don't** nest headings incorrectly: If a sub-heading is visually less important than its parent heading, its heading level must be lower in the heading hierarchy
+- **Don't** place headings inside the `<summary>` element: Headings inside the `<summary>` element may be hidden from screen reader heading lists and heading navigation shortcuts
+- **Don't** place headings inside the `<details>` element: Headings inside the `<details>` element are only reachable via heading navigation when the disclosure is open.
+  - **Caveat**: If a heading must act as a disclosure trigger, use an accordion or a disclosure implemented with ARIA where the heading element wraps the button, rather than use the `<details>` and `<summary>` elements
 
-### Lists and tables
+### Lists
 
-- **Use lists for repeated, contiguous content**: `<ul>`/`<ol>` give assistive tech a count up front and let users skip the entire group.
-- **Semantic Tables**: Use `<caption>` and `<th scope="col">` (or `<th scope="row">`) for data tables.
-- **Don't use tables for layout**: Use CSS Grid/Flexbox for visual layouts.
+- **Do** use lists for repeated, contiguous content: `<ul>`/`<ol>` give assistive tech a count up front and let users skip the entire group.
+- **Do** use the correct list element: Use the `<ul>` element for unordered lists where the order of the items is **not** important (such as a list of related products), and use the `<ol>` element for ordered lists where the order of the content **is** important (such as a list of instructions)
+- **Don't** use lists for non-list content: Do not use list markup to mark up separate paragraphs of text, as screen readers will announce list information when they encounter lists, therefore leading to a screen reader hearing potentially confusing and redundant information about the related content
+- **Don't** use lists to lay out list-like form content: When marked up correctly, screen readers will already announce that a user is entering a list of checkboxes or radio buttons, even though there is no list markup.
+
+### Tables
+
+- **Do** use the correct table elements: Use the `<table>` element to identify the table, the `<caption>` element to provide a title and accessible name for the description, the `<tr>` element to identify individual rows in the table, and the `<th>` and `<td>` elements to identify header and data cells respectively.
+- **Do** use the `scope` attribute on `<th>` elements: The `scope` attribute indicates whether the `<th>` element represents a row header (`<th scope="row">`) or a column header (`<th scope="col">`).
+- **Don't** use tables for layout: Screen readers will announce redundant information about the layout, which may be confusing for screen reader users, while the use of tabular markup can have an impact on the reading and keyboard focus order of content. Use CSS Grid/Flexbox for visual layouts instead.
+- **Don't** implement overly-complex tables: Spanned rows, spanned columns, nested tables, expandable / collapsible rows, and so on can make sense visually and meet the related WCAG success criterion, but the overall structure can be disorienting and difficult to navigate for screen reader users. In such cases, break tables up into smaller tables that are easier and more efficient to navigate.
 
 ### Skip links
 
-- **Provide skip links** prior to repeated content like site headers with navigation or long/infinite lists, so that keyboard users can easily bypass them. Make sure the target is focusable (e.g. `<main id="content" tabindex="-1">`).
+- **Do** provide skip links prior to repeated content like site headers with navigation or long/infinite lists, so that keyboard users can easily bypass them.
+  - **Caveat**: Sometimes screen magnifiers do not follow the focus when a skip link’s target is not normally focusable.
+    A common workaround is to make the target programmatically focusable, but not a part of the tab order, using `tabindex="-1"`.
+    If the target contains focusable elements this can create another usability issue as clicking within the target will always set the [sequential focus navigation start point](https://html.spec.whatwg.org/multipage/interaction.html#sequential-focus-navigation) to the target rather than at a point between focusable elements as would be expected.
+    A solution that can satisfy both user expectations is to make the first meaningful element within the intended target, the actual target of the skip link, for example a heading.
+    Beware that any content prior to such an element will be skipped, including other relevant content within the targeted section and this can create usability gaps for other assistive tech users.
+- **Don't** use skip links where they are not needed: A set of pages whose only comment element is a single link to the Home page does not need a skip link.
+- **Don't** overuse skip links: A single skip link, or two skip links to cover the primary and secondary sets of common navigation links, is usually sufficient on a single page. Multiple unnecessary skip links can add to the number of <kbd>Tab</kbd> stops to a page, which can cause frustration for people who use the keyboard alone for navigation
 
-```html
-<!-- Good: Skip to main content -->
-<a href="#content" class="skip-link">Skip to main content</a>
-<main id="content" tabindex="-1">...</main>
-```
+### Example markup
 
 ```html
 <!-- Good: Semantic landmarks, heading hierarchy, skip link -->
 <header>
-  <a href="#content" class="skip-link visually-hidden">Skip to content</a>
+  <a href="#platform-dashboard" class="skip-link visually-hidden">Skip to content</a>
   <nav aria-label="Primary">
     <ul>
       <li><a href="/">Home</a></li>
     </ul>
   </nav>
 </header>
-<main id="content" tabindex="-1">
-  <h1>Platform Dashboard</h1>
+<main id="content">
+  <h1 id="platform-dashboard">Platform Dashboard</h1>
   <section>
     <h2>User Statistics</h2>
     <table>
       <caption>Monthly active users</caption>
-      <tr>
-        <th scope="col">Month</th>
-        <th scope="col">Users</th>
-      </tr>
-      <tr>
-        <td>January</td>
-        <td>12,000</td>
-      </tr>
+      <thead>
+        <tr>
+          <th scope="col">Month</th>
+          <th scope="col">Users</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>January</td>
+          <td>12,000</td>
+        </tr>
+      </tbody>
     </table>
   </section>
 </main>
@@ -122,20 +150,29 @@ Contents:
 
 ## 2. Semantic HTML and ARIA
 
+Related WCAG Success Criteria:
+
+- [WCAG Success Criterion 2.5.3 Label in Name (Level A)](https://www.w3.org/TR/WCAG22/#label-in-name)
+- [WCAG Success Criterion 4.1.2 Name, Role, Value (Level A)](https://www.w3.org/TR/WCAG22/#name-role-value)
+
 ### Prefer native HTML
 
-- **Prefer HTML elements and attributes to ARIA**: A native element comes with the right role and behavior. `<button>` already implies `role="button"`; `required` already implies `aria-required`.
-- **Don't use ARIA when native HTML exists**: Avoid `<div role="button">` or `<a role="button">` if `<button>` works.
-- **Don't add redundant ARIA roles or properties**: Avoid `<ul role="list">`, `<nav role="navigation">`, or `<input required aria-required="true">`.
-  - **Caveat**: Safari removes list semantics from `<ul>`/`<ol>` outside `<nav>` when `list-style: none` or `display: flex`/`grid` is applied. In that case `role="list"` is required to restore them.
+- **Do** use HTML over ARIA where possible: Native HTML elements and attributes already have the correct role and behavior, including keyboard support, built-in by default. `<button>` already implies `role="button"`, and `required` already implies `aria-required`, and no additional JS is required to ensure the correct role and behavior is supported.
+  - **Caveat:** ARIA is required when the related feature is not available in HTML, for example there are no HTML elements explicitly intended for building a tabbed navigation widget, but ARIA includes appropriate role and state properties for this purpose
+- **Don't** use ARIA when native HTML exists: Avoid `<div role="button">` or `<a role="button">` and use `<button>` instead
+- **Don't** add redundant ARIA roles or properties: Avoid `<ul role="list">`, `<nav role="navigation">`, and `<input required aria-required="true">`.
+  - **Caveat:** Safari removes list semantics from `<ul>`/`<ol>` outside `<nav>` when `list-style: none` or `display: flex`/`grid` is applied. In that case `role="list"` is required to restore them.
+- **Don't** unintentionally change native semantics: Doing so can lead to unexpected results. For example, use `<li><button>Button in a list</button></li>`, or (if absolutely necessary) `<li><span role="button">Button in a list</span></li>`, not `<li role="button">Button in a list</li>` as this will suppress the container list semantics
+  - **Caveat:** It is acceptable to apply ARIA roles to native HTML elements that have similar semantics, for example a tree view: `<ul role="tree"><li role="treeitem">…</li>…</ul>`
 
 ### ARIA roles and states
 
-- **Match ARIA implementations to actual behavior**: If you set `role="tab"`, the element must behave like a tab — including keyboard interactions. Many ARIA patterns can't be implemented in CSS alone and need JavaScript.
-- **Manage Toggle States**: Utilize `aria-expanded` and `aria-pressed` to communicate toggle states for custom controls.
-- **Be deliberate about `disabled` vs `aria-disabled`**: `disabled` removes the element from the focus order entirely (and `tabindex="0"` won't bring it back), which is often wrong for toolbar buttons or links. `aria-disabled="true"` keeps the element focusable so users can land on it and learn it's disabled.
-- **Don't hide interactive elements from screen readers**: Avoid `aria-hidden="true"` or `role="presentation"` on elements that can receive focus.
-- **Don't assume custom elements have no ARIA**: Custom elements can attach ARIA via `ElementInternals`, which some automated test tools can't see — so the absence of `role`/`aria-*` attributes in markup doesn't prove the element has no semantics. Verify with the browser's accessibility-tree inspector.
+- **Do** match ARIA implementations to actual behavior: If you set `role="tab"`, the element must behave like a tab — including keyboard interactions. Many ARIA patterns can't be implemented in CSS alone and need JavaScript.
+- **Do** manage toggle states: Utilize `aria-expanded` and `aria-pressed` to communicate toggle states for custom controls.
+- **Do** be deliberate about `disabled` vs `aria-disabled`: `disabled` removes the element from the focus order entirely (and `tabindex="0"` won't bring it back), which is often wrong for toolbar buttons or links. `aria-disabled="true"` keeps the element focusable so users can land on it and learn it's disabled.
+- **Don't** hide interactive elements from screen readers: Do not apply `aria-hidden="true"` to interactive elements that receive focus, or to their parent elements
+- **Don't** suppress the roles of interactive elements: Applying `role="presentation"` or `role="none"` to an interactive element strips its semantics. The element will still be exposed to assistive technologies and announced by screen readers, but its role and any state information will not be, which can result in confusion and potentially unexpected behavior.
+- **Don't** assume custom elements have no ARIA: Custom elements can attach ARIA via `ElementInternals`, which some automated test tools can't see — so the absence of `role`/`aria-*` attributes in markup doesn't prove the element has no semantics. Verify with the browser's accessibility-tree inspector.
 
 ## 3. Accessible Names and Descriptions
 
@@ -143,13 +180,31 @@ Every interactive element and some landmarks need an accessible name, and many b
 
 ### Naming mechanisms
 
-- **Prefer native naming mechanisms**: `<label>` for form controls, `<caption>` for `<table>`, `<legend>` for `<fieldset>`, `<figcaption>` for `<figure>`.
-- **Explicitly associate `<label>` with its control via `for`/`id`**, even when nesting the input inside the label — explicit association improves assistive-tech support.
-- **Prefer `aria-labelledby` over `aria-label` when a visible label exists**: avoids duplication, improves maintainability, and translates better.
-- **Don't use `title` or `placeholder` as a naming mechanism.**
-- **Don't put `aria-label`/`aria-labelledby` on elements that shouldn't be named** — e.g. plain `<div>`, `<span>`, or custom elements without a role. Custom elements may have an implicit role set via `ElementInternals`, so the absence of a `role` attribute isn't conclusive.
+- **Do** use native naming mechanisms: `<label>` for form controls, `<caption>` for `<table>`, `<legend>` for `<fieldset>`, `<figcaption>` for `<figure>`.
+- **Do** explicitly associate `<label>` with its control via the `for`/`id` attributes: As well as ensuring the control is appropriately labelled by the contents of the `<label>` element, it results in a larger target area where people can activate the label <em>or</em> its related control to move focus to the control, which isn't globally supported with other forms of labelling (such as using the `aria-labelledby` attribute). Additionally, some assistive techologies, particular voice recognition software, requires the `for`/`id` relationship to be explicitly set, even if an equivalent accessibility-supported approach (such as nesting an `<input>` inside a `<label>`) is taken.
+- **Do** use `aria-labelledby` over `aria-label` when a visible label exists: This avoids duplication, improves maintainability, and translates better.
+- **Don't** use `title` as a naming mechanism: The value of this attribute is only displayed on mouse hover, and cannot be displayed or otherwise accessed using the keyboard in any browser.
+  - **Caveat:** `<iframe>` is an exception, as the `title` attribute is the standard way of providing an accessible name for this element.
+- **Don't** use `placeholder` as a naming mechanism: While the value of this attribute is initially displayed inside an `<input>` or `<textarea>`, it typically disappears as soon as the user enters text into the field, meaning that there is no longer a visual cue as to what the field represents. The contrast between `placeholder` text and its background in most browsers can also be very low, and therefore can be difficult for people to perceive.
+- **Don't** use `aria-label`/`aria-labelledby` on non-labelable elements:** these attributes can only be used to provide accessible names for elements that have explicit or implicit widget (for example, button, link, and tab), landmark, image, or iframe roles, not `<div>` or `<span>` elements that are missing the appropriate `role` attribute.
+  - **Caveat:** Custom elements may have an implicit role set via `ElementInternals`, so the absence of a `role` attribute isn't conclusive.
 
 ### Choosing the name
+
+- **Do:** avoid inconsistent link text: If multiple hyperlinks direct users to the same target page, make sure each link has the same accessible name, which should typically be the same as its visible link text. For example, if the target page for a link is `profile.html`, make sure that all links have an accessible name of "My Profile" **or** "Profile"; do not use "My Profile" in one instance, and "Profile" in the other.
+- **Do:** disambiguate controls that look visually identical but which perform different actions by their accessible name: For example, a page may include multiple "Edit" buttons, each of which triggers functionality to perform a different action, such as edit the user's name, edit the user's password, and edit the user's address. While it may be visually obvious from the surrounding content what the purpose of these buttons might be, screen reader users may only hear "Edit, button". Techniques to resolve this include:
+  - Using visually hidden text: The text is included in the DOM but is visually hidden using CSS, **or**
+  - 
+
+
+
+
+- **Include a control's visible text in its accessible name:** Any visible text used to label a control must be included exactly as written in the control's accessible name. The accessible name can include additional information before or after the visible text, but the visible text itself must not differ. For example, the accessible name for a link containing the link phrase "Read more" can be "Read more about [subject]", because the visible text is included without modification. However, the accessible name cannot be "Read some more about [subject]", because the term "some" appears between the words "Read" and "more", which is not reflected in the visible text.
+
+
+**Don't:**
+
+
 
 - **Prefer to reuse the same accessible name for hyperlinks that share an `href`.**
 - **Use visually hidden text to disambiguate controls** that look identical visually but do different things (e.g. multiple "Edit" buttons in a list).
