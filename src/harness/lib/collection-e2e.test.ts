@@ -1,9 +1,10 @@
 import test from 'node:test';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
 import { defaultSuiteConfig, Agents } from '../config.ts';
 import { collectResults } from './collection.ts';
+import type { ScenarioCheck } from './metrics.ts';
 import { generateNormalizedTrajectory } from './trajectory-normalizer.ts';
 import { guidesDir } from '../../core/paths.ts';
 
@@ -234,8 +235,10 @@ base_app: test-app
 
         const runPayload = allResults[testKey][0];
         // All 3 checks should be emitted as early failures: 0/3, not 0/1 or 0/0
-        assert.strictEqual(runPayload.results.length, 3, 'Must emit 3 checks corresponding to grader titles');
-        assert.ok(runPayload.results.every((c: any) => !c.passed && c.isEarlyFailure));
+        assert.deepStrictEqual(
+            runPayload.results.map((c: ScenarioCheck) => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure })),
+            Array(3).fill({ passed: false, isEarlyFailure: true })
+        );
         assert.ok(runPayload.results[0].message.includes('test 1: check element exists'));
         assert.ok(runPayload.results[0].message.includes('antigravity_cli exited with SIGTERM'));
     } finally {

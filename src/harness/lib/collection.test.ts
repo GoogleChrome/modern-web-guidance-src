@@ -1,5 +1,5 @@
 import { test } from 'node:test';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
 import { parseResultPath, evaluateScenarioResults } from './collection.ts';
 import path from 'path';
 import fs from 'fs';
@@ -51,7 +51,7 @@ test('parseResultPath handles deep suite and nightly structure', () => {
   });
 });
 
-test('evaluateScenarioResults expands early failures to all N checks in multi-check grader', () => {
+test('evaluateScenarioResults expands early failures to all N checks in multi-check grader', async (t) => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-denom-test-'));
   try {
     const graderPath = path.join(tempDir, 'grader.ts');
@@ -65,67 +65,80 @@ test('evaluateScenarioResults expands early failures to all N checks in multi-ch
     `;
     fs.writeFileSync(graderPath, graderContent);
 
-    // Case A: Missing target app (targetAppExists = false)
-    const resMissingTarget = evaluateScenarioResults(
-      tempDir,
-      'test-guide',
-      graderPath,
-      path.join(tempDir, 'results.json'),
-      false, // targetAppExists
-      path.join(tempDir, 'index.html')
-    );
-    assert.strictEqual(resMissingTarget.length, 5, 'Should produce 5 checks for missing target app');
-    assert.ok(resMissingTarget.every(c => !c.passed && c.isEarlyFailure));
-    assert.ok(resMissingTarget[0].message.includes('check 1: has header element'));
-    assert.ok(resMissingTarget[0].message.includes('Target app missing'));
+    const expectedEarlyFailureStates = Array(5).fill({ passed: false, isEarlyFailure: true });
 
-    // Case B: Crashed generation / missing grader results JSON with generation_failed.json
-    fs.writeFileSync(
-      path.join(tempDir, 'generation_failed.json'),
-      JSON.stringify({ agentName: 'claude_code', exitCode: 'TIMEOUT (10m)' })
-    );
-    const resCrashed = evaluateScenarioResults(
-      tempDir,
-      'test-guide',
-      graderPath,
-      path.join(tempDir, 'results.json'),
-      true, // targetAppExists
-      path.join(tempDir, 'index.html')
-    );
-    assert.strictEqual(resCrashed.length, 5, 'Should produce 5 checks for generation_failed.json');
-    assert.ok(resCrashed.every(c => !c.passed && c.isEarlyFailure));
-    assert.ok(resCrashed[0].message.includes('check 1: has header element'));
-    assert.ok(resCrashed[0].message.includes('claude_code exited with TIMEOUT (10m)'));
+    await t.test('missing target app', () => {
+      const res = evaluateScenarioResults(
+        tempDir,
+        'test-guide',
+        graderPath,
+        path.join(tempDir, 'results.json'),
+        false,
+        path.join(tempDir, 'index.html')
+      );
+      assert.deepStrictEqual(
+        res.map(c => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure })),
+        expectedEarlyFailureStates
+      );
+      assert.ok(res[0].message.includes('check 1: has header element'));
+      assert.ok(res[0].message.includes('Target app missing'));
+    });
 
-    // Case C: Empty suites in grader results JSON (e.g. dev server crashed in beforeAll)
-    const resultsJsonPath = path.join(tempDir, 'results.json');
-    fs.writeFileSync(resultsJsonPath, JSON.stringify({ suites: [] }));
-    const resEmptySuites = evaluateScenarioResults(
-      tempDir,
-      'test-guide',
-      graderPath,
-      resultsJsonPath,
-      true,
-      path.join(tempDir, 'index.html')
-    );
-    assert.strictEqual(resEmptySuites.length, 5, 'Should produce 5 checks when suites are empty');
-    assert.ok(resEmptySuites.every(c => !c.passed && c.isEarlyFailure));
-    assert.ok(resEmptySuites[0].message.includes('Playwright test runner failed'));
+    await t.test('crashed generation with generation_failed.json', () => {
+      fs.writeFileSync(
+        path.join(tempDir, 'generation_failed.json'),
+        JSON.stringify({ agentName: 'claude_code', exitCode: 'TIMEOUT (10m)' })
+      );
+      const res = evaluateScenarioResults(
+        tempDir,
+        'test-guide',
+        graderPath,
+        path.join(tempDir, 'results.json'),
+        true,
+        path.join(tempDir, 'index.html')
+      );
+      assert.deepStrictEqual(
+        res.map(c => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure })),
+        expectedEarlyFailureStates
+      );
+      assert.ok(res[0].message.includes('check 1: has header element'));
+      assert.ok(res[0].message.includes('claude_code exited with TIMEOUT (10m)'));
+    });
 
-    // Case D: Fallback to single entry if grader has 0 parseable tests or does not exist
-    const nonExistentGrader = path.join(tempDir, 'non_existent_grader.ts');
-    const resNoGrader = evaluateScenarioResults(
-      tempDir,
-      'test-guide',
-      nonExistentGrader,
-      resultsJsonPath,
-      true,
-      path.join(tempDir, 'index.html')
-    );
-    assert.strictEqual(resNoGrader.length, 1, 'Should fallback to 1 check if grader file does not exist');
-    assert.strictEqual(resNoGrader[0].passed, false);
-    assert.strictEqual(resNoGrader[0].isEarlyFailure, true);
-    assert.strictEqual(resNoGrader[0].id, 'early-failure-1');
+    await t.test('empty suites in grader results JSON', () => {
+      const resultsJsonPath = path.join(tempDir, 'results.json');
+      fs.writeFileSync(resultsJsonPath, JSON.stringify({ suites: [] }));
+      const res = evaluateScenarioResults(
+        tempDir,
+        'test-guide',
+        graderPath,
+        resultsJsonPath,
+        true,
+        path.join(tempDir, 'index.html')
+      );
+      assert.deepStrictEqual(
+        res.map(c => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure })),
+        expectedEarlyFailureStates
+      );
+      assert.ok(res[0].message.includes('Playwright test runner failed'));
+    });
+
+    await t.test('fallback to single entry if grader does not exist', () => {
+      const res = evaluateScenarioResults(
+        tempDir,
+        'test-guide',
+        path.join(tempDir, 'non_existent_grader.ts'),
+        path.join(tempDir, 'results.json'),
+        true,
+        path.join(tempDir, 'index.html')
+      );
+      assert.deepStrictEqual(res, [{
+        id: 'early-failure-1',
+        passed: false,
+        message: 'Grader not found',
+        isEarlyFailure: true,
+      }]);
+    });
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }

@@ -1,5 +1,5 @@
 import { test } from 'node:test';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /**
@@ -94,4 +94,8 @@ test('extractSuiteSummary normalizes historical crashed run (results.length === 
     assert.strictEqual(summary.guidedStats.passed, 5);
     assert.strictEqual(summary.unguidedStats.total, 10);
     assert.strictEqual(summary.unguidedStats.passed, 3);
+
+    // Chart data series must also use canonical check counts
+    assert.deepStrictEqual(summary.chartData.guided, [100, 0]);
+    assert.deepStrictEqual(summary.chartData.unguided, [40, 20]);
 });

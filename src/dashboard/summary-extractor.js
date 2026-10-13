@@ -1,4 +1,4 @@
-import { getRunStats, parseResultKey, calculateChartData } from './utils.js';
+import { getRunStats, getCanonicalChecksPerScenario, parseResultKey, calculateChartData } from './utils.js';
 
 /**
  * @typedef {Object} GuideSummary
@@ -49,34 +49,14 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
     const results = evalsData.results || {};
     const scenarioKeys = Object.keys(results);
-
-    // Build a map of canonical check count per scenario (task + guide) across all runs and modes.
-    // If a crashed run recorded 1 check while a sibling run/mode recorded N > 1 checks,
-    // we determine the canonical check count N for each scenario.
-    /** @type {Record<string, number>} */
-    const canonicalChecksPerScenario = {};
-    scenarioKeys.forEach(key => {
-        const parsedKey = parseResultKey(key);
-        if (!parsedKey) return;
-        const scenarioId = `${parsedKey.guide} - ${parsedKey.task}`;
-        const runs = results[key] || [];
-        runs.forEach(run => {
-            const checks = run.results || [];
-            // If the run has normal results (not an early failure), its check count is canonical.
-            // If all runs are early failures, the max check count found is used.
-            const isEarlyFailure = checks.some(c => c.isEarlyFailure);
-            const count = checks.length;
-            if (!canonicalChecksPerScenario[scenarioId] || (!isEarlyFailure && count > canonicalChecksPerScenario[scenarioId]) || (count > canonicalChecksPerScenario[scenarioId])) {
-                canonicalChecksPerScenario[scenarioId] = Math.max(canonicalChecksPerScenario[scenarioId] || 0, count);
-            }
-        });
-    });
+    const canonicalChecksPerScenario = getCanonicalChecksPerScenario(results);
 
     let guidedPassed = 0;
     let guidedTotal = 0;
     let unguidedPassed = 0;
     let unguidedTotal = 0;
     let maxRuns = 1;
+    let totalAllRuns = 0;
 
     const distinctScenarios = new Set();
     /** @type {Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>} */
@@ -90,6 +70,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     scenarioKeys.forEach(key => {
         const parsedKey = parseResultKey(key);
         const runs = results[key] || [];
+        totalAllRuns += runs.length;
         if (runs.length > maxRuns) maxRuns = runs.length;
 
         const isGuided = key.endsWith(' - guided');
@@ -113,33 +94,28 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             }
         }
 
-        const scenarioId = parsedKey ? `${parsedKey.guide} - ${parsedKey.task}` : null;
-        const canonicalCheckCount = scenarioId ? (canonicalChecksPerScenario[scenarioId] || 0) : 0;
+        const canonicalCheckCount = parsedKey ? (canonicalChecksPerScenario[`${parsedKey.guide} - ${parsedKey.task}`] || 0) : 0;
 
         runs.forEach(run => {
-            const s = getRunStats(run.results);
-            const isEarlyFailure = (run.results || []).some(c => c.isEarlyFailure);
-            // If this run had an early failure with fewer checks than the canonical check count,
-            // normalize its total to the canonical check count so the denominator is preserved.
-            const effectiveTotal = (isEarlyFailure && canonicalCheckCount > s.total) ? canonicalCheckCount : s.total;
+            const s = getRunStats(run.results, canonicalCheckCount);
 
             if (isGuided) {
                 guidedPassed += s.passed;
-                guidedTotal += effectiveTotal;
+                guidedTotal += s.total;
             } else if (isUnguided) {
                 unguidedPassed += s.passed;
-                unguidedTotal += effectiveTotal;
+                unguidedTotal += s.total;
             }
 
             if (parsedKey && (parsedKey.runType === 'guided' || parsedKey.runType === 'unguided')) {
                 const runType = /** @type {'guided' | 'unguided'} */ (parsedKey.runType);
                 suiteGuides[parsedKey.guide][runType].passed += s.passed;
-                suiteGuides[parsedKey.guide][runType].total += effectiveTotal;
+                suiteGuides[parsedKey.guide][runType].total += s.total;
 
                 const taskStats = parsedKey.task && suiteGuideTasks[parsedKey.guide][parsedKey.task];
                 if (taskStats) {
                     taskStats[runType].passed += s.passed;
-                    taskStats[runType].total += effectiveTotal;
+                    taskStats[runType].total += s.total;
                 }
             }
         });
@@ -187,8 +163,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
     const taskCount = evalsData.summary && evalsData.summary.taskCount ? evalsData.summary.taskCount : distinctScenarios.size;
     const totalEarlyFailures = (evalsData.summary?.unguidedEarlyFailures || 0) + (evalsData.summary?.guidedEarlyFailures || 0);
-    let totalAllRuns = 0;
-    scenarioKeys.forEach(k => { totalAllRuns += (results[k] || []).length; });
     const earlyFailureRate = totalAllRuns > 0 ? Math.round((totalEarlyFailures / totalAllRuns) * 100) : 0;
 
     const chartData = calculateChartData(results);

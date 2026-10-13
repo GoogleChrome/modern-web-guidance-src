@@ -351,9 +351,8 @@ export function evaluateScenarioResults(
   targetAppExists: boolean,
   targetFile: string
 ): ScenarioCheck[] {
-  const titles = extractTestTitles(graderPath);
-
   const makeEarlyFailures = (reason: string): ScenarioCheck[] => {
+    const titles = extractTestTitles(graderPath);
     if (titles.length === 0) {
       return [{
         id: 'early-failure-1',
@@ -373,51 +372,41 @@ export function evaluateScenarioResults(
   if (!fs.existsSync(graderPath)) {
     console.warn(`Grader not found for ${guide} at ${graderPath}`);
     return makeEarlyFailures('Grader not found');
-  } else if (!targetAppExists) {
+  }
+  if (!targetAppExists) {
     return makeEarlyFailures('Target app missing');
-  } else if (!fs.existsSync(graderResults)) {
-    const errorMessage = extractErrorMessage(dir, targetFile);
-    return makeEarlyFailures(errorMessage);
-  } else {
-    try {
-      let json: any = null;
+  }
+  if (!fs.existsSync(graderResults)) {
+    return makeEarlyFailures(extractErrorMessage(dir, targetFile));
+  }
 
-      if (fs.existsSync(graderResults)) {
-        try {
-          json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
-        } catch (e) {
-          console.error(`Error parsing JSON results for ${guide} in ${dir}`, e);
-        }
-      } else {
-        console.error(`Missing grader results JSON for ${guide} in ${dir}`);
+  try {
+    const json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
+
+    if (Array.isArray(json?.suites) && json.suites.length > 0) {
+      const specs: any[] = [];
+      const traverse = (suite: any) => {
+        if (suite.specs) specs.push(...suite.specs);
+        if (suite.suites) suite.suites.forEach(traverse);
+      };
+      json.suites.forEach(traverse);
+
+      if (specs.length > 0) {
+        return specs.map((spec: any) => {
+          const lastResult = spec.tests?.[0]?.results?.at(-1);
+          return {
+            id: spec.id,
+            passed: lastResult?.status === 'passed',
+            message: spec.title,
+          };
+        });
       }
-
-      if (json && json.suites && json.suites.length > 0) {
-        const specs: any[] = [];
-        const traverse = (suite: any) => {
-          if (suite.specs) specs.push(...suite.specs);
-          if (suite.suites) suite.suites.forEach(traverse);
-        };
-        json.suites.forEach(traverse);
-
-        if (specs.length > 0) {
-          return specs.map((spec: any) => {
-            const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
-            return {
-              id: spec.id,
-              passed: lastResult.status === 'passed',
-              message: spec.title,
-            };
-          });
-        }
-      }
-
-      // If graderResults JSON has missing/empty suites or 0 specs (e.g. dev server crashed in beforeAll)
-      return makeEarlyFailures('Playwright test runner failed or produced no test results');
-    } catch (err: any) {
-      console.error(`Error processing results for ${dir}:`, err);
-      return makeEarlyFailures(err.message || 'System Error');
     }
+
+    return makeEarlyFailures('Playwright test runner failed or produced no test results');
+  } catch (err: any) {
+    console.error(`Error processing results for ${dir}:`, err);
+    return makeEarlyFailures(err.message || 'System Error');
   }
 }
 

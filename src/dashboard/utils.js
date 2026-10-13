@@ -6,12 +6,14 @@
 
 /**
  * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
+ * @param {number} [canonicalCheckCount=0]
  * @returns {{ rate: number, passed: number, total: number }}
  */
-export function getRunStats(checks) {
+export function getRunStats(checks, canonicalCheckCount = 0) {
     if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0 };
     const passed = checks.filter(c => c.passed).length;
-    const total = checks.length;
+    const isEarlyFailure = checks.some(c => c.isEarlyFailure);
+    const total = isEarlyFailure && canonicalCheckCount > checks.length ? canonicalCheckCount : checks.length;
     const rate = Math.round((passed / total) * 100);
     return { rate, passed, total };
 }
@@ -124,6 +126,29 @@ export function parseResultKey(key) {
 }
 
 /**
+ * Maps each `${guide} - ${task}` scenario to the maximum check count observed across all runs and modes.
+ *
+ * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
+ * @returns {Record<string, number>}
+ */
+export function getCanonicalChecksPerScenario(results) {
+    /** @type {Record<string, number>} */
+    const canonical = {};
+    for (const [key, runs] of Object.entries(results)) {
+        const parsed = parseResultKey(key);
+        if (!parsed) continue;
+        const scenarioId = `${parsed.guide} - ${parsed.task}`;
+        for (const run of runs || []) {
+            const len = run.results?.length || 0;
+            if (len > (canonical[scenarioId] || 0)) {
+                canonical[scenarioId] = len;
+            }
+        }
+    }
+    return canonical;
+}
+
+/**
  * @typedef {Object} ChartAppData
  * @property {number[]} guided
  * @property {number[]} unguided
@@ -146,6 +171,7 @@ export function parseResultKey(key) {
  * }}
  */
 export function calculateChartData(results) {
+    const canonicalChecks = getCanonicalChecksPerScenario(results);
     /** @type {Record<string, ChartAppData>} */
     const apps = {};
     /** @type {Record<string, string>} */
@@ -184,8 +210,9 @@ export function calculateChartData(results) {
             apps[scenario][failedKey] = true;
         }
         
-        const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
-        const total = runs.reduce((acc, r) => acc + (r.results?.length || 0), 0);
+        const canonicalCount = canonicalChecks[`${guide} - ${taskName}`] || 0;
+        const passed = runs.reduce((acc, r) => acc + getRunStats(r.results, canonicalCount).passed, 0);
+        const total = runs.reduce((acc, r) => acc + getRunStats(r.results, canonicalCount).total, 0);
         apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
 
         const totalTokens = runs.reduce((acc, r) => acc + (r.tokenUsage?.total || 0), 0);

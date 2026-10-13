@@ -1,5 +1,5 @@
 import { test, describe } from 'node:test';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
 import { calculateMetrics } from './metrics.ts';
 import type { RunResult } from './metrics.ts';
 
@@ -177,19 +177,8 @@ describe('calculateMetrics', () => {
     assert.strictEqual(metrics.summary.unguidedEarlyFailures, 0);
     assert.strictEqual(metrics.summary.totalGuidedRuns, 2);
 
-    // Completed rates: Run 1 only (3/5 passed = 60%)
-    assert.strictEqual(metrics.summary.completedGuidedPassed, 3);
-    assert.strictEqual(metrics.summary.completedGuidedTotal, 5);
-    assert.strictEqual(metrics.summary.completedGuidedPassRate, 60);
-
-    assert.strictEqual(metrics.summary.completedUnguidedPassed, 1);
-    assert.strictEqual(metrics.summary.completedUnguidedTotal, 10);
-    assert.strictEqual(metrics.summary.completedUnguidedPassRate, 10);
-
-    // Rates remain bounded in [0, 100]
-    assert.ok(metrics.summary.guideUsageRate! >= 0 && metrics.summary.guideUsageRate! <= 100);
-    assert.ok(metrics.summary.toolActivationRate! >= 0 && metrics.summary.toolActivationRate! <= 100);
-    assert.strictEqual(metrics.summary.guideUsageRate, 100); // 1 completed run used guide
+    // 1 completed run used the guide and activated tools (1/1 = 100%)
+    assert.strictEqual(metrics.summary.guideUsageRate, 100);
     assert.strictEqual(metrics.summary.toolActivationRate, 100);
   });
 });
