@@ -254,31 +254,32 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
   }
 }
 
-export const devInternals = {
-  runAgent,
-  copyBaseAppToWorkspace,
-};
+export function extractGuideDescription(rawGuide: string): string {
+  const description = String(matter(rawGuide).data?.description ?? '').trim();
+  if (!description) {
+    throw new Error(`${GUIDE_FILE} is missing a required frontmatter 'description' field.`);
+  }
+  return description;
+}
 
-export async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
+async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
   const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-task`);
   try {
     const rawGuide = fs.readFileSync(path.join(guideDirAbs, GUIDE_FILE), 'utf-8');
-    const { data: guideData } = matter(rawGuide);
-    const description = guideData?.description || '';
-    const strippedGuideContent = `---\ndescription: ${JSON.stringify(description)}\n---\n`;
-    fs.writeFileSync(path.join(workDir, GUIDE_FILE), strippedGuideContent);
+    const guideDescription = extractGuideDescription(rawGuide);
 
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
-    await devInternals.copyBaseAppToWorkspace(baseApp, workDir);
+    await copyBaseAppToWorkspace(baseApp, workDir);
 
     const prompt = buildTargetTaskPrompt({
-      guideFile: GUIDE_FILE,
+      guideDescription,
       taskFile: TASK_FILE,
       baseApp,
+      expectationsFile: EXPECTATIONS_FILE,
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
     });
 
-    await devInternals.runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
+    await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
 
     const generatedTask = path.join(workDir, TASK_FILE);
     if (!fs.existsSync(generatedTask) || !fs.readFileSync(generatedTask, 'utf-8').trim()) {

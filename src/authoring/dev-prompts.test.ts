@@ -124,7 +124,7 @@ test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping
 
 test('buildTargetTaskPrompt creates clean developer prompt instructions and treats expectations as spoiler blocklist', () => {
   const baseOpts = {
-    guideFile: 'guide.md',
+    guideDescription: 'Enable users to view, manage, and revoke WebAuthn passkeys.',
     taskFile: 'task.md',
     baseApp: 'daily-grind',
   };
@@ -132,6 +132,7 @@ test('buildTargetTaskPrompt creates clean developer prompt instructions and trea
   assert.ok(prompt.includes('task.md'));
   assert.ok(prompt.includes('codebase files'));
   assert.ok(prompt.includes('understand the use case'));
+  assert.ok(prompt.includes('Enable users to view, manage, and revoke WebAuthn passkeys.'));
   assert.ok(prompt.includes('Do NOT name the guide itself'));
   assert.ok(prompt.includes('Write the prompt as a developer talking'));
   assert.ok(prompt.includes('Negative Constraint / Spoiler Blocklist'));

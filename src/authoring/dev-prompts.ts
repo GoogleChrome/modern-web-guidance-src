@@ -155,7 +155,7 @@ Base your grader's imports, workspace setup, helper function usage, and test str
 Write only one assertion per \`test('...', ...)\` block across both static and browser tests. Do not combine multiple assertions into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
 
 ## 4. Anti-Overfitting & AST Robustness Rules
-- **No Overfitting to Golden Solution Patches**: The 3 golden solution diffs (\`claude-code-solution.patch\`, \`codex-cli-solution.patch\`, \`jetski-cli-solution.patch\`) are examples of valid implementations, NOT exhaustive specifications.
+- **No Overfitting to Golden Solution Patches**: The golden solution diffs listed above are examples of valid implementations, NOT exhaustive specifications.
   - NEVER hardcode allowlists of helper function names (e.g. \`syncAcceptedCredentials\`, \`loadCredentials\`, \`loadManagementPanel\`, \`load\`), React state variable names, or newly created filenames / paths (e.g. \`filePath.includes('passkey')\`) from the solution patches.
   - Match conceptual roles (e.g. any function calling fetch / API endpoints or registered in event listeners) rather than specific names used in calibration patches.
 - **Robust ts-morph AST Traversal**:
@@ -190,33 +190,40 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 }
 
 export interface TaskPromptOptions {
-  guideFile: string;
+  guideDescription: string;
   taskFile: string;
   baseApp: string;
   expectationsFile?: string;
   isDisciplineGuide?: boolean;
 }
 
-export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
-  const target = opts.isDisciplineGuide ? 'discipline guidance' : 'use case';
-  const expectationsFile = opts.expectationsFile || EXPECTATIONS_FILE;
+export function buildTargetTaskPrompt({
+  guideDescription,
+  taskFile,
+  baseApp,
+  expectationsFile = EXPECTATIONS_FILE,
+  isDisciplineGuide = false,
+}: TaskPromptOptions): string {
+  const target = isDisciplineGuide ? 'discipline guidance' : 'use case';
 
   return `# GOAL
-Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the ${target}.
-Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to apply the ${target} inside the application.
+Examine the codebase files of the web application \`${baseApp}\` and understand the ${target} from the following description:
+
+**Guide Description**: "${guideDescription}"
+
+Generate a \`${taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to apply the ${target} inside the application.
 
 # INPUTS
-1. **Standard Guidance**: \`${opts.guideFile}\` (contains the high-level capability boundary in its frontmatter \`description\`)
-2. **Requirements**: \`${expectationsFile}\` (used strictly as a **Negative Constraint / Spoiler Blocklist**)
-3. **Target File Name**: \`${opts.taskFile}\`
+1. **Requirements**: \`${expectationsFile}\` (used strictly as a **Negative Constraint / Spoiler Blocklist**)
+2. **Target File Name**: \`${taskFile}\`
 
 # RULES
-1. **Focus on the Guide Description**: The prompt must request the overall desired user outcome based specifically on the **description** in the frontmatter of \`${opts.guideFile}\`, keeping the request simple, high-level, and generic.
-2. **Preserve High-Level Capability Boundary**: DO preserve the high-level capability boundary from the frontmatter \`description\` so the implementing agent knows the functional domain and execution context (e.g., distinguishing on-device / built-in browser capabilities vs. external third-party cloud services or REST APIs).
-3. **Expectations as a Negative Constraint / Spoiler Blocklist**: Treat \`${expectationsFile}\` strictly as a blocklist of spoilers. Do NOT mention or copy secondary accessibility requirements, \`prefers-reduced-motion\`, fallback strategies, ARIA attributes, focus management, or edge cases from \`${expectationsFile}\` unless they are the explicit primary subject of \`${opts.guideFile}\`'s frontmatter \`description\`. The implementing agent must discover and apply these best practices from the guidance itself, not because the prompt spoiled them.
+1. **Focus on the Guide Description**: The prompt must request the overall desired user outcome based specifically on the **Guide Description** provided above, keeping the request simple, high-level, and generic.
+2. **Preserve High-Level Capability Boundary**: DO preserve the high-level capability boundary from the **Guide Description** so the implementing agent knows the functional domain and execution context (e.g., distinguishing on-device / built-in browser capabilities vs. external third-party cloud services or REST APIs).
+3. **Expectations as a Negative Constraint / Spoiler Blocklist**: Treat \`${expectationsFile}\` strictly as a blocklist of spoilers. Do NOT mention or copy secondary accessibility requirements, \`prefers-reduced-motion\`, fallback strategies, ARIA attributes, focus management, or edge cases from \`${expectationsFile}\` unless they are the explicit primary subject of the **Guide Description**. The implementing agent must discover and apply these best practices from the guidance itself, not because the prompt spoiled them.
 4. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcomes instead.
-5. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the frontmatter description of \`${opts.guideFile}\`.
-6. **Format**: Format \`${opts.taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
+5. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the **Guide Description** above.
+6. **Format**: Format \`${taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
 7. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant.
 8. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "implement X", "modify Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
 9. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.

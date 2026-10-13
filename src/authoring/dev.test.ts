@@ -1,6 +1,7 @@
 import test from 'node:test';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
 import { parsePassRates } from '../harness/lib/utils.ts';
+import { extractGuideDescription } from './dev.ts';
 
 test('parsePassRates parses multi-dimensional base-app scores correctly', () => {
   const output = `
@@ -247,18 +248,7 @@ test('exciseOldEvalArtifacts handles directory when old artifacts do not exist',
   assert.strictEqual(fs.existsSync(path.join(tmpDir, 'guide.md')), true);
 });
 
-test('generateTargetTask stages guide.md stripped down to frontmatter description', async (t) => {
-  const fs = await import('node:fs');
-  const path = await import('node:path');
-  const os = await import('node:os');
-  const matter = (await import('gray-matter')).default;
-  const { generateTargetTask, devInternals } = await import('./dev.ts');
-
-  const tmpGuideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gd-dev-target-task-test-'));
-  t.after(() => {
-    fs.rmSync(tmpGuideDir, { recursive: true, force: true });
-  });
-
+test('extractGuideDescription extracts frontmatter description and throws when missing', () => {
   const fullGuideMarkdown = `---
 title: "Passkey Management"
 description: "Enable users to view, manage, and revoke WebAuthn passkeys."
@@ -273,37 +263,15 @@ Secondary details and API spoilers:
 - Use credentialId and syncAcceptedCredentials
 `;
 
-  fs.writeFileSync(path.join(tmpGuideDir, 'guide.md'), fullGuideMarkdown);
-  fs.writeFileSync(path.join(tmpGuideDir, 'expectations.md'), '# Expectations\n- Requirement 1\n');
+  assert.strictEqual(
+    extractGuideDescription(fullGuideMarkdown),
+    'Enable users to view, manage, and revoke WebAuthn passkeys.',
+  );
 
-  let observedStagedGuideContent = '';
-  const originalRunAgent = devInternals.runAgent;
-  const originalCopyBaseApp = devInternals.copyBaseAppToWorkspace;
-
-  devInternals.copyBaseAppToWorkspace = async () => {};
-  devInternals.runAgent = async (_agent: any, _prompt: string, workDir?: string) => {
-    if (workDir) {
-      observedStagedGuideContent = fs.readFileSync(path.join(workDir, 'guide.md'), 'utf-8');
-      fs.writeFileSync(path.join(workDir, 'task.md'), '- Implement passkey management interface\n');
-    }
-    return '';
-  };
-
-  try {
-    await generateTargetTask(tmpGuideDir, 'devtools-times');
-  } finally {
-    devInternals.runAgent = originalRunAgent;
-    devInternals.copyBaseAppToWorkspace = originalCopyBaseApp;
-  }
-
-  assert.ok(observedStagedGuideContent.includes('Enable users to view, manage, and revoke WebAuthn passkeys.'));
-  assert.ok(!observedStagedGuideContent.includes('Secondary details and API spoilers'));
-  assert.ok(!observedStagedGuideContent.includes('syncAcceptedCredentials'));
-  assert.ok(!observedStagedGuideContent.includes('prefers-reduced-motion fallback'));
-
-  const parsed = matter(observedStagedGuideContent);
-  assert.strictEqual(parsed.data.description, 'Enable users to view, manage, and revoke WebAuthn passkeys.');
-  assert.strictEqual(parsed.content.trim(), '');
+  assert.throws(
+    () => extractGuideDescription('---\ntitle: "Missing Description"\n---\n# Body'),
+    /missing a required frontmatter 'description' field/,
+  );
 });
 
 
