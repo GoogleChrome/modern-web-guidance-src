@@ -227,6 +227,9 @@
       ]
     },
     "security": {
+      "digital-signatures": [
+        "daily-grind"
+      ],
       "local-network-access": [
         "daily-grind",
         "devtools-times"
