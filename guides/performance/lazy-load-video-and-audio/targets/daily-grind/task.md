@@ -1,1 +1,1 @@
-- Defer downloading offscreen video and audio assets, including video poster images and preloaded media data, until the media player approaches the viewport to conserve bandwidth and reduce network contention during initial page load.
+- Add a hero video and below-the-fold roasting video and podcast audio section to The Daily Grind homepage, making sure offscreen video and audio assets (including poster images and preloaded media data) defer downloading until the player approaches the viewport.

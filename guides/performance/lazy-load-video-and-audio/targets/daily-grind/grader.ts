@@ -86,7 +86,9 @@ test.describe('lazy-load-video-and-audio Target Grader', () => {
   test('offscreen video elements located below the fold set loading="lazy"', () => {
     const docs = getHtmlDocuments(targetFiles);
     const offscreenVideos = docs.flatMap(({ document }) =>
-      Array.from(document.querySelectorAll('main video, section video'))
+      Array.from(document.querySelectorAll('main video, section video')).filter(
+        (v: any) => !v.closest('header, .hero, nav')
+      )
     );
     const hasLazyOffscreenVideo =
       offscreenVideos.length > 0 &&
@@ -135,7 +137,9 @@ test.describe('lazy-load-video-and-audio Target Grader', () => {
   test('offscreen media elements pair loading="lazy" with preload="metadata" or preload="none"', () => {
     const docs = getHtmlDocuments(targetFiles);
     const lazyMedia = docs.flatMap(({ document }) =>
-      Array.from(document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"]'))
+      Array.from(document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"]')).filter(
+        (el: any) => !el.hasAttribute('autoplay')
+      )
     );
     const allLazyMediaHavePreloadFallback =
       lazyMedia.length > 0 &&
