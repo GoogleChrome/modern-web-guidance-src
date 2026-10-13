@@ -3,6 +3,7 @@ name: diagonal-panning
 description: Allow users to freely pan or scroll two-dimensional surfaces—such as maps, zoomed images, infinite canvases, or large data grids—in any diagonal direction without the gesture locking to a single horizontal or vertical axis.
 web-feature-ids:
   - scroll-axis-lock
+  - overscroll-behavior
 ---
 
 # Diagonal Panning
@@ -13,9 +14,11 @@ While axis-locking prevents accidental sideways drift in one-dimensional reading
 
 ## Implementation
 
-### 1. Disable axis-locking on the 2D scroll container
+### 1. Disable axis-locking and contain overscroll on the 2D scroll container
 
 Apply `scroll-axis-lock: none` directly to the element that establishes the two-dimensional scroll container (`overflow: auto` or `overflow: scroll`). With `none`, the container applies scroll deltas on both axes simultaneously from the start of the gesture across touchscreens, trackpads, and mouse wheels; the default `auto` lets the browser rail predominantly one-dimensional gestures.
+
+Pair `scroll-axis-lock: none` with `overscroll-behavior: none` (or `overscroll-behavior: contain`) on the scroll container so that reaching an edge does not chain scrolling to the parent page or trigger accidental browser overscroll navigations (such as horizontal back/forward swipe navigation or pull-to-refresh).
 
 ### 2. Preserve keyboard focusability and accessibility
 
@@ -45,6 +48,10 @@ Because a 2D panning surface often lacks focusable child controls (for example, 
   /* MANDATORY: Disable browser scroll axis-locking ("railing") so gestures
      immediately pan diagonally in response to both X and Y scroll deltas. */
   scroll-axis-lock: none;
+
+  /* Contain scrolling and prevent accidental swipe navigations at edges
+     (use `none` or `contain`). */
+  overscroll-behavior: none;
 }
 
 /* Provide a clear focus indicator when keyboard users focus the viewport. */
@@ -63,6 +70,7 @@ Because a 2D panning surface often lacks focusable child controls (for example, 
 ## Best Practices & Constraints
 
 - **Apply it to the scroll container itself, not an ancestor wrapper**: `scroll-axis-lock` is not inherited, so setting it on a wrapper has no effect on descendant scroll containers.
+- **Contain overscroll and prevent accidental navigations**: Add `overscroll-behavior: none` or `overscroll-behavior: contain` to the 2D scroll container so panning into a boundary does not chain to the parent page or trigger browser back/forward swipe navigation and pull-to-refresh gestures.
 - **Nested one-dimensional panels keep railing automatically**: Because `scroll-axis-lock` does not inherit, a sidebar or inspector panel nested inside `.pan-viewport` retains the default `scroll-axis-lock: auto` behavior.
 - **Keep `auto` on standard vertical feeds, articles, and one-dimensional lists**: Axis-locking prevents unintentional perpendicular drift in unidirectional content.
 - **Do not set `touch-action: none` unconditionally**: `touch-action` controls whether the browser handles touch gestures at all (and has no effect on trackpad or wheel input), so setting it disables native compositor touch scrolling. Only apply it inside `@supports not (scroll-axis-lock: none)` when implementing the JavaScript pointer fallback.
