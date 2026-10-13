@@ -183,5 +183,3 @@ If `accent-color` is not supported and styling the progress bar is required, use
 {{ BASELINE_STATUS('tmp-revert-rule') }} #}
 
 If `revert-rule` is not supported, the declaration becomes IACVT (invalid at computed-value time) and behaves as `unset`. Here `animation` computes to `none`, same as the UA, so no guard is needed.
-
-Do NOT try to store `revert-rule` in a custom property as a fallback (e.g. `--revert-rule: revert-rule`): a CSS-wide keyword as a custom property value applies to the custom property itself, so the property computes to empty and the `var()` falls through to IACVT anyway.
