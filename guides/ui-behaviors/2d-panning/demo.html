@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Diagonal Panning with CSS scroll-axis-lock</title>
+    <title>Two-Dimensional Panning with CSS scroll-axis-lock</title>
     <style>
       :root {
         font-family: system-ui, -apple-system, sans-serif;
@@ -223,13 +223,13 @@
   </head>
   <body>
     <main>
-      <h1>Diagonal Panning with CSS <code>scroll-axis-lock: none</code></h1>
+      <h1>Two-Dimensional Panning with CSS <code>scroll-axis-lock: none</code></h1>
 
       <p>
-        Pan or scroll the 2D surface below using a trackpad or touchscreen (for example, in a
-        diagonal or circular motion). With <code>scroll-axis-lock: none</code> enabled, the scroll
-        container immediately follows both horizontal and vertical deltas without locking to a
-        single axis.
+        Pan or scroll the 2D surface below using a trackpad or touchscreen (whether moving
+        diagonally or changing direction mid-gesture, such as in a circle or L-shape). With
+        <code>scroll-axis-lock: none</code> enabled, the scroll container follows both horizontal
+        and vertical deltas throughout the gesture without locking to a single axis.
       </p>
 
       <div class="support-warning" role="status">
@@ -553,13 +553,13 @@
 
         if (rInX < 3 && rInY < 3) return;
 
-        const hasDiagonalInput = rInX > 3 && rInY > 3;
+        const has2DInput = rInX > 3 && rInY > 3;
 
         let nextStatus = '';
         let nextClass = '';
         let newlyDetectedLock = null;
 
-        if (hasDiagonalInput) {
+        if (has2DInput) {
           if (rScrX > 0 && rScrY === 0) {
             nextStatus = 'Locked to X-axis (Y ignored)';
             nextClass = 'status-indicator locked';
@@ -572,7 +572,7 @@
             nextStatus = 'Scroll Boundary Reached';
             nextClass = 'status-indicator normal';
           } else {
-            nextStatus = 'Diagonal Panning';
+            nextStatus = '2D Panning';
             nextClass = 'status-indicator free';
           }
         } else {

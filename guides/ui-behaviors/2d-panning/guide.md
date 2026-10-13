@@ -1,22 +1,22 @@
 ---
-name: diagonal-panning
-description: Allow users to freely pan or scroll two-dimensional surfaces—such as maps, zoomed images, infinite canvases, or large data grids—in any diagonal direction without the gesture locking to a single horizontal or vertical axis.
+name: 2d-panning
+description: Allow users to freely pan or scroll two-dimensional surfaces—such as maps, zoomed images, infinite canvases, or large data grids—across both directions (whether diagonally or changing direction mid-gesture) without the gesture locking to a single horizontal or vertical axis.
 web-feature-ids:
   - scroll-axis-lock
   - overscroll-behavior
 ---
 
-# Diagonal Panning
+# Two-Dimensional Panning
 
-When a user scrolls a two-dimensional scroll container, browsers typically apply a scroll axis-locking heuristic (also known as "railing"). If a gesture begins with significantly more movement along one axis than the perpendicular axis, the browser locks the scroll to a single horizontal or vertical axis and ignores perpendicular deltas—often for the remainder of the gesture.
+When a user scrolls a two-dimensional scroll container, browsers typically apply a scroll axis-locking heuristic (also known as "railing"). If a gesture begins with significantly more movement along one axis than the perpendicular axis, the browser locks the scroll to that single horizontal or vertical axis and ignores perpendicular deltas—often for the remainder of the gesture.
 
-While axis-locking prevents accidental sideways drift in one-dimensional reading flows, it creates friction on two-dimensional panning surfaces such as interactive maps, zoomed images, infinite canvases, node graphs, and large data grids. The CSS `scroll-axis-lock` property disables this heuristic directly on a native scroll container, allowing immediate diagonal panning while preserving compositor-thread scrolling, momentum physics, native scrollbars, and keyboard navigation.
+While axis-locking prevents accidental sideways drift in one-dimensional reading flows, it creates friction on two-dimensional panning surfaces such as interactive maps, zoomed images, infinite canvases, node graphs, and large data grids. Because the lock persists across the gesture, it affects any panning that involves two directions—whether both axes are panned simultaneously (diagonal panning) or one after the other within a single gesture (such as curved, circular, or L-shaped paths). The CSS `scroll-axis-lock` property disables this heuristic directly on a native scroll container, allowing unrestricted two-dimensional panning while preserving compositor-thread scrolling, momentum physics, native scrollbars, and keyboard navigation.
 
 ## Implementation
 
-### 1. Disable axis-locking and contain overscroll on the 2D scroll container
+### 1. Disable axis-locking and contain overscroll on the two-dimensional scroll container
 
-Apply `scroll-axis-lock: none` directly to the element that establishes the two-dimensional scroll container (`overflow: auto` or `overflow: scroll`). With `none`, the container applies scroll deltas on both axes simultaneously from the start of the gesture across touchscreens, trackpads, and mouse wheels; the default `auto` lets the browser rail predominantly one-dimensional gestures.
+Apply `scroll-axis-lock: none` directly to the element that establishes the two-dimensional scroll container (`overflow: auto` or `overflow: scroll`). With `none`, the container applies scroll deltas on both axes throughout the gesture across touchscreens, trackpads, and mouse wheels; the default `auto` lets the browser rail predominantly one-dimensional gestures.
 
 Pair `scroll-axis-lock: none` with `overscroll-behavior: none` (or `overscroll-behavior: contain`) on the scroll container so that reaching an edge does not chain scrolling to the parent page or trigger accidental browser overscroll navigations (such as horizontal back/forward swipe navigation or pull-to-refresh).
 
@@ -46,7 +46,8 @@ Because a 2D panning surface often lacks focusable child controls (for example, 
   overflow: auto;
 
   /* MANDATORY: Disable browser scroll axis-locking ("railing") so gestures
-     immediately pan diagonally in response to both X and Y scroll deltas. */
+     can pan freely in two directions (both diagonally and when changing
+     direction mid-gesture). */
   scroll-axis-lock: none;
 
   /* Contain scrolling and prevent accidental swipe navigations at edges
@@ -84,14 +85,14 @@ Choose between **progressive enhancement** and a **JavaScript fallback** based o
 
 ### Option 1: Progressive Enhancement (No JavaScript)
 
-Use progressive enhancement when preserving native compositor-thread touch scrolling, inertial fling momentum, and pinch-to-zoom is more important than eliminating initial axis-locking in unsupported browsers:
+Use progressive enhancement when preserving native compositor-thread touch scrolling, inertial fling momentum, and pinch-to-zoom is more important than eliminating axis-locking in unsupported browsers:
 
-- **Supporting browsers**: The browser disables scroll axis-locking on the scroll container, allowing immediate diagonal panning from the start of any touch or trackpad gesture.
+- **Supporting browsers**: The browser disables scroll axis-locking on the scroll container, allowing unrestricted 2D panning (both simultaneous diagonal movement and mid-gesture direction changes) from the start of any touch or trackpad gesture.
 - **Unsupported browsers**: Browsers that do not recognize `scroll-axis-lock: none` safely ignore the declaration and keep their standard native 2D scrolling behavior. Users can still scroll and pan across both axes natively.
 
 ### Option 2: JavaScript Fallback (`wheel` + `pointermove` with `scrollLeft`/`scrollTop`)
 
-If immediate, unrestricted diagonal panning across all browsers is required, use `@supports not (scroll-axis-lock: none)` and `CSS.supports('scroll-axis-lock', 'none')` to conditionally intercept `wheel` and pointer drag gestures.
+If unrestricted two-dimensional panning across all browsers is required, use `@supports not (scroll-axis-lock: none)` and `CSS.supports('scroll-axis-lock', 'none')` to conditionally intercept `wheel` and pointer drag gestures.
 
 Because `wheel` (`e.deltaX`, `e.deltaY`) and `pointermove` (`e.clientX`, `e.clientY`) expose raw, unlocked 2D deltas before the browser's scrolling engine applies axis-locking, you can apply those deltas directly to `scrollLeft` and `scrollTop`:
 
