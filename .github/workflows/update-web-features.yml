@@ -105,7 +105,7 @@ jobs:
           commit-message: "chore(deps): bump web-features package"
           title: "chore(deps): bump web-features package"
           body: |
-            Automated check for `web-features` updates across `/`, `/serving`, and `/guides`.
+            Automated check for `web-features` updates across `/`, `/src`, and `/guides`.
             
             CI workflow checks will automatically run on this PR to report if any guidance macros, tests, or features require updates.
           branch: "auto/web-features-update"

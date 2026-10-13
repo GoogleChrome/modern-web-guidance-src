@@ -1,5 +1,9 @@
 {
   "default": {
+    "accessibility": [
+      "LJWatson",
+      "jenknoll"
+    ],
     "built-in-ai": "tomayac",
     "css": "LeaVerou",
     "html": "LeaVerou",
