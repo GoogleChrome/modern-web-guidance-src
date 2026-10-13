@@ -13,8 +13,8 @@ WebGL shaders provide powerful GPU-accelerated visual effects, enabling advanced
 
 1. Check if HTML-in-Canvas is supported in the browser:
 
-```
-if ('requestPaint' in HTMLCanvasElement.prototype) {
+```js
+if ('content' in HTMLCanvasElement.prototype) {
   // Use HTML in Canvas API
 } else {
   // Use fallback strategy

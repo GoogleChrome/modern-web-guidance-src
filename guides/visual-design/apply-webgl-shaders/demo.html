@@ -419,8 +419,8 @@
             observer.observe(canvas, options);
         }
 
-        // Check that HTML-in-Canvas, and its WebGL upload method, are supported.
-        if ('requestPaint' in HTMLCanvasElement.prototype && gl && 'texElementSubImage2D' in gl) {
+        // Check that HTML-in-Canvas is supported, and that WebGL 2 is available.
+        if ('content' in HTMLCanvasElement.prototype && gl) {
             initHtmlInCanvas();
         } else {
             // Fallback: canvas children aren't rendered without HTML-in-Canvas.

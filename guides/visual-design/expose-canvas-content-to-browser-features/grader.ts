@@ -1,9 +1,26 @@
 import { test, expect } from '@playwright/test';
 import * as path from 'path';
 
+// Runs in the page: defines HTMLCanvasElement.prototype.content, so HTML-in-Canvas feature detection passes.
+function mockCanvasContent() {
+  if (!('content' in HTMLCanvasElement.prototype)) {
+    Object.defineProperty(HTMLCanvasElement.prototype, 'content', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        return this.getAttribute('content')?.toLowerCase() === 'drawable' ? 'drawable' : 'fallback';
+      },
+      set(value) {
+        this.setAttribute('content', String(value));
+      },
+    });
+  }
+}
+
 test.describe('HTML-in-Canvas Grader Tests', () => {
 
   test('Feature detection for HTML-in-Canvas MUST be conducted before using the HTML-in-Canvas API', async ({ page }) => {
+    await page.addInitScript(mockCanvasContent);
     const pageErrors: Error[] = [];
     page.on('pageerror', (err) => {
       pageErrors.push(err);
@@ -25,6 +42,7 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
   });
 
   test('The <canvas> element MUST include the content="drawable" attribute', async ({ page }) => {
+    await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       if (!('requestPaint' in HTMLCanvasElement.prototype)) {
         (HTMLCanvasElement.prototype as any).requestPaint = function() {};
@@ -41,6 +59,7 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
   });
 
   test('Every direct child of the <canvas> element MUST include the drawable attribute', async ({ page }) => {
+    await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       if (!('requestPaint' in HTMLCanvasElement.prototype)) {
         (HTMLCanvasElement.prototype as any).requestPaint = function() {};
@@ -57,13 +76,14 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
   });
 
   test('Canvas rendering MUST be executed inside an onpaint event handler', async ({ page }) => {
+    await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       if (!('requestPaint' in HTMLCanvasElement.prototype)) {
         (HTMLCanvasElement.prototype as any).requestPaint = function() {};
       }
       if (!('drawElementImage' in CanvasRenderingContext2D.prototype)) {
         (CanvasRenderingContext2D.prototype as any).drawElementImage = function() {
-          return new DOMMatrix();
+          return undefined;
         };
       }
     });
@@ -79,6 +99,7 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
   });
 
   test('The rendering logic MUST use drawElementImage, texElementSubImage2D, or drawElementImageToTexture inside onpaint', async ({ page }) => {
+    await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       (window as any).renderingApiCalled = null;
       (window as any).isInsideOnPaint = false;
@@ -87,7 +108,7 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
         if ((window as any).isInsideOnPaint) {
           (window as any).renderingApiCalled = 'drawElementImage';
         }
-        return new DOMMatrix();
+        return undefined;
       };
 
       if (typeof WebGLRenderingContext !== 'undefined') {
@@ -129,6 +150,7 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
   });
 
   test('The DOM position of each drawn HTML element MUST match where it is drawn', async ({ page }) => {
+    await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       (window as any).paintErrors = [];
       (window as any).isInsideOnPaint = false;
@@ -189,6 +211,7 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
   });
 
   test('A ResizeObserver MUST be used to update canvas dimensions to prevent blurriness', async ({ page }) => {
+    await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       if (!('requestPaint' in HTMLCanvasElement.prototype)) {
         (HTMLCanvasElement.prototype as any).requestPaint = function() {};

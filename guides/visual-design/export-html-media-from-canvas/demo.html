@@ -61,7 +61,7 @@
         };
 
         // Check that HTML-in-Canvas is supported before using it.
-        if ('requestPaint' in HTMLCanvasElement.prototype) {
+        if ('content' in HTMLCanvasElement.prototype) {
             canvas.onpaint = (event) => {
                 ctx.reset();
                 // Draw the element into the canvas. The browser synchronizes its

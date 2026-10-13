@@ -17,7 +17,7 @@ When using WebGL or WebGPU, follow these steps:
 1. Check if HTML-in-Canvas is supported in the browser:
 
 ```
-if ('requestPaint' in HTMLCanvasElement.prototype) {
+if ('content' in HTMLCanvasElement.prototype) {
   // Use HTML in Canvas API
 } else {
   // Use fallback strategy
@@ -250,8 +250,8 @@ Use these options to control hit testing:
 
 1. Check if HTML-in-Canvas is supported in the browser:
 
-```
-if ('requestPaint' in HTMLCanvasElement.prototype) {
+```js
+if ('content' in HTMLCanvasElement.prototype) {
   // Use HTML in Canvas API
 } else {
   // Use fallback strategy
@@ -380,7 +380,7 @@ if ('requestPaint' in HTMLCanvasElement.prototype) {
 // 1. Initialize Three.js camera, scene, renderer, mesh, interactions;
 
 // 2. Ensure HTML-in-Canvas feature support
-if (!('requestPaint' in HTMLCanvasElement.prototype)) {
+if (!('content' in HTMLCanvasElement.prototype)) {
   // Use a fallback strategy
 }
 

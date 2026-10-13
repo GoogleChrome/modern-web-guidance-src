@@ -13,8 +13,8 @@ Regular `<canvas>` content is not exposed to browser features such as screen rea
 
 1. Check if HTML-in-Canvas is supported in the browser:
 
-```
-if ('requestPaint' in HTMLCanvasElement.prototype) {
+```js
+if ('content' in HTMLCanvasElement.prototype) {
   // Use HTML in Canvas API
 } else {
   // Use fallback strategy

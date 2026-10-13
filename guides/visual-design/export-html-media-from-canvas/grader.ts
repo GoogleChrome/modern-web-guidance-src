@@ -66,6 +66,11 @@ declare global {
       containsCanvas: boolean;
       options: any;
     }>;
+    __drawnElements: HTMLElement[];
+    __paintErrors: string[];
+    __geometryCalls: Array<{
+      hasCanvasTransform: boolean;
+    }>;
   }
   interface HTMLCanvasElement {
     onpaint?: (event?: any) => void;
@@ -93,6 +98,9 @@ test.beforeEach(async ({ page }) => {
     window.__onpaintCalled = false;
     window.__onpaintActive = false;
     window.__resizeObserverObserved = [];
+    window.__drawnElements = [];
+    window.__paintErrors = [];
+    window.__geometryCalls = [];
 
     const onpaintMap = new WeakMap<HTMLCanvasElement, any>();
     
@@ -140,6 +148,20 @@ test.beforeEach(async ({ page }) => {
       return origAddEventListener.call(this, type, listener, options);
     };
 
+    // Mock HTMLCanvasElement.prototype.content, which pages use to detect HTML-in-Canvas
+    if (!('content' in HTMLCanvasElement.prototype)) {
+      Object.defineProperty(HTMLCanvasElement.prototype, 'content', {
+        configurable: true,
+        enumerable: true,
+        get() {
+          return this.getAttribute('content')?.toLowerCase() === 'drawable' ? 'drawable' : 'fallback';
+        },
+        set(value) {
+          this.setAttribute('content', String(value));
+        },
+      });
+    }
+
     // Mock HTMLCanvasElement.prototype.requestPaint
     Object.defineProperty(HTMLCanvasElement.prototype, 'requestPaint', {
       get() {
@@ -150,7 +172,13 @@ test.beforeEach(async ({ page }) => {
             const mockEvent = {
               changedElements: [document.getElementById('export_element') || document.body]
             };
-            onpaintFn.call(this, mockEvent);
+            try {
+              onpaintFn.call(this, mockEvent);
+            } catch (e) {
+              // Record errors, for example from using the return value of drawElementImage()
+              window.__paintErrors.push(String(e));
+              throw e;
+            }
           }
         };
       },
@@ -165,8 +193,20 @@ test.beforeEach(async ({ page }) => {
           arguments: [element ? element.id || element.className || element.tagName : null, x, y],
           insideOnpaint: window.__onpaintActive
         });
-        // Return a mock DOMMatrix
-        return new DOMMatrix();
+        window.__drawnElements.push(element);
+        // Like the latest API, return undefined: the browser syncs the element's DOM position
+        return undefined;
+      },
+      writable: true,
+      configurable: true
+    });
+
+    // Mock HTMLCanvasElement.prototype.updateElementGeometry
+    Object.defineProperty(HTMLCanvasElement.prototype, 'updateElementGeometry', {
+      value: function(this: HTMLCanvasElement, element: HTMLElement, options?: { canvasTransform?: DOMMatrix }) {
+        window.__geometryCalls.push({
+          hasCanvasTransform: !!(options && options.canvasTransform)
+        });
       },
       writable: true,
       configurable: true
@@ -175,10 +215,10 @@ test.beforeEach(async ({ page }) => {
     // Mock WebGL/WebGPU render calls if needed
     const spyWebGL = (proto: any) => {
       if (!proto) return;
-      const originalTex = proto.texElementImage2D;
-      proto.texElementImage2D = function(this: any, ...args: any[]) {
+      const originalTex = proto.texElementSubImage2D;
+      proto.texElementSubImage2D = function(this: any, ...args: any[]) {
         window.__renderCalls.push({
-          method: 'texElementImage2D',
+          method: 'texElementSubImage2D',
           insideOnpaint: window.__onpaintActive
         });
         if (originalTex) {
@@ -192,10 +232,10 @@ test.beforeEach(async ({ page }) => {
 
     if (typeof (window as any).GPUQueue !== 'undefined') {
       const queueProto = (window as any).GPUQueue.prototype;
-      const originalCopy = queueProto.copyElementImageToTexture;
-      queueProto.copyElementImageToTexture = function(this: any, ...args: any[]) {
+      const originalCopy = queueProto.drawElementImageToTexture;
+      queueProto.drawElementImageToTexture = function(this: any, ...args: any[]) {
         window.__renderCalls.push({
-          method: 'copyElementImageToTexture',
+          method: 'drawElementImageToTexture',
           insideOnpaint: window.__onpaintActive
         });
         if (originalCopy) return originalCopy.apply(this, args);
@@ -255,16 +295,28 @@ test('Feature detection for HTML-in-Canvas MUST be conducted', async ({ page }) 
   expect(isFeatureDetected || hasStaticFeatureDetection).toBe(true);
 });
 
-// Test 2: Canvas element includes layoutsubtree attribute
-test('The canvas element MUST include the layoutsubtree attribute', async ({ page }) => {
-  const hasLayoutSubtree = await page.evaluate(() => {
+// Test 2: Canvas element includes content="drawable" attribute
+test('The canvas element MUST include the content="drawable" attribute', async ({ page }) => {
+  const hasDrawableContent = await page.evaluate(() => {
     const canvas = document.querySelector('canvas');
-    return canvas ? canvas.hasAttribute('layoutsubtree') : false;
+    return canvas ? canvas.getAttribute('content') === 'drawable' : false;
   });
-  expect(hasLayoutSubtree).toBe(true);
+  expect(hasDrawableContent).toBe(true);
 });
 
-// Test 3: Canvas rendering executed inside onpaint event handler
+// Test 3: Drawn elements and direct children of the canvas include the drawable attribute
+test('Every drawn HTML element and every direct child of the canvas element MUST include the drawable attribute', async ({ page }) => {
+  const hasDrawableElements = await page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas || canvas.children.length === 0) return false;
+    const childrenAreDrawable = Array.from(canvas.children).every(child => child.hasAttribute('drawable'));
+    const drawnElementsAreDrawable = window.__drawnElements.every(el => el instanceof Element && el.hasAttribute('drawable'));
+    return childrenAreDrawable && drawnElementsAreDrawable;
+  });
+  expect(hasDrawableElements).toBe(true);
+});
+
+// Test 4: Canvas rendering executed inside onpaint event handler
 test('Canvas rendering MUST be executed inside an onpaint event handler', async ({ page }) => {
   const hasOnpaintHandler = await page.evaluate(() => {
     const canvas = document.querySelector('canvas');
@@ -273,30 +325,30 @@ test('Canvas rendering MUST be executed inside an onpaint event handler', async 
   expect(hasOnpaintHandler).toBe(true);
 });
 
-// Test 4: Rendering logic uses the correct API methods
-test('The rendering logic MUST use correct HTML-in-Canvas drawing methods', async ({ page }) => {
+// Test 5: Rendering logic uses the correct API methods
+test('The rendering logic MUST use drawElementImage, texElementSubImage2D, or drawElementImageToTexture', async ({ page }) => {
   const usedCorrectMethod = await page.evaluate(() => {
-    const validMethods = ['drawElementImage', 'texElementImage2D', 'copyElementImageToTexture'];
+    const validMethods = ['drawElementImage', 'texElementSubImage2D', 'drawElementImageToTexture'];
     return window.__renderCalls.some(call => validMethods.includes(call.method));
   });
   expect(usedCorrectMethod).toBe(true);
 });
 
-// Test 5: CSS transform is updated based on transform matrix
-test('The CSS transform property of the descendant element MUST be updated', async ({ page }) => {
-  const isTransformUpdated = await page.evaluate(() => {
-    const targetElement = document.getElementById('export_element_canvas_clone') ||
-                          document.getElementById('export_element') || 
-                          document.querySelector('canvas *') ||
-                          document.querySelector('.export-content');
-    if (!targetElement) return false;
-    const styleTransform = (targetElement as HTMLElement).style.transform;
-    return styleTransform !== '' || window.__renderCalls.length > 0;
+// Test 6: DOM position of each drawn element matches where it is drawn
+test('The DOM position of each drawn HTML element MUST match where it is drawn', async ({ page }) => {
+  const isPositionSynced = await page.evaluate(() => {
+    // In 2D, drawElementImage() syncs the DOM position, so its return value isn't applied to style.transform
+    if (window.__drawnElements.length > 0) {
+      return window.__paintErrors.length === 0 &&
+             window.__drawnElements.every(el => !el?.style?.transform);
+    }
+    // In WebGL and WebGPU, updateElementGeometry() with a canvasTransform syncs it
+    return window.__geometryCalls.some(call => call.hasCanvasTransform);
   });
-  expect(isTransformUpdated).toBe(true);
+  expect(isPositionSynced).toBe(true);
 });
 
-// Test 6: Screen size changes are observed to update canvas size
+// Test 7: Screen size changes are observed to update canvas size
 test('Screen size changes MUST be observed via ResizeObserver on the canvas', async ({ page }) => {
   const isCanvasObserved = await page.evaluate(() => {
     return window.__resizeObserverObserved.some(obs => obs.targetTagName === 'canvas' || obs.targetId === 'export_element' || obs.targetTagName === 'article' || obs.containsCanvas);

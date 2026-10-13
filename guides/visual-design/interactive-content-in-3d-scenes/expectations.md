@@ -5,7 +5,7 @@
 - The HTML texture rendering logic MUST use `texElementSubImage2D` for WebGL or `drawElementImageToTexture` for WebGPU to upload HTML elements into a texture.
 - When using WebGL, before `texElementSubImage2D` uploads into it, the texture MUST be allocated with `texImage2D()` at the element's size in canvas grid pixels (from `canvas.captureElementImage()`, rounded up).
 - When using WebGL or WebGPU, the texture MUST only be reallocated or recreated when the element's size changes, not on every paint, because a new texture is empty until the next upload.
-- To syncronize element's rendered pixels and its logical layout, the element MUST be updated with `canvas.updateElementGeometry()`, passing a `canvasTransform` that maps the element's border box to its rendered location on the canvas, in CSS pixels, so its DOM position, hit testing, and accessibility bounds match the rendered content.
+- Each drawn HTML element MUST be registered with `canvas.updateElementGeometry()`, passing a `canvasTransform` that maps the element's border box to its rendered location on the canvas, in CSS pixels, so its DOM position, hit testing, and accessibility bounds match the rendered content.
 - When using Three.js, the mesh that displays the `THREE.HTMLTexture` MUST be registered with an `InteractionManager` that's updated in the animation loop, so the HTML element receives clicks and input.
 - Screen size changes MUST be observed to update the canvas size to match device pixels to prevent blurriness.
 - A fallback UI strategy MUST be implemented for browsers that do not support HTML-in-Canvas.

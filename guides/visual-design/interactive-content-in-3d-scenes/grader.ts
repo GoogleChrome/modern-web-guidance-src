@@ -44,6 +44,19 @@ test.describe('Interactive 3D Content Grader', () => {
       (window as any).__resizeObserverObserved = false;
 
       if (typeof HTMLCanvasElement !== 'undefined') {
+        if (!('content' in HTMLCanvasElement.prototype)) {
+          Object.defineProperty(HTMLCanvasElement.prototype, 'content', {
+            configurable: true,
+            enumerable: true,
+            get() {
+              return this.getAttribute('content')?.toLowerCase() === 'drawable' ? 'drawable' : 'fallback';
+            },
+            set(value) {
+              this.setAttribute('content', String(value));
+            },
+          });
+        }
+
         const checkFeature = () => {
           (window as any).__featureChecked = true;
         };
@@ -78,9 +91,11 @@ test.describe('Interactive 3D Content Grader', () => {
           (window as any).__texElementSubImage2D_called = true;
           if (origTex) return origTex.apply(this, args);
         };
+      }
 
-        const origCopy = (WebGLRenderingContext.prototype as any).drawElementImageToTexture;
-        (WebGLRenderingContext.prototype as any).drawElementImageToTexture = function(...args: any[]) {
+      if (typeof (window as any).GPUQueue !== 'undefined') {
+        const origCopy = (window as any).GPUQueue.prototype.drawElementImageToTexture;
+        (window as any).GPUQueue.prototype.drawElementImageToTexture = function(...args: any[]) {
           (window as any).__featureChecked = true;
           (window as any).__drawElementImageToTexture_called = true;
           if (origCopy) return origCopy.apply(this, args);
@@ -191,7 +206,7 @@ test.describe('Interactive 3D Content Grader', () => {
     expect(allocatesTexture && comparesSize).toBe(true);
   });
 
-  test('Element geometry MUST be updated with updateElementGeometry and a canvasTransform', async ({ page }) => {
+  test('Each drawn HTML element MUST be registered with updateElementGeometry and a canvasTransform', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
     await page.waitForTimeout(200);
     const code = getScriptContent();
@@ -222,24 +237,18 @@ test.describe('Interactive 3D Content Grader', () => {
 
   test('Fallback UI strategy MUST be implemented to prevent unhandled exceptions', async ({ page }) => {
     await page.addInitScript(() => {
+      // Simulate a browser without HTML-in-Canvas support, including removing the mocks from beforeEach.
+      for (const member of ['content', 'requestPaint', 'captureElementImage', 'updateElementGeometry']) {
+        delete (HTMLCanvasElement.prototype as any)[member];
+      }
       if (typeof WebGLRenderingContext !== 'undefined') {
-        delete (WebGLRenderingContext.prototype as any).texElementImage2D;
-        delete (WebGLRenderingContext.prototype as any).copyElementImageToTexture;
+        delete (WebGLRenderingContext.prototype as any).texElementSubImage2D;
       }
       if (typeof WebGL2RenderingContext !== 'undefined') {
-        delete (WebGL2RenderingContext.prototype as any).texElementImage2D;
-        delete (WebGL2RenderingContext.prototype as any).copyElementImageToTexture;
+        delete (WebGL2RenderingContext.prototype as any).texElementSubImage2D;
       }
       if (typeof GPUQueue !== 'undefined') {
-        delete (GPUQueue.prototype as any).copyElementImageToTexture;
-      }
-      if (typeof HTMLCanvasElement !== 'undefined') {
-        delete (HTMLCanvasElement.prototype as any).getElementTransform;
-        HTMLCanvasElement.prototype.requestPaint = function () {
-          if (typeof (this as any).onpaint === 'function') {
-            (this as any).onpaint({ changedElements: [] });
-          }
-        };
+        delete (GPUQueue.prototype as any).drawElementImageToTexture;
       }
     });
 
@@ -254,17 +263,6 @@ test.describe('Interactive 3D Content Grader', () => {
     await page.waitForTimeout(200);
 
     expect(pageErrors).toEqual([]);
-
-    const polyfillInstalledAtRuntime = await page
-      .evaluate(() => {
-        return (
-          (typeof WebGLRenderingContext !== 'undefined' &&
-            typeof (WebGLRenderingContext.prototype as any).texElementImage2D === 'function') ||
-          (typeof WebGL2RenderingContext !== 'undefined' &&
-            typeof (WebGL2RenderingContext.prototype as any).texElementImage2D === 'function')
-        );
-      })
-      .catch(() => false);
 
     const html = getScriptContent();
     const parts = [html];
@@ -282,8 +280,7 @@ test.describe('Interactive 3D Content Grader', () => {
     }
     const code = parts.join('\n');
     const hasFallbackStrategy =
-      polyfillInstalledAtRuntime ||
-      /typeof\s+[^;]*(?:texElementImage2D|copyElementImageToTexture)|\brequestPaint['"]?\s+in\b|!(?:gl\.texElementImage2D|[\w.]+\.copyElementImageToTexture)|if\s*\(\s*(?:gl\.texElementImage2D|[\w.]+\.copyElementImageToTexture)\s*\)|three-html-render|installHtmlInCanvasPolyfill/i.test(
+      /typeof\s+[^;]*(?:texElementSubImage2D|drawElementImageToTexture)|\brequestPaint['"]?\s+in\b|['"]content['"]\s+in\b|!(?:gl\.texElementSubImage2D|[\w.]+\.drawElementImageToTexture)|if\s*\(\s*(?:gl\.texElementSubImage2D|[\w.]+\.drawElementImageToTexture)\s*\)|three-html-render|installHtmlInCanvasPolyfill/i.test(
         code
       );
     expect(hasFallbackStrategy).toBe(true);

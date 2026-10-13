@@ -45,22 +45,63 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
       }
     });
     await page.addInitScript(() => {
+      if (!('content' in HTMLCanvasElement.prototype)) {
+        Object.defineProperty(HTMLCanvasElement.prototype, 'content', {
+          configurable: true,
+          enumerable: true,
+          get() {
+            return this.getAttribute('content')?.toLowerCase() === 'drawable' ? 'drawable' : 'fallback';
+          },
+          set(value) {
+            this.setAttribute('content', String(value));
+          },
+        });
+      }
+
+      (HTMLCanvasElement.prototype as any).updateElementGeometry = function() {};
+      (HTMLCanvasElement.prototype as any).captureElementImage = function(element: HTMLElement) {
+        return { width: element.offsetWidth || 300, height: element.offsetHeight || 150, close() {} };
+      };
+
+      let inPaint = false;
       HTMLCanvasElement.prototype.requestPaint = function() {
-        if (typeof this.onpaint === 'function') {
-          try {
-            this.onpaint({ changedElements: [] });
-          } catch (e) {
-            // ignore
-          }
+        if (inPaint || typeof this.onpaint !== 'function') return;
+        inPaint = true;
+        try {
+          this.onpaint({ changedElements: [] });
+        } catch (e) {
+          // ignore
+        } finally {
+          inPaint = false;
         }
       };
+
+      if (typeof WebGLRenderingContext !== 'undefined') {
+        (WebGLRenderingContext.prototype as any).texElementSubImage2D = function() {};
+      }
+      if (typeof WebGL2RenderingContext !== 'undefined') {
+        (WebGL2RenderingContext.prototype as any).texElementSubImage2D = function() {};
+      }
     });
   });
 
   test('Feature detection for HTML-in-Canvas is conducted before using the API', async ({ page }) => {
+    await page.addInitScript(() => {
+      // Simulate a browser without HTML-in-Canvas support, including removing the mocks from beforeEach.
+      for (const member of ['content', 'requestPaint', 'captureElementImage', 'updateElementGeometry']) {
+        delete (HTMLCanvasElement.prototype as any)[member];
+      }
+      if (typeof WebGLRenderingContext !== 'undefined') {
+        delete (WebGLRenderingContext.prototype as any).texElementSubImage2D;
+      }
+      if (typeof WebGL2RenderingContext !== 'undefined') {
+        delete (WebGL2RenderingContext.prototype as any).texElementSubImage2D;
+      }
+    });
+
     let hasError = false;
     page.on('pageerror', (err) => {
-      if (/texElementSubImage2D|texElementImage2D|captureElementImage|updateElementGeometry/.test(err.message)) {
+      if (/requestPaint|texElementSubImage2D|captureElementImage|updateElementGeometry/.test(err.message)) {
         hasError = true;
       }
     });
@@ -149,24 +190,15 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
 
   test('A fallback UI strategy is implemented for unsupported browsers', async ({ page }) => {
     await page.addInitScript(() => {
+      // Simulate a browser without HTML-in-Canvas support, including removing the mocks from beforeEach.
+      for (const member of ['content', 'requestPaint', 'captureElementImage', 'updateElementGeometry']) {
+        delete (HTMLCanvasElement.prototype as any)[member];
+      }
       if (typeof WebGLRenderingContext !== 'undefined') {
-        delete (WebGLRenderingContext.prototype as any).texElementImage2D;
-        delete (WebGLRenderingContext.prototype as any).copyElementImageToTexture;
+        delete (WebGLRenderingContext.prototype as any).texElementSubImage2D;
       }
       if (typeof WebGL2RenderingContext !== 'undefined') {
-        delete (WebGL2RenderingContext.prototype as any).texElementImage2D;
-        delete (WebGL2RenderingContext.prototype as any).copyElementImageToTexture;
-      }
-      if (typeof GPUQueue !== 'undefined') {
-        delete (GPUQueue.prototype as any).copyElementImageToTexture;
-      }
-      if (typeof HTMLCanvasElement !== 'undefined') {
-        delete (HTMLCanvasElement.prototype as any).getElementTransform;
-        HTMLCanvasElement.prototype.requestPaint = function () {
-          if (typeof (this as any).onpaint === 'function') {
-            (this as any).onpaint({ changedElements: [] });
-          }
-        };
+        delete (WebGL2RenderingContext.prototype as any).texElementSubImage2D;
       }
     });
 
@@ -181,17 +213,6 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
     await page.waitForTimeout(500);
 
     expect(pageErrors).toEqual([]);
-
-    const polyfillInstalledAtRuntime = await page
-      .evaluate(() => {
-        return (
-          (typeof WebGLRenderingContext !== 'undefined' &&
-            typeof (WebGLRenderingContext.prototype as any).texElementImage2D === 'function') ||
-          (typeof WebGL2RenderingContext !== 'undefined' &&
-            typeof (WebGL2RenderingContext.prototype as any).texElementImage2D === 'function')
-        );
-      })
-      .catch(() => false);
 
     const html = getScriptContent();
     const parts = [html];
@@ -209,8 +230,7 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
     }
     const code = parts.join('\n');
     const hasFallbackStrategy =
-      polyfillInstalledAtRuntime ||
-      /typeof\s+[^;]*texElementImage2D|\brequestPaint['"]?\s+in\b|!gl\.texElementImage2D|if\s*\(\s*gl\.texElementImage2D\s*\)|three-html-render|installHtmlInCanvasPolyfill/i.test(
+      /typeof\s+[^;]*texElementSubImage2D|\brequestPaint['"]?\s+in\b|['"]content['"]\s+in\b|!gl\.texElementSubImage2D|if\s*\(\s*gl\.texElementSubImage2D\s*\)|three-html-render|installHtmlInCanvasPolyfill/i.test(
         code
       );
     expect(hasFallbackStrategy).toBe(true);
