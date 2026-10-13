@@ -46,7 +46,7 @@ WARNING: Certain properties (e.g. `border-radius`, `background`, `border`) will 
 
 - MANDATORY: Use `appearance: none` to enable custom styling.
 - Reset UA borders with `border: 0 solid`
-- To clip the active bar to the element’s border-radius, use `overflow: clip` OR apply `border-radius: inherit` to the inner bar.
+- To clip the active bar to the element’s border-radius, use `overflow: clip` OR apply the same `border-radius` to the bar. Do NOT use `border-radius: inherit` on the bar, which depends on the specific structure of elements in the shadow DOM.
 
 ```css
 progress {
@@ -64,11 +64,16 @@ progress {
 - Use the appropriate browser-targeted pseudo-element to target the progress bar itself: `::-webkit-progress-value` for WebKit/Blink and `::-moz-progress-bar` for Firefox.
 - MANDATORY: Do NOT group `-webkit-` and `-moz-` pseudo-elements in the same rule. The rule will be deemed invalid and will be ignored. `:is()` and `:where()` do not help here, as they don't support pseudo-elements.
 - Each browser-targeted pseudo-element should appear exactly once. State-specific customizations (such as the indeterminate segment size and animation) should be routed through custom properties set on the `progress` element itself.
+- Optional: Transition `inline-size` on the fill so determinate value changes animate instead of jumping. Firefox sizes the fill in layout and ignores it, which is harmless.
 
 ```css
 progress {
+  --progress-bar-radius: 1e5px;
+  border-radius: var(--progress-bar-radius);
   /* Apply color for custom progress track (background) */
   background: var(--progress-bar-track, var(--color-neutral-90));
+  /* Subtle depth on the empty part of the track */
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
 }
 
 /* Let <progress> styling show through */
@@ -79,11 +84,15 @@ progress::-webkit-progress-bar {
 /* Webkit, Chrome */
 progress::-webkit-progress-value {
   background: var(--progress-bar-fill, var(--accent-color));
+  border-radius: var(--progress-bar-radius);
+  transition: inline-size 0.3s;
 }
 
 /* Firefox */
 progress::-moz-progress-bar {
   background: var(--progress-bar-fill, var(--accent-color));
+  border-radius: var(--progress-bar-radius);
+  transition: inline-size 0.3s;
 }
 ```
 

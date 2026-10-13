@@ -9,7 +9,7 @@
             /* Automatic theme adaptation */
             color-scheme: light dark;
             --accent-color: oklch(52.451% 0.159 325);
-            --color-neutral-90: light-dark(oklch(95.6% 0.027 340), oklch(30% 0.027 340));
+            --color-neutral-90: color-mix(in oklab, currentColor 12%, transparent);
         }
 
         body {
@@ -45,12 +45,13 @@
 
         /* Customized Styling from the guide */
         .custom-progress {
-            block-size: 1rem;
+            block-size: 0.75rem;
             inline-size: 100%;
             max-inline-size: 400px;
             margin-block: 0.5rem;
             display: block;
-            border-radius: 1e5px;
+            --progress-bar-radius: 1e5px;
+            border-radius: var(--progress-bar-radius);
 
             /* 1. Basic setup: reset default browser styles */
             appearance: none;
@@ -60,6 +61,8 @@
 
             /* 2. Styling: track */
             background: var(--progress-bar-track, var(--color-neutral-90));
+            /* Subtle depth on the empty part of the track */
+            box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
 
             /* 3. Indeterminate state */
             /* Lets the fill position itself in track units (cqi) */
@@ -90,12 +93,16 @@
         /* Webkit, Chrome */
         .custom-progress::-webkit-progress-value {
             background: var(--progress-bar-fill, var(--accent-color));
+            border-radius: var(--progress-bar-radius);
+            transition: inline-size 0.3s;
             animation: var(--progress-bar-animation, revert-rule);
         }
 
         /* Firefox */
         .custom-progress::-moz-progress-bar {
             background: var(--progress-bar-fill, var(--accent-color));
+            border-radius: var(--progress-bar-radius);
+            transition: inline-size 0.3s;
             animation: var(--progress-bar-animation, revert-rule);
         }
 
