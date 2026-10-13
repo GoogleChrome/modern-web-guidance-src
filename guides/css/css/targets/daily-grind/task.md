@@ -1,0 +1,1 @@
+- Refactor the styling of the Daily Grind website to follow a modern CSS architecture, including the cascade, selectors, scoping, nesting, and design tokens.

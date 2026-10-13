@@ -46,6 +46,10 @@
     "animation",
     "css"
   ],
+  "animations-css-animation-accessors": [
+    "animation",
+    "css"
+  ],
   "appearance": [
     "css"
   ],
@@ -261,6 +265,9 @@
     "css"
   ],
   "css-object-model": [
+    "css"
+  ],
+  "css-object-model-csspseudoelement": [
     "css"
   ],
   "css-object-model-discouraged": [
@@ -885,6 +892,9 @@
   "scripting": [
     "css"
   ],
+  "scroll-axis-lock": [
+    "scrolling"
+  ],
   "scroll-behavior": [
     "scrolling"
   ],
@@ -1029,11 +1039,26 @@
   "text-combine-upright": [
     "css"
   ],
+  "text-decoration": [
+    "css"
+  ],
   "text-decoration-line-blink": [
     "animation",
     "css"
   ],
   "text-decoration-selection": [
+    "css"
+  ],
+  "text-decoration-skip-ink": [
+    "css"
+  ],
+  "text-decoration-skip-ink-all": [
+    "css"
+  ],
+  "text-decoration-skip-spaces": [
+    "css"
+  ],
+  "text-decoration-spelling-grammar": [
     "css"
   ],
   "text-indent": [
@@ -1084,10 +1109,6 @@
   "time-relative-selectors": [
     "css"
   ],
-  "tmp-animations-css-animation-accessors": [
-    "animation",
-    "css"
-  ],
   "tmp-calc-dimensions": [
     "css"
   ],
@@ -1115,18 +1136,15 @@
   "tmp-revert-rule": [
     "css"
   ],
-  "tmp-scroll-axis-lock": [
-    "scrolling"
-  ],
   "tmp-scroll-triggered-animations": [
     "animation",
     "scrolling"
   ],
+  "tmp-text-decoration-inset": [
+    "css"
+  ],
   "tmp-webcrypto-modern-algos": [
     "security"
-  ],
-  "tmp-wheel-events-momentum": [
-    "scrolling"
   ],
   "transforms2d": [
     "css"
@@ -1315,6 +1333,9 @@
   ],
   "writing-mode-svg-values": [
     "css"
+  ],
+  "x-frame-options": [
+    "security"
   ],
   "z-index": [
     "css"
