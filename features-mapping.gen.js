@@ -816,6 +816,12 @@ window.__featuresMapping = {
   "data-grid": [
     "field-sizing"
   ],
+  "dialog": [
+    "dialog",
+    "dialog-closedby",
+    "invoker-commands",
+    "popover"
+  ],
   "hovercard": [
     "popover",
     "popover-hint",
