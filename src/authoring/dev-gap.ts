@@ -52,6 +52,7 @@ export interface PrReviewContext {
   branchCommits?: string;
   branchDiff?: string;
   comments?: string;
+  prBody?: string;
 }
 
 export interface FixEvalGapsOptions {
@@ -180,6 +181,7 @@ export const evalGapFixCli = {
     let branchCommits = '';
     let branchDiff = '';
     let comments = '';
+    let prBody = '';
 
     try {
       branchCommits = git(['log', '--oneline', 'origin/main..HEAD']);
@@ -192,9 +194,13 @@ export const evalGapFixCli = {
     try {
       const viewJson = JSON.parse(child_process.execFileSync(
         'gh',
-        ['pr', 'view', String(prNumber), '--json', 'comments,reviews'],
+        ['pr', 'view', String(prNumber), '--json', 'body,comments,reviews'],
         { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
       ));
+
+      if (typeof viewJson.body === 'string') {
+        prBody = viewJson.body.trim();
+      }
 
       const commentLines: string[] = [];
       if (Array.isArray(viewJson.comments)) {
@@ -240,7 +246,7 @@ export const evalGapFixCli = {
       comments = commentLines.join('\n\n');
     } catch {}
 
-    return { branchCommits, branchDiff, comments };
+    return { branchCommits, branchDiff, comments, prBody };
   },
   runDevGuide: async (inv: GuideInventory, options: FixEvalGapsOptions): Promise<boolean> => {
     const { devGuide } = await import('./dev.ts');

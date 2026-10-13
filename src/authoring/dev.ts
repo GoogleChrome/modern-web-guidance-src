@@ -38,7 +38,7 @@ import {
   scanAllGuides,
   isDisciplineGuide,
 } from '../core/guide-validation.ts';
-import { runDevReport } from './dev-report.ts';
+import { runDevReport, applyPrReviewFeedback } from './dev-report.ts';
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
@@ -51,6 +51,7 @@ export interface DevGuideOptions {
     branchCommits?: string;
     branchDiff?: string;
     comments?: string;
+    prBody?: string;
   };
 }
 
@@ -113,7 +114,12 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-  // Step 0: Excise old eval artifacts if they exist
+  // Step 0: If rerun has reviewer comments, apply feedback to guide/expectations/targets first
+  if (options.prContext?.comments) {
+    await applyPrReviewFeedback(targetDir, options.prContext);
+  }
+
+  // Step 0.5: Excise old eval artifacts if they exist
   exciseOldEvalArtifacts(targetDir);
 
   // Step 1: Validate guide inventory
@@ -161,7 +167,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         const taskFile = path.join(targetCapsuleDir, TASK_FILE);
         if (!fs.existsSync(taskFile)) {
           console.log(cCyan(`\n--- Generating ${TASK_FILE} for ${baseApp} ---`));
-          await generateTargetTask(targetDir, baseApp);
+          await generateTargetTask(targetDir, baseApp, options.prContext);
         }
       })();
 
@@ -172,7 +178,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
       const graderFile = path.join(targetCapsuleDir, GRADER_FILE);
       if (!fs.existsSync(graderFile)) {
         console.log(cCyan(`\n--- Generating ${GRADER_FILE} for ${baseApp} ---`));
-        await generateTargetGrader(targetDir, baseApp);
+        await generateTargetGrader(targetDir, baseApp, undefined, options.prContext);
       }
     })
   );
@@ -190,7 +196,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
         if (attempt <= maxRetries) {
           console.log(cYellow(`Attempt ${attempt} calibration failed for ${baseApp}. Regenerating ${GRADER_FILE}...`));
-          await generateTargetGrader(targetDir, baseApp, res.errorDetails);
+          await generateTargetGrader(targetDir, baseApp, res.errorDetails, options.prContext);
         } else {
           console.error(cRed(`❌ ${baseApp} failed calibration after ${attempt} attempt(s): ${res.errorDetails || 'Unknown error'}`));
           return false;
@@ -258,7 +264,11 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
   }
 }
 
-async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
+async function generateTargetTask(
+  guideDirAbs: string,
+  baseApp: string,
+  prContext?: DevGuideOptions['prContext']
+): Promise<void> {
   const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-task`);
   try {
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
@@ -270,6 +280,7 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       taskFile: TASK_FILE,
       baseApp,
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
+      prContext,
     });
 
     await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });

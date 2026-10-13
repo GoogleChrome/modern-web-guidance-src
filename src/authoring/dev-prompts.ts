@@ -85,9 +85,28 @@ export interface GraderPromptOptions {
   cssomnomDtsPath?: string;
   failureContext?: string;
   isDisciplineGuide?: boolean;
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+    prBody?: string;
+  };
 }
 
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
+  let prReviewContextBlock = '';
+  if (opts.prContext?.comments || opts.prContext?.prBody) {
+    const parts: string[] = ['### ⚠️ REVIEWER FEEDBACK ON PREVIOUS GRADER & EVALUATIONS'];
+    if (opts.prContext.comments) {
+      parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
+    }
+    if (opts.prContext.prBody) {
+      parts.push(`Previous PR Report / Recommendations:\n${opts.prContext.prBody.trim()}`);
+    }
+    parts.push(`Reviewers have provided comments on the previous evaluation/grader. You MUST incorporate reviewer suggestions into \`${opts.graderFile}\` (e.g. relaxing overly strict checks, fixing false negatives, or adjusting selector scopes) so the test suite accurately reflects reviewer intent while remaining robust.`);
+    prReviewContextBlock = '\n' + parts.join('\n\n') + '\n\n---\n';
+  }
+
   const contextBlock = opts.failureContext
     ? `### ⚠️ PREVIOUS FAILURE CONTEXT
 The previous grader failed calibration with this error:
@@ -120,7 +139,7 @@ Analyze this failure and modify the existing grader file to fix these assertions
     ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to write a test for every expectation. Decide relevance from the base application in your workspace, not from the solution patches: do NOT test an expectation whose pattern only exists because a solution patch added it. Also skip expectations the base application already satisfies. If a relevant pattern is implemented in different files or components across solutions, write a project-wide check instead of skipping it. At the top of \`${opts.graderFile}\`, add a comment listing every expectation number as TESTED or SKIPPED with a one-line reason.`
     : '';
 
-  return `${contextBlock}# GOAL
+  return `${prReviewContextBlock}${contextBlock}# GOAL
 Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${disciplineInstruction}${patchInstruction}
 
 # INPUTS
@@ -173,12 +192,31 @@ export interface TaskPromptOptions {
   taskFile: string;
   baseApp: string;
   isDisciplineGuide?: boolean;
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+    prBody?: string;
+  };
 }
 
 export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
   const target = opts.isDisciplineGuide ? 'discipline guidance' : 'use case';
 
-  return `# GOAL
+  let prReviewContextBlock = '';
+  if (opts.prContext?.comments || opts.prContext?.prBody) {
+    const parts: string[] = ['### ⚠️ REVIEWER FEEDBACK ON PREVIOUS TASK PROMPT / IMPLEMENTATION'];
+    if (opts.prContext.comments) {
+      parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
+    }
+    if (opts.prContext.prBody) {
+      parts.push(`Previous PR Report / Recommendations:\n${opts.prContext.prBody.trim()}`);
+    }
+    parts.push(`Carefully address any reviewer suggestions regarding the developer prompt in \`${opts.taskFile}\`. If a reviewer requested specific phrasing, wording adjustments, or additions to the test prompt, incorporate their feedback directly while adhering to all rules below.`);
+    prReviewContextBlock = '\n' + parts.join('\n\n') + '\n\n---\n';
+  }
+
+  return `${prReviewContextBlock}# GOAL
 Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the ${target}.
 Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to apply the ${target} inside the application.
 
@@ -200,6 +238,46 @@ Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-leve
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
 }
 
+export interface ReviewFeedbackPromptOptions {
+  guideName: string;
+  comments: string;
+  prBody?: string;
+  branchCommits?: string;
+  branchDiff?: string;
+}
+
+export function buildApplyReviewFeedbackPrompt(opts: ReviewFeedbackPromptOptions): string {
+  const parts: string[] = ['# EXISTING PULL REQUEST & REVIEW CONTEXT'];
+  if (opts.branchCommits) {
+    parts.push(`## Branch Commits against main:\n\`\`\`\n${opts.branchCommits.trim()}\n\`\`\``);
+  }
+  if (opts.branchDiff) {
+    parts.push(`## Branch Diff against main:\n\`\`\`diff\n${opts.branchDiff.trim()}\n\`\`\``);
+  }
+  if (opts.prBody) {
+    parts.push(`## Previous PR Description & Recommendations:\n${opts.prBody.trim()}`);
+  }
+  parts.push(`## Reviewer Comments & Feedback to Address:\n${opts.comments.trim()}`);
+
+  const contextBlock = parts.join('\n\n');
+
+  return `${contextBlock}
+
+# GOAL
+You are updating the guidance and evaluation files for \`${opts.guideName}\` based on pull request review feedback.
+Your goal is to address all reviewer comments by directly updating the relevant files on disk (\`guide.md\`, \`expectations.md\`, \`targets/<target>/task.md\`, and \`targets/<target>/grader.ts\`).
+
+# RULES & INSTRUCTIONS
+1. **Direct File Modifications**:
+   - Apply requested changes directly to \`guide.md\`, \`expectations.md\`, \`targets/<target>/task.md\`, or \`targets/<target>/grader.ts\` in your workspace using your structured file editing tools.
+   - If reviewers approved specific recommendations or suggested explicit diffs (e.g. adding preload attributes, modifying selectors, or rewording task prompts), apply them cleanly to the corresponding files.
+2. **Honor Reviewer Intent**:
+   - Defer to reviewer feedback over previous automated output.
+   - Do not overwrite or revert human-authored commits or requested changes.
+3. **No Shell Commands**:
+   - Use built-in structured file editing tools (write_file or replace). Do not use terminal heredocs or cat.`;
+}
+
 export interface DevReportPromptOptions {
   guideName: string;
   targets: TargetEvalSummary[];
@@ -207,6 +285,7 @@ export interface DevReportPromptOptions {
     branchCommits?: string;
     branchDiff?: string;
     comments?: string;
+    prBody?: string;
   };
 }
 
@@ -218,13 +297,16 @@ export function buildDevReportPrompt(opts: DevReportPromptOptions): string {
   }).join('\n\n');
 
   let prContextBlock = '';
-  if (opts.prContext && (opts.prContext.comments || opts.prContext.branchDiff || opts.prContext.branchCommits)) {
+  if (opts.prContext && (opts.prContext.comments || opts.prContext.branchDiff || opts.prContext.branchCommits || opts.prContext.prBody)) {
     const parts: string[] = ['# EXISTING PULL REQUEST & REVIEW CONTEXT'];
     if (opts.prContext.branchCommits) {
       parts.push(`## Branch Commits against main:\n\`\`\`\n${opts.prContext.branchCommits.trim()}\n\`\`\``);
     }
     if (opts.prContext.branchDiff) {
       parts.push(`## Branch Diff against main:\n\`\`\`diff\n${opts.prContext.branchDiff.trim()}\n\`\`\``);
+    }
+    if (opts.prContext.prBody) {
+      parts.push(`## Previous PR Description & Recommendations:\n${opts.prContext.prBody.trim()}`);
     }
     if (opts.prContext.comments) {
       parts.push(`## PR Comments & Reviewer Feedback:\n${opts.prContext.comments.trim()}`);

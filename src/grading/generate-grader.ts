@@ -21,7 +21,17 @@ import {
 } from '../core/guide-validation.ts';
 import { cCyan, cGreen } from '../core/colors.ts';
 
-export async function generateTargetGrader(guideDirAbs: string, baseApp: string, failureContext?: string): Promise<void> {
+export async function generateTargetGrader(
+  guideDirAbs: string,
+  baseApp: string,
+  failureContext?: string,
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+    prBody?: string;
+  }
+): Promise<void> {
   const repoRoot = rootDir;
   const relativeGuidePath = path.relative(repoRoot, guideDirAbs);
   const relativeWorkSubdir = path.join(relativeGuidePath, 'targets', baseApp);
@@ -119,6 +129,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       cssomnomDtsPath: path.join(workDir, 'cssomnom.d.ts'),
       failureContext,
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
+      prContext,
     });
 
     await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
