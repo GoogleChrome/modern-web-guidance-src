@@ -112,7 +112,7 @@ Each declaration earns its place:
 * **`flex: none`**: An empty pseudo-element has a zero minimum size, so inside a flex button it is the first thing to shrink when the label is long, potentially to nothing. Icon size is a design decision, not something layout pressure should negotiate.
 * **`pointer-events: none`**: Keeps the icon from trapping clicks or becoming the `event.target`.
 * **`forced-color-adjust: none`**: In forced-colors mode the browser otherwise replaces `background-color`, making a masked icon disappear. The mask fill is preserved, and `currentColor` still follows the forced text color.
-* **`content: "" / var(--icon-style-alt, "")`**: Alternative text for generated content lets an icon-only control take its accessible name from the icon: `<button style="--icon: var(--icon-trash); --icon-style-alt: 'Delete'">`. The default empty alt keeps decorative icons hidden from assistive technology. `aria-label` on the control continues to work and remains the most widely supported option.
+* **`content: "" / var(--icon-style-alt, "")`**: Alternative text for generated content lets an icon-only control take its accessible name from the icon via `--icon-style-alt` (see Icon-Only Controls below). The default empty alt keeps decorative icons hidden from assistive technology.
 
 For a trailing icon, follow the same pattern with `--icon-end` and `::after` instead of `--icon-start` and `::before`. Use `mask: var(--icon-end)` and apply spacing with `margin-inline-start` instead of `margin-inline-end`.
 
@@ -128,26 +128,61 @@ For standalone icons or icon-only buttons, apply `.icon` directly to the empty e
 
 ## Usage Examples
 
-### Decorative Icons (Via CSS Property)
+### Component defaults in the stylesheet
 
-Attach an icon to a button or other element by setting `--icon-start` or `--icon-end`:
+The main benefit of icons as custom properties is that they participate in the cascade. Set an icon on a selector and every matching element gets it, with no markup changes:
+
+```css
+.button-delete {
+  --icon-start: var(--icon-trash);
+}
+
+a[href^="http"]:not([href*="example.com"]) {
+  --icon-end: var(--icon-external);
+}
+```
 
 ```html
-<button style="--icon-start: var(--icon-trash);">
-  Delete Item
-</button>
+<button class="button-delete">Delete item</button>
 ```
+
+### Changing icons with state
+
+Because the icon is just a property, a state change is an ordinary CSS override. There is no second element to show or hide and no class to toggle:
+
+```css
+.button-expand {
+  --icon-start: var(--icon-caret-right);
+}
+
+.button-expand[aria-expanded="true"] {
+  --icon-start: var(--icon-caret-down);
+}
+```
+
+The same applies to presentation: set `--icon-style-size`, `--icon-style-color` or `--icon-style-spacing` on a container such as a toolbar and every icon inside it updates.
+
+### One-off icons with inline styles
+
+An element that no component rule covers can set the same property inline, for example `<button style="--icon-start: var(--icon-trash)">`. Treat this as the escape hatch rather than the default: once the same icon appears on the same kind of element more than once, move it into a stylesheet rule.
 
 ### Icon-Only Controls
 
-Put the `.icon` class and `--icon` property directly on an icon-only button. Give the button an accessible name with `aria-label`, or let the icon supply one through `--icon-style-alt`; without either, the CSS-generated icon is decorative. For standalone informative icons, expose the `.icon` element with `role="img"` and `aria-label`:
+Icon-only buttons use the `.icon` class and `--icon` described above. Give the button an accessible name with `aria-label`, or let the icon supply one through `--icon-style-alt`; without either, the CSS-generated icon is decorative. For standalone informative icons, expose the `.icon` element with `role="img"` and `aria-label`:
+
+```css
+.button-close {
+  --icon: var(--icon-close);
+  --icon-style-alt: "Close";
+}
+```
 
 ```html
+<!-- Icon-only interactive control, icon and name from the stylesheet -->
+<button class="icon button-close"></button>
+
 <!-- Icon-only interactive control, named via aria-label -->
 <button class="icon" style="--icon: var(--icon-trash);" aria-label="Delete item"></button>
-
-<!-- Icon-only interactive control, named via generated-content alt text -->
-<button class="icon" style="--icon: var(--icon-trash); --icon-style-alt: 'Delete item';"></button>
 
 <!-- Standalone informative icon -->
 <span class="icon" style="--icon: var(--icon-favorite);" role="img" aria-label="Favorite"></span>
