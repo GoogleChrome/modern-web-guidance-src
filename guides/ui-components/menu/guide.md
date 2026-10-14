@@ -308,7 +308,7 @@ Each button spans all three columns and inherits the parent's grid via `subgrid`
 
 {{ FEATURE_FALLBACKS("focusgroup") }}
 
-Keep `focusgroup="menu no-memory"` in the markup. If `'focusgroup' in HTMLElement.prototype` is false, install Up, Down, Home, and End navigation and set `role="menu"` on each menu container and `role="menuitem"` on its command buttons. Do not install that fallback when native focusgroup is present. Left, Right, preview, open, and close are author script either way.
+Keep `focusgroup="menu nomemory"` in the markup. If `'focusgroup' in HTMLElement.prototype` is false, install Up, Down, Home, and End navigation and set `role="menu"` on each menu container and `role="menuitem"` on its command buttons. Do not install that fallback when native focusgroup is present. Left, Right, preview, open, and close are author script either way.
 
 ```js
 if (!('focusgroup' in HTMLElement.prototype)) {
