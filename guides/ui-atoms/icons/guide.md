@@ -215,6 +215,8 @@ Mark decorative SVGs with `aria-hidden="true"` and give the containing control i
 
 {{ BASELINE_STATUS("registered-custom-properties") }}
 
+Without `@property`, `--icon-start` and `--icon-end` behave as ordinary inheriting custom properties, so an icon set on an element would also render on its descendants. Prevent this by resetting the properties on children inside the style query (`@container style(--icon-start) { * { --icon-start: initial; } }`), the same approach the Safari workaround below uses.
+
 ### Container Style Queries
 
 {{ BASELINE_STATUS("container-style-queries") }}
