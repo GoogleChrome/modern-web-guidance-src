@@ -80,6 +80,8 @@ function branchGuaranteed(node?: TsMorphNode): boolean {
     .some(t => !isWithinInnerIf(t, node));
   if (hasDirectThrow) return true;
 
+  // Note: hasDirectAssertion treats any assertion outside an inner if as guaranteed to execute,
+  // but does not trace early return exits (e.g. `if (!el) return; expect(el)`). A future CFG pass can model exits.
   const hasDirectAssertion = node
     .getDescendantsOfKind(SyntaxKind.CallExpression)
     .some(c => isAssertionCall(c) && !isWithinInnerIf(c, node));

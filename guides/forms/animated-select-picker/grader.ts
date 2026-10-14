@@ -50,12 +50,10 @@ test.describe(`Animated Select Picker Expectations: ${demoName}`, () => {
 
   test('Inline decorative SVG icons inside <option> elements must define aria-hidden="true"', async () => {
     const matches = [...html.matchAll(/<option[^>]*>([\s\S]*?)<\/option>/gi)];
-    expect(matches.length).toBeGreaterThan(0);
-    for (const match of matches) {
-      const optInner = match[1];
-      if (/<svg/i.test(optInner)) {
-        expect(/aria-hidden=["']true["']/i.test(optInner)).toBe(true);
-      }
+    const svgOptions = matches.filter(m => /<svg/i.test(m[1]));
+    expect(svgOptions.length).toBeGreaterThan(0);
+    for (const match of svgOptions) {
+      expect(/aria-hidden=["']true["']/i.test(match[1])).toBe(true);
     }
   });
 

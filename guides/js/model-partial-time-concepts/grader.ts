@@ -41,7 +41,8 @@ test.describe('Temporal API Expectations', () => {
     const usesPlainYearMonth = /\bPlainYearMonth\b/.test(code);
     const usesPlainMonthDay = /\bPlainMonthDay\b/.test(code);
     const usesPlainTime = /\bPlainTime\b/.test(code);
-    expect(usesPlainYearMonth && usesPlainMonthDay && usesPlainTime).toBe(true);
+    const usesLegacyDateWithArgs = /new\s+Date\s*\(\s*[^)\s]/.test(code);
+    expect((usesPlainYearMonth || usesPlainMonthDay || usesPlainTime) && !usesLegacyDateWithArgs).toBe(true);
   });
 
   test('MUST include explicit calendar properties when creating instances from objects', async () => {
@@ -57,18 +58,19 @@ test.describe('Temporal API Expectations', () => {
 
   test('MUST NOT attempt to perform arithmetic directly on PlainMonthDay without converting it to a PlainDate first', async () => {
     const code = getScriptContent();
+    const usesPartialTemporal = /\b(?:PlainYearMonth|PlainMonthDay|PlainTime)\b/.test(code);
     const usesPlainMonthDay = /\bPlainMonthDay\b/.test(code);
     const convertsToPlainDate = /\.toPlainDate\s*\(/.test(code);
-    expect(usesPlainMonthDay && convertsToPlainDate).toBe(true);
+    expect(usesPartialTemporal && (!usesPlainMonthDay || convertsToPlainDate)).toBe(true);
   });
 
   test('MUST NOT use the legacy Date object for representing partial time concepts', async () => {
     const code = getScriptContent();
-    const usesAllPartialTypes =
-      /\bPlainYearMonth\b/.test(code) &&
-      /\bPlainMonthDay\b/.test(code) &&
+    const usesPartialType =
+      /\bPlainYearMonth\b/.test(code) ||
+      /\bPlainMonthDay\b/.test(code) ||
       /\bPlainTime\b/.test(code);
     const usesLegacyDateWithArgs = /new\s+Date\s*\(\s*[^)\s]/.test(code);
-    expect(usesAllPartialTypes && !usesLegacyDateWithArgs).toBe(true);
+    expect(usesPartialType && !usesLegacyDateWithArgs).toBe(true);
   });
 });
