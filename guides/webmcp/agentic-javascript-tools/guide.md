@@ -94,6 +94,37 @@ await document.modelContext.registerTool({
 });
 ```
 
+## Writing Tool and Parameter Descriptions
+
+The agent already receives the full `inputSchema`, so the `description` only needs to say what the tool does and when to use it. **DO NOT** repeat parameter names, types, `enum` values, defaults, or limits in it; declare them in the schema (`enum`, `default`, `minimum`/`maximum`) instead. Parameter descriptions follow the same rule: say what the value means, not its type or allowed values.
+
+The browser does not validate arguments against `inputSchema` or apply `default` values, so do both in `execute`.
+
+```javascript
+const SORT_ORDERS = ["newest", "price_low_to_high"];
+
+await document.modelContext.registerTool({
+  name: "search_products",
+  // Don't list the sort orders here, even via SORT_ORDERS: `enum` already does.
+  description: "Searches the product catalog by keyword. Use when the user wants to find or compare products.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: { type: "string", description: "Words to search for." },
+      sort: { type: "string", enum: SORT_ORDERS, default: "newest", description: "Order of the results." },
+    },
+    required: ["query"],
+  },
+  async execute({ query, sort = "newest" }, { signal }) {
+    if (typeof query !== "string" || !SORT_ORDERS.includes(sort)) {
+      return { error: "Pass a search query and a supported sort order.", sortOrders: SORT_ORDERS };
+    }
+    return await productService.search({ query, sort }, { signal });
+  },
+  annotations: { readOnlyHint: true },
+});
+```
+
 ## Execution Patterns
 
 The `execute` callback always receives two arguments: the input object, and an options object carrying an `AbortSignal` — `execute(inputObject, { signal })`.
