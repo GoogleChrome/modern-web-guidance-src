@@ -11,7 +11,7 @@ const _targetFiles: string[] = process.env.PATCH_FILE ? getTargetFiles(import.me
 function getOutputContainer(page: Page): Locator {
   return page
     .locator(
-      '#output, .review-card:has(.review-meta:has-text("Anonymous")) .review-body, #reviews-list .review-card:first-child .review-body, .review-body'
+      '#output, #sanitizedDisplay, #preview, [role="region"]:not(:has(textarea)), .review-card:has(.review-meta:has-text("Anonymous")) .review-body, #reviews-list .review-card:first-child .review-body, .review-body'
     )
     .first();
 }
@@ -19,7 +19,9 @@ function getOutputContainer(page: Page): Locator {
 async function renderUntrustedHtml(page: Page, html: string, markerSelector: string): Promise<Locator> {
   const input = page.locator('textarea').first();
   await input.fill(html, { timeout: 2000 });
-  const submitButton = page.locator('form button').first();
+  const submitButton = page
+    .locator('form button, button[type="submit"], button#btnDisplay, button#btn-run, button:has-text("Display"), button:has-text("Preview"), button:has-text("Render"), button:has-text("Post"), button.btn')
+    .first();
   await submitButton.click({ timeout: 2000 });
   const output = getOutputContainer(page);
   await output.locator(markerSelector).first().waitFor({ timeout: 2500 });

@@ -1,1 +1,0 @@
-- Safely parse and display untrusted HTML content from user input by removing unsafe elements and attributes.
