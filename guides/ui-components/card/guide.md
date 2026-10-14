@@ -80,23 +80,56 @@ When cards need shared internal tracks, `subgrid` can align them without changin
 
 ### Content cards
 
-Use an `<article>` for independently understandable card content. Keep links and buttons as separate native controls. When the card also links to a primary destination, link its title and stretch the pointer hit area across the card with `::after`; elevate secondary controls with `position: relative; z-index: 1` so they remain operable:
+Use an `<article>` for independently understandable card content. Keep links and buttons as separate native controls. 
+
+When the card also links to a primary destination and needs to be clickable as a whole:
+- Use a single opt-in, on the primary link itself.
+- Link its title and stretch the pointer hit area across the card with `::after`
+
+```css
+.card:has(a.card-link) {
+	position: relative;
+}
+
+.card a.card-link::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+}
+```
+
+- Elevate interactive elements with `position: relative; z-index: 1` so they remain operable. Target types of elements (e.g. `a, button`) rather than requiring opt-in via classes. 
+- Do NOT apply `z-index` to entire containers as that would make them capture pointer events that don't produce any action.
+
+```css
+.card:has(a.card-link) {
+	/* Keep other interactive elements above the overlay */
+	a:not(.card-link), button, input, x-button {
+	    position: relative;
+	    z-index: 1;
+	}
+}
+```
+
+- Style the card itself on hover/focus, rather than the stretched link:
 
 ```css
 .card {
-  position: relative; /* Containing block for the stretched link */
+	a.card-link {
+		&:focus-visible {
+			outline: none; /* Draw it on the card instead */
+		}
+	}
+	
+	&:has(a.card-link:focus-visible) {
+		/* Focus ring */
+	}
 
-  h3 a::after {
-    content: ""; /* Stretch the title link across the card */
-    position: absolute;
-    inset: 0;
-  }
-
-  footer :is(button, a) {
-    position: relative; /* Keep secondary controls above the overlay */
-    z-index: 1;
-  }
+	&:has(a.card-link:hover) {
+		/* Hover styles */
+	}
 }
+
 ```
 
 ### Single-destination cards
