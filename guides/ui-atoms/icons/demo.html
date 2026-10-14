@@ -12,6 +12,7 @@
       --icon-color-success: #1a7f37;
 
       --icon-size: 1.25em;
+      --icon-style-spacing: 0.4em;
       /* Easily configurable relative unit icon sizing */
       --icon-transition-duration: 0.2s;
       --icon-transition-easing: ease;
@@ -124,7 +125,7 @@
 
       /* Automatically add spacing if the container has other text or child elements */
       :not(.icon, :empty)::before {
-        margin-inline-end: 0.4em;
+        margin-inline-end: var(--icon-style-spacing);
       }
     }
 
@@ -145,7 +146,7 @@
       }
 
       :not(.icon, :empty)::after {
-        margin-inline-start: 0.4em;
+        margin-inline-start: var(--icon-style-spacing);
       }
     }
 
@@ -168,7 +169,7 @@
     }
 
     :where(.icon-start:not(.icon, :empty))::before {
-      margin-inline-end: 0.4em;
+      margin-inline-end: var(--icon-style-spacing);
     }
 
     /* Class-hook fallback for end icons */
@@ -187,7 +188,7 @@
     }
 
     :where(.icon-end:not(.icon, :empty))::after {
-      margin-inline-start: 0.4em;
+      margin-inline-start: var(--icon-style-spacing);
     }
 
     /* Standalone empty icon forwarding logic fallback */
