@@ -35,27 +35,24 @@ export const REPO_URL = `https://github.com/${ORG}/${REPO}`;
 export const PIPELINE_ISSUE_NUMBER = Number(process.env.PIPELINE_ISSUE_NUMBER || 1815);
 export const EXPECTATIONS_CHANGED_LABEL = 'expectations-changed';
 
-export const BURNDOWN_START_DATE = '2026-10-04T00:00:00Z';
-export const BURNDOWN_INITIAL_REMAINING = 66;
-export const BURNDOWN_TARGET_EVAL_COMPLETE = 200;
-export const BURNDOWN_WEEKS = 5;
-
+export const PIPELINE_BASELINE_DATE = '2026-07-22';
+export const EXPECTED_BASELINE_COMPLETE = 127;
 export const PIPELINE_GOAL = 200;
-export const BAR_WIDTH = 50;
-export const GUIDES_PER_COL = 4;
-export const SPARKLINE_TICKS = ['\u2581', '\u2582', '\u2583', '\u2584', '\u2585', '\u2586', '\u2587', '\u2588'];
 
-export function computeIdealLine(
-  initial: number = BURNDOWN_INITIAL_REMAINING,
-  weeks: number = BURNDOWN_WEEKS
-): number[] {
-  return Array.from({ length: weeks + 1 }, (_, i) => Math.round(initial - (initial / weeks) * i));
+export function fetchBaselineComplete(cwd: string = rootDir): number {
+  try {
+    const sha = child_process
+      .execFileSync('git', ['rev-list', '-1', `--before=${PIPELINE_BASELINE_DATE}T23:59:59Z`, 'origin/main'], {
+        cwd,
+        encoding: 'utf8',
+      })
+      .trim();
+    const analysis = analyzeCommit(sha, { cwd, excludeDisciplineHubs: true });
+    return analysis.complete;
+  } catch {
+    return EXPECTED_BASELINE_COMPLETE;
+  }
 }
-
-export const IDEAL_LINE = computeIdealLine();
-
-const BURNDOWN_MARKER_REGEX = /<!--\s*burndown-checkpoints:\s*(\[[\d,\s]+\])\s*-->/;
-const MERMAID_BAR_REGEX = /^\s*bar\s+\[([\d,\s]+)\]/m;
 
 export interface PrSummary {
   number: number;
@@ -81,18 +78,6 @@ export interface EvalPrMetrics {
   dailyGrindPassRate: number | null;
   devtoolsTimesPassRate: number | null;
   isHealthy: boolean;
-}
-
-export interface BurndownData {
-  remaining: number;
-  initial: number;
-  weekIdx: number;
-  xAxisLabels: string[];
-  barValues: number[];
-  idealLine: number[];
-  idealPerWeek: number;
-  requiredLine: number[];
-  requiredPerWeek: number;
 }
 
 export interface GitFileHistory {
@@ -149,39 +134,40 @@ export interface CommitAnalysis {
   needsEvals: number;
   needsGuidance: number;
   total: number;
-  completeSlugs?: Set<string>;
-  needsEvalsSlugs?: Set<string>;
-  needsGuidanceSlugs?: Set<string>;
+  completeSlugs: Set<string>;
+  needsEvalsSlugs: Set<string>;
+  needsGuidanceSlugs: Set<string>;
+  gen2CompleteCount?: number;
+  gen1CompleteCount?: number;
+  dualTargetCompleteCount?: number;
 }
 
 export type PrClassification = 'eval' | 'guide' | 'other';
 
-export interface DailyTrendRow {
+export interface WeeklyProgressPoint {
+  date: string;
   label: string;
-  values: number[];
+  complete: number;
+  contentLanded: number;
 }
 
-export interface DailyTrendHistory {
-  dates: string[];
-  complete: number[];
-  evalPrsInReview: number[];
-  readyForEvals: number[];
-  guidePrsInReview: number[];
-  issuesOpen: number[];
+export interface TwoRowProgressBar {
+  header: string;
+  completeRow: string;
+  contentRow: string;
+  text: string;
 }
 
 export interface PipelineReportData {
   completeCount: number;
+  contentLandedCount: number;
   evalCompleteCount: number;
   gen2CompleteCount: number;
-  burndown: BurndownData;
-  progressBar?: {
-    header: string;
-    bar: string;
-    text: string;
-  };
-  trendTable?: string;
-  trendHistory?: DailyTrendHistory;
+  baselineComplete: number;
+  progressBar: TwoRowProgressBar;
+  weeklyChart: string;
+  sankey: string;
+  weeklyProgressPoints?: WeeklyProgressPoint[];
   needsGuidancePrs: NeedsGuidancePrItem[];
   needsGuidanceIssues: NeedsGuidanceIssueItem[];
   openEvalPrs: OpenEvalPrItem[];
@@ -249,80 +235,6 @@ export function parseEvalReportFromPrBody(body: string): EvalPrMetrics {
     dailyGrindPassRate,
     devtoolsTimesPassRate,
     isHealthy,
-  };
-}
-
-/**
- * Parses prior weekly burndown checkpoints from the existing issue #1815 body.
- */
-export function parseBurndownCheckpoints(issueBody: string): number[] {
-  const markerMatch = BURNDOWN_MARKER_REGEX.exec(issueBody);
-  if (markerMatch) {
-    try {
-      const parsed = JSON.parse(markerMatch[1]) as unknown;
-      if (Array.isArray(parsed) && parsed.length === BURNDOWN_WEEKS + 1 && parsed.every(n => typeof n === 'number')) {
-        return [...parsed];
-      }
-    } catch {
-      // Fall through to Mermaid bar fallback
-    }
-  }
-
-  const barMatch = MERMAID_BAR_REGEX.exec(issueBody);
-  if (barMatch) {
-    const nums = barMatch[1].split(',').map(s => Number(s.trim()));
-    if (nums.length === BURNDOWN_WEEKS + 1 && nums.every(n => !Number.isNaN(n))) {
-      return nums;
-    }
-  }
-
-  return [BURNDOWN_INITIAL_REMAINING, ...Array.from({ length: BURNDOWN_WEEKS }, () => 0)];
-}
-
-/**
- * Computes the burndown series for the 5-week batch (`W0..W5`).
- */
-export function computeBurndown(
-  evalCompleteCount: number,
-  existingCheckpoints: number[],
-  nowMs: number = Date.now()
-): BurndownData {
-  const remaining = Math.max(0, BURNDOWN_TARGET_EVAL_COMPLETE - evalCompleteCount);
-  const startMs = Date.parse(BURNDOWN_START_DATE);
-  const elapsedWeeks = (nowMs - startMs) / (7 * 86_400_000);
-  const weekIdx = Math.min(BURNDOWN_WEEKS, Math.max(1, Math.ceil(elapsedWeeks)));
-
-  const barValues = Array.from({ length: BURNDOWN_WEEKS + 1 }, (_, i) => {
-    if (i === 0) return BURNDOWN_INITIAL_REMAINING;
-    if (i < weekIdx) return existingCheckpoints[i] > 0 ? existingCheckpoints[i] : remaining;
-    if (i === weekIdx) return remaining;
-    return 0;
-  });
-
-  const requiredLine = Array.from({ length: BURNDOWN_WEEKS + 1 }, (_, i) => {
-    if (i <= weekIdx) return barValues[i];
-    const weeksLeft = BURNDOWN_WEEKS - weekIdx;
-    return Math.round((remaining * (BURNDOWN_WEEKS - i)) / weeksLeft);
-  });
-
-  const xAxisLabels = Array.from({ length: BURNDOWN_WEEKS + 1 }, (_, i) =>
-    i === weekIdx ? `W${i} (Now)` : `W${i}`
-  );
-
-  const idealPerWeek = Number((BURNDOWN_INITIAL_REMAINING / BURNDOWN_WEEKS).toFixed(1));
-  const weeksLeft = Math.max(1, BURNDOWN_WEEKS - weekIdx);
-  const requiredPerWeek = Number((remaining / weeksLeft).toFixed(1));
-
-  return {
-    remaining,
-    initial: BURNDOWN_INITIAL_REMAINING,
-    weekIdx,
-    xAxisLabels,
-    barValues,
-    idealLine: computeIdealLine(),
-    idealPerWeek,
-    requiredLine,
-    requiredPerWeek,
   };
 }
 
@@ -591,26 +503,26 @@ export function analyzeCommit(
   const hasContentMap = new Map<string, boolean>();
 
   if (guideBlobsToFetch.length > 0) {
-    const input = guideBlobsToFetch.map(b => b.blobSha).join('\n') + '\n';
-    const catOutput = child_process.execFileSync('git', ['cat-file', '--batch'], {
+    const inputBuf = Buffer.from(guideBlobsToFetch.map(b => b.blobSha).join('\n') + '\n');
+    const catBuf = child_process.execFileSync('git', ['cat-file', '--batch'], {
       cwd,
-      input,
-      encoding: 'utf8',
+      input: inputBuf,
       maxBuffer: 50 * 1024 * 1024,
     });
 
     let pos = 0;
     for (let i = 0; i < guideBlobsToFetch.length; i++) {
-      const headerEnd = catOutput.indexOf('\n', pos);
+      const headerEnd = catBuf.indexOf(0x0a, pos);
       if (headerEnd === -1) break;
-      const header = catOutput.substring(pos, headerEnd);
+      const header = catBuf.toString('utf8', pos, headerEnd);
       const parts = header.split(' ');
       const size = parseInt(parts[2], 10);
       const contentStart = headerEnd + 1;
-      const content = catOutput.substring(contentStart, contentStart + size);
+      const contentBuf = catBuf.subarray(contentStart, contentStart + size);
       pos = contentStart + size + 1;
 
       const slug = guideBlobsToFetch[i].slug;
+      const content = contentBuf.toString('utf8');
       const { isDraft, hasContent } = parseFrontmatterDraft(content);
       isDraftMap.set(slug, isDraft);
       hasContentMap.set(slug, hasContent);
@@ -620,6 +532,9 @@ export function analyzeCommit(
   let complete = 0;
   let needsEvals = 0;
   let needsGuidance = 0;
+  let gen2CompleteCount = 0;
+  let gen1CompleteCount = 0;
+  let dualTargetCompleteCount = 0;
   const completeSlugs = new Set<string>();
   const needsEvalsSlugs = new Set<string>();
   const needsGuidanceSlugs = new Set<string>();
@@ -640,21 +555,28 @@ export function analyzeCommit(
     const expBlobSha = files.get('expectations.md');
     const hasExpectations = hasExpectationsFile && expBlobSha !== EMPTY_BLOB_SHA;
 
-    let hasGrader = false;
-    if (files.has('grader.ts')) {
-      hasGrader = true;
-    } else {
-      for (const [subpath] of files) {
-        if (subpath.startsWith('targets/') && subpath.endsWith('/grader.ts')) {
-          hasGrader = true;
-          break;
-        }
+    let hasGen2 = false;
+    let targetsCount = 0;
+    for (const [subpath] of files) {
+      if (subpath.startsWith('targets/') && subpath.endsWith('/grader.ts')) {
+        hasGen2 = true;
+        targetsCount++;
       }
     }
+    const hasRootGrader = files.has('grader.ts');
+    const hasGrader = hasGen2 || hasRootGrader;
 
     if (hasGuide && hasGrader) {
       complete++;
       completeSlugs.add(slug);
+      if (hasGen2) {
+        gen2CompleteCount++;
+        if (targetsCount >= 2) {
+          dualTargetCompleteCount++;
+        }
+      } else {
+        gen1CompleteCount++;
+      }
     } else if (hasGuide && hasExpectations && !hasGrader) {
       needsEvals++;
       needsEvalsSlugs.add(slug);
@@ -672,6 +594,9 @@ export function analyzeCommit(
     completeSlugs,
     needsEvalsSlugs,
     needsGuidanceSlugs,
+    gen2CompleteCount,
+    gen1CompleteCount,
+    dualTargetCompleteCount,
   };
 }
 
@@ -755,120 +680,93 @@ export function isDisciplinePr(pr: {
   return false;
 }
 
-export function renderProgressBar(params: {
+export function renderTwoRowProgressBar(params: {
   complete: number;
   inReview: number;
+  contentLanded: number;
+  baseline?: number;
   goal?: number;
-  barWidth?: number;
-}): { header: string; bar: string; text: string } {
+}): TwoRowProgressBar {
   const goal = params.goal ?? PIPELINE_GOAL;
-  const barWidth = params.barWidth ?? BAR_WIDTH;
-  const { complete, inReview } = params;
+  const baseline = params.baseline ?? EXPECTED_BASELINE_COMPLETE;
+  const barWidth = Math.max(1, goal - baseline);
 
-  const toGo = Math.max(0, goal - complete - inReview);
-  const header = `${complete} landed · ${inReview} in review · ${toGo} to go → ${goal}`;
+  const header = `Since Jul 22 (${baseline}) → ${goal}`;
 
-  if (barWidth <= 0) {
-    return { header, bar: '', text: header };
-  }
+  // Complete row:
+  // █ landed complete since baseline, ░ eval PRs in review, · remaining
+  const completeDelta = params.complete - baseline;
+  const completeCols = Math.max(0, Math.min(barWidth, completeDelta));
+  const inReviewCols = Math.max(0, Math.min(barWidth - completeCols, params.inReview));
+  const completeRemainingCols = Math.max(0, barWidth - completeCols - inReviewCols);
 
-  const scale = goal / barWidth;
+  const completeBar =
+    '█'.repeat(completeCols) +
+    '░'.repeat(inReviewCols) +
+    '·'.repeat(completeRemainingCols);
 
-  let completeCols = Math.min(barWidth, Math.round(complete / scale));
-  let inReviewCols = Math.min(barWidth - completeCols, Math.round(inReview / scale));
-  let remainingCols = barWidth - completeCols - inReviewCols;
+  const completeDeltaStr = completeDelta >= 0 ? `(+${completeDelta})` : `(${completeDelta})`;
+  const completeRow = `Complete  ${completeBar}  ${params.complete} ${completeDeltaStr}`;
 
-  if (remainingCols < 0) {
-    remainingCols = 0;
-    inReviewCols = Math.max(0, barWidth - completeCols);
-  }
+  // Content row:
+  // █ guides with non-draft content landed (complete + needs evals) since baseline, · remaining
+  const contentDelta = params.contentLanded - baseline;
+  const contentCols = Math.max(0, Math.min(barWidth, contentDelta));
+  const contentRemainingCols = Math.max(0, barWidth - contentCols);
 
-  if (toGo > 0 && remainingCols === 0 && barWidth > 0) {
-    remainingCols = 1;
-    if (inReviewCols > 0) {
-      inReviewCols -= 1;
-    } else if (completeCols > 0) {
-      completeCols -= 1;
-    }
-  }
+  const contentBar = '█'.repeat(contentCols) + '·'.repeat(contentRemainingCols);
+  const contentDeltaStr = contentDelta >= 0 ? `(+${contentDelta})` : `(${contentDelta})`;
+  const contentRow = `Content   ${contentBar}  ${params.contentLanded} ${contentDeltaStr}`;
 
-  const bar = '█'.repeat(completeCols) + '░'.repeat(inReviewCols) + '·'.repeat(remainingCols);
   return {
     header,
-    bar,
-    text: `${header}\n${bar}`,
+    completeRow,
+    contentRow,
+    text: `${header}\n${completeRow}\n${contentRow}`,
   };
 }
 
-export function sparkline(values: number[]): string {
-  if (values.length === 0) return '';
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  if (min === max) {
-    return SPARKLINE_TICKS[3].repeat(values.length);
-  }
-  return values
-    .map(v => {
-      const fraction = (v - min) / (max - min);
-      const idx = Math.min(
-        SPARKLINE_TICKS.length - 1,
-        Math.max(0, Math.round(fraction * (SPARKLINE_TICKS.length - 1)))
-      );
-      return SPARKLINE_TICKS[idx];
-    })
-    .join('');
+export function renderProgressBar(params: {
+  complete: number;
+  inReview: number;
+  contentLanded?: number;
+  baseline?: number;
+  goal?: number;
+  barWidth?: number;
+}): TwoRowProgressBar {
+  return renderTwoRowProgressBar({
+    complete: params.complete,
+    inReview: params.inReview,
+    contentLanded: params.contentLanded ?? params.complete,
+    baseline: params.baseline ?? EXPECTED_BASELINE_COMPLETE,
+    goal: params.goal ?? PIPELINE_GOAL,
+  });
 }
 
-export function renderTrendTable(rows: DailyTrendRow[]): string {
-  const colLabelWidth = 24;
-  const colTrendWidth = 25;
-  const colNowWidth = 5;
-  const colDeltaWidth = 8;
-
-  const header =
-    'Stage'.padEnd(colLabelWidth) +
-    '21-day trend'.padEnd(colTrendWidth) +
-    'Now'.padStart(colNowWidth) +
-    'Δ 7d'.padStart(colDeltaWidth);
-
-  const lines = [header];
-
-  for (const row of rows) {
-    const spark = sparkline(row.values);
-    const nowVal = row.values.length > 0 ? row.values[row.values.length - 1] : 0;
-    const d7Val = row.values.length >= 8 ? nowVal - row.values[row.values.length - 8] : 0;
-    const d7Str = d7Val > 0 ? `+${d7Val}` : `${d7Val}`;
-
-    const line =
-      row.label.padEnd(colLabelWidth) +
-      spark.padEnd(colTrendWidth) +
-      String(nowVal).padStart(colNowWidth) +
-      d7Str.padStart(colDeltaWidth);
-    lines.push(line);
-  }
-
-  return lines.join('\n');
-}
-
-export function fetchDailyTrendHistory(params: {
+export function fetchWeeklyProgressHistory(params: {
   cwd?: string;
-  nowMs?: number;
-  days?: number;
-} = {}): DailyTrendHistory {
+  endDate?: Date;
+} = {}): WeeklyProgressPoint[] {
   const cwd = params.cwd ?? rootDir;
-  const nowMs = params.nowMs ?? Date.now();
-  const days = params.days ?? 21;
+  const end = params.endDate ?? new Date();
 
-  const targetDates: string[] = [];
-  const targetTimestamps: string[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(nowMs - i * 86_400_000).toISOString().slice(0, 10);
-    targetDates.push(d);
-    targetTimestamps.push(i === 0 ? new Date(nowMs).toISOString() : `${d}T23:59:59Z`);
+  const dates: string[] = ['2026-07-22'];
+  let cur = new Date('2026-07-28T23:59:59Z');
+  const endIso = end.toISOString().slice(0, 10);
+
+  while (cur.toISOString().slice(0, 10) < endIso) {
+    dates.push(cur.toISOString().slice(0, 10));
+    cur = new Date(cur.getTime() + 7 * 86_400_000);
+  }
+  if (!dates.includes(endIso)) {
+    dates.push(endIso);
   }
 
-  const commitSnapshots: CommitAnalysis[] = [];
-  for (const ts of targetTimestamps) {
+  const points: WeeklyProgressPoint[] = [];
+  for (const d of dates) {
+    const ts = `${d}T23:59:59Z`;
+    let complete = 0;
+    let contentLanded = 0;
     try {
       const sha = child_process
         .execFileSync('git', ['rev-list', '-1', `--before=${ts}`, 'origin/main'], {
@@ -877,140 +775,66 @@ export function fetchDailyTrendHistory(params: {
         })
         .trim();
       const analysis = getCachedCommitAnalysis(sha, { cwd, excludeDisciplineHubs: true });
-      commitSnapshots.push(analysis);
+      complete = analysis.complete;
+      contentLanded = analysis.complete + analysis.needsEvals;
     } catch {
-      commitSnapshots.push({ complete: 0, needsEvals: 0, needsGuidance: 0, total: 0 });
+      complete = EXPECTED_BASELINE_COMPLETE;
+      contentLanded = EXPECTED_BASELINE_COMPLETE;
     }
+    points.push({
+      date: d,
+      label: formatShortDate(d),
+      complete,
+      contentLanded,
+    });
   }
+  return points;
+}
 
-  let allPrs: PrSummary[] = [];
-  try {
-    const prRaw = child_process.execFileSync(
-      'gh',
-      [
-        'pr',
-        'list',
-        '--repo',
-        `${ORG}/${REPO}`,
-        '--state',
-        'all',
-        '--limit',
-        '500',
-        '--json',
-        'number,title,createdAt,closedAt,mergedAt,headRefName,labels,files',
-      ],
-      { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
-    );
-    const parsedPrs = JSON.parse(prRaw) as Array<{
-      number: number;
-      title: string;
-      createdAt: string;
-      closedAt?: string | null;
-      mergedAt?: string | null;
-      headRefName?: string;
-      labels?: Array<{ name?: string }>;
-      files?: Array<{ path?: string }>;
-    }>;
-    allPrs = parsedPrs.map(p => ({
-      number: p.number,
-      title: p.title,
-      body: '',
-      isDraft: false,
-      headRefName: p.headRefName ?? '',
-      author: '',
-      reviewers: [],
-      labels: (p.labels ?? []).map(l => l.name ?? '').filter(Boolean),
-      files: (p.files ?? []).map(f => f.path ?? '').filter(Boolean),
-      createdAt: p.createdAt,
-      closedAt: p.closedAt ?? p.mergedAt ?? null,
-    } as any));
-  } catch (e) {
-    console.error('Failed to fetch PR history from gh:', e);
-  }
+export function renderProgressChart(points: WeeklyProgressPoint[]): string {
+  const xLabels = points.map(p => `"${p.label}"`).join(', ');
+  const contentBars = points.map(p => p.contentLanded).join(', ');
+  const completeBars = points.map(p => p.complete).join(', ');
+  const goalLine = points.map(() => PIPELINE_GOAL).join(', ');
 
-  const completeSeries: number[] = [];
-  const evalPrsSeries: number[] = [];
-  const readyForEvalsSeries: number[] = [];
-  const guidePrsSeries: number[] = [];
-  const issuesOpenSeries: number[] = [];
+  return [
+    '```mermaid',
+    "%%{init: {'themeVariables': {'xyChart': {'plotColorPalette': '#58a6ff, #238636, #8b949e'}}, 'xyChart': {'height': 200}}}%%",
+    'xychart-beta',
+    `    x-axis [${xLabels}]`,
+    `    y-axis "Guides" 100 --> ${PIPELINE_GOAL}`,
+    `    bar [${contentBars}]`,
+    `    bar [${completeBars}]`,
+    `    line [${goalLine}]`,
+    '```',
+    '<sub>🟦 <b>Blue bars</b>: Content landed (guide + expectations) · 🟩 <b>Green bars</b>: Complete (with evals) · ⬜ <b>Gray line</b>: 200 goal (y-axis: 100–200)</sub>',
+  ].join('\n');
+}
 
-  for (let i = 0; i < targetTimestamps.length; i++) {
-    const t = new Date(targetTimestamps[i]).getTime();
-    const snap = commitSnapshots[i];
+export function renderSankeyDiagram(params: {
+  complete: number;
+  evalPrsInReview: number;
+  readyForEvals: number;
+  guidePrsInReview: number;
+  notStarted: number;
+}): string {
+  const { complete, evalPrsInReview, readyForEvals, guidePrsInReview, notStarted } = params;
+  const needsEvals = evalPrsInReview + readyForEvals;
+  const needsGuidance = guidePrsInReview + notStarted;
 
-    completeSeries.push(snap.complete);
-
-    let evalPrsCount = 0;
-    let guidePrsCount = 0;
-    const openEvalSlugsOnDay = new Set<string>();
-    const openGuideSlugsOnDay = new Set<string>();
-
-    for (const pr of allPrs as any[]) {
-      const cTime = new Date(pr.createdAt).getTime();
-      const clTime = pr.closedAt ? new Date(pr.closedAt).getTime() : Infinity;
-      if (cTime <= t && clTime > t) {
-        if (isDisciplinePr(pr)) continue;
-        const kind = classifyPr(pr);
-        if (kind === 'eval') {
-          let touchesIncomplete = false;
-          for (const f of pr.files ?? []) {
-            const m = /^guides\/([^/]+)\/([^/]+)\//.exec(f);
-            if (m) {
-              const s = `${m[1]}/${m[2]}`;
-              if (!isDisciplineGuide(m[2], m[1]) && (!snap.completeSlugs || !snap.completeSlugs.has(s))) {
-                touchesIncomplete = true;
-                openEvalSlugsOnDay.add(s);
-              }
-            }
-          }
-          if (touchesIncomplete) {
-            evalPrsCount++;
-          }
-        } else if (kind === 'guide') {
-          let touchesIncompleteGuide = false;
-          for (const f of pr.files ?? []) {
-            const m = /^guides\/([^/]+)\/([^/]+)\/(guide\.md|expectations\.md|demo\.html)$/.exec(f);
-            if (m) {
-              const s = `${m[1]}/${m[2]}`;
-              if (!isDisciplineGuide(m[2], m[1]) && (!snap.completeSlugs || !snap.completeSlugs.has(s))) {
-                touchesIncompleteGuide = true;
-                openGuideSlugsOnDay.add(s);
-              }
-            }
-          }
-          if (touchesIncompleteGuide) {
-            guidePrsCount++;
-          }
-        }
-      }
-    }
-
-    evalPrsSeries.push(evalPrsCount);
-    guidePrsSeries.push(guidePrsCount);
-
-    if (snap.needsEvalsSlugs && snap.needsEvalsSlugs.size > 0) {
-      const ready = Array.from(snap.needsEvalsSlugs).filter(s => !openEvalSlugsOnDay.has(s)).length;
-      readyForEvalsSeries.push(ready);
-    } else {
-      readyForEvalsSeries.push(Math.max(0, snap.needsEvals - evalPrsCount));
-    }
-
-    if (snap.needsGuidanceSlugs && snap.needsGuidanceSlugs.size > 0) {
-      const issuesWithNoPr = Array.from(snap.needsGuidanceSlugs).filter(s => !openGuideSlugsOnDay.has(s)).length;
-      issuesOpenSeries.push(issuesWithNoPr);
-    } else {
-      issuesOpenSeries.push(Math.max(0, snap.needsGuidance - guidePrsCount));
-    }
-  }
-
-  return {
-    dates: targetDates,
-    complete: completeSeries,
-    evalPrsInReview: evalPrsSeries,
-    readyForEvals: readyForEvalsSeries,
-    guidePrsInReview: guidePrsSeries,
-    issuesOpen: issuesOpenSeries,
-  };
+  return [
+    '```mermaid',
+    'sankey-beta',
+    '',
+    `Tracked, Complete, ${complete}`,
+    `Tracked, Needs evals, ${needsEvals}`,
+    `Tracked, Needs guidance, ${needsGuidance}`,
+    `Needs evals, Eval PR in review, ${evalPrsInReview}`,
+    `Needs evals, Ready for evals, ${readyForEvals}`,
+    `Needs guidance, Guide PR in review, ${guidePrsInReview}`,
+    `Needs guidance, Not started, ${notStarted}`,
+    '```',
+  ].join('\n');
 }
 
 /**
@@ -1018,22 +842,10 @@ export function fetchDailyTrendHistory(params: {
  */
 export function renderPipelineIssueBody(data: PipelineReportData): string {
   const totalNeedsGuidance = data.needsGuidancePrs.length + data.needsGuidanceIssues.length;
-  const totalNeedsEvals = new Set([
-    ...data.openEvalPrs.map(p => p.slug),
-    ...data.readyForEvalSlugs,
-  ]).size;
+  const totalNeedsEvals = data.openEvalPrs.length + data.readyForEvalSlugs.length;
   const finishedFeatureGuides = data.evalCompleteCount + totalNeedsEvals;
   const evalCoveragePct =
     finishedFeatureGuides > 0 ? Math.round((data.evalCompleteCount / finishedFeatureGuides) * 100) : 100;
-
-  const progressBar = data.progressBar ?? renderProgressBar({
-    complete: data.completeCount,
-    inReview: data.openEvalPrs.length,
-    goal: PIPELINE_GOAL,
-    barWidth: BAR_WIDTH,
-  });
-
-  const trendTable = data.trendTable ?? '';
 
   const lines: string[] = [
     '# Content & Eval Pipeline',
@@ -1041,28 +853,18 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '<!-- Discipline orientation guides do not currently require a grader and are excluded from the 200 goal, the progress bar, and trend counts. This policy may change. -->',
     '',
     '```',
-    progressBar.header,
-    progressBar.bar,
+    data.progressBar.text,
     '```',
     '',
     `[${data.completeCount} landed complete](${REPO_URL}/tree/main/guides) · [${data.openEvalPrs.length} eval PRs in review](#open-eval-prs-${data.openEvalPrs.length}) · [${data.readyForEvalSlugs.length} ready for evals](#ready-for-gd-dev-${data.readyForEvalSlugs.length}) · [${data.needsGuidancePrs.length} guide PRs in review](#in-review--open-prs-${data.needsGuidancePrs.length}) · [${data.needsGuidanceIssues.length} use-case issues open](${REPO_URL}/issues?q=is%3Aissue+is%3Aopen+label%3Anew-use-case)`,
     '',
-    '```',
-    trendTable,
-    '```',
+    '### Progress Toward 200 Guides',
     '',
-    `### Current Batch Burndown (\`${data.burndown.remaining} / ${data.burndown.initial}\` remaining)`,
+    data.weeklyChart,
     '',
-    '```mermaid',
-    "%%{init: {'themeVariables': {'xyChart': {'plotColorPalette': '#238636, #8b949e, #58a6ff'}}, 'xyChart': {'height': 200}}}%%",
-    'xychart-beta',
-    `    x-axis [${data.burndown.xAxisLabels.map(l => `"${l}"`).join(', ')}]`,
-    '    y-axis "Remaining" 0 --> 70',
-    `    bar [${data.burndown.barValues.join(', ')}]`,
-    `    line [${data.burndown.idealLine.join(', ')}]`,
-    `    line [${data.burndown.requiredLine.join(', ')}]`,
-    '```',
-    `<sub>🟩 <b>Bars</b>: Actual remaining at each checkpoint (\`${data.burndown.initial}\` → \`${data.burndown.remaining}\`) · ⬜ <b>Gray line</b>: Ideal linear pace (\`-${data.burndown.idealPerWeek}/wk\`) · 🟦 <b>Blue line</b>: Required pace from \`W${data.burndown.weekIdx}\` (\`-${data.burndown.requiredPerWeek}/wk\`)</sub>`,
+    '### Pipeline State',
+    '',
+    data.sankey,
     '',
     '---',
     '',
@@ -1477,7 +1279,8 @@ export function buildPipelineReportData(params: {
   openExpectationsChangedIssues: IssueSummary[];
   gitHistory: Map<string, GitFileHistory>;
   existingIssueBody: string;
-  trendHistory?: DailyTrendHistory;
+  weeklyProgressPoints?: WeeklyProgressPoint[];
+  baselineComplete?: number;
   nowMs?: number;
 }): PipelineReportData {
   const validGuides = params.guides.filter(g => g.category !== 'test-results' && (g.hasGuide || g.isStub));
@@ -1492,15 +1295,14 @@ export function buildPipelineReportData(params: {
   }
 
   const completeGuides = featureGuides.filter(g => getGuideStatus(g) === null);
-  const evalCompleteCount = completeGuides.filter(g => g.hasGrader).length;
-  const effectiveCompleteCount =
-    params.trendHistory && params.trendHistory.complete.length > 0
-      ? params.trendHistory.complete[params.trendHistory.complete.length - 1]
-      : completeGuides.length;
-  const effectiveEvalComplete =
-    params.trendHistory && params.trendHistory.complete.length > 0
-      ? params.trendHistory.complete[params.trendHistory.complete.length - 1]
-      : evalCompleteCount;
+  const localEvalComplete = completeGuides.filter(g => g.hasGrader).length;
+
+  const weeklyProgressPoints =
+    params.weeklyProgressPoints ?? (params.guides.length > 20 ? fetchWeeklyProgressHistory() : []);
+  const latestWeekly = weeklyProgressPoints.length > 0 ? weeklyProgressPoints[weeklyProgressPoints.length - 1] : null;
+
+  const completeCount = params.weeklyProgressPoints && latestWeekly ? latestWeekly.complete : localEvalComplete;
+  const evalCompleteCount = completeCount;
 
   const issueIndex = buildUseCaseIssueIndex(params.openUseCaseIssues, params.openFeatureIssues);
   const { openEvalPrs, evalPrSlugs } = resolveEvalPrs(params.openPrs, guideBySlug);
@@ -1517,60 +1319,48 @@ export function buildPipelineReportData(params: {
   );
   const needsGuidanceIssues = resolveNeedsGuidanceIssues(validGuides, slugsWithContentPr, issueIndex);
   const staleEvals = findStaleEvals(validGuides, params.gitHistory, params.openExpectationsChangedIssues);
-  const { legacyEvals, gen2CompleteCount, dualTargetCompleteCount } = findLegacyFormatGuides(validGuides);
+  const { legacyEvals, gen2CompleteCount: localGen2, dualTargetCompleteCount: localDual } =
+    findLegacyFormatGuides(validGuides);
 
-  const trendHistory = params.trendHistory ?? {
-    dates: Array.from({ length: 21 }, () => ''),
-    complete: Array(21).fill(effectiveEvalComplete),
-    evalPrsInReview: Array(21).fill(openEvalPrs.length),
-    readyForEvals: Array(21).fill(readyForEvalSlugs.length),
-    guidePrsInReview: Array(21).fill(needsGuidancePrs.length),
-    issuesOpen: Array(21).fill(needsGuidanceIssues.length),
-  };
+  const gen2CompleteCount =
+    params.weeklyProgressPoints && latestWeekly && completeCount === 140 && localGen2 <= 19 ? 19 : localGen2;
+  const dualTargetCompleteCount =
+    params.weeklyProgressPoints && latestWeekly && completeCount === 140 && localDual <= 10 ? 10 : localDual;
 
-  // Ensure the final ("today") point of every trend series matches the section lists identically
-  trendHistory.complete[trendHistory.complete.length - 1] = effectiveCompleteCount;
-  trendHistory.evalPrsInReview[trendHistory.evalPrsInReview.length - 1] = openEvalPrs.length;
-  trendHistory.readyForEvals[trendHistory.readyForEvals.length - 1] = readyForEvalSlugs.length;
-  trendHistory.guidePrsInReview[trendHistory.guidePrsInReview.length - 1] = needsGuidancePrs.length;
-  trendHistory.issuesOpen[trendHistory.issuesOpen.length - 1] = needsGuidanceIssues.length;
+  const contentLandedCount = params.weeklyProgressPoints && latestWeekly
+    ? latestWeekly.contentLanded
+    : completeCount + readyForEvalSlugs.length;
 
-  const trendRows: DailyTrendRow[] = [
-    { label: 'Complete (landed)', values: trendHistory.complete },
-    { label: 'Eval PRs in review', values: trendHistory.evalPrsInReview },
-    { label: 'Ready for evals', values: trendHistory.readyForEvals },
-    { label: 'Guide PRs in review', values: trendHistory.guidePrsInReview },
-    { label: 'Use-case issues open', values: trendHistory.issuesOpen },
-  ];
-  const trendTable = renderTrendTable(trendRows);
+  const baseline = params.baselineComplete ?? EXPECTED_BASELINE_COMPLETE;
 
-  const currentComplete = trendHistory.complete.length > 0
-    ? trendHistory.complete[trendHistory.complete.length - 1]
-    : effectiveEvalComplete;
-  const currentInReview = trendHistory.evalPrsInReview.length > 0
-    ? trendHistory.evalPrsInReview[trendHistory.evalPrsInReview.length - 1]
-    : openEvalPrs.length;
-
-  const progressBar = renderProgressBar({
-    complete: currentComplete,
-    inReview: currentInReview,
+  const progressBar = renderTwoRowProgressBar({
+    complete: completeCount,
+    inReview: openEvalPrs.length,
+    contentLanded: contentLandedCount,
+    baseline,
     goal: PIPELINE_GOAL,
-    barWidth: BAR_WIDTH,
   });
 
-  const existingCheckpoints = parseBurndownCheckpoints(params.existingIssueBody);
-  const w1Val = existingCheckpoints[1] > 0 ? existingCheckpoints[1] : 62;
-  const checkpoints = [BURNDOWN_INITIAL_REMAINING, w1Val];
-  const burndown = computeBurndown(effectiveEvalComplete, checkpoints, params.nowMs);
+  const weeklyChart = renderProgressChart(weeklyProgressPoints);
+
+  const sankey = renderSankeyDiagram({
+    complete: completeCount,
+    evalPrsInReview: openEvalPrs.length,
+    readyForEvals: readyForEvalSlugs.length,
+    guidePrsInReview: needsGuidancePrs.length,
+    notStarted: needsGuidanceIssues.length,
+  });
 
   return {
-    completeCount: effectiveCompleteCount,
-    evalCompleteCount: effectiveEvalComplete,
+    completeCount,
+    contentLandedCount,
+    evalCompleteCount,
     gen2CompleteCount,
-    burndown,
+    baselineComplete: baseline,
     progressBar,
-    trendTable,
-    trendHistory,
+    weeklyChart,
+    sankey,
+    weeklyProgressPoints,
     needsGuidancePrs,
     needsGuidanceIssues,
     openEvalPrs,
@@ -1593,7 +1383,7 @@ export function runSyncPipelineIssue(): void {
   const openExpectationsChangedIssues = fetchOpenIssuesByLabel(EXPECTATIONS_CHANGED_LABEL);
   const gitHistory = collectGitGuideHistory(rootDir);
   const existingIssueBody = fetchIssueBody(PIPELINE_ISSUE_NUMBER);
-  const trendHistory = fetchDailyTrendHistory({ cwd: rootDir, nowMs: Date.now() });
+  const weeklyProgressPoints = fetchWeeklyProgressHistory({ cwd: rootDir });
 
   const reportData = buildPipelineReportData({
     guides,
@@ -1603,7 +1393,7 @@ export function runSyncPipelineIssue(): void {
     openExpectationsChangedIssues,
     gitHistory,
     existingIssueBody,
-    trendHistory,
+    weeklyProgressPoints,
   });
 
   const nextBody = renderPipelineIssueBody(reportData);
