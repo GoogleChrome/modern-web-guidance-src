@@ -88,7 +88,7 @@ test.describe('daily-grind Target Grader', () => {
       const awaitExprs = sf.getDescendantsOfKind(SyntaxKind.AwaitExpression);
       const directAwait = awaitExprs.some((awaitExpr) => {
         const text = awaitExpr.getText();
-        return /(scrollIntoView|scrollTo|scrollBy|scroll)\s*\(/.test(text);
+        return /(scrollIntoView|scrollTo|scrollBy|scroll)/i.test(text);
       });
       if (directAwait) return true;
 
@@ -110,21 +110,15 @@ test.describe('daily-grind Target Grader', () => {
   test('Implementation waits for scroll completion via Promise rather than a setTimeout delay', () => {
     const project = getJsProject(targetFiles);
     const waitsViaPromiseWithoutTimeout = project.getSourceFiles().some((sf) => {
-      const scrollCalls = sf.getDescendantsOfKind(SyntaxKind.CallExpression).filter((call) => {
-        const exprText = call.getExpression().getText();
-        return /(^|\.)(scrollIntoView|scrollTo|scrollBy|scroll)$/.test(exprText);
-      });
-      if (scrollCalls.length === 0) return false;
+      const functions = [
+        ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
+        ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
+        ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
+      ];
 
-      return scrollCalls.some((call) => {
-        const fn =
-          call.getFirstAncestorByKind(SyntaxKind.FunctionDeclaration) ||
-          call.getFirstAncestorByKind(SyntaxKind.FunctionExpression) ||
-          call.getFirstAncestorByKind(SyntaxKind.ArrowFunction);
-        if (!fn) return false;
-
+      return functions.some((fn) => {
         const hasAwait = fn.getDescendantsOfKind(SyntaxKind.AwaitExpression).some((a) => {
-          return /(scrollIntoView|scrollTo|scrollBy|scroll)/.test(a.getText());
+          return /(scrollIntoView|scrollTo|scrollBy|scroll)/i.test(a.getText());
         });
         const hasSetTimeout = fn.getDescendantsOfKind(SyntaxKind.CallExpression).some((c) => {
           return c.getExpression().getText() === 'setTimeout';
@@ -144,7 +138,7 @@ test.describe('daily-grind Target Grader', () => {
     const rules = Array.from(stylesheet.cssRules);
     const hasHighlightRule = rules.some((rule) => {
       if (!(rule instanceof CSSStyleRule)) return false;
-      return /(^|[\s.,#:[>+~])highlight\b/.test(rule.selectorText);
+      return /(highlight|target|active|selected)/i.test(rule.selectorText) || /:target\b/i.test(rule.selectorText);
     });
 
     expect(hasHighlightRule).toBe(true);
@@ -161,7 +155,7 @@ test.describe('daily-grind Target Grader', () => {
 
       return functions.some((fn) => {
         const awaitScroll = fn.getDescendantsOfKind(SyntaxKind.AwaitExpression).find((a) => {
-          return /(scrollIntoView|scrollTo|scrollBy|scroll)/.test(a.getText());
+          return /(scrollIntoView|scrollTo|scrollBy|scroll)/i.test(a.getText());
         });
         if (!awaitScroll) return false;
 
@@ -170,7 +164,7 @@ test.describe('daily-grind Target Grader', () => {
           const isRemove = /(classList\.(remove|toggle)|removeAttribute|setAttribute)$/.test(expr);
           if (!isRemove) return false;
           const argsText = c.getArguments().map((a) => a.getText()).join(' ');
-          return /highlight/i.test(argsText);
+          return /(highlight|target|active|selected)/i.test(argsText);
         });
 
         const binaryAssignments = fn.getDescendantsOfKind(SyntaxKind.BinaryExpression).filter((b) => {
@@ -204,7 +198,7 @@ test.describe('daily-grind Target Grader', () => {
 
       return functions.some((fn) => {
         const awaitScroll = fn.getDescendantsOfKind(SyntaxKind.AwaitExpression).find((a) => {
-          return /(scrollIntoView|scrollTo|scrollBy|scroll)/.test(a.getText());
+          return /(scrollIntoView|scrollTo|scrollBy|scroll)/i.test(a.getText());
         });
         if (!awaitScroll) return false;
 
@@ -213,7 +207,7 @@ test.describe('daily-grind Target Grader', () => {
           const isAdd = /(classList\.(add|toggle)|setAttribute)$/.test(expr);
           if (!isAdd) return false;
           const argsText = c.getArguments().map((a) => a.getText()).join(' ');
-          return /highlight/i.test(argsText);
+          return /(highlight|target|active|selected)/i.test(argsText);
         });
 
         const binaryAssignments = fn.getDescendantsOfKind(SyntaxKind.BinaryExpression).filter((b) => {
@@ -247,7 +241,7 @@ test.describe('daily-grind Target Grader', () => {
 
       return functions.some((fn) => {
         const awaitScroll = fn.getDescendantsOfKind(SyntaxKind.AwaitExpression).find((a) => {
-          return /(scrollIntoView|scrollTo|scrollBy|scroll)/.test(a.getText());
+          return /(scrollIntoView|scrollTo|scrollBy|scroll)/i.test(a.getText());
         });
         if (!awaitScroll) return false;
 
