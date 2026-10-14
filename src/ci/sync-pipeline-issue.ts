@@ -777,6 +777,7 @@ export function renderSankeyDiagram(params: {
     'config:',
     '  themeCSS: ".link { mix-blend-mode: normal !important; stroke-opacity: 0.6 !important; }"',
     '  sankey:',
+    '    height: 240',
     '    linkColor: target',
     '    nodeAlignment: left',
     '    labelStyle: outlined',
@@ -862,10 +863,6 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     data.weeklyChart,
     '',
-    '### Where guides are now',
-    '',
-    data.sankey,
-    '',
     '---',
     '',
     `## Stage 1: ${ProjectStatus.NeedsUseCases} (${data.needsUseCasesIssues.length})`,
@@ -923,7 +920,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     lines.push(`- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug})${issuePart}${draftPart}${assigneePart}`);
   }
 
-  lines.push('', '---', '', `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`);
+  lines.push('', '---', '', '### Where guides are now', '', data.sankey, '', '---', '', `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`);
 
   for (const group of REVIEW_GROUPS) {
     const items = data.openEvalPrs.filter(item => formatReviewDecision(item.reviewDecision, false) === group);
@@ -931,10 +928,10 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     lines.push('', `#### Eval PRs: ${group} (${items.length})`, '');
     for (const item of items) {
       const rates = [
-        item.metrics.dailyGrindPassRate !== null ? `dg ${item.metrics.dailyGrindPassRate}%` : null,
-        item.metrics.devtoolsTimesPassRate !== null ? `dt ${item.metrics.devtoolsTimesPassRate}%` : null,
+        item.metrics.dailyGrindPassRate !== null ? `dg **${item.metrics.dailyGrindPassRate}%**` : null,
+        item.metrics.devtoolsTimesPassRate !== null ? `dt **${item.metrics.devtoolsTimesPassRate}%**` : null,
       ].filter(r => r !== null);
-      const passPart = rates.length > 0 ? `**Pass@1 ${rates.join(' · ')}** · ` : '';
+      const passPart = rates.length > 0 ? `Pass@1 ${rates.join(' · ')} · ` : '';
       const healthyPart = item.metrics.isHealthy ? ' · `HEALTHY`' : '';
       const reviewerPart = item.reviewers.length > 0 ? ` → ${codeList(item.reviewers)}` : '';
       lines.push(
@@ -968,7 +965,10 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     );
   }
 
+  const auditAsset = (name: string) => `${REPO_URL}/releases/download/audit-data/${name}`;
   lines.push(
+    '',
+    `Quality audits (point-in-time snapshots, not tracked above): [expectations coverage, Sep 24](${auditAsset('audit-2026-09-24-expectations-coverage.json')}) · [eval defects behind #1998, Oct 12](${auditAsset('audit-2026-10-12-eval-defects-pr1998.json')})`,
     '',
     '---',
     '',

@@ -477,8 +477,11 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     assert.doesNotMatch(markdown, /^- \[ \]/m);
     assert.match(markdown, /## Stage 3: Needs evals \(2\)/);
     assert.match(markdown, /## Eval format: Gen 1 → Gen 2/);
+    // The sankey sits between Stage 2 and Stage 3.
+    assert.match(markdown, /## Stage 2:[\s\S]*### Where guides are now[\s\S]*## Stage 3:/);
+    assert.match(markdown, /Quality audits \(point-in-time snapshots, not tracked above\)/);
     assert.match(markdown, /Evals in Gen 2 format {3}█{70} {2}1 \/ 1 \(100%\)/);
-    assert.match(markdown, /#### Eval PRs: awaiting review \(1\)\n\n- \*\*Pass@1 dg 100% · dt 100%\*\* · \[\*\*ui-behaviors\/drag\*\*\]/);
+    assert.match(markdown, /#### Eval PRs: awaiting review \(1\)\n\n- Pass@1 dg \*\*100%\*\* · dt \*\*100%\*\* · \[\*\*ui-behaviors\/drag\*\*\]/);
     assert.match(markdown, /#### Ready for evals \(1\)[\s\S]*- \[\*\*forms\/slider\*\*\]\([^)]+\) · ready since Oct 1 \(\d+ days\)/);
 
     // Ensure zero raw @username mentions anywhere
@@ -753,7 +756,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     // Sankey diagram present with YAML frontmatter config
     assert.match(
       markdown,
-      /### Where guides are now\n\n```mermaid\n---\nconfig:\n  themeCSS: "\.link \{ mix-blend-mode: normal !important; stroke-opacity: 0\.6 !important; \}"\n  sankey:\n    linkColor: target/
+      /### Where guides are now\n\n```mermaid\n---\nconfig:\n  themeCSS: "\.link \{ mix-blend-mode: normal !important; stroke-opacity: 0\.6 !important; \}"\n  sankey:\n    height: 240\n    linkColor: target/
     );
   });
 
