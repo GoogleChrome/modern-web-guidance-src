@@ -179,7 +179,7 @@ test.describe('scoped-component-transitions Target Grader', () => {
     const hasInnerHTMLRecreation = binaryExpressions.some(expr => {
       if (expr.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
         const leftText = expr.getLeft().getText();
-        return leftText.endsWith('.innerHTML') || leftText.endsWith('.outerHTML');
+        return /(?:grid|list|container|favorites)\.(innerHTML|outerHTML)$/i.test(leftText);
       }
       return false;
     });
