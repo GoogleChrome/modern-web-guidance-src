@@ -277,8 +277,9 @@ export function validateGuide(filePath: string): ValidationResult {
   errors.push(...validateMacros(maskedBody, relativePath));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateCallouts(maskedBody, relativePath));
-  const isStub = stripAllComments(body).trim().length === 0 || isDraftStub(data.draft);
-  if (!isStub) {
+  // Published guides must not link to unpublished ones; drafts may link ahead.
+  const isPublished = stripAllComments(body).trim().length > 0 && !data.draft;
+  if (isPublished) {
     errors.push(...validateGuideRefTargets(maskedBody, relativePath));
   }
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));

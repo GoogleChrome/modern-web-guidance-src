@@ -132,6 +132,21 @@ describe('validateGuideRefTargets', () => {
     assert.strictEqual(errors.length, 1);
     assert.match(errors[0], /GUIDE_REF\("slider-tooltip"\).*unpublished/);
   });
+
+  test('validateGuide only enforces it for published (non-draft) guides', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-ref-'));
+    const guidePath = path.join(dir, 'ref-test', 'guide.md');
+    fs.mkdirSync(path.dirname(guidePath));
+    const write = (draftLine: string) => fs.writeFileSync(guidePath, `---\nname: ref-test\ndescription: d\nweb-feature-ids: []\n${draftLine}---\n# Ref test\n\nSee {{ GUIDE_REF("slider-tooltip") }}.\n`);
+    try {
+      write('');
+      assert.ok(validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
+      write('draft: wip\n');
+      assert.ok(!validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('validateCallouts', () => {
