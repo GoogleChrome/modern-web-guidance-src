@@ -64,7 +64,8 @@ To keep a URL relative to the stylesheet that defines the icon token, register t
 }
 ```
 
-This requires a registration for each icon token. Registered properties are global and do not work in shadow roots, so use this approach only where that fits; root-relative URLs are simpler otherwise.
+The usual limitations of `@property`, namely that registered properties are global and shadow roots cannot register properties, are less relevant here since these icon tokens are meant to be global. 
+The main downside of this approach is that it requires a lot more boilerplate (though it compresses well), and that it limits browser support. If root-relative URLs are an option, they are a simpler solution.
 
 ```css
 :root {
