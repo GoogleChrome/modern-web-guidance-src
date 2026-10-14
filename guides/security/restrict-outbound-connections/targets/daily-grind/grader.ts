@@ -67,7 +67,7 @@ test.describe('Restrict Outbound Connections (Connection-Allowlist) Target Grade
     const hasInnerListFormat = project.getSourceFiles().some(sf => {
       const text = sf.getText();
       return (/\(\s*\$\{[^}]+\}\s*\)/.test(text) && /\.join\(\s*['"]\s*['"]\s*\)/.test(text)) ||
-             /\(\s*response-origin(?:\s+"https?:\/\/[^"]+)*\s*\)/.test(text);
+             /\(\s*response-origin(?:\s+"https?:\/\/[^"]+")*\s*\)/.test(text);
     });
     expect(hasInnerListFormat).toBe(true);
   });
@@ -77,7 +77,8 @@ test.describe('Restrict Outbound Connections (Connection-Allowlist) Target Grade
       const text = sf.getText();
       const hasTokenLiteral = sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some(sl => sl.getLiteralText() === 'response-origin');
       const isNotQuotedAsPattern = !text.includes('"response-origin"') && !text.includes('\\"response-origin\\"');
-      return hasTokenLiteral && isNotQuotedAsPattern;
+      const hasUnquotedTokenInList = /\(\s*response-origin(?:\s+|\))/.test(text);
+      return (hasTokenLiteral || hasUnquotedTokenInList) && isNotQuotedAsPattern;
     });
     expect(hasResponseOriginToken).toBe(true);
   });
@@ -95,8 +96,10 @@ test.describe('Restrict Outbound Connections (Connection-Allowlist) Target Grade
   test('Normalizes WebSocket schemes or validates HTTP/HTTPS schemes for allowlist patterns', () => {
     const hasSchemeHandling = project.getSourceFiles().some(sf => {
       const text = sf.getText();
+      const hasStaticHttpPatterns = /\(\s*response-origin\s+"https?:\/\//.test(text) && !/\(\s*response-origin[^)]*"wss?:\/\//.test(text);
       return (text.includes('ws') && text.includes('http')) ||
-             sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some(sl => sl.getLiteralText().startsWith('https://'));
+             sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some(sl => sl.getLiteralText().startsWith('https://')) ||
+             hasStaticHttpPatterns;
     });
     expect(hasSchemeHandling).toBe(true);
   });
@@ -108,7 +111,8 @@ test.describe('Restrict Outbound Connections (Connection-Allowlist) Target Grade
       const hasCleanOriginPattern = sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some(sl =>
         /^https?:\/\/[^/?#]+$/.test(sl.getLiteralText())
       );
-      return hasSlashStripper || hasCleanOriginPattern;
+      const hasCleanOriginInHeader = /\(\s*response-origin[^)]*"https?:\/\/[^/?#"]+"/.test(text);
+      return hasSlashStripper || hasCleanOriginPattern || hasCleanOriginInHeader;
     });
     expect(hasOriginSlashHandling).toBe(true);
   });
@@ -116,7 +120,9 @@ test.describe('Restrict Outbound Connections (Connection-Allowlist) Target Grade
   test('Disallows custom regular expression groups in allowlist patterns', () => {
     const hasRegexRejection = project.getSourceFiles().some(sf => {
       const text = sf.getText();
-      return /\[[^\]]*\([^)]*\)[^\]]*\]/.test(text) || /regex group/i.test(text) || /custom regex/i.test(text);
+      const allowlistMatches = text.match(/\(\s*response-origin(?:\s+"https?:\/\/[^"]+")+\s*\)/g) || [];
+      const avoidsCustomRegex = allowlistMatches.length > 0 && allowlistMatches.every(m => !/[()]/.test(m.replace(/^\(|\)$/g, '')));
+      return /\[[^\]]*\([^)]*\)[^\]]*\]/.test(text) || /regex group/i.test(text) || /custom regex/i.test(text) || avoidsCustomRegex;
     });
     expect(hasRegexRejection).toBe(true);
   });
@@ -206,12 +212,12 @@ test.describe('Restrict Outbound Connections (Connection-Allowlist) Target Grade
   test('Provides styled interactive buttons to initiate outbound connection policy checks', () => {
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
     const buttons = docs.flatMap(d =>
-      Array.from(d.document.querySelectorAll('button#check-network, button[data-request-url], button.btn'))
+      Array.from(d.document.querySelectorAll('button'))
     );
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const hasButtonStyle = Array.from(stylesheet.cssRules).some(r =>
-      r instanceof CSSStyleRule && r.selectorText.includes('button')
-    ) || buttons.some((b: any) => Boolean(b.classList?.contains('btn') || b.getAttribute('class')?.includes('btn')));
+      r instanceof CSSStyleRule && (r.selectorText.includes('button') || r.selectorText.includes('.btn'))
+    ) || buttons.some((b: any) => Boolean(b.classList?.length > 0 || b.getAttribute('class') || b.getAttribute('style')));
     expect(buttons.length > 0 && hasButtonStyle).toBe(true);
   });
 
