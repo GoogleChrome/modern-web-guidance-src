@@ -160,6 +160,8 @@ export function getEligibleScenarioIds(results) {
  * @property {number[]} unguided_tokens
  * @property {boolean} guided_failed
  * @property {boolean} unguided_failed
+ * @property {number} guided_err_rate
+ * @property {number} unguided_err_rate
  */
 
 /**
@@ -171,7 +173,9 @@ export function getEligibleScenarioIds(results) {
  *   guided_tokens: number[],
  *   unguided_tokens: number[],
  *   guided_failed: boolean[],
- *   unguided_failed: boolean[]
+ *   unguided_failed: boolean[],
+ *   guided_err_rate: number[],
+ *   unguided_err_rate: number[]
  * }}
  */
 export function calculateChartData(results) {
@@ -191,6 +195,7 @@ export function calculateChartData(results) {
         /** @type {'guided' | 'unguided'} */
         const rType = runType;
         const failedKey = rType === 'guided' ? 'guided_failed' : 'unguided_failed';
+        const errRateKey = rType === 'guided' ? 'guided_err_rate' : 'unguided_err_rate';
         const tokensKey = rType === 'guided' ? 'guided_tokens' : 'unguided_tokens';
 
         const scenario = `${taskName} (${guide})`;
@@ -201,7 +206,9 @@ export function calculateChartData(results) {
                 guided_tokens: [], 
                 unguided_tokens: [], 
                 guided_failed: false, 
-                unguided_failed: false 
+                unguided_failed: false,
+                guided_err_rate: 0,
+                unguided_err_rate: 0
             };
         }
         
@@ -210,9 +217,10 @@ export function calculateChartData(results) {
             taskNames[scenario] = runs[0].taskName;
         }
         
-        const isEarlyFailure = runs.some(r => isEarlyFailureRun(r.results));
-        if (isEarlyFailure) {
+        const earlyFailureCount = runs.filter(r => isEarlyFailureRun(r.results)).length;
+        if (earlyFailureCount > 0) {
             apps[scenario][failedKey] = true;
+            apps[scenario][errRateKey] = Math.round((earlyFailureCount / runs.length) * 100);
         }
         
         const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
@@ -261,7 +269,9 @@ export function calculateChartData(results) {
         guided_tokens: labels.map(l => getAvgTokens(l, 'guided')),
         unguided_tokens: labels.map(l => getAvgTokens(l, 'unguided')),
         guided_failed: labels.map(l => apps[l].guided_failed),
-        unguided_failed: labels.map(l => apps[l].unguided_failed)
+        unguided_failed: labels.map(l => apps[l].unguided_failed),
+        guided_err_rate: labels.map(l => apps[l].guided_err_rate),
+        unguided_err_rate: labels.map(l => apps[l].unguided_err_rate)
     };
 }
 

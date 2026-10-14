@@ -1549,7 +1549,7 @@ function renderDashboardDumbbellChart(data) {
 
     disciplines.forEach(discipline => {
         const disciplineResults = groupedByDiscipline[discipline];
-        const { labels, guided, unguided, guided_tokens, unguided_tokens, guided_failed, unguided_failed } = calculateChartData(disciplineResults);
+        const { labels, guided, unguided, guided_tokens, unguided_tokens, guided_failed, unguided_failed, guided_err_rate, unguided_err_rate } = calculateChartData(disciplineResults);
 
         if (labels.length === 0) return;
 
@@ -1594,8 +1594,8 @@ function renderDashboardDumbbellChart(data) {
         };
 
         const datasets = [
-            { label: 'Unguided', data: unguided, tokens: unguided_tokens, failed: unguided_failed, onClick: handlePointClick },
-            { label: 'Guided', data: guided, tokens: guided_tokens, failed: guided_failed, onClick: handlePointClick }
+            { label: 'Unguided', data: unguided, tokens: unguided_tokens, failed: unguided_failed, errRate: unguided_err_rate, onClick: handlePointClick },
+            { label: 'Guided', data: guided, tokens: guided_tokens, failed: guided_failed, errRate: guided_err_rate, onClick: handlePointClick }
         ];
 
         const chart = new DumbbellChart(svgContainer, {

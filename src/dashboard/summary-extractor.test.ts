@@ -100,11 +100,15 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
     assert.strictEqual(summary.unguidedStats.total, 5);
     assert.strictEqual(summary.unguidedStats.passed, 0);
 
-    // 1 out of 4 total runs was an early failure -> 25%
+    // 1 out of 4 total runs was an early failure -> 25% (1/2 guided = 50%, 0/2 unguided = 0%)
     assert.strictEqual(summary.earlyFailureRate, 25);
+    assert.strictEqual(summary.guidedErrorRate, 50);
+    assert.strictEqual(summary.unguidedErrorRate, 0);
 
     // Chart data only includes the eligible scenario (daily-grind)
     assert.deepStrictEqual(summary.chartData.labels, ['daily-grind (translator)']);
     assert.deepStrictEqual(summary.chartData.guided, [100]);
     assert.deepStrictEqual(summary.chartData.unguided, [0]);
+    assert.deepStrictEqual(summary.chartData.guided_err_rate, [0]);
+    assert.deepStrictEqual(summary.chartData.unguided_err_rate, [0]);
 });
