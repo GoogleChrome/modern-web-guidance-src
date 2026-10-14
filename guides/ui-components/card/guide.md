@@ -28,16 +28,20 @@ Keep media, title, supporting content, and actions in meaningful source order; d
 
 ## Implementation
 
-Keep the markup minimal and let CSS selectors recognize each region, so simple cards stay simple and richer cards stay possible. A card has up to four regions, in this source order, and any of them can be omitted:
+Keep the markup minimal and let CSS selectors recognize each region, so simple cards stay simple and richer cards stay possible. A card has up to four regions, in this source order, and any of them can be omitted. Regions are direct children of the card: do not group them in wrapper elements such as `.card__body`, which prevents placing and styling regions by selector.
 
-- **Media**: an `<img>`, `<picture>`, `<video>`, or `<svg>` as the first child. For arbitrary hero content, use any element with a `.media` class.
+- **Media**: an `<img>`, `<picture>`, `<video>`, or `<svg>` as the first child. Add a `.media` class only to arbitrary hero content that is not one of those elements, and never wrap a plain `<img>` in a `.media` element.
 - **Header**: a heading on its own. Use `<hgroup>` only when the heading has a subtitle or tagline, and `<header>` when the region carries more than a title, such as a byline or badge. When the card has a primary destination, the link goes inside the heading.
 - **Content**: whatever the content is, from a single `<p>` to several paragraphs, a list, or a `<dl>`. Do not wrap a single element.
-- **Footer**: a `<footer>` holding independent actions as native links and buttons.
+- **Footer**: a `<footer>` holding independent actions as native links and buttons. Link each destination once: if the heading is the primary link, the footer must not repeat it, and if the brief asks for a "read more" link, make that the card's primary link instead of also linking the heading.
 
 The simplest card is an `<article>` containing a heading and a paragraph. Choose the link and action pattern that matches the card's behavior; see [Interaction models](#interaction-models).
 
-For card images or video that should fill a fixed-ratio area, set `aspect-ratio` on the media or its container and use `object-fit: cover` to fill it without distortion (cropping may occur). Otherwise, preserve the media's intrinsic ratio. Give informative images an appropriate text alternative; use `alt=""` for decorative images.
+For card images or video that should fill a fixed-ratio area, set `aspect-ratio` and `object-fit: cover` on the `<img>` or `<video>` itself, so it fills the area without distortion (cropping may occur). Use a `.media` container's `aspect-ratio` only for other hero content. Otherwise, preserve the media's intrinsic ratio. Give informative images an appropriate text alternative; use `alt=""` for decorative images.
+
+### Adapt to available space
+
+A card cannot respond to its own container query, so make the card's parent the size container (`container-type: inline-size`) and write the `@container` rules against the card inside it. In a narrow container, stack the regions in source order. In a wide container, and only when the card has media, place the media in a side column beside the other regions. A card without media stays single-column at every width. Base the layout on the container's width, not the viewport's, so the same card works in a sidebar and in a main column.
 
 ### Align cards in a grid
 
