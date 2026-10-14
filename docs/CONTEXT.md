@@ -71,7 +71,7 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 
 ### Discipline guides
 
-Most guides are task-based use cases. Discipline guides are the orientation "hubs" for a category and link to its use-case guides via `{{ GUIDE_REF("guide-slug") }}`. A guide is a discipline guide if it is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements, and are reported as bundled core guides by `src/build/audit-build.ts`. Discipline orientation guides are currently excluded from the 200 goal and pipeline burndown counts; this policy may change in the future.
+Most guides are task-based use cases. Discipline guides are the orientation "hubs" for a category and link to its use-case guides via `{{ GUIDE_REF("guide-slug") }}`. A guide is a discipline guide if it is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements, and are reported as bundled core guides by `src/build/audit-build.ts`. Discipline orientation guides are currently excluded from the progress counts, progress bar, and pipeline trend counts; this policy may change in the future.
 
 ### Eval Architecture: Gen 1 vs Gen 2
 
@@ -102,7 +102,7 @@ A guide progresses through three main stages, tracked canonically in GitHub issu
 
 4. **Complete (landed)**: Non-draft guides on `main` that have both guidance and working graders.
 
-Progress toward the 200 completed feature guides goal is measured against the baseline established on **2026-07-22** (127 complete feature guides on `main`, discipline hubs excluded).
+Pipeline progress is measured against the baseline established on **2026-07-22** (127 complete feature guides on `main`, discipline hubs excluded), scaled to 200 columns.
 
 ---
 

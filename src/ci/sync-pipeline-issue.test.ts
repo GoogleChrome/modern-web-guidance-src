@@ -26,6 +26,7 @@ import {
   renderProgressChart,
   renderSankeyDiagram,
   renderTwoRowProgressBar,
+  sanitizeIssueTitle,
   type GitFileHistory,
   type IssueSummary,
   type PrSummary,
@@ -152,7 +153,7 @@ describe('fetchWeeklyProgressHistory & baseline', () => {
 });
 
 describe('renderTwoRowProgressBar', () => {
-  it('renders exact 73-column bars for Guides and Evals rows with header and summary line', () => {
+  it('renders exact 73-column bars for Guides and Evals rows with header, ruler line, and summary line', () => {
     const res = renderTwoRowProgressBar({
       complete: 140,
       openEvalGuides: 16,
@@ -162,7 +163,7 @@ describe('renderTwoRowProgressBar', () => {
       baseline: 127,
       goal: 200,
     });
-    assert.equal(res.header, 'Since Jul 22 (127) → 200');
+    assert.equal(res.header, 'Since Jul 22 (127)');
     // 73 columns:
     // Guides: 41 '█', 17 '░', 15 '·' = 73
     // Evals:  13 '█', 16 '░', 44 '·' = 73
@@ -174,15 +175,17 @@ describe('renderTwoRowProgressBar', () => {
       res.evalsRow,
       'Evals     ' + '█'.repeat(13) + '░'.repeat(16) + '·'.repeat(44) + '  140 +16 PRs'
     );
+    assert.match(res.rulerLine, /┬\s+┬/);
+    assert.match(res.rulerLine, /150\s+200/);
     assert.equal(
       res.summaryLine,
-      '185 landed or in review; 15+ more must be started from 51 open use-case issues'
+      '185 landed or in review'
     );
     assert.doesNotMatch(res.text, /▲/);
     assert.doesNotMatch(res.text, /[\u{1F300}-\u{1F9FF}]/u);
   });
 
-  it('safely clamps when counts are below baseline or over goal, and omits shortfall clause when reached', () => {
+  it('safely clamps when counts are below baseline or over scale, and formats clean summary line', () => {
     const below = renderTwoRowProgressBar({
       complete: 120,
       openEvalGuides: 5,
@@ -200,6 +203,7 @@ describe('renderTwoRowProgressBar', () => {
       below.evalsRow,
       'Evals     ' + '░'.repeat(5) + '·'.repeat(68) + '  120 +5 PRs'
     );
+    assert.equal(below.summaryLine, '127 landed or in review');
 
     const over = renderTwoRowProgressBar({
       complete: 205,
@@ -223,21 +227,21 @@ describe('renderTwoRowProgressBar', () => {
 });
 
 describe('renderProgressChart', () => {
-  it('renders overlapping xychart-beta bars and goal line with correct palette and height 200', () => {
+  it('renders overlapping xychart-beta bars without explicit goal series or caption', () => {
     const points: WeeklyProgressPoint[] = [
       { date: '2026-07-22', label: 'Jul 22', complete: 127, contentLanded: 127 },
       { date: '2026-10-14', label: 'Oct 14', complete: 140, contentLanded: 168 },
     ];
     const chart = renderProgressChart(points);
     assert.match(chart, /config:\s+xyChart:\s+height: 200/);
-    assert.match(chart, /plotColorPalette: "#FBBC04, #4285F4, #9AA0A6"/);
+    assert.match(chart, /plotColorPalette: "#FBBC04, #4285F4"/);
     assert.match(chart, /xychart-beta/);
     assert.match(chart, /x-axis \["Jul 22", "Oct 14"\]/);
     assert.match(chart, /y-axis "Guides" 100 --> 200/);
     assert.match(chart, /bar "Content landed" \[127, 168\]/);
     assert.match(chart, /bar "Complete" \[127, 140\]/);
-    assert.match(chart, /line "Goal" \[200, 200\]/);
-    assert.match(chart, /<sub>Goal: 200 guides \(y-axis: 100–200\)<\/sub>/);
+    assert.doesNotMatch(chart, /line "Goal"/);
+    assert.doesNotMatch(chart, /<sub>Goal/);
   });
 });
 
@@ -718,16 +722,16 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     // HTML comment emitted
     assert.match(
       markdown,
-      /<!-- Discipline orientation guides do not currently require a grader and are excluded from the 200 goal, the progress bar, and trend counts\. This policy may change\. -->/
+      /<!-- Discipline orientation guides do not currently require a grader and are excluded from the progress counts, the progress bar, and trend counts\. This policy may change\. -->/
     );
 
     // Old two-line header is NOT at the top
     assert.doesNotMatch(markdown, /# Content & Eval Pipeline\n\n\*\*\d+\*\* Needs guidance/);
 
-    // Progress bar code block with 2 symmetric rows (Guides, Evals)
+    // Progress bar code block with 2 symmetric rows (Guides, Evals) and ruler line
     assert.match(
       markdown,
-      /```\nSince Jul 22 \(\d+\) → 200\nGuides\s+[█░·]{73}\s+\d+ \+\d+ PRs\nEvals\s+[█░·]{73}\s+\d+ \+\d+ PRs\n```/
+      /```\nSince Jul 22 \(\d+\)\nGuides\s+[█░·]{73}\s+\d+ \+\d+ PRs\nEvals\s+[█░·]{73}\s+\d+ \+\d+ PRs\n\s+┬\s+┬\n\s+150\s+200\n```/
     );
 
     // Clickable links line below code block
@@ -739,7 +743,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     // Weekly progress chart present with YAML frontmatter config
     assert.match(
       markdown,
-      /### Progress Toward 200 Guides\n\n```mermaid\n---\nconfig:\n  xyChart:\n    height: 200\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#FBBC04, #4285F4, #9AA0A6"\n---\nxychart-beta/
+      /### Progress since Jul 22\n\n```mermaid\n---\nconfig:\n  xyChart:\n    height: 200\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#FBBC04, #4285F4"\n---\nxychart-beta/
     );
 
     // Sankey diagram present with YAML frontmatter config
@@ -941,5 +945,67 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     const barTrackedTotal = (complete + evalPrsInReview + readyForEvals) + guidePrsInReview + notStarted;
     assert.equal(sankeyTrackedTotal, barTrackedTotal);
     assert.equal(sankeyTrackedTotal, 229);
+  });
+
+  it('sanitizes issue titles with raw HTML tags and mentions to protect markdown structure', () => {
+    assert.equal(sanitizeIssueTitle('Customizable <select>'), 'Customizable &lt;select&gt;');
+    assert.equal(
+      sanitizeIssueTitle('Capability Elements <usermedia> MVP'),
+      'Capability Elements &lt;usermedia&gt; MVP'
+    );
+    assert.equal(
+      sanitizeIssueTitle('Media capture <camera> & <microphone>'),
+      'Media capture &lt;camera&gt; &amp; &lt;microphone&gt;'
+    );
+    assert.equal(
+      sanitizeIssueTitle('@starting-style support'),
+      '`@starting-style` support'
+    );
+  });
+
+  it('guarantees balanced details tags and code fences in generated issue body', () => {
+    const complete = makeGuide({ category: 'css', name: 'guide-1' });
+    const report = buildPipelineReportData({
+      guides: [complete],
+      openPrs: [],
+      openUseCaseIssues: [],
+      openFeatureIssues: [
+        {
+          number: 51,
+          title: 'Customizable <select>',
+          body: '',
+          assignees: ['pattishin'],
+          labels: ['new-feature'],
+        },
+        {
+          number: 35,
+          title: '@starting-style',
+          body: '',
+          assignees: ['LeaVerou'],
+          labels: ['new-feature'],
+        },
+      ],
+      openExpectationsChangedIssues: [],
+      gitHistory: new Map(),
+    });
+
+    const markdown = renderPipelineIssueBody(report);
+
+    // Balanced <details> and </details>
+    const openDetails = (markdown.match(/<details>/g) ?? []).length;
+    const closeDetails = (markdown.match(/<\/details>/g) ?? []).length;
+    assert.ok(openDetails > 0, 'Expected at least one <details> block');
+    assert.equal(openDetails, closeDetails, '<details> and </details> counts must be balanced');
+
+    // Balanced code fences
+    const fenceCount = (markdown.match(/^```/gm) ?? []).length;
+    assert.ok(fenceCount > 0, 'Expected code fences');
+    assert.equal(fenceCount % 2, 0, 'Code fence count must be even');
+
+    // Title escaping prevents unclosed HTML element swallowing subsequent headings
+    assert.match(markdown, /Customizable &lt;select&gt;/);
+    assert.match(markdown, /`@starting-style`/);
+    assert.match(markdown, /## Stage 2: Needs guidance/);
+    assert.match(markdown, /## Stage 3: Needs evals/);
   });
 });
