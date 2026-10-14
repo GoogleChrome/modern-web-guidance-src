@@ -49,6 +49,7 @@ export interface PrSummary {
   title: string;
   body: string;
   isDraft: boolean;
+  reviewDecision?: string | null;
   headRefName: string;
   author: string;
   reviewers: string[];
@@ -99,6 +100,7 @@ export interface NeedsGuidancePrItem {
   hasDirOnMain: boolean;
   prNumber: number;
   isDraft: boolean;
+  reviewDecision?: string | null;
   issueNumber: number | null;
   author: string;
   reviewers: string[];
@@ -115,6 +117,7 @@ export interface OpenEvalPrItem {
   slug: string;
   prNumber: number;
   metrics: EvalPrMetrics;
+  reviewDecision?: string | null;
   author: string;
   reviewers: string[];
 }
@@ -148,6 +151,7 @@ export interface PipelineReportData {
   progressBar: TwoRowProgressBar;
   weeklyChart: string;
   sankey: string;
+  needsUseCasesIssues: IssueSummary[];
   needsGuidancePrs: NeedsGuidancePrItem[];
   needsGuidanceIssues: NeedsGuidanceIssueItem[];
   openEvalPrs: OpenEvalPrItem[];
@@ -155,6 +159,13 @@ export interface PipelineReportData {
   staleEvals: StaleEvalItem[];
   legacyEvals: LegacyEvalItem[];
   dualTargetCompleteCount: number;
+}
+
+export function formatReviewDecision(decision: string | null | undefined, isDraft: boolean): string {
+  if (isDraft) return 'draft';
+  if (decision === 'CHANGES_REQUESTED') return 'changes requested';
+  if (decision === 'APPROVED') return 'approved';
+  return 'awaiting review';
 }
 
 export function hasSubstantiveExpectationsDiff(diffText: string): boolean {
@@ -595,6 +606,7 @@ export function renderTwoRowProgressBar(params: {
   contentLanded: number;
   openGuideGuides: number;
   notStartedIssues?: number;
+  staleEvalsCount?: number;
   baseline?: number;
   goal?: number;
 }): TwoRowProgressBar {
@@ -604,16 +616,17 @@ export function renderTwoRowProgressBar(params: {
 
   const header = `Since Jul 22 (${baseline}) → ${goal}`;
 
-  const renderRow = (label: string, landed: number, inReview: number): string => {
+  const renderRow = (label: string, landed: number, inReview: number, extraFlag = ''): string => {
     const landedCols = Math.max(0, Math.min(barWidth, landed - baseline));
     const inReviewCols = Math.max(0, Math.min(barWidth - landedCols, inReview));
     const remainingCols = Math.max(0, barWidth - landedCols - inReviewCols);
     const bar = '█'.repeat(landedCols) + '░'.repeat(inReviewCols) + '·'.repeat(remainingCols);
-    return `${label.padEnd(10)}${bar}  ${landed} +${inReview} PRs`;
+    return `${label.padEnd(10)}${bar}  ${landed}${extraFlag} +${inReview} PRs`;
   };
 
   const guidesRow = renderRow('Guides', params.contentLanded, params.openGuideGuides);
-  const evalsRow = renderRow('Evals', params.complete, params.openEvalGuides);
+  const staleFlag = params.staleEvalsCount && params.staleEvalsCount > 0 ? ` (${params.staleEvalsCount} stale)` : '';
+  const evalsRow = renderRow('Evals', params.complete, params.openEvalGuides, staleFlag);
 
   const n = params.contentLanded + params.openGuideGuides;
   const m = goal - n;
@@ -638,19 +651,21 @@ export function fetchWeeklyProgressHistory(params: {
   const end = params.endDate ?? new Date();
   const endLaDate = getLaDateString(end);
 
-  const dates: string[] = ['2026-07-22'];
-  let cur = new Date('2026-07-28T23:59:59Z');
+  const dates: string[] = [endLaDate];
+  let cur = new Date(end.getTime());
 
-  while (getLaDateString(cur) < endLaDate) {
+  while (true) {
+    cur = new Date(cur.getTime() - 7 * 86_400_000);
     const dStr = getLaDateString(cur);
-    if (!dates.includes(dStr)) {
-      dates.push(dStr);
+    if (dStr <= PIPELINE_BASELINE_DATE) {
+      break;
     }
-    cur = new Date(cur.getTime() + 7 * 86_400_000);
+    dates.push(dStr);
   }
-  if (!dates.includes(endLaDate)) {
-    dates.push(endLaDate);
+  if (!dates.includes(PIPELINE_BASELINE_DATE)) {
+    dates.push(PIPELINE_BASELINE_DATE);
   }
+  dates.reverse();
 
   const points: WeeklyProgressPoint[] = [];
   for (const d of dates) {
@@ -680,15 +695,22 @@ export function renderProgressChart(points: WeeklyProgressPoint[]): string {
 
   return [
     '```mermaid',
-    "%%{init: {'themeVariables': {'xyChart': {'plotColorPalette': '#58a6ff, #238636, #8b949e'}}, 'xyChart': {'height': 200}}}%%",
+    '---',
+    'config:',
+    '  xyChart:',
+    '    height: 200',
+    '  themeVariables:',
+    '    xyChart:',
+    '      plotColorPalette: "#FBBC04, #4285F4, #9AA0A6"',
+    '---',
     'xychart-beta',
     `    x-axis [${xLabels}]`,
     `    y-axis "Guides" 100 --> ${PIPELINE_GOAL}`,
-    `    bar [${contentBars}]`,
-    `    bar [${completeBars}]`,
-    `    line [${goalLine}]`,
+    `    bar "Content landed" [${contentBars}]`,
+    `    bar "Complete" [${completeBars}]`,
+    `    line "Goal" [${goalLine}]`,
     '```',
-    '<sub>🟦 <b>Blue bars</b>: Content landed (guide + expectations) · 🟩 <b>Green bars</b>: Complete (with evals) · ⬜ <b>Gray line</b>: 200 goal (y-axis: 100–200)</sub>',
+    '<sub>Goal: 200 guides (y-axis: 100–200)</sub>',
   ].join('\n');
 }
 
@@ -698,25 +720,52 @@ export function renderSankeyDiagram(params: {
   readyForEvals: number;
   guidePrsInReview: number;
   notStarted: number;
+  needsUseCases: number;
 }): string {
-  const { complete, evalPrsInReview, readyForEvals, guidePrsInReview, notStarted } = params;
+  const { complete, evalPrsInReview, readyForEvals, guidePrsInReview, notStarted, needsUseCases } = params;
   const needsEvals = evalPrsInReview + readyForEvals;
   const needsGuidance = guidePrsInReview + notStarted;
 
-  return [
+  const lines = [
     '```mermaid',
-    "%%{init: {'sankey': {'linkColor': 'source'}}}%%",
+    '---',
+    'config:',
+    '  themeCSS: ".link { mix-blend-mode: normal; stroke-opacity: 0.45; }"',
+    '  sankey:',
+    '    linkColor: target',
+    '    nodeAlignment: left',
+    '    labelStyle: outlined',
+    '    nodeColors:',
+    '      "Tracked": "#9AA0A6"',
+    '      "Complete": "#4285F4"',
+    '      "Needs evals": "#FBBC04"',
+    '      "Needs guidance": "#E37400"',
+    '      "Needs use cases": "#5F6368"',
+    '      "Eval PR in review": "#E37400"',
+    '      "Ready for evals": "#FBBC04"',
+    '      "Guide PR in review": "#E37400"',
+    '      "Not started": "#5F6368"',
+    '---',
     'sankey-beta',
     '',
     `Tracked, Complete, ${complete}`,
     `Tracked, Needs evals, ${needsEvals}`,
     `Tracked, Needs guidance, ${needsGuidance}`,
+  ];
+
+  if (needsUseCases > 0) {
+    lines.push(`Tracked, Needs use cases, ${needsUseCases}`);
+  }
+
+  lines.push(
     `Needs evals, Eval PR in review, ${evalPrsInReview}`,
     `Needs evals, Ready for evals, ${readyForEvals}`,
     `Needs guidance, Guide PR in review, ${guidePrsInReview}`,
     `Needs guidance, Not started, ${notStarted}`,
-    '```',
-  ].join('\n');
+    '```'
+  );
+
+  return lines.join('\n');
 }
 
 export function renderPipelineIssueBody(data: PipelineReportData): string {
@@ -749,36 +798,81 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     '---',
     '',
-    `## Stage 2: ${ProjectStatus.NeedsGuidance} (${totalNeedsGuidance})`,
+    `## Stage 1: ${ProjectStatus.NeedsUseCases} (${data.needsUseCasesIssues.length})`,
     '',
-    `#### In review — Open PRs (${data.needsGuidancePrs.length})`,
+    '<details>',
+    `<summary>Show ${data.needsUseCasesIssues.length} open <code>new-feature</code> issues</summary>`,
+    '',
   ];
 
-  for (const item of data.needsGuidancePrs) {
-    const guideHref = item.hasDirOnMain
-      ? `${REPO_URL}/tree/main/guides/${item.slug}`
-      : `${REPO_URL}/pull/${item.prNumber}`;
-    const prPart = `[PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber})${item.isDraft ? ' (Draft)' : ''}`;
-    const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
-    const reviewerPart =
-      item.reviewers.length > 0
-        ? ` → ${item.reviewers.map(r => `\`${r}\``).join(', ')}`
-        : '';
-    lines.push(
-      `- [ ] [**${item.slug}**](${guideHref}) · ${prPart}${issuePart} · \`${item.author}\`${reviewerPart}`
-    );
-  }
-
-  lines.push('', `#### Open \`new-use-case\` issues (${data.needsGuidanceIssues.length})`);
-  for (const item of data.needsGuidanceIssues) {
-    const guideHref = `${REPO_URL}/tree/main/guides/${item.slug}`;
-    const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
-    const draftPart = item.isDraftGuide ? ' (`draft: true`)' : '';
+  for (const item of data.needsUseCasesIssues) {
     const assigneePart =
       item.assignees.length > 0
         ? ` · ${item.assignees.map(a => `\`${a}\``).join(', ')}`
         : '';
-    lines.push(`- [ ] [**${item.slug}**](${guideHref})${issuePart}${draftPart}${assigneePart}`);
+    lines.push(`- [ ] [#${item.number}](${REPO_URL}/issues/${item.number}) · ${item.title}${assigneePart}`);
+  }
+
+  lines.push(
+    '',
+    '</details>',
+    '',
+    '---',
+    '',
+    `## Stage 2: ${ProjectStatus.NeedsGuidance} (${totalNeedsGuidance})`,
+    '',
+    `#### In review — Open PRs (${data.needsGuidancePrs.length})`
+  );
+
+  const prsByCategory = new Map<string, NeedsGuidancePrItem[]>();
+  for (const item of data.needsGuidancePrs) {
+    const cat = item.slug.split('/')[0];
+    const list = prsByCategory.get(cat) ?? [];
+    list.push(item);
+    prsByCategory.set(cat, list);
+  }
+
+  for (const [cat, items] of Array.from(prsByCategory.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+    lines.push('', `##### ${cat}`);
+    for (const item of items) {
+      const guideHref = item.hasDirOnMain
+        ? `${REPO_URL}/tree/main/guides/${item.slug}`
+        : `${REPO_URL}/pull/${item.prNumber}`;
+      const reviewState = formatReviewDecision(item.reviewDecision, item.isDraft);
+      const prPart = `[PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber}) (${reviewState})`;
+      const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
+      const reviewerPart =
+        item.reviewers.length > 0
+          ? ` → ${item.reviewers.map(r => `\`${r}\``).join(', ')}`
+          : '';
+      lines.push(
+        `- [ ] [**${item.slug}**](${guideHref}) · ${prPart}${issuePart} · \`${item.author}\`${reviewerPart}`
+      );
+    }
+  }
+
+  lines.push('', `#### Open \`new-use-case\` issues (${data.needsGuidanceIssues.length})`);
+
+  const issuesByCategory = new Map<string, NeedsGuidanceIssueItem[]>();
+  for (const item of data.needsGuidanceIssues) {
+    const cat = item.slug.split('/')[0];
+    const list = issuesByCategory.get(cat) ?? [];
+    list.push(item);
+    issuesByCategory.set(cat, list);
+  }
+
+  for (const [cat, items] of Array.from(issuesByCategory.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+    lines.push('', `##### ${cat}`);
+    for (const item of items) {
+      const guideHref = `${REPO_URL}/tree/main/guides/${item.slug}`;
+      const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
+      const draftPart = item.isDraftGuide ? ' (`draft: true`)' : '';
+      const assigneePart =
+        item.assignees.length > 0
+          ? ` · ${item.assignees.map(a => `\`${a}\``).join(', ')}`
+          : '';
+      lines.push(`- [ ] [**${item.slug}**](${guideHref})${issuePart}${draftPart}${assigneePart}`);
+    }
   }
 
   lines.push(
@@ -792,7 +886,8 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
 
   for (const item of data.openEvalPrs) {
     const guideHref = `${REPO_URL}/tree/main/guides/${item.slug}`;
-    const prPart = `[PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber})`;
+    const reviewState = formatReviewDecision(item.reviewDecision, false);
+    const prPart = `[PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber}) (${reviewState})`;
     const healthyPart = item.metrics.isHealthy ? ' · `HEALTHY`' : '';
     const rateParts: string[] = [];
     if (item.metrics.dailyGrindPassRate !== null) {
@@ -830,24 +925,13 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     '---',
     '',
-    `### Gen 1 → Gen 2 Eval Migration (\`${data.gen2CompleteCount}\` Gen 2 · \`${data.legacyEvals.length}\` Gen 1)`,
+    `### Gen 1 → Gen 2 Eval Migration (\`${data.gen2CompleteCount}\` Gen 2 · \`${data.legacyEvals.length}\` Gen 1 · \`${data.dualTargetCompleteCount}\` dual-target)`,
     '',
     `**Eval Coverage (${finishedFeatureGuides} finished guides):** **${data.completeCount} / ${finishedFeatureGuides} (${evalCoveragePct}%)** covered — **${data.gen2CompleteCount} Gen 2** (\`targets/\`) · **${data.legacyEvals.length} Gen 1** (legacy root \`grader.ts\`) · **${totalNeedsEvals} Missing evals**`,
     '',
-    `> **Note:** Paused while \`gd dev-gap\` prioritizes covering the **${totalNeedsEvals} finished guides missing evals** above with Gen 2 (\`targets/\`) evals.`,
-    '',
-    '<details>',
-    `<summary>Show ${data.legacyEvals.length} guides on Gen 1 evals (root <code>grader.ts</code> + <code>tasks/task.md</code> · ${data.gen2CompleteCount} on Gen 2 <code>targets/</code>, ${data.dualTargetCompleteCount} dual-target)</summary>`,
-    ''
+    `> **Note:** Paused while \`gd dev-gap\` prioritizes covering the **${totalNeedsEvals} finished guides missing evals** above with Gen 2 (\`targets/\`) evals.`
   );
 
-  for (const item of data.legacyEvals) {
-    lines.push(
-      `- [ ] [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · missing \`${item.missingTarget}\``
-    );
-  }
-
-  lines.push('', '</details>', '');
   return lines.join('\n');
 }
 
@@ -867,7 +951,7 @@ function fetchOpenPrs(): PrSummary[] {
       '--limit',
       String(PR_FETCH_LIMIT),
       '--json',
-      'number,title,body,isDraft,headRefName,author,reviewRequests,latestReviews,labels,files',
+      'number,title,body,isDraft,reviewDecision,headRefName,author,reviewRequests,latestReviews,labels,files',
     ],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
   );
@@ -876,6 +960,7 @@ function fetchOpenPrs(): PrSummary[] {
     title: string;
     body?: string;
     isDraft?: boolean;
+    reviewDecision?: string | null;
     headRefName?: string;
     author?: { login?: string };
     reviewRequests?: Array<{ login?: string; name?: string }>;
@@ -895,6 +980,7 @@ function fetchOpenPrs(): PrSummary[] {
     title: p.title,
     body: p.body ?? '',
     isDraft: Boolean(p.isDraft),
+    reviewDecision: p.reviewDecision ?? null,
     headRefName: p.headRefName ?? '',
     author: p.author?.login ?? 'unknown',
     reviewers: [
@@ -1045,6 +1131,7 @@ function resolveEvalPrs(
         slug,
         prNumber: pr.number,
         metrics: parseEvalReportFromPrBody(pr.body),
+        reviewDecision: pr.reviewDecision,
         author: pr.author,
         reviewers: filterCatchAllReviewers(pr.reviewers, 'evals'),
       });
@@ -1100,6 +1187,7 @@ function resolveNeedsGuidancePrs(
         hasDirOnMain: Boolean(inv),
         prNumber: pr.number,
         isDraft: pr.isDraft,
+        reviewDecision: pr.reviewDecision,
         issueNumber,
         author: pr.author,
         reviewers: filterCatchAllReviewers(pr.reviewers, 'guidance'),
@@ -1210,6 +1298,7 @@ export function buildPipelineReportData(params: {
     contentLanded: contentLandedCount,
     openGuideGuides: needsGuidancePrs.length,
     notStartedIssues: needsGuidanceIssues.length,
+    staleEvalsCount: staleEvals.length,
     baseline,
     goal: PIPELINE_GOAL,
   });
@@ -1222,6 +1311,7 @@ export function buildPipelineReportData(params: {
     readyForEvals: readyForEvalSlugs.length,
     guidePrsInReview: needsGuidancePrs.length,
     notStarted: needsGuidanceIssues.length,
+    needsUseCases: params.openFeatureIssues.length,
   });
 
   return {
@@ -1231,6 +1321,7 @@ export function buildPipelineReportData(params: {
     progressBar,
     weeklyChart,
     sankey,
+    needsUseCasesIssues: params.openFeatureIssues,
     needsGuidancePrs,
     needsGuidanceIssues,
     openEvalPrs,
