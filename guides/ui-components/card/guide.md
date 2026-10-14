@@ -118,17 +118,19 @@ When a content card links to a primary destination, also contains other interact
 
 For cards that represent predefined choices, use `<label class="card">` with a checkbox or radio as a direct child.
 
-Style the selected option card with `:has(:checked)` using more than color alone (such as border thickness or font weight):
+Style the selected card with `:has(:checked)`. Never change layout-affecting properties such as `border-width`, `padding`, or `font-weight` on selection, because the card and its neighbors jump; draw the emphasis with `outline`, `box-shadow`, or a transparent border that only changes color:
 
 ```css
 .card {
+  border: 2px solid transparent;
+
   &:has(> :checked) {
-    /* Pair any color change with non-color indicators, such as border width or weight */
-    border-width: 2px;
-    font-weight: 600;
+    border-color: var(--accent);
   }
 }
 ```
+
+The visible checkbox or radio is itself a non-color indicator of selection, so the color change alone is sufficient. If the control is visually hidden (keep it focusable and in the accessibility tree, never `display: none`), add a non-color indicator that does not affect layout, such as a check icon or a thicker `outline`.
 
 When choices belong in a dropdown picker whose options are laid out as cards, use a native `<select>` with `appearance: base-select` and style `::picker(select)` and `<option>` elements rather than replacing the select with `<div>` cards; see {{ GUIDE_REF("custom-select-picker-layouts") }} for more details and fallbacks. Use `<button>` elements when selecting a card triggers an immediate action rather than setting form state.
 
