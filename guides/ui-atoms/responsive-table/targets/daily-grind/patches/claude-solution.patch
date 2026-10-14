@@ -1,0 +1,159 @@
+diff --git a/index.html b/index.html
+index 66c9173..1bcc9c0 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,118 @@
+       background: #3e2723;
+     }
+ 
++    /* Responsive table */
++    .table-section {
++      margin-top: 60px;
++    }
++
++    .table-wrapper {
++      overflow: auto;
++      max-inline-size: 100%;
++      max-block-size: min(500px, 80vh);
++      container-type: inline-size;
++      background: white;
++      margin-top: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-wrapper table {
++      border-collapse: separate;
++      border-spacing: 0;
++      inline-size: 100%;
++      min-inline-size: 700px;
++    }
++
++    .table-wrapper th,
++    .table-wrapper td {
++      padding: 10px 16px;
++      text-align: start;
++      border-block-end: 1px solid var(--secondary);
++      white-space: nowrap;
++    }
++
++    .table-wrapper thead {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 1;
++    }
++
++    .table-wrapper thead th {
++      background: var(--primary);
++      color: white;
++    }
++
++    .table-wrapper tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      background: white;
++    }
++
++    .table-wrapper table {
++      --label-1: "Drink";
++      --label-2: "Size";
++      --label-3: "Calories";
++      --label-4: "Caffeine";
++      --label-5: "Price";
++    }
++
++    @container (width < 600px) {
++      .table-wrapper table {
++        min-inline-size: 0;
++      }
++
++      .table-wrapper table,
++      .table-wrapper thead,
++      .table-wrapper tbody,
++      .table-wrapper tr,
++      .table-wrapper th,
++      .table-wrapper td {
++        display: block;
++      }
++
++      .table-wrapper thead {
++        display: none;
++      }
++
++      .table-wrapper tr {
++        margin-block-end: 1.5rem;
++        border: 1px solid #ccc;
++      }
++
++      .table-wrapper tbody th {
++        position: sticky;
++        inset-block-start: 0;
++        inset-inline-start: auto;
++        z-index: 2;
++        background: #eee;
++      }
++
++      .table-wrapper td {
++        white-space: normal;
++      }
++
++      .table-wrapper td:nth-child(2)::before {
++        content: var(--label-2) ": " / var(--label-2);
++        font-weight: bold;
++      }
++
++      .table-wrapper td:nth-child(3)::before {
++        content: var(--label-3) ": " / var(--label-3);
++        font-weight: bold;
++      }
++
++      .table-wrapper td:nth-child(4)::before {
++        content: var(--label-4) ": " / var(--label-4);
++        font-weight: bold;
++      }
++
++      .table-wrapper td:nth-child(5)::before {
++        content: var(--label-5) ": " / var(--label-5);
++        font-weight: bold;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +307,35 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="table-section">
++      <h2 style="text-align: center;">Menu at a Glance</h2>
++      <div class="table-wrapper">
++        <table>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Size</th>
++              <th scope="col">Calories</th>
++              <th scope="col">Caffeine</th>
++              <th scope="col">Price</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr><th scope="row">Maple Oat Latte</th><td>12 oz</td><td>190</td><td>75 mg</td><td>$5.25</td></tr>
++            <tr><th scope="row">Dark Roast Espresso</th><td>2 oz</td><td>5</td><td>130 mg</td><td>$3.00</td></tr>
++            <tr><th scope="row">Cold Brew</th><td>16 oz</td><td>10</td><td>200 mg</td><td>$4.50</td></tr>
++            <tr><th scope="row">Flat White</th><td>8 oz</td><td>120</td><td>130 mg</td><td>$4.75</td></tr>
++            <tr><th scope="row">Cappuccino</th><td>12 oz</td><td>130</td><td>75 mg</td><td>$4.50</td></tr>
++            <tr><th scope="row">Mocha</th><td>12 oz</td><td>290</td><td>90 mg</td><td>$5.50</td></tr>
++            <tr><th scope="row">Chai Latte</th><td>12 oz</td><td>240</td><td>50 mg</td><td>$4.95</td></tr>
++            <tr><th scope="row">Americano</th><td>12 oz</td><td>10</td><td>150 mg</td><td>$3.75</td></tr>
++            <tr><th scope="row">Nitro Cold Brew</th><td>16 oz</td><td>15</td><td>230 mg</td><td>$5.00</td></tr>
++            <tr><th scope="row">Matcha Latte</th><td>12 oz</td><td>200</td><td>70 mg</td><td>$5.25</td></tr>
++          </tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
