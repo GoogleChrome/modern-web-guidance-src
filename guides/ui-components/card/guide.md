@@ -58,7 +58,6 @@ When cards need shared internal tracks, `subgrid` can align them without changin
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); /* 18rem is an example minimum card width */
   /* Four tracks: media, heading, flexible body, and footer */
-  grid-auto-rows: auto auto 1fr auto;
   gap: 1.5rem; /* Example grid gap */
 
   > .card {
