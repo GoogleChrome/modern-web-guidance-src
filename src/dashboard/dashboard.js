@@ -522,9 +522,8 @@ function renderSummary(data) {
     let totalUnguidedChecks = 0;
     let totalGuidedPassed = 0;
     let totalGuidedChecks = 0;
-    let guidedRunsCount = 0;
+    let totalAllRunsCount = 0;
     let computedEarlyFailures = 0;
-
 
     const baseKeys = new Set();
     const tasksWithTools = new Set();
@@ -534,11 +533,11 @@ function renderSummary(data) {
         const base = key.replace(' - guided', '').replace(' - unguided', '');
         baseKeys.add(base);
         const parsed = parseResultKey(key);
-        const isEligibleScenario = parsed ? eligibleScenarios.has(`${parsed.guide} - ${parsed.task}`) : true;
+        const isEligibleScenario = parsed ? eligibleScenarios.has(`${parsed.task} - ${parsed.guide}`) : true;
 
-        const runs = results[key];
+        const runs = results[key] || [];
+        totalAllRunsCount += runs.length;
         const isGuided = key.endsWith(' - guided');
-        if (isGuided) guidedRunsCount += runs.length;
 
         runs.forEach((/** @type {DashboardRunResult} */ run) => {
             if (isEarlyFailureRun(run.results)) {
@@ -555,7 +554,6 @@ function renderSummary(data) {
             if (isGuided) {
                 totalGuidedPassed += stats.passed;
                 totalGuidedChecks += stats.total;
-
             } else {
                 totalUnguidedPassed += stats.passed;
                 totalUnguidedChecks += stats.total;
@@ -575,11 +573,6 @@ function renderSummary(data) {
     const totalEarlyFailures = (summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined)
         ? (summary.unguidedEarlyFailures || 0) + (summary.guidedEarlyFailures || 0)
         : computedEarlyFailures;
-
-    let totalAllRunsCount = 0;
-    Object.keys(data.results || {}).forEach(key => {
-        totalAllRunsCount += (data.results[key] || []).length;
-    });
 
     const rawRate = totalAllRunsCount > 0 ? (totalEarlyFailures / totalAllRunsCount) * 100 : 0;
     const totalEarlyFailureRate = rawRate > 0 && rawRate < 1 ? Number(rawRate.toFixed(1)) : Math.round(rawRate);
@@ -726,7 +719,6 @@ function renderGrid(data, testId) {
 
             sortedScenarios.push(scenarioName);
 
-            // Calculate averages across valid runs (excluding infra errors)
             /**
              * @param {DashboardRunResult[] | undefined} runs
              * @returns {number | null}

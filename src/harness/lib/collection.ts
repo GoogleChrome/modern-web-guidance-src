@@ -262,13 +262,10 @@ function setupGraderForTask(
   if (!ctx) return null;
 
   const failureFile = path.join(dir, 'generation_failed.json');
-
-  // If grader is missing, generation failed, target file is missing, or results already exist, skip generating a runner.
   if (!fs.existsSync(ctx.graderPath) || fs.existsSync(failureFile) || !ctx.targetAppExists || fs.existsSync(ctx.graderResults)) {
     return null;
   }
 
-  // Generate a runner script to be picked up by pnpm -r run-grader
   const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide);
   const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
   fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
@@ -386,9 +383,6 @@ export function evaluateScenarioResults(
   if (!targetAppExists) {
     return makeAgentFailures('Target app missing');
   }
-  if (!fs.existsSync(graderResults)) {
-    return makeAgentFailures(extractErrorMessage(dir, targetFile));
-  }
 
   try {
     const json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
@@ -415,6 +409,9 @@ export function evaluateScenarioResults(
 
     return makeAgentFailures('Playwright test runner failed or produced no test results');
   } catch (err: any) {
+    if (isEnoent(err)) {
+      return makeAgentFailures(extractErrorMessage(dir, targetFile));
+    }
     console.error(`Error processing results for ${dir}:`, err);
     return makeAgentFailures(err.message || 'System Error');
   }
@@ -563,13 +560,8 @@ export async function collectResults(resultsDir: string, _suiteConfig?: SuiteCon
   const taskMap = getTaskMap();
   const runDirs = getRunNumberDirs(resultsDir);
 
-  // PASS 1: Generate parallel grader scripts for missing results
   const graderPackages = prepareGradersForRuns(resultsDir, runDirs, taskMap);
-
-  // PASS 1.5: Execute parallel grading runs
   await executeParallelGrading(resultsDir, graderPackages);
-
-  // PASS 2: Collect all results and formulate report
   const { allResults, model } = await collectAllResults(resultsDir, runDirs, taskMap);
 
   const estimatedRuntime = estimateTotalRuntime(resultsDir);

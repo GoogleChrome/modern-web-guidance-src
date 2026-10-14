@@ -33,7 +33,7 @@ import { getRunStats, isEarlyFailureRun, getEligibleScenarioIds, parseResultKey,
  * Extracts a compact summary object from an evals.json payload.
  *
  * @param {string} testId
- * @param {import('../harness/lib/metrics.ts').EvalsReport & { enableSkills?: boolean }} evalsData
+ * @param {Partial<import('../harness/lib/metrics.ts').EvalsReport> & { enableSkills?: boolean }} evalsData
  * @param {string|null} [forcedTimestamp=null]
  * @returns {SuiteSummary|null}
  */
@@ -95,7 +95,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             }
         }
 
-        const isEligibleScenario = parsedKey ? eligibleScenarios.has(`${parsedKey.guide} - ${parsedKey.task}`) : true;
+        const isEligibleScenario = parsedKey ? eligibleScenarios.has(`${parsedKey.task} - ${parsedKey.guide}`) : true;
 
         runs.forEach(run => {
             if (isEarlyFailureRun(run.results)) {

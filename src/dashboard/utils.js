@@ -132,39 +132,21 @@ export function parseResultKey(key) {
 }
 
 /**
- * Returns the set of `${guide} - ${task}` scenario IDs that have valid runs.
+ * Returns the set of `${task} - ${guide}` scenario IDs that have valid runs.
  * When both `guided` and `unguided` keys exist for a scenario, both must have at least one valid run.
  *
  * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
  * @returns {Set<string>}
  */
 export function getEligibleScenarioIds(results) {
-    /** @type {Record<string, { hasGuided: boolean, hasUnguided: boolean, validGuided: boolean, validUnguided: boolean }>} */
-    const stateByScenario = {};
+    const eligible = new Set();
     for (const [key, runs] of Object.entries(results)) {
         const parsed = parseResultKey(key);
-        if (!parsed) continue;
-        const { guide, task, runType } = parsed;
-        if (runType !== 'guided' && runType !== 'unguided') continue;
-        const id = `${guide} - ${task}`;
-        if (!stateByScenario[id]) {
-            stateByScenario[id] = { hasGuided: false, hasUnguided: false, validGuided: false, validUnguided: false };
-        }
-        const hasValidRun = (runs || []).some(r => getRunStats(r.results).total > 0);
-        if (runType === 'guided') {
-            stateByScenario[id].hasGuided = true;
-            if (hasValidRun) stateByScenario[id].validGuided = true;
-        } else {
-            stateByScenario[id].hasUnguided = true;
-            if (hasValidRun) stateByScenario[id].validUnguided = true;
-        }
-    }
-    const eligible = new Set();
-    for (const [id, st] of Object.entries(stateByScenario)) {
-        if (st.hasGuided && st.hasUnguided) {
-            if (st.validGuided && st.validUnguided) eligible.add(id);
-        } else if ((st.hasGuided && st.validGuided) || (st.hasUnguided && st.validUnguided)) {
-            eligible.add(id);
+        if (!parsed || (parsed.runType !== 'guided' && parsed.runType !== 'unguided')) continue;
+        const otherKey = key.endsWith(' - guided') ? key.replace(/ - guided$/, ' - unguided') : key.replace(/ - unguided$/, ' - guided');
+        if (runs.some(r => getRunStats(r.results).total > 0) &&
+            (!results[otherKey] || results[otherKey].some(r => getRunStats(r.results).total > 0))) {
+            eligible.add(`${parsed.task} - ${parsed.guide}`);
         }
     }
     return eligible;
@@ -205,7 +187,7 @@ export function calculateChartData(results) {
         const { task: taskName, guide, runType } = parsedKey;
 
         if (runType !== 'guided' && runType !== 'unguided') return;
-        if (!eligibleScenarios.has(`${guide} - ${taskName}`)) return;
+        if (!eligibleScenarios.has(`${taskName} - ${guide}`)) return;
         /** @type {'guided' | 'unguided'} */
         const rType = runType;
         const failedKey = rType === 'guided' ? 'guided_failed' : 'unguided_failed';
@@ -294,7 +276,7 @@ export function formatTestName(name) {
     if (parsedKey) {
         const { task: taskName, guide: guideName } = parsedKey;
         
-        const featuresMap = window.__featuresMapping || {};
+        const featuresMap = (typeof window !== 'undefined' && window.__featuresMapping) || {};
         const featureId = (featuresMap[guideName] && featuresMap[guideName][0]) || 'uncategorized';
         const displayName = `${guideName} (${taskName})`;
 

@@ -7,7 +7,12 @@ import { extractSuiteSummary } from './summary-extractor.js';
  */
 function mockRun(passed: number, total: number) {
     return {
-        results: Array.from({ length: total }, (_, i) => ({ passed: i < passed })),
+        runNumber: 1,
+        results: Array.from({ length: total }, (_, i) => ({
+            id: `check-${i + 1}`,
+            passed: i < passed,
+            message: `check ${i + 1}`,
+        })),
     };
 }
 
@@ -19,7 +24,7 @@ test('extractSuiteSummary breaks multi-target guides down per task', () => {
             'devtools-times - translator - guided': [mockRun(2, 5)],
             'devtools-times - translator - unguided': [mockRun(0, 5)],
         },
-    } as never);
+    });
 
     assert.ok(summary);
     const translator = summary.guides.translator;
@@ -42,7 +47,7 @@ test('extractSuiteSummary stores only a name for single-task guides', () => {
             'task - preload-prerender - guided': [mockRun(3, 4)],
             'task - preload-prerender - unguided': [mockRun(1, 4)],
         },
-    } as never);
+    });
 
     assert.ok(summary);
     const guide = summary.guides['preload-prerender'];
@@ -63,6 +68,7 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
             'daily-grind - translator - unguided': [mockRun(0, 5)],
             'devtools-times - translator - guided': [
                 {
+                    runNumber: 1,
                     results: [
                         { id: 'early-failure-1', passed: false, message: 'TIMEOUT (10m)', isEarlyFailure: true }
                     ]
@@ -70,7 +76,7 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
             ],
             'devtools-times - translator - unguided': [mockRun(1, 5)],
         },
-    } as never);
+    });
 
     assert.ok(summary);
     const translator = summary.guides.translator;

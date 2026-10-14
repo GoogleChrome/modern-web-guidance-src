@@ -77,8 +77,11 @@ export interface EvalsReport {
   cliVersion?: string;
 }
 
+export function isEarlyFailureRun(checks?: ScenarioCheck[] | null): boolean {
+  return !!(checks && checks.some(c => c.isEarlyFailure));
+}
+
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {
-  // Dynamic sorting: Tasks alphabetically, then Guides alphabetically, then Run Type (unguided first if present)
   const runTypeOrder: Record<string, number> = { 'unguided': 1, 'guided': 2 };
 
   const sortedKeys = Object.keys(allResults).sort((a, b) => {
@@ -92,7 +95,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       return guideNameA.localeCompare(guideNameB);
     }
 
-    // Sort known run types first, others alphabetically
     const orderA = runTypeOrder[runTypeA] || 99;
     const orderB = runTypeOrder[runTypeB] || 99;
 
@@ -113,8 +115,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     const passRates: number[] = [];
     for (const run of runs) {
       const checks = run.results;
-      const isEarlyFailure = checks.some(c => c.isEarlyFailure);
-      if (isEarlyFailure) {
+      if (isEarlyFailureRun(checks)) {
         earlyFailures++;
         continue;
       }
@@ -141,7 +142,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
 
     if (runType === 'guided') {
       runs.forEach(run => {
-        if (run.results.some(c => c.isEarlyFailure)) {
+        if (isEarlyFailureRun(run.results)) {
           return;
         }
         const guidesUsed = run.guidesUsed || [];
@@ -185,30 +186,12 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     };
   }
 
-  const taskPairs = new Map<string, { unguidedKey?: string; guidedKey?: string }>();
-  for (const k of sortedKeys) {
-    const [taskName, guideName, runType] = k.split(' - ');
-    const taskBase = `${taskName} - ${guideName}`;
-    const pair = taskPairs.get(taskBase) || {};
-    if (runType === 'unguided') pair.unguidedKey = k;
-    if (runType === 'guided') pair.guidedKey = k;
-    taskPairs.set(taskBase, pair);
-  }
-
-  const validPairKeys = new Set<string>();
-  for (const [, pair] of taskPairs) {
-    if (pair.unguidedKey && pair.guidedKey) {
-      const uValid = (testStats[pair.unguidedKey]?.totalChecks || 0) > 0;
-      const gValid = (testStats[pair.guidedKey]?.totalChecks || 0) > 0;
-      if (uValid && gValid) {
-        validPairKeys.add(pair.unguidedKey);
-        validPairKeys.add(pair.guidedKey);
-      }
-    } else {
-      if (pair.unguidedKey && (testStats[pair.unguidedKey]?.totalChecks || 0) > 0) validPairKeys.add(pair.unguidedKey);
-      if (pair.guidedKey && (testStats[pair.guidedKey]?.totalChecks || 0) > 0) validPairKeys.add(pair.guidedKey);
-    }
-  }
+  const validPairKeys = new Set<string>(
+    sortedKeys.filter(k => {
+      const otherKey = k.endsWith(' - guided') ? k.replace(/ - guided$/, ' - unguided') : k.replace(/ - unguided$/, ' - guided');
+      return (testStats[k]?.totalChecks || 0) > 0 && (!testStats[otherKey] || (testStats[otherKey]?.totalChecks || 0) > 0);
+    })
+  );
 
   const calcSummary = (allKeys: string[]) => {
     const pairedKeys = allKeys.filter(k => validPairKeys.has(k));
