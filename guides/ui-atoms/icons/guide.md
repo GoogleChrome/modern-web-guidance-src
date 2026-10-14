@@ -112,7 +112,7 @@ This block handles the injection, sizing, masking, and automatic layout adjustme
     vertical-align: middle;
   }
 
-  :not(.icon, :empty)::after {
+  :where(:not(:empty))::after {
     margin-inline-start: 0.4em;
   }
 }
