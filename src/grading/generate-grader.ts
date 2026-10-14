@@ -96,6 +96,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       fs.cpSync(sourcePatches, path.join(workDir, PATCHES_DIR), { recursive: true });
     }
 
+    // Stage the previous attempt's grader on calibration retries so the agent can surgically fix it in place.
     const existingGrader = path.join(guideDirAbs, TARGETS_DIR, baseApp, GRADER_FILE);
     if (failureContext && fs.existsSync(existingGrader)) {
       fs.copyFileSync(existingGrader, path.join(workDir, GRADER_FILE));

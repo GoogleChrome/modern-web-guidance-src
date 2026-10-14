@@ -88,6 +88,7 @@ export interface GraderPromptOptions {
   isDisciplineGuide?: boolean;
 }
 
+// `runAgent` passes the prompt via CLI argv (`-p <prompt>`); cap failure logs to stay well below Linux's 128 KB `MAX_ARG_STRLEN` (`spawn E2BIG`).
 const MAX_FAILURE_CONTEXT_CHARS = 16_000;
 
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {

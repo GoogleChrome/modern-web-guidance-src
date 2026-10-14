@@ -1,6 +1,6 @@
 ---
 name: project-evals
-description: Best practices for creating expectations and grader files to evaluate guidance quality. Use this skill any time you're writing or reviewing an `expectations.md` or `grader.ts` file.
+description: Best practices for creating and reviewing `expectations.md`, `targets/<app>/task.md`, and `targets/<app>/grader.ts` files to evaluate guidance quality. Use this skill any time you're writing or reviewing an `expectations.md`, `task.md`, or `grader.ts` file.
 ---
 
 # Stage 3: Evaluating guidance for a use case (Needs evals)
@@ -13,103 +13,94 @@ This is the third of three stages in creating guidance:
 
 ## What the eval agent sees vs real-world agents
 
-**Real-world coding agents see only `guide.md`** — retrieved automatically via the RAG skills system when a developer asks for help. Every other file in a use case directory is eval infrastructure.
+**Real-world coding agents see only `guide.md`** — retrieved via the Skills CLI when a developer asks for help. Every other file in a guide directory is eval infrastructure.
 
-**The eval harness** runs a separate coding agent in a controlled environment to test whether the guidance works. This eval agent receives the first prompt from `tasks/task.md` and has access to `guide.md` via the same RAG system. The harness then runs `grader.ts` against the eval agent's output.
+**The eval harness** runs a coding agent in an isolated workspace initialized with a target base application (`daily-grind` or `devtools-times`). The agent receives the prompt from `targets/<base_app>/task.md` and (in guided mode) access to `guide.md` via the Skills CLI. The harness then runs `targets/<base_app>/grader.ts` against the agent's modified application.
 
 None of the following are ever seen by real-world coding agents:
 
 | File | Role in eval pipeline |
 |---|---|
-| `tasks/task.md` | Simulated developer prompts and base application name fed to the eval agent by the harness |
-| `demo.html` | Reference implementation — grader runs against it to confirm tests pass on correct code |
-| `negative-demo.html` | Anti-example — grader runs against it to confirm tests fail on incorrect code |
-| `expectations.md` | Spec used to generate `grader.ts` |
-| `grader.ts` | Playwright tests run against the eval agent's output |
-
-## How the eval files work together
-
-`tasks/task.md`, `expectations.md`, and `grader.ts` form a tightly coupled pipeline:
-1. **`tasks/task.md`** — Simulated developer prompts used only by the eval harness. It must start with a YAML frontmatter specifying the `base_app`, followed by a list of prompts. Each prompt should sound like a real developer request, without naming specific APIs or best practices — the eval agent is expected to discover those by reading `guide.md` via RAG. The first prompt is the most important: it is used as the default task.
-
-2. **`expectations.md`** — The ground truth for what a correct implementation looks like. Each bullet becomes exactly one test in `grader.ts`. Write expectations assuming the eval agent read `guide.md` and implemented it faithfully; they describe the observable output, not the implementation approach.
-
-3. **`grader.ts`** — A Playwright test file generated 1:1 from `expectations.md`. Every bullet maps to one `test()` block. If an expectation cannot be translated into a Playwright assertion (static file check or browser automation), it does not belong in `expectations.md`.
+| `expectations.md` | Natural-language spec of assertions that must hold when `guide.md` is followed |
+| `demo.html` | Standalone reference implementation authored by the SME |
+| `targets/<base_app>/task.md` | Simulated developer prompt and `base_app` frontmatter fed to the eval agent |
+| `targets/<base_app>/patches/*-solution.patch` | Multi-agent golden solution diffs (`claude`, `codex`, `jetski`) that must score **100%** on `grader.ts` |
+| `targets/<base_app>/patches/zero-passrate.patch` | Baseline anti-pattern diff that must score **0%** on `grader.ts` |
+| `targets/<base_app>/grader.ts` | Playwright + static AST test suite run against the eval agent's output |
 
 ## Writing `expectations.md`
 
-Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly (e.g., "The input element is styled with a red border only AFTER a blur event").
+Write a natural-language, bulleted list of assertions that must be true if an agent implements `guide.md` correctly.
 
-* **1:1 with grader tests** — Each bullet becomes exactly one test. Write one bullet per assertion. Do not combine multiple checks into a single bullet.
-* **Plain declarative phrasing** — Write each bullet as a plain statement of what is true of a correct implementation (e.g., "The dialog closes when the Escape key is pressed"). Imperative directives such as `MUST`, `MUST NOT`, `DO`, and `DO NOT` are a `guide.md` convention for steering coding agents; `expectations.md` is consumed only by the internal grader generator, so the `The implementation MUST…` boilerplate adds nothing and should be omitted.
-* **Concrete, Testable Criteria (No API Facts)** — Expectations must be verifiable browser behaviors we can check with Playwright (e.g., computed styles, DOM layout), not just factual statements about an API or code structure.
-* **Exercised in Demo**: Ensure that every expectation written here is actively exercised in the accompanying `demo.html`. Expectations that aren't covered by the demo lead to unreliable grader calibration.
-* **Scoped to this use case** — Only include expectations that apply to the specific use case being graded. Do not copy generic expectations from other guides if they describe behavior that won't appear in an implementation of this guide (e.g., don't include URL input expectations in a sign-in form grader).
+* **1:1 with grader tests** — Each bullet becomes one `test()` block in `grader.ts` (for use-case guides). Write one bullet per assertion; do not combine multiple checks into a single bullet.
+* **Plain declarative phrasing** — Write each bullet as a plain statement of what is true of a correct implementation (e.g., "The dialog closes when the Escape key is pressed"). Omit `The implementation MUST…` boilerplate; imperative directives belong in `guide.md`.
+* **Concrete, testable criteria** — Every expectation must be verifiable via static AST analysis (Linkedom, CSSOMNom, ts-morph) or Playwright browser execution.
+* **Scoped to this use case** — Only include expectations that apply to the specific use case being graded and are documented in `guide.md`.
+* **Avoid untestable conditional expectations** — Avoid `"If the implementation uses X, then Y"` expectations when valid solutions may omit `X` entirely; if a golden solution patch has zero instances of `X`, the grader cannot assert `Y` without writing a vacuous guard.
 * **No external links** — The grader generator cannot resolve them.
-* **Avoid over-constraining** — Don't assert implementation details that don't affect correctness (e.g., don't require a direct child relationship if a descendant also works).
-
-## Grading Note
-* Graders (`grader.ts`) live within their respective guide folders. These are Playwright test files.
-* **AVOID** using static assertions (like regex or `str.includes()` on `fs.readFileSync`) to test CSS or HTML syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting.
-* Instead, **PREFER** using Playwright's browser APIs to test computed styles and actual DOM layout. Use `element.evaluate((el) => window.getComputedStyle(el).propertyName)` to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
-* A human may manually edit the `.ts` file if the generator struggles to get it perfectly tailored.
+* **Avoid over-constraining** — Describe required outcomes, API contracts, or structural invariants rather than prescribing incidental implementation details (specific variable names, helper names, or file paths).
 
 ---
 
-Once a guide has its `guide.md`, `demo.html`, and `expectations.md` completely written, it is ready for the evaluation pipeline.
+## Writing & Reviewing `targets/<base_app>/task.md`
 
-## Generating the Eval Graders
+`targets/<base_app>/task.md` contains a single realistic developer prompt prefixed by YAML frontmatter specifying the target base application:
 
-To generate the eval graders, use the `gd dev` tool.
-
-Run the following command:
-```bash
-node ./bin/gd.ts dev <path-to-guide-directory>
-```
-
-This command will automatically:
-1. Generate a `negative-demo.html` based on the guidance.
-2. Generate a `grader.ts` Playwright test that asserts your `expectations.md` against both `demo.html` (should pass) and `negative-demo.html` (should fail).
-3. Test and calibrate the grader by running the test suite.
-
-* **Eval Performance Thresholds**: A guide is not considered ready if evaluation pass rates are low. A 0% unguided pass rate is a critical blocker, indicating the guide may lack sufficient scaffolding for the model to discover the solution.
-
-## Writing `tasks/task.md`
-
-`tasks/task.md` contains realistic developer prompts used to run AI agents end-to-end against the guide's grader, prefixed by a YAML frontmatter specifying the base application.
-
-**Format:**
 ```md
 ---
-base_app: daily-grind
+base_app: devtools-times
 ---
-- make my images load faster on the page
-- Optimize the priority of my LCP image 'hero.jpg' and deprioritize the gallery images below the fold.
+- Add a passkey management section to the account settings where signed-in readers can view their registered passkeys, rename them, or remove keys they no longer use, keeping their authenticator in sync.
 ```
 
-**Critical:** The **first prompt** is the most important. It is used as the default task for the harness, and it must be specific enough to produce a grader-testable result.
+### Rules for `task.md`
+1. **Single-line bullet format**: Must be formatted strictly as a single line prefixed with `- ` beneath the YAML frontmatter, with no internal line breaks.
+2. **Derived from `guide.md`'s frontmatter `description` only**: Focus on the user outcome described in `guide.md`'s frontmatter `description`, adapted naturally to the target base app's domain.
+3. **Preserve the high-level capability boundary**: Keep the execution context and functional boundary from the frontmatter `description` clear (e.g., distinguishing on-device / built-in browser translation from external cloud translation APIs) so the agent knows what problem domain it is solving.
+4. **Treat `expectations.md` as a Negative Constraint / Spoiler Blocklist**: NEVER leak secondary requirements from `expectations.md`—such as `prefers-reduced-motion`, fallback strategies, ARIA attributes, focus management, or error-handling edge cases—into `task.md` unless they are the primary subject of `guide.md`'s frontmatter `description`. The eval agent must discover those best practices from `guide.md`.
+5. **No technical or API dictation**: NEVER name specific web platform APIs, CSS properties/at-rules, or method names (e.g., do not say `"use @view-transition"`, `"use window.Translator"`, or `"call signalAllAcceptedCredentials"`).
+6. **Imperative action request**: Phrase as a direct developer request to an AI coding assistant (`"Add..."`, `"Update..."`, `"Implement..."`), never as an advisory question (`"How can I...?"`).
+7. **No internal references**: Never mention `guide.md`, guidance skills, or the literal repo code name (`daily-grind` / `devtools-times`).
 
-**Rules:**
-- DO write prompts as a developer talking to an AI coding assistant — casual, lowercase, sometimes vague.
-- DO phrase prompts as action requests or directives (e.g. "add X", "can you build Y", "implement Z").
-- DO NOT phrase prompts as advisory questions (e.g. "how can I?", "what's the best way to?", "can you explain?"). The agent must implement, not just explain.
-- DO vary specificity: include at least one vague/intent-based prompt and one specific/technical ask.
-- DO assume the developer is working on an existing app (the base app). Reference its real assets and endpoints if needed (e.g., `hero.jpg`, `/api/analytics`).
-- DO NOT mention the guide, the feature name, or hint that guidance exists.
-- DO NOT name the base app (e.g., "daily-grind") — a real developer wouldn't refer to it that way.
-- DO NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so. The point is to test whether the agent discovers the right solution via the guide.
-  > [!IMPORTANT]
-  > **Functional Locators vs. Technical Solutions**
-  > It is completely acceptable (and sometimes necessary) to mandate specific DOM IDs or CSS classes (e.g., `"add a .fan-card class"`) if the grader requires them to locate elements. What is strictly banned is mandating the underlying implementation technology (e.g., commanding the model to `"use sibling-index()"` or `"use the Temporal API"`).
+---
 
-**Quantity:** 1–4 prompts is typical. A single highly specific prompt is fine for technical use cases. Multiple prompts are useful for use cases with multiple valid entry points (e.g., "accordion", "tabs", "drawer" all exercising the same feature).
+## Writing & Reviewing `targets/<base_app>/grader.ts`
 
-**Test your prompts:** Before finalizing, ask yourself: would an agent reading this prompt understand what they need to build? Vague phrases like "I should be able to search" may not convey browser-native "Find in page" behavior to a model. If the prompt is ambiguous, rewrite it to make the intent explicit.
+Graders are generated from [`src/grading/template.grader.ts`](../../../src/grading/template.grader.ts) and calibrated against the 3 golden solution patches (`100%`) and `zero-passrate.patch` (`0%`).
 
-**Consistency:** If writing multiple prompts, consider starting them with the same verb or structure (e.g., all starting with "Create a...") to make the list scannable and consistent.
+### 1. Assertion Hierarchy: Static Analysis First
+Unlike single-file `demo.html` checks, target app tasks (`daily-grind`, `devtools-times`) do not prescribe URL routes, mock REST API endpoints, or button selectors in `task.md`.
+- **Prioritize static AST analysis** over browser execution:
+  - **Linkedom** (`getHtmlDocuments`) for HTML structure and DOM querying.
+  - **CSSOMNom** (`getCssStyleSheet`) for CSS rules, at-rules (`@media`, `@supports`, `@container`, `@view-transition`), and declarations.
+  - **ts-morph** (`getJsProject`) for JS/TS syntax, API calls, and state wiring.
+  - **Never use regex** on HTML, CSS, or JS/TS source strings to verify syntax.
+- **Browser E2E checks only when strictly necessary**: Only use Playwright browser tests for runtime layout geometry or computed style checks on existing base-app elements. **Never** write Browser E2E tests that navigate to newly invented routes, intercept custom REST API URLs/payloads, or click patch-specific selectors that only exist in the 3 golden solution patches.
 
-## Troubleshooting
+### 2. Anti-Overfitting to Golden Solution Patches
+The 3 golden solution patches (`claude`, `codex`, `jetski`) are examples of valid implementations, **not** an exhaustive specification.
+- **Never hardcode golden-patch identifiers**: Do not match allowlists of helper function names (e.g., `syncAcceptedCredentials`, `loadCredentials`), React state variable names, or newly created filenames from the calibration patches. Match conceptual roles (e.g., any function calling a WebAuthn method or registered in an event listener).
+- **Unwrap TypeScript expressions**: Always unwrap `AsExpression`, `TypeAssertion`, `SatisfiesExpression`, and `ParenthesizedExpression` before inspecting call arguments or object literals.
+- **Follow variable indirection**: Resolve local `VariableDeclaration`, `BindingElement`, or parameter references when an identifier is passed as an argument instead of assuming inline object literals.
+- **Trace helper & wrapper functions**: Do not assume a platform API is called directly inside a component or event handler. Trace calls and forwarded arguments through helper/wrapper functions across modules.
+- **Flexible error handling**: Accept both `try/catch` (`TryStatement`) and promise `.catch()` handlers.
+- **Utility CSS flexibility**: In apps using Tailwind or utility CSS, accept either standard CSS declarations (`getCssStyleSheet`) or equivalent utility classes (`getHtmlDocuments`).
 
-If `gd dev` fails to calibrate the grader:
-* Read the command output to see which assertions failed.
-* If the grader logic generated by the pipeline is wrong, you may need to tweak the language in `expectations.md` so the generated grader is more accurate, or simply run `gd dev` again (it attempts to fix itself using failure context).
+### 3. No Vacuous Checks or Swallowed Errors
+- **Single assertion per `test()` block**: Write one assertion per `test('...', ...)` block for clear failure diagnostics.
+- **No vacuous guards**: Never write `if (items.length > 0) { expect(...); }`, `hasFeature && (items.length === 0 || ...)`, or `if (files.length === 0) { expect(false).toBe(true); return; }`. Always assert `expect(items.length).toBeGreaterThan(0)` before asserting `.every(...)` or item properties.
+- **Never use `test.skip()`** or wrap assertions in `try/catch` blocks that swallow errors.
+
+---
+
+## Generating & Validating Evals
+
+```bash
+# Generate missing target patches, task.md, and grader.ts, calibrate, and run evals
+gd dev <path-to-guide-directory>
+
+# Verify existing grader calibration against golden (100%) and zero-passrate (0%) patches
+gd dev <path-to-guide-directory> --test-grader
+```
+
+If you modify the underlying `gd dev` prompts (`src/authoring/dev-prompts.ts`, `src/authoring/dev.ts`, `src/grading/generate-grader.ts`), use the [`dev-prompt-canary`](../dev-prompt-canary/SKILL.md) skill to empirically validate the prompt changes against the canary suite.
