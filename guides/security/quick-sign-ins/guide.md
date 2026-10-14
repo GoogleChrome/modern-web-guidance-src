@@ -16,14 +16,19 @@ Unlike standard modal WebAuthn prompts—which always display browser UI and fal
 
 ## Recommended UX patterns and anti-patterns
 
-Trigger Immediate UI mode at moments of clear user intent **right before** navigating away from the current page:
+Trigger Immediate UI mode inside a user-initiated event handler (requiring transient user activation) at moments of clear user intent **right before** navigating away from the current page. If immediate authentication succeeds, complete the user's intent immediately (whether by updating the current page in place or proceeding directly to their authenticated destination). If it fails with `NotAllowedError`, show a sign-in or registration flow with a path to complete the user's intent on completion.
 
-- **Header sign-in link or button interception**: When a signed-out visitor clicks a "Sign in" link or button in the global header, intercept the navigation (`event.preventDefault()`) and invoke Immediate UI mode. If local credentials exist, the user signs in over the current page and the header updates in place; if `NotAllowedError` is thrown, proceed with navigating to the dedicated sign-in page.
-- **Dynamic sign-in before checkout**: When an unauthenticated shopper clicks "Proceed to checkout" in their cart, invoke Immediate UI mode so returning customers with saved credentials sign in with a single tap and land directly on the shipping and payment confirmation screen. If no local credentials exist, transition to the standard sign-in or guest checkout screen.
-- **Inline sign-in for micro-actions (Favorite, Like, Bookmark, Save)**: When a signed-out user clicks a micro-action button such as Favorite, Like, Bookmark, or Save on a product card or post, invoke Immediate UI mode in place. Once authenticated, immediately complete the micro-action and update the button state (for example, toggling `aria-pressed="true"`) without losing the user's scroll position. On `NotAllowedError`, open an inline login modal or navigate to the sign-in page with a return URL parameter (such as `/signin?r=/current-path`).
-- **In-article soft paywalls**: When a reader clicks "Continue reading with your account" on a paywall banner, invoke Immediate UI mode at their current scroll position and reveal the full article in place upon authentication, or expand an inline sign-in or registration form on fallback.
+Potential use cases:
+
+- **Header sign-in link or button interception**: Intercept a click on a global "Sign in" link (`event.preventDefault()`) to authenticate returning users immediately, or continue navigating to the dedicated sign-in page on `NotAllowedError`.
+- **Dynamic sign-in before checkout**: Authenticate returning shoppers with a single tap when they click "Proceed to checkout" so they land directly on the shipping and payment step, or transition to the standard sign-in or guest checkout screen on fallback.
+- **Inline sign-in for micro-actions (Favorite, Like, Bookmark, Save)**: Authenticate in place when a signed-out user clicks a micro-action button and immediately complete the action (for example, toggling `aria-pressed="true"`), or open a fallback login modal or sign-in page with a return URL parameter.
+- **In-article soft paywalls**: Authenticate readers in place when they click "Continue reading with your account" on a paywall banner, or expand an inline sign-in or registration form on fallback.
+
+Anti-patterns to avoid:
+
 - **DO NOT use Immediate UI mode on a dedicated sign-in page**: Never attach `uiMode: 'immediate'` to the primary "Sign in" or "Sign in with a passkey" button on your final destination sign-in page. Users reach the dedicated sign-in page specifically when they have no local credentials on the current device, or when they intend to use a cross-device passkey (scanning a QR code with a phone) or an external hardware security key. Because `uiMode: 'immediate'` suppresses cross-device QR code and security key options and immediately throws `NotAllowedError` when no local credentials exist, using it on a dedicated sign-in page traps the user in a dead end where clicking the button does nothing. On a dedicated sign-in page, use Conditional UI (`mediation: 'conditional'` with `autocomplete="username webauthn"`) on form inputs paired with a standard modal `navigator.credentials.get({ publicKey })` button (see {{ GUIDE_REF("passkey-authentication") }}).
-- **DO NOT use Immediate UI mode for step-up reauthentication**: Never use `uiMode: 'immediate'` to reauthenticate an already signed-in user before sensitive operations (such as changing a password, updating a shipping address, editing saved payment methods, or adding a new passkey). Reauthentication flows require restricting the prompt to the signed-in user's credentials via a non-empty `allowCredentials` list, which browsers immediately reject with `NotAllowedError` in Immediate UI mode to prevent cross-session user tracking. Omitting `allowCredentials` during reauthentication is also an anti-pattern because the browser displays every credential saved on the device for your site, allowing the user to inadvertently select a different account than the one currently signed in. For step-up reauthentication where the user's identity is already known, use a standard modal WebAuthn request (`navigator.credentials.get({ publicKey })` without `uiMode: 'immediate'`) with `allowCredentials` populated with the signed-in user's registered credentials.
+- **DO NOT use Immediate UI mode for step-up reauthentication**: Never use `uiMode: 'immediate'` to reauthenticate an already signed-in user before sensitive operations (such as changing a password, updating a shipping address, editing saved payment methods, or adding a new passkey). Reauthentication must restrict the prompt to the signed-in user's credentials via a non-empty `allowCredentials` list, which Immediate UI mode rejects with `NotAllowedError`, and omitting `allowCredentials` would let the user inadvertently select a different account than the one currently signed in. For step-up reauthentication, follow {{ GUIDE_REF("passkey-reauthentication") }}.
 
 ## Privacy and security constraints
 
@@ -68,41 +73,18 @@ Because `navigator.credentials.get({ password: true, publicKey, uiMode: 'immedia
 
 ## Client-side implementation
 
-### Feature detection and unified credential request
+### Unified credential request
 
-1. **Load `webauthn-polyfills`**: Import `'webauthn-polyfills'` so `PublicKeyCredential.getClientCapabilities()`, `PublicKeyCredential.parseRequestOptionsFromJSON()`, and `PublicKeyCredential.prototype.toJSON()` are available across browsers supporting WebAuthn.
-2. **Feature-detect `capabilities.immediateGet`**: Call `await PublicKeyCredential.getClientCapabilities()` and verify `capabilities.immediateGet === true`. **MANDATORY**: If `capabilities.immediateGet` is falsy, do **NOT** call `navigator.credentials.get({ uiMode: 'immediate' })`—browsers that do not recognize `uiMode: 'immediate'` will ignore the unknown dictionary key and open a blocking modal passkey and QR code dialog. Instead, immediately run your fallback sign-in flow.
-3. **Request both passkeys and passwords**: Decode the server options using `PublicKeyCredential.parseRequestOptionsFromJSON()` and call `navigator.credentials.get()` with `password: true`, `publicKey`, and `uiMode: 'immediate'` (without passing `signal`).
-4. **Branch verification by `cred.type`**:
+1. **Request both passkeys and passwords**: Decode the server options using `PublicKeyCredential.parseRequestOptionsFromJSON()` and call `navigator.credentials.get()` inside a user-initiated click handler with `password: true`, `publicKey`, and `uiMode: 'immediate'` (without passing `signal`).
+2. **Branch verification by `cred.type`**:
     - If `cred.type === 'public-key'`, serialize the assertion with `cred.toJSON()` and POST it to your WebAuthn verification endpoint. When the server responds with HTTP `404`, call `PublicKeyCredential.signalUnknownCredential({ rpId: publicKey.rpId, credentialId: encoded.id })`.
     - If `cred.type === 'password'`, POST `{ username: cred.id, password: cred.password }` to your password verification endpoint.
-5. **Handle `NotAllowedError` with a seamless fallback**: Catch `NotAllowedError` and trigger your fallback sign-in UI (such as opening a fallback sign-in dialog or navigating to `/signin` with a return URL).
+3. **Handle `NotAllowedError` when no local credentials exist**: Catch `NotAllowedError` (thrown immediately when no local passkeys or saved passwords exist on the device, or when the user dismisses the chooser) and transition to your standard sign-in flow (such as opening an inline sign-in dialog or navigating to `/signin` with a return URL).
 
 ```javascript
-import 'webauthn-polyfills';
-
 let isAuthenticating = false;
 
-async function isImmediateUiSupported() {
-  if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
-    return false;
-  }
-  try {
-    const capabilities = await PublicKeyCredential.getClientCapabilities();
-    return Boolean(capabilities?.immediateGet);
-  } catch {
-    return false;
-  }
-}
-
 async function authenticateWithImmediateUi() {
-  // MANDATORY: Check immediateGet support so unsupported browsers do not open a modal QR dialog
-  const supported = await isImmediateUiSupported();
-  if (!supported) {
-    const err = new DOMException('Immediate UI mode is not supported', 'NotAllowedError');
-    throw err;
-  }
-
   const optionsResponse = await fetch('/api/login/options', { method: 'POST' });
   if (!optionsResponse.ok) {
     throw new Error('Failed to fetch authentication options');
@@ -130,12 +112,10 @@ async function authenticateWithImmediateUi() {
     });
 
     if (verifyResponse.status === 404) {
-      if (PublicKeyCredential.signalUnknownCredential) {
-        await PublicKeyCredential.signalUnknownCredential({
-          rpId: publicKey.rpId || window.location.hostname,
-          credentialId: encoded.id, // Base64URL-encoded credential ID string
-        });
-      }
+      await PublicKeyCredential.signalUnknownCredential({
+        rpId: publicKey.rpId || window.location.hostname,
+        credentialId: encoded.id, // Base64URL-encoded credential ID string
+      });
       throw new Error('Passkey credential is no longer recognized by the server');
     }
 
@@ -181,13 +161,13 @@ favoriteButton.addEventListener('click', async (event) => {
   isAuthenticating = true;
   try {
     const user = await authenticateWithImmediateUi();
-    // Update signed-in state in place and complete the user's intended action
+    // Complete the user's intended action immediately
     document.body.dataset.signedIn = 'true';
     favoriteButton.setAttribute('aria-pressed', 'true');
     updateHeaderUserState(user);
   } catch (err) {
     if (err.name === 'NotAllowedError') {
-      // No local credentials available, user dismissed dialog, or browser unsupported:
+      // No local credentials available or user dismissed dialog:
       // transition smoothly to fallback sign-in UI or redirect with return URL
       showFallbackSignInUi({ returnAction: 'favorite' });
       return;
@@ -201,7 +181,35 @@ favoriteButton.addEventListener('click', async (event) => {
 
 ## Fallback strategies
 
-### Immediate UI mode and client capabilities fallback
+### Immediate UI mode fallback
+
+- **Progressive enhancement experience**: Treat `uiMode: 'immediate'` as a progressive enhancement. Do not infer support from a browser's name or version; the only reliable support signal is the `capabilities.immediateGet` runtime check via `PublicKeyCredential.getClientCapabilities()`. **MANDATORY**: Always check `capabilities.immediateGet` before calling `navigator.credentials.get({ uiMode: 'immediate' })`—browsers that do not recognize `uiMode: 'immediate'` ignore the unknown dictionary key and open a blocking modal passkey and QR code dialog. When `capabilities.immediateGet` is falsy, or when `navigator.credentials.get()` rejects with `NotAllowedError`, fall back to your application's standard sign-in experience (such as opening an inline sign-in modal or navigating to the dedicated sign-in page with a return URL parameter), so users in unsupported browsers see your existing sign-in flow unchanged:
+
+```javascript
+async function isImmediateUiSupported() {
+  if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
+    return false;
+  }
+  try {
+    const capabilities = await PublicKeyCredential.getClientCapabilities();
+    return Boolean(capabilities?.immediateGet);
+  } catch {
+    return false;
+  }
+}
+
+async function authenticateWithImmediateUi() {
+  // MANDATORY: Check immediateGet support so unsupported browsers do not open a modal QR dialog
+  const supported = await isImmediateUiSupported();
+  if (!supported) {
+    // Throw NotAllowedError so the caller's single catch path treats "unsupported" like "no local credentials"
+    throw new DOMException('Immediate UI mode is not supported', 'NotAllowedError');
+  }
+  // Proceed with fetching options and calling navigator.credentials.get({ password: true, publicKey, uiMode: 'immediate' })
+}
+```
+
+### Client capabilities detection fallback
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
@@ -210,8 +218,6 @@ Always install `'webauthn-polyfills'` and import it in your client module so `Pu
 ```javascript
 import 'webauthn-polyfills';
 ```
-
-- **Progressive enhancement experience**: `uiMode: 'immediate'` is a progressive enhancement supported in Chromium-based browsers. Always check `capabilities.immediateGet` via `PublicKeyCredential.getClientCapabilities()` before calling `navigator.credentials.get({ uiMode: 'immediate' })`. When `capabilities.immediateGet` is falsy, or when `navigator.credentials.get()` rejects with `NotAllowedError`, fall back to your application's standard sign-in experience (such as opening an inline sign-in modal or navigating to the dedicated sign-in page with a return URL parameter).
 
 ### Password credentials fallback
 
@@ -234,8 +240,6 @@ import 'webauthn-polyfills';
 ### Signal API synchronization fallback
 
 {{ BASELINE_STATUS("webauthn-signals") }}
-
-{{ BASELINE_STATUS("credential-management") }}
 
 The WebAuthn Signal API (`webauthn-signals`) is a progressive enhancement that removes stale passkeys from the user's password manager when the server responds with HTTP `404`.
 

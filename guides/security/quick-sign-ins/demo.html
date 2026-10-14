@@ -5,174 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quick sign-ins with immediate UI mode demo</title>
   <style>
-    :root {
-      color-scheme: light;
-      font-family: system-ui, -apple-system, sans-serif;
-      line-height: 1.5;
-      color: #1f1f1f;
-      background-color: #f8fafd;
-    }
-
-    body {
-      max-width: 48rem;
-      margin: 0 auto;
-      padding: 1.5rem 1rem 3rem;
-    }
-
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding-block-end: 1rem;
-      margin-block-end: 1.5rem;
-      border-block-end: 1px solid #dadce0;
-    }
-
-    header h1 {
-      font-size: 1.375rem;
-      margin: 0;
-    }
-
-    .user-status {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      font-size: 0.9375rem;
-    }
-
-    .badge {
-      padding: 0.25rem 0.625rem;
-      border-radius: 999px;
-      font-weight: 600;
-      background-color: #e8eaed;
-      color: #3c4043;
-    }
-
-    .badge.authenticated {
-      background-color: #e6f4ea;
-      color: #137333;
-    }
-
-    .product-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-      gap: 1rem;
-    }
-
-    .product-card {
-      background: #ffffff;
-      border: 1px solid #c4c7c5;
-      border-radius: 0.75rem;
-      padding: 1.25rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 1rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-    }
-
-    .product-title {
-      font-size: 1.0625rem;
-      font-weight: 600;
-      margin: 0 0 0.25rem;
-    }
-
-    .product-price {
-      color: #444746;
-      margin: 0;
-    }
-
-    .card-actions {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-    }
-
-    button,
-    .btn-link {
-      min-height: 44px;
-      padding: 0.5rem 1rem;
-      font-size: 0.9375rem;
-      font-weight: 600;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      border: 1px solid #747775;
-      background-color: #ffffff;
-      color: #1f1f1f;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.375rem;
-    }
-
-    button:focus-visible,
-    .btn-link:focus-visible,
-    input:focus-visible {
-      outline: 3px solid #0b57d0;
-      outline-offset: 2px;
-    }
-
-    .btn-primary {
-      background-color: #0b57d0;
-      border-color: #0b57d0;
-      color: #ffffff;
-    }
-
-    .btn-primary:hover {
-      background-color: #0842a0;
-    }
-
-    .favorite-btn[aria-pressed="true"] {
-      background-color: #fce8e6;
-      border-color: #c5221f;
-      color: #c5221f;
-    }
-
-    .status-banner {
-      margin-block-start: 1.25rem;
-      padding: 0.75rem 1rem;
-      border-radius: 0.5rem;
-      background-color: #e8f0fe;
-      color: #174ea6;
-      font-weight: 500;
-    }
-
-    .status-banner:empty {
-      display: none;
-    }
-
-    .fallback-panel {
-      margin-block-start: 1.5rem;
-      padding: 1.25rem;
-      background: #ffffff;
-      border: 1px solid #c4c7c5;
-      border-radius: 0.75rem;
-    }
-
-    .fallback-panel h2 {
-      margin-block: 0 0.5rem;
-      font-size: 1.125rem;
-    }
-
-    .form-field {
-      display: flex;
-      flex-direction: column;
-      margin-block-end: 1rem;
-    }
-
-    .form-field label {
-      font-weight: 600;
-      margin-block-end: 0.25rem;
-    }
-
-    .form-field input {
-      min-height: 44px;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid #747775;
-      border-radius: 0.5rem;
-      font-size: 1rem;
-    }
+    body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 0 auto; padding: 1.5rem; background: #f8fafd; color: #1f1f1f; }
+    header, .user-status, .card-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+    header { padding-bottom: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid #dadce0; }
+    .badge { padding: 0.25rem 0.625rem; border-radius: 999px; font-weight: 600; background: #e8eaed; }
+    .badge.authenticated { background: #e6f4ea; color: #137333; }
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 1rem; }
+    .product-card, .fallback-panel { background: #fff; border: 1px solid #c4c7c5; border-radius: 0.75rem; padding: 1.25rem; margin-top: 1rem; }
+    button, .btn-link { min-height: 44px; padding: 0.5rem 1rem; font-weight: 600; border-radius: 0.5rem; border: 1px solid #747775; background: #fff; color: #1f1f1f; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; }
+    .btn-primary { background: #0b57d0; border-color: #0b57d0; color: #fff; }
+    .favorite-btn[aria-pressed="true"] { background: #fce8e6; border-color: #c5221f; color: #c5221f; }
+    .status-banner { margin-top: 1rem; padding: 0.75rem 1rem; border-radius: 0.5rem; background: #e8f0fe; color: #174ea6; }
+    .status-banner:empty { display: none; }
+    .form-field input { display: block; width: 100%; min-height: 44px; margin: 0.25rem 0 1rem; padding: 0.5rem; box-sizing: border-box; }
   </style>
 </head>
 <body data-signed-in="false">

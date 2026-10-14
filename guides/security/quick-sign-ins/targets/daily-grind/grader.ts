@@ -25,13 +25,13 @@ function getCombinedSourceText(): string {
 
 test.describe('Quick Sign-Ins with Immediate UI Mode Target Grader', () => {
 
-  test('The implementation MUST import or load the webauthn-polyfills library so PublicKeyCredential.getClientCapabilities, PublicKeyCredential.parseRequestOptionsFromJSON, and PublicKeyCredential.prototype.toJSON are supported', () => {
+  test('The implementation imports or loads the webauthn-polyfills library so PublicKeyCredential.getClientCapabilities, PublicKeyCredential.parseRequestOptionsFromJSON, and PublicKeyCredential.prototype.toJSON are supported', () => {
     const combinedText = getCombinedSourceText();
     const hasWebauthnPolyfills = /webauthn-polyfills/i.test(combinedText);
     expect(hasWebauthnPolyfills).toBe(true);
   });
 
-  test('Before invoking navigator.credentials.get with uiMode: "immediate", the client MUST feature-detect support by calling PublicKeyCredential.getClientCapabilities() and checking capabilities.immediateGet, falling back to the standard sign-in flow when immediateGet is not supported', () => {
+  test('Before invoking navigator.credentials.get with uiMode: "immediate", the client feature-detects support by calling PublicKeyCredential.getClientCapabilities() and checking capabilities.immediateGet, falling back to the standard sign-in flow when immediateGet is not supported', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
     const combinedText = getCombinedSourceText();
@@ -47,7 +47,7 @@ test.describe('Quick Sign-Ins with Immediate UI Mode Target Grader', () => {
     expect(hasGetClientCapabilities && hasImmediateGetCheck).toBe(true);
   });
 
-  test('The client MUST invoke navigator.credentials.get inside a user-initiated click handler (and MUST NOT invoke uiMode: "immediate" automatically on page load) with uiMode: "immediate", password: true, and publicKey decoded via PublicKeyCredential.parseRequestOptionsFromJSON', () => {
+  test('The client invokes navigator.credentials.get inside a user-initiated click handler (and does not invoke uiMode: "immediate" automatically on page load) with uiMode: "immediate", password: true, and publicKey decoded via PublicKeyCredential.parseRequestOptionsFromJSON', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
     const combinedText = getCombinedSourceText();
@@ -76,7 +76,7 @@ test.describe('Quick Sign-Ins with Immediate UI Mode Target Grader', () => {
     expect(hasParseRequestOptions && hasImmediateCallWithPasswordAndPublicKey && hasClickTrigger).toBe(true);
   });
 
-  test('The immediate credential request MUST NOT pass an AbortSignal (signal) to navigator.credentials.get when uiMode is "immediate"', () => {
+  test('The immediate credential request does not pass an AbortSignal (signal) or a non-empty allowCredentials list to navigator.credentials.get when uiMode is "immediate"', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
@@ -101,10 +101,13 @@ test.describe('Quick Sign-Ins with Immediate UI Mode Target Grader', () => {
       });
     });
 
-    expect(anyImmediateCallPassesSignal).toBe(false);
+    // A non-empty allowCredentials literal (client or server options) makes the browser reject the immediate request
+    const hasNonEmptyAllowCredentials = /allowCredentials\s*:\s*\[\s*[^\]\s]/.test(getCombinedSourceText());
+
+    expect(anyImmediateCallPassesSignal || hasNonEmptyAllowCredentials).toBe(false);
   });
 
-  test('When navigator.credentials.get resolves with a credential, the client MUST handle both credential types by checking credential.type: serializing a "public-key" credential with .toJSON() for the WebAuthn verification endpoint, or sending a "password" credential\'s id and password to the password verification endpoint', () => {
+  test('When navigator.credentials.get resolves with a credential, the client handles both credential types by checking credential.type: serializing a "public-key" credential with .toJSON() for the WebAuthn verification endpoint, or sending a "password" credential\'s id and password to the password verification endpoint', () => {
     const combinedText = getCombinedSourceText();
 
     const checksPublicKeyType = /['"`]public-key['"`]/.test(combinedText);
@@ -115,7 +118,7 @@ test.describe('Quick Sign-Ins with Immediate UI Mode Target Grader', () => {
     expect(checksPublicKeyType && checksPasswordType && callsToJson && accessesPasswordField).toBe(true);
   });
 
-  test('If the WebAuthn verification endpoint returns an HTTP 404 status for an unknown credential, the client MUST invoke PublicKeyCredential.signalUnknownCredential (when available) with rpId and the Base64URL-encoded credential ID', () => {
+  test('If the WebAuthn verification endpoint returns an HTTP 404 status for an unknown credential, the client invokes PublicKeyCredential.signalUnknownCredential (when available) with rpId and the Base64URL-encoded credential ID', () => {
     const combinedText = getCombinedSourceText();
 
     const checks404 = /\b404\b/.test(combinedText);
@@ -125,7 +128,7 @@ test.describe('Quick Sign-Ins with Immediate UI Mode Target Grader', () => {
     expect(checks404 && callsSignalUnknown && passesRpIdAndCredentialId).toBe(true);
   });
 
-  test('When navigator.credentials.get rejects with NotAllowedError (or when immediateGet is unsupported), the client MUST catch the error and transition to a fallback sign-in experience (such as revealing a fallback sign-in form/modal or navigating to the sign-in page)', () => {
+  test('When navigator.credentials.get rejects with NotAllowedError (or when immediateGet is unsupported), the client catches the error and transitions to a fallback sign-in experience (such as revealing a fallback sign-in form/modal or navigating to the sign-in page)', () => {
     const combinedText = getCombinedSourceText();
 
     const catchesNotAllowedError = /NotAllowedError/.test(combinedText);
