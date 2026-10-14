@@ -32,7 +32,7 @@ The engine uses three CSS capabilities to render icons:
 
 1. **Registered Custom Properties (`@property`)**: Register `--icon-start` and `--icon-end` with `"*"` syntax and `inherits: false` so icon variables do not inherit into child elements.
 2. **Container Style Queries (`@container style(...)`)**: Automatically detects and renders when custom properties are set.
-3. **CSS Masks & `currentColor`**: Icons render as pseudo-elements using masks, with sizing in relative units (`em`) and colors via `currentColor`.
+3. **CSS Masks & `currentColor`**: Icons render as pseudo-elements using masks, with sizing in relative units (`em`) and colors via `currentColor`. Size, color, spacing and vertical offset are read from inheritable `--icon-style-*` custom properties with sensible fallbacks, so an entire subtree can be restyled from an ancestor. The `--icon-style-` prefix keeps these settings from colliding with the icon assets themselves, which also live under `--icon-*`.
 
 ### Implementation
 
@@ -52,7 +52,7 @@ The engine uses three CSS capabilities to render icons:
 
 #### 2. Defining Icon Assets as Design Tokens
 
-Define SVG icons and the default `--icon-size` as reusable custom properties using inline SVG data URIs or root-relative URLs (e.g., `url("/icons/trash.svg")`). When an icon is loaded from an external SVG file, use a root-relative URL or an embedded data URI. A relative URL used through a custom property can resolve relative to the stylesheet where the icon is used, rather than the stylesheet where the custom property is defined. If those stylesheets are in different directories, the URL may resolve to the wrong file.
+Define SVG icons and any `--icon-style-*` overrides as reusable custom properties using inline SVG data URIs or root-relative URLs (e.g., `url("/icons/trash.svg")`). When an icon is loaded from an external SVG file, use a root-relative URL or an embedded data URI. A relative URL used through a custom property can resolve relative to the stylesheet where the icon is used, rather than the stylesheet where the custom property is defined. If those stylesheets are in different directories, the URL may resolve to the wrong file.
 
 To keep a URL relative to the stylesheet that defines the icon token, register the token as an `<image>` property and put the URL in `initial-value`:
 
@@ -69,7 +69,8 @@ The main downside of this approach is that it requires a lot more boilerplate (t
 
 ```css
 :root {
-  --icon-size: 1em;
+  /* Optional: override the built-in fallbacks (1em, currentColor, 0.3em, -0.02em) */
+  --icon-style-size: 1em;
   --icon-style-spacing: 0.4em;
   --icon-trash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z'/%3E%3C/svg%3E");
   --icon-favorite: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
@@ -78,28 +79,40 @@ The main downside of this approach is that it requires a lot more boilerplate (t
 
 #### 3. Setting Up the Container Style Queries
 
-This block handles the injection, sizing, masking, and automatic layout adjustments. Because the engine uses `background-color: currentColor`, the icon automatically adopts the parent's text color and responds to standard transitions.
+This block handles the injection, sizing, masking, and automatic layout adjustments. Because the engine defaults to `background-color: currentColor`, the icon automatically adopts the parent's text color and responds to standard transitions.
 
 ```css
 /* Style query for elements configuring a start icon */
 @container style(--icon-start) {
   ::before {
     --icon-start: inherit; /* Forward the value inside the query block */
-    content: "";
+    content: "" / var(--icon-style-alt, "");
     display: inline-block;
-    width: var(--icon-size);
-    height: var(--icon-size);
-    background-color: currentColor;
+    width: var(--icon-style-size, 1em);
+    height: var(--icon-style-size, 1em);
+    background-color: var(--icon-style-color, currentColor);
     mask: var(--icon-start) no-repeat center / contain;
-    vertical-align: middle;
+    /* Center on the cap height, nudged slightly up for optical balance */
+    vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
+    flex: none;
+    pointer-events: none;
+    forced-color-adjust: none;
   }
 
   /* Automatically add spacing ONLY if the element has other text or sibling content */
   :where(:not(.icon, :empty))::before {
-    margin-inline-end: var(--icon-style-spacing);
+    margin-inline-end: var(--icon-style-spacing, 0.3em);
   }
 }
 ```
+
+Each declaration earns its place:
+
+* **`vertical-align`**: `middle` aligns to half the x-height, which sits visibly low for most icon sets. Centering on `0.5cap` keeps the icon's center fixed as `--icon-style-size` grows, and the small negative `--icon-style-voffset` compensates for the eye weighting the space above an icon more than the space below.
+* **`flex: none`**: An empty pseudo-element has a zero minimum size, so inside a flex button it is the first thing to shrink when the label is long, potentially to nothing. Icon size is a design decision, not something layout pressure should negotiate.
+* **`pointer-events: none`**: Keeps the icon from trapping clicks or becoming the `event.target`.
+* **`forced-color-adjust: none`**: In forced-colors mode the browser otherwise replaces `background-color`, making a masked icon disappear. The mask fill is preserved, and `currentColor` still follows the forced text color.
+* **`content: "" / var(--icon-style-alt, "")`**: Alternative text for generated content lets an icon-only control take its accessible name from the icon: `<button style="--icon: var(--icon-trash); --icon-style-alt: 'Delete'">`. The default empty alt keeps decorative icons hidden from assistive technology. `aria-label` on the control continues to work and remains the most widely supported option.
 
 For a trailing icon, follow the same pattern with `--icon-end` and `::after` instead of `--icon-start` and `::before`. Use `mask: var(--icon-end)` and apply spacing with `margin-inline-start` instead of `margin-inline-end`.
 
@@ -127,11 +140,14 @@ Attach an icon to a button or other element by setting `--icon-start` or `--icon
 
 ### Icon-Only Controls
 
-Put the `.icon` class and `--icon` property directly on an icon-only button. Give the button an accessible name with `aria-label`; the CSS-generated icon is decorative. For standalone informative icons, expose the `.icon` element with `role="img"` and `aria-label`:
+Put the `.icon` class and `--icon` property directly on an icon-only button. Give the button an accessible name with `aria-label`, or let the icon supply one through `--icon-style-alt`; without either, the CSS-generated icon is decorative. For standalone informative icons, expose the `.icon` element with `role="img"` and `aria-label`:
 
 ```html
-<!-- Icon-only interactive control -->
+<!-- Icon-only interactive control, named via aria-label -->
 <button class="icon" style="--icon: var(--icon-trash);" aria-label="Delete item"></button>
+
+<!-- Icon-only interactive control, named via generated-content alt text -->
+<button class="icon" style="--icon: var(--icon-trash); --icon-style-alt: 'Delete item';"></button>
 
 <!-- Standalone informative icon -->
 <span class="icon" style="--icon: var(--icon-favorite);" role="img" aria-label="Favorite"></span>
@@ -167,7 +183,7 @@ To support browsers without Container Style Queries, use classes or component se
 
 ```css
 :where(.icon-start, .icon:empty)::before {
-  content: image-set(linear-gradient(transparent 0 100%), var(--icon-start));
+  content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) / var(--icon-style-alt, "");
   /* icon styles */
 }
 
@@ -180,7 +196,7 @@ To support browsers without Container Style Queries, use classes or component se
 }
 
 :where(.icon-start:not(.icon, :empty))::before {
-  margin-inline-end: var(--icon-style-spacing);
+  margin-inline-end: var(--icon-style-spacing, 0.3em);
 }
 ```
 

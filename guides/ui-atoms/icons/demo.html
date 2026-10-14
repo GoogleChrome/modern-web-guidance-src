@@ -11,9 +11,9 @@
       --icon-color-danger: #b00020;
       --icon-color-success: #1a7f37;
 
-      --icon-size: 1.25em;
+      /* Easily configurable relative unit icon sizing (fallbacks: 1em, currentColor, 0.3em, -0.02em) */
+      --icon-style-size: 1.25em;
       --icon-style-spacing: 0.4em;
-      /* Easily configurable relative unit icon sizing */
       --icon-transition-duration: 0.2s;
       --icon-transition-easing: ease;
 
@@ -111,21 +111,23 @@
     @container style(--icon-start) {
       ::before {
         --icon-start: inherit;
-        content: "";
+        content: "" / var(--icon-style-alt, "");
         display: inline-block;
-        width: var(--icon-size);
-        height: var(--icon-size);
-        background-color: currentColor;
+        width: var(--icon-style-size, 1em);
+        height: var(--icon-style-size, 1em);
+        background-color: var(--icon-style-color, currentColor);
         mask: var(--icon-start) no-repeat center / contain;
         opacity: 0.85;
+        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
+        flex: none;
         pointer-events: none;
-        vertical-align: middle;
+        forced-color-adjust: none;
         transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
       }
 
       /* Automatically add spacing if the container has other text or child elements */
       :not(.icon, :empty)::before {
-        margin-inline-end: var(--icon-style-spacing);
+        margin-inline-end: var(--icon-style-spacing, 0.3em);
       }
     }
 
@@ -133,20 +135,22 @@
     @container style(--icon-end) {
       ::after {
         --icon-end: inherit;
-        content: "";
+        content: "" / var(--icon-style-alt, "");
         display: inline-block;
-        width: var(--icon-size);
-        height: var(--icon-size);
-        background-color: currentColor;
+        width: var(--icon-style-size, 1em);
+        height: var(--icon-style-size, 1em);
+        background-color: var(--icon-style-color, currentColor);
         mask: var(--icon-end) no-repeat center / contain;
         opacity: 0.85;
+        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
+        flex: none;
         pointer-events: none;
-        vertical-align: middle;
+        forced-color-adjust: none;
         transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
       }
 
       :not(.icon, :empty)::after {
-        margin-inline-start: var(--icon-style-spacing);
+        margin-inline-start: var(--icon-style-spacing, 0.3em);
       }
     }
 
@@ -155,15 +159,17 @@
      -------------------------------------------------- */
     /* Class-hook fallback for start icons and standalone empty icons */
     :where(.icon-start, .icon:empty)::before {
-      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start));
+      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) / var(--icon-style-alt, "");
       display: inline-block;
-      width: var(--icon-size);
-      height: var(--icon-size);
-      background-color: currentColor;
+      width: var(--icon-style-size, 1em);
+      height: var(--icon-style-size, 1em);
+      background-color: var(--icon-style-color, currentColor);
       mask: var(--icon-start) no-repeat center / contain;
       opacity: 0.85;
+      vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
+      flex: none;
       pointer-events: none;
-      vertical-align: middle;
+      forced-color-adjust: none;
       transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
     }
 
@@ -176,26 +182,28 @@
     }
 
     :where(.icon-start:not(.icon, :empty))::before {
-      margin-inline-end: var(--icon-style-spacing);
+      margin-inline-end: var(--icon-style-spacing, 0.3em);
     }
 
     /* Class-hook fallback for end icons */
     :where(.icon-end)::after {
       --icon-end: inherit;
-      content: image-set(linear-gradient(transparent 0 100%), var(--icon-end));
+      content: image-set(linear-gradient(transparent 0 100%), var(--icon-end)) / var(--icon-style-alt, "");
       display: inline-block;
-      width: var(--icon-size);
-      height: var(--icon-size);
-      background-color: currentColor;
+      width: var(--icon-style-size, 1em);
+      height: var(--icon-style-size, 1em);
+      background-color: var(--icon-style-color, currentColor);
       mask: var(--icon-end) no-repeat center / contain;
       opacity: 0.85;
+      vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
+      flex: none;
       pointer-events: none;
-      vertical-align: middle;
+      forced-color-adjust: none;
       transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
     }
 
     :where(.icon-end:not(.icon, :empty))::after {
-      margin-inline-start: var(--icon-style-spacing);
+      margin-inline-start: var(--icon-style-spacing, 0.3em);
     }
 
   </style>
