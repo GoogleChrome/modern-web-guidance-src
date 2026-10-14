@@ -18,16 +18,15 @@ import {
   EXPECTATIONS_FILE,
   FALSY_DRAFT,
   getGuideStatus,
-  getTaskMap,
   GRADER_FILE,
   GUIDE_FILE,
   isDisciplineGuide,
   isDraftStub,
   ProjectStatus,
   scanAllGuides,
+  stripAllComments,
   TARGETS_DIR,
   type GuideInventory,
-  type TaskInfo,
 } from '../core/guide-validation.ts';
 import { DEV_PR_BRANCH_PREFIX, DEV_PR_TITLE_PREFIX } from '../authoring/pr.ts';
 import { rootDir } from '../core/paths.ts';
@@ -38,10 +37,14 @@ export const REPO = 'modern-web-guidance-src';
 export const REPO_URL = `https://github.com/${ORG}/${REPO}`;
 export const PIPELINE_ISSUE_NUMBER = Number(process.env.PIPELINE_ISSUE_NUMBER || 1815);
 export const EXPECTATIONS_CHANGED_LABEL = 'expectations-changed';
+const NEW_USE_CASE_LABEL = 'new-use-case';
+const NEW_FEATURE_LABEL = 'new-feature';
 
-export const PIPELINE_BASELINE_DATE = '2026-07-22';
+const PIPELINE_BASELINE_DATE = '2026-07-22';
 export const PIPELINE_SCALE_MAX = 200;
 const RULER_MID_TICK = 150;
+const CHART_Y_MIN = 100;
+const DAY_MS = 86_400_000;
 
 export interface PrSummary {
   number: number;
@@ -87,11 +90,6 @@ export interface StaleEvalItem {
   expPr: number | null;
   evalDate: string;
   issueNumber: number | null;
-}
-
-export interface LegacyEvalItem {
-  slug: string;
-  missingTarget: 'daily-grind' | 'devtools-times';
 }
 
 export interface NeedsGuidancePrItem {
@@ -142,43 +140,33 @@ export interface TwoRowProgressBar {
   text: string;
 }
 
+export interface ReadyForEvalItem {
+  slug: string;
+  readySince: string;
+}
+
 export interface PipelineReportData {
+  baseline: number;
   completeCount: number;
   contentLandedCount: number;
   gen2CompleteCount: number;
-  progressBar: TwoRowProgressBar;
-  weeklyChart: string;
-  funnel: string;
+  dualTargetCompleteCount: number;
+  weeklyProgressPoints: WeeklyProgressPoint[];
   needsUseCasesIssues: Array<IssueSummary & { category: string | null }>;
   needsGuidancePrs: NeedsGuidancePrItem[];
   needsGuidanceIssues: NeedsGuidanceIssueItem[];
   openEvalPrs: OpenEvalPrItem[];
-  readyForEvalSlugs: string[];
-  readySinceBySlug: Map<string, string>;
+  readyForEvals: ReadyForEvalItem[];
   staleEvals: StaleEvalItem[];
-  legacyEvals: LegacyEvalItem[];
-  dualTargetCompleteCount: number;
 }
 
-export function formatReviewDecision(decision: string | null | undefined, isDraft: boolean): string {
+export type ReviewState = 'draft' | 'changes requested' | 'approved' | 'awaiting review';
+
+export function formatReviewDecision(decision: string | null | undefined, isDraft: boolean): ReviewState {
   if (isDraft) return 'draft';
   if (decision === 'CHANGES_REQUESTED') return 'changes requested';
   if (decision === 'APPROVED') return 'approved';
   return 'awaiting review';
-}
-
-export function hasSubstantiveExpectationsDiff(diffText: string): boolean {
-  const lines = diffText.split('\n');
-  for (const line of lines) {
-    if ((line.startsWith('+') && !line.startsWith('+++')) || (line.startsWith('-') && !line.startsWith('---'))) {
-      const content = line.slice(1).trim();
-      if (!content || content.startsWith('Basic presence:') || /^([-*]|\d+[.)])\s+Basic presence:/.test(content)) {
-        continue;
-      }
-      return true;
-    }
-  }
-  return false;
 }
 
 export function parseEvalReportFromPrBody(body: string): EvalPrMetrics {
@@ -215,7 +203,7 @@ export function parseEvalReportFromPrBody(body: string): EvalPrMetrics {
   };
 }
 
-export function getLaDateString(d: Date = new Date()): string {
+function getLaDateString(d: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(d);
 }
 
@@ -226,7 +214,8 @@ export function formatShortDate(isoDate: string): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(d);
 }
 
-export function collectGitGuideHistory(cwd: string = rootDir): Map<string, GitFileHistory> {
+function collectGitGuideHistory(): Map<string, GitFileHistory> {
+  const cwd = rootDir;
   const history = new Map<string, GitFileHistory>();
   const output = child_process.execFileSync(
     'git',
@@ -305,7 +294,9 @@ export function collectGitGuideHistory(cwd: string = rootDir): Map<string, GitFi
           { cwd, encoding: 'utf8', stdio: 'ignore' }
         );
         entry.isSubstantiveDiff = false;
-      } catch {
+      } catch (error) {
+        // `git diff --quiet` exits 1 when the files differ; any other status is a real failure.
+        if (!(error instanceof Error && 'status' in error && error.status === 1)) throw error;
         entry.isSubstantiveDiff = true;
       }
     }
@@ -330,7 +321,6 @@ export function findStaleEvals(
   const items: StaleEvalItem[] = [];
   for (const g of guides) {
     if (getGuideStatus(g) !== null) continue;
-    if (!g.hasExpectations || g.expectationsEmpty || !g.hasGrader) continue;
 
     const slug = `${g.category}/${g.name}`;
     const hist = gitHistory.get(slug);
@@ -357,67 +347,32 @@ export function findStaleEvals(
   return items.sort((a, b) => a.slug.localeCompare(b.slug));
 }
 
-export function findLegacyFormatGuides(
-  guides: GuideInventory[],
-  taskMap: Map<string, TaskInfo> = getTaskMap()
-): {
-  legacyEvals: LegacyEvalItem[];
+export function countGen2Evals(featureGuides: GuideInventory[]): {
   gen2CompleteCount: number;
   dualTargetCompleteCount: number;
 } {
-  const legacyEvals: LegacyEvalItem[] = [];
-  let gen2CompleteCount = 0;
-  let dualTargetCompleteCount = 0;
-
-  for (const g of guides) {
-    if (isDisciplineGuide(g.name, g.category) || g.isDisciplineGuide) {
-      continue;
-    }
-    const hasGen2Targets = Boolean(g.targets && g.targets.length >= 1 && g.hasGrader);
-    if (hasGen2Targets) {
-      gen2CompleteCount++;
-      if ((g.targets?.length ?? 0) >= 2) {
-        dualTargetCompleteCount++;
-      }
-      continue;
-    }
-
-    if (g.hasGrader) {
-      const task = taskMap.get(`${g.name}/task`);
-      const baseApp = task?.baseApp === 'devtools-times' ? 'devtools-times' : 'daily-grind';
-      legacyEvals.push({
-        slug: `${g.category}/${g.name}`,
-        missingTarget: baseApp === 'devtools-times' ? 'daily-grind' : 'devtools-times',
-      });
-    }
-  }
-
-  legacyEvals.sort((a, b) => a.slug.localeCompare(b.slug));
-  return { legacyEvals, gen2CompleteCount, dualTargetCompleteCount };
+  const gen2 = featureGuides.filter(g => g.hasGrader && (g.targets?.length ?? 0) >= 1);
+  return {
+    gen2CompleteCount: gen2.length,
+    dualTargetCompleteCount: gen2.filter(g => (g.targets?.length ?? 0) >= 2).length,
+  };
 }
 
 const EMPTY_BLOB_SHA = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
 
-export function parseFrontmatterDraft(content: string): { isDraft: boolean; hasContent: boolean } {
-  try {
-    const { data = {}, content: body = '' } = matter(content);
-    const draftVal =
-      typeof data.draft === 'string' && FALSY_DRAFT.has(data.draft.trim().toLowerCase())
-        ? false
-        : Boolean(data.draft);
-    const isDraft = Boolean(draftVal) || isDraftStub(data.draft);
-    const hasContent = body.trim().length > 0;
-    return { isDraft, hasContent };
-  } catch {
-    return { isDraft: false, hasContent: content.trim().length > 0 };
-  }
+function parseFrontmatterDraft(content: string): { isDraft: boolean; hasContent: boolean } {
+  const { data = {}, content: body = '' } = matter(content);
+  const draftVal =
+    typeof data.draft === 'string' && FALSY_DRAFT.has(data.draft.trim().toLowerCase()) ? false : Boolean(data.draft);
+  return {
+    isDraft: Boolean(draftVal) || isDraftStub(data.draft),
+    hasContent: stripAllComments(body).trim().length > 0,
+  };
 }
 
-export function analyzeCommit(
-  commitSha: string,
-  options: { excludeDisciplineHubs?: boolean; cwd?: string } = {}
-): CommitAnalysis {
-  const cwd = options.cwd ?? rootDir;
+/** Counts feature guides (discipline hubs excluded) with evals landed / needing evals at a commit. */
+function analyzeCommit(commitSha: string): CommitAnalysis {
+  const cwd = rootDir;
   const lsOutput = child_process.execFileSync('git', ['ls-tree', '-r', commitSha, 'guides/'], {
     cwd,
     encoding: 'utf8',
@@ -442,10 +397,12 @@ export function analyzeCommit(
     const slug = `${category}/${name}`;
     const subpath = subparts.slice(2).join('/');
 
-    if (!guideFiles.has(slug)) {
-      guideFiles.set(slug, new Map());
+    let files = guideFiles.get(slug);
+    if (!files) {
+      files = new Map();
+      guideFiles.set(slug, files);
     }
-    guideFiles.get(slug)!.set(subpath, blobSha);
+    files.set(subpath, blobSha);
   }
 
   const guideBlobsToFetch: { slug: string; blobSha: string }[] = [];
@@ -491,9 +448,7 @@ export function analyzeCommit(
 
   for (const [slug, files] of guideFiles) {
     const [category, name] = slug.split('/');
-    if (options.excludeDisciplineHubs && isDisciplineGuide(name, category)) {
-      continue;
-    }
+    if (isDisciplineGuide(name, category)) continue;
 
     const hasGuideFile = files.has(GUIDE_FILE);
     const isDraft = isDraftMap.get(slug) ?? false;
@@ -518,14 +473,13 @@ export function analyzeCommit(
   return { complete, needsEvals };
 }
 
-const commitAnalysisCache = new Map<string, CommitAnalysis>();
-
 /**
  * For each guide, the date it entered its current uninterrupted "content landed" streak on
  * HEAD: non-draft guide.md with content plus expectations.md. Walks the commits touching those
  * two files newest-first and stops at the first commit where the guide wasn't landed.
  */
-export function findReadySince(slugs: string[], cwd: string = rootDir): Map<string, string> {
+function findReadySince(slugs: string[]): Map<string, string> {
+  const cwd = rootDir;
   const result = new Map<string, string>();
   for (const slug of slugs) {
     const guidePath = `guides/${slug}/${GUIDE_FILE}`;
@@ -554,19 +508,6 @@ export function findReadySince(slugs: string[], cwd: string = rootDir): Map<stri
   return result;
 }
 
-export function getCachedCommitAnalysis(
-  commitSha: string,
-  options: { excludeDisciplineHubs?: boolean; cwd?: string } = {}
-): CommitAnalysis {
-  const cwd = options.cwd ?? rootDir;
-  const cacheKey = `${cwd}:${commitSha}:${Boolean(options.excludeDisciplineHubs)}`;
-  const cached = commitAnalysisCache.get(cacheKey);
-  if (cached) return cached;
-  const analysis = analyzeCommit(commitSha, options);
-  commitAnalysisCache.set(cacheKey, analysis);
-  return analysis;
-}
-
 export function classifyPr(pr: {
   headRefName?: string;
   title?: string;
@@ -583,12 +524,12 @@ export function classifyPr(pr: {
   const title = pr.title ?? '';
   const labels = pr.labels ?? [];
 
-  let touchedGuides = 0;
+  let touchedGuideFiles = 0;
   let onlyEvalFiles = files.length > 0;
   for (const f of files) {
     const m = /^guides\/([^/]+)\/([^/]+)\/(.+)$/.exec(f);
     if (m) {
-      touchedGuides++;
+      touchedGuideFiles++;
       const rel = m[3];
       if (!rel.startsWith(`${TARGETS_DIR}/`) && rel !== GRADER_FILE && !rel.startsWith('tasks/')) {
         onlyEvalFiles = false;
@@ -602,10 +543,10 @@ export function classifyPr(pr: {
     headRef.startsWith(DEV_PR_BRANCH_PREFIX) ||
     title.toLowerCase().startsWith(DEV_PR_TITLE_PREFIX) ||
     labels.includes('gd-dev-eval') ||
-    (onlyEvalFiles && touchedGuides > 0);
+    (onlyEvalFiles && touchedGuideFiles > 0);
 
   if (isEval) return 'eval';
-  if (touchedGuides > 0 || labels.includes('content') || headRef.startsWith('guides/')) {
+  if (touchedGuideFiles > 0 || labels.includes('content') || headRef.startsWith('guides/')) {
     return 'guide';
   }
   return 'other';
@@ -639,11 +580,9 @@ export function renderTwoRowProgressBar(params: {
   contentLanded: number;
   openGuideGuides: number;
   baseline: number;
-  notStartedIssues?: number;
-  staleEvalsCount?: number;
-  scaleMax?: number;
+  staleEvalsCount: number;
 }): TwoRowProgressBar {
-  const scaleMax = params.scaleMax ?? PIPELINE_SCALE_MAX;
+  const scaleMax = PIPELINE_SCALE_MAX;
   const baseline = params.baseline;
   const barWidth = Math.max(1, scaleMax - baseline);
 
@@ -660,7 +599,7 @@ export function renderTwoRowProgressBar(params: {
   };
 
   const guidesRow = renderRow('Guides', params.contentLanded, params.openGuideGuides);
-  const staleFlag = params.staleEvalsCount && params.staleEvalsCount > 0 ? ` (${params.staleEvalsCount} stale)` : '';
+  const staleFlag = params.staleEvalsCount > 0 ? ` (${params.staleEvalsCount} stale)` : '';
   const evalsRow = renderRow('Evals', params.complete, params.openEvalGuides, staleFlag);
 
   // Column for guide count v: the first bar column is guide `baseline + 1`.
@@ -689,19 +628,15 @@ export function renderTwoRowProgressBar(params: {
   };
 }
 
-export function fetchWeeklyProgressHistory(params: {
-  cwd?: string;
-  endDate?: Date;
-} = {}): WeeklyProgressPoint[] {
-  const cwd = params.cwd ?? rootDir;
-  const end = params.endDate ?? new Date();
+export function fetchWeeklyProgressHistory(): WeeklyProgressPoint[] {
+  const end = new Date();
   const endLaDate = getLaDateString(end);
 
   const dates: string[] = [endLaDate];
   let cur = new Date(end.getTime());
 
   while (true) {
-    cur = new Date(cur.getTime() - 7 * 86_400_000);
+    cur = new Date(cur.getTime() - 7 * DAY_MS);
     const dStr = getLaDateString(cur);
     if (dStr <= PIPELINE_BASELINE_DATE) {
       break;
@@ -717,12 +652,9 @@ export function fetchWeeklyProgressHistory(params: {
   for (const d of dates) {
     const ts = `${d}T23:59:59Z`;
     const sha = child_process
-      .execFileSync('git', ['rev-list', '-1', `--before=${ts}`, 'origin/main'], {
-        cwd,
-        encoding: 'utf8',
-      })
+      .execFileSync('git', ['rev-list', '-1', `--before=${ts}`, 'origin/main'], { cwd: rootDir, encoding: 'utf8' })
       .trim();
-    const analysis = getCachedCommitAnalysis(sha, { cwd, excludeDisciplineHubs: true });
+    const analysis = analyzeCommit(sha);
     points.push({
       date: d,
       label: formatShortDate(d),
@@ -750,7 +682,7 @@ export function renderProgressChart(points: WeeklyProgressPoint[]): string {
     '---',
     'xychart-beta',
     `    x-axis [${xLabels}]`,
-    `    y-axis "Guides" 100 --> ${PIPELINE_SCALE_MAX}`,
+    `    y-axis "Guides" ${CHART_Y_MIN} --> ${PIPELINE_SCALE_MAX}`,
     `    bar "Guides landed" [${contentBars}]`,
     `    bar "Evals landed" [${completeBars}]`,
     '```',
@@ -796,7 +728,6 @@ export function sanitizeIssueTitle(title: string): string {
     .replace(/@([a-zA-Z0-9_-]+)/g, '`@$1`');
 }
 
-const DAY_MS = 86_400_000;
 const GEN_BAR_COLS = 70;
 
 function codeList(names: string[]): string {
@@ -817,7 +748,22 @@ const REVIEW_GROUPS = ['approved', 'changes requested', 'awaiting review'] as co
 
 export function renderPipelineIssueBody(data: PipelineReportData): string {
   const totalNeedsGuidance = data.needsGuidancePrs.length + data.needsGuidanceIssues.length;
-  const totalNeedsEvals = data.openEvalPrs.length + data.readyForEvalSlugs.length;
+  const totalNeedsEvals = data.openEvalPrs.length + data.readyForEvals.length;
+  const progressBar = renderTwoRowProgressBar({
+    complete: data.completeCount,
+    openEvalGuides: data.openEvalPrs.length,
+    contentLanded: data.contentLandedCount,
+    openGuideGuides: data.needsGuidancePrs.length,
+    baseline: data.baseline,
+    staleEvalsCount: data.staleEvals.length,
+  });
+  const funnel = renderFunnel({
+    useCases: data.contentLandedCount + totalNeedsGuidance,
+    guidesLanded: data.contentLandedCount,
+    guidePrs: data.needsGuidancePrs.length,
+    evalsLanded: data.completeCount,
+    evalPrs: data.openEvalPrs.length,
+  });
   const today = getLaDateString(new Date());
   const issuesQuery = (label: string) => `${REPO_URL}/issues?q=is%3Aissue+is%3Aopen+label%3A${label}`;
 
@@ -827,7 +773,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '<!-- Discipline orientation guides do not currently require a grader and are excluded from all counts below. This policy may change. -->',
     '',
     '```',
-    data.progressBar.text,
+    progressBar.text,
     '```',
     '',
     '**Guides** = `guide.md` + `expectations.md` landed on `main` (not draft) · **Evals** = a landed guide that also has a grader',
@@ -835,7 +781,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     [
       `[${data.completeCount} evals landed](${REPO_URL}/tree/main/guides)`,
       `[${data.openEvalPrs.length} eval PRs](#stage-3-needs-evals-${totalNeedsEvals})`,
-      `[${data.readyForEvalSlugs.length} ready for evals](#ready-for-evals-${data.readyForEvalSlugs.length})`,
+      `[${data.readyForEvals.length} ready for evals](#ready-for-evals-${data.readyForEvals.length})`,
       `[${data.needsGuidancePrs.length} guide PRs](#guide-prs-${data.needsGuidancePrs.length})`,
       `[${data.needsGuidanceIssues.length} use cases not started](#not-started-${data.needsGuidanceIssues.length})`,
       `[${data.needsUseCasesIssues.length} features awaiting use cases](#stage-1-needs-use-cases-${data.needsUseCasesIssues.length})`,
@@ -843,13 +789,13 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     '### Progress since Jul 22',
     '',
-    data.weeklyChart,
+    renderProgressChart(data.weeklyProgressPoints),
     '',
     '---',
     '',
     `## Stage 1: ${ProjectStatus.NeedsUseCases} (${data.needsUseCasesIssues.length})`,
     '',
-    `Open [\`new-feature\`](${issuesQuery('new-feature')}) issues. These count features, not guides, so they aren't in the totals above.`,
+    `Open [\`new-feature\`](${issuesQuery(NEW_FEATURE_LABEL)}) issues. These count features, not guides, so they aren't in the totals above.`,
     '',
     '<details>',
     `<summary>Show ${data.needsUseCasesIssues.length} features, by category</summary>`,
@@ -892,7 +838,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     `#### Not started (${data.needsGuidanceIssues.length})`,
     '',
-    `Open [\`new-use-case\`](${issuesQuery('new-use-case')}) issues with no guide PR yet.`,
+    `Open [\`new-use-case\`](${issuesQuery(NEW_USE_CASE_LABEL)}) issues with no guide PR yet.`,
     ''
   );
   for (const item of data.needsGuidanceIssues) {
@@ -902,7 +848,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     lines.push(`- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug})${issuePart}${draftPart}${assigneePart}`);
   }
 
-  lines.push('', '---', '', '### Funnel', '', data.funnel, '', '---', '', `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`);
+  lines.push('', '---', '', '### Funnel', '', funnel, '', '---', '', `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`);
 
   for (const group of REVIEW_GROUPS) {
     const items = data.openEvalPrs.filter(item => formatReviewDecision(item.reviewDecision, false) === group);
@@ -922,17 +868,10 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     }
   }
 
-  const readyRows = data.readyForEvalSlugs
-    .map(slug => {
-      const since = data.readySinceBySlug.get(slug);
-      if (!since) throw new Error(`Missing ready-since date for ${slug}`);
-      return { slug, since };
-    })
-    .sort((a, b) => a.since.localeCompare(b.since));
-  lines.push('', `#### Ready for evals (${readyRows.length})`, '', 'Guides with no eval PR yet, oldest first. Next step: `gd dev-gap`.', '');
-  for (const { slug, since } of readyRows) {
+  lines.push('', `#### Ready for evals (${data.readyForEvals.length})`, '', 'Guides with no eval PR yet, oldest first. Next step: `gd dev-gap`.', '');
+  for (const { slug, readySince } of data.readyForEvals) {
     lines.push(
-      `- [**${slug}**](${REPO_URL}/tree/main/guides/${slug}) · ready since ${formatShortDate(since)} (${daysBetween(since, today)} days)`
+      `- [**${slug}**](${REPO_URL}/tree/main/guides/${slug}) · ready since ${formatShortDate(readySince)} (${daysBetween(readySince, today)} days)`
     );
   }
 
@@ -969,8 +908,8 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
   return lines.join('\n');
 }
 
-export const PR_FETCH_LIMIT = 300;
-export const ISSUE_FETCH_LIMIT = 500;
+const PR_FETCH_LIMIT = 300;
+const ISSUE_FETCH_LIMIT = 500;
 
 function fetchOpenPrs(): PrSummary[] {
   const raw = child_process.execFileSync(
@@ -1151,7 +1090,7 @@ function resolveEvalPrs(
     }
     for (const slug of touchedSlugs) {
       const inv = guideBySlug.get(slug);
-      if (!inv || isDisciplineGuide(inv.name, inv.category) || inv.isDisciplineGuide) {
+      if (!inv || inv.isDisciplineGuide) {
         continue;
       }
       if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) {
@@ -1198,7 +1137,7 @@ function resolveNeedsGuidancePrs(
 
     for (const [slug, touchedFiles] of touchedContentGuides.entries()) {
       const inv = guideBySlug.get(slug);
-      if (inv && (isDisciplineGuide(inv.name, inv.category) || inv.isDisciplineGuide)) {
+      if (inv?.isDisciplineGuide) {
         continue;
       }
       const guideName = slug.split('/')[1];
@@ -1238,7 +1177,7 @@ function resolveNeedsGuidanceIssues(
 ): NeedsGuidanceIssueItem[] {
   const needsGuidanceIssues: NeedsGuidanceIssueItem[] = [];
   for (const g of validGuides) {
-    if (isDisciplineGuide(g.name, g.category) || g.isDisciplineGuide) continue;
+    if (g.isDisciplineGuide) continue;
     if (getGuideStatus(g) !== ProjectStatus.NeedsGuidance) continue;
     const slug = `${g.category}/${g.name}`;
     if (slugsWithContentPr.has(slug)) continue;
@@ -1248,7 +1187,7 @@ function resolveNeedsGuidanceIssues(
       slug,
       issueNumber: matchedIssue?.number ?? null,
       isDraftGuide: !g.isStub && Boolean(g.draft),
-      assignees: (matchedIssue as IssueSummary)?.assignees ?? [],
+      assignees: matchedIssue?.assignees ?? [],
     });
   }
   return needsGuidanceIssues.sort((a, b) => a.slug.localeCompare(b.slug));
@@ -1262,13 +1201,10 @@ export function buildPipelineReportData(params: {
   openExpectationsChangedIssues: IssueSummary[];
   gitHistory: Map<string, GitFileHistory>;
   weeklyProgressPoints?: WeeklyProgressPoint[];
-  baselineComplete?: number;
   readySinceBySlug?: Map<string, string>;
 }): PipelineReportData {
   const validGuides = params.guides.filter(g => g.category !== 'test-results' && (g.hasGuide || g.isStub));
-  const featureGuides = validGuides.filter(
-    g => !isDisciplineGuide(g.name, g.category) && !g.isDisciplineGuide
-  );
+  const featureGuides = validGuides.filter(g => !g.isDisciplineGuide);
   const guideBySlug = new Map<string, GuideInventory>();
   const guideByName = new Map<string, GuideInventory>();
   for (const g of validGuides) {
@@ -1276,9 +1212,7 @@ export function buildPipelineReportData(params: {
     guideByName.set(g.name, g);
   }
 
-  // Current-state numbers derived purely from in-memory GuideInventory (featureGuides + getGuideStatus)
-  const completeGuides = featureGuides.filter(g => getGuideStatus(g) === null);
-  const completeCount = completeGuides.filter(g => g.hasGrader).length;
+  const completeCount = featureGuides.filter(g => getGuideStatus(g) === null).length;
   const needsEvalsGuides = featureGuides.filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals);
   const contentLandedCount = completeCount + needsEvalsGuides.length;
 
@@ -1305,61 +1239,35 @@ export function buildPipelineReportData(params: {
   );
   const needsGuidanceIssues = resolveNeedsGuidanceIssues(validGuides, slugsWithContentPr, issueIndex);
   const staleEvals = findStaleEvals(featureGuides, params.gitHistory, params.openExpectationsChangedIssues);
-  const { legacyEvals, gen2CompleteCount, dualTargetCompleteCount } = findLegacyFormatGuides(validGuides);
+  const { gen2CompleteCount, dualTargetCompleteCount } = countGen2Evals(featureGuides);
 
-  // Weekly progress history: historical points from git, today's point matches current-state numbers
-  const todayLa = getLaDateString(new Date());
-  const todayLabel = formatShortDate(todayLa);
-  const baseWeekly = params.weeklyProgressPoints ?? fetchWeeklyProgressHistory();
-  const firstHistoricalPoint = baseWeekly[0];
-  const baseline = params.baselineComplete ?? firstHistoricalPoint?.complete;
-  if (baseline === undefined) {
-    throw new Error('Cannot determine baseline: weeklyProgressPoints is empty and baselineComplete was not provided');
-  }
+  const historical = params.weeklyProgressPoints ?? fetchWeeklyProgressHistory();
+  if (historical.length === 0) throw new Error('Cannot determine baseline: no weekly progress points');
+  const today = getLaDateString(new Date());
+  // Today's point comes from the in-memory inventory so the chart always matches the counts.
+  const weeklyProgressPoints = [
+    ...historical.filter(p => p.date !== today),
+    { date: today, label: formatShortDate(today), complete: completeCount, contentLanded: contentLandedCount },
+  ];
 
-  const weeklyProgressPoints = [...baseWeekly];
-  const todayPoint: WeeklyProgressPoint = {
-    date: todayLa,
-    label: todayLabel,
-    complete: completeCount,
-    contentLanded: contentLandedCount,
-  };
-  if (weeklyProgressPoints.length === 0 || weeklyProgressPoints[weeklyProgressPoints.length - 1].date !== todayLa) {
-    weeklyProgressPoints.push(todayPoint);
-  } else {
-    weeklyProgressPoints[weeklyProgressPoints.length - 1] = todayPoint;
-  }
-
-  const progressBar = renderTwoRowProgressBar({
-    complete: completeCount,
-    openEvalGuides: openEvalPrs.length,
-    contentLanded: contentLandedCount,
-    openGuideGuides: needsGuidancePrs.length,
-    notStartedIssues: needsGuidanceIssues.length,
-    staleEvalsCount: staleEvals.length,
-    baseline,
-    scaleMax: PIPELINE_SCALE_MAX,
-  });
-
-  const weeklyChart = renderProgressChart(weeklyProgressPoints);
-
-  const funnel = renderFunnel({
-    useCases: contentLandedCount + needsGuidancePrs.length + needsGuidanceIssues.length,
-    guidesLanded: contentLandedCount,
-    guidePrs: needsGuidancePrs.length,
-    evalsLanded: completeCount,
-    evalPrs: openEvalPrs.length,
-  });
+  const readySinceBySlug = params.readySinceBySlug ?? findReadySince(readyForEvalSlugs);
+  const readyForEvals = readyForEvalSlugs
+    .map(slug => {
+      const readySince = readySinceBySlug.get(slug);
+      if (!readySince) throw new Error(`Missing ready-since date for ${slug}`);
+      return { slug, readySince };
+    })
+    .sort((a, b) => a.readySince.localeCompare(b.readySince) || a.slug.localeCompare(b.slug));
 
   const guideCategories = new Set(validGuides.map(g => g.category));
 
   return {
+    baseline: historical[0].complete,
     completeCount,
     contentLandedCount,
     gen2CompleteCount,
-    progressBar,
-    weeklyChart,
-    funnel,
+    dualTargetCompleteCount,
+    weeklyProgressPoints,
     needsUseCasesIssues: params.openFeatureIssues.map(issue => ({
       ...issue,
       category: issue.labels.find(l => guideCategories.has(l)) ?? null,
@@ -1367,11 +1275,8 @@ export function buildPipelineReportData(params: {
     needsGuidancePrs,
     needsGuidanceIssues,
     openEvalPrs,
-    readyForEvalSlugs,
-    readySinceBySlug: params.readySinceBySlug ?? findReadySince(readyForEvalSlugs),
+    readyForEvals,
     staleEvals,
-    legacyEvals,
-    dualTargetCompleteCount,
   };
 }
 
@@ -1382,11 +1287,10 @@ export function runSyncPipelineIssue(): void {
 
   const guides = scanAllGuides();
   const openPrs = fetchOpenPrs();
-  const openUseCaseIssues = fetchOpenIssuesByLabel('new-use-case');
-  const openFeatureIssues = fetchOpenIssuesByLabel('new-feature');
+  const openUseCaseIssues = fetchOpenIssuesByLabel(NEW_USE_CASE_LABEL);
+  const openFeatureIssues = fetchOpenIssuesByLabel(NEW_FEATURE_LABEL);
   const openExpectationsChangedIssues = fetchOpenIssuesByLabel(EXPECTATIONS_CHANGED_LABEL);
-  const gitHistory = collectGitGuideHistory(rootDir);
-  const existingIssueBody = fetchIssueBody(PIPELINE_ISSUE_NUMBER);
+  const gitHistory = collectGitGuideHistory();
 
   const reportData = buildPipelineReportData({
     guides,
@@ -1405,6 +1309,7 @@ export function runSyncPipelineIssue(): void {
     return;
   }
 
+  const existingIssueBody = fetchIssueBody(PIPELINE_ISSUE_NUMBER);
   if (existingIssueBody.trim() === nextBody.trim()) {
     console.log(`✅ Issue #${PIPELINE_ISSUE_NUMBER} is already up to date.`);
     return;

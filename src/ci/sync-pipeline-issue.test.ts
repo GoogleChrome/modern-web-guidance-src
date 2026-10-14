@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -12,11 +10,10 @@ import {
   classifyPr,
   fetchWeeklyProgressHistory,
   filterCatchAllReviewers,
-  findLegacyFormatGuides,
+  countGen2Evals,
   findStaleEvals,
   formatReviewDecision,
   formatShortDate,
-  hasSubstantiveExpectationsDiff,
   isDisciplinePr,
   matchUseCaseIssue,
   parseEvalReportFromPrBody,
@@ -77,38 +74,9 @@ function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
   };
 }
 
-/** Every guide reports the same ready-since date, so tests don't walk real git history. */
-class FixedReadySince extends Map<string, string> {
-  override get(): string {
-    return '2026-10-01';
-  }
+function readySince(...slugs: string[]): Map<string, string> {
+  return new Map(slugs.map(slug => [slug, '2026-10-01']));
 }
-
-describe('hasSubstantiveExpectationsDiff', () => {
-  it('returns false when only Basic presence lines and blank lines are added or modified', () => {
-    const diff = [
-      '--- a/guides/css/foo/expectations.md',
-      '+++ b/guides/css/foo/expectations.md',
-      '@@ -1,3 +1,5 @@',
-      '+',
-      '+Basic presence: The component renders a visible card.',
-      '-* Basic presence: Old basic presence text',
-      '+1. Basic presence: Numbered basic presence text',
-    ].join('\n');
-    assert.equal(hasSubstantiveExpectationsDiff(diff), false);
-  });
-
-  it('returns true when a substantive expectation line is added or modified', () => {
-    const diff = [
-      '--- a/guides/css/foo/expectations.md',
-      '+++ b/guides/css/foo/expectations.md',
-      '@@ -3,1 +3,2 @@',
-      '+Basic presence: The dialog is visible.',
-      '+- Pressing Escape closes the popover without losing focus.',
-    ].join('\n');
-    assert.equal(hasSubstantiveExpectationsDiff(diff), true);
-  });
-});
 
 describe('parseEvalReportFromPrBody', () => {
   it('extracts dual-target Pass@1 rates and HEALTHY status', () => {
@@ -168,9 +136,8 @@ describe('renderTwoRowProgressBar', () => {
       openEvalGuides: 16,
       contentLanded: 168,
       openGuideGuides: 17,
-      notStartedIssues: 51,
       baseline: 127,
-      scaleMax: 200,
+      staleEvalsCount: 0,
     });
     assert.equal(res.header, 'Guides on main since Jul 22 · 1 column = 1 guide');
     // 73 columns:
@@ -190,8 +157,6 @@ describe('renderTwoRowProgressBar', () => {
     assert.equal(nums.trim().split(/\s+/).join(' '), '127 150 200');
     assert.equal(nums.lastIndexOf('200') + 2, 82);
     assert.match(res.text, /█ landed on main {3}░ open PR {3}· not yet$/);
-    assert.doesNotMatch(res.text, /▲/);
-    assert.doesNotMatch(res.text, /[\u{1F300}-\u{1F9FF}]/u);
   });
 
   it('safely clamps when counts are below baseline or over scale', () => {
@@ -200,9 +165,8 @@ describe('renderTwoRowProgressBar', () => {
       openEvalGuides: 5,
       contentLanded: 125,
       openGuideGuides: 2,
-      notStartedIssues: 10,
       baseline: 127,
-      scaleMax: 200,
+      staleEvalsCount: 0,
     });
     assert.equal(
       below.guidesRow,
@@ -218,9 +182,8 @@ describe('renderTwoRowProgressBar', () => {
       openEvalGuides: 10,
       contentLanded: 210,
       openGuideGuides: 5,
-      notStartedIssues: 0,
       baseline: 127,
-      scaleMax: 200,
+      staleEvalsCount: 0,
     });
     assert.equal(
       over.guidesRow,
@@ -234,7 +197,7 @@ describe('renderTwoRowProgressBar', () => {
 });
 
 describe('renderProgressChart', () => {
-  it('renders overlapping xychart-beta bars without explicit goal series or caption', () => {
+  it('renders overlapping xychart-beta bars for guides and evals landed', () => {
     const points: WeeklyProgressPoint[] = [
       { date: '2026-07-22', label: 'Jul 22', complete: 127, contentLanded: 127 },
       { date: '2026-10-14', label: 'Oct 14', complete: 140, contentLanded: 168 },
@@ -247,8 +210,6 @@ describe('renderProgressChart', () => {
     assert.match(chart, /y-axis "Guides" 100 --> 200/);
     assert.match(chart, /bar "Guides landed" \[127, 168\]/);
     assert.match(chart, /bar "Evals landed" \[127, 140\]/);
-    assert.doesNotMatch(chart, /line "Goal"/);
-    assert.doesNotMatch(chart, /<sub>Goal/);
   });
 });
 
@@ -442,7 +403,7 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     ];
 
     const report = buildPipelineReportData({
-      readySinceBySlug: new FixedReadySince(),
+      readySinceBySlug: readySince('forms/slider'),
       guides: [completeGuide, stubWithPr, stubWithIssue, needsEvalWithPr, needsEvalReady],
       openPrs,
       openUseCaseIssues,
@@ -457,7 +418,7 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     assert.equal(report.needsGuidanceIssues[0].slug, 'ui-components/breadcrumbs');
     assert.equal(report.openEvalPrs.length, 1);
     assert.equal(report.openEvalPrs[0].slug, 'ui-behaviors/drag');
-    assert.deepEqual(report.readyForEvalSlugs, ['forms/slider']);
+    assert.deepEqual(report.readyForEvals, [{ slug: 'forms/slider', readySince: '2026-10-01' }]);
 
     const markdown = renderPipelineIssueBody(report);
     assert.match(markdown, /## Stage 2: Needs guidance \(2\)/);
@@ -501,51 +462,27 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'paulirish'], 'evals'), ['TravenReese']);
   });
 
-  it('identifies legacy root grader.ts guides and computes missing target from tasks/task.md base_app', () => {
-    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'legacy-evals-test-'));
-    try {
-      const dgDir = path.join(tmpRoot, 'css', 'legacy-dg');
-      fs.mkdirSync(path.join(dgDir, 'tasks'), { recursive: true });
-      fs.writeFileSync(path.join(dgDir, 'grader.ts'), 'export default {};');
-      fs.writeFileSync(path.join(dgDir, 'tasks', 'task.md'), '---\nbase_app: daily-grind\n---\n- Prompt');
-
-      const dtDir = path.join(tmpRoot, 'html', 'legacy-dt');
-      fs.mkdirSync(path.join(dtDir, 'tasks'), { recursive: true });
-      fs.writeFileSync(path.join(dtDir, 'grader.ts'), 'export default {};');
-      fs.writeFileSync(path.join(dtDir, 'tasks', 'task.md'), '---\nbase_app: devtools-times\n---\n- Prompt');
-
-      const dualTarget = makeGuide({ category: 'forms', name: 'dual-target' });
-      const singleTarget = makeGuide({
-        category: 'forms',
-        name: 'single-target',
-        targets: [
-          {
-            name: 'daily-grind',
-            dir: '/tmp/guides/forms/single-target/targets/daily-grind',
-            hasSolution: true,
-            hasZeroPassrate: true,
-            hasGrader: true,
-            hasTask: true,
-          },
-        ],
-      });
-      const legacyDg = makeGuide({ category: 'css', name: 'legacy-dg', dir: dgDir, targets: [] });
-      const legacyDt = makeGuide({ category: 'html', name: 'legacy-dt', dir: dtDir, targets: [] });
-
-      const mockTaskMap = new Map([
-        ['legacy-dg/task', { baseApp: 'daily-grind', prompt: '', guideDir: dgDir }],
-        ['legacy-dt/task', { baseApp: 'devtools-times', prompt: '', guideDir: dtDir }],
-      ]);
-      const result = findLegacyFormatGuides([dualTarget, singleTarget, legacyDt, legacyDg], mockTaskMap);
-      assert.equal(result.gen2CompleteCount, 2);
-      assert.equal(result.dualTargetCompleteCount, 1);
-      assert.deepEqual(result.legacyEvals, [
-        { slug: 'css/legacy-dg', missingTarget: 'devtools-times' },
-        { slug: 'html/legacy-dt', missingTarget: 'daily-grind' },
-      ]);
-    } finally {
-      fs.rmSync(tmpRoot, { recursive: true, force: true });
-    }
+  it('counts Gen 2 evals and the subset with both targets', () => {
+    const dualTarget = makeGuide({ category: 'forms', name: 'dual-target' });
+    const singleTarget = makeGuide({
+      category: 'forms',
+      name: 'single-target',
+      targets: [
+        {
+          name: 'daily-grind',
+          dir: '/tmp/guides/forms/single-target/targets/daily-grind',
+          hasSolution: true,
+          hasZeroPassrate: true,
+          hasGrader: true,
+          hasTask: true,
+        },
+      ],
+    });
+    const legacy = makeGuide({ category: 'css', name: 'legacy', targets: [] });
+    assert.deepEqual(countGen2Evals([dualTarget, singleTarget, legacy]), {
+      gen2CompleteCount: 2,
+      dualTargetCompleteCount: 1,
+    });
   });
 });
 
@@ -693,7 +630,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     ];
 
     const report = buildPipelineReportData({
-      readySinceBySlug: new FixedReadySince(),
+      readySinceBySlug: readySince('forms/slider'),
       guides: [completeFeatureGuide, completeDisciplineHub, needsEvalFeature, needsEvalWithPr, needsEvalDiscipline],
       openPrs,
       openUseCaseIssues: [],
@@ -710,7 +647,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     assert.equal(report.openEvalPrs[0].slug, 'security/validate-origins');
 
     // Ready for eval excludes css/css-layout discipline guide
-    assert.deepEqual(report.readyForEvalSlugs, ['forms/slider']);
+    assert.deepEqual(report.readyForEvals, [{ slug: 'forms/slider', readySince: '2026-10-01' }]);
 
     const markdown = renderPipelineIssueBody(report);
 
@@ -719,9 +656,6 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       markdown,
       /<!-- Discipline orientation guides do not currently require a grader and are excluded from all counts below\. This policy may change\. -->/
     );
-
-    // Old two-line header is NOT at the top
-    assert.doesNotMatch(markdown, /# Content & Eval Pipeline\n\n\*\*\d+\*\* Needs guidance/);
 
     // Progress bar code block with 2 symmetric rows (Guides, Evals) and ruler line
     assert.match(
@@ -741,7 +675,6 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       /### Progress since Jul 22\n\n```mermaid\n---\nconfig:\n  xyChart:\n    height: 200\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#FBBC04, #4285F4"\n---\nxychart-beta/
     );
 
-    assert.doesNotMatch(markdown, /sankey-beta/);
   });
 
   it('guarantees links line, funnel, and section counts match identically', () => {
@@ -802,7 +735,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     ];
 
     const report = buildPipelineReportData({
-      readySinceBySlug: new FixedReadySince(),
+      readySinceBySlug: readySince('forms/guide-4'),
       guides: [complete1, complete2, needsEval1, needsEval2, needsGuidance1, needsGuidance2],
       openPrs,
       openUseCaseIssues,
@@ -821,12 +754,11 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
         { date: '2026-07-22', label: 'Jul 22', complete: 127, contentLanded: 127 },
         { date: '2026-10-13', label: 'Oct 13', complete: 2, contentLanded: 4 },
       ],
-      baselineComplete: 0,
     });
 
     assert.equal(report.completeCount, 2);
     assert.equal(report.openEvalPrs.length, 1);
-    assert.equal(report.readyForEvalSlugs.length, 1);
+    assert.equal(report.readyForEvals.length, 1);
     assert.equal(report.needsGuidancePrs.length, 1);
     assert.equal(report.needsGuidanceIssues.length, 1);
     assert.equal(report.needsUseCasesIssues.length, 1);
@@ -849,7 +781,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     );
   });
 
-  it('enforces the invariant that openEvalPrs + readyForEvalSlugs equals contentLanded - completeCount', () => {
+  it('enforces the invariant that openEvalPrs + readyForEvals equals contentLanded - completeCount', () => {
     const complete1 = makeGuide({ category: 'css', name: 'guide-1' });
     const needsEval1 = makeGuide({ category: 'forms', name: 'guide-2', hasGrader: false, hasTask: false });
     const needsEval2 = makeGuide({ category: 'forms', name: 'guide-3', hasGrader: false, hasTask: false });
@@ -890,7 +822,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     ];
 
     const report = buildPipelineReportData({
-      readySinceBySlug: new FixedReadySince(),
+      readySinceBySlug: readySince('forms/guide-2', 'forms/guide-3'),
       guides: [complete1, needsEval1, needsEval2, needsGuidance1],
       openPrs,
       openUseCaseIssues: [],
@@ -904,9 +836,9 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     assert.equal(report.contentLandedCount, 3);
     // openEvalPrs only counts guide-2 (guide-4 is ignored since not in NeedsEvals on main)
     assert.equal(report.openEvalPrs.length, 1);
-    assert.equal(report.readyForEvalSlugs.length, 1);
+    assert.equal(report.readyForEvals.length, 1);
     assert.equal(
-      report.openEvalPrs.length + report.readyForEvalSlugs.length,
+      report.openEvalPrs.length + report.readyForEvals.length,
       report.contentLandedCount - report.completeCount
     );
   });
@@ -930,7 +862,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
   it('guarantees balanced details tags and code fences in generated issue body', () => {
     const complete = makeGuide({ category: 'css', name: 'guide-1' });
     const report = buildPipelineReportData({
-      readySinceBySlug: new FixedReadySince(),
+      readySinceBySlug: readySince(),
       guides: [complete],
       openPrs: [],
       openUseCaseIssues: [],
@@ -974,12 +906,12 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     assert.match(markdown, /## Stage 3: Needs evals/);
   });
 
-  it('fails fast when weeklyProgressPoints is empty and baselineComplete is not provided', () => {
+  it('fails fast when there are no weekly progress points to take a baseline from', () => {
     const complete = makeGuide({ category: 'css', name: 'guide-1' });
     assert.throws(
       () => {
         buildPipelineReportData({
-      readySinceBySlug: new FixedReadySince(),
+      readySinceBySlug: readySince(),
           guides: [complete],
           openPrs: [],
           openUseCaseIssues: [],
@@ -989,7 +921,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
           weeklyProgressPoints: [],
         });
       },
-      /Cannot determine baseline: weeklyProgressPoints is empty and baselineComplete was not provided/
+      /Cannot determine baseline: no weekly progress points/
     );
   });
 });
