@@ -149,62 +149,73 @@ describe('fetchBaselineComplete', () => {
 });
 
 describe('renderTwoRowProgressBar', () => {
-  it('renders exact 73-column bars for Complete and Content rows with header', () => {
+  it('renders exact 73-column bars for Guides and Evals rows with header and summary line', () => {
     const res = renderTwoRowProgressBar({
       complete: 140,
-      inReview: 16,
+      openEvalGuides: 16,
       contentLanded: 168,
+      openGuideGuides: 17,
+      notStartedIssues: 51,
       baseline: 127,
       goal: 200,
     });
     assert.equal(res.header, 'Since Jul 22 (127) → 200');
     // 73 columns:
-    // Complete: 13 '█', 16 '░', 44 '·' = 73
-    // Content: 41 '█', 32 '·' = 73
+    // Guides: 41 '█', 17 '░', 15 '·' = 73
+    // Evals:  13 '█', 16 '░', 44 '·' = 73
     assert.equal(
-      res.completeRow,
-      'Complete  ' + '█'.repeat(13) + '░'.repeat(16) + '·'.repeat(44) + '  140 (+13)'
+      res.guidesRow,
+      'Guides    ' + '█'.repeat(41) + '░'.repeat(17) + '·'.repeat(15) + '  168 +17 PRs'
     );
     assert.equal(
-      res.contentRow,
-      'Content   ' + '█'.repeat(41) + '·'.repeat(32) + '  168 (+41)'
+      res.evalsRow,
+      'Evals     ' + '█'.repeat(13) + '░'.repeat(16) + '·'.repeat(44) + '  140 +16 PRs'
+    );
+    assert.equal(
+      res.summaryLine,
+      '185 landed or in review; 15+ more must be started from 51 open use-case issues'
     );
     assert.doesNotMatch(res.text, /▲/);
     assert.doesNotMatch(res.text, /[\u{1F300}-\u{1F9FF}]/u);
   });
 
-  it('safely clamps when counts are below baseline or over goal', () => {
+  it('safely clamps when counts are below baseline or over goal, and omits shortfall clause when reached', () => {
     const below = renderTwoRowProgressBar({
       complete: 120,
-      inReview: 5,
+      openEvalGuides: 5,
       contentLanded: 125,
+      openGuideGuides: 2,
+      notStartedIssues: 10,
       baseline: 127,
       goal: 200,
     });
     assert.equal(
-      below.completeRow,
-      'Complete  ' + '░'.repeat(5) + '·'.repeat(68) + '  120 (-7)'
+      below.guidesRow,
+      'Guides    ' + '░'.repeat(2) + '·'.repeat(71) + '  125 +2 PRs'
     );
     assert.equal(
-      below.contentRow,
-      'Content   ' + '·'.repeat(73) + '  125 (-2)'
+      below.evalsRow,
+      'Evals     ' + '░'.repeat(5) + '·'.repeat(68) + '  120 +5 PRs'
     );
 
     const over = renderTwoRowProgressBar({
       complete: 205,
-      inReview: 10,
+      openEvalGuides: 10,
       contentLanded: 210,
+      openGuideGuides: 5,
+      notStartedIssues: 0,
       baseline: 127,
       goal: 200,
     });
     assert.equal(
-      over.completeRow,
-      'Complete  ' + '█'.repeat(73) + '  205 (+78)'
+      over.guidesRow,
+      'Guides    ' + '█'.repeat(73) + '  210 +5 PRs'
     );
     assert.equal(
-      over.contentRow,
-      'Content   ' + '█'.repeat(73) + '  210 (+83)'
+      over.evalsRow,
+      'Evals     ' + '█'.repeat(73) + '  205 +10 PRs'
     );
+    assert.equal(over.summaryLine, '215 landed or in review');
   });
 });
 
@@ -694,10 +705,10 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     // Old two-line header is NOT at the top
     assert.doesNotMatch(markdown, /# Content & Eval Pipeline\n\n\*\*\d+\*\* Needs guidance/);
 
-    // Progress bar code block with 2 rows
+    // Progress bar code block with 2 symmetric rows (Guides, Evals)
     assert.match(
       markdown,
-      /```\nSince Jul 22 \(\d+\) → 200\nComplete\s+[█░·]{73}\s+\d+ \([+-]?\d+\)\nContent\s+[█·]{73}\s+\d+ \([+-]?\d+\)\n```/
+      /```\nSince Jul 22 \(\d+\) → 200\nGuides\s+[█░·]{73}\s+\d+ \+\d+ PRs\nEvals\s+[█░·]{73}\s+\d+ \+\d+ PRs\n```/
     );
 
     // Clickable links line below code block
@@ -712,10 +723,10 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       /### Progress Toward 200 Guides\n\n```mermaid\n%%\{init: \{'themeVariables': \{'xyChart': \{'plotColorPalette': '#58a6ff, #238636, #8b949e'\}\}, 'xyChart': \{'height': 200\}\}\}%%/
     );
 
-    // Sankey diagram present
+    // Sankey diagram present with linkColor: source init
     assert.match(
       markdown,
-      /### Pipeline State\n\n```mermaid\nsankey-beta\n\nTracked, Complete, 1\nTracked, Needs evals, 2/
+      /### Pipeline State\n\n```mermaid\n%%\{init: \{'sankey': \{'linkColor': 'source'\}\}\}%%\nsankey-beta\n\nTracked, Complete, 1\nTracked, Needs evals, 2/
     );
   });
 

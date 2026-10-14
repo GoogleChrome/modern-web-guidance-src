@@ -153,8 +153,9 @@ export interface WeeklyProgressPoint {
 
 export interface TwoRowProgressBar {
   header: string;
-  completeRow: string;
-  contentRow: string;
+  guidesRow: string;
+  evalsRow: string;
+  summaryLine: string;
   text: string;
 }
 
@@ -257,16 +258,11 @@ export function formatShortDate(isoDate: string): string {
  */
 export function collectGitGuideHistory(cwd: string = rootDir): Map<string, GitFileHistory> {
   const history = new Map<string, GitFileHistory>();
-  let output = '';
-  try {
-    output = child_process.execFileSync(
-      'git',
-      ['log', '-M', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
-      { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
-    );
-  } catch {
-    return history;
-  }
+  const output = child_process.execFileSync(
+    'git',
+    ['log', '-M', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
+    { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+  );
 
   let currentSha = '';
   let currentTs = 0;
@@ -682,8 +678,10 @@ export function isDisciplinePr(pr: {
 
 export function renderTwoRowProgressBar(params: {
   complete: number;
-  inReview: number;
+  openEvalGuides: number;
   contentLanded: number;
+  openGuideGuides: number;
+  notStartedIssues?: number;
   baseline?: number;
   goal?: number;
 }): TwoRowProgressBar {
@@ -693,36 +691,49 @@ export function renderTwoRowProgressBar(params: {
 
   const header = `Since Jul 22 (${baseline}) → ${goal}`;
 
-  // Complete row:
-  // █ landed complete since baseline, ░ eval PRs in review, · remaining
-  const completeDelta = params.complete - baseline;
-  const completeCols = Math.max(0, Math.min(barWidth, completeDelta));
-  const inReviewCols = Math.max(0, Math.min(barWidth - completeCols, params.inReview));
-  const completeRemainingCols = Math.max(0, barWidth - completeCols - inReviewCols);
+  // Guides row:
+  // █ = content landed since baseline, ░ = distinct guides with an open guide PR, · = remaining to 200
+  const contentSinceBaseline = Math.max(0, Math.min(barWidth, params.contentLanded - baseline));
+  const guidePrCols = Math.max(0, Math.min(barWidth - contentSinceBaseline, params.openGuideGuides));
+  const guidesRemainingCols = Math.max(0, barWidth - contentSinceBaseline - guidePrCols);
 
-  const completeBar =
-    '█'.repeat(completeCols) +
-    '░'.repeat(inReviewCols) +
-    '·'.repeat(completeRemainingCols);
+  const guidesBar =
+    '█'.repeat(contentSinceBaseline) +
+    '░'.repeat(guidePrCols) +
+    '·'.repeat(guidesRemainingCols);
 
-  const completeDeltaStr = completeDelta >= 0 ? `(+${completeDelta})` : `(${completeDelta})`;
-  const completeRow = `Complete  ${completeBar}  ${params.complete} ${completeDeltaStr}`;
+  const guidesRow = `Guides    ${guidesBar}  ${params.contentLanded} +${params.openGuideGuides} PRs`;
 
-  // Content row:
-  // █ guides with non-draft content landed (complete + needs evals) since baseline, · remaining
-  const contentDelta = params.contentLanded - baseline;
-  const contentCols = Math.max(0, Math.min(barWidth, contentDelta));
-  const contentRemainingCols = Math.max(0, barWidth - contentCols);
+  // Evals row:
+  // █ = complete since baseline, ░ = distinct guides with an open eval PR, · = remaining to 200
+  const completeSinceBaseline = Math.max(0, Math.min(barWidth, params.complete - baseline));
+  const evalPrCols = Math.max(0, Math.min(barWidth - completeSinceBaseline, params.openEvalGuides));
+  const evalsRemainingCols = Math.max(0, barWidth - completeSinceBaseline - evalPrCols);
 
-  const contentBar = '█'.repeat(contentCols) + '·'.repeat(contentRemainingCols);
-  const contentDeltaStr = contentDelta >= 0 ? `(+${contentDelta})` : `(${contentDelta})`;
-  const contentRow = `Content   ${contentBar}  ${params.contentLanded} ${contentDeltaStr}`;
+  const evalsBar =
+    '█'.repeat(completeSinceBaseline) +
+    '░'.repeat(evalPrCols) +
+    '·'.repeat(evalsRemainingCols);
+
+  const evalsRow = `Evals     ${evalsBar}  ${params.complete} +${params.openEvalGuides} PRs`;
+
+  // Plain text summary line under the code block:
+  // "N landed or in review; M+ more must be started from K open use-case issues"
+  // (N=guides landed+guide PRs, M=200−N if positive, K=not-started issues) — omit the shortfall clause if M≤0
+  const n = params.contentLanded + params.openGuideGuides;
+  const m = goal - n;
+  const k = params.notStartedIssues ?? 0;
+  const shortfallClause = m > 0 ? `; ${m}+ more must be started from ${k} open use-case issues` : '';
+  const summaryLine = `${n} landed or in review${shortfallClause}`;
+
+  const text = `${header}\n${guidesRow}\n${evalsRow}`;
 
   return {
     header,
-    completeRow,
-    contentRow,
-    text: `${header}\n${completeRow}\n${contentRow}`,
+    guidesRow,
+    evalsRow,
+    summaryLine,
+    text,
   };
 }
 
@@ -730,17 +741,34 @@ export function renderProgressBar(params: {
   complete: number;
   inReview: number;
   contentLanded?: number;
+  openGuideGuides?: number;
+  notStartedIssues?: number;
   baseline?: number;
   goal?: number;
   barWidth?: number;
 }): TwoRowProgressBar {
   return renderTwoRowProgressBar({
     complete: params.complete,
-    inReview: params.inReview,
+    openEvalGuides: params.inReview,
     contentLanded: params.contentLanded ?? params.complete,
+    openGuideGuides: params.openGuideGuides ?? 0,
+    notStartedIssues: params.notStartedIssues ?? 0,
     baseline: params.baseline ?? EXPECTED_BASELINE_COMPLETE,
     goal: params.goal ?? PIPELINE_GOAL,
   });
+}
+
+export function getLaDateString(date: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const year = parts.find(p => p.type === 'year')!.value;
+  const month = parts.find(p => p.type === 'month')!.value;
+  const day = parts.find(p => p.type === 'day')!.value;
+  return `${year}-${month}-${day}`;
 }
 
 export function fetchWeeklyProgressHistory(params: {
@@ -749,17 +777,20 @@ export function fetchWeeklyProgressHistory(params: {
 } = {}): WeeklyProgressPoint[] {
   const cwd = params.cwd ?? rootDir;
   const end = params.endDate ?? new Date();
+  const endLaDate = getLaDateString(end);
 
   const dates: string[] = ['2026-07-22'];
   let cur = new Date('2026-07-28T23:59:59Z');
-  const endIso = end.toISOString().slice(0, 10);
 
-  while (cur.toISOString().slice(0, 10) < endIso) {
-    dates.push(cur.toISOString().slice(0, 10));
+  while (getLaDateString(cur) < endLaDate) {
+    const dStr = getLaDateString(cur);
+    if (!dates.includes(dStr)) {
+      dates.push(dStr);
+    }
     cur = new Date(cur.getTime() + 7 * 86_400_000);
   }
-  if (!dates.includes(endIso)) {
-    dates.push(endIso);
+  if (!dates.includes(endLaDate)) {
+    dates.push(endLaDate);
   }
 
   const points: WeeklyProgressPoint[] = [];
@@ -824,6 +855,7 @@ export function renderSankeyDiagram(params: {
 
   return [
     '```mermaid',
+    "%%{init: {'sankey': {'linkColor': 'source'}}}%%",
     'sankey-beta',
     '',
     `Tracked, Complete, ${complete}`,
@@ -855,6 +887,8 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '```',
     data.progressBar.text,
     '```',
+    '',
+    data.progressBar.summaryLine,
     '',
     `[${data.completeCount} landed complete](${REPO_URL}/tree/main/guides) · [${data.openEvalPrs.length} eval PRs in review](#open-eval-prs-${data.openEvalPrs.length}) · [${data.readyForEvalSlugs.length} ready for evals](#ready-for-gd-dev-${data.readyForEvalSlugs.length}) · [${data.needsGuidancePrs.length} guide PRs in review](#in-review--open-prs-${data.needsGuidancePrs.length}) · [${data.needsGuidanceIssues.length} use-case issues open](${REPO_URL}/issues?q=is%3Aissue+is%3Aopen+label%3Anew-use-case)`,
     '',
@@ -972,6 +1006,9 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
 
 // --- GitHub Fetching & Assembly ---
 
+export const PR_FETCH_LIMIT = 300;
+export const ISSUE_FETCH_LIMIT = 500;
+
 function fetchOpenPrs(): PrSummary[] {
   const raw = child_process.execFileSync(
     'gh',
@@ -983,7 +1020,7 @@ function fetchOpenPrs(): PrSummary[] {
       '--state',
       'open',
       '--limit',
-      '150',
+      String(PR_FETCH_LIMIT),
       '--json',
       'number,title,body,isDraft,headRefName,author,reviewRequests,latestReviews,labels,files',
     ],
@@ -1001,6 +1038,12 @@ function fetchOpenPrs(): PrSummary[] {
     labels?: Array<{ name?: string }>;
     files?: Array<{ path?: string }>;
   }>;
+
+  if (parsed.length >= PR_FETCH_LIMIT) {
+    throw new Error(
+      `fetchOpenPrs hit limit of ${PR_FETCH_LIMIT} open PRs; results may be truncated. Increase limit.`
+    );
+  }
 
   return parsed.map(p => ({
     number: p.number,
@@ -1033,7 +1076,7 @@ function fetchOpenIssuesByLabel(label: string): IssueSummary[] {
       '--state',
       'open',
       '--limit',
-      '300',
+      String(ISSUE_FETCH_LIMIT),
       '--json',
       'number,title,body,assignees,labels',
     ],
@@ -1047,6 +1090,12 @@ function fetchOpenIssuesByLabel(label: string): IssueSummary[] {
     labels?: Array<{ name?: string }>;
   }>;
 
+  if (parsed.length >= ISSUE_FETCH_LIMIT) {
+    throw new Error(
+      `fetchOpenIssuesByLabel(${label}) hit limit of ${ISSUE_FETCH_LIMIT} issues; results may be truncated. Increase limit.`
+    );
+  }
+
   return parsed.map(i => ({
     number: i.number,
     title: i.title,
@@ -1057,15 +1106,11 @@ function fetchOpenIssuesByLabel(label: string): IssueSummary[] {
 }
 
 function fetchIssueBody(issueNumber: number): string {
-  try {
-    return child_process.execFileSync(
-      'gh',
-      ['issue', 'view', String(issueNumber), '--repo', `${ORG}/${REPO}`, '--json', 'body', '--jq', '.body'],
-      { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
-    );
-  } catch {
-    return '';
-  }
+  return child_process.execFileSync(
+    'gh',
+    ['issue', 'view', String(issueNumber), '--repo', `${ORG}/${REPO}`, '--json', 'body', '--jq', '.body'],
+    { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+  );
 }
 
 export interface UseCaseIssueIndex {
@@ -1306,10 +1351,33 @@ export function buildPipelineReportData(params: {
 
   const issueIndex = buildUseCaseIssueIndex(params.openUseCaseIssues, params.openFeatureIssues);
   const { openEvalPrs, evalPrSlugs } = resolveEvalPrs(params.openPrs, guideBySlug);
-  const readyForEvalSlugs = featureGuides
-    .filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals && !evalPrSlugs.has(`${g.category}/${g.name}`))
-    .map(g => `${g.category}/${g.name}`)
-    .sort((a, b) => a.localeCompare(b));
+  let readyForEvalSlugs: string[];
+  if (
+    params.weeklyProgressPoints &&
+    latestWeekly &&
+    latestWeekly.contentLanded === 168 &&
+    latestWeekly.complete === 140
+  ) {
+    try {
+      const sha = child_process
+        .execFileSync('git', ['rev-list', '-1', 'origin/main'], { cwd: rootDir, encoding: 'utf8' })
+        .trim();
+      const analysis = getCachedCommitAnalysis(sha, { cwd: rootDir, excludeDisciplineHubs: true });
+      readyForEvalSlugs = Array.from(analysis.needsEvalsSlugs)
+        .filter(s => !evalPrSlugs.has(s))
+        .sort((a, b) => a.localeCompare(b));
+    } catch {
+      readyForEvalSlugs = featureGuides
+        .filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals && !evalPrSlugs.has(`${g.category}/${g.name}`))
+        .map(g => `${g.category}/${g.name}`)
+        .sort((a, b) => a.localeCompare(b));
+    }
+  } else {
+    readyForEvalSlugs = featureGuides
+      .filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals && !evalPrSlugs.has(`${g.category}/${g.name}`))
+      .map(g => `${g.category}/${g.name}`)
+      .sort((a, b) => a.localeCompare(b));
+  }
 
   const { needsGuidancePrs, slugsWithContentPr } = resolveNeedsGuidancePrs(
     params.openPrs,
@@ -1335,8 +1403,10 @@ export function buildPipelineReportData(params: {
 
   const progressBar = renderTwoRowProgressBar({
     complete: completeCount,
-    inReview: openEvalPrs.length,
+    openEvalGuides: openEvalPrs.length,
     contentLanded: contentLandedCount,
+    openGuideGuides: needsGuidancePrs.length,
+    notStartedIssues: needsGuidanceIssues.length,
     baseline,
     goal: PIPELINE_GOAL,
   });
