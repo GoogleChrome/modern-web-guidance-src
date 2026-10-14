@@ -10,7 +10,6 @@ import {
   buildPipelineReportData,
   buildUseCaseIssueIndex,
   classifyPr,
-  EXPECTED_BASELINE_COMPLETE,
   fetchWeeklyProgressHistory,
   filterCatchAllReviewers,
   findLegacyFormatGuides,
@@ -21,7 +20,7 @@ import {
   isDisciplinePr,
   matchUseCaseIssue,
   parseEvalReportFromPrBody,
-  PIPELINE_GOAL,
+  PIPELINE_SCALE_MAX,
   renderPipelineIssueBody,
   renderProgressChart,
   renderSankeyDiagram,
@@ -32,6 +31,9 @@ import {
   type PrSummary,
   type WeeklyProgressPoint,
 } from './sync-pipeline-issue.ts';
+
+/** Baseline complete feature guides on origin/main as of 2026-07-22 (test fixture expectation). */
+const EXPECTED_BASELINE_COMPLETE = 127;
 
 function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
   const category = overrides.category ?? 'ui-components';
@@ -147,8 +149,8 @@ describe('fetchWeeklyProgressHistory & baseline', () => {
     const weeklyPoints = fetchWeeklyProgressHistory();
     assert.ok(weeklyPoints.length >= 1);
     assert.equal(weeklyPoints[0].complete, EXPECTED_BASELINE_COMPLETE);
-    assert.equal(PIPELINE_GOAL, 200);
-    assert.equal(PIPELINE_GOAL - EXPECTED_BASELINE_COMPLETE, 73);
+    assert.equal(PIPELINE_SCALE_MAX, 200);
+    assert.equal(PIPELINE_SCALE_MAX - EXPECTED_BASELINE_COMPLETE, 73);
   });
 });
 
@@ -161,7 +163,7 @@ describe('renderTwoRowProgressBar', () => {
       openGuideGuides: 17,
       notStartedIssues: 51,
       baseline: 127,
-      goal: 200,
+      scaleMax: 200,
     });
     assert.equal(res.header, 'Since Jul 22 (127)');
     // 73 columns:
@@ -193,7 +195,7 @@ describe('renderTwoRowProgressBar', () => {
       openGuideGuides: 2,
       notStartedIssues: 10,
       baseline: 127,
-      goal: 200,
+      scaleMax: 200,
     });
     assert.equal(
       below.guidesRow,
@@ -212,7 +214,7 @@ describe('renderTwoRowProgressBar', () => {
       openGuideGuides: 5,
       notStartedIssues: 0,
       baseline: 127,
-      goal: 200,
+      scaleMax: 200,
     });
     assert.equal(
       over.guidesRow,
@@ -1007,5 +1009,23 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     assert.match(markdown, /`@starting-style`/);
     assert.match(markdown, /## Stage 2: Needs guidance/);
     assert.match(markdown, /## Stage 3: Needs evals/);
+  });
+
+  it('fails fast when weeklyProgressPoints is empty and baselineComplete is not provided', () => {
+    const complete = makeGuide({ category: 'css', name: 'guide-1' });
+    assert.throws(
+      () => {
+        buildPipelineReportData({
+          guides: [complete],
+          openPrs: [],
+          openUseCaseIssues: [],
+          openFeatureIssues: [],
+          openExpectationsChangedIssues: [],
+          gitHistory: new Map(),
+          weeklyProgressPoints: [],
+        });
+      },
+      /Cannot determine baseline: weeklyProgressPoints is empty and baselineComplete was not provided/
+    );
   });
 });
