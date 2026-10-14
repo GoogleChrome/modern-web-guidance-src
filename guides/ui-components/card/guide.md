@@ -41,7 +41,7 @@ For card images or video that should fill a fixed-ratio area, set `aspect-ratio`
 
 ### Adapt to available space
 
-A card cannot respond to its own container query, so make the card's parent the size container (`container-type: inline-size`) and write the `@container` rules against the card inside it. In a narrow container, stack the regions in source order. In a wide container, and only when the card has media, place the media in a side column beside the other regions. A card without media stays single-column at every width. Base the layout on the container's width, not the viewport's, so the same card works in a sidebar and in a main column.
+A card cannot respond to its own container query, so make the card's parent the size container (`container-type: inline-size`) and write the `@container` rules against the card inside it. In a narrow container, stack the regions in source order. In a wide container, place the media in a side column beside the other regions, but only for cards that have media: scope those rules with `:has()` on the media child (for example `.card:has(> img)`) so the column definitions and `grid-column` placements never apply to a card without media. A card without media stays single-column at every width, and must not reserve an empty media column. Base the layout on the container's width, not the viewport's, so the same card works in a sidebar and in a main column.
 
 ### Align cards in a grid
 
@@ -55,7 +55,7 @@ Use an `<article>` for independently understandable card content. Keep links and
 
 ### Single-destination cards
 
-When the whole card is one destination and has no independent actions, use one native link. If the content is independently understandable, the link can wrap an `<article>`. Do not nest other links, buttons, or form controls inside the link:
+When the whole card is one destination and has no independent actions, use one native link. If the content is independently understandable, the link can wrap an `<article>`. Do not nest other links, buttons, or form controls inside the link, and keep any "read more" text a plain `<p>` or `<span>`. Because the link's accessible name is all of the card's text, keep the content short; if the card has a lot of text or other actions, use the stretched-link pattern below so only the heading is the link:
 
 ```html
 <a href="/recipes/poached-eggs">
@@ -69,7 +69,7 @@ When the whole card is one destination and has no independent actions, use one n
 ### Clickable cards with independent actions
 
 When a content card links to a primary destination, also contains other interactive elements, and needs to be clickable as a whole:
-- Use a single opt-in, on the primary link itself.
+- Use a single opt-in, on the primary link itself: put `.card-link` on exactly one link per card (the heading link). Footer and other links never get it, or each would stretch its own overlay and the last one would capture the whole card.
 - Link its title and stretch the pointer hit area across the card with `::after`
 
 ```css
