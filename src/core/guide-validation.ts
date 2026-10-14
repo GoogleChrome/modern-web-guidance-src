@@ -3,7 +3,7 @@ import path from 'node:path';
 import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
-import { validateMacros, stripComments, maskComments } from './macros.ts';
+import { validateMacros, stripComments, maskComments, formatTitle } from './macros.ts';
 import { validateFeature, resolveFeatureId } from './baseline.ts';
 import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
@@ -565,6 +565,7 @@ export interface TargetInventory {
 export interface GuideInventory {
   dir: string;
   name: string;
+  title?: string;
   category: string;
   hasGuide: boolean;
   isStub: boolean;
@@ -756,6 +757,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   return {
     dir,
     name,
+    title: (data.title as string | undefined) || extractH1Heading(content) || formatTitle(name),
     category,
     hasGuide,
     isStub,

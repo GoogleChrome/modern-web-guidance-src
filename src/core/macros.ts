@@ -55,7 +55,8 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     }
 
     if (options?.target === 'static-site') {
-      return `[${formatTitle(guideInfo.name)}](../${guideInfo.category}/${guideInfo.name}.md)`;
+      const title = guideInfo.title || formatTitle(guideInfo.name);
+      return `[${title}](../${guideInfo.category}/${guideInfo.name}.md)`;
     }
 
     return `\`${guideId}\` (via \`npx -y modern-web-guidance@latest retrieve "${guideId}"\`)`;
@@ -92,6 +93,11 @@ defineFeatureMacro("FEATURE", {
   }
 });
 
+function formatFeatureHeadingName(name: string): string {
+  // Wrap raw HTML tag names like `<select>` in backticks so they don't render as live HTML elements.
+  return name.replace(/<([a-zA-Z0-9:-]+)>/g, '`<$1>`');
+}
+
 defineFeatureMacro("FEATURE_FALLBACKS", {
   content: (args, filePath, options) => {
     const [featureId] = args;
@@ -112,7 +118,7 @@ defineFeatureMacro("FEATURE_FALLBACKS", {
     }
 
     return [
-      `### Fallbacks & browser support for ${getFeatureName(featureId)}`,
+      `### Fallbacks & browser support for ${formatFeatureHeadingName(getFeatureName(featureId))}`,
       baselineStatus,
       fallbacks
     ].filter(Boolean).join("\n\n");
@@ -134,7 +140,7 @@ defineFeatureMacro("FEATURE_ISSUES", {
     }
     if (!included) return "";
     return [
-      `### Issues to be aware of when using ${getFeatureName(featureId)}`,
+      `### Issues to be aware of when using ${formatFeatureHeadingName(getFeatureName(featureId))}`,
       included
     ].join("\n\n");
   }

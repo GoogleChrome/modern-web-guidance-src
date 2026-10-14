@@ -16,6 +16,14 @@ export interface StoreUseCase {
   vector?: number[];
   distance?: number;
 }
+
+export interface StaticSiteGuideMetadata {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  webFeatureIds: string[];
+}
 import { replaceMacros, type BuildTarget, formatTitle } from "../core/macros.ts";
 
 import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub } from "../core/guide-validation.ts";
@@ -207,6 +215,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
 
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
+  const staticSiteGuides: StaticSiteGuideMetadata[] = [];
 
   let embedder: any = null;
   if (TARGET !== 'static-site') {
@@ -237,7 +246,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   console.log("Generating embeddings…");
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
-    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
+    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder, staticSiteGuides);
   }
 
   if (TARGET !== 'static-site') {
@@ -247,6 +256,10 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     const jsonContent = JSON.stringify(storeUseCases);
     const compressed = zlib.gzipSync(jsonContent);
     fs.writeFileSync(cachePaths.cachedVectors, compressed);
+  } else {
+    const manifestPath = path.join(BUILD_GUIDES_DIR, 'manifest.json');
+    fs.writeFileSync(manifestPath, JSON.stringify(staticSiteGuides, null, 2) + '\n');
+    console.log(`Generated static-site manifest with ${staticSiteGuides.length} guides to ${path.relative(WORKSPACE_ROOT, manifestPath)}`);
   }
 
   fs.writeFileSync(cachePaths.cachedManifest, JSON.stringify({ hash: currentHash }, null, 2));
@@ -290,7 +303,8 @@ async function processSingleGuideFile(
   id: string,
   useCases: UseCase[],
   storeUseCases: StoreUseCase[],
-  embedder?: any
+  embedder?: any,
+  staticSiteGuides?: StaticSiteGuideMetadata[]
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
@@ -309,10 +323,14 @@ async function processSingleGuideFile(
   if (TARGET === 'static-site') {
     const h1Title = extractH1Heading(processedMarkdown);
     const title = h1Title || data.title || formatTitle(id);
+    const featureIds: string[] = (data['web-feature-ids'] || []).filter(
+      (fid: string) => !fid.startsWith('tmp-')
+    );
     const genericFrontmatter = `---
 title: ${JSON.stringify(title)}
 description: ${JSON.stringify(data.description)}
 category: ${category}
+web-feature-ids: ${JSON.stringify(featureIds)}
 ---`;
     const bodyWithoutH1 = processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
     const finalContent = `${genericFrontmatter}\n\n# ${title}\n\n${bodyWithoutH1}\n`;
@@ -324,6 +342,16 @@ category: ${category}
 
     const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
     fs.writeFileSync(buildFilePath, finalContent);
+
+    if (staticSiteGuides) {
+      staticSiteGuides.push({
+        id,
+        title,
+        description: data.description,
+        category,
+        webFeatureIds: featureIds,
+      });
+    }
     return;
   }
 
