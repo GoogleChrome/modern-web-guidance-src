@@ -5,11 +5,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Accessible application command menu</title>
-  <script>
-    if (!('ToggleEvent' in window && 'source' in ToggleEvent.prototype)) {
-      document.documentElement.classList.add('no-popover-source');
-    }
-  </script>
   <style>
     :root {
       color-scheme: light dark;
@@ -95,7 +90,6 @@
 
     [popover] {
       min-inline-size: 14rem;
-      margin: 0;
       padding: .3rem;
       border: 1px solid var(--line);
       border-radius: .4rem;
@@ -104,41 +98,19 @@
       box-shadow: 0 .7rem 1.8rem #0004;
     }
 
-    /* Place each top-level menu below its implicit trigger anchor. */
-    .menu:not(.submenu) {
-      position-area: block-end span-inline-end;
-      inset: auto;
-    }
-
-    /* Place each submenu beside its trigger, flipping if it would overflow. */
-    .submenu {
-      position-area: inline-end span-block-end;
-      position-try-fallbacks: flip-inline, flip-block;
-      inset: auto;
-    }
-
-    /* Explicit-anchor fallback for browsers without showPopover({ source }). */
-    .no-popover-source #file-trigger { anchor-name: --file-trigger; }
-    .no-popover-source #edit-trigger { anchor-name: --edit-trigger; }
-    .no-popover-source #view-trigger { anchor-name: --view-trigger; }
-    .no-popover-source #help-trigger { anchor-name: --help-trigger; }
-    .no-popover-source #open-recent-trigger { anchor-name: --open-recent-trigger; }
-    .no-popover-source #export-trigger { anchor-name: --export-trigger; }
-    .no-popover-source #appearance-trigger { anchor-name: --appearance-trigger; }
-
-    .no-popover-source #file-menu { position-anchor: --file-trigger; }
-    .no-popover-source #edit-menu { position-anchor: --edit-trigger; }
-    .no-popover-source #view-menu { position-anchor: --view-trigger; }
-    .no-popover-source #help-menu { position-anchor: --help-trigger; }
-    .no-popover-source #open-recent-menu { position-anchor: --open-recent-trigger; }
-    .no-popover-source #export-menu { position-anchor: --export-trigger; }
-    .no-popover-source #appearance-menu { position-anchor: --appearance-trigger; }
-
-    @media (max-width: 40rem) {
-
-      /* Place submenus below their parent item on narrow viewports. */
-      .submenu {
+    /* Guard the anchor layout so browsers without anchor positioning keep centered popover placement. */
+    @supports (position-area: block-end) {
+      /* Top-level menus sit below their trigger. The implicit anchor comes from the invoker or source. */
+      [popover] {
         position-area: block-end span-inline-end;
+        inset: auto;
+        margin: 0;
+      }
+
+      /* A popover nested in another popover is a submenu: beside its parent item, flipping when it would overflow. */
+      [popover] [popover] {
+        position-area: inline-end span-block-end;
+        position-try-fallbacks: flip-inline, flip-block;
       }
     }
 
@@ -181,13 +153,13 @@
     <div class="bar" role="menubar" aria-label="Document commands">
       <button id="file-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="file-menu" command="toggle-popover"
         aria-expanded="false">File</button>
-      <div id="file-menu" class="menu" popover="auto">
+      <div id="file-menu" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
           <button type="button">New file</button>
           <button type="button">Open…</button>
           <button id="open-recent-trigger" type="button" aria-haspopup="menu" commandfor="open-recent-menu" command="toggle-popover" aria-expanded="false">Open Recent <span
               class="hint" aria-hidden="true">›</span></button>
-          <div id="open-recent-menu" class="menu submenu" popover="auto">
+          <div id="open-recent-menu" popover="auto">
             <div focusgroup="menu nomemory" aria-labelledby="open-recent-trigger">
               <button type="button">Project brief</button>
               <button type="button">Design notes</button>
@@ -197,7 +169,7 @@
           <button type="button">Save</button>
           <button id="export-trigger" type="button" aria-haspopup="menu" commandfor="export-menu" command="toggle-popover" aria-expanded="false">Export <span class="hint"
               aria-hidden="true">›</span></button>
-          <div id="export-menu" class="menu submenu" popover="auto">
+          <div id="export-menu" popover="auto">
             <div focusgroup="menu nomemory" aria-labelledby="export-trigger">
               <button type="button">PDF</button>
               <button type="button">Rich Text</button>
@@ -210,7 +182,7 @@
 
       <button id="edit-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="edit-menu" command="toggle-popover" aria-expanded="false"
         tabindex="-1">Edit</button>
-      <div id="edit-menu" class="menu" popover="auto">
+      <div id="edit-menu" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="edit-trigger">
           <button type="button">Undo</button>
           <button type="button">Redo</button>
@@ -222,12 +194,12 @@
 
       <button id="view-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="view-menu" command="toggle-popover" aria-expanded="false"
         tabindex="-1">View</button>
-      <div id="view-menu" class="menu" popover="auto">
+      <div id="view-menu" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="view-trigger">
           <button type="button">Show Toolbar</button>
           <button id="appearance-trigger" type="button" aria-haspopup="menu" commandfor="appearance-menu" command="toggle-popover" aria-expanded="false">Appearance <span
               class="hint" aria-hidden="true">›</span></button>
-          <div id="appearance-menu" class="menu submenu" popover="auto">
+          <div id="appearance-menu" popover="auto">
             <div focusgroup="menu nomemory" aria-labelledby="appearance-trigger">
               <button type="button">Use Light Appearance</button>
               <button type="button">Use Dark Appearance</button>
@@ -240,7 +212,7 @@
 
       <button id="help-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="help-menu" command="toggle-popover" aria-expanded="false"
         tabindex="-1">Help</button>
-      <div id="help-menu" class="menu" popover="auto">
+      <div id="help-menu" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="help-trigger">
           <button type="button">Search Documentation</button>
           <button type="button">Keyboard Shortcuts</button>
@@ -258,8 +230,8 @@
     <h2 id="keyboard">Keyboard guidance</h2>
     <p>Focus a top-level trigger to preview its menu; press Enter or Space to dismiss the preview, or Down Arrow to
       enter it. In an open top-level menu, Left and Right Arrow switch to the adjacent menu and enter its first command.
-      Use Up and Down to move between commands, Right Arrow to open Preferences, Left Arrow or Escape to return from
-      the submenu, Right Arrow on a submenu item without a child submenu to preview the next top-level menu, and Tab to
+      Use Up and Down to move between commands, Right Arrow to open a submenu such as Export, Left Arrow or Escape to
+      return from the submenu, Right Arrow on a submenu item without a child submenu to preview the next top-level menu, and Tab to
       leave the menu.</p>
     <h2 id="testing">Testing guidance</h2>
     <p>Test this demo with keyboard-only input, VoiceOver, and NVDA. The visible focus indicator and status message make
@@ -271,7 +243,7 @@
     // Native focusgroup supplies menu navigation and inferred roles where supported.
     // Only install the local navigation and semantic fallback when it is unavailable.
     function installFocusgroupFallback() {
-      if (Object.hasOwn(HTMLElement.prototype, 'focusGroup')) return;
+      if ('focusgroup' in HTMLElement.prototype) return;
 
       document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
         group.setAttribute('role', 'menu');
@@ -299,7 +271,7 @@
     const menus = [...document.querySelectorAll('[popover]')];
     const triggers = [...document.querySelectorAll('[commandfor]')];
     // Direct children only: submenu triggers live inside the menubar's nested popovers.
-    const rootTriggers = [...document.querySelectorAll('.bar > [commandfor]')];
+    const rootTriggers = [...document.querySelectorAll('[role="menubar"] > [commandfor]')];
     // Menus that should focus their first item once the native toggle has opened them.
     const enterOnOpen = new WeakSet();
     // The trigger a pointer is pressing, so a pointer click on a preview enters the menu
@@ -348,7 +320,7 @@
 
     // If targeting earlier implementations where showPopover({ source }) does not establish an
     // implicit anchor, link each trigger and menu in JavaScript instead of per-menu CSS rules.
-    if (!('ToggleEvent' in window && Object.hasOwn(ToggleEvent.prototype, 'source'))) {
+    if (!('ToggleEvent' in window && 'source' in ToggleEvent.prototype)) {
       triggers.forEach((trigger, index) => {
         const anchorName = `--menu-trigger-${index}`;
         trigger.style.anchorName = anchorName;
@@ -367,7 +339,7 @@
           const fromPointer = pointerTrigger === trigger;
           pointerTrigger = null;
           if (isPreviewed(menu) && fromPointer) focusFirst(menu);
-          else if (isOpen(menu)) closeAndRestore(menu);
+          else if (isOpen(menu)) menu.hidePopover();
           else {
             enterOnOpen.add(menu);
             menu.showPopover({ source: trigger });
@@ -499,7 +471,7 @@
 
     // Tab leaves the menu system: once focus lands on page content, close every open menu.
     document.addEventListener('focusin', event => {
-      if (!event.target.closest('[popover], .bar')) closeAllMenus();
+      if (!event.target.closest('[popover], [role="menubar"]')) closeAllMenus();
     });
   </script>
 </body>
