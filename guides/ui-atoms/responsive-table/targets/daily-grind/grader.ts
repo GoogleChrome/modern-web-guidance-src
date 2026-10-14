@@ -98,7 +98,7 @@ test.describe('Responsive Table Target Grader', () => {
       (r): r is CSSContainerRule => r instanceof CSSContainerRule
     );
     const stackedRule = containerRules.find(cr =>
-      /(width\s*<\s*600|max-width:\s*600|inline-size\s*<\s*600|max-inline-size:\s*600)/i.test(
+      /(width\s*<=?\s*\d+|max-width:\s*\d+|inline-size\s*<=?\s*\d+|max-inline-size:\s*\d+)/i.test(
         cr.conditionText
       )
     );
@@ -138,7 +138,7 @@ test.describe('Responsive Table Target Grader', () => {
       (r): r is CSSContainerRule => r instanceof CSSContainerRule
     );
     const stackedRule = containerRules.find(cr =>
-      /(width\s*<\s*600|max-width:\s*600|inline-size\s*<\s*600|max-inline-size:\s*600)/i.test(
+      /(width\s*<=?\s*\d+|max-width:\s*\d+|inline-size\s*<=?\s*\d+|max-inline-size:\s*\d+)/i.test(
         cr.conditionText
       )
     );
@@ -162,7 +162,7 @@ test.describe('Responsive Table Target Grader', () => {
       (r): r is CSSContainerRule => r instanceof CSSContainerRule
     );
     const stackedRule = containerRules.find(cr =>
-      /(width\s*<\s*600|max-width:\s*600|inline-size\s*<\s*600|max-inline-size:\s*600)/i.test(
+      /(width\s*<=?\s*\d+|max-width:\s*\d+|inline-size\s*<=?\s*\d+|max-inline-size:\s*\d+)/i.test(
         cr.conditionText
       )
     );
@@ -186,7 +186,7 @@ test.describe('Responsive Table Target Grader', () => {
       (r): r is CSSContainerRule => r instanceof CSSContainerRule
     );
     const stackedRule = containerRules.find(cr =>
-      /(width\s*<\s*600|max-width:\s*600|inline-size\s*<\s*600|max-inline-size:\s*600)/i.test(
+      /(width\s*<=?\s*\d+|max-width:\s*\d+|inline-size\s*<=?\s*\d+|max-inline-size:\s*\d+)/i.test(
         cr.conditionText
       )
     );
@@ -215,7 +215,7 @@ test.describe('Responsive Table Target Grader', () => {
       (r): r is CSSContainerRule => r instanceof CSSContainerRule
     );
     const stackedRule = containerRules.find(cr =>
-      /(width\s*<\s*600|max-width:\s*600|inline-size\s*<\s*600|max-inline-size:\s*600)/i.test(
+      /(width\s*<=?\s*\d+|max-width:\s*\d+|inline-size\s*<=?\s*\d+|max-inline-size:\s*\d+)/i.test(
         cr.conditionText
       )
     );
