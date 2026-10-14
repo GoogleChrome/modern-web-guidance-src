@@ -77,7 +77,7 @@ test.describe('daily-grind Target Grader', () => {
     if (classes.length > 0) {
       const interactiveClasses = classes.filter(cls => {
         const text = cls.getText();
-        return text.includes('attachInternals') || text.includes('tabIndex') || text.includes('tabindex');
+        return text.includes('attachInternals');
       });
 
       const allInteractiveValid = interactiveClasses.length > 0 && interactiveClasses.every(cls => {
@@ -92,9 +92,9 @@ test.describe('daily-grind Target Grader', () => {
 
       const staticClasses = classes.filter(cls => {
         const text = cls.getText();
-        return !text.includes('attachInternals') && !text.includes('toggle');
+        return !text.includes('attachInternals');
       });
-      const staticDoNotSetTabIndex = staticClasses.every(cls => !cls.getText().includes('tabIndex'));
+      const staticDoNotSetTabIndex = staticClasses.every(cls => !cls.getText().includes('this.tabIndex'));
 
       tabIndexValid = allInteractiveValid && staticDoNotSetTabIndex;
     }
