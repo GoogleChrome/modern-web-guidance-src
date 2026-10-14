@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Debounce and batch multiple analytics events
 
-Most analytics, telemetry, and Core Web Vitals data is low priority and you can safely defer sending it until the user leaves the page. The exception to this is if you need to deliver real-time updates, in which case timeliness matters.
+Most analytics, telemetry, and Core Web Vitals analytics data is lower priority than responding to the user, so you can safely defer sending it until the user leaves the page. The exception to this is if you need to deliver real-time updates, in which case timeliness matters.
 
 The optimal way to provide real-time analytics updates, while still minimizing beacons, is to use `fetchLater()` with the `activateAfter` configuration option. This allows you to effectively debounce and batch all analytics events that occur within a given time window into a single beacon, that is reliably sent even if the user leaves the page before the timeout expires.
 
