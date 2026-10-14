@@ -17,12 +17,18 @@ guides:
 
 ## Choosing an Icon Technique
 
-Icon storage and rendering are separate choices: an SVG sprite can be used with `<use>` or as a CSS icon source.
+Icon storage and rendering are separate choices. For example, an SVG sprite can supply an icon to the CSS icon system or be referenced with `<use>`.
 
-* **CSS icon system:** Use when CSS should choose the icon. Use a mask for single-color icons or a background image for full-colour ones.
-* **Inline SVG:** Use when you need control over individual paths.
+* **CSS icon system:** Use when CSS should choose when and which icon to show. Use a mask for a single-color icon or a background image for a full-color icon.
+* **SVG with `<use>`:** Use to reuse a symbol when its built-in styling options are enough. CSS can't arbitrarily style or animate the referenced SVG's contents, but inherited properties and custom properties can be passed in when the symbol is designed to use them. For example, a path can use `fill="var(--icon-accent, currentColor)"` to let CSS color that part of the icon.
+* **Inline SVG:** Use when you need arbitrary styling or animation of the SVG's contents.
+* **`<img>` with CSS filters:** Avoid this for recoloring icons. Filters can't reliably apply an arbitrary CSS color value to the image, so recoloring is cumbersome and inflexible.
 
-With `<use>`, page CSS cannot select paths inside the referenced symbol. Inherited and custom properties can reach them if the paths use those properties, for example `fill="var(--icon-fill, currentColor)"`. For arbitrary path styling or animation, use inline SVG. Avoid recoloring `<img>` icons with CSS filters; they are brittle and offer limited control.
+To decide, ask two questions. Does CSS need to pick or swap the icon (component defaults, state changes, theming)? If yes, use the CSS icon system. Do you need to reach inside the icon beyond color? If yes and you control the icon source, design the symbol with custom properties and use `<use>`; if you do not control the source, inline the SVG. Third-party icon sets rarely expose custom properties, so `<use>` against them gives you color and little else.
+
+### Embedded or remote icons
+
+Both the CSS icon system and `<use>` can take icons from a data URI, an individual file, or a sprite. Embedding (data URIs or inline SVG) avoids a request and renders with the first paint, but bloats CSS or HTML and cannot be cached separately, so it suits a small set of icons that appear on every page. Individual files are cached independently and loaded on demand, at the cost of one request each. A sprite is one cacheable request for the whole set, but downloads every icon whether used or not, and `<use>` can only reference a sprite from the same origin. Prefer embedding for a handful of core icons and a sprite or individual files for larger sets.
 
 If a page renders thousands of icons at once, benchmark the actual page and assets. In a stress test, inline SVG had a small performance advantage at that scale, but results depend on the browser and implementation. [Cloud Four's SVG icon stress test](https://cloudfour.com/thinks/svg-icon-stress-test/)
 
@@ -188,21 +194,20 @@ Icon-only buttons use the `.icon` class and `--icon` described above. Give the b
 <span class="icon" style="--icon: var(--icon-favorite);" role="img" aria-label="Favorite"></span>
 ```
 
-## Alternatives to the CSS Icon System
+## Working with SVG directly
 
-Use inline SVG when you need direct access to individual paths, such as for customizable multi-color icons or path-level animations. No example is needed here: the key distinction is that inline SVG exposes the icon's elements in the document.
+When the CSS icon system is not the right fit, use inline SVG and `<use>` together rather than as alternatives. Inline the SVG the first time an icon appears on a page and reference it with `<use href="#id">` for every repeat; the local reference costs no request and has no cross-origin restriction. Reserve an external sprite (`<use href="/icons.svg#id">`) for icons shared across many pages.
 
-For reusable SVG icons stored in an external sprite, reference a symbol with `<use>`:
+With `<use>`, the referenced content is cloned into a shadow tree, so page CSS cannot select its elements. What does reach it is inheritance: `color`, `currentColor`, and any custom property. Modern CSS can change almost any SVG presentation attribute, so an icon you control can expose exactly the hooks you need, for example `stroke-width="var(--icon-stroke, 2)"` on a particular path. If you do not control the icon, inline it.
 
-```html
-<button aria-label="Delete item">
-  <svg aria-hidden="true" width="24" height="24">
-    <use href="/icons.svg#icon-trash"></use>
-  </svg>
-</button>
-```
+`<use>` gotchas worth knowing:
 
-The sprite file defines the `icon-trash` symbol once, and pages can reference it where needed. External sprites can be cached and reused, but styling the referenced SVG's internals is limited compared with inline SVG.
+* The `viewBox` must be on the `<symbol>` or referenced `<svg>`; the outer `<svg>` wrapping `<use>` does not pick it up from the reference, so set `width` and `height` on the wrapper and keep the `viewBox` with the symbol.
+* Styles do not cross the boundary in either direction: `<style>` inside an external sprite does not apply to the page, and page stylesheets do not apply inside the referenced tree. Only inherited properties and custom properties pass through.
+* External references are same-origin only; cross-origin sprites fail silently.
+* Sprites inlined into the document share the page's `id` namespace, so namespace symbol ids to avoid collisions.
+
+Mark decorative SVGs with `aria-hidden="true"` and give the containing control its own accessible name, as with the CSS icon system.
 
 ## Fallback Strategies
 
