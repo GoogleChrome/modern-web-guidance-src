@@ -32,7 +32,7 @@ Use the Popover API to create a tooltip. Invoking the popover via `popovertarget
 Reset the popover inset and margin styles for use with anchor positioning, but only if anchor positioning is supported.
 
 ```css
-@supports (position-area: top) or (anchor-name: --my-anchor) {
+@supports (anchor-name: --my-anchor) {
   [popover] {
     inset: auto;
     margin: unset;
