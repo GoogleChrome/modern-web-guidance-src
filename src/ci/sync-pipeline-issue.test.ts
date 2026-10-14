@@ -41,7 +41,6 @@ function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
     dir,
     isStub: false,
     hasGuide: true,
-    draft: false,
     isPublished: true,
     hasDemo: true,
     hasNegativeDemo: false,
@@ -901,6 +900,30 @@ describe('Discipline guides inclusion and issue header rendering', () => {
       sanitizeIssueTitle('@starting-style support'),
       '`@starting-style` support'
     );
+  });
+
+  it('lists blocked guides with their reason apart from not-started ones', () => {
+    const blocked = makeGuide({
+      category: 'forms',
+      name: 'button-group',
+      draft: 'blocked',
+      draftReason: 'listbox <select> lacks horizontal nav (#1275)',
+      hasGrader: false,
+      hasTask: false,
+    });
+    const report = buildPipelineReportData({
+      readySinceBySlug: readySince(),
+      guides: [makeGuide({ category: 'css', name: 'guide-1' }), blocked],
+      openPrs: [],
+      openUseCaseIssues: [],
+      openFeatureIssues: [],
+      openExpectationsChangedIssues: [],
+      gitHistory: new Map(),
+    });
+    const markdown = renderPipelineIssueBody(report);
+    assert.match(markdown, /#### Blocked \(1\)[\s\S]*\*\*forms\/button-group\*\*.* · listbox &lt;select&gt; lacks horizontal nav \(#1275\)/);
+    assert.match(markdown, /#### Not started \(0\)/);
+    assert.doesNotMatch(markdown, /#### In progress/);
   });
 
   it('guarantees balanced details tags and code fences in generated issue body', () => {

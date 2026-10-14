@@ -158,17 +158,28 @@ interface GuideData {
   name?: string;
   description?: string;
   'web-feature-ids'?: string[];
-  /** Any truthy value withholds the guide from distribution; `draft: true` recommended. */
-  draft?: boolean | string;
+  /** Omit to publish. See DraftState. */
+  draft?: unknown;
+  'draft-reason'?: string;
   [key: string]: any;
 }
 
-/** String `draft` values interpreted as not-a-draft (a quoted/typed-out boolean). */
-export const FALSY_DRAFT = new Set(['', 'false', 'no', 'off', '0']);
+/** Why a guide is withheld from distribution. `blocked` requires a `draft-reason`. */
+export type DraftState = 'stub' | 'wip' | 'blocked';
+const DRAFT_STATES: readonly DraftState[] = ['stub', 'wip', 'blocked'];
 
-/** Returns true when frontmatter `draft` is explicitly set to `"stub"` (case-insensitive). */
+/** Parses `draft` / `draft-reason`, throwing on anything else so a bad value can't publish a guide. */
+function parseDraft(data: GuideData, where: string): { draft?: DraftState; draftReason?: string } {
+  const { draft, 'draft-reason': draftReason } = data;
+  if (draft === undefined) return {};
+  const state = DRAFT_STATES.find(s => s === draft);
+  if (!state) throw new Error(`${where}: draft must be one of ${DRAFT_STATES.join(', ')} (got ${JSON.stringify(draft)}). Omit it to publish.`);
+  if (state === 'blocked' && !draftReason?.trim()) throw new Error(`${where}: draft: blocked needs a draft-reason.`);
+  return { draft: state, draftReason };
+}
+
 export function isDraftStub(draft: unknown): boolean {
-  return typeof draft === 'string' && draft.trim().toLowerCase() === 'stub';
+  return draft === 'stub';
 }
 
 interface ValidationResult {
@@ -483,9 +494,9 @@ export interface GuideInventory {
   hasTask: boolean;
   featureIds: string[];
   isDisciplineGuide: boolean;
-  /** Frontmatter `draft` flag; any truthy value withholds the guide from distribution. */
-  draft: boolean | string;
-  /** Whether the guide belongs in dist: has content and no truthy `draft`. */
+  draft?: DraftState;
+  draftReason?: string;
+  /** Whether the guide belongs in dist: has content and no `draft`. */
   isPublished: boolean;
   targets?: TargetInventory[];
 }
@@ -607,12 +618,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
   const hasContent = stripAllComments(content).trim().length > 0;
 
-  // Any truthy `draft` withholds the guide, but treat explicitly falsy-looking
-  // strings (e.g. `draft: "false"`, `draft: no`) as not-draft — quoting a
-  // boolean shouldn't silently unpublish a guide.
-  const draft = typeof data.draft === 'string' && FALSY_DRAFT.has(data.draft.trim().toLowerCase())
-    ? false
-    : data.draft ?? false;
+  const { draft, draftReason } = parseDraft(data, guideFilePath);
   const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
   const hasGuide = hasContent && !isDraftStub(draft);
   const isPublished = hasGuide && !draft;
@@ -682,6 +688,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     isDisciplineGuide: isDisciplineGuide(name, category),
     featureIds: data['web-feature-ids'] || [],
     draft,
+    draftReason,
     isPublished,
     targets: useTargets ? targets : undefined,
   };

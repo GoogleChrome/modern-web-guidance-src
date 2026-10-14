@@ -16,15 +16,14 @@ import { stripTmpPrefix } from '../core/feature-parser.ts';
 import {
   DEMO_FILE,
   EXPECTATIONS_FILE,
-  FALSY_DRAFT,
   getGuideStatus,
   GRADER_FILE,
   GUIDE_FILE,
-  isDraftStub,
   ProjectStatus,
   scanAllGuides,
   stripAllComments,
   TARGETS_DIR,
+  type DraftState,
   type GuideInventory,
 } from '../core/guide-validation.ts';
 import { DEV_PR_BRANCH_PREFIX, DEV_PR_TITLE_PREFIX } from '../authoring/pr.ts';
@@ -105,7 +104,8 @@ export interface NeedsGuidancePrItem {
 export interface NeedsGuidanceIssueItem {
   slug: string;
   issueNumber: number | null;
-  isDraftGuide: boolean;
+  draft?: DraftState;
+  draftReason?: string;
   assignees: string[];
 }
 
@@ -361,10 +361,9 @@ const EMPTY_BLOB_SHA = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
 
 function parseFrontmatterDraft(content: string): { isDraft: boolean; hasContent: boolean } {
   const { data = {}, content: body = '' } = matter(content);
-  const draftVal =
-    typeof data.draft === 'string' && FALSY_DRAFT.has(data.draft.trim().toLowerCase()) ? false : Boolean(data.draft);
   return {
-    isDraft: Boolean(draftVal) || isDraftStub(data.draft),
+    // Not parseDraft: older commits used `draft: true`, which is still a draft.
+    isDraft: Boolean(data.draft),
     hasContent: stripAllComments(body).trim().length > 0,
   };
 }
@@ -723,6 +722,9 @@ const REVIEW_GROUPS = ['approved', 'changes requested', 'awaiting review'] as co
 export function renderPipelineIssueBody(data: PipelineReportData): string {
   const totalNeedsGuidance = data.needsGuidancePrs.length + data.needsGuidanceIssues.length;
   const totalNeedsEvals = data.openEvalPrs.length + data.readyForEvals.length;
+  const blockedGuides = data.needsGuidanceIssues.filter(i => i.draft === 'blocked');
+  const wipGuides = data.needsGuidanceIssues.filter(i => i.draft === 'wip');
+  const notStarted = data.needsGuidanceIssues.filter(i => i.draft !== 'blocked' && i.draft !== 'wip');
   const progressBar = renderTwoRowProgressBar({
     complete: data.completeCount,
     openEvalGuides: data.openEvalPrs.length,
@@ -755,7 +757,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
       `[${data.openEvalPrs.length} eval PRs](#stage-3-needs-evals-${totalNeedsEvals})`,
       `[${data.readyForEvals.length} ready for evals](#ready-for-evals-${data.readyForEvals.length})`,
       `[${data.needsGuidancePrs.length} guide PRs](#guide-prs-${data.needsGuidancePrs.length})`,
-      `[${data.needsGuidanceIssues.length} use cases not started](#not-started-${data.needsGuidanceIssues.length})`,
+      `[${notStarted.length} use cases not started](#not-started-${notStarted.length})`,
       `[${data.needsUseCasesIssues.length} features awaiting use cases](#stage-1-needs-use-cases-${data.needsUseCasesIssues.length})`,
     ].join(' · '),
     '',
@@ -806,18 +808,20 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     );
   }
 
-  lines.push(
-    '',
-    `#### Not started (${data.needsGuidanceIssues.length})`,
-    '',
-    `Open [\`new-use-case\`](${issuesQuery(NEW_USE_CASE_LABEL)}) issues with no guide PR yet.`,
-    ''
-  );
-  for (const item of data.needsGuidanceIssues) {
-    const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
-    const draftPart = item.isDraftGuide ? ' (`draft: true` stub)' : '';
-    const assigneePart = item.assignees.length > 0 ? ` · ${codeList(item.assignees)}` : '';
-    lines.push(`- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug})${issuePart}${draftPart}${assigneePart}`);
+  const stage2Lists: Array<[string, NeedsGuidanceIssueItem[], string]> = [
+    ['Blocked', blockedGuides, 'Written but held back; the reason is from `draft-reason`.'],
+    ['In progress', wipGuides, 'Marked `draft: wip`.'],
+    ['Not started', notStarted, `Open [\`new-use-case\`](${issuesQuery(NEW_USE_CASE_LABEL)}) issues with no guide PR yet.`],
+  ];
+  for (const [title, items, blurb] of stage2Lists) {
+    if (items.length === 0 && title !== 'Not started') continue;
+    lines.push('', `#### ${title} (${items.length})`, '', blurb, '');
+    for (const item of items) {
+      const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
+      const reasonPart = item.draftReason ? ` · ${sanitizeIssueTitle(item.draftReason)}` : '';
+      const assigneePart = item.assignees.length > 0 ? ` · ${codeList(item.assignees)}` : '';
+      lines.push(`- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug})${issuePart}${reasonPart}${assigneePart}`);
+    }
   }
 
   lines.push('', '---', '', '### Funnel', '', funnel, '', '---', '', `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`);
@@ -1153,7 +1157,8 @@ function resolveNeedsGuidanceIssues(
     needsGuidanceIssues.push({
       slug,
       issueNumber: matchedIssue?.number ?? null,
-      isDraftGuide: !g.isStub && Boolean(g.draft),
+      draft: g.draft,
+      draftReason: g.draftReason,
       assignees: matchedIssue?.assignees ?? [],
     });
   }

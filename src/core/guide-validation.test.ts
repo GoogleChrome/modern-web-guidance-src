@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, isDraftStub, checkOriginTrialGraduations, getStatusName, getGuideStatus, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, ProjectStatus, type GuideInventory } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from './macros.ts';
 
@@ -617,23 +617,22 @@ describe('guide draft flag (publish control)', () => {
 
   test('published when it has content and no draft flag', () => {
     const inv = inventory('---\nname: g\n---\n# G\nBody');
-    assert.strictEqual(inv.draft, false);
+    assert.strictEqual(inv.draft, undefined);
     assert.strictEqual(inv.isPublished, true);
     assert.strictEqual(inv.isStub, false); // has content -> not a stub
   });
 
-  test('any truthy draft withholds it', () => {
-    assert.strictEqual(inventory('---\ndraft: true\n---\n# G\nBody').isPublished, false);
-    assert.strictEqual(inventory('---\ndraft: future\n---\n# G\nBody').draft, 'future');
-    assert.strictEqual(inventory('---\ndraft: future\n---\n# G\nBody').isPublished, false);
+  test('wip and blocked (with a reason) withhold it', () => {
+    assert.strictEqual(inventory('---\ndraft: wip\n---\n# G\nBody').isPublished, false);
+    const blocked = inventory('---\ndraft: blocked\ndraft-reason: waiting on spec (#1)\n---\n# G\nBody');
+    assert.deepStrictEqual([blocked.draft, blocked.draftReason, blocked.isPublished], ['blocked', 'waiting on spec (#1)', false]);
   });
 
-  test('falsy-looking string draft values still publish', () => {
-    // Quoting a boolean (draft: "false") or writing draft: no must not silently unpublish.
-    for (const val of ['"false"', 'no', 'off', '0', "''"]) {
-      const inv = inventory(`---\ndraft: ${val}\n---\n# G\nBody`);
-      assert.strictEqual(inv.isPublished, true, `draft: ${val}`);
+  test('anything outside the union fails instead of publishing', () => {
+    for (const val of ['true', 'false', 'future', 'STUB', '"no"']) {
+      assert.throws(() => inventory(`---\ndraft: ${val}\n---\n# G\nBody`), /draft must be one of/, `draft: ${val}`);
     }
+    assert.throws(() => inventory('---\ndraft: blocked\n---\n# G\nBody'), /needs a draft-reason/);
   });
 
   test('a stub (frontmatter, no body) is never published', () => {
@@ -664,23 +663,6 @@ describe('guide draft flag (publish control)', () => {
     assert.strictEqual(inv.isStub, true);
     assert.strictEqual(inv.hasGuide, false);
     assert.strictEqual(classifyGuide(inv), 'stub');
-
-    const invCaseInsensitive = inventory('---\nname: g\ndraft: " STUB "\n---\n## Notes for guide authors\n');
-    assert.strictEqual(invCaseInsensitive.isPublished, false);
-    assert.strictEqual(invCaseInsensitive.isStub, true);
-    assert.strictEqual(invCaseInsensitive.hasGuide, false);
-    assert.strictEqual(classifyGuide(invCaseInsensitive), 'stub');
-  });
-
-  test('isDraftStub matches only stub draft values', () => {
-    assert.strictEqual(isDraftStub('stub'), true);
-    assert.strictEqual(isDraftStub('STUB'), true);
-    assert.strictEqual(isDraftStub('  stub  '), true);
-    assert.strictEqual(isDraftStub(true), false);
-    assert.strictEqual(isDraftStub(false), false);
-    assert.strictEqual(isDraftStub('future'), false);
-    assert.strictEqual(isDraftStub('blocked'), false);
-    assert.strictEqual(isDraftStub(undefined), false);
   });
 });
 
@@ -975,14 +957,14 @@ describe('getStatusName and getGuideStatus lifecycle', () => {
         hasTask: false,
         featureIds: [],
         isDisciplineGuide,
-        draft: false,
+        draft: undefined,
         isPublished: true,
       };
 
       assert.strictEqual(getGuideStatus(baseInv), ProjectStatus.NeedsEvals);
       assert.strictEqual(getGuideStatus({ ...baseInv, hasGrader: true, hasTask: true }), null);
       assert.strictEqual(getGuideStatus({ ...baseInv, hasExpectations: false }), ProjectStatus.NeedsGuidance);
-      assert.strictEqual(getGuideStatus({ ...baseInv, draft: true }), ProjectStatus.NeedsGuidance);
+      assert.strictEqual(getGuideStatus({ ...baseInv, draft: 'wip' }), ProjectStatus.NeedsGuidance);
     }
   });
 });

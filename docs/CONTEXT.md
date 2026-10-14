@@ -109,6 +109,8 @@ The tracker's two progress rows use the same vocabulary:
 
 Both rows count from the **2026-07-22** snapshot (127 guides with evals, discipline hubs excluded), one column per guide. Discipline orientation hubs don't currently require a grader and are excluded from all tracker counts.
 
+A `draft` in a guide's frontmatter withholds it from distribution. It must be `stub` (placeholder, next step: write it), `wip` (next step: finish it), or `blocked` (held back by the platform or spec, with a required `draft-reason`; next step: revisit when that changes). Anything else fails the guide scan.
+
 ---
 
 ## 3. The `gd` CLI
