@@ -22,11 +22,18 @@ The core of a responsive table is maintaining the relationship between data cell
 ## Implementation Steps
 
 ### 1. Markup and Layout
-Structure your table with standard semantic headers. Use a `.table-wrapper` to handle overflow and provide a container for queries.
+Structure your table with standard semantic headers.
+
+Use a `.table-wrapper` to handle overflow and provide a container for queries.
+
+Add a `tabindex="0"` attribute to the container, to ensure that people using only a keyboard can consistently scroll the table.
+
+Give the wrapper a `role="region"` attribute to communicate its purpose. Provide it with an accessible name using `aria-labelledby` (referencing the `id` attribute of an existing element that captions/names the table) or an `aria-label` attribute (approach is demonstrated in the post: [A Responsive Accessible Table by Adrian Roselli](https://adrianroselli.com/2017/11/a-responsive-accessible-table.html#ResponsiveScrolling)).
 
 ```html
-<div class="table-wrapper">
+<div tabindex="0" role="region" aria-labelledby="employee-table-caption" class="table-wrapper">
   <table>
+    <caption id="employee-table-caption">Current employee directory</caption>
     <thead>
       <tr>
         <th>Employee</th>
@@ -79,7 +86,7 @@ tbody th {
 ```
 
 ### 3. Responsive Stacked Layout
-When space is limited, hide the original header row and transform the table into cards. Inject labels using pseudo-elements, providing the accessible name directly in CSS.
+When space is limited, hide the original header row and transform the table into cards. Inject labels using pseudo-elements. Only provide alternative text for non-text content, otherwise this may result in both the text content and accessible name being announced by screen readers.
 
 ```css
 @container (width < 600px) {
@@ -112,15 +119,14 @@ When space is limited, hide the original header row and transform the table into
     --label-3: "Status";
   }
 
-  /* Inject labels with accessible names */
+  /* Inject labels */
   td:nth-child(2)::before {
-    /* MANDATORY: The accessible name (after the /) ensures screen readers 
-       announce the label correctly without the trailing colon. */
-    content: var(--label-2) ": " / var(--label-2);
+    /* MANDATORY: If using non-text content, provide the accessible name (after the /) which ensures screen readers hear the text alternative. */
+    content: var(--label-2) ": ";
   }
   /* MANDATORY: Map the label for each column */
   td:nth-child(3)::before {
-    content: var(--label-3) ": " / var(--label-3);
+    content: var(--label-3) ": ";
   }
 }
 ```
