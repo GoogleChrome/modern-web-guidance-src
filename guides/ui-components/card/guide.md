@@ -47,9 +47,24 @@ When cards in a row should share the heights of their regions, use `subgrid`: ma
 
 ### Content cards
 
-Use an `<article>` for independently understandable card content. Keep links and buttons as separate native controls. 
+Use an `<article>` for independently understandable card content. Keep links and buttons as separate native controls.
 
-When the card also links to a primary destination and needs to be clickable as a whole:
+### Single-destination cards
+
+When the whole card is one destination and has no independent actions, use one native link. If the content is independently understandable, the link can wrap an `<article>`. Do not nest other links, buttons, or form controls inside the link:
+
+```html
+<a href="/recipes/poached-eggs">
+  <article class="card">
+    <h3>Poached eggs</h3>
+    <p>Two poached eggs served on toasted sourdough.</p>
+  </article>
+</a>
+```
+
+### Clickable cards with independent actions
+
+When a content card links to a primary destination, also contains other interactive elements, and needs to be clickable as a whole:
 - Use a single opt-in, on the primary link itself.
 - Link its title and stretch the pointer hit area across the card with `::after`
 
@@ -97,19 +112,6 @@ When the card also links to a primary destination and needs to be clickable as a
 	}
 }
 
-```
-
-### Single-destination cards
-
-When the whole card is one destination and has no independent actions, use one native link. If the content is independently understandable, the link can wrap an `<article>`. Do not nest other links, buttons, or form controls inside the link:
-
-```html
-<a href="/recipes/poached-eggs">
-  <article class="card">
-    <h3>Poached eggs</h3>
-    <p>Two poached eggs served on toasted sourdough.</p>
-  </article>
-</a>
 ```
 
 ### Choice cards
