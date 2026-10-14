@@ -42,7 +42,8 @@ export const EXPECTATIONS_CHANGED_LABEL = 'expectations-changed';
 /** Complete feature guides count as of 2026-07-22 on origin/main (discipline hubs excluded). */
 export const EXPECTED_BASELINE_COMPLETE = 127;
 export const PIPELINE_BASELINE_DATE = '2026-07-22';
-export const PIPELINE_GOAL = 200;
+export const PIPELINE_SCALE_MAX = 200;
+export const PIPELINE_GOAL = PIPELINE_SCALE_MAX;
 
 export interface PrSummary {
   number: number;
@@ -140,6 +141,7 @@ export interface TwoRowProgressBar {
   header: string;
   guidesRow: string;
   evalsRow: string;
+  rulerLine: string;
   summaryLine: string;
   text: string;
 }
@@ -610,11 +612,11 @@ export function renderTwoRowProgressBar(params: {
   baseline?: number;
   goal?: number;
 }): TwoRowProgressBar {
-  const goal = params.goal ?? PIPELINE_GOAL;
+  const goal = params.goal ?? PIPELINE_SCALE_MAX;
   const baseline = params.baseline ?? EXPECTED_BASELINE_COMPLETE;
   const barWidth = Math.max(1, goal - baseline);
 
-  const header = `Since Jul 22 (${baseline}) → ${goal}`;
+  const header = `Since Jul 22 (${baseline})`;
 
   const renderRow = (label: string, landed: number, inReview: number, extraFlag = ''): string => {
     const landedCols = Math.max(0, Math.min(barWidth, landed - baseline));
@@ -628,18 +630,37 @@ export function renderTwoRowProgressBar(params: {
   const staleFlag = params.staleEvalsCount && params.staleEvalsCount > 0 ? ` (${params.staleEvalsCount} stale)` : '';
   const evalsRow = renderRow('Evals', params.complete, params.openEvalGuides, staleFlag);
 
+  // Ruler line with ticks at 150 and 200
+  // Column 10 is offset 0 (baseline).
+  // 150 tick is at column 10 + (150 - baseline) - 1 = 32.
+  // 200 tick is at column 10 + (goal - baseline) - 1 = 82.
+  const tick1Offset = 150 - baseline;
+  const tick2Offset = goal - baseline;
+  const col150 = 10 + tick1Offset - 1;
+  const col200 = 10 + tick2Offset - 1;
+
+  const ticksArr = Array(col200 + 1).fill(' ');
+  ticksArr[col150] = '┬';
+  ticksArr[col200] = '┬';
+  const ticksLine = ticksArr.join('').trimEnd();
+
+  const numsArr = Array(col200 + 1).fill(' ');
+  numsArr.splice(col150 - 1, 3, ...'150'.split(''));
+  numsArr.splice(col200 - 2, 3, ...'200'.split(''));
+  const numsLine = numsArr.join('').trimEnd();
+
+  const rulerLine = `${ticksLine}\n${numsLine}`;
+
   const n = params.contentLanded + params.openGuideGuides;
-  const m = goal - n;
-  const k = params.notStartedIssues ?? 0;
-  const shortfallClause = m > 0 ? `; ${m}+ more must be started from ${k} open use-case issues` : '';
-  const summaryLine = `${n} landed or in review${shortfallClause}`;
+  const summaryLine = `${n} landed or in review`;
 
   return {
     header,
     guidesRow,
     evalsRow,
+    rulerLine,
     summaryLine,
-    text: `${header}\n${guidesRow}\n${evalsRow}`,
+    text: `${header}\n${guidesRow}\n${evalsRow}\n${rulerLine}`,
   };
 }
 
@@ -691,7 +712,6 @@ export function renderProgressChart(points: WeeklyProgressPoint[]): string {
   const xLabels = points.map(p => `"${p.label}"`).join(', ');
   const contentBars = points.map(p => p.contentLanded).join(', ');
   const completeBars = points.map(p => p.complete).join(', ');
-  const goalLine = points.map(() => PIPELINE_GOAL).join(', ');
 
   return [
     '```mermaid',
@@ -701,16 +721,14 @@ export function renderProgressChart(points: WeeklyProgressPoint[]): string {
     '    height: 200',
     '  themeVariables:',
     '    xyChart:',
-    '      plotColorPalette: "#FBBC04, #4285F4, #9AA0A6"',
+    '      plotColorPalette: "#FBBC04, #4285F4"',
     '---',
     'xychart-beta',
     `    x-axis [${xLabels}]`,
-    `    y-axis "Guides" 100 --> ${PIPELINE_GOAL}`,
+    `    y-axis "Guides" 100 --> ${PIPELINE_SCALE_MAX}`,
     `    bar "Content landed" [${contentBars}]`,
     `    bar "Complete" [${completeBars}]`,
-    `    line "Goal" [${goalLine}]`,
     '```',
-    '<sub>Goal: 200 guides (y-axis: 100–200)</sub>',
   ].join('\n');
 }
 
@@ -759,6 +777,14 @@ export function renderSankeyDiagram(params: {
   return lines.join('\n');
 }
 
+export function sanitizeIssueTitle(title: string): string {
+  return title
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/@([a-zA-Z0-9_-]+)/g, '`@$1`');
+}
+
 export function renderPipelineIssueBody(data: PipelineReportData): string {
   const totalNeedsGuidance = data.needsGuidancePrs.length + data.needsGuidanceIssues.length;
   const totalNeedsEvals = data.openEvalPrs.length + data.readyForEvalSlugs.length;
@@ -769,7 +795,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
   const lines: string[] = [
     '# Content & Eval Pipeline',
     '',
-    '<!-- Discipline orientation guides do not currently require a grader and are excluded from the 200 goal, the progress bar, and trend counts. This policy may change. -->',
+    '<!-- Discipline orientation guides do not currently require a grader and are excluded from the progress counts, the progress bar, and trend counts. This policy may change. -->',
     '',
     '```',
     data.progressBar.text,
@@ -785,7 +811,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
         ]
       : []),
     '',
-    '### Progress Toward 200 Guides',
+    '### Progress since Jul 22',
     '',
     data.weeklyChart,
     '',
@@ -807,7 +833,8 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
       item.assignees.length > 0
         ? ` · ${item.assignees.map(a => `\`${a}\``).join(', ')}`
         : '';
-    lines.push(`- [ ] [#${item.number}](${REPO_URL}/issues/${item.number}) · ${item.title}${assigneePart}`);
+    const safeTitle = sanitizeIssueTitle(item.title);
+    lines.push(`- [ ] [#${item.number}](${REPO_URL}/issues/${item.number}) · ${safeTitle}${assigneePart}`);
   }
 
   lines.push(
