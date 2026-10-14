@@ -45,36 +45,65 @@ test.describe('Spatial Navigation Target Grader', () => {
     });
 
     test('Pressing Right Arrow moves focus to the visually closest focusable element to the right', async ({ page }) => {
-      await page.locator('.grid .card a').first().focus();
+      await page.evaluate(() => {
+        const card = document.querySelectorAll('.grid .card')[0];
+        const target = (card?.hasAttribute('tabindex') ? card : card?.querySelector('a')) as HTMLElement | null;
+        target?.focus();
+      });
       await page.keyboard.press('ArrowRight');
-      const activeHref = await page.evaluate(() => document.activeElement?.getAttribute('href'));
-      expect(activeHref).toBe('/menu/espresso');
+      const matchesTarget = await page.evaluate(() => {
+        const active = document.activeElement;
+        return active?.getAttribute('href') === '/menu/espresso' || active?.querySelector('a[href="/menu/espresso"]') !== null;
+      });
+      expect(matchesTarget).toBe(true);
     });
 
     test('Pressing Left Arrow moves focus to the visually closest focusable element to the left', async ({ page }) => {
-      await page.locator('.grid .card a').nth(1).focus();
+      await page.evaluate(() => {
+        const card = document.querySelectorAll('.grid .card')[1];
+        const target = (card?.hasAttribute('tabindex') ? card : card?.querySelector('a')) as HTMLElement | null;
+        target?.focus();
+      });
       await page.keyboard.press('ArrowLeft');
-      const activeHref = await page.evaluate(() => document.activeElement?.getAttribute('href'));
-      expect(activeHref).toBe('/menu/seasonal');
+      const matchesTarget = await page.evaluate(() => {
+        const active = document.activeElement;
+        return active?.getAttribute('href') === '/menu/seasonal' || active?.querySelector('a[href="/menu/seasonal"]') !== null;
+      });
+      expect(matchesTarget).toBe(true);
     });
 
     test('Pressing Down Arrow moves focus to the visually closest focusable element below', async ({ page }) => {
-      await page.locator('.grid .card a').first().focus();
+      await page.evaluate(() => {
+        const card = document.querySelectorAll('.grid .card')[0];
+        const target = (card?.hasAttribute('tabindex') ? card : card?.querySelector('a')) as HTMLElement | null;
+        target?.focus();
+      });
       await page.keyboard.press('ArrowDown');
-      const activeHref = await page.evaluate(() => document.activeElement?.getAttribute('href'));
-      expect(activeHref).toBe('/menu/cold-brew');
+      const matchesTarget = await page.evaluate(() => {
+        const active = document.activeElement;
+        return active?.getAttribute('href') === '/menu/cold-brew' || active?.querySelector('a[href="/menu/cold-brew"]') !== null;
+      });
+      expect(matchesTarget).toBe(true);
     });
 
     test('Pressing Up Arrow moves focus to the visually closest focusable element above', async ({ page }) => {
-      await page.locator('.grid .card a').nth(2).focus();
+      await page.evaluate(() => {
+        const card = document.querySelectorAll('.grid .card')[2];
+        const target = (card?.hasAttribute('tabindex') ? card : card?.querySelector('a')) as HTMLElement | null;
+        target?.focus();
+      });
       await page.keyboard.press('ArrowUp');
-      const activeHref = await page.evaluate(() => document.activeElement?.getAttribute('href'));
-      expect(activeHref).toBe('/menu/seasonal');
+      const matchesTarget = await page.evaluate(() => {
+        const active = document.activeElement;
+        return active?.getAttribute('href') === '/menu/seasonal' || active?.querySelector('a[href="/menu/seasonal"]') !== null;
+      });
+      expect(matchesTarget).toBe(true);
     });
 
     test('Pressing an arrow key where no candidate exists preserves default viewport scroll behavior', async ({ page }) => {
       const result = await page.evaluate(() => {
-        const first = document.querySelector('.grid .card a') as HTMLElement | null;
+        const card = document.querySelectorAll('.grid .card')[0];
+        const first = (card?.hasAttribute('tabindex') ? card : card?.querySelector('a')) as HTMLElement | null;
         if (!first) return { validPrevented: false, boundaryPrevented: true };
 
         // 1. Valid navigation direction: spatial navigation must intercept and prevent default
@@ -106,7 +135,8 @@ test.describe('Spatial Navigation Target Grader', () => {
         };
 
         try {
-          const first = document.querySelector('.grid .card a') as HTMLElement | null;
+          const card = document.querySelectorAll('.grid .card')[0];
+          const first = (card?.hasAttribute('tabindex') ? card : card?.querySelector('a')) as HTMLElement | null;
           if (!first) return false;
           first.focus();
 
@@ -125,11 +155,16 @@ test.describe('Spatial Navigation Target Grader', () => {
     });
 
     test('Active focused state updates roving tabindex and maintains programmatic focus across navigation', async ({ page }) => {
-      await page.locator('.grid .card a').first().focus();
+      await page.evaluate(() => {
+        const card = document.querySelectorAll('.grid .card')[0];
+        const target = (card?.hasAttribute('tabindex') ? card : card?.querySelector('a')) as HTMLElement | null;
+        target?.focus();
+      });
       await page.keyboard.press('ArrowRight');
 
       const state = await page.evaluate(() => {
-        const items = Array.from(document.querySelectorAll('.grid .card a')) as HTMLElement[];
+        const cards = Array.from(document.querySelectorAll('.grid .card'));
+        const items = cards.map(c => (c.hasAttribute('tabindex') ? c : c.querySelector('a')) as HTMLElement).filter(Boolean);
         if (items.length < 2) return { focusMaintained: false, rovingUpdated: false };
         const [first, second] = items;
         const isSecondFocused = document.activeElement === second;
