@@ -669,7 +669,7 @@ window.__featuresMapping = {
     "display-animation",
     "overlay",
     "prefers-reduced-motion",
-    "registered-custom-properties"
+    "nesting"
   ],
   "move-dom-element-without-losing-state": [
     "move-before"
