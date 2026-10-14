@@ -6,9 +6,9 @@ import {
   isGraderFile,
   formatViolations,
   type GraderLintViolation,
-} from './check.ts';
+} from './grader-lint.ts';
 
-describe('Grader Static Checker (src/authoring/check.ts)', () => {
+describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
   describe('Path classification helpers', () => {
     it('correctly identifies Gen 1 and Gen 2 graders across relative and nested paths', () => {
       assert.strictEqual(

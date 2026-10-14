@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Project, SyntaxKind, Node, type SourceFile, type Node as TsMorphNode } from 'ts-morph';
-import { GRADER_FILE, TARGETS_DIR } from '../core/guide-validation.ts';
-import { rootDir } from '../core/paths.ts';
+import { GRADER_FILE, TARGETS_DIR } from './guide-validation.ts';
+import { rootDir } from './paths.ts';
 
 const MAX_SNIPPET_LENGTH = 120;
 
