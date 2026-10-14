@@ -10,7 +10,7 @@ web-feature-ids:
 
 # Persist structured data with IndexedDB
 
-When your application needs to persist client-side state across sessions — such as offline documents, cached API payloads, or user-generated content — use IndexedDB. Unlike `localStorage`, which blocks the main thread on synchronous disk I/O and only accepts strings, IndexedDB is asynchronous, transactional, and uses the structured clone algorithm to store JavaScript objects, binary data (`Blob`, `File`, `ArrayBuffer`), and platform capability objects (`FileSystemHandle`, non-extractable `CryptoKey`) directly without serializing them into strings or holding entire `Blob` payloads in memory at once. Never use `localStorage` for client-side persistence due to its main-thread performance cost.
+When your application needs to persist client-side state across sessions — such as offline documents, cached API payloads, or user-generated content — use IndexedDB. Unlike `localStorage`, which blocks the main thread on synchronous disk I/O, lacks transactions, and only accepts strings, IndexedDB is asynchronous, transactional, and uses the structured clone algorithm to store JavaScript objects, binary data (`Blob`, `File`, `ArrayBuffer`), and platform capability objects (`FileSystemHandle`, non-extractable `CryptoKey`) directly without serializing them into strings or holding entire `Blob` payloads in memory at once. Never use `localStorage` for client-side persistence: beyond its main-thread performance cost, its lack of transactions forces browsers to flush writes loosely without durability guarantees, creating a high risk of data loss on browser crashes.
 
 ## Opening a database, schema migrations, and connection lifecycle
 
@@ -183,7 +183,7 @@ function getRecentNotes(database, { sinceTimestamp = 0, limit = 50 } = {}) {
 - **Isolate critical data from expendable caches with Storage Buckets:** When your application stores both critical user data (such as unsynced drafts) and evictable caches, use `navigator.storageBuckets.open()` to place them in separate buckets with independent persistence and expiration policies instead of marking the entire origin persistent.
 - **Understand the Same-Origin security model:** IndexedDB is isolated per origin by the Same-Origin Policy — other websites cannot access your database. It is appropriate for storing user documents, personal data (PII), offline application state, `FileSystemHandle` grants, and non-extractable `CryptoKey` objects. However, because any script running in your origin can read IndexedDB (for example, during an XSS attack) and data resides on the local disk:
   - Never store unencrypted passwords in client-side storage, and prefer `HttpOnly` cookies for session authentication credentials.
-  - Clear local databases (`indexedDB.deleteDatabase(DB_NAME)` or `store.clear()`) when a user signs out so data is not left behind on shared devices.
+  - Clear local databases (`indexedDB.deleteDatabase(DB_NAME)` or `store.clear()`, or by sending a `Clear-Site-Data: "storage"` HTTP response header from the sign-out endpoint) when a user signs out so data is not left behind on shared devices.
 
 ## Progressive enhancement and fallbacks
 
