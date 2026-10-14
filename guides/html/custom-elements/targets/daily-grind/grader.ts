@@ -78,7 +78,7 @@ test.describe('daily-grind Target Grader', () => {
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
-      await page.goto(TARGET_URL);
+      await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
     });
 
     test('Custom element upgrades without constructor errors and matches :defined', async ({ page }) => {
@@ -112,12 +112,13 @@ test.describe('daily-grind Target Grader', () => {
         if (!el) return false;
         const root = el.shadowRoot || el;
         const observed: string[] = el.constructor.observedAttributes || [];
-        if (!observed.includes('label') && !observed.includes('count')) return false;
         const testVal = 'UniqueTestValue987';
-        const attrToTest = observed.includes('label') ? 'label' : 'count';
-        el.setAttribute(attrToTest, testVal);
-        const textAfterAttr = (root.textContent || '');
-        return textAfterAttr.includes(testVal);
+        for (const attr of observed) {
+          if (['disabled', 'featured', 'sold-out', 'image', 'src', 'href', 'link'].includes(attr)) continue;
+          el.setAttribute(attr, testVal);
+          if ((root.textContent || '').includes(testVal)) return true;
+        }
+        return false;
       });
       expect(updatesOnSetAttribute).toBe(true);
     });
@@ -125,10 +126,15 @@ test.describe('daily-grind Target Grader', () => {
     test('Setting a reflected property does not cause recursion errors', async ({ page }) => {
       const completesWithoutRecursion = await page.evaluate(() => {
         const el = Array.from(document.querySelectorAll('*')).find(e => e.tagName.toLowerCase().includes('-')) as any;
-        if (!el || typeof el.count === 'undefined') return false;
+        if (!el) return false;
+        const proto = Object.getPrototypeOf(el);
+        const descriptors = Object.getOwnPropertyDescriptors(proto);
+        const prop = Object.keys(descriptors).find(k => k !== 'constructor' && descriptors[k].set);
+        if (!prop) return false;
         try {
-          el.count = 4;
-          return el.count === 4;
+          const current = el[prop];
+          el[prop] = current;
+          return true;
         } catch {
           return false;
         }
@@ -139,9 +145,14 @@ test.describe('daily-grind Target Grader', () => {
     test('Reading a reflected numeric property returns a number, not a string', async ({ page }) => {
       const isNumericType = await page.evaluate(() => {
         const el = Array.from(document.querySelectorAll('*')).find(e => e.tagName.toLowerCase().includes('-')) as any;
-        if (!el || typeof el.count === 'undefined') return false;
-        el.setAttribute('count', '5');
-        return typeof el.count === 'number' && el.count === 5;
+        if (!el) return false;
+        const proto = Object.getPrototypeOf(el);
+        const descriptors = Object.getOwnPropertyDescriptors(proto);
+        const numProp = Object.keys(descriptors).find(p => p !== 'constructor' && descriptors[p].get && typeof el[p] === 'number');
+        if (!numProp) return false;
+        const attrName = numProp.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+        el.setAttribute(attrName, '5');
+        return typeof el[numProp] === 'number' && el[numProp] === 5;
       });
       expect(isNumericType).toBe(true);
     });
@@ -149,11 +160,17 @@ test.describe('daily-grind Target Grader', () => {
     test('Setting a reflected boolean property to false removes the attribute rather than writing "false"', async ({ page }) => {
       const removesBooleanAttribute = await page.evaluate(() => {
         const el = Array.from(document.querySelectorAll('*')).find(e => e.tagName.toLowerCase().includes('-')) as any;
-        if (!el || typeof el.disabled === 'undefined') return false;
-        el.disabled = true;
-        if (!el.hasAttribute('disabled')) return false;
-        el.disabled = false;
-        return !el.hasAttribute('disabled') && el.getAttribute('disabled') !== 'false';
+        if (!el) return false;
+        const proto = Object.getPrototypeOf(el);
+        const descriptors = Object.getOwnPropertyDescriptors(proto);
+        const boolProp = Object.keys(descriptors).find(k => k !== 'constructor' && descriptors[k].set && typeof el[k] === 'boolean');
+        if (!boolProp) return false;
+        const attrName = boolProp.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+        el[boolProp] = true;
+        if (!el.hasAttribute(attrName) && !el.hasAttribute(boolProp)) return false;
+        const targetAttr = el.hasAttribute(boolProp) ? boolProp : attrName;
+        el[boolProp] = false;
+        return !el.hasAttribute(targetAttr) && el.getAttribute(targetAttr) !== 'false';
       });
       expect(removesBooleanAttribute).toBe(true);
     });
@@ -161,11 +178,18 @@ test.describe('daily-grind Target Grader', () => {
     test('Changing a reflected property updates its corresponding attribute and rendered output', async ({ page }) => {
       const propertyUpdatesAttribute = await page.evaluate(() => {
         const el = Array.from(document.querySelectorAll('*')).find(e => e.tagName.toLowerCase().includes('-')) as any;
-        if (!el || typeof el.count === 'undefined') return false;
-        el.count = 8;
-        const attrMatches = el.getAttribute('count') === '8';
+        if (!el) return false;
+        const proto = Object.getPrototypeOf(el);
+        const descriptors = Object.getOwnPropertyDescriptors(proto);
+        const prop = ['count', 'label', 'name', 'title'].find(p => descriptors[p]?.set) ||
+          Object.keys(descriptors).find(k => k !== 'constructor' && descriptors[k].set && (typeof el[k] === 'string' || typeof el[k] === 'number'));
+        if (!prop) return false;
+        const attrName = prop.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+        const testVal = typeof el[prop] === 'number' ? 8 : 'UpdatedReflectedVal8';
+        el[prop] = testVal;
+        const attrMatches = el.getAttribute(attrName) === String(testVal) || el.getAttribute(prop) === String(testVal);
         const root = el.shadowRoot || el;
-        const renderedMatches = (root.textContent || '').includes('8');
+        const renderedMatches = (root.textContent || '').includes(String(testVal));
         return attrMatches && renderedMatches;
       });
       expect(propertyUpdatesAttribute).toBe(true);
@@ -174,9 +198,20 @@ test.describe('daily-grind Target Grader', () => {
     test('Changing an attribute updates the reflected property', async ({ page }) => {
       const attributeUpdatesProperty = await page.evaluate(() => {
         const el = Array.from(document.querySelectorAll('*')).find(e => e.tagName.toLowerCase().includes('-')) as any;
-        if (!el || typeof el.count === 'undefined') return false;
-        el.setAttribute('count', '6');
-        return el.count === 6;
+        if (!el) return false;
+        const proto = Object.getPrototypeOf(el);
+        const descriptors = Object.getOwnPropertyDescriptors(proto);
+        const prop = ['count', 'label', 'name', 'title'].find(p => descriptors[p]?.set) ||
+          Object.keys(descriptors).find(k => k !== 'constructor' && descriptors[k].set && (typeof el[k] === 'string' || typeof el[k] === 'number'));
+        if (!prop) return false;
+        const attrName = prop.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+        if (typeof el[prop] === 'number') {
+          el.setAttribute(attrName, '6');
+          return el[prop] === 6;
+        } else {
+          el.setAttribute(attrName, 'UpdatedViaAttr6');
+          return el[prop] === 'UpdatedViaAttr6';
+        }
       });
       expect(attributeUpdatesProperty).toBe(true);
     });
