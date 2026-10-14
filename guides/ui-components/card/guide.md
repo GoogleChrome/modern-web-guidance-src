@@ -147,23 +147,7 @@ When the whole card is one destination and has no independent actions, use one n
 
 ### Choice cards
 
-Style native controls and their labels as cards. Use radios for one choice and checkboxes for independent choices:
-
-```html
-<fieldset>
-  <legend>Choose a delivery method</legend>
-  <label class="card">
-    <input type="radio" name="delivery" value="standard">
-    <strong>Standard delivery</strong>
-    <span>Arrives in 3–5 working days</span>
-  </label>
-  <label class="card">
-    <input type="radio" name="delivery" value="express">
-    <strong>Express delivery</strong>
-    <span>Arrives the next working day</span>
-  </label>
-</fieldset>
-```
+For cards that represent predefined choices, use `<label class="card">` with a checkbox or radio as a direct child.
 
 Style the selected option card with `:has(:checked)` using more than color alone (such as border thickness or font weight):
 
