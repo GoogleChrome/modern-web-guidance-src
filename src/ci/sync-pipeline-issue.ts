@@ -720,9 +720,8 @@ export function renderSankeyDiagram(params: {
   readyForEvals: number;
   guidePrsInReview: number;
   notStarted: number;
-  needsUseCases: number;
 }): string {
-  const { complete, evalPrsInReview, readyForEvals, guidePrsInReview, notStarted, needsUseCases } = params;
+  const { complete, evalPrsInReview, readyForEvals, guidePrsInReview, notStarted } = params;
   const needsEvals = evalPrsInReview + readyForEvals;
   const needsGuidance = guidePrsInReview + notStarted;
 
@@ -740,7 +739,6 @@ export function renderSankeyDiagram(params: {
     '      "Complete": "#4285F4"',
     '      "Needs evals": "#FBBC04"',
     '      "Needs guidance": "#E37400"',
-    '      "Needs use cases": "#5F6368"',
     '      "Eval PR in review": "#E37400"',
     '      "Ready for evals": "#FBBC04"',
     '      "Guide PR in review": "#E37400"',
@@ -751,19 +749,12 @@ export function renderSankeyDiagram(params: {
     `Tracked, Complete, ${complete}`,
     `Tracked, Needs evals, ${needsEvals}`,
     `Tracked, Needs guidance, ${needsGuidance}`,
-  ];
-
-  if (needsUseCases > 0) {
-    lines.push(`Tracked, Needs use cases, ${needsUseCases}`);
-  }
-
-  lines.push(
     `Needs evals, Eval PR in review, ${evalPrsInReview}`,
     `Needs evals, Ready for evals, ${readyForEvals}`,
     `Needs guidance, Guide PR in review, ${guidePrsInReview}`,
     `Needs guidance, Not started, ${notStarted}`,
-    '```'
-  );
+    '```',
+  ];
 
   return lines.join('\n');
 }
@@ -787,6 +778,12 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     data.progressBar.summaryLine,
     '',
     `[${data.completeCount} landed complete](${REPO_URL}/tree/main/guides) · [${data.openEvalPrs.length} eval PRs in review](#open-eval-prs-${data.openEvalPrs.length}) · [${data.readyForEvalSlugs.length} ready for evals](#ready-for-gd-dev-${data.readyForEvalSlugs.length}) · [${data.needsGuidancePrs.length} guide PRs in review](#in-review--open-prs-${data.needsGuidancePrs.length}) · [${data.needsGuidanceIssues.length} use-case issues open](${REPO_URL}/issues?q=is%3Aissue+is%3Aopen+label%3Anew-use-case)`,
+    ...(data.needsUseCasesIssues.length > 0
+      ? [
+          '',
+          `[${data.needsUseCasesIssues.length} features awaiting use cases](#stage-1-needs-use-cases-${data.needsUseCasesIssues.length}) ([open \`new-feature\` issues](${REPO_URL}/issues?q=is%3Aissue+is%3Aopen+label%3Anew-feature))`,
+        ]
+      : []),
     '',
     '### Progress Toward 200 Guides',
     '',
@@ -1311,7 +1308,6 @@ export function buildPipelineReportData(params: {
     readyForEvals: readyForEvalSlugs.length,
     guidePrsInReview: needsGuidancePrs.length,
     notStarted: needsGuidanceIssues.length,
-    needsUseCases: params.openFeatureIssues.length,
   });
 
   return {

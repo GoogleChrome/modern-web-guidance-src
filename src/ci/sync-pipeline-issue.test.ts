@@ -249,16 +249,15 @@ describe('renderSankeyDiagram', () => {
       readyForEvals: 12,
       guidePrsInReview: 17,
       notStarted: 45,
-      needsUseCases: 142,
     });
     assert.match(diagram, /config:\s+themeCSS: "\.link \{ mix-blend-mode: normal; stroke-opacity: 0\.45; \}"/);
     assert.match(diagram, /linkColor: target/);
     assert.match(diagram, /nodeColors:\s+"Tracked": "#9AA0A6"/);
+    assert.doesNotMatch(diagram, /Needs use cases/);
     assert.match(diagram, /sankey-beta/);
     assert.match(diagram, /Tracked, Complete, 140/);
     assert.match(diagram, /Tracked, Needs evals, 28/);
     assert.match(diagram, /Tracked, Needs guidance, 62/);
-    assert.match(diagram, /Tracked, Needs use cases, 142/);
     assert.match(diagram, /Needs evals, Eval PR in review, 16/);
     assert.match(diagram, /Needs evals, Ready for evals, 12/);
     assert.match(diagram, /Needs guidance, Guide PR in review, 17/);
@@ -838,12 +837,13 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
 
     const markdown = renderPipelineIssueBody(report);
 
-    // Stage 1 & Sankey matches
+    // Stage 1, header line, & Sankey matches
     assert.match(markdown, /## Stage 1: Needs use cases \(1\)/);
+    assert.match(markdown, /\[1 features awaiting use cases\]\(#stage-1-needs-use-cases-1\)/);
     assert.match(markdown, /Tracked, Complete, 2/);
     assert.match(markdown, /Tracked, Needs evals, 2/);
     assert.match(markdown, /Tracked, Needs guidance, 2/);
-    assert.match(markdown, /Tracked, Needs use cases, 1/);
+    assert.doesNotMatch(markdown, /Tracked, Needs use cases/);
     assert.match(markdown, /Needs evals, Eval PR in review, 1/);
     assert.match(markdown, /Needs evals, Ready for evals, 1/);
     assert.match(markdown, /Needs guidance, Guide PR in review, 1/);
@@ -916,5 +916,30 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       report.openEvalPrs.length + report.readyForEvalSlugs.length,
       report.contentLandedCount - report.completeCount
     );
+  });
+
+  it('enforces that sankey root total equals total guides tracked in the progress bar', () => {
+    const complete = 140;
+    const evalPrsInReview = 22;
+    const readyForEvals = 6;
+    const guidePrsInReview = 16;
+    const notStarted = 45;
+
+    const sankey = renderSankeyDiagram({
+      complete,
+      evalPrsInReview,
+      readyForEvals,
+      guidePrsInReview,
+      notStarted,
+    });
+
+    // Tracked flows to Complete, Needs evals, and Needs guidance
+    const flows = Array.from(sankey.matchAll(/^Tracked, [^,]+, (\d+)$/gm)).map(m => Number(m[1]));
+    const sankeyTrackedTotal = flows.reduce((sum, n) => sum + n, 0);
+
+    // Landed guides (168) + guide PRs (16) + use cases (45) = 229
+    const barTrackedTotal = (complete + evalPrsInReview + readyForEvals) + guidePrsInReview + notStarted;
+    assert.equal(sankeyTrackedTotal, barTrackedTotal);
+    assert.equal(sankeyTrackedTotal, 229);
   });
 });
