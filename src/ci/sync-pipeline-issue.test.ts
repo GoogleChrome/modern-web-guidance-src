@@ -226,6 +226,25 @@ describe('renderTwoRowProgressBar', () => {
     );
     assert.equal(over.summaryLine, '215 landed or in review');
   });
+
+  it('renders third Audited row when auditedRow is provided, keeping existing scale and format', () => {
+    const res = renderTwoRowProgressBar({
+      complete: 140,
+      openEvalGuides: 16,
+      contentLanded: 168,
+      openGuideGuides: 17,
+      notStartedIssues: 51,
+      staleEvalsCount: 2,
+      baseline: 127,
+      scaleMax: PIPELINE_SCALE_MAX,
+      auditedRow: 'Audited   ' + '█'.repeat(10) + '░'.repeat(22) + '·'.repeat(41) + '  137 clean · 22 flagged (9 stale)',
+    });
+
+    assert.ok(res.auditedRow);
+    assert.ok(res.text.includes('Audited   '));
+    assert.equal(res.text.split('\n').length, 6); // header + 3 rows + 2 ruler lines
+    assert.equal(res.text.split('\n')[3], res.auditedRow);
+  });
 });
 
 describe('renderProgressChart', () => {
@@ -554,6 +573,45 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     } finally {
       fs.rmSync(tmpRoot, { recursive: true, force: true });
     }
+  });
+
+  it('renders three-row progress bar and audit findings section when audit snapshots are provided', () => {
+    const completeGuide1 = makeGuide({ category: 'css', name: 'clean-guide' });
+    const completeGuide2 = makeGuide({ category: 'built-in-ai', name: 'flagged-guide' });
+
+    const auditSnapshot = {
+      schemaVersion: 1,
+      source: 'expectations-coverage',
+      auditedAt: '2026-09-24T20:50:15.853Z',
+      auditedSha: 'e17f2c81da5dc393faddc3cca5757ede9dd29961',
+      tool: 'gd audit-evals',
+      assetName: 'audit-2026-09-24-expectations-coverage.json',
+      guides: {
+        'built-in-ai/flagged-guide': [{ code: 'CONTRADICTS_GUIDE', severity: 'HIGH' as const, file: 'expectations.md' }],
+      },
+    };
+
+    const reportData = buildPipelineReportData({
+      guides: [completeGuide1, completeGuide2],
+      openPrs: [],
+      openUseCaseIssues: [],
+      openFeatureIssues: [],
+      openExpectationsChangedIssues: [],
+      gitHistory: new Map(),
+      auditSnapshots: [auditSnapshot],
+      baselineComplete: 0,
+    });
+
+    assert.ok(reportData.progressBar.auditedRow);
+    assert.ok(reportData.progressBar.text.includes('Audited   '));
+    assert.equal(reportData.progressBar.text.split('\n').length, 6); // header + 3 rows + 2 ruler lines
+
+    const body = renderPipelineIssueBody(reportData);
+    assert.ok(body.includes('## Quality Audits (1 clean · 1 flagged)'));
+    assert.ok(body.includes('### Snapshot Sources'));
+    assert.ok(body.includes('expectations-coverage'));
+    assert.ok(body.includes('| `CONTRADICTS_GUIDE` | **1** |'));
+    assert.ok(body.includes('[**built-in-ai/flagged-guide**]'));
   });
 });
 

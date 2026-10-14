@@ -31,6 +31,14 @@ import {
 } from '../core/guide-validation.ts';
 import { DEV_PR_BRANCH_PREFIX, DEV_PR_TITLE_PREFIX } from '../authoring/pr.ts';
 import { rootDir } from '../core/paths.ts';
+import {
+  type AuditEvaluationSummary,
+  type AuditSnapshot,
+  evaluateAuditStatus,
+  fetchLatestAuditSnapshots,
+  renderAuditFindingsSection,
+  renderAuditRow,
+} from './audit-snapshot.ts';
 import { buildFeatureToIssueMap, buildUseCaseMaps } from './sync-use-cases.ts';
 
 export const ORG = 'GoogleChrome';
@@ -138,6 +146,7 @@ export interface TwoRowProgressBar {
   header: string;
   guidesRow: string;
   evalsRow: string;
+  auditedRow?: string;
   rulerLine: string;
   summaryLine: string;
   text: string;
@@ -158,6 +167,7 @@ export interface PipelineReportData {
   staleEvals: StaleEvalItem[];
   legacyEvals: LegacyEvalItem[];
   dualTargetCompleteCount: number;
+  auditEvaluation?: AuditEvaluationSummary;
 }
 
 export function formatReviewDecision(decision: string | null | undefined, isDraft: boolean): string {
@@ -608,6 +618,7 @@ export function renderTwoRowProgressBar(params: {
   notStartedIssues?: number;
   staleEvalsCount?: number;
   scaleMax?: number;
+  auditedRow?: string;
 }): TwoRowProgressBar {
   const scaleMax = params.scaleMax ?? PIPELINE_SCALE_MAX;
   const baseline = params.baseline;
@@ -626,6 +637,7 @@ export function renderTwoRowProgressBar(params: {
   const guidesRow = renderRow('Guides', params.contentLanded, params.openGuideGuides);
   const staleFlag = params.staleEvalsCount && params.staleEvalsCount > 0 ? ` (${params.staleEvalsCount} stale)` : '';
   const evalsRow = renderRow('Evals', params.complete, params.openEvalGuides, staleFlag);
+  const auditedRow = params.auditedRow;
 
   // Ruler line with ticks at 150 and 200
   // Column 10 is offset 0 (baseline).
@@ -651,13 +663,20 @@ export function renderTwoRowProgressBar(params: {
   const n = params.contentLanded + params.openGuideGuides;
   const summaryLine = `${n} landed or in review`;
 
+  const rowLines = [header, guidesRow, evalsRow];
+  if (auditedRow) {
+    rowLines.push(auditedRow);
+  }
+  rowLines.push(rulerLine);
+
   return {
     header,
     guidesRow,
     evalsRow,
+    auditedRow,
     rulerLine,
     summaryLine,
-    text: `${header}\n${guidesRow}\n${evalsRow}\n${rulerLine}`,
+    text: rowLines.join('\n'),
   };
 }
 
@@ -952,6 +971,10 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     `> **Note:** Paused while \`gd dev-gap\` prioritizes covering the **${totalNeedsEvals} finished guides missing evals** above with Gen 2 (\`targets/\`) evals.`
   );
+
+  if (data.auditEvaluation) {
+    lines.push('', renderAuditFindingsSection(data.auditEvaluation));
+  }
 
   return lines.join('\n');
 }
@@ -1251,7 +1274,10 @@ export function buildPipelineReportData(params: {
   gitHistory: Map<string, GitFileHistory>;
   weeklyProgressPoints?: WeeklyProgressPoint[];
   baselineComplete?: number;
+  auditSnapshots?: AuditSnapshot[];
+  cwd?: string;
 }): PipelineReportData {
+  const cwd = params.cwd ?? rootDir;
   const validGuides = params.guides.filter(g => g.category !== 'test-results' && (g.hasGuide || g.isStub));
   const featureGuides = validGuides.filter(
     g => !isDisciplineGuide(g.name, g.category) && !g.isDisciplineGuide
@@ -1294,10 +1320,16 @@ export function buildPipelineReportData(params: {
   const staleEvals = findStaleEvals(validGuides, params.gitHistory, params.openExpectationsChangedIssues);
   const { legacyEvals, gen2CompleteCount, dualTargetCompleteCount } = findLegacyFormatGuides(validGuides);
 
+  // Audit health across complete feature guides
+  const auditEvaluation =
+    params.auditSnapshots && params.auditSnapshots.length > 0
+      ? evaluateAuditStatus({ guides: validGuides, snapshots: params.auditSnapshots, cwd })
+      : undefined;
+
   // Weekly progress history: historical points from git, today's point matches current-state numbers
   const todayLa = getLaDateString(new Date());
   const todayLabel = formatShortDate(todayLa);
-  const baseWeekly = params.weeklyProgressPoints ?? fetchWeeklyProgressHistory();
+  const baseWeekly = params.weeklyProgressPoints ?? fetchWeeklyProgressHistory({ cwd });
   const firstHistoricalPoint = baseWeekly[0];
   const baseline = params.baselineComplete ?? firstHistoricalPoint?.complete;
   if (baseline === undefined) {
@@ -1317,6 +1349,16 @@ export function buildPipelineReportData(params: {
     weeklyProgressPoints[weeklyProgressPoints.length - 1] = todayPoint;
   }
 
+  const auditedRow = auditEvaluation
+    ? renderAuditRow({
+        clean: auditEvaluation.cleanCount,
+        flagged: auditEvaluation.flaggedCount,
+        staleCount: auditEvaluation.staleCount,
+        baseline,
+        scaleMax: PIPELINE_SCALE_MAX,
+      })
+    : undefined;
+
   const progressBar = renderTwoRowProgressBar({
     complete: completeCount,
     openEvalGuides: openEvalPrs.length,
@@ -1326,6 +1368,7 @@ export function buildPipelineReportData(params: {
     staleEvalsCount: staleEvals.length,
     baseline,
     scaleMax: PIPELINE_SCALE_MAX,
+    auditedRow,
   });
 
   const weeklyChart = renderProgressChart(weeklyProgressPoints);
@@ -1353,6 +1396,7 @@ export function buildPipelineReportData(params: {
     staleEvals,
     legacyEvals,
     dualTargetCompleteCount,
+    auditEvaluation,
   };
 }
 
@@ -1368,6 +1412,7 @@ export function runSyncPipelineIssue(): void {
   const openExpectationsChangedIssues = fetchOpenIssuesByLabel(EXPECTATIONS_CHANGED_LABEL);
   const gitHistory = collectGitGuideHistory(rootDir);
   const existingIssueBody = fetchIssueBody(PIPELINE_ISSUE_NUMBER);
+  const auditSnapshots = fetchLatestAuditSnapshots();
 
   const reportData = buildPipelineReportData({
     guides,
@@ -1376,6 +1421,7 @@ export function runSyncPipelineIssue(): void {
     openFeatureIssues,
     openExpectationsChangedIssues,
     gitHistory,
+    auditSnapshots,
   });
 
   const nextBody = renderPipelineIssueBody(reportData);
