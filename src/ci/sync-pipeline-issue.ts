@@ -7,27 +7,31 @@
  */
 
 import child_process from 'node:child_process';
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import matter from 'gray-matter';
 
 import { parseBooleanEnv } from '../core/env.ts';
-import { extractFeatureIds, stripTmpPrefix } from '../core/feature-parser.ts';
+import { stripTmpPrefix } from '../core/feature-parser.ts';
 import {
+  DEMO_FILE,
   EXPECTATIONS_FILE,
+  FALSY_DRAFT,
+  getGuideStatus,
+  getTaskMap,
   GRADER_FILE,
   GUIDE_FILE,
-  ProjectStatus,
-  TARGETS_DIR,
-  TASK_FILE,
-  getGuideStatus,
   isDisciplineGuide,
+  isDraftStub,
+  ProjectStatus,
   scanAllGuides,
+  TARGETS_DIR,
   type GuideInventory,
+  type TaskInfo,
 } from '../core/guide-validation.ts';
+import { DEV_PR_BRANCH_PREFIX, DEV_PR_TITLE_PREFIX } from '../authoring/pr.ts';
 import { rootDir } from '../core/paths.ts';
-import { buildUseCaseMaps } from './sync-use-cases.ts';
+import { buildFeatureToIssueMap, buildUseCaseMaps } from './sync-use-cases.ts';
 
 export const ORG = 'GoogleChrome';
 export const REPO = 'modern-web-guidance-src';
@@ -35,24 +39,10 @@ export const REPO_URL = `https://github.com/${ORG}/${REPO}`;
 export const PIPELINE_ISSUE_NUMBER = Number(process.env.PIPELINE_ISSUE_NUMBER || 1815);
 export const EXPECTATIONS_CHANGED_LABEL = 'expectations-changed';
 
-export const PIPELINE_BASELINE_DATE = '2026-07-22';
+/** Complete feature guides count as of 2026-07-22 on origin/main (discipline hubs excluded). */
 export const EXPECTED_BASELINE_COMPLETE = 127;
+export const PIPELINE_BASELINE_DATE = '2026-07-22';
 export const PIPELINE_GOAL = 200;
-
-export function fetchBaselineComplete(cwd: string = rootDir): number {
-  try {
-    const sha = child_process
-      .execFileSync('git', ['rev-list', '-1', `--before=${PIPELINE_BASELINE_DATE}T23:59:59Z`, 'origin/main'], {
-        cwd,
-        encoding: 'utf8',
-      })
-      .trim();
-    const analysis = analyzeCommit(sha, { cwd, excludeDisciplineHubs: true });
-    return analysis.complete;
-  } catch {
-    return EXPECTED_BASELINE_COMPLETE;
-  }
-}
 
 export interface PrSummary {
   number: number;
@@ -132,14 +122,6 @@ export interface OpenEvalPrItem {
 export interface CommitAnalysis {
   complete: number;
   needsEvals: number;
-  needsGuidance: number;
-  total: number;
-  completeSlugs: Set<string>;
-  needsEvalsSlugs: Set<string>;
-  needsGuidanceSlugs: Set<string>;
-  gen2CompleteCount?: number;
-  gen1CompleteCount?: number;
-  dualTargetCompleteCount?: number;
 }
 
 export type PrClassification = 'eval' | 'guide' | 'other';
@@ -162,13 +144,10 @@ export interface TwoRowProgressBar {
 export interface PipelineReportData {
   completeCount: number;
   contentLandedCount: number;
-  evalCompleteCount: number;
   gen2CompleteCount: number;
-  baselineComplete: number;
   progressBar: TwoRowProgressBar;
   weeklyChart: string;
   sankey: string;
-  weeklyProgressPoints?: WeeklyProgressPoint[];
   needsGuidancePrs: NeedsGuidancePrItem[];
   needsGuidanceIssues: NeedsGuidanceIssueItem[];
   openEvalPrs: OpenEvalPrItem[];
@@ -178,16 +157,6 @@ export interface PipelineReportData {
   dualTargetCompleteCount: number;
 }
 
-// --- Pure Parsing & Calculation Helpers ---
-
-/**
- * True when the diff on `expectations.md` contains substantive changes beyond
- * adding/modifying `Basic presence:` lines or blank lines.
- *
- * Rationale: `Basic presence:` lines are baseline smoke-test assertions added
- * across existing rubrics for grader-coverage accounting and do not alter the
- * feature-specific grading logic or require regenerating `grader.ts` / `targets/`.
- */
 export function hasSubstantiveExpectationsDiff(diffText: string): boolean {
   const lines = diffText.split('\n');
   for (const line of lines) {
@@ -202,9 +171,6 @@ export function hasSubstantiveExpectationsDiff(diffText: string): boolean {
   return false;
 }
 
-/**
- * Extracts per-target guided Pass@1 and overall HEALTHY status from a `gd pr` evaluation report body.
- */
 export function parseEvalReportFromPrBody(body: string): EvalPrMetrics {
   let dailyGrindPassRate: number | null = null;
   let devtoolsTimesPassRate: number | null = null;
@@ -239,23 +205,17 @@ export function parseEvalReportFromPrBody(body: string): EvalPrMetrics {
   };
 }
 
-/**
- * Formats an ISO date (`YYYY-MM-DD`) as `Mon D` (e.g., `Oct 4`).
- */
+export function getLaDateString(d: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(d);
+}
+
 export function formatShortDate(isoDate: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
   if (!match) return isoDate;
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const monthIdx = Number(match[2]) - 1;
-  const day = Number(match[3]);
-  return `${months[monthIdx] ?? match[2]} ${day}`;
+  const d = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(d);
 }
 
-/**
- * Collects last-commit timestamps for `expectations.md` vs eval files (`grader.ts`, `tasks/`, `targets/`)
- * across all guides in a single `git log` invocation, ignoring pure rename commits (`--diff-filter=AM`)
- * and checking `hasSubstantiveExpectationsDiff` when `expTs > evalTs`.
- */
 export function collectGitGuideHistory(cwd: string = rootDir): Map<string, GitFileHistory> {
   const history = new Map<string, GitFileHistory>();
   const output = child_process.execFileSync(
@@ -318,12 +278,23 @@ export function collectGitGuideHistory(cwd: string = rootDir): Map<string, GitFi
   for (const [slug, entry] of history.entries()) {
     if (entry.expTs > entry.evalTs && entry.evalSha && entry.expSha) {
       try {
-        const diff = child_process.execFileSync(
+        child_process.execFileSync(
           'git',
-          ['diff', '-U0', entry.evalSha, entry.expSha, '--', `guides/${slug}/${EXPECTATIONS_FILE}`],
-          { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+          [
+            'diff',
+            '--quiet',
+            '--unified=0',
+            '--find-renames',
+            '--ignore-blank-lines',
+            '--ignore-matching-lines=Basic presence:',
+            entry.evalSha,
+            entry.expSha,
+            '--',
+            `guides/${slug}/${EXPECTATIONS_FILE}`,
+          ],
+          { cwd, encoding: 'utf8', stdio: 'ignore' }
         );
-        entry.isSubstantiveDiff = hasSubstantiveExpectationsDiff(diff);
+        entry.isSubstantiveDiff = false;
       } catch {
         entry.isSubstantiveDiff = true;
       }
@@ -333,10 +304,6 @@ export function collectGitGuideHistory(cwd: string = rootDir): Map<string, GitFi
   return history;
 }
 
-/**
- * Finds complete guides whose `expectations.md` was substantively updated after their eval files,
- * unioned with any open `expectations-changed` issues.
- */
 export function findStaleEvals(
   guides: GuideInventory[],
   gitHistory: Map<string, GitFileHistory>,
@@ -380,11 +347,10 @@ export function findStaleEvals(
   return items.sort((a, b) => a.slug.localeCompare(b.slug));
 }
 
-/**
- * Finds guides still using Gen 1 legacy root `grader.ts` instead of Gen 2 `targets/`,
- * and counts Gen 2 (`targets/`) and dual-target complete guides.
- */
-export function findLegacyFormatGuides(guides: GuideInventory[]): {
+export function findLegacyFormatGuides(
+  guides: GuideInventory[],
+  taskMap: Map<string, TaskInfo> = getTaskMap()
+): {
   legacyEvals: LegacyEvalItem[];
   gen2CompleteCount: number;
   dualTargetCompleteCount: number;
@@ -406,20 +372,9 @@ export function findLegacyFormatGuides(guides: GuideInventory[]): {
       continue;
     }
 
-    const rootGraderPath = path.join(g.dir, GRADER_FILE);
-    if (fs.existsSync(rootGraderPath)) {
-      const taskMdPath = path.join(g.dir, 'tasks', TASK_FILE);
-      let baseApp = 'daily-grind';
-      if (fs.existsSync(taskMdPath)) {
-        try {
-          const parsed = matter(fs.readFileSync(taskMdPath, 'utf8'));
-          if (parsed.data?.base_app === 'devtools-times') {
-            baseApp = 'devtools-times';
-          }
-        } catch {
-          // Default to daily-grind
-        }
-      }
+    if (g.hasGrader) {
+      const task = taskMap.get(`${g.name}/task`);
+      const baseApp = task?.baseApp === 'devtools-times' ? 'devtools-times' : 'daily-grind';
       legacyEvals.push({
         slug: `${g.category}/${g.name}`,
         missingTarget: baseApp === 'devtools-times' ? 'daily-grind' : 'devtools-times',
@@ -434,22 +389,18 @@ export function findLegacyFormatGuides(guides: GuideInventory[]): {
 const EMPTY_BLOB_SHA = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
 
 export function parseFrontmatterDraft(content: string): { isDraft: boolean; hasContent: boolean } {
-  if (!content.startsWith('---')) {
+  try {
+    const { data = {}, content: body = '' } = matter(content);
+    const draftVal =
+      typeof data.draft === 'string' && FALSY_DRAFT.has(data.draft.trim().toLowerCase())
+        ? false
+        : Boolean(data.draft);
+    const isDraft = Boolean(draftVal) || isDraftStub(data.draft);
+    const hasContent = body.trim().length > 0;
+    return { isDraft, hasContent };
+  } catch {
     return { isDraft: false, hasContent: content.trim().length > 0 };
   }
-  const endIdx = content.indexOf('\n---', 3);
-  if (endIdx === -1) {
-    return { isDraft: false, hasContent: content.trim().length > 0 };
-  }
-  const frontmatter = content.substring(3, endIdx);
-  const body = content.substring(endIdx + 4);
-  const draftMatch = frontmatter.match(/^\s*draft\s*:\s*(.+)$/m);
-  let isDraft = false;
-  if (draftMatch) {
-    const val = draftMatch[1].trim().toLowerCase().replace(/['"]/g, '');
-    isDraft = !['false', '0', 'no', 'off'].includes(val);
-  }
-  return { isDraft, hasContent: body.trim().length > 0 };
 }
 
 export function analyzeCommit(
@@ -489,7 +440,7 @@ export function analyzeCommit(
 
   const guideBlobsToFetch: { slug: string; blobSha: string }[] = [];
   for (const [slug, files] of guideFiles) {
-    const guideBlobSha = files.get('guide.md');
+    const guideBlobSha = files.get(GUIDE_FILE);
     if (guideBlobSha && guideBlobSha !== EMPTY_BLOB_SHA) {
       guideBlobsToFetch.push({ slug, blobSha: guideBlobSha });
     }
@@ -527,73 +478,34 @@ export function analyzeCommit(
 
   let complete = 0;
   let needsEvals = 0;
-  let needsGuidance = 0;
-  let gen2CompleteCount = 0;
-  let gen1CompleteCount = 0;
-  let dualTargetCompleteCount = 0;
-  const completeSlugs = new Set<string>();
-  const needsEvalsSlugs = new Set<string>();
-  const needsGuidanceSlugs = new Set<string>();
 
   for (const [slug, files] of guideFiles) {
     const [category, name] = slug.split('/');
-    const isDiscipline = isDisciplineGuide(name, category);
-    if (options.excludeDisciplineHubs && isDiscipline) {
+    if (options.excludeDisciplineHubs && isDisciplineGuide(name, category)) {
       continue;
     }
 
-    const hasGuideFile = files.has('guide.md');
+    const hasGuideFile = files.has(GUIDE_FILE);
     const isDraft = isDraftMap.get(slug) ?? false;
     const hasGuideContent = hasContentMap.get(slug) ?? false;
     const hasGuide = hasGuideFile && hasGuideContent && !isDraft;
 
-    const hasExpectationsFile = files.has('expectations.md');
-    const expBlobSha = files.get('expectations.md');
+    const hasExpectationsFile = files.has(EXPECTATIONS_FILE);
+    const expBlobSha = files.get(EXPECTATIONS_FILE);
     const hasExpectations = hasExpectationsFile && expBlobSha !== EMPTY_BLOB_SHA;
 
-    let hasGen2 = false;
-    let targetsCount = 0;
-    for (const [subpath] of files) {
-      if (subpath.startsWith('targets/') && subpath.endsWith('/grader.ts')) {
-        hasGen2 = true;
-        targetsCount++;
-      }
-    }
-    const hasRootGrader = files.has('grader.ts');
-    const hasGrader = hasGen2 || hasRootGrader;
+    const hasGrader =
+      files.has(GRADER_FILE) ||
+      Array.from(files.keys()).some(k => k.startsWith(`${TARGETS_DIR}/`) && k.endsWith(`/${GRADER_FILE}`));
 
     if (hasGuide && hasGrader) {
       complete++;
-      completeSlugs.add(slug);
-      if (hasGen2) {
-        gen2CompleteCount++;
-        if (targetsCount >= 2) {
-          dualTargetCompleteCount++;
-        }
-      } else {
-        gen1CompleteCount++;
-      }
     } else if (hasGuide && hasExpectations && !hasGrader) {
       needsEvals++;
-      needsEvalsSlugs.add(slug);
-    } else {
-      needsGuidance++;
-      needsGuidanceSlugs.add(slug);
     }
   }
 
-  return {
-    complete,
-    needsEvals,
-    needsGuidance,
-    total: complete + needsEvals + needsGuidance,
-    completeSlugs,
-    needsEvalsSlugs,
-    needsGuidanceSlugs,
-    gen2CompleteCount,
-    gen1CompleteCount,
-    dualTargetCompleteCount,
-  };
+  return { complete, needsEvals };
 }
 
 const commitAnalysisCache = new Map<string, CommitAnalysis>();
@@ -602,7 +514,8 @@ export function getCachedCommitAnalysis(
   commitSha: string,
   options: { excludeDisciplineHubs?: boolean; cwd?: string } = {}
 ): CommitAnalysis {
-  const cacheKey = `${commitSha}:${Boolean(options.excludeDisciplineHubs)}`;
+  const cwd = options.cwd ?? rootDir;
+  const cacheKey = `${cwd}:${commitSha}:${Boolean(options.excludeDisciplineHubs)}`;
   const cached = commitAnalysisCache.get(cacheKey);
   if (cached) return cached;
   const analysis = analyzeCommit(commitSha, options);
@@ -617,7 +530,7 @@ export function classifyPr(pr: {
   files?: string[];
 }): PrClassification {
   const files = pr.files ?? [];
-  const touchesGuideMd = files.some(f => /(?:^|\/)guide\.md$/.test(f));
+  const touchesGuideMd = files.some(f => f === GUIDE_FILE || f.endsWith(`/${GUIDE_FILE}`));
   if (touchesGuideMd) {
     return 'guide';
   }
@@ -633,7 +546,7 @@ export function classifyPr(pr: {
     if (m) {
       touchedGuides++;
       const rel = m[3];
-      if (!rel.startsWith('targets/') && rel !== 'grader.ts' && !rel.startsWith('tasks/')) {
+      if (!rel.startsWith(`${TARGETS_DIR}/`) && rel !== GRADER_FILE && !rel.startsWith('tasks/')) {
         onlyEvalFiles = false;
       }
     } else {
@@ -642,8 +555,8 @@ export function classifyPr(pr: {
   }
 
   const isEval =
-    headRef.startsWith('gd-dev/') ||
-    title.toLowerCase().startsWith('grader updates:') ||
+    headRef.startsWith(DEV_PR_BRANCH_PREFIX) ||
+    title.toLowerCase().startsWith(DEV_PR_TITLE_PREFIX) ||
     labels.includes('gd-dev-eval') ||
     (onlyEvalFiles && touchedGuides > 0);
 
@@ -667,8 +580,8 @@ export function isDisciplinePr(pr: {
     }
   }
   const headRef = pr.headRefName ?? '';
-  if (headRef.startsWith('gd-dev/')) {
-    const name = headRef.slice('gd-dev/'.length);
+  if (headRef.startsWith(DEV_PR_BRANCH_PREFIX)) {
+    const name = headRef.slice(DEV_PR_BRANCH_PREFIX.length);
     if (isDisciplineGuide(name)) {
       return true;
     }
@@ -691,84 +604,30 @@ export function renderTwoRowProgressBar(params: {
 
   const header = `Since Jul 22 (${baseline}) → ${goal}`;
 
-  // Guides row:
-  // █ = content landed since baseline, ░ = distinct guides with an open guide PR, · = remaining to 200
-  const contentSinceBaseline = Math.max(0, Math.min(barWidth, params.contentLanded - baseline));
-  const guidePrCols = Math.max(0, Math.min(barWidth - contentSinceBaseline, params.openGuideGuides));
-  const guidesRemainingCols = Math.max(0, barWidth - contentSinceBaseline - guidePrCols);
+  const renderRow = (label: string, landed: number, inReview: number): string => {
+    const landedCols = Math.max(0, Math.min(barWidth, landed - baseline));
+    const inReviewCols = Math.max(0, Math.min(barWidth - landedCols, inReview));
+    const remainingCols = Math.max(0, barWidth - landedCols - inReviewCols);
+    const bar = '█'.repeat(landedCols) + '░'.repeat(inReviewCols) + '·'.repeat(remainingCols);
+    return `${label.padEnd(10)}${bar}  ${landed} +${inReview} PRs`;
+  };
 
-  const guidesBar =
-    '█'.repeat(contentSinceBaseline) +
-    '░'.repeat(guidePrCols) +
-    '·'.repeat(guidesRemainingCols);
+  const guidesRow = renderRow('Guides', params.contentLanded, params.openGuideGuides);
+  const evalsRow = renderRow('Evals', params.complete, params.openEvalGuides);
 
-  const guidesRow = `Guides    ${guidesBar}  ${params.contentLanded} +${params.openGuideGuides} PRs`;
-
-  // Evals row:
-  // █ = complete since baseline, ░ = distinct guides with an open eval PR, · = remaining to 200
-  const completeSinceBaseline = Math.max(0, Math.min(barWidth, params.complete - baseline));
-  const evalPrCols = Math.max(0, Math.min(barWidth - completeSinceBaseline, params.openEvalGuides));
-  const evalsRemainingCols = Math.max(0, barWidth - completeSinceBaseline - evalPrCols);
-
-  const evalsBar =
-    '█'.repeat(completeSinceBaseline) +
-    '░'.repeat(evalPrCols) +
-    '·'.repeat(evalsRemainingCols);
-
-  const evalsRow = `Evals     ${evalsBar}  ${params.complete} +${params.openEvalGuides} PRs`;
-
-  // Plain text summary line under the code block:
-  // "N landed or in review; M+ more must be started from K open use-case issues"
-  // (N=guides landed+guide PRs, M=200−N if positive, K=not-started issues) — omit the shortfall clause if M≤0
   const n = params.contentLanded + params.openGuideGuides;
   const m = goal - n;
   const k = params.notStartedIssues ?? 0;
   const shortfallClause = m > 0 ? `; ${m}+ more must be started from ${k} open use-case issues` : '';
   const summaryLine = `${n} landed or in review${shortfallClause}`;
 
-  const text = `${header}\n${guidesRow}\n${evalsRow}`;
-
   return {
     header,
     guidesRow,
     evalsRow,
     summaryLine,
-    text,
+    text: `${header}\n${guidesRow}\n${evalsRow}`,
   };
-}
-
-export function renderProgressBar(params: {
-  complete: number;
-  inReview: number;
-  contentLanded?: number;
-  openGuideGuides?: number;
-  notStartedIssues?: number;
-  baseline?: number;
-  goal?: number;
-  barWidth?: number;
-}): TwoRowProgressBar {
-  return renderTwoRowProgressBar({
-    complete: params.complete,
-    openEvalGuides: params.inReview,
-    contentLanded: params.contentLanded ?? params.complete,
-    openGuideGuides: params.openGuideGuides ?? 0,
-    notStartedIssues: params.notStartedIssues ?? 0,
-    baseline: params.baseline ?? EXPECTED_BASELINE_COMPLETE,
-    goal: params.goal ?? PIPELINE_GOAL,
-  });
-}
-
-export function getLaDateString(date: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Los_Angeles',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
-  const year = parts.find(p => p.type === 'year')!.value;
-  const month = parts.find(p => p.type === 'month')!.value;
-  const day = parts.find(p => p.type === 'day')!.value;
-  return `${year}-${month}-${day}`;
 }
 
 export function fetchWeeklyProgressHistory(params: {
@@ -796,27 +655,18 @@ export function fetchWeeklyProgressHistory(params: {
   const points: WeeklyProgressPoint[] = [];
   for (const d of dates) {
     const ts = `${d}T23:59:59Z`;
-    let complete = 0;
-    let contentLanded = 0;
-    try {
-      const sha = child_process
-        .execFileSync('git', ['rev-list', '-1', `--before=${ts}`, 'origin/main'], {
-          cwd,
-          encoding: 'utf8',
-        })
-        .trim();
-      const analysis = getCachedCommitAnalysis(sha, { cwd, excludeDisciplineHubs: true });
-      complete = analysis.complete;
-      contentLanded = analysis.complete + analysis.needsEvals;
-    } catch {
-      complete = EXPECTED_BASELINE_COMPLETE;
-      contentLanded = EXPECTED_BASELINE_COMPLETE;
-    }
+    const sha = child_process
+      .execFileSync('git', ['rev-list', '-1', `--before=${ts}`, 'origin/main'], {
+        cwd,
+        encoding: 'utf8',
+      })
+      .trim();
+    const analysis = getCachedCommitAnalysis(sha, { cwd, excludeDisciplineHubs: true });
     points.push({
       date: d,
       label: formatShortDate(d),
-      complete,
-      contentLanded,
+      complete: analysis.complete,
+      contentLanded: analysis.complete + analysis.needsEvals,
     });
   }
   return points;
@@ -869,15 +719,12 @@ export function renderSankeyDiagram(params: {
   ].join('\n');
 }
 
-/**
- * Renders the full Markdown body for the Canonical Content & Eval Pipeline issue (#1815).
- */
 export function renderPipelineIssueBody(data: PipelineReportData): string {
   const totalNeedsGuidance = data.needsGuidancePrs.length + data.needsGuidanceIssues.length;
   const totalNeedsEvals = data.openEvalPrs.length + data.readyForEvalSlugs.length;
-  const finishedFeatureGuides = data.evalCompleteCount + totalNeedsEvals;
+  const finishedFeatureGuides = data.completeCount + totalNeedsEvals;
   const evalCoveragePct =
-    finishedFeatureGuides > 0 ? Math.round((data.evalCompleteCount / finishedFeatureGuides) * 100) : 100;
+    finishedFeatureGuides > 0 ? Math.round((data.completeCount / finishedFeatureGuides) * 100) : 100;
 
   const lines: string[] = [
     '# Content & Eval Pipeline',
@@ -985,7 +832,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     `### Gen 1 → Gen 2 Eval Migration (\`${data.gen2CompleteCount}\` Gen 2 · \`${data.legacyEvals.length}\` Gen 1)`,
     '',
-    `**Eval Coverage (${finishedFeatureGuides} finished guides):** **${data.evalCompleteCount} / ${finishedFeatureGuides} (${evalCoveragePct}%)** covered — **${data.gen2CompleteCount} Gen 2** (\`targets/\`) · **${data.legacyEvals.length} Gen 1** (legacy root \`grader.ts\`) · **${totalNeedsEvals} Missing evals**`,
+    `**Eval Coverage (${finishedFeatureGuides} finished guides):** **${data.completeCount} / ${finishedFeatureGuides} (${evalCoveragePct}%)** covered — **${data.gen2CompleteCount} Gen 2** (\`targets/\`) · **${data.legacyEvals.length} Gen 1** (legacy root \`grader.ts\`) · **${totalNeedsEvals} Missing evals**`,
     '',
     `> **Note:** Paused while \`gd dev-gap\` prioritizes covering the **${totalNeedsEvals} finished guides missing evals** above with Gen 2 (\`targets/\`) evals.`,
     '',
@@ -1003,8 +850,6 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
   lines.push('', '</details>', '');
   return lines.join('\n');
 }
-
-// --- GitHub Fetching & Assembly ---
 
 export const PR_FETCH_LIMIT = 300;
 export const ISSUE_FETCH_LIMIT = 500;
@@ -1116,48 +961,24 @@ function fetchIssueBody(issueNumber: number): string {
 export interface UseCaseIssueIndex {
   nameToIssueMap: Map<string, IssueSummary>;
   subdirToIssueMap: Map<string, IssueSummary>;
-  featureIdToIssueMap: Map<string, IssueSummary>;
+  featureIdToIssueMap: Map<string, { number: number; body?: string }>;
 }
 
-/**
- * Pre-indexes open `new-use-case` and `new-feature` issues once for O(1) guide lookups.
- */
 export function buildUseCaseIssueIndex(
   useCaseIssues: IssueSummary[],
   featureIssues: IssueSummary[]
 ): UseCaseIssueIndex {
-  const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(useCaseIssues) as {
-    nameToIssueMap: Map<string, IssueSummary>;
-    subdirToIssueMap: Map<string, IssueSummary>;
-  };
-  const featureIdToIssueMap = new Map<string, IssueSummary>();
-
-  for (const featIssue of featureIssues) {
-    for (const fid of extractFeatureIds(featIssue.body)) {
-      const cleanFid = stripTmpPrefix(fid);
-      if (!featureIdToIssueMap.has(cleanFid)) {
-        featureIdToIssueMap.set(cleanFid, featIssue);
-      }
-    }
-  }
-
+  const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(useCaseIssues);
+  const featureIdToIssueMap = buildFeatureToIssueMap(featureIssues);
   return { nameToIssueMap, subdirToIssueMap, featureIdToIssueMap };
 }
 
-/**
- * Matches open `new-use-case` issues (including template-filed issues) to guide slugs (`category/name` or `name`).
- */
 export function matchUseCaseIssue(
   slug: string,
   guideName: string,
-  useCaseIssuesOrIndex: IssueSummary[] | UseCaseIssueIndex,
-  featureIssues: IssueSummary[] = [],
+  index: UseCaseIssueIndex,
   featureIds: string[] = []
-): IssueSummary | null {
-  const index = Array.isArray(useCaseIssuesOrIndex)
-    ? buildUseCaseIssueIndex(useCaseIssuesOrIndex, featureIssues)
-    : useCaseIssuesOrIndex;
-
+): { number: number; assignees?: string[] } | null {
   const bySubdir = index.subdirToIssueMap.get(`guides/${slug}`);
   if (bySubdir) return bySubdir;
   const byName = index.nameToIssueMap.get(guideName);
@@ -1173,9 +994,6 @@ export function matchUseCaseIssue(
 const CATCHALL_INFRA_OWNERS = new Set(['paulirish', 'micahjo7']);
 const EVAL_INFRA_OWNERS = new Set(['paulirish', 'micahjo7', 'TravenReese']);
 
-/**
- * Strips catch-all CODEOWNERS (`paulirish`, `micahjo7`) when more specific ATL or eval reviewers are present.
- */
 export function filterCatchAllReviewers(reviewers: string[], stage: 'guidance' | 'evals'): string[] {
   if (reviewers.length <= 1) return reviewers;
   if (stage === 'guidance') {
@@ -1203,8 +1021,8 @@ function resolveEvalPrs(
       const m = /^guides\/([^/]+\/[^/]+)\//.exec(file);
       if (m) touchedSlugs.add(m[1]);
     }
-    if (touchedSlugs.size === 0 && pr.headRefName.startsWith('gd-dev/')) {
-      const guideName = pr.headRefName.slice('gd-dev/'.length);
+    if (touchedSlugs.size === 0 && pr.headRefName.startsWith(DEV_PR_BRANCH_PREFIX)) {
+      const guideName = pr.headRefName.slice(DEV_PR_BRANCH_PREFIX.length);
       for (const [slug, g] of guideBySlug) {
         if (g.name === guideName) {
           touchedSlugs.add(slug);
@@ -1216,8 +1034,10 @@ function resolveEvalPrs(
       if (!inv || isDisciplineGuide(inv.name, inv.category) || inv.isDisciplineGuide) {
         continue;
       }
-      if (getGuideStatus(inv) === null) {
-        // Already complete on main
+      if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) {
+        continue;
+      }
+      if (evalPrSlugs.has(slug)) {
         continue;
       }
       evalPrSlugs.add(slug);
@@ -1266,12 +1086,12 @@ function resolveNeedsGuidancePrs(
         !inv &&
         !guideByName.has(guideName) &&
         touchedFiles.includes(GUIDE_FILE) &&
-        (touchedFiles.includes(EXPECTATIONS_FILE) || touchedFiles.includes('demo.html'));
+        (touchedFiles.includes(EXPECTATIONS_FILE) || touchedFiles.includes(DEMO_FILE));
       if (inv && getGuideStatus(inv) !== ProjectStatus.NeedsGuidance) continue;
       if (!inv && !isNewFullGuidePr) continue;
 
       slugsWithContentPr.add(slug);
-      const matchedIssue = matchUseCaseIssue(slug, guideName, issueIndex, [], inv?.featureIds ?? []);
+      const matchedIssue = matchUseCaseIssue(slug, guideName, issueIndex, inv?.featureIds ?? []);
       const issueFromTitle = /^\[#(\d+)\]/.exec(pr.title);
       const issueNumber = matchedIssue?.number ?? (issueFromTitle ? Number(issueFromTitle[1]) : null);
 
@@ -1302,20 +1122,17 @@ function resolveNeedsGuidanceIssues(
     const slug = `${g.category}/${g.name}`;
     if (slugsWithContentPr.has(slug)) continue;
 
-    const matchedIssue = matchUseCaseIssue(slug, g.name, issueIndex, [], g.featureIds);
+    const matchedIssue = matchUseCaseIssue(slug, g.name, issueIndex, g.featureIds);
     needsGuidanceIssues.push({
       slug,
       issueNumber: matchedIssue?.number ?? null,
       isDraftGuide: !g.isStub && Boolean(g.draft),
-      assignees: matchedIssue?.assignees ?? [],
+      assignees: (matchedIssue as IssueSummary)?.assignees ?? [],
     });
   }
   return needsGuidanceIssues.sort((a, b) => a.slug.localeCompare(b.slug));
 }
 
-/**
- * Assembles the full `PipelineReportData` from disk inventory, git history, and GitHub PRs/issues.
- */
 export function buildPipelineReportData(params: {
   guides: GuideInventory[];
   openPrs: PrSummary[];
@@ -1323,10 +1140,8 @@ export function buildPipelineReportData(params: {
   openFeatureIssues: IssueSummary[];
   openExpectationsChangedIssues: IssueSummary[];
   gitHistory: Map<string, GitFileHistory>;
-  existingIssueBody: string;
   weeklyProgressPoints?: WeeklyProgressPoint[];
   baselineComplete?: number;
-  nowMs?: number;
 }): PipelineReportData {
   const validGuides = params.guides.filter(g => g.category !== 'test-results' && (g.hasGuide || g.isStub));
   const featureGuides = validGuides.filter(
@@ -1339,44 +1154,25 @@ export function buildPipelineReportData(params: {
     guideByName.set(g.name, g);
   }
 
+  // Current-state numbers derived purely from in-memory GuideInventory (featureGuides + getGuideStatus)
   const completeGuides = featureGuides.filter(g => getGuideStatus(g) === null);
-  const localEvalComplete = completeGuides.filter(g => g.hasGrader).length;
-
-  const weeklyProgressPoints =
-    params.weeklyProgressPoints ?? (params.guides.length > 20 ? fetchWeeklyProgressHistory() : []);
-  const latestWeekly = weeklyProgressPoints.length > 0 ? weeklyProgressPoints[weeklyProgressPoints.length - 1] : null;
-
-  const completeCount = params.weeklyProgressPoints && latestWeekly ? latestWeekly.complete : localEvalComplete;
-  const evalCompleteCount = completeCount;
+  const completeCount = completeGuides.filter(g => g.hasGrader).length;
+  const needsEvalsGuides = featureGuides.filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals);
+  const contentLandedCount = completeCount + needsEvalsGuides.length;
 
   const issueIndex = buildUseCaseIssueIndex(params.openUseCaseIssues, params.openFeatureIssues);
   const { openEvalPrs, evalPrSlugs } = resolveEvalPrs(params.openPrs, guideBySlug);
-  let readyForEvalSlugs: string[];
-  if (
-    params.weeklyProgressPoints &&
-    latestWeekly &&
-    latestWeekly.contentLanded === 168 &&
-    latestWeekly.complete === 140
-  ) {
-    try {
-      const sha = child_process
-        .execFileSync('git', ['rev-list', '-1', 'origin/main'], { cwd: rootDir, encoding: 'utf8' })
-        .trim();
-      const analysis = getCachedCommitAnalysis(sha, { cwd: rootDir, excludeDisciplineHubs: true });
-      readyForEvalSlugs = Array.from(analysis.needsEvalsSlugs)
-        .filter(s => !evalPrSlugs.has(s))
-        .sort((a, b) => a.localeCompare(b));
-    } catch {
-      readyForEvalSlugs = featureGuides
-        .filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals && !evalPrSlugs.has(`${g.category}/${g.name}`))
-        .map(g => `${g.category}/${g.name}`)
-        .sort((a, b) => a.localeCompare(b));
-    }
-  } else {
-    readyForEvalSlugs = featureGuides
-      .filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals && !evalPrSlugs.has(`${g.category}/${g.name}`))
-      .map(g => `${g.category}/${g.name}`)
-      .sort((a, b) => a.localeCompare(b));
+
+  const readyForEvalSlugs = needsEvalsGuides
+    .filter(g => !evalPrSlugs.has(`${g.category}/${g.name}`))
+    .map(g => `${g.category}/${g.name}`)
+    .sort((a, b) => a.localeCompare(b));
+
+  const needsEvalsTotal = contentLandedCount - completeCount;
+  if (openEvalPrs.length + readyForEvalSlugs.length !== needsEvalsTotal) {
+    throw new Error(
+      `Invariant violation in Needs Evals: openEvalPrs (${openEvalPrs.length}) + readyForEvalSlugs (${readyForEvalSlugs.length}) !== contentLandedCount - completeCount (${needsEvalsTotal})`
+    );
   }
 
   const { needsGuidancePrs, slugsWithContentPr } = resolveNeedsGuidancePrs(
@@ -1387,19 +1183,26 @@ export function buildPipelineReportData(params: {
   );
   const needsGuidanceIssues = resolveNeedsGuidanceIssues(validGuides, slugsWithContentPr, issueIndex);
   const staleEvals = findStaleEvals(validGuides, params.gitHistory, params.openExpectationsChangedIssues);
-  const { legacyEvals, gen2CompleteCount: localGen2, dualTargetCompleteCount: localDual } =
-    findLegacyFormatGuides(validGuides);
+  const { legacyEvals, gen2CompleteCount, dualTargetCompleteCount } = findLegacyFormatGuides(validGuides);
 
-  const gen2CompleteCount =
-    params.weeklyProgressPoints && latestWeekly && completeCount === 140 && localGen2 <= 19 ? 19 : localGen2;
-  const dualTargetCompleteCount =
-    params.weeklyProgressPoints && latestWeekly && completeCount === 140 && localDual <= 10 ? 10 : localDual;
+  // Weekly progress history: historical points from git, today's point matches current-state numbers
+  const todayLa = getLaDateString(new Date());
+  const todayLabel = formatShortDate(todayLa);
+  const baseWeekly = params.weeklyProgressPoints ?? fetchWeeklyProgressHistory();
+  const weeklyProgressPoints = [...baseWeekly];
+  const todayPoint: WeeklyProgressPoint = {
+    date: todayLa,
+    label: todayLabel,
+    complete: completeCount,
+    contentLanded: contentLandedCount,
+  };
+  if (weeklyProgressPoints.length === 0 || weeklyProgressPoints[weeklyProgressPoints.length - 1].date !== todayLa) {
+    weeklyProgressPoints.push(todayPoint);
+  } else {
+    weeklyProgressPoints[weeklyProgressPoints.length - 1] = todayPoint;
+  }
 
-  const contentLandedCount = params.weeklyProgressPoints && latestWeekly
-    ? latestWeekly.contentLanded
-    : completeCount + readyForEvalSlugs.length;
-
-  const baseline = params.baselineComplete ?? EXPECTED_BASELINE_COMPLETE;
+  const baseline = params.baselineComplete ?? (weeklyProgressPoints[0]?.complete ?? EXPECTED_BASELINE_COMPLETE);
 
   const progressBar = renderTwoRowProgressBar({
     complete: completeCount,
@@ -1424,13 +1227,10 @@ export function buildPipelineReportData(params: {
   return {
     completeCount,
     contentLandedCount,
-    evalCompleteCount,
     gen2CompleteCount,
-    baselineComplete: baseline,
     progressBar,
     weeklyChart,
     sankey,
-    weeklyProgressPoints,
     needsGuidancePrs,
     needsGuidanceIssues,
     openEvalPrs,
@@ -1453,7 +1253,6 @@ export function runSyncPipelineIssue(): void {
   const openExpectationsChangedIssues = fetchOpenIssuesByLabel(EXPECTATIONS_CHANGED_LABEL);
   const gitHistory = collectGitGuideHistory(rootDir);
   const existingIssueBody = fetchIssueBody(PIPELINE_ISSUE_NUMBER);
-  const weeklyProgressPoints = fetchWeeklyProgressHistory({ cwd: rootDir });
 
   const reportData = buildPipelineReportData({
     guides,
@@ -1462,8 +1261,6 @@ export function runSyncPipelineIssue(): void {
     openFeatureIssues,
     openExpectationsChangedIssues,
     gitHistory,
-    existingIssueBody,
-    weeklyProgressPoints,
   });
 
   const nextBody = renderPipelineIssueBody(reportData);

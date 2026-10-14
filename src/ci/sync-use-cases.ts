@@ -269,9 +269,11 @@ export function getFeaturesNeedingSync(
 /**
  * Builds maps from use case name and subdirectory to their existing GitHub issues.
  */
-export function buildUseCaseMaps(issues: any[]): { nameToIssueMap: Map<string, any>; subdirToIssueMap: Map<string, any> } {
-  const nameToIssueMap = new Map<string, any>();
-  const subdirToIssueMap = new Map<string, any>();
+export function buildUseCaseMaps<T extends { title: string; body?: string | null }>(
+  issues: T[]
+): { nameToIssueMap: Map<string, T>; subdirToIssueMap: Map<string, T> } {
+  const nameToIssueMap = new Map<string, T>();
+  const subdirToIssueMap = new Map<string, T>();
   for (const issue of issues) {
     const titleMatch = issue.title.match(/Create guide(?: and evals)? for the (.+) use case/i);
     if (titleMatch) {
