@@ -22,13 +22,10 @@ The core of a responsive table is maintaining the relationship between data cell
 ## Implementation Steps
 
 ### 1. Markup and Layout
-Structure your table with standard semantic headers.
 
-Use a `.table-wrapper` to handle overflow and provide a container for queries.
+Structure your table with standard semantic headers. Use a `.table-wrapper` to handle overflow and provide a container for queries. Add a `tabindex="0"` attribute to the container, to ensure that people using only a keyboard can consistently scroll the table.
 
-Add a `tabindex="0"` attribute to the container, to ensure that people using only a keyboard can consistently scroll the table.
-
-Give the wrapper a `role="region"` attribute to communicate its purpose. Provide it with an accessible name using `aria-labelledby` (referencing the `id` attribute of an existing element that captions/names the table) or an `aria-label` attribute (approach is demonstrated in the post: [A Responsive Accessible Table by Adrian Roselli](https://adrianroselli.com/2017/11/a-responsive-accessible-table.html#ResponsiveScrolling)).
+Give the wrapper a `role="region"` attribute to communicate its purpose. Provide it with an accessible name using `aria-labelledby` (referencing the `id` attribute of an existing element that captions/names the table) or an `aria-label` attribute.
 
 ```html
 <div tabindex="0" role="region" aria-labelledby="employee-table-caption" class="table-wrapper">
