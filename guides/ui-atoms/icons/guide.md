@@ -95,7 +95,7 @@ This block handles the injection, sizing, masking, and automatic layout adjustme
   }
 
   /* Automatically add spacing ONLY if the element has other text or sibling content */
-  :not(.icon, :empty)::before {
+  :where(:not(.icon, :empty))::before {
     margin-inline-end: var(--icon-style-spacing);
   }
 }
