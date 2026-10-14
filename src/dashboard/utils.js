@@ -6,14 +6,20 @@
 
 /**
  * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
- * @param {number} [canonicalCheckCount=0]
+ * @returns {boolean}
+ */
+export function isEarlyFailureRun(checks) {
+    return !!(checks && checks.some(c => c.isEarlyFailure));
+}
+
+/**
+ * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
  * @returns {{ rate: number, passed: number, total: number }}
  */
-export function getRunStats(checks, canonicalCheckCount = 0) {
-    if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0 };
+export function getRunStats(checks) {
+    if (!checks || !checks.length || isEarlyFailureRun(checks)) return { rate: 0, passed: 0, total: 0 };
     const passed = checks.filter(c => c.passed).length;
-    const isEarlyFailure = checks.some(c => c.isEarlyFailure);
-    const total = isEarlyFailure && canonicalCheckCount > checks.length ? canonicalCheckCount : checks.length;
+    const total = checks.length;
     const rate = Math.round((passed / total) * 100);
     return { rate, passed, total };
 }
@@ -126,26 +132,42 @@ export function parseResultKey(key) {
 }
 
 /**
- * Maps each `${guide} - ${task}` scenario to the maximum check count observed across all runs and modes.
+ * Returns the set of `${guide} - ${task}` scenario IDs that have valid runs.
+ * When both `guided` and `unguided` keys exist for a scenario, both must have at least one valid run.
  *
  * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
- * @returns {Record<string, number>}
+ * @returns {Set<string>}
  */
-export function getCanonicalChecksPerScenario(results) {
-    /** @type {Record<string, number>} */
-    const canonical = {};
+export function getEligibleScenarioIds(results) {
+    /** @type {Record<string, { hasGuided: boolean, hasUnguided: boolean, validGuided: boolean, validUnguided: boolean }>} */
+    const stateByScenario = {};
     for (const [key, runs] of Object.entries(results)) {
         const parsed = parseResultKey(key);
         if (!parsed) continue;
-        const scenarioId = `${parsed.guide} - ${parsed.task}`;
-        for (const run of runs || []) {
-            const len = run.results?.length || 0;
-            if (len > (canonical[scenarioId] || 0)) {
-                canonical[scenarioId] = len;
-            }
+        const { guide, task, runType } = parsed;
+        if (runType !== 'guided' && runType !== 'unguided') continue;
+        const id = `${guide} - ${task}`;
+        if (!stateByScenario[id]) {
+            stateByScenario[id] = { hasGuided: false, hasUnguided: false, validGuided: false, validUnguided: false };
+        }
+        const hasValidRun = (runs || []).some(r => getRunStats(r.results).total > 0);
+        if (runType === 'guided') {
+            stateByScenario[id].hasGuided = true;
+            if (hasValidRun) stateByScenario[id].validGuided = true;
+        } else {
+            stateByScenario[id].hasUnguided = true;
+            if (hasValidRun) stateByScenario[id].validUnguided = true;
         }
     }
-    return canonical;
+    const eligible = new Set();
+    for (const [id, st] of Object.entries(stateByScenario)) {
+        if (st.hasGuided && st.hasUnguided) {
+            if (st.validGuided && st.validUnguided) eligible.add(id);
+        } else if ((st.hasGuided && st.validGuided) || (st.hasUnguided && st.validUnguided)) {
+            eligible.add(id);
+        }
+    }
+    return eligible;
 }
 
 /**
@@ -171,7 +193,7 @@ export function getCanonicalChecksPerScenario(results) {
  * }}
  */
 export function calculateChartData(results) {
-    const canonicalChecks = getCanonicalChecksPerScenario(results);
+    const eligibleScenarios = getEligibleScenarioIds(results);
     /** @type {Record<string, ChartAppData>} */
     const apps = {};
     /** @type {Record<string, string>} */
@@ -183,6 +205,7 @@ export function calculateChartData(results) {
         const { task: taskName, guide, runType } = parsedKey;
 
         if (runType !== 'guided' && runType !== 'unguided') return;
+        if (!eligibleScenarios.has(`${guide} - ${taskName}`)) return;
         /** @type {'guided' | 'unguided'} */
         const rType = runType;
         const failedKey = rType === 'guided' ? 'guided_failed' : 'unguided_failed';
@@ -205,14 +228,13 @@ export function calculateChartData(results) {
             taskNames[scenario] = runs[0].taskName;
         }
         
-        const isEarlyFailure = runs.some(r => r.results?.some(c => c.isEarlyFailure));
+        const isEarlyFailure = runs.some(r => isEarlyFailureRun(r.results));
         if (isEarlyFailure) {
             apps[scenario][failedKey] = true;
         }
         
-        const canonicalCount = canonicalChecks[`${guide} - ${taskName}`] || 0;
-        const passed = runs.reduce((acc, r) => acc + getRunStats(r.results, canonicalCount).passed, 0);
-        const total = runs.reduce((acc, r) => acc + getRunStats(r.results, canonicalCount).total, 0);
+        const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
+        const total = runs.reduce((acc, r) => acc + getRunStats(r.results).total, 0);
         apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
 
         const totalTokens = runs.reduce((acc, r) => acc + (r.tokenUsage?.total || 0), 0);

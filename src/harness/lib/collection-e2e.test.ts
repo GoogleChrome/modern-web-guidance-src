@@ -194,7 +194,7 @@ base_app: test-app
     }
 });
 
-test('collectResults expands early-failure / generation_failed to N checks from grader', async (_t) => {
+test('collectResults records generation_failed as a single isEarlyFailure entry and broken app as N failed checks', async (_t) => {
     const resultsBase = path.resolve(testDir, 'fixtures-results-e2e-early-failure');
     const guideName = '_e2e_test_guide_early_fail';
     const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
@@ -217,30 +217,47 @@ base_app: test-app
 - E2E Mock Prompt`);
 
         const runNumberDir = path.join(resultsBase, '1');
-        const targetDir = path.join(runNumberDir, guideName, 'task', 'guided');
-        fs.mkdirSync(targetDir, { recursive: true });
+        const guidedDir = path.join(runNumberDir, guideName, 'task', 'guided');
+        const unguidedDir = path.join(runNumberDir, guideName, 'task', 'unguided');
+        fs.mkdirSync(guidedDir, { recursive: true });
+        fs.mkdirSync(unguidedDir, { recursive: true });
 
-        // Simulate target app file present (so targetAppExists is true) but generation failed
-        fs.writeFileSync(path.join(targetDir, 'index.html'), '<html>Mock HTML</html>');
-        fs.writeFileSync(path.join(targetDir, 'generation_failed.json'), JSON.stringify({
+        // Guided: generation_failed.json exists -> infra error (single isEarlyFailure entry)
+        fs.writeFileSync(path.join(guidedDir, 'index.html'), '<html>Mock HTML</html>');
+        fs.writeFileSync(path.join(guidedDir, 'generation_failed.json'), JSON.stringify({
             agentName: 'antigravity_cli',
             exitCode: 'SIGTERM'
         }));
 
+        // Unguided: agent finished cleanly (no generation_failed.json), but Playwright produced empty suites -> 0/3 agent failure
+        fs.writeFileSync(path.join(unguidedDir, 'index.html'), '<html>Broken Build</html>');
+        fs.writeFileSync(path.join(unguidedDir, `${guideName}_results.json`), JSON.stringify({ suites: [] }));
+
         const { allResults, numRuns } = await collectResults(resultsBase, defaultSuiteConfig);
 
         assert.strictEqual(numRuns, 1);
-        const testKey = `task - ${guideName} - guided`;
-        assert.ok(allResults[testKey], `allResults must contain entry for ${testKey}`);
+        const guidedKey = `task - ${guideName} - guided`;
+        const unguidedKey = `task - ${guideName} - unguided`;
 
-        const runPayload = allResults[testKey][0];
-        // All 3 checks should be emitted as early failures: 0/3, not 0/1 or 0/0
+        const guidedPayload = allResults[guidedKey][0];
+        assert.deepStrictEqual(guidedPayload.results, [{
+            id: 'early-failure-1',
+            passed: false,
+            message: 'Generation failed: antigravity_cli exited with SIGTERM',
+            isEarlyFailure: true,
+        }]);
+
+        const unguidedPayload = allResults[unguidedKey][0];
+        assert.strictEqual(unguidedPayload.results.length, 3);
         assert.deepStrictEqual(
-            runPayload.results.map((c: ScenarioCheck) => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure })),
-            Array(3).fill({ passed: false, isEarlyFailure: true })
+            unguidedPayload.results.map((c: ScenarioCheck) => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure, message: c.message })),
+            [
+                { passed: false, isEarlyFailure: undefined, message: 'test 1: check element exists' },
+                { passed: false, isEarlyFailure: undefined, message: 'test 2: check styling applied' },
+                { passed: false, isEarlyFailure: undefined, message: 'test 3: check interaction behaves' },
+            ]
         );
-        assert.ok(runPayload.results[0].message.includes('test 1: check element exists'));
-        assert.ok(runPayload.results[0].message.includes('antigravity_cli exited with SIGTERM'));
+        assert.ok(unguidedPayload.results[0].failureReason?.includes('Playwright test runner failed'));
     } finally {
         if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
         if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });

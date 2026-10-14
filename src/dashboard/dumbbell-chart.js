@@ -346,7 +346,7 @@ export class DumbbellChart {
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
         text.setAttribute("x", (scale(100) + 15).toString());
         text.setAttribute("y", rowY.toString());
-        text.setAttribute("fill", hasFailure ? "var(--color-accent-failure, #da3633)" : "var(--color-outline)");
+        text.setAttribute("fill", hasFailure ? "#d29922" : "var(--color-outline)");
         text.setAttribute("font-size", "11");
         text.setAttribute("font-family", "var(--font-sans)");
         text.setAttribute("font-weight", hasFailure ? "bold" : "600");
@@ -392,7 +392,7 @@ export class DumbbellChart {
           uDot.setAttribute("cy", y.toString());
           uDot.setAttribute("r", "3");
           uDot.setAttribute("fill", "var(--color-surface-container-lowest)");
-          uDot.setAttribute("stroke", item.uFailed ? "var(--color-accent-failure, #da3633)" : "var(--color-primary)");
+          uDot.setAttribute("stroke", item.uFailed ? "#d29922" : "var(--color-primary)");
           uDot.setAttribute("stroke-width", "1.5");
           svg.appendChild(uDot);
 
@@ -401,7 +401,7 @@ export class DumbbellChart {
           gDot.setAttribute("cx", gX.toString());
           gDot.setAttribute("cy", y.toString());
           gDot.setAttribute("r", "3");
-          gDot.setAttribute("fill", item.gFailed ? "var(--color-accent-failure, #da3633)" : "var(--color-primary)");
+          gDot.setAttribute("fill", item.gFailed ? "#d29922" : "var(--color-primary)");
           svg.appendChild(gDot);
 
           // Hit area for tooltip (covers the specific sub-line)
@@ -434,7 +434,7 @@ export class DumbbellChart {
                 <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 280px; color: var(--color-on-surface);">
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                         <div style="font-weight: bold; font-size: 14px; white-space: nowrap; color: ${item.uFailed || item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
+                         <div style="font-weight: bold; font-size: 14px; white-space: nowrap; color: ${item.uFailed || item.gFailed ? '#d29922' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
                           <div style="font-size: 11px; color: var(--color-outline);">feature: ${featureName}</div>
                          ${uTokens > 0 || gTokens > 0 ? `
                          <div style="font-size: 11px; color: #8b949e; margin-top: 8px;">
@@ -449,8 +449,8 @@ export class DumbbellChart {
                     <!-- Right Column -->
                     <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 12px;">
                          <div style="font-weight: bold; color: ${deltaColor}; font-size: 14px;">Uplift: ${deltaSign}${delta}%</div>
-                         <div style="white-space: nowrap; color: ${item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">Guided: ${Math.round(gVal)}% ${item.gFailed ? '(Failed)' : ''}</div>
-                         <div style="white-space: nowrap; color: ${item.uFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">Unguided: ${Math.round(uVal)}% ${item.uFailed ? '(Failed)' : ''}</div>
+                         <div style="white-space: nowrap; color: ${item.gFailed ? '#d29922' : 'inherit'};">Guided: ${Math.round(gVal)}% ${item.gFailed ? '(Infra Error excluded)' : ''}</div>
+                         <div style="white-space: nowrap; color: ${item.uFailed ? '#d29922' : 'inherit'};">Unguided: ${Math.round(uVal)}% ${item.uFailed ? '(Infra Error excluded)' : ''}</div>
                      </div>
                 </div>
             `;

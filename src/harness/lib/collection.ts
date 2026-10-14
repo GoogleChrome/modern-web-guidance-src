@@ -351,33 +351,43 @@ export function evaluateScenarioResults(
   targetAppExists: boolean,
   targetFile: string
 ): ScenarioCheck[] {
-  const makeEarlyFailures = (reason: string): ScenarioCheck[] => {
+  const makeInfraError = (reason: string): ScenarioCheck[] => [{
+    id: 'early-failure-1',
+    passed: false,
+    message: reason,
+    isEarlyFailure: true,
+  }];
+
+  const makeAgentFailures = (reason: string): ScenarioCheck[] => {
     const titles = extractTestTitles(graderPath);
     if (titles.length === 0) {
       return [{
-        id: 'early-failure-1',
+        id: 'agent-failure-1',
         passed: false,
         message: reason,
-        isEarlyFailure: true,
+        failureReason: reason,
       }];
     }
     return titles.map((title, idx) => ({
-      id: `early-failure-${idx + 1}`,
+      id: `agent-failure-${idx + 1}`,
       passed: false,
-      message: `${title}: ${reason}`,
-      isEarlyFailure: true,
+      message: title,
+      failureReason: reason,
     }));
   };
 
   if (!fs.existsSync(graderPath)) {
     console.warn(`Grader not found for ${guide} at ${graderPath}`);
-    return makeEarlyFailures('Grader not found');
+    return makeInfraError('Grader not found');
+  }
+  if (fs.existsSync(path.join(dir, 'generation_failed.json'))) {
+    return makeInfraError(extractErrorMessage(dir, targetFile));
   }
   if (!targetAppExists) {
-    return makeEarlyFailures('Target app missing');
+    return makeAgentFailures('Target app missing');
   }
   if (!fs.existsSync(graderResults)) {
-    return makeEarlyFailures(extractErrorMessage(dir, targetFile));
+    return makeAgentFailures(extractErrorMessage(dir, targetFile));
   }
 
   try {
@@ -403,10 +413,10 @@ export function evaluateScenarioResults(
       }
     }
 
-    return makeEarlyFailures('Playwright test runner failed or produced no test results');
+    return makeAgentFailures('Playwright test runner failed or produced no test results');
   } catch (err: any) {
     console.error(`Error processing results for ${dir}:`, err);
-    return makeEarlyFailures(err.message || 'System Error');
+    return makeAgentFailures(err.message || 'System Error');
   }
 }
 

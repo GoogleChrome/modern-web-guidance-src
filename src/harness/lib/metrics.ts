@@ -3,6 +3,7 @@ export interface ScenarioCheck {
   passed: boolean;
   message: string;
   isEarlyFailure?: boolean;
+  failureReason?: string;
 }
 
 export interface RunResult {
@@ -109,23 +110,30 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let totalChecks = 0;
 
     let earlyFailures = 0;
-    const passRates = runs.map(run => {
+    const passRates: number[] = [];
+    for (const run of runs) {
       const checks = run.results;
       const isEarlyFailure = checks.some(c => c.isEarlyFailure);
       if (isEarlyFailure) {
         earlyFailures++;
+        continue;
       }
       const passCount = checks.filter(c => c.passed).length;
       const totalCount = checks.length;
       passedChecks += passCount;
       totalChecks += totalCount;
-      return totalCount > 0 ? (passCount / totalCount) * 100 : 0;
-    }).sort((a, b) => a - b);
+      if (totalCount > 0) {
+        passRates.push((passCount / totalCount) * 100);
+      }
+    }
+    passRates.sort((a, b) => a - b);
 
     const mid = Math.floor(passRates.length / 2);
-    const median = passRates.length % 2 === 0
-      ? (passRates[mid - 1] + passRates[mid]) / 2
-      : passRates[mid];
+    const median = passRates.length === 0 ? 0 : (
+      passRates.length % 2 === 0
+        ? (passRates[mid - 1] + passRates[mid]) / 2
+        : passRates[mid]
+    );
 
     let guideUsageCount = 0;
     let toolActivationCount = 0;
@@ -177,8 +185,34 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     };
   }
 
-  const calcSummary = (keys: string[]) => {
-    const medians = keys.map(k => testStats[k].medianPassRate);
+  const taskPairs = new Map<string, { unguidedKey?: string; guidedKey?: string }>();
+  for (const k of sortedKeys) {
+    const [taskName, guideName, runType] = k.split(' - ');
+    const taskBase = `${taskName} - ${guideName}`;
+    const pair = taskPairs.get(taskBase) || {};
+    if (runType === 'unguided') pair.unguidedKey = k;
+    if (runType === 'guided') pair.guidedKey = k;
+    taskPairs.set(taskBase, pair);
+  }
+
+  const validPairKeys = new Set<string>();
+  for (const [, pair] of taskPairs) {
+    if (pair.unguidedKey && pair.guidedKey) {
+      const uValid = (testStats[pair.unguidedKey]?.totalChecks || 0) > 0;
+      const gValid = (testStats[pair.guidedKey]?.totalChecks || 0) > 0;
+      if (uValid && gValid) {
+        validPairKeys.add(pair.unguidedKey);
+        validPairKeys.add(pair.guidedKey);
+      }
+    } else {
+      if (pair.unguidedKey && (testStats[pair.unguidedKey]?.totalChecks || 0) > 0) validPairKeys.add(pair.unguidedKey);
+      if (pair.guidedKey && (testStats[pair.guidedKey]?.totalChecks || 0) > 0) validPairKeys.add(pair.guidedKey);
+    }
+  }
+
+  const calcSummary = (allKeys: string[]) => {
+    const pairedKeys = allKeys.filter(k => validPairKeys.has(k));
+    const medians = pairedKeys.map(k => testStats[k].medianPassRate);
 
     const sortedMedians = [...medians].sort((a, b) => a - b);
     const mid = Math.floor(sortedMedians.length / 2);
@@ -199,13 +233,15 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let cachedTokens = 0;
     let configsWithTokenData = 0;
 
-    keys.forEach(k => {
+    allKeys.forEach(k => {
       const [, , runType] = k.split(' - ');
       const stats = testStats[k];
 
       if (stats) {
-        passed += stats.passedChecks;
-        total += stats.totalChecks;
+        if (validPairKeys.has(k)) {
+          passed += stats.passedChecks;
+          total += stats.totalChecks;
+        }
         earlyFailures += stats.earlyFailures || 0;
         totalRuns += stats.runCount || 0;
 

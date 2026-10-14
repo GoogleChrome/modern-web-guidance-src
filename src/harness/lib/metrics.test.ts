@@ -98,32 +98,18 @@ describe('calculateMetrics', () => {
     assert.strictEqual(metrics.summary.toolActivationRate, 100);
   });
 
-  test('multi-check (N > 1) grader with early failure preserves total check counts and rates', () => {
-    // 5 checks per run
-    const checksRun1 = [
+  test('excludes infra errors (isEarlyFailure: true) from pass rate denominator and enforces paired task validity', () => {
+    const validChecks3Of5 = [
       { id: 'c1', passed: true, message: 'check 1' },
       { id: 'c2', passed: true, message: 'check 2' },
       { id: 'c3', passed: true, message: 'check 3' },
       { id: 'c4', passed: false, message: 'check 4' },
       { id: 'c5', passed: false, message: 'check 5' },
     ];
-    // Early failure with N=5 checks (0/5 passed)
-    const crashedChecksRun2 = [
-      { id: 'c1', passed: false, message: 'check 1: TIMEOUT', isEarlyFailure: true },
-      { id: 'c2', passed: false, message: 'check 2: TIMEOUT', isEarlyFailure: true },
-      { id: 'c3', passed: false, message: 'check 3: TIMEOUT', isEarlyFailure: true },
-      { id: 'c4', passed: false, message: 'check 4: TIMEOUT', isEarlyFailure: true },
-      { id: 'c5', passed: false, message: 'check 5: TIMEOUT', isEarlyFailure: true },
+    const infraErrorCheck = [
+      { id: 'early-failure-1', passed: false, message: 'Agent exited with TIMEOUT (10m)', isEarlyFailure: true },
     ];
-
-    const unguidedRun1 = [
-      { id: 'c1', passed: false, message: 'check 1' },
-      { id: 'c2', passed: false, message: 'check 2' },
-      { id: 'c3', passed: false, message: 'check 3' },
-      { id: 'c4', passed: false, message: 'check 4' },
-      { id: 'c5', passed: false, message: 'check 5' },
-    ];
-    const unguidedRun2 = [
+    const unguidedChecks1Of5 = [
       { id: 'c1', passed: true, message: 'check 1' },
       { id: 'c2', passed: false, message: 'check 2' },
       { id: 'c3', passed: false, message: 'check 3' },
@@ -132,6 +118,7 @@ describe('calculateMetrics', () => {
     ];
 
     const allResults: Record<string, RunResult[]> = {
+      // taskA: Run 1 valid (3/5), Run 2 infra error (excluded -> 0/0). Both sides have >=1 valid run -> included!
       'taskA - guideA - guided': [
         {
           runNumber: 1,
@@ -139,7 +126,7 @@ describe('calculateMetrics', () => {
           guidesUsed: ['guideA'],
           guidanceToolsUsed: ['modern-web'],
           expectedToolPrefixes: ['modern-web'],
-          results: checksRun1
+          results: validChecks3Of5
         },
         {
           runNumber: 2,
@@ -147,38 +134,39 @@ describe('calculateMetrics', () => {
           guidesUsed: ['guideA'],
           guidanceToolsUsed: ['modern-web'],
           expectedToolPrefixes: ['modern-web'],
-          results: crashedChecksRun2
+          results: infraErrorCheck
         }
       ],
       'taskA - guideA - unguided': [
-        { runNumber: 1, results: unguidedRun1 },
-        { runNumber: 2, results: unguidedRun2 }
+        { runNumber: 1, results: unguidedChecks1Of5 },
+        { runNumber: 2, results: unguidedChecks1Of5 }
+      ],
+      // taskB: Guided has ONLY infra errors (0 valid runs), while Unguided has valid runs.
+      // Paired task validity must exclude taskB from both guided and unguided pass-rate rollups!
+      'taskB - guideA - guided': [
+        { runNumber: 1, results: infraErrorCheck }
+      ],
+      'taskB - guideA - unguided': [
+        { runNumber: 1, results: validChecks3Of5 }
       ]
     };
 
     const metrics = calculateMetrics(allResults, 2);
 
-    // Invariant: guidedTotal === unguidedTotal (10 each: 2 runs * 5 checks)
-    assert.strictEqual(metrics.summary.guidedTotal, 10);
-    assert.strictEqual(metrics.summary.unguidedTotal, 10);
-    assert.strictEqual(metrics.summary.guidedTotal, metrics.summary.unguidedTotal);
-
-    // Passed checks:
-    // Guided: Run 1 passed 3, Run 2 passed 0 => 3/10 (30%)
+    // taskA guided has 1 valid run (3/5 = 60%); taskB is excluded from rollup because guided had 0 valid runs
     assert.strictEqual(metrics.summary.guidedPassed, 3);
-    assert.strictEqual(metrics.summary.guidedPassRate, 30);
+    assert.strictEqual(metrics.summary.guidedTotal, 5);
+    assert.strictEqual(metrics.summary.guidedPassRate, 60);
+    assert.strictEqual(metrics.summary.guidedMedian, 60);
 
-    // Unguided: Run 1 passed 0, Run 2 passed 1 => 1/10 (10%)
-    assert.strictEqual(metrics.summary.unguidedPassed, 1);
-    assert.strictEqual(metrics.summary.unguidedPassRate, 10);
+    // taskA unguided has 2 valid runs (1/5 + 1/5 = 2/10 = 20%); taskB unguided is excluded from paired rollup!
+    assert.strictEqual(metrics.summary.unguidedPassed, 2);
+    assert.strictEqual(metrics.summary.unguidedTotal, 10);
+    assert.strictEqual(metrics.summary.unguidedPassRate, 20);
 
-    // Early failure counts runs, not checks: exactly 1 run failed early
-    assert.strictEqual(metrics.summary.guidedEarlyFailures, 1);
+    // Infra error counts: 2 guided runs failed early (1 in taskA, 1 in taskB)
+    assert.strictEqual(metrics.summary.guidedEarlyFailures, 2);
     assert.strictEqual(metrics.summary.unguidedEarlyFailures, 0);
-    assert.strictEqual(metrics.summary.totalGuidedRuns, 2);
-
-    // 1 completed run used the guide and activated tools (1/1 = 100%)
-    assert.strictEqual(metrics.summary.guideUsageRate, 100);
-    assert.strictEqual(metrics.summary.toolActivationRate, 100);
+    assert.strictEqual(metrics.summary.totalGuidedRuns, 3);
   });
 });

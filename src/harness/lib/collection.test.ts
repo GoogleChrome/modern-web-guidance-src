@@ -51,7 +51,7 @@ test('parseResultPath handles deep suite and nightly structure', () => {
   });
 });
 
-test('evaluateScenarioResults expands early failures to all N checks in multi-check grader', async (t) => {
+test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from agent-broken apps (0/N checks)', async (t) => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-denom-test-'));
   try {
     const graderPath = path.join(tempDir, 'grader.ts');
@@ -65,9 +65,7 @@ test('evaluateScenarioResults expands early failures to all N checks in multi-ch
     `;
     fs.writeFileSync(graderPath, graderContent);
 
-    const expectedEarlyFailureStates = Array(5).fill({ passed: false, isEarlyFailure: true });
-
-    await t.test('missing target app', () => {
+    await t.test('missing target app without generation_failed.json is an agent failure (0/N checks, not isEarlyFailure)', () => {
       const res = evaluateScenarioResults(
         tempDir,
         'test-guide',
@@ -76,36 +74,16 @@ test('evaluateScenarioResults expands early failures to all N checks in multi-ch
         false,
         path.join(tempDir, 'index.html')
       );
+      assert.strictEqual(res.length, 5);
       assert.deepStrictEqual(
         res.map(c => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure })),
-        expectedEarlyFailureStates
+        Array(5).fill({ passed: false, isEarlyFailure: undefined })
       );
-      assert.ok(res[0].message.includes('check 1: has header element'));
-      assert.ok(res[0].message.includes('Target app missing'));
+      assert.strictEqual(res[0].message, 'check 1: has header element');
+      assert.ok(res[0].failureReason?.includes('Target app missing'));
     });
 
-    await t.test('crashed generation with generation_failed.json', () => {
-      fs.writeFileSync(
-        path.join(tempDir, 'generation_failed.json'),
-        JSON.stringify({ agentName: 'claude_code', exitCode: 'TIMEOUT (10m)' })
-      );
-      const res = evaluateScenarioResults(
-        tempDir,
-        'test-guide',
-        graderPath,
-        path.join(tempDir, 'results.json'),
-        true,
-        path.join(tempDir, 'index.html')
-      );
-      assert.deepStrictEqual(
-        res.map(c => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure })),
-        expectedEarlyFailureStates
-      );
-      assert.ok(res[0].message.includes('check 1: has header element'));
-      assert.ok(res[0].message.includes('claude_code exited with TIMEOUT (10m)'));
-    });
-
-    await t.test('empty suites in grader results JSON', () => {
+    await t.test('empty suites in grader results JSON without generation_failed.json is an agent failure (0/N checks)', () => {
       const resultsJsonPath = path.join(tempDir, 'results.json');
       fs.writeFileSync(resultsJsonPath, JSON.stringify({ suites: [] }));
       const res = evaluateScenarioResults(
@@ -116,14 +94,37 @@ test('evaluateScenarioResults expands early failures to all N checks in multi-ch
         true,
         path.join(tempDir, 'index.html')
       );
+      assert.strictEqual(res.length, 5);
       assert.deepStrictEqual(
         res.map(c => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure })),
-        expectedEarlyFailureStates
+        Array(5).fill({ passed: false, isEarlyFailure: undefined })
       );
-      assert.ok(res[0].message.includes('Playwright test runner failed'));
+      assert.strictEqual(res[0].message, 'check 1: has header element');
+      assert.ok(res[0].failureReason?.includes('Playwright test runner failed'));
     });
 
-    await t.test('fallback to single entry if grader does not exist', () => {
+    await t.test('crashed or timed-out generation with generation_failed.json is an infra error (single isEarlyFailure entry)', () => {
+      fs.writeFileSync(
+        path.join(tempDir, 'generation_failed.json'),
+        JSON.stringify({ agentName: 'claude_code', exitCode: 'TIMEOUT (10m)' })
+      );
+      const res = evaluateScenarioResults(
+        tempDir,
+        'test-guide',
+        graderPath,
+        path.join(tempDir, 'results.json'),
+        false, // even when targetAppExists is false, generation_failed.json takes precedence
+        path.join(tempDir, 'index.html')
+      );
+      assert.deepStrictEqual(res, [{
+        id: 'early-failure-1',
+        passed: false,
+        message: 'Generation failed: claude_code exited with TIMEOUT (10m)',
+        isEarlyFailure: true,
+      }]);
+    });
+
+    await t.test('missing grader.ts is an infra error (single isEarlyFailure entry)', () => {
       const res = evaluateScenarioResults(
         tempDir,
         'test-guide',

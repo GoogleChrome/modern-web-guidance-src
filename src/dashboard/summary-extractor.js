@@ -1,4 +1,4 @@
-import { getRunStats, getCanonicalChecksPerScenario, parseResultKey, calculateChartData } from './utils.js';
+import { getRunStats, isEarlyFailureRun, getEligibleScenarioIds, parseResultKey, calculateChartData } from './utils.js';
 
 /**
  * @typedef {Object} GuideSummary
@@ -49,7 +49,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
     const results = evalsData.results || {};
     const scenarioKeys = Object.keys(results);
-    const canonicalChecksPerScenario = getCanonicalChecksPerScenario(results);
+    const eligibleScenarios = getEligibleScenarioIds(results);
 
     let guidedPassed = 0;
     let guidedTotal = 0;
@@ -57,6 +57,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     let unguidedTotal = 0;
     let maxRuns = 1;
     let totalAllRuns = 0;
+    let earlyFailureRuns = 0;
 
     const distinctScenarios = new Set();
     /** @type {Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>} */
@@ -94,10 +95,15 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             }
         }
 
-        const canonicalCheckCount = parsedKey ? (canonicalChecksPerScenario[`${parsedKey.guide} - ${parsedKey.task}`] || 0) : 0;
+        const isEligibleScenario = parsedKey ? eligibleScenarios.has(`${parsedKey.guide} - ${parsedKey.task}`) : true;
 
         runs.forEach(run => {
-            const s = getRunStats(run.results, canonicalCheckCount);
+            if (isEarlyFailureRun(run.results)) {
+                earlyFailureRuns++;
+            }
+            if (!isEligibleScenario) return;
+
+            const s = getRunStats(run.results);
 
             if (isGuided) {
                 guidedPassed += s.passed;
@@ -162,8 +168,10 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     });
 
     const taskCount = evalsData.summary && evalsData.summary.taskCount ? evalsData.summary.taskCount : distinctScenarios.size;
-    const totalEarlyFailures = (evalsData.summary?.unguidedEarlyFailures || 0) + (evalsData.summary?.guidedEarlyFailures || 0);
-    const earlyFailureRate = totalAllRuns > 0 ? Math.round((totalEarlyFailures / totalAllRuns) * 100) : 0;
+    const summaryEarlyFailures = (evalsData.summary?.unguidedEarlyFailures !== undefined || evalsData.summary?.guidedEarlyFailures !== undefined)
+        ? (evalsData.summary?.unguidedEarlyFailures || 0) + (evalsData.summary?.guidedEarlyFailures || 0)
+        : earlyFailureRuns;
+    const earlyFailureRate = totalAllRuns > 0 ? Math.round((summaryEarlyFailures / totalAllRuns) * 100) : 0;
 
     const chartData = calculateChartData(results);
 

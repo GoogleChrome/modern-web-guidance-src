@@ -53,15 +53,14 @@ test('extractSuiteSummary stores only a name for single-task guides', () => {
     assert.strictEqual(guide.guidedRate, 75);
 });
 
-test('extractSuiteSummary normalizes historical crashed run (results.length === 1) to canonical N checks', () => {
-    // Suppose devtools-times has 5 checks.
-    // Guided run for devtools-times crashed early with 1 failure check (results.length === 1, isEarlyFailure: true).
-    // Unguided run for devtools-times completed with 5 checks (results.length === 5).
-    // daily-grind has 5 checks for both guided (5 checks) and unguided (5 checks).
-    const summary = extractSuiteSummary('run-crashed-hist', {
+test('extractSuiteSummary excludes infra-errored task pairs from guide and suite rollups while counting agent-broken apps as 0/N', () => {
+    // daily-grind: guided passed 5/5, unguided broke the app build (0/5 agent failure, not isEarlyFailure)
+    // devtools-times: guided had an infra error (isEarlyFailure: true -> 0 valid runs), unguided passed 1/5
+    // Paired task validity must exclude devtools-times from the translator rollup and suite rollup!
+    const summary = extractSuiteSummary('run-paired-validity', {
         results: {
             'daily-grind - translator - guided': [mockRun(5, 5)],
-            'daily-grind - translator - unguided': [mockRun(2, 5)],
+            'daily-grind - translator - unguided': [mockRun(0, 5)],
             'devtools-times - translator - guided': [
                 {
                     results: [
@@ -76,26 +75,30 @@ test('extractSuiteSummary normalizes historical crashed run (results.length === 
     assert.ok(summary);
     const translator = summary.guides.translator;
 
-    // The crashed devtools-times target must be weighted by its full canonical 5 checks (not 1):
-    // Guided passes = 5 (daily-grind) + 0 (devtools-times) = 5
-    // Guided total = 5 (daily-grind) + 5 (devtools-times canonical) = 10
-    // Guided rate = 5 / 10 = 50% (if it was weighted as 1, it would erroneously be 5 / 6 = 83%!)
+    // Only daily-grind is a valid pair: guided = 5/5 (100%), unguided = 0/5 (0%)
     assert.strictEqual(translator.guidedPassed, 5);
-    assert.strictEqual(translator.guidedTotal, 10);
-    assert.strictEqual(translator.guidedRate, 50);
+    assert.strictEqual(translator.guidedTotal, 5);
+    assert.strictEqual(translator.guidedRate, 100);
 
-    // Unguided passes = 2 + 1 = 3 out of 10 = 30%
-    assert.strictEqual(translator.unguidedPassed, 3);
-    assert.strictEqual(translator.unguidedTotal, 10);
-    assert.strictEqual(translator.unguidedRate, 30);
+    assert.strictEqual(translator.unguidedPassed, 0);
+    assert.strictEqual(translator.unguidedTotal, 5);
+    assert.strictEqual(translator.unguidedRate, 0);
 
-    // Suite-level totals must also reflect the canonical check count
-    assert.strictEqual(summary.guidedStats.total, 10);
+    // devtools-times has 0 total in the per-task breakdown so guide.js filters it out
+    assert.strictEqual(translator.tasks?.['devtools-times'].guidedTotal, 0);
+    assert.strictEqual(translator.tasks?.['devtools-times'].unguidedTotal, 0);
+
+    // Suite-level totals only include valid task pairs (daily-grind)
+    assert.strictEqual(summary.guidedStats.total, 5);
     assert.strictEqual(summary.guidedStats.passed, 5);
-    assert.strictEqual(summary.unguidedStats.total, 10);
-    assert.strictEqual(summary.unguidedStats.passed, 3);
+    assert.strictEqual(summary.unguidedStats.total, 5);
+    assert.strictEqual(summary.unguidedStats.passed, 0);
 
-    // Chart data series must also use canonical check counts
-    assert.deepStrictEqual(summary.chartData.guided, [100, 0]);
-    assert.deepStrictEqual(summary.chartData.unguided, [40, 20]);
+    // 1 out of 4 total runs was an early failure -> 25%
+    assert.strictEqual(summary.earlyFailureRate, 25);
+
+    // Chart data only includes the eligible scenario (daily-grind)
+    assert.deepStrictEqual(summary.chartData.labels, ['daily-grind (translator)']);
+    assert.deepStrictEqual(summary.chartData.guided, [100]);
+    assert.deepStrictEqual(summary.chartData.unguided, [0]);
 });
