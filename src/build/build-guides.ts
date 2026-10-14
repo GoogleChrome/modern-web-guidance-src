@@ -30,6 +30,7 @@ import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Head
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
 import { rootDir, outDir } from "../core/paths.ts";
+import { toDevsiteMarkdown } from "./devsite-markdown.ts";
 
 const WORKSPACE_ROOT = rootDir;
 
@@ -110,6 +111,7 @@ async function computePipelineHash(
     path.join(rootDir, "src/core/macros.ts"),
     path.join(rootDir, "src/rag/transformers-embedder.ts"),
     path.join(rootDir, "src/core/guide-validation.ts"),
+    path.join(rootDir, "src/build/devsite-markdown.ts"),
   ];
 
   for (const dep of deps) {
@@ -332,7 +334,12 @@ description: ${JSON.stringify(data.description)}
 category: ${category}
 web-feature-ids: ${JSON.stringify(featureIds)}
 ---`;
-    const bodyWithoutH1 = processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
+    const resumedSteps: number[] = [];
+    const devsiteMarkdown = toDevsiteMarkdown(processedMarkdown, stepNumber => resumedSteps.push(stepNumber));
+    if (resumedSteps.length > 0) {
+      console.warn(`⚠️  ${path.relative(WORKSPACE_ROOT, filePath)}: folded unindented blocks into ordered lists (resumed at steps ${resumedSteps.join(", ")}).`);
+    }
+    const bodyWithoutH1 = devsiteMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
     const finalContent = `${genericFrontmatter}\n\n# ${title}\n\n${bodyWithoutH1}\n`;
 
     const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
