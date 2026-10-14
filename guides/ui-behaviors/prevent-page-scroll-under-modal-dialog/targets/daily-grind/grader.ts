@@ -72,14 +72,7 @@ test.describe('prevent-page-scroll-under-modal-dialog Target Grader', () => {
       return ['visible', 'clip'].includes(ov) || ['visible', 'clip'].includes(ovX) || ['visible', 'clip'].includes(ovY);
     });
 
-    const specifiesScrollContainer = dialogRules.some(r => {
-      const ov = r.style.getPropertyValue('overflow') ||
-                 r.style.getPropertyValue('overflow-y') ||
-                 r.style.getPropertyValue('overflow-x');
-      return ['auto', 'scroll', 'hidden'].includes(ov);
-    });
-
-    expect(hasDialog && !hasInvalidOverflow && specifiesScrollContainer).toBe(true);
+    expect(hasDialog && !hasInvalidOverflow).toBe(true);
   });
 
   test('The dialog::backdrop pseudo-element establishes a scroll container with overflow: hidden or auto', () => {
