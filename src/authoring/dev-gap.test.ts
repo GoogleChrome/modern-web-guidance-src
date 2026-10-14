@@ -273,7 +273,7 @@ describe('fixEvalGaps', () => {
     stubDev([passing]);
 
     assert.strictEqual(await run([failing, passing]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset spinner', ...prCalls('progress-ring')]);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/spinner', 'reset spinner', 'delete gd-dev/spinner', ...prCalls('progress-ring')]);
   });
 
   it('continues when gd dev throws', async () => {
@@ -287,7 +287,7 @@ describe('fixEvalGaps', () => {
     };
 
     assert.strictEqual(await run([throwing, passing]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset spinner', ...prCalls('progress-ring')]);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/spinner', 'reset spinner', 'delete gd-dev/spinner', ...prCalls('progress-ring')]);
   });
 
   it('clears results from an earlier run so they cannot reach the PR', async () => {
@@ -297,7 +297,7 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.runDevGuide = async () => true; // "succeeds" without writing a new report
 
     assert.strictEqual(await run([guide]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset scrollspy']);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/scrollspy', 'reset scrollspy', 'delete gd-dev/scrollspy']);
   });
 
   it('drops the branch and continues when gd pr fails', async () => {
@@ -352,7 +352,7 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.resetToMain = dir => { calls.push(`reset ${path.basename(dir)}`); treeStatus = '?? stray.txt'; };
 
     assert.strictEqual(await run([first, second]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset spinner']);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/spinner', 'reset spinner', 'delete gd-dev/spinner']);
   });
 
   it('processes at most --limit guides', async () => {

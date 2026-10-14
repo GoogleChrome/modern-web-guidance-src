@@ -175,6 +175,14 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
   const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
   let content = `# Evaluation Report: ${guideName}\n\n`;
 
+  const anyUnhealthy = summaries.some(s => s.flag !== 'HEALTHY');
+  if (anyUnhealthy) {
+    content += `> [!NOTE]\n`;
+    content += `> **Reviewer Next Steps**: If any targets are flagged or require adjustments, recommended fixes have already been applied directly to the files in this PR.\n`;
+    content += `> - For edits to \`guide.md\` or \`expectations.md\`: review the changes, then add the **\`needs-eval-gen\`** label to regenerate solutions, tasks, and graders on the next \`gd dev-gap\` run.\n`;
+    content += `> - For edits to \`targets/\` (\`task.md\` or \`grader.ts\`): review the changes, then add the **\`needs-eval-run\`** label to re-run calibration and agent evaluations.\n\n`;
+  }
+
   for (const s of summaries) {
     content += `## Target: \`${s.baseApp}\` (Status: \`${s.flag}\`)\n\n`;
     content += `### Evaluation Results\n\n`;

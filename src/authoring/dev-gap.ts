@@ -292,6 +292,9 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
           fs.rmSync(path.join(inv.dir, TARGETS_DIR, t), { recursive: true, force: true });
         }
       }
+    } else {
+      evalGapFixCli.createBranch(branch);
+      createdBranch = true;
     }
 
     // Clear guide results so the report can only come from this run.
@@ -302,11 +305,6 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
     if (!devOk || !fs.existsSync(path.join(resultsDir, REPORT_FILE))) {
       outcome = { gap, status: 'dev-failed', detail: devOk ? `gd dev wrote no ${REPORT_FILE}` : 'gd dev failed' };
     } else {
-      if (!gap.rerunMode) {
-        // Branch off main here so `gd pr` commits to a fresh branch this run owns.
-        evalGapFixCli.createBranch(branch);
-        createdBranch = true;
-      }
       const prUrl = await evalGapFixCli.runDevPr(inv.dir);
       outcome = prUrl
         ? { gap, status: gap.rerunMode ? 'pr-updated' : 'pr-opened', detail: prUrl }

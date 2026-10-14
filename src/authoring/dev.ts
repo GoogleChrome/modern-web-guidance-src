@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
@@ -54,6 +55,30 @@ export interface DevGuideOptions {
     prBody?: string;
   };
 }
+
+export const devCli = {
+  commitStepArtifacts(guideDir: string, commitMessage: string): boolean {
+    try {
+      const branch = execSync('git branch --show-current', {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      }).trim();
+      if (!branch || branch === 'main') return false;
+
+      const status = execSync(`git status --porcelain "${guideDir}"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      }).trim();
+      if (!status) return false;
+
+      execSync(`git add "${guideDir}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
+      execSync(`git commit -m "${commitMessage}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+};
 
 function printInventory(inv: GuideInventory, targets: readonly string[] = SUPPORTED_BASE_APPS): void {
   const icon = (exists: boolean, willGenerate = false, warn = false) => {
@@ -216,10 +241,16 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   const defaultAgent = getDefaultSolutionAgent();
   printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CODEX_CLI]: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1, targets);
 
+  // Commit generated evals and artifacts before Step 5 report modifications
+  devCli.commitStepArtifacts(targetDir, `feat(guide): generate ${currentInv.name} evaluations and artifacts`);
+
   // Step 5: Run evaluation report (printed last)
   if (options.test !== false && overallSuccess) {
     await runDevReport(targetDir, currentInv, targets, options.prContext);
   }
+
+  // Commit post-report modifications if any files were updated by the report agent
+  devCli.commitStepArtifacts(targetDir, `fix(guide): apply post-evaluation report recommendations for ${currentInv.name}`);
 
   return overallSuccess;
 }
