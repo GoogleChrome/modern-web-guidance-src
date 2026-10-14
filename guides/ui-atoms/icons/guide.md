@@ -28,29 +28,13 @@ If a page renders thousands of icons at once, benchmark the actual page and asse
 
 ## Primary Approach: CSS-Driven Icon Engine
 
-The engine uses three CSS capabilities to render icons:
+Icons are design tokens: each icon is a custom property holding an image, and any element can display one by setting `--icon-start` or `--icon-end`. The engine combines three CSS capabilities:
 
-1. **Registered Custom Properties (`@property`)**: Register `--icon-start` and `--icon-end` with `"*"` syntax and `inherits: false` so icon variables do not inherit into child elements.
-2. **Container Style Queries (`@container style(...)`)**: Automatically detects and renders when custom properties are set.
-3. **CSS Masks & `currentColor`**: Icons render as pseudo-elements using masks, with sizing in relative units (`em`) and colors via `currentColor`. Size, color, spacing and vertical offset are read from inheritable `--icon-style-*` custom properties with sensible fallbacks, so an entire subtree can be restyled from an ancestor. The `--icon-style-` prefix keeps these settings from colliding with the icon assets themselves, which also live under `--icon-*`.
+* **Registered custom properties (`@property`)** keep `--icon-start` and `--icon-end` from inheriting, so an icon set on a component does not cascade into its children.
+* **Container style queries (`@container style(...)`)** detect when an element has an icon assigned and render it, with no class or markup changes.
+* **CSS masks and `currentColor`** render the icon in a pseudo-element that follows the element's text color. Size, color, spacing and vertical offset are read from inheritable `--icon-style-*` properties with sensible fallbacks, so a whole subtree can be restyled from an ancestor. The `--icon-style-` prefix keeps these settings from colliding with the icon tokens themselves, which also live under `--icon-*`.
 
-### Implementation
-
-#### 1. Register Custom Properties
-
-```css
-@property --icon-start {
-  syntax: "*";
-  inherits: false;
-}
-
-@property --icon-end {
-  syntax: "*";
-  inherits: false;
-}
-```
-
-#### 2. Defining Icon Assets as Design Tokens
+### Defining icon design tokens
 
 Define SVG icons and any `--icon-style-*` overrides as reusable custom properties using inline SVG data URIs or root-relative URLs (e.g., `url("/icons/trash.svg")`). When an icon is loaded from an external SVG file, use a root-relative URL or an embedded data URI. A relative URL used through a custom property can resolve relative to the stylesheet where the icon is used, rather than the stylesheet where the custom property is defined. If those stylesheets are in different directories, the URL may resolve to the wrong file.
 
@@ -77,9 +61,25 @@ The main downside of this approach is that it requires a lot more boilerplate (t
 }
 ```
 
-#### 3. Setting Up the Container Style Queries
+### Rendering icons from tokens
 
-This block handles the injection, sizing, masking, and automatic layout adjustments. Because the engine defaults to `background-color: currentColor`, the icon automatically adopts the parent's text color and responds to standard transitions.
+An element displays an icon by setting `--icon-start` (leading) or `--icon-end` (trailing) to one of the tokens above. Two pieces of CSS turn that assignment into a rendered icon.
+
+First, register `--icon-start` and `--icon-end` with `@property`. The `"*"` syntax accepts any value, and `inherits: false` is the important part: without it, an icon set on a button would inherit into every descendant, and each of them would render the icon too.
+
+```css
+@property --icon-start {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --icon-end {
+  syntax: "*";
+  inherits: false;
+}
+```
+
+Second, a container style query detects when the property is set on an element and renders the icon in a pseudo-element. Because the pseudo-element does not inherit `--icon-start` (it was registered as non-inheriting), the first declaration forwards the value explicitly with `inherit`. The remaining declarations handle sizing, masking, alignment and spacing. Because the fill defaults to `currentColor`, the icon adopts the element's text color and follows its transitions.
 
 ```css
 /* Style query for elements configuring a start icon */
@@ -116,7 +116,7 @@ Each declaration earns its place:
 
 For a trailing icon, follow the same pattern with `--icon-end` and `::after` instead of `--icon-start` and `::before`. Use `mask: var(--icon-end)` and apply spacing with `margin-inline-start` instead of `margin-inline-end`.
 
-#### 4. Standalone and Icon-Only Element Forwarding
+### Standalone and icon-only elements
 
 For standalone icons or icon-only buttons, apply `.icon` directly to the empty element (the button itself for an icon-only control) and set its icon with `--icon`. The class forwards `--icon` to `--icon-start`:
 
