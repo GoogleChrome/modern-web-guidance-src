@@ -24,7 +24,7 @@ export interface StaticSiteGuideMetadata {
   category: string;
   webFeatureIds: string[];
 }
-import { replaceMacros, type BuildTarget, formatTitle } from "../core/macros.ts";
+import { replaceMacros, type BuildTarget } from "../core/macros.ts";
 
 import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub } from "../core/guide-validation.ts";
 import { config } from "../core/skills-config.ts";
@@ -299,6 +299,13 @@ export function chunkMarkdown(markdown: string): string[] {
   return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
+function requireTitle(title: unknown, filePath: string): string {
+  if (typeof title !== "string" || !title.trim()) {
+    throw new Error(`Guide has no H1 heading or frontmatter title: ${path.relative(WORKSPACE_ROOT, filePath)}`);
+  }
+  return title.trim();
+}
+
 async function processSingleGuideFile(
   filePath: string,
   category: string,
@@ -324,7 +331,7 @@ async function processSingleGuideFile(
 
   if (TARGET === 'static-site') {
     const h1Title = extractH1Heading(processedMarkdown);
-    const title = h1Title || data.title || formatTitle(id);
+    const title = requireTitle(h1Title || data.title, filePath);
     const featureIds: string[] = (data['web-feature-ids'] || []).filter(
       (fid: string) => !fid.startsWith('tmp-')
     );
@@ -375,7 +382,7 @@ web-feature-ids: ${JSON.stringify(featureIds)}
   });
 
   const h1Title = extractH1Heading(processedMarkdown);
-  const title = h1Title || data.title || formatTitle(id);
+  const title = requireTitle(h1Title || data.title, filePath);
   const summaryChunk = `# ${title}\n\n${data.description}`;
 
   const chunks = IS_NO_CHUNKING
