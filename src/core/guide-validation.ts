@@ -277,6 +277,10 @@ export function validateGuide(filePath: string): ValidationResult {
   errors.push(...validateMacros(maskedBody, relativePath));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateCallouts(maskedBody, relativePath));
+  const isStub = stripAllComments(body).trim().length === 0 || isDraftStub(data.draft);
+  if (!isStub) {
+    errors.push(...validateGuideRefTargets(maskedBody, relativePath));
+  }
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
@@ -903,6 +907,22 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
     }
   }
 
+  return errors;
+}
+
+/**
+ * Published guides may only GUIDE_REF other published guides; links to stubs or
+ * drafts become dead links on the static site and dead retrievals in the CLI.
+ */
+export function validateGuideRefTargets(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const guides = getGuidesMap();
+  for (const [, guideId] of body.matchAll(/GUIDE_REF\(\s*["']([^"']+)["']\s*\)/g)) {
+    const target = guides.get(guideId);
+    if (target && !target.isPublished) {
+      errors.push(`GUIDE_REF("${guideId}") in ${relativePath} points to an unpublished guide. Link a published guide or remove the reference.`);
+    }
+  }
   return errors;
 }
 
