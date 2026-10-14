@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { outDir } from "../../core/paths.ts";
 import { Agents } from "../../harness/config.ts";
+import { buildBm25Index } from "../bm25.ts";
 import {
   ensureWildDataset,
   loadPublicDataset,
@@ -233,7 +234,7 @@ describe("pooling, mining, and wild sampling helpers", () => {
     ]);
   });
 
-  it("pools union of dense max, dense mean, and expectedGuide", () => {
+  it("pools union of dense max, dense mean, BM25, and expectedGuide", () => {
     const cards = new Map<string, GuideCard>([
       ["g1", { id: "g1", title: "G1", description: "d1", category: "c", headings: [] }],
       ["g2", { id: "g2", title: "G2", description: "d2", category: "c", headings: [] }],
@@ -242,10 +243,13 @@ describe("pooling, mining, and wild sampling helpers", () => {
     const corpus: CorpusForPooling = {
       cards,
       vectors: [
-        { id: "g1", description: "d1", category: "c", featuresUsed: [], tokenCount: 100, vector: [1, 0] },
-        { id: "g1", description: "d1", category: "c", featuresUsed: [], tokenCount: 100, vector: [0, 0] },
-        { id: "g2", description: "d2", category: "c", featuresUsed: [], tokenCount: 100, vector: [0.8, 0] },
+        { id: "g1", description: "d1", category: "c", featuresUsed: [], tokenCount: 100, vector: [1, 0], chunkContent: "alpha" },
+        { id: "g2", description: "d2", category: "c", featuresUsed: [], tokenCount: 100, vector: [0, 1], chunkContent: "user-invalid validation" },
       ],
+      bm25: buildBm25Index([
+        { id: "g1", text: "alpha" },
+        { id: "g2", text: "user-invalid validation" },
+      ]),
     };
 
     const pooled = poolQueryCandidates("user-invalid", [1, 0], corpus, {
