@@ -153,9 +153,8 @@
     /* --------------------------------------------------
      ROBUST COMPATIBILITY FALLBACK (Style Queries Lack of Support)
      -------------------------------------------------- */
-    /* Class-hook fallback for start icons */
-    :where(.icon-start)::before {
-      --icon-start: inherit;
+    /* Class-hook fallback for start icons and standalone empty icons */
+    :where(.icon-start, .icon:empty)::before {
       content: image-set(linear-gradient(transparent 0 100%), var(--icon-start));
       display: inline-block;
       width: var(--icon-size);
@@ -166,6 +165,14 @@
       pointer-events: none;
       vertical-align: middle;
       transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+    }
+
+    :where(.icon-start)::before {
+      --icon-start: inherit;
+    }
+
+    :where(.icon:empty)::before {
+      --icon-start: var(--icon);
     }
 
     :where(.icon-start:not(.icon, :empty))::before {
@@ -191,20 +198,6 @@
       margin-inline-start: var(--icon-style-spacing);
     }
 
-    /* Standalone empty icon forwarding logic fallback */
-    :where(.icon:empty)::before {
-      --icon-start: var(--icon);
-      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start));
-      display: inline-block;
-      width: var(--icon-size);
-      height: var(--icon-size);
-      background-color: currentColor;
-      mask: var(--icon) no-repeat center / contain;
-      opacity: 0.85;
-      pointer-events: none;
-      vertical-align: middle;
-      transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
-    }
   </style>
 </head>
 

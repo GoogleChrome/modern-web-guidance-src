@@ -182,21 +182,22 @@ The sprite file defines the `icon-trash` symbol once, and pages can reference it
 To support browsers without Container Style Queries, use classes or component selectors as fallback hooks. Keep icon selection in custom properties; inline-style selectors alone miss icons assigned through CSS rules.
 
 ```css
-:where(.icon-start)::before {
-  --icon-start: inherit;
+:where(.icon-start, .icon:empty)::before {
   content: image-set(linear-gradient(transparent 0 100%), var(--icon-start));
   /* icon styles */
+}
+
+:where(.icon-start)::before {
+  --icon-start: inherit;
+}
+
+:where(.icon:empty)::before {
+  --icon-start: var(--icon);
 }
 
 :where(.icon-end)::after {
   --icon-end: inherit;
   content: image-set(linear-gradient(transparent 0 100%), var(--icon-end));
-  /* icon styles */
-}
-
-:where(.icon:empty)::before {
-  --icon-start: var(--icon);
-  content: image-set(linear-gradient(transparent 0 100%), var(--icon-start));
   /* icon styles */
 }
 
