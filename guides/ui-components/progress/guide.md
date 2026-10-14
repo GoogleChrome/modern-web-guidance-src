@@ -100,7 +100,7 @@ progress::-moz-progress-bar {
 
 **Add a custom animation for the indeterminate state:** Turn the fill pseudo-element into a short segment and slide it along the track.
 - Style the fill itself; do NOT recreate it as a background on `progress`.
-- The indeterminate fill exists only through its animation: the keyframes set its length with a real `inline-size` (this beats Chromium's UA inline `inline-size`) and move it with `translate`. Do NOT use `scale` for the length; it distorts any pattern painted on the fill.
+- The indeterminate fill exists only through its animation: the keyframes set its length with a real `inline-size` (this beats Chromium's UA inline `inline-size`) and moves it with `translate`. Do NOT use `scale` for the length; it distorts any pattern painted on the fill.
 - `translate` percentages resolve against the fill's own width, so express positions in track units instead: make `progress` an inline-size container and use `cqi` in the keyframes. Include `margin-right: auto` in `from, to` so Chromium lays the fill out at the physical left in RTL too.
 - Use transforms, not margins, to move the fill.
   - Transforms keep the animation in the compositor (unless `inline-size` is also being animated)
