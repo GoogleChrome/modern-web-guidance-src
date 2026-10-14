@@ -220,7 +220,7 @@ test.describe('verify-email-ownership Target Grader', () => {
       const propAssignments = sf.getDescendantsOfKind(SyntaxKind.PropertyAssignment);
       for (const pa of propAssignments) {
         const name = pa.getName();
-        if (/cache-control/i.test(name) && pa.getInitializer().getText().includes('no-store')) {
+        if (/cache-control/i.test(name) && pa.getInitializer()?.getText().includes('no-store')) {
           servesNoStore = true;
         }
       }
