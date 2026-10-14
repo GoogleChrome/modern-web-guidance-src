@@ -1,4 +1,5 @@
 import { marked, type Token, type Tokens } from "marked";
+import { isGithubAlertType, type GithubAlertType } from "../core/guide-validation.ts";
 
 /**
  * Adapts guide markdown for DevSite's renderer, which diverges from GitHub in two ways:
@@ -48,7 +49,7 @@ function indentBlock(text: string): string {
   return text.replace(/^(?=[^\n]*\S)/gm, "    ");
 }
 
-const ALERT_LABELS: Record<string, { label: string; className: string }> = {
+const ALERT_LABELS: Record<GithubAlertType, { label: string; className: string }> = {
   NOTE: { label: "Note", className: "note" },
   TIP: { label: "Tip", className: "tip" },
   IMPORTANT: { label: "Important", className: "special" },
@@ -60,10 +61,11 @@ function convertAlert(token: Tokens.Blockquote): string {
   const match = token.raw.match(/^> ?\[!(\w+)\][ \t]*\n/);
   if (!match) return token.raw;
 
-  const alert = ALERT_LABELS[match[1].toUpperCase()];
-  if (!alert) {
+  const type = match[1].toUpperCase();
+  if (!isGithubAlertType(type)) {
     throw new Error(`Unsupported GitHub alert type "[!${match[1]}]".`);
   }
+  const alert = ALERT_LABELS[type];
 
   const trailing = token.raw.match(/\n*$/)?.[0] ?? "";
   const body = token.raw
