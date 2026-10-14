@@ -3,7 +3,7 @@ import path from 'node:path';
 import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
-import { validateMacros, stripComments, maskComments, formatTitle } from './macros.ts';
+import { validateMacros, stripComments, maskComments } from './macros.ts';
 import { validateFeature, resolveFeatureId } from './baseline.ts';
 import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
@@ -356,6 +356,7 @@ export function validateGuide(filePath: string): ValidationResult {
   const maskedBody = maskComments(body);
   errors.push(...validateMacros(maskedBody, relativePath));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
+  errors.push(...validateCallouts(maskedBody, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
@@ -757,7 +758,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   return {
     dir,
     name,
-    title: (data.title as string | undefined) || extractH1Heading(content) || formatTitle(name),
+    title: (data.title as string | undefined) || extractH1Heading(content),
     category,
     hasGuide,
     isStub,
@@ -979,6 +980,36 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
     }
   }
 
+  return errors;
+}
+
+export const GITHUB_ALERT_TYPES = ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'] as const;
+export type GithubAlertType = typeof GITHUB_ALERT_TYPES[number];
+
+export function isGithubAlertType(type: string): type is GithubAlertType {
+  return (GITHUB_ALERT_TYPES as readonly string[]).includes(type);
+}
+
+const ALERT_MARKER_PATTERN = /^> ?\[!(\w+)\]/;
+const BOLD_CALLOUT_PATTERN = /^> ?\*\*(Note|Tip|Important|Warning|Caution)(?::\*\*|\*\*:)/i;
+
+/**
+ * Callouts must use GitHub alert syntax (`> [!NOTE]`) with a known type, so the
+ * static-site build can map them to DevSite notices.
+ */
+export function validateCallouts(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  marked.walkTokens(marked.lexer(body), token => {
+    if (token.type !== 'blockquote') return;
+    const alertType = token.raw.match(ALERT_MARKER_PATTERN)?.[1];
+    if (alertType && !isGithubAlertType(alertType.toUpperCase())) {
+      errors.push(`Unsupported alert type "[!${alertType}]" in ${relativePath}. Use one of: ${GITHUB_ALERT_TYPES.join(', ')}.`);
+    }
+    const boldLabel = token.raw.match(BOLD_CALLOUT_PATTERN)?.[1];
+    if (boldLabel) {
+      errors.push(`Bold callout "> **${boldLabel}:**" in ${relativePath}. Use GitHub alert syntax instead: "> [!${boldLabel.toUpperCase()}]".`);
+    }
+  });
   return errors;
 }
 

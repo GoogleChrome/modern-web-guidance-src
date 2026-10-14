@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from './macros.ts';
 
@@ -119,6 +119,32 @@ describe('parseExpectations', () => {
     assert.deepStrictEqual(result.mustPass, []);
     assert.deepStrictEqual(result.mustFail, []);
     assert.deepStrictEqual(result.appAgnostic, []);
+  });
+});
+
+describe('validateCallouts', () => {
+  test('allows known GitHub alert types and plain blockquotes', () => {
+    const body = `> [!NOTE]\n> A note.\n\n> [!important]\n> Lowercase is fine.\n\n> Just a quote.\n\n> **Note on kid handling:** prose label, not a callout.\n`;
+    assert.deepStrictEqual(validateCallouts(body, 'test.md'), []);
+  });
+
+  test('rejects unknown alert types', () => {
+    const errors = validateCallouts(`> [!DANGER]\n> Boom.\n`, 'test.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /Unsupported alert type "\[!DANGER\]"/);
+  });
+
+  test('rejects bold-label callouts, including inside list items', () => {
+    const body = `> **Important:** Top level.\n\n- item\n\n  > **Note**: Nested.\n`;
+    const errors = validateCallouts(body, 'test.md');
+    assert.strictEqual(errors.length, 2);
+    assert.match(errors[0], /\[!IMPORTANT\]/);
+    assert.match(errors[1], /\[!NOTE\]/);
+  });
+
+  test('ignores callout-like text inside code fences', () => {
+    const body = '```md\n> **Note:** example\n> [!BOGUS]\n```\n';
+    assert.deepStrictEqual(validateCallouts(body, 'test.md'), []);
   });
 });
 
