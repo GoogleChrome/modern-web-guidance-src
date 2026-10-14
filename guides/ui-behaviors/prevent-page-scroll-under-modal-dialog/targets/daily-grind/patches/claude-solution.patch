@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+index 66c9173..3477fc9 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,30 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    dialog:modal {
++      overscroll-behavior: contain;
++      overflow: auto;
++      max-width: min(90vw, 420px);
++      max-height: 80vh;
++      margin: auto;
++      padding: 24px;
++      border: none;
++      border-radius: 8px;
++      color: var(--text);
++    }
++
++    dialog::backdrop {
++      overflow: hidden;
++      overscroll-behavior: contain;
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
+   </style>
+ </head>
+ 
+@@ -172,8 +196,16 @@
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn" id="open-hours">Store Hours</button>
+   </header>
+ 
++  <dialog id="hours-dialog" aria-labelledby="hours-title">
++    <h2 id="hours-title">Store Hours</h2>
++    <p>Monday – Friday: 6am – 7pm</p>
++    <p>Saturday – Sunday: 7am – 5pm</p>
++    <button type="button" class="btn" id="close-hours">Close</button>
++  </dialog>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +239,11 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const hoursDialog = document.getElementById('hours-dialog');
++    document.getElementById('open-hours').addEventListener('click', () => hoursDialog.showModal());
++    document.getElementById('close-hours').addEventListener('click', () => hoursDialog.close());
++  </script>
+ </body>
+ 
+ </html>
