@@ -82,7 +82,7 @@ Evaluation harnesses for guides exist in two generational formats:
 
 ### Guide Development Stages & Pipeline Tracking
 
-A guide progresses through three main stages, tracked canonically in GitHub issue #1815 via `src/ci/sync-pipeline-issue.ts`:
+A guide progresses through three stages before its evals land, tracked canonically in GitHub issue #1815 via `src/ci/sync-pipeline-issue.ts`:
 
 1. **Stage 1: Identifying use cases (Needs use cases)**
    - **Goal**: Intake backlog of open `new-feature` issues representing platform features that need use cases defined.
@@ -91,18 +91,23 @@ A guide progresses through three main stages, tracked canonically in GitHub issu
 2. **Stage 2: Authoring guidance (Needs guidance)**
    - **Goal**: Flesh out the guidance content and define testable expectations.
    - **Artifacts**: Full `guide.md` content (DO/DO NOT directives, snippets, fallbacks), completed `demo.html`, and `expectations.md`.
-   - **In review**: Open content PRs introducing or editing guides that are not yet complete on `main`.
+   - **Guide PRs**: Open PRs introducing or editing guides whose content hasn't landed on `main` yet.
    - **Not started**: Open `new-use-case` issues without an active PR.
 
 3. **Stage 3: Evaluating guidance (Needs evals)**
    - **Goal**: Generate evaluation capsules, calibrate graders, run evaluations, and generate reports.
    - **Artifacts**: `targets/<base_app>/`, `grader.ts`, `patches/`, `task.md`, and `results/guides/<category>/<slug>/report.md`.
-   - **In review**: Open eval PRs (`gd-dev/*` branch or `grader updates:` title) adding or updating graders for landed content.
+   - **Eval PRs**: Open PRs (`gd-dev/*` branch or `grader updates:` title) adding graders for guides whose content has landed.
    - **Ready for evals**: Guides on `main` that have non-draft guidance and expectations but lack a grader.
 
-4. **Complete (landed)**: Non-draft guides on `main` that have both guidance and working graders.
+4. **Evals landed**: Non-draft guides on `main` that have expectations and a grader. This checks that the files exist, not that the grader passes; stale graders are flagged separately.
 
-Pipeline progress is measured against the baseline established on **2026-07-22** (127 complete feature guides on `main`, discipline hubs excluded), scaled to 200 columns.
+The tracker's two progress rows use the same vocabulary:
+
+- **Guides landed**: non-draft `guide.md` with content plus `expectations.md` on `main` (stages 3 and 4).
+- **Evals landed**: guides landed that also have a grader (stage 4).
+
+Both rows count from the **2026-07-22** snapshot (127 guides with evals, discipline hubs excluded), one column per guide. Discipline orientation hubs don't currently require a grader and are excluded from all tracker counts.
 
 ---
 

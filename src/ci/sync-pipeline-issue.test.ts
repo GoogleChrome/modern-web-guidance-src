@@ -77,6 +77,13 @@ function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
   };
 }
 
+/** Every guide reports the same ready-since date, so tests don't walk real git history. */
+class FixedReadySince extends Map<string, string> {
+  override get(): string {
+    return '2026-10-01';
+  }
+}
+
 describe('hasSubstantiveExpectationsDiff', () => {
   it('returns false when only Basic presence lines and blank lines are added or modified', () => {
     const diff = [
@@ -155,7 +162,7 @@ describe('fetchWeeklyProgressHistory & baseline', () => {
 });
 
 describe('renderTwoRowProgressBar', () => {
-  it('renders exact 73-column bars for Guides and Evals rows with header, ruler line, and summary line', () => {
+  it('renders exact 73-column bars for Guides and Evals rows with header, ruler, and legend', () => {
     const res = renderTwoRowProgressBar({
       complete: 140,
       openEvalGuides: 16,
@@ -165,7 +172,7 @@ describe('renderTwoRowProgressBar', () => {
       baseline: 127,
       scaleMax: 200,
     });
-    assert.equal(res.header, 'Since Jul 22 (127)');
+    assert.equal(res.header, 'Guides on main since Jul 22 · 1 column = 1 guide');
     // 73 columns:
     // Guides: 41 '█', 17 '░', 15 '·' = 73
     // Evals:  13 '█', 16 '░', 44 '·' = 73
@@ -177,17 +184,17 @@ describe('renderTwoRowProgressBar', () => {
       res.evalsRow,
       'Evals     ' + '█'.repeat(13) + '░'.repeat(16) + '·'.repeat(44) + '  140 +16 PRs'
     );
-    assert.match(res.rulerLine, /┬\s+┬/);
-    assert.match(res.rulerLine, /150\s+200/);
-    assert.equal(
-      res.summaryLine,
-      '185 landed or in review'
-    );
+    const [ticks, nums] = res.rulerLine.split('\n');
+    // Ticks sit under the first bar column (127), guide 150, and the last bar column (200).
+    assert.deepEqual([...ticks].flatMap((c, i) => (c === '┬' ? [i] : [])), [10, 32, 82]);
+    assert.equal(nums.trim().split(/\s+/).join(' '), '127 150 200');
+    assert.equal(nums.lastIndexOf('200') + 2, 82);
+    assert.match(res.text, /█ landed on main {3}░ open PR {3}· not yet$/);
     assert.doesNotMatch(res.text, /▲/);
     assert.doesNotMatch(res.text, /[\u{1F300}-\u{1F9FF}]/u);
   });
 
-  it('safely clamps when counts are below baseline or over scale, and formats clean summary line', () => {
+  it('safely clamps when counts are below baseline or over scale', () => {
     const below = renderTwoRowProgressBar({
       complete: 120,
       openEvalGuides: 5,
@@ -205,7 +212,6 @@ describe('renderTwoRowProgressBar', () => {
       below.evalsRow,
       'Evals     ' + '░'.repeat(5) + '·'.repeat(68) + '  120 +5 PRs'
     );
-    assert.equal(below.summaryLine, '127 landed or in review');
 
     const over = renderTwoRowProgressBar({
       complete: 205,
@@ -224,7 +230,6 @@ describe('renderTwoRowProgressBar', () => {
       over.evalsRow,
       'Evals     ' + '█'.repeat(73) + '  205 +10 PRs'
     );
-    assert.equal(over.summaryLine, '215 landed or in review');
   });
 });
 
@@ -240,8 +245,8 @@ describe('renderProgressChart', () => {
     assert.match(chart, /xychart-beta/);
     assert.match(chart, /x-axis \["Jul 22", "Oct 14"\]/);
     assert.match(chart, /y-axis "Guides" 100 --> 200/);
-    assert.match(chart, /bar "Content landed" \[127, 168\]/);
-    assert.match(chart, /bar "Complete" \[127, 140\]/);
+    assert.match(chart, /bar "Guides landed" \[127, 168\]/);
+    assert.match(chart, /bar "Evals landed" \[127, 140\]/);
     assert.doesNotMatch(chart, /line "Goal"/);
     assert.doesNotMatch(chart, /<sub>Goal/);
   });
@@ -256,17 +261,17 @@ describe('renderSankeyDiagram', () => {
       guidePrsInReview: 17,
       notStarted: 45,
     });
-    assert.match(diagram, /config:\s+themeCSS: "\.link \{ mix-blend-mode: normal; stroke-opacity: 0\.45; \}"/);
+    assert.match(diagram, /config:\s+themeCSS: "\.link \{ mix-blend-mode: normal !important; stroke-opacity: 0\.6 !important; \}"/);
     assert.match(diagram, /linkColor: target/);
-    assert.match(diagram, /nodeColors:\s+"Tracked": "#9AA0A6"/);
+    assert.match(diagram, /nodeColors:\s+"All guides": "#9AA0A6"/);
     assert.doesNotMatch(diagram, /Needs use cases/);
     assert.match(diagram, /sankey-beta/);
-    assert.match(diagram, /Tracked, Complete, 140/);
-    assert.match(diagram, /Tracked, Needs evals, 28/);
-    assert.match(diagram, /Tracked, Needs guidance, 62/);
-    assert.match(diagram, /Needs evals, Eval PR in review, 16/);
+    assert.match(diagram, /All guides, Evals landed, 140/);
+    assert.match(diagram, /All guides, Needs evals, 28/);
+    assert.match(diagram, /All guides, Needs guidance, 62/);
+    assert.match(diagram, /Needs evals, Eval PR open, 16/);
     assert.match(diagram, /Needs evals, Ready for evals, 12/);
-    assert.match(diagram, /Needs guidance, Guide PR in review, 17/);
+    assert.match(diagram, /Needs guidance, Guide PR open, 17/);
     assert.match(diagram, /Needs guidance, Not started, 45/);
   });
 });
@@ -449,6 +454,7 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     ];
 
     const report = buildPipelineReportData({
+      readySinceBySlug: new FixedReadySince(),
       guides: [completeGuide, stubWithPr, stubWithIssue, needsEvalWithPr, needsEvalReady],
       openPrs,
       openUseCaseIssues,
@@ -467,18 +473,13 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
 
     const markdown = renderPipelineIssueBody(report);
     assert.match(markdown, /## Stage 2: Needs guidance \(2\)/);
-    assert.match(markdown, /##### ui-atoms/);
-    assert.match(markdown, /##### ui-components/);
+    assert.doesNotMatch(markdown, /^#####/m);
+    assert.doesNotMatch(markdown, /^- \[ \]/m);
     assert.match(markdown, /## Stage 3: Needs evals \(2\)/);
-    assert.match(
-      markdown,
-      /\*\*Eval Coverage \(3 finished guides\):\*\* \*\*1 \/ 3 \(33%\)\*\* covered — \*\*1 Gen 2\*\* \(`targets\/`\) · \*\*0 Gen 1\*\* \(legacy root `grader\.ts`\) · \*\*2 Missing evals\*\*/
-    );
-    assert.match(markdown, /### Gen 1 → Gen 2 Eval Migration \(`1` Gen 2 · `0` Gen 1 · `1` dual-target\)/);
-    assert.match(
-      markdown,
-      /- \[ \] \[\*\*ui-behaviors\/drag\*\*\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\/ui-behaviors\/drag\) · \[PR #1741\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/pull\/1741\) \(awaiting review\) · `HEALTHY` · Pass@1: dg 100%, dt 100% · `micahjo7` → `TravenReese`/
-    );
+    assert.match(markdown, /## Eval format: Gen 1 → Gen 2/);
+    assert.match(markdown, /Evals in Gen 2 format {3}█{70} {2}1 \/ 1 \(100%\)/);
+    assert.match(markdown, /#### Eval PRs: awaiting review \(1\)\n\n- \*\*Pass@1 dg 100% · dt 100%\*\* · \[\*\*ui-behaviors\/drag\*\*\]/);
+    assert.match(markdown, /#### Ready for evals \(1\)[\s\S]*- \[\*\*forms\/slider\*\*\]\([^)]+\) · ready since Oct 1 \(\d+ days\)/);
 
     // Ensure zero raw @username mentions anywhere
     assert.doesNotMatch(markdown, /(?:^|[\s(])@[A-Za-z0-9_-]+/);
@@ -486,7 +487,7 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     // Ensure every #NNNN in list items is inside a markdown link [PR #NNNN] or [#NNNN]
     const bareRefs = markdown
       .split('\n')
-      .filter(line => line.startsWith('- [ ]'))
+      .filter(line => line.startsWith('- '))
       .map(line => line.replace(/\[(?:PR )?#\d+\]\([^)]+\)/g, ''))
       .filter(line => /#\d+/.test(line));
     assert.deepEqual(bareRefs, []);
@@ -646,7 +647,7 @@ describe('classifyPr & isDisciplinePr', () => {
 });
 
 describe('Discipline hubs exclusion and issue header rendering', () => {
-  it('excludes discipline hubs from 200 goal counts, progress bar, and burndown', () => {
+  it('excludes discipline hubs from all counts and the progress bar', () => {
     const completeFeatureGuide = makeGuide({ category: 'css', name: 'anchor-pos' });
     const completeDisciplineHub = makeGuide({
       category: 'accessibility',
@@ -701,6 +702,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     ];
 
     const report = buildPipelineReportData({
+      readySinceBySlug: new FixedReadySince(),
       guides: [completeFeatureGuide, completeDisciplineHub, needsEvalFeature, needsEvalWithPr, needsEvalDiscipline],
       openPrs,
       openUseCaseIssues: [],
@@ -724,7 +726,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     // HTML comment emitted
     assert.match(
       markdown,
-      /<!-- Discipline orientation guides do not currently require a grader and are excluded from the progress counts, the progress bar, and trend counts\. This policy may change\. -->/
+      /<!-- Discipline orientation guides do not currently require a grader and are excluded from all counts below\. This policy may change\. -->/
     );
 
     // Old two-line header is NOT at the top
@@ -733,13 +735,13 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     // Progress bar code block with 2 symmetric rows (Guides, Evals) and ruler line
     assert.match(
       markdown,
-      /```\nSince Jul 22 \(\d+\)\nGuides\s+[█░·]{73}\s+\d+ \+\d+ PRs\nEvals\s+[█░·]{73}\s+\d+ \+\d+ PRs\n\s+┬\s+┬\n\s+150\s+200\n```/
+      /```\nGuides on main since Jul 22 · 1 column = 1 guide\nGuides\s+[█░·]{73}\s+\d+ \+\d+ PRs\nEvals\s+[█░·]{73}\s+\d+ \+\d+ PRs\n\s+┬\s+┬\s+┬\n\s+\d+\s+150\s+200\n█ landed on main {3}░ open PR {3}· not yet\n```/
     );
 
     // Clickable links line below code block
     assert.match(
       markdown,
-      /\[1 landed complete\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\) · \[1 eval PRs in review\]\(#open-eval-prs-1\) · \[1 ready for evals\]\(#ready-for-gd-dev-1\)/
+      /\[1 evals landed\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\) · \[1 eval PRs\]\(#stage-3-needs-evals-2\) · \[1 ready for evals\]\(#ready-for-evals-1\)/
     );
 
     // Weekly progress chart present with YAML frontmatter config
@@ -751,7 +753,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     // Sankey diagram present with YAML frontmatter config
     assert.match(
       markdown,
-      /### Pipeline State\n\n```mermaid\n---\nconfig:\n  themeCSS: "\.link \{ mix-blend-mode: normal; stroke-opacity: 0\.45; \}"\n  sankey:\n    linkColor: target/
+      /### Where guides are now\n\n```mermaid\n---\nconfig:\n  themeCSS: "\.link \{ mix-blend-mode: normal !important; stroke-opacity: 0\.6 !important; \}"\n  sankey:\n    linkColor: target/
     );
   });
 
@@ -813,6 +815,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     ];
 
     const report = buildPipelineReportData({
+      readySinceBySlug: new FixedReadySince(),
       guides: [complete1, complete2, needsEval1, needsEval2, needsGuidance1, needsGuidance2],
       openPrs,
       openUseCaseIssues,
@@ -846,17 +849,17 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     // Stage 1, header line, & Sankey matches
     assert.match(markdown, /## Stage 1: Needs use cases \(1\)/);
     assert.match(markdown, /\[1 features awaiting use cases\]\(#stage-1-needs-use-cases-1\)/);
-    assert.match(markdown, /Tracked, Complete, 2/);
-    assert.match(markdown, /Tracked, Needs evals, 2/);
-    assert.match(markdown, /Tracked, Needs guidance, 2/);
-    assert.doesNotMatch(markdown, /Tracked, Needs use cases/);
-    assert.match(markdown, /Needs evals, Eval PR in review, 1/);
+    assert.match(markdown, /All guides, Evals landed, 2/);
+    assert.match(markdown, /All guides, Needs evals, 2/);
+    assert.match(markdown, /All guides, Needs guidance, 2/);
+    assert.doesNotMatch(markdown, /All guides, Needs use cases/);
+    assert.match(markdown, /Needs evals, Eval PR open, 1/);
     assert.match(markdown, /Needs evals, Ready for evals, 1/);
-    assert.match(markdown, /Needs guidance, Guide PR in review, 1/);
+    assert.match(markdown, /Needs guidance, Guide PR open, 1/);
     assert.match(markdown, /Needs guidance, Not started, 1/);
 
     // Assert markdown links line matches the exact same numbers
-    const expectedLinksLine = `[2 landed complete](https://github.com/GoogleChrome/modern-web-guidance-src/tree/main/guides) · [1 eval PRs in review](#open-eval-prs-1) · [1 ready for evals](#ready-for-gd-dev-1) · [1 guide PRs in review](#in-review--open-prs-1) · [1 use-case issues open](https://github.com/GoogleChrome/modern-web-guidance-src/issues?q=is%3Aissue+is%3Aopen+label%3Anew-use-case)`;
+    const expectedLinksLine = `[2 evals landed](https://github.com/GoogleChrome/modern-web-guidance-src/tree/main/guides) · [1 eval PRs](#stage-3-needs-evals-2) · [1 ready for evals](#ready-for-evals-1) · [1 guide PRs](#guide-prs-1) · [1 use cases not started](#not-started-1) · [1 features awaiting use cases](#stage-1-needs-use-cases-1)`;
     assert.ok(
       markdown.includes(expectedLinksLine),
       `Expected markdown to contain links line:\n${expectedLinksLine}\nGot:\n${markdown.slice(0, 500)}`
@@ -904,6 +907,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     ];
 
     const report = buildPipelineReportData({
+      readySinceBySlug: new FixedReadySince(),
       guides: [complete1, needsEval1, needsEval2, needsGuidance1],
       openPrs,
       openUseCaseIssues: [],
@@ -940,7 +944,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     });
 
     // Tracked flows to Complete, Needs evals, and Needs guidance
-    const flows = Array.from(sankey.matchAll(/^Tracked, [^,]+, (\d+)$/gm)).map(m => Number(m[1]));
+    const flows = Array.from(sankey.matchAll(/^All guides, [^,]+, (\d+)$/gm)).map(m => Number(m[1]));
     const sankeyTrackedTotal = flows.reduce((sum, n) => sum + n, 0);
 
     // Landed guides (168) + guide PRs (16) + use cases (45) = 229
@@ -968,6 +972,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
   it('guarantees balanced details tags and code fences in generated issue body', () => {
     const complete = makeGuide({ category: 'css', name: 'guide-1' });
     const report = buildPipelineReportData({
+      readySinceBySlug: new FixedReadySince(),
       guides: [complete],
       openPrs: [],
       openUseCaseIssues: [],
@@ -1016,6 +1021,7 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     assert.throws(
       () => {
         buildPipelineReportData({
+      readySinceBySlug: new FixedReadySince(),
           guides: [complete],
           openPrs: [],
           openUseCaseIssues: [],

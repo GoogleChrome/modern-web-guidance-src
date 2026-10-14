@@ -41,6 +41,7 @@ export const EXPECTATIONS_CHANGED_LABEL = 'expectations-changed';
 
 export const PIPELINE_BASELINE_DATE = '2026-07-22';
 export const PIPELINE_SCALE_MAX = 200;
+const RULER_MID_TICK = 150;
 
 export interface PrSummary {
   number: number;
@@ -139,7 +140,6 @@ export interface TwoRowProgressBar {
   guidesRow: string;
   evalsRow: string;
   rulerLine: string;
-  summaryLine: string;
   text: string;
 }
 
@@ -150,11 +150,12 @@ export interface PipelineReportData {
   progressBar: TwoRowProgressBar;
   weeklyChart: string;
   sankey: string;
-  needsUseCasesIssues: IssueSummary[];
+  needsUseCasesIssues: Array<IssueSummary & { category: string | null }>;
   needsGuidancePrs: NeedsGuidancePrItem[];
   needsGuidanceIssues: NeedsGuidanceIssueItem[];
   openEvalPrs: OpenEvalPrItem[];
   readyForEvalSlugs: string[];
+  readySinceBySlug: Map<string, string>;
   staleEvals: StaleEvalItem[];
   legacyEvals: LegacyEvalItem[];
   dualTargetCompleteCount: number;
@@ -520,6 +521,40 @@ export function analyzeCommit(
 
 const commitAnalysisCache = new Map<string, CommitAnalysis>();
 
+/**
+ * For each guide, the date it entered its current uninterrupted "content landed" streak on
+ * HEAD: non-draft guide.md with content plus expectations.md. Walks the commits touching those
+ * two files newest-first and stops at the first commit where the guide wasn't landed.
+ */
+export function findReadySince(slugs: string[], cwd: string = rootDir): Map<string, string> {
+  const result = new Map<string, string>();
+  for (const slug of slugs) {
+    const guidePath = `guides/${slug}/${GUIDE_FILE}`;
+    const expPath = `guides/${slug}/${EXPECTATIONS_FILE}`;
+    const log = child_process
+      .execFileSync('git', ['log', '--format=%H %cs', 'HEAD', '--', guidePath, expPath], { cwd, encoding: 'utf8' })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+    let since: string | undefined;
+    for (const line of log) {
+      const [sha, date] = line.split(' ');
+      const present = child_process
+        .execFileSync('git', ['ls-tree', '--name-only', sha, '--', guidePath, expPath], { cwd, encoding: 'utf8' })
+        .trim()
+        .split('\n');
+      if (!present.includes(guidePath) || !present.includes(expPath)) break;
+      const guideContent = child_process.execFileSync('git', ['show', `${sha}:${guidePath}`], { cwd, encoding: 'utf8' });
+      const { isDraft, hasContent } = parseFrontmatterDraft(guideContent);
+      if (isDraft || !hasContent) break;
+      since = date;
+    }
+    if (!since) throw new Error(`findReadySince: ${slug} is not landed at HEAD`);
+    result.set(slug, since);
+  }
+  return result;
+}
+
 export function getCachedCommitAnalysis(
   commitSha: string,
   options: { excludeDisciplineHubs?: boolean; cwd?: string } = {}
@@ -613,51 +648,45 @@ export function renderTwoRowProgressBar(params: {
   const baseline = params.baseline;
   const barWidth = Math.max(1, scaleMax - baseline);
 
-  const header = `Since Jul 22 (${baseline})`;
+  const labelWidth = 10;
+  const header = 'Guides on main since Jul 22 · 1 column = 1 guide';
+  const legend = '█ landed on main   ░ open PR   · not yet';
 
   const renderRow = (label: string, landed: number, inReview: number, extraFlag = ''): string => {
     const landedCols = Math.max(0, Math.min(barWidth, landed - baseline));
     const inReviewCols = Math.max(0, Math.min(barWidth - landedCols, inReview));
     const remainingCols = Math.max(0, barWidth - landedCols - inReviewCols);
     const bar = '█'.repeat(landedCols) + '░'.repeat(inReviewCols) + '·'.repeat(remainingCols);
-    return `${label.padEnd(10)}${bar}  ${landed}${extraFlag} +${inReview} PRs`;
+    return `${label.padEnd(labelWidth)}${bar}  ${landed}${extraFlag} +${inReview} PRs`;
   };
 
   const guidesRow = renderRow('Guides', params.contentLanded, params.openGuideGuides);
   const staleFlag = params.staleEvalsCount && params.staleEvalsCount > 0 ? ` (${params.staleEvalsCount} stale)` : '';
   const evalsRow = renderRow('Evals', params.complete, params.openEvalGuides, staleFlag);
 
-  // Ruler line with ticks at 150 and 200
-  // Column 10 is offset 0 (baseline).
-  // 150 tick is at column 10 + (150 - baseline) - 1 = 32.
-  // 200 tick is at column 10 + (scaleMax - baseline) - 1 = 82.
-  const tick1Offset = 150 - baseline;
-  const tick2Offset = scaleMax - baseline;
-  const col150 = 10 + tick1Offset - 1;
-  const col200 = 10 + tick2Offset - 1;
-
-  const ticksArr = Array(col200 + 1).fill(' ');
-  ticksArr[col150] = '┬';
-  ticksArr[col200] = '┬';
-  const ticksLine = ticksArr.join('').trimEnd();
-
-  const numsArr = Array(col200 + 1).fill(' ');
-  numsArr.splice(col150 - 1, 3, ...'150'.split(''));
-  numsArr.splice(col200 - 2, 3, ...'200'.split(''));
-  const numsLine = numsArr.join('').trimEnd();
-
-  const rulerLine = `${ticksLine}\n${numsLine}`;
-
-  const n = params.contentLanded + params.openGuideGuides;
-  const summaryLine = `${n} landed or in review`;
+  // Column for guide count v: the first bar column is guide `baseline + 1`.
+  const colFor = (v: number) => labelWidth + Math.max(0, v - baseline - 1);
+  const ticks = [baseline, RULER_MID_TICK, scaleMax].filter(v => v >= baseline && v <= scaleMax);
+  const width = colFor(scaleMax) + 1;
+  const ticksArr = Array<string>(width).fill(' ');
+  const numsArr = Array<string>(width + 2).fill(' ');
+  for (const v of ticks) {
+    const col = colFor(v);
+    ticksArr[col] = '┬';
+    const label = String(v);
+    // Left-align the first label under its tick, right-align the last, center the rest.
+    const start =
+      v === baseline ? col : v === scaleMax ? col - label.length + 1 : col - Math.floor(label.length / 2);
+    numsArr.splice(start, label.length, ...label.split(''));
+  }
+  const rulerLine = `${ticksArr.join('').trimEnd()}\n${numsArr.join('').trimEnd()}`;
 
   return {
     header,
     guidesRow,
     evalsRow,
     rulerLine,
-    summaryLine,
-    text: `${header}\n${guidesRow}\n${evalsRow}\n${rulerLine}`,
+    text: `${header}\n${guidesRow}\n${evalsRow}\n${rulerLine}\n${legend}`,
   };
 }
 
@@ -723,8 +752,8 @@ export function renderProgressChart(points: WeeklyProgressPoint[]): string {
     'xychart-beta',
     `    x-axis [${xLabels}]`,
     `    y-axis "Guides" 100 --> ${PIPELINE_SCALE_MAX}`,
-    `    bar "Content landed" [${contentBars}]`,
-    `    bar "Complete" [${completeBars}]`,
+    `    bar "Guides landed" [${contentBars}]`,
+    `    bar "Evals landed" [${completeBars}]`,
     '```',
   ].join('\n');
 }
@@ -740,33 +769,35 @@ export function renderSankeyDiagram(params: {
   const needsEvals = evalPrsInReview + readyForEvals;
   const needsGuidance = guidePrsInReview + notStarted;
 
+  // Mermaid's sankey stylesheet sets `.link { mix-blend-mode: multiply }`, which renders links
+  // black on GitHub's dark theme; `!important` is required to beat it.
   const lines = [
     '```mermaid',
     '---',
     'config:',
-    '  themeCSS: ".link { mix-blend-mode: normal; stroke-opacity: 0.45; }"',
+    '  themeCSS: ".link { mix-blend-mode: normal !important; stroke-opacity: 0.6 !important; }"',
     '  sankey:',
     '    linkColor: target',
     '    nodeAlignment: left',
     '    labelStyle: outlined',
     '    nodeColors:',
-    '      "Tracked": "#9AA0A6"',
-    '      "Complete": "#4285F4"',
+    '      "All guides": "#9AA0A6"',
+    '      "Evals landed": "#4285F4"',
     '      "Needs evals": "#FBBC04"',
     '      "Needs guidance": "#E37400"',
-    '      "Eval PR in review": "#E37400"',
+    '      "Eval PR open": "#E37400"',
     '      "Ready for evals": "#FBBC04"',
-    '      "Guide PR in review": "#E37400"',
+    '      "Guide PR open": "#E37400"',
     '      "Not started": "#5F6368"',
     '---',
     'sankey-beta',
     '',
-    `Tracked, Complete, ${complete}`,
-    `Tracked, Needs evals, ${needsEvals}`,
-    `Tracked, Needs guidance, ${needsGuidance}`,
-    `Needs evals, Eval PR in review, ${evalPrsInReview}`,
+    `All guides, Evals landed, ${complete}`,
+    `All guides, Needs evals, ${needsEvals}`,
+    `All guides, Needs guidance, ${needsGuidance}`,
+    `Needs evals, Eval PR open, ${evalPrsInReview}`,
     `Needs evals, Ready for evals, ${readyForEvals}`,
-    `Needs guidance, Guide PR in review, ${guidePrsInReview}`,
+    `Needs guidance, Guide PR open, ${guidePrsInReview}`,
     `Needs guidance, Not started, ${notStarted}`,
     '```',
   ];
@@ -782,37 +813,56 @@ export function sanitizeIssueTitle(title: string): string {
     .replace(/@([a-zA-Z0-9_-]+)/g, '`@$1`');
 }
 
+const DAY_MS = 86_400_000;
+const GEN_BAR_COLS = 70;
+
+function codeList(names: string[]): string {
+  return names.map(n => `\`${n}\``).join(', ');
+}
+
+function daysBetween(fromIso: string, toIso: string): number {
+  return Math.round((Date.parse(`${toIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)) / DAY_MS);
+}
+
+function renderShareBar(label: string, count: number, total: number): string {
+  const cols = total > 0 ? Math.round((count / total) * GEN_BAR_COLS) : 0;
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return `${label.padEnd(24)}${'█'.repeat(cols)}${'·'.repeat(GEN_BAR_COLS - cols)}  ${count} / ${total} (${pct}%)`;
+}
+
+const REVIEW_GROUPS = ['approved', 'changes requested', 'awaiting review'] as const;
+
 export function renderPipelineIssueBody(data: PipelineReportData): string {
   const totalNeedsGuidance = data.needsGuidancePrs.length + data.needsGuidanceIssues.length;
   const totalNeedsEvals = data.openEvalPrs.length + data.readyForEvalSlugs.length;
-  const finishedFeatureGuides = data.completeCount + totalNeedsEvals;
-  const evalCoveragePct =
-    finishedFeatureGuides > 0 ? Math.round((data.completeCount / finishedFeatureGuides) * 100) : 100;
+  const today = getLaDateString(new Date());
+  const issuesQuery = (label: string) => `${REPO_URL}/issues?q=is%3Aissue+is%3Aopen+label%3A${label}`;
 
   const lines: string[] = [
     '# Content & Eval Pipeline',
     '',
-    '<!-- Discipline orientation guides do not currently require a grader and are excluded from the progress counts, the progress bar, and trend counts. This policy may change. -->',
+    '<!-- Discipline orientation guides do not currently require a grader and are excluded from all counts below. This policy may change. -->',
     '',
     '```',
     data.progressBar.text,
     '```',
     '',
-    data.progressBar.summaryLine,
+    '**Guides** = `guide.md` + `expectations.md` landed on `main` (not draft) · **Evals** = a landed guide that also has a grader',
     '',
-    `[${data.completeCount} landed complete](${REPO_URL}/tree/main/guides) · [${data.openEvalPrs.length} eval PRs in review](#open-eval-prs-${data.openEvalPrs.length}) · [${data.readyForEvalSlugs.length} ready for evals](#ready-for-gd-dev-${data.readyForEvalSlugs.length}) · [${data.needsGuidancePrs.length} guide PRs in review](#in-review--open-prs-${data.needsGuidancePrs.length}) · [${data.needsGuidanceIssues.length} use-case issues open](${REPO_URL}/issues?q=is%3Aissue+is%3Aopen+label%3Anew-use-case)`,
-    ...(data.needsUseCasesIssues.length > 0
-      ? [
-          '',
-          `[${data.needsUseCasesIssues.length} features awaiting use cases](#stage-1-needs-use-cases-${data.needsUseCasesIssues.length}) ([open \`new-feature\` issues](${REPO_URL}/issues?q=is%3Aissue+is%3Aopen+label%3Anew-feature))`,
-        ]
-      : []),
+    [
+      `[${data.completeCount} evals landed](${REPO_URL}/tree/main/guides)`,
+      `[${data.openEvalPrs.length} eval PRs](#stage-3-needs-evals-${totalNeedsEvals})`,
+      `[${data.readyForEvalSlugs.length} ready for evals](#ready-for-evals-${data.readyForEvalSlugs.length})`,
+      `[${data.needsGuidancePrs.length} guide PRs](#guide-prs-${data.needsGuidancePrs.length})`,
+      `[${data.needsGuidanceIssues.length} use cases not started](#not-started-${data.needsGuidanceIssues.length})`,
+      `[${data.needsUseCasesIssues.length} features awaiting use cases](#stage-1-needs-use-cases-${data.needsUseCasesIssues.length})`,
+    ].join(' · '),
     '',
     '### Progress since Jul 22',
     '',
     data.weeklyChart,
     '',
-    '### Pipeline State',
+    '### Where guides are now',
     '',
     data.sankey,
     '',
@@ -820,18 +870,22 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     `## Stage 1: ${ProjectStatus.NeedsUseCases} (${data.needsUseCasesIssues.length})`,
     '',
+    `Open [\`new-feature\`](${issuesQuery('new-feature')}) issues. These count features, not guides, so they aren't in the totals above.`,
+    '',
     '<details>',
-    `<summary>Show ${data.needsUseCasesIssues.length} open <code>new-feature</code> issues</summary>`,
+    `<summary>Show ${data.needsUseCasesIssues.length} features, by category</summary>`,
     '',
   ];
 
-  for (const item of data.needsUseCasesIssues) {
-    const assigneePart =
-      item.assignees.length > 0
-        ? ` · ${item.assignees.map(a => `\`${a}\``).join(', ')}`
-        : '';
-    const safeTitle = sanitizeIssueTitle(item.title);
-    lines.push(`- [ ] [#${item.number}](${REPO_URL}/issues/${item.number}) · ${safeTitle}${assigneePart}`);
+  const featureRows = data.needsUseCasesIssues.toSorted(
+    (a, b) => (a.category ?? '\uffff').localeCompare(b.category ?? '\uffff') || b.number - a.number
+  );
+  for (const item of featureRows) {
+    const categoryPart = item.category ? `**${item.category}** · ` : '';
+    const assigneePart = item.assignees.length > 0 ? ` · ${codeList(item.assignees)}` : '';
+    lines.push(
+      `- ${categoryPart}[#${item.number}](${REPO_URL}/issues/${item.number}) · ${sanitizeIssueTitle(item.title)}${assigneePart}`
+    );
   }
 
   lines.push(
@@ -842,103 +896,75 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     `## Stage 2: ${ProjectStatus.NeedsGuidance} (${totalNeedsGuidance})`,
     '',
-    `#### In review — Open PRs (${data.needsGuidancePrs.length})`
+    `#### Guide PRs (${data.needsGuidancePrs.length})`,
+    ''
   );
-
-  const prsByCategory = new Map<string, NeedsGuidancePrItem[]>();
   for (const item of data.needsGuidancePrs) {
-    const cat = item.slug.split('/')[0];
-    const list = prsByCategory.get(cat) ?? [];
-    list.push(item);
-    prsByCategory.set(cat, list);
+    const guideHref = item.hasDirOnMain ? `${REPO_URL}/tree/main/guides/${item.slug}` : `${REPO_URL}/pull/${item.prNumber}`;
+    const reviewState = formatReviewDecision(item.reviewDecision, item.isDraft);
+    const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
+    const reviewerPart = item.reviewers.length > 0 ? ` → ${codeList(item.reviewers)}` : '';
+    lines.push(
+      `- [**${item.slug}**](${guideHref}) · [PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber}) (${reviewState})${issuePart} · \`${item.author}\`${reviewerPart}`
+    );
   }
 
-  for (const [cat, items] of Array.from(prsByCategory.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
-    lines.push('', `##### ${cat}`);
+  lines.push(
+    '',
+    `#### Not started (${data.needsGuidanceIssues.length})`,
+    '',
+    `Open [\`new-use-case\`](${issuesQuery('new-use-case')}) issues with no guide PR yet.`,
+    ''
+  );
+  for (const item of data.needsGuidanceIssues) {
+    const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
+    const draftPart = item.isDraftGuide ? ' (`draft: true` stub)' : '';
+    const assigneePart = item.assignees.length > 0 ? ` · ${codeList(item.assignees)}` : '';
+    lines.push(`- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug})${issuePart}${draftPart}${assigneePart}`);
+  }
+
+  lines.push('', '---', '', `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`);
+
+  for (const group of REVIEW_GROUPS) {
+    const items = data.openEvalPrs.filter(item => formatReviewDecision(item.reviewDecision, false) === group);
+    if (items.length === 0) continue;
+    lines.push('', `#### Eval PRs: ${group} (${items.length})`, '');
     for (const item of items) {
-      const guideHref = item.hasDirOnMain
-        ? `${REPO_URL}/tree/main/guides/${item.slug}`
-        : `${REPO_URL}/pull/${item.prNumber}`;
-      const reviewState = formatReviewDecision(item.reviewDecision, item.isDraft);
-      const prPart = `[PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber}) (${reviewState})`;
-      const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
-      const reviewerPart =
-        item.reviewers.length > 0
-          ? ` → ${item.reviewers.map(r => `\`${r}\``).join(', ')}`
-          : '';
+      const rates = [
+        item.metrics.dailyGrindPassRate !== null ? `dg ${item.metrics.dailyGrindPassRate}%` : null,
+        item.metrics.devtoolsTimesPassRate !== null ? `dt ${item.metrics.devtoolsTimesPassRate}%` : null,
+      ].filter(r => r !== null);
+      const passPart = rates.length > 0 ? `**Pass@1 ${rates.join(' · ')}** · ` : '';
+      const healthyPart = item.metrics.isHealthy ? ' · `HEALTHY`' : '';
+      const reviewerPart = item.reviewers.length > 0 ? ` → ${codeList(item.reviewers)}` : '';
       lines.push(
-        `- [ ] [**${item.slug}**](${guideHref}) · ${prPart}${issuePart} · \`${item.author}\`${reviewerPart}`
+        `- ${passPart}[**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · [PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber})${healthyPart} · \`${item.author}\`${reviewerPart}`
       );
     }
   }
 
-  lines.push('', `#### Open \`new-use-case\` issues (${data.needsGuidanceIssues.length})`);
-
-  const issuesByCategory = new Map<string, NeedsGuidanceIssueItem[]>();
-  for (const item of data.needsGuidanceIssues) {
-    const cat = item.slug.split('/')[0];
-    const list = issuesByCategory.get(cat) ?? [];
-    list.push(item);
-    issuesByCategory.set(cat, list);
-  }
-
-  for (const [cat, items] of Array.from(issuesByCategory.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
-    lines.push('', `##### ${cat}`);
-    for (const item of items) {
-      const guideHref = `${REPO_URL}/tree/main/guides/${item.slug}`;
-      const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
-      const draftPart = item.isDraftGuide ? ' (`draft: true`)' : '';
-      const assigneePart =
-        item.assignees.length > 0
-          ? ` · ${item.assignees.map(a => `\`${a}\``).join(', ')}`
-          : '';
-      lines.push(`- [ ] [**${item.slug}**](${guideHref})${issuePart}${draftPart}${assigneePart}`);
-    }
-  }
-
-  lines.push(
-    '',
-    '---',
-    '',
-    `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`,
-    '',
-    `#### Open eval PRs (${data.openEvalPrs.length})`
-  );
-
-  for (const item of data.openEvalPrs) {
-    const guideHref = `${REPO_URL}/tree/main/guides/${item.slug}`;
-    const reviewState = formatReviewDecision(item.reviewDecision, false);
-    const prPart = `[PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber}) (${reviewState})`;
-    const healthyPart = item.metrics.isHealthy ? ' · `HEALTHY`' : '';
-    const rateParts: string[] = [];
-    if (item.metrics.dailyGrindPassRate !== null) {
-      rateParts.push(`dg ${item.metrics.dailyGrindPassRate}%`);
-    }
-    if (item.metrics.devtoolsTimesPassRate !== null) {
-      rateParts.push(`dt ${item.metrics.devtoolsTimesPassRate}%`);
-    }
-    const passPart = rateParts.length > 0 ? ` · Pass@1: ${rateParts.join(', ')}` : '';
-    const reviewerPart =
-      item.reviewers.length > 0
-        ? ` → ${item.reviewers.map(r => `\`${r}\``).join(', ')}`
-        : '';
+  const readyRows = data.readyForEvalSlugs
+    .map(slug => {
+      const since = data.readySinceBySlug.get(slug);
+      if (!since) throw new Error(`Missing ready-since date for ${slug}`);
+      return { slug, since };
+    })
+    .sort((a, b) => a.since.localeCompare(b.since));
+  lines.push('', `#### Ready for evals (${readyRows.length})`, '', 'Guides with no eval PR yet, oldest first. Next step: `gd dev-gap`.', '');
+  for (const { slug, since } of readyRows) {
     lines.push(
-      `- [ ] [**${item.slug}**](${guideHref}) · ${prPart}${healthyPart}${passPart} · \`${item.author}\`${reviewerPart}`
+      `- [**${slug}**](${REPO_URL}/tree/main/guides/${slug}) · ready since ${formatShortDate(since)} (${daysBetween(since, today)} days)`
     );
   }
 
-  lines.push('', `#### Ready for \`gd dev\` (${data.readyForEvalSlugs.length})`);
-  for (const slug of data.readyForEvalSlugs) {
-    lines.push(`- [ ] [**${slug}**](${REPO_URL}/tree/main/guides/${slug})`);
+  if (data.staleEvals.length > 0) {
+    lines.push('', `#### Stale evals (${data.staleEvals.length})`, '', 'Counted as evals landed, but `expectations.md` changed after the grader did.', '');
   }
-
-  lines.push('', `#### Stale evals (${data.staleEvals.length})`);
   for (const item of data.staleEvals) {
-    const guideHref = `${REPO_URL}/tree/main/guides/${item.slug}`;
     const prPart = item.expPr ? ` ([PR #${item.expPr}](${REPO_URL}/pull/${item.expPr}))` : '';
     const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
     lines.push(
-      `- [ ] [**${item.slug}**](${guideHref}) · \`expectations.md\` updated ${item.expDate}${prPart}, \`grader.ts\` unchanged since ${item.evalDate}${issuePart}`
+      `- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · \`expectations.md\` updated ${item.expDate}${prPart}, \`grader.ts\` unchanged since ${item.evalDate}${issuePart}`
     );
   }
 
@@ -946,11 +972,16 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     '---',
     '',
-    `### Gen 1 → Gen 2 Eval Migration (\`${data.gen2CompleteCount}\` Gen 2 · \`${data.legacyEvals.length}\` Gen 1 · \`${data.dualTargetCompleteCount}\` dual-target)`,
+    '## Eval format: Gen 1 → Gen 2',
     '',
-    `**Eval Coverage (${finishedFeatureGuides} finished guides):** **${data.completeCount} / ${finishedFeatureGuides} (${evalCoveragePct}%)** covered — **${data.gen2CompleteCount} Gen 2** (\`targets/\`) · **${data.legacyEvals.length} Gen 1** (legacy root \`grader.ts\`) · **${totalNeedsEvals} Missing evals**`,
+    '```',
+    renderShareBar('Evals in Gen 2 format', data.gen2CompleteCount, data.completeCount),
+    renderShareBar('Gen 2 on both targets', data.dualTargetCompleteCount, data.completeCount),
+    '```',
     '',
-    `> **Note:** Paused while \`gd dev-gap\` prioritizes covering the **${totalNeedsEvals} finished guides missing evals** above with Gen 2 (\`targets/\`) evals.`
+    `**Gen 1**: root \`grader.ts\` + \`tasks/\` · **Gen 2**: \`targets/<base_app>/\` with its own \`task.md\` + \`grader.ts\` (targets: \`daily-grind\`, \`devtools-times\`). See [\`docs/CONTEXT.md\`](${REPO_URL}/blob/main/docs/CONTEXT.md).`,
+    '',
+    `> Migration is paused while \`gd dev-gap\` writes Gen 2 evals for the ${totalNeedsEvals} guides in Stage 3.`
   );
 
   return lines.join('\n');
@@ -1251,6 +1282,7 @@ export function buildPipelineReportData(params: {
   gitHistory: Map<string, GitFileHistory>;
   weeklyProgressPoints?: WeeklyProgressPoint[];
   baselineComplete?: number;
+  readySinceBySlug?: Map<string, string>;
 }): PipelineReportData {
   const validGuides = params.guides.filter(g => g.category !== 'test-results' && (g.hasGuide || g.isStub));
   const featureGuides = validGuides.filter(
@@ -1291,7 +1323,7 @@ export function buildPipelineReportData(params: {
     issueIndex
   );
   const needsGuidanceIssues = resolveNeedsGuidanceIssues(validGuides, slugsWithContentPr, issueIndex);
-  const staleEvals = findStaleEvals(validGuides, params.gitHistory, params.openExpectationsChangedIssues);
+  const staleEvals = findStaleEvals(featureGuides, params.gitHistory, params.openExpectationsChangedIssues);
   const { legacyEvals, gen2CompleteCount, dualTargetCompleteCount } = findLegacyFormatGuides(validGuides);
 
   // Weekly progress history: historical points from git, today's point matches current-state numbers
@@ -1338,6 +1370,8 @@ export function buildPipelineReportData(params: {
     notStarted: needsGuidanceIssues.length,
   });
 
+  const guideCategories = new Set(validGuides.map(g => g.category));
+
   return {
     completeCount,
     contentLandedCount,
@@ -1345,11 +1379,15 @@ export function buildPipelineReportData(params: {
     progressBar,
     weeklyChart,
     sankey,
-    needsUseCasesIssues: params.openFeatureIssues,
+    needsUseCasesIssues: params.openFeatureIssues.map(issue => ({
+      ...issue,
+      category: issue.labels.find(l => guideCategories.has(l)) ?? null,
+    })),
     needsGuidancePrs,
     needsGuidanceIssues,
     openEvalPrs,
     readyForEvalSlugs,
+    readySinceBySlug: params.readySinceBySlug ?? findReadySince(readyForEvalSlugs),
     staleEvals,
     legacyEvals,
     dualTargetCompleteCount,
