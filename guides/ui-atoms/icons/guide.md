@@ -99,25 +99,9 @@ This block handles the injection, sizing, masking, and automatic layout adjustme
     margin-inline-end: var(--icon-style-spacing);
   }
 }
-
-/* Style query for elements configuring an end icon */
-@container style(--icon-end) {
-  ::after {
-    --icon-end: inherit;
-    content: "";
-    display: inline-block;
-    width: var(--icon-size);
-    height: var(--icon-size);
-    background-color: currentColor;
-    mask: var(--icon-end) no-repeat center / contain;
-    vertical-align: middle;
-  }
-
-  :where(:not(:empty))::after {
-    margin-inline-start: var(--icon-style-spacing);
-  }
-}
 ```
+
+For a trailing icon, follow the same pattern with `--icon-end` and `::after` instead of `--icon-start` and `::before`. Use `mask: var(--icon-end)` and apply spacing with `margin-inline-start` instead of `margin-inline-end`.
 
 #### 4. Standalone and Icon-Only Element Forwarding
 
@@ -195,20 +179,12 @@ To support browsers without Container Style Queries, use classes or component se
   --icon-start: var(--icon);
 }
 
-:where(.icon-end)::after {
-  --icon-end: inherit;
-  content: image-set(linear-gradient(transparent 0 100%), var(--icon-end));
-  /* icon styles */
-}
-
 :where(.icon-start:not(.icon, :empty))::before {
   margin-inline-end: var(--icon-style-spacing);
 }
-
-:where(.icon-end:not(.icon, :empty))::after {
-  margin-inline-start: var(--icon-style-spacing);
-}
 ```
+
+For trailing icons, use the same class-hook fallback with `.icon-end`, `--icon-end`, and `::after` instead of `.icon-start`, `--icon-start`, and `::before`. Apply spacing to non-empty content with `margin-inline-start` instead of `margin-inline-end`.
 
 This `image-set()` pattern makes `content` invalid when the custom property is unset, so it falls back to `none` and the pseudo-element disappears without adding or removing a class. It does not remove the pseudo-element's other styles or prevent conflicts with other `::before` or `::after` rules, so use these hooks only where those pseudo-elements are available for icons.
 
