@@ -34,9 +34,9 @@ The engine uses three CSS capabilities to render icons:
 2. **Container Style Queries (`@container style(...)`)**: Automatically detects and renders when custom properties are set.
 3. **CSS Masks & `currentColor`**: Icons render as pseudo-elements using masks, with sizing in relative units (`em`) and colors via `currentColor`.
 
-## Implementation
+### Implementation
 
-### 1. Register Custom Properties
+#### 1. Register Custom Properties
 
 ```css
 @property --icon-start {
@@ -50,7 +50,7 @@ The engine uses three CSS capabilities to render icons:
 }
 ```
 
-### 2. Defining Icon Assets as Design Tokens
+#### 2. Defining Icon Assets as Design Tokens
 
 Define SVG icons and the default `--icon-size` as reusable custom properties using inline SVG data URIs or root-relative URLs (e.g., `url("/icons/trash.svg")`). When an icon is loaded from an external SVG file, use a root-relative URL or an embedded data URI. A relative URL used through a custom property can resolve relative to the stylesheet where the icon is used, rather than the stylesheet where the custom property is defined. If those stylesheets are in different directories, the URL may resolve to the wrong file.
 
@@ -76,7 +76,7 @@ The main downside of this approach is that it requires a lot more boilerplate (t
 }
 ```
 
-### 3. Setting Up the Container Style Queries
+#### 3. Setting Up the Container Style Queries
 
 This block handles the injection, sizing, masking, and automatic layout adjustments. Because the engine uses `background-color: currentColor`, the icon automatically adopts the parent's text color and responds to standard transitions.
 
@@ -119,7 +119,7 @@ This block handles the injection, sizing, masking, and automatic layout adjustme
 }
 ```
 
-### 4. Standalone and Icon-Only Element Forwarding
+#### 4. Standalone and Icon-Only Element Forwarding
 
 For standalone icons or icon-only buttons, apply `.icon` directly to the empty element (the button itself for an icon-only control) and set its icon with `--icon`. The class forwards `--icon` to `--icon-start`:
 
