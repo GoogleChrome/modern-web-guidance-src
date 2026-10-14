@@ -9,7 +9,8 @@ import { rootDir } from '../core/paths.ts';
 import {
   buildPipelineReportData,
   classifyPr,
-  computeBurndown,
+  EXPECTED_BASELINE_COMPLETE,
+  fetchBaselineComplete,
   filterCatchAllReviewers,
   findLegacyFormatGuides,
   findStaleEvals,
@@ -17,16 +18,16 @@ import {
   hasSubstantiveExpectationsDiff,
   isDisciplinePr,
   matchUseCaseIssue,
-  parseBurndownCheckpoints,
   parseEvalReportFromPrBody,
+  PIPELINE_GOAL,
   renderPipelineIssueBody,
-  renderProgressBar,
-  renderTrendTable,
-  sparkline,
-  SPARKLINE_TICKS,
+  renderProgressChart,
+  renderSankeyDiagram,
+  renderTwoRowProgressBar,
   type GitFileHistory,
   type IssueSummary,
   type PrSummary,
+  type WeeklyProgressPoint,
 } from './sync-pipeline-issue.ts';
 
 function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
@@ -138,26 +139,113 @@ describe('parseEvalReportFromPrBody', () => {
   });
 });
 
-describe('parseBurndownCheckpoints & computeBurndown', () => {
-  it('parses checkpoints from hidden comment or Mermaid bar line', () => {
-    assert.deepEqual(
-      parseBurndownCheckpoints('hello\n<!-- burndown-checkpoints: [66, 62, 50, 0, 0, 0] -->'),
-      [66, 62, 50, 0, 0, 0]
+describe('fetchBaselineComplete', () => {
+  it('computes 127 complete feature guides on origin/main as of 2026-07-22 excluding hubs', () => {
+    const baseline = fetchBaselineComplete();
+    assert.equal(baseline, EXPECTED_BASELINE_COMPLETE);
+    assert.equal(PIPELINE_GOAL, 200);
+    assert.equal(PIPELINE_GOAL - baseline, 73);
+  });
+});
+
+describe('renderTwoRowProgressBar', () => {
+  it('renders exact 73-column bars for Complete and Content rows with header', () => {
+    const res = renderTwoRowProgressBar({
+      complete: 140,
+      inReview: 16,
+      contentLanded: 168,
+      baseline: 127,
+      goal: 200,
+    });
+    assert.equal(res.header, 'Since Jul 22 (127) → 200');
+    // 73 columns:
+    // Complete: 13 '█', 16 '░', 44 '·' = 73
+    // Content: 41 '█', 32 '·' = 73
+    assert.equal(
+      res.completeRow,
+      'Complete  ' + '█'.repeat(13) + '░'.repeat(16) + '·'.repeat(44) + '  140 (+13)'
     );
-    assert.deepEqual(
-      parseBurndownCheckpoints('```mermaid\nxychart-beta\n    bar [66, 61, 0, 0, 0, 0]\n```'),
-      [66, 61, 0, 0, 0, 0]
+    assert.equal(
+      res.contentRow,
+      'Content   ' + '█'.repeat(41) + '·'.repeat(32) + '  168 (+41)'
     );
+    assert.doesNotMatch(res.text, /▲/);
+    assert.doesNotMatch(res.text, /[\u{1F300}-\u{1F9FF}]/u);
   });
 
-  it('preserves prior week checkpoints and updates current week slot', () => {
-    const w2DateMs = Date.parse('2026-10-14T12:00:00Z'); // Week 2
-    const burndown = computeBurndown(148, [66, 62, 0, 0, 0, 0], w2DateMs);
-    assert.equal(burndown.weekIdx, 2);
-    assert.equal(burndown.remaining, 52); // 200 - 148
-    assert.deepEqual(burndown.barValues, [66, 62, 52, 0, 0, 0]);
-    assert.deepEqual(burndown.xAxisLabels, ['W0', 'W1', 'W2 (Now)', 'W3', 'W4', 'W5']);
-    assert.deepEqual(burndown.requiredLine, [66, 62, 52, 35, 17, 0]);
+  it('safely clamps when counts are below baseline or over goal', () => {
+    const below = renderTwoRowProgressBar({
+      complete: 120,
+      inReview: 5,
+      contentLanded: 125,
+      baseline: 127,
+      goal: 200,
+    });
+    assert.equal(
+      below.completeRow,
+      'Complete  ' + '░'.repeat(5) + '·'.repeat(68) + '  120 (-7)'
+    );
+    assert.equal(
+      below.contentRow,
+      'Content   ' + '·'.repeat(73) + '  125 (-2)'
+    );
+
+    const over = renderTwoRowProgressBar({
+      complete: 205,
+      inReview: 10,
+      contentLanded: 210,
+      baseline: 127,
+      goal: 200,
+    });
+    assert.equal(
+      over.completeRow,
+      'Complete  ' + '█'.repeat(73) + '  205 (+78)'
+    );
+    assert.equal(
+      over.contentRow,
+      'Content   ' + '█'.repeat(73) + '  210 (+83)'
+    );
+  });
+});
+
+describe('renderProgressChart', () => {
+  it('renders overlapping xychart-beta bars and goal line with correct palette and height 200', () => {
+    const points: WeeklyProgressPoint[] = [
+      { date: '2026-07-22', label: 'Jul 22', complete: 127, contentLanded: 127 },
+      { date: '2026-10-13', label: 'Oct 13', complete: 140, contentLanded: 168 },
+    ];
+    const chart = renderProgressChart(points);
+    assert.match(
+      chart,
+      /%%\{init: \{'themeVariables': \{'xyChart': \{'plotColorPalette': '#58a6ff, #238636, #8b949e'\}\}, 'xyChart': \{'height': 200\}\}\}%%/
+    );
+    assert.match(chart, /xychart-beta/);
+    assert.match(chart, /x-axis \["Jul 22", "Oct 13"\]/);
+    assert.match(chart, /y-axis "Guides" 100 --> 200/);
+    assert.match(chart, /bar \[127, 168\]/);
+    assert.match(chart, /bar \[127, 140\]/);
+    assert.match(chart, /line \[200, 200\]/);
+    assert.match(chart, /<sub>🟦 <b>Blue bars<\/b>: Content landed/);
+  });
+});
+
+describe('renderSankeyDiagram', () => {
+  it('renders balanced sankey-beta diagram matching unified pipeline state', () => {
+    const diagram = renderSankeyDiagram({
+      complete: 140,
+      evalPrsInReview: 16,
+      readyForEvals: 20,
+      guidePrsInReview: 17,
+      notStarted: 51,
+    });
+    assert.match(diagram, /sankey-beta/);
+    assert.match(diagram, /Tracked, Complete, 140/);
+    assert.match(diagram, /Tracked, Needs evals, 36/);
+    assert.match(diagram, /Tracked, Needs guidance, 68/);
+    assert.match(diagram, /Needs evals, Eval PR in review, 16/);
+    assert.match(diagram, /Needs evals, Ready for evals, 20/);
+    assert.match(diagram, /Needs guidance, Guide PR in review, 17/);
+    assert.match(diagram, /Needs guidance, Not started, 51/);
   });
 });
 
@@ -430,99 +518,6 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
   });
 });
 
-describe('renderProgressBar', () => {
-  it('renders exactly 50 columns with header and only █, ░, · glyphs', () => {
-    const res = renderProgressBar({ complete: 140, inReview: 13, goal: 200, barWidth: 50 });
-    assert.equal(res.header, '140 landed · 13 in review · 47 to go → 200');
-    assert.equal(res.bar.length, 50);
-    // 140/4 = 35 landed complete (█), 13/4 = 3 in review (░), 47/4 = 12 remaining (·)
-    assert.equal(res.bar, '█'.repeat(35) + '░'.repeat(3) + '·'.repeat(12));
-    assert.doesNotMatch(res.text, /▲/);
-    assert.doesNotMatch(res.text, /[\u{1F300}-\u{1F9FF}]/u);
-  });
-
-  it('handles rounding across varied complete and in-review counts preserving exact 50 cols', () => {
-    const testCases = [
-      { complete: 0, inReview: 0, expectedCols: 50 },
-      { complete: 1, inReview: 0, expectedCols: 50 },
-      { complete: 141, inReview: 15, expectedCols: 50 },
-      { complete: 50, inReview: 50, expectedCols: 50 },
-      { complete: 100, inReview: 25, expectedCols: 50 },
-      { complete: 180, inReview: 10, expectedCols: 50 },
-      { complete: 198, inReview: 1, expectedCols: 50 },
-    ];
-    for (const tc of testCases) {
-      const res = renderProgressBar({ complete: tc.complete, inReview: tc.inReview, goal: 200, barWidth: 50 });
-      assert.equal(res.bar.length, tc.expectedCols, `Failed exact width for complete=${tc.complete}, inReview=${tc.inReview}`);
-      assert.equal(res.bar.replace(/[█░·]/g, '').length, 0, `Found unexpected glyph in bar: ${res.bar}`);
-    }
-  });
-
-  it('reserves at least 1 remaining column when not yet reached goal despite rounding', () => {
-    // 199/4 = 49.75 -> 50. Since toGo = 1, should keep 1 remaining column
-    const res = renderProgressBar({ complete: 199, inReview: 0, goal: 200, barWidth: 50 });
-    assert.equal(res.bar.length, 50);
-    assert.equal(res.header, '199 landed · 0 in review · 1 to go → 200');
-    assert.equal(res.bar.endsWith('·'), true);
-  });
-
-  it('handles over-goal cases without breaking and caps at exact barWidth', () => {
-    const overGoal1 = renderProgressBar({ complete: 200, inReview: 0, goal: 200, barWidth: 50 });
-    assert.equal(overGoal1.header, '200 landed · 0 in review · 0 to go → 200');
-    assert.equal(overGoal1.bar, '█'.repeat(50));
-    assert.equal(overGoal1.bar.length, 50);
-
-    const overGoal2 = renderProgressBar({ complete: 215, inReview: 10, goal: 200, barWidth: 50 });
-    assert.equal(overGoal2.header, '215 landed · 10 in review · 0 to go → 200');
-    assert.equal(overGoal2.bar, '█'.repeat(50));
-    assert.equal(overGoal2.bar.length, 50);
-
-    const overGoal3 = renderProgressBar({ complete: 180, inReview: 30, goal: 200, barWidth: 50 });
-    assert.equal(overGoal3.header, '180 landed · 30 in review · 0 to go → 200');
-    assert.equal(overGoal3.bar.length, 50);
-    assert.equal(overGoal3.bar, '█'.repeat(45) + '░'.repeat(5));
-  });
-});
-
-describe('sparkline & renderTrendTable', () => {
-  it('scales values across min and max using standard block glyphs', () => {
-    const values = [0, 1, 2, 3, 4, 5, 6, 7];
-    const spark = sparkline(values);
-    assert.equal(spark, '▁▂▃▄▅▆▇█');
-    assert.equal(spark.length, 8);
-  });
-
-  it('renders constant glyph for flat series where min equals max', () => {
-    const flat = [42, 42, 42, 42, 42];
-    const spark = sparkline(flat);
-    assert.equal(spark, SPARKLINE_TICKS[3].repeat(5));
-    assert.equal(spark.length, 5);
-  });
-
-  it('produces exactly 21 chars for 21 daily data points', () => {
-    const dailyPoints = Array.from({ length: 21 }, (_, i) => 120 + i);
-    const spark = sparkline(dailyPoints);
-    assert.equal(spark.length, 21);
-  });
-
-  it('renders a formatted trend table with headers and 7d delta', () => {
-    const rows = [
-      { label: 'Complete (landed)', values: Array.from({ length: 21 }, (_, i) => 130 + i) },
-      { label: 'Eval PRs in review', values: Array.from({ length: 21 }, () => 10) },
-      { label: 'Ready for evals', values: Array.from({ length: 21 }, (_, i) => 25 - Math.floor(i / 2)) },
-      { label: 'Guide PRs in review', values: Array.from({ length: 21 }, (_, i) => 20 + (i % 3)) },
-      { label: 'Use-case issues open', values: Array.from({ length: 21 }, (_, i) => 80 - i) },
-    ];
-    const table = renderTrendTable(rows);
-    const lines = table.split('\n');
-    assert.equal(lines.length, 6);
-    assert.match(lines[0], /Stage\s+21-day trend\s+Now\s+Δ 7d/);
-    assert.match(lines[1], /Complete \(landed\)\s+[▁-█]{21}\s+150\s+\+7/);
-    assert.match(lines[2], /Eval PRs in review\s+[▄]{21}\s+10\s+0/);
-    assert.match(lines[5], /Use-case issues open\s+[▁-█]{21}\s+60\s+-7/);
-  });
-});
-
 describe('classifyPr & isDisciplinePr', () => {
   it('classifies PRs adding or modifying guide.md as guide PRs even if touching eval files', () => {
     assert.equal(
@@ -699,8 +694,11 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     // Old two-line header is NOT at the top
     assert.doesNotMatch(markdown, /# Content & Eval Pipeline\n\n\*\*\d+\*\* Needs guidance/);
 
-    // Progress bar code block
-    assert.match(markdown, /```\n1 landed · 1 in review · 198 to go → 200\n[█░·]{50}\n```/);
+    // Progress bar code block with 2 rows
+    assert.match(
+      markdown,
+      /```\nSince Jul 22 \(\d+\) → 200\nComplete\s+[█░·]{73}\s+\d+ \([+-]?\d+\)\nContent\s+[█·]{73}\s+\d+ \([+-]?\d+\)\n```/
+    );
 
     // Clickable links line below code block
     assert.match(
@@ -708,20 +706,20 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       /\[1 landed complete\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\) · \[1 eval PRs in review\]\(#open-eval-prs-1\) · \[1 ready for evals\]\(#ready-for-gd-dev-1\)/
     );
 
-    // Trend table code block present
-    assert.match(markdown, /```\nStage\s+21-day trend\s+Now\s+Δ 7d/);
-
-    // Exact mermaid init line with height 200
+    // Weekly progress chart present
     assert.match(
       markdown,
-      /%%\{init: \{'themeVariables': \{'xyChart': \{'plotColorPalette': '#238636, #8b949e, #58a6ff'\}\}, 'xyChart': \{'height': 200\}\}\}%%/
+      /### Progress Toward 200 Guides\n\n```mermaid\n%%\{init: \{'themeVariables': \{'xyChart': \{'plotColorPalette': '#58a6ff, #238636, #8b949e'\}\}, 'xyChart': \{'height': 200\}\}\}%%/
     );
 
-    // No burndown-checkpoints HTML comment
-    assert.doesNotMatch(markdown, /<!--\s*burndown-checkpoints:/);
+    // Sankey diagram present
+    assert.match(
+      markdown,
+      /### Pipeline State\n\n```mermaid\nsankey-beta\n\nTracked, Complete, 1\nTracked, Needs evals, 2/
+    );
   });
 
-  it('guarantees trend table today points, links line, and section counts match identically', () => {
+  it('guarantees links line, sankey counts, and section counts match identically', () => {
     const complete1 = makeGuide({ category: 'css', name: 'guide-1' });
     const complete2 = makeGuide({ category: 'css', name: 'guide-2' });
     const needsEval1 = makeGuide({ category: 'forms', name: 'guide-3', hasGrader: false, hasTask: false });
@@ -786,22 +784,33 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       openExpectationsChangedIssues: [],
       gitHistory: new Map(),
       existingIssueBody: '',
+      weeklyProgressPoints: [
+        { date: '2026-07-22', label: 'Jul 22', complete: 127, contentLanded: 127 },
+        { date: '2026-10-13', label: 'Oct 13', complete: 2, contentLanded: 4 },
+      ],
+      baselineComplete: 0,
       nowMs: Date.parse('2026-10-13T12:00:00Z'),
     });
 
-    assert.ok(report.trendHistory);
-    const lastIdx = report.trendHistory.complete.length - 1;
+    assert.equal(report.completeCount, 2);
+    assert.equal(report.openEvalPrs.length, 1);
+    assert.equal(report.readyForEvalSlugs.length, 1);
+    assert.equal(report.needsGuidancePrs.length, 1);
+    assert.equal(report.needsGuidanceIssues.length, 1);
 
-    // Assert trend-today == section counts
-    assert.equal(report.trendHistory.complete[lastIdx], report.completeCount);
-    assert.equal(report.trendHistory.evalPrsInReview[lastIdx], report.openEvalPrs.length);
-    assert.equal(report.trendHistory.readyForEvals[lastIdx], report.readyForEvalSlugs.length);
-    assert.equal(report.trendHistory.guidePrsInReview[lastIdx], report.needsGuidancePrs.length);
-    assert.equal(report.trendHistory.issuesOpen[lastIdx], report.needsGuidanceIssues.length);
+    const markdown = renderPipelineIssueBody(report);
+
+    // Sankey matches
+    assert.match(markdown, /Tracked, Complete, 2/);
+    assert.match(markdown, /Tracked, Needs evals, 2/);
+    assert.match(markdown, /Tracked, Needs guidance, 2/);
+    assert.match(markdown, /Needs evals, Eval PR in review, 1/);
+    assert.match(markdown, /Needs evals, Ready for evals, 1/);
+    assert.match(markdown, /Needs guidance, Guide PR in review, 1/);
+    assert.match(markdown, /Needs guidance, Not started, 1/);
 
     // Assert markdown links line matches the exact same numbers
-    const markdown = renderPipelineIssueBody(report);
-    const expectedLinksLine = `[${report.completeCount} landed complete](https://github.com/GoogleChrome/modern-web-guidance-src/tree/main/guides) · [${report.openEvalPrs.length} eval PRs in review](#open-eval-prs-${report.openEvalPrs.length}) · [${report.readyForEvalSlugs.length} ready for evals](#ready-for-gd-dev-${report.readyForEvalSlugs.length}) · [${report.needsGuidancePrs.length} guide PRs in review](#in-review--open-prs-${report.needsGuidancePrs.length}) · [${report.needsGuidanceIssues.length} use-case issues open](https://github.com/GoogleChrome/modern-web-guidance-src/issues?q=is%3Aissue+is%3Aopen+label%3Anew-use-case)`;
+    const expectedLinksLine = `[2 landed complete](https://github.com/GoogleChrome/modern-web-guidance-src/tree/main/guides) · [1 eval PRs in review](#open-eval-prs-1) · [1 ready for evals](#ready-for-gd-dev-1) · [1 guide PRs in review](#in-review--open-prs-1) · [1 use-case issues open](https://github.com/GoogleChrome/modern-web-guidance-src/issues?q=is%3Aissue+is%3Aopen+label%3Anew-use-case)`;
     assert.ok(
       markdown.includes(expectedLinksLine),
       `Expected markdown to contain links line:\n${expectedLinksLine}\nGot:\n${markdown.slice(0, 500)}`
