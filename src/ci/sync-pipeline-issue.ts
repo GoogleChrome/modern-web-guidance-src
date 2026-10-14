@@ -117,7 +117,6 @@ export interface OpenEvalPrItem {
   prNumber: number;
   metrics: EvalPrMetrics;
   reviewDecision?: string | null;
-  author: string;
   reviewers: string[];
 }
 
@@ -149,7 +148,7 @@ export interface PipelineReportData {
   gen2CompleteCount: number;
   progressBar: TwoRowProgressBar;
   weeklyChart: string;
-  sankey: string;
+  funnel: string;
   needsUseCasesIssues: Array<IssueSummary & { category: string | null }>;
   needsGuidancePrs: NeedsGuidancePrItem[];
   needsGuidanceIssues: NeedsGuidanceIssueItem[];
@@ -758,52 +757,35 @@ export function renderProgressChart(points: WeeklyProgressPoint[]): string {
   ].join('\n');
 }
 
-export function renderSankeyDiagram(params: {
-  complete: number;
-  evalPrsInReview: number;
-  readyForEvals: number;
-  guidePrsInReview: number;
-  notStarted: number;
+const FUNNEL_COLS = 60;
+
+/**
+ * Text funnel: every tracked use case, then how many have a guide landed, then evals landed.
+ * Rows share one scale; ░ is open PRs at that stage, matching the progress bar legend.
+ */
+export function renderFunnel(params: {
+  useCases: number;
+  guidesLanded: number;
+  guidePrs: number;
+  evalsLanded: number;
+  evalPrs: number;
 }): string {
-  const { complete, evalPrsInReview, readyForEvals, guidePrsInReview, notStarted } = params;
-  const needsEvals = evalPrsInReview + readyForEvals;
-  const needsGuidance = guidePrsInReview + notStarted;
-
-  // Mermaid's sankey stylesheet sets `.link { mix-blend-mode: multiply }`, which renders links
-  // black on GitHub's dark theme; `!important` is required to beat it.
-  const lines = [
-    '```mermaid',
-    '---',
-    'config:',
-    '  themeCSS: ".link { mix-blend-mode: normal !important; stroke-opacity: 0.6 !important; }"',
-    '  sankey:',
-    '    height: 240',
-    '    linkColor: target',
-    '    nodeAlignment: left',
-    '    labelStyle: outlined',
-    '    nodeColors:',
-    '      "All guides": "#9AA0A6"',
-    '      "Evals landed": "#4285F4"',
-    '      "Needs evals": "#FBBC04"',
-    '      "Needs guidance": "#E37400"',
-    '      "Eval PR open": "#E37400"',
-    '      "Ready for evals": "#FBBC04"',
-    '      "Guide PR open": "#E37400"',
-    '      "Not started": "#5F6368"',
-    '---',
-    'sankey-beta',
-    '',
-    `All guides, Evals landed, ${complete}`,
-    `All guides, Needs evals, ${needsEvals}`,
-    `All guides, Needs guidance, ${needsGuidance}`,
-    `Needs evals, Eval PR open, ${evalPrsInReview}`,
-    `Needs evals, Ready for evals, ${readyForEvals}`,
-    `Needs guidance, Guide PR open, ${guidePrsInReview}`,
-    `Needs guidance, Not started, ${notStarted}`,
+  const { useCases, guidesLanded, guidePrs, evalsLanded, evalPrs } = params;
+  const cols = (n: number) => Math.round((n / useCases) * FUNNEL_COLS);
+  const row = (label: string, landed: number, open: number) => {
+    const landedCols = cols(landed);
+    const openCols = Math.min(FUNNEL_COLS - landedCols, cols(open));
+    const bar = '█'.repeat(landedCols) + '░'.repeat(openCols) + '·'.repeat(FUNNEL_COLS - landedCols - openCols);
+    const openPart = open > 0 ? ` +${open} PRs` : '';
+    return `${label.padEnd(16)}${bar}  ${landed}${openPart}`;
+  };
+  return [
     '```',
-  ];
-
-  return lines.join('\n');
+    row('Use cases', useCases, 0),
+    row('Guides landed', guidesLanded, guidePrs),
+    row('Evals landed', evalsLanded, evalPrs),
+    '```',
+  ].join('\n');
 }
 
 export function sanitizeIssueTitle(title: string): string {
@@ -920,7 +902,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     lines.push(`- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug})${issuePart}${draftPart}${assigneePart}`);
   }
 
-  lines.push('', '---', '', '### Where guides are now', '', data.sankey, '', '---', '', `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`);
+  lines.push('', '---', '', '### Funnel', '', data.funnel, '', '---', '', `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`);
 
   for (const group of REVIEW_GROUPS) {
     const items = data.openEvalPrs.filter(item => formatReviewDecision(item.reviewDecision, false) === group);
@@ -933,9 +915,9 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
       ].filter(r => r !== null);
       const passPart = rates.length > 0 ? `Pass@1 ${rates.join(' · ')} · ` : '';
       const healthyPart = item.metrics.isHealthy ? ' · `HEALTHY`' : '';
-      const reviewerPart = item.reviewers.length > 0 ? ` → ${codeList(item.reviewers)}` : '';
+      const reviewerPart = item.reviewers.length > 0 ? ` · reviewers ${codeList(item.reviewers)}` : '';
       lines.push(
-        `- ${passPart}[**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · [PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber})${healthyPart} · \`${item.author}\`${reviewerPart}`
+        `- ${passPart}[**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · [PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber})${healthyPart}${reviewerPart}`
       );
     }
   }
@@ -1184,7 +1166,6 @@ function resolveEvalPrs(
         prNumber: pr.number,
         metrics: parseEvalReportFromPrBody(pr.body),
         reviewDecision: pr.reviewDecision,
-        author: pr.author,
         reviewers: filterCatchAllReviewers(pr.reviewers, 'evals'),
       });
     }
@@ -1362,12 +1343,12 @@ export function buildPipelineReportData(params: {
 
   const weeklyChart = renderProgressChart(weeklyProgressPoints);
 
-  const sankey = renderSankeyDiagram({
-    complete: completeCount,
-    evalPrsInReview: openEvalPrs.length,
-    readyForEvals: readyForEvalSlugs.length,
-    guidePrsInReview: needsGuidancePrs.length,
-    notStarted: needsGuidanceIssues.length,
+  const funnel = renderFunnel({
+    useCases: contentLandedCount + needsGuidancePrs.length + needsGuidanceIssues.length,
+    guidesLanded: contentLandedCount,
+    guidePrs: needsGuidancePrs.length,
+    evalsLanded: completeCount,
+    evalPrs: openEvalPrs.length,
   });
 
   const guideCategories = new Set(validGuides.map(g => g.category));
@@ -1378,7 +1359,7 @@ export function buildPipelineReportData(params: {
     gen2CompleteCount,
     progressBar,
     weeklyChart,
-    sankey,
+    funnel,
     needsUseCasesIssues: params.openFeatureIssues.map(issue => ({
       ...issue,
       category: issue.labels.find(l => guideCategories.has(l)) ?? null,

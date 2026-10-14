@@ -23,7 +23,7 @@ import {
   PIPELINE_SCALE_MAX,
   renderPipelineIssueBody,
   renderProgressChart,
-  renderSankeyDiagram,
+  renderFunnel,
   renderTwoRowProgressBar,
   sanitizeIssueTitle,
   type GitFileHistory,
@@ -252,27 +252,15 @@ describe('renderProgressChart', () => {
   });
 });
 
-describe('renderSankeyDiagram', () => {
-  it('renders balanced sankey-beta diagram matching unified pipeline state', () => {
-    const diagram = renderSankeyDiagram({
-      complete: 140,
-      evalPrsInReview: 16,
-      readyForEvals: 12,
-      guidePrsInReview: 17,
-      notStarted: 45,
-    });
-    assert.match(diagram, /config:\s+themeCSS: "\.link \{ mix-blend-mode: normal !important; stroke-opacity: 0\.6 !important; \}"/);
-    assert.match(diagram, /linkColor: target/);
-    assert.match(diagram, /nodeColors:\s+"All guides": "#9AA0A6"/);
-    assert.doesNotMatch(diagram, /Needs use cases/);
-    assert.match(diagram, /sankey-beta/);
-    assert.match(diagram, /All guides, Evals landed, 140/);
-    assert.match(diagram, /All guides, Needs evals, 28/);
-    assert.match(diagram, /All guides, Needs guidance, 62/);
-    assert.match(diagram, /Needs evals, Eval PR open, 16/);
-    assert.match(diagram, /Needs evals, Ready for evals, 12/);
-    assert.match(diagram, /Needs guidance, Guide PR open, 17/);
-    assert.match(diagram, /Needs guidance, Not started, 45/);
+describe('renderFunnel', () => {
+  it('scales every row to the use-case total and marks open PRs with ░', () => {
+    const funnel = renderFunnel({ useCases: 229, guidesLanded: 168, guidePrs: 16, evalsLanded: 140, evalPrs: 22 });
+    const rows = funnel.split('\n').slice(1, -1);
+    assert.deepEqual(
+      rows.map(r => r.slice(16, 76)),
+      ['█'.repeat(60), '█'.repeat(44) + '░'.repeat(4) + '·'.repeat(12), '█'.repeat(37) + '░'.repeat(6) + '·'.repeat(17)]
+    );
+    assert.deepEqual(rows.map(r => r.slice(78)), ['229', '168 +16 PRs', '140 +22 PRs']);
   });
 });
 
@@ -477,8 +465,8 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     assert.doesNotMatch(markdown, /^- \[ \]/m);
     assert.match(markdown, /## Stage 3: Needs evals \(2\)/);
     assert.match(markdown, /## Eval format: Gen 1 → Gen 2/);
-    // The sankey sits between Stage 2 and Stage 3.
-    assert.match(markdown, /## Stage 2:[\s\S]*### Where guides are now[\s\S]*## Stage 3:/);
+    // The funnel sits between Stage 2 and Stage 3.
+    assert.match(markdown, /## Stage 2:[\s\S]*### Funnel[\s\S]*## Stage 3:/);
     assert.match(markdown, /Quality audits \(point-in-time snapshots, not tracked above\)/);
     assert.match(markdown, /Evals in Gen 2 format {3}█{70} {2}1 \/ 1 \(100%\)/);
     assert.match(markdown, /#### Eval PRs: awaiting review \(1\)\n\n- Pass@1 dg \*\*100%\*\* · dt \*\*100%\*\* · \[\*\*ui-behaviors\/drag\*\*\]/);
@@ -753,14 +741,10 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       /### Progress since Jul 22\n\n```mermaid\n---\nconfig:\n  xyChart:\n    height: 200\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#FBBC04, #4285F4"\n---\nxychart-beta/
     );
 
-    // Sankey diagram present with YAML frontmatter config
-    assert.match(
-      markdown,
-      /### Where guides are now\n\n```mermaid\n---\nconfig:\n  themeCSS: "\.link \{ mix-blend-mode: normal !important; stroke-opacity: 0\.6 !important; \}"\n  sankey:\n    height: 240\n    linkColor: target/
-    );
+    assert.doesNotMatch(markdown, /sankey-beta/);
   });
 
-  it('guarantees links line, sankey counts, and section counts match identically', () => {
+  it('guarantees links line, funnel, and section counts match identically', () => {
     const complete1 = makeGuide({ category: 'css', name: 'guide-1' });
     const complete2 = makeGuide({ category: 'css', name: 'guide-2' });
     const needsEval1 = makeGuide({ category: 'forms', name: 'guide-3', hasGrader: false, hasTask: false });
@@ -849,17 +833,13 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
 
     const markdown = renderPipelineIssueBody(report);
 
-    // Stage 1, header line, & Sankey matches
+    // Stage 1, links line, & funnel match the section counts
     assert.match(markdown, /## Stage 1: Needs use cases \(1\)/);
     assert.match(markdown, /\[1 features awaiting use cases\]\(#stage-1-needs-use-cases-1\)/);
-    assert.match(markdown, /All guides, Evals landed, 2/);
-    assert.match(markdown, /All guides, Needs evals, 2/);
-    assert.match(markdown, /All guides, Needs guidance, 2/);
-    assert.doesNotMatch(markdown, /All guides, Needs use cases/);
-    assert.match(markdown, /Needs evals, Eval PR open, 1/);
-    assert.match(markdown, /Needs evals, Ready for evals, 1/);
-    assert.match(markdown, /Needs guidance, Guide PR open, 1/);
-    assert.match(markdown, /Needs guidance, Not started, 1/);
+    // Funnel: 4 guides landed + 1 guide PR + 1 not started = 6 use cases.
+    assert.match(markdown, /Use cases {7}█{60} {2}6\n/);
+    assert.match(markdown, /Guides landed {3}[█░·]{60} {2}4 \+1 PRs\n/);
+    assert.match(markdown, /Evals landed {4}[█░·]{60} {2}2 \+1 PRs\n/);
 
     // Assert markdown links line matches the exact same numbers
     const expectedLinksLine = `[2 evals landed](https://github.com/GoogleChrome/modern-web-guidance-src/tree/main/guides) · [1 eval PRs](#stage-3-needs-evals-2) · [1 ready for evals](#ready-for-evals-1) · [1 guide PRs](#guide-prs-1) · [1 use cases not started](#not-started-1) · [1 features awaiting use cases](#stage-1-needs-use-cases-1)`;
@@ -929,31 +909,6 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       report.openEvalPrs.length + report.readyForEvalSlugs.length,
       report.contentLandedCount - report.completeCount
     );
-  });
-
-  it('enforces that sankey root total equals total guides tracked in the progress bar', () => {
-    const complete = 140;
-    const evalPrsInReview = 22;
-    const readyForEvals = 6;
-    const guidePrsInReview = 16;
-    const notStarted = 45;
-
-    const sankey = renderSankeyDiagram({
-      complete,
-      evalPrsInReview,
-      readyForEvals,
-      guidePrsInReview,
-      notStarted,
-    });
-
-    // Tracked flows to Complete, Needs evals, and Needs guidance
-    const flows = Array.from(sankey.matchAll(/^All guides, [^,]+, (\d+)$/gm)).map(m => Number(m[1]));
-    const sankeyTrackedTotal = flows.reduce((sum, n) => sum + n, 0);
-
-    // Landed guides (168) + guide PRs (16) + use cases (45) = 229
-    const barTrackedTotal = (complete + evalPrsInReview + readyForEvals) + guidePrsInReview + notStarted;
-    assert.equal(sankeyTrackedTotal, barTrackedTotal);
-    assert.equal(sankeyTrackedTotal, 229);
   });
 
   it('sanitizes issue titles with raw HTML tags and mentions to protect markdown structure', () => {
