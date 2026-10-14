@@ -12,7 +12,7 @@ guides:
   - precise-text-alignment
 ---
 
-# SVG Icon Implementation
+# Using and managing icons
 
 
 ## Choosing an Icon Technique
