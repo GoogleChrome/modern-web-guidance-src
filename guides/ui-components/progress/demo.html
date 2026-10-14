@@ -9,7 +9,7 @@
             /* Automatic theme adaptation */
             color-scheme: light dark;
             --accent-color: oklch(52.451% 0.159 325);
-            --track-color: light-dark(oklch(95.6% 0.027 340), oklch(30% 0.027 340));
+            --color-neutral-90: color-mix(in oklab, currentColor 12%, transparent);
         }
 
         body {
@@ -45,71 +45,100 @@
 
         /* Customized Styling from the guide */
         .custom-progress {
-            /* 1. Reset browser styles */
-            appearance: none;
-            border: 0;
-            /* MUST set overflow to hidden if applying a border radius */
-            overflow: hidden;
-            border-radius: 1e5px;
-            
-            block-size: 1rem;
+            block-size: 0.75rem;
             inline-size: 100%;
             max-inline-size: 400px;
             margin-block: 0.5rem;
             display: block;
+            --progress-bar-radius: 1e5px;
+            border-radius: var(--progress-bar-radius);
 
-            /* 2. Tint the progress bar */
-            --progress-color: var(--accent-color);
-            --progress-track-color: var(--track-color);
-            --_progress-bar-active: var(--progress-bar-active, var(--progress-color));
-            --_indeterminate-bg: var(--indeterminate-bg, transparent);
-            --_progress-bar-active-animation: var(--progress-bar-active-animation, none);
-            
-            /* Apply color for custom progress track (background) */
-            background: var(--progress-track-color);
-            animation: var(--_progress-bar-active-animation, none);
+            /* 1. Basic setup: reset default browser styles */
+            appearance: none;
+            border: 0 solid;
+            /* Clip bar to element's border-radius */
+            overflow: clip;
+
+            /* 2. Styling: track */
+            background: var(--progress-bar-track, var(--color-neutral-90));
+            /* Subtle depth on the empty part of the track */
+            box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
+
+            /* 3. Indeterminate state */
+            /* Lets the fill position itself in track units (cqi) */
+            container-type: inline-size;
+            /* Segment length relative to the track */
+            --progress-bar-indeterminate-size: 30%;
+            --progress-bar-indeterminate-animation-duration: 1.5s;
+
+            /* Respect prefers-reduced-motion */
+            @media (prefers-reduced-motion: reduce) {
+                --progress-bar-indeterminate-animation-duration: 10s;
+            }
         }
 
-        /* Browser prefixed pseudo selectors MUST NOT be grouped. */
+        .custom-progress:indeterminate {
+            --progress-bar-animation: var(
+                --progress-bar-indeterminate-animation,
+                progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear
+            );
+        }
+
+        /* Browser prefixed pseudo-elements MUST NOT be grouped. */
+        /* Let <progress> styling show through */
         .custom-progress::-webkit-progress-bar {
-            /* Defaults to transparent in determinate mode and receives the indeterminate background on progress:indeterminate */
-            background: var(--_indeterminate-bg);
-            animation: var(--_progress-bar-active-animation);
+            background: transparent;
         }
 
-        /* Apply background for custom progress bar */
         /* Webkit, Chrome */
         .custom-progress::-webkit-progress-value {
-            background: var(--_progress-bar-active);
+            background: var(--progress-bar-fill, var(--accent-color));
+            border-radius: var(--progress-bar-radius);
+            transition: inline-size 0.3s;
+            animation: var(--progress-bar-animation, revert-rule);
         }
 
         /* Firefox */
         .custom-progress::-moz-progress-bar {
-            background: var(--_progress-bar-active);
-            animation: var(--_progress-bar-active-animation);
+            background: var(--progress-bar-fill, var(--accent-color));
+            border-radius: var(--progress-bar-radius);
+            transition: inline-size 0.3s;
+            animation: var(--progress-bar-animation, revert-rule);
         }
 
-        /* 3. Add a custom animation for the indeterminate state */
-        .custom-progress:indeterminate {
-            --indeterminate-bg: linear-gradient(to right, 
-                transparent 0% 15%, 
-                var(--progress-color, currentColor) 15% 45%, 
-                transparent 45% 100%
-            ) 90% 0 / 200% 100%;
-            --progress-bar-active-animation: loading var(--indeterminate-animation-length, 1.5s) infinite linear;
-            --progress-bar-active: var(--indeterminate-bg);
-        }
-
-        @keyframes loading {
-            from { background-position: 90% 0; }
-            to { background-position: -110% 0; }
-        }
-
-        /* Respect prefers-reduced-motion */
-        @media (prefers-reduced-motion: reduce) {
-            .custom-progress:indeterminate {
-                --indeterminate-animation-length: 10s;
+        /* Physical: left to right regardless of direction (reversed under :dir(rtl) below). */
+        @keyframes progress-bar-indeterminate {
+            from, to {
+                inline-size: var(--progress-bar-indeterminate-size);
+                /* Pin to the physical left; Chromium would otherwise lay the fill out at the inline start */
+                margin-right: auto;
             }
+            from { translate: -100%; } /* Own width: fully outside the left edge */
+            to { translate: 100cqi; }  /* Track width: fully outside the right edge */
+        }
+
+        /* Mirror the motion in RTL */
+        .custom-progress:dir(rtl) {
+            --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
+        }
+
+        /* Consumer-supplied animation with a variable-length segment: two concurrent animations,
+           one for position (translate in track units) and one for length (inline-size), each with its own easing.
+           The leading edge races ahead, then the trailing edge catches up. */
+        .stretch {
+            --progress-bar-indeterminate-animation: stretch-position 2s infinite, stretch-length 2s infinite;
+        }
+
+        @keyframes stretch-position {
+            from, to { margin-right: auto; }
+            0%, 20% { translate: 0; animation-timing-function: ease-in; }
+            100% { translate: 100cqi; }
+        }
+
+        @keyframes stretch-length {
+            0% { inline-size: 0; animation-timing-function: ease-out; }
+            55% { inline-size: 73%; animation-timing-function: ease-in; }
+            100% { inline-size: 0; }
         }
 
         .controls {
@@ -134,19 +163,28 @@
         <p>The simplest way to change the color of a progress bar.</p>
         <label for="accent-progress">File progress:</label>
         <progress id="accent-progress" class="basic-progress" value="20" max="100"></progress>
-        
+
         <div class="controls">
             <button id="update-btn">Add 10%</button>
         </div>
+
+        <label for="accent-indet-progress">Downloading...</label>
+        <progress id="accent-indet-progress" class="basic-progress"></progress>
+
+        <fieldset>
+            <legend>RTL</legend>
+            <progress id="accent-indet-progress-rtl" dir="rtl" class="basic-progress" value=".3"></progress>
+            <progress id="accent-indet-progress-rtl-indeterminate" dir="rtl" class="basic-progress"></progress>
+        </fieldset>
     </section>
 
     <section>
         <h2>Customized Styling</h2>
-        <p>Using pseudo-selectors for deeper customization and custom indeterminate animations.</p>
-        
+        <p>Using pseudo-elements for deeper customization and custom indeterminate animations.</p>
+
         <label for="custom-progress">Upload Progress:</label>
         <progress id="custom-progress" class="custom-progress" value="40" max="100"></progress>
-        
+
         <div id="loading-region">
             <p id="status-text" role="status">40% uploaded</p>
             <div class="controls">
@@ -160,6 +198,19 @@
         <p>Omit the <code>value</code> attribute for tasks of unknown duration.</p>
         <label for="indet-progress">Downloading...</label>
         <progress id="indet-progress" class="custom-progress" max="100"></progress>
+
+        <label for="stretch-progress">Custom animation with a variable-length segment:</label>
+        <progress id="stretch-progress" class="custom-progress stretch" max="100"></progress>
+    </section>
+
+    <section dir="rtl">
+        <h2>RTL</h2>
+        <p>Same styles under <code>dir="rtl"</code>: the fill grows from the inline start. The indeterminate animation is physical, so it is reversed via <code>:dir(rtl)</code> to travel toward the inline end.</p>
+        <label for="rtl-progress">Upload Progress:</label>
+        <progress id="rtl-progress" class="custom-progress" value="40" max="100"></progress>
+
+        <label for="rtl-indet-progress">Downloading...</label>
+        <progress id="rtl-indet-progress" class="custom-progress" max="100"></progress>
     </section>
 
     <script>
