@@ -153,7 +153,7 @@ Style the selected option card with `:has(:checked)` using more than color alone
 
 ```css
 .card {
-  &:has(:checked) {
+  &:has(> :checked) {
     /* Pair any color change with non-color indicators, such as border width or weight */
     border-width: 2px;
     font-weight: 600;
