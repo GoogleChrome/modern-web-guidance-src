@@ -39,11 +39,8 @@ export const REPO_URL = `https://github.com/${ORG}/${REPO}`;
 export const PIPELINE_ISSUE_NUMBER = Number(process.env.PIPELINE_ISSUE_NUMBER || 1815);
 export const EXPECTATIONS_CHANGED_LABEL = 'expectations-changed';
 
-/** Complete feature guides count as of 2026-07-22 on origin/main (discipline hubs excluded). */
-export const EXPECTED_BASELINE_COMPLETE = 127;
 export const PIPELINE_BASELINE_DATE = '2026-07-22';
 export const PIPELINE_SCALE_MAX = 200;
-export const PIPELINE_GOAL = PIPELINE_SCALE_MAX;
 
 export interface PrSummary {
   number: number;
@@ -607,14 +604,14 @@ export function renderTwoRowProgressBar(params: {
   openEvalGuides: number;
   contentLanded: number;
   openGuideGuides: number;
+  baseline: number;
   notStartedIssues?: number;
   staleEvalsCount?: number;
-  baseline?: number;
-  goal?: number;
+  scaleMax?: number;
 }): TwoRowProgressBar {
-  const goal = params.goal ?? PIPELINE_SCALE_MAX;
-  const baseline = params.baseline ?? EXPECTED_BASELINE_COMPLETE;
-  const barWidth = Math.max(1, goal - baseline);
+  const scaleMax = params.scaleMax ?? PIPELINE_SCALE_MAX;
+  const baseline = params.baseline;
+  const barWidth = Math.max(1, scaleMax - baseline);
 
   const header = `Since Jul 22 (${baseline})`;
 
@@ -633,9 +630,9 @@ export function renderTwoRowProgressBar(params: {
   // Ruler line with ticks at 150 and 200
   // Column 10 is offset 0 (baseline).
   // 150 tick is at column 10 + (150 - baseline) - 1 = 32.
-  // 200 tick is at column 10 + (goal - baseline) - 1 = 82.
+  // 200 tick is at column 10 + (scaleMax - baseline) - 1 = 82.
   const tick1Offset = 150 - baseline;
-  const tick2Offset = goal - baseline;
+  const tick2Offset = scaleMax - baseline;
   const col150 = 10 + tick1Offset - 1;
   const col200 = 10 + tick2Offset - 1;
 
@@ -1301,6 +1298,12 @@ export function buildPipelineReportData(params: {
   const todayLa = getLaDateString(new Date());
   const todayLabel = formatShortDate(todayLa);
   const baseWeekly = params.weeklyProgressPoints ?? fetchWeeklyProgressHistory();
+  const firstHistoricalPoint = baseWeekly[0];
+  const baseline = params.baselineComplete ?? firstHistoricalPoint?.complete;
+  if (baseline === undefined) {
+    throw new Error('Cannot determine baseline: weeklyProgressPoints is empty and baselineComplete was not provided');
+  }
+
   const weeklyProgressPoints = [...baseWeekly];
   const todayPoint: WeeklyProgressPoint = {
     date: todayLa,
@@ -1314,8 +1317,6 @@ export function buildPipelineReportData(params: {
     weeklyProgressPoints[weeklyProgressPoints.length - 1] = todayPoint;
   }
 
-  const baseline = params.baselineComplete ?? (weeklyProgressPoints[0]?.complete ?? EXPECTED_BASELINE_COMPLETE);
-
   const progressBar = renderTwoRowProgressBar({
     complete: completeCount,
     openEvalGuides: openEvalPrs.length,
@@ -1324,7 +1325,7 @@ export function buildPipelineReportData(params: {
     notStartedIssues: needsGuidanceIssues.length,
     staleEvalsCount: staleEvals.length,
     baseline,
-    goal: PIPELINE_GOAL,
+    scaleMax: PIPELINE_SCALE_MAX,
   });
 
   const weeklyChart = renderProgressChart(weeklyProgressPoints);
