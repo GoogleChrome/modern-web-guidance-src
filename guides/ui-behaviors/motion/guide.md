@@ -47,24 +47,45 @@ Use `prefers-reduced-motion` media queries to turn off heavy motion for users wh
 - **Default to static views**: Consider defaulting to static states and allowing users to opt-in to motion.
 - **Don't exceed flash limits (three per second)**: Never include rapid light-to-dark flashing. Such effects can cause seizures.
 
+**DO NOT** globally apply `animation-duration: 0.01ms;` as it can cause certain animations to become _more_ jarring.
+Instead, handle motion preferences on a case-by-case basis using one of two approaches, nesting the `@media` query inside the rule so both versions are kept together:
+
+- **Start with animations enabled by default, and tone them down using `@media (prefers-reduced-motion: reduce)`**:
+
 ```css
-/* Good: Dampen spin states for reduced motion queries */
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
+/* Good: Dampen spin states or slow down animations for reduced motion */
+.spinner {
+  animation: spin 1s linear infinite;
+  @media (prefers-reduced-motion: reduce) {
     animation: none;
     opacity: 0.5;
   }
 }
-```
 
-**DO NOT** globally apply `animation-duration: 0.01ms;` as it can cause certain animations to become _more_ jarring.
-Instead, apply reduced motion versions on a case by case basis by nesting `@media (prefers-reduced-motion: reduce)` inside the rule so reduced motion versions are kept together with the original animations:
-
-```css
 progress:not([value]) {
   animation: slide 1s infinite linear;
   @media (prefers-reduced-motion: reduce) {
     animation-duration: 20s;
+  }
+}
+```
+
+- **Start with no animations by default, and enable them using `@media (prefers-reduced-motion: no-preference)`**:
+
+```css
+/* Good: Default to static or gentle states and opt-in to full motion */
+.spinner {
+  opacity: 0.5;
+  @media (prefers-reduced-motion: no-preference) {
+    opacity: 1;
+    animation: spin 1s linear infinite;
+  }
+}
+
+progress:not([value]) {
+  animation: slide 20s infinite linear;
+  @media (prefers-reduced-motion: no-preference) {
+    animation-duration: 1s;
   }
 }
 ```
