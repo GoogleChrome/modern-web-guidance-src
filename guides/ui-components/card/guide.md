@@ -28,53 +28,42 @@ Keep media, title, supporting content, and actions in meaningful source order; d
 
 ## Implementation
 
-This example shows the structure of a content card with media, a linked title, supporting text, and separate actions. Choose the link and action pattern that matches the card’s behaviour; see [Interaction models](#interaction-models).
+Keep the markup minimal and let CSS selectors recognize each region, so simple cards stay simple and richer cards stay possible. A card has up to four regions, in this source order, and any of them can be omitted:
 
-```html
-<article class="card">
-  <img src="recipe.jpg" alt="Poached eggs on toast">
-  <hgroup>
-    <h3><a href="/recipes/poached-eggs">Poached eggs</a></h3>
-    <p>Breakfast special</p>
-  </hgroup>
-  <div class="content">
-    <p>Two poached eggs served on toasted sourdough.</p>
-  </div>
-  <footer>
-    <button type="button">Favorite</button>
-    <button type="button">Share</button>
-  </footer>
-</article>
-```
+- **Media**: an `<img>`, `<picture>`, `<video>`, or `<svg>` as the first child. For arbitrary hero content, use any element with a `.media` class.
+- **Header**: a heading on its own. Use `<hgroup>` only when the heading has a subtitle or tagline, and `<header>` when the region carries more than a title, such as a byline or badge. When the card has a primary destination, the link goes inside the heading.
+- **Content**: whatever the content is, from a single `<p>` to several paragraphs, a list, or a `<dl>`. Do not wrap a single element.
+- **Footer**: a `<footer>` holding independent actions as native links and buttons.
 
-For card images or video that should fill a fixed-ratio area, set `aspect-ratio` on the media or its container and use `object-fit: cover` to fill it without distortion (cropping may occur). Otherwise, preserve the media’s intrinsic ratio. Give informative images an appropriate text alternative; use `alt=""` for decorative images.
+The simplest card is an `<article>` containing a heading and a paragraph. Choose the link and action pattern that matches the card's behavior; see [Interaction models](#interaction-models).
+
+For card images or video that should fill a fixed-ratio area, set `aspect-ratio` on the media or its container and use `object-fit: cover` to fill it without distortion (cropping may occur). Otherwise, preserve the media's intrinsic ratio. Give informative images an appropriate text alternative; use `alt=""` for decorative images.
 
 ### Align cards in a grid
 
-When cards need shared internal tracks, `subgrid` can align them without changing source order:
+When cards in a row should share the heights of their regions, make each card a `subgrid` spanning four shared row tracks (media, header, content, footer) and place regions by selector rather than by class. A card that omits a region leaves its track empty, so the remaining regions still line up with neighboring cards.
 
 ```css
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); /* 18rem is an example minimum card width */
-  /* Four tracks: media, heading, flexible body, and footer */
-  gap: 1.5rem; /* Example grid gap */
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1.5rem;
 
   > .card {
     display: grid;
-    /* Span the shared tracks; layout containment on the card prevents subgrid */
     grid-row: span 4;
     grid-template-rows: subgrid;
     row-gap: 0.75rem;
 
-    /* Keep optional regions in their intended tracks */
-    > :is(img, picture, video, svg) { grid-row: 1; }
-    > hgroup { grid-row: 2; }
-    > .content { grid-row: 3; }
+    > :is(img, picture, video, svg, .media) { grid-row: 1; }
+    > :is(h1, h2, h3, h4, h5, h6, hgroup, header) { grid-row: 2; }
+    > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer) { grid-row: 3; }
     > footer { grid-row: 4; }
   }
 }
 ```
+
+Each track holds one grid item, so when the content region has more than one element and cards share tracks, wrap that region in a `<div>`. Cards that are not aligned with siblings need no wrapper and no subgrid.
 
 ## Interaction models
 
