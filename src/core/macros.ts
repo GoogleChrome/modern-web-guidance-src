@@ -17,13 +17,6 @@ export class MacroError extends Error {
   }
 }
 
-export function formatTitle(id: string): string {
-  return id
-    .split("-")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
 const MACRO_HANDLERS: Record<string, MacroHandler> = {
   INCLUDE: (args, filePath, options) => {
     const [rawArg] = args;
@@ -55,8 +48,13 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     }
 
     if (options?.target === 'static-site') {
-      const title = guideInfo.title || formatTitle(guideInfo.name);
-      return `[${title}](../${guideInfo.category}/${guideInfo.name}.md)`;
+      if (!guideInfo.isPublished) {
+        throw new MacroError(`GUIDE_REF("${guideId}") in ${filePath} links to an unpublished guide; the static site would have a dead link.`);
+      }
+      if (!guideInfo.title) {
+        throw new MacroError(`Guide "${guideId}" has no H1 heading or frontmatter title (referenced in GUIDE_REF macro in ${filePath}).`);
+      }
+      return `[${guideInfo.title}](../${guideInfo.category}/${guideInfo.name}.md)`;
     }
 
     return `\`${guideId}\` (via \`npx -y modern-web-guidance@latest retrieve "${guideId}"\`)`;
