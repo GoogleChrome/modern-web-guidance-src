@@ -71,26 +71,38 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 
 ### Discipline guides
 
-Most guides are task-based use cases. Discipline guides are the orientation "hubs" for a category and link to its use-case guides via `{{ GUIDE_REF("guide-slug") }}`. A guide is a discipline guide if it is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements, and are reported as bundled core guides by `src/build/audit-build.ts`.
+Most guides are task-based use cases. Discipline guides are the orientation "hubs" for a category and link to its use-case guides via `{{ GUIDE_REF("guide-slug") }}`. A guide is a discipline guide if it is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements, and are reported as bundled core guides by `src/build/audit-build.ts`. Discipline orientation guides are currently excluded from the 200 goal and pipeline burndown counts; this policy may change in the future.
 
-### Guide Development Stages
+### Eval Architecture: Gen 1 vs Gen 2
 
-A guide progresses through three main stages:
+Evaluation harnesses for guides exist in two generational formats:
+
+- **Gen 1 (Legacy root format)**: A single root `grader.ts` located in the guide directory paired with `tasks/task.md`. Gen 1 evals target only a single base application (typically `daily-grind`).
+- **Gen 2 (Modern multi-target format)**: Per-target directories under `targets/<base_app>/` (such as `targets/daily-grind/` and `targets/devtools-times/`). Each target directory contains its own `grader.ts`, `task.md`, solution patches (`jetski-solution.patch`, `claude-solution.patch`, `codex-solution.patch`), and baseline `zero-passrate.patch`. Gen 2 enables dual-target evaluation across realistic applications.
+
+### Guide Development Stages & Pipeline Tracking
+
+A guide progresses through three main stages, tracked canonically in GitHub issue #1815 via `src/ci/sync-pipeline-issue.ts`:
 
 1. **Stage 1: Identifying use cases (Needs use cases)**
-   - **Goal**: Translate a web platform feature into distinct use cases.
-   - **Artifacts**: Directory structure, `guide.md` with only YAML frontmatter (stub), and a basic `demo.html`.
-   - SME contributes via PR for review.
+   - **Goal**: Intake backlog of open `new-feature` issues representing platform features that need use cases defined.
+   - **Artifacts**: Initial directory structure or issue tracking feature candidate.
 
 2. **Stage 2: Authoring guidance (Needs guidance)**
-   - **Goal**: Flesh out the guidance and define testable expectations.
+   - **Goal**: Flesh out the guidance content and define testable expectations.
    - **Artifacts**: Full `guide.md` content (DO/DO NOT directives, snippets, fallbacks), completed `demo.html`, and `expectations.md`.
-   - SME creates these files after use case approval.
+   - **In review**: Open content PRs introducing or editing guides that are not yet complete on `main`.
+   - **Not started**: Open `new-use-case` issues without an active PR.
 
 3. **Stage 3: Evaluating guidance (Needs evals)**
    - **Goal**: Generate evaluation capsules, calibrate graders, run evaluations, and generate reports.
    - **Artifacts**: `targets/<base_app>/`, `grader.ts`, `patches/`, `task.md`, and `results/guides/<category>/<slug>/report.md`.
-   - Handled automatically by `gd dev`.
+   - **In review**: Open eval PRs (`gd-dev/*` branch or `grader updates:` title) adding or updating graders for landed content.
+   - **Ready for evals**: Guides on `main` that have non-draft guidance and expectations but lack a grader.
+
+4. **Complete (landed)**: Non-draft guides on `main` that have both guidance and working graders.
+
+Progress toward the 200 completed feature guides goal is measured against the baseline established on **2026-07-22** (127 complete feature guides on `main`, discipline hubs excluded).
 
 ---
 

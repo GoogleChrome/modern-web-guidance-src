@@ -15,6 +15,7 @@ import {
   filterCatchAllReviewers,
   findLegacyFormatGuides,
   findStaleEvals,
+  formatReviewDecision,
   formatShortDate,
   hasSubstantiveExpectationsDiff,
   isDisciplinePr,
@@ -225,20 +226,18 @@ describe('renderProgressChart', () => {
   it('renders overlapping xychart-beta bars and goal line with correct palette and height 200', () => {
     const points: WeeklyProgressPoint[] = [
       { date: '2026-07-22', label: 'Jul 22', complete: 127, contentLanded: 127 },
-      { date: '2026-10-13', label: 'Oct 13', complete: 140, contentLanded: 168 },
+      { date: '2026-10-14', label: 'Oct 14', complete: 140, contentLanded: 168 },
     ];
     const chart = renderProgressChart(points);
-    assert.match(
-      chart,
-      /%%\{init: \{'themeVariables': \{'xyChart': \{'plotColorPalette': '#58a6ff, #238636, #8b949e'\}\}, 'xyChart': \{'height': 200\}\}\}%%/
-    );
+    assert.match(chart, /config:\s+xyChart:\s+height: 200/);
+    assert.match(chart, /plotColorPalette: "#FBBC04, #4285F4, #9AA0A6"/);
     assert.match(chart, /xychart-beta/);
-    assert.match(chart, /x-axis \["Jul 22", "Oct 13"\]/);
+    assert.match(chart, /x-axis \["Jul 22", "Oct 14"\]/);
     assert.match(chart, /y-axis "Guides" 100 --> 200/);
-    assert.match(chart, /bar \[127, 168\]/);
-    assert.match(chart, /bar \[127, 140\]/);
-    assert.match(chart, /line \[200, 200\]/);
-    assert.match(chart, /<sub>🟦 <b>Blue bars<\/b>: Content landed/);
+    assert.match(chart, /bar "Content landed" \[127, 168\]/);
+    assert.match(chart, /bar "Complete" \[127, 140\]/);
+    assert.match(chart, /line "Goal" \[200, 200\]/);
+    assert.match(chart, /<sub>Goal: 200 guides \(y-axis: 100–200\)<\/sub>/);
   });
 });
 
@@ -247,18 +246,34 @@ describe('renderSankeyDiagram', () => {
     const diagram = renderSankeyDiagram({
       complete: 140,
       evalPrsInReview: 16,
-      readyForEvals: 20,
+      readyForEvals: 12,
       guidePrsInReview: 17,
-      notStarted: 51,
+      notStarted: 45,
+      needsUseCases: 142,
     });
+    assert.match(diagram, /config:\s+themeCSS: "\.link \{ mix-blend-mode: normal; stroke-opacity: 0\.45; \}"/);
+    assert.match(diagram, /linkColor: target/);
+    assert.match(diagram, /nodeColors:\s+"Tracked": "#9AA0A6"/);
     assert.match(diagram, /sankey-beta/);
     assert.match(diagram, /Tracked, Complete, 140/);
-    assert.match(diagram, /Tracked, Needs evals, 36/);
-    assert.match(diagram, /Tracked, Needs guidance, 68/);
+    assert.match(diagram, /Tracked, Needs evals, 28/);
+    assert.match(diagram, /Tracked, Needs guidance, 62/);
+    assert.match(diagram, /Tracked, Needs use cases, 142/);
     assert.match(diagram, /Needs evals, Eval PR in review, 16/);
-    assert.match(diagram, /Needs evals, Ready for evals, 20/);
+    assert.match(diagram, /Needs evals, Ready for evals, 12/);
     assert.match(diagram, /Needs guidance, Guide PR in review, 17/);
-    assert.match(diagram, /Needs guidance, Not started, 51/);
+    assert.match(diagram, /Needs guidance, Not started, 45/);
+  });
+});
+
+describe('formatReviewDecision', () => {
+  it('maps review decisions and draft states to lowercase strings', () => {
+    assert.equal(formatReviewDecision('APPROVED', false), 'approved');
+    assert.equal(formatReviewDecision('CHANGES_REQUESTED', false), 'changes requested');
+    assert.equal(formatReviewDecision('REVIEW_REQUIRED', false), 'awaiting review');
+    assert.equal(formatReviewDecision(null, false), 'awaiting review');
+    assert.equal(formatReviewDecision(undefined, false), 'awaiting review');
+    assert.equal(formatReviewDecision('APPROVED', true), 'draft');
   });
 });
 
@@ -447,15 +462,17 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
 
     const markdown = renderPipelineIssueBody(report);
     assert.match(markdown, /## Stage 2: Needs guidance \(2\)/);
+    assert.match(markdown, /##### ui-atoms/);
+    assert.match(markdown, /##### ui-components/);
     assert.match(markdown, /## Stage 3: Needs evals \(2\)/);
     assert.match(
       markdown,
       /\*\*Eval Coverage \(3 finished guides\):\*\* \*\*1 \/ 3 \(33%\)\*\* covered — \*\*1 Gen 2\*\* \(`targets\/`\) · \*\*0 Gen 1\*\* \(legacy root `grader\.ts`\) · \*\*2 Missing evals\*\*/
     );
-    assert.match(markdown, /### Gen 1 → Gen 2 Eval Migration \(`1` Gen 2 · `0` Gen 1\)/);
+    assert.match(markdown, /### Gen 1 → Gen 2 Eval Migration \(`1` Gen 2 · `0` Gen 1 · `1` dual-target\)/);
     assert.match(
       markdown,
-      /- \[ \] \[\*\*ui-behaviors\/drag\*\*\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\/ui-behaviors\/drag\) · \[PR #1741\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/pull\/1741\) · `HEALTHY` · Pass@1: dg 100%, dt 100% · `micahjo7` → `TravenReese`/
+      /- \[ \] \[\*\*ui-behaviors\/drag\*\*\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\/ui-behaviors\/drag\) · \[PR #1741\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/pull\/1741\) \(awaiting review\) · `HEALTHY` · Pass@1: dg 100%, dt 100% · `micahjo7` → `TravenReese`/
     );
 
     // Ensure zero raw @username mentions anywhere
@@ -720,16 +737,16 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       /\[1 landed complete\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\) · \[1 eval PRs in review\]\(#open-eval-prs-1\) · \[1 ready for evals\]\(#ready-for-gd-dev-1\)/
     );
 
-    // Weekly progress chart present
+    // Weekly progress chart present with YAML frontmatter config
     assert.match(
       markdown,
-      /### Progress Toward 200 Guides\n\n```mermaid\n%%\{init: \{'themeVariables': \{'xyChart': \{'plotColorPalette': '#58a6ff, #238636, #8b949e'\}\}, 'xyChart': \{'height': 200\}\}\}%%/
+      /### Progress Toward 200 Guides\n\n```mermaid\n---\nconfig:\n  xyChart:\n    height: 200\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#FBBC04, #4285F4, #9AA0A6"\n---\nxychart-beta/
     );
 
-    // Sankey diagram present with linkColor: source init
+    // Sankey diagram present with YAML frontmatter config
     assert.match(
       markdown,
-      /### Pipeline State\n\n```mermaid\n%%\{init: \{'sankey': \{'linkColor': 'source'\}\}\}%%\nsankey-beta\n\nTracked, Complete, 1\nTracked, Needs evals, 2/
+      /### Pipeline State\n\n```mermaid\n---\nconfig:\n  themeCSS: "\.link \{ mix-blend-mode: normal; stroke-opacity: 0\.45; \}"\n  sankey:\n    linkColor: target/
     );
   });
 
@@ -794,7 +811,15 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       guides: [complete1, complete2, needsEval1, needsEval2, needsGuidance1, needsGuidance2],
       openPrs,
       openUseCaseIssues,
-      openFeatureIssues: [],
+      openFeatureIssues: [
+        {
+          number: 801,
+          title: 'Feature backlog item',
+          body: '',
+          assignees: ['LeaVerou'],
+          labels: ['new-feature'],
+        },
+      ],
       openExpectationsChangedIssues: [],
       gitHistory: new Map(),
       weeklyProgressPoints: [
@@ -809,13 +834,16 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     assert.equal(report.readyForEvalSlugs.length, 1);
     assert.equal(report.needsGuidancePrs.length, 1);
     assert.equal(report.needsGuidanceIssues.length, 1);
+    assert.equal(report.needsUseCasesIssues.length, 1);
 
     const markdown = renderPipelineIssueBody(report);
 
-    // Sankey matches
+    // Stage 1 & Sankey matches
+    assert.match(markdown, /## Stage 1: Needs use cases \(1\)/);
     assert.match(markdown, /Tracked, Complete, 2/);
     assert.match(markdown, /Tracked, Needs evals, 2/);
     assert.match(markdown, /Tracked, Needs guidance, 2/);
+    assert.match(markdown, /Tracked, Needs use cases, 1/);
     assert.match(markdown, /Needs evals, Eval PR in review, 1/);
     assert.match(markdown, /Needs evals, Ready for evals, 1/);
     assert.match(markdown, /Needs guidance, Guide PR in review, 1/);
