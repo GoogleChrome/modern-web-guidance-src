@@ -8,9 +8,10 @@ import { type GuideInventory } from '../core/guide-validation.ts';
 import { rootDir } from '../core/paths.ts';
 import {
   buildPipelineReportData,
+  buildUseCaseIssueIndex,
   classifyPr,
   EXPECTED_BASELINE_COMPLETE,
-  fetchBaselineComplete,
+  fetchWeeklyProgressHistory,
   filterCatchAllReviewers,
   findLegacyFormatGuides,
   findStaleEvals,
@@ -139,12 +140,13 @@ describe('parseEvalReportFromPrBody', () => {
   });
 });
 
-describe('fetchBaselineComplete', () => {
+describe('fetchWeeklyProgressHistory & baseline', () => {
   it('computes 127 complete feature guides on origin/main as of 2026-07-22 excluding hubs', () => {
-    const baseline = fetchBaselineComplete();
-    assert.equal(baseline, EXPECTED_BASELINE_COMPLETE);
+    const weeklyPoints = fetchWeeklyProgressHistory();
+    assert.ok(weeklyPoints.length >= 1);
+    assert.equal(weeklyPoints[0].complete, EXPECTED_BASELINE_COMPLETE);
     assert.equal(PIPELINE_GOAL, 200);
-    assert.equal(PIPELINE_GOAL - baseline, 73);
+    assert.equal(PIPELINE_GOAL - EXPECTED_BASELINE_COMPLETE, 73);
   });
 });
 
@@ -433,8 +435,6 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       openFeatureIssues: [],
       openExpectationsChangedIssues: [],
       gitHistory: new Map(),
-      existingIssueBody: '<!-- burndown-checkpoints: [66, 62, 0, 0, 0, 0] -->',
-      nowMs: Date.parse('2026-10-09T12:00:00Z'),
     });
 
     assert.equal(report.needsGuidancePrs.length, 1);
@@ -462,11 +462,12 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     assert.doesNotMatch(markdown, /(?:^|[\s(])@[A-Za-z0-9_-]+/);
 
     // Ensure every #NNNN in list items is inside a markdown link [PR #NNNN] or [#NNNN]
-    for (const line of markdown.split('\n')) {
-      if (!line.startsWith('- [ ]')) continue;
-      const strippedLinks = line.replace(/\[(?:PR )?#\d+\]\([^)]+\)/g, '');
-      assert.doesNotMatch(strippedLinks, /#\d+/, `Found bare issue/PR reference in line: ${line}`);
-    }
+    const bareRefs = markdown
+      .split('\n')
+      .filter(line => line.startsWith('- [ ]'))
+      .map(line => line.replace(/\[(?:PR )?#\d+\]\([^)]+\)/g, ''))
+      .filter(line => /#\d+/.test(line));
+    assert.deepEqual(bareRefs, []);
   });
 
   it('matches template-filed new-use-case issues via Category and Use case slug headers', () => {
@@ -477,7 +478,8 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       assignees: ['LeaVerou'],
       labels: ['new-use-case'],
     };
-    const matched = matchUseCaseIssue('ui-atoms/custom-list-markers', 'custom-list-markers', [issue], [], []);
+    const index = buildUseCaseIssueIndex([issue], []);
+    const matched = matchUseCaseIssue('ui-atoms/custom-list-markers', 'custom-list-markers', index, []);
     assert.equal(matched?.number, 1742);
     assert.equal(formatShortDate('2026-10-04'), 'Oct 4');
     assert.deepEqual(filterCatchAllReviewers(['paulirish', 'micahjo7', 'LeaVerou'], 'guidance'), ['LeaVerou']);
@@ -516,7 +518,11 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       const legacyDg = makeGuide({ category: 'css', name: 'legacy-dg', dir: dgDir, targets: [] });
       const legacyDt = makeGuide({ category: 'html', name: 'legacy-dt', dir: dtDir, targets: [] });
 
-      const result = findLegacyFormatGuides([dualTarget, singleTarget, legacyDt, legacyDg]);
+      const mockTaskMap = new Map([
+        ['legacy-dg/task', { baseApp: 'daily-grind', prompt: '', guideDir: dgDir }],
+        ['legacy-dt/task', { baseApp: 'devtools-times', prompt: '', guideDir: dtDir }],
+      ]);
+      const result = findLegacyFormatGuides([dualTarget, singleTarget, legacyDt, legacyDg], mockTaskMap);
       assert.equal(result.gen2CompleteCount, 2);
       assert.equal(result.dualTargetCompleteCount, 1);
       assert.deepEqual(result.legacyEvals, [
@@ -679,13 +685,10 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       openFeatureIssues: [],
       openExpectationsChangedIssues: [],
       gitHistory: new Map(),
-      existingIssueBody: '',
-      nowMs: Date.parse('2026-10-13T12:00:00Z'),
     });
 
     // Complete count excludes accessibility/accessibility discipline guide
     assert.equal(report.completeCount, 1);
-    assert.equal(report.evalCompleteCount, 1);
 
     // Open eval PRs excludes web-components discipline guide
     assert.equal(report.openEvalPrs.length, 1);
@@ -794,13 +797,11 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       openFeatureIssues: [],
       openExpectationsChangedIssues: [],
       gitHistory: new Map(),
-      existingIssueBody: '',
       weeklyProgressPoints: [
         { date: '2026-07-22', label: 'Jul 22', complete: 127, contentLanded: 127 },
         { date: '2026-10-13', label: 'Oct 13', complete: 2, contentLanded: 4 },
       ],
       baselineComplete: 0,
-      nowMs: Date.parse('2026-10-13T12:00:00Z'),
     });
 
     assert.equal(report.completeCount, 2);
@@ -825,6 +826,67 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     assert.ok(
       markdown.includes(expectedLinksLine),
       `Expected markdown to contain links line:\n${expectedLinksLine}\nGot:\n${markdown.slice(0, 500)}`
+    );
+  });
+
+  it('enforces the invariant that openEvalPrs + readyForEvalSlugs equals contentLanded - completeCount', () => {
+    const complete1 = makeGuide({ category: 'css', name: 'guide-1' });
+    const needsEval1 = makeGuide({ category: 'forms', name: 'guide-2', hasGrader: false, hasTask: false });
+    const needsEval2 = makeGuide({ category: 'forms', name: 'guide-3', hasGrader: false, hasTask: false });
+    const needsGuidance1 = makeGuide({
+      category: 'html',
+      name: 'guide-4',
+      hasGuide: false,
+      isStub: true,
+      hasGrader: false,
+      hasTask: false,
+    });
+
+    // Open PR for guide-2 (eval PR)
+    const openPrs: PrSummary[] = [
+      {
+        number: 101,
+        title: 'grader updates: guide-2',
+        body: '',
+        isDraft: false,
+        headRefName: 'gd-dev/guide-2',
+        author: 'dev',
+        reviewers: [],
+        labels: ['gd-dev-eval'],
+        files: ['guides/forms/guide-2/targets/daily-grind/grader.ts'],
+      },
+      // Eval PR for guide-4 (which is still NeedsGuidance on main: should NOT be counted as an eval PR for needsEvals)
+      {
+        number: 102,
+        title: 'grader updates: guide-4',
+        body: '',
+        isDraft: false,
+        headRefName: 'gd-dev/guide-4',
+        author: 'dev',
+        reviewers: [],
+        labels: ['gd-dev-eval'],
+        files: ['guides/html/guide-4/targets/daily-grind/grader.ts'],
+      },
+    ];
+
+    const report = buildPipelineReportData({
+      guides: [complete1, needsEval1, needsEval2, needsGuidance1],
+      openPrs,
+      openUseCaseIssues: [],
+      openFeatureIssues: [],
+      openExpectationsChangedIssues: [],
+      gitHistory: new Map(),
+    });
+
+    // Content landed = 1 complete + 2 needsEvals = 3
+    assert.equal(report.completeCount, 1);
+    assert.equal(report.contentLandedCount, 3);
+    // openEvalPrs only counts guide-2 (guide-4 is ignored since not in NeedsEvals on main)
+    assert.equal(report.openEvalPrs.length, 1);
+    assert.equal(report.readyForEvalSlugs.length, 1);
+    assert.equal(
+      report.openEvalPrs.length + report.readyForEvalSlugs.length,
+      report.contentLandedCount - report.completeCount
     );
   });
 });

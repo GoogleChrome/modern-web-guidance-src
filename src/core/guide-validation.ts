@@ -164,7 +164,7 @@ interface GuideData {
 }
 
 /** String `draft` values interpreted as not-a-draft (a quoted/typed-out boolean). */
-const FALSY_DRAFT = new Set(['', 'false', 'no', 'off', '0']);
+export const FALSY_DRAFT = new Set(['', 'false', 'no', 'off', '0']);
 
 /** Returns true when frontmatter `draft` is explicitly set to `"stub"` (case-insensitive). */
 export function isDraftStub(draft: unknown): boolean {
