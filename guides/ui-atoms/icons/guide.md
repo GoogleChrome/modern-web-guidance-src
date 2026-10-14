@@ -44,18 +44,25 @@ Icons are design tokens: each icon is a custom property holding an image, and an
 
 Define SVG icons and any `--icon-style-*` overrides as reusable custom properties using inline SVG data URIs or root-relative URLs (e.g., `url("/icons/trash.svg")`). When an icon is loaded from an external SVG file, use a root-relative URL or an embedded data URI. A relative URL used through a custom property can resolve relative to the stylesheet where the icon is used, rather than the stylesheet where the custom property is defined. If those stylesheets are in different directories, the URL may resolve to the wrong file.
 
-To keep a URL relative to the stylesheet that defines the icon token, register the token as an `<image>` property and put the URL in `initial-value`:
+To keep a URL relative to the stylesheet that defines the icon token, a registered property is meant to help: the computed value of a registered `<url>` or `<image>` is resolved against the stylesheet that declared it. DO NOT rely on registering the token as `<image>` with the URL in `initial-value`. Chrome and Safari resolve `initial-value` URLs against the document, so it only works in Firefox. Chrome also resolves values declared on `:root` against the document unless the syntax starts with `<url>`.
+
+When relative URLs are unavoidable, such as stylesheets in different directories, register the token with a syntax that starts with `<url>` and declare the actual URL on `:root`. This resolves against the declaring stylesheet in every browser:
 
 ```css
 @property --icon-caret {
-  syntax: "<image>";
+  /* The syntax must start with <url>. A syntax that starts with <image> resolves against the document in Chrome. */
+  syntax: "<url> | <image> | none";
   inherits: true;
-  initial-value: url("icons/caret.svg");
+  initial-value: none;
+}
+
+:root {
+  /* Declared here, the URL resolves against this stylesheet */
+  --icon-caret: url("icons/caret.svg");
 }
 ```
 
-The usual limitations of `@property`, namely that registered properties are global and shadow roots cannot register properties, are less relevant here since these icon tokens are meant to be global. 
-The main downside of this approach is that it requires a lot more boilerplate (though it compresses well), and that it limits browser support. If root-relative URLs are an option, they are a simpler solution.
+Each icon now lives in two places, and there is much more boilerplate, so this is only worth it when a project has stylesheets in different directories and a manageable number of icons. Past a dozen or so icons, register the `--icon-*` tokens (excluding `--icon-style-*`) from a script with `CSS.registerProperty`, using the same syntax, instead of writing each `@property` by hand. Registered properties are global and do not work in shadow roots, so this may not fit every project. If root-relative URLs or data URIs are an option, they are simpler and work everywhere.
 
 ```css
 :root {
