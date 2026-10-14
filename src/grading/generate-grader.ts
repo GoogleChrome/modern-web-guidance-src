@@ -96,6 +96,11 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       fs.cpSync(sourcePatches, path.join(workDir, PATCHES_DIR), { recursive: true });
     }
 
+    const existingGrader = path.join(guideDirAbs, TARGETS_DIR, baseApp, GRADER_FILE);
+    if (failureContext && fs.existsSync(existingGrader)) {
+      fs.copyFileSync(existingGrader, path.join(workDir, GRADER_FILE));
+    }
+
     const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
     const activeAgents = getActiveSolutionAgents(targetDir);
     const solutionPatchFiles: Partial<Record<SolutionAgent, string>> = {};

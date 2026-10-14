@@ -88,12 +88,19 @@ export interface GraderPromptOptions {
   isDisciplineGuide?: boolean;
 }
 
+const MAX_FAILURE_CONTEXT_CHARS = 16_000;
+
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
-  const contextBlock = opts.failureContext
+  const truncatedFailure =
+    opts.failureContext && opts.failureContext.length > MAX_FAILURE_CONTEXT_CHARS
+      ? `${opts.failureContext.slice(0, MAX_FAILURE_CONTEXT_CHARS)}\n...[truncated ${opts.failureContext.length - MAX_FAILURE_CONTEXT_CHARS} chars]`
+      : opts.failureContext;
+
+  const contextBlock = truncatedFailure
     ? `### ⚠️ PREVIOUS FAILURE CONTEXT
 The previous grader failed calibration with this error:
 \`\`\`
-${opts.failureContext}
+${truncatedFailure}
 \`\`\`
 Analyze this failure and modify the existing grader file to fix these assertions while still adhering to all rules below.
 
@@ -137,12 +144,12 @@ ${solutionList}
 ## 1. Strictly Follow the Boilerplate Template
 Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`getTargetFiles\`, \`getCssStyleSheet\`, \`getJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
 
-## 2. Assertion Hierarchy & Behavioral Balance
-- **Static Analysis First (Balanced Verification)**: Choose the right verification tool for each requirement. Prioritize static AST analysis for structural patterns, declarations, and DOM hierarchy, but use behavioral / runtime Playwright E2E tests for interactive behaviors, state changes, or when AST checking would be overly rigid or prescribe internal implementation structure. Do not reject valid, spec-compliant code due to rigid AST shapes or incidental implementation details. Always avoid regex on HTML, CSS, and JavaScript files.
+## 2. Assertion Hierarchy
+- **Static Analysis First**: Prioritize static AST analysis over browser execution for structural, API-invocation, and state-wiring assertions. Do not reject valid, spec-compliant code due to rigid AST shapes or incidental implementation details. Always avoid regex on HTML, CSS, and JavaScript files.
   - Use **Linkedom** for HTML structure and DOM querying (\`getHtmlDocuments\`).
   - Use **CSSOMNom** for CSS rules, at-rules (@media, @supports, @container, @view-transition), and declarations (\`getCssStyleSheet\`).
   - Use **ts-morph** for JavaScript/TypeScript syntax, AST analysis, and function/variable querying (\`getJsProject\`).
-- **Browser Checks for Runtime Behaviors**: Write browser-based Playwright E2E tests for requirements that involve runtime interactions (clicks, form submits, modal opening/closing), dynamic DOM mutations, or computed style changes that are more reliably verified behaviorally than via AST inspection. Omit browser test blocks entirely if static checks are sufficient.
+- **Browser Checks Only When Necessary**: Only write browser-based Playwright E2E tests when strictly necessary for requirements that cannot be verified statically (such as computed layout geometry or animations on existing base-app elements). Never write browser E2E tests that depend on newly invented page routes, custom REST API endpoints/payloads, or DOM selectors/button labels that only exist in the golden solution patches and are not part of the base application. Omit browser test blocks entirely if static checks are sufficient.
 - **Reference Examples & API Definitions**: Before writing tests, use your file-viewing tools to inspect these reference pattern libraries and API type definitions for implementation patterns:
   - **Test Fixture Helper Signatures (Reference Only)**: [test-fixture.reference.ts](file://${opts.testFixtureReferencePath})
   - **Static Analysis Patterns (Linkedom, CSSOMNom, ts-morph)**: [parser-pattern-library.test.ts](file://${opts.parserPatternLibraryPath})
@@ -171,6 +178,7 @@ Write only one assertion per \`test('...', ...)\` block across both static and b
     \`\`\`
     Never assume an argument is directly an inline \`ObjectLiteralExpression\` without unwrapping.
   - **Follow Identifier & Variable Indirection**: Do not assume options objects, configuration dictionaries, or arguments are defined inline as object literals at the call site. Resolve local variable references (\`VariableDeclaration\`, \`BindingElement\`, parameter) if an identifier is passed.
+  - **Trace Helper & Wrapper Functions**: Do not assume a platform API (e.g., \`PublicKeyCredential.signalAllAcceptedCredentials\`, \`PublicKeyCredential.signalCurrentUserDetails\`, \`fetch\`) is called directly inside a component or event handler. If the code defines a helper/wrapper function in the same file or an imported module that calls the API, trace calls through that helper function and resolve any arguments forwarded to it.
   - **Flexible Error Handling**: When testing error handling, accept both \`try/catch\` blocks (\`TryStatement\`) and promise \`.catch()\` handler calls.
 - **No Swallowed Errors & No Vacuous Conditional Checks**:
   - Do NOT wrap assertions in generic try/catch blocks that swallow exceptions.

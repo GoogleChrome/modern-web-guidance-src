@@ -166,12 +166,33 @@ test('buildTargetGraderPrompt includes anti-overfitting, AST unwrapping, and non
   assert.ok(prompt.includes('SatisfiesExpression'));
   assert.ok(prompt.includes('ParenthesizedExpression'));
   assert.ok(prompt.includes('Follow Identifier & Variable Indirection'));
+  assert.ok(prompt.includes('Trace Helper & Wrapper Functions'));
   assert.ok(prompt.includes('Flexible Error Handling'));
   assert.ok(prompt.includes('TryStatement'));
   assert.ok(prompt.includes('.catch()'));
   assert.ok(prompt.includes('No Vacuous Conditional Checks'));
   assert.ok(prompt.includes('expect(items.length).toBeGreaterThan(0)'));
   assert.ok(prompt.includes('test.skip()'));
+  assert.ok(prompt.includes('Never write browser E2E tests that depend on newly invented page routes'));
+});
+
+test('buildTargetGraderPrompt truncates oversized failureContext to prevent spawn E2BIG', () => {
+  const hugeError = 'x'.repeat(25_000);
+  const prompt = buildTargetGraderPrompt({
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
+    graderFile: 'grader.ts',
+    baseApp: 'devtools-times',
+    templateFile: 'template.grader.ts',
+    failureContext: hugeError,
+  });
+
+  assert.ok(prompt.includes('...[truncated 9000 chars]'));
+  assert.ok(prompt.length < 25_000);
 });
 
 test('buildZeroPassratePrompt includes requirement to genuinely violate each expectation', () => {
