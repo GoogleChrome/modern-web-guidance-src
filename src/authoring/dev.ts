@@ -270,11 +270,12 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
     await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
 
     const generatedTask = path.join(workDir, TASK_FILE);
-    if (fs.existsSync(generatedTask)) {
-      const destTask = path.join(guideDirAbs, TARGETS_DIR, baseApp, TASK_FILE);
-      fs.mkdirSync(path.dirname(destTask), { recursive: true });
-      fs.copyFileSync(generatedTask, destTask);
+    if (!fs.existsSync(generatedTask) || !fs.readFileSync(generatedTask, 'utf-8').trim()) {
+      throw new Error(`Agent finished without generating a valid ${TASK_FILE} for ${baseApp}.`);
     }
+    const destTask = path.join(guideDirAbs, TARGETS_DIR, baseApp, TASK_FILE);
+    fs.mkdirSync(path.dirname(destTask), { recursive: true });
+    fs.copyFileSync(generatedTask, destTask);
   } finally {
     try {
       fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
