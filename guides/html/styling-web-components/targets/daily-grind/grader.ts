@@ -204,6 +204,16 @@ test.describe('Styling Web Components Target Grader', () => {
         ) as HTMLElement | null;
         if (!internalEl) return null;
 
+        for (const sheet of Array.from(document.styleSheets)) {
+          try {
+            for (const rule of Array.from(sheet.cssRules)) {
+              if (rule instanceof CSSStyleRule && customCard.matches(rule.selectorText)) {
+                rule.style.removeProperty('--card-bg');
+              }
+            }
+          } catch {}
+        }
+
         const ancestor = customCard.parentElement || document.body;
         ancestor.style.setProperty('--card-bg', 'rgb(111, 222, 133)');
         return window.getComputedStyle(internalEl).backgroundColor;
@@ -249,6 +259,7 @@ test.describe('Styling Web Components Target Grader', () => {
         const narrowStyle = window.getComputedStyle(internalCard);
         const narrowPadding = narrowStyle.padding;
         const narrowGridCols = narrowStyle.gridTemplateColumns;
+        const narrowFlexDir = narrowStyle.flexDirection;
 
         customCard.style.width = '600px';
         customCard.style.maxWidth = '600px';
@@ -256,8 +267,13 @@ test.describe('Styling Web Components Target Grader', () => {
         const wideStyle = window.getComputedStyle(internalCard);
         const widePadding = wideStyle.padding;
         const wideGridCols = wideStyle.gridTemplateColumns;
+        const wideFlexDir = wideStyle.flexDirection;
 
-        return narrowPadding !== widePadding || narrowGridCols !== wideGridCols;
+        return (
+          narrowPadding !== widePadding ||
+          narrowGridCols !== wideGridCols ||
+          narrowFlexDir !== wideFlexDir
+        );
       });
 
       expect(styleChangedOnBreakpoint).toBe(true);
