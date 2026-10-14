@@ -154,7 +154,7 @@ Put the `.icon` class and `--icon` property directly on an icon-only button. Giv
 
 ## Alternatives to the CSS Icon System
 
-Use inline SVG when you need direct access to individual paths, such as for multi-color icons or path-level animations. No example is needed here: the key distinction is that inline SVG exposes the icon's elements in the document.
+Use inline SVG when you need direct access to individual paths, such as for customizable multi-color icons or path-level animations. No example is needed here: the key distinction is that inline SVG exposes the icon's elements in the document.
 
 For reusable SVG icons stored in an external sprite, reference a symbol with `<use>`:
 
