@@ -133,7 +133,3 @@ Style the selected card with `:has(:checked)`. Never change layout-affecting pro
 The visible checkbox or radio is itself a non-color indicator of selection, so the color change alone is sufficient. If the control is visually hidden (keep it focusable and in the accessibility tree, never `display: none`), add a non-color indicator that does not affect layout, such as a check icon or a thicker `outline`.
 
 When choices belong in a dropdown picker whose options are laid out as cards, use a native `<select>` with `appearance: base-select` and style `::picker(select)` and `<option>` elements rather than replacing the select with `<div>` cards; see {{ GUIDE_REF("custom-select-picker-layouts") }} for more details and fallbacks. Use `<button>` elements when selecting a card triggers an immediate action rather than setting form state.
-
-## Accessibility
-
-Keep native links, buttons, and form controls keyboard-operable, with accessible names and visible focus indicators. Use `.card:has(:focus-visible)` to give the card a subtle focus ring for context, but never remove or replace the focused link or control's own `:focus-visible` indicator. For related semantic, focus, and control guidance, see {{ GUIDE_REF("accessibility") }}.

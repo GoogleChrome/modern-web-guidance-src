@@ -143,8 +143,8 @@
       padding: 1.5rem;
       gap: 0.75rem;
 
-      /* Delegate outer focus state when any inner link or button has focus */
-      &:has(:focus-visible) {
+      /* Only the stretched primary link delegates its focus ring to the card */
+      &:has(a.card-link:focus-visible) {
         outline: 2px solid var(--focus-ring-color);
         outline-offset: 4px;
       }
@@ -180,17 +180,24 @@
         a {
           color: inherit;
           text-decoration: none;
-
-          /* Stretch the title link's pointer target without wrapping body text in <a> */
-          &::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-          }
         }
       }
 
-      :is(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a, footer button, footer a):focus-visible {
+      /* Opt-in: stretch the primary link's pointer target across the card and draw its focus ring on the card */
+      a.card-link {
+        &::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+        }
+
+        &:focus-visible {
+          outline: none;
+        }
+      }
+
+      /* Other controls keep their own focus ring */
+      :is(a:not(.card-link), button):focus-visible {
         outline: 2px solid var(--focus-ring-color);
         outline-offset: 2px;
         border-radius: 2px;
@@ -309,7 +316,7 @@
           <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60"
             alt="Poached Eggs" />
           <hgroup>
-            <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
+            <h3><a class="card-link" href="#recipe-eggs">Poached Eggs</a></h3>
             <p>Breakfast Special</p>
           </hgroup>
           <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
@@ -335,7 +342,7 @@
           <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60"
             alt="Poached Eggs" />
           <hgroup>
-            <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
+            <h3><a class="card-link" href="#recipe-eggs">Poached Eggs</a></h3>
             <p>Breakfast Special</p>
           </hgroup>
           <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
@@ -361,7 +368,7 @@
           <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60"
             alt="Poached Eggs" />
           <hgroup>
-            <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
+            <h3><a class="card-link" href="#recipe-eggs">Poached Eggs</a></h3>
             <p>Breakfast Special</p>
           </hgroup>
           <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
@@ -384,7 +391,7 @@
     <div class="resize-demo">
       <div class="card-container">
         <article class="card">
-          <h3><a href="#philosophy">Culinary Philosophy</a></h3>
+          <h3><a class="card-link" href="#philosophy">Culinary Philosophy</a></h3>
           <p>Sourcing exclusively local, organic ingredients supports sustainable agriculture, and serving handcrafted
             meals cooked from scratch every single day.</p>
           <footer>
@@ -406,7 +413,7 @@
       <article class="card">
         <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60"
           alt="Poached Eggs" />
-        <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
+        <h3><a class="card-link" href="#recipe-eggs">Poached Eggs</a></h3>
         <p>Two poached eggs on toasted sourdough.</p>
         <footer>
           <button type="button">Favorite</button>
@@ -414,7 +421,7 @@
       </article>
       <article class="card">
         <header>
-          <h3><a href="#brunch">Weekend Brunch</a></h3>
+          <h3><a class="card-link" href="#brunch">Weekend Brunch</a></h3>
           <p>By the kitchen team</p>
         </header>
         <div>
