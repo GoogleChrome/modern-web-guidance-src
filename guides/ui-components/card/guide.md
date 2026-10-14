@@ -41,29 +41,7 @@ For card images or video that should fill a fixed-ratio area, set `aspect-ratio`
 
 ### Align cards in a grid
 
-When cards in a row should share the heights of their regions, make each card a `subgrid` spanning four shared row tracks (media, header, content, footer) and place regions by selector rather than by class. A card that omits a region leaves its track empty, so the remaining regions still line up with neighboring cards.
-
-```css
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: 1.5rem;
-
-  > .card {
-    display: grid;
-    grid-row: span 4;
-    grid-template-rows: subgrid;
-    row-gap: 0.75rem;
-
-    > :is(img, picture, video, svg, .media) { grid-row: 1; }
-    > :is(h1, h2, h3, h4, h5, h6, hgroup, header) { grid-row: 2; }
-    > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer) { grid-row: 3; }
-    > footer { grid-row: 4; }
-  }
-}
-```
-
-Each track holds one grid item, so when the content region has more than one element and cards share tracks, wrap that region in a `<div>`. Cards that are not aligned with siblings need no wrapper and no subgrid.
+When cards in a row should share the heights of their regions, use `subgrid`: make each card span four shared row tracks (media, header, content, footer) and place regions by element selector, treating everything that is not media, a heading, or a `<footer>` as content. A card that omits a region leaves its track empty, so the remaining regions still line up with neighboring cards. Each track holds one grid item, so wrap the content region in a `<div>` only when it has more than one element and cards share tracks. Cards that are not aligned with siblings need neither wrapper nor subgrid.
 
 ## Interaction models
 
