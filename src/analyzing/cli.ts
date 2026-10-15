@@ -1,9 +1,26 @@
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { ALL_RULES, QUALIFIED_RULES } from './rules/index.ts';
+import {
+  ALL_RULES,
+  QUALIFIED_RULES,
+  TIER_1_GUIDE_IDS,
+  TIER_1_RULES,
+  TIER_2_GUIDE_IDS,
+} from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
+
+export type GuideConfidenceTier =
+  | 'tier-1-proven'
+  | 'tier-2-zero-fp'
+  | 'tier-3-experimental';
+
+export function getGuideConfidenceTier(guideId: string): GuideConfidenceTier {
+  if (TIER_1_GUIDE_IDS.includes(guideId)) return 'tier-1-proven';
+  if (TIER_2_GUIDE_IDS.includes(guideId)) return 'tier-2-zero-fp';
+  return 'tier-3-experimental';
+}
 
 export interface AnalyzeCliFinding {
   readonly ruleId: string;
@@ -15,6 +32,7 @@ export interface AnalyzeCliFinding {
 
 export interface AnalyzeCliGuideGroup {
   readonly guideId: string;
+  readonly tier: GuideConfidenceTier;
   readonly summary: string;
   readonly retrieveCommand: string;
   readonly count: number;
@@ -51,6 +69,8 @@ Arguments:
 Options:
   --json             Output findings as structured JSON for coding agents
   --guide <guideId>  Filter analysis to a specific guide ID
+  --tier=1           Scan strictly with Tier 1 proven rules (8 high-N guides, 99.1% precision)
+  --proven-only      Alias for --tier=1
   --all-rules        Include all experimental/unqualified rules (defaults to 25 verified qualified rules)
   --experimental     Alias for --all-rules
   -h, --help         Show this help message
@@ -73,6 +93,8 @@ export async function runAnalyzeCli(
       guide: { type: 'string' },
       'all-rules': { type: 'boolean' },
       experimental: { type: 'boolean' },
+      tier: { type: 'string' },
+      'proven-only': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: true,
@@ -82,6 +104,7 @@ export async function runAnalyzeCli(
   const isJson = Boolean(parsed.values.json);
   const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
   const isHelp = Boolean(parsed.values.help);
+  const isTier1Only = Boolean(parsed.values['proven-only'] || parsed.values.tier === '1');
   const useAllRules = Boolean(parsed.values['all-rules'] || parsed.values.experimental);
   const targetDir = parsed.positionals[0] || '.';
 
@@ -114,7 +137,11 @@ export async function runAnalyzeCli(
     return { exitCode: 1, output: `Error: ${err}\n` };
   }
 
-  const defaultRules = useAllRules ? ALL_RULES : QUALIFIED_RULES;
+  const defaultRules = isTier1Only
+    ? TIER_1_RULES
+    : useAllRules
+      ? ALL_RULES
+      : QUALIFIED_RULES;
   const activeRulesList = options?.rules ?? defaultRules;
   const activeRules = guideFilter
     ? activeRulesList.filter((r) => r.guideId === guideFilter)
@@ -150,8 +177,10 @@ export async function runAnalyzeCli(
     });
 
     const summary = summaryMap.get(gid) ?? `Modernize legacy web pattern for ${gid}`;
+    const tier = getGuideConfidenceTier(gid);
     return {
       guideId: gid,
+      tier,
       summary,
       retrieveCommand: `npx modern-web-guidance retrieve ${gid}`,
       count: guideFindings.length,
@@ -193,7 +222,13 @@ export async function runAnalyzeCli(
   ];
 
   for (const g of guides) {
-    lines.push(`* ${g.guideId} (${g.count} ${g.count === 1 ? 'finding' : 'findings'})`);
+    const badge =
+      g.tier === 'tier-1-proven'
+        ? '[tier-1]'
+        : g.tier === 'tier-2-zero-fp'
+          ? '[tier-2]'
+          : '[experimental]';
+    lines.push(`* ${badge} ${g.guideId} (${g.count} ${g.count === 1 ? 'finding' : 'findings'})`);
     lines.push(`  Summary: ${g.summary}`);
     lines.push(`  Retrieve: ${g.retrieveCommand}`);
     lines.push('  Findings:');

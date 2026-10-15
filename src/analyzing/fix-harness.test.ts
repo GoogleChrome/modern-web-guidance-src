@@ -64,7 +64,7 @@ describe('checkModernFeaturePresent', () => {
     );
     assert.strictEqual(
       checkModernFeaturePresent('accessible-error-announcement', 'input[aria-invalid="true"] { border-color: red; }'),
-      true,
+      false,
     );
     assert.strictEqual(
       checkModernFeaturePresent('accessible-error-announcement', '<div role="alert">Error</div>'),
@@ -191,6 +191,25 @@ describe('checkModernFeaturePresent', () => {
     );
   });
 
+  it('rejects comment-only feature spoofs in Gate 2c (G15)', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('brand-consistent-forms', '/* accent-color: #0070f3; */ input { margin: 0; }'),
+      false,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('manage-recurring-intervals', '// Temporal.PlainDate.from("2026-10-15")\nconst d = new Date();'),
+      false,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('dark-mode', '/* color-scheme: dark; */ body { background: #000; }'),
+      false,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('dark-mode', ':root { color-scheme: light; }'),
+      false,
+    );
+  });
+
   it('returns true for unknown / unconstrained guide IDs', () => {
     assert.strictEqual(
       checkModernFeaturePresent('unconstrained-guide-xyz', 'const foo = 1;'),
@@ -205,6 +224,18 @@ describe('checkSyntaxCleanliness', () => {
       'src/foo.ts',
       'export function sum(a: number, b: number): number { return a + b; }',
     );
+    assert.strictEqual(res.clean, true);
+    assert.strictEqual(res.diagnostics.length, 0);
+  });
+
+  it('passes on valid TSX React component without throwing TS17004 (G13)', () => {
+    const tsxCode = `
+import React from 'react';
+export function ModalButton({ label }: { label: string }) {
+  return <button popovertarget="my-modal">{label}</button>;
+}
+`;
+    const res = checkSyntaxCleanliness('src/components/ModalButton.tsx', tsxCode);
     assert.strictEqual(res.clean, true);
     assert.strictEqual(res.diagnostics.length, 0);
   });
@@ -286,16 +317,24 @@ describe('checkStructuralIntegrity', () => {
     assert.strictEqual(res.passed, true);
   });
 
-  it('rejects severe line-count gutting (<40% of original lines)', () => {
-    const original = Array.from({ length: 30 }, (_, i) => `const line${i} = ${i};`).join('\n');
-    const patched = `const line0 = 0;`;
+  it('allows concise standard replacements (43 lines down to 5 lines per G14)', () => {
+    const original = Array.from({ length: 43 }, (_, i) => `<script type="text/template" id="tpl-${i}">line ${i}</script>`).join('\n');
+    const patched = `<template shadowrootmode="open">\n  <div>Modern content</div>\n</template>`;
 
-    const res = checkStructuralIntegrity(original, patched, 'src/lines.ts');
-    assert.strictEqual(res.passed, false);
-    assert.match(res.failureReason ?? '', /line count reduced/i);
+    const res = checkStructuralIntegrity(original, patched, 'src/component.html');
+    assert.strictEqual(res.passed, true);
   });
 
-  it('rejects elimination of enclosing function declaration', () => {
+  it('rejects patch when comments are stripped to empty content (G17)', () => {
+    const original = `export function calc() { return 42; }`;
+    const patched = `// just a comment\n/* another comment */\n`;
+
+    const res = checkStructuralIntegrity(original, patched, 'src/calc.ts');
+    assert.strictEqual(res.passed, false);
+    assert.match(res.failureReason ?? '', /no executable code/i);
+  });
+
+  it('rejects elimination of all exported module declarations (G17)', () => {
     const original = [
       'export function setupNavigationModal() {',
       '  const modal = document.querySelector("#modal");',
@@ -304,7 +343,7 @@ describe('checkStructuralIntegrity', () => {
     ].join('\n');
 
     const patched = [
-      '// completely gutted without the setupNavigationModal function',
+      '// stripped exports, only internal consts remain',
       'const a = 1;',
       'const b = 2;',
       'const c = 3;',
@@ -312,7 +351,7 @@ describe('checkStructuralIntegrity', () => {
 
     const res = checkStructuralIntegrity(original, patched, 'src/nav.ts');
     assert.strictEqual(res.passed, false);
-    assert.match(res.failureReason ?? '', /all functions and classes removed/i);
+    assert.match(res.failureReason ?? '', /all exported module symbols were removed/i);
   });
 });
 

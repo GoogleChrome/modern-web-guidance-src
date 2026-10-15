@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { parseHTML } from 'linkedom';
 import { parse as parseCss } from 'cssomnom';
 import {
@@ -88,108 +88,119 @@ export interface FixValidationOptions {
  * Checks whether the modern platform feature prescribed by guide.md
  * is explicitly present in the patched content (Table 2.3 of research report).
  */
+export function stripComments(content: string): string {
+  return content
+    .replace(/\/\/[^\n]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/<!--[\s\S]*?-->/g, '');
+}
+
+/**
+ * Checks whether the modern platform feature prescribed by guide.md
+ * is explicitly present in the patched content (Table 2.3 of research report).
+ * All comments are stripped first to prevent comment-only spoofs (G15).
+ */
 export function checkModernFeaturePresent(
   guideId: string,
   patchedContent: string,
   filePath = '',
 ): boolean {
+  const uncommented = stripComments(patchedContent);
   switch (guideId) {
     case 'animate-element-entry-exit':
       return /@starting-style\b|transition-behavior|\ballow-discrete\b|transitionBehavior/i.test(
-        patchedContent,
+        uncommented,
       );
     case 'individual-transform-properties':
       return /(^|[\s;{}])(translate|rotate|scale)\s*:\s*[^;]+/m.test(
-        patchedContent,
+        uncommented,
       );
     case 'resilient-context-menus-and-nested-dropdowns':
       return /\bpopover\b|\bpopovertarget\b|\b(showPopover|togglePopover|hidePopover)\b|anchor-name\s*:|position-anchor\s*:|position-area\s*:|\b(anchorName|positionAnchor|positionArea)\b/i.test(
-        patchedContent,
+        uncommented,
       );
     case 'declarative-dialog-popover-control':
       return /\bcommandfor\b|\bcommand\s*=|popovertarget|\.showModal\s*\(|\.showPopover\s*\(|\.togglePopover\s*\(/i.test(
-        patchedContent,
+        uncommented,
       );
     case 'autofill-sign-in-form':
       return /autocomplete\s*=\s*["'](username|current-password|new-password)["']/i.test(
-        patchedContent,
+        uncommented,
       );
     case 'shadow-dom':
-      return /\bshadowrootmode\b|<\s*template\b/i.test(patchedContent);
+      return /\bshadowrootmode\b|<\s*template\b/i.test(uncommented);
     case 'dialog':
-      return /<\s*dialog\b|\.showModal\s*\(/i.test(patchedContent);
+      return /<\s*dialog\b|\.showModal\s*\(/i.test(uncommented);
     case 'child-state-based-styling':
-      return /:has\s*\(/i.test(patchedContent);
+      return /:has\s*\(/i.test(uncommented);
     case 'animate-to-intrinsic-sizes':
       return /interpolate-size\s*:\s*allow-keywords|calc-size\s*\(/i.test(
-        patchedContent,
+        uncommented,
       );
     case 'coordinate-global-events':
       return /\bTemporal\.(ZonedDateTime|Instant|Now)\b|Intl\.DateTimeFormat\s*\([^)]*timeZone/i.test(
-        patchedContent,
+        uncommented,
       );
     case 'manage-recurring-intervals':
       return (
         /\bTemporal\.(PlainDate|PlainDateTime|ZonedDateTime|Instant|Duration)\b/i.test(
-          patchedContent,
+          uncommented,
         ) ||
-        /\.add\s*\(\s*\{[^}]*(months|years)/i.test(patchedContent)
+        /\.add\s*\(\s*\{[^}]*(months|years)/i.test(uncommented)
       );
     case 'accessible-error-announcement':
       return (
         /aria-live\s*=|role\s*=\s*["'](alert|status)["']|<\s*output\b/i.test(
-          patchedContent,
+          uncommented,
         ) ||
-        /:user-invalid\b|\[\s*aria-invalid(\s*=\s*["']true["'])?\s*\]/i.test(
-          patchedContent,
-        )
+        /:user-invalid\b/i.test(uncommented)
       );
     case 'brand-consistent-forms':
-      return /accent-color\s*:/i.test(patchedContent);
+      return /accent-color\s*:/i.test(uncommented);
     case 'branded-select-styling':
       return (
-        /base-select\b|::picker\s*\(\s*select\s*\)/i.test(patchedContent) ||
+        /base-select\b|::picker\s*\(\s*select\s*\)/i.test(uncommented) ||
         (filePath.endsWith('package.json') &&
-          !patchedContent.includes('"select2"') &&
-          !patchedContent.includes('"chosen-js"'))
+          !uncommented.includes('"select2"') &&
+          !uncommented.includes('"chosen-js"'))
       );
     case 'copy-button':
-      return /navigator\.clipboard\.writeText\b/i.test(patchedContent);
+      return /navigator\.clipboard\.writeText\b/i.test(uncommented);
     case 'form-fields-automatically-fit-contents':
       return /field-sizing\s*:\s*content|fieldSizing\s*=\s*["']content["']/i.test(
-        patchedContent,
+        uncommented,
       );
     case 'ime-safe-enter-submit':
-      return /\b(e|event)\.isComposing\b|\bisComposing\b/i.test(patchedContent);
+      return /\b(e|event)\.isComposing\b|\bisComposing\b/i.test(uncommented);
     case 'stack-drill-down':
-      return /\binert\b/i.test(patchedContent);
+      return /\binert\b/i.test(uncommented);
     case 'calculate-event-differentials':
       return (
         /\bTemporal\b.*(\.until|\.since)|(\.until|\.since)\s*\(\s*(Temporal|\w+)/i.test(
-          patchedContent,
+          uncommented,
         ) ||
         (/\bTemporal\.(Duration|PlainDate|Instant|ZonedDateTime)\b/.test(
-          patchedContent,
+          uncommented,
         ) &&
-          /(\.until|\.since)\s*\(/.test(patchedContent))
+          /(\.until|\.since)\s*\(/.test(uncommented))
       );
     case 'autofill-address-form':
       return /autocomplete\s*=\s*["'][^"']*\b(street-address|address-line1|address-line2|postal-code|country|address-level1|address-level2)\b/i.test(
-        patchedContent,
+        uncommented,
       );
     case 'css-layout':
-      return /aspect-ratio\s*:/i.test(patchedContent);
+      return /aspect-ratio\s*:/i.test(uncommented);
     case 'adapt-scrollbar-to-contrast-preferences':
-      return /scrollbar-color\s*:|scrollbar-width\s*:/i.test(patchedContent);
+      return /scrollbar-color\s*:|scrollbar-width\s*:/i.test(uncommented);
     case 'checkbox':
-      return /accent-color\s*:|appearance\s*:\s*none/i.test(patchedContent);
+      return /accent-color\s*:|appearance\s*:\s*none/i.test(uncommented);
     case 'prevent-page-scroll-under-modal-dialog':
       return /overscroll-behavior(-y)?\s*:\s*contain|<\s*dialog\b/i.test(
-        patchedContent,
+        uncommented,
       );
     case 'dark-mode':
-      return /color-scheme\s*:\s*[^;]*(light\s+dark|dark\s+light|dark|light)|light-dark\s*\(/i.test(
-        patchedContent,
+      return /color-scheme\s*:\s*[^;]*(light\s+dark|dark\s+light|dark)\b|light-dark\s*\(/i.test(
+        uncommented,
       );
     default:
       return true;
@@ -220,7 +231,8 @@ export function checkSyntaxCleanliness(
     lower.endsWith('.cjs')
   ) {
     const project = createInMemoryProject();
-    const sourceFile = project.createSourceFile('test-eval.ts', content, {
+    const fileName = filePath ? basename(filePath) : 'test-eval.ts';
+    const sourceFile = project.createSourceFile(fileName, content, {
       overwrite: true,
     });
     try {
@@ -306,60 +318,133 @@ export function checkSyntaxCleanliness(
 }
 
 /**
- * Gate 2b: Anti-Gutting & Structural Integrity Guard per Decision G12.
+ * Gate 2b: Anti-Gutting & Structural Integrity Guard per Decision G12, G14, G17.
+ * Verifies that the patch does not delete all executable code or exported declarations.
+ * Eliminates the legacy 40% line-count threshold so that replacing a 43-line workaround
+ * with a concise 5-line standard platform feature is properly recognized as success.
  */
 export function checkStructuralIntegrity(
   originalContent: string,
   patchedContent: string,
   filePath: string,
 ): { passed: boolean; failureReason?: string } {
-  const origTrimmed = originalContent.trim();
-  const patchedTrimmed = patchedContent.trim();
-
-  if (patchedTrimmed.length === 0) {
+  const uncommented = stripComments(patchedContent).trim();
+  if (uncommented.length === 0) {
     return {
       passed: false,
-      failureReason: 'Patch gutted entire file to empty string',
-    };
-  }
-
-  const origLines = originalContent
-    .split('\n')
-    .filter((l) => l.trim().length > 0).length;
-  const patchedLines = patchedContent
-    .split('\n')
-    .filter((l) => l.trim().length > 0).length;
-
-  // If original had >= 3 non-empty lines, patched must maintain at least 40% of lines
-  if (origLines >= 3 && patchedLines < Math.max(2, Math.floor(origLines * 0.4))) {
-    return {
-      passed: false,
-      failureReason: `Structural gutting detected: line count reduced from ${origLines} to ${patchedLines} without equivalent structure`,
+      failureReason:
+        'Structural gutting detected: patched content contains no executable code or markup',
     };
   }
 
   const lower = filePath.toLowerCase();
 
-  // For JS/TS files with original functions or classes, verify at least one structure remains
+  // 1. JS / TS / JSX / TSX
   if (
     lower.endsWith('.js') ||
     lower.endsWith('.ts') ||
     lower.endsWith('.jsx') ||
-    lower.endsWith('.tsx')
+    lower.endsWith('.tsx') ||
+    lower.endsWith('.mjs') ||
+    lower.endsWith('.cjs')
   ) {
-    const stripComments = (s: string) =>
-      s.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    const declPattern =
-      /\b(function\b|class\b|const\s+\w+\s*=\s*(\([^)]*\)|[a-zA-Z_$][\w$]*)\s*=>)/;
-    const origHasFunctionOrClass = declPattern.test(stripComments(origTrimmed));
-    const patchedHasFunctionOrClass = declPattern.test(stripComments(patchedTrimmed));
-    if (origHasFunctionOrClass && !patchedHasFunctionOrClass) {
-      return {
-        passed: false,
-        failureReason:
-          'Structural gutting detected: all functions and classes removed from JS/TS patch',
-      };
+    const project = createInMemoryProject();
+    const fileName = filePath ? basename(filePath) : 'eval.ts';
+    const origSf = project.createSourceFile('orig-' + fileName, originalContent, {
+      overwrite: true,
+    });
+    const patchedSf = project.createSourceFile('patched-' + fileName, patchedContent, {
+      overwrite: true,
+    });
+
+    try {
+      if (patchedSf.getStatements().length === 0) {
+        return {
+          passed: false,
+          failureReason:
+            'Structural gutting detected: no AST statements found in patched JS/TS content',
+        };
+      }
+
+      // Check if original had top-level export declarations
+      const origExports =
+        origSf.getExportedDeclarations().size + origSf.getExportAssignments().length;
+      const patchedExports =
+        patchedSf.getExportedDeclarations().size + patchedSf.getExportAssignments().length;
+
+      if (origExports > 0 && patchedExports === 0) {
+        return {
+          passed: false,
+          failureReason:
+            'Structural gutting detected: all exported module symbols were removed from JS/TS patch',
+        };
+      }
+    } finally {
+      project.removeSourceFile(origSf);
+      project.removeSourceFile(patchedSf);
     }
+
+    return { passed: true };
+  }
+
+  // 2. CSS
+  if (lower.endsWith('.css')) {
+    try {
+      const ast = parseCss(patchedContent);
+      if (!ast.rules || ast.rules.length === 0) {
+        return {
+          passed: false,
+          failureReason:
+            'Structural gutting detected: no CSS rules found in patched stylesheet',
+        };
+      }
+    } catch {
+      // Malformed CSS will be caught by Gate 2a syntax check
+    }
+    return { passed: true };
+  }
+
+  // 3. HTML / Templates
+  if (
+    lower.endsWith('.html') ||
+    lower.endsWith('.htm') ||
+    lower.endsWith('.vue') ||
+    lower.endsWith('.svelte')
+  ) {
+    try {
+      const { document } = parseHTML(patchedContent);
+      const hasNodes =
+        Boolean(document.firstElementChild) ||
+        (document.body && document.body.childNodes.length > 0) ||
+        (document.head && document.head.childNodes.length > 0) ||
+        document.childNodes.length > 0;
+      if (!hasNodes) {
+        return {
+          passed: false,
+          failureReason:
+            'Structural gutting detected: no markup elements or nodes found in patched HTML',
+        };
+      }
+    } catch {}
+    return { passed: true };
+  }
+
+  // 4. JSON
+  if (lower.endsWith('.json')) {
+    try {
+      const obj = JSON.parse(patchedContent);
+      if (typeof obj === 'object' && obj !== null && Object.keys(obj).length === 0) {
+        const origObj = JSON.parse(originalContent);
+        if (typeof origObj === 'object' && origObj !== null && Object.keys(origObj).length > 0) {
+          return {
+            passed: false,
+            failureReason:
+              'Structural gutting detected: all keys removed from JSON object',
+          };
+        }
+      }
+    } catch {}
+    return { passed: true };
   }
 
   return { passed: true };
@@ -380,25 +465,94 @@ export async function validateFixPatch(
   );
 
   // Gate 1: Legacy Finding Eliminated (Negative Guard)
-  // If a patchedWindow was provided (windowed refactoring), verify that the legacy pattern
-  // is eliminated within the patched window, avoiding false failures caused by unrelated
-  // legacy patterns outside the window in multi-thousand-line files.
-  const contentToScanForGate1 = patch.patchedWindow ?? patch.patchedContent;
-  const fileMap = new Map<string, string>([
-    [patch.filePath, contentToScanForGate1],
-  ]);
-  const findings = scanFiles(fileMap, rulesToRun);
-  const targetFindings = patch.ruleId
-    ? findings.filter((f) => f.ruleId === patch.ruleId)
-    : findings.filter((f) => f.guideId === patch.guideId);
+  let gate1Passed = false;
+  let findingsRemaining = 0;
+  let failureReason: string | undefined;
 
-  const gate1Passed = targetFindings.length === 0;
+  if (
+    patch.originalWindow !== undefined &&
+    patch.patchedWindow !== undefined &&
+    patch.originalContent.includes(patch.originalWindow)
+  ) {
+    // Windowed patch evaluation with full-file context splicing:
+    // 1. Verify scanFiles on patchedWindow has 0 findings
+    const windowFindings = scanFiles(
+      new Map([[patch.filePath, patch.patchedWindow]]),
+      rulesToRun,
+    );
+    const targetWindowFindings = patch.ruleId
+      ? windowFindings.filter((f) => f.ruleId === patch.ruleId)
+      : windowFindings.filter((f) => f.guideId === patch.guideId);
+
+    // 2. Scan original window to determine how many findings were initially in the window
+    const origWindowFindings = scanFiles(
+      new Map([[patch.filePath, patch.originalWindow]]),
+      rulesToRun,
+    );
+    const targetOrigWindowFindings = patch.ruleId
+      ? origWindowFindings.filter((f) => f.ruleId === patch.ruleId)
+      : origWindowFindings.filter((f) => f.guideId === patch.guideId);
+
+    // 3. Splice patchedWindow into originalContent (preserving surrounding module/markup context)
+    const splicedContent = patch.originalContent.replace(
+      patch.originalWindow,
+      patch.patchedWindow,
+    );
+    const splicedFindings = scanFiles(
+      new Map([[patch.filePath, splicedContent]]),
+      rulesToRun,
+    );
+    const targetSplicedFindings = patch.ruleId
+      ? splicedFindings.filter((f) => f.ruleId === patch.ruleId)
+      : splicedFindings.filter((f) => f.guideId === patch.guideId);
+
+    const origFullFindings = scanFiles(
+      new Map([[patch.filePath, patch.originalContent]]),
+      rulesToRun,
+    );
+    const targetOrigFullFindings = patch.ruleId
+      ? origFullFindings.filter((f) => f.ruleId === patch.ruleId)
+      : origFullFindings.filter((f) => f.guideId === patch.guideId);
+
+    const reduction = targetOrigFullFindings.length - targetSplicedFindings.length;
+    const expectedReduction = Math.max(1, targetOrigWindowFindings.length);
+
+    findingsRemaining = targetWindowFindings.length;
+    gate1Passed =
+      targetWindowFindings.length === 0 &&
+      (targetOrigFullFindings.length === 0 ||
+        reduction >= expectedReduction ||
+        targetSplicedFindings.length === 0);
+
+    if (!gate1Passed) {
+      if (targetWindowFindings.length > 0) {
+        failureReason = `Legacy finding still present in patched window (${targetWindowFindings.length} remaining)`;
+      } else {
+        failureReason = `Legacy finding was not eliminated from spliced file context (expected reduction of ${expectedReduction}, observed ${reduction})`;
+      }
+    }
+  } else {
+    // Full file evaluation (fixtures and standalone patches)
+    const contentToScanForGate1 = patch.patchedWindow ?? patch.patchedContent;
+    const fileMap = new Map<string, string>([
+      [patch.filePath, contentToScanForGate1],
+    ]);
+    const findings = scanFiles(fileMap, rulesToRun);
+    const targetFindings = patch.ruleId
+      ? findings.filter((f) => f.ruleId === patch.ruleId)
+      : findings.filter((f) => f.guideId === patch.guideId);
+
+    findingsRemaining = targetFindings.length;
+    gate1Passed = targetFindings.length === 0;
+    if (!gate1Passed) {
+      failureReason = `Legacy finding still present in patched file (${targetFindings.length} remaining)`;
+    }
+  }
+
   const gate1: Gate1Result = {
     passed: gate1Passed,
-    findingsRemaining: targetFindings.length,
-    failureReason: gate1Passed
-      ? undefined
-      : `Legacy finding still present in patched content (${targetFindings.length} remaining)`,
+    findingsRemaining,
+    failureReason,
   };
 
   if (!gate1.passed) {

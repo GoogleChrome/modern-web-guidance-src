@@ -203,43 +203,72 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
 export const ALL_RULES: readonly AnalyzerRule[] = PILOT_RULES;
 
 /**
- * The 25 guides that cleared the held-out precision bar under Milestone 3 verification.
+ * Tier 1: Proven high-N qualified guides (n >= 8, 210/212 = 99.1% precision).
  */
-export const QUALIFIED_GUIDE_IDS: readonly string[] = [
+export const TIER_1_GUIDE_IDS: readonly string[] = [
+  'autofill-sign-in-form',
+  'declarative-dialog-popover-control',
   'animate-element-entry-exit',
   'individual-transform-properties',
-  'resilient-context-menus-and-nested-dropdowns',
-  'declarative-dialog-popover-control',
-  'autofill-sign-in-form',
-  'shadow-dom',
-  'dialog',
   'child-state-based-styling',
-  'animate-to-intrinsic-sizes',
-  'coordinate-global-events',
-  'manage-recurring-intervals',
-  'accessible-error-announcement',
-  'brand-consistent-forms',
-  'branded-select-styling',
-  'copy-button',
-  'form-fields-automatically-fit-contents',
-  'ime-safe-enter-submit',
-  'stack-drill-down',
-  'calculate-event-differentials',
-  'autofill-address-form',
-  'css-layout',
-  'adapt-scrollbar-to-contrast-preferences',
-  'checkbox',
-  'prevent-page-scroll-under-modal-dialog',
-  'dark-mode',
+  'resilient-context-menus-and-nested-dropdowns',
+  'dialog',
+  'shadow-dom',
 ] as const;
 
 /**
- * Production rules gated to qualified guides only (G11 / O22).
+ * Production rules for Tier 1 proven-high-N guides.
+ */
+export const TIER_1_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
+  TIER_1_GUIDE_IDS.includes(r.guideId),
+);
+
+/**
+ * Tier 2: Zero-FP low-N qualified guides (n < 8, 35/35 = 100.0% precision).
+ */
+export const TIER_2_GUIDE_IDS: readonly string[] = [
+  'animate-to-intrinsic-sizes',
+  'coordinate-global-events',
+  'accessible-error-announcement',
+  'ime-safe-enter-submit',
+  'stack-drill-down',
+  'calculate-event-differentials',
+  'form-fields-automatically-fit-contents',
+  'brand-consistent-forms',
+  'autofill-address-form',
+  'branded-select-styling',
+  'css-layout',
+  'adapt-scrollbar-to-contrast-preferences',
+  'checkbox',
+  'copy-button',
+  'prevent-page-scroll-under-modal-dialog',
+  'dark-mode',
+  'manage-recurring-intervals',
+] as const;
+
+/**
+ * Production rules for Tier 2 zero-FP low-N guides.
+ */
+export const TIER_2_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
+  TIER_2_GUIDE_IDS.includes(r.guideId),
+);
+
+/**
+ * The 25 guides that cleared the held-out precision bar under Milestone 3 verification.
+ */
+export const QUALIFIED_GUIDE_IDS: readonly string[] = [
+  ...TIER_1_GUIDE_IDS,
+  ...TIER_2_GUIDE_IDS,
+] as const;
+
+/**
+ * Production rules gated to qualified guides only (Tier 1 + Tier 2 per G11 / G16 / O22).
  * Excludes 7 unqualified/experimental guides.
  */
-export const QUALIFIED_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
-  QUALIFIED_GUIDE_IDS.includes(r.guideId),
-);
+export const QUALIFIED_RULES: readonly AnalyzerRule[] = [
+  ...TIER_1_RULES,
+  ...TIER_2_RULES,
+];
 
 /**
  * Guides that were tuned after initial held-out inspection (G10 disclosure).

@@ -80,12 +80,12 @@ describe('runAnalyzeCli', () => {
       assert.match(res.output, /Found \d+ modernization opportunities across \d+ guides:/);
 
       // Check guide grouping & retrieve command
-      assert.match(res.output, /\* autofill-sign-in-form \(\d+ finding[s]?\)/);
+      assert.match(res.output, /\* \[tier-1\] autofill-sign-in-form \(\d+ finding[s]?\)/);
       assert.match(res.output, /Retrieve: npx modern-web-guidance retrieve autofill-sign-in-form/);
       assert.match(res.output, /Summary:/);
       assert.match(res.output, /- login\.html:\d+:/);
 
-      assert.match(res.output, /\* animate-to-intrinsic-sizes \(\d+ finding[s]?\)/);
+      assert.match(res.output, /\* \[tier-2\] animate-to-intrinsic-sizes \(\d+ finding[s]?\)/);
       assert.match(res.output, /Retrieve: npx modern-web-guidance retrieve animate-to-intrinsic-sizes/);
       assert.match(res.output, /- accordion\.css:\d+:/);
     } finally {
@@ -113,6 +113,7 @@ describe('runAnalyzeCli', () => {
 
       const guide = parsed.guides.find((g) => g.guideId === 'autofill-sign-in-form');
       assert.ok(guide, 'Expected autofill-sign-in-form guide in JSON output');
+      assert.equal(guide.tier, 'tier-1-proven');
       assert.equal(guide.retrieveCommand, 'npx modern-web-guidance retrieve autofill-sign-in-form');
       assert.ok(guide.summary.length > 0);
       assert.equal(guide.count, guide.findings.length);
@@ -237,6 +238,45 @@ describe('runAnalyzeCli', () => {
         parsedExp.guides.some((g) => g.guideId === 'schedule-tasks-by-priority'),
         '--experimental alias enables experimental rules',
       );
+    } finally {
+      await rm(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it('scans strictly with Tier 1 proven rules when --tier=1 or --proven-only is passed', async () => {
+    const testDir = await mkdtemp(join(tmpdir(), 'analyzer-tier1-test-'));
+    try {
+      // 1. Tier 1 guide: autofill-sign-in-form
+      const loginHtml = `<form action="/login" method="POST">
+  <input type="password" name="password">
+</form>`;
+      await writeFile(join(testDir, 'login.html'), loginHtml, 'utf8');
+
+      // 2. Tier 2 guide: animate-to-intrinsic-sizes
+      const panelCss = `.panel { max-height: 0; transition: max-height 0.2s; }`;
+      await writeFile(join(testDir, 'panel.css'), panelCss, 'utf8');
+
+      // Default run includes both Tier 1 and Tier 2 (QUALIFIED_RULES)
+      const resDefault = await runAnalyzeCli([testDir, '--json']);
+      assert.equal(resDefault.exitCode, 0);
+      const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
+      assert.equal(parsedDefault.guides.length, 2);
+
+      // Run with --tier=1
+      const resTier1 = await runAnalyzeCli([testDir, '--tier=1', '--json']);
+      assert.equal(resTier1.exitCode, 0);
+      const parsedTier1 = JSON.parse(resTier1.output) as AnalyzeJsonOutput;
+      assert.equal(parsedTier1.guides.length, 1);
+      assert.equal(parsedTier1.guides[0].guideId, 'autofill-sign-in-form');
+      assert.equal(parsedTier1.guides[0].tier, 'tier-1-proven');
+
+      // Run with --proven-only
+      const resProven = await runAnalyzeCli([testDir, '--proven-only', '--json']);
+      assert.equal(resProven.exitCode, 0);
+      const parsedProven = JSON.parse(resProven.output) as AnalyzeJsonOutput;
+      assert.equal(parsedProven.guides.length, 1);
+      assert.equal(parsedProven.guides[0].guideId, 'autofill-sign-in-form');
+      assert.equal(parsedProven.guides[0].tier, 'tier-1-proven');
     } finally {
       await rm(testDir, { recursive: true, force: true });
     }
