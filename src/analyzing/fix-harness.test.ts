@@ -5,11 +5,30 @@ import {
   checkStructuralIntegrity,
   checkSyntaxCleanliness,
   getSeededSensitivityTestCases,
+  locateFindingLineInContent,
   runBadPatchSensitivitySuite,
   validateFixPatch,
   type FixPatch,
 } from './fix-harness.ts';
 import { QUALIFIED_GUIDE_IDS } from './rules/index.ts';
+
+describe('locateFindingLineInContent', () => {
+  it('extracts line number from cursor marker in codeSnippet', () => {
+    const file = Array.from({ length: 900 }, (_, i) => `.rule-${i + 1} { color: red; }`).join('\n');
+    const snippet = `   803 | .rule-803 { color: red; }\n>  804 | .rule-804 { transform: rotate(15deg); }\n   805 | .rule-805 { color: red; }`;
+    const line = locateFindingLineInContent(file, 1, snippet);
+    assert.strictEqual(line, 804);
+  });
+
+  it('falls back to locating distinctive code line in content', () => {
+    const file = Array.from({ length: 50 }, (_, i) => `// line ${i + 1}`).join('\n') +
+      '\n.card:hover { transform: rotate(15deg) scale(1.1); }\n' +
+      Array.from({ length: 50 }, (_, i) => `// end line ${i + 1}`).join('\n');
+    const snippet = `.card:hover { transform: rotate(15deg) scale(1.1); }`;
+    const line = locateFindingLineInContent(file, 1, snippet);
+    assert.strictEqual(line, 51);
+  });
+});
 
 describe('checkModernFeaturePresent', () => {
   it('detects dialog feature correctly', () => {
@@ -24,6 +43,114 @@ describe('checkModernFeaturePresent', () => {
     assert.strictEqual(
       checkModernFeaturePresent('dialog', '<div class="modal"><button>Close</button></div>'),
       false,
+    );
+  });
+
+  it('detects shadow-dom templates correctly', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('shadow-dom', '<template shadowrootmode="open"><div>shadow</div></template>'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('shadow-dom', '<template id="my-tpl"><div>content</div></template>'),
+      true,
+    );
+  });
+
+  it('detects accessible error announcements across css and html', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('accessible-error-announcement', 'input:user-invalid { border-color: red; }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('accessible-error-announcement', 'input[aria-invalid="true"] { border-color: red; }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('accessible-error-announcement', '<div role="alert">Error</div>'),
+      true,
+    );
+  });
+
+  it('detects dark-mode color-scheme variants', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('dark-mode', ':root { color-scheme: light dark; }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('dark-mode', 'body { color-scheme: dark; }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('dark-mode', 'body { color: light-dark(#fff, #000); }'),
+      true,
+    );
+  });
+
+  it('detects field-sizing content in css and js', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('form-fields-automatically-fit-contents', 'textarea { field-sizing: content; }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('form-fields-automatically-fit-contents', 'el.style.fieldSizing = "content";'),
+      true,
+    );
+  });
+
+  it('detects branded-select-styling base-select in css and js', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('branded-select-styling', 'select { appearance: base-select; }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('branded-select-styling', 'select::picker(select) { background: white; }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('branded-select-styling', 'el.style.appearance = "base-select";'),
+      true,
+    );
+  });
+
+  it('detects popover and anchor positioning methods', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('resilient-context-menus-and-nested-dropdowns', '<div popover="auto">Menu</div>'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('resilient-context-menus-and-nested-dropdowns', 'menuEl.showPopover();'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('resilient-context-menus-and-nested-dropdowns', '.menu { position-anchor: --my-anchor; }'),
+      true,
+    );
+  });
+
+  it('detects declarative dialog control commandfor and popovertarget', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('declarative-dialog-popover-control', '<button commandfor="dialog-1" command="show-modal">Open</button>'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('declarative-dialog-popover-control', '<button popovertarget="menu-1">Menu</button>'),
+      true,
+    );
+  });
+
+  it('detects entry exit animations with starting-style and allow-discrete', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('animate-element-entry-exit', '@starting-style { .el { opacity: 0; } }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('animate-element-entry-exit', 'transition: display 0.3s allow-discrete;'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('animate-element-entry-exit', 'transition-behavior: allow-discrete;'),
+      true,
     );
   });
 
@@ -284,6 +411,21 @@ describe('validateFixPatch (3-Gate Grader)', () => {
     assert.strictEqual(res.gate2.passed, true);
     assert.strictEqual(res.gate3.passed, true);
     assert.strictEqual(res.gate3.status, 'PASSED');
+  });
+
+  it('evaluates Gate 1 on patchedWindow when provided for windowed refactoring', async () => {
+    const patch: FixPatch = {
+      filePath: dialogFixture.filePath,
+      originalContent: dialogFixture.originalContent,
+      patchedContent: dialogFixture.goodPatch,
+      guideId: dialogFixture.guideId,
+      originalWindow: dialogFixture.originalContent,
+      patchedWindow: dialogFixture.goodPatch,
+    };
+
+    const res = await validateFixPatch(patch);
+    assert.strictEqual(res.resolved, true);
+    assert.strictEqual(res.gate1.passed, true);
   });
 });
 

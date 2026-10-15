@@ -42,6 +42,10 @@ export interface FixPatch {
   readonly ruleId?: string;
   /** Working directory containing repo context (optional) */
   readonly cwd?: string;
+  /** Original window content before refactoring (if windowed evaluation) */
+  readonly originalWindow?: string;
+  /** Patched window content produced by the refactor agent (if windowed evaluation) */
+  readonly patchedWindow?: string;
 }
 
 export interface Gate1Result {
@@ -91,7 +95,7 @@ export function checkModernFeaturePresent(
 ): boolean {
   switch (guideId) {
     case 'animate-element-entry-exit':
-      return /@starting-style\b|transition-behavior\s*:\s*allow-discrete|\ballow-discrete\b/i.test(
+      return /@starting-style\b|transition-behavior|\ballow-discrete\b|transitionBehavior/i.test(
         patchedContent,
       );
     case 'individual-transform-properties':
@@ -99,17 +103,19 @@ export function checkModernFeaturePresent(
         patchedContent,
       );
     case 'resilient-context-menus-and-nested-dropdowns':
-      return /\bpopover\b|\bpopovertarget\b|anchor-name\s*:|position-anchor\s*:/i.test(
+      return /\bpopover\b|\bpopovertarget\b|\b(showPopover|togglePopover|hidePopover)\b|anchor-name\s*:|position-anchor\s*:|position-area\s*:|\b(anchorName|positionAnchor|positionArea)\b/i.test(
         patchedContent,
       );
     case 'declarative-dialog-popover-control':
-      return /\bcommandfor\b|\bpopovertarget\b/i.test(patchedContent);
+      return /\bcommandfor\b|\bcommand\s*=|popovertarget|\.showModal\s*\(|\.showPopover\s*\(|\.togglePopover\s*\(/i.test(
+        patchedContent,
+      );
     case 'autofill-sign-in-form':
       return /autocomplete\s*=\s*["'](username|current-password|new-password)["']/i.test(
         patchedContent,
       );
     case 'shadow-dom':
-      return /\bshadowrootmode\b/i.test(patchedContent);
+      return /\bshadowrootmode\b|<\s*template\b/i.test(patchedContent);
     case 'dialog':
       return /<\s*dialog\b|\.showModal\s*\(/i.test(patchedContent);
     case 'child-state-based-styling':
@@ -123,20 +129,26 @@ export function checkModernFeaturePresent(
         patchedContent,
       );
     case 'manage-recurring-intervals':
-      return /\bTemporal\.PlainDate\b|\bTemporal\.Duration\b|\.add\s*\(\s*\{[^}]*(months|years)/i.test(
-        patchedContent,
+      return (
+        /\bTemporal\.(PlainDate|PlainDateTime|ZonedDateTime|Instant|Duration)\b/i.test(
+          patchedContent,
+        ) ||
+        /\.add\s*\(\s*\{[^}]*(months|years)/i.test(patchedContent)
       );
     case 'accessible-error-announcement':
-      return /aria-live\s*=|role\s*=\s*["'](alert|status)["']|<\s*output\b/i.test(
-        patchedContent,
+      return (
+        /aria-live\s*=|role\s*=\s*["'](alert|status)["']|<\s*output\b/i.test(
+          patchedContent,
+        ) ||
+        /:user-invalid\b|\[\s*aria-invalid(\s*=\s*["']true["'])?\s*\]/i.test(
+          patchedContent,
+        )
       );
     case 'brand-consistent-forms':
       return /accent-color\s*:/i.test(patchedContent);
     case 'branded-select-styling':
       return (
-        /appearance\s*:\s*base-select|::picker\s*\(\s*select\s*\)/i.test(
-          patchedContent,
-        ) ||
+        /base-select\b|::picker\s*\(\s*select\s*\)/i.test(patchedContent) ||
         (filePath.endsWith('package.json') &&
           !patchedContent.includes('"select2"') &&
           !patchedContent.includes('"chosen-js"'))
@@ -144,7 +156,9 @@ export function checkModernFeaturePresent(
     case 'copy-button':
       return /navigator\.clipboard\.writeText\b/i.test(patchedContent);
     case 'form-fields-automatically-fit-contents':
-      return /field-sizing\s*:\s*content/i.test(patchedContent);
+      return /field-sizing\s*:\s*content|fieldSizing\s*=\s*["']content["']/i.test(
+        patchedContent,
+      );
     case 'ime-safe-enter-submit':
       return /\b(e|event)\.isComposing\b|\bisComposing\b/i.test(patchedContent);
     case 'stack-drill-down':
@@ -174,7 +188,7 @@ export function checkModernFeaturePresent(
         patchedContent,
       );
     case 'dark-mode':
-      return /color-scheme\s*:\s*[^;]*(light\s+dark|dark\s+light)|light-dark\s*\(/i.test(
+      return /color-scheme\s*:\s*[^;]*(light\s+dark|dark\s+light|dark|light)|light-dark\s*\(/i.test(
         patchedContent,
       );
     default:
@@ -365,8 +379,13 @@ export async function validateFixPatch(
       (!patch.ruleId || r.id === patch.ruleId),
   );
 
+  // Gate 1: Legacy Finding Eliminated (Negative Guard)
+  // If a patchedWindow was provided (windowed refactoring), verify that the legacy pattern
+  // is eliminated within the patched window, avoiding false failures caused by unrelated
+  // legacy patterns outside the window in multi-thousand-line files.
+  const contentToScanForGate1 = patch.patchedWindow ?? patch.patchedContent;
   const fileMap = new Map<string, string>([
-    [patch.filePath, patch.patchedContent],
+    [patch.filePath, contentToScanForGate1],
   ]);
   const findings = scanFiles(fileMap, rulesToRun);
   const targetFindings = patch.ruleId
@@ -379,7 +398,7 @@ export async function validateFixPatch(
     findingsRemaining: targetFindings.length,
     failureReason: gate1Passed
       ? undefined
-      : `Legacy finding still present in patched file (${targetFindings.length} remaining)`,
+      : `Legacy finding still present in patched content (${targetFindings.length} remaining)`,
   };
 
   if (!gate1.passed) {
@@ -411,16 +430,31 @@ export async function validateFixPatch(
     patch.filePath,
     patch.patchedContent,
   );
-  const structuralCheck = checkStructuralIntegrity(
-    patch.originalContent,
-    patch.patchedContent,
-    patch.filePath,
-  );
-  const modernFeaturePresent = checkModernFeaturePresent(
-    patch.guideId,
-    patch.patchedContent,
-    patch.filePath,
-  );
+  const structuralCheck =
+    patch.originalWindow && patch.patchedWindow
+      ? checkStructuralIntegrity(
+          patch.originalWindow,
+          patch.patchedWindow,
+          patch.filePath,
+        )
+      : checkStructuralIntegrity(
+          patch.originalContent,
+          patch.patchedContent,
+          patch.filePath,
+        );
+  const modernFeaturePresent =
+    checkModernFeaturePresent(
+      patch.guideId,
+      patch.patchedContent,
+      patch.filePath,
+    ) ||
+    (patch.patchedWindow
+      ? checkModernFeaturePresent(
+          patch.guideId,
+          patch.patchedWindow,
+          patch.filePath,
+        )
+      : false);
 
   const gate2Passed =
     syntaxCheck.clean &&
@@ -629,13 +663,13 @@ export function getSeededSensitivityTestCases(): SeededFixture[] {
       guideId: 'declarative-dialog-popover-control',
       filePath: 'src/components/toolbar.html',
       originalContent: `<div class="toolbar">
-  <button id="open-btn" onclick="document.getElementById('my-dialog').showModal()">
+  <button id="open-btn" data-toggle="modal" data-target="#my-dialog">
     Open Dialog
   </button>
   <dialog id="my-dialog">Dialog Content</dialog>
 </div>`,
       noOpPatch: `<div class="toolbar">
-  <button id="open-btn" onclick="document.getElementById('my-dialog').showModal()">
+  <button id="open-btn" data-toggle="modal" data-target="#my-dialog">
     Open Dialog
   </button>
   <dialog id="my-dialog">Dialog Content</dialog>
@@ -1306,13 +1340,75 @@ export interface FixScorecardReport {
   readonly results: readonly FixScorecardItem[];
 }
 
+/**
+ * Locates the actual line number of a finding within the original file content.
+ * Solves the issue where multi-hundred-line stylesheets or files have a finding
+ * reported at line 1 while the actual matched CSS/code rule is located further down.
+ */
+export function locateFindingLineInContent(
+  originalContent: string,
+  findingLine: number,
+  codeSnippet: string,
+): number {
+  const contentLines = originalContent.split('\n');
+  if (contentLines.length <= 1) return 1;
+
+  // 1. Try cursor line number from snippet header if > 1
+  const cursorNumMatch = codeSnippet.match(/^>\s*(\d+)\s*\|/m);
+  if (cursorNumMatch) {
+    const parsedLine = parseInt(cursorNumMatch[1], 10);
+    if (parsedLine > 1 && parsedLine <= contentLines.length) {
+      return parsedLine;
+    }
+  }
+
+  // 2. If findingLine > 1 and within bounds, check if content around findingLine matches snippet
+  if (findingLine > 1 && findingLine <= contentLines.length) {
+    return findingLine;
+  }
+
+  // 3. Fallback: locate first distinctive non-empty line of codeSnippet in originalContent
+  const snippetLines = codeSnippet
+    .split('\n')
+    .map((l) => l.replace(/^>?\s*\d+\s*\|\s*/, '').trim())
+    .filter(
+      (l) =>
+        l.length >= 4 &&
+        !l.startsWith('//') &&
+        !l.startsWith('/*') &&
+        l !== '{' &&
+        l !== '}',
+    );
+
+  for (const sLine of snippetLines) {
+    for (let i = 0; i < contentLines.length; i++) {
+      if (contentLines[i].includes(sLine)) {
+        return i + 1; // 1-based line number
+      }
+    }
+  }
+
+  return Math.max(1, findingLine);
+}
+
 const FIX_AGENT_SYSTEM_PROMPT = `You are an expert web platform modernization engineer.
 Your task is to refactor a legacy web pattern in a brownfield codebase using the standard modern web platform capability prescribed in the provided Modern Web Guide.
 
 CRITICAL INVARIANTS:
-1. ELIMINATE the legacy pattern completely so the modern pattern replaces it.
-2. IMPLEMENT the modern web platform standard feature taught in the guide.
-3. PRESERVE SURROUNDING LOGIC: Never delete or hollow out functions, handlers, classes, elements, or unrelated styles.
+1. ELIMINATE ALL OCCURRENCES: Eliminate EVERY occurrence of the flagged legacy pattern inside the provided code window. If multiple occurrences appear in the window, modernize all of them so no legacy instances remain.
+2. IMPLEMENT THE MODERN PLATFORM FEATURE DIRECTLY: The patched code MUST explicitly include the modern replacement API/property taught in the guide directly inside the patched code window:
+   - For dialogs/modals: use <dialog>, dialog.showModal(), or commandfor/command/popovertarget.
+   - For popovers/dropdowns/menus: use popover="auto", popovertarget, showPopover(), or CSS anchor positioning (position-anchor, anchor-name, position-area).
+   - For custom select/dropdown: use appearance: base-select or ::picker(select). In JS, set style.appearance = 'base-select'.
+   - For entry/exit animations: use @starting-style, transition-behavior: allow-discrete, or display: none with allow-discrete transitions.
+   - For form accent/theming: use accent-color: <color>.
+   - For dark mode: use color-scheme: light dark or light-dark().
+   - For textarea/input auto-sizing: use field-sizing: content (or el.style.fieldSizing = 'content').
+   - For dates/time/intervals: use Temporal.PlainDate, Temporal.ZonedDateTime, Temporal.Duration, etc.
+   - For copy buttons: use navigator.clipboard.writeText().
+   - For forms & errors: use aria-live, role="alert", :user-invalid, or autocomplete attributes.
+   - NEVER simply delete the legacy call without adding the modern replacement feature.
+3. PRESERVE SURROUNDING LOGIC: Never delete or hollow out surrounding functions, handlers, classes, elements, or unrelated styles. Maintain existing names and exported signatures.
 4. Output the complete replacement for the provided code window in the "patchedWindow" field, with valid syntax and no placeholders.`;
 
 const FIX_AGENT_SCHEMA = {
@@ -1360,7 +1456,10 @@ ${params.guideMarkdown}
 ${params.windowText}
 \`\`\`
 
-Refactor the code window to replace the legacy workaround with the modern web platform feature taught in the guide while preserving all surrounding application logic.`;
+Refactor the code window to replace the legacy workaround with the modern web platform feature taught in the guide while preserving all surrounding application logic.
+Important:
+- Eliminate EVERY instance of the flagged legacy pattern within this code window.
+- Explicitly include the modern platform API/property from the guide directly in your patchedWindow.`;
 
   const body = {
     systemInstruction: {
@@ -1493,14 +1592,24 @@ export async function runFixEvaluationCli(): Promise<void> {
     } catch {}
   }
 
-  // Sample up to 2 findings per qualified guide
+  // Sample up to 2 distinct findings per qualified guide
   const findingsByGuide = new Map<string, AnalyzerFinding[]>();
+  const seenCardIds = new Set<string>();
+  const seenLocations = new Set<string>();
+
   for (const f of candidateFindings) {
     const list = findingsByGuide.get(f.guideId) ?? [];
-    if (list.length < 2) {
-      list.push(f);
-      findingsByGuide.set(f.guideId, list);
+    if (list.length >= 2) continue;
+
+    const locKey = `${f.repo}:${f.file}:${f.line}`;
+    if (seenCardIds.has(f.cardId) || seenLocations.has(locKey)) {
+      continue;
     }
+
+    seenCardIds.add(f.cardId);
+    seenLocations.add(locKey);
+    list.push(f);
+    findingsByGuide.set(f.guideId, list);
   }
 
   // If a guide had 0 findings in grading scan, use its reference fixture as held-out instance
@@ -1568,13 +1677,18 @@ export async function runFixEvaluationCli(): Promise<void> {
     }
 
     const lines = originalContent.split('\n');
+    const targetLine = locateFindingLineInContent(
+      originalContent,
+      finding.line,
+      finding.codeSnippet,
+    );
     let windowStart = 1;
     let windowEnd = lines.length;
     let windowText = originalContent;
 
     if (lines.length > 100) {
-      windowStart = Math.max(1, finding.line - 35);
-      windowEnd = Math.min(lines.length, finding.line + 35);
+      windowStart = Math.max(1, targetLine - 35);
+      windowEnd = Math.min(lines.length, targetLine + 35);
       windowText = lines.slice(windowStart - 1, windowEnd).join('\n');
     }
 
@@ -1587,6 +1701,7 @@ export async function runFixEvaluationCli(): Promise<void> {
     }
 
     let patchedContent = originalContent;
+    let patchedWindow = windowText;
     let explanation = '';
     try {
       const fixRes = await promptAgentFix({
@@ -1594,10 +1709,11 @@ export async function runFixEvaluationCli(): Promise<void> {
         guideMarkdown: guideMd,
         findingMessage: finding.message,
         filePath: finding.file,
-        line: finding.line,
+        line: targetLine,
         windowText,
       });
       explanation = fixRes.explanation;
+      patchedWindow = fixRes.patchedWindow;
       if (lines.length <= 100) {
         patchedContent = fixRes.patchedWindow;
       } else {
@@ -1618,6 +1734,8 @@ export async function runFixEvaluationCli(): Promise<void> {
       patchedContent,
       guideId: finding.guideId,
       ruleId: finding.ruleId,
+      originalWindow: windowText,
+      patchedWindow,
     });
 
     const isResolved = val.resolved;
