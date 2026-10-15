@@ -75,6 +75,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
         expect(set.source).toBeUndefined();
       }
@@ -89,6 +90,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
         if (set.urls) {
           expect(Array.isArray(set.urls)).toBe(true);
@@ -106,6 +108,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
         if (set.eagerness === 'immediate' && set.urls) {
           expect(set.urls.length).toBeLessThanOrEqual(10);
@@ -122,6 +125,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
         if (set.urls) {
           expect(set.urls.some((url: string) => url.toLowerCase().includes('logout'))).toBe(false);
@@ -165,6 +169,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      expect(ruleSets.length).toBeGreaterThan(0);
       const validEagerness = ['immediate', 'eager', 'moderate', 'conservative'];
       for (const set of ruleSets) {
         if (set.eagerness) {
