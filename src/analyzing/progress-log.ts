@@ -17,6 +17,7 @@ import {
   type JudgeVerdict,
 } from './judge.ts';
 import {
+  CARDS_DIR,
   GRADES_PATH,
   PROGRESS_LOG_PATH,
   REPOS_CONFIG_PATH,
@@ -450,9 +451,13 @@ export async function computeProgressLogRow(
     ...options.judgeOptions,
     mode,
   };
+  console.log(`[progress-log] Running 3 stability runs on ${blindCards.length} scored cards (mode=${mode}, concurrency=${judgeOpts.concurrency ?? 5})...`);
   const run0 = await runJudgeBatch(blindCards, judgeOpts);
+  console.log('[progress-log] Run 0 complete');
   const run1 = await runJudgeBatch(blindCards, judgeOpts);
+  console.log('[progress-log] Run 1 complete');
   const run2 = await runJudgeBatch(blindCards, judgeOpts);
+  console.log('[progress-log] Run 2 complete');
 
   const stability = evaluateJudgeStability([run0, run1, run2]);
 
@@ -472,7 +477,7 @@ export async function computeProgressLogRow(
 
   const canaryResult = checkCanaries(stability.consensusResults, canaryCards);
 
-  // Inter-rater agreement between 3-run majority consensus and Paul's 85 human grades
+  // Inter-rater agreement between 3-run majority consensus and Paul's human grades
   const droppedCardIds = new Set(['2547b2ba6d74', '7f2a96f62a4c']);
   const evalMetrics = evaluateJudgeMetrics(
     stability.consensusResults,
@@ -488,6 +493,46 @@ export async function computeProgressLogRow(
     n: scoredCards.length,
     split: 'grading-only',
   };
+
+  console.log('============================================================');
+  console.log('           PROGRESS LOG EVALUATION METRICS                  ');
+  console.log('============================================================');
+  console.log(`  Judge Version:     ${judgeVersion}`);
+  console.log(`  Scored Cards (n):  ${scoredCards.length}`);
+  console.log(`  3-Run Stability:   ${(stability.stabilityRate * 100).toFixed(1)}%`);
+  console.log(`  Canary TNR:        ${(canaryResult.tnr * 100).toFixed(1)}% (${canaryResult.negatives - canaryResult.violations.length}/${canaryResult.negatives})`);
+  console.log(`  Judge Alpha:       ${evalMetrics.krippendorffAlpha.toFixed(3)}`);
+  console.log(`  Judge AC1:         ${evalMetrics.gwetAc1.toFixed(3)}`);
+  console.log(`  Sensitivity (TPR): ${(evalMetrics.sensitivitySpecificity.tpr * 100).toFixed(1)}% (${evalMetrics.sensitivitySpecificity.positives} positives)`);
+  console.log(`  PPI Precision:     ${(ppi.estimate * 100).toFixed(1)}% [${(ppi.lower * 100).toFixed(1)}% - ${(ppi.upper * 100).toFixed(1)}%]`);
+
+  // Subgroup analysis: out-of-sample newly graded cards (_calibration-deck + _m3-spotcheck-deck)
+  try {
+    const { readFile: readDeckFile } = await import('node:fs/promises');
+    const { join: joinPath } = await import('node:path');
+    const calibRaw = JSON.parse(await readDeckFile(joinPath(CARDS_DIR, '_calibration-deck.json'), 'utf8')) as Array<{ cardId: string }>;
+    const m3Raw = JSON.parse(await readDeckFile(joinPath(CARDS_DIR, '_m3-spotcheck-deck.json'), 'utf8')) as Array<{ cardId: string }>;
+    const newCardIds = new Set([...calibRaw.map((c) => c.cardId), ...m3Raw.map((c) => c.cardId)]);
+
+    const newCards = scoredCards.filter((c) => newCardIds.has(c.cardId));
+    const origCards = scoredCards.filter((c) => !newCardIds.has(c.cardId));
+
+    const newConsensus = stability.consensusResults.filter((r) => newCardIds.has(r.cardId));
+    const origConsensus = stability.consensusResults.filter((r) => !newCardIds.has(r.cardId));
+
+    const newMetrics = evaluateJudgeMetrics(newConsensus, humanVerdicts);
+    const origMetrics = evaluateJudgeMetrics(origConsensus, humanVerdicts, droppedCardIds);
+
+    console.log('------------------------------------------------------------');
+    console.log('SUBGROUP BREAKDOWN:');
+    console.log(`  Original Cards (n=${origCards.length}):`);
+    console.log(`    AC1: ${origMetrics.gwetAc1.toFixed(3)} | Alpha: ${origMetrics.krippendorffAlpha.toFixed(3)} | TPR: ${(origMetrics.sensitivitySpecificity.tpr * 100).toFixed(1)}%`);
+    console.log(`  Newly Graded Out-of-Sample Decks (_calibration + _m3, n=${newCards.length}):`);
+    console.log(`    AC1: ${newMetrics.gwetAc1.toFixed(3)} | Alpha: ${newMetrics.krippendorffAlpha.toFixed(3)} | TPR: ${(newMetrics.sensitivitySpecificity.tpr * 100).toFixed(1)}%`);
+    console.log('============================================================');
+  } catch (err: unknown) {
+    console.warn('[progress-log] Could not compute subgroup breakdown:', err);
+  }
 
   return {
     commit: gitState.commit,
