@@ -183,12 +183,15 @@ export interface GuideScorecard {
   readonly wilson95: BinomialInterval;
   readonly sequentialStopDecision: SequentialStopDecision;
   readonly clearsPrecisionBar: boolean;
+  readonly clearsBar90: boolean;
+  readonly clearsScreen80: boolean;
   readonly recall: GuideRecallMetrics;
 }
 
 export interface PilotScorecardSummary {
   readonly totalDetectableGuides: number;
   readonly clearedBarCount: number;
+  readonly clearedScreenCount: number;
   readonly coverage: MetricEntry;
   readonly overallPrecision: MetricEntry;
   readonly overallRecall: MetricEntry;
@@ -491,6 +494,7 @@ export async function runPilotScorecard(
   let totalLabeledPositives = 0;
   let totalPhase2Recalled = 0;
   let clearedBarCount = 0;
+  let clearedScreenCount = 0;
 
   const guideScorecards: GuideScorecard[] = [];
 
@@ -517,10 +521,15 @@ export async function runPilotScorecard(
     const wilson80 = wilsonInterval(rightCount, p2KeptCount, Z_80);
     const wilson95 = wilsonInterval(rightCount, p2KeptCount, Z_95);
     const seqDecision = checkSequentialStop(rightCount, p2KeptCount, 0.9);
-    const clearsBar = wilson95.lower >= 0.9 || seqDecision === 'pass';
+    const clearsBar90 = wilson95.lower >= 0.9 || seqDecision === 'pass';
+    const clearsScreen80 = wilson95.lower >= 0.8;
+    const clearsBar = clearsBar90;
 
     if (clearsBar) {
       clearedBarCount++;
+    }
+    if (clearsScreen80) {
+      clearedScreenCount++;
     }
 
     // Recall metrics
@@ -549,6 +558,8 @@ export async function runPilotScorecard(
       wilson95,
       sequentialStopDecision: seqDecision,
       clearsPrecisionBar: clearsBar,
+      clearsBar90,
+      clearsScreen80,
       recall: {
         labeledPositivesTotal: nPos,
         phase1Recalled: p1Recalled,
@@ -598,6 +609,7 @@ export async function runPilotScorecard(
   const summary: PilotScorecardSummary = {
     totalDetectableGuides: PILOT_GUIDE_IDS.length,
     clearedBarCount,
+    clearedScreenCount,
     coverage: coverageMetric,
     overallPrecision: precisionMetric,
     overallRecall: recallMetric,
@@ -677,21 +689,25 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
     const prec = `${(g.precision * 100).toFixed(1)}%`;
     const w95 = `[${(g.wilson95.lower * 100).toFixed(1)}% - ${(g.wilson95.upper * 100).toFixed(1)}%]`;
     const w80 = `[${(g.wilson80.lower * 100).toFixed(1)}% - ${(g.wilson80.upper * 100).toFixed(1)}%]`;
-    const bar = g.clearsPrecisionBar ? 'PASS' : 'FAIL';
+    const bar90 = g.clearsBar90 ? 'PASS' : 'FAIL';
+    const screen80 = g.clearsScreen80 ? 'PASS' : 'FAIL';
     const rec =
       g.recall.labeledPositivesTotal > 0
         ? `${(g.recall.phase2RecallRate * 100).toFixed(1)}% (${g.recall.phase2Recalled}/${g.recall.labeledPositivesTotal})`
         : 'N/A';
 
     lines.push(
-      `  * ${g.guideId.padEnd(36)}: P1=${String(g.phase1TotalYield).padStart(3)} | P2_kept=${String(g.phase2KeptCount).padStart(2)} | Right=${String(g.judgeRightCount).padStart(2)} | Prec=${prec.padStart(6)} (95% CI ${w95}, 80% CI ${w80}) | SeqStop=${g.sequentialStopDecision} | Bar=${bar} | Recall=${rec}`,
+      `  * ${g.guideId.padEnd(36)}: P1=${String(g.phase1TotalYield).padStart(3)} | P2_kept=${String(g.phase2KeptCount).padStart(2)} | Right=${String(g.judgeRightCount).padStart(2)} | Prec=${prec.padStart(6)} (95% CI ${w95}, 80% CI ${w80}) | SeqStop=${g.sequentialStopDecision} | Bar90=${bar90} | Screen80=${screen80} | Recall=${rec}`,
     );
   }
 
   lines.push('------------------------------------------------------------');
   lines.push('SUMMARY:');
   lines.push(
-    `  Coverage:          ${(report.summary.coverage.value * 100).toFixed(1)}% (${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar)`,
+    `  Coverage:          ${(report.summary.coverage.value * 100).toFixed(1)}% (${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared 0.90 bar)`,
+  );
+  lines.push(
+    `  Screening (0.80):  ${((report.summary.clearedScreenCount / report.summary.totalDetectableGuides) * 100).toFixed(1)}% (${report.summary.clearedScreenCount}/${report.summary.totalDetectableGuides} guides cleared 0.80 screen)`,
   );
   lines.push(
     `  Held-out Precision:${(report.summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}% (${report.summary.pooledHeldoutPrecision.successes}/${report.summary.pooledHeldoutPrecision.total}, 95% CI [${(report.summary.pooledHeldoutPrecision.wilson95.lower * 100).toFixed(1)}% - ${(report.summary.pooledHeldoutPrecision.wilson95.upper * 100).toFixed(1)}%])`,

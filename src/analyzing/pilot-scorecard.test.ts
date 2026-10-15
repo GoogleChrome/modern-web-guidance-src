@@ -203,6 +203,8 @@ describe('formatPilotScorecardReport', () => {
           wilson95: { proportion: 0.95, lower: 0.76, upper: 0.99, n: 20 },
           sequentialStopDecision: 'pass',
           clearsPrecisionBar: true,
+          clearsBar90: true,
+          clearsScreen80: true,
           recall: {
             labeledPositivesTotal: 1,
             phase1Recalled: 0,
@@ -215,6 +217,7 @@ describe('formatPilotScorecardReport', () => {
       summary: {
         totalDetectableGuides: 5,
         clearedBarCount: 1,
+        clearedScreenCount: 1,
         coverage: { value: 0.2, n: 5, split: 'grading-only' },
         overallPrecision: {
           value: 0.95,
