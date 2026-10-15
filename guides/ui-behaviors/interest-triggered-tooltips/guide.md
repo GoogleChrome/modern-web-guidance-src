@@ -64,10 +64,6 @@ In modern browsers supporting native anchor positioning, you do **not** need to 
 }
 ```
 
-> [!NOTE]
-> When using the `@oddbird/css-anchor-positioning` polyfill for legacy browser support, the polyfill does not support implicit anchors or `position-area` on popovers. In polyfilled environments, you must provide explicit `anchor-name` and `position-anchor` properties and position via `anchor()` functions (see [Fallback strategies](#fallback-strategies) below).
-
-
 ### Fallback strategies
 
 {{ FEATURE_FALLBACKS("interest-invokers") }}
@@ -80,7 +76,9 @@ The `popover-polyfill` does not polyfill the hint behavior in browsers that supp
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 
-**MANDATORY:** To support browsers without anchor positioning, you MUST use the `@oddbird/css-anchor-positioning` polyfill. It does not support implicit anchors, so you MUST add anchor names to the trigger. Additionally, `position-area` is not supported on popovers by the polyfill, so you MUST use `anchor()` on the desired insets. 
+When using the `@oddbird/css-anchor-positioning` polyfill for legacy browser support, be aware that the polyfill does not support implicit anchors or `position-area` on popovers.
+
+To support browsers without anchor positioning, you must conditionally install the polyfill, explicitly set an `anchor-name` on the trigger, set `position-anchor` on the popover, and position using `anchor()` inset functions instead of `position-area`: 
 
 ```html
 <!-- MANDATORY: Conditionally install the anchor positioning polyfill -->
