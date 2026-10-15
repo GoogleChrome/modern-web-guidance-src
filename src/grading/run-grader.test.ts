@@ -20,8 +20,8 @@ describe('executePlaywright reporter configuration', () => {
         jsonOutputName: path.join(tempDir, 'out.json'),
         stdio: 'pipe',
       });
-      // Immediately kill child process since we only want to test spawn configuration/options
-      child.kill();
+      child.on('error', () => {});
+      try { child.kill(); } catch {}
 
       assert.ok(child.spawnargs, 'Child process should be spawned');
       const hasHtmlReporter = child.spawnargs.some(arg => arg.startsWith('--reporter=') && arg.includes('html'));
@@ -47,7 +47,8 @@ describe('executePlaywright reporter configuration', () => {
         jsonOutputName: path.join(tempDir, 'out.json'),
         stdio: 'pipe',
       });
-      child.kill();
+      child.on('error', () => {});
+      try { child.kill(); } catch {}
 
       assert.ok(child.spawnargs, 'Child process should be spawned');
       const hasCombinedReporter = child.spawnargs.some(arg => arg === '--reporter=json,html');

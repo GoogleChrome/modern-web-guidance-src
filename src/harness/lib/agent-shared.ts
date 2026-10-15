@@ -795,8 +795,7 @@ export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, pro
 export function getGraderScriptContent(
   targetDir: string,
   graderPath: string,
-  guideName: string,
-  includeTrace?: boolean
+  guideName: string
 ): string {
   const runGraderModulePath = path.join(rootDir, 'src/grading/run-grader.ts');
   const targetFile = path.join(targetDir, 'index.html');
@@ -804,7 +803,6 @@ export function getGraderScriptContent(
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
   const agentPatch = path.join(targetDir, 'agent.patch');
   const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
-  const traceArg = includeTrace !== undefined ? JSON.stringify(includeTrace) : 'undefined';
 
   return `import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
@@ -819,9 +817,7 @@ async function run() {
       ${JSON.stringify(gradeReportDir)},
       'inherit',
       patchFile,
-      zeroPassrateFile,
-      undefined,
-      ${traceArg}
+      zeroPassrateFile
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {

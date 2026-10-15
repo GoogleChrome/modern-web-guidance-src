@@ -16,13 +16,11 @@ describe('Playwright Config', () => {
   describe('shouldIncludeTrace', () => {
     const originalEnv = process.env.GD_SUITE_CONFIG;
 
-    it('returns false when GD_SUITE_CONFIG is unset and no config up tree', () => {
+    it('returns false when GD_SUITE_CONFIG is unset', () => {
       delete process.env.GD_SUITE_CONFIG;
-      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'trace-test-none-'));
       try {
-        assert.strictEqual(shouldIncludeTrace(tempDir), false);
+        assert.strictEqual(shouldIncludeTrace(), false);
       } finally {
-        fs.rmSync(tempDir, { recursive: true, force: true });
         if (originalEnv !== undefined) process.env.GD_SUITE_CONFIG = originalEnv;
       }
     });
@@ -67,21 +65,6 @@ describe('Playwright Config', () => {
         } else {
           delete process.env.GD_SUITE_CONFIG;
         }
-      }
-    });
-
-    it('walks up directory tree to locate suite_config.json when GD_SUITE_CONFIG is unset', () => {
-      delete process.env.GD_SUITE_CONFIG;
-      const rootTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'trace-test-tree-'));
-      const nestedDir = path.join(rootTemp, '1', 'my-guide', 'guided');
-      fs.mkdirSync(nestedDir, { recursive: true });
-      fs.writeFileSync(path.join(rootTemp, 'suite_config.json'), JSON.stringify({ includeTrace: true }));
-
-      try {
-        assert.strictEqual(shouldIncludeTrace(nestedDir), true);
-      } finally {
-        fs.rmSync(rootTemp, { recursive: true, force: true });
-        if (originalEnv !== undefined) process.env.GD_SUITE_CONFIG = originalEnv;
       }
     });
   });

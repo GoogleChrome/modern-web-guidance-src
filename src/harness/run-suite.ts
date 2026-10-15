@@ -162,7 +162,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp, suiteConfig.includeTrace);
+          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -386,15 +386,14 @@ export function generateTransientPackage(
   taskName: string,
   guideName: string,
   graderPath: string,
-  _baseApp: string = 'daily-grind',
-  includeTrace?: boolean
+  _baseApp: string = 'daily-grind'
 ) {
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
   // Generate grade.mjs using shared function
-  const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName, includeTrace);
+  const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName);
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
   // Create npx wrapper to intercept modern-web-guidance calls during evals

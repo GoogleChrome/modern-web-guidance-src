@@ -254,8 +254,7 @@ function setupGraderForTask(
   dir: string,
   runPath: string,
   resultsDir: string,
-  taskMap: Map<string, any>,
-  includeTrace?: boolean
+  taskMap: Map<string, any>
 ): string | null {
   const ctx = getTaskRunContext(dir, runPath, taskMap);
   if (!ctx) return null;
@@ -268,7 +267,7 @@ function setupGraderForTask(
   }
 
   // Generate a runner script to be picked up by pnpm -r run-grader
-  const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide, includeTrace);
+  const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide);
   const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
   fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
 
@@ -456,12 +455,11 @@ function estimateTotalRuntime(resultsDir: string): number | undefined {
 function prepareGradersForRuns(
   resultsDir: string,
   runDirs: string[],
-  taskMap: Map<string, any>,
-  includeTrace?: boolean
+  taskMap: Map<string, any>
 ): string[] {
   const pnpmWorkspacePackages: string[] = [];
   for (const { dir, runPath } of getTaskDirsForRuns(resultsDir, runDirs)) {
-    const pkgId = setupGraderForTask(dir, runPath, resultsDir, taskMap, includeTrace);
+    const pkgId = setupGraderForTask(dir, runPath, resultsDir, taskMap);
     if (pkgId) {
       pnpmWorkspacePackages.push(pkgId);
     }
@@ -552,12 +550,12 @@ async function collectAllResults(
   return { allResults, model };
 }
 
-export async function collectResults(resultsDir: string, suiteConfig?: SuiteConfig) {
+export async function collectResults(resultsDir: string, _suiteConfig?: SuiteConfig) {
   const taskMap = getTaskMap();
   const runDirs = getRunNumberDirs(resultsDir);
 
   // PASS 1: Generate parallel grader scripts for missing results
-  const graderPackages = prepareGradersForRuns(resultsDir, runDirs, taskMap, suiteConfig?.includeTrace);
+  const graderPackages = prepareGradersForRuns(resultsDir, runDirs, taskMap);
 
   // PASS 1.5: Execute parallel grading runs
   await executeParallelGrading(resultsDir, graderPackages);

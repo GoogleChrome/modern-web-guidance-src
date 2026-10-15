@@ -69,7 +69,7 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
 
   if (opts.testResultsDir) {
     env.PLAYWRIGHT_OUTPUT_DIR = opts.testResultsDir;
-  } else {
+  } else if (opts.htmlOutputDir) {
     env.PLAYWRIGHT_OUTPUT_DIR = path.join(appDir, 'test-results');
   }
 
@@ -94,8 +94,7 @@ export async function runPlaywright(
   stdio: 'inherit' | 'ignore' | 'pipe' = 'inherit',
   patchFile?: string,
   zeroPassrateFile?: string,
-  testResultsDir?: string,
-  includeTrace?: boolean
+  testResultsDir?: string
 ): Promise<any> {
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
 
@@ -112,13 +111,11 @@ export async function runPlaywright(
 
   try {
     let stderrData = '';
-    const traceEnabled = includeTrace ?? shouldIncludeTrace(isDir ? effectiveTargetPath : path.dirname(effectiveTargetPath));
-    const reporters = traceEnabled ? ['json', 'html'] : ['json'];
     const child = executePlaywright({
       targetPathAbs: effectiveTargetPath,
       graderPath,
-      reporters,
-      htmlOutputDir: traceEnabled ? htmlOutputDir : undefined,
+      reporters: shouldIncludeTrace() ? ['json', 'html'] : ['json'],
+      htmlOutputDir,
       testResultsDir,
       jsonOutputName: tmpJson,
       patchFile: patchFile,
