@@ -1,10 +1,13 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   CALIBRATION_DECK_PATH,
+  CARDS_DIR,
   GRADES_PATH,
+  GUIDES_DIR,
   GUIDE_SUMMARIES_PATH,
   REPOS_CONFIG_PATH,
+  WORKTREE_ROOT,
   repoDir,
   type RepoConfigEntry,
 } from './paths.ts';
@@ -326,19 +329,35 @@ interface BatchStatusResponse {
 }
 
 /**
+ * Resolves the Gemini API key from options, environment, or the workspace .env file.
+ */
+export function getGeminiApiKey(options?: JudgeRunOptions): string {
+  if (options?.apiKey) {
+    return options.apiKey;
+  }
+  if (!process.env.GEMINI_API_KEY) {
+    try {
+      process.loadEnvFile?.(join(WORKTREE_ROOT, '.env'));
+    } catch {}
+  }
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error('GEMINI_API_KEY is not defined in environment, options, or .env file');
+  }
+  return key;
+}
+
+/**
  * Runs judge evaluation directly via generateContent with concurrency control.
  */
 export async function runJudgeDirect(
   cards: BlindCardPayload[],
   options: JudgeRunOptions = {},
 ): Promise<JudgeResult[]> {
-  const apiKey = options.apiKey ?? process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not defined in environment or options');
-  }
+  const apiKey = getGeminiApiKey(options);
 
   const customFetch = options.fetchFn ?? fetch;
-  const concurrency = Math.max(1, options.concurrency ?? 5);
+  const concurrency = Math.max(1, options.concurrency ?? 10);
   const results: JudgeResult[] = Array.from({ length: cards.length });
 
   let currentIndex = 0;
@@ -412,11 +431,13 @@ interface PollBatchContext {
 
 /**
  * Polls a batch operation until finished or timeout.
- * Returns null if batch could not be completed, signalling fallback to direct.
+ * Throws explicit error on any failure or HTTP non-200.
  */
-async function pollBatchUntilDone(ctx: PollBatchContext): Promise<JudgeResult[] | null> {
+async function pollBatchUntilDone(ctx: PollBatchContext): Promise<JudgeResult[]> {
   const startTime = Date.now();
-  const pollUrl = `${GEMINI_API_BASE}/${ctx.batchName}?key=${ctx.apiKey}`;
+  const fields =
+    'name,done,error,metadata.state,response.inlinedResponses.inlinedResponses.response.candidates,response.inlinedResponses.inlinedResponses.metadata';
+  const pollUrl = `${GEMINI_API_BASE}/${ctx.batchName}?key=${ctx.apiKey}&fields=${encodeURIComponent(fields)}`;
 
   while (Date.now() - startTime < ctx.timeoutMs) {
     await new Promise((r) => setTimeout(r, ctx.pollIntervalMs));
@@ -424,12 +445,15 @@ async function pollBatchUntilDone(ctx: PollBatchContext): Promise<JudgeResult[] 
     let pollRes: Response;
     try {
       pollRes = await ctx.customFetch(pollUrl);
-    } catch {
-      continue;
+    } catch (err: unknown) {
+      throw new Error(`Gemini Batch polling network error: ${String(err)}`);
     }
 
     if (!pollRes.ok) {
-      return null;
+      const errText = await pollRes.text();
+      throw new Error(
+        `Gemini Batch API polling failed with HTTP ${pollRes.status}: ${errText}`,
+      );
     }
 
     const batchData = (await pollRes.json()) as BatchStatusResponse;
@@ -443,37 +467,46 @@ async function pollBatchUntilDone(ctx: PollBatchContext): Promise<JudgeResult[] 
       state === 'BATCH_STATE_CANCELLED' ||
       state === 'BATCH_STATE_EXPIRED'
     ) {
-      return null;
+      throw new Error(
+        `Gemini Batch failed with state ${state}: ${batchData.error?.message ?? 'No error details'}`,
+      );
     }
 
     if (state === 'BATCH_STATE_SUCCEEDED' || batchData.done) {
-      const output =
-        batchData.output ??
+      const rawOutput = (batchData.output ??
         batchData.metadata?.output ??
-        batchData.response?.output;
+        batchData.response?.output ??
+        (batchData as { response?: unknown }).response) as
+        | {
+            inlinedResponses?: { inlinedResponses?: InlinedGeminiResponseItem[] };
+            inlined_responses?: { inlined_responses?: InlinedGeminiResponseItem[] };
+          }
+        | undefined;
 
-      const inlinedList =
-        output?.inlinedResponses?.inlinedResponses ??
-        output?.inlined_responses?.inlined_responses;
+      const inlinedList: InlinedGeminiResponseItem[] | undefined =
+        rawOutput?.inlinedResponses?.inlinedResponses ??
+        rawOutput?.inlined_responses?.inlined_responses;
 
       if (inlinedList && inlinedList.length === ctx.cards.length) {
-        return inlinedList.map((item, idx) => {
+        return inlinedList.map((item: InlinedGeminiResponseItem, idx: number) => {
           const cardId = ctx.cards[idx].cardId;
           const text = item.response?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
           return parseJudgeJsonContent(text, cardId);
         });
       }
-      return null;
+      throw new Error(
+        `Gemini Batch output missing or response count mismatch (expected ${ctx.cards.length}, got ${inlinedList?.length ?? 0})`,
+      );
     }
   }
 
-  return null;
+  throw new Error(`Gemini Batch polling timed out after ${ctx.timeoutMs}ms`);
 }
 
 /**
  * Runs judge evaluation using the Gemini Batch API (batchGenerateContent + polling).
- * Gracefully falls back to direct execution if the batch API endpoint returns a 500 error
- * or if direct mode is requested.
+ * Never silently falls back to direct execution: fails fast with explicit error on failure.
+ * When mode: 'direct' is explicitly passed, executes directly.
  */
 export async function runJudgeBatch(
   cards: BlindCardPayload[],
@@ -487,11 +520,7 @@ export async function runJudgeBatch(
     return runJudgeDirect(cards, options);
   }
 
-  const apiKey = options.apiKey ?? process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not defined in environment or options');
-  }
-
+  const apiKey = getGeminiApiKey(options);
   const customFetch = options.fetchFn ?? fetch;
   const pollIntervalMs = options.pollIntervalMs ?? 2000;
   const timeoutMs = options.timeoutMs ?? 180000;
@@ -521,16 +550,19 @@ export async function runJudgeBatch(
   });
 
   if (!createRes.ok) {
-    return runJudgeDirect(cards, options);
+    const errText = await createRes.text();
+    throw new Error(
+      `Gemini Batch API creation failed with HTTP ${createRes.status}: ${errText}`,
+    );
   }
 
   const createData = (await createRes.json()) as { name?: string };
   const batchName = createData.name;
   if (!batchName) {
-    return runJudgeDirect(cards, options);
+    throw new Error('Gemini Batch API creation succeeded but returned no batch name');
   }
 
-  const batchResult = await pollBatchUntilDone({
+  return pollBatchUntilDone({
     batchName,
     apiKey,
     cards,
@@ -538,8 +570,6 @@ export async function runJudgeBatch(
     pollIntervalMs,
     customFetch,
   });
-
-  return batchResult ?? runJudgeDirect(cards, options);
 }
 
 /**
@@ -745,18 +775,272 @@ export async function loadHumanGrades(
 }
 
 /**
- * Loads guide summaries into a map indexed by guideId.
+ * Deterministically locates the guide.md file for a given guideId under guidesRootDir.
+ */
+export async function findGuideMarkdownPath(
+  guideId: string,
+  guidesRootDir: string = GUIDES_DIR,
+): Promise<string> {
+  async function search(dir: string): Promise<string | null> {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === guideId) {
+          const guideFile = join(fullPath, 'guide.md');
+          try {
+            await readFile(guideFile, 'utf8');
+            return guideFile;
+          } catch {}
+        }
+        const found = await search(fullPath);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  const foundPath = await search(guidesRootDir);
+  if (!foundPath) {
+    throw new Error(`guide.md for guideId "${guideId}" not found under ${guidesRootDir}`);
+  }
+  return foundPath;
+}
+
+/**
+ * Parses raw guide.md text into a GuideSummaryInfo directly from frontmatter and markdown sections.
+ * Zero hand-tuned examples, zero card-fitting.
+ */
+export function parseGuideSummaryMarkdown(
+  markdown: string,
+  guideId: string,
+): GuideSummaryInfo {
+  // 1. Extract frontmatter
+  const fmMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
+  const fm = fmMatch ? fmMatch[1] : '';
+  const descMatch = fm.match(/^description:\s*(.+)$/m);
+  const fmDescription = descMatch ? descMatch[1].trim() : '';
+
+  // 2. Remove frontmatter and extract title
+  const body = markdown.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+  const titleMatch = body.match(/^#\s+(.+)$/m);
+  const title = titleMatch ? titleMatch[1].trim() : guideId;
+  const bodyWithoutTitle = body.replace(/^#\s+[^\n]+\n*/, '').trim();
+
+  // 3. Split into sections by Markdown headers (## or ###)
+  const lines = bodyWithoutTitle.split('\n');
+  const sections: Array<{ header: string; content: string }> = [];
+  let currentHeader = 'Introduction';
+  let currentLines: string[] = [];
+
+  for (const line of lines) {
+    const hMatch = line.match(/^#{2,3}\s+(.+)$/);
+    if (hMatch) {
+      if (currentLines.length > 0 || currentHeader !== 'Introduction') {
+        sections.push({ header: currentHeader, content: currentLines.join('\n').trim() });
+      }
+      currentHeader = hMatch[1].trim();
+      currentLines = [];
+    } else {
+      currentLines.push(line);
+    }
+  }
+  if (currentLines.length > 0) {
+    sections.push({ header: currentHeader, content: currentLines.join('\n').trim() });
+  }
+
+  const introSection = sections.find((s) => s.header === 'Introduction')?.content ?? sections[0]?.content ?? '';
+
+  let problem = '';
+  let before = '';
+  let now = '';
+
+  for (const s of sections) {
+    const h = s.header.toLowerCase();
+    if (h.includes('problem') && !problem) {
+      problem = s.content;
+    }
+    if ((h === 'before' || h.includes('legacy pattern') || h.startsWith('before')) && !before) {
+      before = s.content;
+    }
+    if (
+      (h === 'now' ||
+        h.includes('modern replacement') ||
+        h.startsWith('now') ||
+        h.includes('the solution')) &&
+      !now
+    ) {
+      now = s.content;
+    }
+  }
+
+  if (!problem) {
+    problem = fmDescription || introSection.split('\n\n')[0] || title;
+  }
+
+  if (!before || !now) {
+    const overviewSection = sections.find((s) => s.header.toLowerCase().includes('overview'));
+    const sourceText = `${introSection}\n${overviewSection ? overviewSection.content : ''}`.trim();
+    const sentences = sourceText.split(/(?<=[.?!])\s+/).map((s) => s.trim()).filter(Boolean);
+
+    const beforeParts: string[] = [];
+    const nowParts: string[] = [];
+
+    for (const sent of sentences) {
+      if (
+        /\b(past|historically|previously|traditionally|legacy|prior to|older|earlier)\b/i.test(sent)
+      ) {
+        beforeParts.push(sent);
+      } else {
+        nowParts.push(sent);
+      }
+    }
+
+    if (!before) {
+      if (beforeParts.length > 0) {
+        before = beforeParts.join(' ');
+      } else {
+        before = `Legacy approach prior to ${title}: ${problem}`;
+      }
+    }
+
+    if (!now) {
+      if (nowParts.length > 0) {
+        now = nowParts.join(' ');
+      } else {
+        const implSection = sections.find((s) => {
+          const h = s.header.toLowerCase();
+          return h.includes('implement') || h.includes('usage') || h.includes('solution');
+        });
+        if (implSection) {
+          now = `${title}: ${implSection.content.slice(0, 300)}...`;
+        } else {
+          now = `Use modern web platform standards for ${title}.`;
+        }
+      }
+    }
+  }
+
+  const clean = (str: string): string =>
+    str.replace(/\{\{[^}]+\}\}/g, '').replace(/\n{3,}/g, '\n\n').trim();
+
+  return {
+    guideId,
+    problem: clean(problem),
+    before: clean(before),
+    now: clean(now),
+  };
+}
+
+/**
+ * Loads a guide summary deterministically from guide.md.
+ */
+export async function loadGuideSummaryFromMarkdown(
+  guideId: string,
+  guidesRootDir: string = GUIDES_DIR,
+): Promise<GuideSummaryInfo> {
+  const guidePath = await findGuideMarkdownPath(guideId, guidesRootDir);
+  const content = await readFile(guidePath, 'utf8');
+  return parseGuideSummaryMarkdown(content, guideId);
+}
+
+/**
+ * Loads guide summaries directly from markdown files into a map indexed by guideId.
  */
 export async function loadGuideSummariesMap(
-  summariesFilePath: string = GUIDE_SUMMARIES_PATH,
+  guidesRootDirOrFile: string = GUIDES_DIR,
 ): Promise<Map<string, GuideSummaryInfo>> {
-  const content = await readFile(summariesFilePath, 'utf8');
-  const list = JSON.parse(content) as GuideSummaryInfo[];
   const map = new Map<string, GuideSummaryInfo>();
-  for (const item of list) {
-    map.set(item.guideId, item);
+
+  if (guidesRootDirOrFile.endsWith('.json')) {
+    try {
+      const content = await readFile(guidesRootDirOrFile, 'utf8');
+      const list = JSON.parse(content) as GuideSummaryInfo[];
+      for (const item of list) {
+        map.set(item.guideId, item);
+      }
+      return map;
+    } catch {
+      return map;
+    }
   }
+
+  async function walk(dir: string): Promise<void> {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        const guidePath = join(fullPath, 'guide.md');
+        try {
+          const content = await readFile(guidePath, 'utf8');
+          const summary = parseGuideSummaryMarkdown(content, entry.name);
+          map.set(entry.name, summary);
+        } catch {}
+        await walk(fullPath);
+      }
+    }
+  }
+
+  await walk(guidesRootDirOrFile);
   return map;
+}
+
+export interface PaulIrishGradesResult {
+  cards: CalibrationDeckItem[];
+  humanVerdicts: Map<string, JudgeVerdict>;
+}
+
+/**
+ * Loads Paul's canonical human-graded cards from grades.paulirish.jsonl and cards directory.
+ * Returns only the scored cards (excluding 'unsure').
+ */
+export async function loadPaulIrishScoredCards(
+  gradesPath: string = GRADES_PATH,
+  cardsDir: string = CARDS_DIR,
+): Promise<PaulIrishGradesResult> {
+  const content = await readFile(gradesPath, 'utf8');
+  const lines = content.trim().split('\n').filter(Boolean);
+  const latestGrades = new Map<string, JudgeVerdict>();
+
+  for (const line of lines) {
+    const parsed = JSON.parse(line) as { cardId: string; verdict: string };
+    if (parsed.cardId && isJudgeVerdict(parsed.verdict)) {
+      latestGrades.set(parsed.cardId, parsed.verdict);
+    }
+  }
+
+  const allCardsMap = new Map<string, CalibrationDeckItem>();
+  const entries = await readdir(cardsDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.endsWith('.json')) {
+      const cardContent = await readFile(join(cardsDir, entry.name), 'utf8');
+      try {
+        const cardList = JSON.parse(cardContent) as CalibrationDeckItem[];
+        for (const c of cardList) {
+          if (c.cardId) {
+            allCardsMap.set(c.cardId, c);
+          }
+        }
+      } catch {}
+    }
+  }
+
+  const scoredCards: CalibrationDeckItem[] = [];
+  const scoredVerdicts = new Map<string, JudgeVerdict>();
+
+  for (const [cardId, verdict] of latestGrades.entries()) {
+    if (verdict === 'unsure') {
+      continue;
+    }
+    const card = allCardsMap.get(cardId);
+    if (!card) {
+      throw new Error(`Card ${cardId} in ${gradesPath} not found in ${cardsDir}`);
+    }
+    scoredCards.push(card);
+    scoredVerdicts.set(cardId, verdict);
+  }
+
+  return { cards: scoredCards, humanVerdicts: scoredVerdicts };
 }
 
 export interface CalibrationDeckItem {

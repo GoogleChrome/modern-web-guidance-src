@@ -9,6 +9,9 @@ import {
   formatBlindCardPrompt,
   isDetectiveFactCheck,
   isJudgeVerdict,
+  loadGuideSummaryFromMarkdown,
+  loadPaulIrishScoredCards,
+  parseGuideSummaryMarkdown,
   parseJudgeJsonContent,
   prepareBlindCards,
   runJudgeBatch,
@@ -485,16 +488,23 @@ describe('mocked direct and batch judge runners', () => {
     assert.equal(results[0].facts.matches_before_syntax, true);
   });
 
-  it('falls back from batch to direct on batch API error response', async () => {
-    let callCount = 0;
-    const mockFetch: typeof fetch = async (url) => {
-      callCount++;
-      const urlStr = String(url);
-      if (urlStr.includes(':batchGenerateContent')) {
-        // Return 500 error on batch endpoint
-        return new Response('Batch service unavailable', { status: 500 });
-      }
-      // Return success on fallback direct endpoint
+  it('throws an explicit error when batch API returns an error response instead of falling back', async () => {
+    const mockFetch: typeof fetch = async () => {
+      return new Response('Batch service unavailable', { status: 500 });
+    };
+
+    await assert.rejects(
+      () =>
+        runJudgeBatch([SAMPLE_BLIND_CARD], {
+          apiKey: 'test-key',
+          fetchFn: mockFetch,
+        }),
+      /Gemini Batch API creation failed with HTTP 500/,
+    );
+  });
+
+  it('routes to direct execution when mode is direct', async () => {
+    const mockFetch: typeof fetch = async () => {
       return new Response(
         JSON.stringify({
           candidates: [
@@ -503,11 +513,11 @@ describe('mocked direct and batch judge runners', () => {
                 parts: [
                   {
                     text: JSON.stringify({
-                      matches_before_syntax: false,
+                      matches_before_syntax: true,
                       has_fallback_or_feature_guard: false,
-                      modern_feature_applies_here: false,
-                      reasoning: 'False positive match.',
-                      verdict: 'not-old-pattern',
+                      modern_feature_applies_here: true,
+                      reasoning: 'Matches directly.',
+                      verdict: 'right',
                     }),
                   },
                 ],
@@ -521,11 +531,59 @@ describe('mocked direct and batch judge runners', () => {
 
     const results = await runJudgeBatch([SAMPLE_BLIND_CARD], {
       apiKey: 'test-key',
+      mode: 'direct',
       fetchFn: mockFetch,
     });
 
     assert.equal(results.length, 1);
-    assert.equal(results[0].verdict, 'not-old-pattern');
-    assert.equal(callCount, 2); // 1 batch attempt + 1 direct fallback
+    assert.equal(results[0].verdict, 'right');
+  });
+});
+
+describe('guide summary extraction from markdown', () => {
+  it('extracts problem, before, and now deterministically from markdown', () => {
+    const sampleMd = `---
+name: sample-feature
+description: Sample feature description from frontmatter
+web-feature-ids:
+  - sample-feature
+---
+
+# Sample Feature
+
+In the past, developers had to rely on complex JavaScript hacks to do this.
+The modern Sample API now allows doing this natively in CSS.
+
+## Implementation
+
+Use the sample-feature property on the root element.
+`;
+
+    const summary = parseGuideSummaryMarkdown(sampleMd, 'sample-feature');
+    assert.equal(summary.guideId, 'sample-feature');
+    assert.equal(summary.problem, 'Sample feature description from frontmatter');
+    assert.match(summary.before, /In the past/);
+    assert.match(summary.now, /The modern Sample API/);
+    assert.equal(summary.oldWayExamples, undefined);
+  });
+
+  it('loads real guide summary from guide.md', async () => {
+    const summary = await loadGuideSummaryFromMarkdown('calculate-event-differentials');
+    assert.equal(summary.guideId, 'calculate-event-differentials');
+    assert.ok(summary.problem.length > 0);
+    assert.ok(summary.before.length > 0);
+    assert.ok(summary.now.length > 0);
+    assert.equal(summary.oldWayExamples, undefined);
+  });
+});
+
+describe('loadPaulIrishScoredCards', () => {
+  it('loads the 85 scored cards from canonical files excluding unsure', async () => {
+    const { cards, humanVerdicts } = await loadPaulIrishScoredCards();
+    assert.equal(cards.length, 85);
+    assert.equal(humanVerdicts.size, 85);
+    assert.equal(humanVerdicts.get('2547b2ba6d74'), 'not-old-pattern');
+    assert.equal(humanVerdicts.get('7f2a96f62a4c'), 'not-old-pattern');
+    assert.equal(humanVerdicts.get('c8147e8fdf52'), undefined); // 'unsure' excluded
   });
 });

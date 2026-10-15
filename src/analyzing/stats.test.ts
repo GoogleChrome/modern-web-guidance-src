@@ -221,16 +221,11 @@ describe('sensitivitySpecificity', () => {
 });
 
 describe('ppiPlusPlusPrecision', () => {
-  it('handles empty sets gracefully', () => {
-    const res = ppiPlusPlusPrecision([], []);
-    assert.deepStrictEqual(res, {
-      estimate: 0,
-      lower: 0,
-      upper: 0,
-      lambda: 0,
-      nHuman: 0,
-      nJudge: 0,
-    });
+  it('throws an error when human paired sample is empty', () => {
+    assert.throws(
+      () => ppiPlusPlusPrecision([], []),
+      /ppiPlusPlusPrecision requires at least 1 human-labeled paired item/,
+    );
   });
 
   it('recovers population mean when judge is perfectly correlated', () => {

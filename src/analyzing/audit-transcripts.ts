@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { LABELS_DIR, REPOS_CONFIG_PATH } from './paths.ts';
+import { isEnoent } from './progress-log.ts';
 
 export interface RepoEntry {
   repo: string;
@@ -79,18 +80,6 @@ export interface AuditBatchResult {
     totalToolErrors: number;
     totalRetries: number;
   };
-}
-
-/**
- * Type guard for ENOENT errors (BAN TOCTOU: operate directly and catch ENOENT).
- */
-export function isEnoent(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: string }).code === 'ENOENT'
-  );
 }
 
 /**
@@ -253,6 +242,35 @@ export function isGradingRepoMatch(
 }
 
 /**
+ * Determines whether a file path points to a *.test.ts unit test file inside src/analyzing/.
+ */
+export function isAnalyzingTestFilePath(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, '/');
+  return normalized.includes('src/analyzing/') && normalized.endsWith('.test.ts');
+}
+
+/**
+ * Determines whether a tool call is writing, editing, or reading a *.test.ts file inside src/analyzing/.
+ */
+export function isAnalyzingTestFileToolCall(call: ToolCall): boolean {
+  if (!call.args || typeof call.args !== 'object') {
+    return false;
+  }
+  const targetPath = (
+    call.args.Path ??
+    call.args.path ??
+    call.args.FilePath ??
+    call.args.filepath ??
+    call.args.targetPath ??
+    call.args.NotebookPath
+  ) as unknown;
+  if (typeof targetPath === 'string' && isAnalyzingTestFilePath(targetPath)) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Checks all tool calls in a transcript for split-isolation violations.
  */
 export function checkSplitViolations(
@@ -275,6 +293,8 @@ export function checkSplitViolations(
         continue;
       }
 
+      const isTestToolCall = isAnalyzingTestFileToolCall(call);
+
       for (const argVal of Object.values(call.args)) {
         if (typeof argVal !== 'string') {
           continue;
@@ -287,6 +307,11 @@ export function checkSplitViolations(
             target: argVal,
             reason: 'labels-directory',
           });
+        }
+
+        // Exempt tool calls writing/editing/reading *.test.ts inside src/analyzing/ from flagging mock repo strings
+        if (isTestToolCall) {
+          continue;
         }
 
         const match = isGradingRepoMatch(argVal, gradingRepos);

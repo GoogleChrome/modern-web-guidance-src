@@ -319,19 +319,7 @@ export function ppiPlusPlusPrecision(
   const nJudge = judgeAll.length;
 
   if (nHuman === 0) {
-    if (nJudge === 0) {
-      return { estimate: 0, lower: 0, upper: 0, lambda: 0, nHuman: 0, nJudge: 0 };
-    }
-    const judgePositiveCount = judgeAll.filter(Boolean).length;
-    const interval = wilsonInterval(judgePositiveCount, nJudge, z);
-    return {
-      estimate: interval.proportion,
-      lower: interval.lower,
-      upper: interval.upper,
-      lambda: 0,
-      nHuman: 0,
-      nJudge,
-    };
+    throw new Error('ppiPlusPlusPrecision requires at least 1 human-labeled paired item');
   }
 
   if (nJudge === 0) {

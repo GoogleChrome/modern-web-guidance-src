@@ -6,9 +6,9 @@ import {
   checkCanaries,
   evaluateJudgeMetrics,
   evaluateJudgeStability,
-  loadCalibrationDeck,
   loadGuideSummariesMap,
   loadHumanGrades,
+  loadPaulIrishScoredCards,
   prepareBlindCards,
   runJudgeBatch,
   type CanaryCard,
@@ -366,9 +366,29 @@ export interface ProgressLogOptions {
 }
 
 /**
+ * Parses CLI flags for progress-log.
+ * Supports --mode=direct|batch.
+ */
+export function parseProgressLogCliArgs(
+  args: string[] = process.argv.slice(2),
+): ProgressLogOptions {
+  let mode: 'batch' | 'direct' = 'direct';
+  for (const arg of args) {
+    if (arg === '--mode=batch' || arg === '--batch') {
+      mode = 'batch';
+    } else if (arg === '--mode=direct' || arg === '--direct') {
+      mode = 'direct';
+    }
+  }
+  return {
+    judgeOptions: { mode },
+  };
+}
+
+/**
  * Computes a ProgressLogRow from live evaluation or provided metrics.
- * Ensures zero dummy defaults: computes precision via PPI++ and stability/canaries
- * across judge runs.
+ * Evaluates judge stability and consensus agreement against Paul's 85 human grades.
+ * Ensures zero dummy defaults: fails fast if required metrics are missing.
  */
 export async function computeProgressLogRow(
   options: ProgressLogOptions = {},
@@ -377,56 +397,80 @@ export async function computeProgressLogRow(
   const splitHash = await computeFileHash(REPOS_CONFIG_PATH);
   const gradesHash = await computeFileHash(GRADES_PATH);
   const today = new Date().toISOString().slice(0, 10);
+  const mode = options.judgeOptions?.mode ?? 'direct';
+  const judgeVersion =
+    options.metrics?.judgeVersion ?? `gemini-3.8-flash:detective-v2-${mode}`;
 
   if (options.metrics?.precision && options.metrics.judgeAlpha !== undefined) {
+    if (options.metrics.judgeAc1 === undefined) {
+      throw new Error('judgeAc1 is required when providing metrics');
+    }
+    if (options.metrics.canaryTnr === undefined) {
+      throw new Error('canaryTnr is required when providing metrics');
+    }
     return {
       commit: gitState.commit,
       date: today,
       ruleSetHash: options.metrics.ruleSetHash ?? 'initial-phase1',
       splitHash,
       gradesHash,
-      judgeVersion: options.metrics.judgeVersion ?? 'gemini-3.8-flash:detective-v1',
+      judgeVersion,
       coverage: options.metrics.coverage ?? { value: 0, n: 0, split: 'grading-only' },
       precision: options.metrics.precision,
       recall: options.metrics.recall ?? { value: 0, n: 0, split: 'grading-only' },
       judgeAlpha: options.metrics.judgeAlpha,
-      judgeAc1: options.metrics.judgeAc1 ?? 1.0,
-      canaryTnr: options.metrics.canaryTnr ?? 1.0,
+      judgeAc1: options.metrics.judgeAc1,
+      canaryTnr: options.metrics.canaryTnr,
       notes: options.metrics.notes ?? 'Phase 1 measurement baseline',
     };
   }
 
-  const deck = await loadCalibrationDeck();
+  // Load Paul's 85 human-scored cards (83 'right', 2 'not-old-pattern', excluding 1 'unsure')
+  const { cards: scoredCards, humanVerdicts } = await loadPaulIrishScoredCards();
   const summaries = await loadGuideSummariesMap();
-  const humanGrades = await loadHumanGrades();
-  const blindCards = await prepareBlindCards(deck, summaries);
+  const blindCards = await prepareBlindCards(scoredCards, summaries);
 
   // Execute 3 stability runs
-  const run0 = await runJudgeBatch(blindCards, options.judgeOptions);
-  const run1 = await runJudgeBatch(blindCards, options.judgeOptions);
-  const run2 = await runJudgeBatch(blindCards, options.judgeOptions);
+  const judgeOpts: JudgeRunOptions = {
+    ...options.judgeOptions,
+    mode,
+  };
+  const run0 = await runJudgeBatch(blindCards, judgeOpts);
+  const run1 = await runJudgeBatch(blindCards, judgeOpts);
+  const run2 = await runJudgeBatch(blindCards, judgeOpts);
 
   const stability = evaluateJudgeStability([run0, run1, run2]);
 
-  // Canary checking: negative controls are Phase-2-dropped items
-  const droppedNegatives: CanaryCard[] = deck
-    .filter((d) => d.phase2Decision === 'drop')
-    .map((d) => ({
-      cardId: d.cardId,
-      expectedVerdict: 'not-old-pattern' as const,
-      description: 'Phase-2-dropped false positive negative control',
-    }));
+  // Canary checking: negative controls are Paul's 2 confirmed false positives
+  const canaryCards: CanaryCard[] = [
+    {
+      cardId: '2547b2ba6d74',
+      expectedVerdict: 'not-old-pattern',
+      description: 'Paul Irish human-verified false positive (focus-trap/inert)',
+    },
+    {
+      cardId: '7f2a96f62a4c',
+      expectedVerdict: 'not-old-pattern',
+      description: 'Paul Irish human-verified false positive (MessageChannel)',
+    },
+  ];
 
-  const canaryResult = checkCanaries(stability.consensusResults, droppedNegatives);
-  const droppedSet = new Set(droppedNegatives.map((d) => d.cardId));
-  const evalMetrics = evaluateJudgeMetrics(stability.consensusResults, humanGrades, droppedSet);
+  const canaryResult = checkCanaries(stability.consensusResults, canaryCards);
+
+  // Inter-rater agreement between 3-run majority consensus and Paul's 85 human grades
+  const droppedCardIds = new Set(['2547b2ba6d74', '7f2a96f62a4c']);
+  const evalMetrics = evaluateJudgeMetrics(
+    stability.consensusResults,
+    humanVerdicts,
+    droppedCardIds,
+  );
 
   const ppi = evalMetrics.ppiPrecision;
   const precisionEntry: MetricEntry = {
     value: Number(ppi.estimate.toFixed(4)),
     lower: Number(ppi.lower.toFixed(4)),
     upper: Number(ppi.upper.toFixed(4)),
-    n: deck.length,
+    n: scoredCards.length,
     split: 'grading-only',
   };
 
@@ -436,12 +480,12 @@ export async function computeProgressLogRow(
     ruleSetHash: 'initial-phase1',
     splitHash,
     gradesHash,
-    judgeVersion: 'gemini-3.8-flash:detective-v1',
+    judgeVersion,
     coverage: { value: 0, n: 0, split: 'grading-only' },
     precision: precisionEntry,
     recall: { value: 0, n: 0, split: 'grading-only' },
-    judgeAlpha: Number(stability.krippendorffAlpha.toFixed(3)),
-    judgeAc1: Number(stability.gwetAc1.toFixed(3)),
+    judgeAlpha: Number(evalMetrics.krippendorffAlpha.toFixed(3)),
+    judgeAc1: Number(evalMetrics.gwetAc1.toFixed(3)),
     canaryTnr: Number(canaryResult.tnr.toFixed(4)),
     notes: `Phase 1 measurement baseline (stability=${(stability.stabilityRate * 100).toFixed(1)}%, canaryTNR=${(canaryResult.tnr * 100).toFixed(1)}%)`,
   };
@@ -451,8 +495,17 @@ export async function computeProgressLogRow(
  * CLI execution entrypoint to generate and update PROGRESS.md.
  */
 export async function runProgressLogCli(options: ProgressLogOptions = {}): Promise<void> {
-  const row = await computeProgressLogRow(options);
-  const targetPath = options.progressLogPath ?? PROGRESS_LOG_PATH;
+  const cliOpts = parseProgressLogCliArgs();
+  const mergedOptions: ProgressLogOptions = {
+    ...cliOpts,
+    ...options,
+    judgeOptions: {
+      ...cliOpts.judgeOptions,
+      ...options.judgeOptions,
+    },
+  };
+  const row = await computeProgressLogRow(mergedOptions);
+  const targetPath = mergedOptions.progressLogPath ?? PROGRESS_LOG_PATH;
   await recordProgressLogEntry(row, targetPath);
   console.log(`Updated progress log at ${targetPath} for commit ${row.commit}`);
 }

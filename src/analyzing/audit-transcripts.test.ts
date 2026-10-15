@@ -232,6 +232,41 @@ describe('checkSplitViolations', () => {
     assert.strictEqual(violations.length, 1);
     assert.strictEqual(violations[0]?.reason, 'labels-directory');
   });
+
+  it('exempts tool calls on test files inside src/analyzing/ from mock repo split violations', () => {
+    const steps: TranscriptStep[] = [
+      {
+        step_index: 10,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          {
+            name: 'write_file',
+            args: {
+              Path: '/usr/local/google/home/paulirish/code/guidance/.worktrees/analyzer/src/analyzing/audit-transcripts.test.ts',
+              Content: "const repo = 'lighthouse-2020';",
+            },
+          },
+          {
+            name: 'read_file',
+            args: {
+              Path: 'src/analyzing/stats.test.ts',
+            },
+          },
+          {
+            name: 'edit_file',
+            args: {
+              Path: '/workspace/src/analyzing/judge.test.ts',
+              Target: 'foo',
+              Replacement: "'timeline-viewer'",
+            },
+          },
+        ],
+      },
+    ];
+
+    const violations = checkSplitViolations(steps, gradingRepos);
+    assert.strictEqual(violations.length, 0);
+  });
 });
 
 describe('summarizeToolFriction', () => {
