@@ -32,8 +32,13 @@ import {
   shouldScanFile,
 } from './file-filter.ts';
 import {
+  blankOutsideRange,
+  blankRanges,
   computeGuideHash,
   createInMemoryProject,
+  extractScriptBlocks,
+  extractStyleBlocks,
+  prepareHtmlForDomScan,
   scanFiles,
   scanJsSource,
 } from './index.ts';
@@ -666,4 +671,318 @@ void test('scanFiles and computeGuideHash: end-to-end integration', () => {
   assert.equal(finding.cardId.length, 12);
   assert.ok(finding.codeSnippet.includes('>    3 |   <input type="password" name="pwd">'));
   assert.ok(finding.astSlice);
+});
+
+void test('sfc-extractor: newline-preserving blanking and block extraction', async (t) => {
+  await t.test('blankOutsideRange preserves overall length, newlines, and target slice', () => {
+    const raw = 'line 1\nline 2: target\nline 3\n';
+    const start = raw.indexOf('line 2: target');
+    const end = start + 'line 2: target'.length;
+    const blanked = blankOutsideRange(raw, start, end);
+
+    assert.equal(blanked.length, raw.length);
+    assert.equal(blanked.split('\n').length, raw.split('\n').length);
+    assert.equal(blanked.slice(start, end), 'line 2: target');
+    assert.match(blanked.slice(0, start), /^\s+$/);
+    assert.match(blanked.slice(end), /^\s+$/);
+  });
+
+  await t.test('blankRanges preserves newlines across multiple blanked segments', () => {
+    const raw = 'aaa\nbbb\nccc\nddd\n';
+    const bbbStart = raw.indexOf('bbb');
+    const bbbEnd = bbbStart + 3;
+    const blanked = blankRanges(raw, [{ start: bbbStart, end: bbbEnd }]);
+
+    assert.equal(blanked.length, raw.length);
+    assert.equal(blanked.split('\n').length, raw.split('\n').length);
+    assert.equal(blanked.includes('aaa'), true);
+    assert.equal(blanked.includes('bbb'), false);
+    assert.equal(blanked.includes('ccc'), true);
+  });
+
+  await t.test('extractScriptBlocks extracts Vue, Svelte, and Astro scripts', () => {
+    const vue = '<script setup lang="ts">\nconst x = 1;\n</script>\n<template><div/></template>';
+    const vueBlocks = extractScriptBlocks('src/App.vue', vue);
+    assert.equal(vueBlocks.length, 1);
+    const vueBlock = vueBlocks[0];
+    assert.ok(vueBlock);
+    assert.equal(vueBlock.virtualPath, 'src/App.vue.ts');
+    assert.equal(vueBlock.blankedContent.includes('const x = 1;'), true);
+    assert.equal(vueBlock.blankedContent.includes('<script'), false);
+
+    const svelte = '<script>\nlet count = 0;\n</script>\n<p>{count}</p>';
+    const svelteBlocks = extractScriptBlocks('src/Counter.svelte', svelte);
+    assert.equal(svelteBlocks.length, 1);
+    const svelteBlock = svelteBlocks[0];
+    assert.ok(svelteBlock);
+    assert.equal(svelteBlock.virtualPath, 'src/Counter.svelte.js');
+    assert.equal(svelteBlock.blankedContent.includes('let count = 0;'), true);
+
+    const astro = '---\nconst title = "Astro";\n---\n<h1>{title}</h1>';
+    const astroBlocks = extractScriptBlocks('src/pages/index.astro', astro);
+    assert.equal(astroBlocks.length, 1);
+    const astroBlock = astroBlocks[0];
+    assert.ok(astroBlock);
+    assert.equal(astroBlock.virtualPath, 'src/pages/index.astro.ts');
+    assert.equal(astroBlock.blankedContent.includes('const title = "Astro";'), true);
+  });
+
+  await t.test('prepareHtmlForDomScan unwraps Vue template and blanks scripts and styles', () => {
+    const vue =
+      '<script>\nconst a = 1;\n</script>\n<template>\n  <button>Click</button>\n</template>\n<style>\nbutton { color: red; }\n</style>';
+    const prepared = prepareHtmlForDomScan('App.vue', vue);
+
+    assert.equal(prepared.length, vue.length);
+    assert.equal(prepared.split('\n').length, vue.split('\n').length);
+    assert.equal(prepared.includes('<script>'), false);
+    assert.equal(prepared.includes('<style>'), false);
+    assert.equal(prepared.includes('<template>'), false);
+    assert.equal(prepared.includes('</template>'), false);
+    assert.equal(prepared.includes('<button>Click</button>'), true);
+  });
+
+  await t.test('extractStyleBlocks extracts <style> and Lit css tagged templates', () => {
+    const htmlWithStyle = '<div></div>\n<style>\n.btn { color: blue; }\n</style>';
+    const styleBlocks = extractStyleBlocks('index.html', htmlWithStyle);
+    assert.equal(styleBlocks.length, 1);
+    const styleBlock = styleBlocks[0];
+    assert.ok(styleBlock);
+    assert.equal(styleBlock.includes('.btn { color: blue; }'), true);
+
+    const litTs =
+      'import { css } from "lit";\nconst s = css`\n  .card { color: ${"red"}; }\n`;';
+    const litBlocks = extractStyleBlocks('card.ts', litTs);
+    assert.equal(litBlocks.length, 1);
+    const litBlock = litBlocks[0];
+    assert.ok(litBlock);
+    assert.equal(litBlock.includes('.card { color:'), true);
+    assert.equal(litBlock.includes('${"red"}'), false);
+  });
+});
+
+void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Lit CSS', async (t) => {
+  const domRule: AnalyzerRule = {
+    id: 'test-dom-dialog',
+    guideId: 'dialog-guide',
+    guideHash: '123456789012',
+    summary: 'Find dialog elements',
+    phase2Rubric: { keepWhen: ['dialog tag'], dropWhen: [] },
+    matcher: {
+      kind: 'dom',
+      selector: 'dialog',
+      fastTokens: ['<dialog'],
+      matchElement: () => ({ message: 'found dialog' }),
+    },
+  };
+
+  const jsRule: AnalyzerRule = {
+    id: 'test-js-temporal',
+    guideId: 'temporal-guide',
+    guideHash: '123456789012',
+    summary: 'Find Temporal usage',
+    phase2Rubric: { keepWhen: ['Temporal identifier'], dropWhen: [] },
+    matcher: {
+      kind: 'js',
+      fastTokens: ['Temporal'],
+      matchFile: (sourceFile) => {
+        const matches = [];
+        for (const node of sourceFile.getDescendants()) {
+          if (node.getText() === 'Temporal') {
+            matches.push({
+              line: node.getStartLineNumber(),
+              column: node.getStart() - node.getStartLinePos() + 1,
+              message: 'found Temporal usage',
+            });
+          }
+        }
+        return matches;
+      },
+    },
+  };
+
+  const cssRule: AnalyzerRule = {
+    id: 'test-css-anchor',
+    guideId: 'anchor-guide',
+    guideHash: '123456789012',
+    summary: 'Find anchor-name declarations',
+    phase2Rubric: { keepWhen: ['anchor-name property'], dropWhen: [] },
+    matcher: {
+      kind: 'css',
+      fastTokens: ['anchor-name'],
+      matchRule: (styleRule) => {
+        if (styleRule.hasProperty('anchor-name')) {
+          return { message: `found anchor-name in ${styleRule.selectorText}` };
+        }
+        return null;
+      },
+    },
+  };
+
+  const rules = [domRule, jsRule, cssRule];
+
+  await t.test('scans .vue SFC hitting DOM, JS, and CSS rules with exact line numbers', () => {
+    const vueContent = [
+      '<script setup lang="ts">',
+      "import { ref } from 'vue';",
+      'const count = ref(0);',
+      'const now = Temporal.Now.instant();',
+      '</script>',
+      '',
+      '<template>',
+      '  <div class="container">',
+      '    <dialog open>Hello</dialog>',
+      '  </div>',
+      '</template>',
+      '',
+      '<style scoped>',
+      '.container {',
+      '  anchor-name: --my-anchor;',
+      '}',
+      '</style>',
+    ].join('\n');
+
+    const findings = scanFiles(new Map([['src/App.vue', vueContent]]), rules);
+    assert.equal(findings.length, 3);
+
+    const domFinding = findings.find((f) => f.ruleId === 'test-dom-dialog');
+    assert.ok(domFinding);
+    assert.equal(domFinding.file, 'src/App.vue');
+    assert.equal(domFinding.line, 9);
+    assert.ok(domFinding.codeSnippet.includes('>    9 |     <dialog open>Hello</dialog>'));
+
+    const jsFinding = findings.find((f) => f.ruleId === 'test-js-temporal');
+    assert.ok(jsFinding);
+    assert.equal(jsFinding.file, 'src/App.vue');
+    assert.equal(jsFinding.line, 4);
+    assert.ok(jsFinding.codeSnippet.includes('>    4 | const now = Temporal.Now.instant();'));
+
+    const cssFinding = findings.find((f) => f.ruleId === 'test-css-anchor');
+    assert.ok(cssFinding);
+    assert.equal(cssFinding.file, 'src/App.vue');
+    assert.equal(cssFinding.line, 14);
+    assert.ok(cssFinding.codeSnippet.includes('>   14 | .container {'));
+  });
+
+  await t.test('scans .svelte and .astro multi-block files with exact line numbers', () => {
+    const svelteContent = [
+      '<script>',
+      '  const now = Temporal.Now.instant();',
+      '</script>',
+      '',
+      '<dialog open>Svelte Dialog</dialog>',
+      '',
+      '<style>',
+      '  dialog {',
+      '    anchor-name: --svelte-anchor;',
+      '  }',
+      '</style>',
+    ].join('\n');
+
+    const svelteFindings = scanFiles(new Map([['src/App.svelte', svelteContent]]), rules);
+    assert.equal(svelteFindings.length, 3);
+
+    const svelteJs = svelteFindings.find((f) => f.ruleId === 'test-js-temporal');
+    assert.ok(svelteJs);
+    assert.equal(svelteJs.line, 2);
+
+    const svelteDom = svelteFindings.find((f) => f.ruleId === 'test-dom-dialog');
+    assert.ok(svelteDom);
+    assert.equal(svelteDom.line, 5);
+
+    const svelteCss = svelteFindings.find((f) => f.ruleId === 'test-css-anchor');
+    assert.ok(svelteCss);
+    assert.equal(svelteCss.line, 8);
+
+    const astroContent = [
+      '---',
+      'const now = Temporal.Now.instant();',
+      '---',
+      '',
+      '<dialog open>Astro Dialog</dialog>',
+      '',
+      '<style>',
+      '  dialog {',
+      '    anchor-name: --astro-anchor;',
+      '  }',
+      '</style>',
+    ].join('\n');
+
+    const astroFindings = scanFiles(new Map([['src/pages/index.astro', astroContent]]), rules);
+    assert.equal(astroFindings.length, 3);
+
+    const astroJs = astroFindings.find((f) => f.ruleId === 'test-js-temporal');
+    assert.ok(astroJs);
+    assert.equal(astroJs.line, 2);
+
+    const astroDom = astroFindings.find((f) => f.ruleId === 'test-dom-dialog');
+    assert.ok(astroDom);
+    assert.equal(astroDom.line, 5);
+
+    const astroCss = astroFindings.find((f) => f.ruleId === 'test-css-anchor');
+    assert.ok(astroCss);
+    assert.equal(astroCss.line, 8);
+  });
+
+  await t.test('scans .html file with inline <script> and <style> with exact line numbers', () => {
+    const htmlContent = [
+      '<!DOCTYPE html>',
+      '<html>',
+      '<head>',
+      '  <style>',
+      '    .banner {',
+      '      anchor-name: --top-banner;',
+      '    }',
+      '  </style>',
+      '  <script>',
+      '    const now = Temporal.Now.instant();',
+      '  </script>',
+      '</head>',
+      '<body>',
+      '  <dialog open>Inline HTML Dialog</dialog>',
+      '</body>',
+      '</html>',
+    ].join('\n');
+
+    const htmlFindings = scanFiles(new Map([['public/index.html', htmlContent]]), rules);
+    assert.equal(htmlFindings.length, 3);
+
+    const htmlCss = htmlFindings.find((f) => f.ruleId === 'test-css-anchor');
+    assert.ok(htmlCss);
+    assert.equal(htmlCss.line, 5);
+
+    const htmlJs = htmlFindings.find((f) => f.ruleId === 'test-js-temporal');
+    assert.ok(htmlJs);
+    assert.equal(htmlJs.line, 10);
+
+    const htmlDom = htmlFindings.find((f) => f.ruleId === 'test-dom-dialog');
+    assert.ok(htmlDom);
+    assert.equal(htmlDom.line, 14);
+  });
+
+  await t.test('scans Lit css tagged template literals in .ts file with exact line numbers', () => {
+    const litTsContent = [
+      "import { LitElement, html, css } from 'lit';",
+      '',
+      'export class MyElement extends LitElement {',
+      '  static styles = css`',
+      '    :host {',
+      '      display: block;',
+      '    }',
+      '    .tooltip {',
+      '      anchor-name: --lit-tooltip;',
+      '    }',
+      '  `;',
+      '}',
+    ].join('\n');
+
+    const litFindings = scanFiles(new Map([['src/components/my-element.ts', litTsContent]]), rules);
+    assert.equal(litFindings.length, 1);
+
+    const litCss = litFindings[0];
+    assert.ok(litCss);
+    assert.equal(litCss.ruleId, 'test-css-anchor');
+    assert.equal(litCss.file, 'src/components/my-element.ts');
+    assert.equal(litCss.line, 8);
+    assert.ok(litCss.codeSnippet.includes('>    8 |     .tooltip {'));
+  });
 });

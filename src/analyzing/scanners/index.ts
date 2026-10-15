@@ -21,6 +21,12 @@ import {
   type FileFilterOptions,
 } from './file-filter.ts';
 import { createInMemoryProject, scanJsSource } from './js-scanner.ts';
+import {
+  extractScriptBlocks,
+  extractStyleBlocks,
+  prepareHtmlForDomScan,
+  type ScriptBlock,
+} from './sfc-extractor.ts';
 
 export * from './ast-helpers.ts';
 export * from './context-slicer.ts';
@@ -29,6 +35,7 @@ export * from './dependency-scanner.ts';
 export * from './dom-scanner.ts';
 export * from './file-filter.ts';
 export * from './js-scanner.ts';
+export * from './sfc-extractor.ts';
 
 export const GUIDE_HASH_HEX_LENGTH = 12;
 
@@ -147,8 +154,10 @@ function processHtmlFile(
   rules: readonly (AnalyzerRule & { matcher: DomRuleMatcher })[],
 ): AnalyzerFinding[] {
   const findings: AnalyzerFinding[] = [];
+  const preparedHtml = prepareHtmlForDomScan(ctx.relPath, ctx.content);
+
   for (const rule of rules) {
-    const matches = scanHtml(ctx.relPath, ctx.content, [rule.matcher]);
+    const matches = scanHtml(ctx.relPath, preparedHtml, [rule.matcher]);
     for (const match of matches) {
       const { codeSnippet, astSlice } = sliceStructuredContext(
         ctx.relPath,
@@ -241,6 +250,145 @@ function processJsFile(
   return findings;
 }
 
+function processScriptBlock(
+  ctx: FileContext,
+  block: ScriptBlock,
+  rules: readonly (AnalyzerRule & { matcher: JsRuleMatcher })[],
+  project: Project,
+): AnalyzerFinding[] {
+  const findings: AnalyzerFinding[] = [];
+  for (const rule of rules) {
+    const { matches, sourceFile } = scanJsSource(
+      block.virtualPath,
+      block.blankedContent,
+      [rule.matcher],
+      project,
+    );
+    try {
+      for (const match of matches) {
+        const { codeSnippet, astSlice } = sliceStructuredContext(
+          ctx.relPath,
+          ctx.content,
+          match.line,
+          sourceFile,
+        );
+        findings.push(
+          createFinding({
+            rule,
+            ctx,
+            line: match.line,
+            message: match.message,
+            codeSnippet,
+            astSlice,
+          }),
+        );
+      }
+    } finally {
+      if (sourceFile) {
+        project.removeSourceFile(sourceFile);
+      }
+    }
+  }
+  return findings;
+}
+
+function processStyleBlock(
+  ctx: FileContext,
+  blankedCss: string,
+  rules: readonly (AnalyzerRule & { matcher: CssRuleMatcher })[],
+): AnalyzerFinding[] {
+  const findings: AnalyzerFinding[] = [];
+  for (const rule of rules) {
+    const matches = scanCss(ctx.relPath, blankedCss, [rule.matcher]);
+    for (const match of matches) {
+      const { codeSnippet, astSlice } = sliceStructuredContext(
+        ctx.relPath,
+        ctx.content,
+        match.line,
+      );
+      findings.push(
+        createFinding({
+          rule,
+          ctx,
+          line: match.line,
+          message: match.message,
+          codeSnippet,
+          astSlice,
+        }),
+      );
+    }
+  }
+  return findings;
+}
+
+function processMultiBlockFile(
+  ctx: FileContext,
+  rules: {
+    readonly dom: readonly (AnalyzerRule & { matcher: DomRuleMatcher })[];
+    readonly js: readonly (AnalyzerRule & { matcher: JsRuleMatcher })[];
+    readonly css: readonly (AnalyzerRule & { matcher: CssRuleMatcher })[];
+  },
+  project: Project,
+): AnalyzerFinding[] {
+  const findings: AnalyzerFinding[] = [];
+
+  if (rules.dom.length > 0) {
+    findings.push(...processHtmlFile(ctx, rules.dom));
+  }
+
+  if (rules.js.length > 0) {
+    const scriptBlocks = extractScriptBlocks(ctx.relPath, ctx.content);
+    for (const block of scriptBlocks) {
+      findings.push(...processScriptBlock(ctx, block, rules.js, project));
+    }
+  }
+
+  if (rules.css.length > 0) {
+    const styleBlocks = extractStyleBlocks(ctx.relPath, ctx.content);
+    for (const blankedCss of styleBlocks) {
+      findings.push(...processStyleBlock(ctx, blankedCss, rules.css));
+    }
+  }
+
+  return findings;
+}
+
+function processJavaScriptFile(
+  ctx: FileContext,
+  rules: {
+    readonly dom: readonly (AnalyzerRule & { matcher: DomRuleMatcher })[];
+    readonly js: readonly (AnalyzerRule & { matcher: JsRuleMatcher })[];
+    readonly css: readonly (AnalyzerRule & { matcher: CssRuleMatcher })[];
+  },
+  project: Project,
+): AnalyzerFinding[] {
+  const findings: AnalyzerFinding[] = [];
+  const lowerPath = ctx.relPath.toLowerCase();
+  const isJsxLike = lowerPath.endsWith('.jsx') || lowerPath.endsWith('.tsx');
+
+  if (isJsxLike && rules.dom.length > 0) {
+    const sourceFile = project.createSourceFile(ctx.relPath, ctx.content, { overwrite: true });
+    try {
+      findings.push(...processJsxFile(ctx, sourceFile, rules.dom));
+    } finally {
+      project.removeSourceFile(sourceFile);
+    }
+  }
+
+  if (rules.js.length > 0) {
+    findings.push(...processJsFile(ctx, rules.js, project));
+  }
+
+  if (rules.css.length > 0 && ctx.content.includes('css`')) {
+    const litStyleBlocks = extractStyleBlocks(ctx.relPath, ctx.content);
+    for (const blankedCss of litStyleBlocks) {
+      findings.push(...processStyleBlock(ctx, blankedCss, rules.css));
+    }
+  }
+
+  return findings;
+}
+
 /**
  * Scans an in-memory map of files (relPath -> content) against a suite of AnalyzerRules.
  */
@@ -269,6 +417,7 @@ export function scanFiles(
       r.matcher.kind === 'dependency',
   );
 
+  const ruleBundle = { dom: domRules, js: jsRules, css: cssRules };
   const findings: AnalyzerFinding[] = [];
   const project = createInMemoryProject();
 
@@ -290,25 +439,17 @@ export function scanFiles(
       continue;
     }
 
-    const isHtml =
+    const isMultiBlock =
       lowerPath.endsWith('.html') ||
       lowerPath.endsWith('.htm') ||
       lowerPath.endsWith('.php') ||
       lowerPath.endsWith('.vue') ||
-      lowerPath.endsWith('.svelte');
-    if (isHtml && domRules.length > 0) {
-      findings.push(...processHtmlFile(ctx, domRules));
-      continue;
-    }
+      lowerPath.endsWith('.svelte') ||
+      lowerPath.endsWith('.astro');
 
-    const isJsxLike = lowerPath.endsWith('.jsx') || lowerPath.endsWith('.tsx');
-    if (isJsxLike && domRules.length > 0) {
-      const sourceFile = project.createSourceFile(relPath, content, { overwrite: true });
-      try {
-        findings.push(...processJsxFile(ctx, sourceFile, domRules));
-      } finally {
-        project.removeSourceFile(sourceFile);
-      }
+    if (isMultiBlock) {
+      findings.push(...processMultiBlockFile(ctx, ruleBundle, project));
+      continue;
     }
 
     const isJsLike =
@@ -316,9 +457,13 @@ export function scanFiles(
       lowerPath.endsWith('.mjs') ||
       lowerPath.endsWith('.cjs') ||
       lowerPath.endsWith('.ts') ||
-      isJsxLike;
-    if (isJsLike && jsRules.length > 0) {
-      findings.push(...processJsFile(ctx, jsRules, project));
+      lowerPath.endsWith('.mts') ||
+      lowerPath.endsWith('.cts') ||
+      lowerPath.endsWith('.jsx') ||
+      lowerPath.endsWith('.tsx');
+
+    if (isJsLike) {
+      findings.push(...processJavaScriptFile(ctx, ruleBundle, project));
     }
   }
 
@@ -343,6 +488,9 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
   } catch {
     return;
   }
+
+  // Sort entries alphabetically for deterministic traversal across environments (S5)
+  entries.sort((a, b) => a.name.localeCompare(b.name));
 
   for (const entry of entries) {
     if (state.fileMap.size >= state.maxFiles) {
@@ -381,7 +529,7 @@ export async function scanRepoFiles(
   options?: RepoScanOptions,
 ): Promise<AnalyzerFinding[]> {
   const fileMap = new Map<string, string>();
-  const maxFiles = options?.maxFiles ?? 2000;
+  const maxFiles = options?.maxFiles ?? 5000;
 
   await walkDirectory(repoDirPath, {
     repoDirPath,
