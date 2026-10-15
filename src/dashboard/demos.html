@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guide Demos Gallery - Modern Web Guidance</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="landing.css">
+  <link rel="stylesheet" href="dashboard-layout.css">
+  <link rel="stylesheet" href="demos.css">
+</head>
+<body>
+  <div class="demos-container-wrapper">
+    <!-- Header -->
+    <header class="demos-header-content">
+      <div class="demos-title-area">
+        <h1>Guide Demos Gallery</h1>
+        <div class="demos-subtitle">
+          Interactive demos from <span id="total-demos-count">...</span> modern web guidance guides
+        </div>
+      </div>
+      <div class="demos-nav-actions">
+        <a href="./" class="secondary-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+          ← Back to Evals
+        </a>
+      </div>
+    </header>
+
+    <!-- Notice Banner -->
+    <div class="demos-notice-banner">
+      <span class="notice-icon">💡</span>
+      <div class="notice-text">
+        <strong>Tip:</strong> Demos below run in isolated, sandboxed frames with lazy loading on scroll. If a demo relies on top-layer popovers, native dialog backdrops, full-screen, or special browser permissions, click the <strong>Open in new tab ↗</strong> action on any card to view it directly in full viewport.
+      </div>
+    </div>
+
+    <!-- Toolbar: Search, Filters, View Modes -->
+    <div class="demos-toolbar">
+      <div class="demos-search-box">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+        </svg>
+        <input type="text" id="demo-search-input" placeholder="Filter by title, category, web feature ID, or description..." autocomplete="off">
+        <button id="clear-search-btn" class="clear-btn" title="Clear search">✕</button>
+      </div>
+
+      <div class="demos-toolbar-controls">
+        <label class="toggle-label" title="Automatically load demo iframes as you scroll them into view">
+          <input type="checkbox" id="autoload-toggle" checked>
+          <span>Auto-load on scroll</span>
+        </label>
+        <span id="filtered-count-badge" class="count-badge">Loading demos...</span>
+      </div>
+    </div>
+
+    <!-- Category Pills Bar -->
+    <nav class="category-pills-bar" id="category-pills-container" aria-label="Filter by Category">
+      <!-- Injected by demos.js -->
+    </nav>
+
+    <!-- Demos Content Container -->
+    <main id="demos-container">
+      <!-- Injected by demos.js -->
+    </main>
+
+    <!-- Empty State -->
+    <div id="no-results" class="empty-state hidden">
+      <p>No demos matched your filter criteria.</p>
+      <button id="reset-filter-btn" class="secondary-btn" style="margin-top: 12px; cursor: pointer;">Reset Filters</button>
+    </div>
+  </div>
+
+  <script src="demos.gen.js"></script>
+  <script type="module" src="demos.js"></script>
+</body>
+</html>
