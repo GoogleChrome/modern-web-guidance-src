@@ -306,12 +306,16 @@ Each button spans all three columns and inherits the parent's grid via `subgrid`
 
 ## Progressive enhancement and fallbacks
 
-{{ FEATURE_FALLBACKS("focusgroup") }}
+### Fallbacks & browser support for focusgroup
 
-Keep `focusgroup="menu nomemory"` in the markup. If `'focusgroup' in HTMLElement.prototype` is false, install Up, Down, Home, and End navigation and set `role="menu"` on each menu container and `role="menuitem"` on its command buttons. Do not install that fallback when native focusgroup is present. Left, Right, preview, open, and close are author script either way.
+{{ BASELINE_STATUS("focusgroup") }}
+
+{# Maintainer note: Use a small capture-phase fallback instead of @microsoft/focusgroup-polyfill, which skips elements inside closed [popover] ancestors, retains references to detached DOM nodes, and misses preventDefault() on arrow keys in older Safari viewports. #}
+
+Keep `focusgroup="menu nomemory"` in the markup. If `Object.hasOwn(HTMLElement.prototype, 'focusGroup')` is false, install Up, Down, Home, and End navigation and set `role="menu"` on each menu container and `role="menuitem"` on its command buttons. Do not install that fallback when native focusgroup is present. Left, Right, preview, open, and close are author script either way.
 
 ```js
-if (!('focusgroup' in HTMLElement.prototype)) {
+if (!Object.hasOwn(HTMLElement.prototype, 'focusGroup')) {
   document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
     group.setAttribute('role', 'menu');
     group.querySelectorAll(':scope > button').forEach(item => {
@@ -321,13 +325,13 @@ if (!('focusgroup' in HTMLElement.prototype)) {
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
       const items = [...group.querySelectorAll(':scope > button')]
         .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
-      if (!items.length) return;
       const current = items.indexOf(document.activeElement);
+      if (current < 0) return;
       const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 :
         (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
       event.preventDefault();
       event.stopImmediatePropagation();
-      items[next < 0 ? 0 : next].focus({ preventScroll: true });
+      items[next].focus({ preventScroll: true });
     }, true);
   });
 }
