@@ -1,6 +1,53 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
 declare const process: any;
+
+const targetFile = path.resolve(process.env.TARGET_FILE);
+const targetDir = path.dirname(targetFile);
+const targetFileName = path.basename(targetFile);
+const targetUrl = `http://localhost/${targetFileName}`;
+
+function getAllScriptContent(inlineScripts: string[]): string {
+  const parts = [...inlineScripts];
+  if (targetFileName === 'demo.html' || targetFileName === 'negative-demo.html') {
+    const html = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, 'utf8') : '';
+    for (const m of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)) {
+      const src = m[1];
+      if (/^https?:\/\//i.test(src)) continue;
+      const localPath = path.resolve(targetDir, src.replace(/^\/+/, ''));
+      if (localPath.startsWith(targetDir + path.sep) && fs.existsSync(localPath) && fs.statSync(localPath).isFile()) {
+        parts.push(fs.readFileSync(localPath, 'utf8'));
+      }
+    }
+    return parts.join('\n');
+  }
+  const excludedDirs = new Set(['node_modules', 'vendor', 'test', 'tests', 'grade-report', 'test-results', 'dist', '.git']);
+  const walk = (dir: string) => {
+    try {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.isDirectory()) {
+          if (!excludedDirs.has(entry.name)) walk(path.join(dir, entry.name));
+        } else if (
+          entry.isFile() &&
+          (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
+          entry.name !== 'grade.mjs' &&
+          entry.name !== 'run.mjs' &&
+          !entry.name.includes('.config.') &&
+          !entry.name.includes('.test.') &&
+          !entry.name.includes('.spec.')
+        ) {
+          parts.push(fs.readFileSync(path.join(dir, entry.name), 'utf8'));
+        }
+      }
+    } catch {
+      // ignore read errors
+    }
+  };
+  walk(targetDir);
+  return parts.join('\n');
+}
 
 // Helper mock class for Temporal.Duration that we inject before page scripts run.
 // It matches Temporal.Duration API and lets us spy on constructor, methods, and property access/mutation.
@@ -154,6 +201,18 @@ const defineMockTemporal = () => {
 };
 
 test.describe('Format Human-Readable Durations Requirements', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('http://localhost/**', async (route) => {
+      const reqPath = decodeURIComponent(new URL(route.request().url()).pathname);
+      const relPath = reqPath === '/' ? targetFileName : reqPath.replace(/^\/+/, '');
+      const resolved = path.resolve(targetDir, relPath);
+      if (resolved.startsWith(targetDir + path.sep) && fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+        await route.fulfill({ path: resolved });
+      } else {
+        await route.continue();
+      }
+    });
+  });
 
   test('Feature detects Temporal and loads polyfill conditionally', async ({ page }) => {
     await page.addInitScript(defineMockTemporal);
@@ -164,7 +223,7 @@ test.describe('Format Human-Readable Durations Requirements', () => {
       await route.continue();
     });
 
-    await page.goto(`file://${process.env.TARGET_FILE}`);
+    await page.goto(targetUrl);
     await page.waitForTimeout(500);
 
     expect(polyfillRequested).toBe(false);
@@ -173,7 +232,7 @@ test.describe('Format Human-Readable Durations Requirements', () => {
   test('Uses Temporal.Duration.from to create duration objects', async ({ page }) => {
     await page.addInitScript(defineMockTemporal);
 
-    await page.goto(`file://${process.env.TARGET_FILE}`);
+    await page.goto(targetUrl);
     await page.waitForTimeout(500);
 
     const minutesInput = page.locator('#minutesInput');
@@ -187,7 +246,7 @@ test.describe('Format Human-Readable Durations Requirements', () => {
   test('Uses the .round() method with largestUnit option to balance', async ({ page }) => {
     await page.addInitScript(defineMockTemporal);
 
-    await page.goto(`file://${process.env.TARGET_FILE}`);
+    await page.goto(targetUrl);
     await page.waitForTimeout(500);
 
     const radioHours = page.locator('input[name="largestUnit"][value="hours"]');
@@ -212,11 +271,13 @@ test.describe('Format Human-Readable Durations Requirements', () => {
           toString: () => 'PT1H30M'
         };
       };
+      function MockDurationClass(...args: any[]) {
+        return mockDuration({ hours: args[4], minutes: args[5], seconds: args[6] });
+      }
+      (MockDurationClass as any).from = (obj: any) => mockDuration(obj);
       Object.defineProperty(globalThis, 'Temporal', {
         value: {
-          Duration: {
-            from: (obj: any) => mockDuration(obj)
-          }
+          Duration: MockDurationClass
         },
         writable: false,
         configurable: true
@@ -238,7 +299,7 @@ test.describe('Format Human-Readable Durations Requirements', () => {
       });
     });
 
-    await page.goto(`file://${process.env.TARGET_FILE}`);
+    await page.goto(targetUrl);
     await page.waitForTimeout(500);
 
     const minutesInput = page.locator('#minutesInput');
@@ -279,18 +340,20 @@ test.describe('Format Human-Readable Durations Requirements', () => {
           toString: () => 'PT1H30M'
         };
       };
+      function MockDurationClass(...args: any[]) {
+        return mockDuration({ hours: args[4], minutes: args[5], seconds: args[6] });
+      }
+      (MockDurationClass as any).from = (obj: any) => mockDuration(obj);
       Object.defineProperty(globalThis, 'Temporal', {
         value: {
-          Duration: {
-            from: (obj: any) => mockDuration(obj)
-          }
+          Duration: MockDurationClass
         },
         writable: false,
         configurable: true
       });
     });
 
-    await page.goto(`file://${process.env.TARGET_FILE}`);
+    await page.goto(targetUrl);
     await page.waitForTimeout(500);
 
     const accessedProps = await page.evaluate(() => (window as any).__accessedProperties);
@@ -298,7 +361,7 @@ test.describe('Format Human-Readable Durations Requirements', () => {
   });
 
   test('Does not use the ISO 8601 toString format for user-facing text', async ({ page }) => {
-    await page.goto(`file://${process.env.TARGET_FILE}`);
+    await page.goto(targetUrl);
     await page.waitForTimeout(500);
 
     const hoursInput = page.locator('#hoursInput');
@@ -312,25 +375,30 @@ test.describe('Format Human-Readable Durations Requirements', () => {
   });
 
   test('Does not attempt to modify Temporal.Duration instances directly', async ({ page }) => {
-    await page.goto(`file://${process.env.TARGET_FILE}`);
+    await page.goto(targetUrl);
     await page.waitForTimeout(500);
 
     const scripts = await page.locator('script').allTextContents();
-    const combinedScripts = scripts.join('\n');
+    const combinedScripts = getAllScriptContent(scripts);
     const hasMutationAssignments = /\.\s*(hours|minutes|seconds)\s*=/.test(combinedScripts);
 
     expect(hasMutationAssignments).toBe(false);
   });
 
   test('Does not use legacy manual calculations for duration balancing when Temporal is available', async ({ page }) => {
-    await page.goto(`file://${process.env.TARGET_FILE}`);
+    await page.goto(targetUrl);
     await page.waitForTimeout(500);
 
     const scripts = await page.locator('script').allTextContents();
-    const combinedScripts = scripts.join('\n');
-    const hasManualBalancingMath = /\/\s*3600|%\s*3600|\/\s*60|%\s*60/.test(combinedScripts);
+    const combinedScripts = getAllScriptContent(scripts);
+    const strippedFallbackScripts = combinedScripts.replace(
+      /if\s*\([^)]*Temporal[^)]*\)\s*\{[^}]*Duration\.from[\s\S]*?\.round\s*\([^}]*\}\s*else\s*\{[^}]*\}/g,
+      (match) => match.replace(/\belse\s*\{[^}]*\}/, '')
+    );
+    const hasManualBalancingMath = /\/\s*3600|%\s*3600|\/\s*60|%\s*60/.test(strippedFallbackScripts);
 
     expect(hasManualBalancingMath).toBe(false);
   });
 
 });
+
