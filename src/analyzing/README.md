@@ -25,6 +25,8 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `[dir]` | Positional | Directory to analyze (defaults to current working directory). |
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
+| `--tier=1`, `--proven-only` | Flag | Restrict analysis strictly to the 8 Tier 1 (`proven-high-n`, $n \ge 8$) rules. By default, the CLI runs the 25 qualified rules (`TIER_1_RULES` + `TIER_2_RULES`, `99.2%` held-out precision). |
+| `--all-rules`, `--experimental` | Flag | Include the 7 Tier 3 experimental/unqualified rules (`ALL_RULES`, 32 guides total). |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
@@ -33,23 +35,23 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 Modern Web Guidance Analyzer: /workspace/my-app
 Found 3 modernization opportunities across 2 guides:
 
-* autofill-sign-in-form (2 findings)
+* autofill-sign-in-form [tier-1] (2 findings)
   Summary: Use standard autocomplete attributes on username and password inputs instead of custom credentials handling.
   Retrieve: npx -y modern-web-guidance@latest retrieve "autofill-sign-in-form"
   Findings:
     - src/components/Login.tsx:42: Missing autocomplete="username" or autocomplete="current-password" on credential input
     - src/views/Register.vue:18: Input with type="password" lacks autocomplete attribute
 
-* dialog-element (1 finding)
+* dialog [tier-1] (1 finding)
   Summary: Replace custom modal div overlays and keydown trap handlers with native HTML <dialog>.
-  Retrieve: npx -y modern-web-guidance@latest retrieve "dialog-element"
+  Retrieve: npx -y modern-web-guidance@latest retrieve "dialog"
   Findings:
     - src/components/Modal.tsx:75: Custom backdrop and escape listener detected; replace with native <dialog>
 ```
 
 ### Structured JSON Output (`--json`)
 
-Coding agents receive structured JSON containing exact file coordinates, message descriptions, and copy-paste retrieval commands:
+Coding agents receive structured JSON containing exact file coordinates, confidence tiers, message descriptions, and copy-paste retrieval commands:
 
 ```json
 {
@@ -58,6 +60,7 @@ Coding agents receive structured JSON containing exact file coordinates, message
   "guides": [
     {
       "guideId": "autofill-sign-in-form",
+      "tier": "tier-1-proven",
       "summary": "Use standard autocomplete attributes on username and password inputs.",
       "retrieveCommand": "npx -y modern-web-guidance@latest retrieve \"autofill-sign-in-form\"",
       "count": 1,
@@ -192,82 +195,94 @@ export const autofillSignInFormRule: AnalyzerRule = {
 };
 ```
 
-### Registered Detectable Guides (32 Guides)
+### Registered Detectable Guides (32 Guides: 25 Qualified + 7 Experimental)
 
-| # | Guide ID | Guide Hash | Modern Platform Target |
-| :- | :--- | :--- | :--- |
-| 1 | `accessible-error-announcement` | `b89c17bead92` | `aria-live="polite"` / `role="alert"` for error announcements |
-| 2 | `adapt-scrollbar-to-contrast-preferences` | `55a05ba9d96e` | `scrollbar-color`, `scrollbar-width`, and `prefers-contrast` |
-| 3 | `animate-element-entry-exit` | `21cc4d2bf21c` | `@starting-style` and `transition-behavior: allow-discrete` |
-| 4 | `animate-to-intrinsic-sizes` | `290b14ca7ee4` | `calc-size()` and `interpolate-size: allow-keywords` |
-| 5 | `autofill-address-form` | `49ee6117c8e4` | Standard `autocomplete` attributes on address form inputs |
-| 6 | `autofill-sign-in-form` | `93a1df14cafc` | Standard `autocomplete="username"` and `autocomplete="current-password"` |
-| 7 | `brand-consistent-forms` | `a040352d2507` | CSS `accent-color` for custom form controls |
-| 8 | `branded-select-styling` | `c332c3c67d49` | Customizable native `<select>` with `appearance: base-select` |
-| 9 | `break-up-long-tasks` | `18330b20e496` | `scheduler.yield()` and `scheduler.postTask()` |
-| 10 | `calculate-event-differentials` | `ee7112b330c4` | Temporal API (`Temporal.Duration` / `Temporal.Instant`) |
-| 11 | `checkbox` | `1b9c35459943` | CSS `accent-color` and `appearance: none` for styled checkboxes |
-| 12 | `child-state-based-styling` | `70dc57b74e35` | CSS `:has()` relational pseudo-class |
-| 13 | `coordinate-global-events` | `253dec2c89a2` | `Temporal.ZonedDateTime` for global timezone events |
-| 14 | `copy-button` | `d92b7f9038d3` | Native `navigator.clipboard.writeText()` |
-| 15 | `css-layout` | `b2ddd28dc261` | Standard CSS `aspect-ratio` property |
-| 16 | `customize-scrollbar-color-and-thickness` | `6797d5c85622` | Standard CSS `scrollbar-color` and `scrollbar-width` |
-| 17 | `dark-mode` | `796876897c2c` | CSS `color-scheme: light dark` and `light-dark()` color functions |
-| 18 | `declarative-dialog-popover-control` | `87f6a7ad8849` | Declarative `commandfor` / `command` and `popovertarget` |
-| 19 | `defer-work-until-scroll-ends` | `ee7104add98e` | Native `scrollend` event listener |
-| 20 | `detect-initial-visibility-state` | `b881da0b6ea2` | Standard `document.visibilityState` and `document.hidden` |
-| 21 | `dialog` | `95fc47d3f348` | Native HTML `<dialog>` element and `showModal()` |
-| 22 | `form-fields-automatically-fit-contents` | `54a6341c988f` | CSS `field-sizing: content` |
-| 23 | `ime-safe-enter-submit` | `bd5e1488af32` | `e.isComposing` guard on Enter keydown handlers |
-| 24 | `individual-transform-properties` | `42af807594e8` | Individual transform properties (`rotate`, `scale`, `translate`) |
-| 25 | `manage-recurring-intervals` | `70de814bc3cc` | Temporal API (`Temporal.PlainDate.add` / `Temporal.Duration`) |
-| 26 | `prevent-page-scroll-under-modal-dialog` | `7d10dd62dcbc` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
-| 27 | `resilient-context-menus-and-nested-dropdowns` | `9152c0b12710` | Native `popover` and CSS Anchor Positioning |
-| 28 | `schedule-tasks-by-priority` | `69f3bb531093` | Prioritized task scheduling via `scheduler.postTask()` |
-| 29 | `scrollspy` | `fffee90dc52d` | CSS `scroll-target-group: auto` and `:target-current` |
-| 30 | `shadow-dom` | `7c77ee087448` | Declarative Shadow DOM (`<template shadowrootmode="open">`) |
-| 31 | `size-aware-styling` | `89180c46bf23` | Native CSS Container Queries (`@container`) |
-| 32 | `stack-drill-down` | `c3b9a4677d1b` | Native `Error.captureStackTrace` and standard CallSite inspection |
+| # | Guide ID | Guide Hash | Tier (`rules/index.ts`) | Held-Out Precision | Modern Platform Target |
+| :- | :--- | :--- | :--- | :---: | :--- |
+| 1 | `animate-element-entry-exit` | `21cc4d2bf21c` | **Tier 1 (`proven-high-n`)** | `60/60 (100.0%)` | `@starting-style` and `transition-behavior: allow-discrete` |
+| 2 | `individual-transform-properties` | `42af807594e8` | **Tier 1 (`proven-high-n`)** | `42/43 (97.7%)` | Individual transform properties (`rotate`, `scale`, `translate`) |
+| 3 | `resilient-context-menus-and-nested-dropdowns` | `9152c0b12710` | **Tier 1 (`proven-high-n`)** | `28/28 (100.0%)` | Native `popover` and CSS Anchor Positioning |
+| 4 | `declarative-dialog-popover-control` | `87f6a7ad8849` | **Tier 1 (`proven-high-n`)** | `26/27 (96.3%)` | Declarative `commandfor` / `command` and `popovertarget` |
+| 5 | `autofill-sign-in-form` | `93a1df14cafc` | **Tier 1 (`proven-high-n`)** | `23/23 (100.0%)` | Standard `autocomplete="username"` and `autocomplete="current-password"` |
+| 6 | `shadow-dom` | `7c77ee087448` | **Tier 1 (`proven-high-n`)** | `13/13 (100.0%)` | Native `<template>` and Declarative Shadow DOM (`<template shadowrootmode="open">`) |
+| 7 | `dialog` | `95fc47d3f348` | **Tier 1 (`proven-high-n`)** | `10/10 (100.0%)` | Native HTML `<dialog>` element and `showModal()` |
+| 8 | `child-state-based-styling` | `70dc57b74e35` | **Tier 1 (`proven-high-n`)** | `8/8 (100.0%)` | CSS `:has()` relational pseudo-class |
+| 9 | `animate-to-intrinsic-sizes` | `290b14ca7ee4` | **Tier 2 (`zero-fp-low-n`)** | `4/4 (100.0%)` | `calc-size()` and `interpolate-size: allow-keywords` |
+| 10 | `coordinate-global-events` | `253dec2c89a2` | **Tier 2 (`zero-fp-low-n`)** | `4/4 (100.0%)` | `Temporal.ZonedDateTime` for global timezone events |
+| 11 | `manage-recurring-intervals` | `70de814bc3cc` | **Tier 2 (`zero-fp-low-n`)** | `4/4 (100.0%)` | Temporal API (`Temporal.PlainDate.add` / `Temporal.Duration`) |
+| 12 | `accessible-error-announcement` | `b89c17bead92` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | `:user-invalid` and `aria-live="polite"` / `role="alert"` |
+| 13 | `brand-consistent-forms` | `a040352d2507` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | CSS `accent-color` for custom form controls |
+| 14 | `branded-select-styling` | `c332c3c67d49` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | Customizable native `<select>` with `appearance: base-select` |
+| 15 | `copy-button` | `d92b7f9038d3` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | Native `navigator.clipboard.writeText()` |
+| 16 | `form-fields-automatically-fit-contents` | `54a6341c988f` | **Tier 2 (`zero-fp-low-n`)** | `2/2 (100.0%)` | CSS `field-sizing: content` |
+| 17 | `ime-safe-enter-submit` | `bd5e1488af32` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | `e.isComposing` guard on Enter keydown handlers |
+| 18 | `stack-drill-down` | `c3b9a4677d1b` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Native HTML `inert` attribute on inactive drill-down panels |
+| 19 | `calculate-event-differentials` | `ee7112b330c4` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Temporal API (`Temporal.PlainDate` / `Temporal.Instant` `.until()` / `.since()`) |
+| 20 | `autofill-address-form` | `49ee6117c8e4` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Standard `autocomplete` attributes on address form inputs |
+| 21 | `css-layout` | `b2ddd28dc261` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Standard CSS `aspect-ratio` property |
+| 22 | `adapt-scrollbar-to-contrast-preferences` | `55a05ba9d96e` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | `scrollbar-color`, `scrollbar-width`, and `prefers-contrast` |
+| 23 | `checkbox` | `1b9c35459943` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | CSS `accent-color` for styled checkboxes |
+| 24 | `prevent-page-scroll-under-modal-dialog` | `7d10dd62dcbc` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
+| 25 | `dark-mode` | `796876897c2c` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | CSS `color-scheme: light dark` and `light-dark()` color functions |
+| 26 | `customize-scrollbar-color-and-thickness` | `6797d5c85622` | Tier 3 (`experimental`) | `26/29 (89.7%)` | Standard CSS `scrollbar-color` and `scrollbar-width` |
+| 27 | `break-up-long-tasks` | `18330b20e496` | Tier 3 (`experimental`) | `1/2 (50.0%)` | `scheduler.yield()` and `scheduler.postTask()` |
+| 28 | `detect-initial-visibility-state` | `b881da0b6ea2` | Tier 3 (`experimental`) | `0/6 (0.0%)` | `PerformanceNavigationTiming` / `visibility-state` entries |
+| 29 | `schedule-tasks-by-priority` | `69f3bb531093` | Tier 3 (`experimental`) | `0/1 (0.0%)` | Prioritized task scheduling via `scheduler.postTask()` |
+| 30 | `scrollspy` | `fffee90dc52d` | Tier 3 (`experimental`) | `0/0 (N/A)` | CSS `scroll-target-group: auto` and `:target-current` |
+| 31 | `size-aware-styling` | `89180c46bf23` | Tier 3 (`experimental`) | `0/0 (N/A)` | Native CSS Container Queries (`@container`) |
+| 32 | `defer-work-until-scroll-ends` | `ee7104add98e` | Tier 3 (`experimental`) | `0/0 (N/A)` | Native `scrollend` event listener |
 
 ---
 
-## 5. Evaluation & Measurement Framework
+## 5. Evaluation, 3-Gate Fix Harness & Measurement Framework
 
-The analyzer adheres to strict statistical rigor to guarantee production accuracy before any rule is published.
+The analyzer adheres to strict statistical rigor to guarantee production accuracy before any rule is published in `QUALIFIED_RULES`.
 
 ### Held-Out Validation Corpus
 
-- **93 Real-World Repositories**: Spans popular open-source applications (React, Vue, Svelte, Angular, vanilla DOM) partitioned into training and held-out evaluation splits.
-- **Canary Negative Controls**: Incorporates synthetic and real-world negative canary snippets (e.g. shadowed identifiers, guarded fallbacks). Evaluation requires **100.0% Canary True Negative Rate (TNR)**: any false positive on a canary halts the pipeline.
-- **Independent Judge Protocol**: Uses a consensus multi-perspective LLM judge ([`judge.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/judge.ts)) with rubric injection, evaluated for stability ($>95\%$ intra-judge consistency) and inter-annotator agreement.
+- **93 Held-Out `grading-only` Repositories** (strictly separated from the 115 `rule-writing` repositories and enforced via [`audit-transcripts.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/audit-transcripts.ts)).
+- **Canary Negative Controls**: Incorporates human-verified and synthetic negative canary snippets (shadowed identifiers, guarded fallbacks). Evaluation requires **100.0% Canary True Negative Rate (TNR)**.
+- **Independent Judge Protocol**: Uses a 3-run majority-vote `gemini-3.8-flash` judge ([`judge.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/judge.ts)) calibrated against human labels (`97.6%` stability, Gwet's $\mathrm{AC}_1 = 0.863$).
 
-### Statistical Qualification (`G7` Dual Qualification)
+### Statistical Qualification (`G7` & `G9` Tiered Qualification)
 
 Precision is evaluated via unrectified 95% Wilson confidence intervals ([`stats.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/stats.ts)):
 
 $$L = \frac{p + \frac{z^2}{2n} - z \sqrt{\frac{p(1-p)}{n} + \frac{z^2}{4n^2}}}{1 + \frac{z^2}{n}} \quad (z = 1.96)$$
 
-To clear the qualification bar, every guide rule must satisfy one of the two `G7` criteria in [`pilot-scorecard.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/pilot-scorecard.ts):
+In [`pilot-scorecard.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/pilot-scorecard.ts), rules are evaluated and segregated into three explicit confidence tiers:
 
-1. **Standard High-Volume Bar (`clearsBar90`):**
-   - Sample count $n \ge 35$.
-   - Wilson 95% lower bound $L \ge 0.90$, or sequential probability ratio stop (`'pass'`).
+1. **Tier 1 (`TIER_1_RULES` — `proven-high-n`, $n \ge 8$):**
+   - Clears `wilson95.lower >= 0.90` ($n \ge 56$), OR for sample-constrained rules ($8 \le n < 56$, where $n = 56$ is the minimum sample size for 1 FP to reach `wilson95.lower >= 0.90`), clears `wilson95.lower >= 0.80` with point precision $p \ge 0.95$ (or `0` FPs).
+   - **Result:** 8 guides (`210/212 = 99.1%` pooled precision).
+2. **Tier 2 (`TIER_2_RULES` — `zero-fp-low-n`, $1 \le n < 8$):**
+   - Exhaustively evaluated across all 93 held-out repositories ($p_1^{\text{sampled}} = p_1^{\text{total}}$) with **zero false positives ($100.0\%$ precision)**.
+   - **Result:** 17 guides (`35/35 = 100.0%` pooled precision; combined `QUALIFIED_RULES` = 25 guides at **`245/247 = 99.2%`** pooled precision).
+3. **Tier 3 (`experimental`):**
+   - Unqualified or $n = 0$ on the held-out corpus; excluded from default CLI runs and gated behind `--all-rules` / `--experimental`.
 
-2. **Sample-Constrained Qualification (for lower-frequency patterns with $n < 35$):**
-   - **`clearedHighN80`**: For moderate yields ($16 \le n < 35$), Wilson 95% lower bound $L \ge 0.80$ **and** observed precision $p \ge 0.95$.
-   - **`clearedZeroFpExhaustive`**: For rare idioms where every single occurrence across all 93 corpus repositories was sampled ($p_1^{\text{sampled}} = p_1^{\text{total}}$), at least 1 finding was kept ($p_2^{\text{kept}} \ge 1$), and exactly zero false positives were observed ($fp = 0$).
+### 3-Gate Fix Validation Harness ([`fix-harness.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/fix-harness.ts))
+
+To evaluate end-to-end agentic code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), `fix-harness.ts` enforces three gates on every candidate refactor:
+- **Gate 1 (Legacy Finding Eliminated):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
+- **Gate 2 (Syntax, Anti-Gutting & Comment-Stripped Modern Feature Check):** Verifies clean AST/DOM/CSS parsing (`ts-morph` with JSX support, `linkedom`, `cssomnom`), top-level export retention, and comment-stripped presence of the guide's positive modern web feature.
+- **Gate 3 (Behavioral Invariants):** Runs behavioral/test assertions when available.
+- **Verified Benchmarks:** **100.0% (`75/75`) rejection** on the 3-class seeded bad-patch sensitivity suite (`no-op`, `deletion-gutting`, `broken/evasion`), **100.0% (`25/25`) acceptance** on reference good fixes, and **90.0% (`36/40`, 95% CI `[76.9% – 96.0%]`)** end-to-end resolution across held-out findings from the 25 qualified guides.
 
 ### Running Evaluation Benchmarks
 
 ```bash
-# Run unit tests across analyzing subsystem:
+# Run unit tests across analyzing subsystem (565 tests across 58 suites):
 node --test "src/analyzing/**/*.test.ts"
 
 # Run preflight verification (typecheck, lint, ast-grep):
 pnpm run check:analyze
 
-# Generate held-out pilot scorecard across the 93-repo corpus:
-node src/analyzing/pilot-scorecard.ts
+# Generate held-out detection scorecard across the 93-repo corpus:
+node --env-file=.env src/analyzing/pilot-scorecard.ts
+
+# Run 75-patch sensitivity suite & end-to-end agentic fix evaluation:
+node --env-file=.env src/analyzing/fix-harness.ts
 ```
 
 All scorecard results and audit trails are logged to `PROGRESS.md` and serialized in `analyzer-internal/findings/`.
