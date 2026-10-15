@@ -538,12 +538,11 @@ window.__featuresMapping = {
     "symbols-function"
   ],
   "icons": [
+    "svg",
     "masks",
     "image-set",
-    "svg",
     "container-style-queries",
-    "registered-custom-properties",
-    "link-parameters"
+    "registered-custom-properties"
   ],
   "position-aware-tooltips": [
     "container-anchor-position-queries",
