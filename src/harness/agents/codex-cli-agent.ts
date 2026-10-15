@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url';
 import {
   cleanupIsolatedHome,
   parseAgentArgs,
-  watchLogFile,
   runCliAgentCommand,
   setupIsolatedWorkDir,
   parseJsonlFile,
@@ -13,7 +12,6 @@ import {
   type GuideUsage
 } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
 import {
   type StandardizedStep,
@@ -80,7 +78,7 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
 
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -93,12 +91,7 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
-    let stopWatchingMcpLog = () => { };
-
     try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
       await runCliAgentCommand(
         command,
         commandArgs,
@@ -108,7 +101,6 @@ async function run() {
         runType
       );
     } finally {
-      stopWatchingMcpLog();
       exportCodexTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, userPrompt);
     }
