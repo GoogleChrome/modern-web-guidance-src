@@ -8,5 +8,6 @@ export * from './guide-rubrics.ts';
 export * from './scanners/index.ts';
 export * from './phase2.ts';
 export * from './rules/index.ts';
+export * from './pilot-scorecard.ts';
 export { GEMINI_API_BASE } from './judge.ts';
 
