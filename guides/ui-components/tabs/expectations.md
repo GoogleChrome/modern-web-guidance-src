@@ -10,7 +10,7 @@
 - The implementation MUST provide an accessible name for the `focusgroup=tablist` element using `aria-label` or `aria-labelledby`.
 - The implementation SHOULD set `tabindex=0` on the current tab panel if it does not contain any focusable elements.
 - The implementation MUST NOT set `tabindex=0` on hidden tab panels.
-- The implementation SHOULD use the ARIAMixin `ariaLabelledByElements` and `ariaControlsElements` properties instead of IDRefs if support is available.
+- The implementation SHOULD use the ARIAMixin `ariaLabelledByElements` and `ariaControlsElements` properties instead of IDRefs if support is available. Otherwise, use the `aria-labellbedby` and `aria-controls` attributes.
 - The implementation SHOULD only use `hidden=until-found` when the tab panel contents should be searchable with browser find-in-page.
 - When `hidden=until-found` is used for tab panel visibility, the implementation MUST listen for the `beforematch` event to sync the current selected tab state (i.e. `aria-selected` and `focusgroupstart`) and reset `hidden=until-found` on other tab panels.
 - The implementation MUST NOT apply box styles (e.g. padding, borders, margin) to tab panels that have `hidden=until-found` and MUST make appropriate layout considerations (e.g. if the parent layout is a grid or flexbox, elements with `hidden=until-found` do participate in those layouts and properties like `gap` will cause extra space).
