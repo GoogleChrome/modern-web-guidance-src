@@ -12,7 +12,6 @@ import { getVersion } from "./version.ts";
 import { getSkillUpdateLevel } from "./skill-version.ts";
 import { USE_CASES } from "../rag/guides.ts";
 import { determineAgent } from "./telemetry/detect-agent.ts";
-import * as readline from "node:readline/promises";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -184,22 +183,7 @@ async function main() {
       console.error("Update failed:", result.error);
     }
   } else if (command === "set-allow-origin-trials") {
-    const code = await handleSetAllowOriginTrials({
-      isAgent: determineAgent().isAgent,
-      isTTY: Boolean(process.stdin.isTTY),
-      askConfirmation: async () => {
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-        });
-        try {
-          const answer = await rl.question("Enable experimental Origin Trial guidance for this project? [y/N] ");
-          return /^y(es)?$/i.test(answer.trim());
-        } finally {
-          rl.close();
-        }
-      },
-    });
+    const code = await handleSetAllowOriginTrials();
     process.exit(code);
   } else if (command === "uninstall") {
     const startTime = Date.now();

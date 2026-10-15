@@ -26,7 +26,6 @@ import {
   stripAllComments,
   isDraftStub,
   getGuideOriginTrials,
-  type OriginTrialMetadata,
 } from "../core/guide-validation.ts";
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
@@ -35,14 +34,9 @@ import { rootDir, outDir } from "../core/paths.ts";
 const WORKSPACE_ROOT = rootDir;
 
 
-interface UseCase {
-  id: string;
-  description: string;
-  category: string;
-  featuresUsed: string[];
-  tokenCount?: number;
-  originTrials?: OriginTrialMetadata[];
-}
+import type { UseCase as BaseUseCase } from "../rag/guides.ts";
+
+type UseCase = Omit<BaseUseCase, "tokenCount"> & { tokenCount?: number };
 
 export interface BuildOptions {
   outputDir: string;
