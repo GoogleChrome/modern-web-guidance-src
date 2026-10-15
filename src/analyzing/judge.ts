@@ -64,6 +64,7 @@ export interface GuideSummaryInfo {
   problem: string;
   before: string;
   now: string;
+  markdownBody?: string;
   oldWayExamples?: string[];
 }
 
@@ -129,17 +130,19 @@ export interface JudgeRunOptions {
 
 export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization judge evaluating whether a static code finding is a legitimate instance of legacy web platform code that should be modernized according to a Modern Web Guidance guide.
 
+The Modern Web Guidance mission is to identify old web patterns, legacy library workarounds (such as jQuery methods, vendor prefixes, polyfills, or manual JS hacks), and replace them with modern standard web platform features to reduce dependencies and improve performance.
+
 You must follow the Detective-then-Judge methodology:
 First extract structured facts:
-1. \`matches_before_syntax\`: Does the highlighted code match the old workaround or anti-pattern described in the guide's "Legacy Pattern (Before)" or examples?
+1. \`matches_before_syntax\`: Does the highlighted code match the old workaround, legacy pattern, or library dependency that this guide replaces? (e.g. jQuery animation methods like fadeIn/fadeOut, vendor prefixes like ::-webkit-scrollbar, setTimeout task breaking, manual Date subtraction, etc.)
 2. \`has_fallback_or_feature_guard\`: Is this code protected by a feature guard (e.g. checking for modern API support, fallback branch, ponyfill, or polyfill)?
-3. \`modern_feature_applies_here\`: Does the modern web platform replacement actually apply cleanly here without breaking expected behavior?
+3. \`modern_feature_applies_here\`: Does the modern web platform replacement apply here to modernize this code or eliminate the legacy workaround? (Replacing legacy JS library animations like jQuery fadeIn/fadeOut with standard CSS @starting-style/transitions is an intended modernization).
 4. \`reasoning\`: Concise, objective reasoning explaining your factual analysis.
 5. \`verdict\`: One of the following 5 values:
-   - 'right': Legitimate finding. The code matches the old workaround, is not guarded, and the modern feature applies.
+   - 'right': Legitimate finding. The code matches the legacy workaround/pattern, is not an intentional fallback, and the modern feature applies.
    - 'not-old-pattern': False positive. The code does NOT match the old workaround (e.g. token collision, unrelated logic, modern code mistaken for old).
    - 'leave-it': The code is an intentional fallback, ponyfill/polyfill, or belongs to a non-browser environment; it should NOT be touched.
-   - 'guide-wrong': The guide's proposed replacement does not solve or support this case.
+   - 'guide-wrong': The guide's proposed replacement fundamentally does not solve or support this use case.
    - 'unsure': Insufficient context to determine.`;
 
 export const JUDGE_RESPONSE_SCHEMA = {
@@ -168,6 +171,20 @@ export const JUDGE_RESPONSE_SCHEMA = {
  * Strips all detector rule IDs, source IDs, tool names, and prior verdicts.
  */
 export function formatBlindCardPrompt(card: BlindCardPayload): string {
+  if (card.guideSummary.markdownBody) {
+    return `## Modern Web Guidance Guide (${card.guideId})
+${card.guideSummary.markdownBody}
+
+## Code Location
+- File: ${card.file}
+- Line: ${card.line}
+
+## Code Snippet
+\`\`\`
+${card.codeSnippet}
+\`\`\``;
+  }
+
   const examples = card.guideSummary.oldWayExamples?.length
     ? `\n- Examples of Old Way:\n${card.guideSummary.oldWayExamples.map((e) => `  * ${e}`).join('\n')}`
     : '';
@@ -347,8 +364,43 @@ export function getGeminiApiKey(options?: JudgeRunOptions): string {
   return key;
 }
 
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  customFetch: typeof fetch,
+  maxRetries = 4,
+): Promise<Response> {
+  let attempt = 0;
+  let delayMs = 1000;
+
+  while (true) {
+    attempt++;
+    try {
+      const res = await customFetch(url, options);
+      if (
+        (res.status === 429 || res.status === 500 || res.status === 502 || res.status === 503) &&
+        attempt <= maxRetries
+      ) {
+        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 500));
+        delayMs *= 2;
+        continue;
+      }
+      return res;
+    } catch (err: unknown) {
+      if (attempt <= maxRetries) {
+        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 500));
+        delayMs *= 2;
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 /**
  * Runs judge evaluation directly via generateContent with concurrency control.
+ * Never turns API, network, or rate-limit errors into dummy verdicts: retries with
+ * exponential backoff and fails fast with an explicit Error.
  */
 export async function runJudgeDirect(
   cards: BlindCardPayload[],
@@ -357,7 +409,7 @@ export async function runJudgeDirect(
   const apiKey = getGeminiApiKey(options);
 
   const customFetch = options.fetchFn ?? fetch;
-  const concurrency = Math.max(1, options.concurrency ?? 10);
+  const concurrency = Math.max(1, options.concurrency ?? 5);
   const results: JudgeResult[] = Array.from({ length: cards.length });
 
   let currentIndex = 0;
@@ -368,49 +420,28 @@ export async function runJudgeDirect(
       const body = buildGeminiRequestBody(card);
       const url = `${GEMINI_API_BASE}/models/${JUDGE_MODEL}:generateContent?key=${apiKey}`;
 
-      try {
-        const res = await customFetch(url, {
+      const res = await fetchWithRetry(
+        url,
+        {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
-        });
+        },
+        customFetch,
+      );
 
-        if (!res.ok) {
-          const errText = await res.text();
-          results[idx] = {
-            cardId: card.cardId,
-            verdict: 'unsure',
-            facts: {
-              matches_before_syntax: false,
-              has_fallback_or_feature_guard: false,
-              modern_feature_applies_here: false,
-              reasoning: `HTTP ${res.status}: ${errText}`,
-              verdict: 'unsure',
-            },
-            error: `HTTP ${res.status}: ${errText}`,
-          };
-          continue;
-        }
-
-        const data = (await res.json()) as {
-          candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-        };
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-        results[idx] = parseJudgeJsonContent(text, card.cardId);
-      } catch (err: unknown) {
-        results[idx] = {
-          cardId: card.cardId,
-          verdict: 'unsure',
-          facts: {
-            matches_before_syntax: false,
-            has_fallback_or_feature_guard: false,
-            modern_feature_applies_here: false,
-            reasoning: `Network error: ${String(err)}`,
-            verdict: 'unsure',
-          },
-          error: String(err),
-        };
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(
+          `Gemini generateContent failed for card ${card.cardId} with HTTP ${res.status}: ${errText}`,
+        );
       }
+
+      const data = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      results[idx] = parseJudgeJsonContent(text, card.cardId);
     }
   }
 
@@ -435,8 +466,7 @@ interface PollBatchContext {
  */
 async function pollBatchUntilDone(ctx: PollBatchContext): Promise<JudgeResult[]> {
   const startTime = Date.now();
-  const fields =
-    'name,done,error,metadata.state,response.inlinedResponses.inlinedResponses.response.candidates,response.inlinedResponses.inlinedResponses.metadata';
+  const fields = 'name,done,error,response';
   const pollUrl = `${GEMINI_API_BASE}/${ctx.batchName}?key=${ctx.apiKey}&fields=${encodeURIComponent(fields)}`;
 
   while (Date.now() - startTime < ctx.timeoutMs) {
@@ -924,11 +954,21 @@ export function parseGuideSummaryMarkdown(
   const clean = (str: string): string =>
     str.replace(/\{\{[^}]+\}\}/g, '').replace(/\n{3,}/g, '\n\n').trim();
 
+  // Verbatim markdown body (frontmatter stripped, up to ~6,000 chars) preserving
+  // all explanations, avoid/prefer headings, and code examples.
+  const cleanBody = clean(body);
+  const maxBodyLength = 6000;
+  const markdownBody =
+    cleanBody.length > maxBodyLength
+      ? cleanBody.slice(0, maxBodyLength) + '\n\n... (guide content truncated)'
+      : cleanBody;
+
   return {
     guideId,
     problem: clean(problem),
     before: clean(before),
     now: clean(now),
+    markdownBody,
   };
 }
 

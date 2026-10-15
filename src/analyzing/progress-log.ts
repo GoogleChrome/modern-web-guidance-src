@@ -399,7 +399,7 @@ export async function computeProgressLogRow(
   const today = new Date().toISOString().slice(0, 10);
   const mode = options.judgeOptions?.mode ?? 'direct';
   const judgeVersion =
-    options.metrics?.judgeVersion ?? `gemini-3.8-flash:detective-v2-${mode}`;
+    options.metrics?.judgeVersion ?? `gemini-3.8-flash:detective-v3-${mode}`;
 
   if (options.metrics?.precision && options.metrics.judgeAlpha !== undefined) {
     if (options.metrics.judgeAc1 === undefined) {
