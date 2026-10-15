@@ -735,7 +735,7 @@ export async function runAuditCli(
 }
 
 // Module execution guard
-if (import.meta.main) {
+if (import.meta.main || (process.argv[1] && resolve(process.argv[1]) === import.meta.filename)) {
   runAuditCli().catch((err: unknown) => {
     console.error('Audit failed with error:', err);
     process.exitCode = 1;

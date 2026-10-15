@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import {
   checkCanaries,
   evaluateJudgeMetrics,
@@ -511,7 +511,7 @@ export async function runProgressLogCli(options: ProgressLogOptions = {}): Promi
 }
 
 // Module execution guard
-if (import.meta.main) {
+if (import.meta.main || (process.argv[1] && resolve(process.argv[1]) === import.meta.filename)) {
   runProgressLogCli().catch((err: unknown) => {
     console.error('Failed to update progress log:', err);
     process.exitCode = 1;
