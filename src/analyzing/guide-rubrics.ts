@@ -47,6 +47,105 @@ export const PILOT_GATE0_ENTRIES: readonly Gate0Entry[] = [
       'Timezone library imports and Date.prototype.getTimezoneOffset() call expressions are cleanly detectable via AST and package dependencies.',
   },
   {
+    guideId: 'customize-scrollbar-color-and-thickness',
+    guideHash: '6797d5c85622',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Vendor-prefixed ::-webkit-scrollbar pseudo-elements should be modernized using standard CSS scrollbar-color and scrollbar-width properties.',
+    reason:
+      'Vendor-prefixed scrollbar pseudo-elements are deterministically detectable via CSS stylesheet AST.',
+  },
+  {
+    guideId: 'individual-transform-properties',
+    guideHash: '42af807594e8',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Compound CSS transform properties combining single operations (e.g. transform: rotate(...) or transform: scale(...)) should use modern individual transform properties (rotate, scale, translate).',
+    reason:
+      'Isolated single transform functions in CSS stylesheets and animations are deterministically detectable via CSS scanner.',
+  },
+  {
+    guideId: 'child-state-based-styling',
+    guideHash: '70dc57b74e35',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Pre-modern sibling combinator hacks (e.g. input:checked ~ label) or JavaScript class toggling simulating parent-child styling should be modernized using the CSS :has() relational pseudo-class.',
+    reason:
+      'Sibling combinator selectors conditioned on child pseudo-classes are statically detectable in CSS.',
+  },
+  {
+    guideId: 'accessible-error-announcement',
+    guideHash: 'b89c17bead92',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Flag manual error container DOM injection, innerHTML alert insertions, or imperative error text toggling lacking role="alert" or aria-live="polite".',
+    reason:
+      'Imperative error message DOM nodes and alert containers missing live region attributes are detectable via DOM and AST scanners.',
+  },
+  {
+    guideId: 'break-up-long-tasks',
+    guideHash: '18330b20e496',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Manual main thread yielding via setTimeout(..., 0), setImmediate, or MessageChannel postMessage should be modernized with scheduler.yield() or scheduler.postTask().',
+    reason:
+      'Timer and zero-delay message channel yielding patterns are deterministically detectable via JS AST matching.',
+  },
+  {
+    guideId: 'ime-safe-enter-submit',
+    guideHash: 'bd5e1488af32',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Keydown event listeners checking for Enter key submission without guarding against IME composition (isComposing or keyCode 229) should check e.isComposing to prevent premature form submission during CJK/IME input.',
+    reason:
+      'Keyboard event listeners checking Enter key without isComposing guards are statically detectable in JS/TS AST.',
+  },
+  {
+    guideId: 'stack-drill-down',
+    guideHash: 'c3b9a4677d1b',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Manual regex parsing of Error.prototype.stack or arguments.callee caller traversal to identify calling functions or file locations should be modernized with native Error.captureStackTrace or standard CallSite inspection.',
+    reason:
+      'Error stack string splitting and caller traversal expressions are deterministically detectable in AST.',
+  },
+  {
+    guideId: 'calculate-event-differentials',
+    guideHash: 'ee7112b330c4',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Manual Date subtraction, getTime() arithmetic, or millisecond division to compute durations or intervals between timestamps should be modernized using Temporal API (Temporal.Duration / Temporal.Instant).',
+    reason:
+      'Date arithmetic expressions and getTime difference calculations are statically detectable via AST.',
+  },
+  {
+    guideId: 'resilient-context-menus-and-nested-dropdowns',
+    guideHash: '9152c0b12710',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Legacy Bootstrap dropdown triggers should be modernized with native popover and CSS Anchor Positioning.',
+    reason:
+      'Bootstrap dropdown toggle attributes and imperative Popper/dropdown positioning calls are detectable via DOM and AST scanners.',
+  },
+  {
+    guideId: 'form-fields-automatically-fit-contents',
+    guideHash: '54a6341c988f',
+    classification: 'detectable',
+    brownfieldTarget:
+      'JavaScript auto-expanding textarea hacks measuring scrollHeight, hidden mirror elements, or CSS width/height hacks should be modernized using CSS field-sizing: content.',
+    reason:
+      'ScrollHeight input measurement listeners and textarea auto-resize helpers are detectable via JS/TS AST.',
+  },
+  {
+    guideId: 'brand-consistent-forms',
+    guideHash: 'a040352d2507',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Custom form control styling hacks using hidden native checkboxes/radios with CSS sibling hacks (e.g. input[type="checkbox"] + span) or heavy UI component libraries should use standard CSS accent-color.',
+    reason:
+      'Visually hidden inputs followed by styled custom indicator sibling elements are deterministically detectable in CSS.',
+  },
+  {
     guideId: 'navigation-drawer',
     guideHash: '3481f6feb2e8',
     classification: 'ui-recipe-multi-part',

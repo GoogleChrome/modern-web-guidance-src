@@ -50,6 +50,7 @@ import {
 } from './stats.ts';
 
 export const Z_80 = 1.28155;
+export const MAX_SAMPLE_PER_GUIDE = 40;
 
 export const PILOT_SCORECARD_PATH = join(
   ANALYZER_INTERNAL_DIR,
@@ -402,7 +403,7 @@ export async function runPilotScorecard(
   const rules = options.rules ?? ALL_RULES;
   const targetGuideIds: readonly string[] = Array.from(new Set(rules.map((r) => r.guideId)));
   const rulesDir = options.rulesDir ?? join(WORKTREE_ROOT, 'src/analyzing/rules');
-  const maxSample = options.maxSequentialSample ?? 60;
+  const maxSample = options.maxSequentialSample ?? MAX_SAMPLE_PER_GUIDE;
   const concurrency = options.concurrency ?? 10;
   const customFetch = options.fetchFn;
   const apiKey = options.apiKey;

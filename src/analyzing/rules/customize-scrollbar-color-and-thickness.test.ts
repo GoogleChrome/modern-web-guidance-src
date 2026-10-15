@@ -1,0 +1,119 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { scanCss } from '../scanners/css-scanner.ts';
+import type { CssRuleMatcher } from '../schema.ts';
+import { customizeScrollbarColorAndThicknessRule } from './customize-scrollbar-color-and-thickness.ts';
+
+const matcher = customizeScrollbarColorAndThicknessRule.matcher as CssRuleMatcher;
+
+void test('customize-scrollbar-color-and-thickness: positive brownfield matches', async (t) => {
+  await t.test('flags ::-webkit-scrollbar with custom width and height', () => {
+    const css = `
+      .custom-scroll::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+    `;
+    const matches = scanCss('scrollbar.css', css, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+    assert.match(matches[0]?.message ?? '', /scrollbar-color/);
+  });
+
+  await t.test('flags ::-webkit-scrollbar-thumb and track background customization', () => {
+    const css = `
+      .panel::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      .panel::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+    `;
+    const matches = scanCss('panel.css', css, [matcher]);
+    assert.equal(matches.length, 2);
+    assert.equal(matches[0]?.line, 2);
+    assert.equal(matches[1]?.line, 5);
+  });
+
+  await t.test('flags real-world asciiflow toolbar.module.css fixture', () => {
+    const asciiflowCss = `
+      .exportPreview::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      .exportPreview::-webkit-scrollbar-track {
+        background: var(--color-bg);
+      }
+      .exportPreview::-webkit-scrollbar-thumb {
+        background: var(--color-border);
+        border: 1px solid var(--color-bg);
+      }
+    `;
+    const matches = scanCss('toolbar.module.css', asciiflowCss, [matcher]);
+    assert.equal(matches.length, 3);
+  });
+
+  await t.test('flags global scrollbar pseudo-elements', () => {
+    const css = `
+      ::-webkit-scrollbar {
+        width: 12px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: darkgrey;
+        outline: 1px solid slategrey;
+      }
+    `;
+    const matches = scanCss('global.css', css, [matcher]);
+    assert.equal(matches.length, 2);
+  });
+});
+
+void test('customize-scrollbar-color-and-thickness: negative / exempt cases', async (t) => {
+  await t.test('exempts stylesheets already using scrollbar-width', () => {
+    const css = `
+      .scroll-container {
+        scrollbar-width: thin;
+      }
+      .scroll-container::-webkit-scrollbar {
+        width: 6px;
+      }
+    `;
+    const matches = scanCss('modern-width.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts stylesheets already using scrollbar-color', () => {
+    const css = `
+      :root {
+        scrollbar-color: #6969dd #e0e0e0;
+      }
+      ::-webkit-scrollbar {
+        width: 10px;
+      }
+    `;
+    const matches = scanCss('modern-color.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts rules that only hide scrollbars via display: none', () => {
+    const css = `
+      .hide-scroll::-webkit-scrollbar {
+        display: none;
+      }
+    `;
+    const matches = scanCss('hide.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts unrelated CSS rules', () => {
+    const css = `
+      .card {
+        overflow: auto;
+        border: 1px solid #ccc;
+      }
+    `;
+    const matches = scanCss('card.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+});

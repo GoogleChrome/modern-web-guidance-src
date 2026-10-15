@@ -18,6 +18,8 @@ interface RawStyleDeclaration {
 interface RawCssRule {
   readonly constructor: { readonly name: string };
   readonly selectorText?: string;
+  readonly keyText?: string;
+  readonly name?: string;
   readonly style?: RawStyleDeclaration;
   readonly conditionText?: string;
   readonly cssRules?: { readonly length: number; [index: number]: RawCssRule };
@@ -37,7 +39,8 @@ function* walkCssRules(
       continue;
     }
 
-    if (r.selectorText && r.style) {
+    const selector = r.selectorText ?? r.keyText;
+    if (selector && r.style) {
       yield { rule: r, parentAtRule };
     }
 
@@ -50,6 +53,8 @@ function* walkCssRules(
         currentAtRule = `@supports ${r.conditionText}`;
       } else if (ruleType === 'CSSStartingStyleRule') {
         currentAtRule = '@starting-style';
+      } else if (ruleType === 'CSSKeyframesRule') {
+        currentAtRule = `@keyframes ${r.name ?? ''}`.trim();
       }
       yield* walkCssRules(r.cssRules, currentAtRule);
     }
@@ -142,7 +147,7 @@ function createCssRuleView(
   cssContent: string,
   currentOffset: number,
 ): { view: CssRuleView; nextOffset: number } {
-  const selectorText = rule.selectorText ?? '';
+  const selectorText = rule.selectorText ?? rule.keyText ?? '';
   const style = rule.style ?? { length: 0, getPropertyValue: () => '' };
   const declarations = extractDeclarations(style);
   const { line, column, nextOffset } = locateRulePosition(
@@ -213,7 +218,7 @@ export function scanCss(
   let currentOffset = 0;
 
   for (const { rule, parentAtRule } of walkCssRules(sheet.cssRules)) {
-    if (!rule.selectorText || !rule.style) {
+    if ((!rule.selectorText && !rule.keyText) || !rule.style) {
       continue;
     }
 
