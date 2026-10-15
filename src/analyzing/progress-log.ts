@@ -375,15 +375,18 @@ export function parseProgressLogCliArgs(
   args: string[] = process.argv.slice(2),
 ): ProgressLogOptions {
   let mode: 'batch' | 'direct' = 'direct';
+  let concurrency: number | undefined;
   for (const arg of args) {
     if (arg === '--mode=batch' || arg === '--batch') {
       mode = 'batch';
     } else if (arg === '--mode=direct' || arg === '--direct') {
       mode = 'direct';
+    } else if (arg.startsWith('--concurrency=')) {
+      concurrency = parseInt(arg.split('=')[1], 10);
     }
   }
   return {
-    judgeOptions: { mode },
+    judgeOptions: { mode, concurrency },
   };
 }
 
