@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import matter from 'gray-matter';
 
 import { outDir, suitesDir, guidesDir, dashboardDir } from '../core/paths.ts';
@@ -134,6 +135,19 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
                 fs.copyFileSync(path.join(manifestsDir, file), path.join(stageDir, file));
             }
         }
+    }
+
+    // Copy Playwright trace viewer bundle for same-origin trace viewing
+    try {
+        const req = createRequire(import.meta.url);
+        const pwPkg = req.resolve('playwright/package.json');
+        const corePkg = createRequire(pwPkg).resolve('playwright-core/package.json');
+        const traceViewerSrc = path.join(path.dirname(corePkg), 'lib', 'vite', 'traceViewer');
+        if (fs.existsSync(traceViewerSrc)) {
+            fs.cpSync(traceViewerSrc, path.join(stageDir, 'trace-viewer'), { recursive: true });
+        }
+    } catch (e) {
+        console.warn('Trace viewer assets not found for staging:', e);
     }
 }
 

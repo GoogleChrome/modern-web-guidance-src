@@ -347,7 +347,7 @@ async function runAgentTest(
       const preResults = await gradeOutput(
         targetsDir,
         targetGraderPath,
-        path.join(guideResultsDir, baseApp, 'pre-grade-report'),
+        path.join(guideResultsDir, baseApp, 'traces'),
         zeroPassratePatch
       );
       if (preResults) results['pre'] = preResults;
@@ -377,7 +377,7 @@ async function runAgentTest(
         const gradeResults = await gradeOutput(
           resultDir,
           targetGraderPath,
-          path.join(resultDir, 'grade-report'),
+          path.join(resultDir, 'traces'),
           patchFile,
           zeroPassratePatch
         );
@@ -399,15 +399,15 @@ async function runAgentTest(
 async function gradeOutput(
   appDir: string,
   graderPath: string,
-  outputDir: string,
+  tracesDir?: string,
   patchFile?: string,
   zeroPassrateFile?: string
 ): Promise<{ passed: number; total: number } | null> {
-  const label = path.basename(path.dirname(outputDir));
+  const label = tracesDir ? path.basename(path.dirname(tracesDir)) : 'app';
   console.log(cYellow(`\nGrading ${label}...`));
 
   try {
-    const gradeResults = await runPlaywright(appDir, graderPath, outputDir, 'pipe', patchFile, zeroPassrateFile);
+    const gradeResults = await runPlaywright(appDir, graderPath, tracesDir, 'pipe', patchFile, zeroPassrateFile);
     const passed = gradeResults.stats?.expected || 0;
     const failed = gradeResults.stats?.unexpected || 0;
     const total = passed + failed;

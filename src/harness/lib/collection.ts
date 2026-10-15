@@ -395,9 +395,9 @@ function evaluateScenarioResults(
             ? (lastResult?.error?.message || lastResult?.errors?.[0]?.message || undefined)
             : undefined;
           return {
-            id: spec.id || spec.title,
             passed,
             message: spec.title,
+            testId: spec.id,
             ...(errorMsg ? { error: errorMsg } : {})
           };
         });

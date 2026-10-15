@@ -15,8 +15,7 @@ import { applyPatchSync } from '../core/patch-utils.ts';
 export interface PlaywrightOptions {
   targetPathAbs: string;
   graderPath: string;
-  reporters: string[];
-  htmlOutputDir?: string;
+  reporters?: string[];
   testResultsDir?: string;
   jsonOutputName?: string;
   patchFile?: string;
@@ -47,7 +46,8 @@ async function stageGradingWorkspace(
 
 export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   const playwrightConfig = path.join(import.meta.dirname, 'playwright.config.ts');
-  const reporterArgs = opts.reporters.length > 0 ? ['--reporter=' + opts.reporters.join(',')] : [];
+  const reporterList = opts.reporters && opts.reporters.length > 0 ? opts.reporters : ['json'];
+  const reporterArgs = [`--reporter=${reporterList.join(',')}`];
 
   const isDir = fs.existsSync(opts.targetPathAbs) && fs.statSync(opts.targetPathAbs).isDirectory();
   const appDir = isDir ? opts.targetPathAbs : path.dirname(opts.targetPathAbs);
@@ -62,14 +62,8 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     env.PATCH_FILE = path.resolve(opts.patchFile);
   }
 
-  if (opts.htmlOutputDir && opts.reporters.includes('html')) {
-    env.PLAYWRIGHT_HTML_OUTPUT_DIR = opts.htmlOutputDir;
-  }
-
   if (opts.testResultsDir) {
     env.PLAYWRIGHT_OUTPUT_DIR = opts.testResultsDir;
-  } else if (opts.htmlOutputDir) {
-    env.PLAYWRIGHT_OUTPUT_DIR = path.join(appDir, 'test-results');
   }
 
   if (opts.jsonOutputName) {
@@ -89,7 +83,7 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
 export async function runPlaywright(
   targetPathAbs: string,
   graderPath: string,
-  htmlOutputDir?: string,
+  tracesDir?: string,
   stdio: 'inherit' | 'ignore' | 'pipe' = 'inherit',
   patchFile?: string,
   zeroPassrateFile?: string,
@@ -114,7 +108,6 @@ export async function runPlaywright(
       targetPathAbs: effectiveTargetPath,
       graderPath,
       reporters: ['json'],
-      htmlOutputDir,
       testResultsDir,
       jsonOutputName: tmpJson,
       patchFile: patchFile,
@@ -132,27 +125,22 @@ export async function runPlaywright(
     const effectiveAppDir = isDir ? effectiveTargetPath : path.dirname(effectiveTargetPath);
     const resolvedTestResultsDir = testResultsDir || path.join(effectiveAppDir, 'test-results');
 
-    // Move any retained trace.zip files out of test-results into <taskDir>/traces/<slug>.zip
-    const targetTaskDir = htmlOutputDir
-      ? (htmlOutputDir.endsWith('traces') ? path.dirname(htmlOutputDir) : (htmlOutputDir.endsWith('grade-report') ? path.dirname(htmlOutputDir) : htmlOutputDir))
-      : (isDir ? targetPathAbs : path.dirname(targetPathAbs));
-    const tracesTargetDir = path.join(targetTaskDir, 'traces');
-
-    if (fs.existsSync(resolvedTestResultsDir)) {
-      try {
-        const entries = await fs.promises.readdir(resolvedTestResultsDir, { withFileTypes: true });
-        for (const entry of entries) {
-          if (entry.isDirectory()) {
-            const traceSource = path.join(resolvedTestResultsDir, entry.name, 'trace.zip');
-            if (fs.existsSync(traceSource)) {
-              await fs.promises.mkdir(tracesTargetDir, { recursive: true });
-              const dest = path.join(tracesTargetDir, `${entry.name}.zip`);
-              await fs.promises.copyFile(traceSource, dest);
-            }
+    // Move any retained trace.zip files out of test-results into tracesDir/<slug>.zip
+    if (tracesDir) {
+      const entries = await fs.promises.readdir(resolvedTestResultsDir, { withFileTypes: true }).catch((err: any) => {
+        if (err.code !== 'ENOENT') throw err;
+        return [];
+      });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const traceSource = path.join(resolvedTestResultsDir, entry.name, 'trace.zip');
+          try {
+            await fs.promises.mkdir(tracesDir, { recursive: true });
+            await fs.promises.copyFile(traceSource, path.join(tracesDir, `${entry.name}.zip`));
+          } catch (err: any) {
+            if (err.code !== 'ENOENT') throw err;
           }
         }
-      } catch (err) {
-        console.warn('Failed to extract traces from test results:', err);
       }
     }
 
@@ -176,13 +164,13 @@ export async function runPlaywright(
 async function runPlaywrightCalibration(
   targetPathAbs: string,
   graderPath: string,
-  outDir: string,
+  tracesDir: string,
   patchFile: string,
   result: CalibrationResult,
   zeroPassrateFile?: string,
   testResultsDir?: string
 ): Promise<any> {
-  const results = await runPlaywright(targetPathAbs, graderPath, outDir, 'ignore', patchFile, zeroPassrateFile, testResultsDir)
+  const results = await runPlaywright(targetPathAbs, graderPath, tracesDir, 'ignore', patchFile, zeroPassrateFile, testResultsDir)
     .catch(err => {
       result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
       return null;
@@ -325,10 +313,10 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const parentDir = path.basename(path.dirname(resolvedGuideDir));
   const category = parentDir === 'guides' ? slug : parentDir;
   const calibrationBase = path.join(outDir, 'guides', category, slug, baseApp);
-  const gradeReportDir = path.join(calibrationBase, 'grade-report');
+  const tracesBaseDir = path.join(calibrationBase, 'traces');
   const testResultsBaseDir = path.join(calibrationBase, 'test-results');
 
-  const zeroPassrateOutDir = path.join(gradeReportDir, 'zero-passrate');
+  const zeroPassrateTracesDir = path.join(tracesBaseDir, 'zero-passrate');
 
   // Golden calibration across active AI solution diffs + zero-passrate calibration in parallel
   const solutionStatus: Record<string, string> = {};
@@ -338,11 +326,11 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const solutionCalibrationTasks = activeAgents.map(async (agent) => {
     const solPatchFile = SOLUTION_PATCH_FILES[agent];
     const solutionPatch = path.join(targetDir, solPatchFile);
-    const solutionOutDir = path.join(gradeReportDir, `solution-${agent}`);
+    const solutionTracesDir = path.join(tracesBaseDir, `solution-${agent}`);
     const solutionTestResultsDir = path.join(testResultsBaseDir, `solution-${agent}`);
     let unexpected = 0;
     console.log(cYellow(`\nRunning against ${baseApp} with ${solPatchFile} (${agent})... (Expecting 100% pass)`));
-    const solutionResults = await runPlaywrightCalibration(targetDir, graderPath, solutionOutDir, solutionPatch, result, undefined, solutionTestResultsDir);
+    const solutionResults = await runPlaywrightCalibration(targetDir, graderPath, solutionTracesDir, solutionPatch, result, undefined, solutionTestResultsDir);
 
     if (!solutionResults) {
       allSolutionsPassed = false;
@@ -381,7 +369,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     let passed = 0;
     const zeroPassrateTestResultsDir = path.join(testResultsBaseDir, 'zero-passrate');
     console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
-    const zeroPassrateResults = await runPlaywrightCalibration(targetDir, graderPath, zeroPassrateOutDir, zeroPassratePatch, result, undefined, zeroPassrateTestResultsDir);
+    const zeroPassrateResults = await runPlaywrightCalibration(targetDir, graderPath, zeroPassrateTracesDir, zeroPassratePatch, result, undefined, zeroPassrateTestResultsDir);
 
     if (!zeroPassrateResults) {
       zeroPassrateFailed = true;

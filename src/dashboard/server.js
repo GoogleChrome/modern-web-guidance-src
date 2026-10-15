@@ -261,16 +261,12 @@ const server = http.createServer(async (req, res) => {
     }
     if (fs.existsSync(traceViewerFile) && !fs.statSync(traceViewerFile).isDirectory()) {
       const extname = path.extname(traceViewerFile);
-      const contentType = MIME_TYPES[extname] || 'application/octet-stream';
-      res.writeHead(200, {
-        'Content-Type': contentType,
-        'Access-Control-Allow-Origin': '*',
-      });
+      res.writeHead(200, { 'Content-Type': MIME_TYPES[extname] || 'application/octet-stream' });
       fs.createReadStream(traceViewerFile).pipe(res);
       return;
     }
     res.writeHead(404);
-    res.end('404 Not Found (trace viewer asset)');
+    res.end('404 Not Found');
     return;
   }
 
