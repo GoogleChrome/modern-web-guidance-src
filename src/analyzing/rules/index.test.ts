@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { PILOT_RULES, ALL_RULES } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing all 7 rules across the 5 pilot guides', () => {
-    assert.strictEqual(PILOT_RULES.length, 7);
-    assert.strictEqual(ALL_RULES.length, 7);
+  it('exports PILOT_RULES containing all 6 rules across the 5 pilot guides', () => {
+    assert.strictEqual(PILOT_RULES.length, 6);
+    assert.strictEqual(ALL_RULES.length, 6);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
     assert.deepStrictEqual(
