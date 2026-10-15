@@ -59,7 +59,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     let unguidedTotal = 0;
     let maxRuns = 1;
     let totalAllRuns = 0;
-    let earlyFailureRuns = 0;
     let guidedTotalRuns = 0;
     let guidedEarlyFailures = 0;
     let unguidedTotalRuns = 0;
@@ -108,7 +107,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
         runs.forEach(run => {
             if (isEarlyFailureRun(run.results)) {
-                earlyFailureRuns++;
                 if (isGuided) guidedEarlyFailures++;
                 else if (isUnguided) unguidedEarlyFailures++;
             }
