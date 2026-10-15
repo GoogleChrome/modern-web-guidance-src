@@ -15,8 +15,6 @@ import {
   childStateBasedStylingJsParentClassRule,
 } from './child-state-based-styling.ts';
 import { coordinateGlobalEventsRule } from './coordinate-global-events.ts';
-import { copyButtonRule } from './copy-button.ts';
-import { cssLayoutRules } from './css-layout.ts';
 import { customizeScrollbarColorAndThicknessRule } from './customize-scrollbar-color-and-thickness.ts';
 import { darkModeRules } from './dark-mode.ts';
 import {
@@ -25,7 +23,6 @@ import {
 } from './declarative-dialog-popover-control.ts';
 import { deferWorkUntilScrollEndsRule } from './defer-work-until-scroll-ends.ts';
 import { detectInitialVisibilityStateRule } from './detect-initial-visibility-state.ts';
-import { dialogRules } from './dialog.ts';
 import { formFieldsAutomaticallyFitContentsRule } from './form-fields-automatically-fit-contents.ts';
 import { imeSafeEnterSubmitRule } from './ime-safe-enter-submit.ts';
 import { individualTransformPropertiesRule } from './individual-transform-properties.ts';
@@ -54,14 +51,11 @@ export * from './calculate-event-differentials.ts';
 export * from './checkbox.ts';
 export * from './child-state-based-styling.ts';
 export * from './coordinate-global-events.ts';
-export * from './copy-button.ts';
-export * from './css-layout.ts';
 export * from './customize-scrollbar-color-and-thickness.ts';
 export * from './dark-mode.ts';
 export * from './declarative-dialog-popover-control.ts';
 export * from './defer-work-until-scroll-ends.ts';
 export * from './detect-initial-visibility-state.ts';
-export * from './dialog.ts';
 export * from './form-fields-automatically-fit-contents.ts';
 export * from './ime-safe-enter-submit.ts';
 export * from './individual-transform-properties.ts';
@@ -75,7 +69,7 @@ export * from './size-aware-styling.ts';
 export * from './stack-drill-down.ts';
 
 export const PILOT_RULES: readonly AnalyzerRule[] = [
-  // Pilot Batch 1 & Earlier (16 guides):
+  // Pilot Batch 1 & Earlier (16 guides, 19 rules):
   autofillSignInFormRule,
   animateToIntrinsicSizesRule,
   declarativeDialogPopoverControlRule,
@@ -96,17 +90,14 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   formFieldsAutomaticallyFitContentsRule,
   brandConsistentFormsRule,
 
-  // Batch 2 & Reserve (16 guides, 32 guides total):
-  ...dialogRules,
+  // Batch 2 & Reserve (13 guides, 17 rules -> 36 rules across 29 landed feature guides total):
   ...scrollspyRules,
   ...autofillAddressFormRules,
   ...shadowDomRules,
   ...brandedSelectStylingRules,
-  ...cssLayoutRules,
   ...adaptScrollbarToContrastPreferencesRules,
   ...checkboxRules,
   ...sizeAwareStylingRules,
-  copyButtonRule,
   deferWorkUntilScrollEndsRule,
   detectInitialVisibilityStateRule,
   scheduleTasksByPriorityRule,
@@ -127,7 +118,6 @@ export const TIER_1_GUIDE_IDS: readonly string[] = [
   'individual-transform-properties',
   'child-state-based-styling',
   'resilient-context-menus-and-nested-dropdowns',
-  'dialog',
   'shadow-dom',
 ] as const;
 
@@ -152,13 +142,14 @@ export const TIER_2_GUIDE_IDS: readonly string[] = [
   'brand-consistent-forms',
   'autofill-address-form',
   'branded-select-styling',
-  'css-layout',
   'adapt-scrollbar-to-contrast-preferences',
   'checkbox',
-  'copy-button',
   'prevent-page-scroll-under-modal-dialog',
   'dark-mode',
   'manage-recurring-intervals',
+  'customize-scrollbar-color-and-thickness',
+  'break-up-long-tasks',
+  'detect-initial-visibility-state',
 ] as const;
 
 /**
@@ -178,7 +169,7 @@ export const QUALIFIED_GUIDE_IDS: readonly string[] = [
 
 /**
  * Production rules gated to qualified guides only (Tier 1 + Tier 2 per G11 / G16 / O22).
- * Excludes 7 unqualified/experimental guides.
+ * Excludes 4 unqualified/experimental guides.
  */
 export const QUALIFIED_RULES: readonly AnalyzerRule[] = [
   ...TIER_1_RULES,
@@ -189,7 +180,6 @@ export const QUALIFIED_RULES: readonly AnalyzerRule[] = [
  * Guides that were tuned after initial held-out inspection (G10 disclosure).
  */
 export const POST_SELECTION_TUNED_GUIDE_IDS: readonly string[] = [
-  'dialog',
   'manage-recurring-intervals',
   'calculate-event-differentials',
 ] as const;

@@ -146,15 +146,6 @@ export const PILOT_GATE0_ENTRIES: readonly Gate0Entry[] = [
       'Visually hidden inputs followed by styled custom indicator sibling elements are deterministically detectable in CSS.',
   },
   {
-    guideId: 'dialog',
-    guideHash: '95fc47d3f348',
-    classification: 'detectable',
-    brownfieldTarget:
-      'Replace custom modal div dialogs using role="dialog" and aria-modal="true" with native HTML <dialog> element.',
-    reason:
-      'Custom modal alertdialog and dialog container div elements are deterministically detectable via DOM and JSX scanners.',
-  },
-  {
     guideId: 'scrollspy',
     guideHash: 'fffee90dc52d',
     classification: 'detectable',
@@ -191,15 +182,6 @@ export const PILOT_GATE0_ENTRIES: readonly Gate0Entry[] = [
       'Third-party select replacement package dependencies and jQuery plugin initializations are detectable via package.json and AST.',
   },
   {
-    guideId: 'css-layout',
-    guideHash: 'b2ddd28dc261',
-    classification: 'detectable',
-    brownfieldTarget:
-      'Legacy CSS padding-top/padding-bottom aspect ratio container hacks (e.g. 56.25% for 16:9, 75% for 4:3) should be modernized using the standard CSS aspect-ratio property.',
-    reason:
-      'Classic percentage padding aspect-ratio hacks with zero height and relative positioning are detectable via CSS stylesheet AST.',
-  },
-  {
     guideId: 'adapt-scrollbar-to-contrast-preferences',
     guideHash: '55a05ba9d96e',
     classification: 'detectable',
@@ -225,15 +207,6 @@ export const PILOT_GATE0_ENTRIES: readonly Gate0Entry[] = [
       'ResizeObserver instances measuring element widths/inlineSizes to imperatively toggle container-specific styling classes or CSS variables should be modernized using native CSS Container Queries (@container).',
     reason:
       'ResizeObserver callbacks reading dimension properties and mutating element classList or styles are detectable via JS/TS AST.',
-  },
-  {
-    guideId: 'copy-button',
-    guideHash: 'd92b7f9038d3',
-    classification: 'detectable',
-    brownfieldTarget:
-      'Legacy document.execCommand("copy") or ClipboardJS library usage to copy text to the clipboard should be modernized with native navigator.clipboard.writeText().',
-    reason:
-      'Imperative document.execCommand("copy") calls and ClipboardJS constructor instantiations are detectable via JS/TS AST.',
   },
   {
     guideId: 'defer-work-until-scroll-ends',

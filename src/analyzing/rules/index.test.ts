@@ -9,12 +9,12 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing all 40 rules across the 32 detectable guides', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 40);
-    assert.strictEqual(ALL_RULES.length, 40);
+  it('exports PILOT_RULES containing all 37 rules across the 29 landed feature guides', async (t) => {
+    assert.strictEqual(PILOT_RULES.length, 37);
+    assert.strictEqual(ALL_RULES.length, 37);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 32);
+    assert.strictEqual(guideIds.size, 29);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
@@ -31,14 +31,11 @@ describe('rules/index export registry', () => {
         'checkbox',
         'child-state-based-styling',
         'coordinate-global-events',
-        'copy-button',
-        'css-layout',
         'customize-scrollbar-color-and-thickness',
         'dark-mode',
         'declarative-dialog-popover-control',
         'defer-work-until-scroll-ends',
         'detect-initial-visibility-state',
-        'dialog',
         'form-fields-automatically-fit-contents',
         'ime-safe-enter-submit',
         'individual-transform-properties',
@@ -67,7 +64,7 @@ describe('rules/index export registry', () => {
     }
   });
 
-  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 25 guides excluding 7 experimental', async (t) => {
+  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 25 guides excluding 4 experimental', async (t) => {
     assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 25);
     const qualifiedGuideSet = new Set(QUALIFIED_GUIDE_IDS);
     assert.strictEqual(qualifiedGuideSet.size, 25);
@@ -76,11 +73,8 @@ describe('rules/index export registry', () => {
     assert.strictEqual(qualifiedRuleGuideIds.size, 25);
     assert.deepStrictEqual(Array.from(qualifiedRuleGuideIds).sort(), [...QUALIFIED_GUIDE_IDS].sort());
 
-    // Excluded experimental guides
+    // Excluded experimental guides (4 landed guides)
     const experimentalGuides = [
-      'customize-scrollbar-color-and-thickness',
-      'break-up-long-tasks',
-      'detect-initial-visibility-state',
       'schedule-tasks-by-priority',
       'scrollspy',
       'size-aware-styling',
@@ -93,7 +87,6 @@ describe('rules/index export registry', () => {
     }
 
     assert.deepStrictEqual(POST_SELECTION_TUNED_GUIDE_IDS, [
-      'dialog',
       'manage-recurring-intervals',
       'calculate-event-differentials',
     ]);

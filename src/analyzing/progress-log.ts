@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines-per-function, max-depth */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -10,8 +11,10 @@ import {
   loadPaulIrishScoredCards,
   prepareBlindCards,
   runJudgeBatch,
+  JUDGE_VERSION,
   type CanaryCard,
   type JudgeRunOptions,
+  type JudgeVerdict,
 } from './judge.ts';
 import {
   GRADES_PATH,
@@ -397,8 +400,7 @@ export async function computeProgressLogRow(
   const gradesHash = await computeFileHash(GRADES_PATH);
   const today = new Date().toISOString().slice(0, 10);
   const mode = options.judgeOptions?.mode ?? 'direct';
-  const judgeVersion =
-    options.metrics?.judgeVersion ?? `gemini-3.8-flash:detective-v3-${mode}`;
+  const judgeVersion = options.metrics?.judgeVersion ?? JUDGE_VERSION;
 
   if (options.metrics?.precision && options.metrics.judgeAlpha !== undefined) {
     if (options.metrics.judgeAc1 === undefined) {
@@ -424,8 +426,19 @@ export async function computeProgressLogRow(
     };
   }
 
-  // Load Paul's 85 human-scored cards (83 'right', 2 'not-old-pattern', excluding 1 'unsure')
-  const { cards: scoredCards, humanVerdicts } = await loadPaulIrishScoredCards();
+  // Load Paul's human-scored cards, skipping any card whose guide is a stub or non-landed
+  const { cards: allCards, humanVerdicts: allVerdicts } = await loadPaulIrishScoredCards();
+  const scoredCards = allCards.filter(
+    (c) => c.guideId !== 'copy-button' && c.guideId !== 'dialog' && c.guideId !== 'css-layout',
+  );
+  const humanVerdicts = new Map<string, JudgeVerdict>();
+  for (const c of scoredCards) {
+    const v = allVerdicts.get(c.cardId);
+    if (v) {
+      humanVerdicts.set(c.cardId, v);
+    }
+  }
+
   const summaries = await loadGuideSummariesMap();
   const blindCards = await prepareBlindCards(scoredCards, summaries);
 

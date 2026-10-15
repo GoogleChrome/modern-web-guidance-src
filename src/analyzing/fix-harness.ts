@@ -130,8 +130,8 @@ export function checkModernFeaturePresent(
       );
     case 'shadow-dom':
       return /\bshadowrootmode\b|<\s*template\b/i.test(uncommented);
-    case 'dialog':
-      return /<\s*dialog\b|\.showModal\s*\(/i.test(uncommented);
+    case 'customize-scrollbar-color-and-thickness':
+      return /scrollbar-color\s*:|scrollbar-width\s*:/i.test(uncommented);
     case 'child-state-based-styling':
       return /:has\s*\(/i.test(uncommented);
     case 'animate-to-intrinsic-sizes':
@@ -165,8 +165,8 @@ export function checkModernFeaturePresent(
           !uncommented.includes('"select2"') &&
           !uncommented.includes('"chosen-js"'))
       );
-    case 'copy-button':
-      return /navigator\.clipboard\.writeText\b/i.test(uncommented);
+    case 'break-up-long-tasks':
+      return /scheduler\.yield\s*\(/i.test(uncommented);
     case 'form-fields-automatically-fit-contents':
       return /field-sizing\s*:\s*content|fieldSizing\s*=\s*["']content["']/i.test(
         uncommented,
@@ -189,8 +189,10 @@ export function checkModernFeaturePresent(
       return /autocomplete\s*=\s*["'][^"']*\b(street-address|address-line1|address-line2|postal-code|country|address-level1|address-level2)\b/i.test(
         uncommented,
       );
-    case 'css-layout':
-      return /aspect-ratio\s*:/i.test(uncommented);
+    case 'detect-initial-visibility-state':
+      return /performance\.getEntriesByType\s*\(\s*['"]visibility-state['"]\s*\)|VisibilityStateEntry/i.test(
+        uncommented,
+      );
     case 'adapt-scrollbar-to-contrast-preferences':
       return /scrollbar-color\s*:|scrollbar-width\s*:/i.test(uncommented);
     case 'checkbox':
@@ -921,25 +923,28 @@ export function getSeededSensitivityTestCases(): SeededFixture[] {
 </my-card>`,
     },
     {
-      guideId: 'dialog',
-      filePath: 'src/components/modal.html',
-      originalContent: `<div role="dialog" aria-modal="true" class="modal-dialog">
-  <div class="modal-header"><h3>Modal Header</h3></div>
-  <div class="modal-body"><p>Dialog body text</p></div>
-</div>`,
-      noOpPatch: `<div role="dialog" aria-modal="true" class="modal-dialog">
-  <div class="modal-header"><h3>Modal Header</h3></div>
-  <div class="modal-body"><p>Dialog body text</p></div>
-</div>`,
+      guideId: 'customize-scrollbar-color-and-thickness',
+      filePath: 'src/styles/scrollbar.css',
+      originalContent: `.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: #888;
+}`,
+      noOpPatch: `.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: #888;
+}`,
       deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `<div class="modal-container">
-  <div class="modal-header"><h3>Modal Header</h3></div>
-  <div class="modal-body"><p>Dialog body text</p></div>
-</div>`,
-      goodPatch: `<dialog class="modal-dialog">
-  <div class="modal-header"><h3>Modal Header</h3></div>
-  <div class="modal-body"><p>Dialog body text</p></div>
-</dialog>`,
+      brokenSyntaxOrEvasionPatch: `.sidebar {
+  /* removed webkit scrollbar */
+}`,
+      goodPatch: `.sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: #888 transparent;
+}`,
     },
     {
       guideId: 'child-state-based-styling',
@@ -1108,37 +1113,23 @@ export function getConferenceTime(dateStr: string, zone: string) {
 }`,
     },
     {
-      guideId: 'copy-button',
-      filePath: 'src/utils/clipboard.ts',
-      originalContent: `export function copyShareLink(url: string): boolean {
-  const el = document.createElement('textarea');
-  el.value = url;
-  document.body.appendChild(el);
-  el.select();
-  const ok = document.execCommand('copy');
-  document.body.removeChild(el);
-  return ok;
+      guideId: 'break-up-long-tasks',
+      filePath: 'src/utils/scheduler.ts',
+      originalContent: `export async function yieldControl(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }`,
-      noOpPatch: `export function copyShareLink(url: string): boolean {
-  const el = document.createElement('textarea');
-  el.value = url;
-  document.body.appendChild(el);
-  el.select();
-  const ok = document.execCommand('copy');
-  document.body.removeChild(el);
-  return ok;
+      noOpPatch: `export async function yieldControl(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }`,
       deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `export function copyShareLink(url: string): boolean {
-  console.log('copy:', url);
-  return true;
+      brokenSyntaxOrEvasionPatch: `export async function yieldControl(): Promise<void> {
+  return Promise.resolve();
 }`,
-      goodPatch: `export async function copyShareLink(url: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(url);
-    return true;
-  } catch {
-    return false;
+      goodPatch: `export async function yieldControl(): Promise<void> {
+  if ('scheduler' in window && 'yield' in scheduler) {
+    await scheduler.yield();
+  } else {
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
 }`,
     },
@@ -1262,30 +1253,31 @@ export function getConferenceTime(dateStr: string, zone: string) {
 </form>`,
     },
     {
-      guideId: 'css-layout',
-      filePath: 'src/media/embed.css',
-      originalContent: `.video-wrapper {
-  position: relative;
-  width: 100%;
-  padding-bottom: 56.25%;
-  height: 0;
-}`,
-      noOpPatch: `.video-wrapper {
-  position: relative;
-  width: 100%;
-  padding-bottom: 56.25%;
-  height: 0;
-}`,
+      guideId: 'detect-initial-visibility-state',
+      filePath: 'src/analytics/visibility.ts',
+      originalContent: `let wasHidden = document.visibilityState === 'hidden';
+document.addEventListener('visibilitychange', () => {
+  if (wasHidden && document.visibilityState === 'visible') {
+    sendMetric('page_became_visible');
+    wasHidden = false;
+  }
+});`,
+      noOpPatch: `let wasHidden = document.visibilityState === 'hidden';
+document.addEventListener('visibilitychange', () => {
+  if (wasHidden && document.visibilityState === 'visible') {
+    sendMetric('page_became_visible');
+    wasHidden = false;
+  }
+});`,
       deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `.video-wrapper {
-  position: relative;
-  width: 100%;
-  height: 400px;
-}`,
-      goodPatch: `.video-wrapper {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
+      brokenSyntaxOrEvasionPatch: `let wasHidden = false;
+document.addEventListener('visibilitychange', () => {
+  sendMetric('page_became_visible');
+});`,
+      goodPatch: `const entries = performance.getEntriesByType('visibility-state');
+const wasInitiallyHidden = entries.length > 0 && entries[0].name === 'hidden';
+if (wasInitiallyHidden) {
+  sendMetric('initially_hidden');
 }`,
     },
     {

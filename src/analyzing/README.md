@@ -25,8 +25,8 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `[dir]` | Positional | Directory to analyze (defaults to current working directory). |
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
-| `--tier=1`, `--proven-only` | Flag | Restrict analysis strictly to the 8 Tier 1 (`proven-high-n`, $n \ge 8$) rules. By default, the CLI runs the 25 qualified rules (`TIER_1_RULES` + `TIER_2_RULES`, `99.2%` held-out precision). |
-| `--all-rules`, `--experimental` | Flag | Include the 7 Tier 3 experimental/unqualified rules (`ALL_RULES`, 32 guides total). |
+| `--tier=1`, `--proven-only` | Flag | Restrict analysis strictly to the 7 Tier 1 (`proven-high-n`, $n \ge 8$) rules. By default, the CLI runs the 25 qualified rules (`TIER_1_RULES` + `TIER_2_RULES`). |
+| `--all-rules`, `--experimental` | Flag | Include the 4 Tier 3 experimental/unqualified rules (`ALL_RULES`, 29 landed feature guides total, 37 rules). |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
@@ -42,11 +42,11 @@ Found 3 modernization opportunities across 2 guides:
     - src/components/Login.tsx:42: Missing autocomplete="username" or autocomplete="current-password" on credential input
     - src/views/Register.vue:18: Input with type="password" lacks autocomplete attribute
 
-* dialog [tier-1] (1 finding)
-  Summary: Replace custom modal div overlays and keydown trap handlers with native HTML <dialog>.
-  Retrieve: npx -y modern-web-guidance@latest retrieve "dialog"
+* animate-element-entry-exit [tier-1] (1 finding)
+  Summary: Modernize imperative animation toggles and display none timing with CSS @starting-style and transition-behavior: allow-discrete.
+  Retrieve: npx -y modern-web-guidance@latest retrieve "animate-element-entry-exit"
   Findings:
-    - src/components/Modal.tsx:75: Custom backdrop and escape listener detected; replace with native <dialog>
+    - src/components/Toast.tsx:75: Imperative transitionend listener setting display none; replace with @starting-style
 ```
 
 ### Structured JSON Output (`--json`)
@@ -195,7 +195,7 @@ export const autofillSignInFormRule: AnalyzerRule = {
 };
 ```
 
-### Registered Detectable Guides (32 Guides: 25 Qualified + 7 Experimental)
+### Registered Detectable Guides (29 Guides: 25 Qualified + 4 Experimental)
 
 | # | Guide ID | Guide Hash | Tier (`rules/index.ts`) | Held-Out Precision | Modern Platform Target |
 | :- | :--- | :--- | :--- | :---: | :--- |
@@ -205,32 +205,29 @@ export const autofillSignInFormRule: AnalyzerRule = {
 | 4 | `declarative-dialog-popover-control` | `87f6a7ad8849` | **Tier 1 (`proven-high-n`)** | `26/27 (96.3%)` | Declarative `commandfor` / `command` and `popovertarget` |
 | 5 | `autofill-sign-in-form` | `93a1df14cafc` | **Tier 1 (`proven-high-n`)** | `23/23 (100.0%)` | Standard `autocomplete="username"` and `autocomplete="current-password"` |
 | 6 | `shadow-dom` | `7c77ee087448` | **Tier 1 (`proven-high-n`)** | `13/13 (100.0%)` | Native `<template>` and Declarative Shadow DOM (`<template shadowrootmode="open">`) |
-| 7 | `dialog` | `95fc47d3f348` | **Tier 1 (`proven-high-n`)** | `10/10 (100.0%)` | Native HTML `<dialog>` element and `showModal()` |
-| 8 | `child-state-based-styling` | `70dc57b74e35` | **Tier 1 (`proven-high-n`)** | `8/8 (100.0%)` | CSS `:has()` relational pseudo-class |
+| 7 | `child-state-based-styling` | `70dc57b74e35` | **Tier 1 (`proven-high-n`)** | `8/8 (100.0%)` | CSS `:has()` relational pseudo-class |
 | 9 | `animate-to-intrinsic-sizes` | `290b14ca7ee4` | **Tier 2 (`zero-fp-low-n`)** | `4/4 (100.0%)` | `calc-size()` and `interpolate-size: allow-keywords` |
 | 10 | `coordinate-global-events` | `253dec2c89a2` | **Tier 2 (`zero-fp-low-n`)** | `4/4 (100.0%)` | `Temporal.ZonedDateTime` for global timezone events |
 | 11 | `manage-recurring-intervals` | `70de814bc3cc` | **Tier 2 (`zero-fp-low-n`)** | `4/4 (100.0%)` | Temporal API (`Temporal.PlainDate.add` / `Temporal.Duration`) |
-| 12 | `accessible-error-announcement` | `b89c17bead92` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | `:user-invalid` and `aria-live="polite"` / `role="alert"` |
-| 13 | `brand-consistent-forms` | `a040352d2507` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | CSS `accent-color` for custom form controls |
-| 14 | `branded-select-styling` | `c332c3c67d49` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | Customizable native `<select>` with `appearance: base-select` |
-| 15 | `copy-button` | `d92b7f9038d3` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | Native `navigator.clipboard.writeText()` |
-| 16 | `form-fields-automatically-fit-contents` | `54a6341c988f` | **Tier 2 (`zero-fp-low-n`)** | `2/2 (100.0%)` | CSS `field-sizing: content` |
-| 17 | `ime-safe-enter-submit` | `bd5e1488af32` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | `e.isComposing` guard on Enter keydown handlers |
-| 18 | `stack-drill-down` | `c3b9a4677d1b` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Native HTML `inert` attribute on inactive drill-down panels |
-| 19 | `calculate-event-differentials` | `ee7112b330c4` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Temporal API (`Temporal.PlainDate` / `Temporal.Instant` `.until()` / `.since()`) |
-| 20 | `autofill-address-form` | `49ee6117c8e4` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Standard `autocomplete` attributes on address form inputs |
-| 21 | `css-layout` | `b2ddd28dc261` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Standard CSS `aspect-ratio` property |
-| 22 | `adapt-scrollbar-to-contrast-preferences` | `55a05ba9d96e` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | `scrollbar-color`, `scrollbar-width`, and `prefers-contrast` |
-| 23 | `checkbox` | `1b9c35459943` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | CSS `accent-color` for styled checkboxes |
-| 24 | `prevent-page-scroll-under-modal-dialog` | `7d10dd62dcbc` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
-| 25 | `dark-mode` | `796876897c2c` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | CSS `color-scheme: light dark` and `light-dark()` color functions |
-| 26 | `customize-scrollbar-color-and-thickness` | `6797d5c85622` | Tier 3 (`experimental`) | `26/29 (89.7%)` | Standard CSS `scrollbar-color` and `scrollbar-width` |
-| 27 | `break-up-long-tasks` | `18330b20e496` | Tier 3 (`experimental`) | `1/2 (50.0%)` | `scheduler.yield()` and `scheduler.postTask()` |
-| 28 | `detect-initial-visibility-state` | `b881da0b6ea2` | Tier 3 (`experimental`) | `0/6 (0.0%)` | `PerformanceNavigationTiming` / `visibility-state` entries |
-| 29 | `schedule-tasks-by-priority` | `69f3bb531093` | Tier 3 (`experimental`) | `0/1 (0.0%)` | Prioritized task scheduling via `scheduler.postTask()` |
-| 30 | `scrollspy` | `fffee90dc52d` | Tier 3 (`experimental`) | `0/0 (N/A)` | CSS `scroll-target-group: auto` and `:target-current` |
-| 31 | `size-aware-styling` | `89180c46bf23` | Tier 3 (`experimental`) | `0/0 (N/A)` | Native CSS Container Queries (`@container`) |
-| 32 | `defer-work-until-scroll-ends` | `ee7104add98e` | Tier 3 (`experimental`) | `0/0 (N/A)` | Native `scrollend` event listener |
+| 11 | `accessible-error-announcement` | `b89c17bead92` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | `:user-invalid` and `aria-live="polite"` / `role="alert"` |
+| 12 | `brand-consistent-forms` | `a040352d2507` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | CSS `accent-color` for custom form controls |
+| 13 | `branded-select-styling` | `c332c3c67d49` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | Customizable native `<select>` with `appearance: base-select` |
+| 14 | `form-fields-automatically-fit-contents` | `54a6341c988f` | **Tier 2 (`zero-fp-low-n`)** | `2/2 (100.0%)` | CSS `field-sizing: content` |
+| 15 | `ime-safe-enter-submit` | `bd5e1488af32` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | `e.isComposing` guard on Enter keydown handlers |
+| 16 | `stack-drill-down` | `c3b9a4677d1b` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Native HTML `inert` attribute on inactive drill-down panels |
+| 17 | `calculate-event-differentials` | `ee7112b330c4` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Temporal API (`Temporal.PlainDate` / `Temporal.Instant` `.until()` / `.since()`) |
+| 18 | `autofill-address-form` | `49ee6117c8e4` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Standard `autocomplete` attributes on address form inputs |
+| 19 | `adapt-scrollbar-to-contrast-preferences` | `55a05ba9d96e` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | `scrollbar-color`, `scrollbar-width`, and `prefers-contrast` |
+| 20 | `checkbox` | `1b9c35459943` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | CSS `accent-color` for styled checkboxes |
+| 21 | `prevent-page-scroll-under-modal-dialog` | `7d10dd62dcbc` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
+| 22 | `dark-mode` | `796876897c2c` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | CSS `color-scheme: light dark` and `light-dark()` color functions |
+| 23 | `customize-scrollbar-color-and-thickness` | `6797d5c85622` | **Tier 2 (`zero-fp-low-n`)** | `26/29 (89.7%)` | Standard CSS `scrollbar-color` and `scrollbar-width` |
+| 24 | `break-up-long-tasks` | `18330b20e496` | **Tier 2 (`zero-fp-low-n`)** | `1/2 (50.0%)` | `scheduler.yield()` and `scheduler.postTask()` |
+| 25 | `detect-initial-visibility-state` | `b881da0b6ea2` | **Tier 2 (`zero-fp-low-n`)** | `0/6 (0.0%)` | `PerformanceNavigationTiming` / `visibility-state` entries |
+| 26 | `schedule-tasks-by-priority` | `69f3bb531093` | Tier 3 (`experimental`) | `0/1 (0.0%)` | Prioritized task scheduling via `scheduler.postTask()` |
+| 27 | `scrollspy` | `fffee90dc52d` | Tier 3 (`experimental`) | `0/0 (N/A)` | CSS `scroll-target-group: auto` and `:target-current` |
+| 28 | `size-aware-styling` | `89180c46bf23` | Tier 3 (`experimental`) | `0/0 (N/A)` | Native CSS Container Queries (`@container`) |
+| 29 | `defer-work-until-scroll-ends` | `ee7104add98e` | Tier 3 (`experimental`) | `0/0 (N/A)` | Native `scrollend` event listener |
 
 ---
 

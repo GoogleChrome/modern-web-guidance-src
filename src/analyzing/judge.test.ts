@@ -603,10 +603,10 @@ Use the sample-feature property on the root element.
 });
 
 describe('loadPaulIrishScoredCards', () => {
-  it('loads the 85 scored cards from canonical files excluding unsure', async () => {
+  it('loads the human-scored cards from canonical files excluding unsure and stubs', async () => {
     const { cards, humanVerdicts } = await loadPaulIrishScoredCards();
-    assert.equal(cards.length, 85);
-    assert.equal(humanVerdicts.size, 85);
+    assert.equal(cards.length, 110);
+    assert.equal(humanVerdicts.size, 110);
     assert.equal(humanVerdicts.get('2547b2ba6d74'), 'not-old-pattern');
     assert.equal(humanVerdicts.get('7f2a96f62a4c'), 'not-old-pattern');
     assert.equal(humanVerdicts.get('c8147e8fdf52'), undefined); // 'unsure' excluded

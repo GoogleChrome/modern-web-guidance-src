@@ -8,6 +8,7 @@ import {
   CARDS_DIR,
   GRADES_PATH,
   GUIDES_DIR,
+  M3_SPOTCHECK_DECK_PATH,
   REPOS_CONFIG_PATH,
   WORKTREE_ROOT,
   repoDir,
@@ -1084,20 +1085,36 @@ export async function loadPaulIrishScoredCards(
   }
 
   const allCardsMap = new Map<string, CalibrationDeckItem>();
+
+  async function ingestJsonFile(filePath: string): Promise<void> {
+    try {
+      const cardContent = await readFile(filePath, 'utf8');
+      const rawJson = JSON.parse(cardContent);
+      const cardList: CalibrationDeckItem[] = Array.isArray(rawJson)
+        ? rawJson
+        : rawJson && typeof rawJson === 'object'
+          ? [rawJson]
+          : [];
+      for (const c of cardList) {
+        if (c && typeof c === 'object' && c.cardId) {
+          allCardsMap.set(c.cardId, c);
+        }
+      }
+    } catch {
+      /* ignore unreadable or invalid json */
+    }
+  }
+
+  // Load known deck paths if they exist
+  await ingestJsonFile(CALIBRATION_DECK_PATH);
+  await ingestJsonFile(M3_SPOTCHECK_DECK_PATH);
+  await ingestJsonFile(join(cardsDir, '_calibration-deck.json'));
+  await ingestJsonFile(join(cardsDir, '_m3-spotcheck-deck.json'));
+
   const entries = await readdir(cardsDir, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.isFile() && entry.name.endsWith('.json')) {
-      const cardContent = await readFile(join(cardsDir, entry.name), 'utf8');
-      try {
-        const cardList = JSON.parse(cardContent) as CalibrationDeckItem[];
-        for (const c of cardList) {
-          if (c.cardId) {
-            allCardsMap.set(c.cardId, c);
-          }
-        }
-      } catch {
-        /* ignore invalid cards json */
-      }
+      await ingestJsonFile(join(cardsDir, entry.name));
     }
   }
 
@@ -1111,6 +1128,10 @@ export async function loadPaulIrishScoredCards(
     const card = allCardsMap.get(cardId);
     if (!card) {
       throw new Error(`Card ${cardId} in ${gradesPath} not found in ${cardsDir}`);
+    }
+    // Skip cards whose guide is a stub or non-landed guide (copy-button, dialog, css-layout)
+    if (card.guideId === 'copy-button' || card.guideId === 'dialog' || card.guideId === 'css-layout') {
+      continue;
     }
     scoredCards.push(card);
     scoredVerdicts.set(cardId, verdict);

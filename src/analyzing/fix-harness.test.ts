@@ -31,17 +31,19 @@ describe('locateFindingLineInContent', () => {
 });
 
 describe('checkModernFeaturePresent', () => {
-  it('detects dialog feature correctly', () => {
+  it('detects customize-scrollbar-color-and-thickness feature correctly', () => {
     assert.strictEqual(
-      checkModernFeaturePresent('dialog', '<dialog id="modal"><button>Close</button></dialog>'),
+      checkModernFeaturePresent(
+        'customize-scrollbar-color-and-thickness',
+        'body { scrollbar-width: thin; scrollbar-color: #888 transparent; }',
+      ),
       true,
     );
     assert.strictEqual(
-      checkModernFeaturePresent('dialog', 'dialogEl.showModal();'),
-      true,
-    );
-    assert.strictEqual(
-      checkModernFeaturePresent('dialog', '<div class="modal"><button>Close</button></div>'),
+      checkModernFeaturePresent(
+        'customize-scrollbar-color-and-thickness',
+        'body { width: 100px; }',
+      ),
       false,
     );
   });
@@ -357,19 +359,19 @@ describe('checkStructuralIntegrity', () => {
 
 describe('validateFixPatch (3-Gate Grader)', () => {
   const foundFixture = getSeededSensitivityTestCases().find(
-    (fx) => fx.guideId === 'dialog',
+    (fx) => fx.guideId === 'break-up-long-tasks',
   );
   if (!foundFixture) {
-    throw new Error('dialog fixture missing from seeded sensitivity cases');
+    throw new Error('break-up-long-tasks fixture missing from seeded sensitivity cases');
   }
-  const dialogFixture = foundFixture;
+  const testFixture = foundFixture;
 
   it('Gate 1 fails on no-op patch (legacy finding remains)', async () => {
     const patch: FixPatch = {
-      filePath: dialogFixture.filePath,
-      originalContent: dialogFixture.originalContent,
-      patchedContent: dialogFixture.noOpPatch,
-      guideId: dialogFixture.guideId,
+      filePath: testFixture.filePath,
+      originalContent: testFixture.originalContent,
+      patchedContent: testFixture.noOpPatch,
+      guideId: testFixture.guideId,
     };
 
     const res = await validateFixPatch(patch);
@@ -380,10 +382,10 @@ describe('validateFixPatch (3-Gate Grader)', () => {
 
   it('Gate 2a fails on syntax error', async () => {
     const patch: FixPatch = {
-      filePath: 'src/dialog.ts',
-      originalContent: dialogFixture.originalContent,
-      patchedContent: 'export function openDialog() { dialog.showModal(; }',
-      guideId: 'dialog',
+      filePath: 'src/scheduler.ts',
+      originalContent: testFixture.originalContent,
+      patchedContent: 'export function broken() { scheduler.yield(; }',
+      guideId: testFixture.guideId,
     };
 
     const res = await validateFixPatch(patch);
@@ -394,10 +396,10 @@ describe('validateFixPatch (3-Gate Grader)', () => {
 
   it('Gate 2b fails on gutting / deletion', async () => {
     const patch: FixPatch = {
-      filePath: dialogFixture.filePath,
-      originalContent: dialogFixture.originalContent,
+      filePath: testFixture.filePath,
+      originalContent: testFixture.originalContent,
       patchedContent: '',
-      guideId: dialogFixture.guideId,
+      guideId: testFixture.guideId,
     };
 
     const res = await validateFixPatch(patch);
@@ -408,10 +410,10 @@ describe('validateFixPatch (3-Gate Grader)', () => {
 
   it('Gate 2c fails on evasion without modern feature', async () => {
     const patch: FixPatch = {
-      filePath: dialogFixture.filePath,
-      originalContent: dialogFixture.originalContent,
-      patchedContent: dialogFixture.brokenSyntaxOrEvasionPatch,
-      guideId: dialogFixture.guideId,
+      filePath: testFixture.filePath,
+      originalContent: testFixture.originalContent,
+      patchedContent: testFixture.brokenSyntaxOrEvasionPatch,
+      guideId: testFixture.guideId,
     };
 
     const res = await validateFixPatch(patch);
@@ -422,10 +424,10 @@ describe('validateFixPatch (3-Gate Grader)', () => {
 
   it('Gate 3 fails when behavioralCheck callback fails', async () => {
     const patch: FixPatch = {
-      filePath: dialogFixture.filePath,
-      originalContent: dialogFixture.originalContent,
-      patchedContent: dialogFixture.goodPatch,
-      guideId: dialogFixture.guideId,
+      filePath: testFixture.filePath,
+      originalContent: testFixture.originalContent,
+      patchedContent: testFixture.goodPatch,
+      guideId: testFixture.guideId,
     };
 
     const res = await validateFixPatch(patch, {
@@ -440,10 +442,10 @@ describe('validateFixPatch (3-Gate Grader)', () => {
 
   it('passes all 3 gates on reference good patch', async () => {
     const patch: FixPatch = {
-      filePath: dialogFixture.filePath,
-      originalContent: dialogFixture.originalContent,
-      patchedContent: dialogFixture.goodPatch,
-      guideId: dialogFixture.guideId,
+      filePath: testFixture.filePath,
+      originalContent: testFixture.originalContent,
+      patchedContent: testFixture.goodPatch,
+      guideId: testFixture.guideId,
     };
 
     const res = await validateFixPatch(patch, {
@@ -458,12 +460,12 @@ describe('validateFixPatch (3-Gate Grader)', () => {
 
   it('evaluates Gate 1 on patchedWindow when provided for windowed refactoring', async () => {
     const patch: FixPatch = {
-      filePath: dialogFixture.filePath,
-      originalContent: dialogFixture.originalContent,
-      patchedContent: dialogFixture.goodPatch,
-      guideId: dialogFixture.guideId,
-      originalWindow: dialogFixture.originalContent,
-      patchedWindow: dialogFixture.goodPatch,
+      filePath: testFixture.filePath,
+      originalContent: testFixture.originalContent,
+      patchedContent: testFixture.goodPatch,
+      guideId: testFixture.guideId,
+      originalWindow: testFixture.originalContent,
+      patchedWindow: testFixture.goodPatch,
     };
 
     const res = await validateFixPatch(patch);
