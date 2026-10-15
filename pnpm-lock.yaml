@@ -108,8 +108,8 @@ importers:
         specifier: ^0.4.5
         version: 0.4.5
       cssomnom:
-        specifier: ^0.1.4
-        version: 0.1.4
+        specifier: ^0.1.9
+        version: 0.1.9
       diff:
         specifier: ^9.0.0
         version: 9.0.0
@@ -1556,8 +1556,8 @@ packages:
   cssom@0.5.0:
     resolution: {integrity: sha512-iKuQcq+NdHqlAcwUY0o/HL69XQrUaQdMjmStJ8JFmUaiiQErlhrmuigkg/CU4E2J0IyUKUrMAgl36TvN67MqTw==}
 
-  cssomnom@0.1.4:
-    resolution: {integrity: sha512-TlHXKwGFR4sUrMaJusJqXnRqHfH6pOCGFcz7+2cIEhgCr7THEElrbs0EkOG8e3ZdNOdtF+M6JIczViXNEFvq6A==}
+  cssomnom@0.1.9:
+    resolution: {integrity: sha512-3LgRnYCwlUxtVcMwRmOyZtOC2OkY/OE+3w5XS2e3hETC1RmRWGOuLzYbmKG7PjGftY691IXib5Oeo5gdlsWLVg==}
     engines: {node: '>=24.11.0'}
 
   data-uri-to-buffer@4.0.1:
@@ -4610,7 +4610,7 @@ snapshots:
 
   cssom@0.5.0: {}
 
-  cssomnom@0.1.4: {}
+  cssomnom@0.1.9: {}
 
   data-uri-to-buffer@4.0.1: {}
 
