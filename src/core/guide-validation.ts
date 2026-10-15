@@ -274,14 +274,10 @@ export function validateGuide(filePath: string): ValidationResult {
   }
 
   const maskedBody = maskComments(body);
-  errors.push(...validateMacros(maskedBody, relativePath));
+  const isPublished = isGuidePublished(stripAllComments(body).trim().length > 0, data.draft);
+  errors.push(...validateMacros(maskedBody, relativePath, { target: isPublished ? 'static-site' : 'local-dev' }));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateCallouts(maskedBody, relativePath));
-  // Published guides must not link to unpublished ones; drafts may link ahead.
-  const isPublished = stripAllComments(body).trim().length > 0 && !data.draft;
-  if (isPublished) {
-    errors.push(...validateGuideRefTargets(maskedBody, relativePath));
-  }
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
@@ -611,6 +607,14 @@ export function stripAllComments(content: string): string {
   return stripComments(content).replace(/<!--[\s\S]*?-->/g, '');
 }
 
+export function isGuidePublished(hasContent: boolean, draft: unknown): boolean {
+  return Boolean(hasContent && !isDraftStub(draft) && !draft);
+}
+
+export function stripLeadingH1(markdown: string): string {
+  return markdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
+}
+
 export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean }): GuideInventory {
   const name = path.basename(dir);
   const category = path.basename(path.dirname(dir));
@@ -628,7 +632,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   const { draft, draftReason } = parseDraft(data, guideFilePath);
   const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
   const hasGuide = hasContent && !isDraftStub(draft);
-  const isPublished = hasGuide && !draft;
+  const isPublished = isGuidePublished(hasContent, draft);
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();
@@ -911,22 +915,6 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
   return errors;
 }
 
-/**
- * Published guides may only GUIDE_REF other published guides; links to stubs or
- * drafts become dead links on the static site and dead retrievals in the CLI.
- */
-export function validateGuideRefTargets(body: string, relativePath: string): string[] {
-  const errors: string[] = [];
-  const guides = getGuidesMap();
-  for (const [, guideId] of body.matchAll(/GUIDE_REF\(\s*["']([^"']+)["']\s*\)/g)) {
-    const target = guides.get(guideId);
-    if (target && !target.isPublished) {
-      errors.push(`GUIDE_REF("${guideId}") in ${relativePath} points to an unpublished guide. Link a published guide or remove the reference.`);
-    }
-  }
-  return errors;
-}
-
 export const GITHUB_ALERT_TYPES = ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'] as const;
 export type GithubAlertType = typeof GITHUB_ALERT_TYPES[number];
 
@@ -934,8 +922,8 @@ export function isGithubAlertType(type: string): type is GithubAlertType {
   return (GITHUB_ALERT_TYPES as readonly string[]).includes(type);
 }
 
-const ALERT_MARKER_PATTERN = /^> ?\[!(\w+)\]/;
-const BOLD_CALLOUT_PATTERN = /^> ?\*\*(Note|Tip|Important|Warning|Caution)(?::\*\*|\*\*:)/i;
+export const ALERT_MARKER_PATTERN = /^> ?\[!(\w+)\]/;
+export const BOLD_CALLOUT_PATTERN = new RegExp(`^> ?\\*\\*(${GITHUB_ALERT_TYPES.join('|')})(?::\\*\\*|\\*\\*:)`, 'i');
 
 /**
  * Callouts must use GitHub alert syntax (`> [!NOTE]`) with a known type, so the

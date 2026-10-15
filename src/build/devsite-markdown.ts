@@ -1,6 +1,14 @@
 import { marked, type Token, type Tokens } from "marked";
 import { isGithubAlertType, type GithubAlertType } from "../core/guide-validation.ts";
 
+function isOrderedList(token: Token): token is Tokens.List {
+  return token.type === "list" && Boolean((token as Tokens.List).ordered);
+}
+
+function isBlockquote(token: Token): token is Tokens.Blockquote {
+  return token.type === "blockquote";
+}
+
 /**
  * Adapts guide markdown for DevSite's renderer, which diverges from GitHub in two ways:
  *  - GitHub alerts (`> [!NOTE]`) aren't supported; DevSite uses `Note: …` paragraphs or `<aside class="note">`.
@@ -21,16 +29,15 @@ export function toDevsiteMarkdown(markdown: string, onListMerge?: (stepNumber: n
   let pending: { nextNumber: number; outIndex: number } | undefined;
 
   for (const token of tokens) {
-    if (token.type === "list" && token.ordered) {
-      const list = token as Tokens.List;
-      const start = typeof list.start === "number" ? list.start : 1;
+    if (isOrderedList(token)) {
+      const start = typeof token.start === "number" ? token.start : 1;
       if (pending && start === pending.nextNumber && start > 1) {
         const interrupting = out.splice(pending.outIndex);
         out.push(indentBlock(interrupting.join("")));
         onListMerge?.(start);
       }
-      out.push(list.raw);
-      pending = { nextNumber: start + list.items.length, outIndex: out.length };
+      out.push(token.raw);
+      pending = { nextNumber: start + token.items.length, outIndex: out.length };
       continue;
     }
 
@@ -38,13 +45,12 @@ export function toDevsiteMarkdown(markdown: string, onListMerge?: (stepNumber: n
       pending = undefined;
     }
 
-    out.push(token.type === "blockquote" ? convertAlert(token as Tokens.Blockquote) : token.raw);
+    out.push(isBlockquote(token) ? convertAlert(token) : token.raw);
   }
 
   return out.join("");
 }
 
-/** Indents every non-blank line by 4 spaces so the block nests inside the preceding list item. */
 function indentBlock(text: string): string {
   return text.replace(/^(?=[^\n]*\S)/gm, "    ");
 }
@@ -70,9 +76,7 @@ function convertAlert(token: Tokens.Blockquote): string {
   const trailing = token.raw.match(/\n*$/)?.[0] ?? "";
   const body = token.raw
     .slice(match[0].length, token.raw.length - trailing.length)
-    .split("\n")
-    .map(line => line.replace(/^> ?/, ""))
-    .join("\n")
+    .replace(/^> ?/gm, "")
     .trim();
 
   const bodyTokens: Token[] = marked.lexer(body).filter(t => t.type !== "space");

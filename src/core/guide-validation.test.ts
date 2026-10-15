@@ -3,9 +3,9 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateCallouts, validateGuideRefTargets, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateCallouts, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, ProjectStatus, type GuideInventory } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
-import { maskComments } from './macros.ts';
+import { maskComments, validateMacros } from './macros.ts';
 
 describe('extractH1Heading and extractAllH1Headings', () => {
   test('extracts standard ATX H1 heading', () => {
@@ -122,13 +122,13 @@ describe('parseExpectations', () => {
   });
 });
 
-describe('validateGuideRefTargets', () => {
+describe('GUIDE_REF publication target validation', () => {
   test('allows references to published guides', () => {
-    assert.deepStrictEqual(validateGuideRefTargets('See {{ GUIDE_REF("forms") }}.', 'test.md'), []);
+    assert.deepStrictEqual(validateMacros('See {{ GUIDE_REF("forms") }}.', 'test.md', { target: 'static-site' }), []);
   });
 
   test('rejects references to unpublished guides', () => {
-    const errors = validateGuideRefTargets(`See {{ GUIDE_REF('slider-tooltip') }}.`, 'test.md');
+    const errors = validateMacros(`See {{ GUIDE_REF('slider-tooltip') }}.`, 'test.md', { target: 'static-site' });
     assert.strictEqual(errors.length, 1);
     assert.match(errors[0], /GUIDE_REF\("slider-tooltip"\).*unpublished/);
   });
