@@ -20,11 +20,16 @@ export function resolveMwgrcPath(startDir = process.cwd()): string {
   }
 }
 
+function isNodeError(e: unknown): e is NodeJS.ErrnoException {
+  return typeof e === 'object' && e !== null && 'code' in e;
+}
+
 export function readMwgrc(startDir = process.cwd()): MwgConfig {
+  const filePath = startDir.endsWith(CONFIG_FILENAME) ? startDir : resolveMwgrcPath(startDir);
   try {
-    return JSON.parse(fs.readFileSync(resolveMwgrcPath(startDir), 'utf8'));
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (e: unknown) {
-    if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (isNodeError(e) && e.code === 'ENOENT') {
       return {};
     }
     throw e;
@@ -33,7 +38,7 @@ export function readMwgrc(startDir = process.cwd()): MwgConfig {
 
 export function writeMwgrc(patch: Partial<MwgConfig>, startDir = process.cwd()): string {
   const targetPath = resolveMwgrcPath(startDir);
-  const existing = readMwgrc(startDir);
+  const existing = readMwgrc(targetPath);
   fs.writeFileSync(targetPath, JSON.stringify({ ...existing, ...patch }, null, 2) + '\n', 'utf8');
   return targetPath;
 }

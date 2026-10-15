@@ -452,22 +452,17 @@ export function parseAgentArgs(scriptName: string): AgentArgs {
  * @returns The path to the working directory within the isolated home
  */
 export function createWorkDir(templateDir: string, homeDir: string, runType: string): string {
-  // For the single task run, there is no template
-  // Create the empty work dir with the runType as the directory name
-  if (templateDir === '') {
-    const workDir = path.join(homeDir, runType);
+  const isSingleTask = templateDir === '';
+  const workDir = isSingleTask
+    ? path.join(homeDir, runType)
+    : path.join(homeDir, path.basename(templateDir));
+
+  if (isSingleTask) {
     fs.mkdirSync(workDir, { recursive: true });
-    // Eval sandboxes represent projects where the developer has already opted in to guidance,
-    // allowing guided evals of Origin Trial tasks (like agentic-forms) to retrieve guidance
-    // without hitting the non-interactive/agent gate. Writing before git init ensures .mwgrc
-    // is committed in the initial root commit and never leaks into agent.patch.
-    fs.writeFileSync(path.join(workDir, '.mwgrc'), JSON.stringify({ allowOriginTrials: true }, null, 2) + '\n', 'utf8');
-    initGitRepo(workDir);
-    return workDir;
+  } else {
+    execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   }
-  // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
-  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
-  const workDir = path.join(homeDir, path.basename(templateDir));
+
   // Eval sandboxes represent projects where the developer has already opted in to guidance,
   // allowing guided evals of Origin Trial tasks (like agentic-forms) to retrieve guidance
   // without hitting the non-interactive/agent gate. Writing before git init ensures .mwgrc
