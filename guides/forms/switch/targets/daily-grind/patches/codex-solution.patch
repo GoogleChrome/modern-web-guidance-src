@@ -1,0 +1,188 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c43f9f8
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,3 @@
++node_modules/
++dist/
++.build/
+diff --git a/index.html b/index.html
+index 66c9173..8512e59 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,52 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .preferences {
++      margin-top: 40px;
++      text-align: left;
++    }
++
++    .preferences h2 {
++      color: var(--primary);
++    }
++
++    .switch-label {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 20px;
++      min-height: 48px;
++      margin-top: 16px;
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch] {
++      accent-color: var(--accent);
++      margin: 0;
++      cursor: pointer;
++      flex-shrink: 0;
++      font-size: 24px;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .switch-status {
++      font-size: 0.9rem;
++      margin-top: 8px;
++    }
+   </style>
++  <script type="importmap">
++    {
++      "imports": {
++        "input-switch-polyfill": "./vendor/input-switch-polyfill/input-switch-polyfill.js"
++      }
++    }
++  </script>
++  <script type="module" src="./main.js"></script>
+ </head>
+ 
+ <body>
+@@ -195,6 +240,16 @@
+         </div>
+       </div>
+     </section>
++    <section class="card preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Coffee updates</h2>
++      <p id="coffee-updates-description">Choose whether to enable notifications about seasonal drinks and fresh roasts.</p>
++      <label class="switch-label" for="coffee-updates">
++        <span>Enable coffee updates</span>
++        <input id="coffee-updates" name="coffee-updates" type="checkbox" switch
++          aria-describedby="coffee-updates-description">
++      </label>
++      <p class="switch-status" id="coffee-updates-status" role="status">Coffee updates are off.</p>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/main.js b/main.js
+new file mode 100644
+index 0000000..fc4e0b9
+--- /dev/null
++++ b/main.js
+@@ -0,0 +1,22 @@
++// Keep the native control in browsers that support it. The local polyfill
++// supplies switch styling, semantics, accent-color syncing, and pointer drag.
++if (!('switch' in HTMLInputElement.prototype)) {
++  import('input-switch-polyfill').catch((error) => {
++    // The labeled checkbox remains usable if the enhancement cannot load.
++    console.error('Unable to load switch enhancement.', error);
++  });
++}
++
++const coffeeUpdates = document.getElementById('coffee-updates');
++const coffeeUpdatesStatus = document.getElementById('coffee-updates-status');
++
++if (coffeeUpdates instanceof HTMLInputElement && coffeeUpdatesStatus) {
++  const updateStatus = () => {
++    coffeeUpdatesStatus.textContent = coffeeUpdates.checked
++      ? 'Coffee updates are on.'
++      : 'Coffee updates are off.';
++  };
++
++  coffeeUpdates.addEventListener('change', updateStatus);
++  updateStatus();
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..d5a3543 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,15 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "tsc && node scripts/build.mjs",
++    "start": "npm run build && statikk dist --port ${PORT:-11222} --expose"
++  },
++  "dependencies": {
++    "input-switch-polyfill": "1.12.0"
++  },
++  "devDependencies": {
++    "statikk": "3.1.0",
++    "typescript": "^5.9.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..52dcec2
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,23 @@
++import { copyFile, mkdir, rename, rm } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++
++const root = new URL('../', import.meta.url);
++const destination = new URL('dist/', root);
++const staging = new URL('.build/', root);
++
++// Publish only after every required file is available, including the CSS
++// fetched by the polyfill relative to its own module URL.
++await rm(staging, { recursive: true, force: true });
++await mkdir(new URL('vendor/input-switch-polyfill/', staging), { recursive: true });
++for (const file of ['index.html', 'main.js']) {
++  await copyFile(new URL(file, root), new URL(file, staging));
++}
++for (const file of ['input-switch-polyfill.js', 'input-switch-polyfill.css']) {
++  await copyFile(
++    new URL(`node_modules/input-switch-polyfill/${file}`, root),
++    new URL(`vendor/input-switch-polyfill/${file}`, staging),
++  );
++}
++await rm(destination, { recursive: true, force: true });
++await rename(staging, destination);
++console.log(`Built static application at ${fileURLToPath(destination)}`);
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..c61baf6
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,13 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "strict": true,
++    "noEmit": true,
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM"]
++  },
++  "include": ["main.js", "types/**/*.d.ts"]
++}
+diff --git a/types/input-switch-polyfill.d.ts b/types/input-switch-polyfill.d.ts
+new file mode 100644
+index 0000000..479c42a
+--- /dev/null
++++ b/types/input-switch-polyfill.d.ts
+@@ -0,0 +1,2 @@
++// The polyfill is a side-effect-only module with no public exports.
++declare module 'input-switch-polyfill';

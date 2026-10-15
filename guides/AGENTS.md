@@ -26,4 +26,4 @@ When writing content, note that it is intended to be read by *other* coding agen
 
 **Discipline guides**
 
-If you add a discipline guide, you MUST add its slug to `DISCIPLINE_GUIDES` in `lib/guide-validation.ts`.
+If you add a discipline guide, you MUST add its slug to `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts`.

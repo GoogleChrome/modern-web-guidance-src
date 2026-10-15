@@ -1,0 +1,1 @@
+- Update the hero heading into a multi-line poster-style lockup where every line spans the same width, sizing the text itself to the width rather than stretching the spacing.

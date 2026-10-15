@@ -72,7 +72,7 @@ If a non-blocking script in the `<head>` must run before the transition animates
 
 Stylesheets and `blocking="render"` scripts in the `<head>` only guarantee that the `<head>` has been fully processed. They do **not** wait for any `<body>` content to be parsed. Without additional blocking, the browser may take the new-page snapshot before above-the-fold elements exist in the DOM — resulting in a transition that animates to a blank or partially rendered page.
 
-`<link rel="expect">` solves this by blocking rendering until a specific element (identified by its `id`) has been parsed. The `href` value must be a fragment identifier (e.g., `#hero`) matching the target element's `id` attribute. Once that element's closing tag is parsed, the render block is released.
+`<link rel="expect">` solves this by blocking rendering until a specific element (identified by its `id`) has been parsed. The `href` value must be a fragment identifier (e.g., `#hero`) matching the target element's `id` attribute. Once that element's closing tag is parsed, the render block is released. Note that `<link rel="expect">` only guarantees that the target DOM element exists in the document — it does **not** wait for external subresources (such as `<img>` pixels) to download or decode.
 
 **DO** use `<link rel="expect">` in all of the following scenarios:
 
@@ -107,9 +107,19 @@ Even when no individual elements have a `view-transition-name`, the default `roo
 
 When elements on both pages share a `view-transition-name`, the browser morphs them smoothly across the navigation. If the target element has not been parsed when the transition starts, the browser cannot find it — the morph degrades to separate exit and entry animations. Block rendering until the element with the `view-transition-name` has been parsed.
 
+Because `<link rel="expect">` only pauses rendering until the target DOM element is parsed and does not wait for image data to download or decode, an uncached `<img>` may be captured as an empty rectangle in the new-page snapshot. To prevent blank snapshots or layout shifts during image morphs, preload or pre-decode critical transition images (for example, with `<link rel="preload" as="image">` or by prerendering the destination page) and provide explicit sizing fallbacks (`width` and `height` attributes or CSS `aspect-ratio`, plus a placeholder background color).
+
 ```html
 <head>
   <link rel="stylesheet" href="/css/styles.css">
+
+  <!--
+    DO: Preload critical transition images so their pixels are
+    available to decode before the new-page snapshot is captured.
+    <link rel="expect"> only waits for the DOM element to be parsed,
+    NOT for image pixels to download or decode.
+  -->
+  <link rel="preload" as="image" href="/img/product.webp" fetchpriority="high">
 
   <!--
     DO: Block rendering until the element participating in the
@@ -131,7 +141,18 @@ When elements on both pages share a `view-transition-name`, the browser morphs t
   <header>...</header>
   <section id="hero">
     <h1 style="view-transition-name: page-title">Product Name</h1>
-    <img style="view-transition-name: hero-image" src="/img/product.webp" alt="Product">
+    <!--
+      DO: Provide explicit dimensions (width/height or aspect-ratio)
+      as a sizing fallback so the snapshot captures the correct layout
+      box even if image decoding is still in progress.
+    -->
+    <img
+      style="view-transition-name: hero-image"
+      src="/img/product.webp"
+      width="800"
+      height="600"
+      alt="Product"
+    >
   </section>
 </body>
 ```
@@ -173,8 +194,10 @@ If `view-transition-name` values are assigned statically in CSS, or if you are o
 <head>
   <!--
     MANDATORY: The pagereveal listener must be registered before
-    the page renders. Use an async script with blocking="render"
-    so the listener is registered early without blocking parsing.
+    the page renders. Inline small setup scripts with blocking="render"
+    to avoid an extra network round-trip on cold loads, or use an
+    external async script with blocking="render" so the listener is
+    registered early without blocking HTML parsing.
     If the listener is registered too late (e.g., in a deferred
     script), the event may have already fired.
   -->
@@ -197,15 +220,24 @@ window.addEventListener('pagereveal', async (event) => {
   // list page to the heading on the detail page.
   if (fromUrl.pathname === '/products/') {
     const heading = document.querySelector('main h1');
-    if (heading) {
-      heading.style.viewTransitionName = 'product-title';
-    }
+    if (!heading) return;
 
-    // MANDATORY: Remove the temporary name after the transition
-    // finishes. Stale names interfere with subsequent navigations
-    // and prevent the page from entering the bfcache.
-    await event.viewTransition.finished;
-    heading.style.viewTransitionName = '';
+    heading.style.viewTransitionName = 'product-title';
+
+    try {
+      await event.viewTransition.ready;
+    } catch (error) {
+      // Skipped view transitions reject `ready` with InvalidStateError.
+      if (error.name !== 'InvalidStateError') {
+        throw error;
+      }
+    } finally {
+      // MANDATORY: Remove the temporary name after the transition
+      // finishes. Stale names interfere with subsequent navigations
+      // and prevent the page from entering the bfcache.
+      await event.viewTransition.finished;
+      heading.style.viewTransitionName = '';
+    }
   }
 });
 ```
@@ -213,7 +245,7 @@ window.addEventListener('pagereveal', async (event) => {
 ## Best Practices
 
 - **DO** assign `view-transition-name` via CSS whenever possible. Reserve JavaScript assignment (via `pagereveal`) for cases where the name depends on navigation context.
-- **DO** keep render-blocking scripts small and fast. The browser has a built-in timeout (around 4 seconds), after which the transition is skipped entirely with a `TimeoutError`.
+- **DO** keep render-blocking scripts small and fast. The browser has a built-in timeout (around 4 seconds), after which the transition is skipped entirely (rejecting `viewTransition.ready` with an `InvalidStateError` if a transition was initiated).
 - **DO NOT** use `<link rel="expect">` to block on elements deep in the page that are not visible in the initial viewport. This delays the transition without visual benefit.
 - **DO NOT** mark analytics, ad-network, tag-manager or other third-party loaders with `blocking="render"`, even if they inject content into the initial viewport. Their network latency counts toward the transition timeout and their output is not part of the page's stable state.
 - **DO NOT** assign the same `view-transition-name` to multiple elements on the same page. Duplicate names cause the entire transition to be skipped.
@@ -230,5 +262,5 @@ All browsers that support cross-document view transitions also support `blocking
 ## Other Considerations
 
 1. **Performance Impact**: Every render-blocking resource delays the view transition animation start. Minimize the number of render-blocking scripts and use `<link rel="expect">` only for elements that are above the fold. Prerender destination pages using the Speculation Rules API to eliminate loading delays entirely.
-2. **Timeout Behavior**: If the combined render-blocking time exceeds approximately 4 seconds, the browser skips the transition with a `TimeoutError`. Ensure critical resources load well within this window.
+2. **Timeout Behavior**: If the combined render-blocking time exceeds approximately 4 seconds, the browser skips the transition (and any active `viewTransition.ready` promise rejects with an `InvalidStateError`). Ensure critical resources load well within this window.
 3. **bfcache Compatibility**: Temporary `view-transition-name` assignments that are not cleaned up after the transition can prevent the page from entering the bfcache. Always remove dynamically assigned names in the `finished` callback.

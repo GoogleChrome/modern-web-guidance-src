@@ -2,6 +2,7 @@
 name: autofill-sign-up-form
 description: Build a sign-up form with correct autocomplete values and autofill support.
 web-feature-ids:
+  - autocorrect
   - input-email-tel-url
   - inputmode
 ---
@@ -36,6 +37,8 @@ Make it easy for users to enter data, by using the appropriate `<input>` element
 Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
 
 Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
+
+Username and email inputs hold identifiers, not prose. Add `spellcheck="false"` so the browser does not rewrite them into something the account does not match. `autocorrect` and `autocapitalize` are always disabled for `input type="email"`, but are required for non-email usernames.
 
 ### Make buttons helpful
 
@@ -147,5 +150,6 @@ Also make sure to use `autocomplete="username"` for usernames.
 
 {{ BASELINE_STATUS("input-email-tel-url") }}
 {{ BASELINE_STATUS("inputmode") }}
+{{ BASELINE_STATUS("autocorrect") }}
 
 Autofill is a progressive enhancement. In browsers that do not support autofill, users will simply need to manually enter their sign-up credentials. The semantic HTML constraints (such as `type`, `inputmode`, and `required`) will still function appropriately to validate user input and provide the correct virtual keyboards.

@@ -1,0 +1,4 @@
+- The implementation MUST define custom keyboard focus styles using `:focus-visible` paired with `outline` and `outline-offset` rather than `:focus`.
+- The implementation MUST NOT remove focus outlines (`outline: none`) without providing a visible, high-contrast focus indicator.
+- The implementation MUST ensure interactive touch targets meet a minimum size of `24px` by `24px` using `min-inline-size` and `min-block-size` or padding.
+- The implementation MUST NOT apply `touch-action: none` to scrollable containers when axis-specific values (`pan-x` or `pan-y`) suffice.

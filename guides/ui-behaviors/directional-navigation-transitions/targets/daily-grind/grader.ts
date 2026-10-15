@@ -177,6 +177,7 @@ async function installTransitionSpy(page: Page) {
         };
       }
       w.__transitions.push(record);
+      w.__lastTransition = transition;
       return transition;
     };
   });
@@ -208,7 +209,7 @@ async function clickUntilTransition(page: Page, which: 'next' | 'prev'): Promise
   for (let attempt = 0; attempt < 5; attempt++) {
     await button.click({ timeout: 5000 });
     const recorded = await page
-      .waitForFunction(() => (window as any).__transitions?.length > 0, null, { timeout: 1000 })
+      .waitForFunction(() => (window as any).__transitions?.length > 0, null, { timeout: 300 })
       .then(() => true)
       .catch(() => false);
     if (recorded) return;
@@ -219,8 +220,13 @@ async function clickAndCapture(page: Page, which: 'next' | 'prev'): Promise<Tran
   // "Previous" is typically disabled on the first item, so advance first.
   if (which === 'prev') {
     await clickUntilTransition(page, 'next');
-    await page.waitForTimeout(1000);
-    await page.evaluate(() => ((window as any).__transitions = []));
+    await page.evaluate(async () => {
+      const finished = (window as any).__lastTransition?.finished;
+      if (finished) {
+        await Promise.race([finished.catch(() => {}), new Promise((r) => setTimeout(r, 600))]);
+      }
+      (window as any).__transitions = [];
+    });
   }
   await clickUntilTransition(page, which);
   return page.evaluate(() => (window as any).__transitions as TransitionRecord[]);

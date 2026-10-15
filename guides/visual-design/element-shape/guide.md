@@ -5,6 +5,7 @@ web-feature-ids:
   - border-shape
   - corner-shape
   - border-radius
+  - tmp-polygon-round
 guides:
   - complex-shapes
   - shaped-cutouts

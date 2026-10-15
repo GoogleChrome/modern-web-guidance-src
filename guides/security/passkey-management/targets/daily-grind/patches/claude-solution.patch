@@ -1,0 +1,2728 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..77140c1
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,3 @@
++node_modules/
++dist/
++public/js/
+diff --git a/package-lock.json b/package-lock.json
+new file mode 100644
+index 0000000..35ba767
+--- /dev/null
++++ b/package-lock.json
+@@ -0,0 +1,1501 @@
++{
++  "name": "daily-grind",
++  "version": "1.0.0",
++  "lockfileVersion": 3,
++  "requires": true,
++  "packages": {
++    "": {
++      "name": "daily-grind",
++      "version": "1.0.0",
++      "dependencies": {
++        "express": "^4.19.2",
++        "webauthn-polyfills": "^0.1.7"
++      },
++      "devDependencies": {
++        "@types/express": "^4.17.21",
++        "@types/node": "^22.13.1",
++        "esbuild": "^0.24.0",
++        "typescript": "^5.6.3"
++      }
++    },
++    "node_modules/@esbuild/aix-ppc64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.24.2.tgz",
++      "integrity": "sha512-thpVCb/rhxE/BnMLQ7GReQLLN8q9qbHmI55F4489/ByVg2aQaQ6kbcLb6FHkocZzQhxc4gx0sCk0tJkKBFzDhA==",
++      "cpu": [
++        "ppc64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "aix"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/android-arm": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.24.2.tgz",
++      "integrity": "sha512-tmwl4hJkCfNHwFB3nBa8z1Uy3ypZpxqxfTQOcHX+xRByyYgunVbZ9MzUUfb0RxaHIMnbHagwAxuTL+tnNM+1/Q==",
++      "cpu": [
++        "arm"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "android"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/android-arm64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.24.2.tgz",
++      "integrity": "sha512-cNLgeqCqV8WxfcTIOeL4OAtSmL8JjcN6m09XIgro1Wi7cF4t/THaWEa7eL5CMoMBdjoHOTh/vwTO/o2TRXIyzg==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "android"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/android-x64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.24.2.tgz",
++      "integrity": "sha512-B6Q0YQDqMx9D7rvIcsXfmJfvUYLoP722bgfBlO5cGvNVb5V/+Y7nhBE3mHV9OpxBf4eAS2S68KZztiPaWq4XYw==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "android"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/darwin-arm64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.24.2.tgz",
++      "integrity": "sha512-kj3AnYWc+CekmZnS5IPu9D+HWtUI49hbnyqk0FLEJDbzCIQt7hg7ucF1SQAilhtYpIujfaHr6O0UHlzzSPdOeA==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/darwin-x64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.24.2.tgz",
++      "integrity": "sha512-WeSrmwwHaPkNR5H3yYfowhZcbriGqooyu3zI/3GGpF8AyUdsrrP0X6KumITGA9WOyiJavnGZUwPGvxvwfWPHIA==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/freebsd-arm64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.24.2.tgz",
++      "integrity": "sha512-UN8HXjtJ0k/Mj6a9+5u6+2eZ2ERD7Edt1Q9IZiB5UZAIdPnVKDoG7mdTVGhHJIeEml60JteamR3qhsr1r8gXvg==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "freebsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/freebsd-x64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.24.2.tgz",
++      "integrity": "sha512-TvW7wE/89PYW+IevEJXZ5sF6gJRDY/14hyIGFXdIucxCsbRmLUcjseQu1SyTko+2idmCw94TgyaEZi9HUSOe3Q==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "freebsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-arm": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.24.2.tgz",
++      "integrity": "sha512-n0WRM/gWIdU29J57hJyUdIsk0WarGd6To0s+Y+LwvlC55wt+GT/OgkwoXCXvIue1i1sSNWblHEig00GBWiJgfA==",
++      "cpu": [
++        "arm"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-arm64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.24.2.tgz",
++      "integrity": "sha512-7HnAD6074BW43YvvUmE/35Id9/NB7BeX5EoNkK9obndmZBUk8xmJJeU7DwmUeN7tkysslb2eSl6CTrYz6oEMQg==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-ia32": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.24.2.tgz",
++      "integrity": "sha512-sfv0tGPQhcZOgTKO3oBE9xpHuUqguHvSo4jl+wjnKwFpapx+vUDcawbwPNuBIAYdRAvIDBfZVvXprIj3HA+Ugw==",
++      "cpu": [
++        "ia32"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-loong64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.24.2.tgz",
++      "integrity": "sha512-CN9AZr8kEndGooS35ntToZLTQLHEjtVB5n7dl8ZcTZMonJ7CCfStrYhrzF97eAecqVbVJ7APOEe18RPI4KLhwQ==",
++      "cpu": [
++        "loong64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-mips64el": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.24.2.tgz",
++      "integrity": "sha512-iMkk7qr/wl3exJATwkISxI7kTcmHKE+BlymIAbHO8xanq/TjHaaVThFF6ipWzPHryoFsesNQJPE/3wFJw4+huw==",
++      "cpu": [
++        "mips64el"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-ppc64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.24.2.tgz",
++      "integrity": "sha512-shsVrgCZ57Vr2L8mm39kO5PPIb+843FStGt7sGGoqiiWYconSxwTiuswC1VJZLCjNiMLAMh34jg4VSEQb+iEbw==",
++      "cpu": [
++        "ppc64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-riscv64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.24.2.tgz",
++      "integrity": "sha512-4eSFWnU9Hhd68fW16GD0TINewo1L6dRrB+oLNNbYyMUAeOD2yCK5KXGK1GH4qD/kT+bTEXjsyTCiJGHPZ3eM9Q==",
++      "cpu": [
++        "riscv64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-s390x": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.24.2.tgz",
++      "integrity": "sha512-S0Bh0A53b0YHL2XEXC20bHLuGMOhFDO6GN4b3YjRLK//Ep3ql3erpNcPlEFed93hsQAjAQDNsvcK+hV90FubSw==",
++      "cpu": [
++        "s390x"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-x64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.24.2.tgz",
++      "integrity": "sha512-8Qi4nQcCTbLnK9WoMjdC9NiTG6/E38RNICU6sUNqK0QFxCYgoARqVqxdFmWkdonVsvGqWhmm7MO0jyTqLqwj0Q==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/netbsd-arm64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-arm64/-/netbsd-arm64-0.24.2.tgz",
++      "integrity": "sha512-wuLK/VztRRpMt9zyHSazyCVdCXlpHkKm34WUyinD2lzK07FAHTq0KQvZZlXikNWkDGoT6x3TD51jKQ7gMVpopw==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "netbsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/netbsd-x64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.24.2.tgz",
++      "integrity": "sha512-VefFaQUc4FMmJuAxmIHgUmfNiLXY438XrL4GDNV1Y1H/RW3qow68xTwjZKfj/+Plp9NANmzbH5R40Meudu8mmw==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "netbsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/openbsd-arm64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-arm64/-/openbsd-arm64-0.24.2.tgz",
++      "integrity": "sha512-YQbi46SBct6iKnszhSvdluqDmxCJA+Pu280Av9WICNwQmMxV7nLRHZfjQzwbPs3jeWnuAhE9Jy0NrnJ12Oz+0A==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "openbsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/openbsd-x64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.24.2.tgz",
++      "integrity": "sha512-+iDS6zpNM6EnJyWv0bMGLWSWeXGN/HTaF/LXHXHwejGsVi+ooqDfMCCTerNFxEkM3wYVcExkeGXNqshc9iMaOA==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "openbsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/sunos-x64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.24.2.tgz",
++      "integrity": "sha512-hTdsW27jcktEvpwNHJU4ZwWFGkz2zRJUz8pvddmXPtXDzVKTTINmlmga3ZzwcuMpUvLw7JkLy9QLKyGpD2Yxig==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "sunos"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/win32-arm64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.24.2.tgz",
++      "integrity": "sha512-LihEQ2BBKVFLOC9ZItT9iFprsE9tqjDjnbulhHoFxYQtQfai7qfluVODIYxt1PgdoyQkz23+01rzwNwYfutxUQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/win32-ia32": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.24.2.tgz",
++      "integrity": "sha512-q+iGUwfs8tncmFC9pcnD5IvRHAzmbwQ3GPS5/ceCyHdjXubwQWI12MKWSNSMYLJMq23/IUCvJMS76PDqXe1fxA==",
++      "cpu": [
++        "ia32"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/win32-x64": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.24.2.tgz",
++      "integrity": "sha512-7VTgWzgMGvup6aSqDPLiW5zHaxYJGTO4OokMjIlrCtf+VpEL+cXKtCvg723iguPYI5oaUNdS+/V7OU2gvXVWEg==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@simplewebauthn/types": {
++      "version": "11.0.0",
++      "resolved": "https://registry.npmjs.org/@simplewebauthn/types/-/types-11.0.0.tgz",
++      "integrity": "sha512-b2o0wC5u2rWts31dTgBkAtSNKGX0cvL6h8QedNsKmj8O4QoLFQFR3DBVBUlpyVEhYKA+mXGUaXbcOc4JdQ3HzA==",
++      "deprecated": "Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.",
++      "license": "MIT"
++    },
++    "node_modules/@types/body-parser": {
++      "version": "1.19.6",
++      "resolved": "https://registry.npmjs.org/@types/body-parser/-/body-parser-1.19.6.tgz",
++      "integrity": "sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/connect": "*",
++        "@types/node": "*"
++      }
++    },
++    "node_modules/@types/connect": {
++      "version": "3.4.38",
++      "resolved": "https://registry.npmjs.org/@types/connect/-/connect-3.4.38.tgz",
++      "integrity": "sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/node": "*"
++      }
++    },
++    "node_modules/@types/express": {
++      "version": "4.17.25",
++      "resolved": "https://registry.npmjs.org/@types/express/-/express-4.17.25.tgz",
++      "integrity": "sha512-dVd04UKsfpINUnK0yBoYHDF3xu7xVH4BuDotC/xGuycx4CgbP48X/KF/586bcObxT0HENHXEU8Nqtu6NR+eKhw==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/body-parser": "*",
++        "@types/express-serve-static-core": "^4.17.33",
++        "@types/qs": "*",
++        "@types/serve-static": "^1"
++      }
++    },
++    "node_modules/@types/express-serve-static-core": {
++      "version": "4.19.9",
++      "resolved": "https://registry.npmjs.org/@types/express-serve-static-core/-/express-serve-static-core-4.19.9.tgz",
++      "integrity": "sha512-QP2ESEe/ImWY0HDwNAnK9PvEffUyhLTnWkk7KXzHfyeWAnlrDe1fN77bXl6ia8KT3wPlmA7t9/VPRpnf4Ex9sg==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/node": "*",
++        "@types/qs": "*",
++        "@types/range-parser": "*",
++        "@types/send": "*"
++      }
++    },
++    "node_modules/@types/http-errors": {
++      "version": "2.0.5",
++      "resolved": "https://registry.npmjs.org/@types/http-errors/-/http-errors-2.0.5.tgz",
++      "integrity": "sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/@types/mime": {
++      "version": "1.3.5",
++      "resolved": "https://registry.npmjs.org/@types/mime/-/mime-1.3.5.tgz",
++      "integrity": "sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/@types/node": {
++      "version": "22.20.5",
++      "resolved": "https://registry.npmjs.org/@types/node/-/node-22.20.5.tgz",
++      "integrity": "sha512-U2+DNr+wSjpsTS/wZGYHq7GcwfuSmKiKvoPvK22zwTlRhU91yOniN4qRR5KhIjvif7ysw/dz/hKmfDH0Ris4aA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "undici-types": "~6.21.0"
++      }
++    },
++    "node_modules/@types/qs": {
++      "version": "6.15.1",
++      "resolved": "https://registry.npmjs.org/@types/qs/-/qs-6.15.1.tgz",
++      "integrity": "sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/@types/range-parser": {
++      "version": "1.2.7",
++      "resolved": "https://registry.npmjs.org/@types/range-parser/-/range-parser-1.2.7.tgz",
++      "integrity": "sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/@types/send": {
++      "version": "1.2.1",
++      "resolved": "https://registry.npmjs.org/@types/send/-/send-1.2.1.tgz",
++      "integrity": "sha512-arsCikDvlU99zl1g69TcAB3mzZPpxgw0UQnaHeC1Nwb015xp8bknZv5rIfri9xTOcMuaVgvabfIRA7PSZVuZIQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/node": "*"
++      }
++    },
++    "node_modules/@types/serve-static": {
++      "version": "1.15.10",
++      "resolved": "https://registry.npmjs.org/@types/serve-static/-/serve-static-1.15.10.tgz",
++      "integrity": "sha512-tRs1dB+g8Itk72rlSI2ZrW6vZg0YrLI81iQSTkMmOqnqCaNr/8Ek4VwWcN5vZgCYWbg/JJSGBlUaYGAOP73qBw==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/http-errors": "*",
++        "@types/node": "*",
++        "@types/send": "<1"
++      }
++    },
++    "node_modules/@types/serve-static/node_modules/@types/send": {
++      "version": "0.17.6",
++      "resolved": "https://registry.npmjs.org/@types/send/-/send-0.17.6.tgz",
++      "integrity": "sha512-Uqt8rPBE8SY0RK8JB1EzVOIZ32uqy8HwdxCnoCOsYrvnswqmFZ/k+9Ikidlk/ImhsdvBsloHbAlewb2IEBV/Og==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/mime": "^1",
++        "@types/node": "*"
++      }
++    },
++    "node_modules/@types/ua-parser-js": {
++      "version": "0.7.39",
++      "resolved": "https://registry.npmjs.org/@types/ua-parser-js/-/ua-parser-js-0.7.39.tgz",
++      "integrity": "sha512-P/oDfpofrdtF5xw433SPALpdSchtJmY7nsJItf8h3KXqOslkbySh8zq4dSWXH2oTjRvJ5PczVEoCZPow6GicLg==",
++      "license": "MIT"
++    },
++    "node_modules/accepts": {
++      "version": "1.3.8",
++      "resolved": "https://registry.npmjs.org/accepts/-/accepts-1.3.8.tgz",
++      "integrity": "sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==",
++      "license": "MIT",
++      "dependencies": {
++        "mime-types": "~2.1.34",
++        "negotiator": "0.6.3"
++      },
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/array-flatten": {
++      "version": "1.1.1",
++      "resolved": "https://registry.npmjs.org/array-flatten/-/array-flatten-1.1.1.tgz",
++      "integrity": "sha512-PCVAQswWemu6UdxsDFFX/+gVeYqKAod3D3UVm91jHwynguOwAvYPhx8nNlM++NqRcK6CxxpUafjmhIdKiHibqg==",
++      "license": "MIT"
++    },
++    "node_modules/body-parser": {
++      "version": "1.20.8",
++      "resolved": "https://registry.npmjs.org/body-parser/-/body-parser-1.20.8.tgz",
++      "integrity": "sha512-JNcyFQ64OiijEkPzUBTCe+hyPXUD/3LEldGQ6iF5LR1w00mx9o7xtDWHXBY2iItjdCFGoilOLNQbH943ut7pHA==",
++      "license": "MIT",
++      "dependencies": {
++        "bytes": "~3.1.2",
++        "content-type": "~1.0.5",
++        "debug": "2.6.9",
++        "depd": "2.0.0",
++        "destroy": "~1.2.0",
++        "http-errors": "~2.0.1",
++        "iconv-lite": "~0.4.24",
++        "on-finished": "~2.4.1",
++        "qs": "~6.16.0",
++        "raw-body": "~2.5.3",
++        "type-is": "~1.6.18",
++        "unpipe": "~1.0.0"
++      },
++      "engines": {
++        "node": ">= 0.8",
++        "npm": "1.2.8000 || >= 1.4.16"
++      }
++    },
++    "node_modules/bytes": {
++      "version": "3.1.2",
++      "resolved": "https://registry.npmjs.org/bytes/-/bytes-3.1.2.tgz",
++      "integrity": "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/call-bind-apply-helpers": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/call-bind-apply-helpers/-/call-bind-apply-helpers-1.0.2.tgz",
++      "integrity": "sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==",
++      "license": "MIT",
++      "dependencies": {
++        "es-errors": "^1.3.0",
++        "function-bind": "^1.1.2"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      }
++    },
++    "node_modules/call-bound": {
++      "version": "1.0.4",
++      "resolved": "https://registry.npmjs.org/call-bound/-/call-bound-1.0.4.tgz",
++      "integrity": "sha512-+ys997U96po4Kx/ABpBCqhA9EuxJaQWDQg7295H4hBphv3IZg0boBKuwYpt4YXp6MZ5AmZQnU/tyMTlRpaSejg==",
++      "license": "MIT",
++      "dependencies": {
++        "call-bind-apply-helpers": "^1.0.2",
++        "get-intrinsic": "^1.3.0"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/compare-versions": {
++      "version": "6.1.1",
++      "resolved": "https://registry.npmjs.org/compare-versions/-/compare-versions-6.1.1.tgz",
++      "integrity": "sha512-4hm4VPpIecmlg59CHXnRDnqGplJFrbLG4aFEl5vl6cK1u76ws3LLvX7ikFnTDl5vo39sjWD6AaDPYodJp/NNHg==",
++      "license": "MIT"
++    },
++    "node_modules/content-disposition": {
++      "version": "0.5.4",
++      "resolved": "https://registry.npmjs.org/content-disposition/-/content-disposition-0.5.4.tgz",
++      "integrity": "sha512-FveZTNuGw04cxlAiWbzi6zTAL/lhehaWbTtgluJh4/E95DqMwTmha3KZN1aAWA8cFIhHzMZUvLevkw5Rqk+tSQ==",
++      "license": "MIT",
++      "dependencies": {
++        "safe-buffer": "5.2.1"
++      },
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/content-type": {
++      "version": "1.0.5",
++      "resolved": "https://registry.npmjs.org/content-type/-/content-type-1.0.5.tgz",
++      "integrity": "sha512-nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/cookie": {
++      "version": "0.7.2",
++      "resolved": "https://registry.npmjs.org/cookie/-/cookie-0.7.2.tgz",
++      "integrity": "sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/cookie-signature": {
++      "version": "1.0.7",
++      "resolved": "https://registry.npmjs.org/cookie-signature/-/cookie-signature-1.0.7.tgz",
++      "integrity": "sha512-NXdYc3dLr47pBkpUCHtKSwIOQXLVn8dZEuywboCOJY/osA0wFSLlSawr3KN8qXJEyX66FcONTH8EIlVuK0yyFA==",
++      "license": "MIT"
++    },
++    "node_modules/debug": {
++      "version": "2.6.9",
++      "resolved": "https://registry.npmjs.org/debug/-/debug-2.6.9.tgz",
++      "integrity": "sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==",
++      "license": "MIT",
++      "dependencies": {
++        "ms": "2.0.0"
++      }
++    },
++    "node_modules/depd": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/depd/-/depd-2.0.0.tgz",
++      "integrity": "sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/destroy": {
++      "version": "1.2.0",
++      "resolved": "https://registry.npmjs.org/destroy/-/destroy-1.2.0.tgz",
++      "integrity": "sha512-2sJGJTaXIIaR1w4iJSNoN0hnMY7Gpc/n8D4qSCJw8QqFWXf7cuAgnEHxBpweaVcPevC2l3KpjYCx3NypQQgaJg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8",
++        "npm": "1.2.8000 || >= 1.4.16"
++      }
++    },
++    "node_modules/dunder-proto": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/dunder-proto/-/dunder-proto-1.0.1.tgz",
++      "integrity": "sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==",
++      "license": "MIT",
++      "dependencies": {
++        "call-bind-apply-helpers": "^1.0.1",
++        "es-errors": "^1.3.0",
++        "gopd": "^1.2.0"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      }
++    },
++    "node_modules/ee-first": {
++      "version": "1.1.1",
++      "resolved": "https://registry.npmjs.org/ee-first/-/ee-first-1.1.1.tgz",
++      "integrity": "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==",
++      "license": "MIT"
++    },
++    "node_modules/encodeurl": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/encodeurl/-/encodeurl-2.0.0.tgz",
++      "integrity": "sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/es-define-property": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/es-define-property/-/es-define-property-1.0.1.tgz",
++      "integrity": "sha512-e3nRfgfUZ4rNGL232gUgX06QNyyez04KdjFrF+LTRoOXmrOgFKDg4BCdsjW8EnT69eqdYGmRpJwiPVYNrCaW3g==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.4"
++      }
++    },
++    "node_modules/es-errors": {
++      "version": "1.3.0",
++      "resolved": "https://registry.npmjs.org/es-errors/-/es-errors-1.3.0.tgz",
++      "integrity": "sha512-Zf5H2Kxt2xjTvbJvP2ZWLEICxA6j+hAmMzIlypy4xcBg1vKVnx89Wy0GbS+kf5cwCVFFzdCFh2XSCFNULS6csw==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.4"
++      }
++    },
++    "node_modules/es-object-atoms": {
++      "version": "1.1.2",
++      "resolved": "https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.2.tgz",
++      "integrity": "sha512-HWcBoN6NileqtSydK2FqHbS/LoDd2pqrnQHLyJzBj4kOp/ky2MWMN694xOfkK8/SnUsW2DH7EfyVlydKCsm1Zw==",
++      "license": "MIT",
++      "dependencies": {
++        "es-errors": "^1.3.0"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      }
++    },
++    "node_modules/esbuild": {
++      "version": "0.24.2",
++      "resolved": "https://registry.npmjs.org/esbuild/-/esbuild-0.24.2.tgz",
++      "integrity": "sha512-+9egpBW8I3CD5XPe0n6BfT5fxLzxrlDzqydF3aviG+9ni1lDC/OvMHcxqEFV0+LANZG5R1bFMWfUrjVsdwxJvA==",
++      "dev": true,
++      "hasInstallScript": true,
++      "license": "MIT",
++      "bin": {
++        "esbuild": "bin/esbuild"
++      },
++      "engines": {
++        "node": ">=18"
++      },
++      "optionalDependencies": {
++        "@esbuild/aix-ppc64": "0.24.2",
++        "@esbuild/android-arm": "0.24.2",
++        "@esbuild/android-arm64": "0.24.2",
++        "@esbuild/android-x64": "0.24.2",
++        "@esbuild/darwin-arm64": "0.24.2",
++        "@esbuild/darwin-x64": "0.24.2",
++        "@esbuild/freebsd-arm64": "0.24.2",
++        "@esbuild/freebsd-x64": "0.24.2",
++        "@esbuild/linux-arm": "0.24.2",
++        "@esbuild/linux-arm64": "0.24.2",
++        "@esbuild/linux-ia32": "0.24.2",
++        "@esbuild/linux-loong64": "0.24.2",
++        "@esbuild/linux-mips64el": "0.24.2",
++        "@esbuild/linux-ppc64": "0.24.2",
++        "@esbuild/linux-riscv64": "0.24.2",
++        "@esbuild/linux-s390x": "0.24.2",
++        "@esbuild/linux-x64": "0.24.2",
++        "@esbuild/netbsd-arm64": "0.24.2",
++        "@esbuild/netbsd-x64": "0.24.2",
++        "@esbuild/openbsd-arm64": "0.24.2",
++        "@esbuild/openbsd-x64": "0.24.2",
++        "@esbuild/sunos-x64": "0.24.2",
++        "@esbuild/win32-arm64": "0.24.2",
++        "@esbuild/win32-ia32": "0.24.2",
++        "@esbuild/win32-x64": "0.24.2"
++      }
++    },
++    "node_modules/escape-html": {
++      "version": "1.0.3",
++      "resolved": "https://registry.npmjs.org/escape-html/-/escape-html-1.0.3.tgz",
++      "integrity": "sha512-NiSupZ4OeuGwr68lGIeym/ksIZMJodUGOSCZ/FSnTxcrekbvqrgdUxlJOMpijaKZVjAJrWrGs/6Jy8OMuyj9ow==",
++      "license": "MIT"
++    },
++    "node_modules/etag": {
++      "version": "1.8.1",
++      "resolved": "https://registry.npmjs.org/etag/-/etag-1.8.1.tgz",
++      "integrity": "sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/express": {
++      "version": "4.22.3",
++      "resolved": "https://registry.npmjs.org/express/-/express-4.22.3.tgz",
++      "integrity": "sha512-Bdcs4+3qlpVlx2NRn6fgX2Ue2/gGRaPeawebgclM0ERSCqDpA+owF1fdPwjJUTAJWMTuAaxjDf+hzb0/4eKvvw==",
++      "license": "MIT",
++      "dependencies": {
++        "accepts": "~1.3.8",
++        "array-flatten": "1.1.1",
++        "body-parser": "~1.20.5",
++        "content-disposition": "~0.5.4",
++        "content-type": "~1.0.4",
++        "cookie": "~0.7.1",
++        "cookie-signature": "~1.0.6",
++        "debug": "2.6.9",
++        "depd": "2.0.0",
++        "encodeurl": "~2.0.0",
++        "escape-html": "~1.0.3",
++        "etag": "~1.8.1",
++        "finalhandler": "~1.3.1",
++        "fresh": "~0.5.2",
++        "http-errors": "~2.0.0",
++        "merge-descriptors": "1.0.3",
++        "methods": "~1.1.2",
++        "on-finished": "~2.4.1",
++        "parseurl": "~1.3.3",
++        "path-to-regexp": "~0.1.13",
++        "proxy-addr": "~2.0.7",
++        "qs": "~6.16.0",
++        "range-parser": "~1.2.1",
++        "safe-buffer": "5.2.1",
++        "send": "~0.19.0",
++        "serve-static": "~1.16.2",
++        "setprototypeof": "1.2.0",
++        "statuses": "~2.0.1",
++        "type-is": "~1.6.18",
++        "utils-merge": "1.0.1",
++        "vary": "~1.1.2"
++      },
++      "engines": {
++        "node": ">= 0.10.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/express"
++      }
++    },
++    "node_modules/finalhandler": {
++      "version": "1.3.2",
++      "resolved": "https://registry.npmjs.org/finalhandler/-/finalhandler-1.3.2.tgz",
++      "integrity": "sha512-aA4RyPcd3badbdABGDuTXCMTtOneUCAYH/gxoYRTZlIJdF0YPWuGqiAsIrhNnnqdXGswYk6dGujem4w80UJFhg==",
++      "license": "MIT",
++      "dependencies": {
++        "debug": "2.6.9",
++        "encodeurl": "~2.0.0",
++        "escape-html": "~1.0.3",
++        "on-finished": "~2.4.1",
++        "parseurl": "~1.3.3",
++        "statuses": "~2.0.2",
++        "unpipe": "~1.0.0"
++      },
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/forwarded": {
++      "version": "0.2.0",
++      "resolved": "https://registry.npmjs.org/forwarded/-/forwarded-0.2.0.tgz",
++      "integrity": "sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/fresh": {
++      "version": "0.5.2",
++      "resolved": "https://registry.npmjs.org/fresh/-/fresh-0.5.2.tgz",
++      "integrity": "sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/function-bind": {
++      "version": "1.1.2",
++      "resolved": "https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz",
++      "integrity": "sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==",
++      "license": "MIT",
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/get-intrinsic": {
++      "version": "1.3.0",
++      "resolved": "https://registry.npmjs.org/get-intrinsic/-/get-intrinsic-1.3.0.tgz",
++      "integrity": "sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ==",
++      "license": "MIT",
++      "dependencies": {
++        "call-bind-apply-helpers": "^1.0.2",
++        "es-define-property": "^1.0.1",
++        "es-errors": "^1.3.0",
++        "es-object-atoms": "^1.1.1",
++        "function-bind": "^1.1.2",
++        "get-proto": "^1.0.1",
++        "gopd": "^1.2.0",
++        "has-symbols": "^1.1.0",
++        "hasown": "^2.0.2",
++        "math-intrinsics": "^1.1.0"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/get-proto": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/get-proto/-/get-proto-1.0.1.tgz",
++      "integrity": "sha512-sTSfBjoXBp89JvIKIefqw7U2CCebsc74kiY6awiGogKtoSGbgjYE/G/+l9sF3MWFPNc9IcoOC4ODfKHfxFmp0g==",
++      "license": "MIT",
++      "dependencies": {
++        "dunder-proto": "^1.0.1",
++        "es-object-atoms": "^1.0.0"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      }
++    },
++    "node_modules/gopd": {
++      "version": "1.2.0",
++      "resolved": "https://registry.npmjs.org/gopd/-/gopd-1.2.0.tgz",
++      "integrity": "sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.4"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/has-symbols": {
++      "version": "1.1.0",
++      "resolved": "https://registry.npmjs.org/has-symbols/-/has-symbols-1.1.0.tgz",
++      "integrity": "sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.4"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/hasown": {
++      "version": "2.0.4",
++      "resolved": "https://registry.npmjs.org/hasown/-/hasown-2.0.4.tgz",
++      "integrity": "sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==",
++      "license": "MIT",
++      "dependencies": {
++        "function-bind": "^1.1.2"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      }
++    },
++    "node_modules/http-errors": {
++      "version": "2.0.1",
++      "resolved": "https://registry.npmjs.org/http-errors/-/http-errors-2.0.1.tgz",
++      "integrity": "sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==",
++      "license": "MIT",
++      "dependencies": {
++        "depd": "~2.0.0",
++        "inherits": "~2.0.4",
++        "setprototypeof": "~1.2.0",
++        "statuses": "~2.0.2",
++        "toidentifier": "~1.0.1"
++      },
++      "engines": {
++        "node": ">= 0.8"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/express"
++      }
++    },
++    "node_modules/iconv-lite": {
++      "version": "0.4.24",
++      "resolved": "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.4.24.tgz",
++      "integrity": "sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==",
++      "license": "MIT",
++      "dependencies": {
++        "safer-buffer": ">= 2.1.2 < 3"
++      },
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
++    "node_modules/inherits": {
++      "version": "2.0.4",
++      "resolved": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
++      "integrity": "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==",
++      "license": "ISC"
++    },
++    "node_modules/ipaddr.js": {
++      "version": "1.9.1",
++      "resolved": "https://registry.npmjs.org/ipaddr.js/-/ipaddr.js-1.9.1.tgz",
++      "integrity": "sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.10"
++      }
++    },
++    "node_modules/math-intrinsics": {
++      "version": "1.1.0",
++      "resolved": "https://registry.npmjs.org/math-intrinsics/-/math-intrinsics-1.1.0.tgz",
++      "integrity": "sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.4"
++      }
++    },
++    "node_modules/media-typer": {
++      "version": "0.3.0",
++      "resolved": "https://registry.npmjs.org/media-typer/-/media-typer-0.3.0.tgz",
++      "integrity": "sha512-dq+qelQ9akHpcOl/gUVRTxVIOkAJ1wR3QAvb4RsVjS8oVoFjDGTc679wJYmUmknUF5HwMLOgb5O+a3KxfWapPQ==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/merge-descriptors": {
++      "version": "1.0.3",
++      "resolved": "https://registry.npmjs.org/merge-descriptors/-/merge-descriptors-1.0.3.tgz",
++      "integrity": "sha512-gaNvAS7TZ897/rVaZ0nMtAyxNyi/pdbjbAwUpFQpN70GqnVfOiXpeUUMKRBmzXaSQ8DdTX4/0ms62r2K+hE6mQ==",
++      "license": "MIT",
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/methods": {
++      "version": "1.1.2",
++      "resolved": "https://registry.npmjs.org/methods/-/methods-1.1.2.tgz",
++      "integrity": "sha512-iclAHeNqNm68zFtnZ0e+1L2yUIdvzNoauKU4WBA3VvH/vPFieF7qfRlwUZU+DA9P9bPXIS90ulxoUoCH23sV2w==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/mime": {
++      "version": "1.6.0",
++      "resolved": "https://registry.npmjs.org/mime/-/mime-1.6.0.tgz",
++      "integrity": "sha512-x0Vn8spI+wuJ1O6S7gnbaQg8Pxh4NNHb7KSINmEWKiPE4RKOplvijn+NkmYmmRgP68mc70j2EbeTFRsrswaQeg==",
++      "license": "MIT",
++      "bin": {
++        "mime": "cli.js"
++      },
++      "engines": {
++        "node": ">=4"
++      }
++    },
++    "node_modules/mime-db": {
++      "version": "1.52.0",
++      "resolved": "https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz",
++      "integrity": "sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/mime-types": {
++      "version": "2.1.35",
++      "resolved": "https://registry.npmjs.org/mime-types/-/mime-types-2.1.35.tgz",
++      "integrity": "sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==",
++      "license": "MIT",
++      "dependencies": {
++        "mime-db": "1.52.0"
++      },
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/ms": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/ms/-/ms-2.0.0.tgz",
++      "integrity": "sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==",
++      "license": "MIT"
++    },
++    "node_modules/negotiator": {
++      "version": "0.6.3",
++      "resolved": "https://registry.npmjs.org/negotiator/-/negotiator-0.6.3.tgz",
++      "integrity": "sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/object-inspect": {
++      "version": "1.13.4",
++      "resolved": "https://registry.npmjs.org/object-inspect/-/object-inspect-1.13.4.tgz",
++      "integrity": "sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.4"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/on-finished": {
++      "version": "2.4.1",
++      "resolved": "https://registry.npmjs.org/on-finished/-/on-finished-2.4.1.tgz",
++      "integrity": "sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==",
++      "license": "MIT",
++      "dependencies": {
++        "ee-first": "1.1.1"
++      },
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/parseurl": {
++      "version": "1.3.3",
++      "resolved": "https://registry.npmjs.org/parseurl/-/parseurl-1.3.3.tgz",
++      "integrity": "sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/path-to-regexp": {
++      "version": "0.1.13",
++      "resolved": "https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-0.1.13.tgz",
++      "integrity": "sha512-A/AGNMFN3c8bOlvV9RreMdrv7jsmF9XIfDeCd87+I8RNg6s78BhJxMu69NEMHBSJFxKidViTEdruRwEk/WIKqA==",
++      "license": "MIT"
++    },
++    "node_modules/proxy-addr": {
++      "version": "2.0.8",
++      "resolved": "https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.8.tgz",
++      "integrity": "sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==",
++      "license": "MIT",
++      "dependencies": {
++        "forwarded": "0.2.0",
++        "ipaddr.js": "1.9.1"
++      },
++      "engines": {
++        "node": ">= 0.10"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/express"
++      }
++    },
++    "node_modules/qs": {
++      "version": "6.16.0",
++      "resolved": "https://registry.npmjs.org/qs/-/qs-6.16.0.tgz",
++      "integrity": "sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==",
++      "license": "BSD-3-Clause",
++      "dependencies": {
++        "es-define-property": "^1.0.1",
++        "side-channel": "^1.1.1"
++      },
++      "engines": {
++        "node": ">=0.6"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/range-parser": {
++      "version": "1.2.1",
++      "resolved": "https://registry.npmjs.org/range-parser/-/range-parser-1.2.1.tgz",
++      "integrity": "sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/raw-body": {
++      "version": "2.5.3",
++      "resolved": "https://registry.npmjs.org/raw-body/-/raw-body-2.5.3.tgz",
++      "integrity": "sha512-s4VSOf6yN0rvbRZGxs8Om5CWj6seneMwK3oDb4lWDH0UPhWcxwOWw5+qk24bxq87szX1ydrwylIOp2uG1ojUpA==",
++      "license": "MIT",
++      "dependencies": {
++        "bytes": "~3.1.2",
++        "http-errors": "~2.0.1",
++        "iconv-lite": "~0.4.24",
++        "unpipe": "~1.0.0"
++      },
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/safe-buffer": {
++      "version": "5.2.1",
++      "resolved": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.2.1.tgz",
++      "integrity": "sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==",
++      "funding": [
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/feross"
++        },
++        {
++          "type": "patreon",
++          "url": "https://www.patreon.com/feross"
++        },
++        {
++          "type": "consulting",
++          "url": "https://feross.org/support"
++        }
++      ],
++      "license": "MIT"
++    },
++    "node_modules/safer-buffer": {
++      "version": "2.1.2",
++      "resolved": "https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz",
++      "integrity": "sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==",
++      "license": "MIT"
++    },
++    "node_modules/send": {
++      "version": "0.19.2",
++      "resolved": "https://registry.npmjs.org/send/-/send-0.19.2.tgz",
++      "integrity": "sha512-VMbMxbDeehAxpOtWJXlcUS5E8iXh6QmN+BkRX1GARS3wRaXEEgzCcB10gTQazO42tpNIya8xIyNx8fll1OFPrg==",
++      "license": "MIT",
++      "dependencies": {
++        "debug": "2.6.9",
++        "depd": "2.0.0",
++        "destroy": "1.2.0",
++        "encodeurl": "~2.0.0",
++        "escape-html": "~1.0.3",
++        "etag": "~1.8.1",
++        "fresh": "~0.5.2",
++        "http-errors": "~2.0.1",
++        "mime": "1.6.0",
++        "ms": "2.1.3",
++        "on-finished": "~2.4.1",
++        "range-parser": "~1.2.1",
++        "statuses": "~2.0.2"
++      },
++      "engines": {
++        "node": ">= 0.8.0"
++      }
++    },
++    "node_modules/send/node_modules/ms": {
++      "version": "2.1.3",
++      "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
++      "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
++      "license": "MIT"
++    },
++    "node_modules/serve-static": {
++      "version": "1.16.3",
++      "resolved": "https://registry.npmjs.org/serve-static/-/serve-static-1.16.3.tgz",
++      "integrity": "sha512-x0RTqQel6g5SY7Lg6ZreMmsOzncHFU7nhnRWkKgWuMTu5NN0DR5oruckMqRvacAN9d5w6ARnRBXl9xhDCgfMeA==",
++      "license": "MIT",
++      "dependencies": {
++        "encodeurl": "~2.0.0",
++        "escape-html": "~1.0.3",
++        "parseurl": "~1.3.3",
++        "send": "~0.19.1"
++      },
++      "engines": {
++        "node": ">= 0.8.0"
++      }
++    },
++    "node_modules/setprototypeof": {
++      "version": "1.2.0",
++      "resolved": "https://registry.npmjs.org/setprototypeof/-/setprototypeof-1.2.0.tgz",
++      "integrity": "sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==",
++      "license": "ISC"
++    },
++    "node_modules/side-channel": {
++      "version": "1.1.1",
++      "resolved": "https://registry.npmjs.org/side-channel/-/side-channel-1.1.1.tgz",
++      "integrity": "sha512-6x6dK6zJdpTzF4sQeNYxwtvBzf6Eg4GtlesS94HOvTudUeyK2WXAaIfmDgsyslYrRBeFIlsi54AYsFGUuhmvrQ==",
++      "license": "MIT",
++      "dependencies": {
++        "es-errors": "^1.3.0",
++        "object-inspect": "^1.13.4",
++        "side-channel-list": "^1.0.1",
++        "side-channel-map": "^1.0.1",
++        "side-channel-weakmap": "^1.0.2"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/side-channel-list": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/side-channel-list/-/side-channel-list-1.0.1.tgz",
++      "integrity": "sha512-mjn/0bi/oUURjc5Xl7IaWi/OJJJumuoJFQJfDDyO46+hBWsfaVM65TBHq2eoZBhzl9EchxOijpkbRC8SVBQU0w==",
++      "license": "MIT",
++      "dependencies": {
++        "es-errors": "^1.3.0",
++        "object-inspect": "^1.13.4"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/side-channel-map": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/side-channel-map/-/side-channel-map-1.0.1.tgz",
++      "integrity": "sha512-VCjCNfgMsby3tTdo02nbjtM/ewra6jPHmpThenkTYh8pG9ucZ/1P8So4u4FGBek/BjpOVsDCMoLA/iuBKIFXRA==",
++      "license": "MIT",
++      "dependencies": {
++        "call-bound": "^1.0.2",
++        "es-errors": "^1.3.0",
++        "get-intrinsic": "^1.2.5",
++        "object-inspect": "^1.13.3"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/side-channel-weakmap": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/side-channel-weakmap/-/side-channel-weakmap-1.0.2.tgz",
++      "integrity": "sha512-WPS/HvHQTYnHisLo9McqBHOJk2FkHO/tlpvldyrnem4aeQp4hai3gythswg6p01oSoTl58rcpiFAjF2br2Ak2A==",
++      "license": "MIT",
++      "dependencies": {
++        "call-bound": "^1.0.2",
++        "es-errors": "^1.3.0",
++        "get-intrinsic": "^1.2.5",
++        "object-inspect": "^1.13.3",
++        "side-channel-map": "^1.0.1"
++      },
++      "engines": {
++        "node": ">= 0.4"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/ljharb"
++      }
++    },
++    "node_modules/statuses": {
++      "version": "2.0.2",
++      "resolved": "https://registry.npmjs.org/statuses/-/statuses-2.0.2.tgz",
++      "integrity": "sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/toidentifier": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/toidentifier/-/toidentifier-1.0.1.tgz",
++      "integrity": "sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=0.6"
++      }
++    },
++    "node_modules/type-is": {
++      "version": "1.6.18",
++      "resolved": "https://registry.npmjs.org/type-is/-/type-is-1.6.18.tgz",
++      "integrity": "sha512-TkRKr9sUTxEH8MdfuCSP7VizJyzRNMjj2J2do2Jr3Kym598JVdEksuzPQCnlFPW4ky9Q+iA+ma9BGm06XQBy8g==",
++      "license": "MIT",
++      "dependencies": {
++        "media-typer": "0.3.0",
++        "mime-types": "~2.1.24"
++      },
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/typescript": {
++      "version": "5.9.3",
++      "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz",
++      "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "bin": {
++        "tsc": "bin/tsc",
++        "tsserver": "bin/tsserver"
++      },
++      "engines": {
++        "node": ">=14.17"
++      }
++    },
++    "node_modules/ua-parser-js": {
++      "version": "1.0.41",
++      "resolved": "https://registry.npmjs.org/ua-parser-js/-/ua-parser-js-1.0.41.tgz",
++      "integrity": "sha512-LbBDqdIC5s8iROCUjMbW1f5dJQTEFB1+KO9ogbvlb3nm9n4YHa5p4KTvFPWvh2Hs8gZMBuiB1/8+pdfe/tDPug==",
++      "funding": [
++        {
++          "type": "opencollective",
++          "url": "https://opencollective.com/ua-parser-js"
++        },
++        {
++          "type": "paypal",
++          "url": "https://paypal.me/faisalman"
++        },
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/faisalman"
++        }
++      ],
++      "license": "MIT",
++      "bin": {
++        "ua-parser-js": "script/cli.js"
++      },
++      "engines": {
++        "node": "*"
++      }
++    },
++    "node_modules/undici-types": {
++      "version": "6.21.0",
++      "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-6.21.0.tgz",
++      "integrity": "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/unpipe": {
++      "version": "1.0.0",
++      "resolved": "https://registry.npmjs.org/unpipe/-/unpipe-1.0.0.tgz",
++      "integrity": "sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/utils-merge": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/utils-merge/-/utils-merge-1.0.1.tgz",
++      "integrity": "sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.4.0"
++      }
++    },
++    "node_modules/vary": {
++      "version": "1.1.2",
++      "resolved": "https://registry.npmjs.org/vary/-/vary-1.1.2.tgz",
++      "integrity": "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/webauthn-polyfills": {
++      "version": "0.1.7",
++      "resolved": "https://registry.npmjs.org/webauthn-polyfills/-/webauthn-polyfills-0.1.7.tgz",
++      "integrity": "sha512-tOA5KPHhN8j8EBA9I90bYmsEc6CAKd1SbWJzmVn0hmTfvfiNJLGGzRPlSW4fKiQPm8BC6doPQC0CnaQdhxsL3Q==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@simplewebauthn/types": "^11.0.0",
++        "@types/ua-parser-js": "^0.7.39",
++        "compare-versions": "^6.1.1",
++        "ua-parser-js": "^1.0.39"
++      }
++    }
++  }
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..d844e1f 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,22 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "commonjs",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "tsc -p tsconfig.server.json && tsc -p tsconfig.client.json && npm run bundle:client",
++    "bundle:client": "esbuild src/client/main.ts --bundle --format=esm --platform=browser --target=es2022 --outfile=public/js/main.js",
++    "start": "npm run build && node dist/server/index.js",
++    "dev": "node dist/server/index.js"
++  },
++  "dependencies": {
++    "express": "^4.19.2",
++    "webauthn-polyfills": "^0.1.7"
++  },
++  "devDependencies": {
++    "@types/express": "^4.17.21",
++    "@types/node": "^22.13.1",
++    "esbuild": "^0.24.0",
++    "typescript": "^5.6.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/public/aaguids.json b/public/aaguids.json
+new file mode 100644
+index 0000000..b4a65e1
+--- /dev/null
++++ b/public/aaguids.json
+@@ -0,0 +1,57 @@
++{
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    "name": "Google Password Manager",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM0Mjg1RjQiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM4QUIzRkYiLz48L3N2Zz4="
++  },
++  "fbfc3007-154e-4ecc-8c0b-6e020557d7bd": {
++    "name": "iCloud Keychain",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMwMDdBRkYiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM2NkIyRkYiLz48L3N2Zz4="
++  },
++  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": {
++    "name": "iCloud Keychain (Managed)",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMwMDVFQ0IiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM2NkIyRkYiLz48L3N2Zz4="
++  },
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    "name": "Windows Hello",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMwMDc4RDQiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM0MEE4RTAiLz48L3N2Zz4="
++  },
++  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": {
++    "name": "Windows Hello (Software)",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMwMDc4RDQiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM0MEE4RTAiLz48L3N2Zz4="
++  },
++  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": {
++    "name": "Windows Hello VBS",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMwMDc4RDQiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM0MEE4RTAiLz48L3N2Zz4="
++  },
++  "bada5566-a7aa-401f-bd96-45619a55120d": {
++    "name": "1Password",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMwMDUyQ0MiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM0RDk0RkYiLz48L3N2Zz4="
++  },
++  "531126d6-e717-415c-9320-3d9aa6981239": {
++    "name": "Dashlane",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMwOTUzRkYiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM2NkEzRkYiLz48L3N2Zz4="
++  },
++  "adce0002-35bc-c60a-648b-0b25f1f05503": {
++    "name": "Chrome on Mac",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiNFQTQzMzUiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiNGRjhBNzUiLz48L3N2Zz4="
++  },
++  "b5397666-4885-aa6b-cebf-e52262a439a2": {
++    "name": "Chromium Browser",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM0Mjg1RjQiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM4QUIzRkYiLz48L3N2Zz4="
++  },
++  "0ea242b4-43c4-4a1b-8b17-dd6d0b6baec6": {
++    "name": "NordPass",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM0Njg3RkYiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM5MEJGRkYiLz48L3N2Zz4="
++  }
++}
+diff --git a/public/account.html b/public/account.html
+new file mode 100644
+index 0000000..76e6d7d
+--- /dev/null
++++ b/public/account.html
+@@ -0,0 +1,271 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    .container {
++      max-width: 760px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    h1 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    section {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-top: 24px;
++    }
++
++    section h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++    }
++
++    .field {
++      margin-bottom: 14px;
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    label {
++      font-size: 0.85rem;
++      font-weight: bold;
++    }
++
++    input[type="text"] {
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 1rem;
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border: none;
++      border-radius: 5px;
++      margin-top: 10px;
++      margin-right: 10px;
++      font-size: 0.95rem;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    .btn.secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    #credential-list {
++      list-style: none;
++    }
++
++    .credential-row {
++      display: flex;
++      align-items: center;
++      gap: 14px;
++      padding: 14px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .credential-row:last-child {
++      border-bottom: none;
++    }
++
++    .provider-icon {
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      flex-shrink: 0;
++    }
++
++    .credential-info {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .credential-name {
++      font-weight: bold;
++    }
++
++    .credential-dates {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .credential-actions {
++      display: flex;
++      gap: 8px;
++      flex-shrink: 0;
++    }
++
++    .credential-actions button {
++      padding: 6px 12px;
++      border-radius: 4px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++      font-size: 0.85rem;
++    }
++
++    .credential-actions button.danger {
++      border-color: #b71c1c;
++      color: #b71c1c;
++    }
++
++    #empty-state {
++      color: #6d4c41;
++      font-style: italic;
++    }
++
++    #mfa-fallback {
++      color: #6d4c41;
++      font-size: 0.9rem;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <div class="logo">THE DAILY GRIND</div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account.html">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <main class="container">
++    <h1>My Account</h1>
++    <p>Manage your profile details and the passkeys registered to your account.</p>
++
++    <section aria-labelledby="profile-heading">
++      <h2 id="profile-heading">Profile</h2>
++      <form id="user-form">
++        <div class="field">
++          <label for="user-name">Username</label>
++          <input type="text" id="user-name" name="name" autocomplete="username" required>
++        </div>
++        <div class="field">
++          <label for="user-display-name">Display name</label>
++          <input type="text" id="user-display-name" name="displayName" autocomplete="name" required>
++        </div>
++        <button type="submit" class="btn">Save profile</button>
++      </form>
++    </section>
++
++    <section aria-labelledby="passkeys-heading">
++      <h2 id="passkeys-heading">Passkeys</h2>
++
++      <ul id="credential-list"></ul>
++      <p id="empty-state" hidden>No passkeys found.</p>
++
++      <button id="create-passkey" type="button" class="btn" hidden>Create passkey</button>
++      <button id="create-security-key" type="button" class="btn secondary" hidden>Register a security key</button>
++      <p id="mfa-fallback" hidden>
++        Passkeys aren't supported on this device. Please use another multi-factor method to secure your account.
++      </p>
++    </section>
++  </main>
++
++  <footer>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script type="module" src="/js/main.js"></script>
++</body>
++
++</html>
+diff --git a/index.html b/public/index.html
+similarity index 98%
+rename from index.html
+rename to public/index.html
+index 66c9173..bc5e94a 100644
+--- a/index.html
++++ b/public/index.html
+@@ -163,7 +163,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/account.html">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+diff --git a/src/client/aaguidLookup.ts b/src/client/aaguidLookup.ts
+new file mode 100644
+index 0000000..a609eb9
+--- /dev/null
++++ b/src/client/aaguidLookup.ts
+@@ -0,0 +1,52 @@
++const ZEROED_AAGUID = '00000000-0000-0000-0000-000000000000';
++
++interface AaguidEntry {
++  name: string;
++  icon_light?: string;
++  icon_dark?: string;
++}
++
++export interface ResolvedProvider {
++  name: string;
++  providerIcon: string | undefined;
++}
++
++let registryPromise: Promise<Record<string, AaguidEntry>> | undefined;
++
++function loadRegistry(): Promise<Record<string, AaguidEntry>> {
++  if (!registryPromise) {
++    registryPromise = fetch('/aaguids.json').then((response) => {
++      if (!response.ok) throw new Error('Failed to load AAGUID registry.');
++      return response.json();
++    });
++  }
++  return registryPromise;
++}
++
++function deviceNameFromUserAgent(userAgent: string): string {
++  if (/iphone|ipad|ipod/i.test(userAgent)) return 'iOS device';
++  if (/android/i.test(userAgent)) return 'Android device';
++  if (/mac os x/i.test(userAgent)) return 'Mac device';
++  if (/windows/i.test(userAgent)) return 'Windows device';
++  if (/linux/i.test(userAgent)) return 'Linux device';
++  return 'Unknown passkey provider';
++}
++
++/**
++ * Resolves provider name/icon for a credential row by looking its AAGUID up
++ * against the local registry. The zeroed AAGUID means the authenticator
++ * attested no model info, so it is never looked up — only a device-derived
++ * fallback is used.
++ */
++export async function resolveAaguidProvider(aaguid: string): Promise<ResolvedProvider> {
++  if (aaguid === ZEROED_AAGUID) {
++    return { name: deviceNameFromUserAgent(navigator.userAgent), providerIcon: undefined };
++  }
++
++  const registry = await loadRegistry();
++  const provider = registry[aaguid];
++  return {
++    name: provider?.name ?? 'Unknown passkey provider',
++    providerIcon: provider?.icon_light,
++  };
++}
+diff --git a/src/client/api.ts b/src/client/api.ts
+new file mode 100644
+index 0000000..0864181
+--- /dev/null
++++ b/src/client/api.ts
+@@ -0,0 +1,43 @@
++import type { AccountUser, PasskeyCredential } from './types.js';
++
++async function jsonRequest(input: string, init?: RequestInit): Promise<Response> {
++  return fetch(input, {
++    ...init,
++    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
++  });
++}
++
++export function listFetch(): Promise<Response> {
++  return fetch('/api/credentials');
++}
++
++export function renameCredentialFetch(credentialId: string, body: { name: string }): Promise<Response> {
++  return jsonRequest(`/api/credential/${encodeURIComponent(credentialId)}`, {
++    method: 'PUT',
++    body: JSON.stringify(body),
++  });
++}
++
++export function deleteFetch(credentialId: string): Promise<Response> {
++  return fetch(`/api/credential/${encodeURIComponent(credentialId)}`, { method: 'DELETE' });
++}
++
++export function updateUserFetch(body: { name: string; displayName: string }): Promise<Response> {
++  return jsonRequest('/api/user', { method: 'PUT', body: JSON.stringify(body) });
++}
++
++export function currentUserFetch(): Promise<Response> {
++  return fetch('/api/user');
++}
++
++export async function fetchCredentialList(): Promise<PasskeyCredential[]> {
++  const response = await listFetch();
++  if (!response.ok) throw new Error('Failed to load credentials.');
++  return response.json();
++}
++
++export async function fetchCurrentUser(): Promise<AccountUser> {
++  const response = await currentUserFetch();
++  if (!response.ok) throw new Error('Failed to load account details.');
++  return response.json();
++}
+diff --git a/src/client/base64url.ts b/src/client/base64url.ts
+new file mode 100644
+index 0000000..a3d5542
+--- /dev/null
++++ b/src/client/base64url.ts
+@@ -0,0 +1,14 @@
++export function bufferToBase64url(buffer: ArrayBuffer): string {
++  const bytes = new Uint8Array(buffer);
++  let binary = '';
++  for (const byte of bytes) binary += String.fromCharCode(byte);
++  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++}
++
++export function base64urlToBuffer(base64url: string): ArrayBuffer {
++  const padded = base64url.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(base64url.length / 4) * 4, '=');
++  const binary = atob(padded);
++  const bytes = new Uint8Array(binary.length);
++  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
++  return bytes.buffer;
++}
+diff --git a/src/client/format.ts b/src/client/format.ts
+new file mode 100644
+index 0000000..eb2115e
+--- /dev/null
++++ b/src/client/format.ts
+@@ -0,0 +1,9 @@
++const dateFormatter = new Intl.DateTimeFormat(undefined, {
++  dateStyle: 'medium',
++  timeStyle: 'short',
++});
++
++export function formatTimestamp(epochMs: number | undefined): string {
++  if (epochMs === undefined) return 'Never';
++  return dateFormatter.format(new Date(epochMs));
++}
+diff --git a/src/client/main.ts b/src/client/main.ts
+new file mode 100644
+index 0000000..2233dd1
+--- /dev/null
++++ b/src/client/main.ts
+@@ -0,0 +1,165 @@
++// Ensures PublicKeyCredential.getClientCapabilities and
++// PublicKeyCredential.prototype.toJSON / parseRequestOptionsFromJSON exist
++// in browsers that haven't shipped them natively yet.
++import 'webauthn-polyfills';
++
++import { deleteFetch, fetchCredentialList, fetchCurrentUser, renameCredentialFetch, updateUserFetch } from './api.js';
++import { resolveAaguidProvider } from './aaguidLookup.js';
++import { formatTimestamp } from './format.js';
++import { isPlatformPasskeySupported, createPasskeyCredential, credentialRawIdToBase64url } from './registration.js';
++import { syncAllAcceptedCredentials, syncCurrentUserDetails } from './webauthnSignals.js';
++import type { AccountUser, PasskeyCredential } from './types.js';
++
++const listEl = document.getElementById('credential-list') as HTMLElement;
++const emptyStateEl = document.getElementById('empty-state') as HTMLElement;
++const createButton = document.getElementById('create-passkey') as HTMLButtonElement;
++const createSecurityKeyButton = document.getElementById('create-security-key') as HTMLButtonElement;
++const mfaFallbackEl = document.getElementById('mfa-fallback') as HTMLElement;
++const userForm = document.getElementById('user-form') as HTMLFormElement;
++const userNameInput = document.getElementById('user-name') as HTMLInputElement;
++const userDisplayNameInput = document.getElementById('user-display-name') as HTMLInputElement;
++
++let currentUser: AccountUser | undefined;
++
++function renderCredentialRow(cred: PasskeyCredential, iconUrl: string | undefined): HTMLLIElement {
++  const li = document.createElement('li');
++  li.className = 'credential-row';
++  li.dataset.credentialId = cred.id;
++
++  const icon = document.createElement('img');
++  icon.className = 'provider-icon';
++  icon.alt = '';
++  icon.src = iconUrl ?? cred.providerIcon ?? '';
++  icon.hidden = !icon.src;
++
++  const info = document.createElement('div');
++  info.className = 'credential-info';
++
++  const name = document.createElement('p');
++  name.className = 'credential-name';
++  name.textContent = cred.name;
++
++  const dates = document.createElement('p');
++  dates.className = 'credential-dates';
++  dates.textContent = `Registered ${formatTimestamp(cred.registeredAt)} · Last used ${formatTimestamp(cred.lastUsedAt)}`;
++
++  info.append(name, dates);
++
++  const actions = document.createElement('div');
++  actions.className = 'credential-actions';
++
++  const renameBtn = document.createElement('button');
++  renameBtn.type = 'button';
++  renameBtn.textContent = 'Rename';
++  renameBtn.addEventListener('click', () => handleRename(cred));
++
++  const deleteBtn = document.createElement('button');
++  deleteBtn.type = 'button';
++  deleteBtn.className = 'danger';
++  deleteBtn.textContent = 'Delete';
++  deleteBtn.addEventListener('click', () => handleDelete(cred.id));
++
++  actions.append(renameBtn, deleteBtn);
++  li.append(icon, info, actions);
++  return li;
++}
++
++async function renderCredentialList(credentials: PasskeyCredential[]): Promise<void> {
++  listEl.innerHTML = '';
++  emptyStateEl.hidden = credentials.length > 0;
++
++  const resolved = await Promise.all(
++    credentials.map((cred) => resolveAaguidProvider(cred.aaguid).then((provider) => provider.providerIcon)),
++  );
++
++  credentials.forEach((cred, index) => {
++    listEl.appendChild(renderCredentialRow(cred, resolved[index]));
++  });
++}
++
++async function loadManagementPanel(): Promise<void> {
++  const [credentials, user] = await Promise.all([fetchCredentialList(), fetchCurrentUser()]);
++  currentUser = user;
++  userNameInput.value = user.name;
++  userDisplayNameInput.value = user.displayName;
++
++  await renderCredentialList(credentials);
++  // Sync accepted credentials on initial page load, per the Signal API spec.
++  await syncAllAcceptedCredentials(
++    user.id,
++    credentials.map((c) => c.id),
++  );
++}
++
++async function handleDelete(credentialId: string): Promise<void> {
++  const response = await deleteFetch(credentialId);
++  if (!response.ok || !currentUser) return;
++
++  const updatedList = await fetchCredentialList();
++  await renderCredentialList(updatedList);
++  // Sync remaining accepted credentials immediately after deletion.
++  await syncAllAcceptedCredentials(
++    currentUser.id,
++    updatedList.map((c) => c.id),
++  );
++}
++
++// Renaming a passkey's nickname is a server-side label change only; it does
++// NOT invoke signalCurrentUserDetails.
++async function handleRename(cred: PasskeyCredential): Promise<void> {
++  const newName = window.prompt('Rename passkey', cred.name);
++  if (!newName || !newName.trim() || newName === cred.name) return;
++
++  const response = await renameCredentialFetch(cred.id, { name: newName.trim() });
++  if (!response.ok) return;
++
++  await renderCredentialList(await fetchCredentialList());
++}
++
++async function handleUserRename(event: SubmitEvent): Promise<void> {
++  event.preventDefault();
++  if (!currentUser) return;
++
++  const updatedName = userNameInput.value.trim();
++  const updatedDisplayName = userDisplayNameInput.value.trim();
++  if (!updatedName || !updatedDisplayName) return;
++
++  const response = await updateUserFetch({ name: updatedName, displayName: updatedDisplayName });
++  if (!response.ok) return;
++
++  currentUser = { ...currentUser, name: updatedName, displayName: updatedDisplayName };
++  // Synchronize the renamed account details with the password manager.
++  await syncCurrentUserDetails(currentUser.id, updatedName, updatedDisplayName);
++}
++
++async function handleCreatePasskey(attachment: AuthenticatorAttachment | undefined): Promise<void> {
++  if (!currentUser) return;
++  try {
++    // A real deployment fetches this challenge from a server-generated
++    // registration-options endpoint; a random client challenge stands in
++    // here since that endpoint is outside this management UI's scope.
++    const challenge = crypto.getRandomValues(new Uint8Array(32)).buffer;
++    const credential = await createPasskeyCredential(currentUser, challenge, attachment);
++    console.log('Registered new credential:', credentialRawIdToBase64url(credential));
++    await loadManagementPanel();
++  } catch (e) {
++    console.error('Passkey registration failed:', e);
++  }
++}
++
++async function initializeCreateButtons(): Promise<void> {
++  const supported = await isPlatformPasskeySupported();
++  createButton.hidden = !supported;
++  createSecurityKeyButton.hidden = !supported;
++  mfaFallbackEl.hidden = supported;
++}
++
++createButton.addEventListener('click', () => handleCreatePasskey('platform'));
++// Omitting authenticatorAttachment allows registering a roaming security key.
++createSecurityKeyButton.addEventListener('click', () => handleCreatePasskey(undefined));
++userForm.addEventListener('submit', handleUserRename);
++
++window.addEventListener('DOMContentLoaded', () => {
++  void loadManagementPanel();
++  void initializeCreateButtons();
++});
+diff --git a/src/client/registration.ts b/src/client/registration.ts
+new file mode 100644
+index 0000000..fc907bf
+--- /dev/null
++++ b/src/client/registration.ts
+@@ -0,0 +1,76 @@
++import { bufferToBase64url } from './base64url.js';
++import { RP_ID } from './webauthnSignals.js';
++
++type ClientCapabilities = Record<string, boolean>;
++
++type PublicKeyCredentialWithCapabilities = typeof PublicKeyCredential & {
++  getClientCapabilities?: () => Promise<ClientCapabilities>;
++};
++
++/**
++ * Feature-detects whether this browser/OS combination can create platform
++ * passkeys at all before the "Create passkey" button is ever shown. Per the
++ * guide's fallback strategy, 'webauthn-polyfills' guarantees
++ * getClientCapabilities exists whenever PublicKeyCredential does, so the
++ * only remaining check is the capability itself.
++ */
++export async function isPlatformPasskeySupported(): Promise<boolean> {
++  if (!('PublicKeyCredential' in window)) return false;
++  const pkc = PublicKeyCredential as PublicKeyCredentialWithCapabilities;
++  if (!pkc.getClientCapabilities) return false;
++  try {
++    const capabilities = await pkc.getClientCapabilities();
++    return Boolean(capabilities.passkeyPlatformAuthenticator);
++  } catch (e) {
++    console.error('getClientCapabilities failed:', e);
++    return false;
++  }
++}
++
++export interface RegistrationUser {
++  id: string; // Base64URL-encoded user ID
++  name: string;
++  displayName: string;
++}
++
++/**
++ * Starts a WebAuthn registration ceremony. Passing `attachment: undefined`
++ * omits `authenticatorSelection.authenticatorAttachment` entirely so the
++ * browser also offers roaming security keys instead of restricting to
++ * platform authenticators.
++ */
++export async function createPasskeyCredential(
++  user: RegistrationUser,
++  challenge: ArrayBuffer,
++  attachment: AuthenticatorAttachment | undefined,
++): Promise<PublicKeyCredential> {
++  const publicKey: PublicKeyCredentialCreationOptions = {
++    rp: { id: RP_ID, name: 'The Daily Grind' },
++    user: {
++      id: Uint8Array.from(atob(user.id.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)),
++      name: user.name,
++      displayName: user.displayName,
++    },
++    challenge,
++    pubKeyCredParams: [
++      { type: 'public-key', alg: -7 }, // ES256
++      { type: 'public-key', alg: -257 }, // RS256
++    ],
++    authenticatorSelection: {
++      residentKey: 'required',
++      userVerification: 'required',
++      ...(attachment ? { authenticatorAttachment: attachment } : {}),
++    },
++    attestation: 'none',
++  };
++
++  const credential = await navigator.credentials.create({ publicKey });
++  if (!(credential instanceof PublicKeyCredential)) {
++    throw new Error('Passkey registration did not return a credential.');
++  }
++  return credential;
++}
++
++export function credentialRawIdToBase64url(credential: PublicKeyCredential): string {
++  return bufferToBase64url(credential.rawId);
++}
+diff --git a/src/client/types.ts b/src/client/types.ts
+new file mode 100644
+index 0000000..507ebad
+--- /dev/null
++++ b/src/client/types.ts
+@@ -0,0 +1,16 @@
++export interface PasskeyCredential {
++  id: string; // Base64URL-encoded credential ID
++  passkeyUserId: string;
++  name: string;
++  aaguid: string;
++  providerIcon?: string;
++  registeredAt: number; // epoch ms, as persisted server-side
++  lastUsedAt?: number; // epoch ms, as persisted server-side
++  transports?: string[];
++}
++
++export interface AccountUser {
++  id: string; // Base64URL-encoded user ID
++  name: string;
++  displayName: string;
++}
+diff --git a/src/client/webauthnSignals.ts b/src/client/webauthnSignals.ts
+new file mode 100644
+index 0000000..0795ce2
+--- /dev/null
++++ b/src/client/webauthnSignals.ts
+@@ -0,0 +1,54 @@
++export const RP_ID = window.location.hostname;
++
++interface SignalAllAcceptedCredentialsOptions {
++  rpId: string;
++  userId: string;
++  allAcceptedCredentialIds: string[];
++}
++
++interface SignalCurrentUserDetailsOptions {
++  rpId: string;
++  userId: string;
++  name: string;
++  displayName: string;
++}
++
++type PublicKeyCredentialWithSignals = typeof PublicKeyCredential & {
++  signalAllAcceptedCredentials?: (options: SignalAllAcceptedCredentialsOptions) => Promise<void>;
++  signalCurrentUserDetails?: (options: SignalCurrentUserDetailsOptions) => Promise<void>;
++};
++
++function getSignalCapablePkc(): PublicKeyCredentialWithSignals | undefined {
++  if (!('PublicKeyCredential' in window)) return undefined;
++  return PublicKeyCredential as PublicKeyCredentialWithSignals;
++}
++
++/**
++ * Tells the password manager which credential IDs (Base64URL strings) are
++ * still valid for this user, so stale/deleted entries are pruned client-side.
++ * Must be feature-detected per the Signal API spec; swallow failures so a
++ * sync hiccup never blocks the UI it was triggered from.
++ */
++export async function syncAllAcceptedCredentials(userId: string, allAcceptedCredentialIds: string[]): Promise<void> {
++  const pkc = getSignalCapablePkc();
++  if (!pkc?.signalAllAcceptedCredentials) return;
++  try {
++    await pkc.signalAllAcceptedCredentials({ rpId: RP_ID, userId, allAcceptedCredentialIds });
++  } catch (e) {
++    console.error('SignalAllAcceptedCredentials sync failure:', e);
++  }
++}
++
++/**
++ * Pushes the signed-in user's latest username/displayName to the password
++ * manager so saved passkeys show up-to-date account details.
++ */
++export async function syncCurrentUserDetails(userId: string, name: string, displayName: string): Promise<void> {
++  const pkc = getSignalCapablePkc();
++  if (!pkc?.signalCurrentUserDetails) return;
++  try {
++    await pkc.signalCurrentUserDetails({ rpId: RP_ID, userId, name, displayName });
++  } catch (e) {
++    console.error('SignalCurrentUserDetails sync failure:', e);
++  }
++}
+diff --git a/src/server/aaguidRegistry.ts b/src/server/aaguidRegistry.ts
+new file mode 100644
+index 0000000..4b6f526
+--- /dev/null
++++ b/src/server/aaguidRegistry.ts
+@@ -0,0 +1,52 @@
++import * as fs from 'node:fs';
++import * as path from 'node:path';
++
++const ZEROED_AAGUID = '00000000-0000-0000-0000-000000000000';
++
++interface AaguidEntry {
++  name: string;
++  icon_light?: string;
++  icon_dark?: string;
++}
++
++// The registry is served to the client as a static asset at /aaguids.json,
++// so the server reads the same file from disk instead of keeping a copy.
++const registryPath = path.join(process.cwd(), 'public', 'aaguids.json');
++const registry: Record<string, AaguidEntry> = JSON.parse(fs.readFileSync(registryPath, 'utf-8'));
++
++export interface ResolvedProvider {
++  name: string;
++  providerIcon: string | undefined;
++}
++
++/**
++ * Derives a human-friendly fallback name from a User-Agent string when the
++ * authenticator reports the zeroed AAGUID (no attested model information).
++ */
++function deviceNameFromUserAgent(userAgent: string | undefined): string {
++  if (!userAgent) return 'Unknown passkey provider';
++  if (/iphone|ipad|ipod/i.test(userAgent)) return 'iOS device';
++  if (/android/i.test(userAgent)) return 'Android device';
++  if (/mac os x/i.test(userAgent)) return 'Mac device';
++  if (/windows/i.test(userAgent)) return 'Windows device';
++  if (/linux/i.test(userAgent)) return 'Linux device';
++  return 'Unknown passkey provider';
++}
++
++/**
++ * Resolves a passkey provider's display name and icon from its AAGUID.
++ * The zeroed AAGUID carries no attested model information, so it is never
++ * looked up against the registry: it only ever produces a device-derived
++ * or generic fallback.
++ */
++export function resolveAaguidProvider(aaguid: string, userAgent?: string): ResolvedProvider {
++  if (aaguid === ZEROED_AAGUID) {
++    return { name: deviceNameFromUserAgent(userAgent), providerIcon: undefined };
++  }
++
++  const provider = registry[aaguid];
++  return {
++    name: provider?.name ?? 'Unknown passkey provider',
++    providerIcon: provider?.icon_light,
++  };
++}
+diff --git a/src/server/app.ts b/src/server/app.ts
+new file mode 100644
+index 0000000..94b2af5
+--- /dev/null
++++ b/src/server/app.ts
+@@ -0,0 +1,79 @@
++import express, { type Express } from 'express';
++import path from 'node:path';
++import { checkUserAuthenticated } from './auth';
++import * as db from './db';
++import { resolveAaguidProvider } from './aaguidRegistry';
++import type { StoredPasskeyCredential } from './types';
++
++type CredentialResponse = StoredPasskeyCredential & { name: string; providerIcon?: string };
++
++function toResponse(cred: StoredPasskeyCredential, userAgent?: string): CredentialResponse {
++  // AAGUID-derived name/icon are resolved fresh on every read so registry
++  // updates apply retroactively, but a user-set nickname always wins.
++  const resolved = resolveAaguidProvider(cred.aaguid, userAgent);
++  return {
++    ...cred,
++    name: cred.name || resolved.name,
++    providerIcon: cred.providerIcon ?? resolved.providerIcon,
++  };
++}
++
++export function createApp(): Express {
++  const app = express();
++  app.use(express.json());
++  app.use(express.static(path.join(process.cwd(), 'public')));
++
++  app.get('/api/credentials', checkUserAuthenticated, async (req, res) => {
++    const list = await db.findCredentialsByUserId(req.user!.id);
++    res.json(list.map((cred) => toResponse(cred, req.header('user-agent'))));
++  });
++
++  app.put('/api/credential/:id', checkUserAuthenticated, async (req, res) => {
++    const { id } = req.params;
++    const { name } = req.body as { name?: string };
++    const cred = await db.findCredentialById(id);
++    if (!cred || cred.passkeyUserId !== req.user!.id) {
++      res.status(404).json({ error: 'Credential not found.' });
++      return;
++    }
++    if (typeof name !== 'string' || !name.trim()) {
++      res.status(400).json({ error: 'A non-empty name is required.' });
++      return;
++    }
++    cred.name = name.trim();
++    await db.saveCredential(cred);
++    res.json(toResponse(cred, req.header('user-agent')));
++  });
++
++  app.delete('/api/credential/:id', checkUserAuthenticated, async (req, res) => {
++    const { id } = req.params;
++    const cred = await db.findCredentialById(id);
++    if (!cred || cred.passkeyUserId !== req.user!.id) {
++      res.status(404).json({ error: 'Credential not found.' });
++      return;
++    }
++    await db.deleteCredential(id);
++    res.json({ success: true });
++  });
++
++  app.put('/api/user', checkUserAuthenticated, async (req, res) => {
++    const { name, displayName } = req.body as { name?: string; displayName?: string };
++    const updatedUser = await db.updateUser(req.user!.id, { name, displayName });
++    if (!updatedUser) {
++      res.status(404).json({ error: 'User not found.' });
++      return;
++    }
++    res.json(updatedUser);
++  });
++
++  app.get('/api/user', checkUserAuthenticated, async (req, res) => {
++    const user = await db.findUserById(req.user!.id);
++    if (!user) {
++      res.status(404).json({ error: 'User not found.' });
++      return;
++    }
++    res.json(user);
++  });
++
++  return app;
++}
+diff --git a/src/server/auth.ts b/src/server/auth.ts
+new file mode 100644
+index 0000000..7723195
+--- /dev/null
++++ b/src/server/auth.ts
+@@ -0,0 +1,31 @@
++import type { NextFunction, Request, Response } from 'express';
++
++export interface AuthenticatedUser {
++  id: string;
++}
++
++declare global {
++  namespace Express {
++    interface Request {
++      user?: AuthenticatedUser;
++    }
++  }
++}
++
++const DEMO_USER_ID = 'M2YPl-KGnA8';
++
++/**
++ * Stand-in for the app's real session/cookie auth. The signed-in user's ID
++ * would normally come from a verified session; this demo trusts an
++ * `x-user-id` header (falling back to a fixed demo account) so the
++ * credential-management endpoints below have someone to scope requests to.
++ */
++export function checkUserAuthenticated(req: Request, res: Response, next: NextFunction): void {
++  const userId = (req.header('x-user-id') || DEMO_USER_ID).trim();
++  if (!userId) {
++    res.status(401).json({ error: 'Not authenticated.' });
++    return;
++  }
++  req.user = { id: userId };
++  next();
++}
+diff --git a/src/server/db.ts b/src/server/db.ts
+new file mode 100644
+index 0000000..96c6be7
+--- /dev/null
++++ b/src/server/db.ts
+@@ -0,0 +1,74 @@
++import type { StoredPasskeyCredential, StoredUser } from './types';
++
++const DEMO_USER_ID = 'M2YPl-KGnA8';
++
++const users = new Map<string, StoredUser>([
++  [DEMO_USER_ID, { id: DEMO_USER_ID, name: 'jane.doe', displayName: 'Jane Doe' }],
++]);
++
++const credentials = new Map<string, StoredPasskeyCredential>([
++  [
++    'cred-1a2b3c',
++    {
++      id: 'cred-1a2b3c',
++      passkeyUserId: DEMO_USER_ID,
++      name: 'Google Password Manager',
++      aaguid: 'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4',
++      providerIcon:
++        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiM0Mjg1RjQiLz48L3N2Zz4=',
++      publicKey: 'mock-public-key-1',
++      counter: 4,
++      transports: ['internal', 'hybrid'],
++      registeredAt: Date.UTC(2025, 0, 12, 9, 30),
++      lastUsedAt: Date.UTC(2026, 8, 20, 14, 5),
++    },
++  ],
++  [
++    'cred-4d5e6f',
++    {
++      id: 'cred-4d5e6f',
++      passkeyUserId: DEMO_USER_ID,
++      name: 'iCloud Keychain',
++      aaguid: 'fbfc3007-154e-4ecc-8c0b-6e020557d7bd',
++      providerIcon:
++        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMwMDdBRkYiLz48L3N2Zz4=',
++      publicKey: 'mock-public-key-2',
++      counter: 1,
++      transports: ['internal'],
++      registeredAt: Date.UTC(2025, 5, 2, 18, 0),
++    },
++  ],
++]);
++
++export async function findCredentialsByUserId(userId: string): Promise<StoredPasskeyCredential[]> {
++  return Array.from(credentials.values()).filter((cred) => cred.passkeyUserId === userId);
++}
++
++export async function findCredentialById(id: string): Promise<StoredPasskeyCredential | undefined> {
++  return credentials.get(id);
++}
++
++export async function saveCredential(credential: StoredPasskeyCredential): Promise<StoredPasskeyCredential> {
++  credentials.set(credential.id, credential);
++  return credential;
++}
++
++export async function deleteCredential(id: string): Promise<void> {
++  credentials.delete(id);
++}
++
++export async function findUserById(id: string): Promise<StoredUser | undefined> {
++  return users.get(id);
++}
++
++export async function updateUser(
++  id: string,
++  updates: { name?: string; displayName?: string },
++): Promise<StoredUser | undefined> {
++  const user = users.get(id);
++  if (!user) return undefined;
++  if (updates.name !== undefined) user.name = updates.name;
++  if (updates.displayName !== undefined) user.displayName = updates.displayName;
++  users.set(id, user);
++  return user;
++}
+diff --git a/src/server/index.ts b/src/server/index.ts
+new file mode 100644
+index 0000000..845bb81
+--- /dev/null
++++ b/src/server/index.ts
+@@ -0,0 +1,7 @@
++import { createApp } from './app';
++
++const PORT = Number(process.env.PORT) || 11222;
++
++createApp().listen(PORT, () => {
++  console.log(`The Daily Grind server listening on http://localhost:${PORT}`);
++});
+diff --git a/src/server/types.ts b/src/server/types.ts
+new file mode 100644
+index 0000000..ead7076
+--- /dev/null
++++ b/src/server/types.ts
+@@ -0,0 +1,18 @@
++export interface StoredPasskeyCredential {
++  id: string; // Base64URL-encoded credential ID
++  passkeyUserId: string; // Base64URL-encoded user ID this credential belongs to
++  name: string; // Provider-derived or user-renamed nickname
++  aaguid: string;
++  providerIcon?: string;
++  publicKey: string;
++  counter: number;
++  transports?: string[];
++  registeredAt: number; // epoch ms
++  lastUsedAt?: number; // epoch ms
++}
++
++export interface StoredUser {
++  id: string; // Base64URL-encoded user ID
++  name: string; // username
++  displayName: string;
++}
+diff --git a/tsconfig.base.json b/tsconfig.base.json
+new file mode 100644
+index 0000000..52cec9c
+--- /dev/null
++++ b/tsconfig.base.json
+@@ -0,0 +1,14 @@
++{
++  "compilerOptions": {
++    "strict": true,
++    "target": "ES2022",
++    "esModuleInterop": true,
++    "forceConsistentCasingInFileNames": true,
++    "skipLibCheck": true,
++    "resolveJsonModule": true,
++    "noUnusedLocals": true,
++    "noUnusedParameters": true,
++    "noImplicitReturns": true,
++    "noFallthroughCasesInSwitch": true
++  }
++}
+diff --git a/tsconfig.client.json b/tsconfig.client.json
+new file mode 100644
+index 0000000..fd63177
+--- /dev/null
++++ b/tsconfig.client.json
+@@ -0,0 +1,10 @@
++{
++  "extends": "./tsconfig.base.json",
++  "compilerOptions": {
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "noEmit": true
++  },
++  "include": ["src/client/**/*.ts"]
++}
+diff --git a/tsconfig.server.json b/tsconfig.server.json
+new file mode 100644
+index 0000000..4704499
+--- /dev/null
++++ b/tsconfig.server.json
+@@ -0,0 +1,12 @@
++{
++  "extends": "./tsconfig.base.json",
++  "compilerOptions": {
++    "module": "CommonJS",
++    "moduleResolution": "Node",
++    "lib": ["ES2022"],
++    "outDir": "dist/server",
++    "rootDir": "src/server",
++    "types": ["node"]
++  },
++  "include": ["src/server/**/*.ts"]
++}

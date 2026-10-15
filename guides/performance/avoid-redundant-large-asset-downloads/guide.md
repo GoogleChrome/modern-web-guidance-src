@@ -16,9 +16,9 @@ Large shared assets such as AI model weights, Wasm modules, game engine cores, o
 ## How to implement
 
 1. **Compute the asset's hash when you build or publish your site.** Hash the exact bytes of the large asset you serve (for example, a model file, a Wasm binary, or a third-party library such as three.js) with `crypto.subtle.digest()`, and include the result as a lowercase hex string in your built code. The hash is what identifies the file in COS, and computing it on page load would require downloading the file first.
-2. **Feature-detect before use, then fall back immediately if it's absent.** Check `navigator.crossOriginStorage?.requestFileHandle` once up front. If COS isn't implemented in this browser, skip straight to a normal network fetch.
+2. **Feature-detect before use, then fall back immediately if it's absent.** Check `navigator.crossOriginStorage?.getFileHandle` once up front. If COS isn't implemented in this browser, skip straight to a normal network fetch.
 3. **Once support is confirmed, still call every method defensively.** Wrap each COS call in `try`/`catch`, as described in the "Handle rejections" section.
-4. **Check COS before fetching from the network.** Call `requestFileHandle(hash)` first. If it resolves, read the file with `handle.getFile()` and skip the network entirely.
+4. **Check COS before fetching from the network.** Call `getFileHandle(hash)` first. If it resolves, read the file with `handle.getFile()` and skip the network entirely.
 5. **Fall back to the network on any rejection.** A `NotFoundError` is a cache miss that never proves the file is absent.
 6. **Store what you fetch.** After a network fetch, request a writable handle with `{ create: true }`, write the complete file, and close the stream, so the next origin that asks for the same hash can skip the download.
 7. **Choose the `origins` scope deliberately.** Pick it from the resource's real distribution, as described in the "Sharing scope" section.
@@ -52,7 +52,7 @@ At runtime, load every large shared asset through one reusable helper that looks
 async function loadAsset(url, hash, origins) {
   // Feature-detect once, up front, and fall back to the network
   // immediately if COS isn't implemented in this browser.
-  const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
+  const supportsCOS = !!navigator.crossOriginStorage?.getFileHandle;
   // Set when Permissions Policy blocks COS in this context, since every
   // further COS call here rejects the same way.
   let blocked = false;
@@ -61,7 +61,7 @@ async function loadAsset(url, hash, origins) {
     try {
       // Check COS first. If another origin already stored this exact
       // hash, this resolves with no network request at all.
-      const handle = await navigator.crossOriginStorage.requestFileHandle(hash);
+      const handle = await navigator.crossOriginStorage.getFileHandle(hash);
       return await handle.getFile();
     } catch (err) {
       // A NotFoundError does not prove the file is absent from COS. Fall
@@ -76,7 +76,7 @@ async function loadAsset(url, hash, origins) {
   if (supportsCOS && !blocked) {
     // Write back to the cache.
     try {
-      const handle = await navigator.crossOriginStorage.requestFileHandle(hash, {
+      const handle = await navigator.crossOriginStorage.getFileHandle(hash, {
         create: true,
         // Only pass `origins` when the caller chose a scope, so omitting it
         // keeps the same-site-only default.
@@ -113,8 +113,8 @@ const library = await loadAsset(
 
 A browser that implements COS can still reject any call, so a passed feature-detection check never guarantees success. Fall back to the network on every rejection, and read the error name to decide what else to do:
 
-- **`NotFoundError` from `requestFileHandle(hash)`:** an ordinary cache miss that never proves the file is absent. The file may not exist, your origin may be outside its sharing scope, a globally shared file may not be on the browser's list of popular hashes yet, or the browser may deliberately report a stored file as missing to protect privacy (GREASE'ing). Store the file after the network fetch as usual.
-- **`NotAllowedError` from `requestFileHandle()`:** Permissions Policy blocks COS in this context, for example in a cross-origin iframe whose embedder didn't grant the `cross-origin-storage` feature (its default allowlist is `self`). Every further COS call in this context rejects the same way, so skip the write-back too.
+- **`NotFoundError` from `getFileHandle(hash)`:** an ordinary cache miss that never proves the file is absent. The file may not exist, your origin may be outside its sharing scope, a globally shared file may not be on the browser's list of popular hashes yet, or the browser may deliberately report a stored file as missing to protect privacy (GREASE'ing). Store the file after the network fetch as usual.
+- **`NotAllowedError` from `getFileHandle()`:** Permissions Policy blocks COS in this context, for example in a cross-origin iframe whose embedder didn't grant the `cross-origin-storage` feature (its default allowlist is `self`). Every further COS call in this context rejects the same way, so skip the write-back too.
 - **`NotAllowedError` from `getFile()`:** you called it on a handle obtained with `{ create: true }` before your own write completed, which applies even when another origin already stored the file. Use the blob you already have.
 
 ## Sharing scope
@@ -124,7 +124,7 @@ A browser that implements COS can still reject any call, so a passed feature-det
 ## Best practices
 
 - **DO** write the complete file with `createWritable()` / `write()` / `close()` (or `pipeTo()`) every time you store, even if the file might already exist in COS.
-- **DO** use `Promise.all()` over individual `requestFileHandle()` calls to look up several distinct hashes concurrently, since each call takes exactly one hash.
+- **DO** use `Promise.all()` over individual `getFileHandle()` calls to look up several distinct hashes concurrently, since each call takes exactly one hash.
 
 ## Fallback strategy
 
