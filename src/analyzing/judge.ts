@@ -5,7 +5,6 @@ import {
   CARDS_DIR,
   GRADES_PATH,
   GUIDES_DIR,
-  GUIDE_SUMMARIES_PATH,
   REPOS_CONFIG_PATH,
   WORKTREE_ROOT,
   repoDir,
@@ -128,32 +127,8 @@ export interface JudgeRunOptions {
   fetchFn?: typeof fetch;
 }
 
-export const BROWNFIELD_GUIDE_RUBRIC: Readonly<Record<string, string>> = {
-  'child-state-based-styling':
-    'Flag pre-modern workarounds for styling based on child state: e.g. CSS sibling hacks (`input:checked ~ .label`, `input:checked + .label`), or JS listeners toggling modifier classes on parent containers because CSS lacked `:has()`.',
-  'shadow-dom':
-    'Flag pre-modern client-side HTML templating workarounds: e.g. `<script type="text/template">`, `<script type="text/html">`, `<script type="text/x-handlebars-template">`, or manual DOM cloning used to hold markup templates before native `<template>` and Web Components.',
-  'customize-scrollbar-color-and-thickness':
-    'Flag pre-standard scrollbar styling: e.g. `::-webkit-scrollbar`, `::-webkit-scrollbar-thumb`, `::-webkit-scrollbar-track` vendor pseudo-elements used to color or size scrollbars before standard `scrollbar-width` and `scrollbar-color`.',
-  'detect-initial-visibility-state':
-    'Flag pre-standard page visibility checks: e.g. `document.webkitHidden`, `document.msHidden`, `document.hidden`, or manual visibility polling before modern VisibilityStateEntry and standard Visibility API.',
-  'branded-select-styling':
-    'Flag custom dropdown replacement libraries: e.g. jQuery Chosen (`.chosen()`), Select2, or custom div-based select widgets built because native `<select>` was not styleable.',
-  'animate-element-entry-exit':
-    'Flag imperative animation libraries and hacks: e.g. jQuery `.fadeIn()`, `.fadeOut()`, `.slideDown()`, `.slideUp()`, or manual setTimeout/rAF display toggling to animate element entry/exit before CSS `@starting-style` and `transition-behavior: allow-discrete`.',
-  'calculate-event-differentials':
-    'Flag manual Date subtraction and timestamp math: e.g. `(d1 - d2)`, `d1.getTime() - d2.getTime()`, millisecond division math before the Temporal API.',
-  'capture-location-agnostic-data':
-    'Flag using timezone-dependent `Date` objects or ISO strings for location-agnostic calendar dates/birthdays before Temporal.PlainDate.',
-  'break-up-long-tasks':
-    'Flag manual event loop yielding hacks: e.g. `setTimeout(..., 0)`, `setImmediate()`, or rAF-then-setTimeout before `scheduler.yield()`.',
-  'resilient-context-menus-and-nested-dropdowns':
-    'Flag floating UI libraries or manual tethering: e.g. Popper.js, Floating UI, Bootstrap dropdown JS, or manual coordinate calculations before Popover and Anchor Positioning.',
-  'animate-to-intrinsic-sizes':
-    'Flag JavaScript height measurement or max-height hacks: e.g. reading `scrollHeight`/`offsetHeight` to animate accordion expansion before `calc-size()` and `interpolate-size`.',
-  'schedule-tasks-by-priority':
-    'Flag manual task prioritization hacks: e.g. setTimeout(0) queues or priority arrays before `scheduler.postTask()`. (Do NOT flag MessageChannel used for real cross-context message passing).',
-};
+export { BROWNFIELD_GUIDE_RUBRIC } from './guide-rubrics.ts';
+import { BROWNFIELD_GUIDE_RUBRIC } from './guide-rubrics.ts';
 
 export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization judge evaluating whether a static code finding is a legitimate instance of legacy web platform code that should be modernized according to a Modern Web Guidance guide.
 

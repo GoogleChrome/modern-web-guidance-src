@@ -7,7 +7,6 @@ import {
   evaluateJudgeMetrics,
   evaluateJudgeStability,
   loadGuideSummariesMap,
-  loadHumanGrades,
   loadPaulIrishScoredCards,
   prepareBlindCards,
   runJudgeBatch,
