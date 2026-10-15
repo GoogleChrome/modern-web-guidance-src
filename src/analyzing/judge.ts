@@ -128,15 +128,42 @@ export interface JudgeRunOptions {
   fetchFn?: typeof fetch;
 }
 
+export const BROWNFIELD_GUIDE_RUBRIC: Readonly<Record<string, string>> = {
+  'child-state-based-styling':
+    'Flag pre-modern workarounds for styling based on child state: e.g. CSS sibling hacks (`input:checked ~ .label`, `input:checked + .label`), or JS listeners toggling modifier classes on parent containers because CSS lacked `:has()`.',
+  'shadow-dom':
+    'Flag pre-modern client-side HTML templating workarounds: e.g. `<script type="text/template">`, `<script type="text/html">`, `<script type="text/x-handlebars-template">`, or manual DOM cloning used to hold markup templates before native `<template>` and Web Components.',
+  'customize-scrollbar-color-and-thickness':
+    'Flag pre-standard scrollbar styling: e.g. `::-webkit-scrollbar`, `::-webkit-scrollbar-thumb`, `::-webkit-scrollbar-track` vendor pseudo-elements used to color or size scrollbars before standard `scrollbar-width` and `scrollbar-color`.',
+  'detect-initial-visibility-state':
+    'Flag pre-standard page visibility checks: e.g. `document.webkitHidden`, `document.msHidden`, `document.hidden`, or manual visibility polling before modern VisibilityStateEntry and standard Visibility API.',
+  'branded-select-styling':
+    'Flag custom dropdown replacement libraries: e.g. jQuery Chosen (`.chosen()`), Select2, or custom div-based select widgets built because native `<select>` was not styleable.',
+  'animate-element-entry-exit':
+    'Flag imperative animation libraries and hacks: e.g. jQuery `.fadeIn()`, `.fadeOut()`, `.slideDown()`, `.slideUp()`, or manual setTimeout/rAF display toggling to animate element entry/exit before CSS `@starting-style` and `transition-behavior: allow-discrete`.',
+  'calculate-event-differentials':
+    'Flag manual Date subtraction and timestamp math: e.g. `(d1 - d2)`, `d1.getTime() - d2.getTime()`, millisecond division math before the Temporal API.',
+  'capture-location-agnostic-data':
+    'Flag using timezone-dependent `Date` objects or ISO strings for location-agnostic calendar dates/birthdays before Temporal.PlainDate.',
+  'break-up-long-tasks':
+    'Flag manual event loop yielding hacks: e.g. `setTimeout(..., 0)`, `setImmediate()`, or rAF-then-setTimeout before `scheduler.yield()`.',
+  'resilient-context-menus-and-nested-dropdowns':
+    'Flag floating UI libraries or manual tethering: e.g. Popper.js, Floating UI, Bootstrap dropdown JS, or manual coordinate calculations before Popover and Anchor Positioning.',
+  'animate-to-intrinsic-sizes':
+    'Flag JavaScript height measurement or max-height hacks: e.g. reading `scrollHeight`/`offsetHeight` to animate accordion expansion before `calc-size()` and `interpolate-size`.',
+  'schedule-tasks-by-priority':
+    'Flag manual task prioritization hacks: e.g. setTimeout(0) queues or priority arrays before `scheduler.postTask()`. (Do NOT flag MessageChannel used for real cross-context message passing).',
+};
+
 export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization judge evaluating whether a static code finding is a legitimate instance of legacy web platform code that should be modernized according to a Modern Web Guidance guide.
 
-The Modern Web Guidance mission is to identify old web patterns, legacy library workarounds (such as jQuery methods, vendor prefixes, polyfills, or manual JS hacks), and replace them with modern standard web platform features to reduce dependencies and improve performance.
+The Modern Web Guidance mission is to identify old web patterns and brownfield library workarounds (e.g. jQuery animations, vendor-prefixed properties like ::-webkit-scrollbar, <script type="text/template">, CSS sibling combinator hacks like ~/+ simulating :has(), manual Date timestamp math), and modernize them with standard web platform features to reduce dependencies and improve browser behavior.
 
 You must follow the Detective-then-Judge methodology:
 First extract structured facts:
-1. \`matches_before_syntax\`: Does the highlighted code match the old workaround, legacy pattern, or library dependency that this guide replaces? (e.g. jQuery animation methods like fadeIn/fadeOut, vendor prefixes like ::-webkit-scrollbar, setTimeout task breaking, manual Date subtraction, etc.)
+1. \`matches_before_syntax\`: Does the highlighted code match an old workaround, pre-standard API, vendor-prefixed syntax, or library helper targeted by the guide's brownfield rubric?
 2. \`has_fallback_or_feature_guard\`: Is this code protected by a feature guard (e.g. checking for modern API support, fallback branch, ponyfill, or polyfill)?
-3. \`modern_feature_applies_here\`: Does the modern web platform replacement apply here to modernize this code or eliminate the legacy workaround? (Replacing legacy JS library animations like jQuery fadeIn/fadeOut with standard CSS @starting-style/transitions is an intended modernization).
+3. \`modern_feature_applies_here\`: Does the modern web platform replacement apply here to modernize this code or eliminate the legacy workaround?
 4. \`reasoning\`: Concise, objective reasoning explaining your factual analysis.
 5. \`verdict\`: One of the following 5 values:
    - 'right': Legitimate finding. The code matches the legacy workaround/pattern, is not an intentional fallback, and the modern feature applies.
@@ -171,10 +198,14 @@ export const JUDGE_RESPONSE_SCHEMA = {
  * Strips all detector rule IDs, source IDs, tool names, and prior verdicts.
  */
 export function formatBlindCardPrompt(card: BlindCardPayload): string {
+  const brownfieldNote = BROWNFIELD_GUIDE_RUBRIC[card.guideId]
+    ? `\n## Brownfield Workarounds Target (What this guide replaces)\n${BROWNFIELD_GUIDE_RUBRIC[card.guideId]}\n`
+    : '';
+
   if (card.guideSummary.markdownBody) {
     return `## Modern Web Guidance Guide (${card.guideId})
 ${card.guideSummary.markdownBody}
-
+${brownfieldNote}
 ## Code Location
 - File: ${card.file}
 - Line: ${card.line}
@@ -194,7 +225,7 @@ ${card.codeSnippet}
 - Problem: ${card.guideSummary.problem}
 - Legacy Pattern (Before): ${card.guideSummary.before}
 - Modern Replacement (Now): ${card.guideSummary.now}${examples}
-
+${brownfieldNote}
 ## Code Location
 - File: ${card.file}
 - Line: ${card.line}
@@ -223,6 +254,7 @@ export function buildGeminiRequestBody(card: BlindCardPayload): unknown {
       responseMimeType: 'application/json',
       responseSchema: JUDGE_RESPONSE_SCHEMA,
       temperature: 0.0,
+      thinkingConfig: { thinkingBudget: 0 },
     },
   };
 }
