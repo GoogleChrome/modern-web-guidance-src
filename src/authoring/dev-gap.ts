@@ -53,6 +53,7 @@ export interface PrReviewContext {
   branchDiff?: string;
   comments?: string;
   prBody?: string;
+  rerunMode?: DevPrRerunLabel;
 }
 
 export interface FixEvalGapsOptions {
