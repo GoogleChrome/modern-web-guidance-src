@@ -176,11 +176,11 @@ In addition to the guidelines mentioned above:
 
 {{ FEATURE_FALLBACKS("accent-color") }}
 
-The `accent-color` property is a progressive enhancement. Browsers that do not support it will use their default system colors, maintaining a functional experience.
-
 If `accent-color` is not supported and styling the progress bar is required, use the customized styling method to apply preferred styling to the progress bar.
+
+### Fallbacks & browser support for `revert-rule`
 
 {# See https://github.com/GoogleChrome/modern-web-guidance-src/issues/2004
 {{ BASELINE_STATUS('tmp-revert-rule') }} #}
 
-If `revert-rule` is not supported, the declaration becomes IACVT (invalid at computed-value time) and behaves as `unset`. Here `animation` computes to `none`, same as the UA, so no guard is needed.
+If `revert-rule` is not supported, `animation: var(--progress-bar-animation, revert-rule)` falls back to `animation-name: revert-rule` with a `0s` duration when `--progress-bar-animation` is unset, which is a harmless no-op when no `@keyframes revert-rule` exists.
