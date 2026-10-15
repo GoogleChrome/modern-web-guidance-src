@@ -402,6 +402,10 @@ const server = http.createServer(async (req, res) => {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
             .filter(d => !d.isDirectory())
             .map(d => d.name);
+          const gradeReportHtml = path.join(targetDir, 'grade-report', 'index.html');
+          if (fs.existsSync(gradeReportHtml)) {
+            files.push('grade-report/index.html');
+          }
           const gradeReportDataDir = path.join(targetDir, 'grade-report', 'data');
           if (fs.existsSync(gradeReportDataDir)) {
             const dataFiles = fs.readdirSync(gradeReportDataDir)

@@ -37,6 +37,40 @@ describe('getGraderScriptContent', () => {
       }
     }
   });
+
+  test('should generate valid JavaScript code with includeTrace: false', () => {
+    const cwd = '/path/to/cwd';
+    const graderPath = '/path/to/grader.ts';
+
+    const scriptContent = getGraderScriptContent(cwd, graderPath, 'dummy-guide', false);
+    assert.ok(scriptContent.includes('false'), 'Should pass false for includeTrace');
+
+    const tempFile = path.join(process.cwd(), `temp_grader_test_${Math.random().toString(36).substring(7)}.mjs`);
+    fs.writeFileSync(tempFile, scriptContent);
+    try {
+      const result = spawnSync(process.execPath, ['--check', tempFile], { stdio: 'pipe' });
+      assert.strictEqual(result.status, 0);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
+
+  test('should generate valid JavaScript code with includeTrace: true', () => {
+    const cwd = '/path/to/cwd';
+    const graderPath = '/path/to/grader.ts';
+
+    const scriptContent = getGraderScriptContent(cwd, graderPath, 'dummy-guide', true);
+    assert.ok(scriptContent.includes('true'), 'Should pass true for includeTrace');
+
+    const tempFile = path.join(process.cwd(), `temp_grader_test_${Math.random().toString(36).substring(7)}.mjs`);
+    fs.writeFileSync(tempFile, scriptContent);
+    try {
+      const result = spawnSync(process.execPath, ['--check', tempFile], { stdio: 'pipe' });
+      assert.strictEqual(result.status, 0);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
 });
 
 describe('createWorkDir', () => {

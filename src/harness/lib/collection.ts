@@ -254,7 +254,8 @@ function setupGraderForTask(
   dir: string,
   runPath: string,
   resultsDir: string,
-  taskMap: Map<string, any>
+  taskMap: Map<string, any>,
+  includeTrace?: boolean
 ): string | null {
   const ctx = getTaskRunContext(dir, runPath, taskMap);
   if (!ctx) return null;
@@ -267,7 +268,7 @@ function setupGraderForTask(
   }
 
   // Generate a runner script to be picked up by pnpm -r run-grader
-  const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide);
+  const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide, includeTrace);
   const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
   fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
 
@@ -307,12 +308,18 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
   fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
 
+  const suiteConfigPath = path.join(resultsDir, 'suite_config.json');
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  if (fs.existsSync(suiteConfigPath) && !env.GD_SUITE_CONFIG) {
+    env.GD_SUITE_CONFIG = suiteConfigPath;
+  }
+
   try {
     console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
-    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
+    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32', env });
 
     console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
-    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
+    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32', env });
   } finally {
     if (fs.existsSync(pnpmWorkspacePath)) {
       fs.unlinkSync(pnpmWorkspacePath);
@@ -449,11 +456,12 @@ function estimateTotalRuntime(resultsDir: string): number | undefined {
 function prepareGradersForRuns(
   resultsDir: string,
   runDirs: string[],
-  taskMap: Map<string, any>
+  taskMap: Map<string, any>,
+  includeTrace?: boolean
 ): string[] {
   const pnpmWorkspacePackages: string[] = [];
   for (const { dir, runPath } of getTaskDirsForRuns(resultsDir, runDirs)) {
-    const pkgId = setupGraderForTask(dir, runPath, resultsDir, taskMap);
+    const pkgId = setupGraderForTask(dir, runPath, resultsDir, taskMap, includeTrace);
     if (pkgId) {
       pnpmWorkspacePackages.push(pkgId);
     }
@@ -502,7 +510,13 @@ async function collectTaskRunEntry(
     taskName: ctx.taskName,
     prompt: ctx.taskInfo.prompt,
     targetFile: ctx.targetModifiedFile,
-    files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
+    files: (() => {
+      const runFiles = fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory());
+      if (fs.existsSync(path.join(dir, 'grade-report', 'index.html'))) {
+        runFiles.push('grade-report/index.html');
+      }
+      return runFiles;
+    })(),
     runtime: runtimeData,
     tokenUsage,
   };
@@ -538,12 +552,12 @@ async function collectAllResults(
   return { allResults, model };
 }
 
-export async function collectResults(resultsDir: string, _suiteConfig?: SuiteConfig) {
+export async function collectResults(resultsDir: string, suiteConfig?: SuiteConfig) {
   const taskMap = getTaskMap();
   const runDirs = getRunNumberDirs(resultsDir);
 
   // PASS 1: Generate parallel grader scripts for missing results
-  const graderPackages = prepareGradersForRuns(resultsDir, runDirs, taskMap);
+  const graderPackages = prepareGradersForRuns(resultsDir, runDirs, taskMap, suiteConfig?.includeTrace);
 
   // PASS 1.5: Execute parallel grading runs
   await executeParallelGrading(resultsDir, graderPackages);

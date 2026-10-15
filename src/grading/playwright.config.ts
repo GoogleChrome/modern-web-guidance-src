@@ -3,18 +3,35 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { outDir, guidesDir } from '../core/paths.ts';
 
-function shouldIncludeTrace(): boolean {
+export function shouldIncludeTrace(startDir?: string): boolean {
   const configEnv = process.env.GD_SUITE_CONFIG;
-  if (!configEnv) return false;
-  try {
-    let content = configEnv;
-    if (!configEnv.trim().startsWith('{') && fs.existsSync(configEnv)) {
-      content = fs.readFileSync(configEnv, 'utf8');
+  if (configEnv) {
+    try {
+      let content = configEnv;
+      if (!configEnv.trim().startsWith('{') && fs.existsSync(configEnv)) {
+        content = fs.readFileSync(configEnv, 'utf8');
+      }
+      return !!JSON.parse(content).includeTrace;
+    } catch {
+      return false;
     }
-    return !!JSON.parse(content).includeTrace;
+  }
+
+  try {
+    let curr = path.resolve(startDir || process.cwd());
+    while (curr !== path.dirname(curr)) {
+      const candidate = path.join(curr, 'suite_config.json');
+      if (fs.existsSync(candidate)) {
+        const content = fs.readFileSync(candidate, 'utf8');
+        return !!JSON.parse(content).includeTrace;
+      }
+      curr = path.dirname(curr);
+    }
   } catch {
     return false;
   }
+
+  return false;
 }
 
 const includeTrace = shouldIncludeTrace();

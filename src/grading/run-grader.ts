@@ -11,6 +11,7 @@ import { TARGETS_DIR, getActiveSolutionAgents, SOLUTION_PATCH_FILES, type Soluti
 import { copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
 import { createIsolatedHome, cleanupIsolatedHome } from '../harness/lib/agent-shared.ts';
 import { applyPatchSync } from '../core/patch-utils.ts';
+import { shouldIncludeTrace } from './playwright.config.ts';
 
 export interface PlaywrightOptions {
   targetPathAbs: string;
@@ -62,13 +63,13 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     env.PATCH_FILE = path.resolve(opts.patchFile);
   }
 
-  if (opts.htmlOutputDir) {
+  if (opts.htmlOutputDir && opts.reporters.includes('html')) {
     env.PLAYWRIGHT_HTML_OUTPUT_DIR = opts.htmlOutputDir;
   }
 
   if (opts.testResultsDir) {
     env.PLAYWRIGHT_OUTPUT_DIR = opts.testResultsDir;
-  } else if (opts.htmlOutputDir) {
+  } else {
     env.PLAYWRIGHT_OUTPUT_DIR = path.join(appDir, 'test-results');
   }
 
@@ -89,11 +90,12 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
 export async function runPlaywright(
   targetPathAbs: string,
   graderPath: string,
-  htmlOutputDir: string,
+  htmlOutputDir?: string,
   stdio: 'inherit' | 'ignore' | 'pipe' = 'inherit',
   patchFile?: string,
   zeroPassrateFile?: string,
-  testResultsDir?: string
+  testResultsDir?: string,
+  includeTrace?: boolean
 ): Promise<any> {
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
 
@@ -110,11 +112,13 @@ export async function runPlaywright(
 
   try {
     let stderrData = '';
+    const traceEnabled = includeTrace ?? shouldIncludeTrace(isDir ? effectiveTargetPath : path.dirname(effectiveTargetPath));
+    const reporters = traceEnabled ? ['json', 'html'] : ['json'];
     const child = executePlaywright({
       targetPathAbs: effectiveTargetPath,
       graderPath,
-      reporters: ['json', 'html'],
-      htmlOutputDir,
+      reporters,
+      htmlOutputDir: traceEnabled ? htmlOutputDir : undefined,
       testResultsDir,
       jsonOutputName: tmpJson,
       patchFile: patchFile,
