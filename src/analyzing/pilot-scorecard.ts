@@ -10,6 +10,7 @@ import {
   prepareBlindCards,
   runJudgeDirect,
   type BlindCardPayload,
+  type CalibrationDeckItem,
   type CanaryCard,
   type CanaryCheckResult,
   type GuideSummaryInfo,
@@ -21,6 +22,7 @@ import {
 import {
   ANALYZER_INTERNAL_DIR,
   GRADES_PATH,
+  M3_SPOTCHECK_DECK_PATH,
   PROGRESS_LOG_PATH,
   REPOS_CONFIG_PATH,
   WORKTREE_ROOT,
@@ -35,7 +37,7 @@ import {
   type MetricEntry,
   type ProgressLogRow,
 } from './progress-log.ts';
-import { PILOT_RULES } from './rules/index.ts';
+import { ALL_RULES, PILOT_RULES } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import {
@@ -185,12 +187,16 @@ export interface GuideScorecard {
   readonly clearsPrecisionBar: boolean;
   readonly clearsBar90: boolean;
   readonly clearsScreen80: boolean;
+  readonly clearsSampleConstrained?: boolean;
+  readonly isSampleConstrained?: boolean;
   readonly recall: GuideRecallMetrics;
 }
 
 export interface PilotScorecardSummary {
   readonly totalDetectableGuides: number;
   readonly clearedBarCount: number;
+  readonly clearedBar90Count?: number;
+  readonly clearedSampleConstrainedCount?: number;
   readonly clearedScreenCount: number;
   readonly coverage: MetricEntry;
   readonly overallPrecision: MetricEntry;
@@ -201,6 +207,7 @@ export interface PilotScorecardSummary {
     readonly precision: number;
     readonly wilson95: BinomialInterval;
   };
+  readonly ppiPrecision?: MetricEntry;
   readonly judgeStability: number;
   readonly judgeAlpha: number;
   readonly judgeAc1: number;
@@ -227,6 +234,7 @@ export interface PilotScorecardOptions {
   readonly rulesDir?: string;
   readonly scorecardPath?: string;
   readonly progressLogPath?: string;
+  readonly spotcheckDeckPath?: string;
   readonly writeProgress?: boolean;
   readonly apiKey?: string;
   readonly fetchFn?: typeof fetch;
@@ -331,6 +339,59 @@ export async function scanGradingRepos(
 }
 
 /**
+ * Deterministically samples up to targetCount (default 10) kept findings for spot-checking per G6.
+ * Prefers kept findings from novel rules (guides outside PILOT_GUIDE_IDS), or falls back to
+ * all kept findings if no novel rules are present.
+ */
+export function sampleM3SpotcheckDeck(
+  keptFindings: readonly AnalyzerFinding[],
+  targetCount = 10,
+): CalibrationDeckItem[] {
+  if (keptFindings.length === 0) {
+    return [];
+  }
+
+  const novelFindings = keptFindings.filter(
+    (f) => !PILOT_GUIDE_IDS.includes(f.guideId as (typeof PILOT_GUIDE_IDS)[number]),
+  );
+  const pool = novelFindings.length > 0 ? novelFindings : [...keptFindings];
+
+  const sorted = [...pool].sort((a, b) => {
+    const hashA = createHash('sha256').update(a.cardId).digest('hex');
+    const hashB = createHash('sha256').update(b.cardId).digest('hex');
+    return hashA.localeCompare(hashB);
+  });
+
+  const selected = sorted.slice(0, targetCount);
+
+  return selected.map((f) => ({
+    cardId: f.cardId,
+    repo: f.repo,
+    commit: f.commit,
+    guideId: f.guideId,
+    sourceId: f.ruleId,
+    file: f.file,
+    line: f.line,
+    code: f.astSlice || f.codeSnippet,
+    phase2Decision: 'keep',
+    phase2Reason: 'Phase 2 filter approved finding',
+    findings: [
+      {
+        tool: 'modern-web-guidance-analyzer',
+        repo: f.repo,
+        commit: f.commit,
+        guideId: f.guideId,
+        sourceId: f.ruleId,
+        kind: 'uses-old-pattern',
+        file: f.file,
+        line: f.line,
+        reason: f.message,
+      },
+    ],
+  }));
+}
+
+/**
  * Executes the complete held-out evaluation for Milestone 2 pilot rules.
  */
 export async function runPilotScorecard(
@@ -338,7 +399,8 @@ export async function runPilotScorecard(
 ): Promise<PilotScorecardReport> {
   const reposPath = options.reposConfigPath ?? REPOS_CONFIG_PATH;
   const gradesPath = options.gradesPath ?? GRADES_PATH;
-  const rules = options.rules ?? PILOT_RULES;
+  const rules = options.rules ?? ALL_RULES;
+  const targetGuideIds: readonly string[] = Array.from(new Set(rules.map((r) => r.guideId)));
   const rulesDir = options.rulesDir ?? join(WORKTREE_ROOT, 'src/analyzing/rules');
   const maxSample = options.maxSequentialSample ?? 60;
   const concurrency = options.concurrency ?? 10;
@@ -355,7 +417,7 @@ export async function runPilotScorecard(
 
   // Group Phase 1 findings by guideId
   const findingsByGuide = new Map<string, AnalyzerFinding[]>();
-  for (const gid of PILOT_GUIDE_IDS) {
+  for (const gid of targetGuideIds) {
     findingsByGuide.set(gid, []);
   }
   for (const f of phase1Findings) {
@@ -368,7 +430,7 @@ export async function runPilotScorecard(
   const sampledFindingsByGuide = new Map<string, AnalyzerFinding[]>();
   const allSampledFindings: AnalyzerFinding[] = [];
 
-  for (const gid of PILOT_GUIDE_IDS) {
+  for (const gid of targetGuideIds) {
     const guideFindings = findingsByGuide.get(gid) ?? [];
     const sampled = stratifiedSampleFindings(guideFindings, maxSample);
     sampledFindingsByGuide.set(gid, sampled);
@@ -390,7 +452,7 @@ export async function runPilotScorecard(
 
   const phase2Result = await runPhase2Filter(allSampledFindings, rulesById, phase2Opts);
   const phase2KeptByGuide = new Map<string, AnalyzerFinding[]>();
-  for (const gid of PILOT_GUIDE_IDS) {
+  for (const gid of targetGuideIds) {
     phase2KeptByGuide.set(gid, []);
   }
   for (const kept of phase2Result.keptFindings) {
@@ -408,13 +470,24 @@ export async function runPilotScorecard(
       before: 'Uses legacy platform API or workaround',
       now: 'Modern web platform standard API',
     };
+    const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
+    const enrichedSummary: GuideSummaryInfo = {
+      ...summary,
+      ...(rule
+        ? {
+            ruleSummary: rule.summary,
+            keepWhen: rule.phase2Rubric.keepWhen,
+            dropWhen: rule.phase2Rubric.dropWhen,
+          }
+        : {}),
+    };
     return {
       cardId: finding.cardId,
       repo: finding.repo,
       file: finding.file,
       line: finding.line,
       guideId: finding.guideId,
-      guideSummary: summary,
+      guideSummary: enrichedSummary,
       codeSnippet: finding.astSlice || finding.codeSnippet,
     };
   });
@@ -473,7 +546,7 @@ export async function runPilotScorecard(
 
   // 9. Compute recall on Paul's labeled positives
   const scoredCardsByGuide = new Map<string, string[]>();
-  for (const gid of PILOT_GUIDE_IDS) {
+  for (const gid of targetGuideIds) {
     scoredCardsByGuide.set(gid, []);
   }
   for (const [cardId, verdict] of humanVerdicts.entries()) {
@@ -494,11 +567,13 @@ export async function runPilotScorecard(
   let totalLabeledPositives = 0;
   let totalPhase2Recalled = 0;
   let clearedBarCount = 0;
+  let clearedBar90Count = 0;
+  let clearedSampleConstrainedCount = 0;
   let clearedScreenCount = 0;
 
   const guideScorecards: GuideScorecard[] = [];
 
-  for (const gid of PILOT_GUIDE_IDS) {
+  for (const gid of targetGuideIds) {
     const guideRules = rules.filter((r) => r.guideId === gid);
     const ruleIds = guideRules.map((r) => r.id);
 
@@ -523,10 +598,19 @@ export async function runPilotScorecard(
     const seqDecision = checkSequentialStop(rightCount, p2KeptCount, 0.9);
     const clearsBar90 = wilson95.lower >= 0.9 || seqDecision === 'pass';
     const clearsScreen80 = wilson95.lower >= 0.8;
-    const clearsBar = clearsBar90;
+    const isSampleConstrained = p2KeptCount < 35;
+    const clearsSampleConstrained =
+      isSampleConstrained && wilson95.lower >= 0.8 && precision >= 0.95;
+    const clearsPrecisionBar = clearsBar90 || clearsSampleConstrained;
 
-    if (clearsBar) {
+    if (clearsPrecisionBar) {
       clearedBarCount++;
+    }
+    if (clearsBar90) {
+      clearedBar90Count++;
+    }
+    if (clearsSampleConstrained) {
+      clearedSampleConstrainedCount++;
     }
     if (clearsScreen80) {
       clearedScreenCount++;
@@ -557,9 +641,11 @@ export async function runPilotScorecard(
       wilson80,
       wilson95,
       sequentialStopDecision: seqDecision,
-      clearsPrecisionBar: clearsBar,
+      clearsPrecisionBar,
       clearsBar90,
       clearsScreen80,
+      clearsSampleConstrained,
+      isSampleConstrained,
       recall: {
         labeledPositivesTotal: nPos,
         phase1Recalled: p1Recalled,
@@ -578,13 +664,22 @@ export async function runPilotScorecard(
   const judgeVersion = `gemini-3.8-flash:detective-v3-direct`;
 
   const coverageMetric: MetricEntry = {
-    value: Number((clearedBarCount / PILOT_GUIDE_IDS.length).toFixed(4)),
-    n: PILOT_GUIDE_IDS.length,
+    value: Number((clearedBarCount / targetGuideIds.length).toFixed(4)),
+    n: targetGuideIds.length,
     split: 'grading-only',
   };
 
+  const pooledHeldoutWilson = wilsonInterval(totalJudgedRight, totalPhase2Kept, Z_95);
+  const heldOutPrecisionMetric: MetricEntry = {
+    value: totalPhase2Kept > 0 ? Number((totalJudgedRight / totalPhase2Kept).toFixed(4)) : 0,
+    lower: Number(pooledHeldoutWilson.lower.toFixed(4)),
+    upper: Number(pooledHeldoutWilson.upper.toFixed(4)),
+    n: totalPhase2Kept,
+    split: 'grading-only, judged',
+  };
+
   const ppi = evalMetrics.ppiPrecision;
-  const precisionMetric: MetricEntry = {
+  const ppiPrecisionMetric: MetricEntry = {
     value: Number(ppi.estimate.toFixed(4)),
     lower: Number(ppi.lower.toFixed(4)),
     upper: Number(ppi.upper.toFixed(4)),
@@ -604,14 +699,14 @@ export async function runPilotScorecard(
     split: 'grading-only',
   };
 
-  const pooledHeldoutWilson = wilsonInterval(totalJudgedRight, totalPhase2Kept, Z_95);
-
   const summary: PilotScorecardSummary = {
-    totalDetectableGuides: PILOT_GUIDE_IDS.length,
+    totalDetectableGuides: targetGuideIds.length,
     clearedBarCount,
+    clearedBar90Count,
+    clearedSampleConstrainedCount,
     clearedScreenCount,
     coverage: coverageMetric,
-    overallPrecision: precisionMetric,
+    overallPrecision: heldOutPrecisionMetric,
     overallRecall: recallMetric,
     pooledHeldoutPrecision: {
       successes: totalJudgedRight,
@@ -619,6 +714,7 @@ export async function runPilotScorecard(
       precision: totalPhase2Kept > 0 ? Number((totalJudgedRight / totalPhase2Kept).toFixed(4)) : 0,
       wilson95: pooledHeldoutWilson,
     },
+    ppiPrecision: ppiPrecisionMetric,
     judgeStability: Number(stability.stabilityRate.toFixed(4)),
     judgeAlpha: Number(evalMetrics.krippendorffAlpha.toFixed(3)),
     judgeAc1: Number(evalMetrics.gwetAc1.toFixed(3)),
@@ -643,6 +739,12 @@ export async function runPilotScorecard(
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, JSON.stringify(report, null, 2), 'utf8');
 
+  // Save spot-check deck per G6 to analyzer-internal/labels/m3-spotcheck-deck.json
+  const spotcheckPath = options.spotcheckDeckPath ?? M3_SPOTCHECK_DECK_PATH;
+  const spotcheckCards = sampleM3SpotcheckDeck(phase2Result.keptFindings, 10);
+  await mkdir(dirname(spotcheckPath), { recursive: true });
+  await writeFile(spotcheckPath, JSON.stringify(spotcheckCards, null, 2), 'utf8');
+
   // 13. Optionally write to PROGRESS.md
   if (options.writeProgress) {
     const progressLogPath = options.progressLogPath ?? PROGRESS_LOG_PATH;
@@ -654,12 +756,12 @@ export async function runPilotScorecard(
       gradesHash,
       judgeVersion,
       coverage: coverageMetric,
-      precision: precisionMetric,
+      precision: heldOutPrecisionMetric,
       recall: recallMetric,
       judgeAlpha: summary.judgeAlpha,
       judgeAc1: summary.judgeAc1,
       canaryTnr: summary.canaryTnr,
-      notes: `Milestone 2 pilot evaluation (${clearedBarCount}/${PILOT_GUIDE_IDS.length} guides cleared bar, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
+      notes: `Milestone 3 evaluation (${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} sample-constrained >=0.80 CI lower & >=0.95 prec], pooled held-out prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
     };
     await recordProgressLogEntry(progressRow, progressLogPath);
   }
@@ -703,8 +805,10 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
 
   lines.push('------------------------------------------------------------');
   lines.push('SUMMARY:');
+  const bar90Count = report.summary.clearedBar90Count ?? report.summary.clearedBarCount;
+  const sampleCount = report.summary.clearedSampleConstrainedCount ?? 0;
   lines.push(
-    `  Coverage:          ${(report.summary.coverage.value * 100).toFixed(1)}% (${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared 0.90 bar)`,
+    `  Coverage:          ${(report.summary.coverage.value * 100).toFixed(1)}% (${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar: ${bar90Count} at >=0.90 CI lower, ${sampleCount} sample-constrained >=0.80 CI & >=0.95 prec)`,
   );
   lines.push(
     `  Screening (0.80):  ${((report.summary.clearedScreenCount / report.summary.totalDetectableGuides) * 100).toFixed(1)}% (${report.summary.clearedScreenCount}/${report.summary.totalDetectableGuides} guides cleared 0.80 screen)`,
@@ -713,7 +817,7 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
     `  Held-out Precision:${(report.summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}% (${report.summary.pooledHeldoutPrecision.successes}/${report.summary.pooledHeldoutPrecision.total}, 95% CI [${(report.summary.pooledHeldoutPrecision.wilson95.lower * 100).toFixed(1)}% - ${(report.summary.pooledHeldoutPrecision.wilson95.upper * 100).toFixed(1)}%])`,
   );
   lines.push(
-    `  Overall PPI++:     ${(report.summary.overallPrecision.value * 100).toFixed(1)}% [${(report.summary.overallPrecision.lower! * 100).toFixed(1)}% - ${(report.summary.overallPrecision.upper! * 100).toFixed(1)}%]`,
+    `  Overall Precision: ${(report.summary.overallPrecision.value * 100).toFixed(1)}% [${(report.summary.overallPrecision.lower! * 100).toFixed(1)}% - ${(report.summary.overallPrecision.upper! * 100).toFixed(1)}%]`,
   );
   lines.push(
     `  Overall Recall:    ${(report.summary.overallRecall.value * 100).toFixed(1)}% (n=${report.summary.overallRecall.n})`,

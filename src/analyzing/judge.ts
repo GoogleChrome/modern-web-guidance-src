@@ -65,6 +65,9 @@ export interface GuideSummaryInfo {
   now: string;
   markdownBody?: string;
   oldWayExamples?: string[];
+  ruleSummary?: string;
+  keepWhen?: readonly string[];
+  dropWhen?: readonly string[];
 }
 
 export interface BlindCardPayload {
@@ -173,9 +176,38 @@ export const JUDGE_RESPONSE_SCHEMA = {
  * Strips all detector rule IDs, source IDs, tool names, and prior verdicts.
  */
 export function formatBlindCardPrompt(card: BlindCardPayload): string {
-  const brownfieldNote = BROWNFIELD_GUIDE_RUBRIC[card.guideId]
-    ? `\n## Brownfield Workarounds Target (What this guide replaces)\n${BROWNFIELD_GUIDE_RUBRIC[card.guideId]}\n`
-    : '';
+  let brownfieldNote = '';
+  if (BROWNFIELD_GUIDE_RUBRIC[card.guideId]) {
+    brownfieldNote = `\n## Brownfield Workarounds Target (What this guide replaces)\n${BROWNFIELD_GUIDE_RUBRIC[card.guideId]}\n`;
+  } else if (
+    card.guideSummary.ruleSummary ||
+    card.guideSummary.before ||
+    (card.guideSummary.keepWhen && card.guideSummary.keepWhen.length > 0) ||
+    (card.guideSummary.dropWhen && card.guideSummary.dropWhen.length > 0)
+  ) {
+    const parts: string[] = [];
+    if (card.guideSummary.ruleSummary) {
+      parts.push(`- Target: ${card.guideSummary.ruleSummary}`);
+    }
+    if (card.guideSummary.before) {
+      parts.push(`- Legacy Pattern (Before): ${card.guideSummary.before}`);
+    }
+    if (card.guideSummary.keepWhen && card.guideSummary.keepWhen.length > 0) {
+      parts.push('- Keep when:');
+      for (const item of card.guideSummary.keepWhen) {
+        parts.push(`  * ${item}`);
+      }
+    }
+    if (card.guideSummary.dropWhen && card.guideSummary.dropWhen.length > 0) {
+      parts.push('- Drop when (do NOT flag):');
+      for (const item of card.guideSummary.dropWhen) {
+        parts.push(`  * ${item}`);
+      }
+    }
+    if (parts.length > 0) {
+      brownfieldNote = `\n## Brownfield Workarounds Target (What this guide replaces)\n${parts.join('\n')}\n`;
+    }
+  }
 
   if (card.guideSummary.markdownBody) {
     return `## Modern Web Guidance Guide (${card.guideId})
@@ -1094,6 +1126,18 @@ export async function loadPaulIrishScoredCards(
   return { cards: scoredCards, humanVerdicts: scoredVerdicts };
 }
 
+export interface CalibrationDeckFinding {
+  tool: string;
+  repo: string;
+  commit: string;
+  guideId: string;
+  sourceId: string;
+  kind: string;
+  file: string;
+  line: number;
+  reason: string;
+}
+
 export interface CalibrationDeckItem {
   cardId: string;
   repo: string;
@@ -1105,6 +1149,7 @@ export interface CalibrationDeckItem {
   code?: string;
   phase2Decision?: string;
   phase2Reason?: string | null;
+  findings?: readonly CalibrationDeckFinding[];
 }
 
 /**

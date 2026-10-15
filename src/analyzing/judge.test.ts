@@ -98,6 +98,33 @@ describe('blind card formatting & request construction', () => {
     assert.equal(body.contents.length, 1);
     assert.match(body.contents[0].parts[0].text, /scripts\/analyze\.js/);
   });
+
+  it('formats dynamic rule rubric into brownfield target when guide rubric is absent (G5)', () => {
+    const cardWithoutStaticRubric = {
+      cardId: 'card-novel-001',
+      repo: 'test-repo',
+      file: 'src/example.ts',
+      line: 15,
+      guideId: 'novel-future-guide',
+      guideSummary: {
+        guideId: 'novel-future-guide',
+        problem: 'Novel problem description',
+        before: 'Old workaround syntax',
+        now: 'New platform feature',
+        ruleSummary: 'Flag legacy workaround X in user forms',
+        keepWhen: ['Input is part of login flow', 'No native attribute provided'],
+        dropWhen: ['Disabled input', 'Handled by framework'],
+      },
+      codeSnippet: 'const oldWay = true;',
+    };
+
+    const prompt = formatBlindCardPrompt(cardWithoutStaticRubric);
+    assert.match(prompt, /## Brownfield Workarounds Target \(What this guide replaces\)/);
+    assert.match(prompt, /- Target: Flag legacy workaround X in user forms/);
+    assert.match(prompt, /- Legacy Pattern \(Before\): Old workaround syntax/);
+    assert.match(prompt, /- Keep when:\n  \* Input is part of login flow\n  \* No native attribute provided/);
+    assert.match(prompt, /- Drop when \(do NOT flag\):\n  \* Disabled input\n  \* Handled by framework/);
+  });
 });
 
 describe('parseJudgeJsonContent', () => {

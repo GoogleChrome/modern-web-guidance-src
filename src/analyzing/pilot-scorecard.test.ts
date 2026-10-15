@@ -9,6 +9,7 @@ import {
   computeRuleSetHash,
   formatPilotScorecardReport,
   runPilotScorecard,
+  sampleM3SpotcheckDeck,
   stratifiedSampleFindings,
   type PilotScorecardReport,
 } from './pilot-scorecard.ts';
@@ -253,5 +254,61 @@ describe('formatPilotScorecardReport', () => {
     assert.ok(formatted.includes('autofill-sign-in-form'));
     assert.ok(formatted.includes('Coverage:'));
     assert.ok(formatted.includes('Canary TNR = 100.0%'));
+  });
+});
+
+describe('sampleM3SpotcheckDeck', () => {
+  function makeFinding(id: string, guideId: string, ruleId: string): AnalyzerFinding {
+    return {
+      cardId: id,
+      ruleId,
+      guideId,
+      guideHash: '123456789012',
+      repo: 'repo-sample',
+      commit: 'abc1234',
+      file: 'src/file.ts',
+      line: 42,
+      message: 'test message',
+      codeSnippet: 'const x = 1;',
+      astSlice: 'const x = 1;',
+    };
+  }
+
+  it('samples up to 10 cards deterministically and shapes them as CalibrationDeckItems', () => {
+    const findings: AnalyzerFinding[] = [];
+    for (let i = 0; i < 20; i++) {
+      findings.push(makeFinding(`card-${String(i).padStart(3, '0')}`, 'new-guide', 'new-rule'));
+    }
+
+    const deck1 = sampleM3SpotcheckDeck(findings, 10);
+    const deck2 = sampleM3SpotcheckDeck(findings, 10);
+
+    assert.equal(deck1.length, 10);
+    assert.deepEqual(
+      deck1.map((c) => c.cardId),
+      deck2.map((c) => c.cardId),
+    );
+
+    const first = deck1[0];
+    assert.ok(first.cardId);
+    assert.equal(first.guideId, 'new-guide');
+    assert.equal(first.phase2Decision, 'keep');
+    assert.ok(first.findings && first.findings.length === 1);
+    assert.equal(first.findings[0]?.tool, 'modern-web-guidance-analyzer');
+  });
+
+  it('prefers novel rules over pilot rules when available', () => {
+    const pilotFinding = makeFinding('card-pilot', 'autofill-sign-in-form', 'autofill-rule');
+    const novelFinding = makeFinding('card-novel', 'novel-m3-guide', 'novel-rule');
+
+    const deck = sampleM3SpotcheckDeck([pilotFinding, novelFinding], 10);
+    assert.equal(deck.length, 1);
+    assert.equal(deck[0].cardId, 'card-novel');
+    assert.equal(deck[0].guideId, 'novel-m3-guide');
+  });
+
+  it('handles empty findings gracefully', () => {
+    const deck = sampleM3SpotcheckDeck([]);
+    assert.deepEqual(deck, []);
   });
 });
