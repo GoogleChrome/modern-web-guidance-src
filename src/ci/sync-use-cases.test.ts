@@ -293,12 +293,6 @@ describe('getStatusName', () => {
     assert.strictEqual(getStatusName(true, false, true), ProjectStatus.NeedsEvals);
     assert.strictEqual(getStatusName(false, true, true), ProjectStatus.NeedsGuidance);
   });
-
-  test('returns null for discipline guide once body is non-empty and not draft, even without expectations or evals', () => {
-    assert.strictEqual(getStatusName('Discipline hub content.', false, false, false, false, true), null);
-    assert.strictEqual(getStatusName('', false, false, false, false, true), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Discipline hub content.', false, false, true, false, true), ProjectStatus.NeedsGuidance);
-  });
 });
 
 describe('getDesiredLabels', () => {

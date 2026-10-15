@@ -20,7 +20,6 @@ import {
   getGuideStatus,
   GRADER_FILE,
   GUIDE_FILE,
-  isDisciplineGuide,
   isDraftStub,
   ProjectStatus,
   scanAllGuides,
@@ -347,11 +346,11 @@ export function findStaleEvals(
   return items.sort((a, b) => a.slug.localeCompare(b.slug));
 }
 
-export function countGen2Evals(featureGuides: GuideInventory[]): {
+export function countGen2Evals(guides: GuideInventory[]): {
   gen2CompleteCount: number;
   dualTargetCompleteCount: number;
 } {
-  const gen2 = featureGuides.filter(g => g.hasGrader && (g.targets?.length ?? 0) >= 1);
+  const gen2 = guides.filter(g => getGuideStatus(g) === null && (g.targets?.length ?? 0) >= 1);
   return {
     gen2CompleteCount: gen2.length,
     dualTargetCompleteCount: gen2.filter(g => (g.targets?.length ?? 0) >= 2).length,
@@ -370,7 +369,7 @@ function parseFrontmatterDraft(content: string): { isDraft: boolean; hasContent:
   };
 }
 
-/** Counts feature guides (discipline hubs excluded) with evals landed / needing evals at a commit. */
+/** Counts guides with evals landed / needing evals at a commit. */
 function analyzeCommit(commitSha: string): CommitAnalysis {
   const cwd = rootDir;
   const lsOutput = child_process.execFileSync('git', ['ls-tree', '-r', commitSha, 'guides/'], {
@@ -447,9 +446,6 @@ function analyzeCommit(commitSha: string): CommitAnalysis {
   let needsEvals = 0;
 
   for (const [slug, files] of guideFiles) {
-    const [category, name] = slug.split('/');
-    if (isDisciplineGuide(name, category)) continue;
-
     const hasGuideFile = files.has(GUIDE_FILE);
     const isDraft = isDraftMap.get(slug) ?? false;
     const hasGuideContent = hasContentMap.get(slug) ?? false;
@@ -550,28 +546,6 @@ export function classifyPr(pr: {
     return 'guide';
   }
   return 'other';
-}
-
-export function isDisciplinePr(pr: {
-  headRefName?: string;
-  title?: string;
-  files?: string[];
-}): boolean {
-  const files = pr.files ?? [];
-  for (const f of files) {
-    const m = /^guides\/([^/]+)\/([^/]+)\//.exec(f);
-    if (m && isDisciplineGuide(m[2], m[1])) {
-      return true;
-    }
-  }
-  const headRef = pr.headRefName ?? '';
-  if (headRef.startsWith(DEV_PR_BRANCH_PREFIX)) {
-    const name = headRef.slice(DEV_PR_BRANCH_PREFIX.length);
-    if (isDisciplineGuide(name)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 export function renderTwoRowProgressBar(params: {
@@ -769,8 +743,6 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
 
   const lines: string[] = [
     '# Content & Eval Pipeline',
-    '',
-    '<!-- Discipline orientation guides do not currently require a grader and are excluded from all counts below. This policy may change. -->',
     '',
     '```',
     progressBar.text,
@@ -1073,7 +1045,6 @@ function resolveEvalPrs(
   const evalPrSlugs = new Set<string>();
 
   for (const pr of openPrs) {
-    if (isDisciplinePr(pr)) continue;
     if (classifyPr(pr) !== 'eval') continue;
     const touchedSlugs = new Set<string>();
     for (const file of pr.files) {
@@ -1090,7 +1061,7 @@ function resolveEvalPrs(
     }
     for (const slug of touchedSlugs) {
       const inv = guideBySlug.get(slug);
-      if (!inv || inv.isDisciplineGuide) {
+      if (!inv) {
         continue;
       }
       if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) {
@@ -1116,14 +1087,12 @@ function resolveEvalPrs(
 function resolveNeedsGuidancePrs(
   openPrs: PrSummary[],
   guideBySlug: Map<string, GuideInventory>,
-  guideByName: Map<string, GuideInventory>,
   issueIndex: UseCaseIssueIndex
 ): { needsGuidancePrs: NeedsGuidancePrItem[]; slugsWithContentPr: Set<string> } {
   const needsGuidancePrs: NeedsGuidancePrItem[] = [];
   const slugsWithContentPr = new Set<string>();
 
   for (const pr of openPrs) {
-    if (isDisciplinePr(pr)) continue;
     if (classifyPr(pr) === 'eval') continue;
     const touchedContentGuides = new Map<string, string[]>();
     for (const file of pr.files) {
@@ -1137,19 +1106,18 @@ function resolveNeedsGuidancePrs(
 
     for (const [slug, touchedFiles] of touchedContentGuides.entries()) {
       const inv = guideBySlug.get(slug);
-      if (inv?.isDisciplineGuide) {
-        continue;
-      }
       const guideName = slug.split('/')[1];
       const isNewFullGuidePr =
         !inv &&
-        !guideByName.has(guideName) &&
+        ![...guideBySlug.values()].some(g => g.name === guideName) &&
         touchedFiles.includes(GUIDE_FILE) &&
         (touchedFiles.includes(EXPECTATIONS_FILE) || touchedFiles.includes(DEMO_FILE));
       if (inv && getGuideStatus(inv) !== ProjectStatus.NeedsGuidance) continue;
       if (!inv && !isNewFullGuidePr) continue;
 
+      if (slugsWithContentPr.has(slug)) continue;
       slugsWithContentPr.add(slug);
+
       const matchedIssue = matchUseCaseIssue(slug, guideName, issueIndex, inv?.featureIds ?? []);
       const issueFromTitle = /^\[#(\d+)\]/.exec(pr.title);
       const issueNumber = matchedIssue?.number ?? (issueFromTitle ? Number(issueFromTitle[1]) : null);
@@ -1177,7 +1145,6 @@ function resolveNeedsGuidanceIssues(
 ): NeedsGuidanceIssueItem[] {
   const needsGuidanceIssues: NeedsGuidanceIssueItem[] = [];
   for (const g of validGuides) {
-    if (g.isDisciplineGuide) continue;
     if (getGuideStatus(g) !== ProjectStatus.NeedsGuidance) continue;
     const slug = `${g.category}/${g.name}`;
     if (slugsWithContentPr.has(slug)) continue;
@@ -1204,16 +1171,10 @@ export function buildPipelineReportData(params: {
   readySinceBySlug?: Map<string, string>;
 }): PipelineReportData {
   const validGuides = params.guides.filter(g => g.category !== 'test-results' && (g.hasGuide || g.isStub));
-  const featureGuides = validGuides.filter(g => !g.isDisciplineGuide);
-  const guideBySlug = new Map<string, GuideInventory>();
-  const guideByName = new Map<string, GuideInventory>();
-  for (const g of validGuides) {
-    guideBySlug.set(`${g.category}/${g.name}`, g);
-    guideByName.set(g.name, g);
-  }
+  const guideBySlug = new Map(validGuides.map(g => [`${g.category}/${g.name}`, g]));
 
-  const completeCount = featureGuides.filter(g => getGuideStatus(g) === null).length;
-  const needsEvalsGuides = featureGuides.filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals);
+  const completeCount = validGuides.filter(g => getGuideStatus(g) === null).length;
+  const needsEvalsGuides = validGuides.filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals);
   const contentLandedCount = completeCount + needsEvalsGuides.length;
 
   const issueIndex = buildUseCaseIssueIndex(params.openUseCaseIssues, params.openFeatureIssues);
@@ -1221,8 +1182,7 @@ export function buildPipelineReportData(params: {
 
   const readyForEvalSlugs = needsEvalsGuides
     .filter(g => !evalPrSlugs.has(`${g.category}/${g.name}`))
-    .map(g => `${g.category}/${g.name}`)
-    .sort((a, b) => a.localeCompare(b));
+    .map(g => `${g.category}/${g.name}`);
 
   const needsEvalsTotal = contentLandedCount - completeCount;
   if (openEvalPrs.length + readyForEvalSlugs.length !== needsEvalsTotal) {
@@ -1234,12 +1194,11 @@ export function buildPipelineReportData(params: {
   const { needsGuidancePrs, slugsWithContentPr } = resolveNeedsGuidancePrs(
     params.openPrs,
     guideBySlug,
-    guideByName,
     issueIndex
   );
   const needsGuidanceIssues = resolveNeedsGuidanceIssues(validGuides, slugsWithContentPr, issueIndex);
-  const staleEvals = findStaleEvals(featureGuides, params.gitHistory, params.openExpectationsChangedIssues);
-  const { gen2CompleteCount, dualTargetCompleteCount } = countGen2Evals(featureGuides);
+  const staleEvals = findStaleEvals(validGuides, params.gitHistory, params.openExpectationsChangedIssues);
+  const { gen2CompleteCount, dualTargetCompleteCount } = countGen2Evals(validGuides);
 
   const historical = params.weeklyProgressPoints ?? fetchWeeklyProgressHistory();
   if (historical.length === 0) throw new Error('Cannot determine baseline: no weekly progress points');

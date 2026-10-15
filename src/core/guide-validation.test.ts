@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, isDraftStub, checkOriginTrialGraduations } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, isDraftStub, checkOriginTrialGraduations, getStatusName, getGuideStatus, ProjectStatus, type GuideInventory } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from './macros.ts';
 
@@ -945,6 +945,45 @@ describe('checkOriginTrialGraduations', () => {
     assert.strictEqual(graduated.length, 1);
     assert.strictEqual(graduated[0].featureId, 'fetch-priority');
     assert.ok(graduated[0].supportedBrowsers.length > 0);
+  });
+});
+
+describe('getStatusName and getGuideStatus lifecycle', () => {
+  test('evaluates lifecycle status from guidance, expectations, and evals', () => {
+    assert.strictEqual(getStatusName('', true, true, false, true), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getStatusName('Content', false, false, true, true), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getStatusName('Content', true, true, false, false), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getStatusName('Content', false, true, false, true), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getStatusName('Content', true, false, false, true), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getStatusName('Content', false, false, false, true), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getStatusName('Content', true, true, false, true), null);
+  });
+
+  test('getGuideStatus evaluates GuideInventory identically for standard and discipline guides', () => {
+    for (const isDisciplineGuide of [false, true]) {
+      const baseInv: GuideInventory = {
+        dir: '/tmp/guides/accessibility/accessibility',
+        name: 'accessibility',
+        category: 'accessibility',
+        hasGuide: true,
+        isStub: false,
+        hasDemo: false,
+        hasExpectations: true,
+        expectationsEmpty: false,
+        hasNegativeDemo: false,
+        hasGrader: false,
+        hasTask: false,
+        featureIds: [],
+        isDisciplineGuide,
+        draft: false,
+        isPublished: true,
+      };
+
+      assert.strictEqual(getGuideStatus(baseInv), ProjectStatus.NeedsEvals);
+      assert.strictEqual(getGuideStatus({ ...baseInv, hasGrader: true, hasTask: true }), null);
+      assert.strictEqual(getGuideStatus({ ...baseInv, hasExpectations: false }), ProjectStatus.NeedsGuidance);
+      assert.strictEqual(getGuideStatus({ ...baseInv, draft: true }), ProjectStatus.NeedsGuidance);
+    }
   });
 });
 

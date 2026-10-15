@@ -14,7 +14,6 @@ import {
   findStaleEvals,
   formatReviewDecision,
   formatShortDate,
-  isDisciplinePr,
   matchUseCaseIssue,
   parseEvalReportFromPrBody,
   PIPELINE_SCALE_MAX,
@@ -29,8 +28,8 @@ import {
   type WeeklyProgressPoint,
 } from './sync-pipeline-issue.ts';
 
-/** Baseline complete feature guides on origin/main as of 2026-07-22 (test fixture expectation). */
-const EXPECTED_BASELINE_COMPLETE = 127;
+/** Baseline complete guides on origin/main as of 2026-07-22 (test fixture expectation). */
+const EXPECTED_BASELINE_COMPLETE = 129;
 
 function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
   const category = overrides.category ?? 'ui-components';
@@ -120,12 +119,12 @@ describe('parseEvalReportFromPrBody', () => {
 });
 
 describe('fetchWeeklyProgressHistory & baseline', () => {
-  it('computes 127 complete feature guides on origin/main as of 2026-07-22 excluding hubs', () => {
+  it('computes 129 complete feature guides on origin/main as of 2026-07-22 including discipline guides', () => {
     const weeklyPoints = fetchWeeklyProgressHistory();
     assert.ok(weeklyPoints.length >= 1);
     assert.equal(weeklyPoints[0].complete, EXPECTED_BASELINE_COMPLETE);
     assert.equal(PIPELINE_SCALE_MAX, 200);
-    assert.equal(PIPELINE_SCALE_MAX - EXPECTED_BASELINE_COMPLETE, 73);
+    assert.equal(PIPELINE_SCALE_MAX - EXPECTED_BASELINE_COMPLETE, 71);
   });
 });
 
@@ -479,14 +478,30 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       ],
     });
     const legacy = makeGuide({ category: 'css', name: 'legacy', targets: [] });
-    assert.deepEqual(countGen2Evals([dualTarget, singleTarget, legacy]), {
+    const incompleteWithTargets = makeGuide({
+      category: 'forms',
+      name: 'incomplete-with-targets',
+      hasGrader: false,
+      hasTask: false,
+      targets: [
+        {
+          name: 'daily-grind',
+          dir: '/tmp/guides/forms/incomplete-with-targets/targets/daily-grind',
+          hasSolution: true,
+          hasZeroPassrate: true,
+          hasGrader: true,
+          hasTask: true,
+        },
+      ],
+    });
+    assert.deepEqual(countGen2Evals([dualTarget, singleTarget, legacy, incompleteWithTargets]), {
       gen2CompleteCount: 2,
       dualTargetCompleteCount: 1,
     });
   });
 });
 
-describe('classifyPr & isDisciplinePr', () => {
+describe('classifyPr', () => {
   it('classifies PRs adding or modifying guide.md as guide PRs even if touching eval files', () => {
     assert.equal(
       classifyPr({
@@ -541,41 +556,10 @@ describe('classifyPr & isDisciplinePr', () => {
       'other'
     );
   });
-
-  it('identifies discipline orientation PRs across category roots and named hubs', () => {
-    assert.equal(
-      isDisciplinePr({
-        headRefName: 'gd-dev/web-components',
-        files: ['guides/html/web-components/targets/daily-grind/grader.ts'],
-      }),
-      true
-    );
-    assert.equal(
-      isDisciplinePr({
-        headRefName: 'gd-dev/css-layout',
-        files: ['guides/css/css-layout/targets/daily-grind/grader.ts'],
-      }),
-      true
-    );
-    assert.equal(
-      isDisciplinePr({
-        headRefName: 'gd-dev/accessibility',
-        files: ['guides/accessibility/accessibility/targets/daily-grind/grader.ts'],
-      }),
-      true
-    );
-    assert.equal(
-      isDisciplinePr({
-        headRefName: 'gd-dev/shadow-dom',
-        files: ['guides/html/shadow-dom/targets/daily-grind/grader.ts'],
-      }),
-      false
-    );
-  });
 });
 
-describe('Discipline hubs exclusion and issue header rendering', () => {
-  it('excludes discipline hubs from all counts and the progress bar', () => {
+describe('Discipline guides inclusion and issue header rendering', () => {
+  it('includes discipline guides in all counts and the progress bar', () => {
     const completeFeatureGuide = makeGuide({ category: 'css', name: 'anchor-pos' });
     const completeDisciplineHub = makeGuide({
       category: 'accessibility',
@@ -607,14 +591,14 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
     const openPrs: PrSummary[] = [
       {
         number: 2057,
-        title: 'grader updates: web-components',
+        title: 'grader updates: css-layout',
         body: '',
         isDraft: false,
-        headRefName: 'gd-dev/web-components',
+        headRefName: 'gd-dev/css-layout',
         author: 'rick',
         reviewers: [],
         labels: [],
-        files: ['guides/html/web-components/targets/daily-grind/grader.ts'],
+        files: ['guides/css/css-layout/targets/daily-grind/grader.ts'],
       },
       {
         number: 1878,
@@ -639,34 +623,43 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       gitHistory: new Map(),
     });
 
-    // Complete count excludes accessibility/accessibility discipline guide
-    assert.equal(report.completeCount, 1);
+    // Complete count includes accessibility/accessibility discipline guide
+    assert.equal(report.completeCount, 2);
 
-    // Open eval PRs excludes web-components discipline guide
-    assert.equal(report.openEvalPrs.length, 1);
-    assert.equal(report.openEvalPrs[0].slug, 'security/validate-origins');
+    // Open eval PRs includes css-layout discipline guide
+    assert.equal(report.openEvalPrs.length, 2);
+    assert.deepEqual(
+      report.openEvalPrs.map(p => p.slug),
+      ['css/css-layout', 'security/validate-origins']
+    );
 
-    // Ready for eval excludes css/css-layout discipline guide
+    // Ready for eval includes forms/slider
     assert.deepEqual(report.readyForEvals, [{ slug: 'forms/slider', readySince: '2026-10-01' }]);
+
+    // Invariant check
+    assert.equal(
+      report.openEvalPrs.length + report.readyForEvals.length,
+      report.contentLandedCount - report.completeCount
+    );
 
     const markdown = renderPipelineIssueBody(report);
 
-    // HTML comment emitted
-    assert.match(
+    // HTML comment excluded discipline guides is no longer emitted
+    assert.doesNotMatch(
       markdown,
-      /<!-- Discipline orientation guides do not currently require a grader and are excluded from all counts below\. This policy may change\. -->/
+      /<!-- Discipline orientation guides/
     );
 
     // Progress bar code block with 2 symmetric rows (Guides, Evals) and ruler line
     assert.match(
       markdown,
-      /```\nGuides on main since Jul 22 · 1 column = 1 guide\nGuides\s+[█░·]{73}\s+\d+ \+\d+ PRs\nEvals\s+[█░·]{73}\s+\d+ \+\d+ PRs\n\s+┬\s+┬\s+┬\n\s+\d+\s+150\s+200\n█ landed on main {3}░ open PR {3}· not yet\n```/
+      /```\nGuides on main since Jul 22 · 1 column = 1 guide\nGuides\s+[█░·]{71}\s+\d+ \+\d+ PRs\nEvals\s+[█░·]{71}\s+\d+ \+\d+ PRs\n\s+┬\s+┬\s+┬\n\s+\d+\s+150\s+200\n█ landed on main {3}░ open PR {3}· not yet\n```/
     );
 
     // Clickable links line below code block
     assert.match(
       markdown,
-      /\[1 evals landed\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\) · \[1 eval PRs\]\(#stage-3-needs-evals-2\) · \[1 ready for evals\]\(#ready-for-evals-1\)/
+      /\[2 evals landed\]\(https:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/tree\/main\/guides\) · \[2 eval PRs\]\(#stage-3-needs-evals-3\) · \[1 ready for evals\]\(#ready-for-evals-1\)/
     );
 
     // Weekly progress chart present with YAML frontmatter config
@@ -675,6 +668,57 @@ describe('Discipline hubs exclusion and issue header rendering', () => {
       /### Progress since Jul 22\n\n```mermaid\n---\nconfig:\n  xyChart:\n    height: 200\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#FBBC04, #4285F4"\n---\nxychart-beta/
     );
 
+  });
+
+  it('deduplicates open needs-guidance PRs by slug', () => {
+    const guide = makeGuide({
+      category: 'html',
+      name: 'guide-dup',
+      hasGuide: false,
+      isStub: true,
+      hasGrader: false,
+      hasTask: false,
+    });
+    const openPrs: PrSummary[] = [
+      {
+        number: 301,
+        title: 'Add guide-dup content first PR',
+        body: '',
+        isDraft: false,
+        headRefName: 'feat/guide-dup-1',
+        author: 'author1',
+        reviewers: [],
+        labels: [],
+        files: ['guides/html/guide-dup/guide.md'],
+      },
+      {
+        number: 302,
+        title: 'Add guide-dup content second PR',
+        body: '',
+        isDraft: false,
+        headRefName: 'feat/guide-dup-2',
+        author: 'author2',
+        reviewers: [],
+        labels: [],
+        files: ['guides/html/guide-dup/guide.md'],
+      },
+    ];
+
+    const report = buildPipelineReportData({
+      guides: [guide],
+      openPrs,
+      openUseCaseIssues: [],
+      openFeatureIssues: [],
+      openExpectationsChangedIssues: [],
+      gitHistory: new Map(),
+      weeklyProgressPoints: [
+        { date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 },
+      ],
+    });
+
+    assert.equal(report.needsGuidancePrs.length, 1);
+    assert.equal(report.needsGuidancePrs[0].slug, 'html/guide-dup');
+    assert.equal(report.needsGuidancePrs[0].prNumber, 301);
   });
 
   it('guarantees links line, funnel, and section counts match identically', () => {

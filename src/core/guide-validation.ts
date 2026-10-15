@@ -188,15 +188,11 @@ export function getStatusName(
   hasGrader: boolean,
   hasTask: boolean,
   isDraft: boolean = false,
-  hasExpectations: boolean = true,
-  isDisciplineGuide: boolean = false
+  hasExpectations: boolean = true
 ): ProjectStatus | null {
   const hasGuidance = typeof guidance === 'string' ? guidance.trim().length > 0 : guidance;
-  if (!hasGuidance || isDraft || (!hasExpectations && !isDisciplineGuide)) {
+  if (!hasGuidance || isDraft || !hasExpectations) {
     return ProjectStatus.NeedsGuidance;
-  }
-  if (isDisciplineGuide) {
-    return null;
   }
   if (!hasGrader || !hasTask) {
     return ProjectStatus.NeedsEvals;
@@ -211,8 +207,7 @@ export function getGuideStatus(inv: GuideInventory): ProjectStatus | null {
     inv.hasGrader,
     inv.hasTask,
     Boolean(inv.draft),
-    inv.hasExpectations && !inv.expectationsEmpty,
-    Boolean(inv.isDisciplineGuide)
+    inv.hasExpectations && !inv.expectationsEmpty
   );
 }
 
@@ -378,10 +373,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const isIncomplete = !hasGuide && !inv.isStub;
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
     const hasExpectations = inv.hasExpectations && !inv.expectationsEmpty;
-    const isContentComplete =
-      guideBody.trim().length > 0 &&
-      !inv.draft &&
-      (hasExpectations || isDisciplineGuide);
+    const isContentComplete = guideBody.trim().length > 0 && !inv.draft && hasExpectations;
     const statusName = !isIncomplete && guideErrors.length === 0 && !isContentComplete
       ? ProjectStatus.NeedsGuidance
       : null;
