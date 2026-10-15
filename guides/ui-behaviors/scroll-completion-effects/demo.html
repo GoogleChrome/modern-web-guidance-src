@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>await Element.scrollIntoView()</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+    }
+
+    nav {
+      padding: 1rem;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+    }
+
+    section {
+      width: 80%;
+      max-width: 600px;
+      height: min(80vh, 100vh - 250px);
+      flex-shrink: 0;
+      margin: 2rem auto;
+      padding: 2rem;
+      border: 2px solid #ccc;
+      transition: background-color 0.4s ease-out, border-color 0.4s ease-out, transform 0.4s ease-out;
+    }
+
+    section.highlight {
+      background-color: #fffae6;
+      border-color: #ffd700;
+      transform: scale(1.03);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <button class="nav-link" data-target="section-1">Go to Section 1</button>
+    <button class="nav-link" data-target="section-2">Go to Section 2</button>
+    <button class="nav-link" data-target="section-3">Go to Section 3</button>
+  </nav>
+
+  <main>
+    <section id="section-1">
+      <h2>Section 1: The Basics</h2>
+      <p>This is the first section. When you click the button above, the page will smooth-scroll down here.</p>
+    </section>
+
+    <section id="section-2">
+      <h2>Section 2: The Middle</h2>
+      <p>Notice how the highlight effect doesn't trigger until the scrolling has completely stopped. This guarantees the user actually sees the flash of color, rather than it happening off-screen.</p>
+    </section>
+
+    <section id="section-3">
+      <h2>Section 3: The End</h2>
+      <p>With older APIs, you'd have to guess the scroll duration with a setTimeout, which often fired too early on slow devices or too late on fast ones.</p>
+    </section>
+  </main>
+
+  <script>
+    function scrollIntoViewAsync(element, options, scroller = window) {
+      const result = element.scrollIntoView(options);
+
+      // Feature detect: in supporting browsers, scrollIntoView() returns a Promise
+      if (result instanceof Promise) {
+        return result;
+      }
+
+      // Fallback for browsers where scrollIntoView() returns undefined
+      return new Promise((resolve) => {
+        let timeoutId;
+
+        const finish = () => {
+          clearTimeout(timeoutId);
+          scroller.removeEventListener('scrollend', finish);
+          scroller.removeEventListener('scroll', onScroll);
+          resolve();
+        };
+
+        const onScroll = () => {
+          // Restart the idle timer on every scroll event. If scrollend never fires
+          // (browsers without scrollend support), this resolves once scrolling goes idle.
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(finish, 100);
+        };
+
+        scroller.addEventListener('scrollend', finish, { once: true });
+        scroller.addEventListener('scroll', onScroll, { passive: true });
+
+        // If no scroll event fires within the idle window (e.g., already in view), resolve.
+        // 100ms is an example value; it only needs to exceed the gap between scroll events.
+        timeoutId = setTimeout(finish, 100);
+      });
+    }
+
+    const buttons = document.querySelectorAll('.nav-link');
+    const sections = document.querySelectorAll('section');
+
+    buttons.forEach(button => {
+      button.addEventListener('click', async (e) => {
+        const targetId = button.getAttribute('data-target');
+        const targetElement = document.getElementById(targetId);
+
+        sections.forEach(sec => sec.classList.remove('highlight'));
+
+        await scrollIntoViewAsync(targetElement, {
+          behavior: 'smooth', // Smoothly scroll into view
+          block: 'center' // Centers the element in the viewport
+        });
+
+        targetElement.classList.add('highlight');
+      });
+    });
+  </script>
+</body>
+</html>

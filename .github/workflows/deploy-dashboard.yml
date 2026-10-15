@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'eval-view/**'
+      - 'src/dashboard/**'
       - 'guides/**'
       - '.github/workflows/deploy-dashboard.yml'
 

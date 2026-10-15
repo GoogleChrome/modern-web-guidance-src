@@ -16,7 +16,10 @@ permissions:
 jobs:
   triage:
     runs-on: ubuntu-latest
-    if: github.repository == 'GoogleChrome/modern-web-guidance-src'
+    if: >-
+      github.repository == 'GoogleChrome/modern-web-guidance-src' &&
+      (!contains(github.event.issue.body, '<!-- no-atl-triage -->') || contains(github.event.issue.body, '`<!-- no-atl-triage -->`')) &&
+      (!contains(github.event.pull_request.body, '<!-- no-atl-triage -->') || contains(github.event.pull_request.body, '`<!-- no-atl-triage -->`'))
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -31,4 +34,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          node --experimental-strip-types guides/atl-triage.ts
+          node src/ci/atl-triage.ts

@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+index 66c9173..6b01c76 100644
+--- a/index.html
++++ b/index.html
+@@ -195,8 +195,190 @@
+         </div>
+       </div>
+     </section>
++    <section class="card" style="margin-top: 30px; text-align: left;" id="signing">
++      <h2>Sign &amp; Verify Order Receipts</h2>
++      <p>Signature suite: <strong id="sig-suite">detecting…</strong></p>
++      <p><label for="sig-payload">Receipt payload<br>
++        <input id="sig-payload" style="width: 100%; box-sizing: border-box;" value='{"order":"1042","item":"Cold Brew","total":"4.50"}'></label></p>
++      <p><label for="sig-context">Context (domain separation)<br>
++        <input id="sig-context" style="width: 100%; box-sizing: border-box;" value="receipt-v1"></label></p>
++      <button class="btn" id="sig-sign" style="border: 0; cursor: pointer;">Sign &amp; Verify</button>
++      <p>Public key (<span id="sig-keyformat">-</span>): <code id="sig-pubkey" style="word-break: break-all;">-</code></p>
++      <p>Signature: <code id="sig-signature" style="word-break: break-all;">-</code></p>
++      <p>Verification status: <strong id="sig-status" role="status">Not verified</strong></p>
++    </section>
+   </main>
+ 
++  <script>
++    const ML_DSA_PUBLIC_KEY_ALGORITHMS = { 1312: 'ML-DSA-44', 1952: 'ML-DSA-65', 2592: 'ML-DSA-87' };
++
++    function supportsPostQuantumSignatures() {
++      return (
++        typeof globalThis.SubtleCrypto?.supports === 'function' &&
++        SubtleCrypto.supports('sign', 'ML-DSA-65')
++      );
++    }
++
++    async function generateSigningKeyPair(suite = 'ML-DSA-65') {
++      if (supportsPostQuantumSignatures()) {
++        const keyPair = await crypto.subtle.generateKey(suite, false, ['sign', 'verify']);
++        const publicKeyBytes = new Uint8Array(
++          await crypto.subtle.exportKey('raw-public', keyPair.publicKey)
++        );
++        return {
++          suite,
++          keyFormat: 'raw-public',
++          keyPair,
++          publicKeyBytes,
++        };
++      }
++
++      // Classical fallback: Ed25519
++      const keyPair = await crypto.subtle.generateKey('Ed25519', false, ['sign', 'verify']);
++      const publicKeyBytes = new Uint8Array(
++        await crypto.subtle.exportKey('raw', keyPair.publicKey)
++      );
++      return {
++        suite: 'Ed25519',
++        keyFormat: 'raw',
++        keyPair,
++        publicKeyBytes,
++      };
++    }
++
++    function frameFallbackInput(payloadBytes, contextBytes) {
++      if (contextBytes.byteLength > 255) {
++        throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++      }
++      const framed = new Uint8Array(1 + contextBytes.byteLength + payloadBytes.byteLength);
++      framed[0] = contextBytes.byteLength;
++      framed.set(contextBytes, 1);
++      framed.set(payloadBytes, 1 + contextBytes.byteLength);
++      return framed;
++    }
++
++    async function signPayload(
++      privateKey,
++      payloadBytes,
++      contextBytes = new Uint8Array(0)
++    ) {
++      if (privateKey.algorithm.name.startsWith('ML-DSA')) {
++        const sig = await crypto.subtle.sign(
++          { name: privateKey.algorithm.name, context: contextBytes },
++          privateKey,
++          payloadBytes
++        );
++        return new Uint8Array(sig);
++      }
++
++      const framed = frameFallbackInput(payloadBytes, contextBytes);
++      const sig = await crypto.subtle.sign('Ed25519', privateKey, framed);
++      return new Uint8Array(sig);
++    }
++
++    async function verifyPayload(
++      publicKeyOrBytes,
++      signatureBytes,
++      payloadBytes,
++      contextBytes = new Uint8Array(0)
++    ) {
++      let publicKey = publicKeyOrBytes;
++      if (!(publicKeyOrBytes instanceof CryptoKey)) {
++        const bytes =
++          publicKeyOrBytes instanceof Uint8Array
++            ? publicKeyOrBytes
++            : new Uint8Array(publicKeyOrBytes);
++        const mlDsaName = ML_DSA_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
++        publicKey = mlDsaName
++          ? await crypto.subtle.importKey('raw-public', bytes, mlDsaName, true, ['verify'])
++          : await crypto.subtle.importKey('raw', bytes, 'Ed25519', true, ['verify']);
++      }
++
++      if (publicKey.algorithm.name.startsWith('ML-DSA')) {
++        return crypto.subtle.verify(
++          { name: publicKey.algorithm.name, context: contextBytes },
++          publicKey,
++          signatureBytes,
++          payloadBytes
++        );
++      }
++
++      const framed = frameFallbackInput(payloadBytes, contextBytes);
++      return crypto.subtle.verify('Ed25519', publicKey, signatureBytes, framed);
++    }
++
++    async function exportPublicKey(key) {
++      const format = key.algorithm.name.startsWith('ML-DSA') ? 'raw-public' : 'raw';
++      return new Uint8Array(await crypto.subtle.exportKey(format, key));
++    }
++
++    async function importPublicKey(bytes, algorithm = 'ML-DSA-65') {
++      const format = algorithm.startsWith('ML-DSA') ? 'raw-public' : 'raw';
++      return await crypto.subtle.importKey(format, bytes, algorithm, true, ['verify']);
++    }
++
++    async function importPrivateSeed(seedBytes, algorithm = 'ML-DSA-65') {
++      if (algorithm.startsWith('ML-DSA')) {
++        return await crypto.subtle.importKey('raw-seed', seedBytes, algorithm, false, ['sign']);
++      }
++      return await crypto.subtle.importKey('pkcs8', seedBytes, algorithm, false, ['sign']);
++    }
++
++    const toHex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
++
++    let signer = null;
++
++    async function runSignVerify() {
++      const $ = (id) => document.getElementById(id);
++      const status = $('sig-status');
++      try {
++        if (!signer) {
++          signer = await generateSigningKeyPair();
++          if ($('sig-suite')) $('sig-suite').textContent = signer.suite;
++          if ($('sig-keyformat')) $('sig-keyformat').textContent = signer.keyFormat;
++          if ($('sig-pubkey')) $('sig-pubkey').textContent = toHex(signer.publicKeyBytes).slice(0, 64) + '… (' + signer.publicKeyBytes.length + ' bytes)';
++        }
++
++        const enc = new TextEncoder();
++        const payloadVal = $('sig-payload') ? $('sig-payload').value : '';
++        const contextVal = $('sig-context') ? $('sig-context').value : '';
++        const payload = enc.encode(payloadVal);
++        const context = enc.encode(contextVal);
++
++        const signature = await signPayload(signer.keyPair.privateKey, payload, context);
++        if ($('sig-signature')) $('sig-signature').textContent = toHex(signature).slice(0, 64) + '… (' + signature.length + ' bytes)';
++
++        const ok = await verifyPayload(signer.publicKeyBytes, signature, payload, context);
++        if (status) {
++          status.textContent = ok ? 'Valid signature ✔' : 'Invalid signature ✘';
++          status.setAttribute('data-verified', String(ok));
++        }
++      } catch (e) {
++        if ($('sig-suite') && !signer) $('sig-suite').textContent = 'unavailable';
++        if (status) status.textContent = 'Error: ' + e.message;
++      }
++    }
++
++    // Expose helpers globally for testing and verification
++    window.supportsPostQuantumSignatures = supportsPostQuantumSignatures;
++    window.generateSigningKeyPair = generateSigningKeyPair;
++    window.signPayload = signPayload;
++    window.verifyPayload = verifyPayload;
++    window.exportPublicKey = exportPublicKey;
++    window.importPublicKey = importPublicKey;
++    window.importPrivateSeed = importPrivateSeed;
++    window.frameFallbackInput = frameFallbackInput;
++    window.runSignVerify = runSignVerify;
++
++    (async () => {
++      const signBtn = document.getElementById('sig-sign');
++      if (signBtn) {
++        signBtn.addEventListener('click', runSignVerify);
++      }
++      await runSignVerify();
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+diff --git a/package.json b/package.json
+index 2bd4d77..01a6505 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "echo 'Build complete'",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

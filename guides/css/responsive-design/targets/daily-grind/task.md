@@ -1,0 +1,1 @@
+- Update the site so the UI adapts to container and viewport sizes, including container-level responsiveness, dynamic viewport sizing, aspect ratios, and responsive typography.

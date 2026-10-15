@@ -8,11 +8,7 @@ updates:
   - package-ecosystem: "npm"
     directories:
       - "/"
-      - "/serving"
-      - "/harness"
-      - "/harness/base_apps/devtools-times"
-      - "/guides"
-      - "/eval-view"
+      - "/src/harness/base-apps/devtools-times"
     schedule:
       interval: "weekly"
       day: "sunday"
