@@ -382,29 +382,22 @@ export class DumbbellChart {
           const lineColor = isPositive ? "var(--color-primary)" : "var(--color-accent-failure)";
 
           // Manski Error Uncertainty Pills ([R * (1 - e), R * (1 - e) + e])
-          if (item.uErr > 0) {
-              const uBand = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-              const uMin = uVal * (1 - item.uErr / 100);
-              uBand.setAttribute("x", scale(uMin).toString());
-              uBand.setAttribute("y", (y - 4).toString());
-              uBand.setAttribute("width", ((item.uErr / 100) * chartWidth).toString());
-              uBand.setAttribute("height", "8");
-              uBand.setAttribute("rx", "4");
-              uBand.setAttribute("fill", "#8b949e");
-              uBand.setAttribute("opacity", "0.25");
-              svg.appendChild(uBand);
-          }
-          if (item.gErr > 0) {
-              const gBand = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-              const gMin = gVal * (1 - item.gErr / 100);
-              gBand.setAttribute("x", scale(gMin).toString());
-              gBand.setAttribute("y", (y - 4).toString());
-              gBand.setAttribute("width", ((item.gErr / 100) * chartWidth).toString());
-              gBand.setAttribute("height", "8");
-              gBand.setAttribute("rx", "4");
-              gBand.setAttribute("fill", "#d29922");
-              gBand.setAttribute("opacity", "0.35");
-              svg.appendChild(gBand);
+          const bands = [
+              { val: uVal, err: item.uErr, fill: "#8b949e", opacity: "0.25" },
+              { val: gVal, err: item.gErr, fill: "#d29922", opacity: "0.35" }
+          ];
+          for (const b of bands) {
+              if (b.err <= 0) continue;
+              const pill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+              const minVal = b.val * (1 - b.err / 100);
+              pill.setAttribute("x", scale(minVal).toString());
+              pill.setAttribute("y", (y - 4).toString());
+              pill.setAttribute("width", ((b.err / 100) * chartWidth).toString());
+              pill.setAttribute("height", "8");
+              pill.setAttribute("rx", "4");
+              pill.setAttribute("fill", b.fill);
+              pill.setAttribute("opacity", b.opacity);
+              svg.appendChild(pill);
           }
 
           // Connecting Line (The Delta)

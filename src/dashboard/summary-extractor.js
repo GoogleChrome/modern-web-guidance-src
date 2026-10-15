@@ -181,14 +181,12 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     const taskCount = evalsData.summary && evalsData.summary.taskCount ? evalsData.summary.taskCount : distinctScenarios.size;
     const gFailures = evalsData.summary?.guidedEarlyFailures ?? guidedEarlyFailures;
     const uFailures = evalsData.summary?.unguidedEarlyFailures ?? unguidedEarlyFailures;
-    const summaryEarlyFailures = (evalsData.summary?.unguidedEarlyFailures !== undefined || evalsData.summary?.guidedEarlyFailures !== undefined)
-        ? gFailures + uFailures
-        : earlyFailureRuns;
+    const summaryEarlyFailures = gFailures + uFailures;
     const earlyFailureRate = totalAllRuns > 0 ? Math.round((summaryEarlyFailures / totalAllRuns) * 100) : 0;
     const guidedErrorRate = guidedTotalRuns > 0 ? Math.round((gFailures / guidedTotalRuns) * 100) : 0;
     const unguidedErrorRate = unguidedTotalRuns > 0 ? Math.round((uFailures / unguidedTotalRuns) * 100) : 0;
 
-    const chartData = calculateChartData(results);
+    const chartData = calculateChartData(results, eligibleScenarios);
 
     return {
         testId: testId,

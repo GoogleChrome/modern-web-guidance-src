@@ -186,24 +186,13 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     };
   }
 
-  const validPairKeys = new Set<string>(
-    sortedKeys.filter(k => {
-      const otherKey = k.endsWith(' - guided') ? k.replace(/ - guided$/, ' - unguided') : k.replace(/ - unguided$/, ' - guided');
-      return (testStats[k]?.totalChecks || 0) > 0 && (!testStats[otherKey] || (testStats[otherKey]?.totalChecks || 0) > 0);
-    })
-  );
+  const uniqueTasks = new Set<string>();
+  for (const name of sortedKeys) {
+    uniqueTasks.add(name.replace(/ - (guided|unguided)$/, ''));
+  }
 
-  const calcSummary = (allKeys: string[]) => {
-    const pairedKeys = allKeys.filter(k => validPairKeys.has(k));
-    const medians = pairedKeys.map(k => testStats[k].medianPassRate);
-
-    const sortedMedians = [...medians].sort((a, b) => a - b);
-    const mid = Math.floor(sortedMedians.length / 2);
-    const median = sortedMedians.length === 0 ? 0 :
-      (sortedMedians.length % 2 === 0
-        ? (sortedMedians[mid - 1] + sortedMedians[mid]) / 2
-        : sortedMedians[mid]);
-
+  const calcSummary = (runType: 'guided' | 'unguided') => {
+    const medians: number[] = [];
     let passed = 0;
     let total = 0;
     let guideUsageCount = 0;
@@ -216,32 +205,43 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let cachedTokens = 0;
     let configsWithTokenData = 0;
 
-    allKeys.forEach(k => {
-      const [, , runType] = k.split(' - ');
+    for (const prefix of uniqueTasks) {
+      const k = `${prefix} - ${runType}`;
+      const otherKey = `${prefix} - ${runType === 'guided' ? 'unguided' : 'guided'}`;
       const stats = testStats[k];
+      if (!stats) continue;
 
-      if (stats) {
-        if (validPairKeys.has(k)) {
-          passed += stats.passedChecks;
-          total += stats.totalChecks;
-        }
-        earlyFailures += stats.earlyFailures || 0;
-        totalRuns += stats.runCount || 0;
+      const otherStats = testStats[otherKey];
+      const validPair = stats.totalChecks > 0 && (!otherStats || otherStats.totalChecks > 0);
 
-        if (stats.avgTokens) {
-          totalTokens += stats.avgTokens.total * (stats.runCount || 1);
-          cachedTokens += stats.avgTokens.cached * (stats.runCount || 1);
-          configsWithTokenData++;
-        }
-
-        if (runType === 'guided') {
-          guideUsageCount += stats.runsUsingGuide || 0;
-          toolActivationCount += stats.runsWithToolActivation || 0;
-          totalGuidedRuns += stats.runCount || 0;
-          guidedEarlyFailures += stats.earlyFailures || 0;
-        }
+      if (validPair) {
+        passed += stats.passedChecks;
+        total += stats.totalChecks;
+        medians.push(stats.medianPassRate);
       }
-    });
+      earlyFailures += stats.earlyFailures || 0;
+      totalRuns += stats.runCount || 0;
+
+      if (stats.avgTokens) {
+        totalTokens += stats.avgTokens.total * (stats.runCount || 1);
+        cachedTokens += stats.avgTokens.cached * (stats.runCount || 1);
+        configsWithTokenData++;
+      }
+
+      if (runType === 'guided') {
+        guideUsageCount += stats.runsUsingGuide || 0;
+        toolActivationCount += stats.runsWithToolActivation || 0;
+        totalGuidedRuns += stats.runCount || 0;
+        guidedEarlyFailures += stats.earlyFailures || 0;
+      }
+    }
+
+    const sortedMedians = [...medians].sort((a, b) => a - b);
+    const mid = Math.floor(sortedMedians.length / 2);
+    const median = sortedMedians.length === 0 ? 0 :
+      (sortedMedians.length % 2 === 0
+        ? (sortedMedians[mid - 1] + sortedMedians[mid]) / 2
+        : sortedMedians[mid]);
 
     const completedGuidedRuns = totalGuidedRuns - guidedEarlyFailures;
 
@@ -262,14 +262,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     };
   };
 
-  const uStats = calcSummary(sortedKeys.filter(k => k.endsWith(' - unguided')));
-  const gStats = calcSummary(sortedKeys.filter(k => k.endsWith(' - guided')));
+  const uStats = calcSummary('unguided');
+  const gStats = calcSummary('guided');
 
-  const uniqueTasks = new Set<string>();
-  Object.keys(allResults).forEach(key => {
-    const [taskName, guideName] = key.split(' - ');
-    uniqueTasks.add(`${taskName} - ${guideName}`);
-  });
   const numberOfTasks = uniqueTasks.size;
   const expectedTotalRuns = numberOfTasks * runsPerTest;
 

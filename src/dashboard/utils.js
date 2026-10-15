@@ -166,6 +166,7 @@ export function getEligibleScenarioIds(results) {
 
 /**
  * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
+ * @param {Set<string>} [precomputedEligibleScenarios]
  * @returns {{
  *   labels: string[],
  *   guided: number[],
@@ -178,8 +179,8 @@ export function getEligibleScenarioIds(results) {
  *   unguided_err_rate: number[]
  * }}
  */
-export function calculateChartData(results) {
-    const eligibleScenarios = getEligibleScenarioIds(results);
+export function calculateChartData(results, precomputedEligibleScenarios) {
+    const eligibleScenarios = precomputedEligibleScenarios || getEligibleScenarioIds(results);
     /** @type {Record<string, ChartAppData>} */
     const apps = {};
     /** @type {Record<string, string>} */
@@ -217,17 +218,27 @@ export function calculateChartData(results) {
             taskNames[scenario] = runs[0].taskName;
         }
         
-        const earlyFailureCount = runs.filter(r => isEarlyFailureRun(r.results)).length;
+        let earlyFailureCount = 0;
+        let passed = 0;
+        let total = 0;
+        let totalTokens = 0;
+        for (const r of runs) {
+            if (isEarlyFailureRun(r.results)) {
+                earlyFailureCount++;
+            } else {
+                const s = getRunStats(r.results);
+                passed += s.passed;
+                total += s.total;
+            }
+            totalTokens += r.tokenUsage?.total || 0;
+        }
+
         if (earlyFailureCount > 0) {
             apps[scenario][failedKey] = true;
             apps[scenario][errRateKey] = Math.round((earlyFailureCount / runs.length) * 100);
         }
         
-        const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
-        const total = runs.reduce((acc, r) => acc + getRunStats(r.results).total, 0);
         apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
-
-        const totalTokens = runs.reduce((acc, r) => acc + (r.tokenUsage?.total || 0), 0);
         const avgTokens = runs.length > 0 ? Math.round(totalTokens / runs.length) : 0;
         if (!apps[scenario][tokensKey]) {
             apps[scenario][tokensKey] = [];

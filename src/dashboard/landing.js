@@ -880,14 +880,10 @@ function renderPivotInsights() {
         const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
         const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
 
-        if (!grouped.agent[testInfo.agent]) grouped.agent[testInfo.agent] = [];
-        grouped.agent[testInfo.agent].push({ uplift, uRate, gRate, uErr, gErr });
-
-        if (!grouped.serving[testInfo.serving]) grouped.serving[testInfo.serving] = [];
-        grouped.serving[testInfo.serving].push({ uplift, uRate, gRate, uErr, gErr });
-
-        if (!grouped.model[testInfo.model]) grouped.model[testInfo.model] = [];
-        grouped.model[testInfo.model].push({ uplift, uRate, gRate, uErr, gErr });
+        const entry = { uplift, uRate, gRate, uErr, gErr };
+        if (testInfo.agent) (grouped.agent[testInfo.agent] ??= []).push(entry);
+        if (testInfo.serving) (grouped.serving[testInfo.serving] ??= []).push(entry);
+        if (testInfo.model) (grouped.model[testInfo.model] ??= []).push(entry);
 
         const suiteGuides = testInfo.guides || {};
         Object.keys(suiteGuides).forEach(guide => {
@@ -987,27 +983,29 @@ function renderPivotInsights() {
             const gRate = medianItem.gRate;
 
             // Calculate Standard Deviation (By Guide) or Manski Error Interval (By Agent / Serving / Model)
-            const uSD = showVariance ? calculateSD(items.map(item => item.uRate)) : 0;
-            const gSD = showVariance ? calculateSD(items.map(item => item.gRate)) : 0;
-            const avgUErr = !showVariance && items.length > 0 ? Math.round(items.reduce((s, it) => s + (it.uErr || 0), 0) / items.length) : 0;
-            const avgGErr = !showVariance && items.length > 0 ? Math.round(items.reduce((s, it) => s + (it.gErr || 0), 0) / items.length) : 0;
-
-            const uSD_left = Math.max(0, uRate - uSD);
-            const uSD_width = Math.min(100, uRate + uSD) - uSD_left;
-
-            const gSD_left = Math.max(0, gRate - gSD);
-            const gSD_width = Math.min(100, gRate + gSD) - gSD_left;
+            let uBandHtml = '';
+            let gBandHtml = '';
+            if (showVariance) {
+                const uSD = calculateSD(items.map(item => item.uRate));
+                const gSD = calculateSD(items.map(item => item.gRate));
+                if (uSD > 0) {
+                    const left = Math.max(0, uRate - uSD);
+                    uBandHtml = `<div class="variance-band unguided" style="left: ${left}%; width: ${Math.min(100, uRate + uSD) - left}%;"></div>`;
+                }
+                if (gSD > 0) {
+                    const left = Math.max(0, gRate - gSD);
+                    gBandHtml = `<div class="variance-band guided" style="left: ${left}%; width: ${Math.min(100, gRate + gSD) - left}%;"></div>`;
+                }
+            } else if (items.length > 0) {
+                const avgUErr = Math.round(items.reduce((s, it) => s + (it.uErr || 0), 0) / items.length);
+                const avgGErr = Math.round(items.reduce((s, it) => s + (it.gErr || 0), 0) / items.length);
+                if (avgUErr > 0) uBandHtml = `<div class="variance-band unguided" style="left: ${(uRate * (1 - avgUErr / 100)).toFixed(1)}%; width: ${avgUErr}%;"></div>`;
+                if (avgGErr > 0) gBandHtml = `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - avgGErr / 100)).toFixed(1)}%; width: ${avgGErr}%;"></div>`;
+            }
 
             const clickAttr = filterKey === 'guide'
                 ? `onclick="window.location.href='guide.html?guide=${encodeURIComponent(key)}'"`
                 : `onclick="setInsightFilter('${filterKey}', '${key}')"`;
-
-            const uBandHtml = showVariance
-                ? (uSD > 0 ? `<div class="variance-band unguided" style="left: ${uSD_left}%; width: ${uSD_width}%;"></div>` : '')
-                : (avgUErr > 0 ? `<div class="variance-band unguided" style="left: ${(uRate * (1 - avgUErr / 100)).toFixed(1)}%; width: ${avgUErr}%;"></div>` : '');
-            const gBandHtml = showVariance
-                ? (gSD > 0 ? `<div class="variance-band guided" style="left: ${gSD_left}%; width: ${gSD_width}%;"></div>` : '')
-                : (avgGErr > 0 ? `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - avgGErr / 100)).toFixed(1)}%; width: ${avgGErr}%;"></div>` : '');
 
             rowsHtml += `
                 <tr ${clickAttr} style="cursor: pointer;">

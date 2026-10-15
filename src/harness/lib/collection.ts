@@ -40,27 +40,33 @@ export function extractTokenUsageFromResults(resultsDir: string): { total: numbe
 
 function extractErrorMessage(dir: string, targetFile: string): string {
   const failureFile = path.join(dir, 'generation_failed.json');
-  if (fs.existsSync(failureFile)) {
-    try {
-      const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
-      return `Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`;
-    } catch (e) {
+  try {
+    const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
+    return `Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`;
+  } catch (err) {
+    if (!isEnoent(err)) {
       return 'Generation failed (could not parse failure info)';
     }
   }
 
   const stderrPath = path.join(dir, 'agent_stderr.log');
-  
-  if (!fs.existsSync(stderrPath)) {
-    const fileName = path.relative(dir, targetFile) || path.basename(targetFile) || 'index.html';
-    return fs.existsSync(targetFile) ? 'Generation failed' : `${fileName} not found`;
+  try {
+    return fs.readFileSync(stderrPath, 'utf8')
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l && !l.includes('YOLO mode'))
+      .pop()?.slice(0, 100) || 'Generation mysteriously failed';
+  } catch (err) {
+    if (!isEnoent(err)) throw err;
   }
 
-  return fs.readFileSync(stderrPath, 'utf8')
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l && !l.includes('YOLO mode'))
-    .pop()?.slice(0, 100) || 'Generation mysteriously failed';
+  const fileName = path.relative(dir, targetFile) || path.basename(targetFile) || 'index.html';
+  try {
+    fs.statSync(targetFile);
+    return 'Generation failed';
+  } catch {
+    return `${fileName} not found`;
+  }
 }
 
 export function parseResultPath(relPath: string): { guide: string, taskName: string, runType: string } | null {
@@ -377,8 +383,14 @@ export function evaluateScenarioResults(
     console.warn(`Grader not found for ${guide} at ${graderPath}`);
     return makeInfraError('Grader not found');
   }
-  if (fs.existsSync(path.join(dir, 'generation_failed.json'))) {
-    return makeInfraError(extractErrorMessage(dir, targetFile));
+  const failureFile = path.join(dir, 'generation_failed.json');
+  try {
+    const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
+    return makeInfraError(`Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`);
+  } catch (err) {
+    if (!isEnoent(err)) {
+      return makeInfraError('Generation failed (could not parse failure info)');
+    }
   }
   if (!targetAppExists) {
     return makeAgentFailures('Target app missing');
