@@ -33,6 +33,7 @@ export async function applyPrReviewFeedback(
     branchDiff?: string;
     comments?: string;
     prBody?: string;
+    rerunMode?: string;
   }
 ): Promise<void> {
   if (!prContext.comments?.trim()) return;
@@ -41,6 +42,8 @@ export async function applyPrReviewFeedback(
   const agent = getDefaultSolutionAgent();
   const { workDir, tempHome } = setupGuideDevWorkDir('review-feedback');
 
+  const shouldTouchTargets = prContext.rerunMode !== 'needs-eval-gen';
+
   try {
     if (fs.existsSync(path.join(targetDir, GUIDE_FILE))) {
       fs.copyFileSync(path.join(targetDir, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
@@ -48,7 +51,7 @@ export async function applyPrReviewFeedback(
     if (fs.existsSync(path.join(targetDir, EXPECTATIONS_FILE))) {
       fs.copyFileSync(path.join(targetDir, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
     }
-    if (fs.existsSync(path.join(targetDir, TARGETS_DIR))) {
+    if (shouldTouchTargets && fs.existsSync(path.join(targetDir, TARGETS_DIR))) {
       fs.cpSync(path.join(targetDir, TARGETS_DIR), path.join(workDir, 'targets'), { recursive: true });
     }
 
@@ -59,6 +62,7 @@ export async function applyPrReviewFeedback(
       prBody: prContext.prBody,
       branchCommits: prContext.branchCommits,
       branchDiff: prContext.branchDiff,
+      rerunMode: prContext.rerunMode,
     });
 
     console.log(cCyan(`Invoking ${agent} to address review comments directly on disk...`));
@@ -73,9 +77,11 @@ export async function applyPrReviewFeedback(
     if (fs.existsSync(workExp)) {
       fs.copyFileSync(workExp, path.join(targetDir, EXPECTATIONS_FILE));
     }
-    const workTargets = path.join(workDir, 'targets');
-    if (fs.existsSync(workTargets)) {
-      fs.cpSync(workTargets, path.join(targetDir, TARGETS_DIR), { recursive: true });
+    if (shouldTouchTargets) {
+      const workTargets = path.join(workDir, 'targets');
+      if (fs.existsSync(workTargets)) {
+        fs.cpSync(workTargets, path.join(targetDir, TARGETS_DIR), { recursive: true });
+      }
     }
   } finally {
     fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
@@ -295,6 +301,10 @@ export async function runDevReport(
           if (!calib.success) {
             console.warn(cRed(`⚠️  Modified ${s.baseApp} grader failed calibration: ${calib.errorDetails || 'Unknown error'}. Reverting grader.ts changes.`));
             fs.writeFileSync(graderPath, originalContent);
+            if (fs.existsSync(finalReportPath)) {
+              const revertWarning = `\n\n> [!WARNING]\n> **Grader Modification Reverted**: The report agent's proposed adjustments to \`targets/${s.baseApp}/${GRADER_FILE}\` failed calibration testing (${calib.errorDetails || 'calibration failure'}) and were automatically reverted on disk.\n`;
+              fs.appendFileSync(finalReportPath, revertWarning);
+            }
           } else {
             console.log(cGreen(`✅ Modified ${s.baseApp} grader passed calibration!`));
           }

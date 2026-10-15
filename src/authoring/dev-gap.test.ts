@@ -151,6 +151,7 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.deleteLocalBranch = b => { calls.push(`delete ${b}`); };
     evalGapFixCli.listDevBranches = () => new Set();
     evalGapFixCli.listOpenPrs = () => [];
+    evalGapFixCli.fetchPrReviewContext = () => ({});
     evalGapFixCli.runDevPr = async dir => {
       const name = path.basename(dir);
       calls.push(`pr ${name}`);
@@ -193,7 +194,7 @@ describe('fixEvalGaps', () => {
     ]);
   });
 
-  it('deletes target evals before running gd dev when rerunning a PR with needs-eval-gen', async () => {
+  it('passes needs-eval-gen rerunMode to gd dev when rerunning a PR with needs-eval-gen', async () => {
     const guide = tempGuide('scrollspy');
     const dailyGrindDir = path.join(guide.dir, TARGETS_DIR, 'daily-grind');
     const devtoolsTimesDir = path.join(guide.dir, TARGETS_DIR, 'devtools-times');
@@ -203,17 +204,16 @@ describe('fixEvalGaps', () => {
     fs.writeFileSync(path.join(devtoolsTimesDir, 'grader.ts'), '// devtools-times grader untouched\n');
     evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-eval-gen'], 'gd-dev/scrollspy')];
 
-    let dailyGrindExistedDuringDev = true;
-    evalGapFixCli.runDevGuide = async inv => {
-      dailyGrindExistedDuringDev = fs.existsSync(dailyGrindDir);
+    let passedPrContext: any = null;
+    evalGapFixCli.runDevGuide = async (inv, opts) => {
+      passedPrContext = opts?.prContext;
       fs.mkdirSync(resultsDir(inv), { recursive: true });
       fs.writeFileSync(path.join(resultsDir(inv), REPORT_FILE), '# Report\n');
       return true;
     };
 
     assert.strictEqual(await run([guide]), true);
-    assert.strictEqual(dailyGrindExistedDuringDev, false);
-    assert.strictEqual(fs.existsSync(path.join(devtoolsTimesDir, 'grader.ts')), true);
+    assert.strictEqual(passedPrContext?.rerunMode, 'needs-eval-gen');
     assert.deepStrictEqual(calls, [
       'pull',
       'checkout-pr gd-dev/scrollspy',
@@ -248,6 +248,7 @@ describe('fixEvalGaps', () => {
       branchCommits: 'commit 123',
       branchDiff: '+diff',
       comments: '- **@reviewer**: fix this',
+      rerunMode: 'needs-eval-run',
     });
     assert.ok(calls.includes('fetch-context #42 gd-dev/scrollspy'));
   });

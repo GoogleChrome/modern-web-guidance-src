@@ -9,6 +9,7 @@ import {
   buildTargetGraderPrompt,
   buildTargetTaskPrompt,
   buildDevReportPrompt,
+  buildApplyReviewFeedbackPrompt,
 } from './dev-prompts.ts';
 import { Agents } from '../harness/config.ts';
 
@@ -195,6 +196,17 @@ test('buildDevReportPrompt includes PR context and reviewer feedback instruction
   assert.ok(prompt.includes('LeaVerou'));
   assert.ok(prompt.includes('Honor reviewer feedback'));
   assert.ok(prompt.includes('without blindly overwriting human-authored changes'));
+});
+
+test('buildApplyReviewFeedbackPrompt formats context and includes needs-eval-gen note when applicable', () => {
+  const prompt = buildApplyReviewFeedbackPrompt({
+    guideName: 'dialog',
+    comments: 'Please fix selector',
+    rerunMode: 'needs-eval-gen',
+  });
+  assert.ok(prompt.includes('Please fix selector'));
+  assert.ok(prompt.includes('needs-eval-gen'));
+  assert.ok(prompt.includes('all target capsules under `targets/` will be wiped'));
 });
 
 import { rootDir } from '../core/paths.ts';

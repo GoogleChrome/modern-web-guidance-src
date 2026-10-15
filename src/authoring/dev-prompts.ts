@@ -244,6 +244,7 @@ export interface ReviewFeedbackPromptOptions {
   prBody?: string;
   branchCommits?: string;
   branchDiff?: string;
+  rerunMode?: string;
 }
 
 export function buildApplyReviewFeedbackPrompt(opts: ReviewFeedbackPromptOptions): string {
@@ -261,8 +262,13 @@ export function buildApplyReviewFeedbackPrompt(opts: ReviewFeedbackPromptOptions
 
   const contextBlock = parts.join('\n\n');
 
-  return `${contextBlock}
+  let rerunNote = '';
+  if (opts.rerunMode === 'needs-eval-gen') {
+    rerunNote = `\n> [!NOTE]\n> This rerun is in \`needs-eval-gen\` mode: all target capsules under \`targets/\` will be wiped and regenerated from source guidance after this step. Apply reviewer feedback ONLY to \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\`. Do NOT edit files under \`targets/\`.\n`;
+  }
 
+  return `${contextBlock}
+${rerunNote}
 # GOAL
 You are updating the guidance and evaluation files for \`${opts.guideName}\` based on pull request review feedback.
 Your goal is to address all reviewer comments by directly updating the relevant files on disk (\`guide.md\`, \`expectations.md\`, \`targets/<target>/task.md\`, and \`targets/<target>/grader.ts\`).
@@ -357,13 +363,15 @@ Diagnose each target according to its assigned flag:
 2. **\`MISSING_GUIDANCE_TOOL\`**:
    - The guided agent did not invoke \`modern-web-guidance\`.
    - **Diagnosis**: State that the test prompt in \`task.md\` failed to activate modern web guidance during the agent's run.
-   - **Recommendation**: Recommend that the prompt in \`targets/<target>/task.md\` be revised so the desired user outcome in the target app more naturally triggers modern web guidance lookup.
+   - **Recommendation**: Provide concrete edits for \`targets/<target>/task.md\` so the desired user outcome in the target app more naturally triggers modern web guidance lookup. Always append:
+     \`*(Note: This fix has already been applied directly to targets/<target>/task.md in this PR. After reviewing, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
 
 3. **\`MISSING_EXPECTED_GUIDE\`**:
    - The guided agent invoked guidance tools, but \`${opts.guideName}\` was not among the consumed guides.
    - **Culprit**: \`targets/<target>/task.md\` or the \`description\` in \`${GUIDE_FILE}\`.
    - **Root Cause**: The prompt keywords failed to match the guide's indexing keywords or description frontmatter.
-   - **Recommendation**: Provide concrete edits for \`targets/<target>/task.md\` or the frontmatter \`description\` in \`${GUIDE_FILE}\`.
+   - **Recommendation**: Provide concrete edits for \`targets/<target>/task.md\` or the frontmatter \`description\` in \`${GUIDE_FILE}\`. Always append:
+     \`*(Note: This fix has already been applied directly in this PR. If source guidance was modified, add the needs-eval-gen label; if only targets/<target>/task.md was modified, add the needs-eval-run label)*\`
 
 4. **\`LOW_GUIDED_PASS_RATE\`**:
    - The guided agent pass rate is under 90%.
@@ -374,9 +382,9 @@ Diagnose each target according to its assigned flag:
      - **Miscellaneous Issues**: Any other issues discovered.
    - **Recommendation Rules**:
      - **Source-of-Truth Fixes**: If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` needs changes, recommend modifications **ONLY** to those files and **DO NOT** recommend edits to any files in \`targets/\`. Always append:
-       \`*(Note: After modifying source files, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*\`
+       \`*(Note: These source guidance changes have already been applied directly to ${GUIDE_FILE} / ${EXPECTATIONS_FILE} in this PR. After reviewing, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*\`
      - **Grader Fixes**: When grader fixes are necessary, only recommend direct edits to \`targets/<target>/grader.ts\` if \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` require **NO** changes. Always append:
-       \`*(Note: After modifying target files, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
+       \`*(Note: These grader adjustments have already been applied directly to targets/<target>/grader.ts in this PR. After reviewing, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
      - **Miscellaneous Fixes**: Any other recommended fixes (do not have to be file-specific).
 
 5. **\`HEALTHY\`**:
@@ -386,7 +394,7 @@ Diagnose each target according to its assigned flag:
 
 # REPORT OUTPUT REQUIREMENTS
 
-For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching this structure. Whenever recommending a change to a file (\`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, \`targets/<target>/task.md\`, or \`targets/<target>/grader.ts\`), include a fenced \`diff\` block directly beneath that bullet showing the exact lines to remove (\`-\`) and add (\`+\`) so reviewers can see and apply the concrete suggestion:
+For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching this structure. Whenever recommending a change to a file (\`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, \`targets/<target>/task.md\`, or \`targets/<target>/grader.ts\`), include a fenced \`diff\` block directly beneath that bullet showing the exact lines to remove (\`-\`) and add (\`+\`) so reviewers can see the changes applied directly in this PR:
 
 \`\`\`markdown
 ### Diagnostic Analysis & Actionable Recommendations

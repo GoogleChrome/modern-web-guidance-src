@@ -223,25 +223,68 @@ export const evalGapFixCli = {
         }
       }
 
-      // Also try fetching inline review comments via gh api
+      // Fetch inline review comments from unresolved review threads via gh api graphql
       try {
-        const reviewCommentsJson = JSON.parse(child_process.execFileSync(
+        const query = `
+query($pr: Int!) {
+  repository(owner: "{owner}", name: "{repo}") {
+    pullRequest(number: $pr) {
+      reviewThreads(first: 100) {
+        nodes {
+          isResolved
+          path
+          line
+          comments(first: 20) {
+            nodes {
+              author { login }
+              body
+            }
+          }
+        }
+      }
+    }
+  }
+}`;
+        const threadData = JSON.parse(child_process.execFileSync(
           'gh',
-          ['api', `repos/{owner}/{repo}/pulls/${prNumber}/comments`],
+          ['api', 'graphql', '-F', `pr=${prNumber}`, '-f', `query=${query}`],
           { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
         ));
-        if (Array.isArray(reviewCommentsJson)) {
-          for (const rc of reviewCommentsJson) {
-            const author = rc.user?.login || 'unknown';
-            const file = rc.path || 'unknown';
-            const line = rc.line || rc.original_line || '';
-            const body = (rc.body || '').trim();
+        const threads = threadData.data?.repository?.pullRequest?.reviewThreads?.nodes || [];
+        for (const t of threads) {
+          if (t.isResolved) continue;
+          const file = t.path || 'unknown';
+          const line = t.line || '';
+          const comments = t.comments?.nodes || [];
+          for (const c of comments) {
+            const author = c.author?.login || 'unknown';
+            const body = (c.body || '').trim();
             if (body) {
               commentLines.push(`- **@${author}** on \`${file}${line ? `:${line}` : ''}\`:\n${body}`);
             }
           }
         }
-      } catch {}
+      } catch {
+        // Fallback to REST API if GraphQL query fails
+        try {
+          const reviewCommentsJson = JSON.parse(child_process.execFileSync(
+            'gh',
+            ['api', `repos/{owner}/{repo}/pulls/${prNumber}/comments`],
+            { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+          ));
+          if (Array.isArray(reviewCommentsJson)) {
+            for (const rc of reviewCommentsJson) {
+              const author = rc.user?.login || 'unknown';
+              const file = rc.path || 'unknown';
+              const line = rc.line || rc.original_line || '';
+              const body = (rc.body || '').trim();
+              if (body) {
+                commentLines.push(`- **@${author}** on \`${file}${line ? `:${line}` : ''}\`:\n${body}`);
+              }
+            }
+          }
+        } catch {}
+      }
 
       comments = commentLines.join('\n\n');
     } catch {}
@@ -287,11 +330,8 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
       if (gap.prNumber) {
         prContext = evalGapFixCli.fetchPrReviewContext(gap.prNumber, branch);
       }
-      if (gap.rerunMode === 'needs-eval-gen') {
-        for (const t of targets) {
-          fs.rmSync(path.join(inv.dir, TARGETS_DIR, t), { recursive: true, force: true });
-        }
-      }
+      if (!prContext) prContext = {};
+      prContext.rerunMode = gap.rerunMode;
     } else {
       evalGapFixCli.createBranch(branch);
       createdBranch = true;

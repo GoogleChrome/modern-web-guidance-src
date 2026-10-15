@@ -138,16 +138,10 @@ Target is healthy.
     assert.ok(labels.includes('gd-dev-eval'));
   });
 
-  it('detects labels from modified files in guide directory even when report has no recommendations', () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-label-test-'));
-    try {
-      fs.writeFileSync(path.join(tempDir, 'guide.md'), '# Guide\n');
-      const emptyReport = `# Evaluation Report: test\n\n## Target: \`daily-grind\` (Status: \`HEALTHY\`)\n`;
-      const labels = determinePrLabels(emptyReport, tempDir);
-      assert.deepEqual(labels, []);
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
+  it('returns empty labels on healthy reports so computeLabelDiff can clear previous labels', () => {
+    const emptyReport = `# Evaluation Report: test\n\n## Target: \`daily-grind\` (Status: \`HEALTHY\`)\n\n#### Actionable Recommendations:\n- None (target is healthy and verified).\n`;
+    const labels = determinePrLabels(emptyReport);
+    assert.deepEqual(labels, []);
   });
 });
 

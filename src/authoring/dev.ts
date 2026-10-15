@@ -53,6 +53,7 @@ export interface DevGuideOptions {
     branchDiff?: string;
     comments?: string;
     prBody?: string;
+    rerunMode?: string;
   };
 }
 
@@ -142,6 +143,16 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   // Step 0: If rerun has reviewer comments, apply feedback to guide/expectations/targets first
   if (options.prContext?.comments) {
     await applyPrReviewFeedback(targetDir, options.prContext);
+  }
+
+  // Under needs-eval-gen, wipe targets after Step 0 so Step 2 regenerates all target artifacts from source guidance
+  if (options.prContext?.rerunMode === 'needs-eval-gen') {
+    for (const t of targets) {
+      const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, t);
+      if (fs.existsSync(targetCapsuleDir)) {
+        fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
+      }
+    }
   }
 
   // Step 0.5: Excise old eval artifacts if they exist

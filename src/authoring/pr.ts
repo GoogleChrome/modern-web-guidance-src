@@ -127,52 +127,13 @@ export function computeLabelDiff(
 }
 
 /**
- * Determines PR labels based on modified files in the working directory (and/or recommendation text in report.md).
+ * Determines PR labels from report.md content based on recommended files.
  * Strictly matches filenames ending with:
  * - guide.md / expectations.md -> gd-dev-content
  * - task.md / grader.ts -> gd-dev-eval
  */
-export function determinePrLabels(reportContent: string, guideDir?: string): DevPrLabel[] {
+export function determinePrLabels(reportContent: string): DevPrLabel[] {
   const labels = new Set<DevPrLabel>();
-
-  // If guideDir is provided, check git status for modified/uncommitted files or files differing from main
-  if (guideDir && fs.existsSync(guideDir)) {
-    try {
-      const statusOutput = execSync(`git status --porcelain "${guideDir}"`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      }).trim();
-      if (statusOutput) {
-        for (const line of statusOutput.split('\n')) {
-          const filePath = line.trim().slice(3).trim().toLowerCase();
-          if (filePath.endsWith('guide.md') || filePath.endsWith('expectations.md')) {
-            labels.add('gd-dev-content');
-          } else if (filePath.endsWith('task.md') || filePath.endsWith('grader.ts') || filePath.includes('/targets/')) {
-            labels.add('gd-dev-eval');
-          }
-        }
-      }
-
-      // Also check committed differences against origin/main or main
-      const diffFilesOutput = execSync(`git diff --name-only origin/main...HEAD -- "${guideDir}" 2>/dev/null || git diff --name-only main...HEAD -- "${guideDir}" 2>/dev/null || true`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      }).trim();
-      if (diffFilesOutput) {
-        for (const filePath of diffFilesOutput.split('\n')) {
-          const lower = filePath.trim().toLowerCase();
-          if (lower.endsWith('guide.md') || lower.endsWith('expectations.md')) {
-            labels.add('gd-dev-content');
-          } else if (lower.endsWith('task.md') || lower.endsWith('grader.ts') || lower.includes('/targets/')) {
-            labels.add('gd-dev-eval');
-          }
-        }
-      }
-    } catch {
-      // Ignore git errors; fallback to report parsing
-    }
-  }
-
   const targetSections = reportContent.split(/(?=^## Target: )/gm);
 
   for (const section of targetSections) {
@@ -262,9 +223,9 @@ export async function runDevPr(guideDir: string, guideInfo?: Partial<GuideResult
     return null;
   }
 
-  // 4. Parse report.md and inspect working tree for PR labels
+  // 4. Parse report.md for PR labels
   const reportContent = fs.readFileSync(reportPath, 'utf-8');
-  const labels = determinePrLabels(reportContent, resolvedGuideDir);
+  const labels = determinePrLabels(reportContent);
 
   // 5. Update the branch's open PR, or create one
   if (existingPr) {
