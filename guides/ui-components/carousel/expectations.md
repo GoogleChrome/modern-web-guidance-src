@@ -1,9 +1,9 @@
 # Expectations
 
-- The carousel track has `overflow-x: auto` (or `overflow: auto`) and uses `scroll-snap-type: x mandatory` (or `inline mandatory`) on its scrolling axis.
+- The carousel track has `overflow-x: auto` or `overflow-y: auto` (or `overflow: auto`) and uses mandatory scroll snapping (`scroll-snap-type: x mandatory`, `inline mandatory`, `y mandatory`, or `block mandatory`) on its scrolling axis.
 - Every carousel slide has `scroll-snap-align: center` (or start) applied so it acts as a snap target.
 - The carousel container is exposed as a labeled region with `aria-roledescription="carousel"` and an accessible name.
-- Slides are structured within a list and exposed as groups with `role="group"`, `aria-roledescription="slide"`, and a position in their accessible name (such as "2 of 4").
+- Each slide is exposed as a group with `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (such as "2 of 4").
 - Native `::scroll-button()` controls have an accessible name defined using the alternative-text form of CSS `content` (e.g. `content: "‹" / "Previous slide"`).
 - Native `::scroll-marker` controls navigate to their corresponding slides when activated.
 - The active slide's native scroll marker is visually distinguished using the `:target-current` pseudo-class.
