@@ -517,6 +517,75 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
     assert.equal(matches[0]?.line, 2);
     assert.match(matches[0]?.message ?? '', /progressive: true/);
   });
+
+  await t.test('detects shorthand and expanded properties via hasProperty and stylesheetHasProperty', () => {
+    const shorthandCss = `
+    .box {
+      border: 1px solid red;
+      outline: none;
+      line-clamp: 3;
+    }
+    `;
+
+    let checkedBorder = false;
+    let checkedBorderColor = false;
+    let checkedOutline = false;
+    let checkedStylesheetLineClamp = false;
+
+    const rule: CssRuleMatcher = {
+      kind: 'css',
+      fastTokens: ['border'],
+      matchRule: (view, ctx) => {
+        if (view.selectorText === '.box') {
+          checkedBorder = view.hasProperty('border');
+          checkedBorderColor = view.hasProperty('border-color');
+          checkedOutline = view.hasProperty('outline');
+          checkedStylesheetLineClamp = ctx.stylesheetHasProperty('line-clamp');
+          return { message: 'box-match' };
+        }
+        return null;
+      },
+    };
+
+    const matches = scanCss('shorthands.css', shorthandCss, [rule]);
+    assert.equal(matches.length, 1);
+    assert.equal(checkedBorder, true);
+    assert.equal(checkedBorderColor, true);
+    assert.equal(checkedOutline, true);
+    assert.equal(checkedStylesheetLineClamp, true);
+  });
+
+  await t.test('visits nested @media inside style rule as CSSNestedDeclarations', () => {
+    const nestedCss = `
+    .card {
+      color: blue;
+      @media (width > 600px) {
+        color: red;
+      }
+    }
+    `;
+
+    const visited: Array<{ selectorText: string; parentAtRule: string | null }> = [];
+
+    const rule: CssRuleMatcher = {
+      kind: 'css',
+      fastTokens: ['color'],
+      matchRule: (view) => {
+        visited.push({
+          selectorText: view.selectorText,
+          parentAtRule: view.parentAtRule ?? null,
+        });
+        return { message: `visited-${view.selectorText}` };
+      },
+    };
+
+    const matches = scanCss('nested.css', nestedCss, [rule]);
+    assert.equal(matches.length, 2);
+    assert.deepEqual(visited, [
+      { selectorText: '.card', parentAtRule: null },
+      { selectorText: '.card', parentAtRule: '@media (width > 600px)' },
+    ]);
+  });
 });
 
 void test('dependency-scanner: package.json dependency detection', () => {
