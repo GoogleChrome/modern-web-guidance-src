@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines-per-function, max-depth */
 import {
   Node,
   type CallExpression,

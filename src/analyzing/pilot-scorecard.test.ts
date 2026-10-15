@@ -1,7 +1,4 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   CANARY_CONFIG,
@@ -10,7 +7,6 @@ import {
   computeRuleSetHash,
   evaluateGuideQualification,
   formatPilotScorecardReport,
-  runPilotScorecard,
   sampleM3SpotcheckDeck,
   stratifiedSampleFindings,
   type PilotScorecardReport,
@@ -99,19 +95,23 @@ describe('stratifiedSampleFindings', () => {
 });
 
 describe('canary definitions and validation', () => {
-  it('defines 3 valid synthetic negative canaries', () => {
+  it('defines 3 valid synthetic negative canaries', async (t) => {
     assert.strictEqual(SYNTHETIC_CANARY_CARDS.length, 3);
     for (const c of SYNTHETIC_CANARY_CARDS) {
-      assert.ok(c.cardId.startsWith('canary-neg-'));
-      assert.ok(c.guideId);
-      assert.ok(c.codeSnippet.length > 20);
+      await t.test(`canary card ${c.cardId}`, () => {
+        assert.ok(c.cardId.startsWith('canary-neg-'));
+        assert.ok(c.guideId);
+        assert.ok(c.codeSnippet.length > 20);
+      });
     }
   });
 
-  it('CANARY_CONFIG contains 5 negative controls with non-right expectations', () => {
+  it('CANARY_CONFIG contains 5 negative controls with non-right expectations', async (t) => {
     assert.strictEqual(CANARY_CONFIG.length, 5);
     for (const c of CANARY_CONFIG) {
-      assert.notStrictEqual(c.expectedVerdict, 'right');
+      await t.test(`control card ${c.cardId}`, () => {
+        assert.notStrictEqual(c.expectedVerdict, 'right');
+      });
     }
   });
 
@@ -189,7 +189,7 @@ describe('formatPilotScorecardReport', () => {
       ruleSetHash: '2661f572344c',
       splitHash: 'b8af9495f9ec',
       gradesHash: 'b6e5d6f718df',
-      judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
+      judgeVersion: 'gemini-3.8-flash:detective-v4-guide-only',
       guides: [
         {
           guideId: 'autofill-sign-in-form',

@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines-per-function, max-depth */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { parseHTML } from 'linkedom';
@@ -6,7 +7,6 @@ import {
   ANALYZER_INTERNAL_DIR,
   CACHE_ROOT,
   GUIDES_DIR,
-  REPOS_CONFIG_PATH,
   repoDir,
   type RepoConfigEntry,
 } from './paths.ts';
@@ -71,6 +71,7 @@ export interface Gate3Result {
 
 export interface FixValidationResult {
   readonly resolved: boolean;
+  readonly staticResolved: boolean;
   readonly guideId: string;
   readonly ruleId?: string;
   readonly filePath: string;
@@ -425,7 +426,9 @@ export function checkStructuralIntegrity(
             'Structural gutting detected: no markup elements or nodes found in patched HTML',
         };
       }
-    } catch {}
+    } catch {
+      /* ignore html parse errors */
+    }
     return { passed: true };
   }
 
@@ -443,7 +446,9 @@ export function checkStructuralIntegrity(
           };
         }
       }
-    } catch {}
+    } catch {
+      /* ignore json parse errors */
+    }
     return { passed: true };
   }
 
@@ -558,6 +563,7 @@ export async function validateFixPatch(
   if (!gate1.passed) {
     return {
       resolved: false,
+      staticResolved: false,
       guideId: patch.guideId,
       ruleId: patch.ruleId,
       filePath: patch.filePath,
@@ -636,6 +642,7 @@ export async function validateFixPatch(
   if (!gate2.passed) {
     return {
       resolved: false,
+      staticResolved: false,
       guideId: patch.guideId,
       ruleId: patch.ruleId,
       filePath: patch.filePath,
@@ -650,10 +657,10 @@ export async function validateFixPatch(
     };
   }
 
-  // Gate 3: Behavioral & Invariant Check
-  let gate3Passed = true;
-  let gate3Status: 'PASSED' | 'FAILED' | 'SKIPPED_NO_TEST_HARNESS' = 'PASSED';
-  let gate3Reason: string | undefined;
+  // Gate 3: Behavioral & Invariant Check (R15: fails closed / skipped when no test harness)
+  let gate3Passed = false;
+  let gate3Status: 'PASSED' | 'FAILED' | 'SKIPPED_NO_TEST_HARNESS' = 'SKIPPED_NO_TEST_HARNESS';
+  let gate3Reason: string | undefined = 'Gate 3 skipped: no test harness or behavioral check provided';
 
   if (options?.behavioralCheck) {
     try {
@@ -662,6 +669,10 @@ export async function validateFixPatch(
         gate3Passed = false;
         gate3Status = 'FAILED';
         gate3Reason = 'Custom behavioral assertion failed on patched code';
+      } else {
+        gate3Passed = true;
+        gate3Status = 'PASSED';
+        gate3Reason = undefined;
       }
     } catch (err: unknown) {
       gate3Passed = false;
@@ -677,19 +688,28 @@ export async function validateFixPatch(
     failureReason: gate3Reason,
   };
 
-  const resolved = gate1.passed && gate2.passed && gate3.passed;
+  const staticResolved = gate1.passed && gate2.passed;
+  const resolved = staticResolved && gate3.passed;
+
+  let summary: string;
+  if (resolved) {
+    summary = 'RESOLVED: All 3 gates passed';
+  } else if (staticResolved) {
+    summary = 'STATIC_RESOLVED: Gates 1 & 2 passed (Gate 3 skipped: no test harness)';
+  } else {
+    summary = `GATE_3_FAILED: ${gate3.failureReason}`;
+  }
 
   return {
     resolved,
+    staticResolved,
     guideId: patch.guideId,
     ruleId: patch.ruleId,
     filePath: patch.filePath,
     gate1,
     gate2,
     gate3,
-    summary: resolved
-      ? 'RESOLVED: All 3 gates passed'
-      : `GATE_3_FAILED: ${gate3.failureReason}`,
+    summary,
   };
 }
 
@@ -1433,12 +1453,15 @@ export async function runBadPatchSensitivitySuite(
 
     // 4. Test Valid Good Patch (should pass all 3 gates)
     goodPatchesTotal++;
-    const goodRes = await validateFixPatch({
-      filePath: f.filePath,
-      originalContent: f.originalContent,
-      patchedContent: f.goodPatch,
-      guideId: f.guideId,
-    });
+    const goodRes = await validateFixPatch(
+      {
+        filePath: f.filePath,
+        originalContent: f.originalContent,
+        patchedContent: f.goodPatch,
+        guideId: f.guideId,
+      },
+      { behavioralCheck: () => true },
+    );
     if (goodRes.resolved) {
       goodPatchesPassed++;
     } else {
@@ -1472,6 +1495,7 @@ export interface FixScorecardItem {
   readonly file: string;
   readonly line: number;
   readonly resolved: boolean;
+  readonly staticResolved?: boolean;
   readonly explanation?: string;
   readonly gate1Passed: boolean;
   readonly gate2Passed: boolean;
@@ -1484,12 +1508,15 @@ export interface FixScorecardReport {
   readonly commit: string;
   readonly totalEvaluated: number;
   readonly totalResolved: number;
+  readonly totalStaticResolved: number;
   readonly resolutionRate: number;
+  readonly staticResolutionRate: number;
   readonly wilson95: BinomialInterval;
+  readonly staticWilson95: BinomialInterval;
   readonly badPatchRejectionRate: number;
   readonly perGuideResolution: Record<
     string,
-    { evaluated: number; resolved: number; rate: number }
+    { evaluated: number; resolved: number; staticResolved?: number; rate: number }
   >;
   readonly results: readonly FixScorecardItem[];
 }
@@ -1550,19 +1577,8 @@ Your task is to refactor a legacy web pattern in a brownfield codebase using the
 
 CRITICAL INVARIANTS:
 1. ELIMINATE ALL OCCURRENCES: Eliminate EVERY occurrence of the flagged legacy pattern inside the provided code window. If multiple occurrences appear in the window, modernize all of them so no legacy instances remain.
-2. IMPLEMENT THE MODERN PLATFORM FEATURE DIRECTLY: The patched code MUST explicitly include the modern replacement API/property taught in the guide directly inside the patched code window:
-   - For dialogs/modals: use <dialog>, dialog.showModal(), or commandfor/command/popovertarget.
-   - For popovers/dropdowns/menus: use popover="auto", popovertarget, showPopover(), or CSS anchor positioning (position-anchor, anchor-name, position-area).
-   - For custom select/dropdown: use appearance: base-select or ::picker(select). In JS, set style.appearance = 'base-select'.
-   - For entry/exit animations: use @starting-style, transition-behavior: allow-discrete, or display: none with allow-discrete transitions.
-   - For form accent/theming: use accent-color: <color>.
-   - For dark mode: use color-scheme: light dark or light-dark().
-   - For textarea/input auto-sizing: use field-sizing: content (or el.style.fieldSizing = 'content').
-   - For dates/time/intervals: use Temporal.PlainDate, Temporal.ZonedDateTime, Temporal.Duration, etc.
-   - For copy buttons: use navigator.clipboard.writeText().
-   - For forms & errors: use aria-live, role="alert", :user-invalid, or autocomplete attributes.
-   - NEVER simply delete the legacy call without adding the modern replacement feature.
-3. PRESERVE SURROUNDING LOGIC: Never delete or hollow out surrounding functions, handlers, classes, elements, or unrelated styles. Maintain existing names and exported signatures.
+2. IMPLEMENT THE MODERN PLATFORM FEATURE DIRECTLY: The patched code MUST explicitly implement the modern standard replacement capability taught in the provided guide. Rely strictly on the instructions, code samples, and specifications in the provided guide.md. NEVER simply delete or gut the legacy code without implementing the modern standard replacement feature.
+3. PRESERVE SURROUNDING LOGIC: Never delete or hollow out surrounding functions, handlers, classes, elements, or unrelated styles. Maintain existing names, exported signatures, and application structure.
 4. Output the complete replacement for the provided code window in the "patchedWindow" field, with valid syntax and no placeholders.`;
 
 const FIX_AGENT_SCHEMA = {
@@ -1727,7 +1743,9 @@ export async function runFixEvaluationCli(): Promise<void> {
                   const content = await readFile(full, 'utf8');
                   map.set(rel, content);
                 }
-              } catch {}
+              } catch {
+                /* ignore unreadable file */
+              }
             }
           }
         }
@@ -1743,7 +1761,9 @@ export async function runFixEvaluationCli(): Promise<void> {
           candidateFindings.push(f);
         }
       }
-    } catch {}
+    } catch {
+      /* ignore unreadable repo */
+    }
   }
 
   // Sample up to 2 distinct findings per qualified guide
@@ -1807,13 +1827,14 @@ export async function runFixEvaluationCli(): Promise<void> {
   const results: FixScorecardItem[] = [];
   const perGuideCounts: Record<
     string,
-    { evaluated: number; resolved: number; rate: number }
+    { evaluated: number; resolved: number; staticResolved: number; rate: number }
   > = {};
   for (const gid of QUALIFIED_GUIDE_IDS) {
-    perGuideCounts[gid] = { evaluated: 0, resolved: 0, rate: 0 };
+    perGuideCounts[gid] = { evaluated: 0, resolved: 0, staticResolved: 0, rate: 0 };
   }
 
   let totalResolved = 0;
+  let totalStaticResolved = 0;
 
   for (let i = 0; i < allSampledFindings.length; i++) {
     const finding = allSampledFindings[i];
@@ -1824,7 +1845,7 @@ export async function runFixEvaluationCli(): Promise<void> {
     let originalContent = '';
     const repoFiles = filesByRepo.get(finding.repo);
     if (repoFiles && repoFiles.has(finding.file)) {
-      originalContent = repoFiles.get(finding.file)!;
+      originalContent = repoFiles.get(finding.file) ?? '';
     } else {
       const fix = fixtures.find((fx) => fx.guideId === finding.guideId);
       originalContent = fix ? fix.originalContent : finding.codeSnippet;
@@ -1897,8 +1918,16 @@ export async function runFixEvaluationCli(): Promise<void> {
       totalResolved++;
       perGuideCounts[finding.guideId].resolved++;
       console.log('✓ RESOLVED');
+    } else if (val.staticResolved) {
+      console.log('✓ STATIC_RESOLVED (no test harness)');
     } else {
       console.log(`✗ ${val.summary}`);
+    }
+
+    if (val.staticResolved) {
+      totalStaticResolved++;
+      perGuideCounts[finding.guideId].staticResolved =
+        (perGuideCounts[finding.guideId].staticResolved ?? 0) + 1;
     }
 
     perGuideCounts[finding.guideId].evaluated++;
@@ -1910,6 +1939,7 @@ export async function runFixEvaluationCli(): Promise<void> {
       file: finding.file,
       line: finding.line,
       resolved: isResolved,
+      staticResolved: val.staticResolved,
       explanation,
       gate1Passed: val.gate1.passed,
       gate2Passed: val.gate2.passed,
@@ -1930,20 +1960,31 @@ export async function runFixEvaluationCli(): Promise<void> {
       : 0;
   const wilson = wilsonInterval(totalResolved, allSampledFindings.length, 1.95996);
 
+  const staticResolutionRate =
+    allSampledFindings.length > 0
+      ? totalStaticResolved / allSampledFindings.length
+      : 0;
+  const staticWilson = wilsonInterval(totalStaticResolved, allSampledFindings.length, 1.95996);
+
   // Commit hash
   let commitHash = 'unknown';
   try {
     const { execSync } = await import('node:child_process');
     commitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-  } catch {}
+  } catch {
+    /* ignore git failure */
+  }
 
   const report: FixScorecardReport = {
     timestamp: new Date().toISOString(),
     commit: commitHash,
     totalEvaluated: allSampledFindings.length,
     totalResolved,
+    totalStaticResolved,
     resolutionRate: Number(resolutionRate.toFixed(4)),
+    staticResolutionRate: Number(staticResolutionRate.toFixed(4)),
     wilson95: wilson,
+    staticWilson95: staticWilson,
     badPatchRejectionRate: sensitivity.badPatchRejectionRate,
     perGuideResolution: perGuideCounts,
     results,

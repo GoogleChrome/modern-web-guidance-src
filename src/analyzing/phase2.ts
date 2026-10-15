@@ -202,7 +202,16 @@ export async function runPhase2Filter(
     while (currentIndex < findings.length) {
       const idx = currentIndex++;
       const finding = findings[idx];
-      const rule = (rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId))!;
+      const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
+      if (!rule) {
+        verdicts[idx] = {
+          cardId: finding.cardId,
+          keep: false,
+          reason: `No rule found for ${finding.ruleId || finding.guideId}`,
+          confidence: 'high',
+        };
+        continue;
+      }
 
       const body = buildPhase2RequestBody(finding, rule);
       const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;

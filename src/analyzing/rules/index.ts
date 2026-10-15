@@ -1,130 +1,45 @@
 import type { AnalyzerRule } from '../schema.ts';
-import {
-  accessibleErrorAnnouncementRule,
-  accessibleErrorAnnouncementRules,
-} from './accessible-error-announcement.ts';
-import {
-  adaptScrollbarToContrastPreferencesRule,
-  adaptScrollbarToContrastPreferencesRules,
-} from './adapt-scrollbar-to-contrast-preferences.ts';
-import {
-  animateElementEntryExitRule,
-} from './animate-element-entry-exit.ts';
-import {
-  animateToIntrinsicSizesRule,
-  animateToIntrinsicSizesRules,
-} from './animate-to-intrinsic-sizes.ts';
-import {
-  autofillAddressFormRule,
-  autofillAddressFormRules,
-} from './autofill-address-form.ts';
-import {
-  autofillSignInFormRule,
-  autofillSignInFormRules,
-} from './autofill-sign-in-form.ts';
-import {
-  brandConsistentFormsRule,
-  brandConsistentFormsRules,
-} from './brand-consistent-forms.ts';
-import {
-  brandedSelectStylingRule,
-  brandedSelectStylingJsRule,
-  brandedSelectStylingRules,
-} from './branded-select-styling.ts';
-import {
-  breakUpLongTasksRule,
-} from './break-up-long-tasks.ts';
-import {
-  calculateEventDifferentialsRule,
-} from './calculate-event-differentials.ts';
-import {
-  checkboxRule,
-  checkboxRules,
-} from './checkbox.ts';
+import { accessibleErrorAnnouncementRule } from './accessible-error-announcement.ts';
+import { adaptScrollbarToContrastPreferencesRules } from './adapt-scrollbar-to-contrast-preferences.ts';
+import { animateElementEntryExitRule } from './animate-element-entry-exit.ts';
+import { animateToIntrinsicSizesRule } from './animate-to-intrinsic-sizes.ts';
+import { autofillAddressFormRules } from './autofill-address-form.ts';
+import { autofillSignInFormRule } from './autofill-sign-in-form.ts';
+import { brandConsistentFormsRule } from './brand-consistent-forms.ts';
+import { brandedSelectStylingRules } from './branded-select-styling.ts';
+import { breakUpLongTasksRule } from './break-up-long-tasks.ts';
+import { calculateEventDifferentialsRule } from './calculate-event-differentials.ts';
+import { checkboxRules } from './checkbox.ts';
 import {
   childStateBasedStylingRule,
   childStateBasedStylingJsParentClassRule,
-  childStateBasedStylingRules,
 } from './child-state-based-styling.ts';
-import {
-  coordinateGlobalEventsRule,
-} from './coordinate-global-events.ts';
-import {
-  copyButtonRule,
-} from './copy-button.ts';
-import {
-  cssLayoutRule,
-  cssLayoutRules,
-} from './css-layout.ts';
-import {
-  customizeScrollbarColorAndThicknessRule,
-  customizeScrollbarColorAndThicknessRules,
-} from './customize-scrollbar-color-and-thickness.ts';
-import {
-  darkModeCssRule,
-  darkModeJsMatchMediaRule,
-  darkModeRules,
-} from './dark-mode.ts';
+import { coordinateGlobalEventsRule } from './coordinate-global-events.ts';
+import { copyButtonRule } from './copy-button.ts';
+import { cssLayoutRules } from './css-layout.ts';
+import { customizeScrollbarColorAndThicknessRule } from './customize-scrollbar-color-and-thickness.ts';
+import { darkModeRules } from './dark-mode.ts';
 import {
   declarativeDialogPopoverControlRule,
   declarativeDialogPopoverControlClickListenerRule,
-  declarativeDialogPopoverControlRules,
 } from './declarative-dialog-popover-control.ts';
-import {
-  deferWorkUntilScrollEndsRule,
-} from './defer-work-until-scroll-ends.ts';
-import {
-  detectInitialVisibilityStateRule,
-} from './detect-initial-visibility-state.ts';
-import {
-  dialogRule,
-  dialogRules,
-} from './dialog.ts';
-import {
-  formFieldsAutomaticallyFitContentsRule,
-  formFieldsAutomaticallyFitContentsRules,
-} from './form-fields-automatically-fit-contents.ts';
-import {
-  imeSafeEnterSubmitRule,
-} from './ime-safe-enter-submit.ts';
-import {
-  individualTransformPropertiesRule,
-  individualTransformPropertiesRules,
-} from './individual-transform-properties.ts';
-import {
-  manageRecurringIntervalsRule,
-  manageRecurringIntervalsRules,
-} from './manage-recurring-intervals.ts';
-import {
-  preventPageScrollUnderModalDialogRule,
-  preventPageScrollUnderModalDialogCssRule,
-  preventPageScrollUnderModalDialogRules,
-} from './prevent-page-scroll-under-modal-dialog.ts';
+import { deferWorkUntilScrollEndsRule } from './defer-work-until-scroll-ends.ts';
+import { detectInitialVisibilityStateRule } from './detect-initial-visibility-state.ts';
+import { dialogRules } from './dialog.ts';
+import { formFieldsAutomaticallyFitContentsRule } from './form-fields-automatically-fit-contents.ts';
+import { imeSafeEnterSubmitRule } from './ime-safe-enter-submit.ts';
+import { individualTransformPropertiesRule } from './individual-transform-properties.ts';
+import { manageRecurringIntervalsRules } from './manage-recurring-intervals.ts';
+import { preventPageScrollUnderModalDialogRules } from './prevent-page-scroll-under-modal-dialog.ts';
 import {
   resilientContextMenusAndNestedDropdownsRule,
   resilientContextMenusAndNestedDropdownsPositioningRule,
-  resilientContextMenusAndNestedDropdownsRules,
 } from './resilient-context-menus-and-nested-dropdowns.ts';
-import {
-  scheduleTasksByPriorityRule,
-} from './schedule-tasks-by-priority.ts';
-import {
-  scrollspyRule,
-  scrollspyJsRule,
-  scrollspyRules,
-} from './scrollspy.ts';
-import {
-  shadowDomRule,
-  shadowDomJsRule,
-  shadowDomRules,
-} from './shadow-dom.ts';
-import {
-  sizeAwareStylingRule,
-  sizeAwareStylingRules,
-} from './size-aware-styling.ts';
-import {
-  stackDrillDownRule,
-} from './stack-drill-down.ts';
+import { scheduleTasksByPriorityRule } from './schedule-tasks-by-priority.ts';
+import { scrollspyRules } from './scrollspy.ts';
+import { shadowDomRules } from './shadow-dom.ts';
+import { sizeAwareStylingRules } from './size-aware-styling.ts';
+import { stackDrillDownRule } from './stack-drill-down.ts';
 
 export * from './accessible-error-announcement.ts';
 export * from './adapt-scrollbar-to-contrast-preferences.ts';

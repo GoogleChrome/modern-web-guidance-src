@@ -112,8 +112,6 @@ describe('blind card formatting & request construction', () => {
         before: 'Old workaround syntax',
         now: 'New platform feature',
         ruleSummary: 'Flag legacy workaround X in user forms',
-        keepWhen: ['Input is part of login flow', 'No native attribute provided'],
-        dropWhen: ['Disabled input', 'Handled by framework'],
       },
       codeSnippet: 'const oldWay = true;',
     };
@@ -122,8 +120,8 @@ describe('blind card formatting & request construction', () => {
     assert.match(prompt, /## Brownfield Workarounds Target \(What this guide replaces\)/);
     assert.match(prompt, /- Target: Flag legacy workaround X in user forms/);
     assert.match(prompt, /- Legacy Pattern \(Before\): Old workaround syntax/);
-    assert.match(prompt, /- Keep when:\n  \* Input is part of login flow\n  \* No native attribute provided/);
-    assert.match(prompt, /- Drop when \(do NOT flag\):\n  \* Disabled input\n  \* Handled by framework/);
+    assert.doesNotMatch(prompt, /- Keep when:/);
+    assert.doesNotMatch(prompt, /- Drop when/);
   });
 });
 

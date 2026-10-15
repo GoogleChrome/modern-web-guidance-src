@@ -356,9 +356,13 @@ describe('checkStructuralIntegrity', () => {
 });
 
 describe('validateFixPatch (3-Gate Grader)', () => {
-  const dialogFixture = getSeededSensitivityTestCases().find(
+  const foundFixture = getSeededSensitivityTestCases().find(
     (fx) => fx.guideId === 'dialog',
-  )!;
+  );
+  if (!foundFixture) {
+    throw new Error('dialog fixture missing from seeded sensitivity cases');
+  }
+  const dialogFixture = foundFixture;
 
   it('Gate 1 fails on no-op patch (legacy finding remains)', async () => {
     const patch: FixPatch = {
@@ -463,18 +467,22 @@ describe('validateFixPatch (3-Gate Grader)', () => {
     };
 
     const res = await validateFixPatch(patch);
-    assert.strictEqual(res.resolved, true);
+    assert.strictEqual(res.staticResolved, true);
+    assert.strictEqual(res.resolved, false);
     assert.strictEqual(res.gate1.passed, true);
+    assert.strictEqual(res.gate3.status, 'SKIPPED_NO_TEST_HARNESS');
   });
 });
 
 describe('runBadPatchSensitivitySuite', () => {
-  it('covers all 25 qualified guides', () => {
+  it('covers all 25 qualified guides', async (t) => {
     const fixtures = getSeededSensitivityTestCases();
     assert.strictEqual(fixtures.length, 25);
     const fixtureGuideIds = new Set(fixtures.map((f) => f.guideId));
     for (const gid of QUALIFIED_GUIDE_IDS) {
-      assert.ok(fixtureGuideIds.has(gid), `Missing fixture for qualified guide ${gid}`);
+      await t.test(`fixture for ${gid}`, () => {
+        assert.ok(fixtureGuideIds.has(gid), `Missing fixture for qualified guide ${gid}`);
+      });
     }
   });
 

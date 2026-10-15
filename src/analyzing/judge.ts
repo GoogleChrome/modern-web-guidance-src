@@ -1,5 +1,8 @@
+/* oxlint-disable max-lines-per-function, max-depth */
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+
+export const JUDGE_VERSION = 'gemini-3.8-flash:detective-v4-guide-only';
 import {
   CALIBRATION_DECK_PATH,
   CARDS_DIR,
@@ -66,8 +69,6 @@ export interface GuideSummaryInfo {
   markdownBody?: string;
   oldWayExamples?: string[];
   ruleSummary?: string;
-  keepWhen?: readonly string[];
-  dropWhen?: readonly string[];
 }
 
 export interface BlindCardPayload {
@@ -179,30 +180,13 @@ export function formatBlindCardPrompt(card: BlindCardPayload): string {
   let brownfieldNote = '';
   if (BROWNFIELD_GUIDE_RUBRIC[card.guideId]) {
     brownfieldNote = `\n## Brownfield Workarounds Target (What this guide replaces)\n${BROWNFIELD_GUIDE_RUBRIC[card.guideId]}\n`;
-  } else if (
-    card.guideSummary.ruleSummary ||
-    card.guideSummary.before ||
-    (card.guideSummary.keepWhen && card.guideSummary.keepWhen.length > 0) ||
-    (card.guideSummary.dropWhen && card.guideSummary.dropWhen.length > 0)
-  ) {
+  } else if (card.guideSummary.ruleSummary || card.guideSummary.before) {
     const parts: string[] = [];
     if (card.guideSummary.ruleSummary) {
       parts.push(`- Target: ${card.guideSummary.ruleSummary}`);
     }
     if (card.guideSummary.before) {
       parts.push(`- Legacy Pattern (Before): ${card.guideSummary.before}`);
-    }
-    if (card.guideSummary.keepWhen && card.guideSummary.keepWhen.length > 0) {
-      parts.push('- Keep when:');
-      for (const item of card.guideSummary.keepWhen) {
-        parts.push(`  * ${item}`);
-      }
-    }
-    if (card.guideSummary.dropWhen && card.guideSummary.dropWhen.length > 0) {
-      parts.push('- Drop when (do NOT flag):');
-      for (const item of card.guideSummary.dropWhen) {
-        parts.push(`  * ${item}`);
-      }
     }
     if (parts.length > 0) {
       brownfieldNote = `\n## Brownfield Workarounds Target (What this guide replaces)\n${parts.join('\n')}\n`;
@@ -394,7 +378,9 @@ export function getGeminiApiKey(options?: JudgeRunOptions): string {
   if (!process.env.GEMINI_API_KEY) {
     try {
       process.loadEnvFile?.(join(WORKTREE_ROOT, '.env'));
-    } catch {}
+    } catch {
+      /* ignore missing .env */
+    }
   }
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
@@ -864,7 +850,9 @@ export async function findGuideMarkdownPath(
           try {
             await readFile(guideFile, 'utf8');
             return guideFile;
-          } catch {}
+          } catch {
+            /* ignore unreadable guide file */
+          }
         }
         const found = await search(fullPath);
         if (found) return found;
@@ -1044,6 +1032,7 @@ export async function loadGuideSummariesMap(
       }
       return map;
     } catch {
+      /* ignore invalid JSON */
       return map;
     }
   }
@@ -1058,7 +1047,9 @@ export async function loadGuideSummariesMap(
           const content = await readFile(guidePath, 'utf8');
           const summary = parseGuideSummaryMarkdown(content, entry.name);
           map.set(entry.name, summary);
-        } catch {}
+        } catch {
+          /* ignore unreadable guide */
+        }
         await walk(fullPath);
       }
     }
@@ -1104,7 +1095,9 @@ export async function loadPaulIrishScoredCards(
             allCardsMap.set(c.cardId, c);
           }
         }
-      } catch {}
+      } catch {
+        /* ignore invalid cards json */
+      }
     }
   }
 

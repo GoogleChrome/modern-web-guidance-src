@@ -1,4 +1,5 @@
-import { Node, SyntaxKind, type CallExpression, type FunctionLikeDeclaration, type JsxAttribute, type SourceFile } from 'ts-morph';
+/* oxlint-disable max-lines-per-function, max-depth */
+import { Node, SyntaxKind, type CallExpression, type JsxAttribute, type SourceFile } from 'ts-morph';
 import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 import { unwrapExpression } from '../scanners/ast-helpers.ts';
 

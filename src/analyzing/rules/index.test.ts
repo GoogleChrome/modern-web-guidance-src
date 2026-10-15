@@ -9,7 +9,7 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing all 40 rules across the 32 detectable guides', () => {
+  it('exports PILOT_RULES containing all 40 rules across the 32 detectable guides', async (t) => {
     assert.strictEqual(PILOT_RULES.length, 40);
     assert.strictEqual(ALL_RULES.length, 40);
 
@@ -54,18 +54,20 @@ describe('rules/index export registry', () => {
     );
 
     for (const rule of PILOT_RULES) {
-      assert.ok(rule.id, 'rule has id');
-      assert.ok(rule.guideId, 'rule has guideId');
-      assert.ok(rule.guideHash, 'rule has guideHash');
-      assert.strictEqual(rule.guideHash.length, 12, 'guideHash is 12 chars');
-      assert.ok(rule.summary, 'rule has summary');
-      assert.ok(rule.matcher, 'rule has matcher');
-      assert.ok(rule.phase2Rubric.keepWhen.length > 0, 'has keepWhen');
-      assert.ok(rule.phase2Rubric.dropWhen.length > 0, 'has dropWhen');
+      await t.test(`validates rule ${rule.id}`, () => {
+        assert.ok(rule.id, 'rule has id');
+        assert.ok(rule.guideId, 'rule has guideId');
+        assert.ok(rule.guideHash, 'rule has guideHash');
+        assert.strictEqual(rule.guideHash.length, 12, 'guideHash is 12 chars');
+        assert.ok(rule.summary, 'rule has summary');
+        assert.ok(rule.matcher, 'rule has matcher');
+        assert.ok(rule.phase2Rubric.keepWhen.length > 0, 'has keepWhen');
+        assert.ok(rule.phase2Rubric.dropWhen.length > 0, 'has dropWhen');
+      });
     }
   });
 
-  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 25 guides excluding 7 experimental', () => {
+  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 25 guides excluding 7 experimental', async (t) => {
     assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 25);
     const qualifiedGuideSet = new Set(QUALIFIED_GUIDE_IDS);
     assert.strictEqual(qualifiedGuideSet.size, 25);
@@ -85,7 +87,9 @@ describe('rules/index export registry', () => {
       'defer-work-until-scroll-ends',
     ];
     for (const exp of experimentalGuides) {
-      assert.strictEqual(qualifiedGuideSet.has(exp), false, `${exp} should not be in qualified guides`);
+      await t.test(`excludes experimental guide ${exp}`, () => {
+        assert.strictEqual(qualifiedGuideSet.has(exp), false, `${exp} should not be in qualified guides`);
+      });
     }
 
     assert.deepStrictEqual(POST_SELECTION_TUNED_GUIDE_IDS, [

@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines-per-function, max-depth */
 import { Node, SyntaxKind, type CallExpression, type SourceFile } from 'ts-morph';
 import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 import { isProtectedByFeatureGuard, unwrapExpression } from '../scanners/ast-helpers.ts';

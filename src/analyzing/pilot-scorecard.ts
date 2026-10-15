@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines-per-function, max-depth */
 import { createHash } from 'node:crypto';
 import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -9,6 +10,7 @@ import {
   loadPaulIrishScoredCards,
   prepareBlindCards,
   runJudgeDirect,
+  JUDGE_VERSION,
   type BlindCardPayload,
   type CalibrationDeckItem,
   type CanaryCard,
@@ -17,6 +19,7 @@ import {
   type JudgeEvaluationMetrics,
   type JudgeResult,
   type JudgeRunOptions,
+  type JudgeVerdict,
   type StabilityEvaluationResult,
 } from './judge.ts';
 import {
@@ -50,7 +53,6 @@ import {
   type BinomialInterval,
   type SequentialStopDecision,
   Z_95,
-  Z_SEQUENTIAL_STOPPING,
 } from './stats.ts';
 
 export const Z_80 = 1.28155;
@@ -173,7 +175,7 @@ export type PilotGuideId = (typeof PILOT_GUIDE_IDS)[number];
 export const SYNTHETIC_CANARY_CARDS: readonly BlindCardPayload[] = [
   {
     cardId: 'canary-neg-already-modern',
-    repo: 'synthetic-canary',
+    repo: 'open-web-calendar',
     file: 'src/components/accordion.css',
     line: 12,
     guideId: 'animate-to-intrinsic-sizes',
@@ -183,8 +185,7 @@ export const SYNTHETIC_CANARY_CARDS: readonly BlindCardPayload[] = [
       before: 'transition: max-height 0.5s ease',
       now: 'interpolate-size: allow-keywords; transition: height 0.5s ease;',
     },
-    codeSnippet: `/* Negative Canary: Already Modern */
-:root {
+    codeSnippet: `:root {
   interpolate-size: allow-keywords;
 }
 
@@ -196,7 +197,7 @@ export const SYNTHETIC_CANARY_CARDS: readonly BlindCardPayload[] = [
   },
   {
     cardId: 'canary-neg-shadowed-global',
-    repo: 'synthetic-canary',
+    repo: 'todomvc-app',
     file: 'src/utils/logger.ts',
     line: 8,
     guideId: 'coordinate-global-events',
@@ -206,15 +207,14 @@ export const SYNTHETIC_CANARY_CARDS: readonly BlindCardPayload[] = [
       before: 'moment.tz(d, "America/New_York") or Date.prototype.getTimezoneOffset()',
       now: 'Temporal.ZonedDateTime',
     },
-    codeSnippet: `// Negative Canary: Parameter shadows moment; not a timezone conversion
-function logTimestampWithMoment(moment: { name: string; tz: string; timestamp: number }): string {
+    codeSnippet: `function logTimestampWithMoment(moment: { name: string; tz: string; timestamp: number }): string {
   const tz = moment.tz ?? 'UTC';
   return \`[\${moment.name}] \${moment.timestamp} (\${tz})\`;
 }`,
   },
   {
     cardId: 'canary-neg-feature-guarded',
-    repo: 'synthetic-canary',
+    repo: 'components-ui',
     file: 'src/ui/modal-trigger.ts',
     line: 10,
     guideId: 'declarative-dialog-popover-control',
@@ -224,8 +224,7 @@ function logTimestampWithMoment(moment: { name: string; tz: string; timestamp: n
       before: 'btn.addEventListener("click", () => dialog.showModal())',
       now: '<button commandfor="my-dialog" command="show-modal">',
     },
-    codeSnippet: `// Negative Canary: Intentional legacy fallback protected by feature guard
-if ('commandForElement' in HTMLButtonElement.prototype) {
+    codeSnippet: `if ('commandForElement' in HTMLButtonElement.prototype) {
   openButton.commandForElement = targetDialog;
   openButton.command = 'show-modal';
 } else {
@@ -402,7 +401,8 @@ export function stratifiedSampleFindings(
 
   const sortedRepos = Array.from(byRepo.keys()).sort();
   for (const r of sortedRepos) {
-    const list = byRepo.get(r)!;
+    const list = byRepo.get(r);
+    if (!list) continue;
     list.sort((a, b) => {
       const cmpFile = a.file.localeCompare(b.file);
       if (cmpFile !== 0) return cmpFile;
@@ -420,8 +420,8 @@ export function stratifiedSampleFindings(
       if (sampled.length >= targetCount) {
         break;
       }
-      const list = byRepo.get(r)!;
-      const idx = repoIndices.get(r)!;
+      const list = byRepo.get(r) ?? [];
+      const idx = repoIndices.get(r) ?? 0;
       if (idx < list.length) {
         sampled.push(list[idx]);
         repoIndices.set(r, idx + 1);
@@ -608,13 +608,7 @@ export async function runPilotScorecard(
     const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
     const enrichedSummary: GuideSummaryInfo = {
       ...summary,
-      ...(rule
-        ? {
-            ruleSummary: rule.summary,
-            keepWhen: rule.phase2Rubric.keepWhen,
-            dropWhen: rule.phase2Rubric.dropWhen,
-          }
-        : {}),
+      ...(rule ? { ruleSummary: rule.summary } : {}),
     };
     return {
       cardId: finding.cardId,
@@ -663,8 +657,22 @@ export async function runPilotScorecard(
     consensusVerdicts.set(r.cardId, r);
   }
 
-  // 7. Verify canaries (Paul's 2 FPs + 3 synthetic canaries)
-  const canaryResult: CanaryCheckResult = checkCanaries(stability.consensusResults, CANARY_CONFIG);
+  // 7. Verify canaries strictly on Paul's real human-labeled negative cards from grades.paulirish.jsonl (R13)
+  const realHumanNegatives: CanaryCard[] = [];
+  for (const [cardId, verdict] of humanVerdicts.entries()) {
+    if (verdict !== 'right' && verdict !== 'unsure') {
+      realHumanNegatives.push({
+        cardId,
+        expectedVerdict: verdict as JudgeVerdict,
+        description: `Paul Irish human-labeled negative (${verdict})`,
+      });
+    }
+  }
+
+  const canaryResult: CanaryCheckResult = checkCanaries(
+    stability.consensusResults,
+    realHumanNegatives.length > 0 ? realHumanNegatives : CANARY_CONFIG,
+  );
   if (canaryResult.tnr < 1.0) {
     throw new Error(
       `Canary TNR failed: ${canaryResult.tnr * 100}% (expected 100%). Violations: ${JSON.stringify(canaryResult.violations)}`,
@@ -688,7 +696,7 @@ export async function runPilotScorecard(
     if (verdict === 'right') {
       const card = scoredCards.find((c) => c.cardId === cardId);
       if (card && scoredCardsByGuide.has(card.guideId)) {
-        scoredCardsByGuide.get(card.guideId)!.push(cardId);
+        scoredCardsByGuide.get(card.guideId)?.push(cardId);
       }
     }
   }
@@ -824,7 +832,7 @@ export async function runPilotScorecard(
   const ruleSetHash = await computeRuleSetHash(rulesDir);
   const splitHash = await computeFileHash(reposPath);
   const gradesHash = await computeFileHash(gradesPath);
-  const judgeVersion = `gemini-3.8-flash:detective-v3-direct`;
+  const judgeVersion = JUDGE_VERSION;
 
   const coverageMetric: MetricEntry = {
     value: Number((clearedBarCount / targetGuideIds.length).toFixed(4)),
@@ -1007,7 +1015,7 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
     `  Held-out Precision:${(report.summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}% (${report.summary.pooledHeldoutPrecision.successes}/${report.summary.pooledHeldoutPrecision.total}, 95% CI [${(report.summary.pooledHeldoutPrecision.wilson95.lower * 100).toFixed(1)}% - ${(report.summary.pooledHeldoutPrecision.wilson95.upper * 100).toFixed(1)}%])`,
   );
   lines.push(
-    `  Overall Precision: ${(report.summary.overallPrecision.value * 100).toFixed(1)}% [${(report.summary.overallPrecision.lower! * 100).toFixed(1)}% - ${(report.summary.overallPrecision.upper! * 100).toFixed(1)}%]`,
+    `  Overall Precision: ${(report.summary.overallPrecision.value * 100).toFixed(1)}% [${((report.summary.overallPrecision.lower ?? 0) * 100).toFixed(1)}% - ${((report.summary.overallPrecision.upper ?? 0) * 100).toFixed(1)}%]`,
   );
   lines.push(
     `  Overall Recall:    ${(report.summary.overallRecall.value * 100).toFixed(1)}% (n=${report.summary.overallRecall.n})`,
