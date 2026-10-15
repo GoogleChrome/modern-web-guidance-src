@@ -133,10 +133,10 @@ async function fetchWithRetry(
   url: string,
   options: RequestInit,
   customFetch: typeof fetch,
-  maxRetries = 4,
+  maxRetries = 8,
 ): Promise<Response> {
   let attempt = 0;
-  let delayMs = 1000;
+  let delayMs = 1500;
 
   while (true) {
     attempt++;
@@ -150,15 +150,15 @@ async function fetchWithRetry(
           res.status === 504) &&
         attempt <= maxRetries
       ) {
-        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 500));
-        delayMs *= 2;
+        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 1000));
+        delayMs = Math.min(delayMs * 2, 16000);
         continue;
       }
       return res;
     } catch (err: unknown) {
       if (attempt <= maxRetries) {
-        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 500));
-        delayMs *= 2;
+        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 1000));
+        delayMs = Math.min(delayMs * 2, 16000);
         continue;
       }
       throw err;
@@ -192,7 +192,7 @@ export async function runPhase2Filter(
   const apiKey = getGeminiApiKey(options);
   const customFetch = options?.fetchFn ?? fetch;
   const model = options?.model ?? PHASE2_MODEL;
-  const maxRetries = options?.maxRetries ?? 4;
+  const maxRetries = options?.maxRetries ?? 8;
   const concurrency = Math.max(1, options?.concurrency ?? 5);
 
   const verdicts: Phase2Verdict[] = Array.from({ length: findings.length });

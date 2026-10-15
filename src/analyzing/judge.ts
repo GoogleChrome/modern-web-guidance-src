@@ -375,28 +375,32 @@ async function fetchWithRetry(
   url: string,
   options: RequestInit,
   customFetch: typeof fetch,
-  maxRetries = 4,
+  maxRetries = 8,
 ): Promise<Response> {
   let attempt = 0;
-  let delayMs = 1000;
+  let delayMs = 1500;
 
   while (true) {
     attempt++;
     try {
       const res = await customFetch(url, options);
       if (
-        (res.status === 429 || res.status === 500 || res.status === 502 || res.status === 503) &&
+        (res.status === 429 ||
+          res.status === 500 ||
+          res.status === 502 ||
+          res.status === 503 ||
+          res.status === 504) &&
         attempt <= maxRetries
       ) {
-        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 500));
-        delayMs *= 2;
+        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 1000));
+        delayMs = Math.min(delayMs * 2, 16000);
         continue;
       }
       return res;
     } catch (err: unknown) {
       if (attempt <= maxRetries) {
-        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 500));
-        delayMs *= 2;
+        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 1000));
+        delayMs = Math.min(delayMs * 2, 16000);
         continue;
       }
       throw err;
