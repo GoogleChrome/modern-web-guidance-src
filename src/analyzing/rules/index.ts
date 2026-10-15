@@ -4,6 +4,7 @@ import {
 } from './animate-element-entry-exit.ts';
 import {
   animateToIntrinsicSizesRule,
+  animateToIntrinsicSizesJsRule,
   animateToIntrinsicSizesRules,
 } from './animate-to-intrinsic-sizes.ts';
 import {
@@ -28,6 +29,7 @@ export * from './declarative-dialog-popover-control.ts';
 export const PILOT_RULES: readonly AnalyzerRule[] = [
   autofillSignInFormRule,
   animateToIntrinsicSizesRule,
+  animateToIntrinsicSizesJsRule,
   declarativeDialogPopoverControlRule,
   declarativeDialogPopoverControlClickListenerRule,
   animateElementEntryExitRule,

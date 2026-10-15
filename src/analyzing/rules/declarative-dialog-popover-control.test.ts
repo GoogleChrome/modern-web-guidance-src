@@ -65,6 +65,34 @@ void test('declarative-dialog-popover-control DOM: positive brownfield matches',
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 4);
   });
+
+  await t.test('flags data-dismiss="modal" and data-bs-dismiss="modal" triggers', () => {
+    const html = `
+      <div class="modal">
+        <button type="button" data-dismiss="modal">Close</button>
+        <button type="button" data-bs-dismiss="modal">Dismiss</button>
+      </div>
+    `;
+    const matches = scanHtml('dismiss.html', html, [domMatcher]);
+    assert.equal(matches.length, 2);
+    assert.equal(matches[0]?.line, 3);
+    assert.match(matches[0]?.message ?? '', /command="close"/);
+    assert.equal(matches[1]?.line, 4);
+  });
+
+  await t.test('flags data-dismiss="popover" and data-bs-dismiss="popover" triggers', () => {
+    const html = `
+      <div class="popover">
+        <button type="button" data-dismiss="popover">Close</button>
+        <button type="button" data-bs-dismiss="popover">Dismiss</button>
+      </div>
+    `;
+    const matches = scanHtml('dismiss-popover.html', html, [domMatcher]);
+    assert.equal(matches.length, 2);
+    assert.equal(matches[0]?.line, 3);
+    assert.match(matches[0]?.message ?? '', /hide-popover/);
+    assert.equal(matches[1]?.line, 4);
+  });
 });
 
 void test('declarative-dialog-popover-control DOM: negative / exempt cases', async (t) => {
@@ -164,6 +192,51 @@ void test('declarative-dialog-popover-control JS: positive click listener matche
     const { matches } = scanJsSource('app.js', js, [jsMatcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
+  });
+
+  await t.test('flags click listener calling showPopover() or hidePopover()', () => {
+    const js = `
+      openBtn.addEventListener('click', () => {
+        tooltip.showPopover();
+      });
+      closeBtn.addEventListener('click', () => {
+        tooltip.hidePopover();
+      });
+    `;
+    const { matches } = scanJsSource('popover.js', js, [jsMatcher]);
+    assert.equal(matches.length, 2);
+    assert.equal(matches[0]?.line, 2);
+    assert.equal(matches[1]?.line, 5);
+  });
+
+  await t.test('flags standalone jQuery modal("show"), modal("hide"), modal("toggle") calls', () => {
+    const js = `
+      function triggerModals() {
+        $('#merge-products-modal').modal('show');
+        $('#delete-confirm-modal').modal('hide');
+        $('#toggle-modal').modal('toggle');
+      }
+    `;
+    const { matches } = scanJsSource('modals.js', js, [jsMatcher]);
+    assert.equal(matches.length, 3);
+    assert.equal(matches[0]?.line, 3);
+    assert.equal(matches[1]?.line, 4);
+    assert.equal(matches[2]?.line, 5);
+  });
+
+  await t.test('flags standalone jQuery popover("show"), popover("hide"), popover("toggle") calls', () => {
+    const js = `
+      function triggerPopovers() {
+        $('#user-popover').popover('show');
+        $('#user-popover').popover('hide');
+        $('#user-popover').popover('toggle');
+      }
+    `;
+    const { matches } = scanJsSource('popovers.js', js, [jsMatcher]);
+    assert.equal(matches.length, 3);
+    assert.equal(matches[0]?.line, 3);
+    assert.equal(matches[1]?.line, 4);
+    assert.equal(matches[2]?.line, 5);
   });
 });
 

@@ -38,6 +38,89 @@ function isChainedUtcLocal(callExpr: CallExpression): boolean {
   return false;
 }
 
+const MULTI_TIMEZONE_REGEX =
+  /(time_?zone|timezone|iana|target_?tz|dest_?tz|source_?tz|utc_?offset|tz_?offset|dst_?offset|zone_?name)/i;
+
+const RELATIVE_TIME_OR_EXCLUDED_FN_REGEX =
+  /(time_?ago|from_?now|time_?since|duration|elapsed|cookie)/i;
+
+function hasMultiTimezoneContext(callExpr: CallExpression): boolean {
+  let stmt: Node | undefined = callExpr;
+  while (stmt && !Node.isStatement(stmt)) {
+    stmt = stmt.getParent();
+  }
+
+  const stmtText = stmt ? stmt.getText() : '';
+
+  // 1. Drop simple .toISOString() local date formatting
+  if (stmtText.includes('.toISOString()')) {
+    return false;
+  }
+
+  // 2. Drop .setMinutes() or .setUTCMinutes() or .setHours() local shifting
+  if (
+    stmtText.includes('.setMinutes(') ||
+    stmtText.includes('.setUTCMinutes(') ||
+    stmtText.includes('.setHours(')
+  ) {
+    return false;
+  }
+
+  // 3. Drop cookie expiration / toUTCString
+  if (stmtText.includes('cookie') || stmtText.includes('.toUTCString()')) {
+    return false;
+  }
+
+  // 4. Find enclosing function or scope
+  let fn: Node | undefined = callExpr;
+  while (fn) {
+    if (
+      Node.isFunctionDeclaration(fn) ||
+      Node.isFunctionExpression(fn) ||
+      Node.isArrowFunction(fn) ||
+      Node.isMethodDeclaration(fn)
+    ) {
+      break;
+    }
+    fn = fn.getParent();
+  }
+
+  if (fn) {
+    if (
+      Node.isFunctionDeclaration(fn) ||
+      Node.isMethodDeclaration(fn)
+    ) {
+      const fnName = fn.getName() ?? '';
+      if (RELATIVE_TIME_OR_EXCLUDED_FN_REGEX.test(fnName)) {
+        return false;
+      }
+    }
+
+    const fnText = fn.getText();
+    if (RELATIVE_TIME_OR_EXCLUDED_FN_REGEX.test(fnText)) {
+      if (
+        fnText.includes('timeAgo') ||
+        fnText.includes('fromNow') ||
+        fnText.includes('timeSince')
+      ) {
+        return false;
+      }
+    }
+
+    // Check for explicit multi-timezone tokens in the function/statement
+    if (MULTI_TIMEZONE_REGEX.test(fnText)) {
+      return true;
+    }
+  }
+
+  // At statement level (e.g. const TIMEZONE_OFFSET = new Date().getTimezoneOffset() * 60 * 1000)
+  if (stmt && MULTI_TIMEZONE_REGEX.test(stmtText)) {
+    return true;
+  }
+
+  return false;
+}
+
 function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(expr)) {
@@ -51,6 +134,9 @@ function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
   // 1. getTimezoneOffset()
   if (methodName === 'getTimezoneOffset') {
     if (isProtectedByFeatureGuard(callExpr, TEMPORAL_GUARD_TOKENS)) {
+      return null;
+    }
+    if (!hasMultiTimezoneContext(callExpr)) {
       return null;
     }
     return {
@@ -126,13 +212,16 @@ export const coordinateGlobalEventsRule: AnalyzerRule = {
   matcher: coordinateGlobalEventsMatcher,
   phase2Rubric: {
     keepWhen: [
-      'Manual timezone offset math using Date.prototype.getTimezoneOffset() to convert timestamps across timezones.',
-      'Legacy timezone library calls (such as moment.tz, moment().tz, or moment.utc().local()) used to coordinate or format dates in specific IANA time zones.',
-      'Converting or formatting timestamps across different geographical timezones without standard Temporal.ZonedDateTime or Intl.DateTimeFormat timeZone option.',
+      'Manual timezone offset math using Date.prototype.getTimezoneOffset() specifically to convert timestamps across different geographical time zones or against target IANA time zones.',
+      'Legacy timezone library calls (such as moment.tz, moment().tz, or moment.utc().local()) used to coordinate, convert, or format dates in specific IANA time zones.',
+      'Converting or scheduling calendar events, meetings, or timestamps across multiple time zones without Temporal.ZonedDateTime or Intl.DateTimeFormat timeZone option.',
     ],
     dropWhen: [
+      'Local ISO string formatting using .toISOString() (e.g., new Date(d - d.getTimezoneOffset() * 60000).toISOString()).',
+      'Local time shifting via setMinutes(d.getMinutes() - d.getTimezoneOffset()) or calendar date-picker local day alignment.',
+      'Relative time calculations, elapsed duration deltas, or "time ago" formatting (e.g., timeAgo, fromNow, timeSince).',
+      'Single-timezone local UI display, local clock display, or cookie expiration calculation.',
       'Code already protected by a feature guard checking for native Temporal support.',
-      'Generic UTC formatting (e.g. toISOString() or Date.UTC()) not doing timezone conversion or coordination.',
       'Internal polyfills or ponyfills implementing Temporal itself.',
     ],
   },

@@ -89,6 +89,82 @@ describe('coordinate-global-events rule', () => {
     assert.equal(matches.length, 0);
   });
 
+  test('flags real-world pdfjs annotation_layer.js TIMEZONE_OFFSET fixture', () => {
+    const code = `
+      const TIMEZONE_OFFSET = new Date().getTimezoneOffset() * 60 * 1000;
+    `;
+    const { matches } = scanJsSource(
+      'display/annotation_layer.js',
+      code,
+      [coordinateGlobalEventsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /getTimezoneOffset/);
+  });
+
+  test('ignores local ISO string formatting using toISOString()', () => {
+    const code = `
+      function formatLocalIso(date) {
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
+      }
+    `;
+    const { matches } = scanJsSource(
+      'time/iso.js',
+      code,
+      [coordinateGlobalEventsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores local minute shifting using setMinutes()', () => {
+    const code = `
+      function adjustLocal(date) {
+        date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+        return date;
+      }
+    `;
+    const { matches } = scanJsSource(
+      'time/shift.js',
+      code,
+      [coordinateGlobalEventsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores relative time / timeAgo calculations', () => {
+    const code = `
+      function timeAgo(date) {
+        const diff = Date.now() - date.getTime() + date.getTimezoneOffset() * 60000;
+        return Math.floor(diff / 60000) + ' minutes ago';
+      }
+    `;
+    const { matches } = scanJsSource(
+      'time/timeAgo.js',
+      code,
+      [coordinateGlobalEventsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores cookie expiration with toUTCString()', () => {
+    const code = `
+      function setAuthCookie(date) {
+        document.cookie = 'token=123; expires=' + new Date(date - date.getTimezoneOffset() * 60000).toUTCString();
+      }
+    `;
+    const { matches } = scanJsSource(
+      'auth/cookie.js',
+      code,
+      [coordinateGlobalEventsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
   test('ignores generic Date calls not involving timezone offset or moment.tz', () => {
     const code = `
       function getNow() {

@@ -43,7 +43,7 @@ void test('autofill-sign-in-form: positive brownfield matches', async (t) => {
     assert.equal(matches[0]?.line, 3);
   });
 
-  await t.test('flags real-world grocy login.blade.php template fixture', () => {
+  await t.test('flags real-world grocy login.blade.php template fixture (both username and password)', () => {
     const grocyBlade = `
       <form method="post" action="{{ $U('/login') }}" id="login-form" novalidate>
         <div class="form-group">
@@ -58,11 +58,14 @@ void test('autofill-sign-in-form: positive brownfield matches', async (t) => {
       </form>
     `;
     const matches = scanHtml('views/login.blade.php', grocyBlade, [matcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 9);
+    assert.equal(matches.length, 2);
+    assert.equal(matches[0]?.line, 5);
+    assert.match(matches[0]?.message ?? '', /username/);
+    assert.equal(matches[1]?.line, 9);
+    assert.match(matches[1]?.message ?? '', /current-password/);
   });
 
-  await t.test('flags password input inside JSX form element', () => {
+  await t.test('flags both username and password inputs inside JSX form element', () => {
     const project = createInMemoryProject();
     const code = `
       export function LoginForm() {
@@ -77,8 +80,37 @@ void test('autofill-sign-in-form: positive brownfield matches', async (t) => {
     `;
     const sourceFile = project.createSourceFile('LoginForm.tsx', code);
     const matches = scanJsx('LoginForm.tsx', sourceFile, [matcher]);
+    assert.equal(matches.length, 2);
+    assert.equal(matches[0]?.line, 5);
+    assert.match(matches[0]?.message ?? '', /username/);
+    assert.equal(matches[1]?.line, 6);
+    assert.match(matches[1]?.message ?? '', /current-password/);
+  });
+
+  await t.test('flags companion username input when password already has valid autocomplete', () => {
+    const html = `
+      <form action="/login" method="post">
+        <input type="text" name="username" id="username">
+        <input type="password" name="pwd" autocomplete="current-password">
+      </form>
+    `;
+    const matches = scanHtml('login.html', html, [matcher]);
     assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 6);
+    assert.equal(matches[0]?.line, 3);
+    assert.match(matches[0]?.message ?? '', /username/);
+  });
+
+  await t.test('flags companion email input when password has valid autocomplete', () => {
+    const html = `
+      <form action="/login" method="post">
+        <input type="email" name="user_email">
+        <input type="password" name="pwd" autocomplete="new-password">
+      </form>
+    `;
+    const matches = scanHtml('login.html', html, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 3);
+    assert.match(matches[0]?.message ?? '', /email/);
   });
 });
 
@@ -87,6 +119,17 @@ void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
     const html = `
       <form action="/login" method="post">
         <input type="password" autocomplete="current-password" required>
+      </form>
+    `;
+    const matches = scanHtml('login.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts forms where both username and password have proper autocomplete', () => {
+    const html = `
+      <form action="/login" method="post">
+        <input type="text" name="username" autocomplete="username" required>
+        <input type="password" name="password" autocomplete="current-password" required>
       </form>
     `;
     const matches = scanHtml('login.html', html, [matcher]);

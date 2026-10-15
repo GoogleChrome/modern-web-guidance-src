@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
-import type { CssRuleMatcher } from '../schema.ts';
-import { animateToIntrinsicSizesRule } from './animate-to-intrinsic-sizes.ts';
+import { scanJsSource } from '../scanners/js-scanner.ts';
+import type { CssRuleMatcher, JsRuleMatcher } from '../schema.ts';
+import {
+  animateToIntrinsicSizesJsRule,
+  animateToIntrinsicSizesRule,
+} from './animate-to-intrinsic-sizes.ts';
 
 const matcher = animateToIntrinsicSizesRule.matcher as CssRuleMatcher;
+const jsMatcher = animateToIntrinsicSizesJsRule.matcher as JsRuleMatcher;
 
 void test('animate-to-intrinsic-sizes: positive brownfield matches', async (t) => {
   await t.test('flags rule with transition: max-height', () => {
@@ -164,6 +169,93 @@ void test('animate-to-intrinsic-sizes: negative / exempt cases', async (t) => {
       }
     `;
     const matches = scanCss('unrelated.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+});
+
+void test('animate-to-intrinsic-sizes JS: positive brownfield matches', async (t) => {
+  await t.test('flags accordion setting el.style.height = el.scrollHeight + "px"', () => {
+    const js = `
+      function togglePanel(panel) {
+        if (panel.classList.contains('expanded')) {
+          panel.style.height = '0px';
+        } else {
+          panel.style.height = panel.scrollHeight + 'px';
+        }
+      }
+    `;
+    const { matches } = scanJsSource('accordion.js', js, [jsMatcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 6);
+    assert.match(matches[0]?.message ?? '', /interpolate-size/);
+  });
+
+  await t.test('flags assignment with template literal and offsetHeight', () => {
+    const js = `
+      function expandDrawer(drawer) {
+        const h = drawer.offsetHeight;
+        drawer.style.maxHeight = \`\${h}px\`;
+      }
+    `;
+    const { matches } = scanJsSource('drawer.js', js, [jsMatcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 4);
+  });
+
+  await t.test('flags jQuery .css("height", el.scrollHeight + "px")', () => {
+    const js = `
+      function expandMenu($menu, el) {
+        $menu.css('height', el.scrollHeight + 'px');
+      }
+    `;
+    const { matches } = scanJsSource('menu.js', js, [jsMatcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 3);
+  });
+
+  await t.test('flags getBoundingClientRect().height assigned to style.height', () => {
+    const js = `
+      function openCollapsible(el) {
+        const rect = el.getBoundingClientRect();
+        el.style.height = rect.height + 'px';
+      }
+    `;
+    const { matches } = scanJsSource('collapsible.js', js, [jsMatcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 4);
+  });
+});
+
+void test('animate-to-intrinsic-sizes JS: negative / exempt cases', async (t) => {
+  await t.test('exempts textarea auto-resize on input event', () => {
+    const js = `
+      textarea.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
+      });
+    `;
+    const { matches } = scanJsSource('autosize.js', js, [jsMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts virtual-scroll viewport calculation', () => {
+    const js = `
+      function updateVirtualScroll(viewport, scroller, rowHeight, totalItems) {
+        const visibleItems = Math.ceil(viewport.scrollTop / rowHeight);
+        viewport.style.height = scroller.scrollHeight + 'px';
+      }
+    `;
+    const { matches } = scanJsSource('virtual-scroll.js', js, [jsMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts code protected by interpolate-size feature guard', () => {
+    const js = `
+      if (!CSS.supports('interpolate-size', 'allow-keywords')) {
+        panel.style.height = panel.scrollHeight + 'px';
+      }
+    `;
+    const { matches } = scanJsSource('guarded.js', js, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 });
