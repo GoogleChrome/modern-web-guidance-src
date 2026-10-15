@@ -110,7 +110,7 @@ export async function generateGroupedTasksManifest(outputDir = defaultOutputDir)
     fs.writeFileSync(outputPath, JSON.stringify({ guides: grouped }, null, 2));
 }
 
-/** @type {Record<string, string>} */
+/** @type {Record<string, string>} Category slugs whose title-casing isn't obvious. */
 const CATEGORY_TITLES = {
     'css': 'CSS',
     'html': 'HTML',
@@ -121,180 +121,72 @@ const CATEGORY_TITLES = {
     'ui-atoms': 'UI Atoms',
     'ui-behaviors': 'UI Behaviors',
     'ui-components': 'UI Components',
-    'visual-design': 'Visual Design'
 };
 
 /**
- * @param {string} cat
+ * @param {string} slug
  * @returns {string}
  */
-export function formatCategoryTitle(cat) {
-    if (CATEGORY_TITLES[cat]) return CATEGORY_TITLES[cat];
-    return cat.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+export function formatCategoryTitle(slug) {
+    return CATEGORY_TITLES[slug] ?? slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 /**
- * Scans guides for demo HTML files and produces demos.gen.json & demos.gen.js.
+ * Lists a guide dir's demo pages: demo.html first, then demo-*.html variants, then negative-demo.html.
+ * @param {string} guideDir absolute path
+ * @param {string} relDir path relative to guidesDir
+ */
+function listDemoFiles(guideDir, relDir) {
+    const files = fs.readdirSync(guideDir).filter(f => /^(demo|demo-.+|negative-demo)\.html$/.test(f)).sort();
+    const rank = (/** @type {string} */ f) => f === 'demo.html' ? 0 : f === 'negative-demo.html' ? 2 : 1;
+    return files.sort((a, b) => rank(a) - rank(b)).map(f => ({
+        id: f.slice(0, -'.html'.length),
+        path: `guides/${relDir.split(path.sep).join('/')}/${f}`,
+    }));
+}
+
+/**
+ * Scans guides for demo pages and writes demos.gen.json.
  */
 export function generateDemosManifest(outputDir = defaultOutputDir) {
-    if (!fs.existsSync(guidesDir)) {
-        throw new Error(`guidesDir not found at ${guidesDir}`);
-    }
     fs.mkdirSync(outputDir, { recursive: true });
 
-    /**
-     * @typedef {{
-     *   id: string;
-     *   label: string;
-     *   file: string;
-     *   path: string;
-     * }} DemoFile
-     * 
-     * @typedef {{
-     *   id: string;
-     *   slug: string;
-     *   category: string;
-     *   categoryTitle: string;
-     *   title: string;
-     *   description: string;
-     *   features: string[];
-     *   dir: string;
-     *   demos: DemoFile[];
-     * }} DemoGuide
-     */
+    const guides = fs.readdirSync(guidesDir, { recursive: true, encoding: 'utf8' })
+        // A guide is a dir with both guide.md and demo.html. Other demo.html files are assets of a parent
+        // guide's demo (e.g. pwa/migrate-web-app-origin/new-site/).
+        .filter(rel => path.basename(rel) === 'demo.html' && fs.existsSync(path.join(guidesDir, path.dirname(rel), 'guide.md')))
+        .map(rel => {
+            const relDir = path.dirname(rel);
+            const guideDir = path.join(guidesDir, relDir);
+            const { data, content } = matter(fs.readFileSync(path.join(guideDir, 'guide.md'), 'utf8'));
+            const category = relDir.split(path.sep)[0];
+            return {
+                id: path.basename(relDir),
+                category,
+                categoryTitle: formatCategoryTitle(category),
+                title: content.match(/^#\s+(.+)$/m)?.[1].trim() ?? path.basename(relDir),
+                description: String(data.description ?? ''),
+                features: /** @type {string[]} */ (data['web-feature-ids'] ?? []),
+                demos: listDemoFiles(guideDir, relDir),
+            };
+        })
+        .sort((a, b) => a.category.localeCompare(b.category) || a.title.localeCompare(b.title));
 
-    /** @type {DemoGuide[]} */
-    const guides = [];
-
-    /** @param {string} dir */
-    function scanGuides(dir) {
-        if (!fs.existsSync(dir)) return;
-        const items = fs.readdirSync(dir, { withFileTypes: true });
-        for (const item of items) {
-            if (item.isDirectory()) {
-                const subDir = path.join(dir, item.name);
-                const demoPath = path.join(subDir, 'demo.html');
-                if (fs.existsSync(demoPath)) {
-                    const guidePath = path.join(subDir, 'guide.md');
-                    let title = item.name;
-                    let description = '';
-                    /** @type {string[]} */
-                    let features = [];
-
-                    if (fs.existsSync(guidePath)) {
-                        try {
-                            const parsed = matter(fs.readFileSync(guidePath, 'utf8'));
-                            const titleMatch = parsed.content.match(/^#\s+(.+)$/m);
-                            if (titleMatch) title = titleMatch[1].trim();
-                            if (parsed.data) {
-                                description = parsed.data.description || '';
-                                if (Array.isArray(parsed.data['web-feature-ids'])) {
-                                    features = parsed.data['web-feature-ids'];
-                                }
-                            }
-                        } catch (err) {
-                            console.warn(`Failed to parse guide.md at ${guidePath}:`, err);
-                        }
-                    }
-
-                    const relDir = path.relative(guidesDir, subDir);
-                    const parts = relDir.split(path.sep);
-                    const category = parts[0];
-                    const guideSlug = parts.slice(1).join('/');
-                    const categoryTitle = formatCategoryTitle(category);
-
-                    const demoFiles = [];
-                    const filesInDir = fs.readdirSync(subDir);
-                    if (filesInDir.includes('demo.html')) {
-                        demoFiles.push({
-                            id: 'demo',
-                            label: 'Recommended',
-                            file: 'demo.html',
-                            path: `guides/${relDir}/demo.html`
-                        });
-                    }
-                    if (filesInDir.includes('negative-demo.html')) {
-                        demoFiles.push({
-                            id: 'negative-demo',
-                            label: 'Anti-Pattern',
-                            file: 'negative-demo.html',
-                            path: `guides/${relDir}/negative-demo.html`
-                        });
-                    }
-                    for (const f of filesInDir) {
-                        if (f.startsWith('demo-') && f.endsWith('.html')) {
-                            const variant = f.slice(5, -5).replace(/[-_]/g, ' ');
-                            demoFiles.push({
-                                id: f.slice(0, -5),
-                                label: variant.charAt(0).toUpperCase() + variant.slice(1),
-                                file: f,
-                                path: `guides/${relDir}/${f}`
-                            });
-                        }
-                    }
-
-                    guides.push({
-                        id: item.name,
-                        slug: guideSlug,
-                        category,
-                        categoryTitle,
-                        title,
-                        description,
-                        features,
-                        dir: `guides/${relDir}`,
-                        demos: demoFiles
-                    });
-                }
-                scanGuides(subDir);
-            }
-        }
-    }
-
-    scanGuides(guidesDir);
-
-    // Sort guides alphabetically by category, then by title
-    guides.sort((a, b) => {
-        if (a.category !== b.category) return a.category.localeCompare(b.category);
-        return a.title.localeCompare(b.title);
-    });
-
-    const categories = Array.from(new Set(guides.map(g => g.category)));
-    const manifest = {
-        count: guides.length,
-        categories,
-        guides
-    };
-
-    const jsonPath = path.join(outputDir, 'demos.gen.json');
-    fs.writeFileSync(jsonPath, JSON.stringify(manifest, null, 2));
-
-    const jsPath = path.join(outputDir, 'demos.gen.js');
-    fs.writeFileSync(jsPath, `// Automatically generated by generate-manifests.js. Do not edit.\nwindow.__demosManifest = ${JSON.stringify(manifest, null, 2)};\n`);
-
-    return manifest;
+    fs.writeFileSync(path.join(outputDir, 'demos.gen.json'), JSON.stringify({ guides }, null, 2));
+    return { guides };
 }
 
-const DEMO_STATIC_EXTS = new Set(['.html', '.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.json']);
+const DEMO_ASSET_EXTS = new Set(['.html', '.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.json']);
 
 /**
- * Recursively copies demo files and static assets from guides into the destination directory,
- * skipping test targets and hidden files.
+ * Filter for fs.cpSync: keep demo pages and their static assets; skip eval targets and dotfiles.
+ * Empty dirs may be created, but git (and thus gh-pages) ignores them.
  * @param {string} src
- * @param {string} dest
  */
-function copyDemoAssets(src, dest) {
-    if (!fs.existsSync(src)) return;
-    for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-        if (entry.name === 'targets' || entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-        const srcPath = path.join(src, entry.name);
-        const destPath = path.join(dest, entry.name);
-        if (entry.isDirectory()) {
-            copyDemoAssets(srcPath, destPath);
-        } else if (DEMO_STATIC_EXTS.has(path.extname(entry.name).toLowerCase())) {
-            fs.mkdirSync(dest, { recursive: true });
-            fs.copyFileSync(srcPath, destPath);
-        }
-    }
+function isDemoAsset(src) {
+    const name = path.basename(src);
+    if (name === 'targets' || name.startsWith('.')) return false;
+    return fs.statSync(src).isDirectory() || DEMO_ASSET_EXTS.has(path.extname(name).toLowerCase());
 }
 
 /**
@@ -323,10 +215,7 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
         }
     }
 
-    // Copy guide demo files and static assets into guides/
-    if (fs.existsSync(guidesDir)) {
-        copyDemoAssets(guidesDir, path.join(stageDir, 'guides'));
-    }
+    fs.cpSync(guidesDir, path.join(stageDir, 'guides'), { recursive: true, filter: isDemoAsset });
 }
 
 /**
