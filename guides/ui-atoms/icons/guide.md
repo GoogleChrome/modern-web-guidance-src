@@ -131,7 +131,7 @@ For a trailing icon, follow the same pattern with `--icon-end` and `::after` ins
 
 ### Standalone and icon-only elements
 
-For standalone icons or icon-only buttons, apply `.icon` directly to the empty element (the button itself for an icon-only control) and set its icon with `--icon`. The class forwards `--icon` to `--icon-start`:
+For standalone icons or icon-only buttons, apply `.icon` directly to the empty element (the button itself for an icon-only control) and set its icon with `--icon`. Here, `--icon` is the higher-level property; the `.icon:empty` rule maps it to `--icon-start` for a leading icon:
 
 ```css
 .icon:empty {
