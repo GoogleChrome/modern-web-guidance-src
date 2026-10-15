@@ -159,7 +159,7 @@ export function evaluateGuideQualification(
 export const PILOT_SCORECARD_PATH = join(
   ANALYZER_INTERNAL_DIR,
   'findings',
-  '2026-10-14-pilot-scorecard.json',
+  '2026-10-15-m3-rescore-scorecard.json',
 );
 
 export const PILOT_GUIDE_IDS = [
@@ -1036,7 +1036,11 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
  */
 export async function runPilotScorecardCli(): Promise<void> {
   const writeProgress = !process.argv.includes('--no-write-progress');
-  const report = await runPilotScorecard({ writeProgress });
+  const scorecardArg = process.argv.find(
+    (a) => a.startsWith('--out=') || a.startsWith('--scorecard='),
+  );
+  const scorecardPath = scorecardArg ? scorecardArg.split('=')[1] : PILOT_SCORECARD_PATH;
+  const report = await runPilotScorecard({ writeProgress, scorecardPath });
   console.log(formatPilotScorecardReport(report));
 }
 
