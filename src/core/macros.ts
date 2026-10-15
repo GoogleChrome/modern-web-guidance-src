@@ -93,7 +93,7 @@ defineFeatureMacro("FEATURE", {
 
 function formatFeatureHeadingName(name: string): string {
   // Wrap raw HTML tag names like `<select>` in backticks so they don't render as live HTML elements.
-  return name.replace(/<([a-zA-Z0-9:-]+)>/g, '`<$1>`');
+  return name.replace(/`?<([a-zA-Z0-9:-]+)>`?/g, '`<$1>`');
 }
 
 defineFeatureMacro("FEATURE_FALLBACKS", {
@@ -194,11 +194,11 @@ function processMacros(
  * @param filePath - The path to the file (for error reporting)
  * @returns Array of validation errors
  */
-export function validateMacros(content: string, filePath: string): string[] {
+export function validateMacros(content: string, filePath: string, options: { target?: BuildTarget } = {}): string[] {
   const errors: string[] = [];
   processMacros(content, (handler, args, match) => {
     try {
-      handler(args, filePath);
+      handler(args, filePath, options);
     } catch (err: any) {
       if (err instanceof MacroError) {
         errors.push(err.message);

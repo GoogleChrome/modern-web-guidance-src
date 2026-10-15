@@ -26,7 +26,8 @@ export interface StaticSiteGuideMetadata {
 }
 import { replaceMacros, type BuildTarget } from "../core/macros.ts";
 
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub } from "../core/guide-validation.ts";
+import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub, stripLeadingH1 } from "../core/guide-validation.ts";
+import { isTmpFeature } from "../core/feature-parser.ts";
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
 import { rootDir, outDir } from "../core/paths.ts";
@@ -299,6 +300,14 @@ export function chunkMarkdown(markdown: string): string[] {
   return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
+function writeBuiltGuide(category: string, id: string, content: string): string {
+  const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
+  fs.mkdirSync(buildCategoryDir, { recursive: true });
+  const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
+  fs.writeFileSync(buildFilePath, content);
+  return buildFilePath;
+}
+
 function requireTitle(title: unknown, filePath: string): string {
   if (typeof title !== "string" || !title.trim()) {
     throw new Error(`Guide has no H1 heading or frontmatter title: ${path.relative(WORKSPACE_ROOT, filePath)}`);
@@ -333,7 +342,7 @@ async function processSingleGuideFile(
     const h1Title = extractH1Heading(processedMarkdown);
     const title = requireTitle(h1Title || data.title, filePath);
     const featureIds: string[] = (data['web-feature-ids'] || []).filter(
-      (fid: string) => !fid.startsWith('tmp-')
+      (fid: string) => !isTmpFeature(fid)
     );
     const genericFrontmatter = `---
 title: ${JSON.stringify(title)}
@@ -346,16 +355,10 @@ web-feature-ids: ${JSON.stringify(featureIds)}
     if (resumedSteps.length > 0) {
       console.warn(`⚠️  ${path.relative(WORKSPACE_ROOT, filePath)}: folded unindented blocks into ordered lists (resumed at steps ${resumedSteps.join(", ")}).`);
     }
-    const bodyWithoutH1 = devsiteMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
+    const bodyWithoutH1 = stripLeadingH1(devsiteMarkdown);
     const finalContent = `${genericFrontmatter}\n\n# ${title}\n\n${bodyWithoutH1}\n`;
-
-    const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
-    if (!fs.existsSync(buildCategoryDir)) {
-      fs.mkdirSync(buildCategoryDir, { recursive: true });
-    }
-
-    const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
-    fs.writeFileSync(buildFilePath, finalContent);
+    const buildFilePath = writeBuiltGuide(category, id, finalContent);
+    console.log(`Exported static-site guide: ${path.relative(WORKSPACE_ROOT, buildFilePath)}`);
 
     if (staticSiteGuides) {
       staticSiteGuides.push({
@@ -404,15 +407,7 @@ web-feature-ids: ${JSON.stringify(featureIds)}
     });
   }
 
-  // Create category dir in build/guides
-  const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
-  if (!fs.existsSync(buildCategoryDir)) {
-    fs.mkdirSync(buildCategoryDir, { recursive: true });
-  }
-
-  // Write clean markdown to build dir
-  const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
-  fs.writeFileSync(buildFilePath, processedMarkdown.trimStart());
+  writeBuiltGuide(category, id, processedMarkdown.trimStart());
 }
 
 // Only run automatically if executed directly
