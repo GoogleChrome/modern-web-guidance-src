@@ -106,6 +106,40 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts rules that only set border-radius or box-shadow without color/thickness', () => {
+    const css = `
+      .panel::-webkit-scrollbar-thumb {
+        border-radius: 4px;
+        box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+      }
+    `;
+    const matches = scanCss('panel.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts rules inside @supports not (scrollbar-width: ...)', () => {
+    const css = `
+      @supports not (scrollbar-width: thin) {
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+      }
+    `;
+    const matches = scanCss('supports.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts rules inside a reset stylesheet', () => {
+    const css = `
+      ::-webkit-scrollbar {
+        width: 8px;
+        background: transparent;
+      }
+    `;
+    const matches = scanCss('reset.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts unrelated CSS rules', () => {
     const css = `
       .card {

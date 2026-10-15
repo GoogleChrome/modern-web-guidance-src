@@ -146,6 +146,132 @@ export const PILOT_GATE0_ENTRIES: readonly Gate0Entry[] = [
       'Visually hidden inputs followed by styled custom indicator sibling elements are deterministically detectable in CSS.',
   },
   {
+    guideId: 'dialog',
+    guideHash: '95fc47d3f348',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Replace custom modal div dialogs using role="dialog" and aria-modal="true" with native HTML <dialog> element.',
+    reason:
+      'Custom modal alertdialog and dialog container div elements are deterministically detectable via DOM and JSX scanners.',
+  },
+  {
+    guideId: 'scrollspy',
+    guideHash: 'fffee90dc52d',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Replace Bootstrap data-spy="scroll" or jQuery .scrollspy() plugin usage with declarative CSS scroll-target-group and :target-current pseudo-class.',
+    reason:
+      'Legacy scrollspy markup attributes and jQuery scrollspy plugin initializations are detectable via DOM and AST scanners.',
+  },
+  {
+    guideId: 'autofill-address-form',
+    guideHash: '49ee6117c8e4',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Add standard autocomplete attributes (e.g. street-address, address-level2, postal-code) to address form input and select elements.',
+    reason:
+      'Address form fields lacking autocomplete attributes inside form containers are detectable via DOM and JSX scanners.',
+  },
+  {
+    guideId: 'shadow-dom',
+    guideHash: '7c77ee087448',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Replace legacy script[type="text/template"] micro-templates and imperative attachShadow({ mode: "open" }) with declarative Declarative Shadow DOM (<template shadowrootmode="open">).',
+    reason:
+      'Script-based HTML templates and imperative shadow root attachments are statically detectable via DOM and AST scanners.',
+  },
+  {
+    guideId: 'branded-select-styling',
+    guideHash: 'c332c3c67d49',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Legacy custom select libraries (Select2, Chosen, bootstrap-select, nice-select) should be modernized with customizable native select elements using appearance: base-select and ::picker(select).',
+    reason:
+      'Third-party select replacement package dependencies and jQuery plugin initializations are detectable via package.json and AST.',
+  },
+  {
+    guideId: 'css-layout',
+    guideHash: 'b2ddd28dc261',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Legacy CSS padding-top/padding-bottom aspect ratio container hacks (e.g. 56.25% for 16:9, 75% for 4:3) should be modernized using the standard CSS aspect-ratio property.',
+    reason:
+      'Classic percentage padding aspect-ratio hacks with zero height and relative positioning are detectable via CSS stylesheet AST.',
+  },
+  {
+    guideId: 'adapt-scrollbar-to-contrast-preferences',
+    guideHash: '55a05ba9d96e',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Legacy proprietary Microsoft scrollbar styling properties (-ms-scrollbar-*, -ms-overflow-style) should be modernized using standard CSS scrollbar-color, scrollbar-width, and prefers-contrast.',
+    reason:
+      'Proprietary IE/Edge vendor-prefixed scrollbar properties are deterministically detectable via CSS stylesheet AST.',
+  },
+  {
+    guideId: 'checkbox',
+    guideHash: '1b9c35459943',
+    classification: 'detectable',
+    brownfieldTarget:
+      'CSS rules hiding native checkbox inputs via display: none or opacity: 0 to create custom styled checkboxes should be modernized with standard CSS accent-color or appearance: none.',
+    reason:
+      'Checkbox selectors hiding native inputs with display: none or opacity: 0 with absolute positioning are detectable via CSS AST.',
+  },
+  {
+    guideId: 'size-aware-styling',
+    guideHash: '89180c46bf23',
+    classification: 'detectable',
+    brownfieldTarget:
+      'ResizeObserver instances measuring element widths/inlineSizes to imperatively toggle container-specific styling classes or CSS variables should be modernized using native CSS Container Queries (@container).',
+    reason:
+      'ResizeObserver callbacks reading dimension properties and mutating element classList or styles are detectable via JS/TS AST.',
+  },
+  {
+    guideId: 'copy-button',
+    guideHash: 'd92b7f9038d3',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Legacy document.execCommand("copy") or ClipboardJS library usage to copy text to the clipboard should be modernized with native navigator.clipboard.writeText().',
+    reason:
+      'Imperative document.execCommand("copy") calls and ClipboardJS constructor instantiations are detectable via JS/TS AST.',
+  },
+  {
+    guideId: 'defer-work-until-scroll-ends',
+    guideHash: 'ee7104add98e',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Debounced scroll event listeners using clearTimeout and setTimeout to detect when user scrolling has stopped should be modernized by listening directly for the native scrollend event.',
+    reason:
+      'Scroll event listeners containing clearTimeout and setTimeout debounce patterns are detectable via JS/TS AST.',
+  },
+  {
+    guideId: 'detect-initial-visibility-state',
+    guideHash: 'b881da0b6ea2',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Obsolete vendor-prefixed Page Visibility API checks (webkitHidden, msHidden, mozHidden, webkitvisibilitychange) should be modernized using standard document.visibilityState, document.hidden, and visibilitychange event.',
+    reason:
+      'Vendor-prefixed visibility property reads and event listener registrations are deterministically detectable via JS/TS AST.',
+  },
+  {
+    guideId: 'schedule-tasks-by-priority',
+    guideHash: '69f3bb531093',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Calls to requestIdleCallback used to schedule low-priority background tasks should be modernized using prioritized task scheduling via scheduler.postTask(callback, { priority: "background" }).',
+    reason:
+      'Calls to requestIdleCallback or window.requestIdleCallback are deterministically detectable via JS/TS AST.',
+  },
+  {
+    guideId: 'prevent-page-scroll-under-modal-dialog',
+    guideHash: '7d10dd62dcbc',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Imperative body scroll lock mutations (such as document.body.style.overflow = "hidden") inside modal, dialog, or overlay handlers should be modernized using native <dialog> (showModal()) and CSS overscroll-behavior: contain.',
+    reason:
+      'Body and documentElement overflow property mutations inside modal/dialog handler contexts are detectable via JS/TS AST.',
+  },
+  {
     guideId: 'navigation-drawer',
     guideHash: '3481f6feb2e8',
     classification: 'ui-recipe-multi-part',

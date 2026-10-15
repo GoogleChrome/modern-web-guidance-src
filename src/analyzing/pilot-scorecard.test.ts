@@ -7,6 +7,7 @@ import {
   CANARY_CONFIG,
   SYNTHETIC_CANARY_CARDS,
   computeRuleSetHash,
+  evaluateGuideQualification,
   formatPilotScorecardReport,
   runPilotScorecard,
   sampleM3SpotcheckDeck,
@@ -254,6 +255,97 @@ describe('formatPilotScorecardReport', () => {
     assert.ok(formatted.includes('autofill-sign-in-form'));
     assert.ok(formatted.includes('Coverage:'));
     assert.ok(formatted.includes('Canary TNR = 100.0%'));
+  });
+});
+
+describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
+  it('qualifies high-n guides via standard bar (clearsBar90)', () => {
+    // 60 evaluations with 59 right (seqDecision = pass / wilson95.lower >= 0.90)
+    const result = evaluateGuideQualification({
+      p1Total: 100,
+      p1Sampled: 60,
+      p2KeptCount: 60,
+      rightCount: 59,
+    });
+    assert.strictEqual(result.isSampleConstrained, false);
+    assert.strictEqual(result.clearsBar90, true);
+    assert.strictEqual(result.clearedHighN80, false);
+    assert.strictEqual(result.clearedZeroFpExhaustive, false);
+    assert.strictEqual(result.clearsPrecisionBar, true);
+  });
+
+  it('qualifies sample-constrained guides with 16 <= n < 35 when Wilson95 lower >= 0.80 and prec >= 0.95 (clearedHighN80)', () => {
+    // 20 evaluations with 20 right: precision = 1.0, Wilson95 lower is ~0.838 >= 0.80
+    const result = evaluateGuideQualification({
+      p1Total: 25,
+      p1Sampled: 20,
+      p2KeptCount: 20,
+      rightCount: 20,
+    });
+    assert.strictEqual(result.isSampleConstrained, true);
+    assert.strictEqual(result.clearedHighN80, true);
+    assert.strictEqual(result.clearedZeroFpExhaustive, false);
+    assert.strictEqual(result.clearsSampleConstrained, true);
+    assert.strictEqual(result.clearsScreen80, true);
+    assert.strictEqual(result.clearsPrecisionBar, true);
+  });
+
+  it('qualifies sample-constrained guides with low n when all findings sampled and fpCount === 0 (clearedZeroFpExhaustive)', () => {
+    // 6 findings in corpus, all 6 sampled, 6 kept, 6 right, 0 false positives
+    // Wilson95 lower bound for 6/6 is ~0.609 (< 0.80), but exhaustive with 0 FP across all repos clears G7
+    const result = evaluateGuideQualification({
+      p1Total: 6,
+      p1Sampled: 6,
+      p2KeptCount: 6,
+      rightCount: 6,
+    });
+    assert.strictEqual(result.isSampleConstrained, true);
+    assert.strictEqual(result.clearedHighN80, false);
+    assert.strictEqual(result.clearedZeroFpExhaustive, true);
+    assert.strictEqual(result.clearsSampleConstrained, true);
+    assert.strictEqual(result.clearsScreen80, true);
+    assert.strictEqual(result.clearsPrecisionBar, true);
+  });
+
+  it('does NOT qualify low n guides with zero FPs if findings were not exhaustively sampled (p1Sampled < p1Total)', () => {
+    // 20 findings in corpus, but only 5 sampled; 5 right. Wilson lower < 0.80 and not exhaustive
+    const result = evaluateGuideQualification({
+      p1Total: 20,
+      p1Sampled: 5,
+      p2KeptCount: 5,
+      rightCount: 5,
+    });
+    assert.strictEqual(result.isSampleConstrained, true);
+    assert.strictEqual(result.clearedHighN80, false);
+    assert.strictEqual(result.clearedZeroFpExhaustive, false);
+    assert.strictEqual(result.clearsSampleConstrained, false);
+    assert.strictEqual(result.clearsPrecisionBar, false);
+  });
+
+  it('does NOT qualify sample-constrained guides if fpCount > 0 and Wilson lower < 0.80', () => {
+    // 10 findings sampled exhaustively, but 1 FP (9 right): Wilson lower is ~0.595 (< 0.80) and fp > 0
+    const result = evaluateGuideQualification({
+      p1Total: 10,
+      p1Sampled: 10,
+      p2KeptCount: 10,
+      rightCount: 9,
+    });
+    assert.strictEqual(result.isSampleConstrained, true);
+    assert.strictEqual(result.clearedHighN80, false);
+    assert.strictEqual(result.clearedZeroFpExhaustive, false);
+    assert.strictEqual(result.clearsSampleConstrained, false);
+    assert.strictEqual(result.clearsPrecisionBar, false);
+  });
+
+  it('does NOT qualify when p2KeptCount is 0', () => {
+    const result = evaluateGuideQualification({
+      p1Total: 0,
+      p1Sampled: 0,
+      p2KeptCount: 0,
+      rightCount: 0,
+    });
+    assert.strictEqual(result.clearedZeroFpExhaustive, false);
+    assert.strictEqual(result.clearsPrecisionBar, false);
   });
 });
 

@@ -3,29 +3,44 @@ import assert from 'node:assert/strict';
 import { PILOT_RULES, ALL_RULES } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing all 18 rules across the 16 guides', () => {
-    assert.strictEqual(PILOT_RULES.length, 18);
-    assert.strictEqual(ALL_RULES.length, 18);
+  it('exports PILOT_RULES containing all 36 rules across the 30 detectable guides', () => {
+    assert.strictEqual(PILOT_RULES.length, 36);
+    assert.strictEqual(ALL_RULES.length, 36);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
+    assert.strictEqual(guideIds.size, 30);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
         'accessible-error-announcement',
+        'adapt-scrollbar-to-contrast-preferences',
         'animate-element-entry-exit',
         'animate-to-intrinsic-sizes',
+        'autofill-address-form',
         'autofill-sign-in-form',
         'brand-consistent-forms',
+        'branded-select-styling',
         'break-up-long-tasks',
         'calculate-event-differentials',
+        'checkbox',
         'child-state-based-styling',
         'coordinate-global-events',
+        'copy-button',
+        'css-layout',
         'customize-scrollbar-color-and-thickness',
         'declarative-dialog-popover-control',
+        'defer-work-until-scroll-ends',
+        'detect-initial-visibility-state',
+        'dialog',
         'form-fields-automatically-fit-contents',
         'ime-safe-enter-submit',
         'individual-transform-properties',
+        'prevent-page-scroll-under-modal-dialog',
         'resilient-context-menus-and-nested-dropdowns',
+        'schedule-tasks-by-priority',
+        'scrollspy',
+        'shadow-dom',
+        'size-aware-styling',
         'stack-drill-down',
       ].sort(),
     );

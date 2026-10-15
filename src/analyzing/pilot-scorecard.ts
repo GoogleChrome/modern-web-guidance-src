@@ -50,7 +50,68 @@ import {
 } from './stats.ts';
 
 export const Z_80 = 1.28155;
-export const MAX_SAMPLE_PER_GUIDE = 40;
+export const MAX_SAMPLE_PER_GUIDE = 60;
+
+export interface GuideQualificationInput {
+  readonly p1Total: number;
+  readonly p1Sampled: number;
+  readonly p2KeptCount: number;
+  readonly rightCount: number;
+}
+
+export interface GuideQualificationResult {
+  readonly precision: number;
+  readonly wilson80: BinomialInterval;
+  readonly wilson95: BinomialInterval;
+  readonly sequentialStopDecision: SequentialStopDecision;
+  readonly clearsBar90: boolean;
+  readonly isSampleConstrained: boolean;
+  readonly clearedHighN80: boolean;
+  readonly clearedZeroFpExhaustive: boolean;
+  readonly clearsSampleConstrained: boolean;
+  readonly clearsScreen80: boolean;
+  readonly clearsPrecisionBar: boolean;
+}
+
+/**
+ * Evaluates whether a guide clears the precision bar under G7 rules:
+ * 1. Standard bar (clearsBar90): Wilson 95% CI lower >= 0.90 or sequential stop = pass.
+ * 2. Sample-constrained dual qualification (for n < 35):
+ *    - clearedHighN80: Wilson 95% CI lower >= 0.80 and precision >= 0.95 (typically 16 <= n < 35).
+ *    - clearedZeroFpExhaustive: p1Sampled === p1Total && p2KeptCount >= 1 && fpCount === 0 across all evaluated repos.
+ */
+export function evaluateGuideQualification(
+  input: GuideQualificationInput,
+): GuideQualificationResult {
+  const { p1Total, p1Sampled, p2KeptCount, rightCount } = input;
+  const fpCount = p2KeptCount - rightCount;
+  const precision = p2KeptCount > 0 ? rightCount / p2KeptCount : 0;
+  const wilson80 = wilsonInterval(rightCount, p2KeptCount, Z_80);
+  const wilson95 = wilsonInterval(rightCount, p2KeptCount, Z_95);
+  const sequentialStopDecision = checkSequentialStop(rightCount, p2KeptCount, 0.9);
+  const clearsBar90 = wilson95.lower >= 0.9 || sequentialStopDecision === 'pass';
+  const isSampleConstrained = p2KeptCount < 35;
+  const clearedHighN80 = isSampleConstrained && wilson95.lower >= 0.8 && precision >= 0.95;
+  const clearedZeroFpExhaustive =
+    isSampleConstrained && p1Sampled === p1Total && p2KeptCount >= 1 && fpCount === 0;
+  const clearsSampleConstrained = clearedHighN80 || clearedZeroFpExhaustive;
+  const clearsScreen80 = wilson95.lower >= 0.8 || clearsSampleConstrained;
+  const clearsPrecisionBar = clearsBar90 || clearsSampleConstrained;
+
+  return {
+    precision,
+    wilson80,
+    wilson95,
+    sequentialStopDecision,
+    clearsBar90,
+    isSampleConstrained,
+    clearedHighN80,
+    clearedZeroFpExhaustive,
+    clearsSampleConstrained,
+    clearsScreen80,
+    clearsPrecisionBar,
+  };
+}
 
 export const PILOT_SCORECARD_PATH = join(
   ANALYZER_INTERNAL_DIR,
@@ -190,6 +251,8 @@ export interface GuideScorecard {
   readonly clearsScreen80: boolean;
   readonly clearsSampleConstrained?: boolean;
   readonly isSampleConstrained?: boolean;
+  readonly clearedHighN80?: boolean;
+  readonly clearedZeroFpExhaustive?: boolean;
   readonly recall: GuideRecallMetrics;
 }
 
@@ -198,6 +261,8 @@ export interface PilotScorecardSummary {
   readonly clearedBarCount: number;
   readonly clearedBar90Count?: number;
   readonly clearedSampleConstrainedCount?: number;
+  readonly clearedHighN80Count?: number;
+  readonly clearedZeroFpExhaustiveCount?: number;
   readonly clearedScreenCount: number;
   readonly coverage: MetricEntry;
   readonly overallPrecision: MetricEntry;
@@ -570,6 +635,8 @@ export async function runPilotScorecard(
   let clearedBarCount = 0;
   let clearedBar90Count = 0;
   let clearedSampleConstrainedCount = 0;
+  let clearedHighN80Count = 0;
+  let clearedZeroFpExhaustiveCount = 0;
   let clearedScreenCount = 0;
 
   const guideScorecards: GuideScorecard[] = [];
@@ -593,27 +660,29 @@ export async function runPilotScorecard(
     }
 
     const fpCount = p2KeptCount - rightCount;
-    const precision = p2KeptCount > 0 ? rightCount / p2KeptCount : 0;
-    const wilson80 = wilsonInterval(rightCount, p2KeptCount, Z_80);
-    const wilson95 = wilsonInterval(rightCount, p2KeptCount, Z_95);
-    const seqDecision = checkSequentialStop(rightCount, p2KeptCount, 0.9);
-    const clearsBar90 = wilson95.lower >= 0.9 || seqDecision === 'pass';
-    const clearsScreen80 = wilson95.lower >= 0.8;
-    const isSampleConstrained = p2KeptCount < 35;
-    const clearsSampleConstrained =
-      isSampleConstrained && wilson95.lower >= 0.8 && precision >= 0.95;
-    const clearsPrecisionBar = clearsBar90 || clearsSampleConstrained;
+    const qual = evaluateGuideQualification({
+      p1Total,
+      p1Sampled,
+      p2KeptCount,
+      rightCount,
+    });
 
-    if (clearsPrecisionBar) {
+    if (qual.clearsPrecisionBar) {
       clearedBarCount++;
     }
-    if (clearsBar90) {
+    if (qual.clearsBar90) {
       clearedBar90Count++;
     }
-    if (clearsSampleConstrained) {
+    if (qual.clearsSampleConstrained) {
       clearedSampleConstrainedCount++;
     }
-    if (clearsScreen80) {
+    if (qual.clearedHighN80) {
+      clearedHighN80Count++;
+    }
+    if (qual.clearedZeroFpExhaustive) {
+      clearedZeroFpExhaustiveCount++;
+    }
+    if (qual.clearsScreen80) {
       clearedScreenCount++;
     }
 
@@ -638,15 +707,17 @@ export async function runPilotScorecard(
       judgeJudgedCount: p2KeptCount,
       judgeRightCount: rightCount,
       judgeFalsePositiveCount: fpCount,
-      precision: Number(precision.toFixed(4)),
-      wilson80,
-      wilson95,
-      sequentialStopDecision: seqDecision,
-      clearsPrecisionBar,
-      clearsBar90,
-      clearsScreen80,
-      clearsSampleConstrained,
-      isSampleConstrained,
+      precision: Number(qual.precision.toFixed(4)),
+      wilson80: qual.wilson80,
+      wilson95: qual.wilson95,
+      sequentialStopDecision: qual.sequentialStopDecision,
+      clearsPrecisionBar: qual.clearsPrecisionBar,
+      clearsBar90: qual.clearsBar90,
+      clearsScreen80: qual.clearsScreen80,
+      clearsSampleConstrained: qual.clearsSampleConstrained,
+      isSampleConstrained: qual.isSampleConstrained,
+      clearedHighN80: qual.clearedHighN80,
+      clearedZeroFpExhaustive: qual.clearedZeroFpExhaustive,
       recall: {
         labeledPositivesTotal: nPos,
         phase1Recalled: p1Recalled,
@@ -705,6 +776,8 @@ export async function runPilotScorecard(
     clearedBarCount,
     clearedBar90Count,
     clearedSampleConstrainedCount,
+    clearedHighN80Count,
+    clearedZeroFpExhaustiveCount,
     clearedScreenCount,
     coverage: coverageMetric,
     overallPrecision: heldOutPrecisionMetric,
@@ -762,7 +835,7 @@ export async function runPilotScorecard(
       judgeAlpha: summary.judgeAlpha,
       judgeAc1: summary.judgeAc1,
       canaryTnr: summary.canaryTnr,
-      notes: `Milestone 3 evaluation (${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} sample-constrained >=0.80 CI lower & >=0.95 prec], pooled held-out prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
+      notes: `Milestone 3 evaluation (${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} sample-constrained: ${clearedHighN80Count} at >=0.80 CI & >=0.95 prec, ${clearedZeroFpExhaustiveCount} zero-FP exhaustive], pooled held-out prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
     };
     await recordProgressLogEntry(progressRow, progressLogPath);
   }
@@ -808,8 +881,10 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
   lines.push('SUMMARY:');
   const bar90Count = report.summary.clearedBar90Count ?? report.summary.clearedBarCount;
   const sampleCount = report.summary.clearedSampleConstrainedCount ?? 0;
+  const highN80 = report.summary.clearedHighN80Count ?? 0;
+  const zeroFp = report.summary.clearedZeroFpExhaustiveCount ?? 0;
   lines.push(
-    `  Coverage:          ${(report.summary.coverage.value * 100).toFixed(1)}% (${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar: ${bar90Count} at >=0.90 CI lower, ${sampleCount} sample-constrained >=0.80 CI & >=0.95 prec)`,
+    `  Coverage:          ${(report.summary.coverage.value * 100).toFixed(1)}% (${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar: ${bar90Count} at >=0.90 CI lower, ${sampleCount} sample-constrained [${highN80} at >=0.80 CI, ${zeroFp} zero-FP exhaustive])`,
   );
   lines.push(
     `  Screening (0.80):  ${((report.summary.clearedScreenCount / report.summary.totalDetectableGuides) * 100).toFixed(1)}% (${report.summary.clearedScreenCount}/${report.summary.totalDetectableGuides} guides cleared 0.80 screen)`,
