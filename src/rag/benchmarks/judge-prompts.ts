@@ -1,4 +1,4 @@
-import { isRecord, type GuideGrade, type QueryScope } from "./dataset.ts";
+import { isGrade, isQueryScope, isRecord, type GuideGrade, type QueryScope } from "./dataset.ts";
 
 export const RUBRIC_VERSION = "v1";
 export const DEFAULT_JUDGE_MODEL = "gemini-3.8-flash";
@@ -108,7 +108,7 @@ export function parseJudgeResponse(
   const parsed: unknown = JSON.parse(text);
   if (
     !isRecord(parsed) ||
-    (parsed.scope !== "in_domain" && parsed.scope !== "out_of_domain") ||
+    !isQueryScope(parsed.scope) ||
     !Array.isArray(parsed.needs) ||
     !Array.isArray(parsed.grades)
   ) {
@@ -122,7 +122,7 @@ export function parseJudgeResponse(
 
   const seenIds = new Set<string>();
   const grades: GuideGrade[] = parsed.grades.map((g: unknown) => {
-    if (!isRecord(g) || typeof g.id !== "string" || (g.grade !== 0 && g.grade !== 1 && g.grade !== 2)) {
+    if (!isRecord(g) || typeof g.id !== "string" || !isGrade(g.grade)) {
       throw new Error(`Invalid grade entry in judge output for "${query}": ${JSON.stringify(g)}`);
     }
     if (!candidateIds.has(g.id)) {

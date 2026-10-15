@@ -112,11 +112,15 @@ function dcgAtK(grades: Grade[], k: number): number {
   return sum;
 }
 
-export function mean(values: number[]): number {
-  if (values.length === 0) return 0;
+export function mean<T = number>(items: T[], getVal?: (item: T) => number): number {
+  if (items.length === 0) return 0;
   let sum = 0;
-  for (const v of values) sum += v;
-  return sum / values.length;
+  if (getVal) {
+    for (const item of items) sum += getVal(item);
+  } else {
+    for (const item of items) sum += item as unknown as number;
+  }
+  return sum / items.length;
 }
 
 export function median(values: number[]): number {
@@ -161,7 +165,7 @@ export function evaluateQuery(
       qid: q.qid,
       query: q.query,
       stratum,
-      scope: "out_of_domain",
+      scope: rawScope,
       expectedGuide: q.expectedGuide,
       returnedIds,
       returnedTokens,
@@ -234,10 +238,10 @@ export function summarizeDataset(
       count: items.length,
       answerableCount: ans.length,
       oosCount: out.length,
-      ndcg5: ans.length > 0 ? mean(ans.map((r) => r.ndcg5 ?? 0)) : undefined,
-      success1: ans.length > 0 ? mean(ans.map((r) => r.success1 ?? 0)) : undefined,
-      oosAdmitRate: out.length > 0 ? mean(out.map((r) => (r.returnedIds.length === 0 ? 0 : 1))) : undefined,
-      avgTokens: mean(items.map((r) => r.returnedTokens)),
+      ndcg5: ans.length > 0 ? mean(ans, (r) => r.ndcg5 ?? 0) : undefined,
+      success1: ans.length > 0 ? mean(ans, (r) => r.success1 ?? 0) : undefined,
+      oosAdmitRate: out.length > 0 ? mean(out, (r) => (r.returnedIds.length === 0 ? 0 : 1)) : undefined,
+      avgTokens: mean(items, (r) => r.returnedTokens),
     };
   }
 
@@ -246,21 +250,21 @@ export function summarizeDataset(
     totalQueries: perQuery.length,
     answerableQueries: answerable.length,
     oosQueries: oos.length,
-    ndcg5: mean(answerable.map((r) => r.ndcg5 ?? 0)),
-    success1: mean(answerable.map((r) => r.success1 ?? 0)),
-    hit1: mean(answerable.map((r) => r.hit1 ?? 0)),
-    mrr5: mean(answerable.map((r) => r.mrr5 ?? 0)),
-    recall5: mean(answerable.map((r) => r.recall5 ?? 0)),
-    expectedHit1: withExpected.length > 0 ? mean(withExpected.map((r) => r.expectedHit1 ?? 0)) : undefined,
-    expectedHit5: withExpected.length > 0 ? mean(withExpected.map((r) => r.expectedHit5 ?? 0)) : undefined,
-    avgReturnedCount: mean(answerable.map((r) => r.returnedIds.length)),
-    avgTokensAnswerable: mean(answerable.map((r) => r.returnedTokens)),
-    avgTokensAll: mean(perQuery.map((r) => r.returnedTokens)),
-    answerableEmptyRate: mean(answerable.map((r) => (r.returnedIds.length === 0 ? 1 : 0))),
-    oosAdmitRate: mean(oos.map((r) => (r.returnedIds.length === 0 ? 0 : 1))),
-    oosNearAdmitRate: oosNear.length > 0 ? mean(oosNear.map((r) => (r.returnedIds.length === 0 ? 0 : 1))) : undefined,
-    oosFarAdmitRate: oosFar.length > 0 ? mean(oosFar.map((r) => (r.returnedIds.length === 0 ? 0 : 1))) : undefined,
-    avgOosTokens: mean(oos.map((r) => r.returnedTokens)),
+    ndcg5: mean(answerable, (r) => r.ndcg5 ?? 0),
+    success1: mean(answerable, (r) => r.success1 ?? 0),
+    hit1: mean(answerable, (r) => r.hit1 ?? 0),
+    mrr5: mean(answerable, (r) => r.mrr5 ?? 0),
+    recall5: mean(answerable, (r) => r.recall5 ?? 0),
+    expectedHit1: withExpected.length > 0 ? mean(withExpected, (r) => r.expectedHit1 ?? 0) : undefined,
+    expectedHit5: withExpected.length > 0 ? mean(withExpected, (r) => r.expectedHit5 ?? 0) : undefined,
+    avgReturnedCount: mean(answerable, (r) => r.returnedIds.length),
+    avgTokensAnswerable: mean(answerable, (r) => r.returnedTokens),
+    avgTokensAll: mean(perQuery, (r) => r.returnedTokens),
+    answerableEmptyRate: mean(answerable, (r) => (r.returnedIds.length === 0 ? 1 : 0)),
+    oosAdmitRate: mean(oos, (r) => (r.returnedIds.length === 0 ? 0 : 1)),
+    oosNearAdmitRate: oosNear.length > 0 ? mean(oosNear, (r) => (r.returnedIds.length === 0 ? 0 : 1)) : undefined,
+    oosFarAdmitRate: oosFar.length > 0 ? mean(oosFar, (r) => (r.returnedIds.length === 0 ? 0 : 1)) : undefined,
+    avgOosTokens: mean(oos, (r) => r.returnedTokens),
     unjudgedRate: totalInDomainReturned > 0 ? totalUnjudged / totalInDomainReturned : 0,
     byStratum,
     perQuery,
@@ -270,32 +274,76 @@ export function summarizeDataset(
 export function pairedBootstrapDelta(
   baseVals: number[],
   headVals: number[],
-  iterations = 2000,
-  seed = 42
+  iterations?: number,
+  seed?: number
+): BootstrapDelta;
+export function pairedBootstrapDelta<T>(
+  pairs: T[],
+  getBase: (item: T) => number,
+  getHead: (item: T) => number,
+  iterations?: number,
+  seed?: number
+): BootstrapDelta;
+export function pairedBootstrapDelta<T>(
+  a: number[] | T[],
+  b: number[] | ((item: T) => number),
+  c?: number | ((item: T) => number),
+  d = 2000,
+  e = 42
 ): BootstrapDelta {
-  if (baseVals.length !== headVals.length) {
-    throw new Error(`pairedBootstrapDelta: length mismatch (${baseVals.length} vs ${headVals.length})`);
+  let diffs: Float64Array;
+  let baseSum = 0;
+  let headSum = 0;
+  let n: number;
+  let iterations: number;
+  let seed: number;
+
+  if (typeof b === "function" && typeof c === "function") {
+    const pairs = a as T[];
+    n = pairs.length;
+    iterations = typeof d === "number" ? d : 2000;
+    seed = e;
+    diffs = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const baseV = b(pairs[i]);
+      const headV = c(pairs[i]);
+      baseSum += baseV;
+      headSum += headV;
+      diffs[i] = headV - baseV;
+    }
+  } else {
+    const baseVals = a as number[];
+    const headVals = b as number[];
+    if (baseVals.length !== headVals.length) {
+      throw new Error(`pairedBootstrapDelta: length mismatch (${baseVals.length} vs ${headVals.length})`);
+    }
+    n = baseVals.length;
+    iterations = typeof c === "number" ? c : 2000;
+    seed = d;
+    diffs = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      baseSum += baseVals[i];
+      headSum += headVals[i];
+      diffs[i] = headVals[i] - baseVals[i];
+    }
   }
-  const n = baseVals.length;
+
   if (n === 0) {
     return { baseMean: 0, headMean: 0, delta: 0, ciLow: 0, ciHigh: 0, significant: false };
   }
 
-  const baseMean = mean(baseVals);
-  const headMean = mean(headVals);
+  const baseMean = baseSum / n;
+  const headMean = headSum / n;
   const delta = headMean - baseMean;
-
-  const diffs = new Float64Array(n);
-  for (let i = 0; i < n; i++) diffs[i] = headVals[i] - baseVals[i];
 
   const rng = createPrng(seed);
   const bootDeltas = new Float64Array(iterations);
-  for (let b = 0; b < iterations; b++) {
+  for (let bi = 0; bi < iterations; bi++) {
     let sum = 0;
     for (let i = 0; i < n; i++) {
       sum += diffs[Math.floor(rng() * n)];
     }
-    bootDeltas[b] = sum / n;
+    bootDeltas[bi] = sum / n;
   }
   bootDeltas.sort();
 
@@ -328,14 +376,8 @@ export function compareDatasetSummaries(
 ): DatasetComparison {
   const headByQid = new Map(head.perQuery.map((r) => [r.qid, r]));
 
-  const baseNdcg: number[] = [];
-  const headNdcg: number[] = [];
-  const baseSuccess: number[] = [];
-  const headSuccess: number[] = [];
-  const baseTokensAns: number[] = [];
-  const headTokensAns: number[] = [];
-  const baseOosAdmit: number[] = [];
-  const headOosAdmit: number[] = [];
+  const answerablePairs: { b: QueryEvalResult; h: QueryEvalResult }[] = [];
+  const oosPairs: { b: QueryEvalResult; h: QueryEvalResult }[] = [];
 
   let wins = 0;
   let losses = 0;
@@ -349,12 +391,7 @@ export function compareDatasetSummaries(
     if (!h) continue;
 
     if (b.scope === "in_domain" && b.ndcg5 !== undefined && h.ndcg5 !== undefined) {
-      baseNdcg.push(b.ndcg5);
-      headNdcg.push(h.ndcg5);
-      baseSuccess.push(b.success1 ?? 0);
-      headSuccess.push(h.success1 ?? 0);
-      baseTokensAns.push(b.returnedTokens);
-      headTokensAns.push(h.returnedTokens);
+      answerablePairs.push({ b, h });
 
       const d = h.ndcg5 - b.ndcg5;
       if (d >= WIN_LOSS_NDCG_THRESHOLD) wins++;
@@ -365,10 +402,9 @@ export function compareDatasetSummaries(
         answerableDiffs.push(toDiffExample(b, h, d));
       }
     } else if (b.scope === "out_of_domain") {
+      oosPairs.push({ b, h });
       const bEmpty = b.returnedIds.length === 0;
       const hEmpty = h.returnedIds.length === 0;
-      baseOosAdmit.push(bEmpty ? 0 : 1);
-      headOosAdmit.push(hEmpty ? 0 : 1);
       if (!bEmpty && hEmpty) oosNewlyRejected.push(toDiffExample(b, h));
       else if (bEmpty && !hEmpty) oosNewlyAdmitted.push(toDiffExample(b, h));
     }
@@ -384,14 +420,16 @@ export function compareDatasetSummaries(
     .sort((a, b) => (a.deltaNdcg5 ?? 0) - (b.deltaNdcg5 ?? 0))
     .slice(0, maxExamples);
 
+  const isAdmitted = (r: QueryEvalResult) => (r.returnedIds.length === 0 ? 0 : 1);
+
   return {
     dataset: base.dataset,
     base,
     head,
-    ndcg5Delta: pairedBootstrapDelta(baseNdcg, headNdcg),
-    success1Delta: pairedBootstrapDelta(baseSuccess, headSuccess),
-    tokensAnswerableDelta: pairedBootstrapDelta(baseTokensAns, headTokensAns),
-    oosAdmitDelta: baseOosAdmit.length > 0 ? pairedBootstrapDelta(baseOosAdmit, headOosAdmit) : undefined,
+    ndcg5Delta: pairedBootstrapDelta(answerablePairs, (p) => p.b.ndcg5!, (p) => p.h.ndcg5!),
+    success1Delta: pairedBootstrapDelta(answerablePairs, (p) => p.b.success1 ?? 0, (p) => p.h.success1 ?? 0),
+    tokensAnswerableDelta: pairedBootstrapDelta(answerablePairs, (p) => p.b.returnedTokens, (p) => p.h.returnedTokens),
+    oosAdmitDelta: oosPairs.length > 0 ? pairedBootstrapDelta(oosPairs, (p) => isAdmitted(p.b), (p) => isAdmitted(p.h)) : undefined,
     wins,
     losses,
     ties,

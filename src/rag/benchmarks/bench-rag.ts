@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import { outDir, rootDir } from "../../core/paths.ts";
+import { guidesDir, outDir, rootDir } from "../../core/paths.ts";
 import {
   ensureWildDataset,
   isRecord,
@@ -24,9 +24,15 @@ import type { EmbedderLike, UseCaseResult } from "../search.ts";
 const HARNESS_SANITY_NDCG_FLOOR = 0.80;
 
 interface TargetSpec {
-  label: string;
   ref: string;
-  isWorktree: boolean;
+  label?: string;
+}
+
+function removeWorktree(dir: string): void {
+  try {
+    git(["worktree", "remove", "-f", dir]);
+  } catch {}
+  fs.rmSync(dir, { recursive: true, force: true });
 }
 
 interface EvaluateTargetOptions {
@@ -227,14 +233,15 @@ async function evaluateTarget(
 ): Promise<{ label: string; commit: string; summaries: Map<string, DatasetSummary> }> {
   const allQueryStrings = datasets.flatMap((d) => d.queries.map((q) => q.query));
 
+  const isWorktree = spec.ref === "WORKTREE";
   let targetDir = rootDir;
   let commit = "";
-  let label = spec.label;
+  let label = spec.label ?? spec.ref;
   let cleanup = () => {};
 
-  if (spec.isWorktree) {
+  if (isWorktree) {
     commit = git(["rev-parse", "--short", "HEAD"]);
-    label = `${spec.label} (${commit})`;
+    label = `${label} (${commit})`;
     ensureWorktreeBuilt(rootDir, false);
   } else {
     const fullSha = git(["rev-parse", `${spec.ref}^{commit}`]);
@@ -242,27 +249,18 @@ async function evaluateTarget(
     label = `${spec.ref} (${commit})`;
     targetDir = path.join(os.tmpdir(), `rag-bench-wt-${commit}-${process.pid}`);
 
-    try {
-      git(["worktree", "remove", "-f", targetDir]);
-    } catch {}
-    fs.rmSync(targetDir, { recursive: true, force: true });
-
+    removeWorktree(targetDir);
     git(["worktree", "add", "--detach", targetDir, fullSha]);
     linkNodeModules(targetDir);
 
     if (options.useCurrentGuides) {
       const wtGuides = path.join(targetDir, "guides");
       fs.rmSync(wtGuides, { recursive: true, force: true });
-      fs.cpSync(path.join(rootDir, "guides"), wtGuides, { recursive: true });
+      fs.cpSync(guidesDir, wtGuides, { recursive: true });
     }
 
     ensureWorktreeBuilt(targetDir, true);
-    cleanup = () => {
-      try {
-        git(["worktree", "remove", "-f", targetDir]);
-      } catch {}
-      fs.rmSync(targetDir, { recursive: true, force: true });
-    };
+    cleanup = () => removeWorktree(targetDir);
   }
 
   try {
@@ -465,62 +463,77 @@ async function main(): Promise<void> {
   }
 
   const headRef = values.head ?? "WORKTREE";
-  const headSpec: TargetSpec = {
-    label: headRef,
-    ref: headRef,
-    isWorktree: headRef === "WORKTREE",
-  };
+  const headSpec: TargetSpec = { ref: headRef, label: headRef };
 
   if (!values.base) {
-    const headEval = await evaluateTarget(headSpec, datasets, evalOpts);
-    const summaries = datasets.map((d) => {
-      const s = headEval.summaries.get(d.name);
-      if (!s) throw new Error(`Missing summary for ${d.name}`);
-      return s;
-    });
+    await runSingleBenchmark(headSpec, datasets, evalOpts, values, maxUnjudged);
+  } else {
+    const baseSpec: TargetSpec = { ref: values.base, label: values.base };
+    await runComparisonBenchmark(baseSpec, headSpec, datasets, evalOpts, values);
+  }
+}
 
-    const md = renderSingleMarkdown(headEval.label, summaries);
-    console.log(`\n${md}\n`);
+function stripPerQuery(summary: DatasetSummary): Omit<DatasetSummary, "perQuery"> {
+  const { perQuery: _pq, ...rest } = summary;
+  return rest;
+}
 
-    if (values.markdown) {
-      fs.writeFileSync(values.markdown, `${md}\n`, "utf-8");
-    }
-    if (values.json) {
-      fs.writeFileSync(
-        values.json,
-        JSON.stringify({ target: headEval.label, summaries: summaries.map(({ perQuery: _pq, ...rest }) => rest) }, null, 2),
-        "utf-8"
-      );
-    }
+async function runSingleBenchmark(
+  headSpec: TargetSpec,
+  datasets: LoadedDataset[],
+  evalOpts: EvaluateTargetOptions,
+  values: { markdown?: string; json?: string; ci?: boolean },
+  maxUnjudged: number
+): Promise<void> {
+  const headEval = await evaluateTarget(headSpec, datasets, evalOpts);
+  const summaries = datasets.map((d) => {
+    const s = headEval.summaries.get(d.name);
+    if (!s) throw new Error(`Missing summary for ${d.name}`);
+    return s;
+  });
 
-    if (values.ci) {
-      const failures: string[] = [];
-      for (const s of summaries) {
-        if (s.answerableQueries > 0 && s.unjudgedRate > maxUnjudged) {
-          failures.push(
-            `Dataset '${s.dataset}' unjudged rate ${(s.unjudgedRate * 100).toFixed(1)}% exceeds max ${(maxUnjudged * 100).toFixed(1)}%. Run 'node src/rag/benchmarks/judge-fill.ts' to grade newly surfaced guides.`
-          );
-        }
-        if (s.dataset === "harness" && s.ndcg5 < HARNESS_SANITY_NDCG_FLOOR) {
-          failures.push(
-            `Dataset 'harness' nDCG@5 (${s.ndcg5.toFixed(3)}) fell below sanity floor ${HARNESS_SANITY_NDCG_FLOOR.toFixed(3)}.`
-          );
-        }
-      }
-      if (failures.length > 0) {
-        for (const f of failures) console.error(`[benchmark:rag CI FAIL] ${f}`);
-        process.exit(1);
-      }
-    }
-    return;
+  const md = renderSingleMarkdown(headEval.label, summaries);
+  console.log(`\n${md}\n`);
+
+  if (values.markdown) {
+    fs.writeFileSync(values.markdown, `${md}\n`, "utf-8");
+  }
+  if (values.json) {
+    fs.writeFileSync(
+      values.json,
+      JSON.stringify({ target: headEval.label, summaries: summaries.map(stripPerQuery) }, null, 2),
+      "utf-8"
+    );
   }
 
-  const baseSpec: TargetSpec = {
-    label: values.base,
-    ref: values.base,
-    isWorktree: values.base === "WORKTREE",
-  };
+  if (values.ci) {
+    const failures: string[] = [];
+    for (const s of summaries) {
+      if (s.answerableQueries > 0 && s.unjudgedRate > maxUnjudged) {
+        failures.push(
+          `Dataset '${s.dataset}' unjudged rate ${(s.unjudgedRate * 100).toFixed(1)}% exceeds max ${(maxUnjudged * 100).toFixed(1)}%. Run 'node src/rag/benchmarks/judge-fill.ts' to grade newly surfaced guides.`
+        );
+      }
+      if (s.dataset === "harness" && s.ndcg5 < HARNESS_SANITY_NDCG_FLOOR) {
+        failures.push(
+          `Dataset 'harness' nDCG@5 (${s.ndcg5.toFixed(3)}) fell below sanity floor ${HARNESS_SANITY_NDCG_FLOOR.toFixed(3)}.`
+        );
+      }
+    }
+    if (failures.length > 0) {
+      for (const f of failures) console.error(`[benchmark:rag CI FAIL] ${f}`);
+      process.exit(1);
+    }
+  }
+}
 
+async function runComparisonBenchmark(
+  baseSpec: TargetSpec,
+  headSpec: TargetSpec,
+  datasets: LoadedDataset[],
+  evalOpts: EvaluateTargetOptions,
+  values: { markdown?: string; json?: string }
+): Promise<void> {
   const baseEval = await evaluateTarget(baseSpec, datasets, evalOpts);
   const headEval = await evaluateTarget(headSpec, datasets, evalOpts);
 
@@ -547,8 +560,8 @@ async function main(): Promise<void> {
           head: headEval.label,
           comparisons: comparisons.map((c) => ({
             ...c,
-            base: { ...c.base, perQuery: undefined },
-            head: { ...c.head, perQuery: undefined },
+            base: stripPerQuery(c.base),
+            head: stripPerQuery(c.head),
           })),
         },
         null,
@@ -557,6 +570,7 @@ async function main(): Promise<void> {
       "utf-8"
     );
   }
+}
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

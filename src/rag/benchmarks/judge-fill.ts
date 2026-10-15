@@ -4,9 +4,10 @@ import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import zlib from "node:zlib";
 import { marked, type Tokens } from "marked";
+import { extractH1Heading } from "../../core/guide-validation.ts";
 import { outDir, rootDir } from "../../core/paths.ts";
 import { isEnoent } from "../../harness/lib/agent-shared.ts";
-import type { EmbedderLike, UseCaseVector } from "../search.ts";
+import { dotProduct, type EmbedderLike, type UseCaseVector } from "../search.ts";
 import { TfjsEmbedder } from "../tfjs-embedder.ts";
 import {
   isRecord,
@@ -76,7 +77,7 @@ export function loadCorpusForPooling(buildDir = path.join(outDir, "build/skills-
     }
     const mdPath = path.join(guidesDir, item.category, `${item.id}.md`);
     const body = fs.readFileSync(mdPath, "utf8");
-    const title = body.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? item.id;
+    const title = extractH1Heading(body) ?? item.id;
     const headings = extractCardHeadings(body);
     cards.set(item.id, {
       id: item.id,
@@ -109,12 +110,6 @@ export function loadCorpusForPooling(buildDir = path.join(outDir, "build/skills-
   });
 
   return { cards, vectors };
-}
-
-function dotProduct(a: number[], b: number[]): number {
-  let sum = 0;
-  for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
-  return sum;
 }
 
 /**
@@ -491,7 +486,9 @@ export async function fillMissingJudgmentsInFiles(
   const { qrels, judgedCount } = await fillJudgmentsForDataset(queries, existingQrels, corpus, options);
   if (judgedCount > 0) {
     const ordered = queries.map((q) => qrels.get(q.qid)).filter((r): r is QrelRecord => r !== undefined);
-    fs.writeFileSync(qrelsPath, serializeQrelsJsonl(ordered));
+    const tmpPath = `${qrelsPath}.${process.pid}.tmp`;
+    fs.writeFileSync(tmpPath, serializeQrelsJsonl(ordered));
+    fs.renameSync(tmpPath, qrelsPath);
   }
   return judgedCount;
 }

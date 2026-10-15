@@ -32,15 +32,19 @@ export interface MinedHarnessSearch {
   query: string;
 }
 
+const AGENT_PATTERNS: readonly [pattern: string, agent: Agents][] = [
+  ["claude", Agents.CLAUDE_CODE],
+  ["codex", Agents.CODEX_CLI],
+  ["antigravity", Agents.ANTIGRAVITY_CLI],
+  // Older nightly suite folders used the `-agy` suffix before standardizing on `jetski_cli`.
+  ["jetski", Agents.JETSKI_CLI],
+  ["-agy", Agents.JETSKI_CLI],
+  ["gemini", Agents.GEMINI_CLI],
+];
+
 export function resolveAgentFromSuiteId(suiteId: string): Agents | undefined {
   const lower = suiteId.toLowerCase();
-  if (lower.includes("claude")) return Agents.CLAUDE_CODE;
-  if (lower.includes("codex")) return Agents.CODEX_CLI;
-  if (lower.includes("antigravity")) return Agents.ANTIGRAVITY_CLI;
-  // Older nightly suite folders used the `-agy` suffix before standardizing on `jetski_cli`.
-  if (lower.includes("jetski") || lower.includes("-agy")) return Agents.JETSKI_CLI;
-  if (lower.includes("gemini")) return Agents.GEMINI_CLI;
-  return undefined;
+  return AGENT_PATTERNS.find(([pattern]) => lower.includes(pattern))?.[1];
 }
 
 const SEARCH_CMD_RE = /\bsearch\s+(?:--[a-z-]+(?:=\S+)?\s+)*(?:"([^"]+)"|'([^']+)'|(\S+))/i;

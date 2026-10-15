@@ -15,7 +15,7 @@ export interface QueryRecord {
   query: string;
   stratum?: QueryStratum;
   freq?: number;
-  words: number;
+  words?: number;
   expectedGuide?: string;
   agent?: Agents;
   runDate?: string;
@@ -70,11 +70,11 @@ export function isRecord(val: unknown): val is Record<string, unknown> {
   return typeof val === "object" && val !== null && !Array.isArray(val);
 }
 
-function isGrade(val: unknown): val is Grade {
+export function isGrade(val: unknown): val is Grade {
   return val === 0 || val === 1 || val === 2;
 }
 
-function isQueryScope(val: unknown): val is QueryScope {
+export function isQueryScope(val: unknown): val is QueryScope {
   return val === "in_domain" || val === "out_of_domain";
 }
 
