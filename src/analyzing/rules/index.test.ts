@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { PILOT_RULES, ALL_RULES } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing all 36 rules across the 30 detectable guides', () => {
-    assert.strictEqual(PILOT_RULES.length, 36);
-    assert.strictEqual(ALL_RULES.length, 36);
+  it('exports PILOT_RULES containing all 40 rules across the 32 detectable guides', () => {
+    assert.strictEqual(PILOT_RULES.length, 40);
+    assert.strictEqual(ALL_RULES.length, 40);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 30);
+    assert.strictEqual(guideIds.size, 32);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
@@ -28,6 +28,7 @@ describe('rules/index export registry', () => {
         'copy-button',
         'css-layout',
         'customize-scrollbar-color-and-thickness',
+        'dark-mode',
         'declarative-dialog-popover-control',
         'defer-work-until-scroll-ends',
         'detect-initial-visibility-state',
@@ -35,6 +36,7 @@ describe('rules/index export registry', () => {
         'form-fields-automatically-fit-contents',
         'ime-safe-enter-submit',
         'individual-transform-properties',
+        'manage-recurring-intervals',
         'prevent-page-scroll-under-modal-dialog',
         'resilient-context-menus-and-nested-dropdowns',
         'schedule-tasks-by-priority',

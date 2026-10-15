@@ -5,16 +5,31 @@ import {
   type CallExpression,
   type SourceFile,
 } from 'ts-morph';
-import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
+import type {
+  AnalyzerMatch,
+  AnalyzerRule,
+  CssMatcherContext,
+  CssRuleMatcher,
+  CssRuleView,
+  JsMatcherContext,
+  JsRuleMatcher,
+} from '../schema.ts';
 import { unwrapExpression } from '../scanners/ast-helpers.ts';
 
 export const PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH = '7d10dd62dcbc';
 
-const MODAL_OVERLAY_CONTEXT_REGEX =
-  /(modal|dialog|overlay|popup|drawer|sheet|lightbox|backdrop)/i;
+const FULLSCREEN_ONLY_REGEX = /fullscreen/i;
 
-const FULLSCREEN_ONLY_REGEX =
-  /fullscreen/i;
+const MODAL_SCROLL_LOCK_CLASSES = new Set([
+  'modal-open',
+  'dialog-open',
+  'no-scroll',
+  'scroll-lock',
+  'overflow-hidden',
+]);
+
+const CSS_SCROLL_LOCK_SELECTOR_REGEX =
+  /(?:body|html)?\.(?:modal-open|dialog-open|no-scroll|scroll-lock|overflow-hidden)\b/i;
 
 /**
  * Checks whether an expression references document.body or document.documentElement or root body.
@@ -51,19 +66,10 @@ function isDocumentRootElement(node: Node): boolean {
 }
 
 /**
- * Determines whether the given AST node is inside a modal, dialog, popup, or overlay context.
+ * Checks whether the node is inside an explicit fullscreen toggle function without modal/dialog context.
  */
-function isInModalOrOverlayContext(node: Node, filePath: string): boolean {
-  // 1. Check file path
-  if (MODAL_OVERLAY_CONTEXT_REGEX.test(filePath)) {
-    return true;
-  }
-
-  // 2. Check enclosing function, class, or method scopes
+function isInsideFullscreenToggle(node: Node): boolean {
   let current: Node | undefined = node.getParent();
-  let hasFullscreenSignal = false;
-  let hasModalSignal = false;
-
   while (current && !Node.isSourceFile(current)) {
     if (
       Node.isFunctionDeclaration(current) ||
@@ -76,38 +82,19 @@ function isInModalOrOverlayContext(node: Node, filePath: string): boolean {
       if ('getName' in current && typeof current.getName === 'function') {
         name = current.getName() ?? '';
       }
-
-      if (MODAL_OVERLAY_CONTEXT_REGEX.test(name)) {
-        hasModalSignal = true;
-      }
       if (FULLSCREEN_ONLY_REGEX.test(name)) {
-        hasFullscreenSignal = true;
-      }
-
-      // Check statements or properties within this scope for modal/dialog identifiers
-      const scopeText = current.getText();
-      if (MODAL_OVERLAY_CONTEXT_REGEX.test(scopeText)) {
-        hasModalSignal = true;
+        return true;
       }
     }
-
     current = current.getParent();
   }
-
-  if (hasFullscreenSignal && !hasModalSignal && !MODAL_OVERLAY_CONTEXT_REGEX.test(filePath)) {
-    return false;
-  }
-
-  return hasModalSignal;
+  return false;
 }
 
 /**
  * Checks whether a binary expression is an assignment setting overflow = 'hidden' on body/documentElement.
  */
-function matchOverflowAssignment(
-  binaryExpr: BinaryExpression,
-  filePath: string,
-): AnalyzerMatch | null {
+function matchOverflowAssignment(binaryExpr: BinaryExpression): AnalyzerMatch | null {
   if (binaryExpr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
     return null;
   }
@@ -142,7 +129,7 @@ function matchOverflowAssignment(
     return null;
   }
 
-  if (!isInModalOrOverlayContext(binaryExpr, filePath)) {
+  if (isInsideFullscreenToggle(binaryExpr)) {
     return null;
   }
 
@@ -156,10 +143,7 @@ function matchOverflowAssignment(
 /**
  * Checks whether a call expression is target.style.setProperty('overflow', 'hidden') on body/documentElement.
  */
-function matchSetPropertyCall(
-  callExpr: CallExpression,
-  filePath: string,
-): AnalyzerMatch | null {
+function matchSetPropertyCall(callExpr: CallExpression): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(expr) || expr.getName() !== 'setProperty') {
     return null;
@@ -199,7 +183,7 @@ function matchSetPropertyCall(
     return null;
   }
 
-  if (!isInModalOrOverlayContext(callExpr, filePath)) {
+  if (isInsideFullscreenToggle(callExpr)) {
     return null;
   }
 
@@ -210,15 +194,63 @@ function matchSetPropertyCall(
   };
 }
 
+/**
+ * Checks whether a call expression adds a scroll-locking class to body/documentElement:
+ * document.body.classList.add('modal-open' | 'no-scroll' | 'scroll-lock' | 'overflow-hidden')
+ */
+function matchClassListAdd(callExpr: CallExpression): AnalyzerMatch | null {
+  const expr = unwrapExpression(callExpr.getExpression());
+  if (!Node.isPropertyAccessExpression(expr) || expr.getName() !== 'add') {
+    return null;
+  }
+
+  const classListAccess = unwrapExpression(expr.getExpression());
+  if (!Node.isPropertyAccessExpression(classListAccess) || classListAccess.getName() !== 'classList') {
+    return null;
+  }
+
+  const targetElement = unwrapExpression(classListAccess.getExpression());
+  if (!isDocumentRootElement(targetElement)) {
+    return null;
+  }
+
+  const args = callExpr.getArguments();
+  let matchedClassName = '';
+  for (const arg of args) {
+    const unwrappedArg = unwrapExpression(arg);
+    if (Node.isStringLiteral(unwrappedArg) || Node.isNoSubstitutionTemplateLiteral(unwrappedArg)) {
+      const cls = unwrappedArg.getLiteralText().trim();
+      if (MODAL_SCROLL_LOCK_CLASSES.has(cls)) {
+        matchedClassName = cls;
+        break;
+      }
+    }
+  }
+
+  if (!matchedClassName) {
+    return null;
+  }
+
+  if (isInsideFullscreenToggle(callExpr)) {
+    return null;
+  }
+
+  return {
+    line: callExpr.getStartLineNumber(),
+    message:
+      `Imperative body scroll-lock class added (${targetElement.getText()}.classList.add('${matchedClassName}')) instead of native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
+  };
+}
+
 export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['overflow'],
-  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
+  fastTokens: ['overflow', 'modal-open', 'no-scroll', 'scroll-lock', 'overflow-hidden'],
+  matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
 
     const binaryExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
     for (const binExpr of binaryExpressions) {
-      const match = matchOverflowAssignment(binExpr, ctx.filePath);
+      const match = matchOverflowAssignment(binExpr);
       if (match) {
         matches.push(match);
       }
@@ -226,13 +258,45 @@ export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {
 
     const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
     for (const callExpr of callExpressions) {
-      const match = matchSetPropertyCall(callExpr, ctx.filePath);
-      if (match) {
-        matches.push(match);
+      const setPropMatch = matchSetPropertyCall(callExpr);
+      if (setPropMatch) {
+        matches.push(setPropMatch);
+        continue;
+      }
+
+      const classListMatch = matchClassListAdd(callExpr);
+      if (classListMatch) {
+        matches.push(classListMatch);
       }
     }
 
     return matches;
+  },
+};
+
+export const preventPageScrollUnderModalDialogCssMatcher: CssRuleMatcher = {
+  kind: 'css',
+  fastTokens: ['overflow', 'modal-open', 'dialog-open', 'no-scroll', 'scroll-lock', 'overflow-hidden'],
+  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
+    if (ctx.stylesheetHasProperty('overscroll-behavior')) {
+      return null;
+    }
+
+    if (!CSS_SCROLL_LOCK_SELECTOR_REGEX.test(styleRule.selectorText)) {
+      return null;
+    }
+
+    const overflowVal = styleRule.getPropertyValue('overflow')?.toLowerCase() ?? '';
+    const overflowYVal = styleRule.getPropertyValue('overflow-y')?.toLowerCase() ?? '';
+
+    if (overflowVal === 'hidden' || overflowYVal === 'hidden') {
+      return {
+        message:
+          `CSS scroll-lock rule '${styleRule.selectorText}' sets overflow: hidden without overscroll-behavior; use native <dialog> (showModal()) and overscroll-behavior: contain instead.`,
+      };
+    }
+
+    return null;
   },
 };
 
@@ -241,17 +305,40 @@ export const preventPageScrollUnderModalDialogRule: AnalyzerRule = {
   guideId: 'prevent-page-scroll-under-modal-dialog',
   guideHash: PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
   summary:
-    'Flag imperative body scroll locks (such as document.body.style.overflow = "hidden") inside modal, dialog, or overlay handlers instead of using native <dialog> with CSS overscroll-behavior: contain.',
+    'Flag imperative body scroll locks (document.body.style.overflow = "hidden", document.body.classList.add("modal-open")) inside modal or overlay handlers instead of using native <dialog> with CSS overscroll-behavior: contain.',
   matcher: preventPageScrollUnderModalDialogMatcher,
   phase2Rubric: {
     keepWhen: [
-      'Imperatively locking background page scroll via document.body.style.overflow = "hidden" or document.documentElement.style.overflow = "hidden" inside modal, dialog, popup, or overlay open/close handlers.',
-      'Scroll-locking helpers (e.g. disableBodyScroll, lockScroll) that mutate body or documentElement overflow when presenting modal dialogs or overlays.',
+      'Imperatively locking background page scroll via document.body.style.overflow = "hidden" or document.documentElement.style.overflow = "hidden" when presenting modal dialogs or overlays.',
+      'Adding body scroll-lock classes (such as document.body.classList.add("modal-open") or "no-scroll") to freeze underlying page scroll.',
     ],
     dropWhen: [
-      'Full-screen editor or canvas views (e.g. fullscreen toggle modes for code editors, video players, or games) that do not present a modal dialog or overlay layer.',
+      'Full-screen editor or canvas views (e.g. fullscreen toggle modes for code editors or games) that do not present a modal dialog or overlay layer.',
       'Native <dialog> elements utilizing CSS overscroll-behavior: contain or body:has(dialog[open]) to contain scroll without imperative JS.',
       'CSS stylesheet declarations or internal container style assignments setting overflow: hidden on sub-elements rather than the root body or documentElement.',
     ],
   },
 };
+
+export const preventPageScrollUnderModalDialogCssRule: AnalyzerRule = {
+  id: 'prevent-page-scroll-under-modal-dialog/css',
+  guideId: 'prevent-page-scroll-under-modal-dialog',
+  guideHash: PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
+  summary:
+    'Flag CSS modal scroll-lock rules (such as body.modal-open { overflow: hidden }) that disable page scroll without overscroll-behavior.',
+  matcher: preventPageScrollUnderModalDialogCssMatcher,
+  phase2Rubric: {
+    keepWhen: [
+      'CSS rules applying overflow: hidden or overflow-y: hidden to body or html via modal/dialog classes (such as .modal-open, .dialog-open, .no-scroll) to prevent background page scroll.',
+    ],
+    dropWhen: [
+      'Stylesheets already declaring overscroll-behavior on dialog or backdrop containers.',
+      'Selectors setting overflow: hidden on sub-components or card containers rather than the root body or html.',
+    ],
+  },
+};
+
+export const preventPageScrollUnderModalDialogRules: readonly AnalyzerRule[] = [
+  preventPageScrollUnderModalDialogRule,
+  preventPageScrollUnderModalDialogCssRule,
+];

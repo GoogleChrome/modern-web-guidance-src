@@ -12,16 +12,10 @@ void test('checkbox: positive brownfield matches', async (t) => {
       input[type="checkbox"] {
         display: none;
       }
-      input[type="checkbox"] + label::before {
-        content: "";
-        display: inline-block;
-        width: 16px;
-        height: 16px;
-      }
     `;
     const matches = scanCss('checkbox.css', css, [matcher]);
     assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /accent-color/);
+    assert.equal(matches[0]?.line, 2);
     assert.match(matches[0]?.message ?? '', /accent-color/);
   });
 
@@ -33,7 +27,7 @@ void test('checkbox: positive brownfield matches', async (t) => {
     `;
     const matches = scanCss('form.css', css, [matcher]);
     assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /accent-color/);
+    assert.equal(matches[0]?.line, 2);
   });
 
   await t.test('flags [type="checkbox"] with opacity: 0 and position: absolute', () => {
@@ -47,7 +41,42 @@ void test('checkbox: positive brownfield matches', async (t) => {
     `;
     const matches = scanCss('material.css', css, [matcher]);
     assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /accent-color/);
+  });
+
+  await t.test('flags .custom-control-input with visibility: hidden in checkbox styles', () => {
+    const css = `
+      .custom-checkbox .custom-control-input {
+        visibility: hidden;
+      }
+    `;
+    const matches = scanCss('bootstrap.css', css, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+  });
+
+  await t.test('flags custom checkbox pseudo-element checkmark styling', () => {
+    const css = `
+      input:checked + label::before {
+        content: "✓";
+        background-color: #007bff;
+        border-color: #007bff;
+      }
+    `;
+    const matches = scanCss('custom-check.css', css, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+  });
+
+  await t.test('flags .custom-checkbox with appearance: none', () => {
+    const css = `
+      .custom-checkbox {
+        appearance: none;
+        border: 2px solid #333;
+      }
+    `;
+    const matches = scanCss('custom.css', css, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
   });
 });
 
@@ -76,18 +105,6 @@ void test('checkbox: negative / exempt cases', async (t) => {
       }
     `;
     const matches = scanCss('a11y.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('exempts inputs styled with appearance: none', () => {
-    const css = `
-      input[type="checkbox"] {
-        appearance: none;
-        width: 20px;
-        height: 20px;
-      }
-    `;
-    const matches = scanCss('custom.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
 

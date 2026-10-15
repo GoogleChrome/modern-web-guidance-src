@@ -56,6 +56,37 @@ void test('size-aware-styling: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
+
+  await t.test('flags window resize listener reading container.offsetWidth and toggling class', () => {
+    const code = `
+      window.addEventListener('resize', () => {
+        const el = document.getElementById('sidebar');
+        if (el.offsetWidth < 300) {
+          el.classList.add('collapsed');
+        } else {
+          el.classList.remove('collapsed');
+        }
+      });
+    `;
+    const { matches } = scanJsSource('window-resize.js', code, [matcher], project);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+    assert.match(matches[0]?.message ?? '', /container queries/);
+  });
+
+  await t.test('flags jQuery $(window).resize toggling class via addClass', () => {
+    const code = `
+      $(window).resize(function() {
+        const width = $('#widget').clientWidth;
+        if (width < 400) {
+          $('#widget').addClass('compact');
+        }
+      });
+    `;
+    const { matches } = scanJsSource('jquery-resize.js', code, [matcher], project);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+  });
 });
 
 void test('size-aware-styling: negative / exempt cases', async (t) => {

@@ -25,11 +25,18 @@ const EXCLUDED_SELECTOR_PATTERNS = [
   /\btextarea\b/i,
 ];
 
+const VENDOR_SLIDER_PROGRESS_REGEX =
+  /:(?:-(?:webkit|moz|ms)-(?:slider-thumb|slider-runnable-track|range-thumb|range-track|thumb|track|progress-bar|progress-value))\b/i;
+
 function targetsBrandableFormControl(selectorText: string): boolean {
   if (EXCLUDED_SELECTOR_PATTERNS.some((pattern) => pattern.test(selectorText))) {
     return false;
   }
   return TARGET_SELECTOR_PATTERNS.some((pattern) => pattern.test(selectorText));
+}
+
+function targetsVendorSliderOrProgressBar(selectorText: string): boolean {
+  return VENDOR_SLIDER_PROGRESS_REGEX.test(selectorText);
 }
 
 function hasAppearanceNone(styleRule: CssRuleView): boolean {
@@ -50,7 +57,15 @@ function hasAppearanceNone(styleRule: CssRuleView): boolean {
 
 const brandConsistentFormsCssMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['appearance'],
+  fastTokens: [
+    'appearance',
+    '-webkit-slider-',
+    '-moz-range-',
+    '-webkit-progress-',
+    '-moz-progress-',
+    '-ms-thumb',
+    '-ms-track',
+  ],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     // 1. If stylesheet already defines accent-color, skip
     if (ctx.stylesheetHasProperty('accent-color')) {
@@ -65,18 +80,31 @@ const brandConsistentFormsCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // 3. Skip completely hidden controls (handled by separate checkbox replacement guide)
+    // 3. Skip completely hidden controls (display: none)
     const display = (styleRule.getPropertyValue('display') ?? '').toLowerCase();
     if (display === 'none') {
       return null;
     }
 
-    // 4. Must declare appearance: none (or vendor prefixed)
+    // 4. Check vendor pseudo-elements for slider / progress styling
+    if (targetsVendorSliderOrProgressBar(styleRule.selectorText)) {
+      const setsColor =
+        styleRule.hasProperty('background') ||
+        styleRule.hasProperty('background-color') ||
+        styleRule.hasProperty('border-color');
+      if (setsColor) {
+        return {
+          message:
+            'CSS rule styles vendor range-slider or progress-bar pseudo-elements; modernize with native accent-color.',
+        };
+      }
+    }
+
+    // 5. Must declare appearance: none on brandable control
     if (!hasAppearanceNone(styleRule)) {
       return null;
     }
 
-    // 5. Must target checkbox, radio, range, or progress
     if (!targetsBrandableFormControl(styleRule.selectorText)) {
       return null;
     }
@@ -98,7 +126,7 @@ export const brandConsistentFormsRule: AnalyzerRule = {
   phase2Rubric: {
     keepWhen: [
       'A CSS rule applies appearance: none, -webkit-appearance: none, or -moz-appearance: none to input[type="checkbox"], input[type="radio"], input[type="range"], or progress to restyle native control colors.',
-      'The stylesheet customizes the border, background, or checkmark of form controls without using accent-color.',
+      'A CSS rule styles vendor range slider or progress bar pseudo-elements (e.g. ::-webkit-slider-thumb, ::-moz-range-track, ::-webkit-progress-value) with custom background or border colors without using accent-color.',
     ],
     dropWhen: [
       'The stylesheet already defines accent-color or uses it to tint interactive controls.',

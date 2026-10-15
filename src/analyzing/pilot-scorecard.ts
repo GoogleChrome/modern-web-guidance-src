@@ -458,6 +458,26 @@ export function sampleM3SpotcheckDeck(
 }
 
 /**
+ * Builds a lookup map from rule ID (and guide ID fallback) to AnalyzerRule.
+ * Guarantees that rules registered by explicit rule ID (r.id) are never overwritten
+ * by a secondary rule sharing the same guideId.
+ */
+export function buildRulesByIdMap(
+  rules: readonly AnalyzerRule[],
+): Map<string, AnalyzerRule> {
+  const rulesById = new Map<string, AnalyzerRule>();
+  for (const r of rules) {
+    rulesById.set(r.id, r);
+  }
+  for (const r of rules) {
+    if (!rulesById.has(r.guideId)) {
+      rulesById.set(r.guideId, r);
+    }
+  }
+  return rulesById;
+}
+
+/**
  * Executes the complete held-out evaluation for Milestone 2 pilot rules.
  */
 export async function runPilotScorecard(
@@ -504,11 +524,7 @@ export async function runPilotScorecard(
   }
 
   // 4. Run Phase 2 filter on all sampled findings
-  const rulesById = new Map<string, AnalyzerRule>();
-  for (const r of rules) {
-    rulesById.set(r.id, r);
-    rulesById.set(r.guideId, r);
-  }
+  const rulesById = buildRulesByIdMap(rules);
 
   const phase2Opts: Phase2Options = {
     apiKey,

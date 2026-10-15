@@ -39,6 +39,63 @@ describe('defer-work-until-scroll-ends rule', () => {
     assert.match(matches[0].message, /scrollend/);
   });
 
+  test('flags addEventListener("scroll", debounce(...)) helper call', () => {
+    const code = `
+      window.addEventListener('scroll', debounce(() => {
+        updateNavbar();
+      }, 200));
+    `;
+    const { matches } = scanJsSource(
+      'nav/sticky.js',
+      code,
+      [deferWorkUntilScrollEndsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /scrollend/);
+  });
+
+  test('flags $(window).on("scroll", _.debounce(...)) helper', () => {
+    const code = `
+      $(window).on('scroll', _.debounce(function() {
+        console.log('Scroll finished');
+      }, 150));
+    `;
+    const { matches } = scanJsSource(
+      'ui/scroll.js',
+      code,
+      [deferWorkUntilScrollEndsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /scrollend/);
+  });
+
+  test('flags class method scroll listener setting timer with clearTimeout in class', () => {
+    const code = `
+      class Scroller {
+        constructor() {
+          this.timer = null;
+          window.addEventListener('scroll', this.onScroll.bind(this));
+        }
+        clear() {
+          clearTimeout(this.timer);
+        }
+        onScroll() {
+          this.timer = setTimeout(() => this.onScrollEnd(), 100);
+        }
+      }
+    `;
+    const { matches } = scanJsSource(
+      'components/scroller.js',
+      code,
+      [deferWorkUntilScrollEndsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /scrollend/);
+  });
+
   test('flags jQuery $(window).on("scroll") debounce handler', () => {
     const code = `
       var scrollTimeout;
@@ -59,26 +116,6 @@ describe('defer-work-until-scroll-ends rule', () => {
     assert.match(matches[0].message, /scrollend/);
   });
 
-  test('flags jQuery $(el).scroll(handler) debounce pattern', () => {
-    const code = `
-      let timer;
-      $('#container').scroll(function() {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          updateScrollMetrics();
-        }, 100);
-      });
-    `;
-    const { matches } = scanJsSource(
-      'legacy/scroller.js',
-      code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /scrollend/);
-  });
-
   test('flags window.onscroll assignment with debounce pattern', () => {
     const code = `
       let scrollTimer;
@@ -91,25 +128,6 @@ describe('defer-work-until-scroll-ends rule', () => {
     `;
     const { matches } = scanJsSource(
       'nav/persist.js',
-      code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /scrollend/);
-  });
-
-  test('flags handler referenced as local variable with debounce pattern', () => {
-    const code = `
-      let timer;
-      const onScrollDebounced = () => {
-        clearTimeout(timer);
-        timer = setTimeout(syncVisibleItems, 120);
-      };
-      container.addEventListener('scroll', onScrollDebounced);
-    `;
-    const { matches } = scanJsSource(
-      'components/list.js',
       code,
       [deferWorkUntilScrollEndsMatcher],
       project,

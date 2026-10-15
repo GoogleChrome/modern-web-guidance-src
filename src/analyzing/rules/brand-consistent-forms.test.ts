@@ -73,6 +73,34 @@ void test('brand-consistent-forms: positive cases', async (t) => {
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
+
+  await t.test('flags ::-webkit-slider-thumb with background color', () => {
+    const css = `
+      input[type="range"]::-webkit-slider-thumb {
+        background-color: #007bff;
+        border-color: #0056b3;
+      }
+    `;
+    const matches = scanCss('slider.css', css, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+    assert.match(matches[0]?.message ?? '', /accent-color/);
+  });
+
+  await t.test('flags ::-moz-range-track and ::-webkit-progress-value styling', () => {
+    const css = `
+      input[type="range"]::-moz-range-track {
+        background: #e9ecef;
+      }
+      progress::-webkit-progress-value {
+        background-color: #28a745;
+      }
+    `;
+    const matches = scanCss('controls.css', css, [matcher]);
+    assert.equal(matches.length, 2);
+    assert.equal(matches[0]?.line, 2);
+    assert.equal(matches[1]?.line, 5);
+  });
 });
 
 void test('brand-consistent-forms: negative cases', async (t) => {

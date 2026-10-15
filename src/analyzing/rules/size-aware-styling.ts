@@ -17,10 +17,13 @@ import type {
 } from '../schema.ts';
 
 const DIMENSION_READ_REGEX =
-  /(?:contentRect(?:\.width|\.inlineSize)?|borderBoxSize|contentBoxSize|offsetWidth|clientWidth)\b/;
+  /(?:contentRect(?:\.width|\.inlineSize)?|borderBoxSize|contentBoxSize|offsetWidth|clientWidth|getBoundingClientRect)\b/;
+
+const ELEMENT_DIMENSION_READ_REGEX =
+  /(?:(?<!window\.)(?<!document\.)(?<!documentElement\.)(?:offsetWidth|clientWidth)|getBoundingClientRect\(\)(?:\.width)?)\b/;
 
 const STYLING_MUTATION_REGEX =
-  /(?:classList\.(?:add|remove|toggle)|\bclassName\s*=|style\.(?:setProperty|[a-zA-Z]+)|\bset[A-Z][a-zA-Z]*(?:Width|Size|Narrow|Small|Compact|Layout|Breakpoint))\b/;
+  /(?:classList\.(?:add|remove|toggle)|\b(?:addClass|removeClass|toggleClass)\b|\bclassName\s*=|style\.(?:setProperty|[a-zA-Z]+)|\bset[A-Z][a-zA-Z]*(?:Width|Size|Narrow|Small|Compact|Layout|Breakpoint))\b/;
 
 const NON_CONTAINER_EXCLUSIONS_REGEX =
   /(?:canvas|webgl|\bgl\b|getContext|chart|echarts|highcharts|monaco|editor\.layout|virtual|virtualizer|scrollbar)\b/i;
@@ -41,55 +44,111 @@ function isResizeObserverInstantiation(
   return false;
 }
 
+function isWindowResizeListener(node: Node): node is CallExpression {
+  if (!Node.isCallExpression(node)) {
+    return false;
+  }
+  const callExpr = unwrapExpression(node.getExpression());
+  if (!Node.isPropertyAccessExpression(callExpr)) {
+    return false;
+  }
+  const method = callExpr.getName();
+  if (method === 'resize') {
+    return true;
+  }
+  if (method === 'addEventListener' || method === 'on' || method === 'bind') {
+    const args = node.getArguments();
+    if (args.length > 0) {
+      const firstArg = unwrapExpression(args[0] as Node);
+      if (Node.isStringLiteral(firstArg)) {
+        return firstArg.getLiteralText().toLowerCase() === 'resize';
+      }
+    }
+  }
+  return false;
+}
+
 const sizeAwareStylingJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['ResizeObserver'],
+  fastTokens: [
+    'ResizeObserver',
+    'offsetWidth',
+    'clientWidth',
+    'getBoundingClientRect',
+  ],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();
 
     sourceFile.forEachDescendant((node) => {
-      if (!isResizeObserverInstantiation(node)) {
-        return;
-      }
-
       if (isProtectedByFeatureGuard(node, ['container', 'container-type', '@container'])) {
         return;
       }
 
-      // Check callback argument
-      const args = node.getArguments();
-      if (args.length === 0) {
+      // 1. ResizeObserver pattern
+      if (isResizeObserverInstantiation(node)) {
+        const args = node.getArguments();
+        if (args.length === 0) {
+          return;
+        }
+
+        const rawCallback = unwrapExpression(args[0] as Node);
+        const callback = resolveLocalExpression(rawCallback);
+        const callbackText = callback.getText();
+
+        if (!DIMENSION_READ_REGEX.test(callbackText)) {
+          return;
+        }
+        if (!STYLING_MUTATION_REGEX.test(callbackText)) {
+          return;
+        }
+        if (NON_CONTAINER_EXCLUSIONS_REGEX.test(callbackText)) {
+          return;
+        }
+
+        const line = node.getStartLineNumber();
+        if (!visitedLines.has(line)) {
+          visitedLines.add(line);
+          matches.push({
+            line,
+            message:
+              'ResizeObserver callback toggles styling or responsive classes based on element width; modernize using CSS container queries (@container / container-type: inline-size).',
+          });
+        }
         return;
       }
 
-      const rawCallback = unwrapExpression(args[0] as Node);
-      const callback = resolveLocalExpression(rawCallback);
-      const callbackText = callback.getText();
+      // 2. Window resize event listener pattern measuring container dimensions
+      if (isWindowResizeListener(node)) {
+        const args = node.getArguments();
+        if (args.length === 0) {
+          return;
+        }
 
-      // 1. Must read element width/dimension from ResizeObserver entry
-      if (!DIMENSION_READ_REGEX.test(callbackText)) {
-        return;
-      }
+        const callbackIndex = args.length > 1 ? 1 : 0;
+        const rawCallback = unwrapExpression(args[callbackIndex] as Node);
+        const callback = resolveLocalExpression(rawCallback);
+        const callbackText = callback.getText();
 
-      // 2. Must toggle classes or styling for responsive container adaptations
-      if (!STYLING_MUTATION_REGEX.test(callbackText)) {
-        return;
-      }
+        if (!ELEMENT_DIMENSION_READ_REGEX.test(callbackText)) {
+          return;
+        }
+        if (!STYLING_MUTATION_REGEX.test(callbackText)) {
+          return;
+        }
+        if (NON_CONTAINER_EXCLUSIONS_REGEX.test(callbackText)) {
+          return;
+        }
 
-      // 3. Skip canvas, WebGL, charts, Monaco editor, or virtual scroll viewports
-      if (NON_CONTAINER_EXCLUSIONS_REGEX.test(callbackText)) {
-        return;
-      }
-
-      const line = node.getStartLineNumber();
-      if (!visitedLines.has(line)) {
-        visitedLines.add(line);
-        matches.push({
-          line,
-          message:
-            'ResizeObserver callback toggles styling or responsive classes based on element width; modernize using CSS container queries (@container / container-type: inline-size).',
-        });
+        const line = node.getStartLineNumber();
+        if (!visitedLines.has(line)) {
+          visitedLines.add(line);
+          matches.push({
+            line,
+            message:
+              'Window resize listener queries container element dimensions to toggle classes; modernize using CSS container queries (@container / container-type: inline-size).',
+          });
+        }
       }
     });
 
@@ -102,17 +161,18 @@ export const sizeAwareStylingRule: AnalyzerRule = {
   guideId: 'size-aware-styling',
   guideHash: '89180c46bf23',
   summary:
-    'ResizeObserver callbacks that measure element dimensions to toggle classes or styles should be replaced with CSS container queries (@container).',
+    'ResizeObserver callbacks and window resize handlers that measure element dimensions to toggle classes or styles should be replaced with CSS container queries (@container).',
   matcher: sizeAwareStylingJsMatcher,
   phase2Rubric: {
     keepWhen: [
       'A ResizeObserver callback reads element dimensions (contentRect.width, borderBoxSize, offsetWidth, clientWidth) to toggle CSS classes (classList.add/remove/toggle, className =) or inline styles for responsive container breakpoints.',
+      'A window resize event listener measures a container element offsetWidth, clientWidth, or getBoundingClientRect() to toggle responsive layout classes (addClass, removeClass, classList).',
       'The responsive layout adaptation can be implemented declaratively using CSS container queries (@container and container-type: inline-size).',
     ],
     dropWhen: [
-      'The ResizeObserver resizes an HTML <canvas>, WebGL rendering context, SVG surface, or redraws continuous graphics.',
-      'The ResizeObserver updates a virtualized scrolling viewport, infinite list, or windowed layout calculations.',
-      'The ResizeObserver re-layouts third-party chart components (ECharts, Highcharts) or code editors (Monaco, CodeMirror).',
+      'The ResizeObserver or resize handler resizes an HTML <canvas>, WebGL rendering context, SVG surface, or redraws continuous graphics.',
+      'The ResizeObserver or resize handler updates a virtualized scrolling viewport, infinite list, or windowed layout calculations.',
+      'The ResizeObserver or resize handler re-layouts third-party chart components (ECharts, Highcharts) or code editors (Monaco, CodeMirror).',
       'The code is guarded by a feature detection query checking CSS container query support.',
     ],
   },

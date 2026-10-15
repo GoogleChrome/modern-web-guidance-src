@@ -6,6 +6,7 @@ import { describe, it } from 'node:test';
 import {
   CANARY_CONFIG,
   SYNTHETIC_CANARY_CARDS,
+  buildRulesByIdMap,
   computeRuleSetHash,
   evaluateGuideQualification,
   formatPilotScorecardReport,
@@ -402,5 +403,71 @@ describe('sampleM3SpotcheckDeck', () => {
   it('handles empty findings gracefully', () => {
     const deck = sampleM3SpotcheckDeck([]);
     assert.deepEqual(deck, []);
+  });
+});
+
+describe('buildRulesByIdMap (multi-rule collision prevention)', () => {
+  function makeMockRule(id: string, guideId: string, summary: string): AnalyzerRule {
+    return {
+      id,
+      guideId,
+      guideHash: '123456789012',
+      summary,
+      matcher: {
+        kind: 'css',
+        matchRule: () => null,
+      },
+      phase2Rubric: {
+        keepWhen: [`Keep for ${id}`],
+        dropWhen: [`Drop for ${id}`],
+      },
+    };
+  }
+
+  it('guarantees that ruleId mapping is never overwritten by another rule sharing the same guideId', () => {
+    const cssRule = makeMockRule('foo', 'foo', 'CSS rule for foo');
+    const jsRule = makeMockRule('foo/js', 'foo', 'JS rule for foo');
+
+    const rulesById = buildRulesByIdMap([cssRule, jsRule]);
+
+    assert.strictEqual(rulesById.get('foo'), cssRule);
+    assert.strictEqual(rulesById.get('foo/js'), jsRule);
+    assert.strictEqual(rulesById.get('foo')?.summary, 'CSS rule for foo');
+    assert.strictEqual(rulesById.get('foo/js')?.summary, 'JS rule for foo');
+  });
+
+  it('preserves correct rule mapping regardless of rule order in the array', () => {
+    const cssRule = makeMockRule(
+      'child-state-based-styling',
+      'child-state-based-styling',
+      'CSS :has() rule',
+    );
+    const jsRule = makeMockRule(
+      'child-state-based-styling/js-parent-class',
+      'child-state-based-styling',
+      'JS class toggling rule',
+    );
+
+    // Register JS rule before CSS rule
+    const rulesById = buildRulesByIdMap([jsRule, cssRule]);
+
+    assert.strictEqual(rulesById.get('child-state-based-styling'), cssRule);
+    assert.strictEqual(rulesById.get('child-state-based-styling/js-parent-class'), jsRule);
+    assert.deepStrictEqual(
+      rulesById.get('child-state-based-styling')?.phase2Rubric.keepWhen,
+      ['Keep for child-state-based-styling'],
+    );
+  });
+
+  it('maps guideId to fallback rule when no rule shares the exact guideId as its id', () => {
+    const subRule1 = makeMockRule('bar/a', 'bar', 'Sub-rule A');
+    const subRule2 = makeMockRule('bar/b', 'bar', 'Sub-rule B');
+
+    const rulesById = buildRulesByIdMap([subRule1, subRule2]);
+
+    assert.strictEqual(rulesById.get('bar/a'), subRule1);
+    assert.strictEqual(rulesById.get('bar/b'), subRule2);
+    // Fallback to first rule for 'bar'
+    assert.strictEqual(rulesById.get('bar'), subRule1);
   });
 });

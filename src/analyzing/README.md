@@ -192,7 +192,7 @@ export const autofillSignInFormRule: AnalyzerRule = {
 };
 ```
 
-### Registered Detectable Guides (30 Guides)
+### Registered Detectable Guides (32 Guides)
 
 | # | Guide ID | Guide Hash | Modern Platform Target |
 | :- | :--- | :--- | :--- |
@@ -212,20 +212,22 @@ export const autofillSignInFormRule: AnalyzerRule = {
 | 14 | `copy-button` | `d92b7f9038d3` | Native `navigator.clipboard.writeText()` |
 | 15 | `css-layout` | `b2ddd28dc261` | Standard CSS `aspect-ratio` property |
 | 16 | `customize-scrollbar-color-and-thickness` | `6797d5c85622` | Standard CSS `scrollbar-color` and `scrollbar-width` |
-| 17 | `declarative-dialog-popover-control` | `87f6a7ad8849` | Declarative `commandfor` / `command` and `popovertarget` |
-| 18 | `defer-work-until-scroll-ends` | `ee7104add98e` | Native `scrollend` event listener |
-| 19 | `detect-initial-visibility-state` | `b881da0b6ea2` | Standard `document.visibilityState` and `document.hidden` |
-| 20 | `dialog` | `95fc47d3f348` | Native HTML `<dialog>` element and `showModal()` |
-| 21 | `form-fields-automatically-fit-contents` | `54a6341c988f` | CSS `field-sizing: content` |
-| 22 | `ime-safe-enter-submit` | `bd5e1488af32` | `e.isComposing` guard on Enter keydown handlers |
-| 23 | `individual-transform-properties` | `42af807594e8` | Individual transform properties (`rotate`, `scale`, `translate`) |
-| 24 | `prevent-page-scroll-under-modal-dialog` | `7d10dd62dcbc` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
-| 25 | `resilient-context-menus-and-nested-dropdowns` | `9152c0b12710` | Native `popover` and CSS Anchor Positioning |
-| 26 | `schedule-tasks-by-priority` | `69f3bb531093` | Prioritized task scheduling via `scheduler.postTask()` |
-| 27 | `scrollspy` | `fffee90dc52d` | CSS `scroll-target-group: auto` and `:target-current` |
-| 28 | `shadow-dom` | `7c77ee087448` | Declarative Shadow DOM (`<template shadowrootmode="open">`) |
-| 29 | `size-aware-styling` | `89180c46bf23` | Native CSS Container Queries (`@container`) |
-| 30 | `stack-drill-down` | `c3b9a4677d1b` | Native `Error.captureStackTrace` and standard CallSite inspection |
+| 17 | `dark-mode` | `796876897c2c` | CSS `color-scheme: light dark` and `light-dark()` color functions |
+| 18 | `declarative-dialog-popover-control` | `87f6a7ad8849` | Declarative `commandfor` / `command` and `popovertarget` |
+| 19 | `defer-work-until-scroll-ends` | `ee7104add98e` | Native `scrollend` event listener |
+| 20 | `detect-initial-visibility-state` | `b881da0b6ea2` | Standard `document.visibilityState` and `document.hidden` |
+| 21 | `dialog` | `95fc47d3f348` | Native HTML `<dialog>` element and `showModal()` |
+| 22 | `form-fields-automatically-fit-contents` | `54a6341c988f` | CSS `field-sizing: content` |
+| 23 | `ime-safe-enter-submit` | `bd5e1488af32` | `e.isComposing` guard on Enter keydown handlers |
+| 24 | `individual-transform-properties` | `42af807594e8` | Individual transform properties (`rotate`, `scale`, `translate`) |
+| 25 | `manage-recurring-intervals` | `70de814bc3cc` | Temporal API (`Temporal.PlainDate.add` / `Temporal.Duration`) |
+| 26 | `prevent-page-scroll-under-modal-dialog` | `7d10dd62dcbc` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
+| 27 | `resilient-context-menus-and-nested-dropdowns` | `9152c0b12710` | Native `popover` and CSS Anchor Positioning |
+| 28 | `schedule-tasks-by-priority` | `69f3bb531093` | Prioritized task scheduling via `scheduler.postTask()` |
+| 29 | `scrollspy` | `fffee90dc52d` | CSS `scroll-target-group: auto` and `:target-current` |
+| 30 | `shadow-dom` | `7c77ee087448` | Declarative Shadow DOM (`<template shadowrootmode="open">`) |
+| 31 | `size-aware-styling` | `89180c46bf23` | Native CSS Container Queries (`@container`) |
+| 32 | `stack-drill-down` | `c3b9a4677d1b` | Native `Error.captureStackTrace` and standard CallSite inspection |
 
 ---
 

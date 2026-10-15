@@ -61,6 +61,11 @@ import {
   customizeScrollbarColorAndThicknessRules,
 } from './customize-scrollbar-color-and-thickness.ts';
 import {
+  darkModeCssRule,
+  darkModeJsMatchMediaRule,
+  darkModeRules,
+} from './dark-mode.ts';
+import {
   declarativeDialogPopoverControlRule,
   declarativeDialogPopoverControlClickListenerRule,
   declarativeDialogPopoverControlRules,
@@ -87,7 +92,13 @@ import {
   individualTransformPropertiesRules,
 } from './individual-transform-properties.ts';
 import {
+  manageRecurringIntervalsRule,
+  manageRecurringIntervalsRules,
+} from './manage-recurring-intervals.ts';
+import {
   preventPageScrollUnderModalDialogRule,
+  preventPageScrollUnderModalDialogCssRule,
+  preventPageScrollUnderModalDialogRules,
 } from './prevent-page-scroll-under-modal-dialog.ts';
 import {
   resilientContextMenusAndNestedDropdownsRule,
@@ -131,6 +142,7 @@ export * from './coordinate-global-events.ts';
 export * from './copy-button.ts';
 export * from './css-layout.ts';
 export * from './customize-scrollbar-color-and-thickness.ts';
+export * from './dark-mode.ts';
 export * from './declarative-dialog-popover-control.ts';
 export * from './defer-work-until-scroll-ends.ts';
 export * from './detect-initial-visibility-state.ts';
@@ -138,6 +150,7 @@ export * from './dialog.ts';
 export * from './form-fields-automatically-fit-contents.ts';
 export * from './ime-safe-enter-submit.ts';
 export * from './individual-transform-properties.ts';
+export * from './manage-recurring-intervals.ts';
 export * from './prevent-page-scroll-under-modal-dialog.ts';
 export * from './resilient-context-menus-and-nested-dropdowns.ts';
 export * from './schedule-tasks-by-priority.ts';
@@ -168,7 +181,7 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   formFieldsAutomaticallyFitContentsRule,
   brandConsistentFormsRule,
 
-  // Batch 2 (14 guides):
+  // Batch 2 & Reserve (16 guides, 32 guides total):
   ...dialogRules,
   ...scrollspyRules,
   ...autofillAddressFormRules,
@@ -182,7 +195,9 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   deferWorkUntilScrollEndsRule,
   detectInitialVisibilityStateRule,
   scheduleTasksByPriorityRule,
-  preventPageScrollUnderModalDialogRule,
+  ...preventPageScrollUnderModalDialogRules,
+  ...darkModeRules,
+  ...manageRecurringIntervalsRules,
 ];
 
 export const ALL_RULES: readonly AnalyzerRule[] = PILOT_RULES;

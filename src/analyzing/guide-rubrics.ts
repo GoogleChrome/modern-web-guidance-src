@@ -272,6 +272,24 @@ export const PILOT_GATE0_ENTRIES: readonly Gate0Entry[] = [
       'Body and documentElement overflow property mutations inside modal/dialog handler contexts are detectable via JS/TS AST.',
   },
   {
+    guideId: 'dark-mode',
+    guideHash: '796876897c2c',
+    classification: 'detectable',
+    brownfieldTarget:
+      'CSS rules inside @media (prefers-color-scheme: dark) or matchMedia("(prefers-color-scheme: dark)") theme listeners should be modernized using color-scheme: light dark and the light-dark() CSS function.',
+    reason:
+      'Prefers-color-scheme media query rules and matchMedia event listeners are statically detectable via CSS stylesheet and JS AST scanners.',
+  },
+  {
+    guideId: 'manage-recurring-intervals',
+    guideHash: '70de814bc3cc',
+    classification: 'detectable',
+    brownfieldTarget:
+      'Manual Date setter mutations (d.setMonth(d.getMonth() + 1)) or Moment/dayjs date interval math should be modernized using standard Temporal API (Temporal.PlainDate.add / Temporal.Duration).',
+    reason:
+      'Date setter arithmetic and calendar unit manipulation calls are deterministically detectable via JS/TS AST.',
+  },
+  {
     guideId: 'navigation-drawer',
     guideHash: '3481f6feb2e8',
     classification: 'ui-recipe-multi-part',

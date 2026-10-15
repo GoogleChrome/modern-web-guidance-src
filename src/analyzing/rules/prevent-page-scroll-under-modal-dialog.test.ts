@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import { createInMemoryProject, scanJsSource } from '../scanners/index.ts';
+import { createInMemoryProject, scanCss, scanJsSource } from '../scanners/index.ts';
 import {
   PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
+  preventPageScrollUnderModalDialogCssMatcher,
+  preventPageScrollUnderModalDialogCssRule,
   preventPageScrollUnderModalDialogMatcher,
   preventPageScrollUnderModalDialogRule,
+  preventPageScrollUnderModalDialogRules,
 } from './prevent-page-scroll-under-modal-dialog.ts';
 
 describe('prevent-page-scroll-under-modal-dialog rule', () => {
@@ -20,20 +23,25 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.equal(preventPageScrollUnderModalDialogRule.guideHash.length, 12);
     assert.ok(preventPageScrollUnderModalDialogRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(preventPageScrollUnderModalDialogRule.phase2Rubric.dropWhen.length >= 2);
+
+    assert.equal(preventPageScrollUnderModalDialogCssRule.id, 'prevent-page-scroll-under-modal-dialog/css');
+    assert.equal(preventPageScrollUnderModalDialogCssRule.guideId, 'prevent-page-scroll-under-modal-dialog');
+    assert.equal(
+      preventPageScrollUnderModalDialogCssRule.guideHash,
+      PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
+    );
+    assert.ok(preventPageScrollUnderModalDialogCssRule.phase2Rubric.dropWhen.length >= 2);
+    assert.equal(preventPageScrollUnderModalDialogRules.length, 2);
   });
 
-  test('flags document.body.style.overflow = "hidden" in Modal component', () => {
+  test('flags document.body.style.overflow = "hidden" in modal open handler', () => {
     const code = `
-      class Modal {
-        componentDidMount() {
-          if (this.props.isOpen) {
-            document.body.style.overflow = 'hidden';
-          }
-        }
+      function showModalDialog() {
+        document.body.style.overflow = 'hidden';
       }
     `;
     const { matches } = scanJsSource(
-      'components/Modal/index.js',
+      'ui/modal.js',
       code,
       [preventPageScrollUnderModalDialogMatcher],
       project,
@@ -42,15 +50,14 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.match(matches[0].message, /overscroll-behavior/);
   });
 
-  test('flags document.documentElement.style.overflow = "hidden" in openDialog handler', () => {
+  test('flags document.documentElement.style.overflow = "hidden"', () => {
     const code = `
-      function openDialog(dialogId) {
+      function lockScroll() {
         document.documentElement.style.overflow = 'hidden';
-        showOverlay(dialogId);
       }
     `;
     const { matches } = scanJsSource(
-      'ui/dialog.js',
+      'ui/lock.js',
       code,
       [preventPageScrollUnderModalDialogMatcher],
       project,
@@ -59,40 +66,39 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.match(matches[0].message, /overscroll-behavior/);
   });
 
-  test('flags document.body.style.overflowY = "hidden" in overlay manager', () => {
+  test('flags document.body.classList.add("modal-open")', () => {
     const code = `
-      export function lockScrollForOverlay() {
-        document.body.style.overflowY = 'hidden';
+      function openModal() {
+        document.body.classList.add('modal-open');
       }
     `;
     const { matches } = scanJsSource(
-      'utils/overlay-scroll.js',
+      'modal/open.js',
       code,
       [preventPageScrollUnderModalDialogMatcher],
       project,
     );
     assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /overscroll-behavior/);
+    assert.match(matches[0].message, /classList\.add/);
   });
 
-  test('flags setProperty("overflow", "hidden") in popup trigger', () => {
+  test('flags document.body.classList.add("no-scroll")', () => {
     const code = `
-      function showPopup(popup) {
-        document.body.style.setProperty('overflow', 'hidden');
-        popup.classList.add('visible');
+      function freezePage() {
+        document.body.classList.add('no-scroll');
       }
     `;
     const { matches } = scanJsSource(
-      'ui/popup.js',
+      'overlay/freeze.js',
       code,
       [preventPageScrollUnderModalDialogMatcher],
       project,
     );
     assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /overscroll-behavior/);
+    assert.match(matches[0].message, /classList\.add/);
   });
 
-  test('ignores fullscreen editor addon without modal/overlay context', () => {
+  test('ignores fullscreen editor function toggle without modal/overlay', () => {
     const code = `
       function toggleFullScreen(editor) {
         if (!editor.state.fullScreen) {
@@ -110,33 +116,44 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.equal(matches.length, 0);
   });
 
-  test('ignores internal element overflow manipulation', () => {
-    const code = `
-      function truncateCard(cardElement) {
-        cardElement.style.overflow = 'hidden';
+  test('flags CSS rule setting body.modal-open { overflow: hidden }', () => {
+    const css = `
+      body.modal-open {
+        overflow: hidden;
       }
     `;
-    const { matches } = scanJsSource(
-      'components/card.js',
-      code,
-      [preventPageScrollUnderModalDialogMatcher],
-      project,
-    );
-    assert.equal(matches.length, 0);
+    const matches = scanCss('styles/modal.css', css, [
+      preventPageScrollUnderModalDialogCssMatcher,
+    ]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /overscroll-behavior/);
   });
 
-  test('ignores overflow assignment to "auto" or "" (unlocking)', () => {
-    const code = `
-      function closeModal() {
-        document.body.style.overflow = '';
+  test('flags CSS rule setting .no-scroll { overflow-y: hidden }', () => {
+    const css = `
+      .no-scroll {
+        overflow-y: hidden;
       }
     `;
-    const { matches } = scanJsSource(
-      'components/modal.js',
-      code,
-      [preventPageScrollUnderModalDialogMatcher],
-      project,
-    );
+    const matches = scanCss('styles/overlay.css', css, [
+      preventPageScrollUnderModalDialogCssMatcher,
+    ]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /overscroll-behavior/);
+  });
+
+  test('ignores CSS when stylesheet declares overscroll-behavior', () => {
+    const css = `
+      body.modal-open {
+        overflow: hidden;
+      }
+      dialog:modal {
+        overscroll-behavior: contain;
+      }
+    `;
+    const matches = scanCss('styles/dialog.css', css, [
+      preventPageScrollUnderModalDialogCssMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 });

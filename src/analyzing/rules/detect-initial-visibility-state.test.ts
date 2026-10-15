@@ -5,6 +5,7 @@ import {
   DETECT_INITIAL_VISIBILITY_STATE_GUIDE_HASH,
   detectInitialVisibilityStateMatcher,
   detectInitialVisibilityStateRule,
+  detectInitialVisibilityStateRules,
 } from './detect-initial-visibility-state.ts';
 
 describe('detect-initial-visibility-state rule', () => {
@@ -17,116 +18,87 @@ describe('detect-initial-visibility-state rule', () => {
     assert.equal(detectInitialVisibilityStateRule.guideHash.length, 12);
     assert.ok(detectInitialVisibilityStateRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(detectInitialVisibilityStateRule.phase2Rubric.dropWhen.length >= 2);
+    assert.equal(detectInitialVisibilityStateRules.length, 1);
   });
 
-  test('flags direct access to document.webkitHidden', () => {
+  test('flags document.visibilityState access without VisibilityStateEntry', () => {
     const code = `
-      function isPageHidden() {
-        return document.webkitHidden;
+      function checkPageVisibility() {
+        if (document.visibilityState === 'hidden') {
+          console.log('Page loaded in background');
+        }
       }
     `;
     const { matches } = scanJsSource(
-      'utils/page-state.js',
+      'analytics/visibility.js',
       code,
       [detectInitialVisibilityStateMatcher],
       project,
     );
     assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /webkitHidden/);
+    assert.match(matches[0].message, /VisibilityStateEntry/);
   });
 
-  test('flags standalone "webkitHidden" in document check', () => {
+  test('flags document.hidden access without VisibilityStateEntry', () => {
     const code = `
-      const isIOS7 = isIOS && "webkitHidden" in document;
+      function isHidden() {
+        return document.hidden;
+      }
     `;
     const { matches } = scanJsSource(
-      'compat/browser.js',
+      'utils/hidden.js',
       code,
       [detectInitialVisibilityStateMatcher],
       project,
     );
     assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /webkitHidden/);
+    assert.match(matches[0].message, /VisibilityStateEntry/);
   });
 
-  test('flags standalone webkitvisibilitychange listener', () => {
+  test('flags addEventListener("visibilitychange") listener', () => {
     const code = `
-      document.addEventListener('webkitvisibilitychange', () => {
-        if (document.webkitHidden) {
-          pauseAudio();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+          pauseVideo();
         }
       });
     `;
     const { matches } = scanJsSource(
-      'audio/player.js',
+      'media/video.js',
       code,
       [detectInitialVisibilityStateMatcher],
       project,
     );
     assert.ok(matches.length >= 1);
-    assert.match(matches[0].message, /webkitvisibilitychange|webkitHidden/);
+    assert.match(matches[0].message, /VisibilityStateEntry/);
   });
 
-  test('flags vendor property when placed as primary branch before standard', () => {
+  test('flags vendor-prefixed webkitHidden', () => {
     const code = `
-      function checkHidden() {
-        return document.webkitHidden || document.hidden;
-      }
+      const isHidden = document.webkitHidden;
     `;
     const { matches } = scanJsSource(
-      'views/visibility.js',
+      'compat/webkit.js',
       code,
       [detectInitialVisibilityStateMatcher],
       project,
     );
     assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /webkitHidden/);
+    assert.match(matches[0].message, /VisibilityStateEntry/);
   });
 
-  test('ignores vendor property when paired as secondary fallback in logical OR', () => {
+  test('ignores code when file references VisibilityStateEntry', () => {
     const code = `
-      function checkHidden() {
-        return document.hidden || document.webkitHidden;
-      }
-    `;
-    const { matches } = scanJsSource(
-      'utils/safe-visibility.js',
-      code,
-      [detectInitialVisibilityStateMatcher],
-      project,
-    );
-    assert.equal(matches.length, 0);
-  });
-
-  test('ignores vendor property ladder when standard is primary branch in ternary', () => {
-    const code = `
-      var hiddenProperty = 'hidden' in document ? 'hidden' :
-        'webkitHidden' in document ? 'webkitHidden' :
-        'mozHidden' in document ? 'mozHidden' :
-        null;
-    `;
-    const { matches } = scanJsSource(
-      'spike.js',
-      code,
-      [detectInitialVisibilityStateMatcher],
-      project,
-    );
-    assert.equal(matches.length, 0);
-  });
-
-  test('ignores vendor property in else-branch of standard feature check', () => {
-    const code = `
-      function getVis() {
-        if ('hidden' in document) {
-          return document.hidden;
-        } else if ('webkitHidden' in document) {
-          return document.webkitHidden;
+      function getVisibilityInfo() {
+        if ('VisibilityStateEntry' in window) {
+          const entries = performance.getEntriesByType('visibility-state');
+          return entries.length > 0 && entries[0].name === 'hidden';
         }
-        return false;
+        return document.visibilityState === 'hidden';
       }
     `;
     const { matches } = scanJsSource(
-      'compat/vis.js',
+      'perf/modern-vis.js',
       code,
       [detectInitialVisibilityStateMatcher],
       project,
@@ -134,15 +106,29 @@ describe('detect-initial-visibility-state rule', () => {
     assert.equal(matches.length, 0);
   });
 
-  test('ignores webkitHidden on custom non-document object', () => {
+  test('ignores code when file references getEntriesByType("visibility-state")', () => {
     const code = `
-      const config = { webkitHidden: true };
-      if (config.webkitHidden) {
+      const entries = performance.getEntriesByType('visibility-state');
+      document.addEventListener('visibilitychange', onVis);
+    `;
+    const { matches } = scanJsSource(
+      'perf/timeline.js',
+      code,
+      [detectInitialVisibilityStateMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores custom object with hidden or visibilityState property', () => {
+    const code = `
+      const item = { hidden: true, visibilityState: 'visible' };
+      if (item.hidden) {
         doSomething();
       }
     `;
     const { matches } = scanJsSource(
-      'models/config.js',
+      'models/item.js',
       code,
       [detectInitialVisibilityStateMatcher],
       project,

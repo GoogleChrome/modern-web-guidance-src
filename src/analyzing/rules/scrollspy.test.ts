@@ -36,6 +36,24 @@ void test('scrollspy DOM: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /data-bs-spy="scroll"/);
   });
+
+  await t.test('flags element with scrollspy class and data-target', () => {
+    const html = `
+      <div class="scrollspy-container" data-target="#my-nav">
+        <div id="section1"></div>
+      </div>
+    `;
+    const matches = scanHtml('page.html', html, [domMatcher]);
+    assert.equal(matches.length, 1);
+  });
+
+  await t.test('flags data-scrollspy custom attribute', () => {
+    const html = `
+      <main data-scrollspy="#toc"></main>
+    `;
+    const matches = scanHtml('toc.html', html, [domMatcher]);
+    assert.equal(matches.length, 1);
+  });
 });
 
 void test('scrollspy DOM: negative / exempt cases', async (t) => {
@@ -117,6 +135,75 @@ void test('scrollspy JS: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /Manual scroll listener calculates section positions/);
   });
+
+  await t.test('flags named function reference in addEventListener with pageYOffset', () => {
+    const project = createInMemoryProject();
+    const code = `
+      function updateActiveNav() {
+        const curY = window.pageYOffset;
+        document.querySelectorAll('section').forEach(s => {
+          if (curY >= s.offsetTop) {
+            $('.nav-link').removeClass('active');
+            $('a[href="#' + s.id + '"]').addClass('active');
+          }
+        });
+      }
+      window.addEventListener('scroll', updateActiveNav);
+    `;
+    const sourceFile = project.createSourceFile('named-scroll.js', code);
+    const matches = jsMatcher.matchFile(sourceFile, {
+      filePath: 'named-scroll.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+  });
+
+  await t.test('flags window.onscroll assignment tracking section positions', () => {
+    const project = createInMemoryProject();
+    const code = `
+      window.onscroll = function() {
+        const y = window.scrollY;
+        const sections = document.querySelectorAll('.content-section');
+        sections.forEach(sec => {
+          const rect = sec.getBoundingClientRect();
+          if (rect.top <= 100) {
+            document.querySelector('.toc a.active')?.classList.remove('active');
+            document.querySelector('.toc a[href="#' + sec.id + '"]')?.classList.add('active');
+          }
+        });
+      };
+    `;
+    const sourceFile = project.createSourceFile('onscroll.js', code);
+    const matches = jsMatcher.matchFile(sourceFile, {
+      filePath: 'onscroll.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /Manual onscroll assignment/);
+  });
+
+  await t.test('flags IntersectionObserver tracking section visibility to toggle active TOC links', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const id = entry.target.getAttribute('id');
+            document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+            document.querySelector('nav a[href="#' + id + '"]')?.classList.add('active');
+          }
+        });
+      }, { threshold: 0.5 });
+      document.querySelectorAll('section').forEach(s => observer.observe(s));
+    `;
+    const sourceFile = project.createSourceFile('observer-scrollspy.js', code);
+    const matches = jsMatcher.matchFile(sourceFile, {
+      filePath: 'observer-scrollspy.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /IntersectionObserver/);
+  });
 });
 
 void test('scrollspy JS: negative / exempt cases', async (t) => {
@@ -147,6 +234,28 @@ void test('scrollspy JS: negative / exempt cases', async (t) => {
     const sourceFile = project.createSourceFile('infinite.js', code);
     const matches = jsMatcher.matchFile(sourceFile, {
       filePath: 'infinite.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts IntersectionObserver used for lazy loading images', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            img.src = img.dataset.src;
+            observer.unobserve(img);
+          }
+        });
+      });
+      document.querySelectorAll('img.lazy').forEach(img => imageObserver.observe(img));
+    `;
+    const sourceFile = project.createSourceFile('lazy-load.js', code);
+    const matches = jsMatcher.matchFile(sourceFile, {
+      filePath: 'lazy-load.js',
       fileContent: code,
     });
     assert.equal(matches.length, 0);
