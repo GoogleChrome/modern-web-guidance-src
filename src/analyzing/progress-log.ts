@@ -130,26 +130,43 @@ export function formatMetricSummary(m: MetricEntry): string {
 export function parseMetricCell(text: string): MetricEntry {
   const trimmed = text.trim();
   // Regex to match "92.3% [88.1% - 95.4%] (n=60, grading-only)" or "12.5% (n=200, grading-only)"
-  const match = trimmed.match(
+  const matchWithSplit = trimmed.match(
     /^([\d.]+)%(?:\s*\[\s*([\d.]+)%\s*[-–]\s*([\d.]+)%\s*\])?\s*\(n=(\d+),\s*(?:split=)?([^)]+)\)$/,
   );
-  if (!match) {
-    throw new Error(`Unable to parse metric cell: "${text}"`);
+  if (matchWithSplit) {
+    const value = Number((parseFloat(matchWithSplit[1]) / 100).toFixed(4));
+    const lower = matchWithSplit[2] !== undefined ? Number((parseFloat(matchWithSplit[2]) / 100).toFixed(4)) : undefined;
+    const upper = matchWithSplit[3] !== undefined ? Number((parseFloat(matchWithSplit[3]) / 100).toFixed(4)) : undefined;
+    const n = parseInt(matchWithSplit[4], 10);
+    const split = matchWithSplit[5].trim();
+    return { value, lower, upper, n, split };
   }
 
-  const value = Number((parseFloat(match[1]) / 100).toFixed(4));
-  const lower = match[2] !== undefined ? Number((parseFloat(match[2]) / 100).toFixed(4)) : undefined;
-  const upper = match[3] !== undefined ? Number((parseFloat(match[3]) / 100).toFixed(4)) : undefined;
-  const n = parseInt(match[4], 10);
-  const split = match[5].trim();
+  // Regex to match "78.1% (n=32)"
+  const matchOnlyN = trimmed.match(
+    /^([\d.]+)%(?:\s*\[\s*([\d.]+)%\s*[-–]\s*([\d.]+)%\s*\])?\s*\(n=(\d+)\)$/,
+  );
+  if (matchOnlyN) {
+    const value = Number((parseFloat(matchOnlyN[1]) / 100).toFixed(4));
+    const lower = matchOnlyN[2] !== undefined ? Number((parseFloat(matchOnlyN[2]) / 100).toFixed(4)) : undefined;
+    const upper = matchOnlyN[3] !== undefined ? Number((parseFloat(matchOnlyN[3]) / 100).toFixed(4)) : undefined;
+    const n = parseInt(matchOnlyN[4], 10);
+    return { value, lower, upper, n, split: 'grading-only' };
+  }
 
-  return {
-    value,
-    lower,
-    upper,
-    n,
-    split,
-  };
+  // Regex to match "99.2% (qualified)" or "60.3% (recall)"
+  const matchTag = trimmed.match(
+    /^([\d.]+)%(?:\s*\[\s*([\d.]+)%\s*[-–]\s*([\d.]+)%\s*\])?\s*\(([^)]+)\)$/,
+  );
+  if (matchTag) {
+    const value = Number((parseFloat(matchTag[1]) / 100).toFixed(4));
+    const lower = matchTag[2] !== undefined ? Number((parseFloat(matchTag[2]) / 100).toFixed(4)) : undefined;
+    const upper = matchTag[3] !== undefined ? Number((parseFloat(matchTag[3]) / 100).toFixed(4)) : undefined;
+    const split = matchTag[4].trim();
+    return { value, lower, upper, n: 0, split };
+  }
+
+  throw new Error(`Unable to parse metric cell: "${text}"`);
 }
 
 /**
@@ -310,8 +327,8 @@ export function parseProgressLogMarkdown(markdown: string): ProgressLogRow[] {
     const coverage = parseMetricCell(cells[6]);
     const precision = parseMetricCell(cells[7]);
     const recall = parseMetricCell(cells[8]);
-    const judgeAlpha = parseFloat(cells[9]);
-    const judgeAc1 = parseFloat(cells[10]);
+    const judgeAlpha = cells[9] === '-' ? 0 : parseFloat(cells[9]);
+    const judgeAc1 = cells[10] === '-' ? 0 : parseFloat(cells[10]);
     const canaryTnr = Number((parseFloat(cells[11].replace('%', '')) / 100).toFixed(4));
     const rawNotes = cells[12];
     const notes = rawNotes === '-' || rawNotes === '' ? undefined : rawNotes;
