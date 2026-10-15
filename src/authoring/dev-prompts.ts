@@ -89,21 +89,15 @@ export interface GraderPromptOptions {
     branchCommits?: string;
     branchDiff?: string;
     comments?: string;
-    prBody?: string;
   };
 }
 
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
   let prReviewContextBlock = '';
-  if (opts.prContext?.comments || opts.prContext?.prBody) {
+  if (opts.prContext?.comments) {
     const parts: string[] = ['### ⚠️ REVIEWER FEEDBACK ON PREVIOUS GRADER & EVALUATIONS'];
-    if (opts.prContext.comments) {
-      parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
-    }
-    if (opts.prContext.prBody) {
-      parts.push(`Previous PR Report / Recommendations:\n${opts.prContext.prBody.trim()}`);
-    }
-    parts.push(`Reviewers have provided comments on the previous evaluation/grader. You MUST incorporate reviewer suggestions into \`${opts.graderFile}\` (e.g. relaxing overly strict checks, fixing false negatives, or adjusting selector scopes) so the test suite accurately reflects reviewer intent while remaining robust.`);
+    parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
+    parts.push(`If any reviewer comments above pertain to \`${opts.graderFile}\` (e.g. relaxing overly strict checks, fixing false negatives, or adjusting selector scopes), incorporate them while still adhering to \`${opts.expectationsFile}\` and all rules below.`);
     prReviewContextBlock = '\n' + parts.join('\n\n') + '\n\n---\n';
   }
 
@@ -196,7 +190,6 @@ export interface TaskPromptOptions {
     branchCommits?: string;
     branchDiff?: string;
     comments?: string;
-    prBody?: string;
   };
 }
 
@@ -204,14 +197,9 @@ export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
   const target = opts.isDisciplineGuide ? 'discipline guidance' : 'use case';
 
   let prReviewContextBlock = '';
-  if (opts.prContext?.comments || opts.prContext?.prBody) {
+  if (opts.prContext?.comments) {
     const parts: string[] = ['### ⚠️ REVIEWER FEEDBACK ON PREVIOUS TASK PROMPT / IMPLEMENTATION'];
-    if (opts.prContext.comments) {
-      parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
-    }
-    if (opts.prContext.prBody) {
-      parts.push(`Previous PR Report / Recommendations:\n${opts.prContext.prBody.trim()}`);
-    }
+    parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
     parts.push(`Carefully address any reviewer suggestions regarding the developer prompt in \`${opts.taskFile}\`. If a reviewer requested specific phrasing, wording adjustments, or additions to the test prompt, incorporate their feedback directly while adhering to all rules below.`);
     prReviewContextBlock = '\n' + parts.join('\n\n') + '\n\n---\n';
   }
@@ -241,7 +229,6 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 export interface ReviewFeedbackPromptOptions {
   guideName: string;
   comments: string;
-  prBody?: string;
   branchCommits?: string;
   branchDiff?: string;
   rerunMode?: string;
@@ -254,9 +241,6 @@ export function buildApplyReviewFeedbackPrompt(opts: ReviewFeedbackPromptOptions
   }
   if (opts.branchDiff) {
     parts.push(`## Branch Diff against main:\n\`\`\`diff\n${opts.branchDiff.trim()}\n\`\`\``);
-  }
-  if (opts.prBody) {
-    parts.push(`## Previous PR Description & Recommendations:\n${opts.prBody.trim()}`);
   }
   parts.push(`## Reviewer Comments & Feedback to Address:\n${opts.comments.trim()}`);
 
@@ -291,7 +275,6 @@ export interface DevReportPromptOptions {
     branchCommits?: string;
     branchDiff?: string;
     comments?: string;
-    prBody?: string;
   };
 }
 
@@ -303,16 +286,13 @@ export function buildDevReportPrompt(opts: DevReportPromptOptions): string {
   }).join('\n\n');
 
   let prContextBlock = '';
-  if (opts.prContext && (opts.prContext.comments || opts.prContext.branchDiff || opts.prContext.branchCommits || opts.prContext.prBody)) {
+  if (opts.prContext && (opts.prContext.comments || opts.prContext.branchDiff || opts.prContext.branchCommits)) {
     const parts: string[] = ['# EXISTING PULL REQUEST & REVIEW CONTEXT'];
     if (opts.prContext.branchCommits) {
       parts.push(`## Branch Commits against main:\n\`\`\`\n${opts.prContext.branchCommits.trim()}\n\`\`\``);
     }
     if (opts.prContext.branchDiff) {
       parts.push(`## Branch Diff against main:\n\`\`\`diff\n${opts.prContext.branchDiff.trim()}\n\`\`\``);
-    }
-    if (opts.prContext.prBody) {
-      parts.push(`## Previous PR Description & Recommendations:\n${opts.prContext.prBody.trim()}`);
     }
     if (opts.prContext.comments) {
       parts.push(`## PR Comments & Reviewer Feedback:\n${opts.prContext.comments.trim()}`);

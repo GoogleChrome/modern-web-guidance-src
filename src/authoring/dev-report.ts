@@ -32,7 +32,6 @@ export async function applyPrReviewFeedback(
     branchCommits?: string;
     branchDiff?: string;
     comments?: string;
-    prBody?: string;
     rerunMode?: string;
   }
 ): Promise<void> {
@@ -59,7 +58,6 @@ export async function applyPrReviewFeedback(
     const prompt = buildApplyReviewFeedbackPrompt({
       guideName,
       comments: prContext.comments,
-      prBody: prContext.prBody,
       branchCommits: prContext.branchCommits,
       branchDiff: prContext.branchDiff,
       rerunMode: prContext.rerunMode,
@@ -215,7 +213,6 @@ export async function runDevReport(
     branchCommits?: string;
     branchDiff?: string;
     comments?: string;
-    prBody?: string;
   }
 ): Promise<void> {
   console.log(cCyan(`\n--- Running Evaluation Report ---`));

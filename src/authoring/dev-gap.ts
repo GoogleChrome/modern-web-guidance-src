@@ -51,8 +51,8 @@ export interface PrReviewContext {
   branchCommits?: string;
   branchDiff?: string;
   comments?: string;
-  prBody?: string;
   rerunMode?: DevPrRerunLabel;
+  threadIds?: string[];
 }
 
 export interface FixEvalGapsOptions {
@@ -177,11 +177,27 @@ export const evalGapFixCli = {
     { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
   )),
   scanGuides: (): GuideInventory[] => scanAllGuides(),
+  getHeadCommitSha: (): string => {
+    return git(['rev-parse', '--short', 'HEAD']);
+  },
+  replyToReviewThread: (threadId: string, message: string): void => {
+    const query = `
+mutation($threadId: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadId, body: $body }) {
+    comment { id }
+  }
+}`;
+    child_process.execFileSync(
+      'gh',
+      ['api', 'graphql', '-F', `threadId=${threadId}`, '-F', `body=${message}`, '-f', `query=${query}`],
+      { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+    );
+  },
   fetchPrReviewContext: (prNumber: number, _branch?: string): PrReviewContext => {
     let branchCommits = '';
     let branchDiff = '';
     let comments = '';
-    let prBody = '';
+    const threadIds: string[] = [];
 
     try {
       branchCommits = git(['log', '--oneline', 'origin/main..HEAD']);
@@ -194,13 +210,9 @@ export const evalGapFixCli = {
     try {
       const viewJson = JSON.parse(child_process.execFileSync(
         'gh',
-        ['pr', 'view', String(prNumber), '--json', 'body,comments,reviews'],
+        ['pr', 'view', String(prNumber), '--json', 'comments,reviews'],
         { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
       ));
-
-      if (typeof viewJson.body === 'string') {
-        prBody = viewJson.body.trim();
-      }
 
       const commentLines: string[] = [];
       if (Array.isArray(viewJson.comments)) {
@@ -226,11 +238,12 @@ export const evalGapFixCli = {
       // Fetch inline review comments from unresolved review threads via gh api graphql
       try {
         const query = `
-query($pr: Int!) {
-  repository(owner: "{owner}", name: "{repo}") {
+query($owner: String!, $repo: String!, $pr: Int!) {
+  repository(owner: $owner, name: $repo) {
     pullRequest(number: $pr) {
       reviewThreads(first: 100) {
         nodes {
+          id
           isResolved
           path
           line
@@ -247,12 +260,13 @@ query($pr: Int!) {
 }`;
         const threadData = JSON.parse(child_process.execFileSync(
           'gh',
-          ['api', 'graphql', '-F', `pr=${prNumber}`, '-f', `query=${query}`],
+          ['api', 'graphql', '-F', 'owner={owner}', '-F', 'repo={repo}', '-F', `pr=${prNumber}`, '-f', `query=${query}`],
           { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
         ));
         const threads = threadData.data?.repository?.pullRequest?.reviewThreads?.nodes || [];
         for (const t of threads) {
           if (t.isResolved) continue;
+          if (t.id) threadIds.push(t.id);
           const file = t.path || 'unknown';
           const line = t.line || '';
           const comments = t.comments?.nodes || [];
@@ -289,7 +303,12 @@ query($pr: Int!) {
       comments = commentLines.join('\n\n');
     } catch {}
 
-    return { branchCommits, branchDiff, comments, prBody };
+    return {
+      branchCommits,
+      branchDiff,
+      comments,
+      threadIds: threadIds.length > 0 ? threadIds : undefined,
+    };
   },
   runDevGuide: async (inv: GuideInventory, options: FixEvalGapsOptions): Promise<boolean> => {
     const { devGuide } = await import('./dev.ts');
@@ -349,6 +368,21 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
       outcome = prUrl
         ? { gap, status: gap.rerunMode ? 'pr-updated' : 'pr-opened', detail: prUrl }
         : { gap, status: 'pr-failed', detail: 'gd pr failed (branch may be on origin; delete it to retry)' };
+
+      if (prUrl && prContext?.threadIds?.length) {
+        try {
+          const sha = evalGapFixCli.getHeadCommitSha();
+          for (const threadId of prContext.threadIds) {
+            try {
+              evalGapFixCli.replyToReviewThread(threadId, `🤖 *[gd dev]* Addressed in ${sha}`);
+            } catch (err) {
+              console.warn(cDim(`Could not reply to review thread ${threadId}: ${(err as Error).message}`));
+            }
+          }
+        } catch (err) {
+          console.warn(cDim(`Could not reply to review threads: ${(err as Error).message}`));
+        }
+      }
     }
   } catch (err) {
     outcome = { gap, status: 'error', detail: (err as Error).message };

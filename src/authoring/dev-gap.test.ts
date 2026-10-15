@@ -152,6 +152,10 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.listDevBranches = () => new Set();
     evalGapFixCli.listOpenPrs = () => [];
     evalGapFixCli.fetchPrReviewContext = () => ({});
+    evalGapFixCli.getHeadCommitSha = () => 'abc1234';
+    evalGapFixCli.replyToReviewThread = (threadId, message) => {
+      calls.push(`reply ${threadId}: ${message}`);
+    };
     evalGapFixCli.runDevPr = async dir => {
       const name = path.basename(dir);
       calls.push(`pr ${name}`);
@@ -251,6 +255,22 @@ describe('fixEvalGaps', () => {
       rerunMode: 'needs-eval-run',
     });
     assert.ok(calls.includes('fetch-context #42 gd-dev/scrollspy'));
+  });
+
+  it('replies to unresolved review threads after updating a PR', async () => {
+    const guide = tempGuide('scrollspy');
+    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-eval-run'], 'gd-dev/scrollspy')];
+    evalGapFixCli.fetchPrReviewContext = () => ({
+      comments: '- **@micahjo7**: please fix this',
+      threadIds: ['PRRT_1', 'PRRT_2'],
+    });
+    evalGapFixCli.getHeadCommitSha = () => 'fedcba9';
+
+    stubDev([guide]);
+
+    assert.strictEqual(await run([guide]), true);
+    assert.ok(calls.includes('reply PRRT_1: 🤖 *[gd dev]* Addressed in fedcba9'));
+    assert.ok(calls.includes('reply PRRT_2: 🤖 *[gd dev]* Addressed in fedcba9'));
   });
 
   it('defaults targets to daily-grind and respects custom targets', async () => {

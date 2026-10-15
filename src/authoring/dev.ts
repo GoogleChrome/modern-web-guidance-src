@@ -52,7 +52,6 @@ export interface DevGuideOptions {
     branchCommits?: string;
     branchDiff?: string;
     comments?: string;
-    prBody?: string;
     rerunMode?: string;
   };
 }
@@ -64,7 +63,7 @@ export const devCli = {
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'ignore'],
       }).trim();
-      if (!branch || branch === 'main') return false;
+      if (!branch.startsWith('gd-dev/')) return false;
 
       const status = execSync(`git status --porcelain "${guideDir}"`, {
         encoding: 'utf-8',

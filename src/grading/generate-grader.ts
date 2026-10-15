@@ -29,7 +29,6 @@ export async function generateTargetGrader(
     branchCommits?: string;
     branchDiff?: string;
     comments?: string;
-    prBody?: string;
   }
 ): Promise<void> {
   const repoRoot = rootDir;
