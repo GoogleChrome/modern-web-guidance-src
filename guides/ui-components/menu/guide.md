@@ -339,7 +339,9 @@ if (!Object.hasOwn(HTMLElement.prototype, 'focusGroup')) {
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+### Fallbacks & browser support for Anchor positioning
+
+{{ BASELINE_STATUS("anchor-positioning") }}
 
 In browsers without CSS Anchor Positioning, guard `inset: auto` (and any `margin: 0` reset on `[popover]`) inside `@supports (position-area: block-end)` so popovers fall back to centered viewport placement instead of stacking at the top-left corner, or position the menu from `getBoundingClientRect()`.
 
@@ -348,7 +350,7 @@ In browsers without CSS Anchor Positioning, guard `inset: auto` (and any `margin
 If targeting earlier implementations where `showPopover({ source })` does not establish an implicit anchor, link each trigger and menu in JavaScript instead of writing per-menu CSS rules:
 
 ```js
-if (!('ToggleEvent' in window && 'source' in ToggleEvent.prototype)) {
+if (!('ToggleEvent' in window && Object.hasOwn(ToggleEvent.prototype, 'source'))) {
   triggers.forEach((trigger, index) => {
     const anchorName = `--menu-trigger-${index}`;
     trigger.style.anchorName = anchorName;
@@ -357,7 +359,9 @@ if (!('ToggleEvent' in window && 'source' in ToggleEvent.prototype)) {
 }
 ```
 
-### Command invokers
+### Fallbacks & browser support for Invoker commands
+
+{{ BASELINE_STATUS("invoker-commands") }}
 
 Without invokers, `command="toggle-popover"` does nothing, so clicking a trigger will not open its menu. The fallback must perform the toggle in script. Feature-detect the interface rather than an instance: `commandForElement` lives on `HTMLButtonElement.prototype`.
 
@@ -374,7 +378,7 @@ if (!Object.hasOwn(HTMLButtonElement.prototype, 'commandForElement')) {
       const fromPointer = pointerTrigger === trigger;
       pointerTrigger = null;
       if (isPreviewed(menu) && fromPointer) focusFirst(menu);
-      else if (isOpen(menu)) menu.hidePopover();
+      else if (isOpen(menu)) closeAndRestore(menu);
       else {
         enterOnOpen.add(menu);
         menu.showPopover({ source: trigger });
@@ -384,4 +388,6 @@ if (!Object.hasOwn(HTMLButtonElement.prototype, 'commandForElement')) {
 }
 ```
 
-{{ BASELINE_STATUS("invoker-commands") }}
+### Fallbacks & browser support for Subgrid
+
+{{ BASELINE_STATUS("subgrid") }}
