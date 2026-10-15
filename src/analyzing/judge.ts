@@ -403,7 +403,7 @@ export function getGeminiApiKey(options?: JudgeRunOptions): string {
   return key;
 }
 
-async function fetchWithRetry(
+export async function fetchWithRetry(
   url: string,
   options: RequestInit,
   customFetch: typeof fetch,

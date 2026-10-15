@@ -9,6 +9,7 @@ export * from './scanners/index.ts';
 export * from './phase2.ts';
 export * from './rules/index.ts';
 export * from './pilot-scorecard.ts';
+export * from './fix-harness.ts';
 export * from './cli.ts';
 export { GEMINI_API_BASE } from './judge.ts';
 
