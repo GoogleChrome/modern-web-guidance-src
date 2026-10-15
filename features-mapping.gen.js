@@ -575,6 +575,10 @@ window.__featuresMapping = {
   "state-aware-sticky-headers": [
     "container-scroll-state-queries"
   ],
+  "2d-panning": [
+    "scroll-axis-lock",
+    "overscroll-behavior"
+  ],
   "anchor-positioning-tab-underline": [
     "anchor-positioning",
     "prefers-reduced-motion"
@@ -611,9 +615,6 @@ window.__featuresMapping = {
     "invoker-commands",
     "popover",
     "dialog"
-  ],
-  "diagonal-panning": [
-    "scroll-axis-lock"
   ],
   "directional-navigation-transitions": [
     "view-transitions",
