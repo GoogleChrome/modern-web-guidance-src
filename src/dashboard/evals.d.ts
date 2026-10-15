@@ -8,6 +8,7 @@ declare global {
     __featuresMapping?: Record<string, string[]>;
     openDetailsFromTask?: (scenarioName: string, testId: string) => void;
     openTrajectory?: (usedBasePath: string, sessionFile: string) => void;
+    openTrace?: (tracePath: string) => void;
     viewContent?: (fileName: string, filePath: string) => Promise<void>;
     viewDiff?: (setupPath: string, resultPath: string, testName: string, runNumber: number) => Promise<void>;
     setInsightFilter?: (filterKey: 'agent' | 'serving' | 'model', value: string) => void;

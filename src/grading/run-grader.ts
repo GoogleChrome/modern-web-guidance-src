@@ -11,7 +11,6 @@ import { TARGETS_DIR, getActiveSolutionAgents, SOLUTION_PATCH_FILES, type Soluti
 import { copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
 import { createIsolatedHome, cleanupIsolatedHome } from '../harness/lib/agent-shared.ts';
 import { applyPatchSync } from '../core/patch-utils.ts';
-import { shouldIncludeTrace } from './playwright.config.ts';
 
 export interface PlaywrightOptions {
   targetPathAbs: string;
@@ -114,7 +113,7 @@ export async function runPlaywright(
     const child = executePlaywright({
       targetPathAbs: effectiveTargetPath,
       graderPath,
-      reporters: shouldIncludeTrace() ? ['json', 'html'] : ['json'],
+      reporters: ['json'],
       htmlOutputDir,
       testResultsDir,
       jsonOutputName: tmpJson,
@@ -132,6 +131,31 @@ export async function runPlaywright(
 
     const effectiveAppDir = isDir ? effectiveTargetPath : path.dirname(effectiveTargetPath);
     const resolvedTestResultsDir = testResultsDir || path.join(effectiveAppDir, 'test-results');
+
+    // Move any retained trace.zip files out of test-results into <taskDir>/traces/<slug>.zip
+    const targetTaskDir = htmlOutputDir
+      ? (htmlOutputDir.endsWith('traces') ? path.dirname(htmlOutputDir) : (htmlOutputDir.endsWith('grade-report') ? path.dirname(htmlOutputDir) : htmlOutputDir))
+      : (isDir ? targetPathAbs : path.dirname(targetPathAbs));
+    const tracesTargetDir = path.join(targetTaskDir, 'traces');
+
+    if (fs.existsSync(resolvedTestResultsDir)) {
+      try {
+        const entries = await fs.promises.readdir(resolvedTestResultsDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isDirectory()) {
+            const traceSource = path.join(resolvedTestResultsDir, entry.name, 'trace.zip');
+            if (fs.existsSync(traceSource)) {
+              await fs.promises.mkdir(tracesTargetDir, { recursive: true });
+              const dest = path.join(tracesTargetDir, `${entry.name}.zip`);
+              await fs.promises.copyFile(traceSource, dest);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to extract traces from test results:', err);
+      }
+    }
+
     await fs.promises.rm(resolvedTestResultsDir, { recursive: true, force: true }).catch(() => {});
 
     const content = await fs.promises.readFile(tmpJson, 'utf-8').catch(() => null);

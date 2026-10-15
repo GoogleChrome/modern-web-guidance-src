@@ -33,7 +33,9 @@ export default defineConfig({
   reporter: 'list',
   outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR || path.join(outDir, 'test-results'),
   use: {
-    trace: includeTrace ? 'retain-on-failure' : 'off',
+    trace: includeTrace
+      ? { mode: 'retain-on-failure', snapshots: true, sources: false, screenshots: true }
+      : 'off',
   },
   projects: [
     {

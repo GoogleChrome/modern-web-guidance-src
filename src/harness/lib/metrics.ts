@@ -3,6 +3,7 @@ export interface ScenarioCheck {
   passed: boolean;
   message: string;
   isEarlyFailure?: boolean;
+  error?: string;
 }
 
 export interface RunResult {

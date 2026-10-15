@@ -88,6 +88,7 @@ function getAppFiles(currentDir: string, base = ''): string[] {
       entry.name === 'dist' ||
       entry.name === 'test-results' ||
       entry.name === 'grade-report' ||
+      entry.name === 'traces' ||
       entry.name.startsWith('.')
     ) {
       continue;
@@ -388,11 +389,16 @@ function evaluateScenarioResults(
         json.suites.forEach(traverse);
 
         return specs.map((spec: any) => {
-          const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
+          const lastResult = spec.tests?.[0]?.results?.[spec.tests[0].results.length - 1];
+          const passed = lastResult?.status === 'passed';
+          const errorMsg = !passed
+            ? (lastResult?.error?.message || lastResult?.errors?.[0]?.message || undefined)
+            : undefined;
           return {
-            passed: lastResult.status === 'passed',
+            id: spec.id || spec.title,
+            passed,
             message: spec.title,
-            testId: spec.id
+            ...(errorMsg ? { error: errorMsg } : {})
           };
         });
       }
@@ -512,6 +518,13 @@ async function collectTaskRunEntry(
       const runFiles = fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory());
       if (fs.existsSync(path.join(dir, 'grade-report', 'index.html'))) {
         runFiles.push('grade-report/index.html');
+      }
+      const tracesDir = path.join(dir, 'traces');
+      if (fs.existsSync(tracesDir)) {
+        const traceFiles = fs.readdirSync(tracesDir)
+          .filter(f => f.endsWith('.zip'))
+          .map(f => `traces/${f}`);
+        runFiles.push(...traceFiles);
       }
       return runFiles;
     })(),

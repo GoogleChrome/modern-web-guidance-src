@@ -3,6 +3,7 @@ import * as https from "https";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { createRequire } from 'module';
 import { exec, spawn } from 'child_process';
 import { runAllManifests } from './generate-manifests.js';
 import { extractSuiteSummary } from './summary-extractor.js';
@@ -19,6 +20,19 @@ import {
 
 const PORT = process.env.PORT || 8081;
 const STATIC = parseBooleanEnv(process.env.STATIC, false);
+
+function getTraceViewerDir() {
+  try {
+    const req = createRequire(import.meta.url);
+    const pwPkg = req.resolve('playwright/package.json');
+    const pwReq = createRequire(pwPkg);
+    const corePkg = pwReq.resolve('playwright-core/package.json');
+    return path.join(path.dirname(corePkg), 'lib', 'vite', 'traceViewer');
+  } catch {
+    return null;
+  }
+}
+const traceViewerDir = getTraceViewerDir();
 
 if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
@@ -43,7 +57,8 @@ if (STATIC) {
 
   const links = [
     { target: suitesDir, name: 'results' },
-    { target: baseAppsDir, name: 'base_apps' }
+    { target: baseAppsDir, name: 'base_apps' },
+    ...(traceViewerDir ? [{ target: traceViewerDir, name: 'trace-viewer' }] : [])
   ];
 
   for (const link of links) {
@@ -91,6 +106,9 @@ const MIME_TYPES = {
   '.txt': 'text/plain',
   '.log': 'text/plain',
   '.ts': 'application/javascript',
+  '.zip': 'application/zip',
+  '.ttf': 'font/ttf',
+  '.webmanifest': 'application/manifest+json',
 };
 
 /**
@@ -229,6 +247,30 @@ const server = http.createServer(async (req, res) => {
     console.log(`403 Forbidden: Hidden file access - ${req.method} ${reqUrl}`);
     res.writeHead(403);
     res.end('403 Forbidden: Access to hidden files is not allowed');
+    return;
+  }
+
+  // Serve Playwright trace viewer
+  if (traceViewerDir && (decodedPath === '/trace-viewer' || decodedPath.startsWith('/trace-viewer/'))) {
+    const subPath = (decodedPath === '/trace-viewer' || decodedPath === '/trace-viewer/') ? 'index.html' : decodedPath.substring(14);
+    const traceViewerFile = path.resolve(traceViewerDir, subPath);
+    if (!traceViewerFile.startsWith(traceViewerDir + path.sep) && traceViewerFile !== traceViewerDir) {
+      res.writeHead(403);
+      res.end('403 Forbidden');
+      return;
+    }
+    if (fs.existsSync(traceViewerFile) && !fs.statSync(traceViewerFile).isDirectory()) {
+      const extname = path.extname(traceViewerFile);
+      const contentType = MIME_TYPES[extname] || 'application/octet-stream';
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Access-Control-Allow-Origin': '*',
+      });
+      fs.createReadStream(traceViewerFile).pipe(res);
+      return;
+    }
+    res.writeHead(404);
+    res.end('404 Not Found (trace viewer asset)');
     return;
   }
 
@@ -411,6 +453,13 @@ const server = http.createServer(async (req, res) => {
             const dataFiles = fs.readdirSync(gradeReportDataDir)
               .map(f => `grade-report/data/${f}`);
             files.push(...dataFiles);
+          }
+          const tracesDir = path.join(targetDir, 'traces');
+          if (fs.existsSync(tracesDir)) {
+            const traceFiles = fs.readdirSync(tracesDir, { withFileTypes: true })
+              .filter(d => !d.isDirectory() && d.name.endsWith('.zip'))
+              .map(d => `traces/${d.name}`);
+            files.push(...traceFiles);
           }
         }
       } catch (e) {

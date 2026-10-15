@@ -877,7 +877,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         const maxGuided = guidedRuns ? guidedRuns.length : 0;
         const maxRuns = Math.max(maxUnguided, maxGuided);
 
-        const assertionMap = new Map(); // message -> { unguided: [], guided: [] }
+        const assertionMap = new Map(); // message -> { unguided: [], guided: [], error?: string }
         /**
          * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
          * @param {'unguided' | 'guided'} type
@@ -887,8 +887,11 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             runs.forEach((run, runIndex) => {
                 if (run && run.results) {
                     run.results.forEach(check => {
-                        const existing = assertionMap.get(check.message) || { unguided: [], guided: [] };
+                        const existing = assertionMap.get(check.message) || { unguided: [], guided: [], error: null };
                         existing[type][runIndex] = check.passed;
+                        if (!check.passed && check.error && !existing.error) {
+                            existing.error = check.error;
+                        }
                         assertionMap.set(check.message, existing);
                     });
                 }
@@ -946,7 +949,10 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                 truthMatrixHtml += `<td class="center ${uPass !== undefined ? (uPass ? 'pass' : 'fail') : ''}">${uPass !== undefined ? (uPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
                 truthMatrixHtml += `<td class="center ${gPass !== undefined ? (gPass ? 'pass' : 'fail') : ''}">${gPass !== undefined ? (gPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
             }
-            truthMatrixHtml += `<td>${escapeHtml(message)}</td></tr>`;
+            truthMatrixHtml += `<td>
+                ${escapeHtml(message)}
+                ${status.error ? `<div class="assertion-error-snippet" style="font-size: 0.72rem; color: var(--color-accent-failure, #da3633); font-family: monospace; white-space: pre-wrap; margin-top: 4px; max-height: 80px; overflow-y: auto; background: rgba(218, 54, 51, 0.08); padding: 4px 6px; border-radius: 4px;">${escapeHtml(status.error.length > 300 ? status.error.substring(0, 300) + '...' : status.error)}</div>` : ''}
+            </td></tr>`;
         });
         truthMatrixHtml += '</tbody></table></div>';
 
@@ -1022,7 +1028,18 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              ${runtimeFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${runtimeFile}`)}', '${escapeHtml(`${usedBasePath}/${runtimeFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
                              ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
                              ${failureFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${failureFile}`)}', '${escapeHtml(`${usedBasePath}/${failureFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Failure Log</button>` : ''}
-                             ${(files.includes('grade-report/index.html') || files.some(f => f.startsWith('grade-report/'))) ? `<button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>` : ''}
+                             ${(() => {
+                                 const traceFiles = files.filter(f => f.startsWith('traces/') && f.endsWith('.zip'));
+                                 if (traceFiles.length > 0) {
+                                     return traceFiles.map((tf, idx) => `
+                                         <button class="tfoot-action-btn" onclick="openTrace('${escapeHtml(`${usedBasePath}/${tf}`)}')" title="${escapeHtml(tf)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> Trace${traceFiles.length > 1 ? ` ${idx + 1}` : ''}</button>
+                                     `).join('');
+                                 }
+                                 if (files.includes('grade-report/index.html') || files.some(f => f.startsWith('grade-report/'))) {
+                                     return `<button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>`;
+                                 }
+                                 return '';
+                             })()}
                          </div>
                      </div>
                  `);
@@ -1177,6 +1194,81 @@ function openTrajectory(usedBasePath, sessionFile) {
     }
 }
 
+/**
+ * Opens Playwright Trace Viewer and streams the trace file blob via postMessage.
+ * @param {string} tracePath
+ */
+function openTrace(tracePath) {
+    const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const viewerUrl = isLocalServer ? '/trace-viewer/index.html' : 'https://trace.playwright.dev/';
+    const popup = window.open(viewerUrl, '_blank');
+
+    api.getFileBlob(tracePath)
+        .then(blob => {
+            sendTraceToPopup(popup, blob, viewerUrl);
+        })
+        .catch(err => {
+            console.error('Failed to load trace blob:', err);
+            if (popup && !popup.closed) {
+                try {
+                    popup.alert('Failed to load trace: ' + (err.message || err));
+                } catch {}
+            }
+        });
+}
+
+/**
+ * @param {Window | null} popup
+ * @param {Blob} blob
+ * @param {string} viewerUrl
+ */
+function sendTraceToPopup(popup, blob, viewerUrl) {
+    if (!popup || popup.closed) return;
+
+    const isSameOrigin = !viewerUrl.startsWith('http') || viewerUrl.startsWith(window.location.origin);
+    if (isSameOrigin) {
+        let attempts = 0;
+        const interval = setInterval(() => {
+            attempts++;
+            if (!popup || popup.closed || attempts > 200) {
+                clearInterval(interval);
+                return;
+            }
+            try {
+                const loader = popup.document && popup.document.querySelector('.workbench-loader');
+                if (loader) {
+                    clearInterval(interval);
+                    popup.postMessage({ method: 'load', params: { trace: blob } }, '*');
+
+                    // Verification check: ensure search param was updated
+                    setTimeout(() => {
+                        try {
+                            if (popup.location.search && !popup.location.search.includes('trace=')) {
+                                popup.postMessage({ method: 'load', params: { trace: blob } }, '*');
+                            }
+                        } catch {}
+                    }, 1000);
+                }
+            } catch (e) {
+                // If cross-origin or navigation in flight, fallback to timer
+                clearInterval(interval);
+                setTimeout(() => {
+                    if (popup && !popup.closed) {
+                        popup.postMessage({ method: 'load', params: { trace: blob } }, '*');
+                    }
+                }, 1000);
+            }
+        }, 50);
+    } else {
+        // Cross-origin popup (e.g. trace.playwright.dev)
+        setTimeout(() => {
+            if (popup && !popup.closed) {
+                popup.postMessage({ method: 'load', params: { trace: blob } }, '*');
+            }
+        }, 1200);
+    }
+}
+
 // Global helper to open details from task list
 window.openDetailsFromTask = (/** @type {string} */ scenarioName, /** @type {string} */ testId) => {
     if (!allTestData) return;
@@ -1197,6 +1289,7 @@ window.openDetailsFromTask = (/** @type {string} */ scenarioName, /** @type {str
 
 // Expose functions to window for onclick handlers
 window.openTrajectory = openTrajectory;
+window.openTrace = openTrace;
 window.viewContent = viewContent;
 window.viewDiff = viewDiff;
 
