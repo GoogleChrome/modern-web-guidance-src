@@ -243,7 +243,7 @@
     // Native focusgroup supplies menu navigation and inferred roles where supported.
     // Only install the local navigation and semantic fallback when it is unavailable.
     function installFocusgroupFallback() {
-      if ('focusgroup' in HTMLElement.prototype) return;
+      if (Object.hasOwn(HTMLElement.prototype, 'focusGroup')) return;
 
       document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
         group.setAttribute('role', 'menu');
@@ -254,13 +254,13 @@
           if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
           const items = [...group.querySelectorAll(':scope > button')]
             .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
-          if (!items.length) return;
           const current = items.indexOf(document.activeElement);
+          if (current < 0) return;
           const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 :
             (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
           event.preventDefault();
           event.stopImmediatePropagation();
-          items[next < 0 ? 0 : next].focus({ preventScroll: true });
+          items[next].focus({ preventScroll: true });
         }, true);
       });
     }
