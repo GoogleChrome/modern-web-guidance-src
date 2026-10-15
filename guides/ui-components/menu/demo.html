@@ -320,7 +320,7 @@
 
     // If targeting earlier implementations where showPopover({ source }) does not establish an
     // implicit anchor, link each trigger and menu in JavaScript instead of per-menu CSS rules.
-    if (!('ToggleEvent' in window && 'source' in ToggleEvent.prototype)) {
+    if (!('ToggleEvent' in window && Object.hasOwn(ToggleEvent.prototype, 'source'))) {
       triggers.forEach((trigger, index) => {
         const anchorName = `--menu-trigger-${index}`;
         trigger.style.anchorName = anchorName;
@@ -339,7 +339,7 @@
           const fromPointer = pointerTrigger === trigger;
           pointerTrigger = null;
           if (isPreviewed(menu) && fromPointer) focusFirst(menu);
-          else if (isOpen(menu)) menu.hidePopover();
+          else if (isOpen(menu)) closeAndRestore(menu);
           else {
             enterOnOpen.add(menu);
             menu.showPopover({ source: trigger });
