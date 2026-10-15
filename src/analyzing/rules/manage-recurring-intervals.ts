@@ -16,18 +16,15 @@ const DATE_CALENDAR_SETTERS = new Set([
   'setUTCMonth',
   'setFullYear',
   'setUTCFullYear',
-  'setDate',
-  'setUTCDate',
 ]);
 
 const MOMENT_INTERVAL_METHODS = new Set(['add', 'subtract']);
 
-const CALENDAR_INTERVAL_UNITS =
-  /^['"](years?|months?|weeks?|days?|y|M|w|d)['"]$/i;
+const CALENDAR_INTERVAL_UNITS = /^['"](years?|months?|y|M)['"]$/i;
 
 /**
  * Checks whether an argument expression contains binary addition (+) or subtraction (-),
- * e.g., d.getMonth() + 1, d.getDate() + 7, d.getFullYear() + 1.
+ * e.g., d.getMonth() + 1, d.getFullYear() + 1.
  */
 function hasArithmeticOperation(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
@@ -46,8 +43,8 @@ function hasArithmeticOperation(node: Node): boolean {
 }
 
 /**
- * Matches legacy mutable Date calendar setter mutations:
- * d.setMonth(d.getMonth() + 1), d.setDate(d.getDate() + 7), etc.
+ * Matches legacy mutable Date calendar setter mutations for monthly/annual recurring intervals:
+ * d.setMonth(d.getMonth() + 1), d.setFullYear(d.getFullYear() + 1), etc.
  */
 function matchDateCalendarSetter(callExpr: CallExpression): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
@@ -76,12 +73,12 @@ function matchDateCalendarSetter(callExpr: CallExpression): AnalyzerMatch | null
 
   return {
     line: callExpr.getStartLineNumber(),
-    message: `Legacy mutable Date calendar arithmetic (d.${methodName}(... + ...)) used instead of Temporal.PlainDate.prototype.add().`,
+    message: `Legacy mutable Date calendar arithmetic (d.${methodName}(... + ...)) used instead of Temporal.PlainDate.prototype.add({ months: 1 }).`,
   };
 }
 
 /**
- * Matches moment(...).add(..., 'months') / moment(...).subtract(...) / dayjs(...).add(...)
+ * Matches moment(...).add(..., 'months' | 'years') / moment(...).subtract(...) / dayjs(...).add(...)
  */
 function matchMomentDayjsAdd(callExpr: CallExpression): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
@@ -110,7 +107,7 @@ function matchMomentDayjsAdd(callExpr: CallExpression): AnalyzerMatch | null {
       hasCalendarUnit = true;
     }
   } else if (args.length === 1) {
-    // moment.add({ months: 1 }) or moment.add(1, 'month')
+    // moment.add({ months: 1 })
     const arg = unwrapExpression(args[0]);
     if (Node.isObjectLiteralExpression(arg)) {
       const propNames = arg.getProperties().map((p) => {
@@ -119,9 +116,7 @@ function matchMomentDayjsAdd(callExpr: CallExpression): AnalyzerMatch | null {
         }
         return '';
       });
-      hasCalendarUnit = propNames.some((p) =>
-        /^(years?|months?|weeks?|days?|y|M|w|d)$/i.test(p),
-      );
+      hasCalendarUnit = propNames.some((p) => /^(years?|months?|y|M)$/i.test(p));
     }
   }
 
@@ -139,7 +134,7 @@ function matchMomentDayjsAdd(callExpr: CallExpression): AnalyzerMatch | null {
 
   return {
     line: callExpr.getStartLineNumber(),
-    message: `Legacy date library interval arithmetic (.${methodName}(..., calendarUnit)) used instead of Temporal.PlainDate.prototype.add().`,
+    message: `Legacy date library month/year interval arithmetic (.${methodName}(..., calendarUnit)) used instead of Temporal.PlainDate.prototype.add().`,
   };
 }
 
@@ -150,8 +145,6 @@ export const manageRecurringIntervalsMatcher: JsRuleMatcher = {
     'setUTCMonth',
     'setFullYear',
     'setUTCFullYear',
-    'setDate',
-    'setUTCDate',
     'add',
     'subtract',
   ],
@@ -181,17 +174,17 @@ export const manageRecurringIntervalsRule: AnalyzerRule = {
   guideId: 'manage-recurring-intervals',
   guideHash: MANAGE_RECURRING_INTERVALS_GUIDE_HASH,
   summary:
-    'Flag legacy mutable Date calendar-period mutation (d.setMonth(d.getMonth() + 1), d.setDate(d.getDate() + 7)) or moment/dayjs .add()/.subtract() calls instead of Temporal.PlainDate.prototype.add().',
+    'Flag legacy mutable Date monthly/annual calendar-period mutation (d.setMonth(d.getMonth() + 1), d.setFullYear(d.getFullYear() + 1)) or moment/dayjs month/year .add()/.subtract() calls instead of Temporal.PlainDate.prototype.add().',
   matcher: manageRecurringIntervalsMatcher,
   phase2Rubric: {
     keepWhen: [
-      'Legacy mutable Date calendar-period mutation (such as d.setMonth(d.getMonth() + 1) or d.setDate(d.getDate() + 7)) used to compute recurring dates instead of Temporal.PlainDate.prototype.add({ months: 1 }).',
-      'Third-party date library recurring interval arithmetic (such as moment(...).add(..., "months") or dayjs(...).add(..., "days")) used for recurring schedule calculation.',
+      'Legacy mutable Date calendar-period mutation (such as d.setMonth(d.getMonth() + 1) or d.setFullYear(d.getFullYear() + 1)) used to compute recurring monthly or annual billing/payroll cycles instead of Temporal.PlainDate.prototype.add({ months: 1 }, { overflow: "constrain" }).',
+      'Third-party date library recurring month/year interval arithmetic (such as moment(...).add(..., "months") or dayjs(...).add(..., "years")) used for recurring schedule calculation.',
     ],
     dropWhen: [
+      'Simple day or week offsets (such as d.setDate(d.getDate() + 7) or dayjs().add(7, "days")) that do not involve month-end calendar clamping.',
       'Code already protected by feature detection for native Temporal or polyfill loading (@js-temporal/polyfill).',
-      'Simple numeric millisecond timer intervals (such as setInterval(fn, 1000) or animation frames) that do not compute calendar intervals.',
-      'Direct timestamp setters with fixed scalar values (such as d.setHours(0, 0, 0, 0) for start-of-day resets or d.setDate(1) for first-of-month anchoring) without plus/minus duration arithmetic.',
+      'Direct timestamp setters with fixed scalar values (such as d.setHours(0, 0, 0, 0) or d.setMonth(0)) without plus/minus duration arithmetic.',
     ],
   },
 };

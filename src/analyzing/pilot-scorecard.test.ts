@@ -275,7 +275,7 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.clearsPrecisionBar, true);
   });
 
-  it('qualifies sample-constrained guides with 16 <= n < 35 when Wilson95 lower >= 0.80 and prec >= 0.95 (clearedHighN80)', () => {
+  it('qualifies sample-constrained guides with 16 <= n < 56 when Wilson95 lower >= 0.80 and prec >= 0.95 (clearedHighN80)', () => {
     // 20 evaluations with 20 right: precision = 1.0, Wilson95 lower is ~0.838 >= 0.80
     const result = evaluateGuideQualification({
       p1Total: 25,
@@ -289,6 +289,24 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.clearsSampleConstrained, true);
     assert.strictEqual(result.clearsScreen80, true);
     assert.strictEqual(result.clearsPrecisionBar, true);
+  });
+
+  it('qualifies 35 <= n < 56 rules with high precision under sample-constrained bar (resolving mathematical dead zone)', () => {
+    // 42/43: 97.7% precision, wilson95.lower = 0.879 >= 0.80, n = 43 < 56
+    const qualified = evaluateGuideQualification(42, 43);
+    assert.strictEqual(qualified.isSampleConstrained, true);
+    assert.strictEqual(qualified.clearedHighN80, true);
+    assert.strictEqual(qualified.clearsPrecisionBar, true);
+    assert.strictEqual(qualified.clearsScreen80, true);
+    assert.strictEqual(Math.round(qualified.precision * 1000) / 10, 97.7);
+    assert.strictEqual(Math.round(qualified.wilson95.lower * 1000) / 1000, 0.879);
+
+    // 39/43: 90.7% point precision (< 0.95), wilson95.lower = 0.784 (< 0.80), 4 FPs
+    const notQualified = evaluateGuideQualification(39, 43);
+    assert.strictEqual(notQualified.isSampleConstrained, true);
+    assert.strictEqual(notQualified.clearedHighN80, false);
+    assert.strictEqual(notQualified.clearedZeroFpExhaustive, false);
+    assert.strictEqual(notQualified.clearsPrecisionBar, false);
   });
 
   it('qualifies sample-constrained guides with low n when all findings sampled and fpCount === 0 (clearedZeroFpExhaustive)', () => {

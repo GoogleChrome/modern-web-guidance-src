@@ -34,7 +34,6 @@ const dialogDomMatcher: DomRuleMatcher = {
 
     const role = element.getAttribute('role')?.toLowerCase().trim();
     const ariaModal = element.getAttribute('aria-modal')?.toLowerCase().trim();
-    const tabIndex = element.getAttribute('tabindex')?.trim();
 
     // 4. Alertdialog: only flag if explicitly marked modal; skip notification banners
     if (role === 'alertdialog') {
@@ -57,7 +56,7 @@ const dialogDomMatcher: DomRuleMatcher = {
       return null;
     }
 
-    // 7. Check modal criteria: aria-modal="true", modal class (e.g. Bootstrap modal), or tabindex="-1"
+    // 7. Check modal criteria: aria-modal="true" or modal class (e.g. Bootstrap modal)
     const classAttr = element.getAttribute('class') ?? '';
     const classList = classAttr.toLowerCase().split(/\s+/).filter(Boolean);
     const hasModalClass =
@@ -70,10 +69,7 @@ const dialogDomMatcher: DomRuleMatcher = {
           c.startsWith('modal-'),
       );
 
-    const isModal =
-      ariaModal === 'true' ||
-      hasModalClass ||
-      tabIndex === '-1';
+    const isModal = ariaModal === 'true' || hasModalClass;
 
     if (!isModal) {
       return null;
@@ -95,7 +91,7 @@ export const dialogRule: AnalyzerRule = {
   matcher: dialogDomMatcher,
   phase2Rubric: {
     keepWhen: [
-      'Custom modal dialog overlay constructed using non-<dialog> element (e.g., div[role="dialog"]) with aria-modal="true", modal classes, or focus-trapping tabindex instead of the native HTML <dialog> element.',
+      'Custom modal dialog overlay constructed using non-<dialog> element (e.g., div[role="dialog"]) with aria-modal="true" or modal classes instead of the native HTML <dialog> element.',
       'Modal dialog component reimplementing backdrop overlay, focus trapping, or platform dismissal (Esc) in custom JavaScript instead of dialog.showModal().',
     ],
     dropWhen: [

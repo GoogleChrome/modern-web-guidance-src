@@ -19,7 +19,7 @@ describe('calculate-event-differentials rule', () => {
     assert.ok(calculateEventDifferentialsRule.phase2Rubric.dropWhen.length >= 2);
   });
 
-  test('flags Date difference divided by 86400000 (days)', () => {
+  test('flags Date difference divided by 86400000 (days) with .getTime() on both sides', () => {
     const code = `
       function getDaysBetween(date1, date2) {
         const diffDays = (date1.getTime() - date2.getTime()) / 86400000;
@@ -36,14 +36,14 @@ describe('calculate-event-differentials rule', () => {
     assert.match(matches[0].message, /Temporal/);
   });
 
-  test('flags Date difference divided by (1000 * 60 * 60 * 24)', () => {
+  test('flags new Date differences divided by 86400000', () => {
     const code = `
-      function daysUntilExpiration(endDate, startDate) {
-        return (endDate - startDate) / (1000 * 60 * 60 * 24);
+      function diffInDays(a, b) {
+        return (new Date(a) - new Date(b)) / 86400000;
       }
     `;
     const { matches } = scanJsSource(
-      'time/calc.js',
+      'time/new-date.js',
       code,
       [calculateEventDifferentialsMatcher],
       project,
@@ -52,14 +52,14 @@ describe('calculate-event-differentials rule', () => {
     assert.match(matches[0].message, /Temporal/);
   });
 
-  test('flags timestamp difference divided by 3600000 (hours)', () => {
+  test('flags Date difference divided by (1000 * 60 * 60 * 24)', () => {
     const code = `
-      function getHoursElapsed(startTime) {
-        return (Date.now() - startTime) / 3600000;
+      function daysUntilExpiration(endDate, startDate) {
+        return (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
       }
     `;
     const { matches } = scanJsSource(
-      'time/hours.js',
+      'time/calc.js',
       code,
       [calculateEventDifferentialsMatcher],
       project,
@@ -85,56 +85,7 @@ describe('calculate-event-differentials rule', () => {
     assert.match(matches[0].message, /86400000/);
   });
 
-  test('flags direct Date timestamp subtraction (a.getTime() - b.getTime())', () => {
-    const code = `
-      function getDurationMs(eventA, eventB) {
-        return eventA.getTime() - eventB.getTime();
-      }
-    `;
-    const { matches } = scanJsSource(
-      'events/duration.js',
-      code,
-      [calculateEventDifferentialsMatcher],
-      project,
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /subtraction/);
-  });
-
-  test('flags direct Date subtraction divided by 1000 for seconds', () => {
-    const code = `
-      function secondsRemaining(expiresAt) {
-        return (expiresAt.getTime() - Date.now()) / 1000;
-      }
-    `;
-    const { matches } = scanJsSource(
-      'auth/token.js',
-      code,
-      [calculateEventDifferentialsMatcher],
-      project,
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /1000/);
-  });
-
-  test('flags division where dividend is a local variable from Date subtraction', () => {
-    const code = `
-      function computeElapsedDays(dateA, dateB) {
-        const delta = dateA.getTime() - dateB.getTime();
-        const days = delta / 86400000;
-        return days;
-      }
-    `;
-    const { matches } = scanJsSource(
-      'time/elapsed.js',
-      code,
-      [calculateEventDifferentialsMatcher],
-      project,
-    );
-    assert.ok(matches.length >= 1);
-  });
-
-  test('flags moment.diff with calendar unit', () => {
+  test('flags moment.diff with calendar days unit', () => {
     const code = `
       function getDiffInDays(d1, d2) {
         return moment(d1).diff(moment(d2), 'days');
@@ -147,36 +98,33 @@ describe('calculate-event-differentials rule', () => {
       project,
     );
     assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /moment\.diff/);
+    assert.match(matches[0].message, /diff/);
   });
 
-  test('flags .diff() call with hours unit', () => {
+  test('flags dayjs.diff with calendar months unit', () => {
     const code = `
-      function durationHours(dateEnd, dateStart) {
-        return dateEnd.diff(dateStart, 'hours');
+      function getDiffInMonths(d1, d2) {
+        return dayjs(d1).diff(d2, 'months');
       }
     `;
     const { matches } = scanJsSource(
-      'time/diff.js',
+      'time/dayjs-diff.js',
       code,
       [calculateEventDifferentialsMatcher],
       project,
     );
     assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /diff\(\)/);
+    assert.match(matches[0].message, /diff/);
   });
 
-  test('ignores benchmark timer with variable named t0 / perf', () => {
+  test('ignores Date.now() cache expiration or elapsed timers', () => {
     const code = `
-      function runBenchmark() {
-        const t0 = Date.now();
-        computeHeavyWork();
-        const perfElapsed = Date.now() - t0;
-        return perfElapsed;
+      function isExpired(cachedAt) {
+        return (Date.now() - cachedAt.getTime()) / 86400000 > 7;
       }
     `;
     const { matches } = scanJsSource(
-      'perf/benchmark.js',
+      'cache/ttl.js',
       code,
       [calculateEventDifferentialsMatcher],
       project,
@@ -184,16 +132,31 @@ describe('calculate-event-differentials rule', () => {
     assert.equal(matches.length, 0);
   });
 
-  test('ignores high-precision performance.now() elapsed timers', () => {
+  test('ignores intra-day divisions (/ 3600000 for hours, / 60000 for minutes, / 1000 for seconds)', () => {
     const code = `
-      function bench() {
-        const t0 = performance.now();
-        compute();
-        return performance.now() - t0;
+      function getHours(a, b) {
+        const hours = (a.getTime() - b.getTime()) / 3600000;
+        const seconds = (a.getTime() - b.getTime()) / 1000;
+        return { hours, seconds };
       }
     `;
     const { matches } = scanJsSource(
-      'perf/bench.js',
+      'time/hours.js',
+      code,
+      [calculateEventDifferentialsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores .diff() with intra-day hours unit', () => {
+    const code = `
+      function durationHours(dateEnd, dateStart) {
+        return dateEnd.diff(dateStart, 'hours');
+      }
+    `;
+    const { matches } = scanJsSource(
+      'time/diff.js',
       code,
       [calculateEventDifferentialsMatcher],
       project,

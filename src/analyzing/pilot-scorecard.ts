@@ -76,13 +76,38 @@ export interface GuideQualificationResult {
 /**
  * Evaluates whether a guide clears the precision bar under G7 rules:
  * 1. Standard bar (clearsBar90): Wilson 95% CI lower >= 0.90 or sequential stop = pass.
- * 2. Sample-constrained dual qualification (for n < 35):
- *    - clearedHighN80: Wilson 95% CI lower >= 0.80 and precision >= 0.95 (typically 16 <= n < 35).
+ * 2. Sample-constrained dual qualification (for n < 56):
+ *    - clearedHighN80: Wilson 95% CI lower >= 0.80 and precision >= 0.95 (typically 16 <= n < 56).
  *    - clearedZeroFpExhaustive: p1Sampled === p1Total && p2KeptCount >= 1 && fpCount === 0 across all evaluated repos.
+ *
+ * Minimum sample size where a rule with 1 false positive can achieve wilson95.lower >= 0.90
+ * is n = 56 (55/56 = 98.2%, wilson95.lower = 0.905). Rules with n < 56 are evaluated under
+ * the sample-constrained bar: wilson95.lower >= 0.80 && precision >= 0.95, or 100% precision with 0 FPs (exhaustive).
  */
 export function evaluateGuideQualification(
   input: GuideQualificationInput,
+): GuideQualificationResult;
+export function evaluateGuideQualification(
+  rightCount: number,
+  p2KeptCount: number,
+  p1Total?: number,
+  p1Sampled?: number,
+): GuideQualificationResult;
+export function evaluateGuideQualification(
+  inputOrRightCount: GuideQualificationInput | number,
+  maybeKeptCount?: number,
+  maybeP1Total?: number,
+  maybeP1Sampled?: number,
 ): GuideQualificationResult {
+  const input: GuideQualificationInput =
+    typeof inputOrRightCount === 'number'
+      ? {
+          rightCount: inputOrRightCount,
+          p2KeptCount: maybeKeptCount ?? inputOrRightCount,
+          p1Total: maybeP1Total ?? maybeKeptCount ?? inputOrRightCount,
+          p1Sampled: maybeP1Sampled ?? maybeKeptCount ?? inputOrRightCount,
+        }
+      : inputOrRightCount;
   const { p1Total, p1Sampled, p2KeptCount, rightCount } = input;
   const fpCount = p2KeptCount - rightCount;
   const precision = p2KeptCount > 0 ? rightCount / p2KeptCount : 0;
@@ -90,7 +115,10 @@ export function evaluateGuideQualification(
   const wilson95 = wilsonInterval(rightCount, p2KeptCount, Z_95);
   const sequentialStopDecision = checkSequentialStop(rightCount, p2KeptCount, 0.9);
   const clearsBar90 = wilson95.lower >= 0.9 || sequentialStopDecision === 'pass';
-  const isSampleConstrained = p2KeptCount < 35;
+  // Minimum sample size where a rule with 1 false positive can achieve wilson95.lower >= 0.90 is n = 56.
+  // Rules with n < 56 are evaluated under the sample-constrained bar:
+  // wilson95.lower >= 0.80 && precision >= 0.95, or 100% precision with 0 FPs (exhaustive).
+  const isSampleConstrained = p2KeptCount > 0 && p2KeptCount < 56;
   const clearedHighN80 = isSampleConstrained && wilson95.lower >= 0.8 && precision >= 0.95;
   const clearedZeroFpExhaustive =
     isSampleConstrained && p1Sampled === p1Total && p2KeptCount >= 1 && fpCount === 0;

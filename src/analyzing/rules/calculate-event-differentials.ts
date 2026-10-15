@@ -1,28 +1,24 @@
-import { Node, SyntaxKind, type BinaryExpression, type CallExpression, type SourceFile } from 'ts-morph';
+import {
+  Node,
+  SyntaxKind,
+  type BinaryExpression,
+  type CallExpression,
+  type SourceFile,
+} from 'ts-morph';
 import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
-import { isProtectedByFeatureGuard, resolveLocalExpression, unwrapExpression } from '../scanners/ast-helpers.ts';
+import { isProtectedByFeatureGuard, unwrapExpression } from '../scanners/ast-helpers.ts';
 
 export const CALCULATE_EVENT_DIFFERENTIALS_GUIDE_HASH = 'ee7112b330c4';
 
 const TEMPORAL_GUARD_TOKENS = ['Temporal', '@js-temporal/polyfill'] as const;
 
-const CALENDAR_UNIT_REGEX = /^['"](years?|months?|weeks?|days?|hours?|minutes?|seconds?)['"]$/i;
-
-const DATE_TIME_IDENTIFIERS_REGEX =
-  /(date|time|start|end|created|updated|expires|expire|timestamp|deadline|since|until|last|prev|curr|event)/i;
-
-const BENCHMARK_IDENTIFIER_REGEX =
-  /(bench|perf|benchmark|t0|t1|start_?time_?bench|perf_?now)/i;
+const CALENDAR_DIFF_UNIT_REGEX = /^(days?|months?|years?|weeks?|d|M|y|w)$/i;
 
 /**
- * Evaluates the divisor of a division to check if it equals a known calendar constant:
- * - 86400000 (1 day in ms)
- * - 3600000 (1 hour in ms)
- * - 60000 (1 minute in ms)
- * - 86400 (1 day in sec)
- * - 3600 (1 hour in sec)
- * - 60 (1 minute in sec)
- * - 1000 (seconds from ms)
+ * Evaluates the divisor of a division to check if it equals 86400000:
+ * - 86400000
+ * - 864e5
+ * - 1000 * 60 * 60 * 24
  */
 function evaluateDivisor(node: Node): number | null {
   const unwrapped = unwrapExpression(node);
@@ -43,66 +39,47 @@ function evaluateDivisor(node: Node): number | null {
 }
 
 /**
- * Checks whether an expression represents a Date/timestamp operand.
+ * Checks whether an operand explicitly calls .getTime() or new Date(...)
+ * without using Date.now().
  */
-function isDateOperand(node: Node): boolean {
-  const resolved = resolveLocalExpression(node);
-  const text = resolved.getText();
+function isGetTimeOrNewDate(node: Node): boolean {
+  const unwrapped = unwrapExpression(node);
+  const text = unwrapped.getText();
 
-  if (text.includes('performance.now()') || BENCHMARK_IDENTIFIER_REGEX.test(text)) {
+  if (text.includes('Date.now()')) {
     return false;
   }
 
-  return (
-    text.includes('.getTime()') ||
-    text.includes('Date.now()') ||
-    text.includes('Date.parse(') ||
-    text.includes('.valueOf()') ||
-    text.includes('new Date(')
-  );
-}
-
-/**
- * Checks whether the dividend expression represents a subtraction of two dates or timestamps.
- */
-function isDateDifferenceExpression(node: Node): boolean {
-  const resolved = resolveLocalExpression(node);
-  const text = resolved.getText();
-
-  // Exclude performance.now() and benchmark timers
-  if (text.includes('performance.now()') || BENCHMARK_IDENTIFIER_REGEX.test(text)) {
-    return false;
+  if (Node.isCallExpression(unwrapped)) {
+    const expr = unwrapExpression(unwrapped.getExpression());
+    if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'getTime') {
+      return true;
+    }
   }
 
-  // Check if expression is a subtraction (-)
-  const subtractions = resolved.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-  const hasMinus =
-    (Node.isBinaryExpression(resolved) && resolved.getOperatorToken().getKind() === SyntaxKind.MinusToken) ||
-    subtractions.some((b) => b.getOperatorToken().getKind() === SyntaxKind.MinusToken);
-
-  if (!hasMinus) {
-    return false;
+  if (Node.isNewExpression(unwrapped)) {
+    const expr = unwrapExpression(unwrapped.getExpression());
+    if (expr.getText().includes('Date')) {
+      return true;
+    }
   }
 
-  // Must involve dates, timestamps, or date/time identifiers
   if (
-    text.includes('.getTime()') ||
-    text.includes('Date.now()') ||
-    text.includes('Date.parse(') ||
-    text.includes('.valueOf()') ||
-    text.includes('new Date(') ||
-    DATE_TIME_IDENTIFIERS_REGEX.test(text)
+    Node.isPrefixUnaryExpression(unwrapped) &&
+    unwrapped.getOperatorToken() === SyntaxKind.PlusToken
   ) {
-    return true;
+    return isGetTimeOrNewDate(unwrapped.getOperand());
   }
 
   return false;
 }
 
 /**
- * Checks division expressions dividing date differences by calendar unit constants.
+ * Checks division expressions dividing date differences by 86400000:
+ * (a.getTime() - b.getTime()) / 86400000
+ * where BOTH sides explicitly call .getTime() or new Date(...), never Date.now().
  */
-function matchDivisionDifferential(binExpr: BinaryExpression): AnalyzerMatch | null {
+function matchDayDivisionDifferential(binExpr: BinaryExpression): AnalyzerMatch | null {
   if (binExpr.getOperatorToken().getKind() !== SyntaxKind.SlashToken) {
     return null;
   }
@@ -112,75 +89,26 @@ function matchDivisionDifferential(binExpr: BinaryExpression): AnalyzerMatch | n
   }
 
   const divisorVal = evaluateDivisor(binExpr.getRight());
-  if (divisorVal === null) {
+  if (divisorVal !== 86400000 && divisorVal !== 864e5) {
     return null;
   }
 
-  // Calendar unit divisors (in ms or seconds)
-  const isCalendarDivisor =
-    divisorVal === 86400000 ||
-    divisorVal === 864e5 ||
-    divisorVal === 3600000 ||
-    divisorVal === 36e5 ||
-    divisorVal === 60000 ||
-    divisorVal === 6e4 ||
-    divisorVal === 86400 ||
-    divisorVal === 3600 ||
-    divisorVal === 60 ||
-    divisorVal === 1000;
-
-  if (!isCalendarDivisor) {
+  const leftOperand = unwrapExpression(binExpr.getLeft());
+  if (
+    !Node.isBinaryExpression(leftOperand) ||
+    leftOperand.getOperatorToken().getKind() !== SyntaxKind.MinusToken
+  ) {
     return null;
   }
 
-  if (isDateDifferenceExpression(binExpr.getLeft())) {
-    return {
-      line: binExpr.getStartLineNumber(),
-      message: `Legacy arithmetic date differential math (/ ${divisorVal}) used instead of Temporal.Duration or Temporal.ZonedDateTime.since()/.until().`,
-    };
-  }
+  const subLeft = leftOperand.getLeft();
+  const subRight = leftOperand.getRight();
 
-  return null;
-}
-
-/**
- * Checks direct Date timestamp subtractions:
- * a.getTime() - b.getTime(), Date.now() - a.getTime(), new Date(a) - new Date(b), Date.parse(a) - Date.parse(b), etc.
- */
-function matchDirectDateSubtraction(binExpr: BinaryExpression): AnalyzerMatch | null {
-  if (binExpr.getOperatorToken().getKind() !== SyntaxKind.MinusToken) {
-    return null;
-  }
-
-  if (isProtectedByFeatureGuard(binExpr, TEMPORAL_GUARD_TOKENS)) {
-    return null;
-  }
-
-  // Skip if this subtraction is already the dividend of an enclosing division
-  let parent: Node | undefined = binExpr.getParent();
-  while (parent && (Node.isParenthesizedExpression(parent) || Node.isAsExpression(parent))) {
-    parent = parent.getParent();
-  }
-  if (parent && Node.isBinaryExpression(parent) && parent.getOperatorToken().getKind() === SyntaxKind.SlashToken) {
-    return null;
-  }
-
-  const text = binExpr.getText();
-  if (text.includes('performance.now()') || BENCHMARK_IDENTIFIER_REGEX.test(text)) {
-    return null;
-  }
-
-  const left = binExpr.getLeft();
-  const right = binExpr.getRight();
-
-  const leftIsDate = isDateOperand(left);
-  const rightIsDate = isDateOperand(right);
-
-  if (leftIsDate || rightIsDate) {
+  if (isGetTimeOrNewDate(subLeft) && isGetTimeOrNewDate(subRight)) {
     return {
       line: binExpr.getStartLineNumber(),
       message:
-        'Direct Date timestamp subtraction used to compute elapsed/remaining time instead of Temporal.Duration or Temporal.Instant/ZonedDateTime.since()/.until().',
+        'Legacy millisecond day difference arithmetic ((a.getTime() - b.getTime()) / 86400000) used instead of Temporal.Duration or Temporal.PlainDate.since()/.until().',
     };
   }
 
@@ -188,7 +116,8 @@ function matchDirectDateSubtraction(binExpr: BinaryExpression): AnalyzerMatch | 
 }
 
 /**
- * Checks calls to moment(...).diff(...) or dayjs(...).diff(...) with time units.
+ * Checks calls to moment(...).diff(other, calendarUnit) or dayjs(...).diff(other, calendarUnit)
+ * with an explicit calendar unit argument (days, weeks, months, years).
  */
 function matchMomentDiffCall(callExpr: CallExpression): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
@@ -196,8 +125,7 @@ function matchMomentDiffCall(callExpr: CallExpression): AnalyzerMatch | null {
     return null;
   }
 
-  const methodName = expr.getName();
-  if (!methodName || methodName !== 'diff') {
+  if (expr.getName() !== 'diff') {
     return null;
   }
 
@@ -205,72 +133,39 @@ function matchMomentDiffCall(callExpr: CallExpression): AnalyzerMatch | null {
     return null;
   }
 
-  const callerText = expr.getExpression().getText();
   const args = callExpr.getArguments();
-
-  // If caller is explicitly moment(...) or dayjs(...)
-  if (
-    callerText.includes('moment(') ||
-    callerText.includes('dayjs(') ||
-    callerText.startsWith('moment') ||
-    callerText.startsWith('dayjs')
-  ) {
-    return {
-      line: callExpr.getStartLineNumber(),
-      message:
-        'Legacy moment.diff() used to calculate date/time differentials instead of Temporal.Duration or Temporal.ZonedDateTime.since()/.until().',
-    };
+  if (args.length < 2) {
+    return null;
   }
 
-  // Or if 2nd argument is a calendar unit string like 'days', 'hours'
-  if (args.length >= 2) {
-    const unitArg = unwrapExpression(args[1]).getText();
-    if (CALENDAR_UNIT_REGEX.test(unitArg)) {
-      return {
-        line: callExpr.getStartLineNumber(),
-        message:
-          'Legacy .diff() with calendar unit used to calculate date/time differentials instead of Temporal.Duration or Temporal.ZonedDateTime.since()/.until().',
-      };
-    }
+  const unitArg = unwrapExpression(args[1]);
+  if (!Node.isStringLiteral(unitArg) && !Node.isNoSubstitutionTemplateLiteral(unitArg)) {
+    return null;
   }
 
-  return null;
+  const unitText = unitArg.getLiteralText();
+  if (!CALENDAR_DIFF_UNIT_REGEX.test(unitText)) {
+    return null;
+  }
+
+  return {
+    line: callExpr.getStartLineNumber(),
+    message:
+      `Legacy date library .diff(other, '${unitText}') used to calculate calendar differentials instead of Temporal.Duration or Temporal.PlainDate/ZonedDateTime.since()/.until().`,
+  };
 }
 
 export const calculateEventDifferentialsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: [
-    '86400000',
-    '3600000',
-    '60000',
-    '86400',
-    '3600',
-    '864e5',
-    '36e5',
-    '6e4',
-    '1000',
-    'getTime',
-    'Date.now',
-    'Date.parse',
-    'valueOf',
-    'diff',
-    'Temporal',
-    'moment',
-  ],
+  fastTokens: ['86400000', '864e5', 'diff', '1000', '24'],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
 
     const binaryExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
     for (const binExpr of binaryExpressions) {
-      const divMatch = matchDivisionDifferential(binExpr);
+      const divMatch = matchDayDivisionDifferential(binExpr);
       if (divMatch) {
         matches.push(divMatch);
-        continue;
-      }
-
-      const subMatch = matchDirectDateSubtraction(binExpr);
-      if (subMatch) {
-        matches.push(subMatch);
       }
     }
 
@@ -291,18 +186,17 @@ export const calculateEventDifferentialsRule: AnalyzerRule = {
   guideId: 'calculate-event-differentials',
   guideHash: CALCULATE_EVENT_DIFFERENTIALS_GUIDE_HASH,
   summary:
-    'Flag legacy arithmetic date differential math (dividing Date timestamp subtractions by calendar constants like 86400000, 86400) or moment.diff() calls instead of Temporal.ZonedDateTime and Temporal.Duration.',
+    'Flag legacy arithmetic date differential math ((a.getTime() - b.getTime()) / 86400000) or moment.diff() / dayjs.diff() with calendar units instead of Temporal.Duration or Temporal.PlainDate/ZonedDateTime.',
   matcher: calculateEventDifferentialsMatcher,
   phase2Rubric: {
     keepWhen: [
-      'Computing elapsed duration, days, hours, or minutes between two Date instances or timestamps using arithmetic millisecond division (/ 86400000, / 3600000, / 60000) instead of Temporal.Duration or Temporal.ZonedDateTime.since()/.until().',
-      'Direct Date timestamp subtractions (such as a.getTime() - b.getTime() or Date.now() - a.getTime()) used to measure time intervals.',
-      'Legacy date library differential calls (such as moment(...).diff(..., "days") or dayjs(...).diff(..., "hours")) used for calendar interval calculation.',
+      'Dividing the difference between two Date instances ((a.getTime() - b.getTime()) / 86400000) to compute elapsed days instead of Temporal.Duration or Temporal.PlainDate.since()/.until().',
+      'Calling moment(...).diff(..., calendarUnit) or dayjs(...).diff(..., calendarUnit) with days, weeks, months, or years instead of Temporal.',
     ],
     dropWhen: [
-      'High-precision performance measurement deltas using performance.now() - startTime.',
-      'Simple execution benchmark timers where timing variables are explicitly named bench, perf, t0, or t1.',
-      'Code guarded by feature detection for native Temporal support.',
+      'Runtime elapsed-time or cache TTL timers measuring Date.now() - timestamp.',
+      'Intra-day millisecond or second divisions (such as / 1000, / 60, / 3600000 for seconds, minutes, or hours).',
+      'Code already protected by feature detection for native Temporal support.',
     ],
   },
 };

@@ -2,7 +2,6 @@ import {
   Node,
   SyntaxKind,
   type BinaryExpression,
-  type CallExpression,
   type PropertyAccessExpression,
   type SourceFile,
 } from 'ts-morph';
@@ -11,9 +10,7 @@ import { unwrapExpression } from '../scanners/ast-helpers.ts';
 
 export const DETECT_INITIAL_VISIBILITY_STATE_GUIDE_HASH = 'b881da0b6ea2';
 
-const VISIBILITY_PROPERTIES = new Set([
-  'visibilityState',
-  'hidden',
+const VENDOR_VISIBILITY_PROPERTIES = new Set([
   'webkitHidden',
   'mozHidden',
   'msHidden',
@@ -22,12 +19,9 @@ const VISIBILITY_PROPERTIES = new Set([
   'msVisibilityState',
 ]);
 
-const VISIBILITY_EVENTS = new Set([
-  'visibilitychange',
-  'webkitvisibilitychange',
-  'mozvisibilitychange',
-  'msvisibilitychange',
-]);
+const INITIAL_VAR_REGEX = /initial|wasHidden|hiddenAtLoad|backgroundLoad|startedHidden/i;
+
+const STANDARD_VISIBILITY_PROPERTIES = new Set(['visibilityState', 'hidden']);
 
 /**
  * Checks whether an expression references document or window.document.
@@ -46,12 +40,83 @@ function isDocumentTarget(node: Node): boolean {
 }
 
 /**
- * Checks whether a property access expression accesses document.visibilityState, document.hidden,
- * or vendor-prefixed equivalents.
+ * Checks whether an expression accesses document.visibilityState or document.hidden.
  */
-function matchVisibilityPropertyAccess(propAccess: PropertyAccessExpression): AnalyzerMatch | null {
+function expressionAccessesDocumentVisibility(node: Node): boolean {
+  const unwrapped = unwrapExpression(node);
+  if (Node.isPropertyAccessExpression(unwrapped)) {
+    if (
+      STANDARD_VISIBILITY_PROPERTIES.has(unwrapped.getName()) &&
+      isDocumentTarget(unwrapped.getExpression())
+    ) {
+      return true;
+    }
+  }
+
+  const descendants = unwrapped.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
+  for (const desc of descendants) {
+    if (
+      STANDARD_VISIBILITY_PROPERTIES.has(desc.getName()) &&
+      isDocumentTarget(desc.getExpression())
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether the source file registers a visibilitychange listener.
+ */
+function hasVisibilityChangeListener(sourceFile: SourceFile): boolean {
+  const fullText = sourceFile.getFullText();
+  if (!fullText.toLowerCase().includes('visibilitychange')) {
+    return false;
+  }
+
+  const callExprs = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
+  for (const call of callExprs) {
+    const expr = unwrapExpression(call.getExpression());
+    if (Node.isPropertyAccessExpression(expr)) {
+      const methodName = expr.getName();
+      if (
+        methodName === 'addEventListener' ||
+        methodName === 'on' ||
+        methodName === 'addListener' ||
+        methodName === 'bind'
+      ) {
+        const args = call.getArguments();
+        if (args.length > 0) {
+          const firstArg = unwrapExpression(args[0]);
+          if (
+            (Node.isStringLiteral(firstArg) || Node.isNoSubstitutionTemplateLiteral(firstArg)) &&
+            firstArg.getLiteralText().toLowerCase().includes('visibilitychange')
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  const propAccesses = sourceFile.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
+  for (const prop of propAccesses) {
+    if (prop.getName().toLowerCase() === 'onvisibilitychange') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Checks for document.webkitHidden, document.mozHidden, document.msHidden,
+ * or document.webkitVisibilityState.
+ */
+function matchVendorPropertyAccess(propAccess: PropertyAccessExpression): AnalyzerMatch | null {
   const propName = propAccess.getName();
-  if (!VISIBILITY_PROPERTIES.has(propName)) {
+  if (!VENDOR_VISIBILITY_PROPERTIES.has(propName)) {
     return null;
   }
 
@@ -62,14 +127,14 @@ function matchVisibilityPropertyAccess(propAccess: PropertyAccessExpression): An
 
   return {
     line: propAccess.getStartLineNumber(),
-    message: `Accessing 'document.${propName}' without VisibilityStateEntry; use performance.getEntriesByType('visibility-state') to reliably detect initial background state.`,
+    message: `Accessing deprecated vendor-prefixed 'document.${propName}'; use standard Page Visibility API and performance.getEntriesByType('visibility-state') to reliably detect initial background state.`,
   };
 }
 
 /**
- * Checks for `'visibilityState' in document`, `'hidden' in document`, or vendor equivalents.
+ * Checks for `'webkitHidden' in document` or vendor equivalents.
  */
-function matchVisibilityInExpression(binaryExpr: BinaryExpression): AnalyzerMatch | null {
+function matchVendorInExpression(binaryExpr: BinaryExpression): AnalyzerMatch | null {
   if (binaryExpr.getOperatorToken().getKind() !== SyntaxKind.InKeyword) {
     return null;
   }
@@ -80,7 +145,7 @@ function matchVisibilityInExpression(binaryExpr: BinaryExpression): AnalyzerMatc
   }
 
   const propName = left.getLiteralText();
-  if (!VISIBILITY_PROPERTIES.has(propName)) {
+  if (!VENDOR_VISIBILITY_PROPERTIES.has(propName)) {
     return null;
   }
 
@@ -91,54 +156,19 @@ function matchVisibilityInExpression(binaryExpr: BinaryExpression): AnalyzerMatc
 
   return {
     line: binaryExpr.getStartLineNumber(),
-    message: `Checking '${propName}' in document without VisibilityStateEntry; use performance.getEntriesByType('visibility-state') to reliably detect initial background state.`,
-  };
-}
-
-/**
- * Checks for addEventListener('visibilitychange', ...) or vendor equivalents.
- */
-function matchVisibilityEventListener(callExpr: CallExpression): AnalyzerMatch | null {
-  const expr = unwrapExpression(callExpr.getExpression());
-  if (!Node.isPropertyAccessExpression(expr)) {
-    return null;
-  }
-
-  const methodName = expr.getName();
-  if (methodName !== 'addEventListener' && methodName !== 'on') {
-    return null;
-  }
-
-  const args = callExpr.getArguments();
-  if (args.length === 0) {
-    return null;
-  }
-
-  const firstArg = unwrapExpression(args[0]);
-  if (!Node.isStringLiteral(firstArg) && !Node.isNoSubstitutionTemplateLiteral(firstArg)) {
-    return null;
-  }
-
-  const eventName = firstArg.getLiteralText().toLowerCase();
-  if (!VISIBILITY_EVENTS.has(eventName)) {
-    return null;
-  }
-
-  return {
-    line: callExpr.getStartLineNumber(),
-    message: `Listening to '${eventName}' without VisibilityStateEntry; use performance.getEntriesByType('visibility-state') to reliably detect initial background state.`,
+    message: `Checking deprecated vendor-prefixed '${propName}' in document; use standard Page Visibility API and performance.getEntriesByType('visibility-state') to reliably detect initial background state.`,
   };
 }
 
 export const detectInitialVisibilityStateMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    'visibilityState',
-    'hidden',
     'webkitHidden',
     'mozHidden',
     'msHidden',
     'webkitVisibilityState',
+    'mozVisibilityState',
+    'msVisibilityState',
     'visibilitychange',
   ],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
@@ -154,9 +184,10 @@ export const detectInitialVisibilityStateMatcher: JsRuleMatcher = {
 
     const matches: AnalyzerMatch[] = [];
 
+    // Condition A: Vendor-prefixed properties
     const propAccesses = sourceFile.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
     for (const propAccess of propAccesses) {
-      const match = matchVisibilityPropertyAccess(propAccess);
+      const match = matchVendorPropertyAccess(propAccess);
       if (match) {
         matches.push(match);
       }
@@ -164,17 +195,81 @@ export const detectInitialVisibilityStateMatcher: JsRuleMatcher = {
 
     const binaryExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
     for (const binExpr of binaryExpressions) {
-      const match = matchVisibilityInExpression(binExpr);
+      const match = matchVendorInExpression(binExpr);
       if (match) {
         matches.push(match);
       }
     }
 
-    const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const callExpr of callExpressions) {
-      const match = matchVisibilityEventListener(callExpr);
-      if (match) {
-        matches.push(match);
+    // Condition B: Assigns document.visibilityState or document.hidden to an initial/load variable
+    // alongside a visibilitychange event listener
+    if (hasVisibilityChangeListener(sourceFile)) {
+      // 1. Variable declarations: const wasHidden = document.visibilityState === 'hidden'
+      const varDecls = sourceFile.getDescendantsOfKind(SyntaxKind.VariableDeclaration);
+      for (const varDecl of varDecls) {
+        const name = varDecl.getName();
+        if (INITIAL_VAR_REGEX.test(name)) {
+          const init = varDecl.getInitializer();
+          if (init && expressionAccessesDocumentVisibility(init)) {
+            matches.push({
+              line: varDecl.getStartLineNumber(),
+              message: `Assigning initial document visibility state to '${name}' alongside a 'visibilitychange' listener; use VisibilityStateEntry via performance.getEntriesByType('visibility-state') to reliably detect if the page was loaded in the background.`,
+            });
+          }
+        }
+      }
+
+      // 2. Binary assignment expressions: this.wasHidden = document.hidden
+      for (const binExpr of binaryExpressions) {
+        if (binExpr.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
+          const left = binExpr.getLeft();
+          let targetName: string | null = null;
+          if (Node.isIdentifier(left)) {
+            targetName = left.getText();
+          } else if (Node.isPropertyAccessExpression(left)) {
+            targetName = left.getName();
+          }
+
+          if (targetName && INITIAL_VAR_REGEX.test(targetName)) {
+            const right = binExpr.getRight();
+            if (expressionAccessesDocumentVisibility(right)) {
+              matches.push({
+                line: binExpr.getStartLineNumber(),
+                message: `Assigning initial document visibility state to '${targetName}' alongside a 'visibilitychange' listener; use VisibilityStateEntry via performance.getEntriesByType('visibility-state') to reliably detect if the page was loaded in the background.`,
+              });
+            }
+          }
+        }
+      }
+
+      // 3. Object literal property assignments: { wasHidden: document.hidden }
+      const propAssignments = sourceFile.getDescendantsOfKind(SyntaxKind.PropertyAssignment);
+      for (const propAssign of propAssignments) {
+        const name = propAssign.getName();
+        if (INITIAL_VAR_REGEX.test(name)) {
+          const init = propAssign.getInitializer();
+          if (init && expressionAccessesDocumentVisibility(init)) {
+            matches.push({
+              line: propAssign.getStartLineNumber(),
+              message: `Assigning initial document visibility state to '${name}' alongside a 'visibilitychange' listener; use VisibilityStateEntry via performance.getEntriesByType('visibility-state') to reliably detect if the page was loaded in the background.`,
+            });
+          }
+        }
+      }
+
+      // 4. Class property declarations: wasHidden = document.hidden
+      const propDecls = sourceFile.getDescendantsOfKind(SyntaxKind.PropertyDeclaration);
+      for (const propDecl of propDecls) {
+        const name = propDecl.getName();
+        if (INITIAL_VAR_REGEX.test(name)) {
+          const init = propDecl.getInitializer();
+          if (init && expressionAccessesDocumentVisibility(init)) {
+            matches.push({
+              line: propDecl.getStartLineNumber(),
+              message: `Assigning initial document visibility state to '${name}' alongside a 'visibilitychange' listener; use VisibilityStateEntry via performance.getEntriesByType('visibility-state') to reliably detect if the page was loaded in the background.`,
+            });
+          }
+        }
       }
     }
 
@@ -187,17 +282,17 @@ export const detectInitialVisibilityStateRule: AnalyzerRule = {
   guideId: 'detect-initial-visibility-state',
   guideHash: DETECT_INITIAL_VISIBILITY_STATE_GUIDE_HASH,
   summary:
-    'Flag checking document.visibilityState, document.hidden, or visibilitychange event listeners without VisibilityStateEntry (performance.getEntriesByType("visibility-state")) to reliably detect if a page was initially backgrounded.',
+    'Flag checking vendor-prefixed Page Visibility properties or capturing initial background state via document.visibilityState/hidden variables alongside visibilitychange listeners without VisibilityStateEntry.',
   matcher: detectInitialVisibilityStateMatcher,
   phase2Rubric: {
     keepWhen: [
-      'Using document.visibilityState, document.hidden, or visibilitychange event listeners to inspect initial page visibility or background tab state without querying the Performance Timeline (performance.getEntriesByType("visibility-state") or VisibilityStateEntry).',
-      'Legacy vendor-prefixed Page Visibility properties (document.webkitHidden, mozHidden, msHidden) or events (webkitvisibilitychange) used to detect visibility changes.',
+      'Assigning document.visibilityState or document.hidden to an initial/load-time variable (e.g. wasHidden, initialVisibility, hiddenAtLoad) combined with a visibilitychange event listener to detect initial background tab state.',
+      'Legacy vendor-prefixed Page Visibility properties (document.webkitHidden, mozHidden, msHidden, webkitVisibilityState) used to detect visibility.',
     ],
     dropWhen: [
+      'Ordinary runtime visibilitychange listeners that pause/resume media, mute audio, or stop animations based on current document.hidden without attempting to detect initial load-time background state.',
       'Code already querying the modern Performance Timeline via performance.getEntriesByType("visibility-state") or checking "VisibilityStateEntry" in window.',
       'Custom non-DOM objects with visibilityState or hidden properties unrelated to the document Page Visibility API.',
-      'Synthetic visibilitychange event dispatching or mock test helpers for visibility testing.',
     ],
   },
 };

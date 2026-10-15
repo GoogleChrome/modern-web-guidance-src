@@ -38,24 +38,6 @@ describe('manage-recurring-intervals rule', () => {
     assert.match(matches[0].message, /Temporal\.PlainDate\.prototype\.add/);
   });
 
-  test('flags d.setDate(d.getDate() + 7) weekly recurrence', () => {
-    const code = `
-      function nextWeek(date) {
-        const next = new Date(date);
-        next.setDate(next.getDate() + 7);
-        return next;
-      }
-    `;
-    const { matches } = scanJsSource(
-      'schedule/recurrence.js',
-      code,
-      [manageRecurringIntervalsMatcher],
-      project,
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /Temporal\.PlainDate\.prototype\.add/);
-  });
-
   test('flags d.setFullYear(d.getFullYear() + 1) annual renewal', () => {
     const code = `
       function renewYearly(subDate) {
@@ -88,10 +70,10 @@ describe('manage-recurring-intervals rule', () => {
     assert.match(matches[0].message, /Temporal\.PlainDate\.prototype\.add/);
   });
 
-  test('flags dayjs(...).add(7, "days") interval arithmetic', () => {
+  test('flags dayjs(...).add(1, "year") interval arithmetic', () => {
     const code = `
-      function addWeek(d) {
-        return dayjs(d).add(7, 'days');
+      function addYear(d) {
+        return dayjs(d).add(1, 'year');
       }
     `;
     const { matches } = scanJsSource(
@@ -104,11 +86,42 @@ describe('manage-recurring-intervals rule', () => {
     assert.match(matches[0].message, /Temporal\.PlainDate\.prototype\.add/);
   });
 
-  test('ignores setter with constant without arithmetic (e.g. date.setDate(1))', () => {
+  test('ignores simple day offset (d.setDate(d.getDate() + 7))', () => {
     const code = `
-      function startOfMonth(date) {
-        date.setDate(1);
-        date.setHours(0, 0, 0, 0);
+      function nextWeek(date) {
+        const next = new Date(date);
+        next.setDate(next.getDate() + 7);
+        return next;
+      }
+    `;
+    const { matches } = scanJsSource(
+      'schedule/recurrence.js',
+      code,
+      [manageRecurringIntervalsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores dayjs day offset (.add(7, "days"))', () => {
+    const code = `
+      function addDays(d) {
+        return dayjs(d).add(7, 'days');
+      }
+    `;
+    const { matches } = scanJsSource(
+      'schedule/days.js',
+      code,
+      [manageRecurringIntervalsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores setter with constant without arithmetic (e.g. date.setMonth(0))', () => {
+    const code = `
+      function resetToJanuary(date) {
+        date.setMonth(0);
         return date;
       }
     `;

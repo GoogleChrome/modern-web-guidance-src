@@ -35,10 +35,10 @@ void test('dialog: positive brownfield matches', async (t) => {
     assert.match(matches[0]?.message ?? '', /modernize with the native HTML <dialog>/);
   });
 
-  await t.test('flags div with role="dialog" and tabindex="-1" focus-trapping pattern', () => {
+  await t.test('flags div with role="dialog", aria-modal="true", and tabindex="-1"', () => {
     const html = `
-      <div id="my-dialog" role="dialog" tabindex="-1">
-        <p>Accessible custom dialog</p>
+      <div id="my-dialog" role="dialog" aria-modal="true" tabindex="-1">
+        <p>Accessible custom modal dialog</p>
       </div>
     `;
     const matches = scanHtml('dialog.html', html, [matcher]);
@@ -121,6 +121,16 @@ void test('dialog: negative / exempt cases', async (t) => {
     `;
     const sourceFile = project.createSourceFile('Wrapper.tsx', code);
     const matches = scanJsx('Wrapper.tsx', sourceFile, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts non-modal popup with role="dialog" and tabindex="-1" lacking aria-modal="true" or modal class', () => {
+    const html = `
+      <div id="popup-menu" role="dialog" tabindex="-1">
+        <p>Non-modal dropdown or popup</p>
+      </div>
+    `;
+    const matches = scanHtml('popup.html', html, [matcher]);
     assert.equal(matches.length, 0);
   });
 
