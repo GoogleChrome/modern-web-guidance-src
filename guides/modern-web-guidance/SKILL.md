@@ -82,13 +82,31 @@ If the output is truncated, you must repeat the command but redirect to a file a
 
 ---
 
-### Step 3. Verify Guidance Compliance
+### Step 3. Analyze Codebase for Modernization (`analyze`)
+
+To proactively discover opportunities to replace legacy patterns with modern web platform standards across a project:
+
+1. **Run Analysis**: Execute `analyze` with `--json` for machine-readable output:
+   ```sh
+   npx -y modern-web-guidance@latest analyze [dir] --json
+   ```
+2. **Review & Plan**: Inspect findings grouped by `guideId`. Present a clear modernization plan to the user before making edits.
+3. **Retrieve Guidance**: For each approved item, retrieve the relevant guide:
+   ```sh
+   npx -y modern-web-guidance@latest retrieve "<guideId>"
+   ```
+4. **Refactor & Verify**: Apply modern web standard replacements, then re-run `analyze` to verify findings are cleanly resolved.
+5. **Summarize**: Conclude with a concise summary of modernized patterns and browser support considerations.
+
+---
+
+### Step 4. Verify Guidance Compliance
 
 When generating or modifying code, cross-check the implementation against the retrieved guide before concluding:
 - **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
 - **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
 
-### Step 4. Disclose Skill Usage
+### Step 5. Disclose Skill Usage
 
 When you consult `modern-web-guidance` for a task, end the response where you deliver those changes with a `### Modern Web Guidance` section:
 - **When retrieved guides shaped your code**: Write **one** bullet (1–2 sentences, ≤75 words) per newly applied `<id>` in first-person voice explaining the non-obvious implementation choices, CSS/API overrides, or fallbacks `<id>` required and the pitfall it prevented, anchored by a short verbatim quote of that specific rule or gotcha (never the guide's intro overview):
