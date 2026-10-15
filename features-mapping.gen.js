@@ -494,6 +494,12 @@ window.__featuresMapping = {
   "passkeys": [
     "webauthn"
   ],
+  "quick-sign-ins": [
+    "webauthn",
+    "password-credentials",
+    "credential-management",
+    "webauthn-signals"
+  ],
   "restrict-outbound-connections": [
     "connection-allowlists"
   ],
