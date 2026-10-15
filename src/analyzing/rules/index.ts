@@ -201,3 +201,51 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
 ];
 
 export const ALL_RULES: readonly AnalyzerRule[] = PILOT_RULES;
+
+/**
+ * The 25 guides that cleared the held-out precision bar under Milestone 3 verification.
+ */
+export const QUALIFIED_GUIDE_IDS: readonly string[] = [
+  'animate-element-entry-exit',
+  'individual-transform-properties',
+  'resilient-context-menus-and-nested-dropdowns',
+  'declarative-dialog-popover-control',
+  'autofill-sign-in-form',
+  'shadow-dom',
+  'dialog',
+  'child-state-based-styling',
+  'animate-to-intrinsic-sizes',
+  'coordinate-global-events',
+  'manage-recurring-intervals',
+  'accessible-error-announcement',
+  'brand-consistent-forms',
+  'branded-select-styling',
+  'copy-button',
+  'form-fields-automatically-fit-contents',
+  'ime-safe-enter-submit',
+  'stack-drill-down',
+  'calculate-event-differentials',
+  'autofill-address-form',
+  'css-layout',
+  'adapt-scrollbar-to-contrast-preferences',
+  'checkbox',
+  'prevent-page-scroll-under-modal-dialog',
+  'dark-mode',
+] as const;
+
+/**
+ * Production rules gated to qualified guides only (G11 / O22).
+ * Excludes 7 unqualified/experimental guides.
+ */
+export const QUALIFIED_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
+  QUALIFIED_GUIDE_IDS.includes(r.guideId),
+);
+
+/**
+ * Guides that were tuned after initial held-out inspection (G10 disclosure).
+ */
+export const POST_SELECTION_TUNED_GUIDE_IDS: readonly string[] = [
+  'dialog',
+  'manage-recurring-intervals',
+  'calculate-event-differentials',
+] as const;

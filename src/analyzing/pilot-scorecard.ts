@@ -37,7 +37,11 @@ import {
   type MetricEntry,
   type ProgressLogRow,
 } from './progress-log.ts';
-import { ALL_RULES, PILOT_RULES } from './rules/index.ts';
+import {
+  ALL_RULES,
+  PILOT_RULES,
+  POST_SELECTION_TUNED_GUIDE_IDS,
+} from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import {
@@ -59,6 +63,8 @@ export interface GuideQualificationInput {
   readonly rightCount: number;
 }
 
+export type QualificationTier = 'proven-high-n' | 'zero-fp-low-n' | 'experimental';
+
 export interface GuideQualificationResult {
   readonly precision: number;
   readonly wilson80: BinomialInterval;
@@ -71,6 +77,7 @@ export interface GuideQualificationResult {
   readonly clearsSampleConstrained: boolean;
   readonly clearsScreen80: boolean;
   readonly clearsPrecisionBar: boolean;
+  readonly tier: QualificationTier;
 }
 
 /**
@@ -125,6 +132,11 @@ export function evaluateGuideQualification(
   const clearsSampleConstrained = clearedHighN80 || clearedZeroFpExhaustive;
   const clearsScreen80 = wilson95.lower >= 0.8 || clearsSampleConstrained;
   const clearsPrecisionBar = clearsBar90 || clearsSampleConstrained;
+  const tier: QualificationTier = !clearsPrecisionBar
+    ? 'experimental'
+    : p2KeptCount >= 8
+      ? 'proven-high-n'
+      : 'zero-fp-low-n';
 
   return {
     precision,
@@ -138,6 +150,7 @@ export function evaluateGuideQualification(
     clearsSampleConstrained,
     clearsScreen80,
     clearsPrecisionBar,
+    tier,
   };
 }
 
@@ -281,6 +294,8 @@ export interface GuideScorecard {
   readonly isSampleConstrained?: boolean;
   readonly clearedHighN80?: boolean;
   readonly clearedZeroFpExhaustive?: boolean;
+  readonly tier?: QualificationTier;
+  readonly postSelectionTuned?: boolean;
   readonly recall: GuideRecallMetrics;
 }
 
@@ -292,6 +307,16 @@ export interface PilotScorecardSummary {
   readonly clearedHighN80Count?: number;
   readonly clearedZeroFpExhaustiveCount?: number;
   readonly clearedScreenCount: number;
+  readonly provenHighNCount?: number;
+  readonly zeroFpLowNCount?: number;
+  readonly singleShotQualifiedCount?: number;
+  readonly postSelectionTunedCount?: number;
+  readonly qualifiedPooledPrecision?: {
+    readonly successes: number;
+    readonly total: number;
+    readonly precision: number;
+    readonly wilson95: BinomialInterval;
+  };
   readonly coverage: MetricEntry;
   readonly overallPrecision: MetricEntry;
   readonly overallRecall: MetricEntry;
@@ -682,6 +707,12 @@ export async function runPilotScorecard(
   let clearedHighN80Count = 0;
   let clearedZeroFpExhaustiveCount = 0;
   let clearedScreenCount = 0;
+  let provenHighNCount = 0;
+  let zeroFpLowNCount = 0;
+  let singleShotQualifiedCount = 0;
+  let postSelectionTunedCount = 0;
+  let qualifiedRight = 0;
+  let qualifiedKept = 0;
 
   const guideScorecards: GuideScorecard[] = [];
 
@@ -711,8 +742,17 @@ export async function runPilotScorecard(
       rightCount,
     });
 
+    const isPostSelectionTuned = POST_SELECTION_TUNED_GUIDE_IDS.includes(gid);
+
     if (qual.clearsPrecisionBar) {
       clearedBarCount++;
+      if (isPostSelectionTuned) {
+        postSelectionTunedCount++;
+      } else {
+        singleShotQualifiedCount++;
+      }
+      qualifiedRight += rightCount;
+      qualifiedKept += p2KeptCount;
     }
     if (qual.clearsBar90) {
       clearedBar90Count++;
@@ -728,6 +768,11 @@ export async function runPilotScorecard(
     }
     if (qual.clearsScreen80) {
       clearedScreenCount++;
+    }
+    if (qual.tier === 'proven-high-n') {
+      provenHighNCount++;
+    } else if (qual.tier === 'zero-fp-low-n') {
+      zeroFpLowNCount++;
     }
 
     // Recall metrics
@@ -762,6 +807,8 @@ export async function runPilotScorecard(
       isSampleConstrained: qual.isSampleConstrained,
       clearedHighN80: qual.clearedHighN80,
       clearedZeroFpExhaustive: qual.clearedZeroFpExhaustive,
+      tier: qual.tier,
+      postSelectionTuned: isPostSelectionTuned,
       recall: {
         labeledPositivesTotal: nPos,
         phase1Recalled: p1Recalled,
@@ -823,6 +870,16 @@ export async function runPilotScorecard(
     clearedHighN80Count,
     clearedZeroFpExhaustiveCount,
     clearedScreenCount,
+    provenHighNCount,
+    zeroFpLowNCount,
+    singleShotQualifiedCount,
+    postSelectionTunedCount,
+    qualifiedPooledPrecision: {
+      successes: qualifiedRight,
+      total: qualifiedKept,
+      precision: qualifiedKept > 0 ? Number((qualifiedRight / qualifiedKept).toFixed(4)) : 0,
+      wilson95: wilsonInterval(qualifiedRight, qualifiedKept, Z_95),
+    },
     coverage: coverageMetric,
     overallPrecision: heldOutPrecisionMetric,
     overallRecall: recallMetric,
@@ -879,7 +936,7 @@ export async function runPilotScorecard(
       judgeAlpha: summary.judgeAlpha,
       judgeAc1: summary.judgeAc1,
       canaryTnr: summary.canaryTnr,
-      notes: `Milestone 3 evaluation (${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} sample-constrained: ${clearedHighN80Count} at >=0.80 CI & >=0.95 prec, ${clearedZeroFpExhaustiveCount} zero-FP exhaustive], pooled held-out prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
+      notes: `Milestone 3 evaluation (${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} sample-constrained: ${clearedHighN80Count} at >=0.80 CI & >=0.95 prec, ${clearedZeroFpExhaustiveCount} zero-FP exhaustive], ${provenHighNCount} proven-high-n + ${zeroFpLowNCount} zero-fp-low-n [${singleShotQualifiedCount} single-shot + ${postSelectionTunedCount} dev-tuned], qualified prec=${((qualifiedRight / (qualifiedKept || 1)) * 100).toFixed(1)}%, pooled held-out prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
     };
     await recordProgressLogEntry(progressRow, progressLogPath);
   }
@@ -915,9 +972,11 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
       g.recall.labeledPositivesTotal > 0
         ? `${(g.recall.phase2RecallRate * 100).toFixed(1)}% (${g.recall.phase2Recalled}/${g.recall.labeledPositivesTotal})`
         : 'N/A';
+    const tierStr = g.tier ?? 'unknown';
+    const tunedStr = g.postSelectionTuned ? ' (tuned)' : '';
 
     lines.push(
-      `  * ${g.guideId.padEnd(36)}: P1=${String(g.phase1TotalYield).padStart(3)} | P2_kept=${String(g.phase2KeptCount).padStart(2)} | Right=${String(g.judgeRightCount).padStart(2)} | Prec=${prec.padStart(6)} (95% CI ${w95}, 80% CI ${w80}) | SeqStop=${g.sequentialStopDecision} | Bar90=${bar90} | Screen80=${screen80} | Recall=${rec}`,
+      `  * ${g.guideId.padEnd(36)}: P1=${String(g.phase1TotalYield).padStart(3)} | P2_kept=${String(g.phase2KeptCount).padStart(2)} | Right=${String(g.judgeRightCount).padStart(2)} | Prec=${prec.padStart(6)} (95% CI ${w95}, 80% CI ${w80}) | SeqStop=${g.sequentialStopDecision} | Bar90=${bar90} | Screen80=${screen80} | Tier=${tierStr}${tunedStr} | Recall=${rec}`,
     );
   }
 
@@ -930,9 +989,20 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
   lines.push(
     `  Coverage:          ${(report.summary.coverage.value * 100).toFixed(1)}% (${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar: ${bar90Count} at >=0.90 CI lower, ${sampleCount} sample-constrained [${highN80} at >=0.80 CI, ${zeroFp} zero-FP exhaustive])`,
   );
+  if (report.summary.provenHighNCount !== undefined && report.summary.zeroFpLowNCount !== undefined) {
+    lines.push(
+      `  Tier Breakdown:    ${report.summary.provenHighNCount} proven-high-n + ${report.summary.zeroFpLowNCount} zero-fp-low-n = ${report.summary.clearedBarCount} qualified (${report.summary.singleShotQualifiedCount ?? 0} single-shot, ${report.summary.postSelectionTunedCount ?? 0} dev-tuned)`,
+    );
+  }
   lines.push(
     `  Screening (0.80):  ${((report.summary.clearedScreenCount / report.summary.totalDetectableGuides) * 100).toFixed(1)}% (${report.summary.clearedScreenCount}/${report.summary.totalDetectableGuides} guides cleared 0.80 screen)`,
   );
+  if (report.summary.qualifiedPooledPrecision) {
+    const qp = report.summary.qualifiedPooledPrecision;
+    lines.push(
+      `  Qualified Prec:    ${(qp.precision * 100).toFixed(1)}% (${qp.successes}/${qp.total}, 95% CI [${(qp.wilson95.lower * 100).toFixed(1)}% - ${(qp.wilson95.upper * 100).toFixed(1)}%])`,
+    );
+  }
   lines.push(
     `  Held-out Precision:${(report.summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}% (${report.summary.pooledHeldoutPrecision.successes}/${report.summary.pooledHeldoutPrecision.total}, 95% CI [${(report.summary.pooledHeldoutPrecision.wilson95.lower * 100).toFixed(1)}% - ${(report.summary.pooledHeldoutPrecision.wilson95.upper * 100).toFixed(1)}%])`,
   );

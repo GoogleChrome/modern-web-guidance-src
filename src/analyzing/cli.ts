@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { ALL_RULES } from './rules/index.ts';
+import { ALL_RULES, QUALIFIED_RULES } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 
@@ -51,6 +51,8 @@ Arguments:
 Options:
   --json             Output findings as structured JSON for coding agents
   --guide <guideId>  Filter analysis to a specific guide ID
+  --all-rules        Include all experimental/unqualified rules (defaults to 25 verified qualified rules)
+  --experimental     Alias for --all-rules
   -h, --help         Show this help message
 `.trim();
 
@@ -69,6 +71,8 @@ export async function runAnalyzeCli(
     options: {
       json: { type: 'boolean' },
       guide: { type: 'string' },
+      'all-rules': { type: 'boolean' },
+      experimental: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: true,
@@ -78,6 +82,7 @@ export async function runAnalyzeCli(
   const isJson = Boolean(parsed.values.json);
   const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
   const isHelp = Boolean(parsed.values.help);
+  const useAllRules = Boolean(parsed.values['all-rules'] || parsed.values.experimental);
   const targetDir = parsed.positionals[0] || '.';
 
   if (isHelp) {
@@ -109,10 +114,11 @@ export async function runAnalyzeCli(
     return { exitCode: 1, output: `Error: ${err}\n` };
   }
 
-  const allRules = options?.rules ?? ALL_RULES;
+  const defaultRules = useAllRules ? ALL_RULES : QUALIFIED_RULES;
+  const activeRulesList = options?.rules ?? defaultRules;
   const activeRules = guideFilter
-    ? allRules.filter((r) => r.guideId === guideFilter)
-    : allRules;
+    ? activeRulesList.filter((r) => r.guideId === guideFilter)
+    : activeRulesList;
 
   const findings = await scanRepoFiles(resolvedDir, activeRules, {
     maxFiles: options?.maxFiles,
@@ -126,7 +132,7 @@ export async function runAnalyzeCli(
   }
 
   const summaryMap = new Map<string, string>();
-  for (const r of allRules) {
+  for (const r of ALL_RULES) {
     if (!summaryMap.has(r.guideId)) {
       summaryMap.set(r.guideId, r.summary);
     }

@@ -273,6 +273,7 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.clearedHighN80, false);
     assert.strictEqual(result.clearedZeroFpExhaustive, false);
     assert.strictEqual(result.clearsPrecisionBar, true);
+    assert.strictEqual(result.tier, 'proven-high-n');
   });
 
   it('qualifies sample-constrained guides with 16 <= n < 56 when Wilson95 lower >= 0.80 and prec >= 0.95 (clearedHighN80)', () => {
@@ -289,6 +290,7 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.clearsSampleConstrained, true);
     assert.strictEqual(result.clearsScreen80, true);
     assert.strictEqual(result.clearsPrecisionBar, true);
+    assert.strictEqual(result.tier, 'proven-high-n');
   });
 
   it('qualifies 35 <= n < 56 rules with high precision under sample-constrained bar (resolving mathematical dead zone)', () => {
@@ -298,6 +300,7 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(qualified.clearedHighN80, true);
     assert.strictEqual(qualified.clearsPrecisionBar, true);
     assert.strictEqual(qualified.clearsScreen80, true);
+    assert.strictEqual(qualified.tier, 'proven-high-n');
     assert.strictEqual(Math.round(qualified.precision * 1000) / 10, 97.7);
     assert.strictEqual(Math.round(qualified.wilson95.lower * 1000) / 1000, 0.879);
 
@@ -307,6 +310,7 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(notQualified.clearedHighN80, false);
     assert.strictEqual(notQualified.clearedZeroFpExhaustive, false);
     assert.strictEqual(notQualified.clearsPrecisionBar, false);
+    assert.strictEqual(notQualified.tier, 'experimental');
   });
 
   it('qualifies sample-constrained guides with low n when all findings sampled and fpCount === 0 (clearedZeroFpExhaustive)', () => {
@@ -324,6 +328,7 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.clearsSampleConstrained, true);
     assert.strictEqual(result.clearsScreen80, true);
     assert.strictEqual(result.clearsPrecisionBar, true);
+    assert.strictEqual(result.tier, 'zero-fp-low-n');
   });
 
   it('does NOT qualify low n guides with zero FPs if findings were not exhaustively sampled (p1Sampled < p1Total)', () => {
@@ -339,6 +344,7 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.clearedZeroFpExhaustive, false);
     assert.strictEqual(result.clearsSampleConstrained, false);
     assert.strictEqual(result.clearsPrecisionBar, false);
+    assert.strictEqual(result.tier, 'experimental');
   });
 
   it('does NOT qualify sample-constrained guides if fpCount > 0 and Wilson lower < 0.80', () => {
@@ -354,6 +360,7 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.clearedZeroFpExhaustive, false);
     assert.strictEqual(result.clearsSampleConstrained, false);
     assert.strictEqual(result.clearsPrecisionBar, false);
+    assert.strictEqual(result.tier, 'experimental');
   });
 
   it('does NOT qualify when p2KeptCount is 0', () => {
@@ -365,6 +372,31 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     });
     assert.strictEqual(result.clearedZeroFpExhaustive, false);
     assert.strictEqual(result.clearsPrecisionBar, false);
+    assert.strictEqual(result.tier, 'experimental');
+  });
+
+  it('correctly assigns G9 tiers (proven-high-n vs zero-fp-low-n vs experimental)', () => {
+    // 1. proven-high-n: clearsPrecisionBar && p2KeptCount >= 8
+    const proven1 = evaluateGuideQualification(8, 8);
+    assert.strictEqual(proven1.tier, 'proven-high-n');
+
+    const proven2 = evaluateGuideQualification(60, 60);
+    assert.strictEqual(proven2.tier, 'proven-high-n');
+
+    // 2. zero-fp-low-n: clearsPrecisionBar && p2KeptCount < 8
+    const zeroFp1 = evaluateGuideQualification(1, 1);
+    assert.strictEqual(zeroFp1.tier, 'zero-fp-low-n');
+
+    const zeroFp7 = evaluateGuideQualification(7, 7);
+    assert.strictEqual(zeroFp7.tier, 'zero-fp-low-n');
+
+    // 3. experimental: !clearsPrecisionBar (even if n >= 8)
+    const exp1 = evaluateGuideQualification(26, 29); // ~89.7%, n=29 >= 8, but lower < 0.80
+    assert.strictEqual(exp1.clearsPrecisionBar, false);
+    assert.strictEqual(exp1.tier, 'experimental');
+
+    const exp2 = evaluateGuideQualification(0, 0);
+    assert.strictEqual(exp2.tier, 'experimental');
   });
 });
 

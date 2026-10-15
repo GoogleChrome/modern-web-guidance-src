@@ -1,6 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { PILOT_RULES, ALL_RULES } from './index.ts';
+import {
+  PILOT_RULES,
+  ALL_RULES,
+  QUALIFIED_GUIDE_IDS,
+  QUALIFIED_RULES,
+  POST_SELECTION_TUNED_GUIDE_IDS,
+} from './index.ts';
 
 describe('rules/index export registry', () => {
   it('exports PILOT_RULES containing all 40 rules across the 32 detectable guides', () => {
@@ -57,5 +63,35 @@ describe('rules/index export registry', () => {
       assert.ok(rule.phase2Rubric.keepWhen.length > 0, 'has keepWhen');
       assert.ok(rule.phase2Rubric.dropWhen.length > 0, 'has dropWhen');
     }
+  });
+
+  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 25 guides excluding 7 experimental', () => {
+    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 25);
+    const qualifiedGuideSet = new Set(QUALIFIED_GUIDE_IDS);
+    assert.strictEqual(qualifiedGuideSet.size, 25);
+
+    const qualifiedRuleGuideIds = new Set(QUALIFIED_RULES.map((r) => r.guideId));
+    assert.strictEqual(qualifiedRuleGuideIds.size, 25);
+    assert.deepStrictEqual(Array.from(qualifiedRuleGuideIds).sort(), [...QUALIFIED_GUIDE_IDS].sort());
+
+    // Excluded experimental guides
+    const experimentalGuides = [
+      'customize-scrollbar-color-and-thickness',
+      'break-up-long-tasks',
+      'detect-initial-visibility-state',
+      'schedule-tasks-by-priority',
+      'scrollspy',
+      'size-aware-styling',
+      'defer-work-until-scroll-ends',
+    ];
+    for (const exp of experimentalGuides) {
+      assert.strictEqual(qualifiedGuideSet.has(exp), false, `${exp} should not be in qualified guides`);
+    }
+
+    assert.deepStrictEqual(POST_SELECTION_TUNED_GUIDE_IDS, [
+      'dialog',
+      'manage-recurring-intervals',
+      'calculate-event-differentials',
+    ]);
   });
 });

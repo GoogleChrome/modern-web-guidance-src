@@ -186,4 +186,59 @@ describe('runAnalyzeCli', () => {
       await rm(testDir, { recursive: true, force: true });
     }
   });
+
+  it('gates CLI to QUALIFIED_RULES by default and includes experimental rules with --all-rules', async () => {
+    const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
+    try {
+      // 1. Create a qualified pattern: HTML login form -> autofill-sign-in-form
+      const loginHtml = `<form action="/login" method="POST">
+  <label for="username">User</label>
+  <input type="text" id="username" name="username">
+  <label for="password">Pass</label>
+  <input type="password" id="password" name="password">
+</form>`;
+      await writeFile(join(testDir, 'login.html'), loginHtml, 'utf8');
+
+      // 2. Create an experimental pattern: requestIdleCallback -> schedule-tasks-by-priority
+      const idleJs = `function runIdleTask() {
+  requestIdleCallback(() => console.log('idle work'));
+}`;
+      await writeFile(join(testDir, 'task.js'), idleJs, 'utf8');
+
+      // Default run (QUALIFIED_RULES only)
+      const resDefault = await runAnalyzeCli([testDir, '--json']);
+      assert.equal(resDefault.exitCode, 0);
+      const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
+      const defaultGuideIds = parsedDefault.guides.map((g) => g.guideId);
+
+      assert.ok(defaultGuideIds.includes('autofill-sign-in-form'), 'Default includes qualified rule');
+      assert.ok(
+        !defaultGuideIds.includes('schedule-tasks-by-priority'),
+        'Default excludes experimental rule schedule-tasks-by-priority',
+      );
+
+      // Opt-in run with --all-rules (or --experimental)
+      const resAll = await runAnalyzeCli([testDir, '--all-rules', '--json']);
+      assert.equal(resAll.exitCode, 0);
+      const parsedAll = JSON.parse(resAll.output) as AnalyzeJsonOutput;
+      const allGuideIds = parsedAll.guides.map((g) => g.guideId);
+
+      assert.ok(allGuideIds.includes('autofill-sign-in-form'), 'All-rules includes qualified rule');
+      assert.ok(
+        allGuideIds.includes('schedule-tasks-by-priority'),
+        'All-rules includes experimental rule schedule-tasks-by-priority',
+      );
+
+      // Verify --experimental alias also works
+      const resExperimental = await runAnalyzeCli([testDir, '--experimental', '--json']);
+      assert.equal(resExperimental.exitCode, 0);
+      const parsedExp = JSON.parse(resExperimental.output) as AnalyzeJsonOutput;
+      assert.ok(
+        parsedExp.guides.some((g) => g.guideId === 'schedule-tasks-by-priority'),
+        '--experimental alias enables experimental rules',
+      );
+    } finally {
+      await rm(testDir, { recursive: true, force: true });
+    }
+  });
 });
