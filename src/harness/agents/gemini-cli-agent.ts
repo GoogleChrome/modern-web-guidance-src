@@ -12,6 +12,7 @@ import {
   extractTimestamp,
   mapToolType,
   truncateMessage,
+  extractSubagentIdFromFilename,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
   readTrajectorySummary,
@@ -303,7 +304,7 @@ export function loadGeminiLogs(dir: string): { logData: any; subagentsMap: Recor
 
   for (const file of subFiles) {
     try {
-      const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.(?:json|jsonl)$/, '');
+      const subId = extractSubagentIdFromFilename(file);
       const content = readTrajectory(path.join(dir, file));
       subagentsMap[subId] = Array.isArray(content) ? content : (content.messages || []);
     } catch (e) {

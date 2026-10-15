@@ -71,6 +71,13 @@ export function getSessionFiles(dir: string): string[] {
   return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
 }
 
+export function extractSubagentIdFromFilename(file: string): string {
+  const base = path.basename(file);
+  return base
+    .replace(/^(?:subagent-.*subagents-agent-|subagent-(?:subagents-)?(?:agent-)?)/, '')
+    .replace(/\.(?:json|jsonl)$/, '');
+}
+
 export function hasRawSessionLogs(dir: string): boolean {
   if (!fs.existsSync(dir)) return false;
   try {

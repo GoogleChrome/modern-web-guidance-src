@@ -9,6 +9,7 @@ import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
   truncateMessage,
@@ -380,7 +381,7 @@ export function loadClaudeLogs(dir: string): { logData: any[]; subagentsMap: Rec
   }
 
   for (const file of subFiles) {
-    const subId = file.replace(/^(?:subagent-.*subagents-agent-|subagent-(?:subagents-)?(?:agent-)?)/, '').replace(/\.jsonl$/, '');
+    const subId = extractSubagentIdFromFilename(file);
     subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
   }
 
