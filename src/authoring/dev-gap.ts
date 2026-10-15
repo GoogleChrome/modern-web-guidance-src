@@ -21,7 +21,6 @@ import {
   getGuideStatus,
   ProjectStatus,
   REPORT_FILE,
-  TARGETS_DIR,
   type GuideInventory,
 } from '../core/guide-validation.ts';
 import { rootDir, getGuideResultsDir } from '../core/paths.ts';
