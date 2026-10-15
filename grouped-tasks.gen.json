@@ -280,6 +280,9 @@
       "passkeys": [
         "daily-grind",
         "devtools-times"
+      ],
+      "security": [
+        "daily-grind"
       ]
     },
     "ui-atoms": {
