@@ -93,21 +93,41 @@
 
 .ab-task-pills {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
-  gap: var(--space-1) var(--space-4);
-  border-block-end: 1px solid var(--color-outline-variant);
+  gap: var(--space-4);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  background: linear-gradient(to top, var(--color-outline-variant) 1px, transparent 1px);
   margin-block-end: var(--space-3);
+}
+
+.ab-task-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.ab-task-pills.has-scroll-right:not(.has-scroll-left) {
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+.ab-task-pills.has-scroll-left:not(.has-scroll-right) {
+  mask-image: linear-gradient(to right, transparent, #000 28px);
+}
+
+.ab-task-pills.has-scroll-left.has-scroll-right {
+  mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
 }
 
 .ab-task-pill {
   appearance: none;
   position: relative;
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) 0;
-  margin-block-end: -1px;
+  margin-block-end: 0;
   border: 0;
   border-block-end: 2px solid transparent;
   background: transparent;
@@ -174,43 +194,9 @@
   margin: 0;
   flex: 1 1 auto;
   min-inline-size: 0;
-  max-inline-size: 75ch;
   font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--color-on-surface);
-}
-
-.ab-prompt-text.clamped {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-}
-
-.ab-prompt-toggle {
-  appearance: none;
-  flex-shrink: 0;
-  margin-inline-start: auto;
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--color-outline-variant);
-  background: var(--color-surface-container-lowest);
-  color: var(--color-primary);
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.35;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.ab-prompt-toggle[hidden] {
-  display: none;
-}
-
-.ab-prompt-toggle:hover {
-  background: var(--color-surface-container);
 }
 
 /* Compact 2-Column Eval Verdict Scorecard (~80px desktop height) ---------- */
@@ -307,12 +293,20 @@
 }
 
 .ab-score-a11y {
+  appearance: none;
+  border: 1px solid transparent;
   padding: 2px 8px;
   border-radius: 4px;
+  font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.ab-score-a11y:hover {
+  text-decoration: underline;
 }
 
 .ab-score-a11y.pass {

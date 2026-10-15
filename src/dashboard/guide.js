@@ -8,9 +8,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
     const guideName = params.get('guide');
     const taskName = params.get('task');
+    const source = params.get('source');
     if (!guideName) {
-        window.location.href = './';
+        window.location.href = source ? `./?source=${encodeURIComponent(source)}` : './';
         return;
+    }
+
+    if (source) {
+        document.querySelectorAll('a[href="./"]').forEach(btn => {
+            if (btn instanceof HTMLAnchorElement) {
+                btn.href = `./?source=${encodeURIComponent(source)}`;
+            }
+        });
     }
 
     $('#guide-name-header').textContent = taskName ? `${guideName} — ${taskName}` : guideName;
@@ -173,6 +182,10 @@ function setupTimelineFilterControls(guideName) {
  * @param {string} currentGuide
  */
 function setupNavigationControls(currentGuide) {
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get('source');
+    const sourceSuffix = source ? `&source=${encodeURIComponent(source)}` : '';
+
     const guideSet = new Set();
     Object.values(allTestData).forEach(run => {
         if (run.guides) {
@@ -196,20 +209,20 @@ function setupNavigationControls(currentGuide) {
         prevBtn.disabled = false;
         prevBtn.onclick = () => {
             const prevIndex = (currentIndex - 1 + allGuides.length) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}${sourceSuffix}`;
         };
 
         nextBtn.disabled = false;
         nextBtn.onclick = () => {
             const nextIndex = (currentIndex + 1) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}${sourceSuffix}`;
         };
     }
 
     goBtn.onclick = () => {
         const val = searchInput.value.trim();
         if (val) {
-            window.location.href = `guide.html?guide=${encodeURIComponent(val)}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(val)}${sourceSuffix}`;
         }
     };
 
@@ -417,7 +430,9 @@ function renderGraphs(guideName) {
         globalTimeline = globalTimeline.slice(-limit);
     }
 
-    const globalWidth = Math.max(450, globalTimeline.length * 30);
+    const cardInnerWidth = Math.max(240, ((grid && grid.clientWidth) || window.innerWidth) - 42);
+    const baseMinWidth = Math.min(450, cardInnerWidth);
+    const globalWidth = Math.max(baseMinWidth, globalTimeline.length * 24);
 
     const sortedCombKeys = Object.keys(combinations).sort((keyA, keyB) => {
         const runsA = combinations[keyA];
@@ -469,7 +484,7 @@ function renderGraphs(guideName) {
         chartWrapper.style.width = '100%';
 
         const height = 230;
-        const paddingX = 40;
+        const paddingX = 46;
         const paddingY = 25;
         const plotHeight = height - 2 * paddingY - 35;
         const plotWidth = globalWidth - 2 * paddingX;
@@ -483,7 +498,7 @@ function renderGraphs(guideName) {
             const y = rateToY(percent);
             svgContent += `
                 <line x1="${paddingX}" y1="${y}" x2="${globalWidth - paddingX}" y2="${y}" stroke="var(--border-color)" stroke-dasharray="4" stroke-width="1" />
-                <text x="${paddingX - 10}" y="${y + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">${percent}%</text>
+                <text x="${paddingX - 8}" y="${y + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">${percent}%</text>
             `;
         });
 
@@ -533,29 +548,35 @@ function renderGraphs(guideName) {
                 svgContent += `
                     <g class="timeline-point" data-testid="${run.testId}" data-comb="${combKey}" style="cursor: pointer;">
                         ${elementHtml}
-                        <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${suite.shortDate}</text>
+                        <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${suite.shortDate}</text>
                         <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
                     </g>
                 `;
             } else {
                 // Draw faded date label for missing runs to preserve axis alignment
                 svgContent += `
-                    <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle" style="opacity: 0.3;">${suite.shortDate}</text>
+                    <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle" style="opacity: 0.3;">${suite.shortDate}</text>
                 `;
             }
         });
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', `0 0 ${globalWidth} ${height}`);
         svg.setAttribute('width', globalWidth.toString());
         svg.setAttribute('height', height.toString());
         svg.style.display = 'block';
+        if (globalWidth <= cardInnerWidth || globalTimeline.length <= 16) {
+            svg.style.inlineSize = '100%';
+            svg.style.maxInlineSize = `${globalWidth}px`;
+            svg.style.blockSize = 'auto';
+        }
         svg.innerHTML = svgContent;
 
         chartWrapper.appendChild(svg);
         card.appendChild(chartWrapper);
         grid.appendChild(card);
 
-        // Auto-scroll to highlighted point if it exists in this chart
+        // Auto-scroll to highlighted point if it exists in this chart, or to the latest runs on the right
         if (highlightTestId) {
             const highlightedEl = svg.querySelector(`[data-testid="${highlightTestId}"]`);
             if (highlightedEl) {
@@ -566,6 +587,8 @@ function renderGraphs(guideName) {
                     chartWrapper.scrollTo({ left: targetScroll, behavior: 'smooth' });
                 }, 200);
             }
+        } else if (chartWrapper.scrollWidth > chartWrapper.clientWidth) {
+            chartWrapper.scrollLeft = chartWrapper.scrollWidth;
         }
 
         svg.querySelectorAll('.timeline-point').forEach(el => {

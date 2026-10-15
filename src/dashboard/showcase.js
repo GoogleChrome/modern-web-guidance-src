@@ -71,12 +71,33 @@ const AGENT_ORDER = ['claude_code', 'antigravity_cli', 'codex_cli'];
  * @type {Record<string, string>}
  */
 const SHORT_TASK_LABELS = {
-    'swipe-to-remove': 'Swipe-to-remove',
-    'branded-select-styling': 'Custom select',
     'highlight-text-ranges': 'Search highlights',
-    'interest-triggered-tooltips': 'Interest tooltips',
-    'navigation-drawer': 'Nav drawer',
-    'dynamic-sibling-animations': 'Staggered motion'
+    'animate-to-from-top-layer': 'Top-layer motion',
+    'flicker-free-client-side-ab-testing': 'Flicker-free A/B',
+    'faster-spa-view-transitions': 'SPA view cache',
+    'scrollspy': 'CSS scrollspy',
+    'interest-triggered-tooltips': 'Interest tooltips'
+};
+
+/**
+ * Category folder lookup for every guide referenced in `showcase-runs.json` (`guidesUsed`),
+ * so each retrieved guide links directly to its `guides/<category>/<slug>/guide.md` on GitHub.
+ * @type {Record<string, string>}
+ */
+const GUIDE_CATEGORY_MAP = {
+    'animate-to-from-top-layer': 'ui-behaviors',
+    'declarative-dialog-popover-control': 'ui-behaviors',
+    'faster-spa-view-transitions': 'performance',
+    'flicker-free-client-side-ab-testing': 'performance',
+    'forms': 'forms',
+    'highlight-text-ranges': 'ui-behaviors',
+    'interest-triggered-tooltips': 'ui-behaviors',
+    'light-dismiss-a-dialog': 'ui-behaviors',
+    'move-dom-element-without-losing-state': 'ui-behaviors',
+    'optimize-preload-priority': 'performance',
+    'position-aware-tooltips': 'ui-atoms',
+    'same-document-transitions': 'ui-behaviors',
+    'scrollspy': 'ui-components'
 };
 
 /**
@@ -84,60 +105,89 @@ const SHORT_TASK_LABELS = {
  * @type {Record<string, { unguided: string, guided: string }>}
  */
 const TASK_APPROACH_CONTRAST = {
-    'swipe-to-remove': {
-        unguided: 'Hand-rolled pointermove JS drag transforms — no CSS scroll-snap, no accessible Remove button, no focus ring.',
-        guided: 'Native CSS scroll-snap-type: x mandatory track, IntersectionObserver commit thresholds, WAAPI collapse, and accessible Remove button.'
-    },
-    'branded-select-styling': {
-        unguided: 'Styled a legacy <select> (or custom <div> dropdown) without appearance: base-select, ::picker(select), or <selectedcontent>.',
-        guided: 'Native CSS customizable <select> using appearance: base-select, ::picker(select), <selectedcontent>, and option::checkmark.'
-    },
     'highlight-text-ranges': {
-        unguided: 'Mutated DOM nodes or skipped CSS.highlights registration instead of using the CSS Custom Highlight API.',
-        guided: 'Zero-DOM-mutation highlights via CSS.highlights.set(), new Highlight(range) on text nodes, and ::highlight() styling.'
+        unguided: 'Mutated DOM text nodes with <mark> wrappers on every keystroke instead of using the CSS Custom Highlight API.',
+        guided: 'Zero-DOM-mutation highlights via CSS.highlights.set() and ::highlight(), with a feature-detected <mark> fallback.'
+    },
+    'animate-to-from-top-layer': {
+        unguided: 'Standard opacity/transform transitions that snap shut on exit — missing @starting-style, allow-discrete, and reduced-motion guards.',
+        guided: 'Smooth top-layer entry and exit transitions using @starting-style, transition-behavior: allow-discrete on display/overlay, and ::backdrop fade.'
+    },
+    'flicker-free-client-side-ab-testing': {
+        unguided: 'Applied an unconditional opacity: 0 anti-flicker hack without blocking="render" or a safety timeout, penalizing every page load.',
+        guided: 'Native <script async blocking="render"> in <head> with feature-detected timeout fallback (9/10 — missed only the mock CDN timing assertion).'
+    },
+    'faster-spa-view-transitions': {
+        unguided: 'Toggled views without content-visibility: hidden, leaving inactive views exposed to the accessibility tree and losing focus state.',
+        guided: 'Cached off-screen view layout state with content-visibility: hidden, paired with aria-hidden="true", focus management, and display: none fallback.'
+    },
+    'scrollspy': {
+        unguided: 'Wired an unconditional JS scroll/IntersectionObserver loop without native scroll-target-group, :target-current, or non-color indicators.',
+        guided: 'Native CSS scroll-target-group: auto + :target-current with non-color active indicator, scrollend ARIA sync, and conditional IO fallback.'
     },
     'interest-triggered-tooltips': {
-        unguided: 'Custom hover tooltips without declarative interestfor, popover="hint", CSS anchor(), or WCAG 1.4.13 hover persistence.',
-        guided: 'Declarative interestfor triggers with <div popover="hint">, CSS position-anchor + anchor(), and position-try fallbacks.'
-    },
-    'navigation-drawer': {
-        unguided: 'Custom drawer missing popover="manual" top-layer promotion, background inert lock, or reduced-motion scroll guards.',
-        guided: 'Top-layer popover="manual" drawer with scroll-snap-type: x mandatory, background inert lock, aria-expanded, and scroll-linked backdrop.'
-    },
-    'dynamic-sibling-animations': {
-        unguided: 'Hardcoded :nth-child() delays instead of CSS sibling-index() and omitted custom-property fallback.',
-        guided: 'Dynamic calc(sibling-index() * 100ms) stagger delay with @supports custom-property fallback and reduced-motion guard.'
+        unguided: 'CSS :hover tooltips with pointer-events: none that fail WCAG 1.4.13 hover persistence, Escape dismissal, and viewport flip fallbacks.',
+        guided: 'Declarative interestfor triggers with <div popover="hint">, CSS anchor(), position-try fallbacks, and WCAG 1.4.13 persistence (15/16 — omitted 1 of 3 polyfills).'
     }
 };
+
+/**
+ * Per-(task, agent) overrides when a specific run diverges from the typical pattern
+ * (e.g., partial adherence on a guided run or an unguided run that already passed 100%).
+ * @type {Record<string, Partial< { unguided: string, guided: string } >>}
+ */
+const TASK_PAIR_OVERRIDES = {
+    'animate-to-from-top-layer:codex_cli': {
+        guided: 'Retrieved animate-to-from-top-layer, but non-deterministically fell back to standard CSS transitions without @starting-style or allow-discrete (2/9).'
+    },
+    'flicker-free-client-side-ab-testing:codex_cli': {
+        guided: 'Applied <script async blocking="render"> in <head> with feature detection (8/10), but omitted the fallback safety timeout and missed the variant timing check.'
+    },
+    'faster-spa-view-transitions:antigravity_cli': {
+        unguided: 'Passed all 6/6 checks without MWG after 19m and 855k uncached tokens of exploration.',
+        guided: 'Passed all 6/6 checks with MWG while cutting runtime by 3× (19m → 6m) and uncached tokens by 69% (855k → 263k).'
+    },
+    'scrollspy:antigravity_cli': {
+        unguided: 'Passed all 11/11 checks without MWG after 16m and 452k uncached tokens of exploration.',
+        guided: 'Passed all 11/11 checks with MWG while cutting runtime by 3.4× (16m → 5m) and uncached tokens by 73% (452k → 122k).'
+    },
+    'scrollspy:codex_cli': {
+        guided: 'Applied native scroll-target-group: auto, :target-current, and non-color indicators (9/11), but synced aria-current on scroll instead of scrollend and missed the fallback class.'
+    },
+    'interest-triggered-tooltips:codex_cli': {
+        guided: 'Retrieved both tooltip guides and used <div id> elements (4/16), but fell back to custom JS hover positioning instead of interestfor, popover="hint", and CSS anchor().'
+    }
+};
+
+/**
+ * Resolves the unguided and guided approach summaries for the selected task and agent pair.
+ * @param {ShowcaseTask} task
+ * @param {ShowcaseAgentPair} pair
+ * @returns {{ unguided: string, guided: string }}
+ */
+function getApproachContrast(task, pair) {
+    const base = TASK_APPROACH_CONTRAST[task.id] || {
+        unguided: 'Standard unguided implementation without MWG skill.',
+        guided: `Guided implementation using ${task.featureSummary}.`
+    };
+    const override = TASK_PAIR_OVERRIDES[`${task.id}:${pair.agentId}`];
+    return override ? { ...base, ...override } : base;
+}
 
 /** @type {ShowcaseTask[]} */
 let tasks = [];
 /** @type {string} */
-let activeTaskId = 'swipe-to-remove';
+let activeTaskId = 'highlight-text-ranges';
 /** @type {string} */
 let activeAgentId = 'claude_code';
-/** @type {boolean} */
-let promptExpanded = false;
-/** @type {boolean} */
 let checksExpanded = false;
 
 const rootEl = /** @type {HTMLElement | null} */ (document.getElementById('ab-spotlight'));
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!rootEl) return;
-    setupPromptToggle();
     void loadShowcase();
 });
-
-function setupPromptToggle() {
-    const toggleBtn = document.getElementById('ab-prompt-toggle');
-    if (!toggleBtn) return;
-    toggleBtn.addEventListener('click', () => {
-        promptExpanded = !promptExpanded;
-        const sel = getCurrentSelection();
-        if (sel) renderPromptBar(sel.task, sel.pair);
-    });
-}
 
 async function loadShowcase() {
     if (!rootEl) return;
@@ -180,12 +230,26 @@ function renderAll() {
     renderChecks(sel.task, sel.pair);
 }
 
+let taskPillsListenersBound = false;
+
+/**
+ * Updates directional edge-fade classes on #ab-task-pills based on scroll position.
+ * @param {HTMLElement} container
+ */
+function syncTaskPillsScrollShadows(container) {
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    container.classList.toggle('has-scroll-left', container.scrollLeft > 4);
+    container.classList.toggle('has-scroll-right', maxScroll - container.scrollLeft > 4);
+}
+
 /**
  * @param {ShowcaseTask} currentTask
  */
 function renderTaskPills(currentTask) {
     const container = document.getElementById('ab-task-pills');
     if (!container) return;
+
+    const prevScrollLeft = container.scrollLeft;
 
     container.innerHTML = tasks.map(t => {
         const isCurrent = t.id === currentTask.id;
@@ -198,14 +262,28 @@ function renderTaskPills(currentTask) {
         return `<button type="button" class="ab-task-pill" data-task-id="${escapeHtml(t.id)}" aria-pressed="${isCurrent}"><span>${escapeHtml(shortLabel)}</span>${deltaHtml}</button>`;
     }).join('');
 
+    container.scrollLeft = prevScrollLeft;
+    syncTaskPillsScrollShadows(container);
+
+    if (!taskPillsListenersBound) {
+        taskPillsListenersBound = true;
+        container.addEventListener('scroll', () => syncTaskPillsScrollShadows(container), { passive: true });
+        window.addEventListener('resize', () => syncTaskPillsScrollShadows(container), { passive: true });
+    }
+
     container.querySelectorAll('.ab-task-pill').forEach(btn => {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-task-id');
             if (id && id !== activeTaskId) {
                 activeTaskId = id;
-                promptExpanded = false;
                 checksExpanded = false;
                 renderAll();
+                const activeBtn = /** @type {HTMLElement | null} */ (container.querySelector('.ab-task-pill[aria-pressed="true"]'));
+                if (activeBtn && container.scrollWidth > container.clientWidth) {
+                    const targetLeft = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.offsetWidth / 2);
+                    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    container.scrollTo({ left: Math.max(0, targetLeft), behavior: reduceMotion ? 'auto' : 'smooth' });
+                }
                 announceSelection();
             }
         });
@@ -249,30 +327,33 @@ function renderPromptBar(task, pair) {
         kickerEl.textContent = 'Task prompt';
     }
     const promptEl = document.getElementById('ab-prompt-text');
-    const toggleBtn = document.getElementById('ab-prompt-toggle');
     const metaEl = document.getElementById('ab-run-provenance');
     if (promptEl) {
         promptEl.textContent = `“${task.prompt}”`;
-        const isLong = task.prompt.length > 240;
-        promptEl.classList.toggle('clamped', isLong && !promptExpanded);
-        if (toggleBtn) {
-            toggleBtn.hidden = !isLong;
-            toggleBtn.setAttribute('aria-expanded', String(promptExpanded));
-            toggleBtn.textContent = promptExpanded ? 'Collapse' : 'Full prompt';
-        }
     }
     if (metaEl) {
-        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}`;
-        const guideHref = `guide.html?guide=${encodeURIComponent(task.id)}`;
-        const retrieved = pair.guided.guidesUsed.length
-            ? pair.guided.guidesUsed.join(', ')
-            : task.id;
+        const params = new URLSearchParams(window.location.search);
+        const source = params.get('source');
+        const sourceSuffix = source ? `&source=${encodeURIComponent(source)}` : '';
+        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}${sourceSuffix}#guide-${encodeURIComponent(task.id)}`;
+        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}${sourceSuffix}`;
+        const rawGuides = pair.guided.guidesUsed.length ? pair.guided.guidesUsed : [task.id];
+        const cleanGuides = rawGuides.map(g => g.replace(/;+$/, '')).filter(Boolean);
+        const guideLinksHtml = cleanGuides.map(slug => {
+            const cat = GUIDE_CATEGORY_MAP[slug] || task.category;
+            const ghHref = `https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/guides/${encodeURIComponent(cat)}/${encodeURIComponent(slug)}/guide.md`;
+            return `<a class="ab-prov-link" href="${ghHref}" target="_blank" rel="noopener">${escapeHtml(slug)}</a>`;
+        }).join(', ');
+        const guidePrefix = cleanGuides.length > 1 ? 'Guides:' : 'Guide:';
+
         metaEl.innerHTML = `
             <span class="ab-prov-item">${escapeHtml(pair.date)} nightly run (${escapeHtml(pair.model)})</span>
             <span class="ab-prov-sep" aria-hidden="true">·</span>
             <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a>
             <span class="ab-prov-sep" aria-hidden="true">·</span>
-            <a class="ab-prov-link" href="${guideHref}">Guide: ${escapeHtml(retrieved)}</a>
+            <a class="ab-prov-link" href="${trendHref}">Guide trend</a>
+            <span class="ab-prov-sep" aria-hidden="true">·</span>
+            <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>
         `;
     }
 }
@@ -284,6 +365,26 @@ function renderPromptBar(task, pair) {
  */
 function cleanCheckMessage(msg) {
     return msg.replace(/^Requirement\s+\d+[a-z]?:\s*/i, '');
+}
+
+/**
+ * Expands the grader assertions table (if collapsed) and scrolls to the first accessibility row.
+ * @param {ShowcaseTask} task
+ * @param {ShowcaseAgentPair} pair
+ */
+function expandAndFocusA11yChecks(task, pair) {
+    if (!checksExpanded) {
+        checksExpanded = true;
+        renderChecks(task, pair);
+    }
+    const firstA11yRow = document.querySelector('#ab-checks-content tr[data-a11y="true"]');
+    if (firstA11yRow instanceof HTMLElement) {
+        firstA11yRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    const wrap = document.querySelector('#ab-checks-content .ab-checks-table-wrap');
+    if (wrap instanceof HTMLElement) {
+        wrap.focus({ preventScroll: true });
+    }
 }
 
 /**
@@ -300,10 +401,7 @@ function renderScorecard(task, pair) {
     const deltaChecks = g.passed - u.passed;
     const deltaSign = deltaChecks > 0 ? `+${deltaChecks}` : String(deltaChecks);
     const deltaWord = Math.abs(deltaChecks) === 1 ? 'check' : 'checks';
-    const contrast = TASK_APPROACH_CONTRAST[task.id] || {
-        unguided: 'Standard unguided implementation without MWG skill.',
-        guided: `Guided implementation using ${task.featureSummary}.`
-    };
+    const contrast = getApproachContrast(task, pair);
 
     const uMeterSegs = pair.checks.map(c => {
         const st = c.unguidedPassed ? 'pass' : 'fail';
@@ -320,10 +418,10 @@ function renderScorecard(task, pair) {
     const uTone = u.rate < 60 ? 'low' : 'mid';
     const uFailed = u.total - u.passed;
     const uA11yHtml = u.a11yTotal > 0
-        ? `<span class="ab-score-a11y ${u.a11yPassed < u.a11yTotal ? 'fail' : 'pass'}">A11y ${u.a11yPassed}/${u.a11yTotal}</span>`
+        ? `<button type="button" class="ab-score-a11y ${u.a11yPassed < u.a11yTotal ? 'fail' : 'pass'}" title="Show accessibility assertions">A11y ${u.a11yPassed}/${u.a11yTotal}</button>`
         : '';
     const gA11yHtml = g.a11yTotal > 0
-        ? `<span class="ab-score-a11y ${g.a11yPassed === g.a11yTotal ? 'pass' : 'fail'}">A11y ${g.a11yPassed}/${g.a11yTotal}</span>`
+        ? `<button type="button" class="ab-score-a11y ${g.a11yPassed === g.a11yTotal ? 'pass' : 'fail'}" title="Show accessibility assertions">A11y ${g.a11yPassed}/${g.a11yTotal}</button>`
         : '';
 
     uEl.innerHTML = `
@@ -353,6 +451,10 @@ function renderScorecard(task, pair) {
         <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div>
         <p class="ab-verdict-summary">${escapeHtml(contrast.guided)}</p>
     `;
+
+    rootEl?.querySelectorAll('.ab-score-a11y').forEach(btn => {
+        btn.addEventListener('click', () => expandAndFocusA11yChecks(task, pair));
+    });
 }
 
 /**
@@ -368,6 +470,7 @@ function renderChecks(task, pair) {
     const previewCount = 3;
     const canCollapse = totalChecks > previewCount;
     const collapsed = canCollapse && !checksExpanded;
+    const a11yTotal = pair.guided.a11yTotal || 0;
 
     const rowsHtml = pair.checks.map(c => {
         const uBadge = c.unguidedPassed
@@ -377,11 +480,11 @@ function renderChecks(task, pair) {
             ? `<span class="ab-check-status pass${c.flipped ? ' is-flipped' : ''}"><span class="ab-status-glyph" aria-hidden="true">✓</span>Pass</span>`
             : '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>';
         const a11yTag = c.isA11y
-            ? `<span class="ab-a11y-tag">${escapeHtml(c.a11yLabel || 'Accessibility')}</span>`
+            ? `<span class="ab-a11y-tag">A11y · ${escapeHtml(c.a11yLabel || 'Accessibility')}</span>`
             : '';
 
         return `
-            <tr class="ab-check-row${c.flipped ? ' is-flipped' : ''}">
+            <tr class="ab-check-row${c.flipped ? ' is-flipped' : ''}"${c.isA11y ? ' data-a11y="true"' : ''}>
                 <td class="ab-check-num">${c.index}</td>
                 <th scope="row" class="ab-check-msg">
                     <span>${escapeHtml(cleanCheckMessage(c.message))}</span>
@@ -392,10 +495,13 @@ function renderChecks(task, pair) {
             </tr>`;
     }).join('');
 
+    const collapsedLabel = a11yTotal > 0
+        ? `Show all ${totalChecks} checks (${a11yTotal} a11y)`
+        : `Show all ${totalChecks} checks`;
     const toggleHtml = canCollapse
         ? `<div class="ab-checks-toggle-bar">
              <button type="button" id="ab-checks-toggle" class="ab-checks-toggle" aria-expanded="${checksExpanded}">
-               ${checksExpanded ? 'Show fewer checks' : `Show all ${totalChecks} checks`}
+               ${checksExpanded ? 'Show fewer checks' : collapsedLabel}
              </button>
            </div>`
         : '';

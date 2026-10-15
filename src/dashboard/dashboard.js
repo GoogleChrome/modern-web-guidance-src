@@ -55,15 +55,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize API Client
     api = new ApiClient();
 
+    const initialParams = new URLSearchParams(window.location.search);
+    const initialMode = initialParams.get('mode');
+    if (initialMode === 'a11y') {
+        currentMetricMode = 'a11y';
+    }
+    const initialSort = initialParams.get('sort');
+
     // Wire up All Checks vs. Accessibility Subscore toggle
     const modeAllBtn = document.getElementById('dash-mode-all-btn');
     const modeA11yBtn = document.getElementById('dash-mode-a11y-btn');
     if (modeAllBtn && modeA11yBtn) {
+        modeAllBtn.setAttribute('aria-pressed', currentMetricMode === 'all' ? 'true' : 'false');
+        modeA11yBtn.setAttribute('aria-pressed', currentMetricMode === 'a11y' ? 'true' : 'false');
+
         const setMode = (/** @type {'all' | 'a11y'} */ mode) => {
             if (currentMetricMode === mode) return;
             currentMetricMode = mode;
             modeAllBtn.setAttribute('aria-pressed', mode === 'all' ? 'true' : 'false');
             modeA11yBtn.setAttribute('aria-pressed', mode === 'a11y' ? 'true' : 'false');
+            const url = new URL(window.location.href);
+            if (mode === 'a11y') {
+                url.searchParams.set('mode', 'a11y');
+            } else {
+                url.searchParams.delete('mode');
+            }
+            window.history.replaceState({}, '', url);
             if (allTestData && currentTestID) {
                 renderDashboardDumbbellChart(allTestData);
                 renderGrid(allTestData, currentTestID);
@@ -76,8 +93,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Wire up Task Sort dropdown
     const sortSelect = document.getElementById('task-sort-select');
     if (sortSelect instanceof HTMLSelectElement) {
+        if (initialSort && Array.from(sortSelect.options).some(o => o.value === initialSort)) {
+            currentTaskSort = initialSort;
+            sortSelect.value = initialSort;
+        }
         sortSelect.addEventListener('change', () => {
             currentTaskSort = sortSelect.value;
+            const url = new URL(window.location.href);
+            if (currentTaskSort === 'default') {
+                url.searchParams.delete('sort');
+            } else {
+                url.searchParams.set('sort', currentTaskSort);
+            }
+            window.history.replaceState({}, '', url);
             if (allTestData && currentTestID) {
                 renderGrid(allTestData, currentTestID);
             }
@@ -96,7 +124,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    const initialParams = new URLSearchParams(window.location.search);
     const initialTestID = initialParams.get('testId');
 
     // Update "Back to Results" buttons to carry source param
@@ -683,12 +710,12 @@ function renderSummary(data) {
         <!-- Card 2: Cross-Cutting Accessibility Subscore -->
         <div class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label"><span aria-hidden="true">♿</span> Accessibility subscore</span>
+                <span class="meta-label">Accessibility subscore</span>
                 ${ratePill(a11yUpliftPp, 'accessibility subscore change')}
             </div>
             <div class="sparkline-container">
                 ${renderSparkline(a11yStats.unguidedRate, a11yStats.guidedRate)}
-                <span class="sparkline-labels"><span class="visually-hidden">Unguided </span>${a11yStats.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${a11yStats.guidedRate}%</strong> <span class="narrative-subtext">(${fraction(a11yStats.unguidedPassed, a11yStats.unguidedTotal)} → ${fraction(a11yStats.guidedPassed, a11yStats.guidedTotal)} checks, ${a11yStats.guideCount} guides)</span></span>
+                <span class="sparkline-labels"><span class="visually-hidden">Unguided </span>${a11yStats.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${a11yStats.guidedRate}%</strong> <span class="narrative-subtext">(${fraction(a11yStats.unguidedPassed, a11yStats.unguidedTotal)} → ${fraction(a11yStats.guidedPassed, a11yStats.guidedTotal)} checks, <a href="#guide-section" class="a11y-guides-jump" data-filter-a11y-guides="true">${a11yStats.guideCount} guides <span aria-hidden="true">→</span></a>)</span></span>
             </div>
             <div class="a11y-dimensions-grid">
                 ${a11yDimensionsHtml}
@@ -749,6 +776,22 @@ function renderSummary(data) {
             </div>
         </div>
     `;
+
+    const jumpLink = container.querySelector('a[data-filter-a11y-guides]');
+    jumpLink?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const modeA11yBtn = document.getElementById('dash-mode-a11y-btn');
+        if (modeA11yBtn instanceof HTMLButtonElement) {
+            modeA11yBtn.click();
+        }
+        const sortSelect = document.getElementById('task-sort-select');
+        if (sortSelect instanceof HTMLSelectElement && sortSelect.value !== 'a11y-desc') {
+            sortSelect.value = 'a11y-desc';
+            sortSelect.dispatchEvent(new Event('change'));
+        }
+        const guideSection = document.getElementById('guide-section');
+        guideSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 }
 
 /**
@@ -990,7 +1033,7 @@ function renderGrid(data, testId) {
 
         const a11yPillHtml = a11yCheckCount > 0 ? `
             <span class="a11y-task-pill">
-                <span aria-hidden="true">♿</span> ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp)
+                ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp)
                 <span class="visually-hidden">accessibility checks: unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%</span>
             </span>
         ` : '';
@@ -1163,7 +1206,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         const uFailed = isRunEarlyFailure(unguidedRuns);
         const gFailed = isRunEarlyFailure(guidedRuns);
 
-        let truthMatrixHtml = `<div style="margin-bottom: 16px;"><table class="truth-matrix"><thead>`;
+        let truthMatrixHtml = `<div class="truth-matrix-wrap"><table class="truth-matrix"><thead>`;
 
         if (maxRuns > 1) {
             truthMatrixHtml += `
@@ -1194,7 +1237,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             const a11yInfo = classifyAccessibilityCheck('', guideName, message);
             const subCatMeta = a11yInfo.subCategory ? A11Y_SUBCATEGORY_MAP[a11yInfo.subCategory] : null;
             const a11yBadge = a11yInfo.isAccessibility && subCatMeta
-                ? ` <span class="a11y-check-badge"><span aria-hidden="true">♿</span> ${escapeHtml(subCatMeta.shortLabel)}<span class="visually-hidden"> — ${escapeHtml(subCatMeta.label)}: ${escapeHtml(a11yInfo.rationale)}</span></span>`
+                ? ` <span class="a11y-check-badge">A11y · ${escapeHtml(subCatMeta.shortLabel)}<span class="visually-hidden"> — ${escapeHtml(subCatMeta.label)}: ${escapeHtml(a11yInfo.rationale)}</span></span>`
                 : '';
 
             truthMatrixHtml += `<tr class="${a11yInfo.isAccessibility ? 'a11y-assertion-row' : ''}">`;
@@ -1763,9 +1806,9 @@ function renderDashboardDumbbellChart(data) {
     if (!container) return;
     container.innerHTML = ''; // Clear old content
 
-    // Apply CSS columns layout to balance heights
+    // Apply CSS columns layout to balance heights (1 column on phones, 2 on >=656px containers)
     container.style.display = 'block';
-    container.style.columns = '2';
+    container.style.columns = '20rem 2';
     container.style.gap = '16px';
     container.style.width = '100%';
 

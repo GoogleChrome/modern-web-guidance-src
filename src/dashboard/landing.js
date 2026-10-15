@@ -1,4 +1,5 @@
 import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, formatDuration, formatTokens, isLocalDashboardHost, $, getAgentBadge } from './utils.js';
+import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { ApiClient } from './api.js';
 
@@ -128,6 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 applyTestsParam(params.get('tests'));
                 renderFilterMenuItems();
                 renderSuites();
+                applyGuidesHash(window.location.hash, false);
             });
             return;
         }
@@ -141,6 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         renderFilterMenuItems();
         renderSuites();
+        applyGuidesHash(window.location.hash, true);
     } catch (error) {
         console.error('Error:', error);
         const emptyState = document.getElementById('empty-state');
@@ -155,6 +158,11 @@ window.addEventListener('popstate', () => {
     applyTestsParam(params.get('tests'));
     renderFilterMenuItems();
     renderSuites();
+    applyGuidesHash(window.location.hash, false);
+});
+
+window.addEventListener('hashchange', () => {
+    applyGuidesHash(window.location.hash, true);
 });
 
 /**
@@ -346,6 +354,52 @@ function syncSortHeaders() {
     });
 }
 
+/**
+ * Opens the Breakdowns drawer, switches to the requested check scope (`'a11y'` or `'all'`),
+ * expands the nested By Guide subdrawer sorted by uplift, and optionally scrolls/focuses it.
+ * @param {InsightsMode} mode
+ * @param {boolean} [scrollAndFocus=true]
+ */
+function openGuidesBreakdown(mode, scrollAndFocus = true) {
+    const drawer = document.getElementById('breakdowns');
+    const modeAllBtn = document.getElementById('insights-mode-all');
+    const modeA11yBtn = document.getElementById('insights-mode-a11y');
+
+    currentInsightsMode = mode;
+    modeAllBtn?.setAttribute('aria-pressed', String(mode === 'all'));
+    modeA11yBtn?.setAttribute('aria-pressed', String(mode === 'a11y'));
+    guideSubdrawerOpen = true;
+    currentGuideSort = 'uplift';
+    currentGuideSortDir = 'desc';
+
+    if (drawer instanceof HTMLDetailsElement && !drawer.open) {
+        drawer.open = true;
+    }
+    renderPivotInsights();
+
+    if (scrollAndFocus && drawer instanceof HTMLElement) {
+        const guideDrawer = drawer.querySelector('.insights-guide-drawer') || drawer;
+        guideDrawer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const summary = drawer.querySelector('.insights-guide-summary') || drawer.querySelector('.insights-summary');
+        if (summary instanceof HTMLElement) {
+            summary.focus({ preventScroll: true });
+        }
+    }
+}
+
+/**
+ * Applies `#a11y-guides` or `#all-guides` URL hash deep links.
+ * @param {string} hash
+ * @param {boolean} scrollAndFocus
+ */
+function applyGuidesHash(hash, scrollAndFocus) {
+    if (hash === '#a11y-guides') {
+        openGuidesBreakdown('a11y', scrollAndFocus);
+    } else if (hash === '#all-guides') {
+        openGuidesBreakdown('all', scrollAndFocus);
+    }
+}
+
 function setupInsightsControls() {
     const limitInput = document.getElementById('insights-limit-input');
     const showAllCheck = document.getElementById('insights-show-all-check');
@@ -377,10 +431,28 @@ function setupInsightsControls() {
         currentInsightsMode = mode;
         modeAllBtn?.setAttribute('aria-pressed', String(mode === 'all'));
         modeA11yBtn?.setAttribute('aria-pressed', String(mode === 'a11y'));
+        if (mode === 'a11y') {
+            guideSubdrawerOpen = true;
+        }
         renderPivotInsights();
     };
     modeAllBtn?.addEventListener('click', () => setMode('all'));
     modeA11yBtn?.addEventListener('click', () => setMode('a11y'));
+
+    // Delegate clicks on hero takeaway links (`data-open-guides="a11y" | "all"`).
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        const link = target.closest('a[data-open-guides]');
+        if (!(link instanceof HTMLAnchorElement)) return;
+        const mode = link.dataset.openGuides;
+        if (mode === 'a11y' || mode === 'all') {
+            e.preventDefault();
+            const hash = mode === 'a11y' ? '#a11y-guides' : '#all-guides';
+            window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}${hash}`);
+            openGuidesBreakdown(mode, true);
+        }
+    });
 
     // The pivot only renders once the drawer is opened (it is collapsed by default).
     const drawer = document.getElementById('breakdowns');
@@ -828,6 +900,7 @@ function renderSuites() {
         const hasTokens = Boolean(tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0));
 
         const localLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${testInfo.source}`;
+        const a11yLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${testInfo.source}&mode=a11y&sort=a11y-desc`;
         const taskCount = testInfo.taskCount || 0;
         const maxRuns = testInfo.maxRuns || 1;
         const isFaulty = (testInfo.earlyFailureRate || 0) === 100;
@@ -836,7 +909,12 @@ function renderSuites() {
         const agentDisplay = agentDisplayNames[testInfo.agent] || testInfo.agent;
 
         const a11yCellHtml = a11y
-            ? renderRateComparison(toRate(a11y.u), toRate(a11y.g), upliftPp(a11y.u, a11y.g), 'Accessibility subscore')
+            ? `
+                <a href="${a11yLink}" class="a11y-link">
+                    ${renderRateComparison(toRate(a11y.u), toRate(a11y.g), upliftPp(a11y.u, a11y.g), 'Accessibility subscore')}
+                    <span class="visually-hidden">— open accessibility check results</span>
+                </a>
+            `
             : renderNotAvailable('Accessibility subscore');
 
         const timeCellHtml = hasRuntime && rt
@@ -887,7 +965,7 @@ function renderSuites() {
                         <span class="visually-hidden">— open per-guide results</span>
                     </a>
                 </td>
-                <td class="metric-cell">${a11yCellHtml}</td>
+                <td class="a11y-cell metric-cell">${a11yCellHtml}</td>
                 <td class="metric-cell">${timeCellHtml}</td>
                 <td class="metric-cell tokens-cell">${tokenCellHtml}</td>
                 <td class="source-cell">${escapeHtml(testInfo.source)}</td>
@@ -1172,7 +1250,7 @@ function getInsightKeys() {
     return keys;
 }
 
-/** @typedef {{ uplift: number, uRate: number, gRate: number, rtDeltaPct?: number | null, tokDeltaPct?: number | null }} PivotItem */
+/** @typedef {{ uplift: number, uRate: number, gRate: number, rtDeltaPct?: number | null, tokDeltaPct?: number | null, description?: string }} PivotItem */
 let guideSubdrawerOpen = false;
 
 function renderPivotInsights() {
@@ -1194,8 +1272,8 @@ function renderPivotInsights() {
     const keys = getInsightKeys();
     const onlyA11y = currentInsightsMode === 'a11y';
 
-    /** @type {{ model: Record<string, PivotItem[]>, guide: Record<string, PivotItem[]> }} */
-    const grouped = { model: {}, guide: {} };
+    /** @type {{ model: Record<string, PivotItem[]>, guide: Record<string, PivotItem[]>, dimension: Record<string, PivotItem[]> }} */
+    const grouped = { model: {}, guide: {}, dimension: {} };
 
     keys.forEach(compoundKey => {
         const testInfo = allTestData[compoundKey];
@@ -1212,6 +1290,21 @@ function renderPivotInsights() {
             const pair = a11yPair(testInfo.a11yStats);
             if (pair) {
                 item = { uplift: upliftPp(pair.u, pair.g), uRate: toRate(pair.u), gRate: toRate(pair.g), rtDeltaPct, tokDeltaPct };
+            }
+            const bySub = testInfo.a11yStats?.bySubCategory;
+            if (bySub) {
+                A11Y_SUBCATEGORIES.forEach(sub => {
+                    const sc = bySub[sub.id];
+                    if (!sc || (sc.unguidedTotal === 0 && sc.guidedTotal === 0)) return;
+                    const u = { passed: sc.unguidedPassed || 0, total: sc.unguidedTotal || 0 };
+                    const g = { passed: sc.guidedPassed || 0, total: sc.guidedTotal || 0 };
+                    (grouped.dimension[sub.id] ||= []).push({
+                        uplift: upliftPp(u, g),
+                        uRate: toRate(u),
+                        gRate: toRate(g),
+                        description: sub.description
+                    });
+                });
             }
         } else {
             item = {
@@ -1260,9 +1353,13 @@ function renderPivotInsights() {
         return Math.sqrt(variance);
     };
 
+    const params = new URLSearchParams(window.location.search);
+    const sourceParam = params.get('source');
+    const sourceQuery = sourceParam ? `&source=${encodeURIComponent(sourceParam)}` : '';
+
     /**
      * @param {Record<string, PivotItem[]>} groupObj
-     * @param {'model' | 'guide'} filterKey
+     * @param {'model' | 'guide' | 'dimension'} filterKey
      */
     const renderPivotTable = (groupObj, filterKey) => {
         const keys = Object.keys(groupObj);
@@ -1310,13 +1407,15 @@ function renderPivotInsights() {
                 if (valA > valB) return currentGuideSortDir === 'asc' ? 1 : -1;
                 return 0;
             });
+        } else if (filterKey === 'dimension') {
+            keys.sort((a, b) => getMedianItem(groupObj[b]).uplift - getMedianItem(groupObj[a]).uplift);
         } else {
             keys.sort((a, b) => a.localeCompare(b));
         }
 
         const showVariance = filterKey === 'guide';
         const metricName = onlyA11y ? 'Accessibility subscore' : 'Pass rate';
-        const captionNoun = filterKey === 'guide' ? 'guide' : 'model';
+        const captionNoun = filterKey === 'guide' ? 'guide' : (filterKey === 'dimension' ? 'accessibility dimension' : 'model');
 
         let rowsHtml = '';
         keys.forEach(key => {
@@ -1334,12 +1433,20 @@ function renderPivotInsights() {
             const gBandHtml = gSD > 0 ? `<div class="variance-band guided" style="left: ${gSD_left}%; width: ${gSD_width}%;"></div>` : '';
 
             const isActive = filterKey === 'model' && currentModelFilter === key;
-            const nameHtml = filterKey === 'guide'
-                ? `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}">${escapeHtml(key)}</a>`
-                : `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(key)}" aria-pressed="${isActive}">${escapeHtml(key)}</button>`;
-
+            let nameHtml = '';
             let effSummary = '';
-            if (filterKey === 'model') {
+
+            if (filterKey === 'guide') {
+                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${sourceQuery}">${escapeHtml(key)}</a>`;
+                effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
+            } else if (filterKey === 'dimension') {
+                const subMeta = A11Y_SUBCATEGORIES.find(s => s.id === key);
+                const label = subMeta ? subMeta.label : key;
+                const desc = subMeta ? subMeta.description : '';
+                nameHtml = `<span class="pivot-static-name">${escapeHtml(label)}</span>`;
+                effSummary = desc ? `<span class="pivot-trials">${escapeHtml(desc)}</span>` : '';
+            } else {
+                nameHtml = `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(key)}" aria-pressed="${isActive}">${escapeHtml(key)}</button>`;
                 const rtMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.rtDeltaPct).filter(v => typeof v === 'number')));
                 const tokMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.tokDeltaPct).filter(v => typeof v === 'number')));
                 const fmtSignedPct = (/** @type {number} */ v) => v > 0 ? `+${v}%` : (v < 0 ? `−${Math.abs(v)}%` : '0%');
@@ -1349,8 +1456,6 @@ function renderPivotInsights() {
                     tokMed !== null ? `tokens ${fmtSignedPct(tokMed)}` : ''
                 ].filter(Boolean);
                 effSummary = `<span class="pivot-trials">${escapeHtml(parts.join(' · '))}</span>`;
-            } else {
-                effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
             }
 
             const sign = medUplift > 0 ? '+' : '';
@@ -1378,10 +1483,11 @@ function renderPivotInsights() {
             `;
         });
 
+        const colHeader = filterKey === 'guide' ? 'Guide' : (filterKey === 'dimension' ? 'Dimension' : 'Model');
         const table = `
             <table class="insights-table">
                 <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption>
-                <thead class="${filterKey === 'guide' ? 'pivot-head' : 'visually-hidden'}"><tr><th scope="col">${escapeHtml(captionNoun === 'guide' ? 'Guide' : 'Model')}</th><th scope="col">${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead>
+                <thead class="${filterKey === 'guide' ? 'pivot-head' : 'visually-hidden'}"><tr><th scope="col">${escapeHtml(colHeader)}</th><th scope="col">${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead>
                 <tbody>${rowsHtml}</tbody>
             </table>
         `;
@@ -1406,9 +1512,17 @@ function renderPivotInsights() {
     const modeSuffix = onlyA11y ? ' <span class="mode-badge-inline">Accessibility checks</span>' : '';
     const guideCount = Object.keys(grouped.guide).length;
     const runCount = keys.length;
+    const dimensionPanelHtml = onlyA11y && Object.keys(grouped.dimension).length > 0
+        ? `
+        <div class="insights-panel insights-dimension-panel">
+            <h3 class="insights-panel-title">By Accessibility Dimension (6)${modeSuffix}</h3>
+            ${renderPivotTable(grouped.dimension, 'dimension')}
+        </div>`
+        : '';
 
     container.innerHTML = `
         <p class="insights-scope">Based on ${runCount} run${runCount === 1 ? '' : 's'} matching current filters (medians across runs).</p>
+        ${dimensionPanelHtml}
         <div class="insights-panel">
             <h3 class="insights-panel-title">By Model${modeSuffix}</h3>
             ${renderPivotTable(grouped.model, 'model')}

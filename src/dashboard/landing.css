@@ -11,6 +11,12 @@
   padding: 0 20px;
 }
 
+@media (width < 40rem) {
+  .landing-container {
+    padding: 0;
+  }
+}
+
 .header-nav {
   display: flex;
   justify-content: space-between;
@@ -29,6 +35,37 @@
   letter-spacing: 0.01em;
   line-height: 1.25;
   color: var(--color-on-surface-variant);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.header-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.header-link {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--color-on-surface-variant);
+  text-decoration: none;
+  padding: 4px 2px;
+  border-radius: 4px;
+  transition: color 0.15s ease-out;
+}
+
+.header-link:hover,
+.header-link:focus-visible {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .empty-state {
@@ -373,13 +410,15 @@ th[aria-sort="ascending"] .sort-btn::after {
   min-inline-size: 128px;
 }
 
-.uplift-cell {
+.uplift-cell,
+.a11y-cell {
   padding: 0;
   position: relative;
   z-index: 2;
 }
 
-.uplift-link {
+.uplift-link,
+.a11y-link {
   display: block;
   color: inherit;
   text-decoration: none;
@@ -625,13 +664,13 @@ th[aria-sort="ascending"] .sort-btn::after {
 .filter-menu {
   position: absolute;
   top: 100%;
-  right: 0;
+  inset-inline: auto 0;
   margin-top: 8px;
   background: var(--color-surface-container-lowest);
   outline: 1px solid var(--border-color);
   border-radius: 6px;
   width: 450px;
-  max-width: calc(100vw - 40px);
+  max-width: calc(100dvw - 40px);
   box-shadow: 0 8px 24px var(--color-shadow);
   z-index: 1000;
   display: flex;
@@ -699,7 +738,7 @@ th[aria-sort="ascending"] .sort-btn::after {
 }
 
 .filter-list {
-  max-height: min(300px, 50vh);
+  max-height: min(300px, 50dvh);
   overflow-y: auto;
   padding: 8px 0;
 }
@@ -972,6 +1011,13 @@ th[aria-sort="ascending"] .sort-btn::after {
   word-break: break-word;
 }
 
+.pivot-static-name {
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
 /* Whole row acts as the control, keyboard focus stays on the real link/button. */
 .pivot-link::after,
 .pivot-filter-btn::after {
@@ -991,7 +1037,7 @@ th[aria-sort="ascending"] .sort-btn::after {
 }
 
 .pivot-scroll {
-  max-block-size: min(460px, 65vh);
+  max-block-size: min(460px, 65dvh);
   overflow: auto;
   background: transparent;
 }
@@ -1032,6 +1078,42 @@ th[aria-sort="ascending"] .sort-btn::after {
 
 .insight-dumbbell-cell {
   width: 160px;
+}
+
+@media (width < 30rem) {
+  .insights-table .pivot-head {
+    display: none;
+  }
+
+  .insights-table,
+  .insights-table tbody {
+    display: block;
+  }
+
+  .insights-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px 12px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--color-outline-variant);
+  }
+
+  .insights-table tbody tr :is(td, th) {
+    display: block;
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .insights-table tbody tr :is(td, th):first-child {
+    flex: 1 1 100%;
+  }
+
+  .insight-dumbbell-cell {
+    width: auto;
+    flex: 1 1 140px;
+  }
 }
 
 .guide-sort-controls {
@@ -1109,6 +1191,16 @@ th[aria-sort="ascending"] .sort-btn::after {
 /* ---------- Narrow containers: stacked "card" rows (MWG responsive-table) ---------- */
 
 @container (width < 640px) {
+  .browse-controls {
+    inline-size: 100%;
+  }
+
+  .filter-menu {
+    inset-inline: 0 auto;
+    width: min(450px, 100cqi);
+    max-width: 100cqi;
+  }
+
   .suites-table,
   .suites-table thead,
   .suites-table tbody,
@@ -1130,9 +1222,7 @@ th[aria-sort="ascending"] .sort-btn::after {
   }
 
   .suites-table tbody th {
-    position: sticky;
-    inset-block-start: 0;
-    z-index: 2;
+    position: static;
     min-width: 0;
     background: var(--color-surface-container-low);
   }
@@ -1189,12 +1279,19 @@ th[aria-sort="ascending"] .sort-btn::after {
     text-align: left;
   }
 
-  .suites-table td.uplift-cell {
+  .suites-table td.uplift-cell,
+  .suites-table td.a11y-cell {
     padding: 8px 12px;
   }
 
-  .suites-table .uplift-link {
+  .suites-table .suite-link,
+  .suites-table .uplift-link,
+  .suites-table .a11y-link {
     padding: 0;
+    min-block-size: 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .suite-dumbbell-track {
@@ -1227,5 +1324,26 @@ th[aria-sort="ascending"] .sort-btn::after {
   /* Paged stacked cards (landing.js adds .paged when more than STACKED_PAGE_SIZE rows are visible). */
   .suites-table.paged tbody tr:nth-child(n + 11) {
     display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .metric-mode-btn,
+  .insights-window input[type="number"],
+  .filter-search {
+    min-block-size: 44px;
+  }
+
+  .insights-window input[type="number"],
+  .filter-search,
+  .guide-sort-controls .sort-select,
+  .header-filter-select {
+    font-size: max(1rem, 1em);
+  }
+
+  .toggle-label input[type="checkbox"],
+  .filter-item input[type="checkbox"] {
+    inline-size: 24px;
+    block-size: 24px;
   }
 }

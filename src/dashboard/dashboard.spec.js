@@ -4,8 +4,10 @@ test.describe('Eval View Dashboard', () => {
   test('should load the dashboard and show expected content', async ({ page }) => {
     await page.goto('/');
 
-    // Check title
+    // Check title and header navigation links
     await expect(page.locator('.landing-title')).toContainText('Modern Web Guidance Evals');
+    await expect(page.locator('.header-links a', { hasText: 'Docs' })).toHaveAttribute('href', 'https://developer.chrome.com/docs/modern-web-guidance');
+    await expect(page.locator('.header-links a', { hasText: 'GitHub' })).toHaveAttribute('href', 'https://github.com/GoogleChrome/modern-web-guidance-src');
 
     // Check suites content
     await expect(page.locator('.suite-table-row').first()).toBeVisible();
@@ -428,7 +430,7 @@ test.describe('A/B Task Spotlight & Progressive Disclosure IA', () => {
     const spotlight = page.locator('#ab-spotlight');
     await expect(spotlight).toBeVisible();
     await expect(spotlight).toHaveAttribute('aria-busy', 'false');
-    await expect(spotlight.locator('#ab-spotlight-heading')).toContainText('See it on a real task: Unguided vs. Guided');
+    await expect(spotlight.locator('#ab-spotlight-heading')).toContainText('See it on a real task, with and without Modern Web Guidance');
 
     // 6 curated task tabs (on a single horizontal row at 1280px) and 3 agent family buttons;
     // only the active task tab carries the green delta badge.
@@ -441,44 +443,52 @@ test.describe('A/B Task Spotlight & Progressive Disclosure IA', () => {
     const agentPills = spotlight.locator('#ab-agent-pills .ab-agent-pill');
     await expect(agentPills).toHaveCount(3);
 
-    // Sentence-case task prompt label and expandable prompt toggle
+    // Sentence-case task prompt label, full prompt text displayed without truncation, and no toggle button
     await expect(spotlight.locator('.ab-prompt-kicker')).toHaveText('Task prompt');
-    const promptToggle = spotlight.locator('#ab-prompt-toggle');
-    await expect(promptToggle).toBeVisible();
-    await expect(promptToggle).toHaveAttribute('aria-expanded', 'false');
-    await promptToggle.click();
-    await expect(promptToggle).toHaveAttribute('aria-expanded', 'true');
-    await promptToggle.click();
-    await expect(promptToggle).toHaveAttribute('aria-expanded', 'false');
+    const promptText = spotlight.locator('#ab-prompt-text');
+    await expect(promptText).toBeVisible();
+    await expect(promptText).not.toHaveClass(/clamped/);
+    await expect(promptText).toContainText('search box with id "search-input"');
+    await expect(spotlight.locator('#ab-prompt-toggle')).toHaveCount(0);
 
-    // Default task is swipe-to-remove on Claude Code (0/21 -> 21/21, +21 checks)
+    // Default task is highlight-text-ranges on Claude Code (3/11 -> 11/11, +8 checks)
     await expect(taskPills.first()).toHaveAttribute('aria-pressed', 'true');
-    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+21 checks');
-    await expect(spotlight.locator('#ab-run-provenance a[href*="guide.html"]')).toHaveAttribute('href', /guide\.html\?guide=swipe-to-remove/);
+    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+8 checks');
+    await expect(spotlight.locator('#ab-run-provenance a[href*="dashboard.html"]')).toHaveAttribute('href', /dashboard\.html\?testId=nightly-.*#guide-highlight-text-ranges/);
+    await expect(spotlight.locator('#ab-run-provenance a[href*="guide.html"]')).toHaveAttribute('href', /guide\.html\?guide=highlight-text-ranges&testId=nightly-/);
+    await expect(spotlight.locator('#ab-run-provenance a[href*="github.com"]')).toHaveAttribute('href', 'https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/guides/ui-behaviors/highlight-text-ranges/guide.md');
 
     // Grader assertions table collapses to 3 visible preview rows by default, expandable via #ab-checks-toggle
     const checkRows = spotlight.locator('.ab-checks-table tbody tr');
-    await expect(checkRows).toHaveCount(21);
+    await expect(checkRows).toHaveCount(11);
     await expect(checkRows.nth(2)).toBeVisible();
     await expect(checkRows.nth(3)).toBeHidden();
     const checksToggle = spotlight.locator('#ab-checks-toggle');
     await expect(checksToggle).toHaveAttribute('aria-expanded', 'false');
-    await expect(checksToggle).toContainText('Show all 21 checks');
+    await expect(checksToggle).toContainText('Show all 11 checks');
     await checksToggle.click();
     await expect(checksToggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(checkRows.nth(20)).toBeVisible();
+    await expect(checkRows.nth(10)).toBeVisible();
 
-    // Switch task to Custom select (branded-select-styling, 0/12 -> 12/12, +12 checks) — resets to collapsed preview
+    // Switch task to Top-layer motion (animate-to-from-top-layer, 2/9 -> 9/9, +7 checks) — resets to collapsed preview
     await taskPills.nth(1).click();
     await expect(taskPills.nth(1)).toHaveAttribute('aria-pressed', 'true');
-    await expect(spotlight.locator('#ab-run-provenance a[href*="guide.html"]')).toHaveAttribute('href', /guide\.html\?guide=branded-select-styling/);
-    await expect(checkRows).toHaveCount(12);
+    await expect(spotlight.locator('#ab-run-provenance a[href*="dashboard.html"]')).toHaveAttribute('href', /dashboard\.html\?testId=nightly-.*#guide-animate-to-from-top-layer/);
+    await expect(spotlight.locator('#ab-run-provenance a[href*="guide.html"]')).toHaveAttribute('href', /guide\.html\?guide=animate-to-from-top-layer&testId=nightly-/);
+    // Claude Code retrieved 2 guides on animate-to-from-top-layer; each has its own GitHub guide.md link
+    await expect(spotlight.locator('#ab-run-provenance a[href*="github.com"]')).toHaveCount(2);
+    await expect(checkRows).toHaveCount(9);
     await expect(checkRows.nth(3)).toBeHidden();
 
-    // Switch agent family to Antigravity CLI (2/12 -> 12/12, +10 checks)
+    // Clicking the A11y badge on the scorecard expands the table to reveal the accessibility assertion row
+    await spotlight.locator('#ab-score-guided .ab-score-a11y').click();
+    await expect(checksToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(spotlight.locator('tr[data-a11y="true"]')).toBeVisible();
+
+    // Switch agent family to Antigravity CLI (2/9 -> 9/9, +7 checks)
     await agentPills.nth(1).click();
     await expect(agentPills.nth(1)).toHaveAttribute('aria-pressed', 'true');
-    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+10 checks');
+    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+7 checks');
 
     // Verify zero horizontal page overflow across desktop (1440px, 1280px) and mobile (390px)
     for (const vp of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 390, height: 844 }]) {
@@ -488,5 +498,89 @@ test.describe('A/B Task Spotlight & Progressive Disclosure IA', () => {
     }
 
     expect(consoleErrors).toEqual([]);
+  });
+
+  test('clicking the +22 pp Accessibility hero link opens the Breakdowns drawer in Accessibility mode with dimensions and guides expanded', async ({ page }) => {
+    const FIXTURE = new URL('./fixtures/hero-suites.fixture.json', import.meta.url).pathname;
+    await page.route('**/api/suites*', route => route.fulfill({ path: FIXTURE, contentType: 'application/json' }));
+    await page.goto('/');
+    await expect(page.locator('#hero')).toHaveAttribute('aria-busy', 'false');
+
+    const a11yCardLink = page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]');
+    await expect(a11yCardLink).toBeVisible();
+    await a11yCardLink.click();
+
+    await expect(page.locator('#breakdowns')).toHaveAttribute('open', '');
+    await expect(page.locator('#insights-mode-a11y')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.insights-dimension-panel')).toBeVisible();
+    await expect(page.locator('.insights-guide-drawer')).toHaveAttribute('open', '');
+  });
+
+  test('mobile & tablet viewports (320px, 390px, 768px) have zero horizontal overflow and keep filter menu, hero stat, assertion tables, and guide trend points on-screen', async ({ page }) => {
+    const FIXTURE = new URL('./fixtures/hero-suites.fixture.json', import.meta.url).pathname;
+    await page.route('**/api/suites*', route => route.fulfill({ path: FIXTURE, contentType: 'application/json' }));
+
+    for (const width of [320, 390, 768]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/');
+      await expect(page.locator('#hero')).toHaveAttribute('aria-busy', 'false');
+
+      const indexOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(indexOverflow).toBeLessThanOrEqual(0);
+
+      // Primary takeaway rate text stays inside the hero card border
+      const heroFits = await page.evaluate(() => {
+        const hero = document.getElementById('hero')?.getBoundingClientRect();
+        const rates = document.querySelector('.takeaway-primary .takeaway-dumbbell-rates')?.getBoundingClientRect();
+        return Boolean(hero && rates && rates.right <= hero.right + 1 && rates.left >= hero.left - 1);
+      });
+      expect(heroFits).toBe(true);
+
+      // Use-case task tabs stay on a single horizontally scrollable row
+      await expect(page.locator('#ab-spotlight')).toHaveAttribute('aria-busy', 'false');
+      const taskRowCount = await page.locator('#ab-task-pills .ab-task-pill').evaluateAll(els => new Set(els.map(e => Math.round(e.getBoundingClientRect().top))).size);
+      expect(taskRowCount).toBe(1);
+
+      // Opening "Filter runs" keeps #filter-menu inside the viewport
+      await page.locator('#filter-btn').click();
+      await expect(page.locator('#filter-menu')).toBeVisible();
+      const menuFits = await page.evaluate(() => {
+        const r = document.getElementById('filter-menu')?.getBoundingClientRect();
+        return Boolean(r && r.left >= 0 && r.right <= document.documentElement.clientWidth + 1);
+      });
+      expect(menuFits).toBe(true);
+      await page.locator('#filter-btn').click();
+    }
+
+    // Suite page at 320px, 390px, and 768px (with first task accordion expanded)
+    await page.unroute('**/api/suites*');
+    for (const width of [320, 390, 768]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/dashboard.html?testId=example-result');
+      const firstAccordion = page.locator('.task-accordion-header').first();
+      await expect(firstAccordion).toBeVisible();
+      await firstAccordion.click();
+      await expect(page.locator('.truth-matrix').first()).toBeVisible();
+
+      const dashOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(dashOverflow).toBeLessThanOrEqual(0);
+
+      const matrixFits = await page.evaluate(() => {
+        const wrap = document.querySelector('.truth-matrix-wrap');
+        const acc = document.querySelector('.task-accordion.open');
+        if (!wrap || !acc) return false;
+        return wrap.getBoundingClientRect().right <= acc.getBoundingClientRect().right + 1;
+      });
+      expect(matrixFits).toBe(true);
+    }
+
+    // Guide trend page at 390px: SVG has a viewBox and timeline points are visible inside the card
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/guide.html?guide=content-vis');
+    const firstSvg = page.locator('#graphs-grid svg').first();
+    await expect(firstSvg).toBeVisible();
+    await expect(firstSvg).toHaveAttribute('viewBox', /^0 0 \d+ \d+$/);
+    const guideOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(guideOverflow).toBeLessThanOrEqual(0);
   });
 });

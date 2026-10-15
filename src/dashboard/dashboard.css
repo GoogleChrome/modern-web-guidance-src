@@ -76,7 +76,7 @@
   --spacing-giant: var(--space-8);
 
   /* Font Size Tokens */
-  --font-xs: 0.7rem;
+  --font-xs: 0.75rem;
   --font-sm: 0.75rem;
   --font-base: 0.8rem;
   --font-md: 0.85rem;
@@ -844,7 +844,7 @@ dialog#modal.diff-modal {
 
 .chevron {
   display: inline-block;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   transition: rotate 0.2s;
 }
 
@@ -887,6 +887,12 @@ dialog#modal.diff-modal {
 }
 
 /* Assertion Truth Matrix */
+.truth-matrix-wrap {
+  margin-bottom: 16px;
+  max-inline-size: 100%;
+  overflow-x: auto;
+}
+
 .truth-matrix {
   width: 100%;
   border-collapse: collapse;
@@ -915,6 +921,30 @@ dialog#modal.diff-modal {
 
 .truth-matrix td.center, .truth-matrix th.center {
   text-align: center;
+}
+
+.truth-matrix th:last-child,
+.truth-matrix td:last-child {
+  overflow-wrap: anywhere;
+}
+
+@media (width < 40rem) {
+  .truth-matrix {
+    table-layout: fixed;
+  }
+
+  .truth-matrix th,
+  .truth-matrix td {
+    padding: 6px;
+  }
+
+  .truth-matrix th.center,
+  .truth-matrix td.center {
+    width: 5rem;
+    padding-inline: 4px;
+    font-size: 0.75rem;
+    letter-spacing: 0;
+  }
 }
 
 .truth-matrix tr:last-child td {
@@ -999,13 +1029,13 @@ dialog#modal.diff-modal {
   overflow-wrap: anywhere;
 }
 
-/* Phones: two-column meta strip instead of eight stacked 160px cells. */
-@media (width < 40rem) {
+/* Tablets & narrow laptops: wrap the metadata cells so the strip never overflows horizontally. */
+@media (width < 80rem) {
   .header-meta-grid {
     display: grid;
     grid-auto-flow: row;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2px 12px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+    gap: 4px 12px;
   }
 
   .header-meta-grid .header-meta-item {
@@ -1019,6 +1049,18 @@ dialog#modal.diff-modal {
 
   .header-meta-grid .meta-value {
     overflow-wrap: anywhere;
+  }
+}
+
+/* Phones: two-column meta strip instead of eight stacked 160px cells. */
+@media (width < 40rem) {
+  .header-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 12px;
+  }
+
+  .suite-header-actions {
+    order: -1;
   }
 }
 
@@ -1085,7 +1127,7 @@ dialog#modal.diff-modal {
   justify-content: center;
   color: var(--text-secondary);
   border-radius: 4px;
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .tfoot-action-btn:hover {
@@ -1107,7 +1149,7 @@ dialog#modal.diff-modal {
   flex-direction: column;
   gap: 8px;
   flex: 1;
-  min-width: 250px;
+  min-width: min(250px, 100%);
 }
 
 .run-card-title {
@@ -1120,6 +1162,7 @@ dialog#modal.diff-modal {
   font-size: 0.75rem;
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -1151,12 +1194,6 @@ dialog#modal.diff-modal {
     flex: 1 !important;
     width: 100% !important;
     max-width: 700px !important;
-  }
-
-  /* Wrap header meta grid on narrow viewports */
-  .header-meta-grid {
-    flex-wrap: wrap !important;
-    gap: 12px 16px !important;
   }
 }
 
@@ -1340,7 +1377,7 @@ dialog#modal.diff-modal {
 /* Blueprint Grid Design - Expanded Details */
 .task-details-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-top: 8px;
 }
@@ -1462,7 +1499,7 @@ dialog#modal.diff-modal {
 /* Narrative Summary Grid (4 cards) */
 .narrative-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(265px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 265px), 1fr));
   gap: 16px;
   width: 100%;
 }
@@ -1473,6 +1510,7 @@ dialog#modal.diff-modal {
   gap: 8px;
   padding: 16px;
   justify-content: space-between;
+  min-inline-size: 0;
 }
 
 .meta-value-highlight.negative {
@@ -1511,9 +1549,10 @@ dialog#modal.diff-modal {
 
 .narrative-metric-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 2px 8px;
   color: var(--text-secondary);
 }
 
@@ -1521,7 +1560,8 @@ dialog#modal.diff-modal {
   color: var(--text-primary);
   font-weight: 600;
   text-align: right;
-  white-space: nowrap;
+  margin-inline-start: auto;
+  white-space: normal;
 }
 
 .efficiency-delta-pill {
@@ -1577,7 +1617,7 @@ dialog#modal.diff-modal {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .a11y-dim-label {
@@ -1724,7 +1764,7 @@ dialog#modal.diff-modal {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 16px;
@@ -1740,7 +1780,7 @@ dialog#modal.diff-modal {
 }
 
 .task-eff-chip {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
   background: var(--color-surface-container-low);
   border: 1px solid var(--color-outline-variant);
@@ -1757,7 +1797,7 @@ dialog#modal.diff-modal {
   gap: 4px;
   margin-left: 8px;
   padding: 2px 8px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
   border-radius: 16px;
   background: color-mix(in oklch, var(--color-primary) 12%, transparent);
@@ -1771,13 +1811,13 @@ dialog#modal.diff-modal {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   border: 1px solid var(--color-outline);
   background: var(--color-surface-container-lowest);
   color: var(--color-on-surface-variant);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
   padding: 0;
@@ -1802,7 +1842,7 @@ dialog#modal.diff-modal {
 
 .hint-popover[popover] {
   margin: unset;
-  max-width: 340px;
+  max-width: min(340px, calc(100dvw - 32px));
   padding: 8px 12px;
   border: none;
   outline: 1px solid var(--color-outline-variant);
@@ -1819,7 +1859,7 @@ dialog#modal.diff-modal {
   top: anchor(bottom);
   left: anchor(center);
   translate: -50% 6px;
-  position-try: flip-block;
+  position-try-fallbacks: flip-block, flip-inline;
 }
 
 .hint-popover[popover]:is(:popover-open, .\:popover-open) {
@@ -1945,3 +1985,75 @@ dialog#modal.diff-modal {
 .legend-line.regressed {
   background: var(--color-accent-failure);
 }
+
+/* Touch ergonomics (coarse pointers): 44px target floor + 16px inputs to prevent iOS Safari auto-zoom */
+@media (pointer: coarse) {
+  .info-hint-btn {
+    inline-size: 44px;
+    block-size: 44px;
+    border: 10px solid transparent;
+    background-clip: padding-box;
+    box-shadow: inset 0 0 0 1px var(--color-outline);
+  }
+
+  .trend-link {
+    min-inline-size: 44px;
+    min-block-size: 44px;
+  }
+
+  .header-link,
+  .ab-prov-link,
+  .takeaway-action-link,
+  .show-all-rows-btn,
+  .text-btn,
+  .mode-toggle-btn,
+  .metric-mode-btn,
+  .ab-agent-pill,
+  .ab-task-pill,
+  .ab-checks-toggle,
+  .task-toggle,
+  .secondary-btn,
+  .sort-select,
+  .tfoot-action-btn,
+  .hero-drawers > details > summary,
+  .insights-guide-summary,
+  .toggle-label {
+    min-block-size: 44px;
+  }
+
+  .header-link,
+  .ab-prov-link,
+  .show-all-rows-btn,
+  .text-btn,
+  .mode-toggle-btn,
+  .metric-mode-btn,
+  .ab-checks-toggle,
+  .secondary-btn {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .takeaway-action-link {
+    display: inline-block;
+    padding-block: 10px;
+  }
+
+  .guide-nav-controls .secondary-btn {
+    min-inline-size: 44px;
+    justify-content: center;
+  }
+
+  .toggle-label input[type="checkbox"],
+  .filter-item input[type="checkbox"] {
+    inline-size: 24px;
+    block-size: 24px;
+  }
+
+  input,
+  select,
+  textarea,
+  .sort-select {
+    font-size: max(1rem, 1em);
+  }
+}
+

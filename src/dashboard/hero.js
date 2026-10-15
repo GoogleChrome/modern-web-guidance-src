@@ -9,7 +9,7 @@
  *
  * The hero never touches the browse UI below it (landing.js owns that).
  */
-import { getAccessToken, escapeHtml, formatDuration, formatTokens, getAgentBadge } from './utils.js';
+import { getAccessToken, escapeHtml, formatDuration, getAgentBadge } from './utils.js';
 import { ApiClient } from './api.js';
 
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
@@ -216,7 +216,7 @@ function renderTakeawayDumbbell(uRate, gRate) {
                 <div class="dot guided" style="left: calc(${g}% - 4px);"></div>
             </div>
             <div class="takeaway-dumbbell-rates">
-                <span class="rate-u">${u}% unguided</span>
+                <span class="rate-u">${u}% without MWG</span>
                 <span class="rate-arrow">→</span>
                 <strong class="rate-g">${g}% with MWG</strong>
             </div>
@@ -239,6 +239,7 @@ function renderTakeaways(insights) {
     // 1. Primary focal figure: Web best practices (overall pass rate, pooled across families)
     if (pooled?.overall) {
         const o = pooled.overall;
+        const overallShortText = `~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${insights.pooled?.suiteCount || 0} nightly runs`;
         cards.push(takeawayCard({
             metric: 'overall',
             primary: true,
@@ -248,7 +249,7 @@ function renderTakeaways(insights) {
             statement: 'pass-rate lift across all tasks',
             visual: renderTakeawayDumbbell(o.unguidedRate, o.guidedRate),
             qualifier: `<span class="range">${pct(o.unguidedRate)} → ${pct(o.guidedRate)}</span> of ~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} graded checks per mode. ${familyNames}; ${runsPhrase}.`,
-            short: `<span class="visually-hidden">${pct(o.unguidedRate)} → ${pct(o.guidedRate)} · </span>~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${insights.pooled?.suiteCount || 0} nightly runs`
+            short: `<span class="visually-hidden">${pct(o.unguidedRate)} → ${pct(o.guidedRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
         }));
     }
 
@@ -257,6 +258,7 @@ function renderTakeaways(insights) {
         cards.push(pendingCard('a11y', 'Accessibility', '', false));
     } else {
         const a = pooled.a11y;
+        const a11yShortText = `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} a11y checks${a.guideCount ? ` across ${a.guideCount} guides` : ''}`;
         cards.push(takeawayCard({
             metric: 'a11y',
             primary: false,
@@ -264,7 +266,7 @@ function renderTakeaways(insights) {
             figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${pct(a.unguidedRate)} → <strong>${pct(a.guidedRate)}</strong>)</span>`,
             figureText: `${signed(a.upliftPp, 0)} percentage points (${pct(a.unguidedRate)} to ${pct(a.guidedRate)})`,
             qualifier: `<span class="range">${pct(a.unguidedRate)} → ${pct(a.guidedRate)}</span> across ~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} accessibility checks${a.guideCount ? ` in ${a.guideCount} guides` : ''}.`,
-            short: `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} a11y checks${a.guideCount ? ` across ${a.guideCount} guides` : ''}`
+            short: `<a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">${a11yShortText} <span aria-hidden="true">→</span></a>`
         }));
     }
 
@@ -592,11 +594,6 @@ function roundAbs(v) {
 /** @param {number} v */
 function pct(v) {
     return `${Math.round(v || 0)}%`;
-}
-
-/** @param {number} v */
-function fmtInt(v) {
-    return new Intl.NumberFormat('en-US').format(Math.round(v || 0));
 }
 
 /** @param {string} iso */

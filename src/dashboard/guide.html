@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
   <title>Guide Performance Trend</title>
   <link rel="stylesheet" href="dashboard.css">
@@ -117,6 +119,13 @@
     #tooltip-content {
       padding: 8px 12px;
       font-size: var(--font-md);
+    }
+    @media (pointer: coarse) {
+      .guide-search,
+      .timeline-filter-controls input[type="number"] {
+        min-block-size: 44px;
+        font-size: max(1rem, 1em);
+      }
     }
   </style>
 </head>

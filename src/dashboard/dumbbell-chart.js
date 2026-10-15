@@ -278,7 +278,7 @@ export class DumbbellChart {
         tickText.setAttribute("x", x.toString());
         tickText.setAttribute("y", (bottomAxisY + 20).toString());
         tickText.setAttribute("fill", "var(--color-on-surface-variant)");
-        tickText.setAttribute("font-size", "10");
+        tickText.setAttribute("font-size", "12");
         tickText.setAttribute("text-anchor", "middle");
         tickText.textContent = val + "%";
         svg.appendChild(tickText);
@@ -323,7 +323,7 @@ export class DumbbellChart {
         text.setAttribute("x", (scale(100) + 15).toString());
         text.setAttribute("y", rowY.toString());
         text.setAttribute("fill", hasFailure ? "var(--color-accent-failure, #da3633)" : "var(--color-on-surface-variant)");
-        text.setAttribute("font-size", "11");
+        text.setAttribute("font-size", "12");
         text.setAttribute("font-family", "var(--font-sans)");
         text.setAttribute("font-weight", hasFailure ? "bold" : "600");
         text.setAttribute("text-anchor", "start");
@@ -425,11 +425,12 @@ export class DumbbellChart {
             };
 
             this.tooltip.style.display = 'block';
-            this.tooltip.style.left = (e.clientX + 15) + 'px';
+            const maxLeft = Math.max(8, window.innerWidth - 330);
+            this.tooltip.style.left = Math.max(8, Math.min(e.clientX + 15, maxLeft)) + 'px';
             this.tooltip.style.top = (e.clientY + 15) + 'px';
 
             this.tooltip.innerHTML = `
-                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 310px; color: var(--color-on-surface);">
+                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: min(310px, calc(100dvw - 32px)); color: var(--color-on-surface);">
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                          <div style="font-weight: bold; font-size: 0.875rem; white-space: nowrap; color: ${item.uFailed || item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
