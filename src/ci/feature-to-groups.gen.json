@@ -1143,13 +1143,6 @@
   "tmp-resizable": [
     "css"
   ],
-  "tmp-revert-rule": [
-    "css"
-  ],
-  "tmp-scroll-triggered-animations": [
-    "animation",
-    "scrolling"
-  ],
   "tmp-text-decoration-inset": [
     "css"
   ],
