@@ -205,7 +205,7 @@ Icon-only buttons use the `.icon` class and `--icon` described above. Give the b
 
 When the CSS icon system is not the right fit, use inline SVG and `<use>` together rather than as alternatives. Inline the SVG the first time an icon appears on a page and reference it with `<use href="#id">` for every repeat; the local reference costs no request and has no cross-origin restriction. Reserve an external sprite (`<use href="/icons.svg#id">`) for icons shared across many pages.
 
-With `<use>`, the referenced content is cloned into a shadow tree, so page CSS cannot select its elements. What does reach it is inheritance: `color`, `currentColor`, and any custom property. Modern CSS can change almost any SVG presentation attribute, so an icon you control can expose exactly the hooks you need, for example `stroke-width="var(--icon-stroke, 2)"` on a particular path. If you do not control the icon, inline it.
+With `<use>`, the referenced content is cloned into a shadow tree, so page CSS cannot select its elements. What does reach it is inheritance: `color`, `currentColor`, and any custom property. Beyond SVG presentation attributes, modern CSS can change many geometry attributes as well, so an icon you control can expose exactly the hooks you need, for example `stroke-width="var(--icon-stroke, 2)"` or even `d: var(--icon-path, path(…))` on a particular path. Geometry properties can be inconsistent across browsers, so test thoroughly before relying on them. If you do not control the icon, inline it.
 
 `<use>` gotchas worth knowing:
 
