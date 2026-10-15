@@ -22,5 +22,5 @@
 - Activating a fallback marker button navigates to its corresponding slide.
 - Every fallback marker button has an accessible name identifying its destination slide.
 - Fallback markers update `aria-current="true"` to reflect the currently active slide.
-- Optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.
+- Smooth scrolling (`scroll-behavior: smooth`) and any optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.
 - The carousel does not autoplay slides or continuously poll scroll positions on every animation frame.
