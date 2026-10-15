@@ -9,6 +9,7 @@
         margin: 0;
         height: 100vh;
         display: flex;
+        gap: 1em;
         align-items: center;
         justify-content: center;
         background-color: #f0f2f5;
@@ -45,7 +46,8 @@
         inline-size: 0px;
       }
       .card [popover] {
-        position-area: block-end span-inline-start;
+        position-area: block-end span-inline-end;
+        position-try: flip-inline, flip-block, flip-start;
         margin: 0;
         padding: 0.25rem;
         border: 1px solid #ccc;
@@ -53,6 +55,9 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         background: white;
         min-width: 120px;
+        &[source="button" i] {
+          position-area: block-end span-inline-start;
+        }
       }
 
       .card > button {
@@ -131,11 +136,6 @@
         border-top: 1px solid #eee;
       }
 
-      @supports not selector(:popover-open) {
-        [popover]:not(.\:popover-open) {
-          display: none;
-        }
-      }
     </style>
   </head>
   <body>
@@ -167,9 +167,74 @@
       />
       <h2>Card Title</h2>
     </div>
+    <div class="card">
+      <span class="menu-anchor"></span>
+      <button
+        type="button"
+        command="toggle-popover"
+        commandfor="popover2"
+        popovertargetaction="toggle-popover"
+        popovertarget="popover2"
+        aria-label="Open context menu"
+        id="context-menu-trigger-2"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+          />
+        </svg>
+      </button>
+      <div popover id="popover2">
+        <div
+          focusgroup="menu nomemory"
+          aria-labelledby="context-menu-trigger-2"
+        >
+          <button type="button" autofocus>Edit</button>
+          <button type="button">Share</button>
+          <button type="button">Delete</button>
+        </div>
+      </div>
+      <img
+        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=300"
+        alt="Card Image"
+      />
+      <h2>Second Card</h2>
+    </div>
+    <div class="card">
+      <span class="menu-anchor"></span>
+      <div popover id="popover3">
+        <div focusgroup="menu nomemory" aria-labelledby="context-menu-trigger">
+          <button type="button" autofocus>Edit</button>
+          <button type="button">Share</button>
+          <button type="button">Delete</button>
+        </div>
+      </div>
+      <img
+        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=300"
+        alt="Card Image"
+      />
+      <h2>No button</h2>
+    </div>
     <script type="module">
       const cards = document.querySelectorAll(".card");
       cards.forEach((card) => {
+        const popover = card.querySelector("[popover]");
+        popover.addEventListener("beforetoggle", (event) => {
+          if (event.newValue === "open") {
+            popover.setAttribute("source", event.source.tagName ?? "");
+          } else {
+            if ("positionArea" in document.documentElement.style) return;
+
+            const isClosing = getComputedStyle(popover).display === "block";
+
+            if (isClosing) {
+              // Reset popover position
+              // TODO: Should reset to button's location, if set
+              popover.style.left = "";
+              popover.style.top = "";
+            }
+          }
+        });
         // Mouseup on the `contextmenu` event closes the popover, so the popover must be handled in `mouseup`.
         // This is a spec issue, and fixed in Chromium 153.
         card.addEventListener("contextmenu", (event) => {
@@ -185,7 +250,11 @@
           menuAnchor.style.left = `${x}px`;
           menuAnchor.style.top = `${y}px`;
 
-          const popover = card.querySelector("[popover]");
+          if (!("positionArea" in document.documentElement.style)) {
+            // Position relative to the viewport or container
+            popover.style.left = `${event.clientX}px`;
+            popover.style.top = `${event.clientY}px`;
+          }
 
           popover.togglePopover({ force: true, source: menuAnchor });
         });
