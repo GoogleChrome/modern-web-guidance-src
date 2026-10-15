@@ -733,7 +733,7 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
  * CLI runner for pilot scorecard.
  */
 export async function runPilotScorecardCli(): Promise<void> {
-  const writeProgress = process.argv.includes('--write-progress');
+  const writeProgress = !process.argv.includes('--no-write-progress');
   const report = await runPilotScorecard({ writeProgress });
   console.log(formatPilotScorecardReport(report));
 }
