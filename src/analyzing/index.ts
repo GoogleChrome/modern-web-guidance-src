@@ -6,4 +6,7 @@ export * from './audit-transcripts.ts';
 export * from './schema.ts';
 export * from './guide-rubrics.ts';
 export * from './scanners/index.ts';
+export * from './phase2.ts';
+export * from './rules/index.ts';
+export { GEMINI_API_BASE } from './judge.ts';
 
