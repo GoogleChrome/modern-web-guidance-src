@@ -6,7 +6,7 @@ web-feature-ids:
   - text-decoration-skip-ink
   - text-decoration-skip-ink-all
   - tmp-text-decoration-inset
-  # - text-decoration-skip-spaces
+  - text-decoration-skip-spaces
   - background-clip-border-area
   - tmp-path-length
   - border-shape
