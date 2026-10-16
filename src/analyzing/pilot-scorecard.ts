@@ -34,6 +34,7 @@ import {
   type RepoConfigEntry,
 } from './paths.ts';
 import { runPhase2Filter, type Phase2Options, type Phase2Verdict } from './phase2.ts';
+import { PHASE2_PROMPT_VERSION } from './prompts.ts';
 import {
   computeFileHash,
   getGitCommitState,
@@ -317,6 +318,11 @@ export interface GuideScorecard {
   readonly recall: GuideRecallMetrics;
   readonly phase2RetentionRate?: number;
   readonly phase2YieldRetentionRate?: number;
+  readonly phase1RightCount?: number;
+  readonly phase1Precision?: number;
+  readonly phase1Wilson95?: BinomialInterval;
+  readonly clearsPhase1Bar90?: boolean;
+  readonly phase2DroppedRightCount?: number;
 }
 
 export interface PilotScorecardSummary {
@@ -362,6 +368,14 @@ export interface PilotScorecardSummary {
     readonly keptTotal: number;
     readonly rate: number;
   };
+  readonly pooledPhase1Precision?: {
+    readonly successes: number;
+    readonly total: number;
+    readonly precision: number;
+    readonly wilson95: BinomialInterval;
+  };
+  readonly clearedPhase1Bar90Count?: number;
+  readonly phase2DroppedRightTotal?: number;
 }
 
 export interface PilotScorecardReport {
@@ -378,6 +392,7 @@ export interface PilotScorecardReport {
 
 export interface PilotScorecardOptions {
   readonly mode?: 'local' | 'gitmirror' | 'all';
+  readonly guideIds?: readonly string[];
   readonly reposConfigPath?: string;
   readonly gradesPath?: string;
   readonly rules?: readonly AnalyzerRule[];
@@ -638,7 +653,11 @@ export async function runPilotScorecard(
 ): Promise<PilotScorecardReport> {
   const reposPath = options.reposConfigPath ?? REPOS_CONFIG_PATH;
   const gradesPath = options.gradesPath ?? GRADES_PATH;
-  const rules = options.rules ?? ALL_RULES;
+  let rules = options.rules ?? ALL_RULES;
+  if (options.guideIds && options.guideIds.length > 0) {
+    const guideSet = new Set(options.guideIds);
+    rules = rules.filter((r) => guideSet.has(r.guideId));
+  }
   const targetGuideIds: readonly string[] = Array.from(new Set(rules.map((r) => r.guideId)));
   const rulesDir = options.rulesDir ?? join(WORKTREE_ROOT, 'src/analyzing/rules');
   const maxSample = options.maxSequentialSample ?? MAX_SAMPLE_PER_GUIDE;
@@ -752,17 +771,8 @@ export async function runPilotScorecard(
   for (const f of allSampledFindings) {
     const rule = rulesById.get(f.ruleId) ?? rulesById.get(f.guideId);
     const rHash = rule ? computeRuleHash(rule) : '';
-    const key = computeTelemetryCacheKey(f.cardId, rHash, f.guideHash, 'phase2-v1');
-    const fallbackKey = computeTelemetryCacheKey(f.cardId, '', '', 'phase2-v1');
-    let cached = telemetryMap.get(key) ?? telemetryMap.get(fallbackKey);
-    if (!cached) {
-      for (const [k, v] of telemetryMap) {
-        if (k.startsWith(`${f.cardId}:`) && v.phase2) {
-          cached = v;
-          break;
-        }
-      }
-    }
+    const key = computeTelemetryCacheKey(f.cardId, rHash, f.guideHash, PHASE2_PROMPT_VERSION);
+    const cached = telemetryMap.get(key);
     if (cached?.phase2) {
       if (!cached.phase2.confidence) {
         throw new Error(
@@ -802,7 +812,7 @@ export async function runPilotScorecard(
           ruleId: finding.ruleId,
           ruleHash: rule ? computeRuleHash(rule) : '',
           guideHash: finding.guideHash,
-          promptVersion: 'phase2-v1',
+          promptVersion: PHASE2_PROMPT_VERSION,
           timestamp: new Date().toISOString(),
           phase2: {
             keep: v.keep,
@@ -861,9 +871,9 @@ export async function runPilotScorecard(
     }
   }
 
-  // 5. Load guide summaries and prepare blind cards
+  // 5. Load guide summaries and prepare blind cards for ALL sampled findings (R17, R18, R33)
   const summaries = await loadGuideSummariesMap();
-  const keptBlindCards: BlindCardPayload[] = allKeptFindings.map((finding) => {
+  const sampledBlindCards: BlindCardPayload[] = allSampledFindings.map((finding) => {
     const summary = summaries.get(finding.guideId) ?? {
       guideId: finding.guideId,
       problem: 'Legacy web platform pattern',
@@ -890,12 +900,12 @@ export async function runPilotScorecard(
   const { cards: scoredCards, humanVerdicts } = await loadPaulIrishScoredCards(gradesPath);
   const scoredBlindCards = await prepareBlindCards(scoredCards, summaries, reposPath);
 
-  // Combine cards: scored human cards + Phase 2 kept findings + 3 synthetic canaries
+  // Combine cards: scored human cards + ALL sampled Phase 1 findings + 3 synthetic canaries
   const combinedCardsMap = new Map<string, BlindCardPayload>();
   for (const c of scoredBlindCards) {
     combinedCardsMap.set(c.cardId, c);
   }
-  for (const c of keptBlindCards) {
+  for (const c of sampledBlindCards) {
     combinedCardsMap.set(c.cardId, c);
   }
   for (const c of SYNTHETIC_CANARY_CARDS) {
@@ -913,7 +923,7 @@ export async function runPilotScorecard(
     let cached = telemetryMap.get(key);
     if (!cached) {
       for (const [k, v] of telemetryMap) {
-        if (k.startsWith(`${card.cardId}:`) && v.judge) {
+        if (k.startsWith(`${card.cardId}:`) && v.judge && v.promptVersion === JUDGE_VERSION) {
           cached = v;
           break;
         }
@@ -1044,6 +1054,10 @@ export async function runPilotScorecard(
   let totalLabeledPositives = 0;
   let totalPhase2Recalled = 0;
   let totalPhase1Recalled = 0;
+  let totalPhase1SampledAll = 0;
+  let totalPhase1RightAll = 0;
+  let clearedPhase1Bar90Count = 0;
+  let phase2DroppedRightTotal = 0;
   let clearedBarCount = 0;
   let clearedBar90Count = 0;
   let clearedSampleConstrainedCount = 0;
@@ -1064,10 +1078,19 @@ export async function runPilotScorecard(
     const ruleIds = guideRules.map((r) => r.id);
 
     const p1Total = (findingsByGuide.get(gid) ?? []).length;
-    const p1Sampled = (sampledFindingsByGuide.get(gid) ?? []).length;
+    const p1SampledFindings = sampledFindingsByGuide.get(gid) ?? [];
+    const p1Sampled = p1SampledFindings.length;
     const p2Kept = phase2KeptByGuide.get(gid) ?? [];
     const p2KeptCount = p2Kept.length;
     const p2DroppedCount = p1Sampled - p2KeptCount;
+
+    let phase1RightCount = 0;
+    for (const f of p1SampledFindings) {
+      const res = consensusVerdicts.get(f.cardId);
+      if (res && res.verdict === 'right') {
+        phase1RightCount++;
+      }
+    }
 
     let rightCount = 0;
     for (const f of p2Kept) {
@@ -1078,6 +1101,18 @@ export async function runPilotScorecard(
     }
 
     const fpCount = p2KeptCount - rightCount;
+    const phase2DroppedRightCount = phase1RightCount - rightCount;
+    const phase1Precision = p1Sampled > 0 ? Number((phase1RightCount / p1Sampled).toFixed(4)) : 0;
+    const phase1Wilson95 = wilsonInterval(phase1RightCount, p1Sampled, Z_95);
+    const clearsPhase1Bar90 = p1Sampled >= 35 && phase1Wilson95.lower >= 0.90;
+
+    totalPhase1SampledAll += p1Sampled;
+    totalPhase1RightAll += phase1RightCount;
+    if (clearsPhase1Bar90) {
+      clearedPhase1Bar90Count++;
+    }
+    phase2DroppedRightTotal += phase2DroppedRightCount;
+
     const qual = evaluateGuideQualification({
       p1Total,
       p1Sampled,
@@ -1165,6 +1200,11 @@ export async function runPilotScorecard(
       },
       phase2RetentionRate,
       phase2YieldRetentionRate,
+      phase1RightCount,
+      phase1Precision,
+      phase1Wilson95,
+      clearsPhase1Bar90,
+      phase2DroppedRightCount,
     });
   }
 
@@ -1266,6 +1306,14 @@ export async function runPilotScorecard(
       keptTotal: totalPhase2Kept,
       rate: allSampledFindings.length > 0 ? Number((totalPhase2Kept / allSampledFindings.length).toFixed(4)) : 0,
     },
+    pooledPhase1Precision: {
+      successes: totalPhase1RightAll,
+      total: totalPhase1SampledAll,
+      precision: totalPhase1SampledAll > 0 ? Number((totalPhase1RightAll / totalPhase1SampledAll).toFixed(4)) : 0,
+      wilson95: wilsonInterval(totalPhase1RightAll, totalPhase1SampledAll, Z_95),
+    },
+    clearedPhase1Bar90Count,
+    phase2DroppedRightTotal,
   };
 
   const report: PilotScorecardReport = {
@@ -1356,8 +1404,10 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
     const tierStr = g.tier ?? 'unknown';
     const tunedStr = g.postSelectionTuned ? ' (tuned)' : '';
 
+    const p1PrecStr = g.phase1Precision !== undefined ? `${(g.phase1Precision * 100).toFixed(1)}%` : '-';
+    const dropFnStr = g.phase2DroppedRightCount !== undefined ? ` | P2_drop_FN=${g.phase2DroppedRightCount}` : '';
     lines.push(
-      `  * ${g.guideId.padEnd(36)}: P1=${String(g.phase1TotalYield).padStart(3)} | P2_kept=${String(g.phase2KeptCount).padStart(2)} | Right=${String(g.judgeRightCount).padStart(2)} | Prec=${prec.padStart(6)} (95% CI ${w95}, 80% CI ${w80}) | SeqStop=${g.sequentialStopDecision} | Bar90=${bar90} | Screen80=${screen80} | Tier=${tierStr}${tunedStr} | Recall=${rec}`,
+      `  * ${g.guideId.padEnd(36)}: P1=${String(g.phase1TotalYield).padStart(3)} (prec=${p1PrecStr.padStart(6)}) | P2_kept=${String(g.phase2KeptCount).padStart(2)} | Right=${String(g.judgeRightCount).padStart(2)} | Prec=${prec.padStart(6)} (95% CI ${w95}, 80% CI ${w80})${dropFnStr} | SeqStop=${g.sequentialStopDecision} | Bar90=${bar90} | Screen80=${screen80} | Tier=${tierStr}${tunedStr} | Recall=${rec}`,
     );
   }
 
@@ -1378,6 +1428,17 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
   lines.push(
     `  Screening (0.80):  ${((report.summary.clearedScreenCount / report.summary.totalDetectableGuides) * 100).toFixed(1)}% (${report.summary.clearedScreenCount}/${report.summary.totalDetectableGuides} guides cleared 0.80 screen)`,
   );
+  if (report.summary.pooledPhase1Precision) {
+    const p1p = report.summary.pooledPhase1Precision;
+    lines.push(
+      `  Phase-1 Precision: ${(p1p.precision * 100).toFixed(1)}% (${p1p.successes}/${p1p.total}, 95% CI [${(p1p.wilson95.lower * 100).toFixed(1)}% - ${(p1p.wilson95.upper * 100).toFixed(1)}%], ${report.summary.clearedPhase1Bar90Count ?? 0} guides clear >=0.90 LB)`,
+    );
+  }
+  if (report.summary.phase2DroppedRightTotal !== undefined) {
+    lines.push(
+      `  Phase-2 Drops FN:  ${report.summary.phase2DroppedRightTotal} real findings dropped by Phase 2`,
+    );
+  }
   if (report.summary.qualifiedPooledPrecision) {
     const qp = report.summary.qualifiedPooledPrecision;
     lines.push(
@@ -1414,12 +1475,16 @@ export async function runPilotScorecardCli(): Promise<void> {
   );
   const modeArg = process.argv.find((a) => a.startsWith('--mode='));
   const mode = (modeArg ? modeArg.split('=')[1] : undefined) as 'local' | 'gitmirror' | 'all' | undefined;
+  const guidesArg = process.argv.find((a) => a.startsWith('--guides='));
+  const guideIds = guidesArg
+    ? guidesArg.split('=')[1].split(',').map((s) => s.trim()).filter(Boolean)
+    : undefined;
   const scorecardPath = scorecardArg
     ? scorecardArg.split('=')[1]
     : mode === 'gitmirror'
       ? GITMIRROR_SCORECARD_PATH
       : PILOT_SCORECARD_PATH;
-  const report = await runPilotScorecard({ writeProgress, scorecardPath, mode });
+  const report = await runPilotScorecard({ writeProgress, scorecardPath, mode, guideIds });
   console.log(formatPilotScorecardReport(report));
 }
 

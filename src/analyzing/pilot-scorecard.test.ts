@@ -14,8 +14,10 @@ import {
 } from './pilot-scorecard.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import type { Phase2Verdict } from './phase2.ts';
-import { checkCanaries, type JudgeResult } from './judge.ts';
+import { checkCanaries, type JudgeResult, JUDGE_VERSION } from './judge.ts';
 import { resolveGitMirrorCacheDir } from './paths.ts';
+import { PHASE2_PROMPT_VERSION } from './prompts.ts';
+import { computeTelemetryCacheKey, type CardTelemetryRecord } from './telemetry.ts';
 
 describe('computeRuleSetHash', () => {
   it('computes a deterministic 12-character hex hash from rule files', async () => {
@@ -590,6 +592,41 @@ describe('samplePhase2DropsDeck (R18, R28)', () => {
     assert.strictEqual(deck[0].cardId, 'card-low-1');
     assert.strictEqual(deck[1].cardId, 'card-medium-1');
     assert.strictEqual(deck[0].phase2Reason, 'uncertain drop');
+  });
+});
+
+describe('telemetry cache key strictness and version alignment (R17, R18, R28, R29)', () => {
+  it('strictly isolates cache keys by prompt version for Phase 2 and Judge', () => {
+    const cardId = 'test-card-123';
+    const ruleHash = 'abc123rule';
+    const guideHash = 'def456guide';
+
+    const p2KeyCurrent = computeTelemetryCacheKey(cardId, ruleHash, guideHash, PHASE2_PROMPT_VERSION);
+    const p2KeyStale = computeTelemetryCacheKey(cardId, ruleHash, guideHash, 'phase2-v1');
+    assert.notStrictEqual(p2KeyCurrent, p2KeyStale);
+    assert.ok(p2KeyCurrent.endsWith(`:${PHASE2_PROMPT_VERSION}`));
+
+    const judgeKeyCurrent = computeTelemetryCacheKey(cardId, '', '', JUDGE_VERSION);
+    const judgeKeyStale = computeTelemetryCacheKey(cardId, '', '', 'gemini-3.8-flash:detective-v4-guide-only');
+    assert.notStrictEqual(judgeKeyCurrent, judgeKeyStale);
+    assert.ok(judgeKeyCurrent.endsWith(`:${JUDGE_VERSION}`));
+
+    // A mock telemetry record with a stale version must not match current prompt version
+    const staleRecord: CardTelemetryRecord = {
+      cardId,
+      repo: 'repo1',
+      commit: 'c1',
+      file: 'f1.js',
+      line: 1,
+      guideId: 'g1',
+      ruleId: 'r1',
+      ruleHash,
+      guideHash,
+      promptVersion: 'phase2-v1',
+      timestamp: new Date().toISOString(),
+      phase2: { keep: true, confidence: 'high', reason: 'old reason' },
+    };
+    assert.notStrictEqual(staleRecord.promptVersion, PHASE2_PROMPT_VERSION);
   });
 });
 
