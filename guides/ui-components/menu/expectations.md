@@ -1,6 +1,7 @@
 # Menu expectations
 
 - Each menu list has `focusgroup="menu nomemory"` on an element inside its popover (not on the popover element), exposes `role="menu"` labeled by its trigger via `aria-labelledby`, and exposes `role="menuitem"` on its command buttons.
+- Separators between item groups are `<hr>` elements, and checkable items are `<button type="button">` elements with an explicit `role="menuitemcheckbox"` or `role="menuitemradio"` (radios wrapped in a named `role="group"`) and `aria-checked`; `Space` on a checkbox item toggles it and keeps the menu open, `Enter` toggles it and closes the menu, and radio items close on either key.
 - The top-level triggers are either inside a container with `role="menubar"` that is styled as one continuous bar and acts as a single `Tab` stop, or are separate `Tab` stops with no `role="menubar"`, no arrow-key movement between them, and no preview or hover switching; the role, keyboard model, and styling never disagree.
 - Each trigger is a `<button type="button">` with `aria-haspopup="menu"`, `commandfor`, and `command="toggle-popover"`, and has no `popovertarget` or `popovertargetaction` attribute.
 - Each popover is the immediate next sibling of its trigger (and each submenu is a `popover="auto"` placed after its trigger inside the parent menu's focusgroup), so no `aria-details` relation is exposed on the trigger and closed submenus are not rendered inline.

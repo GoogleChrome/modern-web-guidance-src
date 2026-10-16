@@ -211,6 +211,26 @@ Use `popover="auto"` for submenus, placed after the submenu trigger inside the p
 
 The submenu trigger keeps `aria-haspopup="menu"` and `aria-expanded`, and the `toggle` listener above keeps `aria-expanded` in sync. The keyboard script handles nested `Escape` and `ArrowLeft` as described above.
 
+### Separators and checkable items
+
+Use `<hr>` between groups of items inside the focusgroup. It has the `separator` role natively, is not focusable, and so is skipped by both native focusgroup and the fallback below. Do not use a styled `<div>`.
+
+A boolean option is a `<button type="button">` with an explicit `role="menuitemcheckbox"` (independent toggle) or `role="menuitemradio"` (one of a set, wrapped in a `role="group"` with a name) and `aria-checked`. Focusgroup never infers these variant roles, so they are the one case where the shared markup sets a role on an item. Activation toggles `aria-checked` in script. Follow the APG: `Enter` toggles and closes the menu; `Space` toggles and keeps it open so several options can be changed in one visit. Radio items close on either key.
+
+```html
+<div focusgroup="menu nomemory" aria-labelledby="view-trigger">
+  <button type="button" role="menuitemcheckbox" aria-checked="true">Show sidebar</button>
+  <button type="button" role="menuitemcheckbox" aria-checked="false">Show status bar</button>
+  <hr>
+  <div role="group" aria-label="Appearance">
+    <button type="button" role="menuitemradio" aria-checked="true">Light</button>
+    <button type="button" role="menuitemradio" aria-checked="false">Dark</button>
+  </div>
+</div>
+```
+
+Show the checked state visually with `[aria-checked="true"]::before`, not with a separate icon element.
+
 ## Align menu item content
 
 When a row has an icon, label, and shortcut or submenu indicator, define the columns on the focusgroup and use `subgrid` on each row. Hide shortcut text from assistive technology when it only repeats a key that already operates the item.
@@ -222,12 +242,23 @@ When a row has an icon, label, and shortcut or submenu indicator, define the col
   row-gap: .1rem;
 }
 
-/* Target buttons only. A closed submenu popover inside the focusgroup must keep display: none. */
-[focusgroup~="menu"] > button {
+/* Target items only. A closed submenu popover inside the focusgroup must keep display: none. */
+[focusgroup~="menu"] > button,
+[focusgroup~="menu"] > [role="group"] > button {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
   align-items: center;
+}
+
+/* Separators and groups span the row; a group passes the columns through to its buttons. */
+[focusgroup~="menu"] > hr,
+[focusgroup~="menu"] > [role="group"] {
+  grid-column: 1 / -1;
+}
+[focusgroup~="menu"] > [role="group"] {
+  display: grid;
+  grid-template-columns: subgrid;
 }
 ```
 
@@ -252,18 +283,20 @@ Each button spans all three columns and inherits the parent's grid via `subgrid`
 
 {# Maintainer note: Use a small capture-phase fallback instead of @microsoft/focusgroup-polyfill, which skips elements inside closed [popover] ancestors, retains references to detached DOM nodes, and misses preventDefault() on arrow keys in older Safari viewports. #}
 
-Keep `focusgroup="menu nomemory"` in the markup. If `'focusGroup' in HTMLElement.prototype` is false, install Up, Down, Home, and End navigation and set `role="menu"` on each menu container and `role="menuitem"` on its command buttons. Do not install that fallback when native focusgroup is present. Left, Right, preview, open, and close are author script either way.
+Keep `focusgroup="menu nomemory"` in the markup. If `'focusGroup' in HTMLElement.prototype` is false, install Up, Down, Home, and End navigation and set `role="menu"` on each menu container and `role="menuitem"` on its command buttons that have no role of their own. Leave `menuitemcheckbox` and `menuitemradio` buttons, `<hr>`, and `role="group"` wrappers as they are. Do not install that fallback when native focusgroup is present. Left, Right, preview, open, and close are author script either way.
 
 ```js
 if (!('focusGroup' in HTMLElement.prototype)) {
   document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
     group.setAttribute('role', 'menu');
-    group.querySelectorAll(':scope > button').forEach(item => {
+    group.querySelectorAll('button:not([role])').forEach(item => {
       item.setAttribute('role', 'menuitem');
     });
     group.addEventListener('keydown', event => {
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
-      const items = [...group.querySelectorAll(':scope > button')]
+      // Own items only: a nested submenu has its own focusgroup, a role="group" wrapper does not.
+      const items = [...group.querySelectorAll('button')]
+        .filter(item => item.closest('[focusgroup]') === group)
         .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
       const current = items.indexOf(document.activeElement);
       if (current < 0) return;
