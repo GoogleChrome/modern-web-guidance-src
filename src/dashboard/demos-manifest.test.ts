@@ -27,9 +27,12 @@ test('formatCategoryTitle', () => {
 });
 
 test('generateDemosManifest lists every guide with a demo.html, primary demo first', () => {
-    const { guides } = generateDemosManifest(manifestDir);
+    const { guides, features } = generateDemosManifest(manifestDir);
     const written = JSON.parse(fs.readFileSync(path.join(manifestDir, 'demos.gen.json'), 'utf8'));
     assert.deepEqual(written.guides, guides);
+    assert.deepEqual(written.features, features);
+    assert.ok(features.length > 50, 'features should list unique web-feature ids');
+    assert.ok(features.includes('user-pseudos'));
 
     const demoCount = fs.readdirSync(path.join(rootDir, 'guides'), { recursive: true, encoding: 'utf8' })
         .filter(rel => path.basename(rel) === 'demo.html' && fs.existsSync(path.join(rootDir, 'guides', path.dirname(rel), 'guide.md'))).length;

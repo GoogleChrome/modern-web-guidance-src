@@ -10,7 +10,11 @@
 <body>
   <header class="demos-header">
     <h1>guide demos</h1>
-    <input type="search" id="demo-filter" placeholder="filter…" autocomplete="off" aria-label="Filter guides">
+    <div class="header-filters">
+      <input type="search" id="demo-filter" placeholder="filter…" autocomplete="off" aria-label="Filter guides">
+      <input type="search" id="feature-filter" list="features-datalist" placeholder="web-feature…" autocomplete="off" aria-label="Filter by web feature">
+      <datalist id="features-datalist"></datalist>
+    </div>
     <a href="../" class="muted">← evals</a>
   </header>
 
@@ -18,7 +22,9 @@
     <div id="toc-grid" class="toc-grid"></div>
   </nav>
 
-  <main id="demos"></main>
+  <main id="demos">
+    <div id="no-results" class="no-results" hidden>no matching demos</div>
+  </main>
   <script type="module" src="demos.js"></script>
 </body>
 </html>

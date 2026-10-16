@@ -160,20 +160,26 @@ export function generateDemosManifest(outputDir = defaultOutputDir) {
             const guideDir = path.join(guidesDir, relDir);
             const { data, content } = matter(fs.readFileSync(path.join(guideDir, 'guide.md'), 'utf8'));
             const category = relDir.split(path.sep)[0];
+            const rawFeatures = data['web-feature-ids'];
+            const features = Array.isArray(rawFeatures)
+                ? rawFeatures.map(String)
+                : (typeof rawFeatures === 'string' && rawFeatures.trim() ? [rawFeatures.trim()] : []);
             return {
                 id: path.basename(relDir),
                 category,
                 categoryTitle: formatCategoryTitle(category),
                 title: content.match(/^#\s+(.+)$/m)?.[1].trim() ?? path.basename(relDir),
                 description: String(data.description ?? ''),
-                features: /** @type {string[]} */ (data['web-feature-ids'] ?? []),
+                features,
                 demos: listDemoFiles(guideDir, relDir),
             };
         })
         .sort((a, b) => a.category.localeCompare(b.category) || a.id.localeCompare(b.id));
 
-    fs.writeFileSync(path.join(outputDir, 'demos.gen.json'), JSON.stringify({ guides }, null, 2));
-    return { guides };
+    const features = Array.from(new Set(guides.flatMap(g => g.features))).sort();
+
+    fs.writeFileSync(path.join(outputDir, 'demos.gen.json'), JSON.stringify({ guides, features }, null, 2));
+    return { guides, features };
 }
 
 const DEMO_ASSET_EXTS = new Set(['.html', '.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.json']);
