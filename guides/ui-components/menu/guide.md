@@ -164,7 +164,7 @@ Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`,
 6. **Close one level at a time.** Call `stopPropagation()` on `Escape` and `ArrowLeft` in a submenu, or the parent's listener closes it too.
 7. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, call `focus({ focusVisible: false })`; browsers that ignore the option paint no ring for pointer focus anyway.
 8. **Hover switches open menus.** On `pointerenter` of a top-level trigger while another top-level menu is open: hide it, focus the hovered trigger without a ring, and step 2 previews it. Nothing open: do nothing.
-9. **Safe triangle.** Delay submenu preview and close by about 150 ms and cancel on pointer return, so a diagonal move into a submenu does not close it.
+9. **Safe triangle.** Item hover feedback stays immediate. Only while a submenu is open, delay hover focus on sibling items, and the submenu preview/close, by a short 50–100 ms (cancel on pointer return), so a diagonal move into the submenu does not close it.
 
 ```js
 // 2. Preview on focus, anchored to the trigger. Not when focus returns from another window.
