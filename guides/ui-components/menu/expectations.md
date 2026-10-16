@@ -10,11 +10,11 @@
 - Pressing `Enter` or `Space` on a previewed top-level or submenu trigger closes that preview and sets `aria-expanded="false"` without moving focus from the trigger.
 - Pressing `Enter` or `Space` on a closed trigger opens its menu, sets `aria-expanded="true"`, and moves focus to the first enabled item.
 - Pressing `ArrowDown` on a previewed top-level trigger converts it to open and moves focus to the first enabled item in the same turn.
-- Inside an open menu, `ArrowUp` and `ArrowDown` move focus between enabled items, and `Home` and `End` move focus to the first and last enabled item.
+- Inside an open menu, `ArrowUp` and `ArrowDown` move focus between enabled items, and `Home` and `End` move focus to the first and last enabled item; on a top-level trigger, `Home` and `End` enter its menu at the first or last enabled item and do not scroll the page.
 - Pressing `ArrowRight` on a submenu trigger opens the submenu and moves focus to its first enabled item, while pressing `ArrowLeft` in a submenu closes only that submenu and restores focus to its parent trigger.
 - Pressing `ArrowRight` on a submenu item without a child submenu closes the open hierarchy and previews the next top-level menu with focus on its trigger.
 - From a focused top-level trigger, `ArrowRight` and `ArrowLeft` move focus to the next and previous top-level trigger (wrapping at either end) and preview its menu with focus staying on the trigger.
-- From inside an open top-level menu, `ArrowRight` and `ArrowLeft` close the current menu, open the next or previous top-level menu (wrapping at either end), and focus that menu's first enabled item.
+- From inside an open top-level menu, `ArrowRight` and `ArrowLeft` close the current menu and preview the next or previous top-level menu (wrapping at either end) with focus on its trigger and no item focused; `ArrowDown` then enters it.
 - Pressing `Escape` closes only the current menu level, sets its trigger's `aria-expanded` to `"false"`, and restores focus to the trigger that opened it, including for nested submenus.
 - Pressing `Tab` from a trigger or inside an open menu closes all open menus and leaves the menu system instead of stepping through every command.
 - Clicking a previewed trigger enters its menu and focuses the first enabled item, clicking an open trigger closes its menu and restores focus to the trigger, and clicking outside closes every open menu level.

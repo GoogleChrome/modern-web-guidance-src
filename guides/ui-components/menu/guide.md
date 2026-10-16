@@ -111,7 +111,7 @@ Keep `--below` last so it applies only when neither side fits; without it a narr
 
 Do not add a second roving-tabindex system inside a focusgroup. Script covers only what the invokers and focusgroup do not:
 
-* **One tab stop for the menubar.** `Tab` enters at the first top-level trigger. `ArrowLeft` and `ArrowRight` move between top-level triggers and wrap at either end.
+* **One tab stop for the menubar.** `Tab` enters at the first top-level trigger. `ArrowLeft` and `ArrowRight` move between top-level triggers and wrap at either end. `Home` and `End` on a trigger enter its menu at the first or last item instead of scrolling the page.
 * **Preview.** Focusing a top-level trigger shows its menu and sets `aria-expanded="true"`. Focus stays on the trigger, and no item is focused. Blurring the trigger closes a preview-only menu.
 * **Enter and Space on a preview.** They close the preview and keep focus on the trigger. The native `toggle-popover` action handles this, so the script must not intercept these keys.
 * **ArrowDown on a preview.** Converts it to an open menu and focuses the first item.
@@ -122,7 +122,7 @@ Do not add a second roving-tabindex system inside a focusgroup. Script covers on
 * **Pointer over another top-level trigger while a menu is open.** Closes the open menu and previews the hovered one, focusing its trigger without a ring. With nothing open, hover does nothing.
 * **Pointer over a submenu trigger.** Previews its submenu after a short delay (pointer focus runs the same preview-on-focus as keyboard). Moving to a sibling item closes it.
 * **Within a menu.** `ArrowUp` and `ArrowDown` move between enabled items. `Home` and `End` move to the first and last enabled item, which the script handles.
-* **ArrowLeft or ArrowRight in an open top-level menu.** Closes it, opens the adjacent menu, and focuses that menu's first item, wrapping at either end.
+* **ArrowLeft or ArrowRight in an open top-level menu.** Closes it and previews the adjacent menu with focus on its trigger, wrapping at either end. `ArrowDown` then enters it. Left and Right never land inside a menu; this matches native menubars.
 * **ArrowRight on a submenu trigger.** Opens the submenu and focuses its first item.
 * **ArrowRight on a submenu item without a child submenu.** Closes the hierarchy and previews the next top-level menu while focus stays on its trigger. `ArrowDown` then enters it.
 * **ArrowLeft or Escape in a submenu.** Closes only that submenu and restores focus to its trigger. The parent menu stays open.

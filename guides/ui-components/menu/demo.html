@@ -275,7 +275,8 @@
     <p><a href="#keyboard">Keyboard guidance</a> · <a href="#testing">Testing guidance</a></p>
     <h2 id="keyboard">Keyboard guidance</h2>
     <p>Focus a top-level trigger to preview its menu; press Enter or Space to dismiss the preview, or Down Arrow to
-      enter it. In an open top-level menu, Left and Right Arrow switch to the adjacent menu and enter its first command.
+      enter it, or Home or End to enter at the first or last command. In an open top-level menu, Left and Right Arrow
+      preview the adjacent menu with focus on its trigger.
       Use Up and Down to move between commands, Right Arrow to open a submenu such as Export, Left Arrow or Escape to
       return from the submenu, Right Arrow on a submenu item without a child submenu to preview the next top-level menu, and Tab to
       leave the menu.</p>
@@ -363,13 +364,14 @@
       rootTriggers.map(menuFor).filter(isOpen).forEach(menu => menu.hidePopover());
     }
 
-    function moveToRootTrigger(from, direction, enterMenu = false) {
+    // Left/Right always land on the adjacent trigger as a preview, never inside its menu, matching
+    // native menubars. ArrowDown then enters.
+    function moveToRootTrigger(from, direction) {
       const next = rootTriggers[(rootTriggers.indexOf(from) + direction + rootTriggers.length) % rootTriggers.length];
       rootTriggers.forEach(item => { item.tabIndex = item === next ? 0 : -1; });
       closeAllMenus();
-      // Focusing the trigger previews its menu; entering it then focuses the first item.
+      // Focusing the trigger previews its menu.
       next.focus({ preventScroll: true });
-      if (enterMenu) focusFirst(menuFor(next));
     }
 
     // If targeting earlier implementations where showPopover({ source }) does not establish an
@@ -462,6 +464,12 @@
             enterOnOpen.add(menu);
             trigger.click(); // One entry point for every intentional open.
           }
+        } else if (event.key === 'Home' || event.key === 'End') {
+          // Enter the previewed menu at its first or last item instead of scrolling the page.
+          event.preventDefault();
+          if (!isOpen(menu)) menu.showPopover({ source: trigger });
+          const items = menuItems(menu);
+          (event.key === 'Home' ? items[0] : items.at(-1))?.focus({ preventScroll: true });
         }
       });
     });
@@ -543,8 +551,8 @@
         } else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !parentMenu) {
           event.preventDefault();
           event.stopPropagation();
-          // Switch to the adjacent top-level menu and enter its first enabled item.
-          moveToRootTrigger(triggerFor(menu), event.key === 'ArrowRight' ? 1 : -1, true);
+          // Switch to the adjacent top-level menu as a preview; ArrowDown enters it.
+          moveToRootTrigger(triggerFor(menu), event.key === 'ArrowRight' ? 1 : -1);
         }
       });
 
