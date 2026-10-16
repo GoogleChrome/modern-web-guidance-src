@@ -924,12 +924,18 @@ export function parseGuideSummaryMarkdown(
       ? cleanBody.slice(0, maxBodyLength) + '\n\n... (guide content truncated)'
       : cleanBody;
 
+  const cleanedProblem = clean(problem);
+  const cleanedBefore = clean(before);
+  const cleanedNow = clean(now);
+  const fallbackBody = `# ${title}\n\n${cleanedProblem}\n\n**Legacy Approach:**\n${cleanedBefore}\n\n**Modern Solution:**\n${cleanedNow}`;
+  const finalMarkdownBody = markdownBody.trim().length > 0 ? markdownBody : fallbackBody;
+
   return {
     guideId,
-    problem: clean(problem),
-    before: clean(before),
-    now: clean(now),
-    markdownBody,
+    problem: cleanedProblem,
+    before: cleanedBefore,
+    now: cleanedNow,
+    markdownBody: finalMarkdownBody,
   };
 }
 
