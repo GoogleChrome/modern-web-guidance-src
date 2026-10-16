@@ -18,6 +18,7 @@ import {
   loadRepos,
   parseTranscriptJsonl,
   type RepoEntry,
+  runAuditCli,
   summarizeModelTiers,
   summarizeToolFriction,
   type ToolCall,
@@ -650,18 +651,23 @@ describe('detectProcessSignals', () => {
     assert.deepStrictEqual(signalSummary(s), ['4:prompt-edit-after-label-read']);
   });
 
-  it('flags a run of status polls on one task but not a shorter or interrupted run', () => {
+  it('flags a run of status polls across tasks, kills, and timers, but not a shorter or interrupted run', () => {
     const poll = (taskId: string): ToolCall => ({ name: 'manage_task', args: { Action: 'status', TaskId: taskId } });
-    const tenPolls = Array.from({ length: 10 }, () => poll('task-1'));
-    const ninePolls = Array.from({ length: 9 }, () => poll('task-2'));
+    const kill: ToolCall = { name: 'manage_task', args: { Action: 'kill', TaskId: 'task-2' } };
+    const timer: ToolCall = { name: 'schedule', args: { DurationSeconds: 30 } };
     const s = steps(
-      ...tenPolls,
-      ...ninePolls,
-      ...Array.from({ length: 5 }, () => poll('task-3')),
+      // 8f1cbf70#556 shape: 8 polls interleaved with kills and timers is still one polling run
+      ...Array.from({ length: 4 }, () => poll('task-1')),
+      timer,
+      kill,
+      ...Array.from({ length: 4 }, () => poll('task-2')),
       { name: 'run_command', args: { CommandLine: 'git status' } },
-      ...Array.from({ length: 5 }, () => poll('task-3')),
+      ...Array.from({ length: 7 }, () => poll('task-3')),
+      { name: 'read_file', args: { Path: 'src/analyzing/stats.ts' } },
+      ...Array.from({ length: 7 }, () => poll('task-3')),
     );
     assert.deepStrictEqual(signalSummary(s), ['0:polling-loop']);
+    assert.match(detectProcessSignals(s)[0]?.detail ?? '', /8 status polls of task-1, task-2/);
   });
 
   it('includes process signals in the audit report without failing split isolation', () => {
@@ -673,6 +679,131 @@ describe('detectProcessSignals', () => {
     const result = auditTranscript(jsonl, { repos: MOCK_REPOS });
     assert.strictEqual(result.hasSplitViolation, false);
     assert.match(formatAuditReport(result), /Step 7 \[hand-edited-generated-artifact\]/);
+  });
+
+  it('flags progress-history.json, labels decks, and inline run_command writes to artifacts (O52, O61)', () => {
+    const run = (cmd: string): ToolCall => ({ name: 'run_command', args: { CommandLine: JSON.stringify(cmd) } });
+    const s = steps(
+      { name: 'edit_file', args: { Path: JSON.stringify(`${ROOT}/analyzer-internal/progress-history.json`) } },
+      { name: 'write_file', args: { Path: `${ROOT}/analyzer-internal/labels/phase2-drops-local-deck.json` } },
+      // 7941cc73#2712: a Table 1 row typed into progress-history.json through node -e
+      run(`node -e 'const p = "${ROOT}/analyzer-internal/progress-history.json"; const h = JSON.parse(require("fs").readFileSync(p)); h.gate0Triage.push({detectable: 116}); require("fs").writeFileSync(p, JSON.stringify(h));'`),
+      // 7941cc73#1237: restoring a deleted artifact from history before hand-editing it (O51)
+      run(`cd ${ROOT}/analyzer-internal && git checkout HEAD -- findings/judge-calibration-latest.json`),
+    );
+    assert.deepStrictEqual(signalSummary(s), [
+      '0:hand-edited-generated-artifact',
+      '1:hand-edited-generated-artifact',
+      '2:hand-edited-generated-artifact',
+      '3:hand-edited-generated-artifact',
+    ]);
+  });
+
+  it('does not flag committed scripts writing their outputs or inline code that only reads artifacts', () => {
+    const run = (cmd: string): ToolCall => ({ name: 'run_command', args: { CommandLine: cmd } });
+    const s = steps(
+      run(`node --env-file=.env src/analyzing/pilot-scorecard.ts --mode=gitmirror --split=final --scorecard=analyzer-internal/findings/2026-10-16-gitmirror-final-scorecard.json`),
+      run(`node -e 'const d = JSON.parse(require("fs").readFileSync("${ROOT}/analyzer-internal/findings/card-telemetry.jsonl", "utf8")); console.log(d.length)'`),
+      run(`cd ${ROOT}/analyzer-internal && git rm findings/judge-calibration-latest.json`),
+    );
+    assert.deepStrictEqual(signalSummary(s), []);
+  });
+
+  it('flags sweeping commits but not explicit staging, amends, or flags inside commit messages (O27, O43)', () => {
+    const run = (cmd: string): ToolCall => ({ name: 'run_command', args: { CommandLine: JSON.stringify(cmd) } });
+    const s = steps(
+      run('git -C /repo/analyzer-internal commit -am "scripts: exclude stub guides from judge calibration per O56"'),
+      run('cd /repo && git add . && git commit -m "wip"'),
+      run('git add -A'),
+      run('git add src/analyzing/judge.ts && git commit -m "judge: drop the -a fallback"'),
+      run('git commit --amend --no-edit'),
+    );
+    assert.deepStrictEqual(signalSummary(s), ['0:git-sweep-commit', '1:git-sweep-commit', '2:git-sweep-commit']);
+  });
+
+  it('flags edits to the audit tool itself and ad hoc edits to split definitions', () => {
+    const run = (cmd: string): ToolCall => ({ name: 'run_command', args: { CommandLine: cmd } });
+    const s = steps(
+      { name: 'edit_file', args: { Path: `${ROOT}/src/analyzing/audit-transcripts.ts` } },
+      run(`node -e 'const f = "${ROOT}/analyzer-internal/repos.json"; const r = JSON.parse(require("fs").readFileSync(f)); require("fs").writeFileSync(f, JSON.stringify(r))'`),
+      run('mv ~/.cache/analyzer-gitmirror/grading-only ~/.cache/analyzer-gitmirror/tune && ln -s tune ~/.cache/analyzer-gitmirror/grading-only'),
+      // Running the committed sampler, reading the split, or writing a literal /tmp path is not an ad hoc edit
+      run('node analyzer-internal/scripts/sample-gitmirror.ts --min-shard=160 --max-shard=959'),
+      { name: 'read_file', args: { Path: `${ROOT}/analyzer-internal/repos.json` } },
+      run('ls -la ~/.cache/analyzer-gitmirror/final'),
+      // d6137e90#261 shape: reads the manifest, writes only a /tmp SQL file
+      run(`node -e 'const m = JSON.parse(readFileSync("/home/u/.cache/analyzer-gitmirror/manifest.json")); writeFileSync("/tmp/test_exclusion_size.sql", sql)'`),
+    );
+    assert.deepStrictEqual(signalSummary(s), [
+      '0:audit-tool-edit',
+      '1:split-definition-edit',
+      '2:split-definition-edit',
+    ]);
+  });
+
+  it('keeps label reads from before the --since window when judging prompt edits inside it', () => {
+    const at = (iso: string, call: ToolCall, i: number): TranscriptStep => ({
+      step_index: i,
+      created_at: iso,
+      type: 'PLANNER_RESPONSE',
+      tool_calls: [call],
+    });
+    const promptEdit: ToolCall = { name: 'edit_file', args: { Path: `${ROOT}/src/analyzing/prompts.ts` } };
+    const s = [
+      at('2026-10-16T05:00:00Z', { name: 'read_file', args: { Path: `${ROOT}/analyzer-internal/labels/grades.paulirish.jsonl` } }, 0),
+      at('2026-10-16T05:30:00Z', { name: 'edit_file', args: { Path: `${ROOT}/analyzer-internal/PROGRESS.md` } }, 1),
+      at('2026-10-16T06:30:00Z', promptEdit, 2),
+    ];
+    assert.deepStrictEqual(
+      detectProcessSignals(s, '2026-10-16T06:25:00Z').map((sig) => `${sig.stepIndex}:${sig.kind}`),
+      ['2:prompt-edit-after-label-read'],
+    );
+    assert.deepStrictEqual(
+      auditTranscript(s, { repos: MOCK_REPOS, since: '2026-10-16T06:25:00Z' }).processSignals.map((sig) => sig.stepIndex),
+      [2],
+    );
+  });
+});
+
+describe('split violation channels', () => {
+  it('tags message-tool mentions apart from tool accesses without excusing either', () => {
+    const steps: TranscriptStep[] = [
+      {
+        step_index: 0,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          { name: 'send_message', args: { Message: 'never read analyzer-internal/labels/grades.paulirish.jsonl' } },
+          { name: 'read_file', args: { Path: 'analyzer-internal/labels/grades.paulirish.jsonl' } },
+        ],
+      },
+    ];
+    const result = auditTranscript(steps, { repos: MOCK_REPOS });
+    assert.deepStrictEqual(
+      result.violations.map((v) => `${v.toolName}:${v.channel}`),
+      ['send_message:mention', 'read_file:access'],
+    );
+    assert.strictEqual(result.hasSplitViolation, true);
+    assert.match(formatAuditReport(result), /Violations \(2: 1 access, 1 mention\)/);
+  });
+});
+
+describe('runAuditCli flag parsing', () => {
+  it('honors --since=<iso> and rejects unknown flags instead of silently auditing everything', async () => {
+    const dir = join(tmpdir(), `audit-cli-${process.pid}-${Date.now()}`);
+    await mkdir(dir, { recursive: true });
+    try {
+      const transcript = join(dir, 'transcript.jsonl');
+      const reposPath = join(dir, 'repos.json');
+      await writeFile(transcript, JSON.stringify({ step_index: 0, created_at: '2026-10-16T06:00:00Z', type: 'GENERIC' }));
+      await writeFile(reposPath, JSON.stringify(MOCK_REPOS));
+      await assert.rejects(
+        runAuditCli([transcript, `--repos=${reposPath}`, '--since=yesterday']),
+        /Invalid --since timestamp/,
+      );
+      await assert.rejects(runAuditCli([transcript, '--sinse=2026-10-16T06:25:00Z']), { code: 'ERR_PARSE_ARGS_UNKNOWN_OPTION' });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
 

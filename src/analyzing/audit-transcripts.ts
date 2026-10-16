@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
+import { parseArgs } from 'node:util';
 import { LABELS_DIR, REPOS_CONFIG_PATH } from './paths.ts';
 import { isEnoent } from './progress-log.ts';
 
@@ -20,6 +21,12 @@ export interface SplitViolation {
   target: string;
   matchedRepo?: string;
   reason: 'grading-only-repo' | 'labels-directory';
+  /**
+   * 'mention': a message tool (brief, report) named the path; nothing touched disk.
+   * 'access': a tool that reads, writes, or runs commands named the path.
+   * Both count toward hasSplitViolation; the channel only tells the reviewer where to look first.
+   */
+  channel: 'access' | 'mention';
 }
 
 export interface ToolFrictionSummary {
@@ -66,16 +73,29 @@ export interface AuditOptions {
 
 /**
  * Process signals are review prompts for the observer, not split violations:
- * - `hand-edited-generated-artifact`: a tool-level edit to PROGRESS.md or a findings/*.json(l)
- *   run artifact, which only scripts may write (GEMINI.md, D-020, O29, O36).
+ * - `hand-edited-generated-artifact`: an edit to PROGRESS.md, progress-history.json, a findings/*.json(l)
+ *   run artifact, or a labels/ deck, via edit_file/write_file or inline code in run_command
+ *   (`node -e ... writeFileSync`, `sed -i`, `git checkout -- <artifact>`). Only scripts may write these
+ *   (GEMINI.md, D-020, O29, O36, O52). A committed script that writes its own outputs is not flagged.
  * - `prompt-edit-after-label-read`: prompts.ts edited after the same agent read Paul's labels or
  *   judge-vs-Paul disagreement cards, so agreement on those cards becomes in-sample (R31, O35).
- * - `polling-loop`: a run of consecutive status polls on one background task (O44).
+ *   The label read may precede the --since window: an agent that has seen the labels stays contaminated.
+ * - `polling-loop`: a run of status polls with no substantive tool call between them (O44, O62).
+ *   Interleaved kills and timers do not break the run.
+ * - `git-sweep-commit`: `git commit -a` or `git add .|-A|-u`, which stage files the agent did not
+ *   author (O27, O43).
+ * - `audit-tool-edit`: an edit to audit-transcripts.ts itself, so the reviewer can check it was not
+ *   weakened by the agents it audits.
+ * - `split-definition-edit`: an ad hoc edit to repos.json, the GitMirror manifest, or a GitMirror split
+ *   directory (GEMINI.md: never change the held-out split without Paul).
  */
 export type ProcessSignalKind =
   | 'hand-edited-generated-artifact'
   | 'prompt-edit-after-label-read'
-  | 'polling-loop';
+  | 'polling-loop'
+  | 'git-sweep-commit'
+  | 'audit-tool-edit'
+  | 'split-definition-edit';
 
 export interface ProcessSignal {
   kind: ProcessSignalKind;
@@ -333,6 +353,7 @@ export function checkSplitViolations(
       }
 
       const isTestToolCall = isAnalyzingTestFileToolCall(call);
+      const channel = MESSAGE_TOOLS.has(call.name) ? 'mention' : 'access';
 
       for (const argVal of Object.values(call.args)) {
         if (typeof argVal !== 'string') {
@@ -345,6 +366,7 @@ export function checkSplitViolations(
             toolName: call.name,
             target: argVal,
             reason: 'labels-directory',
+            channel,
           });
         }
 
@@ -361,6 +383,7 @@ export function checkSplitViolations(
             target: argVal,
             matchedRepo: match.repoName,
             reason: 'grading-only-repo',
+            channel,
           });
         }
       }
@@ -516,35 +539,139 @@ export function summarizeModelTiers(
   };
 }
 
-const GENERATED_ARTIFACT_PATH = /analyzer-internal\/(?:PROGRESS\.md|findings\/[^"'\s]+\.jsonl?)(?=["'\s]|$)/;
-const PROMPTS_FILE_PATH = /src\/analyzing\/prompts\.ts(?=["'\s]|$)/;
+/** Lookahead after a path: transcripts embed paths in quoted, escaped (`\"`), or parenthesized text. */
+const PATH_END = String.raw`(?=["'\s\\)]|$)`;
+/** Run artifacts only scripts may write: PROGRESS.md, progress-history.json, findings/*.json(l), labels/ decks and grades. */
+const GENERATED_ARTIFACT_PATH = new RegExp(
+  String.raw`analyzer-internal\/(?:PROGRESS\.md|progress-history\.json|(?:findings|labels)\/[^"'\s\\]+\.jsonl?)` + PATH_END,
+);
+/** The same artifacts named relative to analyzer-internal (e.g. `cd analyzer-internal && git checkout -- findings/x.json`). */
+const RELATIVE_ARTIFACT_PATH = new RegExp(
+  String.raw`(?:^|[\s"'=\\])(?:PROGRESS\.md|progress-history\.json|(?:findings|labels)\/[^"'\s\\]+\.jsonl?)` + PATH_END,
+);
+/** Shell edits in place, or restoring a file from git history (`git checkout|restore ... -- <path>`). */
+const SHELL_WRITE = /\bsed\s+-i\b|\bgit\b[^;&|\n]*\b(?:checkout|restore)\b[^;&|\n]*\s--\s/;
+/** First argument of an inline-code write: `writeFileSync(p, ...)`, `writeFile("x", ...)`, `open(p, "w")`. */
+const CODE_WRITE_TARGET = /(?:writeFileSync|writeFile|appendFileSync)\(\s*([^,)]+)|\bopen\(\s*([^,)]+),\s*["'][wa]/g;
+const SPLIT_DEFINITION_PATH =
+  /analyzer-internal\/repos\.json|analyzer-gitmirror\/(?:manifest\.json|grading-only|tune|final|rule-writing)\b/;
+const FILE_MOVE = /\b(?:mv|ln|rm|trash)\s/;
+/** `git commit -a`/`--all` or `git add .`/`-A`/`-u` (checked after quoted strings are blanked out). */
+const GIT_SWEEP =
+  /\bgit\b(?:\s+-C\s+\S+)*\s+(?:commit\b[^;&|\n]*\s-[a-zA-Z]*a[a-zA-Z]*\b|commit\b[^;&|\n]*\s--all\b|add\s+(?:\.|-A|--all|-u|--update)(?=[\s;&|]|$))/;
+const QUOTED_STRING = /"[^"\n]*"|'[^'\n]*'/g;
+const PROMPTS_FILE_PATH = new RegExp(String.raw`src\/analyzing\/prompts\.ts` + PATH_END);
+const AUDIT_TOOL_PATH = new RegExp(String.raw`src\/analyzing\/audit-transcripts(?:\.test)?\.ts` + PATH_END);
 const CALIBRATION_DATA_PATH = /analyzer-internal\/labels\/|grades\.paulirish\.jsonl|judge-paul-disagreements/;
 const FILE_WRITE_TOOLS = new Set(['edit_file', 'write_file']);
-/** Message tools (invoke_subagent, send_message) only mention paths, so they never count as reads. */
+/** Message tools only mention paths in text sent to another agent; they never read or write files. */
+const MESSAGE_TOOLS = new Set(['send_message', 'invoke_subagent', 'post_message', 'swarm', 'define_subagent']);
 const DIRECT_READ_TOOLS = new Set(['read_file', 'run_command']);
-/** Consecutive status polls of one background task that count as a polling loop. */
-const POLLING_LOOP_MIN_POLLS = 10;
+/** Tool calls that only wait on background work: they neither break nor count toward a polling run. */
+const WAIT_TOOLS = new Set(['manage_task', 'schedule', 'swarm_wait']);
+/**
+ * Status polls with no substantive tool call between them that count as a polling loop.
+ * 8 catches 8f1cbf70#556 (8 polls, 2 kills, and 2 timers in 25 s), which a per-task count of 10 missed.
+ */
+const POLLING_LOOP_MIN_POLLS = 8;
 
+/** Transcript args are often JSON string literals (`"\"/path\""`); decode them so paths and commands match. */
 function stringArg(call: ToolCall, key: string): string {
   const value = call.args?.[key];
-  return typeof value === 'string' ? value.replace(/^"|"$/g, '') : '';
+  if (typeof value !== 'string') {
+    return '';
+  }
+  if (!/^"[\s\S]*"$/.test(value)) {
+    return value;
+  }
+  try {
+    const decoded: unknown = JSON.parse(value);
+    return typeof decoded === 'string' ? decoded : value;
+  } catch {
+    // A quoted string that is not valid JSON (for example raw newlines); keep the inner text.
+    return value.slice(1, -1);
+  }
 }
 
 /**
- * Flags hand-edited run artifacts, prompt edits made after reading calibration labels,
- * and status-polling loops. See ProcessSignalKind.
+ * True when a shell edit or inline code in `cmd` may write a path accepted by `isProtected`.
+ * Running a committed script that writes its own outputs has no inline write, so it never counts.
+ * A write whose target is a variable may hit any path the command mentions; a string literal names
+ * its target, so a literal write elsewhere (e.g. `/tmp/x.sql`) does not count.
  */
-export function detectProcessSignals(steps: TranscriptStep[]): ProcessSignal[] {
+function inlineWriteMayHit(cmd: string, isProtected: (path: string) => boolean): boolean {
+  if (SHELL_WRITE.test(cmd)) {
+    return true;
+  }
+  return [...cmd.matchAll(CODE_WRITE_TARGET)].some((m) => {
+    const target = (m[1] ?? m[2] ?? '').trim();
+    return !/^["'`]/.test(target) || isProtected(target);
+  });
+}
+
+const isGeneratedArtifactPath = (path: string): boolean =>
+  GENERATED_ARTIFACT_PATH.test(path) || RELATIVE_ARTIFACT_PATH.test(path);
+
+function writesGeneratedArtifact(call: ToolCall, target: string): boolean {
+  if (FILE_WRITE_TOOLS.has(call.name)) {
+    return GENERATED_ARTIFACT_PATH.test(target);
+  }
+  // Relative artifact paths only count when the command names analyzer-internal (e.g. after a cd).
+  return (
+    call.name === 'run_command' &&
+    target.includes('analyzer-internal') &&
+    isGeneratedArtifactPath(target) &&
+    inlineWriteMayHit(target, isGeneratedArtifactPath)
+  );
+}
+
+function editsSplitDefinition(call: ToolCall, target: string): boolean {
+  if (!SPLIT_DEFINITION_PATH.test(target)) {
+    return false;
+  }
+  return (
+    FILE_WRITE_TOOLS.has(call.name) ||
+    (call.name === 'run_command' &&
+      (FILE_MOVE.test(target) || inlineWriteMayHit(target, (path) => SPLIT_DEFINITION_PATH.test(path))))
+  );
+}
+
+/** Throws on a step without `created_at`: a window that silently drops steps audits the wrong work. */
+function isAtOrAfter(step: TranscriptStep, sinceMs: number): boolean {
+  if (typeof step.created_at !== 'string') {
+    throw new Error(
+      `Step ${String(step.step_index)} has no created_at; cannot scope audit with --since`,
+    );
+  }
+  return Date.parse(step.created_at) >= sinceMs;
+}
+
+function parseSince(sinceIso: string): number {
+  const sinceMs = Date.parse(sinceIso);
+  if (Number.isNaN(sinceMs)) {
+    throw new Error(`Invalid --since timestamp: ${JSON.stringify(sinceIso)}`);
+  }
+  return sinceMs;
+}
+
+/**
+ * Flags hand-edited run artifacts, prompt edits made after reading calibration labels, polling loops,
+ * sweeping commits, edits to this audit tool, and ad hoc split edits. See ProcessSignalKind.
+ * With `sinceIso`, only signals inside the window are reported, but label reads before the window
+ * still count: the agent has already seen the labels.
+ */
+export function detectProcessSignals(steps: TranscriptStep[], sinceIso?: string): ProcessSignal[] {
+  const sinceMs = sinceIso === undefined ? undefined : parseSince(sinceIso);
   const signals: ProcessSignal[] = [];
   let firstLabelReadStep: number | undefined;
-  let poll: { taskId: string; startStep: number; count: number } | undefined;
+  let poll: { startStep: number; count: number; taskIds: Set<string>; inWindow: boolean } | undefined;
 
   const endPollRun = (): void => {
-    if (poll && poll.count >= POLLING_LOOP_MIN_POLLS) {
+    if (poll && poll.inWindow && poll.count >= POLLING_LOOP_MIN_POLLS) {
       signals.push({
         kind: 'polling-loop',
         stepIndex: poll.startStep,
-        detail: `${poll.count} consecutive status polls of ${poll.taskId}`,
+        detail: `${poll.count} status polls of ${[...poll.taskIds].join(', ')} with no work in between`,
       });
     }
     poll = undefined;
@@ -552,14 +679,20 @@ export function detectProcessSignals(steps: TranscriptStep[]): ProcessSignal[] {
 
   for (const [i, step] of steps.entries()) {
     const stepIndex = step.step_index ?? i;
+    const inWindow = sinceMs === undefined || isAtOrAfter(step, sinceMs);
+    const report = (kind: ProcessSignalKind, detail: string): void => {
+      if (inWindow) {
+        signals.push({ kind, stepIndex, detail });
+      }
+    };
+
     for (const call of step.tool_calls ?? []) {
-      if (call.name === 'manage_task' && stringArg(call, 'Action') === 'status') {
-        const taskId = stringArg(call, 'TaskId');
-        if (poll?.taskId === taskId) {
+      if (WAIT_TOOLS.has(call.name)) {
+        if (call.name === 'manage_task' && stringArg(call, 'Action') === 'status') {
+          poll ??= { startStep: stepIndex, count: 0, taskIds: new Set(), inWindow: false };
           poll.count++;
-        } else {
-          endPollRun();
-          poll = { taskId, startStep: stepIndex, count: 1 };
+          poll.taskIds.add(stringArg(call, 'TaskId'));
+          poll.inWindow ||= inWindow;
         }
         continue;
       }
@@ -569,18 +702,26 @@ export function detectProcessSignals(steps: TranscriptStep[]): ProcessSignal[] {
       if (DIRECT_READ_TOOLS.has(call.name) && CALIBRATION_DATA_PATH.test(target)) {
         firstLabelReadStep ??= stepIndex;
       }
+      if (writesGeneratedArtifact(call, target)) {
+        report('hand-edited-generated-artifact', `${call.name}: ${target}`);
+      }
+      if (editsSplitDefinition(call, target)) {
+        report('split-definition-edit', `${call.name}: ${target}`);
+      }
+      if (call.name === 'run_command' && GIT_SWEEP.test(target.replace(QUOTED_STRING, '""'))) {
+        report('git-sweep-commit', target);
+      }
       if (!FILE_WRITE_TOOLS.has(call.name)) {
         continue;
       }
-      if (GENERATED_ARTIFACT_PATH.test(target)) {
-        signals.push({ kind: 'hand-edited-generated-artifact', stepIndex, detail: target });
+      if (AUDIT_TOOL_PATH.test(target)) {
+        report('audit-tool-edit', target);
       }
       if (PROMPTS_FILE_PATH.test(target) && firstLabelReadStep !== undefined) {
-        signals.push({
-          kind: 'prompt-edit-after-label-read',
-          stepIndex,
-          detail: `${target} edited after reading calibration labels at step ${firstLabelReadStep}`,
-        });
+        report(
+          'prompt-edit-after-label-read',
+          `${target} edited after reading calibration labels at step ${firstLabelReadStep}`,
+        );
       }
     }
   }
@@ -597,18 +738,8 @@ export function filterStepsSince(
   steps: TranscriptStep[],
   sinceIso: string,
 ): TranscriptStep[] {
-  const sinceMs = Date.parse(sinceIso);
-  if (Number.isNaN(sinceMs)) {
-    throw new Error(`Invalid --since timestamp: ${JSON.stringify(sinceIso)}`);
-  }
-  return steps.filter((step) => {
-    if (typeof step.created_at !== 'string') {
-      throw new Error(
-        `Step ${String(step.step_index)} has no created_at; cannot scope audit with --since`,
-      );
-    }
-    return Date.parse(step.created_at) >= sinceMs;
-  });
+  const sinceMs = parseSince(sinceIso);
+  return steps.filter((step) => isAtOrAfter(step, sinceMs));
 }
 
 /**
@@ -644,7 +775,8 @@ export function auditTranscript(
     totalSteps: steps.length,
     violations,
     hasSplitViolation: violations.length > 0,
-    processSignals: detectProcessSignals(steps),
+    // The whole transcript, so label reads before the window still taint prompt edits inside it.
+    processSignals: detectProcessSignals(allSteps, options?.since),
     toolFriction,
     modelTier,
   };
@@ -755,14 +887,17 @@ export function formatAuditReport(result: TranscriptAuditResult): string {
   );
 
   if (result.violations.length > 0) {
-    lines.push(`Violations (${result.violations.length}):`);
+    const mentions = result.violations.filter((v) => v.channel === 'mention').length;
+    lines.push(
+      `Violations (${result.violations.length}: ${result.violations.length - mentions} access, ${mentions} mention):`,
+    );
     for (const v of result.violations) {
       const detail =
         v.reason === 'grading-only-repo'
           ? `grading repo '${v.matchedRepo ?? 'unknown'}'`
           : 'labels directory';
       lines.push(
-        `  - Step ${v.stepIndex} [${v.toolName}]: accessed ${detail} -> ${v.target}`,
+        `  - Step ${v.stepIndex} [${v.toolName}, ${v.channel}]: ${detail} -> ${v.target}`,
       );
     }
   }
@@ -811,27 +946,23 @@ export function formatBatchReport(batch: AuditBatchResult): string {
 
 /**
  * Command-line interface runner for transcript auditing.
+ * Accepts `--since <iso>` and `--since=<iso>`; unknown flags throw, because a silently ignored
+ * `--since=...` would audit the whole transcript instead of the requested window.
  */
 export async function runAuditCli(
   args: string[] = process.argv.slice(2),
 ): Promise<void> {
-  let isJson = false;
-  let reposPath: string | undefined;
-  let since: string | undefined;
-  const targets: string[] = [];
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === '--json') {
-      isJson = true;
-    } else if (arg === '--repos' && i + 1 < args.length) {
-      reposPath = args[++i];
-    } else if (arg === '--since' && i + 1 < args.length) {
-      since = args[++i];
-    } else if (!arg.startsWith('--')) {
-      targets.push(arg);
-    }
-  }
+  const { values, positionals: targets } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      json: { type: 'boolean' },
+      repos: { type: 'string' },
+      since: { type: 'string' },
+    },
+  });
+  const isJson = values.json === true;
+  const since = values.since;
 
   if (targets.length === 0) {
     console.error('Usage: node audit-transcripts.ts <file-or-dir...> [--json] [--repos <path>] [--since <iso-timestamp>]');
@@ -839,7 +970,7 @@ export async function runAuditCli(
     return;
   }
 
-  const repos = await loadRepos(reposPath ?? REPOS_CONFIG_PATH);
+  const repos = await loadRepos(values.repos ?? REPOS_CONFIG_PATH);
 
   for (const target of targets) {
     const resolved = isAbsolute(target) ? target : resolve(target);
