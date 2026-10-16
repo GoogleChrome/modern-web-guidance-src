@@ -20,6 +20,7 @@ import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
   truncateMessage,
@@ -350,7 +351,7 @@ export function loadPiLogs(dir: string): { logData: any[]; subagentsMap: Record<
 
   for (const file of subFiles) {
     try {
-      const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+      const subId = extractSubagentIdFromFilename(file);
       subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
     } catch {}
   }

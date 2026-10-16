@@ -255,11 +255,13 @@
         <div class="control-group">
           <label for="timezoneSelect">Simulate Viewer Timezone</label>
           <select id="timezoneSelect">
-            <option value="UTC">UTC (Center)</option>
-            <option value="America/New_York">New York (UTC-5)</option>
-            <option value="Europe/Paris">Paris (UTC+1)</option>
-            <option value="Asia/Tokyo">Tokyo (UTC+9)</option>
-            <option value="Pacific/Honolulu">Honolulu (UTC-10)</option>
+            <!-- Identify zones by IANA name only. Offsets change with DST and legislation, so labels like "UTC-5" go stale. -->
+            <option value="UTC">UTC</option>
+            <option value="America/New_York">New York</option>
+            <option value="America/Los_Angeles">Los Angeles</option>
+            <option value="Europe/Paris">Paris</option>
+            <option value="Asia/Tokyo">Tokyo</option>
+            <option value="Pacific/Honolulu">Honolulu</option>
           </select>
         </div>
       </div>
@@ -290,38 +292,87 @@
         </div>
 
         <div class="explanation">
-          <strong>Discrepancy:</strong> When using standard <code>Date</code>, saving "1990-01-01" as a server-side UTC
-          instant
-          causes users in western timezones (e.g., New York) to see it as <strong>Dec 31, 1989</strong> due to the
-          offset.
-          <code>Temporal.PlainDate</code> has no concept of time or zone, staying exact.
+          <strong>Discrepancy:</strong> A <code>Date</code> is a timestamp, not a calendar date. Saving "1990-01-01" as a
+          <code>Date</code> forces the app to pick an instant (midnight UTC here), so viewers west of UTC (e.g., New York)
+          read it back as <strong>Dec 31, 1989</strong>. <code>Temporal.PlainDate</code> has no concept of time or zone,
+          staying exact.
         </div>
       </div>
     </div>
 
+    <!-- Section 2: PlainTime (Daily Reminder) -->
+    <div class="card">
+      <div class="section-title">⏰ Daily Reminder Simulation</div>
 
+      <div class="controls">
+        <div class="control-group">
+          <label for="reminderInput">Daily Reminder Time</label>
+          <input type="time" id="reminderInput" value="09:00">
+        </div>
+      </div>
+
+      <div class="results-section">
+        <!-- Temporal.PlainTime -->
+        <div class="result-item" id="plainTimeItem">
+          <div class="result-label">
+            <span>Temporal.PlainTime</span>
+            <span class="result-sublabel">Wall-clock time (Immutable)</span>
+          </div>
+          <div class="result-value">
+            <span id="plainTimeValue">-</span>
+            <span id="plainTimeBadge" class="badge">Checking...</span>
+          </div>
+        </div>
+
+        <!-- Standard Date -->
+        <div class="result-item" id="standardTimeItem">
+          <div class="result-label">
+            <span>Standard Date Object</span>
+            <span class="result-sublabel">Viewed in the simulated time zone</span>
+          </div>
+          <div class="result-value">
+            <span id="standardTimeValue">-</span>
+            <span id="standardTimeBadge" class="badge">Checking...</span>
+          </div>
+        </div>
+
+        <div class="explanation">
+          <strong>Discrepancy:</strong> A reminder stored as a <code>Date</code> is pinned to one instant, so a traveller
+          who set "9:00 AM" at home sees a different hour abroad. <code>Temporal.PlainTime</code> stays 9:00 AM in
+          whatever time zone the user happens to be in.
+        </div>
+      </div>
+    </div>
 
   </div>
 
   <script>
     const birthdateInput = document.getElementById('birthdateInput');
     const timezoneSelect = document.getElementById('timezoneSelect');
+    const reminderInput = document.getElementById('reminderInput');
     const plainDateValue = document.getElementById('plainDateValue');
     const plainBadge = document.getElementById('plainBadge');
     const plainDateItem = document.getElementById('plainDateItem');
     const standardDateValue = document.getElementById('standardDateValue');
     const standardBadge = document.getElementById('standardBadge');
     const standardDateItem = document.getElementById('standardDateItem');
+    const plainTimeValue = document.getElementById('plainTimeValue');
+    const plainTimeBadge = document.getElementById('plainTimeBadge');
+    const plainTimeItem = document.getElementById('plainTimeItem');
+    const standardTimeValue = document.getElementById('standardTimeValue');
+    const standardTimeBadge = document.getElementById('standardTimeBadge');
+    const standardTimeItem = document.getElementById('standardTimeItem');
     const unsupportedBanner = document.getElementById('unsupportedBanner');
 
     // Check Support
-      (async () => {
+    (async () => {
       if (typeof Temporal === 'undefined') {
         try {
           const module = await import('https://esm.sh/@js-temporal/polyfill');
-        // Manually assign to global scope if needed
+          // Manually assign to global scope if needed
           globalThis.Temporal = module.Temporal;
-          // Extend Date.prototype as recommended by polyfill docs
+          // The polyfill doesn't patch Date.prototype itself; install toTemporalInstant()
+          // because the demo relies on it for Date -> Temporal conversion below.
           Date.prototype.toTemporalInstant = module.toTemporalInstant;
           initializeDemo();
         } catch (err) {
@@ -329,19 +380,32 @@
           unsupportedBanner.style.display = 'flex';
           birthdateInput.disabled = true;
           timezoneSelect.disabled = true;
+          reminderInput.disabled = true;
         }
       } else {
         initializeDemo();
       }
-        })(); 
+    })();
 
     function initializeDemo() {
       // Event Listeners
-      birthdateInput.addEventListener('input', updateBirthdate);
-      timezoneSelect.addEventListener('change', updateBirthdate);
+      birthdateInput.addEventListener('input', updateAll);
+      reminderInput.addEventListener('input', updateAll);
+      timezoneSelect.addEventListener('change', updateAll);
 
       // Initial Run
+      updateAll();
+    }
+
+    function updateAll() {
       updateBirthdate();
+      updateReminder();
+    }
+
+    function setBadge(badge, item, drifted) {
+      badge.textContent = drifted ? "Drifted!" : "Matches Original";
+      badge.className = drifted ? "badge buggy" : "badge safe";
+      item.style.borderColor = drifted ? "var(--warning-border)" : "transparent";
     }
 
     function updateBirthdate() {
@@ -351,60 +415,78 @@
       if (!selectedDate) return;
 
       try {
-        // 1. Temporal.PlainDate
+        // 1. Temporal.PlainDate: a calendar date with no time zone attached.
         const plainDate = Temporal.PlainDate.from(selectedDate);
         plainDateValue.textContent = plainDate.toLocaleString('en-GB');
 
-        // 1b. Check PlainDate against original input (Should ALWAYS match)
-        const isPlainDrifted = plainDate.toString() !== selectedDate;
-        if (isPlainDrifted) {
-          plainBadge.textContent = "Drifted!";
-          plainBadge.className = "badge buggy";
-          plainDateItem.style.borderColor = "var(--warning-border)";
-        } else {
-          plainBadge.textContent = "Matches Original";
-          plainBadge.className = "badge safe";
-          plainDateItem.style.borderColor = "transparent";
-        }
+        // 1b. A PlainDate round-trips exactly, so this never drifts.
+        setBadge(plainBadge, plainDateItem, !plainDate.equals(selectedDate));
 
-        // 2. Simulate Standard Date drift bug
-        const instantStr = `${selectedDate}T00:00:00Z`;
-        const dateObj = new Date(instantStr);
+        // 2. Simulate the legacy Date pitfall.
+        // A Date is an instant (a timestamp), not a calendar date. To store the birthdate
+        // as a Date, the app has to pick *some* instant; midnight UTC is the usual choice.
+        // Follow the Temporal cookbook: PlainDate -> ZonedDateTime -> Instant -> epochMilliseconds -> Date.
+        const storedInstant = plainDate.toZonedDateTime('UTC').toInstant();
+        const legacyDate = new Date(storedInstant.epochMilliseconds);
 
-        // Format for the selected timezone using Intl (en-GB for DD/MM/YYYY)
-        const formatter = new Intl.DateTimeFormat('en-GB', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          timeZone: selectedTz
-        });
+        // 3. The viewer's browser later reads that instant back in *their* time zone.
+        // Convert Date -> Instant (cookbook: Date#toTemporalInstant, or
+        // Temporal.Instant.fromEpochMilliseconds(date.getTime())) and project it into the
+        // simulated zone to get the calendar date the viewer actually sees.
+        // No formatToParts() string surgery needed.
+        const viewedDate = legacyDate.toTemporalInstant()
+          .toZonedDateTimeISO(selectedTz)
+          .toPlainDate();
 
-        // Extract day to compare
-        const parts = formatter.formatToParts(dateObj);
-        const day = parts.find(p => p.type === 'day').value;
-        const month = parts.find(p => p.type === 'month').value;
-        const year = parts.find(p => p.type === 'year').value;
-        const currentLocalStr = `${year}-${month}-${day}`;
+        standardDateValue.textContent = viewedDate.toLocaleString('en-GB');
 
-        standardDateValue.textContent = formatter.format(dateObj);
-
-        // Check for Discrepancy against ORIGINAL date
-        const isStandardDrifted = currentLocalStr !== selectedDate;
-
-        if (isStandardDrifted) {
-          standardBadge.textContent = "Drifted!";
-          standardBadge.className = "badge buggy";
-          standardDateItem.style.borderColor = "var(--warning-border)";
-        } else {
-          standardBadge.textContent = "Matches Original";
-          standardBadge.className = "badge safe";
-          standardDateItem.style.borderColor = "transparent";
-        }
+        // 4. Compare calendar dates with .equals(), not reassembled strings.
+        setBadge(standardBadge, standardDateItem, !viewedDate.equals(plainDate));
 
       } catch (error) {
         console.error(error);
         plainDateValue.textContent = "Error";
         standardDateValue.textContent = "Error";
+      }
+    }
+
+    function updateReminder() {
+      const selectedTime = reminderInput.value; // HH:MM
+      const selectedTz = timezoneSelect.value;
+
+      if (!selectedTime) return;
+
+      try {
+        // 1. Temporal.PlainTime: a wall-clock time with no date or time zone attached.
+        const plainTime = Temporal.PlainTime.from(selectedTime);
+        plainTimeValue.textContent = plainTime.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+        // 1b. A PlainTime round-trips exactly, so this never drifts.
+        setBadge(plainTimeBadge, plainTimeItem, !plainTime.equals(selectedTime));
+
+        // 2. Simulate the legacy Date pitfall.
+        // Pinning "9:00 AM" to a date in the user's *current* zone produces one fixed instant.
+        // A fixed mid-January reference date is used (rather than today) so a DST transition
+        // day can't shift the wall-clock time and muddy the "drift only when travelling" point.
+        const homeZone = Temporal.Now.timeZoneId();
+        const referenceDate = Temporal.PlainDate.from('2000-01-15');
+        const storedInstant = referenceDate.toZonedDateTime({ timeZone: homeZone, plainTime }).toInstant();
+        const legacyDate = new Date(storedInstant.epochMilliseconds);
+
+        // 3. When the user travels, that same instant falls at a different wall-clock time.
+        const viewedTime = legacyDate.toTemporalInstant()
+          .toZonedDateTimeISO(selectedTz)
+          .toPlainTime();
+
+        standardTimeValue.textContent = viewedTime.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+        // 4. Compare wall-clock times with .equals().
+        setBadge(standardTimeBadge, standardTimeItem, !viewedTime.equals(plainTime));
+
+      } catch (error) {
+        console.error(error);
+        plainTimeValue.textContent = "Error";
+        standardTimeValue.textContent = "Error";
       }
     }
 

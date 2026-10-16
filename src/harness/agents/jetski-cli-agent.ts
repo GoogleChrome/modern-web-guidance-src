@@ -338,10 +338,6 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
         step_payload?: Uint8Array;
       }>;
 
-      let fileInput = 0;
-      let fileCached = 0;
-      let fileOutput = 0;
-      let fileHasTokens = false;
 
       for (const row of rows) {
         let rowTimestamp: string | undefined;
@@ -355,10 +351,9 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
             const output = (usageNode[USAGE_TAG_OUTPUT] && typeof usageNode[USAGE_TAG_OUTPUT][0] === 'number') ? usageNode[USAGE_TAG_OUTPUT][0] : 0;
             const cached = (usageNode[USAGE_TAG_CACHED] && typeof usageNode[USAGE_TAG_CACHED][0] === 'number') ? usageNode[USAGE_TAG_CACHED][0] : 0;
             if (input > 0 || output > 0 || cached > 0) {
-              fileInput += input;
-              fileCached += cached;
-              fileOutput += output;
-              fileHasTokens = true;
+              totalTokens += input + cached + output;
+              totalCached += cached;
+              hasTokens = true;
             }
           }
         }
@@ -459,12 +454,6 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
             }
           }
         }
-      }
-
-      if (fileHasTokens) {
-        totalTokens += (fileInput + fileCached + fileOutput);
-        totalCached += fileCached;
-        hasTokens = true;
       }
 
       try {

@@ -18,7 +18,6 @@ function makeGuide(name: string, overrides: Partial<GuideInventory> = {}): Guide
     expectationsEmpty: false,
     hasGrader: false,
     hasTask: false,
-    draft: false,
     ...overrides,
   } as GuideInventory;
 }
@@ -39,7 +38,7 @@ describe('planFixes', () => {
 
   it('ignores drafts, incomplete guides, and complete guides', () => {
     const guides = [
-      makeGuide('draft-bool', { draft: true }),
+      makeGuide('draft-wip', { draft: 'wip' }),
       makeGuide('draft-str', { draft: 'blocked' }),
       makeGuide('no-guide', { hasGuide: false }),
       makeGuide('no-expectations', { hasExpectations: false }),

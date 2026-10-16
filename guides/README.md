@@ -78,7 +78,7 @@ To rerun an open `gd pr` PR after editing `guide.md`, `expectations.md`, `task.m
 - Label the PR **`needs-eval-gen`** to delete `targets/<target>/` for the configured target(s), regenerate solutions, tasks, and graders, and re-run evaluations.
 - Label the PR **`needs-eval-run`** to keep existing target evals and re-run calibration, agent evaluations, and report generation.
 
-Separately, `src/ci/expectations-watch.ts` files an "Expectations changed for the \<guide-name\> guide" issue (label `expectations-changed`) whenever a push edits `expectations.md` on a guide that already has evals without updating them.
+Separately, `src/ci/sync-pipeline-issue.ts` maintains the canonical [Content & Eval Pipeline issue (#1815)](https://github.com/GoogleChrome/modern-web-guidance-src/issues/1815), including flagging guides under **Stale evals** whenever `expectations.md` has substantive changes newer than `grader.ts` or `targets/`.
 
 ### Checking Status: `gd audit`
 
