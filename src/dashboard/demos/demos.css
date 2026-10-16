@@ -221,7 +221,7 @@ main {
   transition: border-color 0.15s, box-shadow 0.15s, outline 0.15s;
   /* Skip layout/paint for far-offscreen cards. */
   content-visibility: auto;
-  contain-intrinsic-size: auto 400px;
+  contain-intrinsic-size: auto 422px;
 
   &:hover {
     border-color: var(--demos-border-active);
@@ -242,6 +242,20 @@ main {
   &.showing-unset {
     border-color: rgba(248, 81, 73, 0.5);
   }
+
+  &.expanded {
+    .card-desc {
+      height: auto;
+      display: block;
+      -webkit-line-clamp: unset;
+      overflow: visible;
+    }
+
+    .card-features {
+      height: auto;
+      overflow: visible;
+    }
+  }
 }
 
 @keyframes target-pulse {
@@ -256,10 +270,12 @@ main {
 .card-header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   padding: 8px 12px 10px;
   background: var(--demos-panel);
   border-bottom: 1px solid var(--demos-border);
+  cursor: pointer;
+  user-select: none;
 
   .card-header-top {
     display: flex;
@@ -281,6 +297,7 @@ main {
   }
 
   .card-desc {
+    height: 2.7em;
     font-size: 0.76rem;
     color: var(--demos-text-muted);
     line-height: 1.35;
@@ -288,13 +305,16 @@ main {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    user-select: text;
   }
 
   .card-features {
+    height: 22px;
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 2px;
+    overflow: hidden;
   }
 
   .feature-tag {

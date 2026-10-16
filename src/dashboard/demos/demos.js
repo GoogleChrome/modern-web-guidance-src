@@ -301,31 +301,34 @@ function renderCard(guide) {
   headerTop.append(openLink);
   header.append(headerTop);
 
-  if (guide.description) {
-    const desc = document.createElement('div');
-    desc.className = 'card-desc';
-    desc.textContent = guide.description;
-    desc.title = guide.description;
-    header.append(desc);
-  }
+  const desc = document.createElement('div');
+  desc.className = 'card-desc';
+  desc.textContent = guide.description;
+  desc.title = guide.description;
+  header.append(desc);
 
-  if (guide.features && guide.features.length > 0) {
-    const featWrap = document.createElement('div');
-    featWrap.className = 'card-features';
-    for (const feat of guide.features) {
-      const tag = document.createElement('button');
-      tag.type = 'button';
-      tag.className = 'feature-tag';
-      tag.textContent = feat;
-      tag.title = `Filter by ${feat}`;
-      tag.addEventListener('click', () => {
-        featureFilter.value = featureFilter.value === feat ? '' : feat;
-        applyFilters();
-      });
-      featWrap.append(tag);
-    }
-    header.append(featWrap);
+  const featWrap = document.createElement('div');
+  featWrap.className = 'card-features';
+  for (const feat of guide.features || []) {
+    const tag = document.createElement('button');
+    tag.type = 'button';
+    tag.className = 'feature-tag';
+    tag.textContent = feat;
+    tag.title = `Filter by ${feat}`;
+    tag.addEventListener('click', (e) => {
+      e.stopPropagation();
+      featureFilter.value = featureFilter.value === feat ? '' : feat;
+      applyFilters();
+    });
+    featWrap.append(tag);
   }
+  header.append(featWrap);
+
+  header.addEventListener('click', (e) => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    if (target.closest('button') || target.closest('a')) return;
+    card.classList.toggle('expanded');
+  });
 
   card.append(header, container);
   unloader.observe(card);
