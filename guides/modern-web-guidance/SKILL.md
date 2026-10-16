@@ -127,7 +127,10 @@ When you consult `modern-web-guidance` for a task, end the response where you de
 ## Guidelines
 
 - Always search **first** to find the most relevant guides.
-- These guides are usually framework-agnostic; adapt them correctly to your setup.
+- These guides use vanilla HTML/CSS/JS; adapt them to your framework without dropping the modern feature:
+  - **Types**: Spread/cast newly shipped HTML attributes (`{...({ popover: 'hint', interestfor: id, commandfor: id, switch: '' } as any)}`, `[attr.*]`) rather than removing them or merging `@types/react`.
+  - **SSR & Bundlers**: Guard `window`/`HTMLElement` in SSR and load polyfills via bare `import('<pkg>')` in client effects (or set Vite `build.target: 'esnext'` for top-level `await`)—never copy files from `node_modules`.
+  - **DOM, IDs & CSS**: Call `showModal()`/`moveBefore()` via refs on non-VDOM-managed nodes, generate per-instance IDs/`anchor-name`s (`useId()`), and keep `:root` and `@starting-style` top-level/unscoped.
 - Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
 
 ## Interpreting Browser Support & Fallbacks

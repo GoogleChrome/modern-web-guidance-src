@@ -1,0 +1,1 @@
+- Audit the Daily Grind web app and implement preventative security measures to safely deploy security policies.
