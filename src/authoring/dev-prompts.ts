@@ -179,22 +179,22 @@ export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
   const target = opts.isDisciplineGuide ? 'discipline guidance' : 'use case';
 
   return `# GOAL
-Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the ${target}.
-Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to apply the ${target} inside the application.
+Examine the codebase files of the web application \`${opts.baseApp}\` and read \`${opts.guideFile}\` to understand the ${target}.
+Generate a \`${opts.taskFile}\` file containing a single realistic test prompt that a web developer would send to an AI coding assistant to accomplish this goal in the application.
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Target File Name**: \`${opts.taskFile}\`
 
 # RULES
-1. **Focus on the Guide Description**: The prompt must request the overall desired user outcome based specifically on the **description** in the frontmatter of \`${opts.guideFile}\`, keeping the request simple, high-level, and generic.
-2. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcomes instead.
-3. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the frontmatter description of \`${opts.guideFile}\`.
+1. **Grounded in the Application**: Assume the developer is working on the existing app and reference its real pages, components, and content where relevant. If the feature modifies or enhances an existing layout, component, or behavior already in the app, ask the assistant to upgrade, refactor, or modify those existing parts rather than building an isolated demo from scratch.
+2. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcome instead.
+3. **No Specific Details or Sub-Features**: Keep the request high-level. Do NOT list or specify secondary implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences).
 4. **Format**: Format \`${opts.taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
-5. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant.
-6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "implement X", "modify Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
+5. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant — casual, natural, and direct.
+6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "add X", "can you update Y", "implement Z"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
 7. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.
-8. **No Internal Project References**: Do NOT name the guide itself or indicate that guidance exists.
+8. **No Internal Project References**: Do NOT mention the guide itself, indicate that guidance exists, or refer to the app by its internal template name (\`${opts.baseApp}\`).
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
@@ -233,7 +233,7 @@ Note: \`${REPORT_FILE}\` is already seeded with each target's \`### Evaluation R
 To accurately diagnose failures, understand how \`gd dev\` generates and executes these components:
 1. **Ground Truth**: \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` define the canonical, framework-agnostic implementation and must-pass requirements.
 2. **Patches**: Golden solution diffs and the zero-passrate baseline are generated from \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\`.
-3. **Task Prompt**: \`task.md\` is generated from the \`description\` frontmatter of \`${GUIDE_FILE}\` and the target app's codebase.
+3. **Task Prompt**: \`task.md\` is generated from \`${GUIDE_FILE}\` and the target app's codebase.
 4. **Grader**: \`grader.ts\` validates the requirements in \`${EXPECTATIONS_FILE}\` against the application workspace and is calibrated against the golden patches (must pass 100%) and zero-passrate patch (must fail 100%).
 5. **Agent Evaluation Run**: The agent executes the \`task.md\` prompt against each target app without guidance (\`unguided\`) and with guidance (\`guided\`), and results are verified with \`grader.ts\`.
 

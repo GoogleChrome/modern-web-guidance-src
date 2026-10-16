@@ -3,7 +3,7 @@
 /**
  * @file npx-intercept.template.ts
  * @description This script acts as a shim for `npx` during evaluations.
- * It intercepts calls to `npx -y modern-web-guidance@latest` and redirects them
+ * It intercepts calls to `npx -y modern-web-guidance@latest` or `npx modern-web-guidance` and redirects them
  * to the local build in `dist/skills-cli`, ensuring that agents use the fresh
  * local guides instead of fetching the published package from the npm registry.
  * All other `npx` calls fall back to the real system `npx`.
@@ -16,9 +16,9 @@ import { fileURLToPath } from 'url';
 
 const invokedBin = path.basename(process.argv[1] || 'npx');
 const args = process.argv.slice(2);
-const normalizedArgs = (args[0] === '-y' || args[0] === 'dlx') ? args.slice(1) : args;
+const normalizedArgs = (args[0] === '-y' || args[0] === '--yes' || args[0] === 'dlx') ? args.slice(1) : args;
 
-if (normalizedArgs[0] === 'modern-web-guidance@latest') {
+if (normalizedArgs[0] === 'modern-web-guidance@latest' || normalizedArgs[0] === 'modern-web-guidance') {
   const remainingArgs = normalizedArgs.slice(1);
   const localCliPath = "__LOCAL_CLI_PATH__";
 
@@ -27,7 +27,7 @@ if (normalizedArgs[0] === 'modern-web-guidance@latest') {
   process.exit(result.status ?? 0);
 }
 
-// Fallback to real binary (npx, pnpx, or pnpm)
+// Fallback to real binary (npx, pnpx, pnx, or pnpm)
 const currentDir = fs.realpathSync(path.dirname(fileURLToPath(import.meta.url)));
 
 // Find all matching binaries in PATH
