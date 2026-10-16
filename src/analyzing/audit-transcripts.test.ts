@@ -8,6 +8,7 @@ import {
   auditTranscriptDir,
   auditTranscriptFile,
   checkSplitViolations,
+  detectProcessSignals,
   extractGradingRepos,
   filterStepsSince,
   formatAuditReport,
@@ -19,6 +20,7 @@ import {
   type RepoEntry,
   summarizeModelTiers,
   summarizeToolFriction,
+  type ToolCall,
   type TranscriptStep,
 } from './audit-transcripts.ts';
 
@@ -556,6 +558,74 @@ describe('fail-fast repo loading (no fail-open split audit)', () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('detectProcessSignals', () => {
+  const ROOT = '/repo/.worktrees/analyzer';
+  function steps(...calls: ToolCall[]): TranscriptStep[] {
+    return calls.map((call, i) => ({ step_index: i, type: 'PLANNER_RESPONSE', tool_calls: [call] }));
+  }
+  const signalSummary = (s: TranscriptStep[]): string[] =>
+    detectProcessSignals(s).map((sig) => `${sig.stepIndex}:${sig.kind}`);
+
+  it('flags tool-level edits to PROGRESS.md and findings run artifacts', () => {
+    const s = steps(
+      { name: 'edit_file', args: { Path: `"${ROOT}/analyzer-internal/PROGRESS.md"` } },
+      { name: 'edit_file', args: { Path: `${ROOT}/analyzer-internal/findings/judge-calibration-latest.json` } },
+      { name: 'write_file', args: { Path: `${ROOT}/analyzer-internal/findings/card-telemetry.jsonl` } },
+    );
+    assert.deepStrictEqual(signalSummary(s), [
+      '0:hand-edited-generated-artifact',
+      '1:hand-edited-generated-artifact',
+      '2:hand-edited-generated-artifact',
+    ]);
+  });
+
+  it('does not flag script-written artifacts, hand-written findings reports, or reads', () => {
+    const s = steps(
+      { name: 'run_command', args: { CommandLine: `node src/analyzing/progress-log.ts > ${ROOT}/analyzer-internal/PROGRESS.md` } },
+      { name: 'write_file', args: { Path: `${ROOT}/analyzer-internal/findings/2026-10-16-observer-2.md` } },
+      { name: 'read_file', args: { Path: `${ROOT}/analyzer-internal/findings/card-telemetry.jsonl` } },
+    );
+    assert.deepStrictEqual(signalSummary(s), []);
+  });
+
+  it('flags prompts.ts edits only after the agent itself read labels or disagreement cards', () => {
+    const promptEdit: ToolCall = { name: 'edit_file', args: { Path: `${ROOT}/src/analyzing/prompts.ts` } };
+    const s = steps(
+      promptEdit,
+      { name: 'send_message', args: { Message: 'see analyzer-internal/labels/grades.paulirish.jsonl' } },
+      promptEdit,
+      { name: 'read_file', args: { Path: `${ROOT}/analyzer-internal/findings/2026-10-16-judge-paul-disagreements.md` } },
+      promptEdit,
+    );
+    assert.deepStrictEqual(signalSummary(s), ['4:prompt-edit-after-label-read']);
+  });
+
+  it('flags a run of status polls on one task but not a shorter or interrupted run', () => {
+    const poll = (taskId: string): ToolCall => ({ name: 'manage_task', args: { Action: 'status', TaskId: taskId } });
+    const tenPolls = Array.from({ length: 10 }, () => poll('task-1'));
+    const ninePolls = Array.from({ length: 9 }, () => poll('task-2'));
+    const s = steps(
+      ...tenPolls,
+      ...ninePolls,
+      ...Array.from({ length: 5 }, () => poll('task-3')),
+      { name: 'run_command', args: { CommandLine: 'git status' } },
+      ...Array.from({ length: 5 }, () => poll('task-3')),
+    );
+    assert.deepStrictEqual(signalSummary(s), ['0:polling-loop']);
+  });
+
+  it('includes process signals in the audit report without failing split isolation', () => {
+    const jsonl = JSON.stringify({
+      step_index: 7,
+      type: 'PLANNER_RESPONSE',
+      tool_calls: [{ name: 'edit_file', args: { Path: `${ROOT}/analyzer-internal/PROGRESS.md` } }],
+    });
+    const result = auditTranscript(jsonl, { repos: MOCK_REPOS });
+    assert.strictEqual(result.hasSplitViolation, false);
+    assert.match(formatAuditReport(result), /Step 7 \[hand-edited-generated-artifact\]/);
   });
 });
 

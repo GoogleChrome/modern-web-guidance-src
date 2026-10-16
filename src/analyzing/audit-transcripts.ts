@@ -64,11 +64,31 @@ export interface AuditOptions {
   since?: string;
 }
 
+/**
+ * Process signals are review prompts for the observer, not split violations:
+ * - `hand-edited-generated-artifact`: a tool-level edit to PROGRESS.md or a findings/*.json(l)
+ *   run artifact, which only scripts may write (GEMINI.md, D-020, O29, O36).
+ * - `prompt-edit-after-label-read`: prompts.ts edited after the same agent read Paul's labels or
+ *   judge-vs-Paul disagreement cards, so agreement on those cards becomes in-sample (R31, O35).
+ * - `polling-loop`: a run of consecutive status polls on one background task (O44).
+ */
+export type ProcessSignalKind =
+  | 'hand-edited-generated-artifact'
+  | 'prompt-edit-after-label-read'
+  | 'polling-loop';
+
+export interface ProcessSignal {
+  kind: ProcessSignalKind;
+  stepIndex: number;
+  detail: string;
+}
+
 export interface TranscriptAuditResult {
   transcriptPath: string;
   totalSteps: number;
   violations: SplitViolation[];
   hasSplitViolation: boolean;
+  processSignals: ProcessSignal[];
   toolFriction: ToolFrictionSummary;
   modelTier: ModelTierSummary;
 }
@@ -483,6 +503,78 @@ export function summarizeModelTiers(
   };
 }
 
+const GENERATED_ARTIFACT_PATH = /analyzer-internal\/(?:PROGRESS\.md|findings\/[^"'\s]+\.jsonl?)(?=["'\s]|$)/;
+const PROMPTS_FILE_PATH = /src\/analyzing\/prompts\.ts(?=["'\s]|$)/;
+const CALIBRATION_DATA_PATH = /analyzer-internal\/labels\/|grades\.paulirish\.jsonl|judge-paul-disagreements/;
+const FILE_WRITE_TOOLS = new Set(['edit_file', 'write_file']);
+/** Message tools (invoke_subagent, send_message) only mention paths, so they never count as reads. */
+const DIRECT_READ_TOOLS = new Set(['read_file', 'run_command']);
+/** Consecutive status polls of one background task that count as a polling loop. */
+const POLLING_LOOP_MIN_POLLS = 10;
+
+function stringArg(call: ToolCall, key: string): string {
+  const value = call.args?.[key];
+  return typeof value === 'string' ? value.replace(/^"|"$/g, '') : '';
+}
+
+/**
+ * Flags hand-edited run artifacts, prompt edits made after reading calibration labels,
+ * and status-polling loops. See ProcessSignalKind.
+ */
+export function detectProcessSignals(steps: TranscriptStep[]): ProcessSignal[] {
+  const signals: ProcessSignal[] = [];
+  let firstLabelReadStep: number | undefined;
+  let poll: { taskId: string; startStep: number; count: number } | undefined;
+
+  const endPollRun = (): void => {
+    if (poll && poll.count >= POLLING_LOOP_MIN_POLLS) {
+      signals.push({
+        kind: 'polling-loop',
+        stepIndex: poll.startStep,
+        detail: `${poll.count} consecutive status polls of ${poll.taskId}`,
+      });
+    }
+    poll = undefined;
+  };
+
+  for (const [i, step] of steps.entries()) {
+    const stepIndex = step.step_index ?? i;
+    for (const call of step.tool_calls ?? []) {
+      if (call.name === 'manage_task' && stringArg(call, 'Action') === 'status') {
+        const taskId = stringArg(call, 'TaskId');
+        if (poll?.taskId === taskId) {
+          poll.count++;
+        } else {
+          endPollRun();
+          poll = { taskId, startStep: stepIndex, count: 1 };
+        }
+        continue;
+      }
+      endPollRun();
+
+      const target = stringArg(call, 'Path') || stringArg(call, 'CommandLine');
+      if (DIRECT_READ_TOOLS.has(call.name) && CALIBRATION_DATA_PATH.test(target)) {
+        firstLabelReadStep ??= stepIndex;
+      }
+      if (!FILE_WRITE_TOOLS.has(call.name)) {
+        continue;
+      }
+      if (GENERATED_ARTIFACT_PATH.test(target)) {
+        signals.push({ kind: 'hand-edited-generated-artifact', stepIndex, detail: target });
+      }
+      if (PROMPTS_FILE_PATH.test(target) && firstLabelReadStep !== undefined) {
+        signals.push({
+          kind: 'prompt-edit-after-label-read',
+          stepIndex,
+          detail: `${target} edited after reading calibration labels at step ${firstLabelReadStep}`,
+        });
+      }
+    }
+  }
+  endPollRun();
+  return signals;
+}
+
 /**
  * Keeps only steps created at or after `sinceIso`, so an observer can audit
  * exactly the work since the previous review. Throws on an unparseable bound or a
@@ -539,6 +631,7 @@ export function auditTranscript(
     totalSteps: steps.length,
     violations,
     hasSplitViolation: violations.length > 0,
+    processSignals: detectProcessSignals(steps),
     toolFriction,
     modelTier,
   };
@@ -658,6 +751,13 @@ export function formatAuditReport(result: TranscriptAuditResult): string {
       lines.push(
         `  - Step ${v.stepIndex} [${v.toolName}]: accessed ${detail} -> ${v.target}`,
       );
+    }
+  }
+
+  if (result.processSignals.length > 0) {
+    lines.push(`Process Signals (${result.processSignals.length}):`);
+    for (const s of result.processSignals) {
+      lines.push(`  - Step ${s.stepIndex} [${s.kind}]: ${s.detail}`);
     }
   }
 
