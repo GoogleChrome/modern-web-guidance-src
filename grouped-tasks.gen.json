@@ -298,9 +298,6 @@
       "pull-to-reveal": [
         "task"
       ],
-      "resilient-context-menus-and-nested-dropdowns": [
-        "task"
-      ],
       "scroll-position-aware-elements": [
         "task"
       ],
@@ -314,6 +311,9 @@
         "task"
       ],
       "state-aware-sticky-headers": [
+        "task"
+      ],
+      "viewport-aware-dropdowns": [
         "task"
       ]
     },

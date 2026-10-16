@@ -552,10 +552,6 @@ window.__featuresMapping = {
     "scroll-initial-target",
     "scroll-snap"
   ],
-  "resilient-context-menus-and-nested-dropdowns": [
-    "anchor-positioning",
-    "popover"
-  ],
   "responsive-table": [
     "sticky-positioning",
     "container-queries"
@@ -574,6 +570,10 @@ window.__featuresMapping = {
   ],
   "state-aware-sticky-headers": [
     "container-scroll-state-queries"
+  ],
+  "viewport-aware-dropdowns": [
+    "anchor-positioning",
+    "popover"
   ],
   "2d-panning": [
     "scroll-axis-lock",
