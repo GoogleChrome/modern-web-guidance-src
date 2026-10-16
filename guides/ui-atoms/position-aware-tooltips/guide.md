@@ -22,7 +22,7 @@ By setting `container-type: anchored` on your positioned element, you turn it in
 
 ### 1. Create the tooltip and trigger
 
-Use the Popover API to create a tooltip. This creates an implicit anchor connection that can be used for positioning.
+Use the Popover API to create a tooltip. Invoking the popover via `popovertarget` automatically establishes an **implicit anchor connection** with the trigger button, so no explicit `anchor-name` or `position-anchor` is required.
 
 ```html
 <button popovertarget="tooltip" id="anchor" aria-describedby="tooltip">anchor</button>
