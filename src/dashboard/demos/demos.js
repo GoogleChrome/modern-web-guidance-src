@@ -1,5 +1,7 @@
 // @ts-check
 
+import { $ } from '../utils.js';
+
 /**
  * @typedef {{ id: string; path: string }} DemoFile
  * @typedef {{
@@ -9,6 +11,9 @@
  *   description: string;
  *   features: string[];
  *   demos: DemoFile[];
+ *   searchText: string;
+ *   card: HTMLElement;
+ *   tocLink: HTMLAnchorElement;
  * }} DemoGuide
  */
 
@@ -23,40 +28,17 @@ const SVG_OPEN_IN_NEW = `
   <path fill-rule="evenodd" d="M10.75 1a.75.75 0 0 0 0 1.5h1.69L6.22 8.72a.75.75 0 0 0 1.06 1.06l6.22-6.22v1.69a.75.75 0 0 0 1.5 0V1a.75.75 0 0 0-.75-.75h-4.5zM2.5 3A1.5 1.5 0 0 0 1 4.5v9A1.5 1.5 0 0 0 2.5 15h9a1.5 1.5 0 0 0 1.5-1.5v-4.25a.75.75 0 0 0-1.5 0v4.25a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h4.25a.75.75 0 0 0 0-1.5H2.5z"/>
 </svg>`.trim();
 
-const main = /** @type {HTMLElement} */ (document.getElementById('demos'));
-const tocGrid = /** @type {HTMLElement} */ (document.getElementById('toc-grid'));
-const demoFilter = /** @type {HTMLInputElement} */ (document.getElementById('demo-filter'));
-const featureFilter = /** @type {HTMLInputElement} */ (document.getElementById('feature-filter'));
-const featuresDatalist = /** @type {HTMLDataListElement} */ (document.getElementById('features-datalist'));
-const noResults = /** @type {HTMLElement} */ (document.getElementById('no-results'));
+const main = $('#demos');
+const tocGrid = $('#toc-grid');
+const demoFilter = /** @type {HTMLInputElement} */ ($('#demo-filter'));
+const featureFilter = /** @type {HTMLInputElement} */ ($('#feature-filter'));
+const featuresDatalist = /** @type {HTMLDataListElement} */ ($('#features-datalist'));
+const noResults = $('#no-results');
 
 const resp = await fetch('../demos.gen.json');
 if (!resp.ok) throw new Error(`Failed to load demos.gen.json: ${resp.status}`);
 /** @type {{ guides: DemoGuide[]; features?: string[] }} */
 const { guides, features: manifestFeatures } = await resp.json();
-
-/** @type {Map<string, DemoGuide>} */
-const guideMap = new Map(guides.map(g => [g.id, g]));
-
-// Build feature guide counts and populate autocomplete datalist
-/** @type {Map<string, number>} */
-const featureCounts = new Map();
-for (const guide of guides) {
-  for (const feat of guide.features || []) {
-    featureCounts.set(feat, (featureCounts.get(feat) || 0) + 1);
-  }
-}
-
-const uniqueFeatures = manifestFeatures ?? Array.from(featureCounts.keys()).sort();
-if (featuresDatalist) {
-  for (const feat of uniqueFeatures) {
-    const opt = document.createElement('option');
-    opt.value = feat;
-    const count = featureCounts.get(feat) ?? 0;
-    opt.label = `${count} ${count === 1 ? 'guide' : 'guides'}`;
-    featuresDatalist.append(opt);
-  }
-}
 
 // Loading is native (`loading="lazy"`); the observer only unloads far-offscreen frames and restores them on return.
 const unloader = new IntersectionObserver(entries => {
@@ -66,14 +48,12 @@ const unloader = new IntersectionObserver(entries => {
     const wanted = /** @type {string} */ (card.dataset.src);
     if (isIntersecting && iframe.getAttribute('src') !== wanted) {
       iframe.src = wanted;
-    } else if (!isIntersecting && iframe.dataset.loaded) {
-      delete iframe.dataset.loaded;
+    } else if (!isIntersecting && iframe.getAttribute('src') !== 'about:blank') {
       iframe.src = 'about:blank';
     }
   }
 }, { rootMargin: UNLOAD_MARGIN });
 
-// Observe sections for active TOC highlighting
 const tocObserver = new IntersectionObserver(entries => {
   for (const { target, isIntersecting } of entries) {
     if (isIntersecting) {
@@ -85,7 +65,6 @@ const tocObserver = new IntersectionObserver(entries => {
   }
 }, { rootMargin: '-10% 0px -75% 0px' });
 
-// Group and sort categories alphabetically
 const grouped = Object.groupBy(guides, g => g.category);
 const sortedCategories = Object.keys(grouped).sort();
 
@@ -93,10 +72,8 @@ for (const category of sortedCategories) {
   const group = grouped[category];
   if (!group || group.length === 0) continue;
 
-  // Sort demos within category by id
   group.sort((a, b) => a.id.localeCompare(b.id));
 
-  // Category section in main
   const section = document.createElement('section');
   section.className = 'category';
   section.id = `cat-${category}`;
@@ -112,7 +89,6 @@ for (const category of sortedCategories) {
   main.append(section);
   tocObserver.observe(section);
 
-  // Category column in TOC
   const col = document.createElement('div');
   col.className = 'toc-col';
   col.dataset.category = category;
@@ -132,12 +108,23 @@ for (const category of sortedCategories) {
     a.href = `#${guide.id}`;
     a.textContent = guide.id;
     a.title = guide.description;
+    guide.tocLink = a;
     li.append(a);
     ul.append(li);
   }
 
   col.append(catHeader, ul);
   tocGrid.append(col);
+}
+
+if (featuresDatalist && manifestFeatures) {
+  for (const feat of manifestFeatures) {
+    const count = guides.filter(g => g.features.includes(feat)).length;
+    const opt = document.createElement('option');
+    opt.value = feat;
+    opt.label = `${count} ${count === 1 ? 'guide' : 'guides'}`;
+    featuresDatalist.append(opt);
+  }
 }
 
 function updateActiveHash() {
@@ -152,50 +139,33 @@ updateActiveHash();
 function applyFilters() {
   const textQuery = demoFilter.value.trim().toLowerCase();
   const featQuery = featureFilter.value.trim().toLowerCase();
-
   let totalVisible = 0;
 
-  // Filter cards & main sections
-  const sections = /** @type {NodeListOf<HTMLElement>} */ (main.querySelectorAll('section.category'));
-  for (const section of sections) {
-    let sectionVisible = false;
-    const cards = /** @type {NodeListOf<HTMLElement>} */ (section.querySelectorAll('article.card'));
-    for (const card of cards) {
-      const guide = guideMap.get(card.id);
-      const textMatch = !textQuery || (card.dataset.search ?? '').includes(textQuery);
-      const featMatch = !featQuery || (guide?.features || []).some(f => f.toLowerCase().includes(featQuery));
-      const match = textMatch && featMatch;
-      card.hidden = !match;
+  for (const category of sortedCategories) {
+    let catVisible = false;
+    const group = grouped[category];
+    if (!group) continue;
+
+    for (const guide of group) {
+      const match = (!textQuery || guide.searchText.includes(textQuery)) &&
+                    (!featQuery || guide.features.some(f => f.toLowerCase().includes(featQuery)));
+
+      guide.card.hidden = !match;
+      guide.tocLink.parentElement?.toggleAttribute('hidden', !match);
+
+      for (const tag of guide.card.querySelectorAll('.feature-tag')) {
+        tag.classList.toggle('active', Boolean(featQuery && tag.textContent?.toLowerCase().includes(featQuery)));
+      }
       if (match) {
-        sectionVisible = true;
+        catVisible = true;
         totalVisible++;
       }
-
-      // Highlight active matching feature tags
-      for (const tag of card.querySelectorAll('.feature-tag')) {
-        const tagText = tag.textContent?.toLowerCase() ?? '';
-        tag.classList.toggle('active', Boolean(featQuery && tagText.includes(featQuery)));
-      }
     }
-    section.hidden = !sectionVisible;
-  }
 
-  // Filter TOC links & category columns
-  const cols = /** @type {NodeListOf<HTMLElement>} */ (tocGrid.querySelectorAll('.toc-col'));
-  for (const col of cols) {
-    let colVisible = false;
-    const links = /** @type {NodeListOf<HTMLElement>} */ (col.querySelectorAll('.toc-link'));
-    for (const link of links) {
-      const guideId = link.getAttribute('href')?.slice(1);
-      const guide = guideId ? guideMap.get(guideId) : undefined;
-      const textMatch = !textQuery || (link.textContent?.toLowerCase() ?? '').includes(textQuery) || (link.title?.toLowerCase() ?? '').includes(textQuery);
-      const featMatch = !featQuery || (guide?.features || []).some(f => f.toLowerCase().includes(featQuery));
-      const match = textMatch && featMatch;
-      const parentLi = link.parentElement;
-      if (parentLi) parentLi.hidden = !match;
-      colVisible ||= match;
-    }
-    col.hidden = !colVisible;
+    const section = /** @type {HTMLElement?} */ (document.getElementById(`cat-${category}`));
+    const col = /** @type {HTMLElement?} */ (tocGrid.querySelector(`.toc-col[data-category="${category}"]`));
+    if (section) section.hidden = !catVisible;
+    if (col) col.hidden = !catVisible;
   }
 
   if (noResults) {
@@ -219,11 +189,13 @@ function renderCard(guide) {
   const primaryUrl = `../${primary.path}`;
   const unsetUrl = unsetDemo ? `../${unsetDemo.path}` : '';
 
+  guide.searchText = [guide.id, guide.title, guide.category, guide.description, ...guide.features].join(' ').toLowerCase();
+
   const card = document.createElement('article');
   card.className = 'card';
   card.id = guide.id;
   card.dataset.src = primaryUrl;
-  card.dataset.search = [guide.id, guide.title, guide.category, guide.description, ...guide.features].join(' ').toLowerCase();
+  guide.card = card;
 
   const header = document.createElement('div');
   header.className = 'card-header';
@@ -254,9 +226,6 @@ function renderCard(guide) {
   iframe.setAttribute('sandbox', SANDBOX);
   iframe.title = `${guide.id} demo`;
   iframe.src = primaryUrl;
-  iframe.addEventListener('load', () => {
-    if (iframe.getAttribute('src') !== 'about:blank') iframe.dataset.loaded = 'true';
-  });
   container.append(iframe);
 
   if (unsetDemo) {
@@ -273,7 +242,7 @@ function renderCard(guide) {
 
     const unsetBtn = document.createElement('button');
     unsetBtn.type = 'button';
-    unsetBtn.className = 'toggle-btn';
+    unsetBtn.className = 'toggle-btn unset';
     unsetBtn.textContent = 'unset';
     unsetBtn.setAttribute('aria-pressed', 'false');
 
@@ -281,7 +250,6 @@ function renderCard(guide) {
       demoBtn.classList.toggle('active', !isUnset);
       demoBtn.setAttribute('aria-pressed', String(!isUnset));
       unsetBtn.classList.toggle('active', isUnset);
-      unsetBtn.classList.toggle('unset', isUnset);
       unsetBtn.setAttribute('aria-pressed', String(isUnset));
 
       const targetUrl = isUnset ? unsetUrl : primaryUrl;
@@ -309,7 +277,7 @@ function renderCard(guide) {
 
   const featWrap = document.createElement('div');
   featWrap.className = 'card-features';
-  for (const feat of guide.features || []) {
+  for (const feat of guide.features) {
     const tag = document.createElement('button');
     tag.type = 'button';
     tag.className = 'feature-tag';

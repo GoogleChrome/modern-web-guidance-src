@@ -4,7 +4,7 @@ import path from 'node:path';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { generateDemosManifest, stagePages, formatCategoryTitle } from './generate-manifests.js';
+import { generateDemosManifest, stagePages } from './generate-manifests.js';
 import { rootDir } from '../core/paths.ts';
 
 let tempDir = '';
@@ -17,13 +17,6 @@ before(() => {
 
 after(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
-});
-
-test('formatCategoryTitle', () => {
-    assert.deepEqual(
-        ['css', 'js', 'built-in-ai', 'ui-behaviors', 'visual-design'].map(formatCategoryTitle),
-        ['CSS', 'JavaScript', 'Built-in AI', 'UI Behaviors', 'Visual Design'],
-    );
 });
 
 test('generateDemosManifest lists every guide with a demo.html, primary demo first', () => {
@@ -50,9 +43,15 @@ test('stagePages copies demo assets but not eval sources', () => {
     const stageDir = path.join(tempDir, 'staged');
     stagePages(stageDir, manifestDir);
 
-    for (const f of ['demos/index.html', 'demos/demos.js', 'demos/demos.css', 'demos.gen.json', 'guides/css/animate-to-intrinsic-sizes/demo.html']) {
-        assert.ok(fs.existsSync(path.join(stageDir, f)), `${f} should be staged`);
-    }
+    const expected = [
+        'demos/index.html',
+        'demos/demos.js',
+        'demos/demos.css',
+        'demos.gen.json',
+        'guides/css/animate-to-intrinsic-sizes/demo.html',
+    ];
+    const missing = expected.filter(f => !fs.existsSync(path.join(stageDir, f)));
+    assert.deepEqual(missing, []);
 
     const forbidden = fs.readdirSync(path.join(stageDir, 'guides'), { recursive: true, encoding: 'utf8' })
         .filter(rel => /\.(ts|md|patch)$/.test(rel) || rel.split(path.sep).includes('targets'));

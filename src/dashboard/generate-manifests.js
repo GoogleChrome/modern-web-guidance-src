@@ -110,39 +110,24 @@ export async function generateGroupedTasksManifest(outputDir = defaultOutputDir)
     fs.writeFileSync(outputPath, JSON.stringify({ guides: grouped }, null, 2));
 }
 
-/** @type {Record<string, string>} Category slugs whose title-casing isn't obvious. */
-const CATEGORY_TITLES = {
-    'css': 'CSS',
-    'html': 'HTML',
-    'js': 'JavaScript',
-    'pwa': 'PWA',
-    'webmcp': 'WebMCP',
-    'built-in-ai': 'Built-in AI',
-    'ui-atoms': 'UI Atoms',
-    'ui-behaviors': 'UI Behaviors',
-    'ui-components': 'UI Components',
-};
-
-/**
- * @param {string} slug
- * @returns {string}
- */
-export function formatCategoryTitle(slug) {
-    return CATEGORY_TITLES[slug] ?? slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-}
+const STATIC_WEB_EXTS = new Set([
+    '.html', '.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.json',
+]);
 
 /**
  * Lists a guide dir's demo pages: demo.html first, then demo-*.html variants, then negative-demo.html.
- * @param {string} guideDir absolute path
  * @param {string} relDir path relative to guidesDir
  */
-function listDemoFiles(guideDir, relDir) {
-    const files = fs.readdirSync(guideDir).filter(f => /^(demo|demo-.+|negative-demo)\.html$/.test(f)).sort();
+function listDemoFiles(relDir) {
+    const guideDir = path.join(guidesDir, relDir);
     const rank = (/** @type {string} */ f) => f === 'demo.html' ? 0 : f === 'negative-demo.html' ? 2 : 1;
-    return files.sort((a, b) => rank(a) - rank(b)).map(f => ({
-        id: f.slice(0, -'.html'.length),
-        path: `guides/${relDir.split(path.sep).join('/')}/${f}`,
-    }));
+    return fs.readdirSync(guideDir)
+        .filter(f => /^(demo|demo-.+|negative-demo)\.html$/.test(f))
+        .sort((a, b) => (rank(a) - rank(b)) || a.localeCompare(b))
+        .map(f => ({
+            id: f.slice(0, -'.html'.length),
+            path: `guides/${relDir.split(path.sep).join('/')}/${f}`,
+        }));
 }
 
 /**
@@ -167,11 +152,10 @@ export function generateDemosManifest(outputDir = defaultOutputDir) {
             return {
                 id: path.basename(relDir),
                 category,
-                categoryTitle: formatCategoryTitle(category),
                 title: content.match(/^#\s+(.+)$/m)?.[1].trim() ?? path.basename(relDir),
                 description: String(data.description ?? ''),
                 features,
-                demos: listDemoFiles(guideDir, relDir),
+                demos: listDemoFiles(relDir),
             };
         })
         .sort((a, b) => a.category.localeCompare(b.category) || a.id.localeCompare(b.id));
@@ -182,8 +166,6 @@ export function generateDemosManifest(outputDir = defaultOutputDir) {
     return { guides, features };
 }
 
-const DEMO_ASSET_EXTS = new Set(['.html', '.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.json']);
-
 /**
  * Filter for fs.cpSync: keep demo pages and their static assets; skip eval targets and dotfiles.
  * Empty dirs may be created, but git (and thus gh-pages) ignores them.
@@ -192,7 +174,7 @@ const DEMO_ASSET_EXTS = new Set(['.html', '.css', '.js', '.svg', '.png', '.jpg',
 function isDemoAsset(src) {
     const name = path.basename(src);
     if (name === 'targets' || name.startsWith('.')) return false;
-    return fs.statSync(src).isDirectory() || DEMO_ASSET_EXTS.has(path.extname(name).toLowerCase());
+    return fs.statSync(src).isDirectory() || STATIC_WEB_EXTS.has(path.extname(name).toLowerCase());
 }
 
 /**
@@ -203,11 +185,10 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
     fs.mkdirSync(stageDir, { recursive: true });
 
     // Copy static files from dashboardDir (.html, .js, .css, .svg, .png, etc.)
-    const staticExts = new Set(['.html', '.js', '.css', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico']);
     for (const rel of fs.readdirSync(dashboardDir, { recursive: true, encoding: 'utf8' })) {
         if (rel.endsWith('.test.ts') || rel.endsWith('.spec.js') || path.basename(rel).startsWith('.') || rel.startsWith('mock-results')) continue;
         const ext = path.extname(rel);
-        if (staticExts.has(ext)) {
+        if (STATIC_WEB_EXTS.has(ext)) {
             const dest = path.join(stageDir, rel);
             fs.mkdirSync(path.dirname(dest), { recursive: true });
             fs.copyFileSync(path.join(dashboardDir, rel), dest);

@@ -464,7 +464,7 @@ const server = http.createServer(async (req, res) => {
 
   let filePath;
   // Serve generated manifests from out/dashboard
-  if (decodedPath.includes('.gen.')) {
+  if (path.dirname(decodedPath) === '/' && (decodedPath.endsWith('.gen.json') || decodedPath.endsWith('.gen.js'))) {
     const canonicalName = decodedPath === '/features_mapping.gen.js' ? 'features-mapping.gen.js' : decodedPath.substring(1);
     filePath = path.join(outDir, 'dashboard', canonicalName);
   } else if (decodedPath.startsWith('/base_apps/')) {
