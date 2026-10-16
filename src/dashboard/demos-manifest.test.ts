@@ -47,7 +47,7 @@ test('stagePages copies demo assets but not eval sources', () => {
     const stageDir = path.join(tempDir, 'staged');
     stagePages(stageDir, manifestDir);
 
-    for (const f of ['demos.html', 'demos.js', 'demos.css', 'demos.gen.json', 'guides/css/animate-to-intrinsic-sizes/demo.html']) {
+    for (const f of ['demos/index.html', 'demos/demos.js', 'demos/demos.css', 'demos.gen.json', 'guides/css/animate-to-intrinsic-sizes/demo.html']) {
         assert.ok(fs.existsSync(path.join(stageDir, f)), `${f} should be staged`);
     }
 

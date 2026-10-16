@@ -4,16 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Guide Demos</title>
-  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="../dashboard.css">
   <link rel="stylesheet" href="demos.css">
 </head>
 <body>
   <header class="demos-header">
     <h1>Guide Demos <span id="demo-count" class="muted"></span></h1>
-    <input type="search" id="demo-filter" placeholder="Filter…" autocomplete="off" aria-label="Filter demos">
-    <a href="./" class="muted">← Evals</a>
+    <input type="search" id="demo-filter" placeholder="Filter guides…" autocomplete="off" aria-label="Filter guides">
+    <a href="../" class="muted">← Evals</a>
   </header>
-  <nav id="category-nav" class="category-nav" aria-label="Categories"></nav>
+
+  <nav id="toc" class="toc" aria-label="Table of Contents">
+    <div class="toc-title">Categories</div>
+    <div id="toc-list" class="toc-list"></div>
+  </nav>
+
   <main id="demos"></main>
   <script type="module" src="demos.js"></script>
 </body>

@@ -170,7 +170,7 @@ export function generateDemosManifest(outputDir = defaultOutputDir) {
                 demos: listDemoFiles(guideDir, relDir),
             };
         })
-        .sort((a, b) => a.category.localeCompare(b.category) || a.title.localeCompare(b.title));
+        .sort((a, b) => a.category.localeCompare(b.category) || a.id.localeCompare(b.id));
 
     fs.writeFileSync(path.join(outputDir, 'demos.gen.json'), JSON.stringify({ guides }, null, 2));
     return { guides };
@@ -198,11 +198,13 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
 
     // Copy static files from dashboardDir (.html, .js, .css, .svg, .png, etc.)
     const staticExts = new Set(['.html', '.js', '.css', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico']);
-    for (const file of fs.readdirSync(dashboardDir)) {
-        if (file.endsWith('.test.ts') || file.endsWith('.spec.js') || file.startsWith('.')) continue;
-        const ext = path.extname(file);
+    for (const rel of fs.readdirSync(dashboardDir, { recursive: true, encoding: 'utf8' })) {
+        if (rel.endsWith('.test.ts') || rel.endsWith('.spec.js') || path.basename(rel).startsWith('.') || rel.startsWith('mock-results')) continue;
+        const ext = path.extname(rel);
         if (staticExts.has(ext)) {
-            fs.copyFileSync(path.join(dashboardDir, file), path.join(stageDir, file));
+            const dest = path.join(stageDir, rel);
+            fs.mkdirSync(path.dirname(dest), { recursive: true });
+            fs.copyFileSync(path.join(dashboardDir, rel), dest);
         }
     }
 
