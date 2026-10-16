@@ -11,7 +11,16 @@ guides:
   - resilient-context-menus-and-nested-dropdowns
 ---
 
-# Build an application command menu
+<!-- Baseline best practices to be referenced by any guide that involves a popup menu (dropdown menus, context menus, overflow menus, etc)
+
+Include:
+- subgrid for icons
+- proper keyboard nav
+- safe triangles for submenus
+- converting to drawer on small screens?
+-->
+
+# Build an application menu
 
 Use this pattern for actions that change the current interface, such as creating, saving, or changing preferences. Use ordinary links in a `<nav>` when items take users to destinations; that pattern uses `Tab`, not a menu.
 
@@ -92,177 +101,58 @@ Do not add a second roving-tabindex system inside a focusgroup. Script covers on
 
 The `command` event fires before `toggle-popover` opens the menu, so focus cannot move into the menu there. Move focus in the `toggle` event instead. HTML restores focus only for the first `popover="auto"` in a stack, so nested levels must restore focus to their trigger explicitly.
 
+## How the script works
+
+Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`, wrap-around and `Tab`-to-exit handling is ordinary `keydown` code. A few parts are easy to get wrong:
+
+1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler knows to enter it.
+2. **Preview on focus.** Focusing a trigger calls `showPopover({ source: trigger })` so the menu anchors to it. Ignore focus coming back from inside the trigger's own menu, and hide a previewed menu on `blur` unless focus moved into it.
+3. **Pointer click on a preview.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus and start a preview mid-click. Remember which trigger was pressed. In the `command` handler, a `toggle-popover` from that trigger while the menu is only previewed is the one case to intercept: cancel it and focus the first item.
+4. **Move focus in `toggle`, not `command`.** `command` fires before the menu opens.
+5. **Restore focus to the trigger yourself.** Focus the trigger before `hidePopover()`.
+6. **Close one level at a time.** Call `stopPropagation()` on `Escape` and `ArrowLeft` in a submenu, or the parent's listener closes it too.
+
 ```js
-const rootTriggers = [...document.querySelectorAll('[role="menubar"] > [commandfor]')];
-const triggers = [...document.querySelectorAll('[commandfor]')];
-const menus = [...document.querySelectorAll('[popover]')];
-const status = document.querySelector('#status');
+// 2. Preview: show on focus, anchored to the trigger.
+trigger.addEventListener('focus', event => {
+  if (menu.contains(event.relatedTarget)) return;
+  if (!menu.matches(':popover-open')) menu.showPopover({ source: trigger });
+});
 
-const menuFor = trigger => document.getElementById(trigger.getAttribute('commandfor'));
-const triggerFor = menu => triggers.find(trigger => menuFor(trigger) === menu);
-const isOpen = menu => menu.matches(':popover-open');
-// Previewed: shown by focus while focus stays on the trigger. No item inside it has focus.
-const isPreviewed = menu => menu.matches(':popover-open:not(:focus-within)');
-const rootMenuOf = menu => {
-  const parent = menu.parentElement.closest('[popover]');
-  return parent ? rootMenuOf(parent) : menu;
-};
-const menuItems = menu => [...menu.querySelector(':scope > [focusgroup~="menu"]')
-  .querySelectorAll(':scope > button')]
-  .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
-
-// Menus that should focus their first item once the native toggle opens them.
-const enterOnOpen = new WeakSet();
-// The trigger a pointer pressed, so a pointer click on a preview can enter its menu.
-let pointerTrigger = null;
-
-function focusFirst(menu) {
-  const first = menuItems(menu)[0];
-  if (first && isOpen(menu)) first.focus({ preventScroll: true });
-}
-
-// Focus the trigger before hiding the menu, so focus never stays inside hidden content.
-function closeAndRestore(menu) {
-  triggerFor(menu)?.focus({ preventScroll: true });
-  menu.hidePopover();
-}
-
-function closeAllMenus() {
-  rootTriggers.map(menuFor).filter(isOpen).forEach(menu => menu.hidePopover());
-}
-
-function moveToRootTrigger(from, direction, enterMenu = false) {
-  const index = rootTriggers.indexOf(from);
-  const next = rootTriggers[(index + direction + rootTriggers.length) % rootTriggers.length];
-  rootTriggers.forEach(trigger => { trigger.tabIndex = trigger === next ? 0 : -1; });
-  closeAllMenus();
-  // Focusing the trigger previews its menu; entering it then focuses the first item.
-  next.focus({ preventScroll: true });
-  if (enterMenu) focusFirst(menuFor(next));
-}
-
-// One tab stop for the menubar.
-rootTriggers.forEach((trigger, index) => { trigger.tabIndex = index === 0 ? 0 : -1; });
-
-triggers.forEach(trigger => {
-  const menu = menuFor(trigger);
-
-  trigger.addEventListener('focus', event => {
-    // Focus returning from inside its own menu is not a new intent, so it does not preview.
-    if (menu.contains(event.relatedTarget)) return;
-    // Pass source so the preview anchors to this trigger. Only open here; an open menu is left alone.
-    if (!isOpen(menu)) menu.showPopover({ source: trigger });
-  });
-
-  trigger.addEventListener('blur', event => {
-    if (isPreviewed(menu) && !menu.contains(event.relatedTarget)) menu.hidePopover();
-  });
-
-  // Stop mousedown from moving focus, so a click cannot start a preview mid-click.
-  trigger.addEventListener('pointerdown', event => {
+// 3. A click on a preview enters the menu; everything else is native.
+menu.addEventListener('command', event => {
+  const previewed = menu.matches(':popover-open:not(:focus-within)');
+  if (event.command === 'toggle-popover' && previewed && pointerTrigger === event.source) {
     event.preventDefault();
-    pointerTrigger = trigger;
-  });
-
-  // Tab leaves the menu system rather than moving into the previewed menu that follows the trigger.
-  trigger.addEventListener('keydown', event => {
-    if (event.key === 'Tab') closeAllMenus();
-  });
+    focusFirst(menu);
+  } else if (!menu.matches(':popover-open')) {
+    enterOnOpen.add(menu);
+  }
 });
 
-rootTriggers.forEach(trigger => {
-  const menu = menuFor(trigger);
-  trigger.addEventListener('keydown', event => {
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      event.preventDefault();
-      moveToRootTrigger(trigger, event.key === 'ArrowRight' ? 1 : -1);
-    } else if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      if (isOpen(menu)) focusFirst(menu);
-      else {
-        enterOnOpen.add(menu);
-        trigger.click(); // Keyboard opens route through click: one entry point for every open.
-      }
-    }
-  });
-});
-
-menus.forEach(menu => {
-  // The command event fires before toggle-popover runs. Intercept only a pointer click on a
-  // preview, which enters the menu. Every other activation opens or closes natively.
-  menu.addEventListener('command', event => {
-    if (event.command !== 'toggle-popover') return;
-    const fromPointer = pointerTrigger === event.source;
-    pointerTrigger = null;
-    if (isPreviewed(menu) && fromPointer) {
-      event.preventDefault();
-      focusFirst(menu);
-    } else if (!isOpen(menu)) {
-      enterOnOpen.add(menu);
-    } else {
-      event.source?.focus({ preventScroll: true });
-    }
-  });
-
-  // Toggle runs after the menu is open, so focus can move into it here.
+// 4. Move focus once the menu is open, and keep aria-expanded in sync.
+// Attach this to ALL menus (top-level and submenus), not just top-level triggers.
+allMenus.forEach(menu => {
+  const trigger = triggerFor.get(menu);
   menu.addEventListener('toggle', event => {
-    triggerFor(menu)?.setAttribute('aria-expanded', String(event.newState === 'open'));
+    trigger?.setAttribute('aria-expanded', String(event.newState === 'open'));
     if (event.newState === 'open' && enterOnOpen.delete(menu)) focusFirst(menu);
   });
-
-  menu.addEventListener('keydown', event => {
-    const active = document.activeElement;
-    const parentMenu = menu.parentElement.closest('[popover]');
-    const submenu = active.matches('[commandfor]') ? menuFor(active) : null;
-
-    if (event.key === 'Tab') {
-      // Leave the menu system: close everything and let Tab continue from the trigger.
-      closeAllMenus();
-    } else if ((event.key === 'Home' || event.key === 'End') && menuItems(menu).includes(active)) {
-      event.preventDefault();
-      const items = menuItems(menu);
-      (event.key === 'Home' ? items[0] : items.at(-1)).focus({ preventScroll: true });
-    } else if (event.key === 'ArrowRight' && submenu) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (isOpen(submenu)) focusFirst(submenu);
-      else {
-        enterOnOpen.add(submenu);
-        active.click();
-      }
-    } else if (event.key === 'ArrowRight' && parentMenu) {
-      // From a submenu item without a child submenu, preview the next top-level menu.
-      event.preventDefault();
-      event.stopPropagation();
-      moveToRootTrigger(triggerFor(rootMenuOf(menu)), 1);
-    } else if ((event.key === 'ArrowLeft' && parentMenu) || event.key === 'Escape') {
-      // Close only this level. Stop propagation, or the parent level closes too.
-      event.preventDefault();
-      event.stopPropagation();
-      closeAndRestore(menu);
-    } else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !parentMenu) {
-      event.preventDefault();
-      event.stopPropagation();
-      moveToRootTrigger(triggerFor(menu), event.key === 'ArrowRight' ? 1 : -1, true);
-    }
-  });
-
-  // Activating a command announces it, then closes every open level.
-  menu.addEventListener('click', event => {
-    const item = event.target.closest('[focusgroup~="menu"] > button');
-    if (!item || item.matches('[commandfor]')) return;
-    event.stopPropagation();
-    status.textContent = `${item.textContent.trim()} selected`;
-    closeAndRestore(rootMenuOf(menu));
-  });
 });
 
-// Once focus lands outside the menu system, close every open menu.
-document.addEventListener('focusin', event => {
-  if (!event.target.closest('[popover], [role="menubar"]')) closeAllMenus();
+// 5 and 6. Close one level and restore focus to its trigger.
+submenu.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' && event.key !== 'ArrowLeft') return;
+  event.preventDefault();
+  event.stopPropagation();
+  submenuTrigger.focus();
+  submenu.hidePopover();
 });
 ```
 
+Also close every open menu when focus lands outside the menu system (a document `focusin` listener), and when a command is activated: announce it, then hide the root menu.
+
+The snippets here and in the fallbacks below assume these helpers, which you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `isPreviewed(menu)` (`:popover-open:not(:focus-within)`), `focusFirst(menu)` (focus the first enabled item), `closeAndRestore(menu)` (focus its trigger before calling `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open) and `pointerTrigger` (the trigger last pressed by a pointer).
 Set `aria-expanded` only in the `toggle` listener. It covers preview and open states, and the trigger's `aria-expanded` stays `"true"` while its menu is previewed or open.
 
 ### Submenus
@@ -312,10 +202,10 @@ Each button spans all three columns and inherits the parent's grid via `subgrid`
 
 {# Maintainer note: Use a small capture-phase fallback instead of @microsoft/focusgroup-polyfill, which skips elements inside closed [popover] ancestors, retains references to detached DOM nodes, and misses preventDefault() on arrow keys in older Safari viewports. #}
 
-Keep `focusgroup="menu nomemory"` in the markup. If `Object.hasOwn(HTMLElement.prototype, 'focusGroup')` is false, install Up, Down, Home, and End navigation and set `role="menu"` on each menu container and `role="menuitem"` on its command buttons. Do not install that fallback when native focusgroup is present. Left, Right, preview, open, and close are author script either way.
+Keep `focusgroup="menu nomemory"` in the markup. If `'focusGroup' in HTMLElement.prototype` is false, install Up, Down, Home, and End navigation and set `role="menu"` on each menu container and `role="menuitem"` on its command buttons. Do not install that fallback when native focusgroup is present. Left, Right, preview, open, and close are author script either way.
 
 ```js
-if (!Object.hasOwn(HTMLElement.prototype, 'focusGroup')) {
+if (!('focusGroup' in HTMLElement.prototype)) {
   document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
     group.setAttribute('role', 'menu');
     group.querySelectorAll(':scope > button').forEach(item => {
@@ -369,7 +259,7 @@ The fallback reproduces the native behavior: a pointer click on a preview enters
 
 ```js
 // Invokers are unsupported when the button interface has no commandForElement property.
-if (!Object.hasOwn(HTMLButtonElement.prototype, 'commandForElement')) {
+if (!('commandForElement' in HTMLButtonElement.prototype)) {
   triggers.forEach(trigger => {
     const menu = menuFor(trigger);
     trigger.addEventListener('click', event => {
