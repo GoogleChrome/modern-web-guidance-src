@@ -3,6 +3,9 @@ const DEFAULT_IGNORED_DIRS: ReadonlySet<string> = new Set([
   'dist',
   'build',
   'out',
+  'generated',
+  '_generated',
+  'gen',
   'vendor',
   'third_party',
   'external',
@@ -12,12 +15,17 @@ const DEFAULT_IGNORED_DIRS: ReadonlySet<string> = new Set([
   '.nuxt',
   '.output',
   'bower_components',
+  'jspm_packages',
   'bundle',
   'coverage',
   'tmp',
   'temp',
   'libs',
   'non-npm',
+  'docs',
+  'site',
+  'website',
+  'gh-pages',
 ]);
 
 const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
@@ -26,9 +34,29 @@ const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.bundle.js',
   '.bundle.css',
   '.pack.js',
+  '-opt.js',
+  '.opt.js',
   '.map',
   '.d.ts',
 ];
+
+export const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
+  '.js',
+  '.mjs',
+  '.cjs',
+  '.ts',
+  '.mts',
+  '.cts',
+  '.jsx',
+  '.tsx',
+  '.html',
+  '.htm',
+  '.php',
+  '.vue',
+  '.svelte',
+  '.astro',
+  '.css',
+]);
 
 const MAX_UNMINIFIED_LINE_LENGTH = 5000;
 const LICENSE_HEADER_SCAN_BYTES = 1500;
@@ -57,6 +85,14 @@ export function isVendoredOrGeneratedPath(
     if (ignoredDirs.has(segment)) {
       return true;
     }
+  }
+
+  // Filter generated documentation paths (R24)
+  if (
+    /(?:^|\/)(?:docs|site|website|gh-pages)\//i.test(normalized) ||
+    /(?:^|\/)content\/.*\/docs\//i.test(normalized)
+  ) {
+    return true;
   }
 
   for (const ext of DEFAULT_IGNORED_EXTENSIONS) {
@@ -136,6 +172,15 @@ export function shouldScanFile(
 ): boolean {
   if (isVendoredOrGeneratedPath(relPath, options?.customIgnoredDirs)) {
     return false;
+  }
+
+  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
+  const isPackageJson = normalized.endsWith('package.json');
+  if (!isPackageJson) {
+    const dotIdx = normalized.lastIndexOf('.');
+    if (dotIdx === -1 || !SUPPORTED_SOURCE_EXTENSIONS.has(normalized.slice(dotIdx))) {
+      return false;
+    }
   }
 
   if (content !== undefined) {

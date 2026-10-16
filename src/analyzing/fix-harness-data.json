@@ -1,0 +1,260 @@
+{
+  "seededFixtures": [
+    {
+      "guideId": "animate-element-entry-exit",
+      "filePath": "src/components/modal.css",
+      "originalContent": ".dialog-overlay {\n  display: none;\n  opacity: 0;\n  transition: opacity 0.3s ease;\n}\n.dialog-overlay.open {\n  display: block;\n  opacity: 1;\n}",
+      "noOpPatch": ".dialog-overlay {\n  display: none;\n  opacity: 0;\n  transition: opacity 0.3s ease;\n}\n.dialog-overlay.open {\n  display: block;\n  opacity: 1;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": ".dialog-overlay {\n  opacity: 0;\n  transition: opacity 0.3s ease;\n}\n.dialog-overlay.open {\n  opacity: 1;\n",
+      "goodPatch": ".dialog-overlay {\n  display: none;\n  opacity: 0;\n  transition: opacity 0.3s ease, display 0.3s allow-discrete;\n}\n.dialog-overlay.open {\n  display: block;\n  opacity: 1;\n}\n@starting-style {\n  .dialog-overlay.open {\n    opacity: 0;\n  }\n}"
+    },
+    {
+      "guideId": "individual-transform-properties",
+      "filePath": "src/styles/card.css",
+      "originalContent": ".card:hover {\n  transform: rotate(15deg) scale(1.1);\n  color: #333;\n}",
+      "noOpPatch": ".card:hover {\n  transform: rotate(15deg) scale(1.1);\n  color: #333;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": ".card:hover {\n  color: #333;\n}",
+      "goodPatch": ".card:hover {\n  rotate: 15deg;\n  scale: 1.1;\n  color: #333;\n}"
+    },
+    {
+      "guideId": "resilient-context-menus-and-nested-dropdowns",
+      "filePath": "src/views/menu.html",
+      "originalContent": "<div class=\"dropdown-container\">\n  <button id=\"trigger\">Actions</button>\n  <div class=\"dropdown-menu\" id=\"menu\">\n    <ul>\n      <li><a href=\"/edit\">Edit</a></li>\n      <li><a href=\"/delete\">Delete</a></li>\n    </ul>\n  </div>\n</div>",
+      "noOpPatch": "<div class=\"dropdown-container\">\n  <button id=\"trigger\">Actions</button>\n  <div class=\"dropdown-menu\" id=\"menu\">\n    <ul>\n      <li><a href=\"/edit\">Edit</a></li>\n      <li><a href=\"/delete\">Delete</a></li>\n    </ul>\n  </div>\n</div>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<div class=\"dropdown-container\">\n  <button id=\"trigger\">Actions</button>\n  <div class=\"menu-box\">\n    <ul>\n      <li><a href=\"/edit\">Edit</a></li>\n    </ul>\n  </div>\n</div>",
+      "goodPatch": "<div class=\"dropdown-container\">\n  <button id=\"trigger\" popovertarget=\"menu\">Actions</button>\n  <div popover=\"auto\" class=\"dropdown-menu\" id=\"menu\">\n    <ul>\n      <li><a href=\"/edit\">Edit</a></li>\n      <li><a href=\"/delete\">Delete</a></li>\n    </ul>\n  </div>\n</div>"
+    },
+    {
+      "guideId": "declarative-dialog-popover-control",
+      "filePath": "src/components/toolbar.html",
+      "originalContent": "<div class=\"toolbar\">\n  <button id=\"open-btn\" data-toggle=\"modal\" data-target=\"#my-dialog\">\n    Open Dialog\n  </button>\n  <dialog id=\"my-dialog\">Dialog Content</dialog>\n</div>",
+      "noOpPatch": "<div class=\"toolbar\">\n  <button id=\"open-btn\" data-toggle=\"modal\" data-target=\"#my-dialog\">\n    Open Dialog\n  </button>\n  <dialog id=\"my-dialog\">Dialog Content</dialog>\n</div>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<div class=\"toolbar\">\n  <button id=\"open-btn\">Open Dialog</button>\n  <dialog id=\"my-dialog\">Dialog Content</dialog>\n</div>",
+      "goodPatch": "<div class=\"toolbar\">\n  <button id=\"open-btn\" commandfor=\"my-dialog\" command=\"show-modal\">\n    Open Dialog\n  </button>\n  <dialog id=\"my-dialog\">Dialog Content</dialog>\n</div>"
+    },
+    {
+      "guideId": "autofill-sign-in-form",
+      "filePath": "src/pages/login.html",
+      "originalContent": "<form action=\"/auth/login\" method=\"POST\">\n  <label for=\"username\">Username</label>\n  <input type=\"text\" id=\"username\" name=\"username\">\n  <label for=\"password\">Password</label>\n  <input type=\"password\" id=\"password\" name=\"password\">\n  <button type=\"submit\">Sign In</button>\n</form>",
+      "noOpPatch": "<form action=\"/auth/login\" method=\"POST\">\n  <label for=\"username\">Username</label>\n  <input type=\"text\" id=\"username\" name=\"username\">\n  <label for=\"password\">Password</label>\n  <input type=\"password\" id=\"password\" name=\"password\">\n  <button type=\"submit\">Sign In</button>\n</form>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<form action=\"/auth/login\" method=\"POST\">\n  <label for=\"username\">Username</label>\n  <input type=\"text\" id=\"username\" name=\"username\">\n  <button type=\"submit\">Sign In</button>\n</form>",
+      "goodPatch": "<form action=\"/auth/login\" method=\"POST\">\n  <label for=\"username\">Username</label>\n  <input type=\"text\" id=\"username\" name=\"username\" autocomplete=\"username\">\n  <label for=\"password\">Password</label>\n  <input type=\"password\" id=\"password\" name=\"password\" autocomplete=\"current-password\">\n  <button type=\"submit\">Sign In</button>\n</form>"
+    },
+    {
+      "guideId": "shadow-dom",
+      "filePath": "src/components/card.html",
+      "originalContent": "<my-card>\n  <script type=\"text/template\">\n    <style>.title { font-weight: bold; }</style>\n    <div class=\"title\">Card Title</div>\n    <slot></slot>\n  </script>\n</my-card>",
+      "noOpPatch": "<my-card>\n  <script type=\"text/template\">\n    <style>.title { font-weight: bold; }</style>\n    <div class=\"title\">Card Title</div>\n    <slot></slot>\n  </script>\n</my-card>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<my-card>\n  <div class=\"title\">Card Title</div>\n</my-card>",
+      "goodPatch": "<my-card>\n  <template shadowrootmode=\"open\">\n    <style>.title { font-weight: bold; }</style>\n    <div class=\"title\">Card Title</div>\n    <slot></slot>\n  </template>\n</my-card>"
+    },
+    {
+      "guideId": "customize-scrollbar-color-and-thickness",
+      "filePath": "src/styles/scrollbar.css",
+      "originalContent": ".sidebar::-webkit-scrollbar {\n  width: 8px;\n}\n.sidebar::-webkit-scrollbar-thumb {\n  background: #888;\n}",
+      "noOpPatch": ".sidebar::-webkit-scrollbar {\n  width: 8px;\n}\n.sidebar::-webkit-scrollbar-thumb {\n  background: #888;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": ".sidebar {\n  /* removed webkit scrollbar */\n}",
+      "goodPatch": ".sidebar {\n  scrollbar-width: thin;\n  scrollbar-color: #888 transparent;\n}"
+    },
+    {
+      "guideId": "child-state-based-styling",
+      "filePath": "src/styles/form.css",
+      "originalContent": "input:checked ~ .label-text {\n  font-weight: bold;\n  color: #0070f3;\n}",
+      "noOpPatch": "input:checked ~ .label-text {\n  font-weight: bold;\n  color: #0070f3;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": ".label-text.active {\n  font-weight: bold;\n  color: #0070f3;\n}",
+      "goodPatch": "label:has(input:checked) .label-text {\n  font-weight: bold;\n  color: #0070f3;\n}"
+    },
+    {
+      "guideId": "animate-to-intrinsic-sizes",
+      "filePath": "src/styles/accordion.css",
+      "originalContent": ".accordion-body {\n  max-height: 0;\n  overflow: hidden;\n  transition: max-height 0.35s ease;\n}\n.accordion-body.open {\n  max-height: 800px;\n}",
+      "noOpPatch": ".accordion-body {\n  max-height: 0;\n  overflow: hidden;\n  transition: max-height 0.35s ease;\n}\n.accordion-body.open {\n  max-height: 800px;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": ".accordion-body {\n  height: auto;\n  overflow: hidden;\n}",
+      "goodPatch": ":root {\n  interpolate-size: allow-keywords;\n}\n.accordion-body {\n  height: 0;\n  overflow: hidden;\n  transition: height 0.35s ease;\n}\n.accordion-body.open {\n  height: auto;\n}"
+    },
+    {
+      "guideId": "coordinate-global-events",
+      "filePath": "src/time/schedule.ts",
+      "originalContent": "import moment from 'moment-timezone';\n\nexport function getConferenceTime(dateStr: string, zone: string) {\n  return moment.tz(dateStr, zone).format();\n}",
+      "noOpPatch": "import moment from 'moment-timezone';\n\nexport function getConferenceTime(dateStr: string, zone: string) {\n  return moment.tz(dateStr, zone).format();\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function getConferenceTime(dateStr: string, zone: string) {\n  return new Date(dateStr).toISOString();\n}",
+      "goodPatch": "export function getConferenceTime(dateStr: string, zone: string) {\n  const zdt = Temporal.ZonedDateTime.from(`${dateStr}[${zone}]`);\n  return zdt.toString();\n}"
+    },
+    {
+      "guideId": "manage-recurring-intervals",
+      "filePath": "src/billing/subscription.ts",
+      "originalContent": "export function computeNextBillingDate(currentDate: Date): Date {\n  const next = new Date(currentDate.getTime());\n  next.setMonth(next.getMonth() + 1);\n  return next;\n}",
+      "noOpPatch": "export function computeNextBillingDate(currentDate: Date): Date {\n  const next = new Date(currentDate.getTime());\n  next.setMonth(next.getMonth() + 1);\n  return next;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function computeNextBillingDate(currentDate: Date): Date {\n  return new Date(currentDate.getTime() + 30 * 86400000);\n}",
+      "goodPatch": "export function computeNextBillingDate(currentDate: Date): Date {\n  const isoStr = currentDate.toISOString().slice(0, 10);\n  const plain = Temporal.PlainDate.from(isoStr);\n  const next = plain.add({ months: 1 });\n  return new Date(next.toString());\n}"
+    },
+    {
+      "guideId": "accessible-error-announcement",
+      "filePath": "src/components/error-banner.html",
+      "originalContent": "<div class=\"error-container\" id=\"form-error\">\n  <span class=\"icon\">⚠</span>\n  <span class=\"msg\">Submission failed</span>\n</div>",
+      "noOpPatch": "<div class=\"error-container\" id=\"form-error\">\n  <span class=\"icon\">⚠</span>\n  <span class=\"msg\">Submission failed</span>\n</div>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<div class=\"error-container\">\n  <span class=\"icon\">⚠</span>\n  <span class=\"msg\">Submission failed</span>\n</div>",
+      "goodPatch": "<div class=\"error-container\" id=\"form-error\" aria-live=\"polite\" role=\"alert\">\n  <span class=\"icon\">⚠</span>\n  <span class=\"msg\">Submission failed</span>\n</div>"
+    },
+    {
+      "guideId": "brand-consistent-forms",
+      "filePath": "src/styles/inputs.css",
+      "originalContent": "input[type=\"checkbox\"].branded {\n  filter: hue-rotate(140deg);\n  cursor: pointer;\n}",
+      "noOpPatch": "input[type=\"checkbox\"].branded {\n  filter: hue-rotate(140deg);\n  cursor: pointer;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "input[type=\"checkbox\"].branded {\n  cursor: pointer;\n}",
+      "goodPatch": "input[type=\"checkbox\"].branded {\n  accent-color: #0070f3;\n  cursor: pointer;\n}"
+    },
+    {
+      "guideId": "branded-select-styling",
+      "filePath": "src/styles/select.css",
+      "originalContent": "select.custom-picker {\n  -webkit-appearance: none;\n  appearance: none;\n  background-image: url('/arrow.svg');\n}",
+      "noOpPatch": "select.custom-picker {\n  -webkit-appearance: none;\n  appearance: none;\n  background-image: url('/arrow.svg');\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "select.custom-picker {\n  border: 1px solid #ccc;\n}",
+      "goodPatch": "select.custom-picker {\n  appearance: base-select;\n  background-image: url('/arrow.svg');\n}"
+    },
+    {
+      "guideId": "break-up-long-tasks",
+      "filePath": "src/utils/scheduler.ts",
+      "originalContent": "export async function yieldControl(): Promise<void> {\n  return new Promise((resolve) => setTimeout(resolve, 0));\n}",
+      "noOpPatch": "export async function yieldControl(): Promise<void> {\n  return new Promise((resolve) => setTimeout(resolve, 0));\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export async function yieldControl(): Promise<void> {\n  return Promise.resolve();\n}",
+      "goodPatch": "export async function yieldControl(): Promise<void> {\n  if ('scheduler' in window && 'yield' in scheduler) {\n    await scheduler.yield();\n  } else {\n    await new Promise((resolve) => setTimeout(resolve, 0));\n  }\n}"
+    },
+    {
+      "guideId": "form-fields-automatically-fit-contents",
+      "filePath": "src/styles/textarea.css",
+      "originalContent": "textarea.expanding {\n  min-height: 60px;\n  resize: none;\n  overflow: hidden;\n}",
+      "noOpPatch": "textarea.expanding {\n  min-height: 60px;\n  resize: none;\n  overflow: hidden;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "textarea.expanding {\n  min-height: 60px;\n  resize: vertical;\n}",
+      "goodPatch": "textarea.expanding {\n  field-sizing: content;\n  min-height: 60px;\n  resize: none;\n}"
+    },
+    {
+      "guideId": "ime-safe-enter-submit",
+      "filePath": "src/handlers/chat.ts",
+      "originalContent": "export function handleKeyDown(e: KeyboardEvent, sendMsg: () => void) {\n  if (e.key === 'Enter' && !e.shiftKey) {\n    e.preventDefault();\n    sendMsg();\n  }\n}",
+      "noOpPatch": "export function handleKeyDown(e: KeyboardEvent, sendMsg: () => void) {\n  if (e.key === 'Enter' && !e.shiftKey) {\n    e.preventDefault();\n    sendMsg();\n  }\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function handleKeyDown(e: KeyboardEvent, sendMsg: () => void) {\n  if (e.keyCode === 13) {\n    sendMsg();\n  }\n}",
+      "goodPatch": "export function handleKeyDown(e: KeyboardEvent, sendMsg: () => void) {\n  if (e.isComposing) return;\n  if (e.key === 'Enter' && !e.shiftKey) {\n    e.preventDefault();\n    sendMsg();\n  }\n}"
+    },
+    {
+      "guideId": "stack-drill-down",
+      "filePath": "src/navigation/drilldown.ts",
+      "originalContent": "export function deactivateSubmenu(panel: HTMLElement) {\n  panel.querySelectorAll('*').forEach((el) => {\n    el.setAttribute('tabindex', '-1');\n  });\n  panel.setAttribute('aria-hidden', 'true');\n}",
+      "noOpPatch": "export function deactivateSubmenu(panel: HTMLElement) {\n  panel.querySelectorAll('*').forEach((el) => {\n    el.setAttribute('tabindex', '-1');\n  });\n  panel.setAttribute('aria-hidden', 'true');\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function deactivateSubmenu(panel: HTMLElement) {\n  panel.style.display = 'none';\n}",
+      "goodPatch": "export function deactivateSubmenu(panel: HTMLElement) {\n  panel.inert = true;\n}"
+    },
+    {
+      "guideId": "calculate-event-differentials",
+      "filePath": "src/analytics/differentials.ts",
+      "originalContent": "export function getElapsedDays(start: Date, end: Date): number {\n  return (end.getTime() - start.getTime()) / 86400000;\n}",
+      "noOpPatch": "export function getElapsedDays(start: Date, end: Date): number {\n  return (end.getTime() - start.getTime()) / 86400000;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function getElapsedDays(start: Date, end: Date): number {\n  return 0;\n}",
+      "goodPatch": "export function getElapsedDays(start: Date, end: Date): number {\n  const tStart = Temporal.Instant.fromEpochMilliseconds(start.getTime());\n  const tEnd = Temporal.Instant.fromEpochMilliseconds(end.getTime());\n  return tEnd.since(tStart).total({ unit: 'days' });\n}"
+    },
+    {
+      "guideId": "autofill-address-form",
+      "filePath": "src/checkout/address.html",
+      "originalContent": "<form action=\"/checkout/shipping\" method=\"POST\">\n  <input type=\"text\" name=\"address\" id=\"street\">\n  <input type=\"text\" name=\"zip\" id=\"postal\">\n  <input type=\"text\" name=\"city\" id=\"city\">\n</form>",
+      "noOpPatch": "<form action=\"/checkout/shipping\" method=\"POST\">\n  <input type=\"text\" name=\"address\" id=\"street\">\n  <input type=\"text\" name=\"zip\" id=\"postal\">\n  <input type=\"text\" name=\"city\" id=\"city\">\n</form>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<form action=\"/checkout/shipping\" method=\"POST\">\n  <input type=\"text\" name=\"addr1\">\n  <input type=\"text\" name=\"zipcode\">\n</form>",
+      "goodPatch": "<form action=\"/checkout/shipping\" method=\"POST\">\n  <input type=\"text\" name=\"address\" id=\"street\" autocomplete=\"street-address\">\n  <input type=\"text\" name=\"zip\" id=\"postal\" autocomplete=\"postal-code\">\n  <input type=\"text\" name=\"city\" id=\"city\" autocomplete=\"address-level2\">\n</form>"
+    },
+    {
+      "guideId": "detect-initial-visibility-state",
+      "filePath": "src/analytics/visibility.ts",
+      "originalContent": "let wasHidden = document.visibilityState === 'hidden';\ndocument.addEventListener('visibilitychange', () => {\n  if (wasHidden && document.visibilityState === 'visible') {\n    sendMetric('page_became_visible');\n    wasHidden = false;\n  }\n});",
+      "noOpPatch": "let wasHidden = document.visibilityState === 'hidden';\ndocument.addEventListener('visibilitychange', () => {\n  if (wasHidden && document.visibilityState === 'visible') {\n    sendMetric('page_became_visible');\n    wasHidden = false;\n  }\n});",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "let wasHidden = false;\ndocument.addEventListener('visibilitychange', () => {\n  sendMetric('page_became_visible');\n});",
+      "goodPatch": "const entries = performance.getEntriesByType('visibility-state');\nconst wasInitiallyHidden = entries.length > 0 && entries[0].name === 'hidden';\nif (wasInitiallyHidden) {\n  sendMetric('initially_hidden');\n}"
+    },
+    {
+      "guideId": "adapt-scrollbar-to-contrast-preferences",
+      "filePath": "src/layout/scroll.css",
+      "originalContent": ".custom-scroll {\n  overflow-y: auto;\n  -ms-overflow-style: -ms-autohiding-scrollbar;\n}",
+      "noOpPatch": ".custom-scroll {\n  overflow-y: auto;\n  -ms-overflow-style: -ms-autohiding-scrollbar;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": ".custom-scroll {\n  overflow-y: auto;\n}",
+      "goodPatch": ".custom-scroll {\n  overflow-y: auto;\n  scrollbar-color: auto;\n  scrollbar-width: thin;\n}"
+    },
+    {
+      "guideId": "checkbox",
+      "filePath": "src/styles/checkbox.css",
+      "originalContent": "input[type=\"checkbox\"].fancy-check {\n  opacity: 0;\n  position: absolute;\n}",
+      "noOpPatch": "input[type=\"checkbox\"].fancy-check {\n  opacity: 0;\n  position: absolute;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "input[type=\"checkbox\"].fancy-check {\n  display: inline-block;\n}",
+      "goodPatch": "input[type=\"checkbox\"].fancy-check {\n  accent-color: #2563eb;\n}"
+    },
+    {
+      "guideId": "prevent-page-scroll-under-modal-dialog",
+      "filePath": "src/modal/backdrop.css",
+      "originalContent": "body.modal-open {\n  overflow: hidden;\n  height: 100%;\n}",
+      "noOpPatch": "body.modal-open {\n  overflow: hidden;\n  height: 100%;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "body.modal-open {\n  pointer-events: none;\n}",
+      "goodPatch": ".modal-container {\n  overscroll-behavior: contain;\n}"
+    },
+    {
+      "guideId": "dark-mode",
+      "filePath": "src/themes/dark.css",
+      "originalContent": "@media (prefers-color-scheme: dark) {\n  body {\n    background-color: #121212;\n    color: #f3f3f3;\n  }\n}",
+      "noOpPatch": "@media (prefers-color-scheme: dark) {\n  body {\n    background-color: #121212;\n    color: #f3f3f3;\n  }\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "body {\n  background-color: #222;\n  color: #fff;\n}",
+      "goodPatch": ":root {\n  color-scheme: light dark;\n}\nbody {\n  background-color: light-dark(#ffffff, #121212);\n  color: light-dark(#111111, #f3f3f3);\n}"
+    }
+  ],
+  "modernFeaturePatterns": {
+    "animate-element-entry-exit": "@starting-style\\b|transition-behavior|\\ballow-discrete\\b|transitionBehavior",
+    "individual-transform-properties": "(^|[\\s;{}])(translate|rotate|scale)\\s*:\\s*[^;]+",
+    "resilient-context-menus-and-nested-dropdowns": "\\bpopover\\b|\\bpopovertarget\\b|\\b(showPopover|togglePopover|hidePopover)\\b|anchor-name\\s*:|position-anchor\\s*:|position-area\\s*:|\\b(anchorName|positionAnchor|positionArea)\\b",
+    "declarative-dialog-popover-control": "\\bcommandfor\\b|\\bcommand\\s*=|popovertarget|\\.showModal\\s*\\(|\\.showPopover\\s*\\(|\\.togglePopover\\s*\\(",
+    "autofill-sign-in-form": "autocomplete\\s*=\\s*[\"'](username|current-password|new-password)[\"']",
+    "shadow-dom": "\\bshadowrootmode\\b|<\\s*template\\b",
+    "customize-scrollbar-color-and-thickness": "scrollbar-color\\s*:|scrollbar-width\\s*:",
+    "child-state-based-styling": ":has\\s*\\(",
+    "animate-to-intrinsic-sizes": "interpolate-size\\s*:\\s*allow-keywords|calc-size\\s*\\(",
+    "coordinate-global-events": "\\bTemporal\\.(ZonedDateTime|Instant|Now)\\b|Intl\\.DateTimeFormat\\s*\\([^)]*timeZone",
+    "manage-recurring-intervals": "\\bTemporal\\.(PlainDate|PlainDateTime|ZonedDateTime|Instant|Duration)\\b|\\.add\\s*\\(\\s*\\{[^}]*(months|years)",
+    "accessible-error-announcement": "aria-live\\s*=|role\\s*=\\s*[\"'](alert|status)[\"']|<\\s*output\\b|:user-invalid\\b",
+    "brand-consistent-forms": "accent-color\\s*:",
+    "branded-select-styling": "base-select\\b|::picker\\s*\\(\\s*select\\s*\\)",
+    "break-up-long-tasks": "scheduler\\.yield\\s*\\(",
+    "form-fields-automatically-fit-contents": "field-sizing\\s*:\\s*content|fieldSizing\\s*=\\s*[\"']content[\"']",
+    "ime-safe-enter-submit": "\\b(e|event)\\.isComposing\\b|\\bisComposing\\b",
+    "stack-drill-down": "\\binert\\b",
+    "calculate-event-differentials": "\\bTemporal\\b.*(\\.until|\\.since)|(\\.until|\\.since)\\s*\\(\\s*(Temporal|\\w+)|\\bTemporal\\.(Duration|PlainDate|Instant|ZonedDateTime)\\b",
+    "autofill-address-form": "autocomplete\\s*=\\s*[\"'][^\"']*\\b(street-address|address-line1|address-line2|postal-code|country|address-level1|address-level2)\\b",
+    "detect-initial-visibility-state": "performance\\.getEntriesByType\\s*\\(\\s*['\"]visibility-state['\"]\\s*\\)|VisibilityStateEntry",
+    "adapt-scrollbar-to-contrast-preferences": "scrollbar-color\\s*:|scrollbar-width\\s*:",
+    "checkbox": "accent-color\\s*:|appearance\\s*:\\s*none",
+    "prevent-page-scroll-under-modal-dialog": "overscroll-behavior(-y)?\\s*:\\s*contain|<\\s*dialog\\b",
+    "dark-mode": "color-scheme\\s*:\\s*[^;]*(light\\s+dark|dark\\s+light|dark)\\b|light-dark\\s*\\(",
+    "defer-work-until-scroll-ends": "\\bscrollend\\b",
+    "schedule-tasks-by-priority": "\\bpostTask\\b",
+    "scrollspy": "scroll-target-group|:target-current",
+    "size-aware-styling": "@container\\b|container-type\\s*:"
+  }
+}

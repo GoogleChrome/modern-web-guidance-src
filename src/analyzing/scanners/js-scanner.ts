@@ -2,6 +2,8 @@ import { Project, type SourceFile } from 'ts-morph';
 import ts from 'typescript';
 import type { AnalyzerMatch, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 
+let sharedProject: Project | null = null;
+
 /**
  * Creates an ephemeral in-memory ts-morph Project optimized for AST scanning.
  */
@@ -15,6 +17,23 @@ export function createInMemoryProject(): Project {
       module: ts.ModuleKind.ESNext,
     },
   });
+}
+
+/**
+ * Returns a shared in-memory ts-morph Project instance to avoid repeated Project initialization.
+ */
+export function getSharedInMemoryProject(): Project {
+  if (!sharedProject) {
+    sharedProject = createInMemoryProject();
+  }
+  return sharedProject;
+}
+
+/**
+ * Resets the shared Project instance (useful for test isolation).
+ */
+export function resetSharedInMemoryProject(): void {
+  sharedProject = null;
 }
 
 /**
@@ -49,8 +68,8 @@ export function scanJsSource(
     return { matches: [] };
   }
 
-  // 2. Parse AST using in-memory Project
-  const proj = project ?? createInMemoryProject();
+  // 2. Parse AST using in-memory Project (shared or provided)
+  const proj = project ?? getSharedInMemoryProject();
   const sourceFile = proj.createSourceFile(filePath, fileContent, {
     overwrite: true,
   });

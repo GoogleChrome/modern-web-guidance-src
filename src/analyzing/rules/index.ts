@@ -129,7 +129,7 @@ export const TIER_1_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
 );
 
 /**
- * Tier 2: Zero-FP low-N qualified guides (n < 8, 35/35 = 100.0% precision).
+ * Tier 2: Guides unmeasured under high-N threshold (too few findings: n < 8, 35/35 = 100.0% precision, lower bound unmeasured per R20).
  */
 export const TIER_2_GUIDE_IDS: readonly string[] = [
   'animate-to-intrinsic-sizes',

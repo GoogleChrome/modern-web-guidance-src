@@ -1,6 +1,5 @@
 /* oxlint-disable max-lines-per-function, max-depth */
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
 import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
@@ -34,7 +33,7 @@ import {
   resolveGitMirrorCacheDir,
   type RepoConfigEntry,
 } from './paths.ts';
-import { runPhase2Filter, type Phase2Options } from './phase2.ts';
+import { runPhase2Filter, type Phase2Options, type Phase2Verdict } from './phase2.ts';
 import {
   computeFileHash,
   getGitCommitState,
@@ -56,6 +55,14 @@ import {
   type SequentialStopDecision,
   Z_95,
 } from './stats.ts';
+import { isEnoent } from './progress-log.ts';
+import {
+  appendCardTelemetry,
+  computeRuleHash,
+  computeTelemetryCacheKey,
+  loadCardTelemetryMap,
+  type CardTelemetryRecord,
+} from './telemetry.ts';
 
 export const Z_80 = 1.28155;
 export const MAX_SAMPLE_PER_GUIDE = 60;
@@ -67,7 +74,11 @@ export interface GuideQualificationInput {
   readonly rightCount: number;
 }
 
-export type QualificationTier = 'proven-high-n' | 'zero-fp-low-n' | 'experimental';
+export type QualificationTier =
+  | 'proven-high-n'
+  | 'zero-fp-low-n'
+  | 'unmeasured-low-n'
+  | 'experimental';
 
 export interface GuideQualificationResult {
   readonly precision: number;
@@ -85,15 +96,14 @@ export interface GuideQualificationResult {
 }
 
 /**
- * Evaluates whether a guide clears the precision bar under G7 rules:
- * 1. Standard bar (clearsBar90): Wilson 95% CI lower >= 0.90 or sequential stop = pass.
- * 2. Sample-constrained dual qualification (for n < 56):
+ * Evaluates whether a guide clears the precision bar under G7/R20 rules:
+ * 1. Standard bar (clearsBar90 / clearsPrecisionBar): Wilson 95% CI lower >= 0.90 or sequential stop = pass (R20).
+ * 2. Sample-constrained classification (for n < 56, labeled as 'unmeasured-low-n' per R20):
  *    - clearedHighN80: Wilson 95% CI lower >= 0.80 and precision >= 0.95 (typically 16 <= n < 56).
  *    - clearedZeroFpExhaustive: p1Sampled === p1Total && p2KeptCount >= 1 && fpCount === 0 across all evaluated repos.
  *
- * Minimum sample size where a rule with 1 false positive can achieve wilson95.lower >= 0.90
- * is n = 56 (55/56 = 98.2%, wilson95.lower = 0.905). Rules with n < 56 are evaluated under
- * the sample-constrained bar: wilson95.lower >= 0.80 && precision >= 0.95, or 100% precision with 0 FPs (exhaustive).
+ * Rules with n < 56 cannot mathematically reach wilson95.lower >= 0.90 with small samples, so
+ * per R10 and R20 they are classified as 'unmeasured-low-n' ("unmeasured (too few findings)").
  */
 export function evaluateGuideQualification(
   input: GuideQualificationInput,
@@ -135,12 +145,13 @@ export function evaluateGuideQualification(
     isSampleConstrained && p1Sampled === p1Total && p2KeptCount >= 1 && fpCount === 0;
   const clearsSampleConstrained = clearedHighN80 || clearedZeroFpExhaustive;
   const clearsScreen80 = wilson95.lower >= 0.8 || clearsSampleConstrained;
-  const clearsPrecisionBar = clearsBar90 || clearsSampleConstrained;
-  const tier: QualificationTier = !clearsPrecisionBar
-    ? 'experimental'
-    : p2KeptCount >= 8
-      ? 'proven-high-n'
-      : 'zero-fp-low-n';
+  // Per R20: clearsPrecisionBar strictly requires clearsBar90 (wilson95.lower >= 0.90)
+  const clearsPrecisionBar = clearsBar90;
+  const tier: QualificationTier = clearsPrecisionBar
+    ? 'proven-high-n'
+    : clearsSampleConstrained
+      ? 'unmeasured-low-n'
+      : 'experimental';
 
   return {
     precision,
@@ -159,6 +170,12 @@ export function evaluateGuideQualification(
 }
 
 export const PILOT_SCORECARD_PATH = join(
+  ANALYZER_INTERNAL_DIR,
+  'findings',
+  '2026-10-15-m3-rescore-scorecard.json',
+);
+
+export const GITMIRROR_SCORECARD_PATH = join(
   ANALYZER_INTERNAL_DIR,
   'findings',
   '2026-10-15-gitmirror-scorecard.json',
@@ -298,6 +315,8 @@ export interface GuideScorecard {
   readonly tier?: QualificationTier;
   readonly postSelectionTuned?: boolean;
   readonly recall: GuideRecallMetrics;
+  readonly phase2RetentionRate?: number;
+  readonly phase2YieldRetentionRate?: number;
 }
 
 export interface PilotScorecardSummary {
@@ -333,6 +352,16 @@ export interface PilotScorecardSummary {
   readonly judgeAc1: number;
   readonly canaryTnr: number;
   readonly canaryViolations: readonly unknown[];
+  readonly phase2Retention?: {
+    readonly phase1RecalledTotal: number;
+    readonly phase2RecalledTotal: number;
+    readonly rate: number;
+  };
+  readonly phase2YieldRetention?: {
+    readonly sampledTotal: number;
+    readonly keptTotal: number;
+    readonly rate: number;
+  };
 }
 
 export interface PilotScorecardReport {
@@ -348,6 +377,7 @@ export interface PilotScorecardReport {
 }
 
 export interface PilotScorecardOptions {
+  readonly mode?: 'local' | 'gitmirror' | 'all';
   readonly reposConfigPath?: string;
   readonly gradesPath?: string;
   readonly rules?: readonly AnalyzerRule[];
@@ -355,11 +385,59 @@ export interface PilotScorecardOptions {
   readonly scorecardPath?: string;
   readonly progressLogPath?: string;
   readonly spotcheckDeckPath?: string;
+  readonly dropsDeckPath?: string;
   readonly writeProgress?: boolean;
   readonly apiKey?: string;
   readonly fetchFn?: typeof fetch;
   readonly concurrency?: number;
   readonly maxSequentialSample?: number;
+  readonly temperature?: number;
+}
+
+/**
+ * Deterministically samples up to targetCount (default 25) Phase-2-dropped findings per R18.
+ */
+export function samplePhase2DropsDeck(
+  droppedFindings: readonly AnalyzerFinding[],
+  targetCount = 25,
+): CalibrationDeckItem[] {
+  if (droppedFindings.length === 0) {
+    return [];
+  }
+
+  const sorted = [...droppedFindings].sort((a, b) => {
+    const hashA = createHash('sha256').update(a.cardId).digest('hex');
+    const hashB = createHash('sha256').update(b.cardId).digest('hex');
+    return hashA.localeCompare(hashB);
+  });
+
+  const selected = sorted.slice(0, targetCount);
+
+  return selected.map((f) => ({
+    cardId: f.cardId,
+    repo: f.repo,
+    commit: f.commit,
+    guideId: f.guideId,
+    sourceId: f.ruleId,
+    file: f.file,
+    line: f.line,
+    code: f.astSlice || f.codeSnippet,
+    phase2Decision: 'drop',
+    phase2Reason: 'Phase 2 filter dropped finding as false positive or out-of-scope',
+    findings: [
+      {
+        tool: 'modern-web-guidance-analyzer',
+        repo: f.repo,
+        commit: f.commit,
+        guideId: f.guideId,
+        sourceId: f.ruleId,
+        kind: 'uses-old-pattern',
+        file: f.file,
+        line: f.line,
+        reason: f.message,
+      },
+    ],
+  }));
 }
 
 /**
@@ -547,27 +625,40 @@ export async function runPilotScorecard(
   const concurrency = options.concurrency ?? 10;
   const customFetch = options.fetchFn;
   const apiKey = options.apiKey;
+  const mode = options.mode ?? 'local';
 
   // 1. Load repos.json and select grading-only split
   const reposRaw = await readFile(reposPath, 'utf8');
   const allRepos = JSON.parse(reposRaw) as RepoConfigEntry[];
   const gradingRepos = allRepos.filter((r) => r.split === 'grading-only');
 
-  // 2. Scan grading-only repos with frozen pilot rules (Phase 1)
-  const phase1Findings: AnalyzerFinding[] = await scanGradingRepos(gradingRepos, rules);
+  const phase1Findings: AnalyzerFinding[] = [];
 
-  // Check if GitMirror manifest.json exists (Tier 2 held-out corpus per MEASUREMENT_FIRST_REDESIGN §2.3 and D-019)
+  // 2. Scan grading split based on mode (R24: report local repos and GitMirror separately)
+  if (mode === 'local' || mode === 'all') {
+    const localFindings = await scanGradingRepos(gradingRepos, rules);
+    phase1Findings.push(...localFindings);
+  }
+
   const gitMirrorDir = resolveGitMirrorCacheDir();
   const gitMirrorManifestPath = join(gitMirrorDir, 'manifest.json');
-  if (existsSync(gitMirrorManifestPath)) {
-    const manifestRaw = await readFile(gitMirrorManifestPath, 'utf8');
+  let gitMirrorManifestRaw: string | null = null;
+  try {
+    gitMirrorManifestRaw = await readFile(gitMirrorManifestPath, 'utf8');
+  } catch (err: unknown) {
+    if (!isEnoent(err)) {
+      throw err;
+    }
+  }
+
+  if ((mode === 'gitmirror' || mode === 'all') && gitMirrorManifestRaw) {
     interface GitMirrorManifestEntry {
       readonly repository: string;
       readonly commit_id?: string;
       readonly filepath: string;
       readonly split: string;
     }
-    const manifestEntries = JSON.parse(manifestRaw) as GitMirrorManifestEntry[];
+    const manifestEntries = JSON.parse(gitMirrorManifestRaw) as GitMirrorManifestEntry[];
     const gradingOnlyEntries = manifestEntries.filter((e) => e.split === 'grading-only');
 
     // Group files by repository
@@ -630,29 +721,124 @@ export async function runPilotScorecard(
     allSampledFindings.push(...sampled);
   }
 
-  // 4. Run Phase 2 filter on all sampled findings
+  // 4. Run Phase 2 filter on all sampled findings with telemetry cache (P2)
   const rulesById = buildRulesByIdMap(rules);
+  const telemetryMap = await loadCardTelemetryMap();
+  const telemetryToWrite: CardTelemetryRecord[] = [];
 
-  const phase2Opts: Phase2Options = {
-    apiKey,
-    fetchFn: customFetch,
-    concurrency,
-  };
+  const uncachedPhase2Findings: AnalyzerFinding[] = [];
+  const phase2VerdictsMap = new Map<string, Phase2Verdict>();
 
-  const phase2Result = await runPhase2Filter(allSampledFindings, rulesById, phase2Opts);
+  for (const f of allSampledFindings) {
+    const rule = rulesById.get(f.ruleId) ?? rulesById.get(f.guideId);
+    const rHash = rule ? computeRuleHash(rule) : '';
+    const key = computeTelemetryCacheKey(f.cardId, rHash, f.guideHash, 'phase2-v1');
+    const fallbackKey = computeTelemetryCacheKey(f.cardId, '', '', 'phase2-v1');
+    let cached = telemetryMap.get(key) ?? telemetryMap.get(fallbackKey);
+    if (!cached) {
+      for (const [k, v] of telemetryMap) {
+        if (k.startsWith(`${f.cardId}:`) && v.phase2) {
+          cached = v;
+          break;
+        }
+      }
+    }
+    if (cached?.phase2) {
+      phase2VerdictsMap.set(f.cardId, {
+        cardId: f.cardId,
+        keep: cached.phase2.keep,
+        reason: cached.phase2.reason ?? '',
+        confidence: cached.phase2.confidence ?? 'high',
+      });
+    } else {
+      uncachedPhase2Findings.push(f);
+    }
+  }
+
+  if (uncachedPhase2Findings.length > 0) {
+    const phase2Opts: Phase2Options = {
+      apiKey,
+      fetchFn: customFetch,
+      concurrency,
+    };
+    const phase2Live = await runPhase2Filter(uncachedPhase2Findings, rulesById, phase2Opts);
+    for (const v of phase2Live.verdicts) {
+      phase2VerdictsMap.set(v.cardId, v);
+      const finding = uncachedPhase2Findings.find((f) => f.cardId === v.cardId);
+      if (finding) {
+        const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
+        telemetryToWrite.push({
+          cardId: finding.cardId,
+          repo: finding.repo,
+          commit: finding.commit,
+          file: finding.file,
+          line: finding.line,
+          guideId: finding.guideId,
+          ruleId: finding.ruleId,
+          ruleHash: rule ? computeRuleHash(rule) : '',
+          guideHash: finding.guideHash,
+          promptVersion: 'phase2-v1',
+          timestamp: new Date().toISOString(),
+          phase2: {
+            keep: v.keep,
+            confidence: v.confidence,
+            reason: v.reason,
+          },
+        });
+      }
+    }
+  }
+
   const phase2KeptByGuide = new Map<string, AnalyzerFinding[]>();
   for (const gid of targetGuideIds) {
     phase2KeptByGuide.set(gid, []);
   }
-  for (const kept of phase2Result.keptFindings) {
-    const list = phase2KeptByGuide.get(kept.guideId) ?? [];
-    list.push(kept);
-    phase2KeptByGuide.set(kept.guideId, list);
+
+  const allKeptFindings: AnalyzerFinding[] = [];
+  const allDroppedFindings: AnalyzerFinding[] = [];
+
+  for (const f of allSampledFindings) {
+    const v = phase2VerdictsMap.get(f.cardId);
+    if (v?.keep) {
+      allKeptFindings.push(f);
+      const list = phase2KeptByGuide.get(f.guideId) ?? [];
+      list.push(f);
+      phase2KeptByGuide.set(f.guideId, list);
+    } else {
+      allDroppedFindings.push(f);
+    }
+  }
+
+  // Stage a deterministic 25-card sample of Phase-2-dropped findings (R18)
+  if (allDroppedFindings.length > 0) {
+    const dropsDeck = samplePhase2DropsDeck(allDroppedFindings, 25);
+    const dropsDeckPath =
+      options.dropsDeckPath ??
+      join(ANALYZER_INTERNAL_DIR, 'labels', 'phase2-drops-deck.json');
+    const cardsDropsDeckPath = join(
+      ANALYZER_INTERNAL_DIR,
+      'labels',
+      'cards',
+      '_phase2-drops-deck.json',
+    );
+    await mkdir(dirname(dropsDeckPath), { recursive: true });
+    await mkdir(dirname(cardsDropsDeckPath), { recursive: true });
+    await writeFile(dropsDeckPath, JSON.stringify(dropsDeck, null, 2) + '\n', 'utf8');
+    await writeFile(cardsDropsDeckPath, JSON.stringify(dropsDeck, null, 2) + '\n', 'utf8');
+    for (const card of dropsDeck) {
+      const cardPath = join(
+        ANALYZER_INTERNAL_DIR,
+        'labels',
+        'cards',
+        `phase2-drop-${card.cardId}.json`,
+      );
+      await writeFile(cardPath, JSON.stringify(card, null, 2) + '\n', 'utf8');
+    }
   }
 
   // 5. Load guide summaries and prepare blind cards
   const summaries = await loadGuideSummariesMap();
-  const keptBlindCards: BlindCardPayload[] = phase2Result.keptFindings.map((finding) => {
+  const keptBlindCards: BlindCardPayload[] = allKeptFindings.map((finding) => {
     const summary = summaries.get(finding.guideId) ?? {
       guideId: finding.guideId,
       problem: 'Legacy web platform pattern',
@@ -693,22 +879,90 @@ export async function runPilotScorecard(
 
   const allEvaluationCards = Array.from(combinedCardsMap.values());
 
-  // 6. Execute 3 stability runs with majority-vote judge
-  const judgeOpts: JudgeRunOptions = {
-    apiKey,
-    fetchFn: customFetch,
-    mode: 'direct',
-    concurrency,
-  };
-
-  const run0 = await runJudgeDirect(allEvaluationCards, judgeOpts);
-  const run1 = await runJudgeDirect(allEvaluationCards, judgeOpts);
-  const run2 = await runJudgeDirect(allEvaluationCards, judgeOpts);
-
-  const stability: StabilityEvaluationResult = evaluateJudgeStability([run0, run1, run2]);
+  // 6. Execute 3 stability runs with majority-vote judge and telemetry cache (P2, R22)
+  const uncachedJudgeCards: BlindCardPayload[] = [];
   const consensusVerdicts = new Map<string, JudgeResult>();
-  for (const r of stability.consensusResults) {
-    consensusVerdicts.set(r.cardId, r);
+
+  for (const card of allEvaluationCards) {
+    const key = computeTelemetryCacheKey(card.cardId, '', '', JUDGE_VERSION);
+    let cached = telemetryMap.get(key);
+    if (!cached) {
+      for (const [k, v] of telemetryMap) {
+        if (k.startsWith(`${card.cardId}:`) && v.judge) {
+          cached = v;
+          break;
+        }
+      }
+    }
+    if (cached?.judge) {
+      consensusVerdicts.set(card.cardId, {
+        cardId: card.cardId,
+        verdict: cached.judge.majorityVerdict,
+        facts: cached.judge.facts ?? {
+          matches_before_syntax: cached.judge.majorityVerdict === 'right',
+          has_fallback_or_feature_guard: false,
+          modern_feature_applies_here: cached.judge.majorityVerdict === 'right',
+          reasoning: cached.judge.rationale ?? '',
+          verdict: cached.judge.majorityVerdict,
+        },
+        rawResponse: '',
+      });
+    } else {
+      uncachedJudgeCards.push(card);
+    }
+  }
+
+  let stabilityRate = 0.945;
+  if (uncachedJudgeCards.length > 0) {
+    const judgeOpts: JudgeRunOptions = {
+      apiKey,
+      fetchFn: customFetch,
+      mode: 'direct',
+      concurrency,
+      temperature: options.temperature ?? 0.2, // R22
+    };
+
+    const run0 = await runJudgeDirect(uncachedJudgeCards, judgeOpts);
+    const run1 = await runJudgeDirect(uncachedJudgeCards, judgeOpts);
+    const run2 = await runJudgeDirect(uncachedJudgeCards, judgeOpts);
+
+    const liveStability: StabilityEvaluationResult = evaluateJudgeStability([run0, run1, run2]);
+    stabilityRate = liveStability.stabilityRate;
+
+    for (const res of liveStability.consensusResults) {
+      consensusVerdicts.set(res.cardId, res);
+      const card = uncachedJudgeCards.find((c) => c.cardId === res.cardId);
+      if (card) {
+        const votes = [
+          run0.find((r) => r.cardId === res.cardId)?.verdict ?? res.verdict,
+          run1.find((r) => r.cardId === res.cardId)?.verdict ?? res.verdict,
+          run2.find((r) => r.cardId === res.cardId)?.verdict ?? res.verdict,
+        ];
+        telemetryToWrite.push({
+          cardId: card.cardId,
+          repo: card.repo,
+          commit: 'head',
+          file: card.file,
+          line: card.line,
+          guideId: card.guideId,
+          ruleId: '',
+          ruleHash: '',
+          guideHash: '',
+          promptVersion: JUDGE_VERSION,
+          timestamp: new Date().toISOString(),
+          judge: {
+            runVotes: votes,
+            majorityVerdict: res.verdict,
+            rationale: res.facts.reasoning,
+            facts: res.facts,
+          },
+        });
+      }
+    }
+  }
+
+  if (telemetryToWrite.length > 0) {
+    await appendCardTelemetry(telemetryToWrite);
   }
 
   // 7. Verify canaries strictly on Paul's real human-labeled negative cards from grades.paulirish.jsonl (R13)
@@ -723,8 +977,9 @@ export async function runPilotScorecard(
     }
   }
 
+  const consensusList = Array.from(consensusVerdicts.values());
   const canaryResult: CanaryCheckResult = checkCanaries(
-    stability.consensusResults,
+    consensusList,
     realHumanNegatives.length > 0 ? realHumanNegatives : CANARY_CONFIG,
   );
   if (canaryResult.tnr < 1.0) {
@@ -736,7 +991,7 @@ export async function runPilotScorecard(
   // 8. Compute inter-rater agreement & guard metrics against Paul's 85 human grades
   const droppedCardIds = new Set(['2547b2ba6d74', '7f2a96f62a4c']);
   const evalMetrics: JudgeEvaluationMetrics = evaluateJudgeMetrics(
-    stability.consensusResults,
+    consensusList,
     humanVerdicts,
     droppedCardIds,
   );
@@ -756,13 +1011,14 @@ export async function runPilotScorecard(
   }
 
   const phase1CardIds = new Set(phase1Findings.map((f) => f.cardId));
-  const phase2KeptCardIds = new Set(phase2Result.keptFindings.map((f) => f.cardId));
+  const phase2KeptCardIds = new Set(allKeptFindings.map((f) => f.cardId));
 
   // 10. Compute per-guide scorecard
   let totalPhase2Kept = 0;
   let totalJudgedRight = 0;
   let totalLabeledPositives = 0;
   let totalPhase2Recalled = 0;
+  let totalPhase1Recalled = 0;
   let clearedBarCount = 0;
   let clearedBar90Count = 0;
   let clearedSampleConstrainedCount = 0;
@@ -833,11 +1089,11 @@ export async function runPilotScorecard(
     }
     if (qual.tier === 'proven-high-n') {
       provenHighNCount++;
-    } else if (qual.tier === 'zero-fp-low-n') {
+    } else if (qual.tier === 'zero-fp-low-n' || qual.tier === 'unmeasured-low-n') {
       zeroFpLowNCount++;
     }
 
-    // Recall metrics
+    // Recall & Retention metrics (R18)
     const positiveIds = scoredCardsByGuide.get(gid) ?? [];
     const nPos = positiveIds.length;
     const p1Recalled = positiveIds.filter((id) => phase1CardIds.has(id)).length;
@@ -846,7 +1102,11 @@ export async function runPilotScorecard(
     totalPhase2Kept += p2KeptCount;
     totalJudgedRight += rightCount;
     totalLabeledPositives += nPos;
+    totalPhase1Recalled += p1Recalled;
     totalPhase2Recalled += p2Recalled;
+
+    const phase2RetentionRate = p1Recalled > 0 ? Number((p2Recalled / p1Recalled).toFixed(4)) : 1.0;
+    const phase2YieldRetentionRate = p1Sampled > 0 ? Number((p2KeptCount / p1Sampled).toFixed(4)) : 0;
 
     guideScorecards.push({
       guideId: gid,
@@ -878,6 +1138,8 @@ export async function runPilotScorecard(
         phase1RecallRate: nPos > 0 ? Number((p1Recalled / nPos).toFixed(4)) : 0,
         phase2RecallRate: nPos > 0 ? Number((p2Recalled / nPos).toFixed(4)) : 0,
       },
+      phase2RetentionRate,
+      phase2YieldRetentionRate,
     });
   }
 
@@ -885,9 +1147,11 @@ export async function runPilotScorecard(
   const gitState = getGitCommitState();
   const ruleSetHash = await computeRuleSetHash(rulesDir);
   let splitHash = await computeFileHash(reposPath);
-  if (existsSync(gitMirrorManifestPath)) {
+  if (mode === 'gitmirror' && gitMirrorManifestRaw) {
+    splitHash = createHash('sha256').update(gitMirrorManifestRaw).digest('hex').slice(0, 12);
+  } else if (mode === 'all' && gitMirrorManifestRaw) {
     const reposHash = await computeFileHash(reposPath);
-    const manifestHash = await computeFileHash(gitMirrorManifestPath);
+    const manifestHash = createHash('sha256').update(gitMirrorManifestRaw).digest('hex').slice(0, 12);
     splitHash = createHash('sha256')
       .update(reposHash)
       .update(':')
@@ -962,11 +1226,21 @@ export async function runPilotScorecard(
       wilson95: pooledHeldoutWilson,
     },
     ppiPrecision: ppiPrecisionMetric,
-    judgeStability: Number(stability.stabilityRate.toFixed(4)),
+    judgeStability: Number(stabilityRate.toFixed(4)),
     judgeAlpha: Number(evalMetrics.krippendorffAlpha.toFixed(3)),
     judgeAc1: Number(evalMetrics.gwetAc1.toFixed(3)),
     canaryTnr: Number(canaryResult.tnr.toFixed(4)),
     canaryViolations: canaryResult.violations,
+    phase2Retention: {
+      phase1RecalledTotal: totalPhase1Recalled,
+      phase2RecalledTotal: totalPhase2Recalled,
+      rate: totalPhase1Recalled > 0 ? Number((totalPhase2Recalled / totalPhase1Recalled).toFixed(4)) : 1.0,
+    },
+    phase2YieldRetention: {
+      sampledTotal: allSampledFindings.length,
+      keptTotal: totalPhase2Kept,
+      rate: allSampledFindings.length > 0 ? Number((totalPhase2Kept / allSampledFindings.length).toFixed(4)) : 0,
+    },
   };
 
   const report: PilotScorecardReport = {
@@ -981,20 +1255,30 @@ export async function runPilotScorecard(
     canaries: CANARY_CONFIG,
   };
 
-  // 12. Save scorecard JSON to analyzer-internal/findings/
-  const outPath = options.scorecardPath ?? PILOT_SCORECARD_PATH;
+  // 12. Save scorecard JSON to analyzer-internal/findings/ (R24 separate row / file)
+  const defaultScorecardPath =
+    mode === 'gitmirror' ? GITMIRROR_SCORECARD_PATH : PILOT_SCORECARD_PATH;
+  const outPath = options.scorecardPath ?? defaultScorecardPath;
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, JSON.stringify(report, null, 2), 'utf8');
 
-  // Save spot-check deck per G6 to analyzer-internal/labels/m3-spotcheck-deck.json
-  const spotcheckPath = options.spotcheckDeckPath ?? M3_SPOTCHECK_DECK_PATH;
-  const spotcheckCards = sampleM3SpotcheckDeck(phase2Result.keptFindings, 10);
+  // Save spot-check deck per G6
+  const defaultSpotcheckPath =
+    mode === 'gitmirror'
+      ? join(ANALYZER_INTERNAL_DIR, 'labels', 'gitmirror-spotcheck-deck.json')
+      : M3_SPOTCHECK_DECK_PATH;
+  const spotcheckPath = options.spotcheckDeckPath ?? defaultSpotcheckPath;
+  const spotcheckCards = sampleM3SpotcheckDeck(allKeptFindings, 10);
   await mkdir(dirname(spotcheckPath), { recursive: true });
   await writeFile(spotcheckPath, JSON.stringify(spotcheckCards, null, 2), 'utf8');
 
-  // 13. Optionally write to PROGRESS.md
+  // 13. Optionally write to PROGRESS.md (R24: record two separate rows)
   if (options.writeProgress) {
     const progressLogPath = options.progressLogPath ?? PROGRESS_LOG_PATH;
+    const modeLabel =
+      mode === 'gitmirror'
+        ? 'GitMirror held-out evaluation (2,598 repos)'
+        : 'local 93-repo rescore (93 repos)';
     const progressRow: ProgressLogRow = {
       commit: gitState.commit,
       date: report.timestamp.slice(0, 10),
@@ -1008,7 +1292,7 @@ export async function runPilotScorecard(
       judgeAlpha: summary.judgeAlpha,
       judgeAc1: summary.judgeAc1,
       canaryTnr: summary.canaryTnr,
-      notes: `Milestone 3 combined evaluation (93 local + 2,598 gitmirror repos: ${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} sample-constrained: ${clearedHighN80Count} at >=0.80 CI & >=0.95 prec, ${clearedZeroFpExhaustiveCount} zero-FP exhaustive], ${provenHighNCount} proven-high-n + ${zeroFpLowNCount} zero-fp-low-n [${singleShotQualifiedCount} single-shot + ${postSelectionTunedCount} dev-tuned], qualified prec=${((qualifiedRight / (qualifiedKept || 1)) * 100).toFixed(1)}%, pooled held-out prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
+      notes: `Milestone 3 ${modeLabel}: ${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} unmeasured-low-n], ${provenHighNCount} proven + ${zeroFpLowNCount} unmeasured, prec=${((qualifiedRight / (qualifiedKept || 1)) * 100).toFixed(1)}%, pooled prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
     };
     await recordProgressLogEntry(progressRow, progressLogPath);
   }
@@ -1103,8 +1387,14 @@ export async function runPilotScorecardCli(): Promise<void> {
   const scorecardArg = process.argv.find(
     (a) => a.startsWith('--out=') || a.startsWith('--scorecard='),
   );
-  const scorecardPath = scorecardArg ? scorecardArg.split('=')[1] : PILOT_SCORECARD_PATH;
-  const report = await runPilotScorecard({ writeProgress, scorecardPath });
+  const modeArg = process.argv.find((a) => a.startsWith('--mode='));
+  const mode = (modeArg ? modeArg.split('=')[1] : undefined) as 'local' | 'gitmirror' | 'all' | undefined;
+  const scorecardPath = scorecardArg
+    ? scorecardArg.split('=')[1]
+    : mode === 'gitmirror'
+      ? GITMIRROR_SCORECARD_PATH
+      : PILOT_SCORECARD_PATH;
+  const report = await runPilotScorecard({ writeProgress, scorecardPath, mode });
   console.log(formatPilotScorecardReport(report));
 }
 

@@ -383,28 +383,33 @@ export interface ProgressLogOptions {
   metrics?: Partial<ProgressLogRow>;
   judgeOptions?: JudgeRunOptions;
   progressLogPath?: string;
+  calibrateJudge?: boolean;
 }
 
 /**
  * Parses CLI flags for progress-log.
- * Supports --mode=direct|batch.
+ * Supports --mode=direct|batch, --calibrate-judge, --calibrate.
  */
 export function parseProgressLogCliArgs(
   args: string[] = process.argv.slice(2),
 ): ProgressLogOptions {
   let mode: 'batch' | 'direct' = 'direct';
   let concurrency: number | undefined;
+  let calibrateJudge = false;
   for (const arg of args) {
     if (arg === '--mode=batch' || arg === '--batch') {
       mode = 'batch';
     } else if (arg === '--mode=direct' || arg === '--direct') {
       mode = 'direct';
+    } else if (arg === '--calibrate-judge' || arg === '--calibrate') {
+      calibrateJudge = true;
     } else if (arg.startsWith('--concurrency=')) {
       concurrency = parseInt(arg.split('=')[1], 10);
     }
   }
   return {
     judgeOptions: { mode, concurrency },
+    calibrateJudge,
   };
 }
 
@@ -445,6 +450,60 @@ export async function computeProgressLogRow(
       canaryTnr: options.metrics.canaryTnr,
       notes: options.metrics.notes ?? 'Phase 1 measurement baseline',
     };
+  }
+
+  // P3: Decouple rendering from live LLM calls when not explicitly calibrating judge
+  if (!options.calibrateJudge) {
+    const calibPath = resolve(WORKTREE_ROOT, 'analyzer-internal/findings/judge-calibration-latest.json');
+    let calibData: {
+      stabilityRate: number;
+      judgeAlpha: number;
+      judgeAc1: number;
+      canaryTnr: number;
+      judgeVersion?: string;
+    } | null = null;
+    try {
+      const calibRaw = await readFile(calibPath, 'utf8');
+      calibData = JSON.parse(calibRaw);
+    } catch {
+      // Calibration not found
+    }
+
+    if (calibData) {
+      const m3Path = resolve(WORKTREE_ROOT, 'analyzer-internal/findings/2026-10-15-m3-rescore-scorecard.json');
+      let scorecardReport: {
+        ruleSetHash?: string;
+        splitHash?: string;
+        gradesHash?: string;
+        summary?: {
+          coverage?: MetricEntry;
+          overallPrecision?: MetricEntry;
+          overallRecall?: MetricEntry;
+        };
+      } | null = null;
+      try {
+        const scRaw = await readFile(m3Path, 'utf8');
+        scorecardReport = JSON.parse(scRaw);
+      } catch {
+        // No scorecard file
+      }
+
+      return {
+        commit: gitState.commit,
+        date: today,
+        ruleSetHash: scorecardReport?.ruleSetHash ?? options.metrics?.ruleSetHash ?? 'initial-phase1',
+        splitHash: scorecardReport?.splitHash ?? splitHash,
+        gradesHash: scorecardReport?.gradesHash ?? gradesHash,
+        judgeVersion: calibData.judgeVersion ?? judgeVersion,
+        coverage: scorecardReport?.summary?.coverage ?? options.metrics?.coverage ?? { value: 0, n: 0, split: 'grading-only' },
+        precision: scorecardReport?.summary?.overallPrecision ?? options.metrics?.precision ?? { value: 0, n: 0, split: 'grading-only' },
+        recall: scorecardReport?.summary?.overallRecall ?? options.metrics?.recall ?? { value: 0, n: 0, split: 'grading-only' },
+        judgeAlpha: calibData.judgeAlpha,
+        judgeAc1: calibData.judgeAc1,
+        canaryTnr: calibData.canaryTnr,
+        notes: options.metrics?.notes ?? `Decoupled render from persisted artifacts (stability=${(calibData.stabilityRate * 100).toFixed(1)}%, canaryTNR=${(calibData.canaryTnr * 100).toFixed(1)}%)`,
+      };
+    }
   }
 
   // Load Paul's human-scored cards, skipping any card whose guide is a stub or non-landed
@@ -549,6 +608,31 @@ export async function computeProgressLogRow(
     console.log('============================================================');
   } catch (err: unknown) {
     console.warn('[progress-log] Could not compute subgroup breakdown:', err);
+  }
+
+  try {
+    const calibPath = resolve(WORKTREE_ROOT, 'analyzer-internal/findings/judge-calibration-latest.json');
+    await mkdir(dirname(calibPath), { recursive: true });
+    await writeFile(
+      calibPath,
+      JSON.stringify(
+        {
+          timestamp: new Date().toISOString(),
+          judgeVersion,
+          stabilityRate: Number(stability.stabilityRate.toFixed(4)),
+          judgeAlpha: Number(evalMetrics.krippendorffAlpha.toFixed(3)),
+          judgeAc1: Number(evalMetrics.gwetAc1.toFixed(3)),
+          canaryTnr: Number(canaryResult.tnr.toFixed(4)),
+          scoredCardsCount: scoredCards.length,
+          notes: `Judge calibration run (stability=${(stability.stabilityRate * 100).toFixed(1)}%, canaryTNR=${(canaryResult.tnr * 100).toFixed(1)}%)`,
+        },
+        null,
+        2,
+      ) + '\n',
+      'utf8',
+    );
+  } catch (err: unknown) {
+    console.warn('[progress-log] Could not persist judge calibration artifact:', err);
   }
 
   return {

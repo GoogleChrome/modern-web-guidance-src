@@ -123,6 +123,29 @@ describe('blind card formatting & request construction', () => {
     assert.doesNotMatch(prompt, /- Keep when:/);
     assert.doesNotMatch(prompt, /- Drop when/);
   });
+
+  it('only presents markdownBody when present and avoids injecting brownfield rubric (R11, R19)', () => {
+    const cardWithMarkdown = {
+      cardId: 'card-pure-guide-001',
+      repo: 'test-repo',
+      file: 'src/login.html',
+      line: 10,
+      guideId: 'autofill-sign-in-form',
+      guideSummary: {
+        guideId: 'autofill-sign-in-form',
+        problem: 'Sign-in form lacks autocomplete',
+        before: '<input type="password">',
+        now: '<input autocomplete="current-password">',
+        markdownBody: '# Autofill Sign-in Form\n\nEnsure autocomplete="username" and "current-password".',
+      },
+      codeSnippet: '<input type="text" name="user">',
+    };
+
+    const prompt = formatBlindCardPrompt(cardWithMarkdown);
+    assert.match(prompt, /## Modern Web Guidance Guide \(autofill-sign-in-form\)/);
+    assert.match(prompt, /Ensure autocomplete="username" and "current-password"/);
+    assert.doesNotMatch(prompt, /## Brownfield Workarounds Target/);
+  });
 });
 
 describe('parseJudgeJsonContent', () => {
@@ -143,11 +166,18 @@ describe('parseJudgeJsonContent', () => {
     assert.equal(result.facts.modern_feature_applies_here, true);
   });
 
-  it('handles malformed or non-JSON output gracefully without throwing', () => {
-    const result = parseJudgeJsonContent('Not valid JSON at all', 'card-002');
-    assert.equal(result.cardId, 'card-002');
-    assert.equal(result.verdict, 'unsure');
-    assert.match(result.facts.reasoning, /JSON parse error/);
+  it('throws an error on malformed or non-JSON output per Fail Fast (R22)', () => {
+    assert.throws(
+      () => parseJudgeJsonContent('Not valid JSON at all', 'card-002'),
+      /not valid JSON/i,
+    );
+  });
+
+  it('throws an error on JSON output missing required schema fields per Fail Fast (R22)', () => {
+    assert.throws(
+      () => parseJudgeJsonContent(JSON.stringify({ verdict: 'right' }), 'card-003'),
+      /does not match schema/i,
+    );
   });
 });
 

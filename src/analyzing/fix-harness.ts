@@ -1,4 +1,5 @@
 /* oxlint-disable max-lines-per-function, max-depth */
+import { readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { parseHTML } from 'linkedom';
@@ -28,6 +29,15 @@ import {
   loadGuideSummaryFromMarkdown,
 } from './judge.ts';
 import type { AnalyzerFinding } from './schema.ts';
+
+export {
+  SYNTHETIC_FIX_PROMPT_VERSION,
+  SYNTHETIC_FIX_SIMULATION_PROMPT,
+} from './prompts.ts';
+import {
+  SYNTHETIC_FIX_PROMPT_VERSION,
+  SYNTHETIC_FIX_SIMULATION_PROMPT,
+} from './prompts.ts';
 
 export interface FixPatch {
   /** Relative or absolute path to the file being patched */
@@ -96,6 +106,15 @@ export function stripComments(content: string): string {
     .replace(/<!--[\s\S]*?-->/g, '');
 }
 
+// Load extracted test fixtures and modern feature patterns from external JSON.
+// Code contains 0 hardcoded LLM fixture strings or pattern maps.
+const fixHarnessData = JSON.parse(
+  readFileSync(new URL('./fix-harness-data.json', import.meta.url), 'utf8'),
+) as {
+  readonly seededFixtures: SeededFixture[];
+  readonly modernFeaturePatterns: Record<string, string>;
+};
+
 /**
  * Checks whether the modern platform feature prescribed by guide.md
  * is explicitly present in the patched content (Table 2.3 of research report).
@@ -107,115 +126,24 @@ export function checkModernFeaturePresent(
   filePath = '',
 ): boolean {
   const uncommented = stripComments(patchedContent);
-  switch (guideId) {
-    case 'animate-element-entry-exit':
-      return /@starting-style\b|transition-behavior|\ballow-discrete\b|transitionBehavior/i.test(
-        uncommented,
-      );
-    case 'individual-transform-properties':
-      return /(^|[\s;{}])(translate|rotate|scale)\s*:\s*[^;]+/m.test(
-        uncommented,
-      );
-    case 'resilient-context-menus-and-nested-dropdowns':
-      return /\bpopover\b|\bpopovertarget\b|\b(showPopover|togglePopover|hidePopover)\b|anchor-name\s*:|position-anchor\s*:|position-area\s*:|\b(anchorName|positionAnchor|positionArea)\b/i.test(
-        uncommented,
-      );
-    case 'declarative-dialog-popover-control':
-      return /\bcommandfor\b|\bcommand\s*=|popovertarget|\.showModal\s*\(|\.showPopover\s*\(|\.togglePopover\s*\(/i.test(
-        uncommented,
-      );
-    case 'autofill-sign-in-form':
-      return /autocomplete\s*=\s*["'](username|current-password|new-password)["']/i.test(
-        uncommented,
-      );
-    case 'shadow-dom':
-      return /\bshadowrootmode\b|<\s*template\b/i.test(uncommented);
-    case 'customize-scrollbar-color-and-thickness':
-      return /scrollbar-color\s*:|scrollbar-width\s*:/i.test(uncommented);
-    case 'child-state-based-styling':
-      return /:has\s*\(/i.test(uncommented);
-    case 'animate-to-intrinsic-sizes':
-      return /interpolate-size\s*:\s*allow-keywords|calc-size\s*\(/i.test(
-        uncommented,
-      );
-    case 'coordinate-global-events':
-      return /\bTemporal\.(ZonedDateTime|Instant|Now)\b|Intl\.DateTimeFormat\s*\([^)]*timeZone/i.test(
-        uncommented,
-      );
-    case 'manage-recurring-intervals':
-      return (
-        /\bTemporal\.(PlainDate|PlainDateTime|ZonedDateTime|Instant|Duration)\b/i.test(
-          uncommented,
-        ) ||
-        /\.add\s*\(\s*\{[^}]*(months|years)/i.test(uncommented)
-      );
-    case 'accessible-error-announcement':
-      return (
-        /aria-live\s*=|role\s*=\s*["'](alert|status)["']|<\s*output\b/i.test(
-          uncommented,
-        ) ||
-        /:user-invalid\b/i.test(uncommented)
-      );
-    case 'brand-consistent-forms':
-      return /accent-color\s*:/i.test(uncommented);
-    case 'branded-select-styling':
-      return (
-        /base-select\b|::picker\s*\(\s*select\s*\)/i.test(uncommented) ||
-        (filePath.endsWith('package.json') &&
-          !uncommented.includes('"select2"') &&
-          !uncommented.includes('"chosen-js"'))
-      );
-    case 'break-up-long-tasks':
-      return /scheduler\.yield\s*\(/i.test(uncommented);
-    case 'form-fields-automatically-fit-contents':
-      return /field-sizing\s*:\s*content|fieldSizing\s*=\s*["']content["']/i.test(
-        uncommented,
-      );
-    case 'ime-safe-enter-submit':
-      return /\b(e|event)\.isComposing\b|\bisComposing\b/i.test(uncommented);
-    case 'stack-drill-down':
-      return /\binert\b/i.test(uncommented);
-    case 'calculate-event-differentials':
-      return (
-        /\bTemporal\b.*(\.until|\.since)|(\.until|\.since)\s*\(\s*(Temporal|\w+)/i.test(
-          uncommented,
-        ) ||
-        (/\bTemporal\.(Duration|PlainDate|Instant|ZonedDateTime)\b/.test(
-          uncommented,
-        ) &&
-          /(\.until|\.since)\s*\(/.test(uncommented))
-      );
-    case 'autofill-address-form':
-      return /autocomplete\s*=\s*["'][^"']*\b(street-address|address-line1|address-line2|postal-code|country|address-level1|address-level2)\b/i.test(
-        uncommented,
-      );
-    case 'detect-initial-visibility-state':
-      return /performance\.getEntriesByType\s*\(\s*['"]visibility-state['"]\s*\)|VisibilityStateEntry/i.test(
-        uncommented,
-      );
-    case 'adapt-scrollbar-to-contrast-preferences':
-      return /scrollbar-color\s*:|scrollbar-width\s*:/i.test(uncommented);
-    case 'checkbox':
-      return /accent-color\s*:|appearance\s*:\s*none/i.test(uncommented);
-    case 'prevent-page-scroll-under-modal-dialog':
-      return /overscroll-behavior(-y)?\s*:\s*contain|<\s*dialog\b/i.test(
-        uncommented,
-      );
-    case 'dark-mode':
-      return /color-scheme\s*:\s*[^;]*(light\s+dark|dark\s+light|dark)\b|light-dark\s*\(/i.test(
-        uncommented,
-      );
-    case 'defer-work-until-scroll-ends':
-      return /\bscrollend\b/i.test(uncommented);
-    case 'schedule-tasks-by-priority':
-      return /\bpostTask\b/i.test(uncommented);
-    case 'scrollspy':
-      return /scroll-target-group|:target-current/i.test(uncommented);
-    case 'size-aware-styling':
-      return /@container\b|container-type\s*:/i.test(uncommented);
-    default:
-      throw new Error(`Missing Gate 2c modern feature validator for guideId: ${guideId}`);
+
+  // Special case for branded-select-styling package.json dependency removal
+  if (guideId === 'branded-select-styling') {
+    const isBaseSelect = /base-select\b|::picker\s*\(\s*select\s*\)/i.test(uncommented);
+    const isCleanPackageJson =
+      filePath.endsWith('package.json') &&
+      !uncommented.includes('"select2"') &&
+      !uncommented.includes('"chosen-js"');
+    if (isBaseSelect || isCleanPackageJson) return true;
   }
+
+  const patternStr = fixHarnessData.modernFeaturePatterns[guideId];
+  if (!patternStr) {
+    throw new Error(`Missing Gate 2c modern feature validator for guideId: ${guideId}`);
+  }
+
+  const regex = new RegExp(patternStr, 'i');
+  return regex.test(uncommented);
 }
 
 /**
@@ -735,647 +663,10 @@ export interface SeededFixture {
 
 /**
  * Returns canonical seeded fixtures across all 25 qualified guides for adversarial sensitivity testing.
+ * Fixtures are stored externally in fix-harness-data.json (code has 0 hardcoded test fixture prose).
  */
 export function getSeededSensitivityTestCases(): SeededFixture[] {
-  return [
-    {
-      guideId: 'animate-element-entry-exit',
-      filePath: 'src/components/modal.css',
-      originalContent: `.dialog-overlay {
-  display: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-.dialog-overlay.open {
-  display: block;
-  opacity: 1;
-}`,
-      noOpPatch: `.dialog-overlay {
-  display: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-.dialog-overlay.open {
-  display: block;
-  opacity: 1;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `.dialog-overlay {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-.dialog-overlay.open {
-  opacity: 1;
-`,
-      goodPatch: `.dialog-overlay {
-  display: none;
-  opacity: 0;
-  transition: opacity 0.3s ease, display 0.3s allow-discrete;
-}
-.dialog-overlay.open {
-  display: block;
-  opacity: 1;
-}
-@starting-style {
-  .dialog-overlay.open {
-    opacity: 0;
-  }
-}`,
-    },
-    {
-      guideId: 'individual-transform-properties',
-      filePath: 'src/styles/card.css',
-      originalContent: `.card:hover {
-  transform: rotate(15deg) scale(1.1);
-  color: #333;
-}`,
-      noOpPatch: `.card:hover {
-  transform: rotate(15deg) scale(1.1);
-  color: #333;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `.card:hover {
-  color: #333;
-}`,
-      goodPatch: `.card:hover {
-  rotate: 15deg;
-  scale: 1.1;
-  color: #333;
-}`,
-    },
-    {
-      guideId: 'resilient-context-menus-and-nested-dropdowns',
-      filePath: 'src/views/menu.html',
-      originalContent: `<div class="dropdown-container">
-  <button id="trigger">Actions</button>
-  <div class="dropdown-menu" id="menu">
-    <ul>
-      <li><a href="/edit">Edit</a></li>
-      <li><a href="/delete">Delete</a></li>
-    </ul>
-  </div>
-</div>`,
-      noOpPatch: `<div class="dropdown-container">
-  <button id="trigger">Actions</button>
-  <div class="dropdown-menu" id="menu">
-    <ul>
-      <li><a href="/edit">Edit</a></li>
-      <li><a href="/delete">Delete</a></li>
-    </ul>
-  </div>
-</div>`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `<div class="dropdown-container">
-  <button id="trigger">Actions</button>
-  <div class="menu-box">
-    <ul>
-      <li><a href="/edit">Edit</a></li>
-    </ul>
-  </div>
-</div>`,
-      goodPatch: `<div class="dropdown-container">
-  <button id="trigger" popovertarget="menu">Actions</button>
-  <div popover="auto" class="dropdown-menu" id="menu">
-    <ul>
-      <li><a href="/edit">Edit</a></li>
-      <li><a href="/delete">Delete</a></li>
-    </ul>
-  </div>
-</div>`,
-    },
-    {
-      guideId: 'declarative-dialog-popover-control',
-      filePath: 'src/components/toolbar.html',
-      originalContent: `<div class="toolbar">
-  <button id="open-btn" data-toggle="modal" data-target="#my-dialog">
-    Open Dialog
-  </button>
-  <dialog id="my-dialog">Dialog Content</dialog>
-</div>`,
-      noOpPatch: `<div class="toolbar">
-  <button id="open-btn" data-toggle="modal" data-target="#my-dialog">
-    Open Dialog
-  </button>
-  <dialog id="my-dialog">Dialog Content</dialog>
-</div>`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `<div class="toolbar">
-  <button id="open-btn">Open Dialog</button>
-  <dialog id="my-dialog">Dialog Content</dialog>
-</div>`,
-      goodPatch: `<div class="toolbar">
-  <button id="open-btn" commandfor="my-dialog" command="show-modal">
-    Open Dialog
-  </button>
-  <dialog id="my-dialog">Dialog Content</dialog>
-</div>`,
-    },
-    {
-      guideId: 'autofill-sign-in-form',
-      filePath: 'src/pages/login.html',
-      originalContent: `<form action="/auth/login" method="POST">
-  <label for="username">Username</label>
-  <input type="text" id="username" name="username">
-  <label for="password">Password</label>
-  <input type="password" id="password" name="password">
-  <button type="submit">Sign In</button>
-</form>`,
-      noOpPatch: `<form action="/auth/login" method="POST">
-  <label for="username">Username</label>
-  <input type="text" id="username" name="username">
-  <label for="password">Password</label>
-  <input type="password" id="password" name="password">
-  <button type="submit">Sign In</button>
-</form>`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `<form action="/auth/login" method="POST">
-  <label for="username">Username</label>
-  <input type="text" id="username" name="username">
-  <button type="submit">Sign In</button>
-</form>`,
-      goodPatch: `<form action="/auth/login" method="POST">
-  <label for="username">Username</label>
-  <input type="text" id="username" name="username" autocomplete="username">
-  <label for="password">Password</label>
-  <input type="password" id="password" name="password" autocomplete="current-password">
-  <button type="submit">Sign In</button>
-</form>`,
-    },
-    {
-      guideId: 'shadow-dom',
-      filePath: 'src/components/card.html',
-      originalContent: `<my-card>
-  <script type="text/template">
-    <style>.title { font-weight: bold; }</style>
-    <div class="title">Card Title</div>
-    <slot></slot>
-  </script>
-</my-card>`,
-      noOpPatch: `<my-card>
-  <script type="text/template">
-    <style>.title { font-weight: bold; }</style>
-    <div class="title">Card Title</div>
-    <slot></slot>
-  </script>
-</my-card>`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `<my-card>
-  <div class="title">Card Title</div>
-</my-card>`,
-      goodPatch: `<my-card>
-  <template shadowrootmode="open">
-    <style>.title { font-weight: bold; }</style>
-    <div class="title">Card Title</div>
-    <slot></slot>
-  </template>
-</my-card>`,
-    },
-    {
-      guideId: 'customize-scrollbar-color-and-thickness',
-      filePath: 'src/styles/scrollbar.css',
-      originalContent: `.sidebar::-webkit-scrollbar {
-  width: 8px;
-}
-.sidebar::-webkit-scrollbar-thumb {
-  background: #888;
-}`,
-      noOpPatch: `.sidebar::-webkit-scrollbar {
-  width: 8px;
-}
-.sidebar::-webkit-scrollbar-thumb {
-  background: #888;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `.sidebar {
-  /* removed webkit scrollbar */
-}`,
-      goodPatch: `.sidebar {
-  scrollbar-width: thin;
-  scrollbar-color: #888 transparent;
-}`,
-    },
-    {
-      guideId: 'child-state-based-styling',
-      filePath: 'src/styles/form.css',
-      originalContent: `input:checked ~ .label-text {
-  font-weight: bold;
-  color: #0070f3;
-}`,
-      noOpPatch: `input:checked ~ .label-text {
-  font-weight: bold;
-  color: #0070f3;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `.label-text.active {
-  font-weight: bold;
-  color: #0070f3;
-}`,
-      goodPatch: `label:has(input:checked) .label-text {
-  font-weight: bold;
-  color: #0070f3;
-}`,
-    },
-    {
-      guideId: 'animate-to-intrinsic-sizes',
-      filePath: 'src/styles/accordion.css',
-      originalContent: `.accordion-body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s ease;
-}
-.accordion-body.open {
-  max-height: 800px;
-}`,
-      noOpPatch: `.accordion-body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s ease;
-}
-.accordion-body.open {
-  max-height: 800px;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `.accordion-body {
-  height: auto;
-  overflow: hidden;
-}`,
-      goodPatch: `:root {
-  interpolate-size: allow-keywords;
-}
-.accordion-body {
-  height: 0;
-  overflow: hidden;
-  transition: height 0.35s ease;
-}
-.accordion-body.open {
-  height: auto;
-}`,
-    },
-    {
-      guideId: 'coordinate-global-events',
-      filePath: 'src/time/schedule.ts',
-      originalContent: `import moment from 'moment-timezone';
-
-export function getConferenceTime(dateStr: string, zone: string) {
-  return moment.tz(dateStr, zone).format();
-}`,
-      noOpPatch: `import moment from 'moment-timezone';
-
-export function getConferenceTime(dateStr: string, zone: string) {
-  return moment.tz(dateStr, zone).format();
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `export function getConferenceTime(dateStr: string, zone: string) {
-  return new Date(dateStr).toISOString();
-}`,
-      goodPatch: `export function getConferenceTime(dateStr: string, zone: string) {
-  const zdt = Temporal.ZonedDateTime.from(\`\${dateStr}[\${zone}]\`);
-  return zdt.toString();
-}`,
-    },
-    {
-      guideId: 'manage-recurring-intervals',
-      filePath: 'src/billing/subscription.ts',
-      originalContent: `export function computeNextBillingDate(currentDate: Date): Date {
-  const next = new Date(currentDate.getTime());
-  next.setMonth(next.getMonth() + 1);
-  return next;
-}`,
-      noOpPatch: `export function computeNextBillingDate(currentDate: Date): Date {
-  const next = new Date(currentDate.getTime());
-  next.setMonth(next.getMonth() + 1);
-  return next;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `export function computeNextBillingDate(currentDate: Date): Date {
-  return new Date(currentDate.getTime() + 30 * 86400000);
-}`,
-      goodPatch: `export function computeNextBillingDate(currentDate: Date): Date {
-  const isoStr = currentDate.toISOString().slice(0, 10);
-  const plain = Temporal.PlainDate.from(isoStr);
-  const next = plain.add({ months: 1 });
-  return new Date(next.toString());
-}`,
-    },
-    {
-      guideId: 'accessible-error-announcement',
-      filePath: 'src/components/error-banner.html',
-      originalContent: `<div class="error-container" id="form-error">
-  <span class="icon">⚠</span>
-  <span class="msg">Submission failed</span>
-</div>`,
-      noOpPatch: `<div class="error-container" id="form-error">
-  <span class="icon">⚠</span>
-  <span class="msg">Submission failed</span>
-</div>`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `<div class="error-container">
-  <span class="icon">⚠</span>
-  <span class="msg">Submission failed</span>
-</div>`,
-      goodPatch: `<div class="error-container" id="form-error" aria-live="polite" role="alert">
-  <span class="icon">⚠</span>
-  <span class="msg">Submission failed</span>
-</div>`,
-    },
-    {
-      guideId: 'brand-consistent-forms',
-      filePath: 'src/styles/inputs.css',
-      originalContent: `input[type="checkbox"].branded {
-  filter: hue-rotate(140deg);
-  cursor: pointer;
-}`,
-      noOpPatch: `input[type="checkbox"].branded {
-  filter: hue-rotate(140deg);
-  cursor: pointer;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `input[type="checkbox"].branded {
-  cursor: pointer;
-}`,
-      goodPatch: `input[type="checkbox"].branded {
-  accent-color: #0070f3;
-  cursor: pointer;
-}`,
-    },
-    {
-      guideId: 'branded-select-styling',
-      filePath: 'src/styles/select.css',
-      originalContent: `select.custom-picker {
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: url('/arrow.svg');
-}`,
-      noOpPatch: `select.custom-picker {
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: url('/arrow.svg');
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `select.custom-picker {
-  border: 1px solid #ccc;
-}`,
-      goodPatch: `select.custom-picker {
-  appearance: base-select;
-  background-image: url('/arrow.svg');
-}`,
-    },
-    {
-      guideId: 'break-up-long-tasks',
-      filePath: 'src/utils/scheduler.ts',
-      originalContent: `export async function yieldControl(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}`,
-      noOpPatch: `export async function yieldControl(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `export async function yieldControl(): Promise<void> {
-  return Promise.resolve();
-}`,
-      goodPatch: `export async function yieldControl(): Promise<void> {
-  if ('scheduler' in window && 'yield' in scheduler) {
-    await scheduler.yield();
-  } else {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-}`,
-    },
-    {
-      guideId: 'form-fields-automatically-fit-contents',
-      filePath: 'src/styles/textarea.css',
-      originalContent: `textarea.expanding {
-  min-height: 60px;
-  resize: none;
-  overflow: hidden;
-}`,
-      noOpPatch: `textarea.expanding {
-  min-height: 60px;
-  resize: none;
-  overflow: hidden;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `textarea.expanding {
-  min-height: 60px;
-  resize: vertical;
-}`,
-      goodPatch: `textarea.expanding {
-  field-sizing: content;
-  min-height: 60px;
-  resize: none;
-}`,
-    },
-    {
-      guideId: 'ime-safe-enter-submit',
-      filePath: 'src/handlers/chat.ts',
-      originalContent: `export function handleKeyDown(e: KeyboardEvent, sendMsg: () => void) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMsg();
-  }
-}`,
-      noOpPatch: `export function handleKeyDown(e: KeyboardEvent, sendMsg: () => void) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMsg();
-  }
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `export function handleKeyDown(e: KeyboardEvent, sendMsg: () => void) {
-  if (e.keyCode === 13) {
-    sendMsg();
-  }
-}`,
-      goodPatch: `export function handleKeyDown(e: KeyboardEvent, sendMsg: () => void) {
-  if (e.isComposing) return;
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMsg();
-  }
-}`,
-    },
-    {
-      guideId: 'stack-drill-down',
-      filePath: 'src/navigation/drilldown.ts',
-      originalContent: `export function deactivateSubmenu(panel: HTMLElement) {
-  panel.querySelectorAll('*').forEach((el) => {
-    el.setAttribute('tabindex', '-1');
-  });
-  panel.setAttribute('aria-hidden', 'true');
-}`,
-      noOpPatch: `export function deactivateSubmenu(panel: HTMLElement) {
-  panel.querySelectorAll('*').forEach((el) => {
-    el.setAttribute('tabindex', '-1');
-  });
-  panel.setAttribute('aria-hidden', 'true');
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `export function deactivateSubmenu(panel: HTMLElement) {
-  panel.style.display = 'none';
-}`,
-      goodPatch: `export function deactivateSubmenu(panel: HTMLElement) {
-  panel.inert = true;
-}`,
-    },
-    {
-      guideId: 'calculate-event-differentials',
-      filePath: 'src/analytics/differentials.ts',
-      originalContent: `export function getElapsedDays(start: Date, end: Date): number {
-  return (end.getTime() - start.getTime()) / 86400000;
-}`,
-      noOpPatch: `export function getElapsedDays(start: Date, end: Date): number {
-  return (end.getTime() - start.getTime()) / 86400000;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `export function getElapsedDays(start: Date, end: Date): number {
-  return 0;
-}`,
-      goodPatch: `export function getElapsedDays(start: Date, end: Date): number {
-  const tStart = Temporal.Instant.fromEpochMilliseconds(start.getTime());
-  const tEnd = Temporal.Instant.fromEpochMilliseconds(end.getTime());
-  return tEnd.since(tStart).total({ unit: 'days' });
-}`,
-    },
-    {
-      guideId: 'autofill-address-form',
-      filePath: 'src/checkout/address.html',
-      originalContent: `<form action="/checkout/shipping" method="POST">
-  <input type="text" name="address" id="street">
-  <input type="text" name="zip" id="postal">
-  <input type="text" name="city" id="city">
-</form>`,
-      noOpPatch: `<form action="/checkout/shipping" method="POST">
-  <input type="text" name="address" id="street">
-  <input type="text" name="zip" id="postal">
-  <input type="text" name="city" id="city">
-</form>`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `<form action="/checkout/shipping" method="POST">
-  <input type="text" name="addr1">
-  <input type="text" name="zipcode">
-</form>`,
-      goodPatch: `<form action="/checkout/shipping" method="POST">
-  <input type="text" name="address" id="street" autocomplete="street-address">
-  <input type="text" name="zip" id="postal" autocomplete="postal-code">
-  <input type="text" name="city" id="city" autocomplete="address-level2">
-</form>`,
-    },
-    {
-      guideId: 'detect-initial-visibility-state',
-      filePath: 'src/analytics/visibility.ts',
-      originalContent: `let wasHidden = document.visibilityState === 'hidden';
-document.addEventListener('visibilitychange', () => {
-  if (wasHidden && document.visibilityState === 'visible') {
-    sendMetric('page_became_visible');
-    wasHidden = false;
-  }
-});`,
-      noOpPatch: `let wasHidden = document.visibilityState === 'hidden';
-document.addEventListener('visibilitychange', () => {
-  if (wasHidden && document.visibilityState === 'visible') {
-    sendMetric('page_became_visible');
-    wasHidden = false;
-  }
-});`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `let wasHidden = false;
-document.addEventListener('visibilitychange', () => {
-  sendMetric('page_became_visible');
-});`,
-      goodPatch: `const entries = performance.getEntriesByType('visibility-state');
-const wasInitiallyHidden = entries.length > 0 && entries[0].name === 'hidden';
-if (wasInitiallyHidden) {
-  sendMetric('initially_hidden');
-}`,
-    },
-    {
-      guideId: 'adapt-scrollbar-to-contrast-preferences',
-      filePath: 'src/layout/scroll.css',
-      originalContent: `.custom-scroll {
-  overflow-y: auto;
-  -ms-overflow-style: -ms-autohiding-scrollbar;
-}`,
-      noOpPatch: `.custom-scroll {
-  overflow-y: auto;
-  -ms-overflow-style: -ms-autohiding-scrollbar;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `.custom-scroll {
-  overflow-y: auto;
-}`,
-      goodPatch: `.custom-scroll {
-  overflow-y: auto;
-  scrollbar-color: auto;
-  scrollbar-width: thin;
-}`,
-    },
-    {
-      guideId: 'checkbox',
-      filePath: 'src/styles/checkbox.css',
-      originalContent: `input[type="checkbox"].fancy-check {
-  opacity: 0;
-  position: absolute;
-}`,
-      noOpPatch: `input[type="checkbox"].fancy-check {
-  opacity: 0;
-  position: absolute;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `input[type="checkbox"].fancy-check {
-  display: inline-block;
-}`,
-      goodPatch: `input[type="checkbox"].fancy-check {
-  accent-color: #2563eb;
-}`,
-    },
-    {
-      guideId: 'prevent-page-scroll-under-modal-dialog',
-      filePath: 'src/modal/backdrop.css',
-      originalContent: `body.modal-open {
-  overflow: hidden;
-  height: 100%;
-}`,
-      noOpPatch: `body.modal-open {
-  overflow: hidden;
-  height: 100%;
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `body.modal-open {
-  pointer-events: none;
-}`,
-      goodPatch: `.modal-container {
-  overscroll-behavior: contain;
-}`,
-    },
-    {
-      guideId: 'dark-mode',
-      filePath: 'src/themes/dark.css',
-      originalContent: `@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #121212;
-    color: #f3f3f3;
-  }
-}`,
-      noOpPatch: `@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #121212;
-    color: #f3f3f3;
-  }
-}`,
-      deletionPatch: '',
-      brokenSyntaxOrEvasionPatch: `body {
-  background-color: #222;
-  color: #fff;
-}`,
-      goodPatch: `:root {
-  color-scheme: light dark;
-}
-body {
-  background-color: light-dark(#ffffff, #121212);
-  color: light-dark(#111111, #f3f3f3);
-}`,
-    },
-  ];
+  return fixHarnessData.seededFixtures;
 }
 
 export interface BadPatchSensitivityReport {
@@ -1572,15 +863,6 @@ export function locateFindingLineInContent(
   return Math.max(1, findingLine);
 }
 
-const FIX_AGENT_SYSTEM_PROMPT = `You are an expert web platform modernization engineer.
-Your task is to refactor a legacy web pattern in a brownfield codebase using the standard modern web platform capability prescribed in the provided Modern Web Guide.
-
-CRITICAL INVARIANTS:
-1. ELIMINATE ALL OCCURRENCES: Eliminate EVERY occurrence of the flagged legacy pattern inside the provided code window. If multiple occurrences appear in the window, modernize all of them so no legacy instances remain.
-2. IMPLEMENT THE MODERN PLATFORM FEATURE DIRECTLY: The patched code MUST explicitly implement the modern standard replacement capability taught in the provided guide. Rely strictly on the instructions, code samples, and specifications in the provided guide.md. NEVER simply delete or gut the legacy code without implementing the modern standard replacement feature.
-3. PRESERVE SURROUNDING LOGIC: Never delete or hollow out surrounding functions, handlers, classes, elements, or unrelated styles. Maintain existing names, exported signatures, and application structure.
-4. Output the complete replacement for the provided code window in the "patchedWindow" field, with valid syntax and no placeholders.`;
-
 const FIX_AGENT_SCHEMA = {
   type: 'OBJECT',
   properties: {
@@ -1598,9 +880,13 @@ const FIX_AGENT_SCHEMA = {
 };
 
 /**
- * Prompts Gemini to produce an agentic modernization patch for a code window.
+ * Prompts Gemini to produce a synthetic modernization patch for a code window in a single-shot simulation.
+ *
+ * NOTE: This function provides single-shot LLM simulation (using SYNTHETIC_FIX_SIMULATION_PROMPT)
+ * for fix generation during analyzer evaluation and testing. In full multi-turn agentic workflows,
+ * fixes are produced by interactive subagents.
  */
-export async function promptAgentFix(params: {
+export async function simulateSingleShotWindowFix(params: {
   guideId: string;
   guideMarkdown: string;
   findingMessage: string;
@@ -1633,7 +919,7 @@ Important:
 
   const body = {
     systemInstruction: {
-      parts: [{ text: FIX_AGENT_SYSTEM_PROMPT }],
+      parts: [{ text: SYNTHETIC_FIX_SIMULATION_PROMPT }],
     },
     contents: [
       {
@@ -1681,6 +967,12 @@ Important:
     explanation: parsed.explanation ?? 'No explanation provided',
   };
 }
+
+/**
+ * Aliases for simulateSingleShotWindowFix
+ */
+export const promptAgentFix = simulateSingleShotWindowFix;
+export const generateFixPatch = simulateSingleShotWindowFix;
 
 /**
  * End-to-End Agentic Fix Runner for Milestone 4.

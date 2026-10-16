@@ -42,7 +42,9 @@ import {
   createInMemoryProject,
   extractScriptBlocks,
   extractStyleBlocks,
+  getSharedInMemoryProject,
   prepareHtmlForDomScan,
+  resetSharedInMemoryProject,
   scanFiles,
   scanJsSource,
 } from './index.ts';
@@ -56,6 +58,12 @@ void test('file-filter: path and content classification', async (t) => {
     assert.equal(isVendoredOrGeneratedPath('src/types/index.d.ts'), true);
     assert.equal(isVendoredOrGeneratedPath('src/components/Dialog.tsx'), false);
     assert.equal(isVendoredOrGeneratedPath('views/login.blade.php'), false);
+    // Generated documentation paths per R24
+    assert.equal(isVendoredOrGeneratedPath('docs/3.1/reference/index.html'), true);
+    assert.equal(isVendoredOrGeneratedPath('content/zh-cn/docs/setup.html'), true);
+    assert.equal(isVendoredOrGeneratedPath('website/docs/intro.md'), true);
+    assert.equal(isVendoredOrGeneratedPath('site/pages/index.html'), true);
+    assert.equal(isVendoredOrGeneratedPath('gh-pages/index.html'), true);
   });
 
   await t.test('detects minified content', () => {
@@ -632,6 +640,17 @@ void test('js-scanner: scanJsSource with fastTokens and AST matching', () => {
   // Verify fastTokens skip when token is absent
   const skipped = scanJsSource('app.ts', 'const x = 1;', [rule]);
   assert.equal(skipped.matches.length, 0);
+});
+
+void test('js-scanner: singleton in-memory Project reuse and reset (R24)', () => {
+  resetSharedInMemoryProject();
+  const proj1 = getSharedInMemoryProject();
+  const proj2 = getSharedInMemoryProject();
+  assert.equal(proj1, proj2, 'Repeated calls must return the same singleton Project');
+
+  resetSharedInMemoryProject();
+  const proj3 = getSharedInMemoryProject();
+  assert.notEqual(proj1, proj3, 'resetSharedInMemoryProject clears the cached singleton');
 });
 
 void test('dom-scanner: HTML bare-attributes and JSX-DOM bridge', async (t) => {

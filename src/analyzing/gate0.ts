@@ -1,40 +1,16 @@
 import type { Gate0Classification, Gate0Entry } from './schema.ts';
 import { getGeminiApiKey } from './judge.ts';
 
+export {
+  GATE0_PROMPT_VERSION,
+  GATE0_SYSTEM_PROMPT,
+} from './prompts.ts';
+import {
+  GATE0_PROMPT_VERSION,
+  GATE0_SYSTEM_PROMPT,
+} from './prompts.ts';
 export const GATE0_MODEL = 'gemini-3.8-flash';
-export const GATE0_PROMPT_VERSION = 'gate0-v1-full-guide';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-
-/**
- * Top-level inspectable prompt for Gate 0 full-read triage classification.
- * Incorporates normative sentence definitions for all three triage buckets.
- */
-export const GATE0_SYSTEM_PROMPT = `You are an expert static analysis triage classifier for the Modern Web Guidance catalog.
-Your task is to classify whether a published feature guide has a statically detectable brownfield target (Decision D-005).
-
-You must classify the guide into exactly one of three Gate 0 buckets:
-1. 'detectable':
-   The guide replaces a concrete, statically identifiable legacy browser API, CSS property/selector workaround, DOM markup pattern, or third-party package in brownfield code.
-   Examples: replacing moment-timezone with Temporal, replacing manual event listening for scroll-end with scrollend event, replacing float/table clearing or max-height accordion hacks with modern CSS, replacing custom modal overlay div with <dialog>, replacing input missing autocomplete with autocomplete="...".
-2. 'ui-recipe-multi-part':
-   The guide teaches a multi-element UI component or architectural recipe (e.g. carousel, tabs, navigation drawer) where legacy implementations vary wildly and lack a single high-precision static code hook.
-   Finding these statically without massive false positives is unviable for a single static rule.
-3. 'skip-no-old-way':
-   The guide introduces a net-new web platform capability (e.g. WebGPU, WebNN, Passkeys, Prompt API, View Transitions between pages) with no direct legacy browser workaround to migrate from.
-   The capability simply could not be implemented previously with a legacy browser API, standard polyfill, or direct CSS workaround.
-
-Guidelines for classification:
-- Read the entire guide markdown carefully, paying special attention to the problem statement, "Before" / legacy code examples, and the underlying modern API.
-- If the guide explicitly shows a "Before" code pattern or mentions legacy libraries/workarounds (e.g., polyfills, microtask hacks, custom implementations) that are distinct and statically flaggable, classify as 'detectable'.
-- If the guide describes a complex multi-element UI design pattern or component without a unified legacy API or CSS property to target, classify as 'ui-recipe-multi-part'.
-- If the guide describes a new capability that has no direct legacy counterpart, classify as 'skip-no-old-way'.
-- Set 'brownfieldTarget' to:
-  * For 'detectable': The specific legacy API/CSS/DOM/package pattern being replaced (e.g. "moment / date-fns timezone conversions", "manual scroll event debounce for scroll-end", "<div role='dialog'> with custom backdrop").
-  * For 'ui-recipe-multi-part': "none (multi-part UI recipe)"
-  * For 'skip-no-old-way': "none (greenfield capability)"
-- Set 'evidenceFromGuide' to:
-  * A direct quote or concise specific summary of the "Before" / legacy workaround section from the guide text, or confirmation that the guide contains no legacy code replacement.
-- Set 'reason' to a single crisp sentence explaining the classification decision.`;
 
 export const GATE0_RESPONSE_SCHEMA = {
   type: 'OBJECT',

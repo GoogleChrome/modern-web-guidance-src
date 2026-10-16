@@ -267,6 +267,68 @@ describe('checkSplitViolations', () => {
     const violations = checkSplitViolations(steps, gradingRepos);
     assert.strictEqual(violations.length, 0);
   });
+
+  it('detects hardcoded LLM fixture data written to TypeScript files', () => {
+    // Generate text with 16 "reason": properties
+    const reasons = Array.from({ length: 16 }, (_, i) => `  "reason": "explanation ${i}",`).join('\n');
+    const content = `export const MOCK_DATA = [\n{\n${reasons}\n}\n];`;
+
+    const steps: TranscriptStep[] = [
+      {
+        step_index: 5,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          {
+            name: 'write_file',
+            args: {
+              Path: 'src/analyzing/rubrics.ts',
+              Content: content,
+            },
+          },
+        ],
+      },
+    ];
+
+    const violations = checkSplitViolations(steps, gradingRepos);
+    assert.strictEqual(violations.length, 1);
+    assert.strictEqual(violations[0]?.reason, 'hardcoded-llm-data-in-ts');
+    assert.strictEqual(violations[0]?.target, 'src/analyzing/rubrics.ts');
+  });
+
+  it('allows small TypeScript files with few reason properties or test files', () => {
+    const steps: TranscriptStep[] = [
+      {
+        step_index: 6,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          {
+            name: 'write_file',
+            args: {
+              Path: 'src/analyzing/logic.ts',
+              Content: 'const item = { reason: "failure reason" };',
+            },
+          },
+          {
+            name: 'write_file',
+            args: {
+              Path: 'src/analyzing/logic.test.ts',
+              Content: Array.from({ length: 20 }, (_, i) => `reason: "${i}"`).join('\n'),
+            },
+          },
+          {
+            name: 'write_file',
+            args: {
+              Path: 'src/analyzing/data.json',
+              Content: Array.from({ length: 20 }, (_, i) => `"reason": "${i}"`).join('\n'),
+            },
+          },
+        ],
+      },
+    ];
+
+    const violations = checkSplitViolations(steps, gradingRepos);
+    assert.strictEqual(violations.length, 0);
+  });
 });
 
 describe('summarizeToolFriction', () => {

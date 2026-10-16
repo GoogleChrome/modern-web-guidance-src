@@ -8,6 +8,7 @@ import type {
   CssRuleMatcher,
   DependencyRuleMatcher,
   DomRuleMatcher,
+  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 import { computeCardId } from '../stats.ts';
@@ -16,11 +17,18 @@ import { scanCss } from './css-scanner.ts';
 import { scanPackageJson } from './dependency-scanner.ts';
 import { scanHtml, scanJsx } from './dom-scanner.ts';
 import {
+  isMinifiedContent,
   isVendoredOrGeneratedPath,
   shouldScanFile,
   type FileFilterOptions,
 } from './file-filter.ts';
-import { createInMemoryProject, scanJsSource } from './js-scanner.ts';
+import {
+  createInMemoryProject,
+  getSharedInMemoryProject,
+  matchesFastTokens,
+  resetSharedInMemoryProject,
+  scanJsSource,
+} from './js-scanner.ts';
 import {
   extractScriptBlocks,
   extractStyleBlocks,
@@ -53,6 +61,7 @@ export interface ScanOptions {
   readonly repo?: string;
   readonly commit?: string;
   readonly fileFilterOptions?: FileFilterOptions;
+  readonly project?: Project;
 }
 
 export interface RepoScanOptions extends ScanOptions {
@@ -125,8 +134,15 @@ function processCssFile(
   ctx: FileContext,
   rules: readonly (AnalyzerRule & { matcher: CssRuleMatcher })[],
 ): AnalyzerFinding[] {
+  const activeRules = rules.filter((rule) =>
+    matchesFastTokens(ctx.content, rule.matcher.fastTokens),
+  );
+  if (activeRules.length === 0) {
+    return [];
+  }
+
   const findings: AnalyzerFinding[] = [];
-  for (const rule of rules) {
+  for (const rule of activeRules) {
     const matches = scanCss(ctx.relPath, ctx.content, [rule.matcher]);
     for (const match of matches) {
       const { codeSnippet, astSlice } = sliceStructuredContext(
@@ -214,15 +230,26 @@ function processJsFile(
   rules: readonly (AnalyzerRule & { matcher: JsRuleMatcher })[],
   project: Project,
 ): AnalyzerFinding[] {
+  const activeRules = rules.filter((rule) =>
+    matchesFastTokens(ctx.content, rule.matcher.fastTokens),
+  );
+  if (activeRules.length === 0) {
+    return [];
+  }
+
+  const sourceFile = project.createSourceFile(ctx.relPath, ctx.content, {
+    overwrite: true,
+  });
+
+  const matcherCtx: JsMatcherContext = {
+    filePath: ctx.relPath,
+    fileContent: ctx.content,
+  };
+
   const findings: AnalyzerFinding[] = [];
-  for (const rule of rules) {
-    const { matches, sourceFile } = scanJsSource(
-      ctx.relPath,
-      ctx.content,
-      [rule.matcher],
-      project,
-    );
-    try {
+  try {
+    for (const rule of activeRules) {
+      const matches = rule.matcher.matchFile(sourceFile, matcherCtx);
       for (const match of matches) {
         const { codeSnippet, astSlice } = sliceStructuredContext(
           ctx.relPath,
@@ -241,11 +268,9 @@ function processJsFile(
           }),
         );
       }
-    } finally {
-      if (sourceFile) {
-        project.removeSourceFile(sourceFile);
-      }
     }
+  } finally {
+    project.removeSourceFile(sourceFile);
   }
   return findings;
 }
@@ -256,15 +281,29 @@ function processScriptBlock(
   rules: readonly (AnalyzerRule & { matcher: JsRuleMatcher })[],
   project: Project,
 ): AnalyzerFinding[] {
+  if (isMinifiedContent(block.blankedContent)) {
+    return [];
+  }
+  const activeRules = rules.filter((rule) =>
+    matchesFastTokens(block.blankedContent, rule.matcher.fastTokens),
+  );
+  if (activeRules.length === 0) {
+    return [];
+  }
+
+  const sourceFile = project.createSourceFile(block.virtualPath, block.blankedContent, {
+    overwrite: true,
+  });
+
+  const matcherCtx: JsMatcherContext = {
+    filePath: block.virtualPath,
+    fileContent: block.blankedContent,
+  };
+
   const findings: AnalyzerFinding[] = [];
-  for (const rule of rules) {
-    const { matches, sourceFile } = scanJsSource(
-      block.virtualPath,
-      block.blankedContent,
-      [rule.matcher],
-      project,
-    );
-    try {
+  try {
+    for (const rule of activeRules) {
+      const matches = rule.matcher.matchFile(sourceFile, matcherCtx);
       for (const match of matches) {
         const { codeSnippet, astSlice } = sliceStructuredContext(
           ctx.relPath,
@@ -283,11 +322,9 @@ function processScriptBlock(
           }),
         );
       }
-    } finally {
-      if (sourceFile) {
-        project.removeSourceFile(sourceFile);
-      }
     }
+  } finally {
+    project.removeSourceFile(sourceFile);
   }
   return findings;
 }
@@ -297,8 +334,18 @@ function processStyleBlock(
   blankedCss: string,
   rules: readonly (AnalyzerRule & { matcher: CssRuleMatcher })[],
 ): AnalyzerFinding[] {
+  if (isMinifiedContent(blankedCss)) {
+    return [];
+  }
+  const activeRules = rules.filter((rule) =>
+    matchesFastTokens(blankedCss, rule.matcher.fastTokens),
+  );
+  if (activeRules.length === 0) {
+    return [];
+  }
+
   const findings: AnalyzerFinding[] = [];
-  for (const rule of rules) {
+  for (const rule of activeRules) {
     const matches = scanCss(ctx.relPath, blankedCss, [rule.matcher]);
     for (const match of matches) {
       const { codeSnippet, astSlice } = sliceStructuredContext(
@@ -419,7 +466,7 @@ export function scanFiles(
 
   const ruleBundle = { dom: domRules, js: jsRules, css: cssRules };
   const findings: AnalyzerFinding[] = [];
-  const project = createInMemoryProject();
+  const project = options?.project ?? getSharedInMemoryProject();
 
   for (const [relPath, content] of files) {
     if (!shouldScanFile(relPath, content, options?.fileFilterOptions)) {

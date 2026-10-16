@@ -27,15 +27,14 @@ export interface Phase2FilterResult {
   readonly keptFindings: readonly AnalyzerFinding[];
 }
 
-export const PHASE2_SYSTEM_PROMPT = `You are an expert static analysis Phase 2 verifier for Modern Web Guidance.
-Your task is to verify whether candidate static analysis matches from Phase 1 represent genuine targets for web platform modernization according to the rule's summary and Phase 2 rubric, or whether they should be dropped as false positives.
-
-Follow these verification principles:
-1. Examine the AST slice and surrounding context carefully.
-2. Check against the rule's keepWhen criteria: if the code implements an old workaround or library pattern that should be modernized with standard web platform features, mark keep = true.
-3. Check against the rule's dropWhen criteria: if the match is a false positive (e.g. non-DOM domain such as audio/canvas/gaming when checking DOM, unrelated business logic, or code already protected by modern feature detection guards), mark keep = false.
-4. Output concise, objective reasoning explaining why this finding should be kept or dropped.
-5. Provide your confidence level ('high', 'medium', or 'low').`;
+export {
+  PHASE2_PROMPT_VERSION,
+  PHASE2_SYSTEM_PROMPT,
+} from './prompts.ts';
+import {
+  PHASE2_PROMPT_VERSION,
+  PHASE2_SYSTEM_PROMPT,
+} from './prompts.ts';
 
 export const PHASE2_RESPONSE_SCHEMA = {
   type: 'OBJECT',
@@ -166,7 +165,14 @@ async function fetchWithRetry(
   }
 }
 
-export async function runPhase2Filter(
+/**
+ * Synthetic single-shot LLM simulation of Phase 2 candidate verification.
+ *
+ * NOTE: This is a synthetic single-shot Gemini API simulation of a verification step,
+ * NOT a real autonomous coding agent. It evaluates finding context against the
+ * rule's keepWhen/dropWhen rubric in a single shot prompt.
+ */
+export async function simulateSingleShotPhase2Filter(
   findings: readonly AnalyzerFinding[],
   rulesById: ReadonlyMap<string, AnalyzerRule>,
   options?: Phase2Options,
@@ -260,4 +266,5 @@ export async function runPhase2Filter(
   };
 }
 
-export const phase2Filter = runPhase2Filter;
+export const runPhase2Filter = simulateSingleShotPhase2Filter;
+export const phase2Filter = simulateSingleShotPhase2Filter;

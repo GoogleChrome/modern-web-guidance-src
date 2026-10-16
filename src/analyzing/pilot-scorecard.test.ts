@@ -277,7 +277,7 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.tier, 'proven-high-n');
   });
 
-  it('qualifies sample-constrained guides with 16 <= n < 56 when Wilson95 lower >= 0.80 and prec >= 0.95 (clearedHighN80)', () => {
+  it('qualifies sample-constrained guides with 16 <= n < 56 when Wilson95 lower >= 0.80 and prec >= 0.95 (clearedHighN80, unmeasured-low-n per R20)', () => {
     // 20 evaluations with 20 right: precision = 1.0, Wilson95 lower is ~0.838 >= 0.80
     const result = evaluateGuideQualification({
       p1Total: 25,
@@ -290,18 +290,19 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.clearedZeroFpExhaustive, false);
     assert.strictEqual(result.clearsSampleConstrained, true);
     assert.strictEqual(result.clearsScreen80, true);
-    assert.strictEqual(result.clearsPrecisionBar, true);
-    assert.strictEqual(result.tier, 'proven-high-n');
+    // Per R20: clearsPrecisionBar strictly requires clearsBar90 (wilson95.lower >= 0.90)
+    assert.strictEqual(result.clearsPrecisionBar, false);
+    assert.strictEqual(result.tier, 'unmeasured-low-n');
   });
 
-  it('qualifies 35 <= n < 56 rules with high precision under sample-constrained bar (resolving mathematical dead zone)', () => {
+  it('identifies 35 <= n < 56 rules with high precision under sample-constrained bar (R20 unmeasured-low-n)', () => {
     // 42/43: 97.7% precision, wilson95.lower = 0.879 >= 0.80, n = 43 < 56
     const qualified = evaluateGuideQualification(42, 43);
     assert.strictEqual(qualified.isSampleConstrained, true);
     assert.strictEqual(qualified.clearedHighN80, true);
-    assert.strictEqual(qualified.clearsPrecisionBar, true);
+    assert.strictEqual(qualified.clearsPrecisionBar, false);
     assert.strictEqual(qualified.clearsScreen80, true);
-    assert.strictEqual(qualified.tier, 'proven-high-n');
+    assert.strictEqual(qualified.tier, 'unmeasured-low-n');
     assert.strictEqual(Math.round(qualified.precision * 1000) / 10, 97.7);
     assert.strictEqual(Math.round(qualified.wilson95.lower * 1000) / 1000, 0.879);
 
@@ -314,9 +315,9 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(notQualified.tier, 'experimental');
   });
 
-  it('qualifies sample-constrained guides with low n when all findings sampled and fpCount === 0 (clearedZeroFpExhaustive)', () => {
+  it('qualifies sample-constrained guides with low n when all findings sampled and fpCount === 0 (clearedZeroFpExhaustive, unmeasured-low-n per R20)', () => {
     // 6 findings in corpus, all 6 sampled, 6 kept, 6 right, 0 false positives
-    // Wilson95 lower bound for 6/6 is ~0.609 (< 0.80), but exhaustive with 0 FP across all repos clears G7
+    // Wilson95 lower bound for 6/6 is ~0.609 (< 0.80), but exhaustive with 0 FP across all repos clears sample-constrained
     const result = evaluateGuideQualification({
       p1Total: 6,
       p1Sampled: 6,
@@ -328,8 +329,8 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.clearedZeroFpExhaustive, true);
     assert.strictEqual(result.clearsSampleConstrained, true);
     assert.strictEqual(result.clearsScreen80, true);
-    assert.strictEqual(result.clearsPrecisionBar, true);
-    assert.strictEqual(result.tier, 'zero-fp-low-n');
+    assert.strictEqual(result.clearsPrecisionBar, false);
+    assert.strictEqual(result.tier, 'unmeasured-low-n');
   });
 
   it('does NOT qualify low n guides with zero FPs if findings were not exhaustively sampled (p1Sampled < p1Total)', () => {
@@ -376,22 +377,22 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.tier, 'experimental');
   });
 
-  it('correctly assigns G9 tiers (proven-high-n vs zero-fp-low-n vs experimental)', () => {
-    // 1. proven-high-n: clearsPrecisionBar && p2KeptCount >= 8
-    const proven1 = evaluateGuideQualification(8, 8);
-    assert.strictEqual(proven1.tier, 'proven-high-n');
+  it('correctly assigns tiers per R20 (proven-high-n vs unmeasured-low-n vs experimental)', () => {
+    // 1. proven-high-n: clearsPrecisionBar (clearsBar90: wilson95.lower >= 0.90)
+    const proven60 = evaluateGuideQualification(60, 60);
+    assert.strictEqual(proven60.clearsPrecisionBar, true);
+    assert.strictEqual(proven60.tier, 'proven-high-n');
 
-    const proven2 = evaluateGuideQualification(60, 60);
-    assert.strictEqual(proven2.tier, 'proven-high-n');
+    // 2. unmeasured-low-n: clearsSampleConstrained but lower bound < 0.90 (R20)
+    const unmeasured8 = evaluateGuideQualification(8, 8);
+    assert.strictEqual(unmeasured8.clearsPrecisionBar, false);
+    assert.strictEqual(unmeasured8.tier, 'unmeasured-low-n');
 
-    // 2. zero-fp-low-n: clearsPrecisionBar && p2KeptCount < 8
-    const zeroFp1 = evaluateGuideQualification(1, 1);
-    assert.strictEqual(zeroFp1.tier, 'zero-fp-low-n');
+    const unmeasured1 = evaluateGuideQualification(1, 1);
+    assert.strictEqual(unmeasured1.clearsPrecisionBar, false);
+    assert.strictEqual(unmeasured1.tier, 'unmeasured-low-n');
 
-    const zeroFp7 = evaluateGuideQualification(7, 7);
-    assert.strictEqual(zeroFp7.tier, 'zero-fp-low-n');
-
-    // 3. experimental: !clearsPrecisionBar (even if n >= 8)
+    // 3. experimental: !clearsPrecisionBar && !clearsSampleConstrained
     const exp1 = evaluateGuideQualification(26, 29); // ~89.7%, n=29 >= 8, but lower < 0.80
     assert.strictEqual(exp1.clearsPrecisionBar, false);
     assert.strictEqual(exp1.tier, 'experimental');

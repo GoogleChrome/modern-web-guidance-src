@@ -233,7 +233,11 @@ const scrollspyJsMatcher: JsRuleMatcher = {
     const visitedLines = new Set<number>();
 
     sourceFile.forEachDescendant((node) => {
-      if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
+      if (
+        !Node.isCallExpression(node) &&
+        !Node.isNewExpression(node) &&
+        !Node.isBinaryExpression(node)
+      ) {
         return;
       }
 
@@ -242,36 +246,43 @@ const scrollspyJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (Node.isCallExpression(node) || Node.isNewExpression(node)) {
-        if (isScrollSpyPluginInvocation(node)) {
-          visitedLines.add(line);
-          matches.push({
-            line,
-            message:
-              'Legacy scrollspy plugin invocation tracks active section imperatively; modernize with CSS scroll-target-group: auto and :target-current.',
-          });
+      if (isScrollSpyPluginInvocation(node)) {
+        if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
           return;
         }
+        visitedLines.add(line);
+        matches.push({
+          line,
+          message:
+            'Legacy scrollspy plugin invocation tracks active section imperatively; modernize with CSS scroll-target-group: auto and :target-current.',
+        });
+        return;
+      }
 
-        if (isScrollEventListenerMeasuringSections(node)) {
-          visitedLines.add(line);
-          matches.push({
-            line,
-            message:
-              'Manual scroll listener calculates section positions to toggle active navigation state; modernize with CSS scroll-target-group: auto and :target-current.',
-          });
+      if (isScrollEventListenerMeasuringSections(node)) {
+        if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
           return;
         }
+        visitedLines.add(line);
+        matches.push({
+          line,
+          message:
+            'Manual scroll listener calculates section positions to toggle active navigation state; modernize with CSS scroll-target-group: auto and :target-current.',
+        });
+        return;
+      }
 
-        if (isIntersectionObserverScrollSpy(node)) {
-          visitedLines.add(line);
-          matches.push({
-            line,
-            message:
-              'IntersectionObserver navigation callback toggles active link on section intersection; modernize with CSS scroll-target-group: auto and :target-current.',
-          });
+      if (isIntersectionObserverScrollSpy(node)) {
+        if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
           return;
         }
+        visitedLines.add(line);
+        matches.push({
+          line,
+          message:
+            'IntersectionObserver navigation callback toggles active link on section intersection; modernize with CSS scroll-target-group: auto and :target-current.',
+        });
+        return;
       }
 
       // Check window.onscroll = ... or el.onscroll = ...
@@ -284,6 +295,9 @@ const scrollspyJsMatcher: JsRuleMatcher = {
           ) {
             const right = node.getRight();
             if (isHandlerMeasuringSections(right)) {
+              if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
+                return;
+              }
               visitedLines.add(line);
               matches.push({
                 line,

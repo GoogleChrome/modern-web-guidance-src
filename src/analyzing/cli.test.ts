@@ -85,7 +85,10 @@ describe('runAnalyzeCli', () => {
       assert.match(res.output, /Summary:/);
       assert.match(res.output, /- login\.html:\d+:/);
 
-      assert.match(res.output, /\* \[tier-2\] animate-to-intrinsic-sizes \(\d+ finding[s]?\)/);
+      assert.match(
+        res.output,
+        /\* \[tier-2: unmeasured \(too few findings\)\] animate-to-intrinsic-sizes \(\d+ finding[s]?\)/,
+      );
       assert.match(res.output, /Retrieve: npx modern-web-guidance retrieve animate-to-intrinsic-sizes/);
       assert.match(res.output, /- accordion\.css:\d+:/);
     } finally {
@@ -113,6 +116,9 @@ describe('runAnalyzeCli', () => {
 
       const guide = parsed.guides.find((g) => g.guideId === 'autofill-sign-in-form');
       assert.ok(guide, 'Expected autofill-sign-in-form guide in JSON output');
+      assert.ok(guide.phase2Rubric, 'Expected phase2Rubric in guide JSON output (R17)');
+      assert.ok(guide.phase2Rubric.keepWhen.length >= 1);
+      assert.ok(guide.phase2Rubric.dropWhen.length >= 1);
       assert.equal(guide.tier, 'tier-1-proven');
       assert.equal(guide.retrieveCommand, 'npx modern-web-guidance retrieve autofill-sign-in-form');
       assert.ok(guide.summary.length > 0);

@@ -10,16 +10,17 @@ import {
   TIER_2_GUIDE_IDS,
 } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
-import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
+import type { AnalyzerFinding, AnalyzerRule, Phase2Rubric } from './schema.ts';
 
 export type GuideConfidenceTier =
   | 'tier-1-proven'
+  | 'tier-2-unmeasured'
   | 'tier-2-zero-fp'
   | 'tier-3-experimental';
 
 export function getGuideConfidenceTier(guideId: string): GuideConfidenceTier {
   if (TIER_1_GUIDE_IDS.includes(guideId)) return 'tier-1-proven';
-  if (TIER_2_GUIDE_IDS.includes(guideId)) return 'tier-2-zero-fp';
+  if (TIER_2_GUIDE_IDS.includes(guideId)) return 'tier-2-unmeasured';
   return 'tier-3-experimental';
 }
 
@@ -36,6 +37,7 @@ export interface AnalyzeCliGuideGroup {
   readonly tier: GuideConfidenceTier;
   readonly summary: string;
   readonly retrieveCommand: string;
+  readonly phase2Rubric?: Phase2Rubric;
   readonly count: number;
   readonly findings: readonly AnalyzeCliFinding[];
 }
@@ -160,9 +162,13 @@ export async function runAnalyzeCli(
   }
 
   const summaryMap = new Map<string, string>();
+  const rubricMap = new Map<string, Phase2Rubric>();
   for (const r of ALL_RULES) {
     if (!summaryMap.has(r.guideId)) {
       summaryMap.set(r.guideId, r.summary);
+    }
+    if (!rubricMap.has(r.guideId)) {
+      rubricMap.set(r.guideId, r.phase2Rubric);
     }
   }
 
@@ -178,12 +184,14 @@ export async function runAnalyzeCli(
     });
 
     const summary = summaryMap.get(gid) ?? `Modernize legacy web pattern for ${gid}`;
+    const phase2Rubric = rubricMap.get(gid);
     const tier = getGuideConfidenceTier(gid);
     return {
       guideId: gid,
       tier,
       summary,
       retrieveCommand: `npx modern-web-guidance retrieve ${gid}`,
+      ...(phase2Rubric ? { phase2Rubric } : {}),
       count: guideFindings.length,
       findings: guideFindings.map((f) => ({
         ruleId: f.ruleId,
@@ -226,8 +234,8 @@ export async function runAnalyzeCli(
     const badge =
       g.tier === 'tier-1-proven'
         ? '[tier-1]'
-        : g.tier === 'tier-2-zero-fp'
-          ? '[tier-2]'
+        : g.tier === 'tier-2-unmeasured' || g.tier === 'tier-2-zero-fp'
+          ? '[tier-2: unmeasured (too few findings)]'
           : '[experimental]';
     lines.push(`* ${badge} ${g.guideId} (${g.count} ${g.count === 1 ? 'finding' : 'findings'})`);
     lines.push(`  Summary: ${g.summary}`);

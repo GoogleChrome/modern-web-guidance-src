@@ -2,7 +2,14 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-export const JUDGE_VERSION = 'gemini-3.8-flash:detective-v4-guide-only';
+export {
+  JUDGE_VERSION,
+  JUDGE_SYSTEM_PROMPT,
+} from './prompts.ts';
+import {
+  JUDGE_VERSION,
+  JUDGE_SYSTEM_PROMPT,
+} from './prompts.ts';
 import {
   CALIBRATION_DECK_PATH,
   CARDS_DIR,
@@ -130,27 +137,11 @@ export interface JudgeRunOptions {
   pollIntervalMs?: number;
   timeoutMs?: number;
   fetchFn?: typeof fetch;
+  temperature?: number;
 }
 
 export { BROWNFIELD_GUIDE_RUBRIC } from './guide-rubrics.ts';
 import { BROWNFIELD_GUIDE_RUBRIC } from './guide-rubrics.ts';
-
-export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization judge evaluating whether a static code finding is a legitimate instance of legacy web platform code that should be modernized according to a Modern Web Guidance guide.
-
-The Modern Web Guidance mission is to identify old web patterns and brownfield library workarounds (e.g. jQuery animations, vendor-prefixed properties like ::-webkit-scrollbar, <script type="text/template">, CSS sibling combinator hacks like ~/+ simulating :has(), manual Date timestamp math), and modernize them with standard web platform features to reduce dependencies and improve browser behavior.
-
-You must follow the Detective-then-Judge methodology:
-First extract structured facts:
-1. \`matches_before_syntax\`: Does the highlighted code match an old workaround, pre-standard API, vendor-prefixed syntax, or library helper targeted by the guide's brownfield rubric?
-2. \`has_fallback_or_feature_guard\`: Is this code protected by a feature guard (e.g. checking for modern API support, fallback branch, ponyfill, or polyfill)?
-3. \`modern_feature_applies_here\`: Does the modern web platform replacement apply here to modernize this code or eliminate the legacy workaround?
-4. \`reasoning\`: Concise, objective reasoning explaining your factual analysis.
-5. \`verdict\`: One of the following 5 values:
-   - 'right': Legitimate finding. The code matches the legacy workaround/pattern, is not an intentional fallback, and the modern feature applies.
-   - 'not-old-pattern': False positive. The code does NOT match the old workaround (e.g. token collision, unrelated logic, modern code mistaken for old).
-   - 'leave-it': The code is an intentional fallback, ponyfill/polyfill, or belongs to a non-browser environment; it should NOT be touched.
-   - 'guide-wrong': The guide's proposed replacement fundamentally does not solve or support this use case.
-   - 'unsure': Insufficient context to determine.`;
 
 export const JUDGE_RESPONSE_SCHEMA = {
   type: 'OBJECT',
@@ -176,8 +167,24 @@ export const JUDGE_RESPONSE_SCHEMA = {
 /**
  * Formats a blind card into a clean text prompt for the LLM judge.
  * Strips all detector rule IDs, source IDs, tool names, and prior verdicts.
+ * Per R11 and R19: when markdownBody is present, it is the sole guide specification;
+ * do NOT append brownfield rubric notes.
  */
 export function formatBlindCardPrompt(card: BlindCardPayload): string {
+  if (card.guideSummary.markdownBody) {
+    return `## Modern Web Guidance Guide (${card.guideId})
+${card.guideSummary.markdownBody}
+
+## Code Location
+- File: ${card.file}
+- Line: ${card.line}
+
+## Code Snippet
+\`\`\`
+${card.codeSnippet}
+\`\`\``;
+  }
+
   let brownfieldNote = '';
   if (BROWNFIELD_GUIDE_RUBRIC[card.guideId]) {
     brownfieldNote = `\n## Brownfield Workarounds Target (What this guide replaces)\n${BROWNFIELD_GUIDE_RUBRIC[card.guideId]}\n`;
@@ -192,20 +199,6 @@ export function formatBlindCardPrompt(card: BlindCardPayload): string {
     if (parts.length > 0) {
       brownfieldNote = `\n## Brownfield Workarounds Target (What this guide replaces)\n${parts.join('\n')}\n`;
     }
-  }
-
-  if (card.guideSummary.markdownBody) {
-    return `## Modern Web Guidance Guide (${card.guideId})
-${card.guideSummary.markdownBody}
-${brownfieldNote}
-## Code Location
-- File: ${card.file}
-- Line: ${card.line}
-
-## Code Snippet
-\`\`\`
-${card.codeSnippet}
-\`\`\``;
   }
 
   const examples = card.guideSummary.oldWayExamples?.length
@@ -231,7 +224,7 @@ ${card.codeSnippet}
 /**
  * Helper to construct Gemini generateContent request body with structured schema.
  */
-export function buildGeminiRequestBody(card: BlindCardPayload): unknown {
+export function buildGeminiRequestBody(card: BlindCardPayload, temperature = 0.0): unknown {
   return {
     systemInstruction: {
       parts: [{ text: JUDGE_SYSTEM_PROMPT }],
@@ -245,7 +238,7 @@ export function buildGeminiRequestBody(card: BlindCardPayload): unknown {
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: JUDGE_RESPONSE_SCHEMA,
-      temperature: 0.0,
+      temperature,
       thinkingConfig: { thinkingBudget: 0 },
     },
   };
@@ -253,62 +246,29 @@ export function buildGeminiRequestBody(card: BlindCardPayload): unknown {
 
 /**
  * Parses Gemini candidate content into DetectiveFactCheck.
+ * Fails fast with an explicit Error on invalid JSON or schema violations per Global Rules and R22.
  */
 export function parseJudgeJsonContent(rawText: string, cardId: string): JudgeResult {
+  const trimmed = rawText.trim();
+  let parsed: unknown;
   try {
-    const parsed: unknown = JSON.parse(rawText.trim());
-    if (isDetectiveFactCheck(parsed)) {
-      return {
-        cardId,
-        verdict: parsed.verdict,
-        facts: parsed,
-        rawResponse: rawText,
-      };
-    }
-    // Fallback if shape is partially valid
-    if (typeof parsed === 'object' && parsed !== null) {
-      const rec = parsed as Record<string, unknown>;
-      const verdict = isJudgeVerdict(rec.verdict) ? rec.verdict : 'unsure';
-      const facts: DetectiveFactCheck = {
-        matches_before_syntax: Boolean(rec.matches_before_syntax),
-        has_fallback_or_feature_guard: Boolean(rec.has_fallback_or_feature_guard),
-        modern_feature_applies_here: Boolean(rec.modern_feature_applies_here),
-        reasoning: typeof rec.reasoning === 'string' ? rec.reasoning : '',
-        verdict,
-      };
-      return {
-        cardId,
-        verdict,
-        facts,
-        rawResponse: rawText,
-      };
-    }
+    parsed = JSON.parse(trimmed);
   } catch (err: unknown) {
-    return {
-      cardId,
-      verdict: 'unsure',
-      facts: {
-        matches_before_syntax: false,
-        has_fallback_or_feature_guard: false,
-        modern_feature_applies_here: false,
-        reasoning: `JSON parse error: ${String(err)}`,
-        verdict: 'unsure',
-      },
-      rawResponse: rawText,
-      error: String(err),
-    };
+    throw new Error(
+      `Judge response for card ${cardId} is not valid JSON: ${String(err)}\nRaw response: ${rawText}`,
+    );
+  }
+
+  if (!isDetectiveFactCheck(parsed)) {
+    throw new Error(
+      `Judge response for card ${cardId} does not match schema: ${JSON.stringify(parsed)}\nRaw response: ${rawText}`,
+    );
   }
 
   return {
     cardId,
-    verdict: 'unsure',
-    facts: {
-      matches_before_syntax: false,
-      has_fallback_or_feature_guard: false,
-      modern_feature_applies_here: false,
-      reasoning: 'Invalid structure received from model',
-      verdict: 'unsure',
-    },
+    verdict: parsed.verdict,
+    facts: parsed,
     rawResponse: rawText,
   };
 }
@@ -447,7 +407,7 @@ export async function runJudgeDirect(
     while (currentIndex < cards.length) {
       const idx = currentIndex++;
       const card = cards[idx];
-      const body = buildGeminiRequestBody(card);
+      const body = buildGeminiRequestBody(card, options.temperature);
       const url = `${GEMINI_API_BASE}/models/${JUDGE_MODEL}:generateContent?key=${apiKey}`;
 
       const res = await fetchWithRetry(
