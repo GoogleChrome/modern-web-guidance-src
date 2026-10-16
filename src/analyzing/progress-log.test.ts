@@ -198,11 +198,11 @@ describe('formatProgressLogMarkdown and parseProgressLogMarkdown', () => {
   });
 
   it('verifies historical backfill rows and data integrity', () => {
-    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS.length, 2);
+    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS.length, 3);
     assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[0].runId, 'gate0-v1-full-guide');
     assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[0].detectable, 49);
 
-    assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS.length, 6);
+    assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS.length, 7);
     assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS[0].judgeVersion, 'gemini-3.8-flash:detective-v2-direct');
     assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS[3].judgeVersion, 'gemini-3.8-flash:detective-v4-guide-only');
     // Mislabeled 153dbc5* duplicate row MUST be excluded (R31)
@@ -360,7 +360,7 @@ describe('file operations and hashes', () => {
 
   it('rebuilds Table 3 purely from progress-history.json and live scorecards without stale markdown (O36, O52, O53, O61)', () => {
     const rows = buildTable3FunnelRowsSync();
-    assert.strictEqual(rows.length, 10, 'Expected 8 historical rows + 2 live scorecard rows');
+    assert.strictEqual(rows.length, 11, 'Expected 8 historical rows + 3 live scorecard rows');
 
     // Historical rows must use corrected numbers from progress-history.json (not stale markdown)
     const a5aRow = rows.find((r) => r.commit === 'a5a253f');
@@ -380,10 +380,17 @@ describe('file operations and hashes', () => {
     assert.ok(gitmirrorRow.notes?.includes('Phase 1 -> Phase 2: 258 -> 201 (Phase-1 prec=76.0%)'));
     assert.ok(gitmirrorRow.notes?.includes('(n=112)'));
 
-    const local93Row = rows.find((r) => r.commit === 'f3c2091' && r.splitHash === 'b8af9495f9ec');
-    assert.ok(local93Row, 'f3c2091 Local93 row must exist');
+    const local93Row = rows.find((r) => r.commit === '8f6e2bb' && r.splitHash === '845acda987f8');
+    assert.ok(local93Row, '8f6e2bb Local93 row must exist');
     assert.ok(local93Row.notes?.includes('[judge not admitted: in-sample on 116 dev cards; α < 0.667]'));
-    assert.ok(local93Row.notes?.includes('Phase 1 -> Phase 2: 397 -> 307 (Phase-1 prec=75.8%)'));
+    assert.ok(local93Row.notes?.includes('Phase 1 -> Phase 2: 459 -> 354 (Phase-1 prec=61.0%)'));
     assert.ok(local93Row.notes?.includes('(n=112)'));
+
+    // Live scorecard for untuned final GitMirror
+    const gitmirrorFinalRow = rows.find((r) => r.splitHash === 'd26557cf4124');
+    assert.ok(gitmirrorFinalRow, 'GitMirror final row must exist');
+    assert.strictEqual(formatMetricCell(gitmirrorFinalRow.recall), 'N/A (no local labels)');
+    assert.strictEqual(formatMetricCell(gitmirrorFinalRow.coverage), '2.9% (n=35, final)');
+    assert.ok(gitmirrorFinalRow.notes?.includes('[GATE MISSED: 1/35 cleared >=0.90 LB on untuned final split'));
   });
 });

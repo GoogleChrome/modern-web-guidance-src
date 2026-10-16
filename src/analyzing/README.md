@@ -25,8 +25,8 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `[dir]` | Positional | Directory to analyze (defaults to current working directory). |
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
-| `--tier=1`, `--proven-only` | Flag | Restrict analysis strictly to the 7 Tier 1 (`proven-high-n`, $n \ge 8$) rules. By default, the CLI runs the 25 qualified rules (`TIER_1_RULES` + `TIER_2_RULES`). |
-| `--all-rules`, `--experimental` | Flag | Include the 4 Tier 3 experimental/unqualified rules (`ALL_RULES`, 29 landed feature guides total, 37 rules). |
+| `--tier=1`, `--proven-only` | Flag | Restrict analysis strictly to proven Tier 1 rules. |
+| `--all-rules`, `--experimental` | Flag | Run all 35 landed feature guides (48 rules total in `ALL_RULES`), including experimental and unmeasured rules. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
@@ -195,39 +195,52 @@ export const autofillSignInFormRule: AnalyzerRule = {
 };
 ```
 
-### Registered Detectable Guides (29 Guides: 25 Qualified + 4 Experimental)
+### Qualified Rules & Gated Execution (`R33`)
 
-| # | Guide ID | Guide Hash | Tier (`rules/index.ts`) | Held-Out Precision | Modern Platform Target |
-| :- | :--- | :--- | :--- | :---: | :--- |
-| 1 | `animate-element-entry-exit` | `21cc4d2bf21c` | **Tier 1 (`proven-high-n`)** | `60/60 (100.0%)` | `@starting-style` and `transition-behavior: allow-discrete` |
-| 2 | `individual-transform-properties` | `42af807594e8` | **Tier 1 (`proven-high-n`)** | `42/43 (97.7%)` | Individual transform properties (`rotate`, `scale`, `translate`) |
-| 3 | `resilient-context-menus-and-nested-dropdowns` | `9152c0b12710` | **Tier 1 (`proven-high-n`)** | `28/28 (100.0%)` | Native `popover` and CSS Anchor Positioning |
-| 4 | `declarative-dialog-popover-control` | `87f6a7ad8849` | **Tier 1 (`proven-high-n`)** | `26/27 (96.3%)` | Declarative `commandfor` / `command` and `popovertarget` |
-| 5 | `autofill-sign-in-form` | `93a1df14cafc` | **Tier 1 (`proven-high-n`)** | `23/23 (100.0%)` | Standard `autocomplete="username"` and `autocomplete="current-password"` |
-| 6 | `shadow-dom` | `7c77ee087448` | **Tier 1 (`proven-high-n`)** | `13/13 (100.0%)` | Native `<template>` and Declarative Shadow DOM (`<template shadowrootmode="open">`) |
-| 7 | `child-state-based-styling` | `70dc57b74e35` | **Tier 1 (`proven-high-n`)** | `8/8 (100.0%)` | CSS `:has()` relational pseudo-class |
-| 9 | `animate-to-intrinsic-sizes` | `290b14ca7ee4` | **Tier 2 (`zero-fp-low-n`)** | `4/4 (100.0%)` | `calc-size()` and `interpolate-size: allow-keywords` |
-| 10 | `coordinate-global-events` | `253dec2c89a2` | **Tier 2 (`zero-fp-low-n`)** | `4/4 (100.0%)` | `Temporal.ZonedDateTime` for global timezone events |
-| 11 | `manage-recurring-intervals` | `70de814bc3cc` | **Tier 2 (`zero-fp-low-n`)** | `4/4 (100.0%)` | Temporal API (`Temporal.PlainDate.add` / `Temporal.Duration`) |
-| 11 | `accessible-error-announcement` | `b89c17bead92` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | `:user-invalid` and `aria-live="polite"` / `role="alert"` |
-| 12 | `brand-consistent-forms` | `a040352d2507` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | CSS `accent-color` for custom form controls |
-| 13 | `branded-select-styling` | `c332c3c67d49` | **Tier 2 (`zero-fp-low-n`)** | `3/3 (100.0%)` | Customizable native `<select>` with `appearance: base-select` |
-| 14 | `form-fields-automatically-fit-contents` | `54a6341c988f` | **Tier 2 (`zero-fp-low-n`)** | `2/2 (100.0%)` | CSS `field-sizing: content` |
-| 15 | `ime-safe-enter-submit` | `bd5e1488af32` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | `e.isComposing` guard on Enter keydown handlers |
-| 16 | `stack-drill-down` | `c3b9a4677d1b` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Native HTML `inert` attribute on inactive drill-down panels |
-| 17 | `calculate-event-differentials` | `ee7112b330c4` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Temporal API (`Temporal.PlainDate` / `Temporal.Instant` `.until()` / `.since()`) |
-| 18 | `autofill-address-form` | `49ee6117c8e4` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Standard `autocomplete` attributes on address form inputs |
-| 19 | `adapt-scrollbar-to-contrast-preferences` | `55a05ba9d96e` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | `scrollbar-color`, `scrollbar-width`, and `prefers-contrast` |
-| 20 | `checkbox` | `1b9c35459943` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | CSS `accent-color` for styled checkboxes |
-| 21 | `prevent-page-scroll-under-modal-dialog` | `7d10dd62dcbc` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
-| 22 | `dark-mode` | `796876897c2c` | **Tier 2 (`zero-fp-low-n`)** | `1/1 (100.0%)` | CSS `color-scheme: light dark` and `light-dark()` color functions |
-| 23 | `customize-scrollbar-color-and-thickness` | `6797d5c85622` | **Tier 2 (`zero-fp-low-n`)** | `26/29 (89.7%)` | Standard CSS `scrollbar-color` and `scrollbar-width` |
-| 24 | `break-up-long-tasks` | `18330b20e496` | **Tier 2 (`zero-fp-low-n`)** | `1/2 (50.0%)` | `scheduler.yield()` and `scheduler.postTask()` |
-| 25 | `detect-initial-visibility-state` | `b881da0b6ea2` | **Tier 2 (`zero-fp-low-n`)** | `0/6 (0.0%)` | `PerformanceNavigationTiming` / `visibility-state` entries |
-| 26 | `schedule-tasks-by-priority` | `69f3bb531093` | Tier 3 (`experimental`) | `0/1 (0.0%)` | Prioritized task scheduling via `scheduler.postTask()` |
-| 27 | `scrollspy` | `fffee90dc52d` | Tier 3 (`experimental`) | `0/0 (N/A)` | CSS `scroll-target-group: auto` and `:target-current` |
-| 28 | `size-aware-styling` | `89180c46bf23` | Tier 3 (`experimental`) | `0/0 (N/A)` | Native CSS Container Queries (`@container`) |
-| 29 | `defer-work-until-scroll-ends` | `ee7104add98e` | Tier 3 (`experimental`) | `0/0 (N/A)` | Native `scrollend` event listener |
+To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
+- **`TERMINAL_QUALIFIED_RULES`:** In standard terminal CLI mode, the analyzer runs **deterministic Phase 1 only** for guides that clear the statistical held-out qualification bar (`TERMINAL_QUALIFIED_GUIDE_IDS`). Currently, `animate-element-entry-exit` is qualified on held-out repositories (`97.5%` precision, 95% CI `[91.2% - 99.3%]`).
+- **`JSON_QUALIFIED_RULES`:** In `--json` mode for AI coding agents, the analyzer runs `JSON_QUALIFIED_GUIDE_IDS` and emits complete `phase2Rubric` definitions (`keepWhen` and `dropWhen`) so autonomous agents can verify candidate findings before proposing edits.
+- **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 35 landed feature guides across 48 rules, enabling research and broader scanning.
+
+### Registered Feature Guides (35 Guides, 48 Rules in `ALL_RULES`)
+
+| # | Guide ID | Tier | Held-Out Tune Prec (`local-93`) | Untuned Final Prec (`gitmirror`) | Modern Platform Target |
+| :- | :--- | :--- | :--- | :--- | :--- |
+| 1 | `animate-element-entry-exit` | **Qualified (`proven-high-n`)** | `77/79 = 97.5%` (95% CI `[91.2% - 99.3%]`) | `46/58 = 79.3%` | `@starting-style` and `transition-behavior: allow-discrete` |
+| 2 | `individual-transform-properties` | Proven High-$n$ (Final) | `58/68 = 85.3%` | `94/95 = 99.0%` (95% CI `[94.3% - 99.8%]`) | Individual transform properties (`rotate`, `scale`, `translate`) |
+| 3 | `autofill-sign-in-form` | Unmeasured Low-$n$ | `23/23 = 100.0%` | `68/75 = 90.7%` | Standard `autocomplete="username"` and `autocomplete="current-password"` |
+| 4 | `animate-to-intrinsic-sizes` | Unmeasured Low-$n$ | `4/4 = 100.0%` | `12/13 = 92.3%` | `calc-size()` and `interpolate-size: allow-keywords` |
+| 5 | `declarative-dialog-popover-control` | Experimental (Tuned) | `27/33 = 81.8%` | `57/73 = 78.1%` | Declarative `commandfor` / `command` and `popovertarget` |
+| 6 | `coordinate-global-events` | Experimental | `3/4 = 75.0%` | `17/19 = 89.5%` | `Temporal.ZonedDateTime` for global timezone events |
+| 7 | `customize-scrollbar-color-and-thickness` | Experimental | `22/29 = 75.9%` | `88/97 = 90.7%` | Standard CSS `scrollbar-color` and `scrollbar-width` |
+| 8 | `child-state-based-styling` | Experimental | `2/13 = 15.4%` | `3/31 = 9.7%` | CSS `:has()` relational pseudo-class |
+| 9 | `accessible-error-announcement` | Experimental | `3/4 = 75.0%` | `25/28 = 89.3%` | `:user-invalid` and `aria-live="polite"` / `role="alert"` |
+| 10 | `break-up-long-tasks` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `0/1 = 0.0%` | `scheduler.yield()` and `scheduler.postTask()` |
+| 11 | `ime-safe-enter-submit` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `9/9 = 100.0%` | `e.isComposing` guard on Enter keydown handlers |
+| 12 | `stack-drill-down` | Experimental | `0/1 = 0.0%` | `0/0 = N/A` | Native HTML `inert` attribute on inactive drill-down panels |
+| 13 | `calculate-event-differentials` | Unmeasured Low-$n$ (Tuned) | `1/1 = 100.0%` | `10/13 = 76.9%` | Temporal API (`Temporal.PlainDate` / `Temporal.Instant`) |
+| 14 | `resilient-context-menus-and-nested-dropdowns` | Experimental | `26/29 = 89.7%` | `36/57 = 63.2%` | Native `popover` and CSS Anchor Positioning |
+| 15 | `form-fields-automatically-fit-contents` | Unmeasured Low-$n$ | `2/2 = 100.0%` | `12/12 = 100.0%` | CSS `field-sizing: content` |
+| 16 | `brand-consistent-forms` | Experimental | `2/7 = 28.6%` | `30/57 = 52.6%` | CSS `accent-color` for custom form controls |
+| 17 | `scrollspy` | Experimental | `0/0 = N/A` | `40/53 = 75.5%` | CSS `scroll-target-group: auto` and `:target-current` |
+| 18 | `autofill-address-form` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `1/1 = 100.0%` | Standard `autocomplete` attributes on address form inputs |
+| 19 | `shadow-dom` | Experimental | `12/25 = 48.0%` | `12/25 = 48.0%` | Native `<template>` and Declarative Shadow DOM |
+| 20 | `branded-select-styling` | Experimental | `3/7 = 42.9%` | `11/17 = 64.7%` | Customizable native `<select>` with `appearance: base-select` |
+| 21 | `adapt-scrollbar-to-contrast-preferences` | Experimental | `0/1 = 0.0%` | `0/15 = 0.0%` | `scrollbar-color`, `scrollbar-width`, and `prefers-contrast` |
+| 22 | `checkbox` | Unmeasured Low-$n$ (Tuned) | `5/5 = 100.0%` | `32/35 = 91.4%` | CSS `accent-color` for styled checkboxes |
+| 23 | `size-aware-styling` | Experimental | `0/0 = N/A` | `0/0 = N/A` | Native CSS Container Queries (`@container`) |
+| 24 | `defer-work-until-scroll-ends` | Experimental | `0/0 = N/A` | `9/11 = 81.8%` | Native `scrollend` event listener |
+| 25 | `detect-initial-visibility-state` | Experimental | `0/6 = 0.0%` | `0/6 = 0.0%` | `PerformanceNavigationTiming` / `visibility-state` entries |
+| 26 | `schedule-tasks-by-priority` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `2/2 = 100.0%` | Prioritized task scheduling via `scheduler.postTask()` |
+| 27 | `prevent-page-scroll-under-modal-dialog` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `5/8 = 62.5%` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
+| 28 | `dark-mode` | Experimental | `2/3 = 66.7%` | `35/54 = 64.8%` | CSS `color-scheme: light dark` and `light-dark()` color functions |
+| 29 | `manage-recurring-intervals` | Experimental (Tuned) | `3/4 = 75.0%` | `5/12 = 41.7%` | Temporal API (`Temporal.PlainDate.add` / `Temporal.Duration`) |
+| 30 | `drag` | Experimental / Low-$n$ | `0/0 = N/A` | `1/1 = 100.0%` | Native HTML Drag and Drop standards |
+| 31 | `format-human-readable-durations` | Unmeasured Low-$n$ | `7/7 = 100.0%` | `17/19 = 89.5%` | `Intl.DurationFormat` |
+| 32 | `model-partial-time-concepts` | Experimental | `0/1 = 0.0%` | `0/26 = 0.0%` | Temporal API (`Temporal.PlainYearMonth` / `Temporal.PlainMonthDay`) |
+| 33 | `sanitize-untrusted-html` | Unmeasured Low-$n$ | `2/2 = 100.0%` | `9/16 = 56.3%` | Native `Sanitizer` API and `setHTML()` |
+| 34 | `custom-select-picker-layouts` | Experimental | `0/2 = 0.0%` | `0/11 = 0.0%` | `<select>` popover customization |
+| 35 | `scroll-position-aware-elements` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `9/16 = 56.3%` | CSS Scroll-Driven Animations (`animation-timeline: scroll()`) |
 
 ---
 
@@ -235,28 +248,34 @@ export const autofillSignInFormRule: AnalyzerRule = {
 
 The analyzer adheres to strict statistical rigor to guarantee production accuracy before any rule is published in `QUALIFIED_RULES`.
 
-### Held-Out Validation Corpus
+### 3-Way Split Architecture (`R23`, `O32`, `O60`)
 
-- **93 Held-Out `grading-only` Repositories** (strictly separated from the 115 `rule-writing` repositories and enforced via [`audit-transcripts.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/audit-transcripts.ts)).
-- **Canary Negative Controls**: Incorporates human-verified and synthetic negative canary snippets (shadowed identifiers, guarded fallbacks). Evaluation requires **100.0% Canary True Negative Rate (TNR)**.
-- **Independent Judge Protocol**: Uses a 3-run majority-vote `gemini-3.8-flash` judge ([`judge.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/judge.ts)) calibrated against human labels (`97.6%` stability, Gwet's $\mathrm{AC}_1 = 0.863$).
+The evaluation corpus is divided into three strictly isolated splits:
+- **`rule-writing` (115 local repos):** Used exclusively for authoring Phase 1 AST patterns and Phase 2 rubrics.
+- **`tune` (93 local held-out repos):** Used for threshold tuning, sequential sample analysis, and dev-set verification.
+- **`final` (2,336 remote GitMirror repos, 2,713 files):** Untuned, unexamined test split used solely for final held-out validation.
 
-### Statistical Qualification (`G7` & `G9` Tiered Qualification)
+Cross-split boundary isolation is statically verified by [`audit-transcripts.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/audit-transcripts.ts).
 
-Precision is evaluated via unrectified 95% Wilson confidence intervals ([`stats.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/stats.ts)):
+### Independent Judge Protocol & Honest Calibration
 
-$$L = \frac{p + \frac{z^2}{2n} - z \sqrt{\frac{p(1-p)}{n} + \frac{z^2}{4n^2}}}{1 + \frac{z^2}{n}} \quad (z = 1.96)$$
+Evaluation uses a 3-run majority-vote `gemini-3.8-flash` judge ([`judge.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/judge.ts)) operating under a de-primed prompt (`gemini-3.8-flash:detective-v6-spec22-5af939ff`) with zero technique hints or pre-approvals:
+- **Stability:** **87.7%** unanimous agreement across 3 passes at $T=0.2$.
+- **Canary TNR:** **100.0%** (2/2 negative canary controls correctly rejected).
+- **Admission Status:** In-sample dev evaluation yielded Gwet's $\mathrm{AC}_1 = 0.498$ and Krippendorff's $\alpha = -0.099$. Because $\alpha < 0.667$, the judge is labeled **`not admitted`** pending evaluation against Paul Irish's upcoming unseen admission deck.
 
-In [`pilot-scorecard.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/pilot-scorecard.ts), rules are evaluated and segregated into three explicit confidence tiers:
+### Dual Held-Out Scorecard Results (35 Guides)
 
-1. **Tier 1 (`TIER_1_RULES` — `proven-high-n`, $n \ge 8$):**
-   - Clears `wilson95.lower >= 0.90` ($n \ge 56$), OR for sample-constrained rules ($8 \le n < 56$, where $n = 56$ is the minimum sample size for 1 FP to reach `wilson95.lower >= 0.90`), clears `wilson95.lower >= 0.80` with point precision $p \ge 0.95$ (or `0` FPs).
-   - **Result:** 8 guides (`210/212 = 99.1%` pooled precision).
-2. **Tier 2 (`TIER_2_RULES` — `zero-fp-low-n`, $1 \le n < 8$):**
-   - Exhaustively evaluated across all 93 held-out repositories ($p_1^{\text{sampled}} = p_1^{\text{total}}$) with **zero false positives ($100.0\%$ precision)**.
-   - **Result:** 17 guides (`35/35 = 100.0%` pooled precision; combined `QUALIFIED_RULES` = 25 guides at **`245/247 = 99.2%`** pooled precision).
-3. **Tier 3 (`experimental`):**
-   - Unqualified or $n = 0$ on the held-out corpus; excluded from default CLI runs and gated behind `--all-rules` / `--experimental`.
+1. **Local-93 `tune` Split (`845acda987f8`):**
+   - **Pooled Held-Out Precision:** **78.5%** (`278/354`, 95% CI `[74.0% - 82.5%]`).
+   - **Qualified Rule (`animate-element-entry-exit`):** **97.5%** (`77/79`, 95% CI `[91.2% - 99.3%]`).
+   - **Coverage:** 1/35 guides clearing $\ge 0.90$ LB + 13 zero-FP low-$n$ guides.
+   - **Held-Out Recall:** **60.4%** ($n=101$).
+2. **GitMirror `final` Split (`d26557cf4124` across 2,336 repos):**
+   - **Pooled Held-Out Precision:** **72.0%** (`695/966`, 95% CI `[69.0% - 74.7%]`).
+   - **Qualified Rule (`individual-transform-properties`):** **98.9%** (`94/95`, 95% CI `[94.3% - 99.8%]`).
+   - **Coverage:** 1/35 guides clearing $\ge 0.90$ LB + 5 zero-FP low-$n$ guides.
+   - **Phase 1 Precision:** **53.0%** (`721/1359`). Phase 2 filter retained **966** findings with 26 false drops.
 
 ### 3-Gate Fix Validation Harness ([`fix-harness.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/fix-harness.ts))
 

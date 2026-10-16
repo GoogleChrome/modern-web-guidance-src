@@ -303,6 +303,7 @@ export function buildTable3FunnelRowsSync(
   const scorecardFiles = [
     '2026-10-16-gitmirror-7guide-pilot-scorecard.json',
     '2026-10-16-local93-v2-scorecard.json',
+    '2026-10-16-gitmirror-final-scorecard.json',
   ];
 
   for (const filename of scorecardFiles) {
@@ -324,13 +325,16 @@ export function buildTable3FunnelRowsSync(
     }
 
     const report = parsed;
-    const isGitMirror = filename.includes('gitmirror') || report.splitHash === '74b80dcdbd61' || report.summary.coverage.n === 7;
+    const isGitMirror = filename.includes('gitmirror') || report.splitHash === '74b80dcdbd61' || report.splitHash === 'd26557cf4124' || report.summary.coverage.n === 7 || report.summary.coverage.split === 'final';
+    const isFinalGitMirror = filename.includes('final') || report.splitHash === 'd26557cf4124' || report.summary.coverage.split === 'final';
     const recall: MetricEntry = isGitMirror
-      ? { value: 0, n: 0, split: 'unmeasured (gitmirror)' }
+      ? { value: 0, n: 0, split: isFinalGitMirror ? 'unmeasured (gitmirror, final)' : 'unmeasured (gitmirror)' }
       : report.summary.overallRecall;
 
     const notAdmittedPrefix = report.summary.judgeAlpha < 0.667
-      ? '[judge not admitted: in-sample on 116 dev cards; α < 0.667] '
+      ? (isFinalGitMirror
+          ? '[judge not admitted: in-sample on 114 dev cards; α < 0.667] '
+          : '[judge not admitted: in-sample on 116 dev cards; α < 0.667] ')
       : '';
     const gateMissed = isGitMirror && report.summary.clearedBar90Count === 0
       ? '[GATE MISSED: 0/7 cleared >=0.90 LB vs 4-5/7 expected; 3/7 reached n>=35] '
@@ -351,10 +355,14 @@ export function buildTable3FunnelRowsSync(
 
     let notes = '';
     if (isGitMirror) {
-      const clearedSc = report.summary.clearedSampleConstrainedCount;
-      const zeroFp = report.summary.zeroFpLowNCount;
-      const proven = report.summary.provenHighNCount;
-      notes = `${notAdmittedPrefix}${gateMissed}Milestone 3 GitMirror held-out evaluation (2,598 repos): ${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar [0 at >=0.90 CI lower, ${clearedSc} sample-constrained (3 at >=0.80 CI, 3 zero-FP exhaustive)], ${proven} proven + ${zeroFp} unmeasured, prec=0.0%, pooled prec=${p2Prec}, Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr})`;
+      if (isFinalGitMirror) {
+        notes = `${notAdmittedPrefix}[GATE MISSED: 1/35 cleared >=0.90 LB on untuned final split (individual-transform-properties at 94/95 = 98.9%, 95% CI [94.3% - 99.8%]; Phase-1 95/97 = 97.9%, 95% CI [92.8% - 99.4%])] Milestone 3 GitMirror untuned final evaluation (2,336 repos, 2,713 files): 1/35 guides cleared >=0.90 LB [8 cleared >=0.80 screen, 5 zero-FP low-n], qualified prec=98.9%, pooled prec=72.0%, Phase 1 -> Phase 2: 1359 -> 966 (Phase-1 prec=53.1%, 26 Phase 2 false drops), stability=87.1%, canaryTNR=100.0%, judge α=-0.099/AC1=0.498 (n=108)`;
+      } else {
+        const clearedSc = report.summary.clearedSampleConstrainedCount;
+        const zeroFp = report.summary.zeroFpLowNCount;
+        const proven = report.summary.provenHighNCount;
+        notes = `${notAdmittedPrefix}${gateMissed}Milestone 3 GitMirror held-out evaluation (2,598 repos): ${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar [0 at >=0.90 CI lower, ${clearedSc} sample-constrained (3 at >=0.80 CI, 3 zero-FP exhaustive)], ${proven} proven + ${zeroFp} unmeasured, prec=0.0%, pooled prec=${p2Prec}, Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr})`;
+      }
     } else {
       const clearedSc = report.summary.clearedSampleConstrainedCount;
       const zeroFp = report.summary.zeroFpLowNCount;
@@ -432,7 +440,12 @@ export async function computeFileHash(
  * Formats a metric for a table cell.
  */
 export function formatMetricCell(m: MetricEntry): string {
-  if (m.split.includes('unmeasured') || m.split.includes('gitmirror') || m.split === 'N/A' || m.split.includes('N/A')) {
+  if (
+    m.split.includes('unmeasured') ||
+    m.split === 'N/A' ||
+    m.split.includes('no local labels') ||
+    (m.split.includes('gitmirror') && m.n === 0)
+  ) {
     return 'N/A (no local labels)';
   }
   const valStr = `${(m.value * 100).toFixed(1)}%`;
@@ -448,7 +461,12 @@ export function formatMetricCell(m: MetricEntry): string {
  * Formats a metric for the summary section.
  */
 export function formatMetricSummary(m: MetricEntry): string {
-  if (m.split.includes('unmeasured') || m.split.includes('gitmirror') || m.split === 'N/A' || m.split.includes('N/A')) {
+  if (
+    m.split.includes('unmeasured') ||
+    m.split === 'N/A' ||
+    m.split.includes('no local labels') ||
+    (m.split.includes('gitmirror') && m.n === 0)
+  ) {
     return 'N/A (no local labels)';
   }
   const valStr = `${(m.value * 100).toFixed(1)}%`;
