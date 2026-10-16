@@ -94,20 +94,12 @@ The following steps are REQUIRED for creating a new use case:
   ---
   ```
 
-* **Step 5: Create the `expectations.md` stub**
+* **Step 5: Validate the use case**
 
-  Create an `expectations.md` file in the new subdirectory outlining the must-pass verification criteria for any application implementing this guidance.
+  Run `pnpm test` to validate the use case directory structure and frontmatter metadata.
 
-* **Step 6: Generate base-app evaluation capsules**
+* **Step 6: Get the use case approved**
 
-  Once `guide.md` and `expectations.md` are authored, run `gd dev guides/<category>/<guide>` to automatically generate and calibrate the evaluation capsules across `SUPPORTED_BASE_APPS` under `targets/<base_app>/`.
+  Submit the use case for review by creating a Pull Request with the `guide.md` stub (or by filing a [new-use-case issue](../../../.github/ISSUE_TEMPLATE/new-use-case.yml)).
 
-* **Step 7: Validate the use case**
-
-  Run `pnpm test` to validate the use case structure and target integrity.
-
-* **Step 8: Get the use case approved**
-
-  Submit the use case for review by creating a Pull Request containing the authored `guide.md` and `expectations.md` along with the generated `targets/` directory.
-
-After the use case is approved, you can proceed to refining the guidance and expectations as needed. Additional guidance is provided by the `project-guides` skill; evaluation capsules are then generated automatically by `gd dev`.
+After the use case is approved, proceed to Stage 2 (`project-guides` skill) to author the full `guide.md`, `expectations.md`, and `demo.html`; Stage 3 evaluation capsules under `targets/<base_app>/` are then generated automatically by `gd dev`.
