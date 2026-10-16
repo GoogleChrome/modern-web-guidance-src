@@ -24,7 +24,9 @@ export function buildFeatureToGroupsJson(): string {
 
 if (process.argv[1] === __filename) {
   const expected = buildFeatureToGroupsJson();
-  const current = fs.existsSync(FEATURE_TO_GROUPS_PATH) ? fs.readFileSync(FEATURE_TO_GROUPS_PATH, 'utf8') : '';
+  const current = fs.existsSync(FEATURE_TO_GROUPS_PATH)
+    ? fs.readFileSync(FEATURE_TO_GROUPS_PATH, 'utf8').replace(/\r\n/g, '\n')
+    : '';
   if (process.argv.includes('--check')) {
     if (current !== expected) {
       console.error('src/ci/feature-to-groups.gen.json is out of date. Run: node src/ci/generate-feature-to-groups.ts');

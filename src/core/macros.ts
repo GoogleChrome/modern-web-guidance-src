@@ -65,7 +65,7 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
       return `\`${guideId}\` (via \`npx -y modern-web-guidance@latest retrieve "${guideId}"\`)`;
     }
 
-    const relativePath = path.relative(path.dirname(filePath), getGuideMarkdownPath(guideInfo));
+    const relativePath = path.relative(path.dirname(filePath), getGuideMarkdownPath(guideInfo)).replaceAll('\\', '/');
     return `\`${relativePath}\``;
   }
 };

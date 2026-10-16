@@ -373,7 +373,19 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 }
 
 function getLatestVersion() {
-  const getLatestGitTag = () => execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1 | grep .', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  const getLatestGitTag = () => {
+    try {
+      const output = execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname', {
+        encoding: 'utf8',
+        cwd: rootDir,
+        stdio: ['pipe', 'pipe', 'ignore'],
+      }).trim();
+      const firstLine = output.split('\n').map(t => t.trim()).find(Boolean);
+      return firstLine || '';
+    } catch {
+      return '';
+    }
+  };
   const tag = getLatestGitTag();
   const version = tag.startsWith('v') ? tag.slice(1) : tag;
   return version;

@@ -191,7 +191,7 @@ export function resolveRunPath(runDir: string): { absoluteRunDir: string; relati
     }
   }
 
-  relativeRunPath = relativeRunPath.replace(/^suites[/\\]/, '');
+  relativeRunPath = relativeRunPath.replace(/^suites[/\\]/, '').replace(/\\/g, '/');
 
   return { absoluteRunDir, relativeRunPath };
 }

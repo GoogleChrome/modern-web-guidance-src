@@ -76,7 +76,7 @@ export function planFixes(
 
   for (const inv of guides) {
     if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) continue;
-    const guidePath = path.relative(rootDir, inv.dir);
+    const guidePath = path.relative(rootDir, inv.dir).replaceAll('\\', '/');
 
     // `gd pr` titles its PR the same way whichever branch it runs from.
     const pr = openPrs.find(p => p.title === devPrTitle(inv.name) || p.headRefName === devPrBranch(inv.name));
@@ -117,7 +117,7 @@ export function planFixes(
     const inv = guides.find(g => pr.title === devPrTitle(g.name) || pr.headRefName === devPrBranch(g.name));
     if (!inv) continue;
     toFix.push({
-      guidePath: path.relative(rootDir, inv.dir),
+      guidePath: path.relative(rootDir, inv.dir).replaceAll('\\', '/'),
       inv,
       prNumber: pr.number,
       branch: pr.headRefName ?? devPrBranch(inv.name),

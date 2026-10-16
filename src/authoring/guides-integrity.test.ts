@@ -210,7 +210,7 @@ describe('Guides Validation (Single Source of Truth)', () => {
   it('ensures feature-to-groups.gen.json is synchronized with .github/atls.json', async () => {
     const { buildFeatureToGroupsJson, FEATURE_TO_GROUPS_PATH } = await import('../ci/generate-feature-to-groups.ts');
     assert.strictEqual(
-      fs.readFileSync(FEATURE_TO_GROUPS_PATH, 'utf8'),
+      fs.readFileSync(FEATURE_TO_GROUPS_PATH, 'utf8').replace(/\r\n/g, '\n'),
       buildFeatureToGroupsJson(),
       'src/ci/feature-to-groups.gen.json is out of date. Run: node src/ci/generate-feature-to-groups.ts'
     );
