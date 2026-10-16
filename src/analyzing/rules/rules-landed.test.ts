@@ -3,20 +3,20 @@ import { describe, it } from 'node:test';
 import { ALL_RULES } from './index.ts';
 import { scanAllGuides, getGuideStatus, ProjectStatus } from '../../core/guide-validation.ts';
 
-describe('168-landed-guide invariant for analyzer rules', () => {
-  it('asserts that every rule in ALL_RULES belongs to the 168 landed feature guides', async (t) => {
+describe('171-landed-guide invariant for analyzer rules', () => {
+  it('asserts that every rule in ALL_RULES belongs to the 171 landed feature guides', async (t) => {
     const allGuides = await scanAllGuides();
     const landedFeatureGuides = allGuides.filter(
       (g) =>
         !g.isDisciplineGuide &&
-        !g.isStub &&
+        g.isPublished &&
         (getGuideStatus(g) === null || getGuideStatus(g) === ProjectStatus.NeedsEvals),
     );
 
     assert.strictEqual(
       landedFeatureGuides.length,
-      168,
-      'Corpus must have exactly 168 landed feature guides',
+      171,
+      'Corpus must have exactly 171 landed feature guides',
     );
 
     const landedGuideIds = new Set(landedFeatureGuides.map((g) => g.name));
