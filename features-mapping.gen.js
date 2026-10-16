@@ -69,7 +69,7 @@ window.__featuresMapping = {
     "abs-sign",
     "color-mix",
     "light-dark",
-    "tmp-revert-rule"
+    "revert-rule"
   ],
   "css-layout": [
     "flexbox",
