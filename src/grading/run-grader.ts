@@ -102,13 +102,18 @@ export async function runPlaywright(
     effectiveTargetPath = isDir ? tempGradingDir : path.join(tempGradingDir, path.basename(targetPathAbs));
   }
 
+  // Give each grading run its own output dir. The config's fallback (out/test-results) is shared
+  // across parallel runs, and Playwright wipes it at startup, so traces would land there and get clobbered.
+  const effectiveAppDir = isDir ? effectiveTargetPath : path.dirname(effectiveTargetPath);
+  const resolvedTestResultsDir = testResultsDir || path.join(effectiveAppDir, 'test-results');
+
   try {
     let stderrData = '';
     const child = executePlaywright({
       targetPathAbs: effectiveTargetPath,
       graderPath,
       reporters: ['json'],
-      testResultsDir,
+      testResultsDir: resolvedTestResultsDir,
       jsonOutputName: tmpJson,
       patchFile: patchFile,
       stdio: stdio === 'ignore' ? 'pipe' : stdio
@@ -121,9 +126,6 @@ export async function runPlaywright(
     }
 
     await once(child, 'close');
-
-    const effectiveAppDir = isDir ? effectiveTargetPath : path.dirname(effectiveTargetPath);
-    const resolvedTestResultsDir = testResultsDir || path.join(effectiveAppDir, 'test-results');
 
     // Move any retained trace.zip files out of test-results into tracesDir/<slug>.zip
     if (tracesDir) {
