@@ -239,6 +239,8 @@ Use `popover="auto"` for submenus, placed after the submenu trigger inside the p
 
 The submenu trigger keeps `aria-haspopup="menu"` and `aria-expanded`, and the `toggle` listener above keeps `aria-expanded` in sync. The keyboard script handles nested `Escape` and `ArrowLeft` as described above.
 
+A submenu trigger must not also run a command of its own. One control cannot be both a `menuitem` that activates and a trigger that opens; screen readers announce one or the other, and `Enter` cannot mean both. Split it: put the default action as the first item inside the submenu, or add a separate command item beside the trigger. If product requirements force a combined control, treat it as a known accessibility tradeoff and document it in the component.
+
 ### Separators and checkable items
 
 Separate groups of items with `<hr>` inside the focusgroup. It is a native `separator`, not focusable, and skipped by focusgroup and the fallback below. Do not use a styled `<div>`.
@@ -258,6 +260,11 @@ A boolean option is a `<button type="button">` with `aria-checked` and an explic
 ```
 
 Render the check mark from `[aria-checked="true"]::before`, not a separate icon element.
+
+### Not covered here
+
+* **Activation feedback.** Native menus flash the chosen item before closing. If your design wants that, show a brief (about 100 ms) visual confirm on the item before calling `hidePopover()`. Keep focus restoration and the status announcement as described above; do not delay them.
+* **Typeahead.** Focusgroup has no first-letter navigation. If you need it, collect the labels of the current level's enabled items on `keydown` for printable keys and focus the next match after the current item, wrapping. Do not intercept `Space`.
 
 ## Align menu item content
 
