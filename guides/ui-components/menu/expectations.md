@@ -6,6 +6,7 @@
 - Each trigger is a `<button type="button">` with `aria-haspopup="menu"`, `commandfor`, and `command="toggle-popover"`, and has no `popovertarget` or `popovertargetaction` attribute.
 - Each popover is the immediate next sibling of its trigger (and each submenu is a `popover="auto"` placed after its trigger inside the parent menu's focusgroup), so no `aria-details` relation is exposed on the trigger and closed submenus are not rendered inline.
 - Focusing a top-level or submenu trigger previews its menu and sets `aria-expanded="true"` without moving focus into the menu, and blurring a trigger that is only previewing closes that menu and sets `aria-expanded="false"`.
+- Focus returning to a trigger because the window regained focus (after switching apps or tabs) does not preview or reopen its menu.
 - Pressing `Enter` or `Space` on a previewed top-level or submenu trigger closes that preview and sets `aria-expanded="false"` without moving focus from the trigger.
 - Pressing `Enter` or `Space` on a closed trigger opens its menu, sets `aria-expanded="true"`, and moves focus to the first enabled item.
 - Pressing `ArrowDown` on a previewed top-level trigger converts it to open and moves focus to the first enabled item in the same turn.

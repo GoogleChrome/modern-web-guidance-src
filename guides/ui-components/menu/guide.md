@@ -136,7 +136,7 @@ The `command` event fires before `toggle-popover` opens the menu, so focus canno
 Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`, wrap-around and `Tab`-to-exit handling is ordinary `keydown` code. A few parts are easy to get wrong:
 
 1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler enters it, keyboard opens only.
-2. **Preview on focus.** Focusing a trigger calls `showPopover({ source: trigger })` so the menu anchors to it. Ignore focus coming back from inside the trigger's own menu, and hide a previewed menu on `blur` unless focus moved into it.
+2. **Preview on focus.** Focusing a trigger calls `showPopover({ source: trigger })` so the menu anchors to it. Ignore focus coming back from inside the trigger's own menu or from another window (set a flag on window `blur`, clear it a tick after window `focus`), and hide a previewed menu on `blur` unless focus moved into it. Without the window guard, switching back to the app reopens the last-used menu.
 3. **Pointer click on a preview.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus and start a preview mid-click. Remember which trigger was pressed. In the `command` handler, a `toggle-popover` from that trigger while the menu is only previewed is the one case to intercept: cancel it and focus the first item.
 4. **Move focus in `toggle`, not `command`.** `command` fires before the menu opens.
 5. **Restore focus to the trigger yourself.** Focus the trigger before `hidePopover()`.
@@ -146,9 +146,13 @@ Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`,
 9. **Safe triangle.** Delay submenu preview and close by about 150 ms; cancel the timer if the pointer returns. A diagonal move from a submenu trigger into its submenu must not close it.
 
 ```js
-// 2. Preview: show on focus, anchored to the trigger.
+// 2. Preview: show on focus, anchored to the trigger. Not when focus returns from another window.
+let returningToWindow = false;
+window.addEventListener('blur', () => { returningToWindow = true; });
+window.addEventListener('focus', () => setTimeout(() => { returningToWindow = false; }));
+
 trigger.addEventListener('focus', event => {
-  if (menu.contains(event.relatedTarget)) return;
+  if (menu.contains(event.relatedTarget) || returningToWindow) return;
   if (!menu.matches(':popover-open')) menu.showPopover({ source: trigger });
 });
 

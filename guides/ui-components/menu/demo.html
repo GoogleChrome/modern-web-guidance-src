@@ -406,13 +406,19 @@
       trigger.tabIndex = index === 0 ? 0 : -1;
     });
 
+    // Focus coming back from another window is not a new intent either: without this guard the
+    // last-used trigger previews its menu every time the user switches back to the app.
+    let returningToWindow = false;
+    window.addEventListener('blur', () => { returningToWindow = true; });
+    window.addEventListener('focus', () => setTimeout(() => { returningToWindow = false; }));
+
     triggers.forEach(trigger => {
       const menu = menuFor(trigger);
 
       // Focusing a trigger previews its menu without moving focus. Focus returning from inside
-      // its own menu is not a new intent, so it does not start a preview.
+      // its own menu, or from another window, is not a new intent, so it does not start a preview.
       trigger.addEventListener('focus', event => {
-        if (menu.contains(event.relatedTarget)) return;
+        if (menu.contains(event.relatedTarget) || returningToWindow) return;
         if (!isOpen(menu)) menu.showPopover({ source: trigger });
       });
 
