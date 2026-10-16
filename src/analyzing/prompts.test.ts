@@ -45,9 +45,11 @@ describe('prompts: content-hashed versions (R31)', () => {
     const expectedHash = computePromptContentHash({
       model: PROMPT_MODEL,
       systemPrompt: GATE0_SYSTEM_PROMPT,
-      userPromptTemplateSource: GATE0_USER_PROMPT_TEMPLATE,
+      userPromptTemplateSource: formatGate0Prompt.toString(),
       schema: GATE0_RESPONSE_SCHEMA,
       thinkingBudget: GATE0_THINKING_BUDGET,
+      temperature: 0.0,
+      enableSearchGrounding: false,
     });
     assert.strictEqual(GATE0_PROMPT_VERSION, `${PROMPT_MODEL}:gate0-v2-${expectedHash}`);
     assert.match(GATE0_PROMPT_VERSION, /^gemini-3\.8-flash:gate0-v2-[0-9a-f]{8}$/);
@@ -58,9 +60,11 @@ describe('prompts: content-hashed versions (R31)', () => {
     const expectedHash = computePromptContentHash({
       model: PROMPT_MODEL,
       systemPrompt: PHASE2_SYSTEM_PROMPT,
-      userPromptTemplateSource: PHASE2_USER_PROMPT_TEMPLATE,
+      userPromptTemplateSource: formatPhase2Prompt.toString(),
       schema: PHASE2_RESPONSE_SCHEMA,
       thinkingBudget: PHASE2_THINKING_BUDGET,
+      temperature: 0.0,
+      enableSearchGrounding: false,
     });
     assert.strictEqual(PHASE2_PROMPT_VERSION, `${PROMPT_MODEL}:phase2-v2-guide-${expectedHash}`);
     assert.match(PHASE2_PROMPT_VERSION, /^gemini-3\.8-flash:phase2-v2-guide-[0-9a-f]{8}$/);
@@ -71,9 +75,11 @@ describe('prompts: content-hashed versions (R31)', () => {
     const expectedHash = computePromptContentHash({
       model: PROMPT_MODEL,
       systemPrompt: JUDGE_SYSTEM_PROMPT,
-      userPromptTemplateSource: JUDGE_USER_PROMPT_TEMPLATE,
+      userPromptTemplateSource: formatBlindCardPrompt.toString(),
       schema: JUDGE_RESPONSE_SCHEMA,
       thinkingBudget: JUDGE_THINKING_BUDGET,
+      temperature: 0.2,
+      enableSearchGrounding: false,
     });
     assert.strictEqual(JUDGE_VERSION, `${PROMPT_MODEL}:detective-v6-spec22-${expectedHash}`);
     assert.match(JUDGE_VERSION, /^gemini-3\.8-flash:detective-v6-spec22-[0-9a-f]{8}$/);
@@ -84,9 +90,11 @@ describe('prompts: content-hashed versions (R31)', () => {
     const expectedHash = computePromptContentHash({
       model: PROMPT_MODEL,
       systemPrompt: SYNTHETIC_FIX_SIMULATION_PROMPT,
-      userPromptTemplateSource: FIX_USER_PROMPT_TEMPLATE,
+      userPromptTemplateSource: formatFixSimulationPrompt.toString(),
       schema: FIX_RESPONSE_SCHEMA,
       thinkingBudget: FIX_SIMULATION_THINKING_BUDGET,
+      temperature: 0.0,
+      enableSearchGrounding: false,
     });
     assert.strictEqual(SYNTHETIC_FIX_PROMPT_VERSION, `${PROMPT_MODEL}:fix-sim-v2-${expectedHash}`);
     assert.match(SYNTHETIC_FIX_PROMPT_VERSION, /^gemini-3\.8-flash:fix-sim-v2-[0-9a-f]{8}$/);

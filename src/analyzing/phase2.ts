@@ -180,12 +180,8 @@ export async function simulateSingleShotPhase2Filter(
   for (const finding of findings) {
     const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
     if (rule && !guideMarkdownCache.has(rule.guideId)) {
-      try {
-        const md = await loadRawGuideMarkdown(rule.guideId);
-        guideMarkdownCache.set(rule.guideId, md);
-      } catch {
-        guideMarkdownCache.set(rule.guideId, '');
-      }
+      const md = await loadRawGuideMarkdown(rule.guideId);
+      guideMarkdownCache.set(rule.guideId, md);
     }
   }
 

@@ -94,21 +94,25 @@ export function parseGate0Response(
     );
   }
 
-  let candidateTechniques: string[] = [];
-  if (Array.isArray(rec.candidateTechniques)) {
-    candidateTechniques = rec.candidateTechniques.map((t) => String(t).trim()).filter(Boolean);
+  if (!Array.isArray(rec.candidateTechniques)) {
+    throw new Error(`Gate 0 response missing array 'candidateTechniques' for guide ${guideId}`);
   }
+  const candidateTechniques = rec.candidateTechniques.map((t) => {
+    if (typeof t !== 'string') {
+      throw new Error(`Gate 0 candidateTechnique must be string for guide ${guideId}`);
+    }
+    return t.trim();
+  });
 
-  const borderline = Boolean(rec.borderline);
-
-  let brownfieldTarget = typeof rec.brownfieldTarget === 'string' ? rec.brownfieldTarget.trim() : '';
-  if (!brownfieldTarget && candidateTechniques.length > 0) {
-    brownfieldTarget = candidateTechniques.join('; ');
+  if (typeof rec.borderline !== 'boolean') {
+    throw new Error(`Gate 0 response missing boolean 'borderline' for guide ${guideId}`);
   }
+  const borderline = rec.borderline;
 
-  if (!brownfieldTarget) {
+  if (typeof rec.brownfieldTarget !== 'string' || !rec.brownfieldTarget.trim()) {
     throw new Error(`Gate 0 response missing string 'brownfieldTarget' for guide ${guideId}`);
   }
+  const brownfieldTarget = rec.brownfieldTarget.trim();
 
   if (typeof rec.evidenceFromGuide !== 'string') {
     throw new Error(`Gate 0 response missing string 'evidenceFromGuide' for guide ${guideId}`);

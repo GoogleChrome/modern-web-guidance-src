@@ -28,6 +28,8 @@ export function computePromptContentHash(params: {
   readonly userPromptTemplateSource: string;
   readonly schema: unknown;
   readonly thinkingBudget: number;
+  readonly temperature?: number;
+  readonly enableSearchGrounding?: boolean;
 }): string {
   const payload = [
     params.model,
@@ -35,6 +37,8 @@ export function computePromptContentHash(params: {
     params.userPromptTemplateSource,
     JSON.stringify(params.schema),
     String(params.thinkingBudget),
+    String(params.temperature ?? 0.0),
+    String(params.enableSearchGrounding ?? false),
   ].join('\n---\n');
   return createHash('sha256').update(payload).digest('hex').slice(0, 8);
 }
@@ -140,9 +144,11 @@ export function computeGate0PromptVersion(): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
     systemPrompt: GATE0_SYSTEM_PROMPT,
-    userPromptTemplateSource: GATE0_USER_PROMPT_TEMPLATE,
+    userPromptTemplateSource: formatGate0Prompt.toString(),
     schema: GATE0_RESPONSE_SCHEMA,
     thinkingBudget: GATE0_THINKING_BUDGET,
+    temperature: 0.0,
+    enableSearchGrounding: false,
   });
   return `${PROMPT_MODEL}:gate0-v2-${hash}`;
 }
@@ -257,9 +263,11 @@ export function computePhase2PromptVersion(): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
     systemPrompt: PHASE2_SYSTEM_PROMPT,
-    userPromptTemplateSource: PHASE2_USER_PROMPT_TEMPLATE,
+    userPromptTemplateSource: formatPhase2Prompt.toString(),
     schema: PHASE2_RESPONSE_SCHEMA,
     thinkingBudget: PHASE2_THINKING_BUDGET,
+    temperature: 0.0,
+    enableSearchGrounding: false,
   });
   return `${PROMPT_MODEL}:phase2-v2-guide-${hash}`;
 }
@@ -365,9 +373,11 @@ export function computeJudgePromptVersion(): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
     systemPrompt: JUDGE_SYSTEM_PROMPT,
-    userPromptTemplateSource: JUDGE_USER_PROMPT_TEMPLATE,
+    userPromptTemplateSource: formatBlindCardPrompt.toString(),
     schema: JUDGE_RESPONSE_SCHEMA,
     thinkingBudget: JUDGE_THINKING_BUDGET,
+    temperature: 0.2,
+    enableSearchGrounding: false,
   });
   return `${PROMPT_MODEL}:detective-v6-spec22-${hash}`;
 }
@@ -421,8 +431,6 @@ export const FIX_USER_PROMPT_TEMPLATE = `## Modern Web Guide: \${params.guideId}
 
 Refactor the code window to replace the legacy workaround with the modern web platform feature taught in the guide while preserving all surrounding application logic.
 Important:
-- Eliminate EVERY instance of the flagged legacy pattern within this code window.
-- Explicitly include the modern platform API/property from the guide directly in your patchedWindow.
 - If this finding is a false positive or intentional fallback that should be kept, return the original window unchanged in patchedWindow.`;
 
 export interface FixSimulationPromptParams {
@@ -450,8 +458,6 @@ ${params.windowText}
 
 Refactor the code window to replace the legacy workaround with the modern web platform feature taught in the guide while preserving all surrounding application logic.
 Important:
-- Eliminate EVERY instance of the flagged legacy pattern within this code window.
-- Explicitly include the modern platform API/property from the guide directly in your patchedWindow.
 - If this finding is a false positive or intentional fallback that should be kept, return the original window unchanged in patchedWindow.`;
 }
 
@@ -459,9 +465,11 @@ export function computeSyntheticFixPromptVersion(): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
     systemPrompt: SYNTHETIC_FIX_SIMULATION_PROMPT,
-    userPromptTemplateSource: FIX_USER_PROMPT_TEMPLATE,
+    userPromptTemplateSource: formatFixSimulationPrompt.toString(),
     schema: FIX_RESPONSE_SCHEMA,
     thinkingBudget: FIX_SIMULATION_THINKING_BUDGET,
+    temperature: 0.0,
+    enableSearchGrounding: false,
   });
   return `${PROMPT_MODEL}:fix-sim-v2-${hash}`;
 }

@@ -178,21 +178,30 @@ export function buildGeminiRequestBody(card: BlindCardPayload, temperature = 0.0
  * - matches_before_syntax && has_fallback_or_feature_guard -> 'leave-it'
  * - matches_before_syntax && !has_fallback_or_feature_guard && modern_feature_applies_here -> 'right'
  */
-export function deriveJudgeVerdictFromFacts(facts: {
-  matches_before_syntax: boolean;
-  has_fallback_or_feature_guard: boolean;
-  modern_feature_applies_here: boolean;
-}): JudgeVerdict | null {
+export function deriveJudgeVerdictFromFacts(
+  facts: {
+    matches_before_syntax: boolean;
+    has_fallback_or_feature_guard: boolean;
+    modern_feature_applies_here: boolean;
+  },
+  llmVerdict?: JudgeVerdict,
+): JudgeVerdict {
+  if (llmVerdict === 'guide-wrong') {
+    return 'guide-wrong';
+  }
   if (!facts.matches_before_syntax) {
     return 'not-old-pattern';
   }
   if (facts.has_fallback_or_feature_guard) {
     return 'leave-it';
   }
-  if (facts.modern_feature_applies_here) {
-    return 'right';
+  if (!facts.modern_feature_applies_here) {
+    return 'guide-wrong';
   }
-  return null;
+  if (llmVerdict === 'unsure') {
+    return 'unsure';
+  }
+  return 'right';
 }
 
 /**
@@ -217,8 +226,7 @@ export function parseJudgeJsonContent(rawText: string, cardId: string): JudgeRes
     );
   }
 
-  const derived = deriveJudgeVerdictFromFacts(parsed);
-  const finalVerdict = derived ?? parsed.verdict;
+  const finalVerdict = deriveJudgeVerdictFromFacts(parsed, parsed.verdict);
 
   return {
     cardId,
