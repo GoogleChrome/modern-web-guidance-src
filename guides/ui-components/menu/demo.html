@@ -35,10 +35,11 @@
       container-name: bar;
     }
 
+    /* role="menubar": one continuous bar, no gaps or borders between triggers, so it reads as a single Tab stop. */
     .bar {
       display: flex;
-      gap: .5rem;
-      padding: 1rem max(1rem, calc((100% - 48rem) / 2));
+      gap: 0;
+      padding: .5rem max(1rem, calc((100% - 48rem) / 2));
       border-block-end: 1px solid var(--line);
       background: var(--surface);
       transition: box-shadow .2s ease;
@@ -62,30 +63,33 @@
 
     .trigger {
       padding: .5rem .8rem;
-      border: 1px solid var(--line);
+      border: 0;
       border-radius: .3rem;
-      background: var(--surface);
+      background: transparent;
       color: inherit;
       cursor: pointer;
     }
 
     .trigger[aria-expanded="true"],
-    [focusgroup~="menu"]>button[aria-expanded="true"] {
-      border-color: var(--accent);
+    [focusgroup~="menu"] button[aria-expanded="true"] {
       background: color-mix(in srgb, var(--accent) 16%, var(--surface));
     }
 
+    /* Active = focused. Inside a menu, pointer hover moves focus (see script), so hover and focus are
+       always one item and only one item is highlighted. Do not add :hover for items. Top-level
+       triggers keep :hover: with nothing open it is plain button feedback, with a menu open hover
+       switches menus and focus follows. */
     .trigger:hover,
-    .trigger:focus-visible,
-    [focusgroup~="menu"]>button:hover,
-    [focusgroup~="menu"]>button:focus-visible {
+    .trigger:focus,
+    [focusgroup~="menu"] button:focus {
       background: var(--accent);
       color: white;
     }
 
+    /* Keyboard-only ring, separate from the active style. */
     :focus-visible {
       outline: .2rem solid #f90;
-      outline-offset: .15rem;
+      outline-offset: -.2rem;
     }
 
     [popover] {
@@ -110,7 +114,13 @@
       /* A popover nested in another popover is a submenu: beside its parent item, flipping when it would overflow. */
       [popover] [popover] {
         position-area: inline-end span-block-end;
-        position-try-fallbacks: flip-inline, flip-block;
+        position-try-fallbacks: flip-inline, flip-block, --below;
+      }
+
+      /* Last resort for narrow viewports: below the trigger, indented, so the submenu never covers its parent. */
+      @position-try --below {
+        position-area: block-end span-inline-end;
+        margin-inline-start: 1rem;
       }
     }
 
@@ -122,8 +132,9 @@
       min-inline-size: 14rem;
     }
 
-    /* Scope to buttons: a closed submenu popover inside the focusgroup must keep display: none. */
-    [focusgroup~="menu"]>button {
+    /* Scope to items: a closed submenu popover inside the focusgroup must keep display: none. */
+    [focusgroup~="menu"]>button,
+    [focusgroup~="menu"]>[role="group"]>button {
       display: grid;
       grid-column: 1 / -1;
       grid-template-columns: subgrid;
@@ -136,6 +147,35 @@
       color: inherit;
       text-align: start;
       cursor: pointer;
+    }
+
+    /* Column 1 holds the check mark so labels align whether or not an item is checkable. */
+    [focusgroup~="menu"] button::before {
+      content: '';
+      grid-column: 1;
+      inline-size: 1.2em;
+    }
+
+    [aria-checked="true"]::before {
+      content: '✓';
+    }
+
+    /* Separators and groups span the row; a group passes the columns through to its buttons. */
+    [focusgroup~="menu"]>hr,
+    [focusgroup~="menu"]>[role="group"] {
+      grid-column: 1 / -1;
+    }
+
+    [focusgroup~="menu"]>hr {
+      inline-size: 100%;
+      margin: .2rem 0;
+      border: 0;
+      border-block-start: 1px solid var(--line);
+    }
+
+    [focusgroup~="menu"]>[role="group"] {
+      display: grid;
+      grid-template-columns: subgrid;
     }
 
     .hint {
@@ -196,16 +236,22 @@
         tabindex="-1">View</button>
       <div id="view-menu" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="view-trigger">
-          <button type="button">Show Toolbar</button>
+          <!-- Checkable items keep an explicit role: focusgroup only infers menuitem. -->
+          <button type="button" role="menuitemcheckbox" aria-checked="true">Show Toolbar</button>
+          <button type="button" role="menuitemcheckbox" aria-checked="false">Show Status Bar</button>
+          <hr>
           <button id="appearance-trigger" type="button" aria-haspopup="menu" commandfor="appearance-menu" command="toggle-popover" aria-expanded="false">Appearance <span
               class="hint" aria-hidden="true">›</span></button>
           <div id="appearance-menu" popover="auto">
             <div focusgroup="menu nomemory" aria-labelledby="appearance-trigger">
-              <button type="button">Use Light Appearance</button>
-              <button type="button">Use Dark Appearance</button>
-              <button type="button">Use System Appearance</button>
+              <div role="group" aria-label="Appearance">
+                <button type="button" role="menuitemradio" aria-checked="false">Light</button>
+                <button type="button" role="menuitemradio" aria-checked="false">Dark</button>
+                <button type="button" role="menuitemradio" aria-checked="true">System</button>
+              </div>
             </div>
           </div>
+          <hr>
           <button type="button">Enter Full Screen</button>
         </div>
       </div>
@@ -243,16 +289,19 @@
     // Native focusgroup supplies menu navigation and inferred roles where supported.
     // Only install the local navigation and semantic fallback when it is unavailable.
     function installFocusgroupFallback() {
-      if (Object.hasOwn(HTMLElement.prototype, 'focusGroup')) return;
+      if ('focusGroup' in HTMLElement.prototype) return;
 
       document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
         group.setAttribute('role', 'menu');
-        group.querySelectorAll(':scope > button').forEach(item => {
+        // Checkable items already carry menuitemcheckbox or menuitemradio.
+        group.querySelectorAll('button:not([role])').forEach(item => {
           item.setAttribute('role', 'menuitem');
         });
         group.addEventListener('keydown', event => {
           if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
-          const items = [...group.querySelectorAll(':scope > button')]
+          // Own items only: a nested submenu has its own focusgroup, a role="group" wrapper does not.
+          const items = [...group.querySelectorAll('button')]
+            .filter(item => item.closest('[focusgroup]') === group)
             .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
           const current = items.indexOf(document.activeElement);
           if (current < 0) return;
@@ -277,6 +326,8 @@
     // The trigger a pointer is pressing, so a pointer click on a preview enters the menu
     // while Enter or Space on the same preview lets toggle-popover close it.
     let pointerTrigger = null;
+    // The key that produced the current activation, so Space on a checkbox item can keep the menu open.
+    let lastKey = null;
 
     const menuFor = trigger => document.getElementById(trigger.getAttribute('commandfor'));
     const triggerFor = menu => triggers.find(trigger => menuFor(trigger) === menu);
@@ -288,9 +339,12 @@
       while (root.parentElement.closest('[popover]')) root = root.parentElement.closest('[popover]');
       return root;
     };
-    const menuItems = menu => [...menu.querySelector(':scope > [focusgroup~="menu"]')
-      .querySelectorAll(':scope > button')]
-      .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+    const menuItems = menu => {
+      const group = menu.querySelector(':scope > [focusgroup~="menu"]');
+      return [...group.querySelectorAll('button')]
+        .filter(item => item.closest('[focusgroup]') === group)
+        .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+    };
 
     function focusFirst(menu) {
       const first = menuItems(menu)[0];
@@ -330,7 +384,7 @@
 
     // Without command invokers, the command attribute does nothing, so a click has to toggle the
     // popover itself. Mirror the native behavior: a pointer click on a preview enters the menu.
-    if (!Object.hasOwn(HTMLButtonElement.prototype, 'commandForElement')) {
+    if (!('commandForElement' in HTMLButtonElement.prototype)) {
       triggers.forEach(trigger => {
         const menu = menuFor(trigger);
         trigger.addEventListener('click', event => {
@@ -381,6 +435,16 @@
 
     rootTriggers.forEach(trigger => {
       const menu = menuFor(trigger);
+
+      // Hover switches between top-level menus once one is open. Focusing the hovered trigger
+      // (without a ring) runs the same preview-on-focus as keyboard. Nothing open: do nothing.
+      trigger.addEventListener('pointerenter', () => {
+        const open = rootTriggers.map(menuFor).find(isOpen);
+        if (!open || open === menu) return;
+        open.hidePopover();
+        trigger.focus({ preventScroll: true, focusVisible: false });
+      });
+
       trigger.addEventListener('keydown', event => {
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
           event.preventDefault();
@@ -408,18 +472,38 @@
           event.preventDefault();
           focusFirst(menu);
         } else if (!isOpen(menu)) {
-          enterOnOpen.add(menu);
+          // Only a keyboard open enters the menu. A pointer open leaves focus on the trigger.
+          if (!fromPointer) enterOnOpen.add(menu);
         } else {
           event.source?.focus({ preventScroll: true });
         }
       });
 
       menu.addEventListener('toggle', event => {
-        triggerFor(menu)?.setAttribute('aria-expanded', String(event.newState === 'open'));
-        if (event.newState === 'open' && enterOnOpen.delete(menu)) focusFirst(menu);
+        const trigger = triggerFor(menu);
+        trigger?.setAttribute('aria-expanded', String(event.newState === 'open'));
+        if (event.newState !== 'open') return;
+        if (enterOnOpen.delete(menu)) focusFirst(menu);
+        // Pointer open: keep focus on the trigger (no ring) so arrow keys work. The menu is already
+        // open, so the trigger's focus listener does not start a second preview.
+        else if (!menu.contains(document.activeElement)) trigger?.focus({ preventScroll: true, focusVisible: false });
       });
 
+      // Hover follows focus: the pointed-at item takes focus without a ring, so hover and focus
+      // are one item. The short delay is the safe triangle: crossing sibling items on the way
+      // into an open submenu never fires, so the submenu stays open.
+      let hoverTimer;
+      menu.addEventListener('pointermove', event => {
+        const item = event.target.closest('button');
+        clearTimeout(hoverTimer);
+        // Pointer is over a nested submenu or on the focused item: nothing pending.
+        if (!item || item.closest('[popover]') !== menu || item === document.activeElement) return;
+        hoverTimer = setTimeout(() => item.focus({ preventScroll: true, focusVisible: false }), 150);
+      });
+      menu.addEventListener('pointerleave', () => clearTimeout(hoverTimer));
+
       menu.addEventListener('keydown', event => {
+        lastKey = event.key;
         const active = document.activeElement;
         const parentMenu = menu.parentElement.closest('[popover]');
         const activeSubmenu = active.matches('[commandfor]') ? menuFor(active) : null;
@@ -461,10 +545,24 @@
       // Commands activate on click, whether from pointer, Enter, or Space.
       // Submenu triggers are invokers, so their click toggles the submenu natively.
       menu.addEventListener('click', event => {
-        const item = event.target.closest('[focusgroup~="menu"] > button');
-        if (!item || item.matches('[commandfor]')) return;
+        const item = event.target.closest('button');
+        if (!item || item.matches('[commandfor]') || item.closest('[popover]') !== menu) return;
         event.stopPropagation();
-        status.textContent = `${item.textContent.trim()} selected`;
+        const role = item.getAttribute('role');
+        if (role === 'menuitemcheckbox') {
+          const checked = item.getAttribute('aria-checked') !== 'true';
+          item.setAttribute('aria-checked', String(checked));
+          status.textContent = `${item.textContent.trim()} ${checked ? 'on' : 'off'}`;
+          // APG: Space toggles and keeps the menu open; Enter (or pointer) toggles and closes.
+          if (lastKey === ' ') { lastKey = null; return; }
+        } else if (role === 'menuitemradio') {
+          item.closest('[role="group"]').querySelectorAll('[role="menuitemradio"]')
+            .forEach(radio => radio.setAttribute('aria-checked', String(radio === item)));
+          status.textContent = `${item.textContent.trim()} selected`;
+        } else {
+          status.textContent = `${item.textContent.trim()} selected`;
+        }
+        lastKey = null;
         closeAndRestore(rootMenuOf(menu));
       });
     });
