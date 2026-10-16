@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modern CSS Icons (Style Queries & Masks)</title>
+  <style>
+    :root {
+      --icon-color-default: #444;
+      --icon-color-danger: #b00020;
+      --icon-color-success: #1a7f37;
+
+      /* Easily configurable relative unit icon sizing (fallbacks: 1em, currentColor, 0.3em, -0.02em) */
+      --icon-style-size: 1.25em;
+      --icon-style-spacing: 0.4em;
+      --icon-transition-duration: 0.2s;
+      --icon-transition-easing: ease;
+
+      /* SVG icon assets stored as CSS variables. Data URIs resolve the same way in every browser. A relative
+         file URL would resolve against the stylesheet that uses the icon, so use data URIs or root-relative
+         URLs, such as url("/icons/trash.svg"). */
+      --icon-trash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z'/%3E%3C/svg%3E");
+      --icon-favourite: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
+      --icon-caret-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E");
+      --icon-caret-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E");
+    }
+
+    /* Register custom properties with universal syntax so they do not inherit into descendants */
+    @property --icon-start {
+      syntax: "*";
+      inherits: false;
+    }
+
+    @property --icon-end {
+      syntax: "*";
+      inherits: false;
+    }
+
+    /* Safari bug workaround (WebKit #301609, #320220): Force ::before/::after recalculation */
+    @keyframes webkit-301609 {}
+
+    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
+      @layer webkit-301609-fix {
+
+        ::before,
+        ::after {
+          animation: webkit-301609 0s;
+        }
+      }
+    }
+
+    /* Safari workaround for WebKit #325900: preserve direct icon overrides */
+    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
+      @property --icon-start {
+        syntax: "*";
+        inherits: true;
+      }
+
+      @layer webkit-325900-fix {
+        @container style(--icon-start) {
+          * {
+            --icon-start: initial;
+          }
+        }
+      }
+    }
+
+    /* Base interactive button styles */
+    button {
+      all: unset;
+      appearance: none;
+      -webkit-appearance: none;
+      background: none;
+      border: none;
+      padding: 0.25rem 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      color: var(--icon-color-default);
+      transition: color var(--icon-transition-duration) var(--icon-transition-easing);
+      border-radius: 4px;
+    }
+
+    button:hover,
+    button:focus-visible {
+      color: hotpink;
+    }
+
+    .button--danger {
+      color: var(--icon-color-danger);
+    }
+
+    .button--danger:hover {
+      color: #ef4444;
+    }
+
+    /* Icon-only buttons and standalone icons */
+    .icon {
+      vertical-align: middle;
+      color: inherit;
+    }
+
+    .icon--success {
+      color: var(--icon-color-success);
+    }
+
+    /* Component defaults: icons assigned from the stylesheet, no inline styles */
+    .button-delete {
+      --icon-start: var(--icon-trash);
+    }
+
+    .button-favourite {
+      --icon-end: var(--icon-favourite);
+    }
+
+    .button-expand {
+      --icon-start: var(--icon-caret-right);
+    }
+
+    .button-expand[aria-expanded="true"] {
+      --icon-start: var(--icon-caret-down);
+    }
+
+    /* Icon-only control named from the stylesheet via generated-content alt text */
+    .button-close {
+      --icon: var(--icon-trash);
+      --icon-style-alt: "Delete item";
+    }
+
+    /* Subtree theming via --icon-style-* */
+    .toolbar {
+      --icon-style-size: 1.5em;
+      --icon-style-spacing: 0.5em;
+    }
+
+    /* Standalone empty icon elements forward the --icon property to --icon-start */
+    .icon:empty {
+      --icon-start: var(--icon);
+    }
+
+    /* Style query for elements configuring a start icon */
+    @container style(--icon-start) {
+      ::before {
+        --icon-start: inherit;
+        content: "" / var(--icon-style-alt, "");
+        display: inline-block;
+        width: var(--icon-style-size, 1em);
+        height: var(--icon-style-size, 1em);
+        background-color: var(--icon-style-color, currentColor);
+        mask: var(--icon-start) no-repeat center / contain;
+        opacity: 0.85;
+        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
+        flex: none;
+        pointer-events: none;
+        forced-color-adjust: none;
+        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+      }
+
+      /* Automatically add spacing if the container has other text or child elements */
+      :not(.icon, :empty)::before {
+        margin-inline-end: var(--icon-style-spacing, 0.3em);
+      }
+    }
+
+    /* Style query for elements configuring an end icon */
+    @container style(--icon-end) {
+      ::after {
+        --icon-end: inherit;
+        content: "" / var(--icon-style-alt, "");
+        display: inline-block;
+        width: var(--icon-style-size, 1em);
+        height: var(--icon-style-size, 1em);
+        background-color: var(--icon-style-color, currentColor);
+        mask: var(--icon-end) no-repeat center / contain;
+        opacity: 0.85;
+        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
+        flex: none;
+        pointer-events: none;
+        forced-color-adjust: none;
+        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+      }
+
+      :not(.icon, :empty)::after {
+        margin-inline-start: var(--icon-style-spacing, 0.3em);
+      }
+    }
+
+    /* --------------------------------------------------
+     ROBUST COMPATIBILITY FALLBACK (Style Queries Lack of Support)
+     -------------------------------------------------- */
+    /* Class-hook fallback for start icons and standalone empty icons */
+    :where(.icon-start, .icon:empty)::before {
+      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) / var(--icon-style-alt, "");
+      display: inline-block;
+      width: var(--icon-style-size, 1em);
+      height: var(--icon-style-size, 1em);
+      background-color: var(--icon-style-color, currentColor);
+      mask: var(--icon-start) no-repeat center / contain;
+      opacity: 0.85;
+      vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
+      flex: none;
+      pointer-events: none;
+      forced-color-adjust: none;
+      transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+    }
+
+    :where(.icon-start)::before {
+      --icon-start: inherit;
+    }
+
+    :where(.icon:empty)::before {
+      --icon-start: var(--icon);
+    }
+
+    :where(.icon-start:not(.icon, :empty))::before {
+      margin-inline-end: var(--icon-style-spacing, 0.3em);
+    }
+
+    /* Class-hook fallback for end icons */
+    :where(.icon-end)::after {
+      --icon-end: inherit;
+      content: image-set(linear-gradient(transparent 0 100%), var(--icon-end)) / var(--icon-style-alt, "");
+      display: inline-block;
+      width: var(--icon-style-size, 1em);
+      height: var(--icon-style-size, 1em);
+      background-color: var(--icon-style-color, currentColor);
+      mask: var(--icon-end) no-repeat center / contain;
+      opacity: 0.85;
+      vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
+      flex: none;
+      pointer-events: none;
+      forced-color-adjust: none;
+      transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+    }
+
+    :where(.icon-end:not(.icon, :empty))::after {
+      margin-inline-start: var(--icon-style-spacing, 0.3em);
+    }
+
+  </style>
+</head>
+
+<body>
+  <section style="padding: 1rem; font-family: system-ui, sans-serif;">
+    <h2>Modern CSS Icons Demo</h2>
+
+    <p><strong>1. Component defaults</strong> (icons assigned by stylesheet rules; no inline styles)</p>
+    <button class="button-delete icon-start">delete item</button>
+    <br />
+    <button class="button-favourite icon-end">favourite item</button>
+    <hr />
+
+    <p><strong>2. Changing icons with state</strong> (icon swaps via an <code>[aria-expanded]</code> override)</p>
+    <button class="button-expand icon-start" aria-expanded="false" aria-controls="expand-panel"
+      onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') !== 'true')">more options</button>
+    <div id="expand-panel" hidden></div>
+    <hr />
+
+    <p><strong>3. Subtree theming</strong> (same buttons inside a <code>.toolbar</code> with larger size and spacing)</p>
+    <div class="toolbar">
+      <button class="button-delete icon-start">delete item</button>
+      <button class="button-favourite icon-end">favourite item</button>
+    </div>
+    <hr />
+
+    <p><strong>4. Icon-only buttons</strong> (accessible name via <code>--icon-style-alt</code> in the stylesheet, or via aria-label)</p>
+    <button class="icon button-close"></button>
+    <br />
+    <button class="icon button--danger" style="--icon: var(--icon-trash);" aria-label="Delete item"></button>
+    <hr />
+
+    <p><strong>5. One-off inline icon</strong> (escape hatch for an element no component rule covers)</p>
+    <button class="icon-start" style="--icon-start: var(--icon-check);">approve</button>
+    <hr />
+
+    <p><strong>6. Standalone meaningful icon</strong> (with role="img" and accessible name)</p>
+    <p>
+      Payment status:
+      <span class="icon icon--success" style="--icon: var(--icon-check);" role="img" aria-label="Successful"></span>
+    </p>
+  </section>
+</body>
+
+</html>

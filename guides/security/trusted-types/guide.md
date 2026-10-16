@@ -1,6 +1,6 @@
 ---
 name: trusted-types
-description: Help prevent DOM-based XSS attacks by ensuring all untrusted content is sanitized before being inserted into the page.
+description: Help prevent DOM-based XSS attacks by locking down dangerous DOM sinks so they reject raw strings and only accept policy-validated HTML.
 web-feature-ids:
   - trusted-types
 ---
@@ -22,16 +22,16 @@ To use Trusted Types, follow four main steps:
 
 ### 1. Creating a Policy
 
-A policy is a set of rules for sanitizing content. You create it using `trustedTypes.createPolicy()`.
+A policy is a set of rules for sanitizing content. You create it using `trustedTypes.createPolicy()`, typically delegating to a sanitizer library such as DOMPurify or your application's HTML escaping rules:
 
 ```javascript
-const myPolicy = trustedTypes.createPolicy('my-no-pretzel-policy', {
-  createHTML: (input) => {
-    // A simple replacement rule.
-    // In a real app, you might use the Sanitizer API, or a library like DOMPurify.
-    return input
-      .replace(/pretzel/g, "popcorn");
-  }
+import DOMPurify from 'dompurify';
+
+const myPolicy = trustedTypes.createPolicy('sanitize-html', {
+  createHTML: (input) =>
+    // Return a sanitized string; createPolicy() wraps it in a TrustedHTML object.
+    // Example using DOMPurify:
+    DOMPurify.sanitize(input, { RETURN_TRUSTED_TYPE: false }),
 });
 ```
 
@@ -40,14 +40,14 @@ const myPolicy = trustedTypes.createPolicy('my-no-pretzel-policy', {
 Instead of passing a string directly to a sink, you call the policy's creation method.
 
 ```javascript
-const untrustedInput = 'I love eating a soft pretzel.';
+const untrustedInput = '<p>Hello, <strong>world</strong>!</p><img src="x" onerror="alert(1)">';
 
 // In an enforced environment, this would throw a TypeError:
 // element.innerHTML = untrustedInput;
 
-// This returns a TrustedHTML object:
+// This returns a TrustedHTML object with unsafe elements and attributes removed:
 const cleanHTML = myPolicy.createHTML(untrustedInput);
-// Result: "I love eating a soft popcorn."
+// Result: "<p>Hello, <strong>world</strong>!</p><img src=\"x\">"
 ```
 
 ### 3. Transitioning sinks to use Trusted Types
@@ -58,22 +58,22 @@ Update each instance where you write to a sink to first convert it to a Trusted 
 trustedTypes.createPolicy("default", {
   createHTML(value) {
     console.warn("String passed instead of Trusted Type.");
-    return sanitize(value);
+    return DOMPurify.sanitize(value, { RETURN_TRUSTED_TYPE: false });
   },
 });
 ```
 
 Common sinks that support Trusted Types include:
-- **HTML:** `element.innerHTML`, `element.outerHTML`, `document.write()`, `element.setHTMLUnsafe()`, `document.parseHTMLUnsafe()`
-- **Script:** `<script src>`, `eval()`
-- **ScriptURL:** `Worker()`, `SharedWorker()`
+- **HTML:** `element.innerHTML`, `element.outerHTML`, `document.write()`, `element.setHTMLUnsafe()`, `Document.parseHTMLUnsafe()`
+- **Script:** `<script>` text content, `eval()`
+- **ScriptURL:** `<script src>`, `Worker()`, `SharedWorker()`
 
 ```javascript
 // Assign the TrustedHTML object.
 element.innerHTML = cleanHTML;
 ```
 
-Note that the "safe" HTML sanitization methods (`element.setHTML()` and `document.parseHTML()`, for instance), do not support Trusted Types, as they always sanitize potential XSS attacks.
+Note that the "safe" HTML sanitization methods (`element.setHTML()` and `Document.parseHTML()`, covered in {{ GUIDE_REF("sanitize-untrusted-html") }}), do not require a Trusted Types policy, as they always sanitize potential XSS attacks natively.
 
 ### 4. Enforcing Trusted Types with CSP
 
@@ -96,13 +96,13 @@ Trusted Types should be rolled out incrementally to avoid breaking your applicat
     Content-Security-Policy: require-trusted-types-for 'script';
     ```
 
-You can also restrict which policies are allowed to be created:
+You can also restrict which policies are allowed to be created (include `dompurify` if your policy delegates to `DOMPurify.sanitize()`, which internally creates a `dompurify` policy, and `default` if you register a default policy during migration):
 
 ```http
-Content-Security-Policy: trusted-types my-no-pretzel-policy;
+Content-Security-Policy: require-trusted-types-for 'script'; trusted-types sanitize-html dompurify;
 ```
 
-With this CSP in place, any writes to a sink that don't use Trusted Types will throw an error. In addition, attempting to create a Trusted Type with a name that isn't `my-no-pretzel-policy` will throw an error.
+With this CSP in place, any writes to a sink that don't use Trusted Types will throw an error. In addition, attempting to create a Trusted Type policy with a name not listed in `trusted-types` will throw an error.
 
 You can also set this CSP as a `<meta>` tag in your document's `<head>`, although this is potentially less secure.
 
@@ -110,7 +110,7 @@ You can also set this CSP as a `<meta>` tag in your document's `<head>`, althoug
 <!-- First child of `<head>`, as earlier tags will not enforce this CSP. -->
 <meta
   http-equiv="Content-Security-Policy"
-  content="require-trusted-types-for 'script'; trusted-types my-no-pretzel-policy;"
+  content="require-trusted-types-for 'script'; trusted-types sanitize-html dompurify;"
 />
 ```
 

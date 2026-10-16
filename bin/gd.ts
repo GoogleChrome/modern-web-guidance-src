@@ -7,8 +7,8 @@ import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
 import { resolveSuiteConfig } from '../src/harness/config.ts';
-import { rootDir, guidesDir, baseAppsDir } from '../src/core/paths.ts';
-import { getTaskMap } from '../src/core/guide-validation.ts';
+import { rootDir, guidesDir, baseAppsDir, resultsDir } from '../src/core/paths.ts';
+import { getTaskMap, SUPPORTED_BASE_APPS } from '../src/core/guide-validation.ts';
 
 // Load environment variables (Node 20.12+)
 try {
@@ -34,14 +34,15 @@ const ALL_OPTIONS = {
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
   'dry-run': { type: 'boolean', desc: 'List what would run without running it' },
   limit: { type: 'string', desc: 'Process at most <n> guides' },
+  targets: { type: 'string', desc: 'Target base app(s), comma-separated (e.g. daily-grind,devtools-times)' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
-  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app'] },
-  'dev-gap': { desc: 'Run dev + pr for each open eval-gap issue without a PR', flags: ['dry-run', 'limit'] },
+  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
+  'dev-gap': { desc: 'Run dev + pr for each guide missing evals or PR labeled for rerun', flags: ['dry-run', 'limit', 'targets'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
@@ -50,6 +51,7 @@ const COMMAND_METADATA = {
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
   pr: { desc: 'Push branch and create or update GitHub PR from dev report', flags: [] },
+  compare: { desc: 'Compare two evaluation runs to diagnose performance variance', flags: [] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
@@ -87,11 +89,23 @@ const completion = omelette('gd <command> <arg1> <arg2> <arg3> <arg4> <arg5>');
 
 completion.on('command', ({ reply }) => reply(COMMANDS));
 
+function listResultsRunDirs(): string[] {
+  try {
+    return fs.readdirSync(resultsDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name);
+  } catch {
+    return [];
+  }
+}
+
 completion.on('arg1', ({ before, line, reply }) => {
   const flags = getFlagsForLine(line);
   if (before === 'eval') {
     const tasks = Array.from(getTaskMap().keys());
     reply(['suite', ...tasks, ...listGuideDirs(), ...flags]);
+  } else if (before === 'compare') {
+    reply([...listResultsRunDirs(), ...flags]);
   } else if (before === 'gen') {
     reply(['grader']);
   } else if (before === 'audit') {
@@ -107,6 +121,8 @@ completion.on('arg2', ({ before, line, reply }) => {
   const flags = getFlagsForLine(line);
   if (line.includes('gd eval')) {
     reply(flags);
+  } else if (line.includes('gd compare')) {
+    reply([...listResultsRunDirs(), ...flags]);
   } else if (line.includes('gd dev') && before.startsWith('guides/')) {
     reply(flags);
   } else if (before === 'run') {
@@ -163,6 +179,19 @@ function requireArg(arg: string | undefined, usage: string): string {
   return arg;
 }
 
+function parseTargets(raw: unknown): string[] | undefined {
+  if (raw === undefined) return undefined;
+  const parsed = typeof raw === 'string'
+    ? raw.split(',').map(t => t.trim()).filter(Boolean)
+    : [];
+  const invalid = parsed.filter(t => !(SUPPORTED_BASE_APPS as readonly string[]).includes(t));
+  if (parsed.length === 0 || invalid.length > 0) {
+    console.error(cRed(`Invalid --targets (${invalid.join(', ') || 'empty'}). Supported targets: ${SUPPORTED_BASE_APPS.join(', ')}`));
+    process.exit(1);
+  }
+  return parsed;
+}
+
 // --- Command Routing ---
 
 function showHelp() {
@@ -174,7 +203,7 @@ function showHelp() {
 
     {
       title: 'Evaluation & Dashboard',
-      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill'],
+      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill', 'compare'],
     },
     {
       title: 'Utilities & Setup',
@@ -199,13 +228,13 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
-          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : '';
+          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : flagName === 'targets' ? ' <apps>' : '';
           console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }
@@ -228,6 +257,20 @@ async function main() {
   }
 
   switch (command) {
+    case 'compare': {
+      const runDirA = requireArg(positionals[1], 'gd compare <runDirA> <runDirB>');
+      const runDirB = requireArg(positionals[2], 'gd compare <runDirA> <runDirB>');
+      const { runComparison } = await import('../src/harness/lib/compare-evals.ts');
+      try {
+        await runComparison(runDirA, runDirB);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Comparison failed: ${msg}`);
+        process.exit(1);
+      }
+      break;
+    }
+
     case 'setup-completion': {
       completion.setupShellInitFile();
       console.log('Auto-completion installed. Restart your terminal to apply.');
@@ -236,7 +279,7 @@ async function main() {
 
     case 'dev-gap': {
       if (positionals[1]) {
-        console.error(cRed(`gd dev-gap picks guides from open issues; don't pass a guide ('${positionals[1]}').`));
+        console.error(cRed(`gd dev-gap scans guides on disk; don't pass a guide ('${positionals[1]}').`));
         process.exit(1);
       }
       const { fixEvalGaps } = await import('../src/authoring/dev-gap.ts');
@@ -245,6 +288,7 @@ async function main() {
         limit: values.limit ? Number(values.limit) : undefined,
         verbose: !!values.verbose,
         suiteConfig: await resolveSuiteConfig(values.config as string | undefined),
+        targets: parseTargets(values.targets) ?? ['daily-grind'],
       });
       process.exit(success ? 0 : 1);
     }
@@ -273,6 +317,7 @@ async function main() {
         verbose: !!values.verbose,
         test: !values['no-test'],
         suiteConfig: mergedSuiteConfig,
+        targets: parseTargets(values.targets),
       });
       process.exit(success ? 0 : 1);
     }
@@ -302,6 +347,8 @@ async function main() {
     }
 
     case 'dashboard': {
+      const { runAllManifests } = await import('../src/dashboard/generate-manifests.js');
+      await runAllManifests();
       await import('../src/dashboard/server.js');
       break;
     }
@@ -315,6 +362,8 @@ async function main() {
 
       if (values['ui']) {
         process.env.LAUNCH_UI = 'true';
+        const { runAllManifests } = await import('../src/dashboard/generate-manifests.js');
+        await runAllManifests();
         await import('../src/dashboard/server.js');
         break;
       }

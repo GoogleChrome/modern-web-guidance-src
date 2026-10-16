@@ -17,8 +17,8 @@ importers:
   .:
     dependencies:
       '@anthropic-ai/vertex-sdk':
-        specifier: ^0.16.0
-        version: 0.16.0(encoding@0.1.13)(zod@3.25.76)
+        specifier: ^0.20.4
+        version: 0.20.4(zod@3.25.76)
       '@google-cloud/storage':
         specifier: ^7.19.0
         version: 7.19.0(encoding@0.1.13)
@@ -35,8 +35,8 @@ importers:
         specifier: ^8.0.7
         version: 8.0.7
       '@openai/codex':
-        specifier: 0.160.0
-        version: 0.160.0
+        specifier: 0.162.1
+        version: 0.162.1
       '@tensorflow/tfjs-backend-cpu':
         specifier: ^4.22.0
         version: 4.22.0(@tensorflow/tfjs-core@4.22.0(encoding@0.1.13))
@@ -80,12 +80,12 @@ importers:
         specifier: ^0.4.17
         version: 0.4.17
       web-features:
-        specifier: ^3.40.0
-        version: 3.40.0
+        specifier: ^3.43.0
+        version: 3.43.0
     devDependencies:
       '@anthropic-ai/claude-code':
-        specifier: ^2.1.289
-        version: 2.1.289
+        specifier: ^2.1.296
+        version: 2.1.296
       '@google/gemini-cli-core':
         specifier: 0.61.0
         version: 0.61.0(encoding@0.1.13)(express@5.2.1)
@@ -155,57 +155,57 @@ packages:
       express:
         optional: true
 
-  '@anthropic-ai/claude-code-darwin-arm64@2.1.289':
-    resolution: {integrity: sha512-jhZQ4BdBt2E9oiHdgpwu/HIgRDlyUazDfXIbIerUFDAPcb6c7Tl1QtMvLz3KxXkZXigYv0q4U6xSHHd78TQdHA==}
+  '@anthropic-ai/claude-code-darwin-arm64@2.1.296':
+    resolution: {integrity: sha512-vqtx3kS3r1hNLMk+N8JMG5J4kcLHIbI3t/NSIdcFQZrRVCFA6NtcxJyn/B+Sf3GxJaFJOCEfoBQXsFo10+Oj9A==}
     cpu: [arm64]
     os: [darwin]
 
-  '@anthropic-ai/claude-code-darwin-x64@2.1.289':
-    resolution: {integrity: sha512-KErKulmExUbnAqXDz75FGfph+fslAHL0UqIW9rYlGwNFlPJAP5UTXIKcKp6Jh1bgVQjdJJEqg79kUjuriVUDDw==}
+  '@anthropic-ai/claude-code-darwin-x64@2.1.296':
+    resolution: {integrity: sha512-yCJe1vp7juHg3xVyk0Ts8b+mcEylCo6aINg7yC7r1eI8BKfm1DT15htxl1riz3y+B1FV25emIK90d7rH+zFjLA==}
     cpu: [x64]
     os: [darwin]
 
-  '@anthropic-ai/claude-code-linux-arm64-musl@2.1.289':
-    resolution: {integrity: sha512-PGtu78PDsTKoPrbpbsM6JiG0ksdiQBFGNaMAS8h/FUUwdhxsL6D35UHDH0sj4izmcYFMV/akwHI2emiZiBJk/w==}
+  '@anthropic-ai/claude-code-linux-arm64-musl@2.1.296':
+    resolution: {integrity: sha512-c6lZRVkvuHIHgo4SzF2yQp+RWwPDLLLjXuM6SNtJkR8EGcOR5FhLK7cmsrjDcC/t5ACP4N4pCRfRDzjC31cYQA==}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@anthropic-ai/claude-code-linux-arm64@2.1.289':
-    resolution: {integrity: sha512-kzZKgmlPjtxeCl3jR4eO+BVwy4hJq/pApB2vWFgrjAGR1jOphhS6GJaU1XjZYGbJITSoeaWxHnD1xQ2EWVZLHw==}
+  '@anthropic-ai/claude-code-linux-arm64@2.1.296':
+    resolution: {integrity: sha512-Q6Qh6qFmwuBG9rQFiDR6bY3XkFnwTN9AAPrnnDgBvr9sbg1Ql5wrf0lfoCDiV369EUHOzxI4i5OdHW9Vf2/oeA==}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@anthropic-ai/claude-code-linux-x64-musl@2.1.289':
-    resolution: {integrity: sha512-6Bs+1r/MePebevlvWAFia4VTUhT+SeM5kFjhzqYtjp/NOKnZep3xZG53oYkT659D7Lmh9P+hnThTDLaUjUXOIw==}
+  '@anthropic-ai/claude-code-linux-x64-musl@2.1.296':
+    resolution: {integrity: sha512-mbFZ0QENsyWzmDo2eWc8MxGCAWFXc2w1v2rLavu0JYd2pY7+0S8pJSB6RV9mzJ10FVXT09bXWt0sHM6fgeAz5w==}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@anthropic-ai/claude-code-linux-x64@2.1.289':
-    resolution: {integrity: sha512-I23SaSYE8vSwFbJ+Tc0mRlzvJmRQNaiyBUXK/K5R6BVr2lOoCdMI2SJR4N6xiVYy6yyIt39JNiyvPHoiOymyyw==}
+  '@anthropic-ai/claude-code-linux-x64@2.1.296':
+    resolution: {integrity: sha512-+m01urgelnI+VJxPaKPEK0wixgq42uZ8PeCaUk5tX/8YoDBvSmC/REVQG2jQfJAr8dxunpjJ600FvLrcj1WWTw==}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@anthropic-ai/claude-code-win32-arm64@2.1.289':
-    resolution: {integrity: sha512-dMKH0j/Zm2q5L71rVXx4NaWWlK5iUOCmN12XgwrIx7EjYhvpgVDLdNHm9yohxb3I0Cb4iaujR/EBb75FuLbIGQ==}
+  '@anthropic-ai/claude-code-win32-arm64@2.1.296':
+    resolution: {integrity: sha512-m/PZ8nO0Fi6FB7DpTFeHVln1useFjEEDXF1wVylxl34+Kf78s2KJVCNKozF/b/MO6jjVkewFQl+1hW5xZkaV7A==}
     cpu: [arm64]
     os: [win32]
 
-  '@anthropic-ai/claude-code-win32-x64@2.1.289':
-    resolution: {integrity: sha512-t6PwcRoMIeuNPbnkf9bFxdUv3xBgUSnk1yRU3r8b5CjovwzV1zUY/talE4rgGAvcTwmndirtWOny/3LPf6Ju+w==}
+  '@anthropic-ai/claude-code-win32-x64@2.1.296':
+    resolution: {integrity: sha512-g2aYBzYM5YTDio0ulAoGIGgtGRMa08WAecer4wuOUrKPwVPRfyRdmoZI01BNS8jF9yupDmQycBMuBcVui/VGNw==}
     cpu: [x64]
     os: [win32]
 
-  '@anthropic-ai/claude-code@2.1.289':
-    resolution: {integrity: sha512-RQWjAlalf9aomgI3JaXDCdFPvmNVnRdjwMtYk5L+Lw1NWxCxbhY5T9F+w1xukqvJh/I2rR2+3hICZxhk0al1nA==}
+  '@anthropic-ai/claude-code@2.1.296':
+    resolution: {integrity: sha512-OX/k/rpcthMqnFKOWcpNcbiLsMKtAjLOpQNJHlYiDCFUznWCIwdRTyl/p9SdHVrsrzZuPMCNqZjnpakIni6upw==}
     engines: {node: '>=22.0.0'}
     hasBin: true
 
-  '@anthropic-ai/sdk@0.78.0':
-    resolution: {integrity: sha512-PzQhR715td/m1UaaN5hHXjYB8Gl2lF9UVhrrGrZeysiF6Rb74Wc9GCB8hzLdzmQtBd1qe89F9OptgB9Za1Ib5w==}
+  '@anthropic-ai/sdk@0.133.0':
+    resolution: {integrity: sha512-jlqUN8p8ESTJj+GJnA4KjzbEfF1waEoGzRT8jwytlYGFFgv+/DUQOxlYGvYw10UzhD1kwLqYzxvA3FrTB2YWuQ==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -213,8 +213,8 @@ packages:
       zod:
         optional: true
 
-  '@anthropic-ai/vertex-sdk@0.16.0':
-    resolution: {integrity: sha512-ntxemtRkwPsjVzGQJsmBPRW38tfas6VuVlD1v6pHffDJKLPtCdaiN9KUQeraJ/F34tjxEWlsaCnl3t/orJm1Xw==}
+  '@anthropic-ai/vertex-sdk@0.20.4':
+    resolution: {integrity: sha512-FYVOr6v/u1O7lIKdvoLPj7cKgMZEvZrZkjFjSFgozzHk5Ic/mB//R3Q/4dujPdLmXlb44Ph6CmkKZiUCa/1Z8Q==}
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -224,8 +224,8 @@ packages:
     resolution: {integrity: sha512-qSs4ifwzKJSV39ucNjsvc6WVHs6b7S03sOh2OcHF9UHfVPqWWALUsNUVzhSBiItjRZoLHx7nIarVjqKVusUZ1Q==}
     engines: {node: '>=6.9.0'}
 
-  '@babel/runtime@7.28.6':
-    resolution: {integrity: sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==}
+  '@babel/runtime@7.29.10':
+    resolution: {integrity: sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA==}
     engines: {node: '>=6.9.0'}
 
   '@bufbuild/protobuf@2.11.0':
@@ -404,6 +404,7 @@ packages:
   '@google-cloud/opentelemetry-cloud-monitoring-exporter@0.21.0':
     resolution: {integrity: sha512-+lAew44pWt6rA4l8dQ1gGhH7Uo95wZKfq/GBf9aEyuNDDLQ2XppGEEReu6ujesSqTtZ8ueQFt73+7SReSHbwqg==}
     engines: {node: '>=18'}
+    deprecated: Google Cloud Platform now supports native OpenTelemetry Protocol (OTLP) endpoints via the Telemetry API. Please follow https://github.com/GoogleCloudPlatform/opentelemetry-operations-js/blob/main/MIGRATION.md
     peerDependencies:
       '@opentelemetry/api': ^1.9.0
       '@opentelemetry/core': ^2.0.0
@@ -413,6 +414,7 @@ packages:
   '@google-cloud/opentelemetry-cloud-trace-exporter@3.0.0':
     resolution: {integrity: sha512-mUfLJBFo+ESbO0dAGboErx2VyZ7rbrHcQvTP99yH/J72dGaPbH2IzS+04TFbTbEd1VW5R9uK3xq2CqawQaG+1Q==}
     engines: {node: '>=18'}
+    deprecated: Google Cloud Platform now supports native OpenTelemetry Protocol (OTLP) endpoints via the Telemetry API. Please follow https://github.com/GoogleCloudPlatform/opentelemetry-operations-js/blob/main/MIGRATION.md
     peerDependencies:
       '@opentelemetry/api': ^1.0.0
       '@opentelemetry/core': ^2.0.0
@@ -700,9 +702,6 @@ packages:
   '@lydell/node-pty@1.1.0':
     resolution: {integrity: sha512-VDD8LtlMTOrPKWMXUAcB9+LTktzuunqrMwkYR1DMRBkS6LQrCt+0/Ws1o2rMml/n3guePpS7cxhHF7Nm5K4iMw==}
 
-  '@mdn/browser-compat-data@7.3.14':
-    resolution: {integrity: sha512-Mqll0z0todYcAOqr+2hnYZRFe7+CwyU14lj86vzAGDJVeqnp618ybGzwHTI7sxyhd/46FFtJAlZNUmL1YHSX+Q==}
-
   '@mdn/browser-compat-data@8.0.7':
     resolution: {integrity: sha512-8/oqL9veg9C6d0wKprPmt+ZCmfNKBG4AcphWh50E9r1IflJHZfZKHu7c5G7ObupYG6azAXr3KdBX0EssnjCPSQ==}
 
@@ -783,43 +782,43 @@ packages:
   '@octokit/types@16.0.0':
     resolution: {integrity: sha512-sKq+9r1Mm4efXW1FCk7hFSeJo4QKreL/tTbR0rz/qx/r1Oa2VV83LTA/H/MuCOX7uCIJmQVRKBcbmWoySjAnSg==}
 
-  '@openai/codex@0.160.0':
-    resolution: {integrity: sha512-kEtVGzjRAYAMOwJxN39bGcna7LT3IDQgq64NNJ/dDTfu4OzZaocJcyNb5/gGJ/IVF/Vj7oK7E2m3nmTan7lpjg==}
+  '@openai/codex@0.162.1':
+    resolution: {integrity: sha512-NWZdi/kxyjv/8EUGFupziGU38YyleugZRM4JXgY5XFH7FUmaFA33NZS2Bmq0HPazf7S3jJQQWsZ/jAK9jsrV3Q==}
     engines: {node: '>=16'}
     hasBin: true
 
-  '@openai/codex@0.160.0-darwin-arm64':
-    resolution: {integrity: sha512-aefV6cqZA2REZgR//4McyXlp7zLcTti4CI2v3j9IVgNndPBv2kCeNEcz07qeelXcwOdSFPUKb6roA48vZmDgrQ==}
+  '@openai/codex@0.162.1-darwin-arm64':
+    resolution: {integrity: sha512-YVXpg57itBuQxjofay3KDF5UbnZF4Y1ZmNFzUCz0ZQiQN+DndxOjN5V87rnXvPaC4qCPO2El74DzewoBP8JyPQ==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [darwin]
 
-  '@openai/codex@0.160.0-darwin-x64':
-    resolution: {integrity: sha512-ir7cdsPrb9VkqNqpTECoTiomv04xws/FQ968mHQzuL+2J5Da0Dkh2Qlxp7sguDDZJab4YpYmNjQvBVMXbTeQaQ==}
+  '@openai/codex@0.162.1-darwin-x64':
+    resolution: {integrity: sha512-0/WHRhbUnM1wAjfyCO54Q8s4vQRxLVBbqW6XuQf7rZTEMTYPKRIQU9aPeRgjG653ZCSjtBrslWQ+G9urY9CksQ==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [darwin]
 
-  '@openai/codex@0.160.0-linux-arm64':
-    resolution: {integrity: sha512-VnVdsS06YlDsL8OwaJjQ3xdqdJNG4i+eBJBV3LytddknzSaF/urijLzVg3ptkwvoj8C7Gn7iWpVE+y8WEaPiCg==}
+  '@openai/codex@0.162.1-linux-arm64':
+    resolution: {integrity: sha512-Ss7W/SrKtQFNaMtSojNoiykJgX+iDC8daM+YrcvgmJADtQPk0cd3w6Dna4CYH2CYvf9nQranj69fpcTzZ3sQIQ==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [linux]
 
-  '@openai/codex@0.160.0-linux-x64':
-    resolution: {integrity: sha512-KI/73OqGrHmR18s7ya7E1NqV6rT0y3lxr0s8S1qR2m6zU6QRF/HlR529jALLh5vjdUnsRT4Ahoxt0axb4kY99g==}
+  '@openai/codex@0.162.1-linux-x64':
+    resolution: {integrity: sha512-cjK2mdHIfEepZ1lQ1MX3aTQC+8ncIsvnacl/6vI2dIIcfP8/MrhTQ2+qRlkXFNDzJSj1d36quIszP+3/4CUJWQ==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [linux]
 
-  '@openai/codex@0.160.0-win32-arm64':
-    resolution: {integrity: sha512-tTvK9ZIGuj9WnYaYOAnfjJVSfPV7dKqWtDHqUPLf0Hadp6SgynTxx7S7iMXRieFeXVOI2XH76KxEHSOTOnz3zw==}
+  '@openai/codex@0.162.1-win32-arm64':
+    resolution: {integrity: sha512-teVVACnEcupkR6XSmUQKwlGg/oA15d1DQDPVSoAfilHgctPEpTi5y11jYS6JhJO+AFnYM84gyo5SOS5vlnCQSg==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [win32]
 
-  '@openai/codex@0.160.0-win32-x64':
-    resolution: {integrity: sha512-/gCFcuOmGlQkgGivWCtY8BNEDixh70Pue0HZOk9S8bj2vUIE1GLD9zcNB/KqqDJmn0S+lIttauLpzQnw6HOCHA==}
+  '@openai/codex@0.162.1-win32-x64':
+    resolution: {integrity: sha512-dfl4MhHuEi0ARKyNmrTxk+RQmsWNCQAoVLUtrYq+yrW1C8P2sg5ziwgHUUACHjYLKuACV7ARH5Nq5pnCz3GlaQ==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
@@ -1175,6 +1174,9 @@ packages:
   '@sindresorhus/merge-streams@4.0.0':
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
+
+  '@stablelib/base64@1.0.1':
+    resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
 
   '@tensorflow/tfjs-backend-cpu@4.22.0':
     resolution: {integrity: sha512-1u0FmuLGuRAi8D2c3cocHTASGXOmHc/4OvoVDENJayjYkS119fcTcQf4iHrtLthWyDIPy3JiPhRrZQC9EwnhLw==}
@@ -1842,6 +1844,9 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
 
+  fast-sha256@1.3.0:
+    resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
+
   fast-uri@3.1.8:
     resolution: {integrity: sha512-GZMtZUTNRpOVIECoXwLNZS5xUGE+mVNbTB8h/7Rwh2TFWcBQiPzTgyZi05BF9UMZKkLJv8XBRJTlU7zg8+ZfMg==}
 
@@ -2024,6 +2029,10 @@ packages:
 
   google-auth-library@10.9.0:
     resolution: {integrity: sha512-xtvUqvINPhTaBm7nXqlYPcrMHJPm1lCNdSovxnKKhTm+4JsvQ+KGVYJViLoH9Yxu8w+T0Qv5HubzYT9BLrppJg==}
+    engines: {node: '>=18'}
+
+  google-auth-library@10.9.1:
+    resolution: {integrity: sha512-i1ydyHrqcIxXkWh/uBmVkzCvIuq5yiK2ATndIe5XxKholrG/MTYP9xGYka4sQhrbIAgGjL2B6NOE7rFaiF3fXw==}
     engines: {node: '>=18'}
 
   google-auth-library@9.15.1:
@@ -2867,8 +2876,8 @@ packages:
     resolution: {integrity: sha512-e0VyvkVTwVYViNovRkZ9aodhxVlyoMn7eJhVUPxZ+eK9P/7CBkxvvsBOHqFPEH416726W8tLXXXjKwqgTErrCQ==}
     engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
 
-  source-map-js@1.2.1:
-    resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
+  source-map-js@1.2.2:
+    resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
 
   source-map@0.6.1:
@@ -2889,6 +2898,9 @@ packages:
 
   sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
+
+  standardwebhooks@1.1.1:
+    resolution: {integrity: sha512-bCbX9ZEyFkWPsRz7Bl3NuQUJohmwGSev/yhr7vhaGPlc4AfIrspIRa6cPTBuI1ItmrTDJ4d/S2hCsfe4+vQGnQ==}
 
   statuses@2.0.2:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
@@ -3088,8 +3100,8 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  web-features@3.40.0:
-    resolution: {integrity: sha512-3AzfKxVv7hWTRZSubYBVu1LHk62mdGg+vIpVAf6+nNC3pC7g455nKSry5OlwsaSYMzuzL2DxSTwlyb5z0+XZdQ==}
+  web-features@3.43.0:
+    resolution: {integrity: sha512-nxisNw9bZc+q186ptMsJ/qRBuXH78h918eS6/CeKeGH28kK/1Qfyu/ETG2cSgYTPqvbGFQ9s/8n3XBdpBYv3DA==}
 
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
@@ -3195,53 +3207,53 @@ snapshots:
       '@grpc/grpc-js': 1.14.3
       express: 5.2.1
 
-  '@anthropic-ai/claude-code-darwin-arm64@2.1.289':
+  '@anthropic-ai/claude-code-darwin-arm64@2.1.296':
     optional: true
 
-  '@anthropic-ai/claude-code-darwin-x64@2.1.289':
+  '@anthropic-ai/claude-code-darwin-x64@2.1.296':
     optional: true
 
-  '@anthropic-ai/claude-code-linux-arm64-musl@2.1.289':
+  '@anthropic-ai/claude-code-linux-arm64-musl@2.1.296':
     optional: true
 
-  '@anthropic-ai/claude-code-linux-arm64@2.1.289':
+  '@anthropic-ai/claude-code-linux-arm64@2.1.296':
     optional: true
 
-  '@anthropic-ai/claude-code-linux-x64-musl@2.1.289':
+  '@anthropic-ai/claude-code-linux-x64-musl@2.1.296':
     optional: true
 
-  '@anthropic-ai/claude-code-linux-x64@2.1.289':
+  '@anthropic-ai/claude-code-linux-x64@2.1.296':
     optional: true
 
-  '@anthropic-ai/claude-code-win32-arm64@2.1.289':
+  '@anthropic-ai/claude-code-win32-arm64@2.1.296':
     optional: true
 
-  '@anthropic-ai/claude-code-win32-x64@2.1.289':
+  '@anthropic-ai/claude-code-win32-x64@2.1.296':
     optional: true
 
-  '@anthropic-ai/claude-code@2.1.289':
+  '@anthropic-ai/claude-code@2.1.296':
     optionalDependencies:
-      '@anthropic-ai/claude-code-darwin-arm64': 2.1.289
-      '@anthropic-ai/claude-code-darwin-x64': 2.1.289
-      '@anthropic-ai/claude-code-linux-arm64': 2.1.289
-      '@anthropic-ai/claude-code-linux-arm64-musl': 2.1.289
-      '@anthropic-ai/claude-code-linux-x64': 2.1.289
-      '@anthropic-ai/claude-code-linux-x64-musl': 2.1.289
-      '@anthropic-ai/claude-code-win32-arm64': 2.1.289
-      '@anthropic-ai/claude-code-win32-x64': 2.1.289
+      '@anthropic-ai/claude-code-darwin-arm64': 2.1.296
+      '@anthropic-ai/claude-code-darwin-x64': 2.1.296
+      '@anthropic-ai/claude-code-linux-arm64': 2.1.296
+      '@anthropic-ai/claude-code-linux-arm64-musl': 2.1.296
+      '@anthropic-ai/claude-code-linux-x64': 2.1.296
+      '@anthropic-ai/claude-code-linux-x64-musl': 2.1.296
+      '@anthropic-ai/claude-code-win32-arm64': 2.1.296
+      '@anthropic-ai/claude-code-win32-x64': 2.1.296
 
-  '@anthropic-ai/sdk@0.78.0(zod@3.25.76)':
+  '@anthropic-ai/sdk@0.133.0(zod@3.25.76)':
     dependencies:
       json-schema-to-ts: 3.1.1
+      standardwebhooks: 1.1.1
     optionalDependencies:
       zod: 3.25.76
 
-  '@anthropic-ai/vertex-sdk@0.16.0(encoding@0.1.13)(zod@3.25.76)':
+  '@anthropic-ai/vertex-sdk@0.20.4(zod@3.25.76)':
     dependencies:
-      '@anthropic-ai/sdk': 0.78.0(zod@3.25.76)
-      google-auth-library: 9.15.1(encoding@0.1.13)
+      '@anthropic-ai/sdk': 0.133.0(zod@3.25.76)
+      google-auth-library: 10.9.1
     transitivePeerDependencies:
-      - encoding
       - supports-color
       - zod
 
@@ -3253,7 +3265,7 @@ snapshots:
 
   '@babel/helper-validator-identifier@7.28.5': {}
 
-  '@babel/runtime@7.28.6': {}
+  '@babel/runtime@7.29.10': {}
 
   '@bufbuild/protobuf@2.11.0': {}
 
@@ -3560,7 +3572,7 @@ snapshots:
 
   '@google/genai@1.30.0(@modelcontextprotocol/sdk@1.23.0(zod@3.25.76))':
     dependencies:
-      google-auth-library: 10.9.0
+      google-auth-library: 10.9.1
       ws: 8.22.0
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.23.0(zod@3.25.76)
@@ -3750,8 +3762,6 @@ snapshots:
       '@lydell/node-pty-win32-x64': 1.1.0
     optional: true
 
-  '@mdn/browser-compat-data@7.3.14': {}
-
   '@mdn/browser-compat-data@8.0.7': {}
 
   '@modelcontextprotocol/sdk@1.23.0(zod@3.25.76)':
@@ -3849,31 +3859,31 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 27.0.0
 
-  '@openai/codex@0.160.0':
+  '@openai/codex@0.162.1':
     optionalDependencies:
-      '@openai/codex-darwin-arm64': '@openai/codex@0.160.0-darwin-arm64'
-      '@openai/codex-darwin-x64': '@openai/codex@0.160.0-darwin-x64'
-      '@openai/codex-linux-arm64': '@openai/codex@0.160.0-linux-arm64'
-      '@openai/codex-linux-x64': '@openai/codex@0.160.0-linux-x64'
-      '@openai/codex-win32-arm64': '@openai/codex@0.160.0-win32-arm64'
-      '@openai/codex-win32-x64': '@openai/codex@0.160.0-win32-x64'
+      '@openai/codex-darwin-arm64': '@openai/codex@0.162.1-darwin-arm64'
+      '@openai/codex-darwin-x64': '@openai/codex@0.162.1-darwin-x64'
+      '@openai/codex-linux-arm64': '@openai/codex@0.162.1-linux-arm64'
+      '@openai/codex-linux-x64': '@openai/codex@0.162.1-linux-x64'
+      '@openai/codex-win32-arm64': '@openai/codex@0.162.1-win32-arm64'
+      '@openai/codex-win32-x64': '@openai/codex@0.162.1-win32-x64'
 
-  '@openai/codex@0.160.0-darwin-arm64':
+  '@openai/codex@0.162.1-darwin-arm64':
     optional: true
 
-  '@openai/codex@0.160.0-darwin-x64':
+  '@openai/codex@0.162.1-darwin-x64':
     optional: true
 
-  '@openai/codex@0.160.0-linux-arm64':
+  '@openai/codex@0.162.1-linux-arm64':
     optional: true
 
-  '@openai/codex@0.160.0-linux-x64':
+  '@openai/codex@0.162.1-linux-x64':
     optional: true
 
-  '@openai/codex@0.160.0-win32-arm64':
+  '@openai/codex@0.162.1-win32-arm64':
     optional: true
 
-  '@openai/codex@0.160.0-win32-x64':
+  '@openai/codex@0.162.1-win32-x64':
     optional: true
 
   '@opentelemetry/api-logs@0.218.0':
@@ -4238,6 +4248,8 @@ snapshots:
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
+  '@stablelib/base64@1.0.1': {}
+
   '@tensorflow/tfjs-backend-cpu@4.22.0(@tensorflow/tfjs-core@4.22.0(encoding@0.1.13))':
     dependencies:
       '@tensorflow/tfjs-core': 4.22.0(encoding@0.1.13)
@@ -4590,7 +4602,7 @@ snapshots:
   css-tree@3.2.1:
     dependencies:
       mdn-data: 2.27.1
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   css-what@6.2.2: {}
 
@@ -4918,6 +4930,8 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
+  fast-sha256@1.3.0: {}
+
   fast-uri@3.1.8: {}
 
   fast-xml-builder@1.1.5:
@@ -5155,6 +5169,17 @@ snapshots:
       slash: 3.0.0
 
   google-auth-library@10.9.0:
+    dependencies:
+      base64-js: 1.5.1
+      ecdsa-sig-formatter: 1.0.11
+      gaxios: 7.3.1
+      gcp-metadata: 8.1.2
+      google-logging-utils: 1.1.3
+      jws: 4.0.1
+    transitivePeerDependencies:
+      - supports-color
+
+  google-auth-library@10.9.1:
     dependencies:
       base64-js: 1.5.1
       ecdsa-sig-formatter: 1.0.11
@@ -5413,7 +5438,7 @@ snapshots:
 
   json-schema-to-ts@3.1.1:
     dependencies:
-      '@babel/runtime': 7.28.6
+      '@babel/runtime': 7.29.10
       ts-algebra: 2.0.0
 
   json-schema-traverse@1.0.0: {}
@@ -6087,7 +6112,7 @@ snapshots:
       ip-address: 10.7.2
       smart-buffer: 4.2.0
 
-  source-map-js@1.2.1: {}
+  source-map-js@1.2.2: {}
 
   source-map@0.6.1:
     optional: true
@@ -6107,6 +6132,11 @@ snapshots:
   spdx-license-ids@3.0.23: {}
 
   sprintf-js@1.0.3: {}
+
+  standardwebhooks@1.1.1:
+    dependencies:
+      '@stablelib/base64': 1.0.1
+      fast-sha256: 1.3.0
 
   statuses@2.0.2: {}
 
@@ -6295,7 +6325,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  web-features@3.40.0: {}
+  web-features@3.43.0: {}
 
   web-streams-polyfill@3.3.3: {}
 

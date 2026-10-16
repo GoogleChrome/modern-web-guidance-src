@@ -1,6 +1,14 @@
 {
   "default": {
+    "accessibility": [
+      "LJWatson",
+      "jenknoll"
+    ],
     "built-in-ai": "tomayac",
+    "chrome-extensions": [
+      "oliverdunk",
+      "patrickkettner"
+    ],
     "css": "LeaVerou",
     "html": "LeaVerou",
     "forms": "LeaVerou",
@@ -24,6 +32,8 @@
   "web_features": {
     "canvas-html": "ewewraw",
     "container-scroll-state-queries": "bramus",
+    "credential-management": "agektmr",
+    "password-credentials": "agektmr",
     "tmp-cross-origin-storage": "tomayac",
     "prefers-reduced-motion": "bramus",
     "web-otp": "agektmr"
