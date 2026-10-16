@@ -102,6 +102,8 @@ Do not add a second roving-tabindex system inside a focusgroup. Script covers on
 * **Pointer click on an open trigger.** Closes it natively.
 * **Pointer click on a closed trigger.** Opens it natively. Focus stays on the trigger and no item is focused or highlighted; only keyboard opens enter the menu.
 * **Pointer over an item.** Moves focus to that item without a focus ring, so hover and focus are always the same item and only one item looks active.
+* **Pointer over another top-level trigger while a menu is open.** Closes the open menu and previews the hovered one; focus moves to the hovered trigger without a ring. With nothing open, hover does nothing.
+* **Pointer over a submenu trigger.** Previews its submenu after a short delay, because pointer-over-item focus runs the same preview-on-focus as keyboard. Moving to a sibling item closes it.
 * **Within a menu.** `ArrowUp` and `ArrowDown` move between enabled items. `Home` and `End` move to the first and last enabled item, which the script handles.
 * **ArrowLeft or ArrowRight in an open top-level menu.** Closes it, opens the adjacent menu, and focuses that menu's first item, wrapping at either end.
 * **ArrowRight on a submenu trigger.** Opens the submenu and focuses its first item.
@@ -123,6 +125,8 @@ Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`,
 5. **Restore focus to the trigger yourself.** Focus the trigger before `hidePopover()`.
 6. **Close one level at a time.** Call `stopPropagation()` on `Escape` and `ArrowLeft` in a submenu, or the parent's listener closes it too.
 7. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, focus it with `focus({ focusVisible: false })`; browsers without that option still paint no ring for pointer-initiated focus.
+8. **Hover switches open menus.** On `pointerenter` of a top-level trigger, if a different top-level menu is open, hide it and focus the hovered trigger without a ring so step 2 previews it. Do nothing when no menu is open.
+9. **Safe triangle.** Delay submenu preview and close by about 150 ms and cancel the pending timer if the pointer returns, so a diagonal move from a submenu trigger into its submenu does not close it on the way.
 
 ```js
 // 2. Preview: show on focus, anchored to the trigger.
@@ -151,6 +155,14 @@ menu.addEventListener('pointermove', event => {
   if (item && item !== document.activeElement) item.focus({ focusVisible: false });
 });
 
+// 8. Hover switches between top-level menus once one is open.
+trigger.addEventListener('pointerenter', () => {
+  const open = topLevelMenus.find(isOpen);
+  if (!open || open === menu) return;
+  open.hidePopover();
+  trigger.focus({ focusVisible: false });
+});
+
 // 4. Move focus once the menu is open, and keep aria-expanded in sync.
 // Attach this to ALL menus (top-level and submenus), not just top-level triggers.
 allMenus.forEach(menu => {
@@ -173,7 +185,7 @@ submenu.addEventListener('keydown', event => {
 
 Also close every open menu when focus lands outside the menu system (a document `focusin` listener), and when a command is activated: announce it, then hide the root menu.
 
-The snippets here and in the fallbacks below assume these helpers, which you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `isPreviewed(menu)` (`:popover-open:not(:focus-within)`), `focusFirst(menu)` (focus the first enabled item), `closeAndRestore(menu)` (focus its trigger before calling `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open) and `pointerTrigger` (the trigger last pressed by a pointer).
+The snippets here and in the fallbacks below assume these helpers, which you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `isPreviewed(menu)` (`:popover-open:not(:focus-within)`), `focusFirst(menu)` (focus the first enabled item), `closeAndRestore(menu)` (focus its trigger before calling `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open), `pointerTrigger` (the trigger last pressed by a pointer) and `topLevelMenus` (the menus whose triggers are in the menubar).
 Set `aria-expanded` only in the `toggle` listener. It covers preview and open states, and the trigger's `aria-expanded` stays `"true"` while its menu is previewed or open.
 
 ### Submenus
