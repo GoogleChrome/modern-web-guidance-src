@@ -1261,10 +1261,11 @@ export async function runPilotScorecard(
   const gradesHash = await computeFileHash(gradesPath);
   const judgeVersion = JUDGE_VERSION;
 
+  const splitLabel = mode === 'local' ? 'tune' : 'grading-only';
   const coverageMetric: MetricEntry = {
     value: Number((clearedBarCount / targetGuideIds.length).toFixed(4)),
     n: targetGuideIds.length,
-    split: 'grading-only',
+    split: splitLabel,
   };
 
   const pooledHeldoutWilson = wilsonInterval(totalJudgedRight, totalPhase2Kept, Z_95);
@@ -1273,7 +1274,7 @@ export async function runPilotScorecard(
     lower: Number(pooledHeldoutWilson.lower.toFixed(4)),
     upper: Number(pooledHeldoutWilson.upper.toFixed(4)),
     n: totalPhase2Kept,
-    split: 'grading-only, judged',
+    split: mode === 'local' ? 'tune, judged' : 'grading-only, judged',
   };
 
   const ppi = evalMetrics.ppiPrecision;
@@ -1282,7 +1283,7 @@ export async function runPilotScorecard(
     lower: Number(ppi.lower.toFixed(4)),
     upper: Number(ppi.upper.toFixed(4)),
     n: scoredCards.length,
-    split: 'grading-only',
+    split: splitLabel,
   };
 
   const recallWilson = wilsonInterval(totalPhase2Recalled, totalLabeledPositives, Z_95);
@@ -1294,7 +1295,7 @@ export async function runPilotScorecard(
     lower: Number(recallWilson.lower.toFixed(4)),
     upper: Number(recallWilson.upper.toFixed(4)),
     n: totalLabeledPositives,
-    split: 'grading-only',
+    split: splitLabel,
   };
 
   const summary: PilotScorecardSummary = {
@@ -1385,7 +1386,7 @@ export async function runPilotScorecard(
     const modeLabel =
       mode === 'gitmirror'
         ? 'GitMirror held-out evaluation (2,598 repos)'
-        : 'local 93-repo rescore (93 repos)';
+        : 'local 93-repo tune rescore (93 repos, tune split per O32/O42)';
     const progressRow: ProgressLogRow = {
       commit: gitState.commit,
       date: report.timestamp.slice(0, 10),
