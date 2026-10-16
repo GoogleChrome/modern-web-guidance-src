@@ -70,7 +70,16 @@ Place each popover immediately after its trigger. Browsers add an implicit `aria
 </div>
 ```
 
-Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative submenu indicators in CSS, or add `aria-hidden="true"`. Put `role="menubar"` on the element that contains the top-level triggers, not on a menu popover. Give triggers with `aria-expanded="true"` a visible active style so users can tell which menu is open or previewed.
+Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative submenu indicators in CSS, or add `aria-hidden="true"`. Give triggers with `aria-expanded="true"` a visible active style so users can tell which menu is open or previewed.
+
+### Menubar or separate menu buttons
+
+The container of the top-level triggers takes one of two forms. The role, the keyboard model, and the visual style must agree, because a row of separate buttons tells sighted keyboard users to expect one `Tab` stop per button.
+
+* **Menubar.** Put `role="menubar"` on the container, never on a menu popover. Style it as one continuous bar with no gaps or borders between triggers. The container is a single `Tab` stop; `ArrowLeft` and `ArrowRight` move between triggers, and hover switches open menus. Use this for an application-style command bar.
+* **Separate menu buttons.** Each trigger is its own `Tab` stop and looks like a standalone button. Do not add `role="menubar"`, arrow-key movement between triggers, preview on focus, or hover switching; each menu opens and closes on its own. Wrap the triggers in a `<nav>` if they are navigation, otherwise use no role. Use this for toolbars and page headers where a few unrelated menus sit apart.
+
+The rest of this guide, including the keyboard section below, describes the menubar form. For separate menu buttons, keep everything inside each menu the same and drop the menubar-level behaviours.
 
 ### Position the menu with CSS Anchor Positioning
 

@@ -1,6 +1,7 @@
 # Menu expectations
 
 - Each menu list has `focusgroup="menu nomemory"` on an element inside its popover (not on the popover element), exposes `role="menu"` labeled by its trigger via `aria-labelledby`, and exposes `role="menuitem"` on its command buttons.
+- The top-level triggers are either inside a container with `role="menubar"` that is styled as one continuous bar and acts as a single `Tab` stop, or are separate `Tab` stops with no `role="menubar"`, no arrow-key movement between them, and no preview or hover switching; the role, keyboard model, and styling never disagree.
 - Each trigger is a `<button type="button">` with `aria-haspopup="menu"`, `commandfor`, and `command="toggle-popover"`, and has no `popovertarget` or `popovertargetaction` attribute.
 - Each popover is the immediate next sibling of its trigger (and each submenu is a `popover="auto"` placed after its trigger inside the parent menu's focusgroup), so no `aria-details` relation is exposed on the trigger and closed submenus are not rendered inline.
 - Focusing a top-level or submenu trigger previews its menu and sets `aria-expanded="true"` without moving focus into the menu, and blurring a trigger that is only previewing closes that menu and sets `aria-expanded="false"`.
