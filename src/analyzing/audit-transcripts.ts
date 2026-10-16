@@ -3,11 +3,13 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { LABELS_DIR, REPOS_CONFIG_PATH } from './paths.ts';
 import { isEnoent } from './progress-log.ts';
 
+export type RepoSplit = 'rule-writing' | 'grading-only';
+
 export interface RepoEntry {
   repo: string;
   repoUrl?: string;
   commit?: string;
-  split: 'rule-writing' | 'grading-only' | string;
+  split: RepoSplit;
   subpaths?: string[];
   localPath?: string | null;
 }
@@ -58,6 +60,8 @@ export interface AuditOptions {
   reposPath?: string;
   labelsDir?: string;
   transcriptPath?: string;
+  /** ISO-8601 timestamp; only steps created at or after it are audited (scopes an audit to "work since the last review"). */
+  since?: string;
 }
 
 export interface TranscriptAuditResult {
@@ -91,6 +95,8 @@ function escapeRegex(str: string): string {
 
 /**
  * Loads and validates repository entries from repos.json.
+ * Fails loudly on malformed entries: defaulting a missing split to 'rule-writing'
+ * would silently whitelist a held-out repo and make the split audit fail open.
  */
 export async function loadRepos(
   reposPath: string = REPOS_CONFIG_PATH,
@@ -103,30 +109,30 @@ export async function loadRepos(
     );
   }
 
-  const entries: RepoEntry[] = [];
-  for (const item of parsed) {
-    if (typeof item === 'object' && item !== null) {
-      const rec = item as Record<string, unknown>;
-      const repo = typeof rec.repo === 'string' ? rec.repo : '';
-      const split =
-        typeof rec.split === 'string' ? rec.split : 'rule-writing';
-      const repoUrl =
-        typeof rec.repoUrl === 'string' ? rec.repoUrl : undefined;
-      const commit =
-        typeof rec.commit === 'string' ? rec.commit : undefined;
-      const subpaths = Array.isArray(rec.subpaths)
-        ? rec.subpaths.filter((s): s is string => typeof s === 'string')
-        : [];
-      const localPath =
-        typeof rec.localPath === 'string' ? rec.localPath : null;
-
-      if (repo.length > 0) {
-        entries.push({ repo, split, repoUrl, commit, subpaths, localPath });
-      }
+  return parsed.map((item: unknown, index: number): RepoEntry => {
+    if (typeof item !== 'object' || item === null) {
+      throw new Error(`${reposPath}[${index}]: expected an object`);
     }
-  }
-
-  return entries;
+    const rec = item as Record<string, unknown>;
+    if (typeof rec.repo !== 'string' || rec.repo.length === 0) {
+      throw new Error(`${reposPath}[${index}]: missing string 'repo'`);
+    }
+    if (rec.split !== 'rule-writing' && rec.split !== 'grading-only') {
+      throw new Error(
+        `${reposPath}[${index}] (${rec.repo}): split must be 'rule-writing' or 'grading-only', got ${JSON.stringify(rec.split)}`,
+      );
+    }
+    return {
+      repo: rec.repo,
+      split: rec.split,
+      repoUrl: typeof rec.repoUrl === 'string' ? rec.repoUrl : undefined,
+      commit: typeof rec.commit === 'string' ? rec.commit : undefined,
+      subpaths: Array.isArray(rec.subpaths)
+        ? rec.subpaths.filter((s): s is string => typeof s === 'string')
+        : [],
+      localPath: typeof rec.localPath === 'string' ? rec.localPath : null,
+    };
+  });
 }
 
 /**
@@ -478,16 +484,42 @@ export function summarizeModelTiers(
 }
 
 /**
+ * Keeps only steps created at or after `sinceIso`, so an observer can audit
+ * exactly the work since the previous review. Throws on an unparseable bound or a
+ * step without `created_at` rather than silently auditing the wrong window.
+ */
+export function filterStepsSince(
+  steps: TranscriptStep[],
+  sinceIso: string,
+): TranscriptStep[] {
+  const sinceMs = Date.parse(sinceIso);
+  if (Number.isNaN(sinceMs)) {
+    throw new Error(`Invalid --since timestamp: ${JSON.stringify(sinceIso)}`);
+  }
+  return steps.filter((step) => {
+    if (typeof step.created_at !== 'string') {
+      throw new Error(
+        `Step ${String(step.step_index)} has no created_at; cannot scope audit with --since`,
+      );
+    }
+    return Date.parse(step.created_at) >= sinceMs;
+  });
+}
+
+/**
  * Audits a single transcript (represented as steps or as raw JSONL text).
  */
 export function auditTranscript(
   stepsOrContent: TranscriptStep[] | string,
   options?: AuditOptions,
 ): TranscriptAuditResult {
-  const steps =
+  const allSteps =
     typeof stepsOrContent === 'string'
       ? parseTranscriptJsonl(stepsOrContent)
       : stepsOrContent;
+  const steps = options?.since
+    ? filterStepsSince(allSteps, options.since)
+    : allSteps;
 
   const gradingRepos = options?.repos
     ? extractGradingRepos(options.repos)
@@ -521,16 +553,9 @@ export async function auditTranscriptFile(
 ): Promise<TranscriptAuditResult> {
   const resolvedPath = resolve(filePath);
   const content = await readFile(resolvedPath, 'utf8');
-
-  let repos = options?.repos;
-  if (!repos) {
-    const reposPath = options?.reposPath ?? REPOS_CONFIG_PATH;
-    try {
-      repos = await loadRepos(reposPath);
-    } catch {
-      repos = [];
-    }
-  }
+  // No fallback to `[]`: an unreadable repos.json would make every split check pass.
+  const repos =
+    options?.repos ?? (await loadRepos(options?.reposPath ?? REPOS_CONFIG_PATH));
 
   return auditTranscript(content, {
     ...options,
@@ -573,15 +598,8 @@ export async function auditTranscriptDir(
   const files = await collectJsonlFiles(resolve(dirPath));
   const results: TranscriptAuditResult[] = [];
 
-  let repos = options?.repos;
-  if (!repos) {
-    const reposPath = options?.reposPath ?? REPOS_CONFIG_PATH;
-    try {
-      repos = await loadRepos(reposPath);
-    } catch {
-      repos = [];
-    }
-  }
+  const repos =
+    options?.repos ?? (await loadRepos(options?.reposPath ?? REPOS_CONFIG_PATH));
 
   for (const file of files) {
     const res = await auditTranscriptFile(file, { ...options, repos });
@@ -686,6 +704,7 @@ export async function runAuditCli(
 ): Promise<void> {
   let isJson = false;
   let reposPath: string | undefined;
+  let since: string | undefined;
   const targets: string[] = [];
 
   for (let i = 0; i < args.length; i++) {
@@ -694,13 +713,15 @@ export async function runAuditCli(
       isJson = true;
     } else if (arg === '--repos' && i + 1 < args.length) {
       reposPath = args[++i];
+    } else if (arg === '--since' && i + 1 < args.length) {
+      since = args[++i];
     } else if (!arg.startsWith('--')) {
       targets.push(arg);
     }
   }
 
   if (targets.length === 0) {
-    console.error('Usage: node audit-transcripts.ts <file-or-dir...> [--json] [--repos <path>]');
+    console.error('Usage: node audit-transcripts.ts <file-or-dir...> [--json] [--repos <path>] [--since <iso-timestamp>]');
     process.exitCode = 1;
     return;
   }
@@ -711,7 +732,7 @@ export async function runAuditCli(
     const resolved = isAbsolute(target) ? target : resolve(target);
     const fileStat = await stat(resolved);
     if (fileStat.isDirectory()) {
-      const batchResult = await auditTranscriptDir(resolved, { repos });
+      const batchResult = await auditTranscriptDir(resolved, { repos, since });
       if (isJson) {
         console.log(JSON.stringify(batchResult, null, 2));
       } else {
@@ -721,7 +742,7 @@ export async function runAuditCli(
         process.exitCode = 1;
       }
     } else {
-      const result = await auditTranscriptFile(resolved, { repos });
+      const result = await auditTranscriptFile(resolved, { repos, since });
       if (isJson) {
         console.log(JSON.stringify(result, null, 2));
       } else {

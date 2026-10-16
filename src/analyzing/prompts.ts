@@ -49,10 +49,11 @@ Your task is to classify whether a published feature guide has a statically dete
 You must classify the guide into exactly one of three Gate 0 buckets:
 1. 'detectable':
    The guide replaces one or more concrete, identifiable legacy browser APIs, CSS property/selector workarounds, DOM markup patterns, or third-party npm packages in brownfield code.
-   Guides often only show the modern "After" API. Use both guide.md AND your knowledge of the web ecosystem (legacy npm packages in package.json like balance-text/react-wrap-balancer, humanize-duration/pretty-ms, legacy JS idioms like mousedown/mousemove drag handlers, manual Date timestamp math, CSS workarounds, DOM attributes) to identify whether concrete old techniques exist.
-   Examples of detectable targets: replacing moment-timezone with Temporal, replacing manual event listening for scroll-end with scrollend event, replacing float/table clearing or max-height accordion hacks with modern CSS, replacing input missing autocomplete with autocomplete="...", replacing balance-text with text-wrap: balance.
+   Guides often only show the modern "After" API. Use both guide.md AND your knowledge of the web ecosystem (legacy npm packages in package.json like select2/chosen-js, moment-timezone/getTimezoneOffset() for timezone math, legacy CSS workarounds like ::-webkit-scrollbar, vendor prefixes, or DOM attributes) to identify whether concrete old techniques exist.
+   Boundary rule: If a guide's feature replaces a specific legacy API, CSS property/selector, DOM attribute, or npm package in package.json, classify as 'detectable' and list those in candidateTechniques.
 2. 'ui-recipe-multi-part':
-   The guide teaches a general multi-part UI component or architectural recipe (e.g. carousel, complex tabset, navigation drawer) where legacy implementations vary wildly and lack a specific legacy technique, unified API, or library to point at.
+   The guide teaches how to combine multiple HTML/CSS/JS parts to build a general UI component, widget, or layout pattern where legacy implementations vary wildly and lack a specific legacy API, library, or single technique being replaced.
+   Boundary rule: If the guide teaches an architectural composition with no specific legacy API or library replaced, classify as 'ui-recipe-multi-part'. If there are still plausible heuristic hooks to search for in code, list them in candidateTechniques and set borderline: true.
 3. 'skip-no-old-way':
    The guide introduces a net-new web platform capability (e.g. WebGPU, WebNN, Passkeys, Prompt API, View Transitions between pages) with no direct legacy browser workaround to migrate from.
    The capability simply could not be implemented previously with a legacy browser API, standard polyfill, or direct CSS workaround.
@@ -61,7 +62,7 @@ Guidelines for classification:
 - Read the entire guide markdown carefully, paying attention to the problem statement, code examples, and the underlying modern API.
 - Do NOT require quoting a "Before" section from guide.md to classify a guide as 'detectable'. Guides frequently focus only on the modern solution. Use ecosystem knowledge to determine if common legacy workarounds, npm libraries, or idioms exist.
 - Do NOT pre-judge whether downstream static rules will have false positives; that is evaluated during detection rule development and held-out scoring. Gate 0 only asks whether concrete legacy techniques exist.
-- Identify all concrete legacy techniques in 'candidateTechniques' (array of strings, e.g. ["balance-text", "react-wrap-balancer", "custom JS line-break math"]).
+- Identify all concrete legacy techniques in 'candidateTechniques' (array of strings, e.g. ["select2", "chosen-js", "custom dropdown wrapper"]).
 - Set 'borderline' to true if the classification is ambiguous or on the boundary between buckets, false otherwise.
 - Set 'brownfieldTarget' to a concise summary of candidateTechniques (e.g. candidateTechniques joined by "; "), or "none (multi-part UI recipe)" / "none (greenfield capability)".
 - Set 'evidenceFromGuide' to evidence from the guide text or web ecosystem knowledge identifying the legacy pattern or lack thereof.

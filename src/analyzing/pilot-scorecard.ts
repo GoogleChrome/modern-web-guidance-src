@@ -917,6 +917,7 @@ export async function runPilotScorecard(
   // 6. Execute 3 stability runs with majority-vote judge and telemetry cache (P2, R22)
   const uncachedJudgeCards: BlindCardPayload[] = [];
   const consensusVerdicts = new Map<string, JudgeResult>();
+  const cardVotesMap = new Map<string, [JudgeVerdict, JudgeVerdict, JudgeVerdict]>();
 
   for (const card of allEvaluationCards) {
     const key = computeTelemetryCacheKey(card.cardId, '', '', JUDGE_VERSION);
@@ -942,12 +943,17 @@ export async function runPilotScorecard(
         },
         rawResponse: '',
       });
+      if (Array.isArray(cached.judge.runVotes) && cached.judge.runVotes.length === 3) {
+        cardVotesMap.set(
+          card.cardId,
+          cached.judge.runVotes as [JudgeVerdict, JudgeVerdict, JudgeVerdict],
+        );
+      }
     } else {
       uncachedJudgeCards.push(card);
     }
   }
 
-  let stabilityRate = 0.945;
   if (uncachedJudgeCards.length > 0) {
     const judgeOpts: JudgeRunOptions = {
       apiKey,
@@ -962,17 +968,17 @@ export async function runPilotScorecard(
     const run2 = await runJudgeDirect(uncachedJudgeCards, judgeOpts);
 
     const liveStability: StabilityEvaluationResult = evaluateJudgeStability([run0, run1, run2]);
-    stabilityRate = liveStability.stabilityRate;
 
     for (const res of liveStability.consensusResults) {
       consensusVerdicts.set(res.cardId, res);
       const card = uncachedJudgeCards.find((c) => c.cardId === res.cardId);
       if (card) {
-        const votes = [
+        const votes: [JudgeVerdict, JudgeVerdict, JudgeVerdict] = [
           run0.find((r) => r.cardId === res.cardId)?.verdict ?? res.verdict,
           run1.find((r) => r.cardId === res.cardId)?.verdict ?? res.verdict,
           run2.find((r) => r.cardId === res.cardId)?.verdict ?? res.verdict,
         ];
+        cardVotesMap.set(card.cardId, votes);
         telemetryToWrite.push({
           cardId: card.cardId,
           repo: card.repo,
@@ -995,6 +1001,19 @@ export async function runPilotScorecard(
       }
     }
   }
+
+  let agreedVotesCount = 0;
+  let totalCardsWithVotes = 0;
+  for (const card of allEvaluationCards) {
+    const votes = cardVotesMap.get(card.cardId);
+    if (votes && votes.length === 3) {
+      totalCardsWithVotes++;
+      if (votes[0] === votes[1] && votes[1] === votes[2]) {
+        agreedVotesCount++;
+      }
+    }
+  }
+  const stabilityRate = totalCardsWithVotes > 0 ? agreedVotesCount / totalCardsWithVotes : 1.0;
 
   if (telemetryToWrite.length > 0) {
     await appendCardTelemetry(telemetryToWrite);

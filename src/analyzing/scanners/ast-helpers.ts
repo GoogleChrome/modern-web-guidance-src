@@ -309,6 +309,80 @@ function checkBinaryComparisonPolarity(expr: BinaryExpression): 'positive' | 'ne
   return null;
 }
 
+const BROWSER_GLOBAL_ROOTS = new Set([
+  'window',
+  'document',
+  'navigator',
+  'HTMLElement',
+  'Element',
+  'Node',
+  'CSS',
+  'globalThis',
+  'self',
+]);
+
+/**
+ * Validates that an AST expression represents an authentic browser feature detection check
+ * rather than a bare variable null-check (e.g. `if (container)`).
+ */
+function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): boolean {
+  const unwrapped = unwrapExpression(expr);
+
+  if (Node.isIdentifier(unwrapped)) {
+    return featureTokens.some((token) => isGlobalReference(unwrapped, token));
+  }
+
+  if (Node.isBinaryExpression(unwrapped)) {
+    const op = unwrapped.getOperatorToken().getKind();
+    if (op === SyntaxKind.InKeyword) {
+      return true;
+    }
+    return (
+      isValidFeatureCondition(unwrapped.getLeft(), featureTokens) ||
+      isValidFeatureCondition(unwrapped.getRight(), featureTokens)
+    );
+  }
+
+  if (Node.isTypeOfExpression(unwrapped)) {
+    const operand = unwrapExpression(unwrapped.getExpression());
+    if (Node.isIdentifier(operand)) {
+      return featureTokens.some((token) => isGlobalReference(operand, token));
+    }
+    return isValidFeatureCondition(operand, featureTokens);
+  }
+
+  if (Node.isCallExpression(unwrapped)) {
+    const callee = unwrapExpression(unwrapped.getExpression());
+    if (Node.isPropertyAccessExpression(callee)) {
+      const obj = unwrapExpression(callee.getExpression());
+      if (Node.isIdentifier(obj) && obj.getText() === 'CSS' && callee.getName() === 'supports') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (Node.isPropertyAccessExpression(unwrapped)) {
+    let current: Node = unwrapped;
+    while (Node.isPropertyAccessExpression(current)) {
+      current = unwrapExpression(current.getExpression());
+    }
+    if (Node.isIdentifier(current)) {
+      const rootText = current.getText();
+      if (BROWSER_GLOBAL_ROOTS.has(rootText) && isUnshadowedGlobal(current, rootText)) {
+        return true;
+      }
+      const propName = unwrapped.getName();
+      if (featureTokens.includes(propName)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  return false;
+}
+
 /**
  * Determines whether a conditional expression tests positively or negatively for any of `featureTokens`.
  */
@@ -340,6 +414,10 @@ function conditionCheckPolarity(
     condText.includes(token),
   );
   if (!mentionsFeature) {
+    return null;
+  }
+
+  if (!isValidFeatureCondition(unwrapped, featureTokens)) {
     return null;
   }
 
@@ -430,9 +508,8 @@ function isGuardedByCallableEarlyReturn(
   if (body && Node.isBlock(body)) {
     for (const stmt of body.getStatements()) {
       if (Node.isIfStatement(stmt)) {
-        const condText = stmt.getExpression().getText();
-        const mentions = featureTokens.some((token) => condText.includes(token));
-        if (mentions && statementAlwaysExits(stmt.getThenStatement())) {
+        const polarity = conditionCheckPolarity(stmt.getExpression(), featureTokens);
+        if (polarity === 'positive' && statementAlwaysExits(stmt.getThenStatement())) {
           return true;
         }
       }
@@ -455,11 +532,6 @@ function isGuardedByPrecedingEarlyReturn(
     }
     if (!Node.isIfStatement(stmt)) {
       continue;
-    }
-    const condText = stmt.getExpression().getText();
-    const mentions = featureTokens.some((token) => condText.includes(token));
-    if (mentions && statementAlwaysExits(stmt.getThenStatement())) {
-      return true;
     }
     const polarity = conditionCheckPolarity(stmt.getExpression(), featureTokens);
     if (polarity === 'positive' && statementAlwaysExits(stmt.getThenStatement())) {

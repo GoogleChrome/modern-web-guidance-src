@@ -9,6 +9,7 @@ import {
   auditTranscriptFile,
   checkSplitViolations,
   extractGradingRepos,
+  filterStepsSince,
   formatAuditReport,
   formatBatchReport,
   isGradingRepoMatch,
@@ -500,6 +501,102 @@ describe('disk operations: auditTranscriptFile and auditTranscriptDir', () => {
     } finally {
       await rm(testDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('fail-fast repo loading (no fail-open split audit)', () => {
+  async function withReposFile(
+    entries: unknown,
+    fn: (reposPath: string) => Promise<void>,
+  ): Promise<void> {
+    const dir = join(tmpdir(), `audit-repos-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    await mkdir(dir, { recursive: true });
+    try {
+      const reposPath = join(dir, 'repos.json');
+      await writeFile(reposPath, JSON.stringify(entries));
+      await fn(reposPath);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+
+  it('rejects an entry with a missing split instead of defaulting it to rule-writing', async () => {
+    await withReposFile([{ repo: 'held-out-app' }], async (reposPath) => {
+      await assert.rejects(loadRepos(reposPath), /held-out-app\): split must be/);
+    });
+  });
+
+  it('rejects an entry with an unknown split value', async () => {
+    await withReposFile([{ repo: 'x', split: 'grading' }], async (reposPath) => {
+      await assert.rejects(loadRepos(reposPath), /got "grading"/);
+    });
+  });
+
+  it('auditTranscriptFile throws when repos.json cannot be loaded rather than auditing against zero repos', async () => {
+    const dir = join(tmpdir(), `audit-missing-${Date.now()}`);
+    await mkdir(dir, { recursive: true });
+    try {
+      const transcript = join(dir, 't.jsonl');
+      await writeFile(
+        transcript,
+        JSON.stringify({
+          step_index: 0,
+          type: 'PLANNER_RESPONSE',
+          tool_calls: [{ name: 'read_file', args: { Path: '/x/.cache/analyzer-repos/lighthouse-2020/a.js' } }],
+        }),
+      );
+      await assert.rejects(
+        auditTranscriptFile(transcript, { reposPath: join(dir, 'does-not-exist.json') }),
+        /ENOENT/,
+      );
+      await assert.rejects(
+        auditTranscriptDir(dir, { reposPath: join(dir, 'does-not-exist.json') }),
+        /ENOENT/,
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('filterStepsSince (audit window scoping)', () => {
+  const steps: TranscriptStep[] = [
+    {
+      step_index: 0,
+      created_at: '2026-10-15T23:00:00Z',
+      type: 'PLANNER_RESPONSE',
+      tool_calls: [{ name: 'read_file', args: { Path: '/x/.cache/analyzer-repos/lighthouse-2020/old.js' } }],
+    },
+    {
+      step_index: 1,
+      created_at: '2026-10-16T02:00:00Z',
+      type: 'PLANNER_RESPONSE',
+      tool_calls: [{ name: 'read_file', args: { Path: 'analyzer-internal/labels/grades.paulirish.jsonl' } }],
+    },
+  ];
+
+  it('keeps only steps at or after the bound', () => {
+    assert.deepStrictEqual(
+      filterStepsSince(steps, '2026-10-16T01:15:00Z').map((s) => s.step_index),
+      [1],
+    );
+  });
+
+  it('scopes auditTranscript violations to the window', () => {
+    const windowed = auditTranscript(steps, { repos: MOCK_REPOS, since: '2026-10-16T01:15:00Z' });
+    assert.deepStrictEqual(
+      windowed.violations.map((v) => [v.stepIndex, v.reason]),
+      [[1, 'labels-directory']],
+    );
+    assert.strictEqual(windowed.totalSteps, 1);
+  });
+
+  it('throws on an unparseable bound or a step without created_at', () => {
+    assert.throws(() => filterStepsSince(steps, 'yesterday'), /Invalid --since timestamp/);
+    assert.throws(
+      () => filterStepsSince([{ step_index: 7, type: 'GENERIC' }], '2026-10-16T00:00:00Z'),
+      /Step 7 has no created_at/,
+    );
   });
 });
 

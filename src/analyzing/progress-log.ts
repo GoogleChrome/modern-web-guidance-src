@@ -1,7 +1,7 @@
 /* oxlint-disable max-lines-per-function, max-depth */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import {
   checkCanaries,
@@ -1058,7 +1058,7 @@ export async function computeProgressLogRow(
 
   // P3: Decouple rendering from live LLM calls when not explicitly calibrating judge
   if (!options.calibrateJudge) {
-    const calibPath = resolve(WORKTREE_ROOT, 'analyzer-internal/findings/judge-calibration-latest.json');
+    const calibDir = resolve(WORKTREE_ROOT, 'analyzer-internal/findings');
     let calibData: {
       stabilityRate: number;
       judgeAlpha: number;
@@ -1067,8 +1067,15 @@ export async function computeProgressLogRow(
       judgeVersion?: string;
     } | null = null;
     try {
-      const calibRaw = await readFile(calibPath, 'utf8');
-      calibData = JSON.parse(calibRaw);
+      const entries = await readdir(calibDir);
+      const calibFiles = entries
+        .filter((e) => /judge.*calibration.*\.json$/i.test(e) && !e.includes('latest'))
+        .sort()
+        .reverse();
+      if (calibFiles.length > 0) {
+        const calibRaw = await readFile(resolve(calibDir, calibFiles[0]), 'utf8');
+        calibData = JSON.parse(calibRaw);
+      }
     } catch {
       // Calibration not found
     }
@@ -1215,7 +1222,10 @@ export async function computeProgressLogRow(
   }
 
   try {
-    const calibPath = resolve(WORKTREE_ROOT, 'analyzer-internal/findings/judge-calibration-latest.json');
+    const calibPath = resolve(
+      WORKTREE_ROOT,
+      `analyzer-internal/findings/${today}-judge-v6-calibration.json`,
+    );
     await mkdir(dirname(calibPath), { recursive: true });
     await writeFile(
       calibPath,
