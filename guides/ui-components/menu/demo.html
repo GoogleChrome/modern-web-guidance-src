@@ -546,6 +546,14 @@
       });
       menu.addEventListener('pointerleave', () => clearTimeout(hoverTimer));
 
+      // Focus landing on any other item in this menu closes its open submenus, including ones that
+      // were entered (focus inside them), where no trigger blur would fire.
+      menu.addEventListener('focusin', event => {
+        menu.querySelectorAll(':scope [popover]:popover-open').forEach(submenu => {
+          if (!submenu.contains(event.target) && triggerFor(submenu) !== event.target) submenu.hidePopover();
+        });
+      });
+
       menu.addEventListener('keydown', event => {
         lastKey = event.key;
         const active = document.activeElement;
