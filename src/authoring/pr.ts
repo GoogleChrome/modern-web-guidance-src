@@ -8,6 +8,9 @@ import { resolveGuideResultsDir, type GuideResultsInventory } from '../core/path
 export type DevPrLabel = 'gd-dev-content' | 'gd-dev-eval';
 export type DevPrRerunLabel = 'needs-eval-gen' | 'needs-eval-run';
 
+export const DEV_PR_BRANCH_PREFIX = 'gd-dev/';
+export const DEV_PR_TITLE_PREFIX = 'grader updates:';
+
 const MANAGED_PR_LABELS: readonly string[] = [
   'gd-dev-content',
   'gd-dev-eval',

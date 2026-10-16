@@ -12,6 +12,7 @@ import {
   extractTimestamp,
   mapToolType,
   truncateMessage,
+  extractSubagentIdFromFilename,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
   readTrajectorySummary,
@@ -46,7 +47,7 @@ export function getGeminiCliCommandAndArgs(prompt: string, extraArgs: string[] =
   return { command, commandArgs };
 }
 
-const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
+const TRAJECTORY_GLOB = '{session,subagent}-*.{json,jsonl}';
 
 function getSessionFiles(dir: string): string[] {
   return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
@@ -285,24 +286,30 @@ export function loadGeminiLogs(dir: string): { logData: any; subagentsMap: Recor
   if (mainFiles.length === 1) {
     try {
       logData = readTrajectory(path.join(dir, mainFiles[0]));
-    } catch {}
+    } catch (e) {
+      console.warn(`Failed to parse Gemini session file ${mainFiles[0]}:`, e);
+    }
   } else if (mainFiles.length > 1) {
     const allMsgs: any[] = [];
     for (const f of mainFiles) {
       try {
         const c = readTrajectory(path.join(dir, f));
         allMsgs.push(...(Array.isArray(c) ? c : (c.messages || [])));
-      } catch {}
+      } catch (e) {
+        console.warn(`Failed to parse Gemini session file ${f}:`, e);
+      }
     }
     logData = { messages: allMsgs };
   }
 
   for (const file of subFiles) {
     try {
-      const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.(?:json|jsonl)$/, '');
+      const subId = extractSubagentIdFromFilename(file);
       const content = readTrajectory(path.join(dir, file));
       subagentsMap[subId] = Array.isArray(content) ? content : (content.messages || []);
-    } catch {}
+    } catch (e) {
+      console.warn(`Failed to parse Gemini subagent file ${file}:`, e);
+    }
   }
 
   return { logData, subagentsMap };
