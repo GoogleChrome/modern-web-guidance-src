@@ -10,7 +10,7 @@ import {
   validateFixPatch,
   type FixPatch,
 } from './fix-harness.ts';
-import { QUALIFIED_GUIDE_IDS } from './rules/index.ts';
+import { ALL_RULES, QUALIFIED_GUIDE_IDS } from './rules/index.ts';
 
 describe('locateFindingLineInContent', () => {
   it('extracts line number from cursor marker in codeSnippet', () => {
@@ -212,11 +212,74 @@ describe('checkModernFeaturePresent', () => {
     );
   });
 
-  it('returns true for unknown / unconstrained guide IDs', () => {
+  it('detects defer-work-until-scroll-ends correctly', () => {
     assert.strictEqual(
-      checkModernFeaturePresent('unconstrained-guide-xyz', 'const foo = 1;'),
+      checkModernFeaturePresent('defer-work-until-scroll-ends', 'window.addEventListener("scrollend", () => {});'),
       true,
     );
+    assert.strictEqual(
+      checkModernFeaturePresent('defer-work-until-scroll-ends', 'window.addEventListener("scroll", () => {});'),
+      false,
+    );
+  });
+
+  it('detects schedule-tasks-by-priority correctly', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('schedule-tasks-by-priority', 'scheduler.postTask(() => {});'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('schedule-tasks-by-priority', 'setTimeout(() => {}, 0);'),
+      false,
+    );
+  });
+
+  it('detects scrollspy correctly', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('scrollspy', '.nav { scroll-target-group: auto; }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('scrollspy', 'a:target-current { color: red; }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('scrollspy', '.nav { color: blue; }'),
+      false,
+    );
+  });
+
+  it('detects size-aware-styling correctly', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent('size-aware-styling', '@container (min-width: 300px) { .box { color: red; } }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('size-aware-styling', '.card { container-type: inline-size; }'),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent('size-aware-styling', '@media (min-width: 300px) { .box { color: red; } }'),
+      false,
+    );
+  });
+
+  it('throws an error for unknown / unconstrained guide IDs per Fail Fast', () => {
+    assert.throws(
+      () => checkModernFeaturePresent('unconstrained-guide-xyz', 'const foo = 1;'),
+      /Missing Gate 2c modern feature validator for guideId: unconstrained-guide-xyz/,
+    );
+  });
+
+  it('has explicit Gate 2c validators for all guides in ALL_RULES', () => {
+    const allGuideIds = [...new Set(ALL_RULES.map((r) => r.guideId))];
+    assert.strictEqual(allGuideIds.length, 29);
+    for (const guideId of allGuideIds) {
+      assert.doesNotThrow(
+        () => checkModernFeaturePresent(guideId, 'const dummy = 1;'),
+        `Guide ${guideId} should have an explicit validator`,
+      );
+    }
   });
 });
 

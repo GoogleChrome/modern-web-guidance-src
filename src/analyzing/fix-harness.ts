@@ -205,8 +205,16 @@ export function checkModernFeaturePresent(
       return /color-scheme\s*:\s*[^;]*(light\s+dark|dark\s+light|dark)\b|light-dark\s*\(/i.test(
         uncommented,
       );
+    case 'defer-work-until-scroll-ends':
+      return /\bscrollend\b/i.test(uncommented);
+    case 'schedule-tasks-by-priority':
+      return /\bpostTask\b/i.test(uncommented);
+    case 'scrollspy':
+      return /scroll-target-group|:target-current/i.test(uncommented);
+    case 'size-aware-styling':
+      return /@container\b|container-type\s*:/i.test(uncommented);
     default:
-      return true;
+      throw new Error(`Missing Gate 2c modern feature validator for guideId: ${guideId}`);
   }
 }
 

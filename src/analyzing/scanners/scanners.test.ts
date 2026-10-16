@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { Project } from 'ts-morph';
+import { Node, Project, SyntaxKind } from 'ts-morph';
 import type {
   AnalyzerRule,
   CssRuleMatcher,
@@ -10,8 +10,12 @@ import type {
 } from '../schema.ts';
 import {
   getSafeModuleSpecifier,
+  isDomClassOrAttrMutation,
+  isGlobalReference,
   isProtectedByFeatureGuard,
   isUnshadowedGlobal,
+  matchEventListenerCall,
+  resolveCallableNode,
   resolveLocalExpression,
   unwrapExpression,
 } from './ast-helpers.ts';
@@ -284,6 +288,258 @@ void test('ast-helpers: AST combinators and branch-aware feature guards', async 
       isProtectedByFeatureGuard(earlyCall, ['showModal']),
       true,
       'statement after positive early return is protected',
+    );
+  });
+
+  await t.test('isGlobalReference matches globals and window/globalThis/self prefixes, respecting shadowing', () => {
+    const source = project.createSourceFile(
+      'globalRef.ts',
+      `
+      function directGlobal() {
+        return ResizeObserver;
+      }
+      function windowGlobal() {
+        return window.ResizeObserver;
+      }
+      function globalThisGlobal() {
+        return globalThis.ResizeObserver;
+      }
+      function selfGlobal() {
+        return self.ResizeObserver;
+      }
+      function shadowedParam(ResizeObserver: any) {
+        return ResizeObserver;
+      }
+      function shadowedVar() {
+        const ResizeObserver = null;
+        return ResizeObserver;
+      }
+      function shadowedWindow(window: any) {
+        return window.ResizeObserver;
+      }
+      function otherProperty() {
+        return window.document;
+      }
+      `,
+      { overwrite: true },
+    );
+
+    const getReturnExpr = (fnName: string) => {
+      const fn = source.getFunction(fnName);
+      assert.ok(fn, `missing function ${fnName}`);
+      const ret = fn.getDescendantsOfKind(SyntaxKind.ReturnStatement)[0];
+      assert.ok(ret, `missing return in ${fnName}`);
+      return ret.getExpression()!;
+    };
+
+    assert.equal(isGlobalReference(getReturnExpr('directGlobal'), 'ResizeObserver'), true);
+    assert.equal(isGlobalReference(getReturnExpr('windowGlobal'), 'ResizeObserver'), true);
+    assert.equal(isGlobalReference(getReturnExpr('globalThisGlobal'), 'ResizeObserver'), true);
+    assert.equal(isGlobalReference(getReturnExpr('selfGlobal'), 'ResizeObserver'), true);
+
+    assert.equal(isGlobalReference(getReturnExpr('shadowedParam'), 'ResizeObserver'), false);
+    assert.equal(isGlobalReference(getReturnExpr('shadowedVar'), 'ResizeObserver'), false);
+    assert.equal(isGlobalReference(getReturnExpr('shadowedWindow'), 'ResizeObserver'), false);
+    assert.equal(isGlobalReference(getReturnExpr('otherProperty'), 'ResizeObserver'), false);
+  });
+
+  await t.test('resolveCallableNode resolves function declarations and arrow expressions', () => {
+    const source = project.createSourceFile(
+      'resolveCallable.ts',
+      `
+      function namedHandler() { return 1; }
+      const arrowHandler = () => 2;
+      function outer() {
+        const localHandler = () => 3;
+        el.addEventListener('click', namedHandler);
+        el.addEventListener('click', arrowHandler);
+        el.addEventListener('click', localHandler);
+        el.addEventListener('click', () => 4);
+      }
+      `,
+      { overwrite: true },
+    );
+
+    const outerFn = source.getFunction('outer');
+    assert.ok(outerFn);
+    const calls = outerFn.getDescendantsOfKind(SyntaxKind.CallExpression);
+    assert.equal(calls.length, 4);
+
+    const namedArg = calls[0].getArguments()[1];
+    const resolvedNamed = resolveCallableNode(namedArg);
+    assert.ok(Node.isFunctionDeclaration(resolvedNamed));
+    assert.equal(resolvedNamed.getName(), 'namedHandler');
+
+    const arrowArg = calls[1].getArguments()[1];
+    const resolvedArrow = resolveCallableNode(arrowArg);
+    assert.ok(Node.isArrowFunction(resolvedArrow));
+
+    const localArg = calls[2].getArguments()[1];
+    const resolvedLocal = resolveCallableNode(localArg);
+    assert.ok(Node.isArrowFunction(resolvedLocal));
+
+    const inlineArg = calls[3].getArguments()[1];
+    const resolvedInline = resolveCallableNode(inlineArg);
+    assert.ok(Node.isArrowFunction(resolvedInline));
+  });
+
+  await t.test('matchEventListenerCall recognizes native and jQuery scroll listeners', () => {
+    const source = project.createSourceFile(
+      'eventListener.ts',
+      `
+      function setup(el: any, $: any) {
+        el.addEventListener('scroll', onScrollNative);
+        $(window).on('scroll', onScrollJq);
+        $(window).on('scroll.myPlugin', onScrollNamespaced);
+        $(window).scroll(onScrollShorthand);
+        $(window).scroll(); // trigger call, not listener
+        el.addEventListener('click', onClickNative);
+      }
+      function onScrollNative() {}
+      function onScrollJq() {}
+      function onScrollNamespaced() {}
+      function onScrollShorthand() {}
+      function onClickNative() {}
+      `,
+      { overwrite: true },
+    );
+
+    const setupFn = source.getFunction('setup');
+    assert.ok(setupFn);
+    const stmts = setupFn.getStatements();
+    const getCall = (idx: number) => {
+      const stmt = stmts[idx];
+      assert.ok(Node.isExpressionStatement(stmt));
+      const expr = stmt.getExpression();
+      assert.ok(Node.isCallExpression(expr));
+      return expr;
+    };
+
+    const nativeMatch = matchEventListenerCall(getCall(0), ['scroll']);
+    assert.ok(nativeMatch);
+    assert.equal(nativeMatch.eventName, 'scroll');
+    assert.ok(Node.isFunctionDeclaration(nativeMatch.handlerNode));
+
+    const jqMatch = matchEventListenerCall(getCall(1), ['scroll']);
+    assert.ok(jqMatch);
+    assert.equal(jqMatch.eventName, 'scroll');
+    assert.ok(Node.isFunctionDeclaration(jqMatch.handlerNode));
+
+    const namespacedMatch = matchEventListenerCall(getCall(2), ['scroll']);
+    assert.ok(namespacedMatch);
+    assert.equal(namespacedMatch.eventName, 'scroll');
+    assert.ok(Node.isFunctionDeclaration(namespacedMatch.handlerNode));
+
+    const shorthandMatch = matchEventListenerCall(getCall(3), ['scroll']);
+    assert.ok(shorthandMatch);
+    assert.equal(shorthandMatch.eventName, 'scroll');
+    assert.ok(Node.isFunctionDeclaration(shorthandMatch.handlerNode));
+
+    // Shorthand trigger with no args returns null
+    const triggerMatch = matchEventListenerCall(getCall(4), ['scroll']);
+    assert.equal(triggerMatch, null);
+
+    // Non-matching event returns null
+    const clickMatch = matchEventListenerCall(getCall(5), ['scroll']);
+    assert.equal(clickMatch, null);
+  });
+
+  await t.test('isDomClassOrAttrMutation detects native and jQuery mutations', () => {
+    const source = project.createSourceFile(
+      'domMutations.ts',
+      `
+      function nativeMutations(el: any) {
+        el.classList.add('visible');
+        el.classList.remove('hidden');
+        el.classList.toggle('active');
+        el.classList.replace('old', 'new');
+        el.className = 'custom';
+        el.className += ' append';
+        el.setAttribute('aria-expanded', 'true');
+        el.removeAttribute('aria-hidden');
+        el.toggleAttribute('disabled');
+      }
+      function jqMutations(el: any, $: any) {
+        $(el).addClass('active');
+        $(el).removeClass('inactive');
+        $(el).toggleClass('selected');
+        $(el).attr('aria-valuenow', '10');
+        $(el).attr({ 'aria-hidden': 'false' });
+      }
+      function readOnlyOperations(el: any, $: any) {
+        const c = el.className;
+        const attr = $(el).attr('aria-hidden');
+        return [c, attr];
+      }
+      `,
+      { overwrite: true },
+    );
+
+    const nativeFn = source.getFunction('nativeMutations');
+    assert.ok(nativeFn);
+    assert.equal(isDomClassOrAttrMutation(nativeFn), true);
+
+    const jqFn = source.getFunction('jqMutations');
+    assert.ok(jqFn);
+    assert.equal(isDomClassOrAttrMutation(jqFn), true);
+
+    const readOnlyFn = source.getFunction('readOnlyOperations');
+    assert.ok(readOnlyFn);
+    const readStmts = readOnlyFn.getDescendantsOfKind(SyntaxKind.VariableDeclaration);
+    for (const stmt of readStmts) {
+      assert.equal(isDomClassOrAttrMutation(stmt), false);
+    }
+  });
+
+  await t.test('isProtectedByFeatureGuard: early-return in callbacks and enclosing functions', () => {
+    const source = project.createSourceFile(
+      'earlyReturnGuard.ts',
+      `
+      function setupListeners(inputEl: any, buttonEl: any) {
+        inputEl.addEventListener('input', (event: any) => {
+          if (event.isComposing) return;
+          legacyInputHandling(event);
+        });
+
+        buttonEl.addEventListener('click', function onClick() {
+          if (CSS.supports('anchor-name', '--anchor')) return;
+          legacyAnchorFallback();
+        });
+      }
+      `,
+      { overwrite: true },
+    );
+
+    const setupFn = source.getFunction('setupListeners');
+    assert.ok(setupFn);
+    const calls = setupFn.getDescendantsOfKind(SyntaxKind.CallExpression);
+
+    // Check that addEventListener call expressions are detected as protected if callback has early return
+    assert.equal(
+      isProtectedByFeatureGuard(calls[0], ['isComposing']),
+      true,
+      'listener call with early return callback is protected',
+    );
+
+    // Check inner call expressions directly
+    const legacyInputCall = source
+      .getDescendants()
+      .find((n) => n.getText().startsWith('legacyInputHandling'));
+    assert.ok(legacyInputCall);
+    assert.equal(
+      isProtectedByFeatureGuard(legacyInputCall, ['isComposing']),
+      true,
+      'code after early return is guarded',
+    );
+
+    const legacyAnchorCall = source
+      .getDescendants()
+      .find((n) => n.getText().startsWith('legacyAnchorFallback'));
+    assert.ok(legacyAnchorCall);
+    assert.equal(
+      isProtectedByFeatureGuard(legacyAnchorCall, ['CSS.supports', 'anchor-name']),
+      true,
+      'code after CSS.supports early return is guarded',
     );
   });
 

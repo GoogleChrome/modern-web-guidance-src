@@ -2,6 +2,7 @@ import {
   Node,
   SyntaxKind,
   type BinaryExpression,
+  type CallExpression,
   type ExportDeclaration,
   type IfStatement,
   type ImportDeclaration,
@@ -123,6 +124,56 @@ export function resolveLocalExpression(node: Node, maxHops: number = 1): Node {
 }
 
 /**
+ * Searches lexical ancestor scopes for a local FunctionDeclaration matching `name`.
+ */
+function findLocalFunctionDeclaration(startNode: Node, name: string): Node | null {
+  let currentScope: Node | undefined = startNode.getParent();
+
+  while (currentScope) {
+    if (isParameterInScope(currentScope, name)) {
+      return null;
+    }
+
+    if (Node.isBlock(currentScope) || Node.isSourceFile(currentScope)) {
+      for (const stmt of currentScope.getStatements()) {
+        if (Node.isFunctionDeclaration(stmt) && stmt.getName() === name) {
+          return stmt;
+        }
+      }
+    }
+
+    currentScope = currentScope.getParent();
+  }
+
+  return null;
+}
+
+/**
+ * Extends resolveLocalExpression(node, maxHops): if `node` (after unwrapping) is an
+ * Identifier that resolves to a local FunctionDeclaration in the enclosing block/file,
+ * returns that FunctionDeclaration; otherwise returns resolveLocalExpression(node, maxHops).
+ */
+export function resolveCallableNode(node: Node, maxHops: number = 1): Node {
+  const unwrapped = unwrapExpression(node);
+  if (Node.isIdentifier(unwrapped)) {
+    const fnDecl = findLocalFunctionDeclaration(unwrapped, unwrapped.getText());
+    if (fnDecl) {
+      return fnDecl;
+    }
+  }
+
+  const resolved = resolveLocalExpression(node, maxHops);
+  if (Node.isIdentifier(resolved) && resolved !== unwrapped) {
+    const fnDecl = findLocalFunctionDeclaration(resolved, resolved.getText());
+    if (fnDecl) {
+      return fnDecl;
+    }
+  }
+
+  return resolved;
+}
+
+/**
  * Checks whether `globalName` is bound by any statement in the scope.
  */
 function isShadowedByStatements(
@@ -204,6 +255,35 @@ export function isUnshadowedGlobal(node: Node, globalName: string): boolean {
   }
 
   return true;
+}
+
+/**
+ * Unwraps `node` and returns `true` if it refers to `globalName` as an unshadowed global,
+ * either directly as an identifier (e.g. `ResizeObserver`) or via standard global object
+ * property access (`window.<globalName>`, `globalThis.<globalName>`, or `self.<globalName>`)
+ * where the root object is also unshadowed.
+ */
+export function isGlobalReference(node: Node, globalName: string): boolean {
+  const unwrapped = unwrapExpression(node);
+
+  if (Node.isIdentifier(unwrapped)) {
+    return unwrapped.getText() === globalName && isUnshadowedGlobal(unwrapped, globalName);
+  }
+
+  if (Node.isPropertyAccessExpression(unwrapped)) {
+    if (unwrapped.getName() !== globalName) {
+      return false;
+    }
+    const rootExpr = unwrapExpression(unwrapped.getExpression());
+    if (Node.isIdentifier(rootExpr)) {
+      const rootName = rootExpr.getText();
+      if (rootName === 'window' || rootName === 'globalThis' || rootName === 'self') {
+        return isUnshadowedGlobal(rootExpr, rootName);
+      }
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -330,6 +410,38 @@ function isGuardedByIfStatement(
 }
 
 /**
+ * Checks whether a callable node's body contains an early return checking any of `featureTokens`.
+ */
+function isGuardedByCallableEarlyReturn(
+  callable: Node,
+  featureTokens: readonly string[],
+): boolean {
+  let body: Node | undefined;
+  if (
+    Node.isFunctionDeclaration(callable) ||
+    Node.isFunctionExpression(callable) ||
+    Node.isMethodDeclaration(callable)
+  ) {
+    body = callable.getBody();
+  } else if (Node.isArrowFunction(callable)) {
+    body = callable.getBody();
+  }
+
+  if (body && Node.isBlock(body)) {
+    for (const stmt of body.getStatements()) {
+      if (Node.isIfStatement(stmt)) {
+        const condText = stmt.getExpression().getText();
+        const mentions = featureTokens.some((token) => condText.includes(token));
+        if (mentions && statementAlwaysExits(stmt.getThenStatement())) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * Checks if a prior early-return if-statement in the block guards subsequent code.
  */
 function isGuardedByPrecedingEarlyReturn(
@@ -343,6 +455,11 @@ function isGuardedByPrecedingEarlyReturn(
     }
     if (!Node.isIfStatement(stmt)) {
       continue;
+    }
+    const condText = stmt.getExpression().getText();
+    const mentions = featureTokens.some((token) => condText.includes(token));
+    if (mentions && statementAlwaysExits(stmt.getThenStatement())) {
+      return true;
     }
     const polarity = conditionCheckPolarity(stmt.getExpression(), featureTokens);
     if (polarity === 'positive' && statementAlwaysExits(stmt.getThenStatement())) {
@@ -403,6 +520,22 @@ export function isProtectedByFeatureGuard(
   node: Node,
   featureTokens: readonly string[],
 ): boolean {
+  // If node is a CallExpression (e.g. addEventListener) or BinaryExpression (e.g. onscroll = handler),
+  // check if any callable argument/RHS contains an early-return guard checking featureTokens.
+  if (Node.isCallExpression(node)) {
+    for (const arg of node.getArguments()) {
+      const callable = resolveCallableNode(arg);
+      if (isGuardedByCallableEarlyReturn(callable, featureTokens)) {
+        return true;
+      }
+    }
+  } else if (Node.isBinaryExpression(node)) {
+    const callable = resolveCallableNode(node.getRight());
+    if (isGuardedByCallableEarlyReturn(callable, featureTokens)) {
+      return true;
+    }
+  }
+
   let current: Node | undefined = node;
 
   while (current) {
@@ -434,6 +567,176 @@ export function isProtectedByFeatureGuard(
   }
 
   return false;
+}
+
+const JQUERY_EVENT_SHORTHANDS: ReadonlySet<string> = new Set([
+  'scroll',
+  'keydown',
+  'keyup',
+  'focus',
+  'blur',
+]);
+
+export interface MatchedEventListener {
+  readonly eventName: string;
+  readonly handlerNode: Node;
+  readonly targetNode: Node | undefined;
+}
+
+/**
+ * Matches native `.addEventListener('<event>', handler)`, jQuery `.on('<event>', [selector,] handler)`,
+ * and jQuery shorthands (`.scroll(handler)`, `.keydown(handler)`, `.keyup(handler)`, `.focus(handler)`, `.blur(handler)`)
+ * when the event name is in `eventNames`, resolving `handlerNode` via `resolveCallableNode`.
+ */
+export function matchEventListenerCall(
+  node: CallExpression,
+  eventNames: readonly string[],
+): MatchedEventListener | null {
+  const expr = unwrapExpression(node.getExpression());
+  if (!Node.isPropertyAccessExpression(expr)) {
+    return null;
+  }
+
+  const methodName = expr.getName();
+  const targetNode = expr.getExpression();
+  const args = node.getArguments();
+
+  // 1. Native .addEventListener('event', handler)
+  if (methodName === 'addEventListener') {
+    if (args.length < 2) {
+      return null;
+    }
+    const eventArg = unwrapExpression(args[0]);
+    if (!Node.isStringLiteral(eventArg) && !Node.isNoSubstitutionTemplateLiteral(eventArg)) {
+      return null;
+    }
+    const evName = eventArg.getLiteralText();
+    if (!eventNames.includes(evName)) {
+      return null;
+    }
+    const handlerNode = resolveCallableNode(args[1]);
+    return { eventName: evName, handlerNode, targetNode };
+  }
+
+  // 2. jQuery .on('event', [selector,] handler)
+  if (methodName === 'on') {
+    if (args.length < 2) {
+      return null;
+    }
+    const eventArg = unwrapExpression(args[0]);
+    if (!Node.isStringLiteral(eventArg) && !Node.isNoSubstitutionTemplateLiteral(eventArg)) {
+      return null;
+    }
+    const rawEventText = eventArg.getLiteralText().trim();
+    // Support namespaced events e.g. "scroll.myPlugin" -> "scroll"
+    const parsedEvents = rawEventText.split(/\s+/).map((e) => e.split('.')[0]);
+    const matchedEvent = parsedEvents.find((e) => eventNames.includes(e));
+    if (!matchedEvent) {
+      return null;
+    }
+    const rawHandler = args[args.length - 1];
+    const handlerNode = resolveCallableNode(rawHandler);
+    return { eventName: matchedEvent, handlerNode, targetNode };
+  }
+
+  // 3. jQuery shorthand methods: .scroll(handler), .keydown(handler), etc.
+  if (JQUERY_EVENT_SHORTHANDS.has(methodName) && eventNames.includes(methodName)) {
+    if (args.length === 0) {
+      // Shorthand with 0 args is a trigger/action, not an event listener
+      return null;
+    }
+    const rawHandler = args[args.length - 1];
+    const handlerNode = resolveCallableNode(rawHandler);
+    return { eventName: methodName, handlerNode, targetNode };
+  }
+
+  return null;
+}
+
+function isDirectClassOrAttrMutation(n: Node): boolean {
+  // 1. className assignment: el.className = '...' or el.className += '...'
+  if (Node.isBinaryExpression(n)) {
+    const op = n.getOperatorToken().getKind();
+    if (op === SyntaxKind.EqualsToken || op === SyntaxKind.PlusEqualsToken) {
+      const left = unwrapExpression(n.getLeft());
+      if (Node.isPropertyAccessExpression(left) && left.getName() === 'className') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // 2. Call expressions
+  if (Node.isCallExpression(n)) {
+    const expr = unwrapExpression(n.getExpression());
+    if (!Node.isPropertyAccessExpression(expr)) {
+      return false;
+    }
+    const methodName = expr.getName();
+
+    // classList.add, remove, toggle, replace
+    if (
+      methodName === 'add' ||
+      methodName === 'remove' ||
+      methodName === 'toggle' ||
+      methodName === 'replace'
+    ) {
+      const caller = unwrapExpression(expr.getExpression());
+      if (Node.isPropertyAccessExpression(caller) && caller.getName() === 'classList') {
+        return true;
+      }
+    }
+
+    // setAttribute, removeAttribute, toggleAttribute
+    if (
+      methodName === 'setAttribute' ||
+      methodName === 'removeAttribute' ||
+      methodName === 'toggleAttribute'
+    ) {
+      return true;
+    }
+
+    // jQuery .addClass, .removeClass, .toggleClass
+    if (
+      methodName === 'addClass' ||
+      methodName === 'removeClass' ||
+      methodName === 'toggleClass'
+    ) {
+      return true;
+    }
+
+    // jQuery .attr(name, value) or .attr({ name: value })
+    if (methodName === 'attr') {
+      const args = n.getArguments();
+      if (args.length >= 2) {
+        return true;
+      }
+      if (args.length === 1 && Node.isObjectLiteralExpression(unwrapExpression(args[0]))) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Traverses `node` AST descendants to check for DOM class or attribute mutations:
+ * .classList.add/remove/toggle/replace, .className = ..., .setAttribute(...),
+ * .removeAttribute(...), .toggleAttribute(...), or jQuery .addClass/.removeClass/.toggleClass/.attr.
+ */
+export function isDomClassOrAttrMutation(node: Node): boolean {
+  if (isDirectClassOrAttrMutation(node)) {
+    return true;
+  }
+  let found = false;
+  node.forEachDescendant((desc, traversal) => {
+    if (isDirectClassOrAttrMutation(desc)) {
+      found = true;
+      traversal.stop();
+    }
+  });
+  return found;
 }
 
 /**
