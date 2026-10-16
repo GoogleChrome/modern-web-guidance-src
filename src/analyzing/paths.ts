@@ -40,4 +40,11 @@ export function repoDir(entry: RepoConfigEntry, root: string = CACHE_ROOT): stri
   return join(root, entry.repo);
 }
 
+/**
+ * Resolves the cache directory for the GitMirror corpus.
+ */
+export function resolveGitMirrorCacheDir(): string {
+  return join(homedir(), '.cache', 'analyzer-gitmirror');
+}
+
 

@@ -13,6 +13,7 @@ import {
 } from './pilot-scorecard.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import { checkCanaries, type JudgeResult } from './judge.ts';
+import { resolveGitMirrorCacheDir } from './paths.ts';
 
 describe('computeRuleSetHash', () => {
   it('computes a deterministic 12-character hex hash from rule files', async () => {
@@ -521,3 +522,12 @@ describe('buildRulesByIdMap (multi-rule collision prevention)', () => {
     assert.strictEqual(rulesById.get('bar'), subRule1);
   });
 });
+
+describe('resolveGitMirrorCacheDir', () => {
+  it('resolves analyzer-gitmirror path in homedir cache', () => {
+    const dir = resolveGitMirrorCacheDir();
+    assert.ok(dir.includes('.cache'));
+    assert.ok(dir.endsWith('analyzer-gitmirror'));
+  });
+});
+

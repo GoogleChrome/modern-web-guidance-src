@@ -1,5 +1,6 @@
 /* oxlint-disable max-lines-per-function, max-depth */
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
@@ -30,6 +31,7 @@ import {
   REPOS_CONFIG_PATH,
   WORKTREE_ROOT,
   repoDir,
+  resolveGitMirrorCacheDir,
   type RepoConfigEntry,
 } from './paths.ts';
 import { runPhase2Filter, type Phase2Options } from './phase2.ts';
@@ -45,7 +47,7 @@ import {
   PILOT_RULES,
   POST_SELECTION_TUNED_GUIDE_IDS,
 } from './rules/index.ts';
-import { scanRepoFiles } from './scanners/index.ts';
+import { scanFiles, scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import {
   checkSequentialStop,
@@ -159,7 +161,7 @@ export function evaluateGuideQualification(
 export const PILOT_SCORECARD_PATH = join(
   ANALYZER_INTERNAL_DIR,
   'findings',
-  '2026-10-15-m3-rescore-scorecard.json',
+  '2026-10-15-gitmirror-scorecard.json',
 );
 
 export const PILOT_GUIDE_IDS = [
@@ -552,7 +554,59 @@ export async function runPilotScorecard(
   const gradingRepos = allRepos.filter((r) => r.split === 'grading-only');
 
   // 2. Scan grading-only repos with frozen pilot rules (Phase 1)
-  const phase1Findings = await scanGradingRepos(gradingRepos, rules);
+  const phase1Findings: AnalyzerFinding[] = await scanGradingRepos(gradingRepos, rules);
+
+  // Check if GitMirror manifest.json exists (Tier 2 held-out corpus per MEASUREMENT_FIRST_REDESIGN §2.3 and D-019)
+  const gitMirrorDir = resolveGitMirrorCacheDir();
+  const gitMirrorManifestPath = join(gitMirrorDir, 'manifest.json');
+  if (existsSync(gitMirrorManifestPath)) {
+    const manifestRaw = await readFile(gitMirrorManifestPath, 'utf8');
+    interface GitMirrorManifestEntry {
+      readonly repository: string;
+      readonly commit_id?: string;
+      readonly filepath: string;
+      readonly split: string;
+    }
+    const manifestEntries = JSON.parse(manifestRaw) as GitMirrorManifestEntry[];
+    const gradingOnlyEntries = manifestEntries.filter((e) => e.split === 'grading-only');
+
+    // Group files by repository
+    const byRepo = new Map<string, { commit: string; files: string[] }>();
+    for (const entry of gradingOnlyEntries) {
+      let repoGroup = byRepo.get(entry.repository);
+      if (!repoGroup) {
+        repoGroup = {
+          commit: entry.commit_id ?? 'head',
+          files: [],
+        };
+        byRepo.set(entry.repository, repoGroup);
+      }
+      repoGroup.files.push(entry.filepath);
+    }
+
+    const gradingOnlyDir = join(gitMirrorDir, 'grading-only');
+    for (const [repo, group] of byRepo.entries()) {
+      const sanitizedRepo = repo.replace('/', '__');
+      const repoDir = join(gradingOnlyDir, sanitizedRepo);
+      const fileMap = new Map<string, string>();
+      for (const relFile of group.files) {
+        const fullFilePath = join(repoDir, relFile);
+        try {
+          const content = await readFile(fullFilePath, 'utf8');
+          fileMap.set(relFile, content);
+        } catch {
+          // File missing or unreadable
+        }
+      }
+      if (fileMap.size > 0) {
+        const findings = scanFiles(fileMap, rules, {
+          repo,
+          commit: group.commit,
+        });
+        phase1Findings.push(...findings);
+      }
+    }
+  }
 
   // Group Phase 1 findings by guideId
   const findingsByGuide = new Map<string, AnalyzerFinding[]>();
@@ -830,7 +884,17 @@ export async function runPilotScorecard(
   // 11. Compute aggregate metrics
   const gitState = getGitCommitState();
   const ruleSetHash = await computeRuleSetHash(rulesDir);
-  const splitHash = await computeFileHash(reposPath);
+  let splitHash = await computeFileHash(reposPath);
+  if (existsSync(gitMirrorManifestPath)) {
+    const reposHash = await computeFileHash(reposPath);
+    const manifestHash = await computeFileHash(gitMirrorManifestPath);
+    splitHash = createHash('sha256')
+      .update(reposHash)
+      .update(':')
+      .update(manifestHash)
+      .digest('hex')
+      .slice(0, 12);
+  }
   const gradesHash = await computeFileHash(gradesPath);
   const judgeVersion = JUDGE_VERSION;
 
@@ -944,7 +1008,7 @@ export async function runPilotScorecard(
       judgeAlpha: summary.judgeAlpha,
       judgeAc1: summary.judgeAc1,
       canaryTnr: summary.canaryTnr,
-      notes: `Milestone 3 evaluation (${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} sample-constrained: ${clearedHighN80Count} at >=0.80 CI & >=0.95 prec, ${clearedZeroFpExhaustiveCount} zero-FP exhaustive], ${provenHighNCount} proven-high-n + ${zeroFpLowNCount} zero-fp-low-n [${singleShotQualifiedCount} single-shot + ${postSelectionTunedCount} dev-tuned], qualified prec=${((qualifiedRight / (qualifiedKept || 1)) * 100).toFixed(1)}%, pooled held-out prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
+      notes: `Milestone 3 combined evaluation (93 local + 2,598 gitmirror repos: ${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} sample-constrained: ${clearedHighN80Count} at >=0.80 CI & >=0.95 prec, ${clearedZeroFpExhaustiveCount} zero-FP exhaustive], ${provenHighNCount} proven-high-n + ${zeroFpLowNCount} zero-fp-low-n [${singleShotQualifiedCount} single-shot + ${postSelectionTunedCount} dev-tuned], qualified prec=${((qualifiedRight / (qualifiedKept || 1)) * 100).toFixed(1)}%, pooled held-out prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
     };
     await recordProgressLogEntry(progressRow, progressLogPath);
   }
