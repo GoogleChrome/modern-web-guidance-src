@@ -11,7 +11,7 @@ import {
 
 const mockRule: AnalyzerRule = {
   id: 'test-rule',
-  guideId: 'test-rule',
+  guideId: 'animate-element-entry-exit',
   guideHash: '1234567890ab',
   summary: 'Detects old-pattern widgets and suggests modern HTML equivalents.',
   matcher: {
@@ -34,7 +34,7 @@ const mockFindings: AnalyzerFinding[] = [
   {
     cardId: 'card-1',
     ruleId: 'test-rule',
-    guideId: 'test-rule',
+    guideId: 'animate-element-entry-exit',
     guideHash: '1234567890ab',
     repo: 'test-repo',
     commit: 'c0ffee1',
@@ -47,7 +47,7 @@ const mockFindings: AnalyzerFinding[] = [
   {
     cardId: 'card-2',
     ruleId: 'test-rule',
-    guideId: 'test-rule',
+    guideId: 'animate-element-entry-exit',
     guideHash: '1234567890ab',
     repo: 'test-repo',
     commit: 'c0ffee1',

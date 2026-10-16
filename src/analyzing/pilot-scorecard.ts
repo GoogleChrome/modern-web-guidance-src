@@ -427,6 +427,15 @@ export function samplePhase2DropsDeck(
     high: 2,
   };
 
+  const bucketCounts = { low: 0, medium: 0, high: 0, unknown: 0 };
+  for (const f of droppedFindings) {
+    const v = verdictsMap?.get(f.cardId);
+    if (v?.confidence === 'low') bucketCounts.low++;
+    else if (v?.confidence === 'medium') bucketCounts.medium++;
+    else if (v?.confidence === 'high') bucketCounts.high++;
+    else bucketCounts.unknown++;
+  }
+
   const sorted = [...droppedFindings].sort((a, b) => {
     if (verdictsMap) {
       const vA = verdictsMap.get(a.cardId);
@@ -446,6 +455,11 @@ export function samplePhase2DropsDeck(
 
   return selected.map((f) => {
     const verdict = verdictsMap?.get(f.cardId);
+    if (verdictsMap && (!verdict?.reason || !verdict.reason.trim())) {
+      throw new Error(
+        `Phase 2 drop for card ${f.cardId} is missing a drop reason. Failing fast per O45.`,
+      );
+    }
     return {
       cardId: f.cardId,
       repo: f.repo,
@@ -456,8 +470,9 @@ export function samplePhase2DropsDeck(
       line: f.line,
       code: f.astSlice || f.codeSnippet,
       phase2Decision: 'drop',
-      phase2Reason:
-        verdict?.reason || 'Phase 2 filter dropped finding as false positive or out-of-scope',
+      phase2Reason: verdict?.reason ?? 'Phase 2 drop reason missing',
+      phase2Confidence: verdict?.confidence ?? 'unknown',
+      populationCounts: bucketCounts,
       findings: [
         {
           tool: 'modern-web-guidance-analyzer',

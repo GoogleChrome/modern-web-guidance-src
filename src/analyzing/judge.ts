@@ -198,9 +198,6 @@ export function deriveJudgeVerdictFromFacts(
   if (!facts.modern_feature_applies_here) {
     return 'guide-wrong';
   }
-  if (llmVerdict === 'unsure') {
-    return 'unsure';
-  }
   return 'right';
 }
 
@@ -1106,6 +1103,8 @@ export interface CalibrationDeckItem {
   code?: string;
   phase2Decision?: string;
   phase2Reason?: string | null;
+  phase2Confidence?: string;
+  populationCounts?: { low: number; medium: number; high: number; unknown: number };
   findings?: readonly CalibrationDeckFinding[];
 }
 

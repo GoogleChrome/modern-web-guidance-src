@@ -173,17 +173,16 @@ describe('formatProgressLogMarkdown and parseProgressLogMarkdown', () => {
     const scoreboard = parsePipelineScoreboardMarkdown(markdown);
     assert.ok(scoreboard.currentBenchmark);
     assert.strictEqual(scoreboard.currentBenchmark.commit, 'abc1234');
-    assert.strictEqual(scoreboard.gate0Triage.length, 2);
+    assert.strictEqual(scoreboard.gate0Triage.length, HISTORICAL_GATE0_TRIAGE_ROWS.length);
     assert.strictEqual(scoreboard.judgeCalibration.length, 4);
     assert.strictEqual(scoreboard.detectionFunnel.length, 1);
     assert.strictEqual(scoreboard.fixSmokeTest.length, 3);
   });
 
   it('verifies historical backfill rows and data integrity', () => {
-    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS.length, 2);
-    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[0].runId, 'manual-slug-triage-v0');
-    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[1].runId, 'gate0-v1-full-guide');
-    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[1].detectable, 42);
+    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS.length, 1);
+    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[0].runId, 'gate0-v1-full-guide');
+    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[0].detectable, 49);
 
     assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS.length, 4);
     assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS[0].judgeVersion, 'gemini-3.8-flash:detective-v2-direct');
@@ -209,8 +208,8 @@ describe('formatProgressLogMarkdown and parseProgressLogMarkdown', () => {
   it('parses individual tables independently', () => {
     const markdown = formatProgressLogMarkdown(HISTORICAL_DETECTION_FUNNEL_ROWS);
     const gate0Rows = parseGate0TriageMarkdown(markdown);
-    assert.strictEqual(gate0Rows.length, 2);
-    assert.strictEqual(gate0Rows[0].runId, 'manual-slug-triage-v0');
+    assert.strictEqual(gate0Rows.length, HISTORICAL_GATE0_TRIAGE_ROWS.length);
+    assert.strictEqual(gate0Rows[0].runId, 'gate0-v1-full-guide');
 
     const judgeRows = parseJudgeCalibrationMarkdown(markdown);
     assert.strictEqual(judgeRows.length, 4);

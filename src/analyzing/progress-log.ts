@@ -109,238 +109,38 @@ export interface GitCommitState {
 }
 
 // ---------------------------------------------------------------------------
-// Historical Backfill Constants (R31, D-025)
+// Historical Backfill Constants loaded from verified progress-history.json (R31, D-025, O36)
 // ---------------------------------------------------------------------------
 
-export const HISTORICAL_GATE0_TRIAGE_ROWS: readonly Gate0TriageRow[] = [
-  {
-    runId: 'manual-slug-triage-v0',
-    date: '2026-10-14',
-    promptVersion: 'slug-heuristics-v0',
-    guidesRead: '0/171 (0%)',
-    detectable: 33,
-    uiRecipe: 0,
-    skip: 0,
-    paulAgreement: '-',
-    kappa: 0,
-    notes: '[invalidated per audit: 0/171 guides read, ungrounded slug inferences]',
-  },
-  {
-    runId: 'gate0-v1-full-guide',
-    date: '2026-10-15',
-    promptVersion: 'gemini-3.8-flash:gate0-v1',
-    guidesRead: '171/171 (100%)',
-    detectable: 42,
-    uiRecipe: 47,
-    skip: 82,
-    paulAgreement: '15/25 (60.0%)',
-    kappa: 0.400,
-    notes: '30-guide spot-check deck; undercounts detectable guides (R26); prompt overhauled in R27',
-  },
-];
+import progressHistory from './progress-history.json' with { type: 'json' };
 
-export const HISTORICAL_JUDGE_CALIBRATION_ROWS: readonly JudgeCalibrationRow[] = [
-  {
-    commit: 'dafe9ee',
-    date: '2026-10-15',
-    judgeVersion: 'gemini-3.8-flash:detective-v2-direct',
-    sampleSize: 85,
-    stabilityRate: 0.718,
-    judgeAlpha: -0.341,
-    judgeAc1: 0.179,
-    canaryTnr: 1.000,
-    notes: 'Phase 1 measurement baseline (stability=71.8%, canaryTNR=100.0%)',
-  },
-  {
-    commit: 'd3927f7',
-    date: '2026-10-15',
-    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
-    sampleSize: 85,
-    stabilityRate: 0.918,
-    judgeAlpha: -0.188,
-    judgeAc1: 0.377,
-    canaryTnr: 1.000,
-    notes: 'Phase 1 measurement baseline (stability=91.8%, canaryTNR=100.0%)',
-  },
-  {
-    commit: '44b9c3d',
-    date: '2026-10-15',
-    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
-    sampleSize: 85,
-    stabilityRate: 0.976,
-    judgeAlpha: 0.222,
-    judgeAc1: 0.863,
-    canaryTnr: 1.000,
-    notes: 'Phase 1 measurement baseline (stability=97.6%, canaryTNR=100.0%)',
-  },
-  {
-    commit: 'ecb6ace',
-    date: '2026-10-15',
-    judgeVersion: 'gemini-3.8-flash:detective-v4-guide-only',
-    sampleSize: 116,
-    stabilityRate: 0.945,
-    judgeAlpha: 0.063,
-    judgeAc1: 0.764,
-    canaryTnr: 1.000,
-    notes: 'Guide-only judge (re-calibrating per R29: 8 FNs due to guide-wrong/leave-it inversion, thinkingBudget=0)',
-  },
-];
+function unsafeCast<T>(value: unknown, _reason: string): T {
+  return value as T;
+}
 
-export const HISTORICAL_DETECTION_FUNNEL_ROWS: readonly DetectionFunnelRow[] = [
-  {
-    commit: '7bddb06',
-    date: '2026-10-15',
-    ruleSetHash: '2661f572344c',
-    splitHash: 'b8af9495f9ec',
-    gradesHash: 'b6e5d6f718df',
-    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
-    coverage: { value: 0.2, n: 5, split: 'grading-only' },
-    precision: { value: 0.983, lower: 0.952, upper: 1.0, n: 85, split: 'grading-only' },
-    recall: { value: 0.667, lower: 0.438, upper: 0.837, n: 18, split: 'grading-only' },
-    judgeAlpha: 0.200,
-    judgeAc1: 0.850,
-    canaryTnr: 1.0,
-    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 2 pilot evaluation (1 qualified [>=0.90 LB], 4 unmeasured [low-n], 1/5 cleared bar, stability=96.2%, canaryTNR=100.0%)',
-  },
-  {
-    commit: 'e00c565',
-    date: '2026-10-15',
-    ruleSetHash: '3ea4fd9c37d2',
-    splitHash: 'b8af9495f9ec',
-    gradesHash: 'b6e5d6f718df',
-    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
-    coverage: { value: 0.2, n: 5, split: 'grading-only' },
-    precision: { value: 0.981, lower: 0.950, upper: 1.0, n: 85, split: 'grading-only' },
-    recall: { value: 0.556, lower: 0.337, upper: 0.754, n: 18, split: 'grading-only' },
-    judgeAlpha: 0.182,
-    judgeAc1: 0.837,
-    canaryTnr: 1.0,
-    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 2 pilot evaluation (1 qualified [>=0.90 LB], 4 unmeasured [low-n], 1/5 cleared bar, stability=97.1%, canaryTNR=100.0%)',
-  },
-  {
-    commit: 'b0f87c7',
-    date: '2026-10-15',
-    ruleSetHash: 'bc7966df2d47',
-    splitHash: 'b8af9495f9ec',
-    gradesHash: 'b6e5d6f718df',
-    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
-    coverage: { value: 0.2, n: 5, split: 'grading-only' },
-    precision: { value: 0.987, lower: 0.956, upper: 1.0, n: 85, split: 'grading-only' },
-    recall: { value: 0.667, lower: 0.438, upper: 0.837, n: 18, split: 'grading-only' },
-    judgeAlpha: 0.200,
-    judgeAc1: 0.850,
-    canaryTnr: 1.0,
-    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 2 pilot evaluation (1 qualified [>=0.90 LB], 4 unmeasured [low-n], 1/5 cleared bar, stability=98.5%, canaryTNR=100.0%)',
-  },
-  {
-    commit: 'a5a253f',
-    date: '2026-10-15',
-    ruleSetHash: 'd444600bc87d',
-    splitHash: 'b8af9495f9ec',
-    gradesHash: 'b6e5d6f718df',
-    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
-    coverage: { value: 0.25, n: 16, split: 'grading-only' },
-    precision: { value: 0.960, lower: 0.923, upper: 0.980, n: 200, split: 'grading-only, judged' },
-    recall: { value: 0.475, lower: 0.353, upper: 0.600, n: 59, split: 'grading-only' },
-    judgeAlpha: 0.164,
-    judgeAc1: 0.824,
-    canaryTnr: 1.0,
-    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 3 evaluation (1 qualified [>=0.90 LB], 15 unmeasured [low-n], 4/16 guides cleared bar, pooled held-out prec=96.0%, stability=98.0%, canaryTNR=100.0%)',
-  },
-  {
-    commit: '1dd4409',
-    date: '2026-10-15',
-    ruleSetHash: '838dcb4e6972',
-    splitHash: 'b8af9495f9ec',
-    gradesHash: 'b6e5d6f718df',
-    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
-    coverage: { value: 0.6, n: 30, split: 'grading-only' },
-    precision: { value: 0.971, lower: 0.943, upper: 0.985, n: 274, split: 'grading-only, judged' },
-    recall: { value: 0.551, lower: 0.441, upper: 0.657, n: 78, split: 'grading-only' },
-    judgeAlpha: 0.200,
-    judgeAc1: 0.850,
-    canaryTnr: 1.0,
-    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 3 evaluation (1 qualified [>=0.90 LB], 29 unmeasured [low-n], 18/30 guides cleared bar, pooled held-out prec=97.1%, stability=96.8%, canaryTNR=100.0%)',
-  },
-  {
-    commit: 'e73c552',
-    date: '2026-10-15',
-    ruleSetHash: '47d04da795b5',
-    splitHash: 'b8af9495f9ec',
-    gradesHash: 'b6e5d6f718df',
-    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
-    coverage: { value: 0.719, n: 32, split: 'grading-only' },
-    precision: { value: 0.894, lower: 0.856, upper: 0.923, n: 329, split: 'grading-only, judged' },
-    recall: { value: 0.603, lower: 0.492, upper: 0.704, n: 78, split: 'grading-only' },
-    judgeAlpha: 0.147,
-    judgeAc1: 0.811,
-    canaryTnr: 1.0,
-    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 3 evaluation (1 qualified [>=0.90 LB], 31 unmeasured [low-n], 23/32 guides cleared bar, pooled held-out prec=89.4%, stability=96.4%, canaryTNR=100.0%)',
-  },
-  {
-    commit: '30e2a34',
-    date: '2026-10-15',
-    ruleSetHash: '1b64289894c1',
-    splitHash: 'b8af9495f9ec',
-    gradesHash: 'b6e5d6f718df',
-    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
-    coverage: { value: 0.781, n: 32, split: 'grading-only' },
-    precision: { value: 0.954, lower: 0.923, upper: 0.973, n: 285, split: 'grading-only, judged' },
-    recall: { value: 0.603, lower: 0.492, upper: 0.704, n: 78, split: 'grading-only' },
-    judgeAlpha: 0.146,
-    judgeAc1: 0.811,
-    canaryTnr: 1.0,
-    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 3 evaluation (1 qualified [>=0.90 LB], 31 unmeasured [low-n], 25/32 guides cleared bar: 8 proven-high-n + 17 zero-fp-low-n, pooled held-out prec=95.4%, stability=96.8%, canaryTNR=100.0%)',
-  },
-  {
-    commit: 'ecb6ace',
-    date: '2026-10-15',
-    ruleSetHash: '76fa4aab3237',
-    splitHash: 'b8af9495f9ec',
-    gradesHash: '2b8171c24fb2',
-    judgeVersion: 'gemini-3.8-flash:detective-v4-guide-only',
-    coverage: { value: 0.724, n: 29, split: 'grading-only' },
-    precision: { value: 0.948, lower: 0.917, upper: 0.968, n: 307, split: 'grading-only, judged' },
-    recall: { value: 0.564, lower: 0.467, upper: 0.657, n: 101, split: 'grading-only' },
-    judgeAlpha: 0.063,
-    judgeAc1: 0.764,
-    canaryTnr: 1.0,
-    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 3 evaluation (2 qualified [>=0.90 LB: animate-element-entry-exit, individual-transform-properties], 27 unmeasured [low-n: 19 sample-constrained], qualified prec=98.6%, pooled held-out prec=94.8%, stability=94.5%, canaryTNR=100.0%)',
-  },
-];
+export const HISTORICAL_GATE0_TRIAGE_ROWS: readonly Gate0TriageRow[] =
+  unsafeCast<readonly Gate0TriageRow[]>(
+    progressHistory.gate0Triage,
+    'progress-history.json gate0Triage schema conformance',
+  );
 
-export const HISTORICAL_FIX_SMOKE_TEST_ROWS: readonly FixSmokeTestRow[] = [
-  {
-    commit: 'e23f54256',
-    date: '2026-10-15',
-    harnessVersion: 'fix-harness-m4',
-    qualifiedGuides: 25,
-    sampleSize: 41,
-    staticResolution: { value: 0.585, lower: 0.434, upper: 0.722, n: 41, split: 'grading-only' },
-    badPatchRejectionRate: '100.0% (75/75)',
-    notes: 'Milestone 4 agentic fix evaluation (round 1): static resolution only (D-022, R15)',
-  },
-  {
-    commit: 'd40c9a3b9',
-    date: '2026-10-15',
-    harnessVersion: 'fix-harness-m4-r2',
-    qualifiedGuides: 25,
-    sampleSize: 40,
-    staticResolution: { value: 0.900, lower: 0.769, upper: 0.960, n: 40, split: 'grading-only' },
-    badPatchRejectionRate: '100.0% (75/75)',
-    notes: 'Milestone 4 agentic fix evaluation (round 2): static resolution only (D-022, R15)',
-  },
-  {
-    commit: '0d56c4782',
-    date: '2026-10-15',
-    harnessVersion: 'fix-harness-m4-r3',
-    qualifiedGuides: 25,
-    sampleSize: 40,
-    staticResolution: { value: 0.900, lower: 0.769, upper: 0.960, n: 40, split: 'grading-only' },
-    badPatchRejectionRate: '100.0% (75/75)',
-    notes: 'Milestone 4 agentic fix evaluation (G13-G17 hardened): shadow-dom 43-line refactor resolved, static resolution only',
-  },
-];
+export const HISTORICAL_JUDGE_CALIBRATION_ROWS: readonly JudgeCalibrationRow[] =
+  unsafeCast<readonly JudgeCalibrationRow[]>(
+    progressHistory.judgeCalibration,
+    'progress-history.json judgeCalibration schema conformance',
+  );
+
+export const HISTORICAL_DETECTION_FUNNEL_ROWS: readonly DetectionFunnelRow[] =
+  unsafeCast<readonly DetectionFunnelRow[]>(
+    progressHistory.detectionFunnel,
+    'progress-history.json detectionFunnel schema conformance',
+  );
+
+export const HISTORICAL_FIX_SMOKE_TEST_ROWS: readonly FixSmokeTestRow[] =
+  unsafeCast<readonly FixSmokeTestRow[]>(
+    progressHistory.fixSmokeTest,
+    'progress-history.json fixSmokeTest schema conformance',
+  );
 
 /**
  * Type guard for ENOENT errors (BAN TOCTOU: operate and catch ENOENT).

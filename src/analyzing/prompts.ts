@@ -15,7 +15,7 @@ import { createHash } from 'node:crypto';
 export const PROMPT_MODEL = 'gemini-3.8-flash';
 export const GATE0_THINKING_BUDGET = 2048;
 export const PHASE2_THINKING_BUDGET = 1024;
-export const JUDGE_THINKING_BUDGET = 2048;
+export const JUDGE_THINKING_BUDGET = 512;
 export const FIX_SIMULATION_THINKING_BUDGET = 1024;
 
 /**
@@ -282,16 +282,28 @@ export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization
 
 The Modern Web Guidance mission is to identify old web patterns and brownfield library workarounds, and modernize them with standard web platform features to reduce dependencies and improve browser behavior.
 
-You must follow the Detective-then-Judge methodology:
-First extract structured facts:
+Core Evaluation Principles:
+1. ALWAYS ASSUME MODERN PLATFORM SUPPORT: Always assume the target runtime supports the guide's modern web platform feature. NEVER mark 'leave-it' or reject a finding based on browser support, runtime availability, or spec draft maturity (e.g. appearance: base-select, Temporal, popover, scrollbar-color/width).
+2. PLATFORM PRIMITIVE SIMPLIFICATION IS DESIRED: Modernizing to native web platform primitives (scrollbar-color, scrollbar-width, accent-color, appearance: base-select, <dialog>, popover) intentionally trades bespoke pixel-level styling, box-shadows, or heavy plugin complexity for clean, accessible, standard platform styling. When code uses custom CSS/JS to emulate or enhance a standard UI element (such as ::-webkit-scrollbar with pixel widths and box-shadows, jQuery .chosen() / .select2() dropdowns, or custom slider styling), adopting the standard platform property is 'right', NOT 'leave-it'.
+3. RECOGNIZE ECOSYSTEM BROWNFIELD PATTERNS: Guides often focus on the modern solution rather than cataloging every legacy workaround. Use both guide.md AND your knowledge of web ecosystem patterns that the guide replaces:
+   - CSS sibling-combinator state hacks (:checked ~, :checked +) replaced by modern state styling
+   - Client-side <script type="text/template"> blocks replaced by <template>
+   - Legacy vendor visibility properties (webkitHidden, msHidden) replaced by document.visibilityState
+   - Bootstrap/jQuery toggle attributes (data-toggle, data-bs-toggle) replaced by native popover/dialog
+   - Manual Date UTC string slicing, epoch math, or getTimezoneOffset() replaced by modern date APIs / Temporal
+   - Imperative jQuery animations (.fadeIn(), .fadeOut(), .slideToggle()) replaced by CSS transitions / @starting-style
+   - Imperative setInterval/setTimeout loops replaced by modern scheduling / requestVideoFrameCallback
+   These are genuine legacy targets: mark matches_before_syntax = true and modern_feature_applies_here = true unless the snippet is an unrelated token collision or already protected by a feature guard.
+
+Detective-then-Judge methodology:
 1. \`matches_before_syntax\`: Does the highlighted code match an old workaround, pre-standard API, vendor-prefixed syntax, or library helper described or implied by the guide (including legacy libraries or workarounds that the guide's modern feature directly replaces)?
 2. \`has_fallback_or_feature_guard\`: Is this code protected by a feature guard (e.g. checking for modern API support, fallback branch, ponyfill, or polyfill)?
-3. \`modern_feature_applies_here\`: Does the modern web platform replacement apply here to modernize this code or eliminate the legacy workaround?
+3. \`modern_feature_applies_here\`: Does the modern web platform replacement apply here to modernize this code or eliminate the legacy workaround? (Always assume the modern feature is available).
 4. \`reasoning\`: Concise, objective reasoning explaining your factual analysis.
 5. \`verdict\`: One of the following 5 values strictly aligned with the criteria below:
    - 'right': The code really is the legacy/"Before" pattern (or legacy library/workaround replaced by this guide), is not an intentional fallback, and the guide's modern way makes sense here.
    - 'not-old-pattern': The code isn't doing the legacy thing at all (detector mistake / token collision).
-   - 'leave-it': It IS the old pattern, but it should stay: either a deliberate fallback/feature-guard/polyfill, non-browser code, OR the guide's modern replacement wouldn't work for this specific use case.
+   - 'leave-it': It IS the old pattern, but it should stay: either a deliberate fallback/feature-guard/polyfill, or non-browser code. Do NOT vote 'leave-it' based on browser support or because the modern platform primitive is simpler than custom CSS/plugins.
    - 'guide-wrong': The guide itself is wrong to call this pattern a problem.
    - 'unsure': Insufficient context to determine.`;
 

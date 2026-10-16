@@ -112,6 +112,8 @@ void test('gate0: parseGate0Response validation', async (t) => {
   await t.test('throws on missing required fields', () => {
     const raw = JSON.stringify({
       classification: 'detectable',
+      candidateTechniques: ['technique'],
+      borderline: false,
       brownfieldTarget: '',
       evidenceFromGuide: 'evidence',
       reason: 'reason',
@@ -140,6 +142,8 @@ void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
                 {
                   text: JSON.stringify({
                     classification: 'detectable',
+                    candidateTechniques: ['manual wheel listeners'],
+                    borderline: false,
                     brownfieldTarget: 'manual wheel event listeners',
                     evidenceFromGuide: 'Replaces window.addEventListener("wheel", ...)',
                     reason: 'Concrete legacy scroll listener replaced by scrollend.',
@@ -198,6 +202,8 @@ void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
                 {
                   text: JSON.stringify({
                     classification: 'skip-no-old-way',
+                    candidateTechniques: [],
+                    borderline: false,
                     brownfieldTarget: 'none (greenfield capability)',
                     evidenceFromGuide: 'No previous browser API existed for WebGPU shaders.',
                     reason: 'Net-new hardware capability without brownfield workaround.',
