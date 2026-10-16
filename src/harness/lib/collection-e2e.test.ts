@@ -229,16 +229,16 @@ test('collectResults extracts error, errorLocation, pageSnapshot, and browserErr
                                             status: 'failed',
                                             error: {
                                                 message: '\u001b[31mError: expected true but received false\u001b[39m',
-                                                location: {
-                                                    file: path.join(guidesDir, 'performance', guideName, 'grader.ts'),
-                                                    line: 42,
-                                                }
+                                            },
+                                            errorLocation: {
+                                                file: path.join(guidesDir, 'performance', guideName, 'grader.ts'),
+                                                line: 42,
                                             },
                                             attachments: [
                                                 {
-                                                    name: 'error-context',
-                                                    contentType: 'text/markdown',
-                                                    body: Buffer.from('# Page snapshot\n```yaml\n- heading "Hello"\n```').toString('base64')
+                                                    name: 'page-snapshot',
+                                                    contentType: 'text/plain',
+                                                    body: Buffer.from('- heading "Hello"').toString('base64')
                                                 },
                                                 {
                                                     name: 'browser-errors',

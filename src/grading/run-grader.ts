@@ -55,7 +55,6 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     TARGET_FILE: opts.targetPathAbs,
-    PLAYWRIGHT_HTML_OPEN: 'never',
   };
 
   if (opts.patchFile) {
@@ -132,44 +131,6 @@ export async function runPlaywright(
     }
 
     const json = JSON.parse(content);
-
-    // Inline attachments that reference files on disk before deleting test results
-    if (json.suites) {
-      const inlineAttachments = async (suite: any) => {
-        if (suite.specs) {
-          for (const spec of suite.specs) {
-            if (spec.tests) {
-              for (const test of spec.tests) {
-                if (test.results) {
-                  for (const res of test.results) {
-                    if (res.attachments) {
-                      for (const att of res.attachments) {
-                        if (att.path && !att.body) {
-                          try {
-                            const fileData = await fs.promises.readFile(att.path, 'utf8');
-                            att.body = Buffer.from(fileData).toString('base64');
-                          } catch {
-                            // File unreadable or missing, ignore
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-        if (suite.suites) {
-          for (const childSuite of suite.suites) {
-            await inlineAttachments(childSuite);
-          }
-        }
-      };
-      for (const suite of json.suites) {
-        await inlineAttachments(suite);
-      }
-    }
 
     await fs.promises.rm(resolvedTestResultsDir, { recursive: true, force: true }).catch(() => {});
     await fs.promises.unlink(tmpJson).catch(() => {});

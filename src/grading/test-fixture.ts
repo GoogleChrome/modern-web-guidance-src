@@ -60,11 +60,19 @@ export const test = base.extend<{ page: Page }, ServerWorkerFixtures>({
       await use(page);
     } finally {
       const failed = (testInfo.status !== 'passed' && testInfo.status !== 'skipped') || testInfo.errors.length > 0;
-      if (failed && diagnostics.length > 0) {
-        await testInfo.attach('browser-errors', {
-          body: diagnostics.join('\n'),
-          contentType: 'text/plain',
-        });
+      if (failed) {
+        if (!page.isClosed()) {
+          await testInfo.attach('page-snapshot', {
+            body: await page.locator('body').ariaSnapshot(),
+            contentType: 'text/plain',
+          });
+        }
+        if (diagnostics.length > 0) {
+          await testInfo.attach('browser-errors', {
+            body: diagnostics.join('\n'),
+            contentType: 'text/plain',
+          });
+        }
       }
     }
   },

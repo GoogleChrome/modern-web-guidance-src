@@ -351,68 +351,6 @@ async function collectGuideUsage(dir: string, runType: string) {
   return { guidesUsedResult, retrievedGuides, fileReadGuides, guidanceToolsUsedResult };
 }
 
-function cleanErrorMessage(rawMessage: string, root: string): string {
-  let cleaned = stripVTControlCharacters(rawMessage);
-
-  const normalizedRoot = root.endsWith(path.sep) ? root : root + path.sep;
-  cleaned = cleaned.replaceAll(normalizedRoot, '');
-  cleaned = cleaned.replaceAll(root, '.');
-
-  const homeDir = os.homedir();
-  if (homeDir) {
-    const normalizedHome = homeDir.endsWith(path.sep) ? homeDir : homeDir + path.sep;
-    cleaned = cleaned.replaceAll(normalizedHome, '~/');
-  }
-
-  cleaned = cleaned.replace(/\/tmp\/grade-run-[^/]+\//g, '');
-  return cleaned.trim();
-}
-
-function decodeAttachment(att: any): string | undefined {
-  if (!att) return undefined;
-  if (att.body) {
-    try {
-      const decoded = Buffer.from(att.body, 'base64').toString('utf8');
-      return decoded.trim() ? decoded : undefined;
-    } catch {
-      return typeof att.body === 'string' && att.body.trim() ? att.body : undefined;
-    }
-  }
-  if (att.path && fs.existsSync(att.path)) {
-    try {
-      const content = fs.readFileSync(att.path, 'utf8');
-      return content.trim() ? content : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-  return undefined;
-}
-
-function extractErrorLocation(result: any, spec: any, root: string): string | undefined {
-  const loc = result?.errorLocation || result?.error?.location || result?.errors?.[0]?.location;
-  if (loc?.file && loc?.line != null) {
-    let relFile = path.isAbsolute(loc.file) ? path.relative(root, loc.file) : loc.file;
-    if (relFile.startsWith('..')) {
-      const idx = loc.file.indexOf('guides/');
-      if (idx !== -1) {
-        relFile = loc.file.substring(idx);
-      } else {
-        relFile = path.basename(loc.file);
-      }
-    }
-    return `${relFile}:${loc.line}`;
-  }
-  if (spec?.file && spec?.line != null) {
-    let relFile = path.isAbsolute(spec.file) ? path.relative(root, spec.file) : spec.file;
-    if (!relFile.startsWith('guides/')) {
-      relFile = `guides/${relFile}`;
-    }
-    return `${relFile}:${spec.line}`;
-  }
-  return undefined;
-}
-
 function evaluateScenarioResults(
   dir: string,
   guide: string,
@@ -465,14 +403,22 @@ function evaluateScenarioResults(
           }
 
           const rawError = lastResult?.error?.message || lastResult?.errors?.[0]?.message;
-          const errorMsg = rawError ? cleanErrorMessage(rawError, rootDir) : undefined;
-          const errorLocation = extractErrorLocation(lastResult, spec, rootDir);
+          const errorMsg = rawError
+            ? stripVTControlCharacters(rawError)
+                .replaceAll(rootDir + path.sep, '')
+                .replace(/\/tmp\/grade-run-[^/]+\//g, '')
+                .replaceAll(os.homedir(), '~')
+                .trim()
+            : undefined;
 
-          const snapshotAtt = lastResult?.attachments?.find((a: any) => a.name === 'error-context');
-          const pageSnapshot = snapshotAtt ? decodeAttachment(snapshotAtt) : undefined;
+          const loc = lastResult?.errorLocation;
+          const errorLocation = loc ? `${path.relative(rootDir, loc.file)}:${loc.line}` : undefined;
+
+          const snapshotAtt = lastResult?.attachments?.find((a: any) => a.name === 'page-snapshot');
+          const pageSnapshot = snapshotAtt?.body ? Buffer.from(snapshotAtt.body, 'base64').toString('utf8') : undefined;
 
           const browserErrorsAtt = lastResult?.attachments?.find((a: any) => a.name === 'browser-errors');
-          const browserErrors = browserErrorsAtt ? decodeAttachment(browserErrorsAtt) : undefined;
+          const browserErrors = browserErrorsAtt?.body ? Buffer.from(browserErrorsAtt.body, 'base64').toString('utf8') : undefined;
 
           return {
             passed: false,
@@ -597,13 +543,7 @@ async function collectTaskRunEntry(
     taskName: ctx.taskName,
     prompt: ctx.taskInfo.prompt,
     targetFile: ctx.targetModifiedFile,
-    files: (() => {
-      const runFiles = fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory());
-      if (fs.existsSync(path.join(dir, 'grade-report', 'index.html'))) {
-        runFiles.push('grade-report/index.html');
-      }
-      return runFiles;
-    })(),
+    files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
     runtime: runtimeData,
     tokenUsage,
   };
