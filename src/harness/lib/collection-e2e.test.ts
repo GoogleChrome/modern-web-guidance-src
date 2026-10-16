@@ -193,4 +193,84 @@ base_app: test-app
     }
 });
 
+test('collectResults extracts error, errorLocation, pageSnapshot, and browserErrors for failed checks', async (_t) => {
+    const resultsBase = path.resolve(testDir, 'fixtures-results-diagnostics');
+    const guideName = '_e2e_test_guide_diag';
+    const actualBaseAppName = 'cards-app';
+    const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
+    const tasksDir = path.join(performanceGuideDir, 'tasks');
+    const taskPath = path.join(tasksDir, 'task.md');
+
+    try {
+        if (!fs.existsSync(tasksDir)) fs.mkdirSync(tasksDir, { recursive: true });
+        const graderPath = path.join(performanceGuideDir, 'grader.ts');
+        fs.writeFileSync(graderPath, '// mock grader');
+        fs.writeFileSync(taskPath, `---\nbase_app: ${actualBaseAppName}\n---\n- Prompt`);
+
+        const runNumberDir = path.join(resultsBase, '1');
+        const targetDir = path.join(runNumberDir, guideName, 'task', 'unguided');
+        fs.mkdirSync(targetDir, { recursive: true });
+        fs.writeFileSync(path.join(targetDir, 'index.html'), '<html>Mock</html>');
+
+        const mockPlaywrightOutput = {
+            suites: [
+                {
+                    file: `guides/performance/${guideName}/grader.ts`,
+                    specs: [
+                        {
+                            id: 'spec-failed-1',
+                            title: 'Failed assertion requirement',
+                            file: `guides/performance/${guideName}/grader.ts`,
+                            line: 42,
+                            tests: [
+                                {
+                                    results: [
+                                        {
+                                            status: 'failed',
+                                            error: {
+                                                message: '\u001b[31mError: expected true but received false\u001b[39m',
+                                                location: {
+                                                    file: path.join(guidesDir, 'performance', guideName, 'grader.ts'),
+                                                    line: 42,
+                                                }
+                                            },
+                                            attachments: [
+                                                {
+                                                    name: 'error-context',
+                                                    contentType: 'text/markdown',
+                                                    body: Buffer.from('# Page snapshot\n```yaml\n- heading "Hello"\n```').toString('base64')
+                                                },
+                                                {
+                                                    name: 'browser-errors',
+                                                    contentType: 'text/plain',
+                                                    body: Buffer.from('[console.error] Uncaught TypeError\n[pageerror] boom').toString('base64')
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+        fs.writeFileSync(path.join(targetDir, `${guideName}_results.json`), JSON.stringify(mockPlaywrightOutput));
+
+        const { allResults } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.ANTIGRAVITY_CLI });
+        const runResult = allResults[`task - ${guideName} - unguided`];
+        assert.ok(runResult && runResult[0]);
+        const check = runResult[0].results.find((c: any) => c.testId === 'spec-failed-1');
+        assert.ok(check);
+        assert.strictEqual(check.passed, false);
+        assert.strictEqual(check.error, 'Error: expected true but received false');
+        assert.strictEqual(check.errorLocation, `guides/performance/${guideName}/grader.ts:42`);
+        assert.ok(check.pageSnapshot?.includes('- heading "Hello"'));
+        assert.ok(check.browserErrors?.includes('[console.error] Uncaught TypeError'));
+    } finally {
+        if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
+        if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
+    }
+});
+
 

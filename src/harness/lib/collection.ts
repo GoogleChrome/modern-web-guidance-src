@@ -1,10 +1,13 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
+import { stripVTControlCharacters } from 'util';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guide-usage.ts';
 import { type SuiteConfig } from '../config.ts';
 import { getTaskMap } from '../../core/guide-validation.ts';
 import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
+import { rootDir } from '../../core/paths.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
@@ -88,6 +91,7 @@ function getAppFiles(currentDir: string, base = ''): string[] {
       entry.name === 'dist' ||
       entry.name === 'test-results' ||
       entry.name === 'grade-report' ||
+      entry.name === 'traces' ||
       entry.name.startsWith('.')
     ) {
       continue;
@@ -307,12 +311,18 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
   fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
 
+  const suiteConfigPath = path.join(resultsDir, 'suite_config.json');
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  if (fs.existsSync(suiteConfigPath) && !env.GD_SUITE_CONFIG) {
+    env.GD_SUITE_CONFIG = suiteConfigPath;
+  }
+
   try {
     console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
-    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
+    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32', env });
 
     console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
-    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
+    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32', env });
   } finally {
     if (fs.existsSync(pnpmWorkspacePath)) {
       fs.unlinkSync(pnpmWorkspacePath);
@@ -339,6 +349,68 @@ async function collectGuideUsage(dir: string, runType: string) {
   }
 
   return { guidesUsedResult, retrievedGuides, fileReadGuides, guidanceToolsUsedResult };
+}
+
+function cleanErrorMessage(rawMessage: string, root: string): string {
+  let cleaned = stripVTControlCharacters(rawMessage);
+
+  const normalizedRoot = root.endsWith(path.sep) ? root : root + path.sep;
+  cleaned = cleaned.replaceAll(normalizedRoot, '');
+  cleaned = cleaned.replaceAll(root, '.');
+
+  const homeDir = os.homedir();
+  if (homeDir) {
+    const normalizedHome = homeDir.endsWith(path.sep) ? homeDir : homeDir + path.sep;
+    cleaned = cleaned.replaceAll(normalizedHome, '~/');
+  }
+
+  cleaned = cleaned.replace(/\/tmp\/grade-run-[^/]+\//g, '');
+  return cleaned.trim();
+}
+
+function decodeAttachment(att: any): string | undefined {
+  if (!att) return undefined;
+  if (att.body) {
+    try {
+      const decoded = Buffer.from(att.body, 'base64').toString('utf8');
+      return decoded.trim() ? decoded : undefined;
+    } catch {
+      return typeof att.body === 'string' && att.body.trim() ? att.body : undefined;
+    }
+  }
+  if (att.path && fs.existsSync(att.path)) {
+    try {
+      const content = fs.readFileSync(att.path, 'utf8');
+      return content.trim() ? content : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+function extractErrorLocation(result: any, spec: any, root: string): string | undefined {
+  const loc = result?.errorLocation || result?.error?.location || result?.errors?.[0]?.location;
+  if (loc?.file && loc?.line != null) {
+    let relFile = path.isAbsolute(loc.file) ? path.relative(root, loc.file) : loc.file;
+    if (relFile.startsWith('..')) {
+      const idx = loc.file.indexOf('guides/');
+      if (idx !== -1) {
+        relFile = loc.file.substring(idx);
+      } else {
+        relFile = path.basename(loc.file);
+      }
+    }
+    return `${relFile}:${loc.line}`;
+  }
+  if (spec?.file && spec?.line != null) {
+    let relFile = path.isAbsolute(spec.file) ? path.relative(root, spec.file) : spec.file;
+    if (!relFile.startsWith('guides/')) {
+      relFile = `guides/${relFile}`;
+    }
+    return `${relFile}:${spec.line}`;
+  }
+  return undefined;
 }
 
 function evaluateScenarioResults(
@@ -382,11 +454,34 @@ function evaluateScenarioResults(
         json.suites.forEach(traverse);
 
         return specs.map((spec: any) => {
-          const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
+          const lastResult = spec.tests?.[0]?.results?.[spec.tests[0].results.length - 1];
+          const passed = lastResult?.status === 'passed';
+          if (passed) {
+            return {
+              passed: true,
+              message: spec.title,
+              testId: spec.id,
+            };
+          }
+
+          const rawError = lastResult?.error?.message || lastResult?.errors?.[0]?.message;
+          const errorMsg = rawError ? cleanErrorMessage(rawError, rootDir) : undefined;
+          const errorLocation = extractErrorLocation(lastResult, spec, rootDir);
+
+          const snapshotAtt = lastResult?.attachments?.find((a: any) => a.name === 'error-context');
+          const pageSnapshot = snapshotAtt ? decodeAttachment(snapshotAtt) : undefined;
+
+          const browserErrorsAtt = lastResult?.attachments?.find((a: any) => a.name === 'browser-errors');
+          const browserErrors = browserErrorsAtt ? decodeAttachment(browserErrorsAtt) : undefined;
+
           return {
-            passed: lastResult.status === 'passed',
+            passed: false,
             message: spec.title,
-            testId: spec.id
+            testId: spec.id,
+            ...(errorMsg ? { error: errorMsg } : {}),
+            ...(errorLocation ? { errorLocation } : {}),
+            ...(pageSnapshot ? { pageSnapshot } : {}),
+            ...(browserErrors ? { browserErrors } : {}),
           };
         });
       }
@@ -502,7 +597,13 @@ async function collectTaskRunEntry(
     taskName: ctx.taskName,
     prompt: ctx.taskInfo.prompt,
     targetFile: ctx.targetModifiedFile,
-    files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
+    files: (() => {
+      const runFiles = fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory());
+      if (fs.existsSync(path.join(dir, 'grade-report', 'index.html'))) {
+        runFiles.push('grade-report/index.html');
+      }
+      return runFiles;
+    })(),
     runtime: runtimeData,
     tokenUsage,
   };
