@@ -109,7 +109,7 @@ Keep `--below` last so it applies only when neither side fits; without it a narr
 
 ### Animate open and close
 
-Optional. If you animate, keep it under 150 ms, animate only `opacity` and a small `translate`, use the same transition for submenus, and wrap it in `@media (prefers-reduced-motion: no-preference)`. Focus moves on the `toggle` event, so a transition never delays keyboard users.
+Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenus, inside `@media (prefers-reduced-motion: no-preference)`. Focus moves on `toggle`, so the transition never delays keyboard users.
 
 ```css
 @media (prefers-reduced-motion: no-preference) {
@@ -126,13 +126,13 @@ Optional. If you animate, keep it under 150 ms, animate only `opacity` and a sma
 }
 ```
 
-`display` and `overlay` with `allow-discrete` keep the popover rendered, and in the top layer, until the close transition ends.
+`display` and `overlay` with `allow-discrete` keep the popover rendered and in the top layer until the close transition ends.
 
 ## Keyboard and focus
 
 Do not add a second roving-tabindex system inside a focusgroup. Script covers only what the invokers and focusgroup do not:
 
-* **One tab stop for the menubar.** `Tab` enters at the first top-level trigger. `ArrowLeft` and `ArrowRight` move between top-level triggers and wrap at either end. `Home` and `End` on a trigger enter its menu at the first or last item instead of scrolling the page.
+* **One tab stop for the menubar.** `Tab` enters at the first top-level trigger. `ArrowLeft` and `ArrowRight` move between top-level triggers and wrap at either end. `Home` and `End` on a trigger enter its menu at the first or last item.
 * **Preview.** Focusing a top-level trigger shows its menu and sets `aria-expanded="true"`. Focus stays on the trigger, and no item is focused. Blurring the trigger closes a preview-only menu.
 * **Enter and Space on a preview.** They close the preview and keep focus on the trigger. The native `toggle-popover` action handles this, so the script must not intercept these keys.
 * **ArrowDown on a preview.** Converts it to an open menu and focuses the first item.
@@ -143,7 +143,7 @@ Do not add a second roving-tabindex system inside a focusgroup. Script covers on
 * **Pointer over another top-level trigger while a menu is open.** Closes the open menu and previews the hovered one, focusing its trigger without a ring. With nothing open, hover does nothing.
 * **Pointer over a submenu trigger.** Previews its submenu after a short delay (pointer focus runs the same preview-on-focus as keyboard). Moving to a sibling item closes it.
 * **Within a menu.** `ArrowUp` and `ArrowDown` move between enabled items. `Home` and `End` move to the first and last enabled item, which the script handles.
-* **ArrowLeft or ArrowRight in an open top-level menu.** Closes it and previews the adjacent menu with focus on its trigger, wrapping at either end. `ArrowDown` then enters it. Left and Right never land inside a menu; this matches native menubars.
+* **ArrowLeft or ArrowRight in an open top-level menu.** Closes it and previews the adjacent menu with focus on its trigger, wrapping at either end. `ArrowDown` then enters it. Left and Right never land inside a menu.
 * **ArrowRight on a submenu trigger.** Opens the submenu and focuses its first item.
 * **ArrowRight on a submenu item without a child submenu.** Closes the hierarchy and previews the next top-level menu while focus stays on its trigger. `ArrowDown` then enters it.
 * **ArrowLeft or Escape in a submenu.** Closes only that submenu and restores focus to its trigger. The parent menu stays open.
@@ -156,8 +156,8 @@ The `command` event fires before `toggle-popover` opens the menu, so focus canno
 
 Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`, wrap-around and `Tab`-to-exit handling is ordinary `keydown` code. A few parts are easy to get wrong:
 
-1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler enters it, keyboard opens only. On a pointer open, the `toggle` handler focuses the trigger without a ring instead: `pointerdown` prevented focus, and arrow keys must still work.
-2. **Preview on focus.** Focusing a trigger calls `showPopover({ source: trigger })` so the menu anchors to it. Ignore focus coming back from inside the trigger's own menu or from another window (set a flag on window `blur`, clear it a tick after window `focus`), and hide a previewed menu on `blur` unless focus moved into it. Without the window guard, switching back to the app reopens the last-used menu.
+1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler enters it, keyboard opens only. On a pointer open, `toggle` focuses the trigger without a ring instead, because `pointerdown` prevented focus and arrow keys must still work.
+2. **Preview on focus.** Focusing a trigger calls `showPopover({ source: trigger })` so the menu anchors to it. Ignore focus returning from inside the trigger's own menu, or from another window (flag on window `blur`, cleared a tick after window `focus`, or app-switching reopens the last menu). Hide a previewed menu on `blur` unless focus moved into it.
 3. **Pointer click on a preview.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus and start a preview mid-click. Remember which trigger was pressed. In the `command` handler, a `toggle-popover` from that trigger while the menu is only previewed is the one case to intercept: cancel it and focus the first item.
 4. **Move focus in `toggle`, not `command`.** `command` fires before the menu opens.
 5. **Restore focus to the trigger yourself.** Focus the trigger before `hidePopover()`.
@@ -167,7 +167,7 @@ Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`,
 9. **Safe triangle.** Delay submenu preview and close by about 150 ms; cancel the timer if the pointer returns. A diagonal move from a submenu trigger into its submenu must not close it.
 
 ```js
-// 2. Preview: show on focus, anchored to the trigger. Not when focus returns from another window.
+// 2. Preview on focus, anchored to the trigger. Not when focus returns from another window.
 let returningToWindow = false;
 window.addEventListener('blur', () => { returningToWindow = true; });
 window.addEventListener('focus', () => setTimeout(() => { returningToWindow = false; }));
@@ -213,7 +213,7 @@ allMenus.forEach(menu => {
     trigger?.setAttribute('aria-expanded', String(event.newState === 'open'));
     if (event.newState !== 'open') return;
     if (enterOnOpen.delete(menu)) focusFirst(menu);
-    // 1. Pointer open: focus stays on the trigger, no ring. The menu is already open, so no second preview.
+    // 1. Pointer open: focus the trigger, no ring. Menu is already open, so no second preview.
     else if (!menu.contains(document.activeElement)) trigger?.focus({ focusVisible: false });
   });
 });
@@ -239,7 +239,7 @@ Use `popover="auto"` for submenus, placed after the submenu trigger inside the p
 
 The submenu trigger keeps `aria-haspopup="menu"` and `aria-expanded`, and the `toggle` listener above keeps `aria-expanded` in sync. The keyboard script handles nested `Escape` and `ArrowLeft` as described above.
 
-A submenu trigger must not also run a command of its own. One control cannot be both a `menuitem` that activates and a trigger that opens; screen readers announce one or the other, and `Enter` cannot mean both. Split it: put the default action as the first item inside the submenu, or add a separate command item beside the trigger. If product requirements force a combined control, treat it as a known accessibility tradeoff and document it in the component.
+A submenu trigger never also runs a command: one control cannot be both an item that activates and a trigger that opens, and `Enter` cannot mean both. Put the default action as the first submenu item, or add a separate command item beside the trigger. If a combined control is forced, document it as an accessibility tradeoff.
 
 ### Separators and checkable items
 
@@ -263,8 +263,8 @@ Render the check mark from `[aria-checked="true"]::before`, not a separate icon 
 
 ### Not covered here
 
-* **Activation feedback.** Native menus flash the chosen item before closing. If your design wants that, show a brief (about 100 ms) visual confirm on the item before calling `hidePopover()`. Keep focus restoration and the status announcement as described above; do not delay them.
-* **Typeahead.** Focusgroup has no first-letter navigation. If you need it, collect the labels of the current level's enabled items on `keydown` for printable keys and focus the next match after the current item, wrapping. Do not intercept `Space`.
+* **Activation feedback.** Native menus flash the chosen item before closing. If wanted, show a ~100 ms visual confirm before `hidePopover()`; do not delay focus restoration or the announcement.
+* **Typeahead.** Focusgroup has none. If needed, on printable `keydown` match the current level's enabled item labels and focus the next match after the current item, wrapping. Do not intercept `Space`.
 
 ## Align menu item content
 
