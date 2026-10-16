@@ -42,6 +42,13 @@ body {
     letter-spacing: -0.01em;
     font-family: var(--demos-font-mono);
     text-transform: lowercase;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+
+    &:hover {
+      color: var(--demos-accent);
+    }
   }
 
   .header-filters {

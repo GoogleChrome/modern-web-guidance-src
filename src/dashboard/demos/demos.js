@@ -136,6 +136,14 @@ function updateActiveHash() {
 window.addEventListener('hashchange', updateActiveHash);
 updateActiveHash();
 
+$('header.demos-header h1').addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (window.location.hash) {
+    history.pushState(null, '', window.location.pathname + window.location.search);
+    updateActiveHash();
+  }
+});
+
 function applyFilters() {
   const textQuery = demoFilter.value.trim().toLowerCase();
   const featQuery = featureFilter.value.trim().toLowerCase();
