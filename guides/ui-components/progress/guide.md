@@ -4,7 +4,7 @@ description: Build a styled progress bar that communicates completion of a task 
 web-feature-ids:
   - accent-color
   - progress
-  - tmp-revert-rule
+  - revert-rule
   - container-queries
   - individual-transforms
 ---
@@ -180,7 +180,6 @@ If `accent-color` is not supported and styling the progress bar is required, use
 
 ### Fallbacks & browser support for `revert-rule`
 
-{# See https://github.com/GoogleChrome/modern-web-guidance-src/issues/2004
-{{ BASELINE_STATUS('tmp-revert-rule') }} #}
+{{ BASELINE_STATUS("revert-rule") }}
 
 If `revert-rule` is not supported, `animation: var(--progress-bar-animation, revert-rule)` falls back to `animation-name: revert-rule` with a `0s` duration when `--progress-bar-animation` is unset, which is a harmless no-op when no `@keyframes revert-rule` exists.
