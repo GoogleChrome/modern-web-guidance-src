@@ -241,12 +241,11 @@ const scrollspyJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      const line = node.getStartLineNumber();
-      if (visitedLines.has(line)) {
-        return;
-      }
-
       if (isScrollSpyPluginInvocation(node)) {
+        const line = node.getStartLineNumber();
+        if (visitedLines.has(line)) {
+          return;
+        }
         if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
           return;
         }
@@ -260,6 +259,10 @@ const scrollspyJsMatcher: JsRuleMatcher = {
       }
 
       if (isScrollEventListenerMeasuringSections(node)) {
+        const line = node.getStartLineNumber();
+        if (visitedLines.has(line)) {
+          return;
+        }
         if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
           return;
         }
@@ -273,6 +276,10 @@ const scrollspyJsMatcher: JsRuleMatcher = {
       }
 
       if (isIntersectionObserverScrollSpy(node)) {
+        const line = node.getStartLineNumber();
+        if (visitedLines.has(line)) {
+          return;
+        }
         if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
           return;
         }
@@ -295,6 +302,10 @@ const scrollspyJsMatcher: JsRuleMatcher = {
           ) {
             const right = node.getRight();
             if (isHandlerMeasuringSections(right)) {
+              const line = node.getStartLineNumber();
+              if (visitedLines.has(line)) {
+                return;
+              }
               if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
                 return;
               }

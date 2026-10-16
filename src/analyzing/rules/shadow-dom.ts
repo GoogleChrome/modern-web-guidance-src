@@ -116,16 +116,16 @@ const shadowDomJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, SHADOW_FEATURE_TOKENS)) {
-        return;
-      }
-
-      const line = node.getStartLineNumber();
-      if (visitedLines.has(line)) {
-        return;
-      }
-
       if (isShadowRootInnerHTMLAssignment(node)) {
+        if (isProtectedByFeatureGuard(node, SHADOW_FEATURE_TOKENS)) {
+          return;
+        }
+
+        const line = node.getStartLineNumber();
+        if (visitedLines.has(line)) {
+          return;
+        }
+
         visitedLines.add(line);
         matches.push({
           line,

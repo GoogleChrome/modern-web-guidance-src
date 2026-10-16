@@ -237,11 +237,10 @@ const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {
 
     sourceFile.forEachDescendant((node) => {
       if (Node.isCallExpression(node)) {
-        if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
-          return;
-        }
-
         if (isAutosizeCall(node)) {
+          if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
+            return;
+          }
           const line = node.getStartLineNumber();
           if (!visitedLines.has(line)) {
             visitedLines.add(line);
@@ -253,11 +252,10 @@ const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {
           }
         }
       } else if (Node.isBinaryExpression(node)) {
-        if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
-          return;
-        }
-
         if (isAutoSizingFormField(node)) {
+          if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
+            return;
+          }
           const line = node.getStartLineNumber();
           if (!visitedLines.has(line)) {
             visitedLines.add(line);

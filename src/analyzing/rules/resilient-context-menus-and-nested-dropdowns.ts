@@ -202,16 +202,10 @@ const resilientContextMenusJsMatcher: JsRuleMatcher = {
 
     sourceFile.forEachDescendant((node) => {
       if (Node.isCallExpression(node)) {
-        if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
-          return;
-        }
-
-        const line = node.getStartLineNumber();
-        if (visitedLines.has(line)) {
-          return;
-        }
-
         if (isJqueryDropdownCall(node)) {
+          const line = node.getStartLineNumber();
+          if (visitedLines.has(line)) return;
+          if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) return;
           visitedLines.add(line);
           matches.push({
             line,
@@ -222,6 +216,9 @@ const resilientContextMenusJsMatcher: JsRuleMatcher = {
         }
 
         if (isPopperCallOrInstantiation(node)) {
+          const line = node.getStartLineNumber();
+          if (visitedLines.has(line)) return;
+          if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) return;
           visitedLines.add(line);
           matches.push({
             line,
@@ -232,6 +229,9 @@ const resilientContextMenusJsMatcher: JsRuleMatcher = {
         }
 
         if (isManualCoordinateClamping(node)) {
+          const line = node.getStartLineNumber();
+          if (visitedLines.has(line)) return;
+          if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) return;
           visitedLines.add(line);
           matches.push({
             line,
@@ -241,16 +241,10 @@ const resilientContextMenusJsMatcher: JsRuleMatcher = {
           return;
         }
       } else if (Node.isNewExpression(node)) {
-        if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
-          return;
-        }
-
-        const line = node.getStartLineNumber();
-        if (visitedLines.has(line)) {
-          return;
-        }
-
         if (isPopperCallOrInstantiation(node)) {
+          const line = node.getStartLineNumber();
+          if (visitedLines.has(line)) return;
+          if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) return;
           visitedLines.add(line);
           matches.push({
             line,

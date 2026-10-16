@@ -81,12 +81,12 @@ const sizeAwareStylingJsMatcher: JsRuleMatcher = {
     const visitedLines = new Set<number>();
 
     sourceFile.forEachDescendant((node) => {
-      if (isProtectedByFeatureGuard(node, ['container', 'container-type', '@container'])) {
-        return;
-      }
-
       // 1. ResizeObserver pattern
       if (isResizeObserverInstantiation(node)) {
+        if (isProtectedByFeatureGuard(node, ['container', 'container-type', '@container'])) {
+          return;
+        }
+
         const args = node.getArguments();
         if (args.length === 0) {
           return;
@@ -120,6 +120,10 @@ const sizeAwareStylingJsMatcher: JsRuleMatcher = {
 
       // 2. Window resize event listener pattern measuring container dimensions
       if (isWindowResizeListener(node)) {
+        if (isProtectedByFeatureGuard(node, ['container', 'container-type', '@container'])) {
+          return;
+        }
+
         const args = node.getArguments();
         if (args.length === 0) {
           return;
