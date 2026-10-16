@@ -1,5 +1,11 @@
 import type { SourceFile } from 'ts-morph';
 
+/**
+ * Gate 0 triage bucket classifying whether a published feature guide has a statically detectable brownfield target (`D-005`):
+ * - `'detectable'`: The guide replaces a concrete, statically identifiable legacy browser API, CSS property/selector workaround, DOM markup pattern, or third-party package in brownfield code.
+ * - `'ui-recipe-multi-part'`: The guide teaches a multi-element UI component or architectural recipe (e.g. carousel, tabs, navigation drawer) where legacy implementations vary wildly and lack a single high-precision static code hook.
+ * - `'skip-no-old-way'`: The guide introduces a net-new web platform capability (e.g. WebGPU, WebNN, Passkeys, Prompt API) with no direct legacy browser workaround to migrate from.
+ */
 export type Gate0Classification =
   | 'detectable'
   | 'ui-recipe-multi-part'
@@ -10,7 +16,9 @@ export interface Gate0Entry {
   readonly guideHash: string;
   readonly classification: Gate0Classification;
   readonly brownfieldTarget: string;
+  readonly evidenceFromGuide?: string;
   readonly reason: string;
+  readonly gate0PromptVersion?: string;
 }
 
 export interface Phase2Rubric {

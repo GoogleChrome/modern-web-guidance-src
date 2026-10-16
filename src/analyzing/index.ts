@@ -11,5 +11,6 @@ export * from './rules/index.ts';
 export * from './pilot-scorecard.ts';
 export * from './fix-harness.ts';
 export * from './cli.ts';
+export * from './gate0.ts';
 export { GEMINI_API_BASE } from './judge.ts';
 
