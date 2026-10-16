@@ -107,6 +107,27 @@ Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-po
 
 Keep `--below` last so it applies only when neither side fits; without it a narrow-viewport submenu covers its parent.
 
+### Animate open and close
+
+Optional. If you animate, keep it under 150 ms, animate only `opacity` and a small `translate`, use the same transition for submenus, and wrap it in `@media (prefers-reduced-motion: no-preference)`. Focus moves on the `toggle` event, so a transition never delays keyboard users.
+
+```css
+@media (prefers-reduced-motion: no-preference) {
+  [popover] {
+    opacity: 0;
+    translate: 0 -.25rem;
+    transition: opacity .12s, translate .12s, display .12s allow-discrete, overlay .12s allow-discrete;
+  }
+  [popover]:popover-open {
+    opacity: 1;
+    translate: 0 0;
+    @starting-style { opacity: 0; translate: 0 -.25rem; }
+  }
+}
+```
+
+`display` and `overlay` with `allow-discrete` keep the popover rendered, and in the top layer, until the close transition ends.
+
 ## Keyboard and focus
 
 Do not add a second roving-tabindex system inside a focusgroup. Script covers only what the invokers and focusgroup do not:
@@ -135,7 +156,7 @@ The `command` event fires before `toggle-popover` opens the menu, so focus canno
 
 Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`, wrap-around and `Tab`-to-exit handling is ordinary `keydown` code. A few parts are easy to get wrong:
 
-1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler enters it, keyboard opens only.
+1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler enters it, keyboard opens only. On a pointer open, the `toggle` handler focuses the trigger without a ring instead: `pointerdown` prevented focus, and arrow keys must still work.
 2. **Preview on focus.** Focusing a trigger calls `showPopover({ source: trigger })` so the menu anchors to it. Ignore focus coming back from inside the trigger's own menu or from another window (set a flag on window `blur`, clear it a tick after window `focus`), and hide a previewed menu on `blur` unless focus moved into it. Without the window guard, switching back to the app reopens the last-used menu.
 3. **Pointer click on a preview.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus and start a preview mid-click. Remember which trigger was pressed. In the `command` handler, a `toggle-popover` from that trigger while the menu is only previewed is the one case to intercept: cancel it and focus the first item.
 4. **Move focus in `toggle`, not `command`.** `command` fires before the menu opens.
@@ -190,7 +211,10 @@ allMenus.forEach(menu => {
   const trigger = triggerFor.get(menu);
   menu.addEventListener('toggle', event => {
     trigger?.setAttribute('aria-expanded', String(event.newState === 'open'));
-    if (event.newState === 'open' && enterOnOpen.delete(menu)) focusFirst(menu);
+    if (event.newState !== 'open') return;
+    if (enterOnOpen.delete(menu)) focusFirst(menu);
+    // 1. Pointer open: focus stays on the trigger, no ring. The menu is already open, so no second preview.
+    else if (!menu.contains(document.activeElement)) trigger?.focus({ focusVisible: false });
   });
 });
 
