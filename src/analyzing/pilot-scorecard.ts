@@ -400,12 +400,28 @@ export interface PilotScorecardOptions {
 export function samplePhase2DropsDeck(
   droppedFindings: readonly AnalyzerFinding[],
   targetCount = 25,
+  verdictsMap?: ReadonlyMap<string, Phase2Verdict>,
 ): CalibrationDeckItem[] {
   if (droppedFindings.length === 0) {
     return [];
   }
 
+  const confidencePriority: Record<string, number> = {
+    low: 0,
+    medium: 1,
+    high: 2,
+  };
+
   const sorted = [...droppedFindings].sort((a, b) => {
+    if (verdictsMap) {
+      const vA = verdictsMap.get(a.cardId);
+      const vB = verdictsMap.get(b.cardId);
+      const prioA = vA?.confidence ? (confidencePriority[vA.confidence] ?? 2) : 2;
+      const prioB = vB?.confidence ? (confidencePriority[vB.confidence] ?? 2) : 2;
+      if (prioA !== prioB) {
+        return prioA - prioB;
+      }
+    }
     const hashA = createHash('sha256').update(a.cardId).digest('hex');
     const hashB = createHash('sha256').update(b.cardId).digest('hex');
     return hashA.localeCompare(hashB);
@@ -413,31 +429,35 @@ export function samplePhase2DropsDeck(
 
   const selected = sorted.slice(0, targetCount);
 
-  return selected.map((f) => ({
-    cardId: f.cardId,
-    repo: f.repo,
-    commit: f.commit,
-    guideId: f.guideId,
-    sourceId: f.ruleId,
-    file: f.file,
-    line: f.line,
-    code: f.astSlice || f.codeSnippet,
-    phase2Decision: 'drop',
-    phase2Reason: 'Phase 2 filter dropped finding as false positive or out-of-scope',
-    findings: [
-      {
-        tool: 'modern-web-guidance-analyzer',
-        repo: f.repo,
-        commit: f.commit,
-        guideId: f.guideId,
-        sourceId: f.ruleId,
-        kind: 'uses-old-pattern',
-        file: f.file,
-        line: f.line,
-        reason: f.message,
-      },
-    ],
-  }));
+  return selected.map((f) => {
+    const verdict = verdictsMap?.get(f.cardId);
+    return {
+      cardId: f.cardId,
+      repo: f.repo,
+      commit: f.commit,
+      guideId: f.guideId,
+      sourceId: f.ruleId,
+      file: f.file,
+      line: f.line,
+      code: f.astSlice || f.codeSnippet,
+      phase2Decision: 'drop',
+      phase2Reason:
+        verdict?.reason || 'Phase 2 filter dropped finding as false positive or out-of-scope',
+      findings: [
+        {
+          tool: 'modern-web-guidance-analyzer',
+          repo: f.repo,
+          commit: f.commit,
+          guideId: f.guideId,
+          sourceId: f.ruleId,
+          kind: 'uses-old-pattern',
+          file: f.file,
+          line: f.line,
+          reason: f.message,
+        },
+      ],
+    };
+  });
 }
 
 /**
@@ -744,11 +764,16 @@ export async function runPilotScorecard(
       }
     }
     if (cached?.phase2) {
+      if (!cached.phase2.confidence) {
+        throw new Error(
+          `Phase 2 cached record for card ${f.cardId} missing required field 'confidence' per R28`,
+        );
+      }
       phase2VerdictsMap.set(f.cardId, {
         cardId: f.cardId,
         keep: cached.phase2.keep,
         reason: cached.phase2.reason ?? '',
-        confidence: cached.phase2.confidence ?? 'high',
+        confidence: cached.phase2.confidence,
       });
     } else {
       uncachedPhase2Findings.push(f);
@@ -809,9 +834,9 @@ export async function runPilotScorecard(
     }
   }
 
-  // Stage a deterministic 25-card sample of Phase-2-dropped findings (R18)
+  // Stage a deterministic 25-card sample of Phase-2-dropped findings, prioritizing low/medium confidence (R18, R28)
   if (allDroppedFindings.length > 0) {
-    const dropsDeck = samplePhase2DropsDeck(allDroppedFindings, 25);
+    const dropsDeck = samplePhase2DropsDeck(allDroppedFindings, 25, phase2VerdictsMap);
     const dropsDeckPath =
       options.dropsDeckPath ??
       join(ANALYZER_INTERNAL_DIR, 'labels', 'phase2-drops-deck.json');

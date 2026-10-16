@@ -33,10 +33,18 @@ import type { AnalyzerFinding } from './schema.ts';
 export {
   SYNTHETIC_FIX_PROMPT_VERSION,
   SYNTHETIC_FIX_SIMULATION_PROMPT,
+  FIX_RESPONSE_SCHEMA,
+  FIX_AGENT_SCHEMA,
+  FIX_SIMULATION_THINKING_BUDGET,
+  formatFixSimulationPrompt,
 } from './prompts.ts';
 import {
   SYNTHETIC_FIX_PROMPT_VERSION,
   SYNTHETIC_FIX_SIMULATION_PROMPT,
+  FIX_RESPONSE_SCHEMA,
+  FIX_AGENT_SCHEMA,
+  FIX_SIMULATION_THINKING_BUDGET,
+  formatFixSimulationPrompt,
 } from './prompts.ts';
 
 export interface FixPatch {
@@ -863,22 +871,6 @@ export function locateFindingLineInContent(
   return Math.max(1, findingLine);
 }
 
-const FIX_AGENT_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    patchedWindow: {
-      type: 'STRING',
-      description:
-        'The complete replacement text for the provided code window, incorporating the modern web platform feature and preserving surrounding application logic.',
-    },
-    explanation: {
-      type: 'STRING',
-      description: 'Concise explanation of the modernization change.',
-    },
-  },
-  required: ['patchedWindow', 'explanation'],
-};
-
 /**
  * Prompts Gemini to produce a synthetic modernization patch for a code window in a single-shot simulation.
  *
@@ -899,23 +891,7 @@ export async function simulateSingleShotWindowFix(params: {
   const apiKey = params.apiKey ?? getGeminiApiKey();
   const customFetch = params.fetchFn ?? fetch;
 
-  const userPrompt = `## Modern Web Guide: ${params.guideId}
-${params.guideMarkdown}
-
-## Analyzer Finding
-- File: ${params.filePath}
-- Line: ${params.line}
-- Message: ${params.findingMessage}
-
-## Target Code Window
-\`\`\`
-${params.windowText}
-\`\`\`
-
-Refactor the code window to replace the legacy workaround with the modern web platform feature taught in the guide while preserving all surrounding application logic.
-Important:
-- Eliminate EVERY instance of the flagged legacy pattern within this code window.
-- Explicitly include the modern platform API/property from the guide directly in your patchedWindow.`;
+  const userPrompt = formatFixSimulationPrompt(params);
 
   const body = {
     systemInstruction: {
@@ -929,9 +905,9 @@ Important:
     ],
     generationConfig: {
       responseMimeType: 'application/json',
-      responseSchema: FIX_AGENT_SCHEMA,
+      responseSchema: FIX_RESPONSE_SCHEMA,
       temperature: 0.0,
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingBudget: FIX_SIMULATION_THINKING_BUDGET },
     },
   };
 

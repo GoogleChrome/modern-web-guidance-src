@@ -72,17 +72,23 @@ describe('phase2 LLM verifier', () => {
     assert.match(prompt, /\$\(modal\)\.fadeIn\(\);/);
   });
 
-  test('builds Gemini request body with temperature 0 and thinkingBudget 0', () => {
-    const body = buildPhase2RequestBody(mockFindings[0], mockRule) as {
+  test('builds Gemini request body with temperature 0 and thinkingBudget 1024', () => {
+    const body = buildPhase2RequestBody(
+      mockFindings[0],
+      mockRule,
+      '# Test Guide Markdown',
+    ) as {
       generationConfig: {
         temperature: number;
         thinkingConfig: { thinkingBudget: number };
         responseMimeType: string;
       };
+      contents: Array<{ parts: Array<{ text: string }> }>;
     };
     assert.equal(body.generationConfig.temperature, 0.0);
-    assert.equal(body.generationConfig.thinkingConfig.thinkingBudget, 0);
+    assert.equal(body.generationConfig.thinkingConfig.thinkingBudget, 1024);
     assert.equal(body.generationConfig.responseMimeType, 'application/json');
+    assert.match(body.contents[0].parts[0].text, /Test Guide Markdown/);
   });
 
   test('parsePhase2Response parses valid JSON and throws on malformed output', () => {

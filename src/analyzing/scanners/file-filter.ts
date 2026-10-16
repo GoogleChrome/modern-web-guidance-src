@@ -162,6 +162,8 @@ export function hasVendoredLicenseHeader(
   return true;
 }
 
+export const MAX_SOURCE_FILE_BYTES = 1_000_000;
+
 /**
  * Master predicate determining whether a file should be scanned by analyzer rules.
  */
@@ -184,6 +186,10 @@ export function shouldScanFile(
   }
 
   if (content !== undefined) {
+    // D-025, O26: Cap source files at < 1 MB (larger files are generated or bundled artifacts)
+    if (Buffer.byteLength(content, 'utf8') > MAX_SOURCE_FILE_BYTES) {
+      return false;
+    }
     if (isMinifiedContent(content, options?.maxLineLength)) {
       return false;
     }

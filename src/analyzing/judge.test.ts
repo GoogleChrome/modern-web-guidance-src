@@ -30,6 +30,7 @@ const SAMPLE_GUIDE_SUMMARY: GuideSummaryInfo = {
   before: 'Manual Date timestamp millisecond subtraction.',
   now: 'Temporal.ZonedDateTime or Temporal.PlainDate duration methods.',
   oldWayExamples: ['date1.getTime() - date2.getTime()', '(d1 - d2) / 1000'],
+  markdownBody: '# Calculate Event Differentials\n\nDate subtraction suffers from daylight saving and leap second drift.\n\n## Before\nManual subtraction.\n\n## Now\nTemporal.ZonedDateTime.',
 };
 
 const SAMPLE_BLIND_CARD: BlindCardPayload = {
@@ -74,7 +75,7 @@ describe('blind card formatting & request construction', () => {
   it('formats blind card prompt without revealing rule IDs, tools, or prior verdicts', () => {
     const prompt = formatBlindCardPrompt(SAMPLE_BLIND_CARD);
 
-    assert.match(prompt, /## Guide Reference/);
+    assert.match(prompt, /## Modern Web Guidance Guide/);
     assert.match(prompt, /calculate-event-differentials/);
     assert.match(prompt, /Date subtraction suffers from daylight saving/);
     assert.match(prompt, /scripts\/analyze\.js/);
@@ -99,8 +100,8 @@ describe('blind card formatting & request construction', () => {
     assert.match(body.contents[0].parts[0].text, /scripts\/analyze\.js/);
   });
 
-  it('formats dynamic rule rubric into brownfield target when guide rubric is absent (G5)', () => {
-    const cardWithoutStaticRubric = {
+  it('throws an explicit error when markdownBody is missing (R29 fail fast)', () => {
+    const cardWithoutMarkdown = {
       cardId: 'card-novel-001',
       repo: 'test-repo',
       file: 'src/example.ts',
@@ -116,12 +117,10 @@ describe('blind card formatting & request construction', () => {
       codeSnippet: 'const oldWay = true;',
     };
 
-    const prompt = formatBlindCardPrompt(cardWithoutStaticRubric);
-    assert.match(prompt, /## Brownfield Workarounds Target \(What this guide replaces\)/);
-    assert.match(prompt, /- Target: Flag legacy workaround X in user forms/);
-    assert.match(prompt, /- Legacy Pattern \(Before\): Old workaround syntax/);
-    assert.doesNotMatch(prompt, /- Keep when:/);
-    assert.doesNotMatch(prompt, /- Drop when/);
+    assert.throws(
+      () => formatBlindCardPrompt(cardWithoutMarkdown),
+      /missing required guideSummary\.markdownBody/,
+    );
   });
 
   it('only presents markdownBody when present and avoids injecting brownfield rubric (R11, R19)', () => {
@@ -164,6 +163,41 @@ describe('parseJudgeJsonContent', () => {
     assert.equal(result.facts.matches_before_syntax, true);
     assert.equal(result.facts.has_fallback_or_feature_guard, false);
     assert.equal(result.facts.modern_feature_applies_here, true);
+  });
+
+  it('cross-checks and computes unambiguous verdicts from 3 boolean facts (R29)', () => {
+    // 1. !matches_before_syntax -> 'not-old-pattern' regardless of model verdict
+    const rawNotOld = JSON.stringify({
+      matches_before_syntax: false,
+      has_fallback_or_feature_guard: false,
+      modern_feature_applies_here: false,
+      reasoning: 'Not the old pattern.',
+      verdict: 'unsure',
+    });
+    const res1 = parseJudgeJsonContent(rawNotOld, 'c1');
+    assert.equal(res1.verdict, 'not-old-pattern');
+
+    // 2. matches_before_syntax && has_fallback_or_feature_guard -> 'leave-it'
+    const rawLeaveIt = JSON.stringify({
+      matches_before_syntax: true,
+      has_fallback_or_feature_guard: true,
+      modern_feature_applies_here: true,
+      reasoning: 'Protected by feature guard.',
+      verdict: 'right',
+    });
+    const res2 = parseJudgeJsonContent(rawLeaveIt, 'c2');
+    assert.equal(res2.verdict, 'leave-it');
+
+    // 3. matches_before_syntax && !has_fallback_or_feature_guard && modern_feature_applies_here -> 'right'
+    const rawRight = JSON.stringify({
+      matches_before_syntax: true,
+      has_fallback_or_feature_guard: false,
+      modern_feature_applies_here: true,
+      reasoning: 'Clean legacy match.',
+      verdict: 'unsure',
+    });
+    const res3 = parseJudgeJsonContent(rawRight, 'c3');
+    assert.equal(res3.verdict, 'right');
   });
 
   it('throws an error on malformed or non-JSON output per Fail Fast (R22)', () => {

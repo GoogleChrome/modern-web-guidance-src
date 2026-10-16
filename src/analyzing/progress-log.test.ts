@@ -12,7 +12,15 @@ import {
   formatMetricCell,
   formatProgressLogMarkdown,
   getGitCommitState,
+  HISTORICAL_DETECTION_FUNNEL_ROWS,
+  HISTORICAL_FIX_SMOKE_TEST_ROWS,
+  HISTORICAL_GATE0_TRIAGE_ROWS,
+  HISTORICAL_JUDGE_CALIBRATION_ROWS,
+  parseFixSmokeTestMarkdown,
+  parseGate0TriageMarkdown,
+  parseJudgeCalibrationMarkdown,
   parseMetricCell,
+  parsePipelineScoreboardMarkdown,
   parseProgressLogMarkdown,
   type ProgressLogRow,
   recordProgressLogEntry,
@@ -115,7 +123,7 @@ describe('updateProgressLogEntries', () => {
 });
 
 describe('formatProgressLogMarkdown and parseProgressLogMarkdown', () => {
-  it('round-trips entries accurately', () => {
+  it('round-trips entries accurately across the 4-table pipeline scoreboard', () => {
     const entries: ProgressLogRow[] = [
       {
         commit: 'abc1234',
@@ -138,7 +146,10 @@ describe('formatProgressLogMarkdown and parseProgressLogMarkdown', () => {
     assert.ok(markdown.includes('# Analyzer Progress Log'));
     assert.ok(markdown.includes('## Current Verified Benchmark'));
     assert.ok(markdown.includes('`abc1234`'));
-    assert.ok(markdown.includes('## Benchmark Run Log'));
+    assert.ok(markdown.includes('## Table 1: Gate 0 Catalog Triage & Agreement'));
+    assert.ok(markdown.includes('## Table 2: Judge & Phase 2 Calibration Health'));
+    assert.ok(markdown.includes('## Table 3: Held-Out Detection Funnel & Qualified Rules'));
+    assert.ok(markdown.includes('## Table 4: Minimal M4 Static Fix Smoke Test'));
 
     const parsed = parseProgressLogMarkdown(markdown);
     assert.strictEqual(parsed.length, 1);
@@ -158,6 +169,59 @@ describe('formatProgressLogMarkdown and parseProgressLogMarkdown', () => {
     assert.strictEqual(p.judgeAc1, 0.94);
     assert.strictEqual(p.canaryTnr, 1.0);
     assert.strictEqual(p.notes, 'baseline run');
+
+    const scoreboard = parsePipelineScoreboardMarkdown(markdown);
+    assert.ok(scoreboard.currentBenchmark);
+    assert.strictEqual(scoreboard.currentBenchmark.commit, 'abc1234');
+    assert.strictEqual(scoreboard.gate0Triage.length, 2);
+    assert.strictEqual(scoreboard.judgeCalibration.length, 4);
+    assert.strictEqual(scoreboard.detectionFunnel.length, 1);
+    assert.strictEqual(scoreboard.fixSmokeTest.length, 3);
+  });
+
+  it('verifies historical backfill rows and data integrity', () => {
+    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS.length, 2);
+    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[0].runId, 'manual-slug-triage-v0');
+    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[1].runId, 'gate0-v1-full-guide');
+    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[1].detectable, 42);
+
+    assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS.length, 4);
+    assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS[0].judgeVersion, 'gemini-3.8-flash:detective-v2-direct');
+    assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS[3].judgeVersion, 'gemini-3.8-flash:detective-v4-guide-only');
+    // Mislabeled 153dbc5* duplicate row MUST be excluded (R31)
+    assert.ok(HISTORICAL_JUDGE_CALIBRATION_ROWS.every((r) => !r.commit.includes('153dbc5')));
+
+    assert.strictEqual(HISTORICAL_DETECTION_FUNNEL_ROWS.length, 8);
+    for (const row of HISTORICAL_DETECTION_FUNNEL_ROWS) {
+      assert.ok(
+        row.notes?.includes('[pre-guide-phase2: Phase 2 ran without guide.md]'),
+        `Row ${row.commit} notes must be tagged [pre-guide-phase2: Phase 2 ran without guide.md]`,
+      );
+    }
+    assert.ok(HISTORICAL_DETECTION_FUNNEL_ROWS.every((r) => !r.commit.includes('153dbc5')));
+
+    assert.strictEqual(HISTORICAL_FIX_SMOKE_TEST_ROWS.length, 3);
+    assert.strictEqual(HISTORICAL_FIX_SMOKE_TEST_ROWS[0].harnessVersion, 'fix-harness-m4');
+    assert.strictEqual(HISTORICAL_FIX_SMOKE_TEST_ROWS[1].harnessVersion, 'fix-harness-m4-r2');
+    assert.strictEqual(HISTORICAL_FIX_SMOKE_TEST_ROWS[2].harnessVersion, 'fix-harness-m4-r3');
+  });
+
+  it('parses individual tables independently', () => {
+    const markdown = formatProgressLogMarkdown(HISTORICAL_DETECTION_FUNNEL_ROWS);
+    const gate0Rows = parseGate0TriageMarkdown(markdown);
+    assert.strictEqual(gate0Rows.length, 2);
+    assert.strictEqual(gate0Rows[0].runId, 'manual-slug-triage-v0');
+
+    const judgeRows = parseJudgeCalibrationMarkdown(markdown);
+    assert.strictEqual(judgeRows.length, 4);
+    assert.strictEqual(judgeRows[0].commit, 'dafe9ee');
+
+    const funnelRows = parseProgressLogMarkdown(markdown);
+    assert.strictEqual(funnelRows.length, 8);
+
+    const fixRows = parseFixSmokeTestMarkdown(markdown);
+    assert.strictEqual(fixRows.length, 3);
+    assert.strictEqual(fixRows[0].commit, 'e23f54256');
   });
 });
 

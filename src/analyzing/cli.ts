@@ -142,7 +142,7 @@ export async function runAnalyzeCli(
 
   const defaultRules = isTier1Only
     ? TIER_1_RULES
-    : useAllRules
+    : useAllRules || Boolean(guideFilter)
       ? ALL_RULES
       : QUALIFIED_RULES;
   const activeRulesList = options?.rules ?? defaultRules;

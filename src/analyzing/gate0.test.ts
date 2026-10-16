@@ -42,9 +42,24 @@ void test('gate0: prompt formatting and request body construction', async (t) =>
 
     assert.equal(body.systemInstruction.parts[0]?.text, GATE0_SYSTEM_PROMPT);
     assert.equal(body.generationConfig.temperature, 0);
-    assert.equal(body.generationConfig.thinkingConfig.thinkingBudget, 0);
+    assert.equal(body.generationConfig.thinkingConfig.thinkingBudget, 2048);
     assert.equal(body.generationConfig.responseMimeType, 'application/json');
     assert.deepEqual(body.generationConfig.responseSchema, GATE0_RESPONSE_SCHEMA);
+  });
+
+  await t.test('buildGate0RequestBody supports enableSearchGrounding option', () => {
+    const body = buildGate0RequestBody(
+      {
+        guideId: 'temporal-now',
+        category: 'javascript',
+        guideHash: '1234567890ab',
+        markdownContent: '# Temporal Guide',
+      },
+      { enableSearchGrounding: true },
+    ) as { tools?: Array<{ googleSearch: Record<string, unknown> }> };
+
+    assert.ok(body.tools, 'tools array should be defined when grounding enabled');
+    assert.deepEqual(body.tools[0], { googleSearch: {} });
   });
 });
 
@@ -52,6 +67,8 @@ void test('gate0: parseGate0Response validation', async (t) => {
   await t.test('parses valid Gate 0 JSON successfully', () => {
     const raw = JSON.stringify({
       classification: 'detectable',
+      candidateTechniques: ['moment-timezone', 'date-fns-tz'],
+      borderline: false,
       brownfieldTarget: 'moment-timezone / date-fns-tz library usage',
       evidenceFromGuide: 'Before: const date = moment.tz(str, "America/New_York");',
       reason: 'Replaces legacy timezone libraries with native Temporal API.',
@@ -59,6 +76,8 @@ void test('gate0: parseGate0Response validation', async (t) => {
 
     const parsed = parseGate0Response(raw, 'temporal-now');
     assert.equal(parsed.classification, 'detectable');
+    assert.deepEqual(parsed.candidateTechniques, ['moment-timezone', 'date-fns-tz']);
+    assert.equal(parsed.borderline, false);
     assert.equal(parsed.brownfieldTarget, 'moment-timezone / date-fns-tz library usage');
     assert.equal(
       parsed.evidenceFromGuide,

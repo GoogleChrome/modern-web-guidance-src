@@ -16,6 +16,8 @@ export interface Gate0Entry {
   readonly guideHash: string;
   readonly classification: Gate0Classification;
   readonly brownfieldTarget: string;
+  readonly candidateTechniques?: readonly string[];
+  readonly borderline?: boolean;
   readonly evidenceFromGuide?: string;
   readonly reason: string;
   readonly gate0PromptVersion?: string;

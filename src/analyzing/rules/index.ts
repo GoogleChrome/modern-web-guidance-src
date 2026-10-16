@@ -160,21 +160,24 @@ export const TIER_2_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
 );
 
 /**
- * The 25 guides that cleared the held-out precision bar under Milestone 3 verification.
+ * Strict qualified guides clearing the held-out precision bar (wilson95.lower >= 0.90 at n >= 35) per R10, R32.5, R33.
+ * Currently, exactly 2 guides clear this bar on the 93 held-out repos:
+ * - 'animate-element-entry-exit' (60/60)
+ * - 'individual-transform-properties' (59/60)
+ * Sample-constrained Tier 2 guides remain in ALL_RULES accessible via --all-rules / --experimental.
  */
 export const QUALIFIED_GUIDE_IDS: readonly string[] = [
-  ...TIER_1_GUIDE_IDS,
-  ...TIER_2_GUIDE_IDS,
+  'animate-element-entry-exit',
+  'individual-transform-properties',
 ] as const;
 
 /**
- * Production rules gated to qualified guides only (Tier 1 + Tier 2 per G11 / G16 / O22).
- * Excludes 4 unqualified/experimental guides.
+ * Production rules gated to qualified guides only (clearing wilson95.lower >= 0.90).
+ * All 29 landed guides remain available via ALL_RULES (--experimental / --all-rules).
  */
-export const QUALIFIED_RULES: readonly AnalyzerRule[] = [
-  ...TIER_1_RULES,
-  ...TIER_2_RULES,
-];
+export const QUALIFIED_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
+  QUALIFIED_GUIDE_IDS.includes(r.guideId),
+);
 
 /**
  * Guides that were tuned after initial held-out inspection (G10 disclosure).

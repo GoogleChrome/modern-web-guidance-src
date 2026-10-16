@@ -5,10 +5,16 @@ import { join } from 'node:path';
 export {
   JUDGE_VERSION,
   JUDGE_SYSTEM_PROMPT,
+  JUDGE_RESPONSE_SCHEMA,
+  JUDGE_THINKING_BUDGET,
+  formatBlindCardPrompt,
 } from './prompts.ts';
 import {
   JUDGE_VERSION,
   JUDGE_SYSTEM_PROMPT,
+  JUDGE_RESPONSE_SCHEMA,
+  JUDGE_THINKING_BUDGET,
+  formatBlindCardPrompt,
 } from './prompts.ts';
 import {
   CALIBRATION_DECK_PATH,
@@ -143,86 +149,8 @@ export interface JudgeRunOptions {
 export { BROWNFIELD_GUIDE_RUBRIC } from './guide-rubrics.ts';
 import { BROWNFIELD_GUIDE_RUBRIC } from './guide-rubrics.ts';
 
-export const JUDGE_RESPONSE_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    matches_before_syntax: { type: 'BOOLEAN' },
-    has_fallback_or_feature_guard: { type: 'BOOLEAN' },
-    modern_feature_applies_here: { type: 'BOOLEAN' },
-    reasoning: { type: 'STRING' },
-    verdict: {
-      type: 'STRING',
-      enum: ['right', 'not-old-pattern', 'leave-it', 'guide-wrong', 'unsure'],
-    },
-  },
-  required: [
-    'matches_before_syntax',
-    'has_fallback_or_feature_guard',
-    'modern_feature_applies_here',
-    'reasoning',
-    'verdict',
-  ],
-};
-
 /**
- * Formats a blind card into a clean text prompt for the LLM judge.
- * Strips all detector rule IDs, source IDs, tool names, and prior verdicts.
- * Per R11 and R19: when markdownBody is present, it is the sole guide specification;
- * do NOT append brownfield rubric notes.
- */
-export function formatBlindCardPrompt(card: BlindCardPayload): string {
-  if (card.guideSummary.markdownBody) {
-    return `## Modern Web Guidance Guide (${card.guideId})
-${card.guideSummary.markdownBody}
-
-## Code Location
-- File: ${card.file}
-- Line: ${card.line}
-
-## Code Snippet
-\`\`\`
-${card.codeSnippet}
-\`\`\``;
-  }
-
-  let brownfieldNote = '';
-  if (BROWNFIELD_GUIDE_RUBRIC[card.guideId]) {
-    brownfieldNote = `\n## Brownfield Workarounds Target (What this guide replaces)\n${BROWNFIELD_GUIDE_RUBRIC[card.guideId]}\n`;
-  } else if (card.guideSummary.ruleSummary || card.guideSummary.before) {
-    const parts: string[] = [];
-    if (card.guideSummary.ruleSummary) {
-      parts.push(`- Target: ${card.guideSummary.ruleSummary}`);
-    }
-    if (card.guideSummary.before) {
-      parts.push(`- Legacy Pattern (Before): ${card.guideSummary.before}`);
-    }
-    if (parts.length > 0) {
-      brownfieldNote = `\n## Brownfield Workarounds Target (What this guide replaces)\n${parts.join('\n')}\n`;
-    }
-  }
-
-  const examples = card.guideSummary.oldWayExamples?.length
-    ? `\n- Examples of Old Way:\n${card.guideSummary.oldWayExamples.map((e) => `  * ${e}`).join('\n')}`
-    : '';
-
-  return `## Guide Reference
-- Guide ID: ${card.guideId}
-- Problem: ${card.guideSummary.problem}
-- Legacy Pattern (Before): ${card.guideSummary.before}
-- Modern Replacement (Now): ${card.guideSummary.now}${examples}
-${brownfieldNote}
-## Code Location
-- File: ${card.file}
-- Line: ${card.line}
-
-## Code Snippet
-\`\`\`
-${card.codeSnippet}
-\`\`\``;
-}
-
-/**
- * Helper to construct Gemini generateContent request body with structured schema.
+ * Helper to construct Gemini generateContent request body with structured schema and thinking budget.
  */
 export function buildGeminiRequestBody(card: BlindCardPayload, temperature = 0.0): unknown {
   return {
@@ -239,14 +167,38 @@ export function buildGeminiRequestBody(card: BlindCardPayload, temperature = 0.0
       responseMimeType: 'application/json',
       responseSchema: JUDGE_RESPONSE_SCHEMA,
       temperature,
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingBudget: JUDGE_THINKING_BUDGET },
     },
   };
 }
 
 /**
+ * Cross-checks and computes unambiguous judge verdict from the 3 boolean facts per R29:
+ * - !matches_before_syntax -> 'not-old-pattern'
+ * - matches_before_syntax && has_fallback_or_feature_guard -> 'leave-it'
+ * - matches_before_syntax && !has_fallback_or_feature_guard && modern_feature_applies_here -> 'right'
+ */
+export function deriveJudgeVerdictFromFacts(facts: {
+  matches_before_syntax: boolean;
+  has_fallback_or_feature_guard: boolean;
+  modern_feature_applies_here: boolean;
+}): JudgeVerdict | null {
+  if (!facts.matches_before_syntax) {
+    return 'not-old-pattern';
+  }
+  if (facts.has_fallback_or_feature_guard) {
+    return 'leave-it';
+  }
+  if (facts.modern_feature_applies_here) {
+    return 'right';
+  }
+  return null;
+}
+
+/**
  * Parses Gemini candidate content into DetectiveFactCheck.
  * Fails fast with an explicit Error on invalid JSON or schema violations per Global Rules and R22.
+ * Cross-checks and derives unambiguous verdicts from structured facts per R29.
  */
 export function parseJudgeJsonContent(rawText: string, cardId: string): JudgeResult {
   const trimmed = rawText.trim();
@@ -265,10 +217,16 @@ export function parseJudgeJsonContent(rawText: string, cardId: string): JudgeRes
     );
   }
 
+  const derived = deriveJudgeVerdictFromFacts(parsed);
+  const finalVerdict = derived ?? parsed.verdict;
+
   return {
     cardId,
-    verdict: parsed.verdict,
-    facts: parsed,
+    verdict: finalVerdict,
+    facts: {
+      ...parsed,
+      verdict: finalVerdict,
+    },
     rawResponse: rawText,
   };
 }
@@ -827,6 +785,17 @@ export async function findGuideMarkdownPath(
     throw new Error(`guide.md for guideId "${guideId}" not found under ${guidesRootDir}`);
   }
   return foundPath;
+}
+
+/**
+ * Loads the raw markdown string of guide.md deterministically for a given guideId.
+ */
+export async function loadRawGuideMarkdown(
+  guideId: string,
+  guidesRootDir: string = GUIDES_DIR,
+): Promise<string> {
+  const guidePath = await findGuideMarkdownPath(guideId, guidesRootDir);
+  return readFile(guidePath, 'utf8');
 }
 
 /**

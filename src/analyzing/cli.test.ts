@@ -72,7 +72,7 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'accordion.css'), cssContent, 'utf8');
 
-      const res = await runAnalyzeCli(['analyze', testDir]);
+      const res = await runAnalyzeCli(['analyze', testDir, '--all-rules']);
       assert.equal(res.exitCode, 0);
 
       // Check header
@@ -105,7 +105,7 @@ describe('runAnalyzeCli', () => {
 </form>`;
       await writeFile(join(testDir, 'auth.html'), htmlContent, 'utf8');
 
-      const res = await runAnalyzeCli([testDir, '--json']);
+      const res = await runAnalyzeCli([testDir, '--all-rules', '--json']);
       assert.equal(res.exitCode, 0);
 
       const parsed = JSON.parse(res.output) as AnalyzeJsonOutput;
@@ -197,14 +197,11 @@ describe('runAnalyzeCli', () => {
   it('gates CLI to QUALIFIED_RULES by default and includes experimental rules with --all-rules', async () => {
     const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
     try {
-      // 1. Create a qualified pattern: HTML login form -> autofill-sign-in-form
-      const loginHtml = `<form action="/login" method="POST">
-  <label for="username">User</label>
-  <input type="text" id="username" name="username">
-  <label for="password">Pass</label>
-  <input type="password" id="password" name="password">
-</form>`;
-      await writeFile(join(testDir, 'login.html'), loginHtml, 'utf8');
+      // 1. Create a qualified pattern: CSS hover transform -> individual-transform-properties
+      const transformCss = `.box:hover {
+  transform: translateY(-5px) scale(1.05);
+}`;
+      await writeFile(join(testDir, 'transform.css'), transformCss, 'utf8');
 
       // 2. Create an experimental pattern: requestIdleCallback -> schedule-tasks-by-priority
       const idleJs = `function runIdleTask() {
@@ -218,7 +215,7 @@ describe('runAnalyzeCli', () => {
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
       const defaultGuideIds = parsedDefault.guides.map((g) => g.guideId);
 
-      assert.ok(defaultGuideIds.includes('autofill-sign-in-form'), 'Default includes qualified rule');
+      assert.ok(defaultGuideIds.includes('individual-transform-properties'), 'Default includes qualified rule');
       assert.ok(
         !defaultGuideIds.includes('schedule-tasks-by-priority'),
         'Default excludes experimental rule schedule-tasks-by-priority',
@@ -230,7 +227,7 @@ describe('runAnalyzeCli', () => {
       const parsedAll = JSON.parse(resAll.output) as AnalyzeJsonOutput;
       const allGuideIds = parsedAll.guides.map((g) => g.guideId);
 
-      assert.ok(allGuideIds.includes('autofill-sign-in-form'), 'All-rules includes qualified rule');
+      assert.ok(allGuideIds.includes('individual-transform-properties'), 'All-rules includes qualified rule');
       assert.ok(
         allGuideIds.includes('schedule-tasks-by-priority'),
         'All-rules includes experimental rule schedule-tasks-by-priority',
@@ -262,14 +259,14 @@ describe('runAnalyzeCli', () => {
       const panelCss = `.panel { max-height: 0; transition: max-height 0.2s; }`;
       await writeFile(join(testDir, 'panel.css'), panelCss, 'utf8');
 
-      // Default run includes both Tier 1 and Tier 2 (QUALIFIED_RULES)
-      const resDefault = await runAnalyzeCli([testDir, '--json']);
+      // Full catalog run includes both Tier 1 and Tier 2 with --all-rules
+      const resDefault = await runAnalyzeCli([testDir, '--all-rules', '--json']);
       assert.equal(resDefault.exitCode, 0);
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
       assert.equal(parsedDefault.guides.length, 2);
 
       // Run with --tier=1
-      const resTier1 = await runAnalyzeCli([testDir, '--tier=1', '--json']);
+      const resTier1 = await runAnalyzeCli([testDir, '--all-rules', '--tier=1', '--json']);
       assert.equal(resTier1.exitCode, 0);
       const parsedTier1 = JSON.parse(resTier1.output) as AnalyzeJsonOutput;
       assert.equal(parsedTier1.guides.length, 1);
@@ -277,7 +274,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedTier1.guides[0].tier, 'tier-1-proven');
 
       // Run with --proven-only
-      const resProven = await runAnalyzeCli([testDir, '--proven-only', '--json']);
+      const resProven = await runAnalyzeCli([testDir, '--all-rules', '--proven-only', '--json']);
       assert.equal(resProven.exitCode, 0);
       const parsedProven = JSON.parse(resProven.output) as AnalyzeJsonOutput;
       assert.equal(parsedProven.guides.length, 1);

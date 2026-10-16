@@ -8,10 +8,12 @@ import {
   evaluateGuideQualification,
   formatPilotScorecardReport,
   sampleM3SpotcheckDeck,
+  samplePhase2DropsDeck,
   stratifiedSampleFindings,
   type PilotScorecardReport,
 } from './pilot-scorecard.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
+import type { Phase2Verdict } from './phase2.ts';
 import { checkCanaries, type JudgeResult } from './judge.ts';
 import { resolveGitMirrorCacheDir } from './paths.ts';
 
@@ -531,4 +533,64 @@ describe('resolveGitMirrorCacheDir', () => {
     assert.ok(dir.endsWith('analyzer-gitmirror'));
   });
 });
+
+describe('samplePhase2DropsDeck (R18, R28)', () => {
+  it('prioritizes low and medium confidence drops over high confidence drops', () => {
+    const findings: AnalyzerFinding[] = [
+      {
+        cardId: 'card-high-1',
+        repo: 'r1',
+        commit: 'c1',
+        file: 'f1.js',
+        line: 1,
+        guideId: 'g1',
+        ruleId: 'g1/r1',
+        guideHash: '123456789012',
+        message: 'msg1',
+        codeSnippet: 'code1',
+        astSlice: '',
+      },
+      {
+        cardId: 'card-medium-1',
+        repo: 'r2',
+        commit: 'c2',
+        file: 'f2.js',
+        line: 2,
+        guideId: 'g2',
+        ruleId: 'g2/r1',
+        guideHash: '123456789012',
+        message: 'msg2',
+        codeSnippet: 'code2',
+        astSlice: '',
+      },
+      {
+        cardId: 'card-low-1',
+        repo: 'r3',
+        commit: 'c3',
+        file: 'f3.js',
+        line: 3,
+        guideId: 'g3',
+        ruleId: 'g3/r1',
+        guideHash: '123456789012',
+        message: 'msg3',
+        codeSnippet: 'code3',
+        astSlice: '',
+      },
+    ];
+
+    const verdictsMap = new Map<string, Phase2Verdict>([
+      ['card-high-1', { cardId: 'card-high-1', keep: false, reason: 'obvious drop', confidence: 'high' }],
+      ['card-medium-1', { cardId: 'card-medium-1', keep: false, reason: 'medium drop', confidence: 'medium' }],
+      ['card-low-1', { cardId: 'card-low-1', keep: false, reason: 'uncertain drop', confidence: 'low' }],
+    ]);
+
+    const deck = samplePhase2DropsDeck(findings, 2, verdictsMap);
+    assert.strictEqual(deck.length, 2);
+    // low confidence prioritized first, then medium confidence
+    assert.strictEqual(deck[0].cardId, 'card-low-1');
+    assert.strictEqual(deck[1].cardId, 'card-medium-1');
+    assert.strictEqual(deck[0].phase2Reason, 'uncertain drop');
+  });
+});
+
 

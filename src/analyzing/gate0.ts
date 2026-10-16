@@ -3,28 +3,21 @@ import { getGeminiApiKey } from './judge.ts';
 
 export {
   GATE0_PROMPT_VERSION,
+  GATE0_RESPONSE_SCHEMA,
   GATE0_SYSTEM_PROMPT,
+  GATE0_THINKING_BUDGET,
+  formatGate0Prompt,
 } from './prompts.ts';
 import {
   GATE0_PROMPT_VERSION,
+  GATE0_RESPONSE_SCHEMA,
   GATE0_SYSTEM_PROMPT,
+  GATE0_THINKING_BUDGET,
+  formatGate0Prompt,
 } from './prompts.ts';
+
 export const GATE0_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-
-export const GATE0_RESPONSE_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    classification: {
-      type: 'STRING',
-      enum: ['detectable', 'ui-recipe-multi-part', 'skip-no-old-way'],
-    },
-    brownfieldTarget: { type: 'STRING' },
-    evidenceFromGuide: { type: 'STRING' },
-    reason: { type: 'STRING' },
-  },
-  required: ['classification', 'brownfieldTarget', 'evidenceFromGuide', 'reason'],
-};
 
 export interface Gate0GuideInput {
   readonly guideId: string;
@@ -38,22 +31,11 @@ export interface Gate0Options {
   readonly fetchFn?: typeof fetch;
   readonly maxRetries?: number;
   readonly model?: string;
+  readonly enableSearchGrounding?: boolean;
 }
 
-export function formatGate0Prompt(guide: Gate0GuideInput): string {
-  return `## Guide: ${guide.guideId} (Category: ${guide.category})
-
-### Full Guide Markdown:
-\`\`\`markdown
-${guide.markdownContent}
-\`\`\`
-
-Analyze the entire guide markdown above and classify it into one of: 'detectable', 'ui-recipe-multi-part', or 'skip-no-old-way'.
-Identify the brownfieldTarget, cite evidenceFromGuide (quote or specific summary of the legacy workaround or lack thereof), and provide a 1-sentence reason.`;
-}
-
-export function buildGate0RequestBody(guide: Gate0GuideInput): unknown {
-  return {
+export function buildGate0RequestBody(guide: Gate0GuideInput, options?: Gate0Options): unknown {
+  const body: Record<string, unknown> = {
     systemInstruction: {
       parts: [{ text: GATE0_SYSTEM_PROMPT }],
     },
@@ -67,9 +49,15 @@ export function buildGate0RequestBody(guide: Gate0GuideInput): unknown {
       responseMimeType: 'application/json',
       responseSchema: GATE0_RESPONSE_SCHEMA,
       temperature: 0.0,
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingBudget: GATE0_THINKING_BUDGET },
     },
   };
+
+  if (options?.enableSearchGrounding) {
+    body.tools = [{ googleSearch: {} }];
+  }
+
+  return body;
 }
 
 export function parseGate0Response(
@@ -77,6 +65,8 @@ export function parseGate0Response(
   guideId: string,
 ): {
   classification: Gate0Classification;
+  candidateTechniques: string[];
+  borderline: boolean;
   brownfieldTarget: string;
   evidenceFromGuide: string;
   reason: string;
@@ -104,7 +94,19 @@ export function parseGate0Response(
     );
   }
 
-  if (typeof rec.brownfieldTarget !== 'string' || !rec.brownfieldTarget.trim()) {
+  let candidateTechniques: string[] = [];
+  if (Array.isArray(rec.candidateTechniques)) {
+    candidateTechniques = rec.candidateTechniques.map((t) => String(t).trim()).filter(Boolean);
+  }
+
+  const borderline = Boolean(rec.borderline);
+
+  let brownfieldTarget = typeof rec.brownfieldTarget === 'string' ? rec.brownfieldTarget.trim() : '';
+  if (!brownfieldTarget && candidateTechniques.length > 0) {
+    brownfieldTarget = candidateTechniques.join('; ');
+  }
+
+  if (!brownfieldTarget) {
     throw new Error(`Gate 0 response missing string 'brownfieldTarget' for guide ${guideId}`);
   }
 
@@ -118,7 +120,9 @@ export function parseGate0Response(
 
   return {
     classification,
-    brownfieldTarget: rec.brownfieldTarget.trim(),
+    candidateTechniques,
+    borderline,
+    brownfieldTarget,
     evidenceFromGuide: rec.evidenceFromGuide.trim(),
     reason: rec.reason.trim(),
   };
@@ -174,7 +178,7 @@ export async function classifyGuideGate0(
   const model = options?.model ?? GATE0_MODEL;
   const maxRetries = options?.maxRetries ?? 8;
 
-  const body = buildGate0RequestBody(guide);
+  const body = buildGate0RequestBody(guide, options);
   const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;
 
   const res = await fetchWithRetry(
@@ -211,6 +215,8 @@ export async function classifyGuideGate0(
     guideId: guide.guideId,
     guideHash: guide.guideHash,
     classification: parsed.classification,
+    candidateTechniques: parsed.candidateTechniques,
+    borderline: parsed.borderline,
     brownfieldTarget: parsed.brownfieldTarget,
     evidenceFromGuide: parsed.evidenceFromGuide,
     reason: parsed.reason,

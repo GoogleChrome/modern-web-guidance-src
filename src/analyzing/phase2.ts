@@ -1,5 +1,5 @@
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
-import { getGeminiApiKey } from './judge.ts';
+import { getGeminiApiKey, loadRawGuideMarkdown } from './judge.ts';
 
 export const PHASE2_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -29,52 +29,24 @@ export interface Phase2FilterResult {
 
 export {
   PHASE2_PROMPT_VERSION,
+  PHASE2_RESPONSE_SCHEMA,
   PHASE2_SYSTEM_PROMPT,
+  PHASE2_THINKING_BUDGET,
+  formatPhase2Prompt,
 } from './prompts.ts';
 import {
   PHASE2_PROMPT_VERSION,
+  PHASE2_RESPONSE_SCHEMA,
   PHASE2_SYSTEM_PROMPT,
+  PHASE2_THINKING_BUDGET,
+  formatPhase2Prompt,
 } from './prompts.ts';
 
-export const PHASE2_RESPONSE_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    keep: { type: 'BOOLEAN' },
-    reason: { type: 'STRING' },
-    confidence: {
-      type: 'STRING',
-      enum: ['high', 'medium', 'low'],
-    },
-  },
-  required: ['keep', 'reason', 'confidence'],
-};
-
-export function formatPhase2Prompt(finding: AnalyzerFinding, rule: AnalyzerRule): string {
-  const keepList = rule.phase2Rubric.keepWhen.map((item) => `- ${item}`).join('\n');
-  const dropList = rule.phase2Rubric.dropWhen.map((item) => `- ${item}`).join('\n');
-  const contextSnippet = (finding.astSlice || finding.codeSnippet || '').trim();
-
-  return `## Rule: ${rule.id}
-Summary: ${rule.summary}
-
-### Keep When:
-${keepList}
-
-### Drop When:
-${dropList}
-
-## Finding Location
-- File: ${finding.file}
-- Line: ${finding.line}
-- Matcher Message: ${finding.message}
-
-## Code Context (AST Slice)
-\`\`\`
-${contextSnippet}
-\`\`\``;
-}
-
-export function buildPhase2RequestBody(finding: AnalyzerFinding, rule: AnalyzerRule): unknown {
+export function buildPhase2RequestBody(
+  finding: AnalyzerFinding,
+  rule: AnalyzerRule,
+  guideMarkdown?: string,
+): unknown {
   return {
     systemInstruction: {
       parts: [{ text: PHASE2_SYSTEM_PROMPT }],
@@ -82,14 +54,14 @@ export function buildPhase2RequestBody(finding: AnalyzerFinding, rule: AnalyzerR
     contents: [
       {
         role: 'user',
-        parts: [{ text: formatPhase2Prompt(finding, rule) }],
+        parts: [{ text: formatPhase2Prompt(finding, rule, guideMarkdown) }],
       },
     ],
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: PHASE2_RESPONSE_SCHEMA,
       temperature: 0.0,
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingBudget: PHASE2_THINKING_BUDGET },
     },
   };
 }
@@ -203,6 +175,20 @@ export async function simulateSingleShotPhase2Filter(
 
   const verdicts: Phase2Verdict[] = Array.from({ length: findings.length });
 
+  // Pre-load guide markdown for all involved rules per R28
+  const guideMarkdownCache = new Map<string, string>();
+  for (const finding of findings) {
+    const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
+    if (rule && !guideMarkdownCache.has(rule.guideId)) {
+      try {
+        const md = await loadRawGuideMarkdown(rule.guideId);
+        guideMarkdownCache.set(rule.guideId, md);
+      } catch {
+        guideMarkdownCache.set(rule.guideId, '');
+      }
+    }
+  }
+
   let currentIndex = 0;
   async function worker(): Promise<void> {
     while (currentIndex < findings.length) {
@@ -219,7 +205,8 @@ export async function simulateSingleShotPhase2Filter(
         continue;
       }
 
-      const body = buildPhase2RequestBody(finding, rule);
+      const guideMarkdown = guideMarkdownCache.get(rule.guideId) ?? '';
+      const body = buildPhase2RequestBody(finding, rule, guideMarkdown);
       const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;
 
       const res = await fetchWithRetry(

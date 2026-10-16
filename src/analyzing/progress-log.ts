@@ -50,10 +50,297 @@ export interface ProgressLogRow {
   notes?: string;
 }
 
+export type DetectionFunnelRow = ProgressLogRow;
+
+export interface Gate0TriageRow {
+  runId: string;
+  date: string;
+  promptVersion: string;
+  guidesRead: string;
+  detectable: number;
+  uiRecipe: number;
+  skip: number;
+  paulAgreement?: string;
+  kappa?: number;
+  notes?: string;
+}
+
+export interface JudgeCalibrationRow {
+  commit: string;
+  date: string;
+  judgeVersion: string;
+  sampleSize: number;
+  stabilityRate: number;
+  judgeAlpha: number;
+  judgeAc1: number;
+  canaryTnr: number;
+  notes?: string;
+}
+
+export interface FixSmokeTestRow {
+  commit: string;
+  date: string;
+  harnessVersion: string;
+  qualifiedGuides: number;
+  sampleSize: number;
+  staticResolution: MetricEntry;
+  badPatchRejectionRate: string;
+  notes?: string;
+}
+
+export interface PipelineScoreboard {
+  currentBenchmark: ProgressLogRow | null;
+  gate0Triage: Gate0TriageRow[];
+  judgeCalibration: JudgeCalibrationRow[];
+  detectionFunnel: DetectionFunnelRow[];
+  fixSmokeTest: FixSmokeTestRow[];
+}
+
+export interface FormatProgressLogOptions {
+  gate0Rows?: ReadonlyArray<Gate0TriageRow>;
+  judgeRows?: ReadonlyArray<JudgeCalibrationRow>;
+  fixRows?: ReadonlyArray<FixSmokeTestRow>;
+  currentBenchmark?: ProgressLogRow | null;
+}
+
 export interface GitCommitState {
   commit: string;
   isDirty: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Historical Backfill Constants (R31, D-025)
+// ---------------------------------------------------------------------------
+
+export const HISTORICAL_GATE0_TRIAGE_ROWS: readonly Gate0TriageRow[] = [
+  {
+    runId: 'manual-slug-triage-v0',
+    date: '2026-10-14',
+    promptVersion: 'slug-heuristics-v0',
+    guidesRead: '0/171 (0%)',
+    detectable: 33,
+    uiRecipe: 0,
+    skip: 0,
+    paulAgreement: '-',
+    kappa: 0,
+    notes: '[invalidated per audit: 0/171 guides read, ungrounded slug inferences]',
+  },
+  {
+    runId: 'gate0-v1-full-guide',
+    date: '2026-10-15',
+    promptVersion: 'gemini-3.8-flash:gate0-v1',
+    guidesRead: '171/171 (100%)',
+    detectable: 42,
+    uiRecipe: 47,
+    skip: 82,
+    paulAgreement: '15/25 (60.0%)',
+    kappa: 0.400,
+    notes: '30-guide spot-check deck; undercounts detectable guides (R26); prompt overhauled in R27',
+  },
+];
+
+export const HISTORICAL_JUDGE_CALIBRATION_ROWS: readonly JudgeCalibrationRow[] = [
+  {
+    commit: 'dafe9ee',
+    date: '2026-10-15',
+    judgeVersion: 'gemini-3.8-flash:detective-v2-direct',
+    sampleSize: 85,
+    stabilityRate: 0.718,
+    judgeAlpha: -0.341,
+    judgeAc1: 0.179,
+    canaryTnr: 1.000,
+    notes: 'Phase 1 measurement baseline (stability=71.8%, canaryTNR=100.0%)',
+  },
+  {
+    commit: 'd3927f7',
+    date: '2026-10-15',
+    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
+    sampleSize: 85,
+    stabilityRate: 0.918,
+    judgeAlpha: -0.188,
+    judgeAc1: 0.377,
+    canaryTnr: 1.000,
+    notes: 'Phase 1 measurement baseline (stability=91.8%, canaryTNR=100.0%)',
+  },
+  {
+    commit: '44b9c3d',
+    date: '2026-10-15',
+    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
+    sampleSize: 85,
+    stabilityRate: 0.976,
+    judgeAlpha: 0.222,
+    judgeAc1: 0.863,
+    canaryTnr: 1.000,
+    notes: 'Phase 1 measurement baseline (stability=97.6%, canaryTNR=100.0%)',
+  },
+  {
+    commit: 'ecb6ace',
+    date: '2026-10-15',
+    judgeVersion: 'gemini-3.8-flash:detective-v4-guide-only',
+    sampleSize: 116,
+    stabilityRate: 0.945,
+    judgeAlpha: 0.063,
+    judgeAc1: 0.764,
+    canaryTnr: 1.000,
+    notes: 'Guide-only judge (re-calibrating per R29: 8 FNs due to guide-wrong/leave-it inversion, thinkingBudget=0)',
+  },
+];
+
+export const HISTORICAL_DETECTION_FUNNEL_ROWS: readonly DetectionFunnelRow[] = [
+  {
+    commit: '7bddb06',
+    date: '2026-10-15',
+    ruleSetHash: '2661f572344c',
+    splitHash: 'b8af9495f9ec',
+    gradesHash: 'b6e5d6f718df',
+    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
+    coverage: { value: 0.2, n: 5, split: 'grading-only' },
+    precision: { value: 0.983, lower: 0.952, upper: 1.0, n: 85, split: 'grading-only' },
+    recall: { value: 0.667, lower: 0.438, upper: 0.837, n: 18, split: 'grading-only' },
+    judgeAlpha: 0.200,
+    judgeAc1: 0.850,
+    canaryTnr: 1.0,
+    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 2 pilot evaluation (1 qualified [>=0.90 LB], 4 unmeasured [low-n], 1/5 cleared bar, stability=96.2%, canaryTNR=100.0%)',
+  },
+  {
+    commit: 'e00c565',
+    date: '2026-10-15',
+    ruleSetHash: '3ea4fd9c37d2',
+    splitHash: 'b8af9495f9ec',
+    gradesHash: 'b6e5d6f718df',
+    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
+    coverage: { value: 0.2, n: 5, split: 'grading-only' },
+    precision: { value: 0.981, lower: 0.950, upper: 1.0, n: 85, split: 'grading-only' },
+    recall: { value: 0.556, lower: 0.337, upper: 0.754, n: 18, split: 'grading-only' },
+    judgeAlpha: 0.182,
+    judgeAc1: 0.837,
+    canaryTnr: 1.0,
+    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 2 pilot evaluation (1 qualified [>=0.90 LB], 4 unmeasured [low-n], 1/5 cleared bar, stability=97.1%, canaryTNR=100.0%)',
+  },
+  {
+    commit: 'b0f87c7',
+    date: '2026-10-15',
+    ruleSetHash: 'bc7966df2d47',
+    splitHash: 'b8af9495f9ec',
+    gradesHash: 'b6e5d6f718df',
+    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
+    coverage: { value: 0.2, n: 5, split: 'grading-only' },
+    precision: { value: 0.987, lower: 0.956, upper: 1.0, n: 85, split: 'grading-only' },
+    recall: { value: 0.667, lower: 0.438, upper: 0.837, n: 18, split: 'grading-only' },
+    judgeAlpha: 0.200,
+    judgeAc1: 0.850,
+    canaryTnr: 1.0,
+    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 2 pilot evaluation (1 qualified [>=0.90 LB], 4 unmeasured [low-n], 1/5 cleared bar, stability=98.5%, canaryTNR=100.0%)',
+  },
+  {
+    commit: 'a5a253f',
+    date: '2026-10-15',
+    ruleSetHash: 'd444600bc87d',
+    splitHash: 'b8af9495f9ec',
+    gradesHash: 'b6e5d6f718df',
+    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
+    coverage: { value: 0.25, n: 16, split: 'grading-only' },
+    precision: { value: 0.960, lower: 0.923, upper: 0.980, n: 200, split: 'grading-only, judged' },
+    recall: { value: 0.475, lower: 0.353, upper: 0.600, n: 59, split: 'grading-only' },
+    judgeAlpha: 0.164,
+    judgeAc1: 0.824,
+    canaryTnr: 1.0,
+    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 3 evaluation (1 qualified [>=0.90 LB], 15 unmeasured [low-n], 4/16 guides cleared bar, pooled held-out prec=96.0%, stability=98.0%, canaryTNR=100.0%)',
+  },
+  {
+    commit: '1dd4409',
+    date: '2026-10-15',
+    ruleSetHash: '838dcb4e6972',
+    splitHash: 'b8af9495f9ec',
+    gradesHash: 'b6e5d6f718df',
+    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
+    coverage: { value: 0.6, n: 30, split: 'grading-only' },
+    precision: { value: 0.971, lower: 0.943, upper: 0.985, n: 274, split: 'grading-only, judged' },
+    recall: { value: 0.551, lower: 0.441, upper: 0.657, n: 78, split: 'grading-only' },
+    judgeAlpha: 0.200,
+    judgeAc1: 0.850,
+    canaryTnr: 1.0,
+    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 3 evaluation (1 qualified [>=0.90 LB], 29 unmeasured [low-n], 18/30 guides cleared bar, pooled held-out prec=97.1%, stability=96.8%, canaryTNR=100.0%)',
+  },
+  {
+    commit: 'e73c552',
+    date: '2026-10-15',
+    ruleSetHash: '47d04da795b5',
+    splitHash: 'b8af9495f9ec',
+    gradesHash: 'b6e5d6f718df',
+    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
+    coverage: { value: 0.719, n: 32, split: 'grading-only' },
+    precision: { value: 0.894, lower: 0.856, upper: 0.923, n: 329, split: 'grading-only, judged' },
+    recall: { value: 0.603, lower: 0.492, upper: 0.704, n: 78, split: 'grading-only' },
+    judgeAlpha: 0.147,
+    judgeAc1: 0.811,
+    canaryTnr: 1.0,
+    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 3 evaluation (1 qualified [>=0.90 LB], 31 unmeasured [low-n], 23/32 guides cleared bar, pooled held-out prec=89.4%, stability=96.4%, canaryTNR=100.0%)',
+  },
+  {
+    commit: '30e2a34',
+    date: '2026-10-15',
+    ruleSetHash: '1b64289894c1',
+    splitHash: 'b8af9495f9ec',
+    gradesHash: 'b6e5d6f718df',
+    judgeVersion: 'gemini-3.8-flash:detective-v3-direct',
+    coverage: { value: 0.781, n: 32, split: 'grading-only' },
+    precision: { value: 0.954, lower: 0.923, upper: 0.973, n: 285, split: 'grading-only, judged' },
+    recall: { value: 0.603, lower: 0.492, upper: 0.704, n: 78, split: 'grading-only' },
+    judgeAlpha: 0.146,
+    judgeAc1: 0.811,
+    canaryTnr: 1.0,
+    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 3 evaluation (1 qualified [>=0.90 LB], 31 unmeasured [low-n], 25/32 guides cleared bar: 8 proven-high-n + 17 zero-fp-low-n, pooled held-out prec=95.4%, stability=96.8%, canaryTNR=100.0%)',
+  },
+  {
+    commit: 'ecb6ace',
+    date: '2026-10-15',
+    ruleSetHash: '76fa4aab3237',
+    splitHash: 'b8af9495f9ec',
+    gradesHash: '2b8171c24fb2',
+    judgeVersion: 'gemini-3.8-flash:detective-v4-guide-only',
+    coverage: { value: 0.724, n: 29, split: 'grading-only' },
+    precision: { value: 0.948, lower: 0.917, upper: 0.968, n: 307, split: 'grading-only, judged' },
+    recall: { value: 0.564, lower: 0.467, upper: 0.657, n: 101, split: 'grading-only' },
+    judgeAlpha: 0.063,
+    judgeAc1: 0.764,
+    canaryTnr: 1.0,
+    notes: '[pre-guide-phase2: Phase 2 ran without guide.md] Milestone 3 evaluation (2 qualified [>=0.90 LB: animate-element-entry-exit, individual-transform-properties], 27 unmeasured [low-n: 19 sample-constrained], qualified prec=98.6%, pooled held-out prec=94.8%, stability=94.5%, canaryTNR=100.0%)',
+  },
+];
+
+export const HISTORICAL_FIX_SMOKE_TEST_ROWS: readonly FixSmokeTestRow[] = [
+  {
+    commit: 'e23f54256',
+    date: '2026-10-15',
+    harnessVersion: 'fix-harness-m4',
+    qualifiedGuides: 25,
+    sampleSize: 41,
+    staticResolution: { value: 0.585, lower: 0.434, upper: 0.722, n: 41, split: 'grading-only' },
+    badPatchRejectionRate: '100.0% (75/75)',
+    notes: 'Milestone 4 agentic fix evaluation (round 1): static resolution only (D-022, R15)',
+  },
+  {
+    commit: 'd40c9a3b9',
+    date: '2026-10-15',
+    harnessVersion: 'fix-harness-m4-r2',
+    qualifiedGuides: 25,
+    sampleSize: 40,
+    staticResolution: { value: 0.900, lower: 0.769, upper: 0.960, n: 40, split: 'grading-only' },
+    badPatchRejectionRate: '100.0% (75/75)',
+    notes: 'Milestone 4 agentic fix evaluation (round 2): static resolution only (D-022, R15)',
+  },
+  {
+    commit: '0d56c4782',
+    date: '2026-10-15',
+    harnessVersion: 'fix-harness-m4-r3',
+    qualifiedGuides: 25,
+    sampleSize: 40,
+    staticResolution: { value: 0.900, lower: 0.769, upper: 0.960, n: 40, split: 'grading-only' },
+    badPatchRejectionRate: '100.0% (75/75)',
+    notes: 'Milestone 4 agentic fix evaluation (G13-G17 hardened): shadow-dom 43-line refactor resolved, static resolution only',
+  },
+];
 
 /**
  * Type guard for ENOENT errors (BAN TOCTOU: operate and catch ENOENT).
@@ -207,10 +494,11 @@ export function updateProgressLogEntries(
 }
 
 /**
- * Renders the full markdown content of PROGRESS.md.
+ * Renders the full 4-table pipeline scoreboard markdown content for PROGRESS.md.
  */
 export function formatProgressLogMarkdown(
   entries: ReadonlyArray<ProgressLogRow>,
+  options: FormatProgressLogOptions = {},
 ): string {
   const lines: string[] = [
     '# Analyzer Progress Log',
@@ -222,11 +510,11 @@ export function formatProgressLogMarkdown(
 
   // Pick latest verified (clean) entry, or latest overall if none are clean
   const cleanEntries = entries.filter((e) => !e.commit.includes('*'));
-  const current = cleanEntries.length > 0
+  const current = options.currentBenchmark ?? (cleanEntries.length > 0
     ? cleanEntries[cleanEntries.length - 1]
     : entries.length > 0
     ? entries[entries.length - 1]
-    : null;
+    : null);
 
   if (!current) {
     lines.push('*No benchmark runs recorded yet.*');
@@ -251,8 +539,62 @@ export function formatProgressLogMarkdown(
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Table 1: Gate 0 Catalog Triage & Agreement
+  // -------------------------------------------------------------------------
   lines.push('');
-  lines.push('## Benchmark Run Log');
+  lines.push('## Table 1: Gate 0 Catalog Triage & Agreement');
+  lines.push('');
+  lines.push(
+    '| Run / ID | Date | Prompt Version | Guides Read | Detectable | UI Recipe | Skip | Paul Agreement (n=25) | Cohen\'s κ | Notes |',
+  );
+  lines.push(
+    '| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |',
+  );
+
+  const gate0Rows = options.gate0Rows ?? HISTORICAL_GATE0_TRIAGE_ROWS;
+  for (const row of gate0Rows) {
+    const runCell = `\`${row.runId}\``;
+    const promptCell = `\`${row.promptVersion}\``;
+    const agreeCell = row.paulAgreement ?? '-';
+    const kappaCell = row.kappa !== undefined ? row.kappa.toFixed(3) : '-';
+    const notesCell = row.notes ? row.notes.replace(/\|/g, '\\|') : '-';
+    lines.push(
+      `| ${runCell} | ${row.date} | ${promptCell} | ${row.guidesRead} | ${row.detectable} | ${row.uiRecipe} | ${row.skip} | ${agreeCell} | ${kappaCell} | ${notesCell} |`,
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Table 2: Judge & Phase 2 Calibration Health
+  // -------------------------------------------------------------------------
+  lines.push('');
+  lines.push('## Table 2: Judge & Phase 2 Calibration Health');
+  lines.push('');
+  lines.push(
+    '| Commit | Date | Judge Version | Sample Size (n) | 3-Run Stability | Judge α | Judge AC₁ | Canary TNR | Notes |',
+  );
+  lines.push(
+    '| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |',
+  );
+
+  const judgeRows = options.judgeRows ?? HISTORICAL_JUDGE_CALIBRATION_ROWS;
+  for (const row of judgeRows) {
+    const commitCell = `\`${row.commit}\``;
+    const stabilityCell = `${(row.stabilityRate * 100).toFixed(1)}%`;
+    const alphaCell = row.judgeAlpha.toFixed(3);
+    const ac1Cell = row.judgeAc1.toFixed(3);
+    const tnrCell = `${(row.canaryTnr * 100).toFixed(1)}%`;
+    const notesCell = row.notes ? row.notes.replace(/\|/g, '\\|') : '-';
+    lines.push(
+      `| ${commitCell} | ${row.date} | ${row.judgeVersion} | ${row.sampleSize} | ${stabilityCell} | ${alphaCell} | ${ac1Cell} | ${tnrCell} | ${notesCell} |`,
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Table 3: Held-Out Detection Funnel & Qualified Rules
+  // -------------------------------------------------------------------------
+  lines.push('');
+  lines.push('## Table 3: Held-Out Detection Funnel & Qualified Rules');
   lines.push('');
   lines.push(
     '| Commit | Date | Rule-Set | Split | Grades | Judge | Coverage | Precision (95% CI) | Recall (95% CI) | Judge α | Judge AC₁ | Canary TNR | Notes |',
@@ -279,20 +621,183 @@ export function formatProgressLogMarkdown(
     );
   }
 
+  // -------------------------------------------------------------------------
+  // Table 4: Minimal M4 Static Fix Smoke Test
+  // -------------------------------------------------------------------------
+  lines.push('');
+  lines.push('## Table 4: Minimal M4 Static Fix Smoke Test');
+  lines.push('');
+  lines.push(
+    '| Commit | Date | Harness Version | Qualified Guides | Sample Size (n) | Static Resolution (95% CI) | Bad Patch Rejection | Notes |',
+  );
+  lines.push(
+    '| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |',
+  );
+
+  const fixRows = options.fixRows ?? HISTORICAL_FIX_SMOKE_TEST_ROWS;
+  for (const row of fixRows) {
+    const commitCell = `\`${row.commit}\``;
+    const harnessCell = `\`${row.harnessVersion}\``;
+    const resolutionCell = formatMetricCell(row.staticResolution);
+    const notesCell = row.notes ? row.notes.replace(/\|/g, '\\|') : '-';
+    lines.push(
+      `| ${commitCell} | ${row.date} | ${harnessCell} | ${row.qualifiedGuides} | ${row.sampleSize} | ${resolutionCell} | ${row.badPatchRejectionRate} | ${notesCell} |`,
+    );
+  }
+
   lines.push('');
   return lines.join('\n');
 }
 
 /**
- * Parses existing markdown content from PROGRESS.md into ProgressLogRow entries.
+ * Parses Gate 0 triage table rows from PROGRESS.md markdown.
+ */
+export function parseGate0TriageMarkdown(markdown: string): Gate0TriageRow[] {
+  const lines = markdown.split('\n');
+  const rows: Gate0TriageRow[] = [];
+
+  let inTable1 = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('## Table 1:')) {
+      inTable1 = true;
+      continue;
+    }
+    if (inTable1 && trimmed.startsWith('## ') && !trimmed.startsWith('## Table 1:')) {
+      inTable1 = false;
+      continue;
+    }
+    if (!inTable1 || !trimmed.startsWith('|')) {
+      continue;
+    }
+
+    const cells = trimmed
+      .split('|')
+      .map((c) => c.trim())
+      .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+
+    if (cells.length < 10) {
+      continue;
+    }
+    if (cells[0].toLowerCase().includes('run') || cells[0].includes('---')) {
+      continue;
+    }
+
+    const runId = cells[0].replace(/`/g, '');
+    const date = cells[1];
+    const promptVersion = cells[2].replace(/`/g, '');
+    const guidesRead = cells[3];
+    const detectable = parseInt(cells[4], 10);
+    const uiRecipe = cells[5] === '-' ? 0 : parseInt(cells[5], 10);
+    const skip = cells[6] === '-' ? 0 : parseInt(cells[6], 10);
+    const paulAgreement = cells[7] === '-' ? undefined : cells[7];
+    const kappa = cells[8] === '-' ? undefined : parseFloat(cells[8]);
+    const rawNotes = cells[9];
+    const notes = rawNotes === '-' || rawNotes === '' ? undefined : rawNotes;
+
+    rows.push({
+      runId,
+      date,
+      promptVersion,
+      guidesRead,
+      detectable,
+      uiRecipe,
+      skip,
+      paulAgreement,
+      kappa,
+      notes,
+    });
+  }
+
+  return rows;
+}
+
+/**
+ * Parses Judge calibration table rows from PROGRESS.md markdown.
+ */
+export function parseJudgeCalibrationMarkdown(markdown: string): JudgeCalibrationRow[] {
+  const lines = markdown.split('\n');
+  const rows: JudgeCalibrationRow[] = [];
+
+  let inTable2 = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('## Table 2:')) {
+      inTable2 = true;
+      continue;
+    }
+    if (inTable2 && trimmed.startsWith('## ') && !trimmed.startsWith('## Table 2:')) {
+      inTable2 = false;
+      continue;
+    }
+    if (!inTable2 || !trimmed.startsWith('|')) {
+      continue;
+    }
+
+    const cells = trimmed
+      .split('|')
+      .map((c) => c.trim())
+      .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+
+    if (cells.length < 9) {
+      continue;
+    }
+    if (cells[0].toLowerCase().includes('commit') || cells[0].includes('---')) {
+      continue;
+    }
+
+    const commit = cells[0].replace(/`/g, '');
+    const date = cells[1];
+    const judgeVersion = cells[2].replace(/`/g, '');
+    const sampleSize = parseInt(cells[3], 10);
+    const stabilityRate = Number((parseFloat(cells[4].replace('%', '')) / 100).toFixed(4));
+    const judgeAlpha = cells[5] === '-' ? 0 : parseFloat(cells[5]);
+    const judgeAc1 = cells[6] === '-' ? 0 : parseFloat(cells[6]);
+    const canaryTnr = Number((parseFloat(cells[7].replace('%', '')) / 100).toFixed(4));
+    const rawNotes = cells[8];
+    const notes = rawNotes === '-' || rawNotes === '' ? undefined : rawNotes;
+
+    rows.push({
+      commit,
+      date,
+      judgeVersion,
+      sampleSize,
+      stabilityRate,
+      judgeAlpha,
+      judgeAc1,
+      canaryTnr,
+      notes,
+    });
+  }
+
+  return rows;
+}
+
+/**
+ * Parses existing markdown content from PROGRESS.md into ProgressLogRow entries (Table 3).
+ * Backward compatible with legacy single-table "## Benchmark Run Log" or new "## Table 3:".
  */
 export function parseProgressLogMarkdown(markdown: string): ProgressLogRow[] {
   const lines = markdown.split('\n');
   const entries: ProgressLogRow[] = [];
 
+  const hasTable3 = markdown.includes('## Table 3:');
   let inTable = false;
+
   for (const line of lines) {
     const trimmed = line.trim();
+
+    if (hasTable3) {
+      if (trimmed.startsWith('## Table 3:')) {
+        inTable = true;
+        continue;
+      }
+      if (inTable && trimmed.startsWith('## ') && !trimmed.startsWith('## Table 3:')) {
+        inTable = false;
+        continue;
+      }
+    }
+
     if (!trimmed.startsWith('|')) {
       continue;
     }
@@ -308,7 +813,9 @@ export function parseProgressLogMarkdown(markdown: string): ProgressLogRow[] {
 
     // Skip table header and divider
     if (cells[0].toLowerCase().includes('commit')) {
-      inTable = true;
+      if (!hasTable3) {
+        inTable = true;
+      }
       continue;
     }
     if (cells[0].includes('---')) {
@@ -354,11 +861,92 @@ export function parseProgressLogMarkdown(markdown: string): ProgressLogRow[] {
 }
 
 /**
- * Reads the progress log, merges the new row, and writes the updated markdown.
+ * Parses Minimal M4 fix smoke test table rows from PROGRESS.md markdown.
+ */
+export function parseFixSmokeTestMarkdown(markdown: string): FixSmokeTestRow[] {
+  const lines = markdown.split('\n');
+  const rows: FixSmokeTestRow[] = [];
+
+  let inTable4 = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('## Table 4:')) {
+      inTable4 = true;
+      continue;
+    }
+    if (inTable4 && trimmed.startsWith('## ') && !trimmed.startsWith('## Table 4:')) {
+      inTable4 = false;
+      continue;
+    }
+    if (!inTable4 || !trimmed.startsWith('|')) {
+      continue;
+    }
+
+    const cells = trimmed
+      .split('|')
+      .map((c) => c.trim())
+      .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+
+    if (cells.length < 8) {
+      continue;
+    }
+    if (cells[0].toLowerCase().includes('commit') || cells[0].includes('---')) {
+      continue;
+    }
+
+    const commit = cells[0].replace(/`/g, '');
+    const date = cells[1];
+    const harnessVersion = cells[2].replace(/`/g, '');
+    const qualifiedGuides = parseInt(cells[3], 10);
+    const sampleSize = parseInt(cells[4], 10);
+    const staticResolution = parseMetricCell(cells[5]);
+    const badPatchRejectionRate = cells[6];
+    const rawNotes = cells[7];
+    const notes = rawNotes === '-' || rawNotes === '' ? undefined : rawNotes;
+
+    rows.push({
+      commit,
+      date,
+      harnessVersion,
+      qualifiedGuides,
+      sampleSize,
+      staticResolution,
+      badPatchRejectionRate,
+      notes,
+    });
+  }
+
+  return rows;
+}
+
+/**
+ * Parses all 4 pipeline scoreboard tables and current verified benchmark from markdown.
+ */
+export function parsePipelineScoreboardMarkdown(markdown: string): PipelineScoreboard {
+  const funnelEntries = parseProgressLogMarkdown(markdown);
+  const cleanEntries = funnelEntries.filter((e) => !e.commit.includes('*'));
+  const currentBenchmark = cleanEntries.length > 0
+    ? cleanEntries[cleanEntries.length - 1]
+    : funnelEntries.length > 0
+    ? funnelEntries[funnelEntries.length - 1]
+    : null;
+
+  return {
+    currentBenchmark,
+    gate0Triage: parseGate0TriageMarkdown(markdown),
+    judgeCalibration: parseJudgeCalibrationMarkdown(markdown),
+    detectionFunnel: funnelEntries,
+    fixSmokeTest: parseFixSmokeTestMarkdown(markdown),
+  };
+}
+
+/**
+ * Reads the progress log, merges the new row, and writes the updated 4-table markdown.
  */
 export async function recordProgressLogEntry(
   newRow: ProgressLogRow,
   progressLogPath: string = PROGRESS_LOG_PATH,
+  options: FormatProgressLogOptions = {},
 ): Promise<string> {
   let existingMarkdown = '';
   try {
@@ -371,7 +959,23 @@ export async function recordProgressLogEntry(
 
   const existingEntries = existingMarkdown ? parseProgressLogMarkdown(existingMarkdown) : [];
   const updatedEntries = updateProgressLogEntries(existingEntries, newRow);
-  const formatted = formatProgressLogMarkdown(updatedEntries);
+
+  // Preserve existing other tables if present, otherwise default to historical constants
+  const parsedGate0 = existingMarkdown ? parseGate0TriageMarkdown(existingMarkdown) : [];
+  const gate0Rows = options.gate0Rows ?? (parsedGate0.length > 0 ? parsedGate0 : HISTORICAL_GATE0_TRIAGE_ROWS);
+
+  const parsedJudge = existingMarkdown ? parseJudgeCalibrationMarkdown(existingMarkdown) : [];
+  const judgeRows = options.judgeRows ?? (parsedJudge.length > 0 ? parsedJudge : HISTORICAL_JUDGE_CALIBRATION_ROWS);
+
+  const parsedFix = existingMarkdown ? parseFixSmokeTestMarkdown(existingMarkdown) : [];
+  const fixRows = options.fixRows ?? (parsedFix.length > 0 ? parsedFix : HISTORICAL_FIX_SMOKE_TEST_ROWS);
+
+  const formatted = formatProgressLogMarkdown(updatedEntries, {
+    gate0Rows,
+    judgeRows,
+    fixRows,
+    currentBenchmark: options.currentBenchmark,
+  });
 
   await mkdir(dirname(progressLogPath), { recursive: true });
   await writeFile(progressLogPath, formatted, 'utf8');
@@ -415,7 +1019,7 @@ export function parseProgressLogCliArgs(
 
 /**
  * Computes a ProgressLogRow from live evaluation or provided metrics.
- * Evaluates judge stability and consensus agreement against Paul's 85 human grades.
+ * Evaluates judge stability and consensus agreement against Paul's human grades.
  * Ensures zero dummy defaults: fails fast if required metrics are missing.
  */
 export async function computeProgressLogRow(

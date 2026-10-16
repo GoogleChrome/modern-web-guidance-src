@@ -99,6 +99,14 @@ void test('file-filter: path and content classification', async (t) => {
     assert.equal(shouldScanFile('node_modules/pkg/index.js'), false);
     assert.equal(shouldScanFile('src/app.js', 'console.log("hello");'), true);
   });
+
+  await t.test('rejects files exceeding 1 MB source cap (D-025, O26)', () => {
+    const smallContent = 'const x = 1;\n'.repeat(100);
+    assert.equal(shouldScanFile('src/small.js', smallContent), true);
+
+    const largeContent = 'a'.repeat(1_000_001);
+    assert.equal(shouldScanFile('src/bundle.js', largeContent), false);
+  });
 });
 
 void test('ast-helpers: AST combinators and branch-aware feature guards', async (t) => {

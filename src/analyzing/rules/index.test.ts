@@ -64,24 +64,28 @@ describe('rules/index export registry', () => {
     }
   });
 
-  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 25 guides excluding 4 experimental', async (t) => {
-    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 25);
+  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 2 guides clearing 0.90 lower bound (R32.5, R33)', async (t) => {
+    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 2);
     const qualifiedGuideSet = new Set(QUALIFIED_GUIDE_IDS);
-    assert.strictEqual(qualifiedGuideSet.size, 25);
+    assert.strictEqual(qualifiedGuideSet.size, 2);
+    assert.ok(qualifiedGuideSet.has('animate-element-entry-exit'));
+    assert.ok(qualifiedGuideSet.has('individual-transform-properties'));
 
     const qualifiedRuleGuideIds = new Set(QUALIFIED_RULES.map((r) => r.guideId));
-    assert.strictEqual(qualifiedRuleGuideIds.size, 25);
+    assert.strictEqual(qualifiedRuleGuideIds.size, 2);
     assert.deepStrictEqual(Array.from(qualifiedRuleGuideIds).sort(), [...QUALIFIED_GUIDE_IDS].sort());
 
-    // Excluded experimental guides (4 landed guides)
-    const experimentalGuides = [
+    // Excluded experimental / low-n sample-constrained guides
+    const unmeasuredGuides = [
+      'autofill-sign-in-form',
+      'declarative-dialog-popover-control',
       'schedule-tasks-by-priority',
       'scrollspy',
       'size-aware-styling',
       'defer-work-until-scroll-ends',
     ];
-    for (const exp of experimentalGuides) {
-      await t.test(`excludes experimental guide ${exp}`, () => {
+    for (const exp of unmeasuredGuides) {
+      await t.test(`excludes unmeasured guide ${exp}`, () => {
         assert.strictEqual(qualifiedGuideSet.has(exp), false, `${exp} should not be in qualified guides`);
       });
     }
