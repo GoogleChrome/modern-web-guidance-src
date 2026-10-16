@@ -100,6 +100,8 @@ Do not add a second roving-tabindex system inside a focusgroup. Script covers on
 * **ArrowDown on a preview.** Converts it to an open menu and focuses the first item.
 * **Pointer click on a preview.** Enters the menu and focuses the first item. This is the only activation the script intercepts.
 * **Pointer click on an open trigger.** Closes it natively.
+* **Pointer click on a closed trigger.** Opens it natively. Focus stays on the trigger and no item is focused or highlighted; only keyboard opens enter the menu.
+* **Pointer over an item.** Moves focus to that item without a focus ring, so hover and focus are always the same item and only one item looks active.
 * **Within a menu.** `ArrowUp` and `ArrowDown` move between enabled items. `Home` and `End` move to the first and last enabled item, which the script handles.
 * **ArrowLeft or ArrowRight in an open top-level menu.** Closes it, opens the adjacent menu, and focuses that menu's first item, wrapping at either end.
 * **ArrowRight on a submenu trigger.** Opens the submenu and focuses its first item.
@@ -114,12 +116,13 @@ The `command` event fires before `toggle-popover` opens the menu, so focus canno
 
 Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`, wrap-around and `Tab`-to-exit handling is ordinary `keydown` code. A few parts are easy to get wrong:
 
-1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler knows to enter it.
+1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler knows to enter it, but only when the open did not come from a pointer.
 2. **Preview on focus.** Focusing a trigger calls `showPopover({ source: trigger })` so the menu anchors to it. Ignore focus coming back from inside the trigger's own menu, and hide a previewed menu on `blur` unless focus moved into it.
 3. **Pointer click on a preview.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus and start a preview mid-click. Remember which trigger was pressed. In the `command` handler, a `toggle-popover` from that trigger while the menu is only previewed is the one case to intercept: cancel it and focus the first item.
 4. **Move focus in `toggle`, not `command`.** `command` fires before the menu opens.
 5. **Restore focus to the trigger yourself.** Focus the trigger before `hidePopover()`.
 6. **Close one level at a time.** Call `stopPropagation()` on `Escape` and `ArrowLeft` in a submenu, or the parent's listener closes it too.
+7. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, focus it with `focus({ focusVisible: false })`; browsers without that option still paint no ring for pointer-initiated focus.
 
 ```js
 // 2. Preview: show on focus, anchored to the trigger.
@@ -129,14 +132,23 @@ trigger.addEventListener('focus', event => {
 });
 
 // 3. A click on a preview enters the menu; everything else is native.
+// 1. Only a keyboard open is marked to enter the menu.
 menu.addEventListener('command', event => {
   const previewed = menu.matches(':popover-open:not(:focus-within)');
-  if (event.command === 'toggle-popover' && previewed && pointerTrigger === event.source) {
+  const fromPointer = pointerTrigger === event.source;
+  pointerTrigger = null;
+  if (event.command === 'toggle-popover' && previewed && fromPointer) {
     event.preventDefault();
     focusFirst(menu);
-  } else if (!menu.matches(':popover-open')) {
+  } else if (!menu.matches(':popover-open') && !fromPointer) {
     enterOnOpen.add(menu);
   }
+});
+
+// 7. Pointer over an item moves focus to it, so hover and focus are one item.
+menu.addEventListener('pointermove', event => {
+  const item = event.target.closest('[focusgroup~="menu"] > button');
+  if (item && item !== document.activeElement) item.focus({ focusVisible: false });
 });
 
 // 4. Move focus once the menu is open, and keep aria-expanded in sync.

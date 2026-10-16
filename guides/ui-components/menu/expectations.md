@@ -15,6 +15,8 @@
 - Pressing `Escape` closes only the current menu level, sets its trigger's `aria-expanded` to `"false"`, and restores focus to the trigger that opened it, including for nested submenus.
 - Pressing `Tab` from a trigger or inside an open menu closes all open menus and leaves the menu system instead of stepping through every command.
 - Clicking a previewed trigger enters its menu and focuses the first enabled item, clicking an open trigger closes its menu and restores focus to the trigger, and clicking outside closes every open menu level.
+- Opening a menu by pointer does not move focus into the menu and no item matches `:focus-visible`; opening by keyboard moves focus to the first enabled item.
+- Moving the pointer over a menu item focuses that item without a visible focus ring, so at most one item is styled as active at a time.
 - Activating a command item closes all open menu levels, restores focus to the root menu trigger, and never leaves focus inside hidden content.
 - Menus are anchored to their triggers via CSS Anchor Positioning (using the invoker or `showPopover({ source: trigger })` without per-menu CSS anchor rules), positioning top-level menus below their trigger and submenus beside their trigger on wide viewports.
 - Menu items align their content columns across rows using CSS Grid and `grid-template-columns: subgrid`.
