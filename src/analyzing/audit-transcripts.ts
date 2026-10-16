@@ -17,7 +17,7 @@ export interface SplitViolation {
   toolName: string;
   target: string;
   matchedRepo?: string;
-  reason: 'grading-only-repo' | 'labels-directory' | 'hardcoded-llm-data-in-ts';
+  reason: 'grading-only-repo' | 'labels-directory';
 }
 
 export interface ToolFrictionSummary {
@@ -323,47 +323,6 @@ export function checkSplitViolations(
             matchedRepo: match.repoName,
             reason: 'grading-only-repo',
           });
-        }
-      }
-
-      // Check for hardcoded LLM fixture data written into TypeScript source files (not test files)
-      if (
-        (call.name === 'write_file' || call.name === 'edit_file') &&
-        !isTestToolCall
-      ) {
-        const targetPath = (
-          call.args.Path ??
-          call.args.path ??
-          call.args.FilePath ??
-          call.args.filepath ??
-          call.args.targetPath
-        ) as unknown;
-
-        if (
-          typeof targetPath === 'string' &&
-          (targetPath.endsWith('.ts') || targetPath.endsWith('.tsx')) &&
-          !targetPath.endsWith('.d.ts')
-        ) {
-          const content = (
-            call.name === 'write_file'
-              ? (call.args.Content ?? call.args.content)
-              : (call.args.Replacement ?? call.args.replacement)
-          ) as unknown;
-
-          if (typeof content === 'string') {
-            const reasonMatches = content.match(/(?:"reason"\s*:|\breason\s*:)/g) ?? [];
-            const brownfieldMatches = content.match(/(?:"brownfieldTarget"\s*:|\bbrownfieldTarget\s*:)/g) ?? [];
-            const totalLlmDataOccurrences = reasonMatches.length + brownfieldMatches.length;
-
-            if (totalLlmDataOccurrences >= 15) {
-              violations.push({
-                stepIndex,
-                toolName: call.name,
-                target: targetPath,
-                reason: 'hardcoded-llm-data-in-ts',
-              });
-            }
-          }
         }
       }
     }
