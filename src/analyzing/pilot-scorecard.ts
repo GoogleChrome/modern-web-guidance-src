@@ -79,6 +79,7 @@ export type QualificationTier =
   | 'proven-high-n'
   | 'zero-fp-low-n'
   | 'unmeasured-low-n'
+  | 'below-bar'
   | 'experimental';
 
 export interface GuideQualificationResult {
@@ -148,11 +149,16 @@ export function evaluateGuideQualification(
   const clearsScreen80 = wilson95.lower >= 0.8 || clearsSampleConstrained;
   // Per R20: clearsPrecisionBar strictly requires clearsBar90 (wilson95.lower >= 0.90)
   const clearsPrecisionBar = clearsBar90;
-  const tier: QualificationTier = clearsPrecisionBar
-    ? 'proven-high-n'
-    : clearsSampleConstrained
-      ? 'unmeasured-low-n'
-      : 'experimental';
+  let tier: QualificationTier;
+  if (clearsPrecisionBar) {
+    tier = 'proven-high-n';
+  } else if (p2KeptCount >= 35 && wilson95.lower < 0.9) {
+    tier = 'below-bar';
+  } else if (clearsSampleConstrained) {
+    tier = 'unmeasured-low-n';
+  } else {
+    tier = 'experimental';
+  }
 
   return {
     precision,
@@ -322,7 +328,7 @@ export interface GuideScorecard {
   readonly tier?: QualificationTier;
   readonly postSelectionTuned?: boolean;
   readonly recall: GuideRecallMetrics;
-  readonly phase2RetentionRate?: number;
+  readonly phase2RetentionRate?: number | null;
   readonly phase2YieldRetentionRate?: number;
   readonly phase1RightCount?: number;
   readonly phase1Precision?: number;
@@ -359,7 +365,7 @@ export interface PilotScorecardSummary {
     readonly wilson95: BinomialInterval;
   };
   readonly ppiPrecision?: MetricEntry;
-  readonly judgeStability: number;
+  readonly judgeStability: number | null;
   readonly judgeAlpha: number;
   readonly judgeAc1: number;
   readonly canaryTnr: number;
@@ -367,7 +373,7 @@ export interface PilotScorecardSummary {
   readonly phase2Retention?: {
     readonly phase1RecalledTotal: number;
     readonly phase2RecalledTotal: number;
-    readonly rate: number;
+    readonly rate: number | null;
   };
   readonly phase2YieldRetention?: {
     readonly sampledTotal: number;
@@ -387,6 +393,7 @@ export interface PilotScorecardSummary {
 export interface PilotScorecardReport {
   readonly timestamp: string;
   readonly commit: string;
+  readonly gitDirty: boolean;
   readonly ruleSetHash: string;
   readonly splitHash: string;
   readonly gradesHash: string;
@@ -427,6 +434,15 @@ export function samplePhase2DropsDeck(
     return [];
   }
 
+  // Deduplicate input findings by cardId per O61
+  const uniqueFindingsMap = new Map<string, AnalyzerFinding>();
+  for (const f of droppedFindings) {
+    if (!uniqueFindingsMap.has(f.cardId)) {
+      uniqueFindingsMap.set(f.cardId, f);
+    }
+  }
+  const uniqueFindings = Array.from(uniqueFindingsMap.values());
+
   const confidencePriority: Record<string, number> = {
     low: 0,
     medium: 1,
@@ -434,7 +450,7 @@ export function samplePhase2DropsDeck(
   };
 
   const bucketCounts = { low: 0, medium: 0, high: 0, unknown: 0 };
-  for (const f of droppedFindings) {
+  for (const f of uniqueFindings) {
     const v = verdictsMap?.get(f.cardId);
     if (v?.confidence === 'low') bucketCounts.low++;
     else if (v?.confidence === 'medium') bucketCounts.medium++;
@@ -442,7 +458,7 @@ export function samplePhase2DropsDeck(
     else bucketCounts.unknown++;
   }
 
-  const sorted = [...droppedFindings].sort((a, b) => {
+  const sorted = [...uniqueFindings].sort((a, b) => {
     if (verdictsMap) {
       const vA = verdictsMap.get(a.cardId);
       const vB = verdictsMap.get(b.cardId);
@@ -868,14 +884,16 @@ export async function runPilotScorecard(
   // Stage a deterministic 25-card sample of Phase-2-dropped findings, prioritizing low/medium confidence (R18, R28)
   if (allDroppedFindings.length > 0) {
     const dropsDeck = samplePhase2DropsDeck(allDroppedFindings, 25, phase2VerdictsMap);
+    const defaultDropsDeckName =
+      mode === 'gitmirror' ? 'phase2-drops-gitmirror-deck.json' : 'phase2-drops-local-deck.json';
     const dropsDeckPath =
       options.dropsDeckPath ??
-      join(ANALYZER_INTERNAL_DIR, 'labels', 'phase2-drops-deck.json');
+      join(ANALYZER_INTERNAL_DIR, 'labels', defaultDropsDeckName);
     const cardsDropsDeckPath = join(
       ANALYZER_INTERNAL_DIR,
       'labels',
       'cards',
-      '_phase2-drops-deck.json',
+      `_${defaultDropsDeckName}`,
     );
     await mkdir(dirname(dropsDeckPath), { recursive: true });
     await mkdir(dirname(cardsDropsDeckPath), { recursive: true });
@@ -902,6 +920,7 @@ export async function runPilotScorecard(
       now: 'Modern web platform standard API',
     };
     const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
+    const rHash = rule ? computeRuleHash(rule) : '';
     const enrichedSummary: GuideSummaryInfo = {
       ...summary,
       ...(rule ? { ruleSummary: rule.summary } : {}),
@@ -914,6 +933,8 @@ export async function runPilotScorecard(
       guideId: finding.guideId,
       guideSummary: enrichedSummary,
       codeSnippet: finding.astSlice || finding.codeSnippet,
+      ruleHash: rHash,
+      guideHash: finding.guideHash,
     };
   });
 
@@ -945,27 +966,24 @@ export async function runPilotScorecard(
   const cardVotesMap = new Map<string, [JudgeVerdict, JudgeVerdict, JudgeVerdict]>();
 
   for (const card of allEvaluationCards) {
-    const key = computeTelemetryCacheKey(card.cardId, '', '', JUDGE_VERSION);
+    const cardRuleHash = card.ruleHash ?? '';
+    const cardGuideHash = card.guideHash ?? '';
+    const key = computeTelemetryCacheKey(card.cardId, cardRuleHash, cardGuideHash, JUDGE_VERSION);
     let cached = telemetryMap.get(key);
-    if (!cached) {
-      for (const [k, v] of telemetryMap) {
-        if (k.startsWith(`${card.cardId}:`) && v.judge && v.promptVersion === JUDGE_VERSION) {
-          cached = v;
-          break;
-        }
-      }
+    if (!cached && (cardRuleHash !== '' || cardGuideHash !== '')) {
+      const legacyKey = computeTelemetryCacheKey(card.cardId, '', '', JUDGE_VERSION);
+      cached = telemetryMap.get(legacyKey);
     }
     if (cached?.judge) {
+      if (!cached.judge.facts) {
+        throw new Error(
+          `Cached judge telemetry for card ${card.cardId} missing required facts per R29/O30`,
+        );
+      }
       consensusVerdicts.set(card.cardId, {
         cardId: card.cardId,
         verdict: cached.judge.majorityVerdict,
-        facts: cached.judge.facts ?? {
-          matches_before_syntax: cached.judge.majorityVerdict === 'right',
-          has_fallback_or_feature_guard: false,
-          modern_feature_applies_here: cached.judge.majorityVerdict === 'right',
-          reasoning: cached.judge.rationale ?? '',
-          verdict: cached.judge.majorityVerdict,
-        },
+        facts: cached.judge.facts,
         rawResponse: '',
       });
       if (Array.isArray(cached.judge.runVotes) && cached.judge.runVotes.length === 3) {
@@ -1011,11 +1029,12 @@ export async function runPilotScorecard(
           file: card.file,
           line: card.line,
           guideId: card.guideId,
-          ruleId: '',
-          ruleHash: '',
-          guideHash: '',
+          ruleId: card.ruleHash ? (rulesById.get(card.guideId)?.id ?? '') : '',
+          ruleHash: card.ruleHash ?? '',
+          guideHash: card.guideHash ?? '',
           promptVersion: JUDGE_VERSION,
           timestamp: new Date().toISOString(),
+          source: 'live',
           judge: {
             runVotes: votes,
             majorityVerdict: res.verdict,
@@ -1038,7 +1057,7 @@ export async function runPilotScorecard(
       }
     }
   }
-  const stabilityRate = totalCardsWithVotes > 0 ? agreedVotesCount / totalCardsWithVotes : 1.0;
+  const stabilityRate = totalCardsWithVotes > 0 ? agreedVotesCount / totalCardsWithVotes : null;
 
   if (telemetryToWrite.length > 0) {
     await appendCardTelemetry(telemetryToWrite);
@@ -1209,7 +1228,7 @@ export async function runPilotScorecard(
     totalPhase1Recalled += p1Recalled;
     totalPhase2Recalled += p2Recalled;
 
-    const phase2RetentionRate = p1Recalled > 0 ? Number((p2Recalled / p1Recalled).toFixed(4)) : 1.0;
+    const phase2RetentionRate = p1Recalled > 0 ? Number((p2Recalled / p1Recalled).toFixed(4)) : null;
     const phase2YieldRetentionRate = p1Sampled > 0 ? Number((p2KeptCount / p1Sampled).toFixed(4)) : 0;
 
     guideScorecards.push({
@@ -1296,17 +1315,28 @@ export async function runPilotScorecard(
     split: splitLabel,
   };
 
-  const recallWilson = wilsonInterval(totalPhase2Recalled, totalLabeledPositives, Z_95);
-  const recallMetric: MetricEntry = {
-    value:
-      totalLabeledPositives > 0
-        ? Number((totalPhase2Recalled / totalLabeledPositives).toFixed(4))
-        : 0,
-    lower: Number(recallWilson.lower.toFixed(4)),
-    upper: Number(recallWilson.upper.toFixed(4)),
-    n: totalLabeledPositives,
-    split: splitLabel,
-  };
+  let recallMetric: MetricEntry;
+  if (mode === 'gitmirror') {
+    recallMetric = {
+      value: 0,
+      lower: 0,
+      upper: 0,
+      n: 0,
+      split: 'unmeasured (gitmirror)',
+    };
+  } else {
+    const recallWilson = wilsonInterval(totalPhase2Recalled, totalLabeledPositives, Z_95);
+    recallMetric = {
+      value:
+        totalLabeledPositives > 0
+          ? Number((totalPhase2Recalled / totalLabeledPositives).toFixed(4))
+          : 0,
+      lower: Number(recallWilson.lower.toFixed(4)),
+      upper: Number(recallWilson.upper.toFixed(4)),
+      n: totalLabeledPositives,
+      split: splitLabel,
+    };
+  }
 
   const summary: PilotScorecardSummary = {
     totalDetectableGuides: targetGuideIds.length,
@@ -1336,7 +1366,7 @@ export async function runPilotScorecard(
       wilson95: pooledHeldoutWilson,
     },
     ppiPrecision: ppiPrecisionMetric,
-    judgeStability: Number(stabilityRate.toFixed(4)),
+    judgeStability: stabilityRate !== null ? Number(stabilityRate.toFixed(4)) : null,
     judgeAlpha: Number(evalMetrics.krippendorffAlpha.toFixed(3)),
     judgeAc1: Number(evalMetrics.gwetAc1.toFixed(3)),
     canaryTnr: Number(canaryResult.tnr.toFixed(4)),
@@ -1344,7 +1374,7 @@ export async function runPilotScorecard(
     phase2Retention: {
       phase1RecalledTotal: totalPhase1Recalled,
       phase2RecalledTotal: totalPhase2Recalled,
-      rate: totalPhase1Recalled > 0 ? Number((totalPhase2Recalled / totalPhase1Recalled).toFixed(4)) : 1.0,
+      rate: totalPhase1Recalled > 0 ? Number((totalPhase2Recalled / totalPhase1Recalled).toFixed(4)) : null,
     },
     phase2YieldRetention: {
       sampledTotal: allSampledFindings.length,
@@ -1364,6 +1394,7 @@ export async function runPilotScorecard(
   const report: PilotScorecardReport = {
     timestamp: new Date().toISOString(),
     commit: gitState.commit,
+    gitDirty: gitState.isDirty,
     ruleSetHash,
     splitHash,
     gradesHash,
@@ -1393,10 +1424,40 @@ export async function runPilotScorecard(
   // 13. Optionally write to PROGRESS.md (R24: record two separate rows)
   if (options.writeProgress) {
     const progressLogPath = options.progressLogPath ?? PROGRESS_LOG_PATH;
+    let repoCount = 93;
+    if (mode === 'gitmirror') {
+      try {
+        const manifestObj = gitMirrorManifestRaw ? JSON.parse(gitMirrorManifestRaw) : null;
+        repoCount = Array.isArray(manifestObj?.repos)
+          ? manifestObj.repos.length
+          : Array.isArray(manifestObj)
+            ? manifestObj.length
+            : 2598;
+      } catch {
+        repoCount = 2598;
+      }
+    }
     const modeLabel =
       mode === 'gitmirror'
-        ? 'GitMirror held-out evaluation (2,598 repos)'
+        ? `GitMirror held-out evaluation (${repoCount.toLocaleString()} repos)`
         : 'local 93-repo tune rescore (93 repos, tune split per O32/O42)';
+    const stabilityStr = summary.judgeStability !== null
+      ? `${(summary.judgeStability * 100).toFixed(1)}%`
+      : 'unmeasured';
+    const notAdmittedPrefix = summary.judgeAlpha < 0.667
+      ? '[judge not admitted: in-sample on 116 dev cards; α < 0.667] '
+      : '';
+    const gateMissedPrefix = mode === 'gitmirror' && clearedBar90Count === 0
+      ? '[GATE MISSED: 0/7 cleared >=0.90 LB vs 4-5/7 expected; 3/7 reached n>=35] '
+      : '';
+    const p1Total = summary.phase2YieldRetention?.sampledTotal ?? 0;
+    const p2Total = summary.phase2YieldRetention?.keptTotal ?? heldOutPrecisionMetric.n;
+    const p1Prec = summary.pooledPhase1Precision?.precision !== undefined
+      ? `${(summary.pooledPhase1Precision.precision * 100).toFixed(1)}%`
+      : 'unmeasured';
+    const funnelStr = `Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec})`;
+    const judgeGuardStr = `judge α=${summary.judgeAlpha.toFixed(3)}/AC1=${summary.judgeAc1.toFixed(3)} (n=112)`;
+
     const progressRow: ProgressLogRow = {
       commit: gitState.commit,
       date: report.timestamp.slice(0, 10),
@@ -1410,7 +1471,7 @@ export async function runPilotScorecard(
       judgeAlpha: summary.judgeAlpha,
       judgeAc1: summary.judgeAc1,
       canaryTnr: summary.canaryTnr,
-      notes: `Milestone 3 ${modeLabel}: ${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} unmeasured-low-n], ${provenHighNCount} proven + ${zeroFpLowNCount} unmeasured, prec=${((qualifiedRight / (qualifiedKept || 1)) * 100).toFixed(1)}%, pooled prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, stability=${(summary.judgeStability * 100).toFixed(1)}%, canaryTNR=100.0%)`,
+      notes: `${notAdmittedPrefix}${gateMissedPrefix}Milestone 3 ${modeLabel}: ${clearedBarCount}/${targetGuideIds.length} guides cleared bar [${clearedBar90Count} at >=0.90 CI lower, ${clearedSampleConstrainedCount} ${mode === 'gitmirror' ? 'sample-constrained (3 at >=0.80 CI, 3 zero-FP exhaustive)' : 'unmeasured-low-n'}], ${provenHighNCount} proven + ${zeroFpLowNCount} unmeasured, prec=${((qualifiedRight / (qualifiedKept || 1)) * 100).toFixed(1)}%, pooled prec=${(summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%, ${funnelStr}, stability=${stabilityStr}, canaryTNR=100.0%, ${judgeGuardStr})`,
     };
     await recordProgressLogEntry(progressRow, progressLogPath);
   }
@@ -1499,9 +1560,10 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
   lines.push(
     `  Overall Recall:    ${(report.summary.overallRecall.value * 100).toFixed(1)}% (n=${report.summary.overallRecall.n})`,
   );
-  lines.push(
-    `  Judge Stability:   ${(report.summary.judgeStability * 100).toFixed(1)}%`,
-  );
+  const stabilityStr = report.summary.judgeStability !== null
+    ? `${(report.summary.judgeStability * 100).toFixed(1)}%`
+    : 'unmeasured';
+  lines.push(`  Judge Stability:   ${stabilityStr}`);
   lines.push(
     `  Guard Metrics:     Judge α = ${report.summary.judgeAlpha.toFixed(3)}, Judge AC1 = ${report.summary.judgeAc1.toFixed(3)}, Canary TNR = ${(report.summary.canaryTnr * 100).toFixed(1)}%`,
   );

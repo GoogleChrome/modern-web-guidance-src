@@ -8,6 +8,7 @@ import {
   REPOS_CONFIG_PATH,
 } from './paths.ts';
 import {
+  buildTable3FunnelRowsSync,
   computeFileHash,
   formatMetricCell,
   formatProgressLogMarkdown,
@@ -16,12 +17,14 @@ import {
   HISTORICAL_FIX_SMOKE_TEST_ROWS,
   HISTORICAL_GATE0_TRIAGE_ROWS,
   HISTORICAL_JUDGE_CALIBRATION_ROWS,
+  loadProgressHistorySync,
   parseFixSmokeTestMarkdown,
   parseGate0TriageMarkdown,
   parseJudgeCalibrationMarkdown,
   parseMetricCell,
   parsePipelineScoreboardMarkdown,
   parseProgressLogMarkdown,
+  PROGRESS_HISTORY_PATH,
   type ProgressLogRow,
   recordProgressLogEntry,
   updateProgressLogEntries,
@@ -62,6 +65,21 @@ describe('progress-log metric formatting and parsing', () => {
     assert.strictEqual(parsed.upper, undefined);
     assert.strictEqual(parsed.n, 200);
     assert.strictEqual(parsed.split, 'grading-only');
+  });
+
+  it('formats and parses unmeasured GitMirror recall as N/A (O53)', () => {
+    const metric = {
+      value: 0,
+      n: 0,
+      split: 'unmeasured (gitmirror)',
+    };
+    const formatted = formatMetricCell(metric);
+    assert.strictEqual(formatted, 'N/A (no local labels)');
+
+    const parsed = parseMetricCell(formatted);
+    assert.strictEqual(parsed.value, 0);
+    assert.strictEqual(parsed.n, 0);
+    assert.strictEqual(parsed.split, 'unmeasured (gitmirror)');
   });
 });
 
@@ -174,17 +192,17 @@ describe('formatProgressLogMarkdown and parseProgressLogMarkdown', () => {
     assert.ok(scoreboard.currentBenchmark);
     assert.strictEqual(scoreboard.currentBenchmark.commit, 'abc1234');
     assert.strictEqual(scoreboard.gate0Triage.length, HISTORICAL_GATE0_TRIAGE_ROWS.length);
-    assert.strictEqual(scoreboard.judgeCalibration.length, 4);
+    assert.strictEqual(scoreboard.judgeCalibration.length, HISTORICAL_JUDGE_CALIBRATION_ROWS.length);
     assert.strictEqual(scoreboard.detectionFunnel.length, 1);
     assert.strictEqual(scoreboard.fixSmokeTest.length, 3);
   });
 
   it('verifies historical backfill rows and data integrity', () => {
-    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS.length, 1);
+    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS.length, 2);
     assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[0].runId, 'gate0-v1-full-guide');
     assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[0].detectable, 49);
 
-    assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS.length, 4);
+    assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS.length, 6);
     assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS[0].judgeVersion, 'gemini-3.8-flash:detective-v2-direct');
     assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS[3].judgeVersion, 'gemini-3.8-flash:detective-v4-guide-only');
     // Mislabeled 153dbc5* duplicate row MUST be excluded (R31)
@@ -212,7 +230,7 @@ describe('formatProgressLogMarkdown and parseProgressLogMarkdown', () => {
     assert.strictEqual(gate0Rows[0].runId, 'gate0-v1-full-guide');
 
     const judgeRows = parseJudgeCalibrationMarkdown(markdown);
-    assert.strictEqual(judgeRows.length, 4);
+    assert.strictEqual(judgeRows.length, HISTORICAL_JUDGE_CALIBRATION_ROWS.length);
     assert.strictEqual(judgeRows[0].commit, 'dafe9ee');
 
     const funnelRows = parseProgressLogMarkdown(markdown);
@@ -286,5 +304,86 @@ describe('file operations and hashes', () => {
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it('loads and validates all historical tables via type guards without unsafe casts (O52)', () => {
+    const history = loadProgressHistorySync();
+    assert.ok(history.gate0Triage.length >= 2);
+    assert.ok(history.judgeCalibration.length >= 6);
+    assert.ok(history.detectionFunnel.length >= 8);
+    assert.ok(history.fixSmokeTest.length >= 3);
+
+    for (const g of history.gate0Triage) {
+      assert.ok(g.runId.length > 0);
+      assert.ok(typeof g.detectable === 'number');
+    }
+    for (const j of history.judgeCalibration) {
+      assert.ok(j.commit.length >= 7);
+      assert.ok(typeof j.judgeAlpha === 'number');
+      assert.ok(typeof j.judgeAc1 === 'number');
+    }
+    for (const f of history.fixSmokeTest) {
+      assert.ok(f.commit.length >= 7);
+      assert.ok(typeof f.sampleSize === 'number');
+    }
+  });
+
+  it('verifies that each sourceArtifact citation has a valid format (file or git:<commit>:file) (O52)', async () => {
+    const raw = await readFile(PROGRESS_HISTORY_PATH, 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    assert.ok(typeof parsed === 'object' && parsed !== null);
+    const rec = Object(parsed);
+    const gate0Triage = Array.isArray(rec.gate0Triage) ? rec.gate0Triage : [];
+    const judgeCalibration = Array.isArray(rec.judgeCalibration) ? rec.judgeCalibration : [];
+    const detectionFunnel = Array.isArray(rec.detectionFunnel) ? rec.detectionFunnel : [];
+    const fixSmokeTest = Array.isArray(rec.fixSmokeTest) ? rec.fixSmokeTest : [];
+
+    const allRows = [
+      ...gate0Triage,
+      ...judgeCalibration,
+      ...detectionFunnel,
+      ...fixSmokeTest,
+    ];
+
+    for (const r of allRows) {
+      assert.ok(typeof r === 'object' && r !== null && 'sourceArtifact' in r);
+      const source = String(r.sourceArtifact);
+      assert.ok(source.length > 0, 'every row must have a sourceArtifact citation');
+      const isGitCitation = source.startsWith('git:');
+      const isInternalPath = source.startsWith('analyzer-internal/');
+      assert.ok(
+        isGitCitation || isInternalPath,
+        `Citation "${source}" must start with git:<commit>: or analyzer-internal/`,
+      );
+    }
+  });
+
+  it('rebuilds Table 3 purely from progress-history.json and live scorecards without stale markdown (O36, O52, O53, O61)', () => {
+    const rows = buildTable3FunnelRowsSync();
+    assert.strictEqual(rows.length, 10, 'Expected 8 historical rows + 2 live scorecard rows');
+
+    // Historical rows must use corrected numbers from progress-history.json (not stale markdown)
+    const a5aRow = rows.find((r) => r.commit === 'a5a253f');
+    assert.ok(a5aRow);
+    assert.strictEqual(a5aRow.coverage.value, 0.063, 'a5a253f coverage must be 6.3% (1/16), not 25.0%');
+
+    const d4Row = rows.find((r) => r.commit === '1dd4409');
+    assert.ok(d4Row);
+    assert.strictEqual(d4Row.coverage.value, 0.033, '1dd4409 coverage must be 3.3% (1/30), not 60.0%');
+
+    // Live scorecards for f3c2091
+    const gitmirrorRow = rows.find((r) => r.commit === 'f3c2091' && r.splitHash === '74b80dcdbd61');
+    assert.ok(gitmirrorRow, 'f3c2091 GitMirror row must exist');
+    assert.strictEqual(formatMetricCell(gitmirrorRow.recall), 'N/A (no local labels)', 'GitMirror recall must format as N/A (no local labels)');
+    assert.ok(gitmirrorRow.notes?.includes('[judge not admitted: in-sample on 116 dev cards; α < 0.667]'));
+    assert.ok(gitmirrorRow.notes?.includes('[GATE MISSED: 0/7 cleared >=0.90 LB vs 4-5/7 expected; 3/7 reached n>=35]'));
+    assert.ok(gitmirrorRow.notes?.includes('Phase 1 -> Phase 2: 258 -> 201 (Phase-1 prec=76.0%)'));
+    assert.ok(gitmirrorRow.notes?.includes('(n=112)'));
+
+    const local93Row = rows.find((r) => r.commit === 'f3c2091' && r.splitHash === 'b8af9495f9ec');
+    assert.ok(local93Row, 'f3c2091 Local93 row must exist');
+    assert.ok(local93Row.notes?.includes('[judge not admitted: in-sample on 116 dev cards; α < 0.667]'));
+    assert.ok(local93Row.notes?.includes('Phase 1 -> Phase 2: 397 -> 307 (Phase-1 prec=75.8%)'));
+    assert.ok(local93Row.notes?.includes('(n=112)'));
   });
 });

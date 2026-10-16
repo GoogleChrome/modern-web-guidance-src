@@ -25,6 +25,8 @@ export interface CardTelemetryRecord {
   readonly guideHash: string;
   readonly promptVersion: string;
   readonly timestamp: string;
+  readonly runId?: string;
+  readonly source?: 'live' | 'synthetic';
   readonly phase2?: {
     readonly keep: boolean;
     readonly confidence?: Phase2Confidence;
@@ -36,6 +38,28 @@ export interface CardTelemetryRecord {
     readonly rationale?: string;
     readonly facts?: DetectiveFactCheck;
   };
+}
+
+export function isCardTelemetryRecord(obj: unknown): obj is CardTelemetryRecord {
+  if (typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+  const rec = Object(obj);
+  return (
+    typeof rec.cardId === 'string' &&
+    typeof rec.repo === 'string' &&
+    typeof rec.commit === 'string' &&
+    typeof rec.file === 'string' &&
+    typeof rec.line === 'number' &&
+    typeof rec.guideId === 'string' &&
+    typeof rec.ruleId === 'string' &&
+    typeof rec.ruleHash === 'string' &&
+    typeof rec.guideHash === 'string' &&
+    typeof rec.promptVersion === 'string' &&
+    typeof rec.timestamp === 'string' &&
+    (rec.runId === undefined || typeof rec.runId === 'string') &&
+    (rec.source === undefined || rec.source === 'live' || rec.source === 'synthetic')
+  );
 }
 
 export function computeRuleHash(rule: AnalyzerRule): string {
@@ -76,21 +100,27 @@ export async function loadCardTelemetryMap(
   }
 
   const lines = content.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
     if (!trimmed) continue;
+    let record: unknown;
     try {
-      const record = JSON.parse(trimmed) as CardTelemetryRecord;
-      const key = computeTelemetryCacheKey(
-        record.cardId,
-        record.ruleHash,
-        record.guideHash,
-        record.promptVersion,
-      );
-      map.set(key, record);
-    } catch {
-      // Skip corrupted lines
+      record = JSON.parse(trimmed);
+    } catch (err: unknown) {
+      throw new Error(`Invalid JSON in ${filePath}:${i + 1}: ${String(err)}`);
     }
+    if (!isCardTelemetryRecord(record)) {
+      throw new Error(
+        `Record in ${filePath}:${i + 1} does not match CardTelemetryRecord schema: ${trimmed}`,
+      );
+    }
+    const key = computeTelemetryCacheKey(
+      record.cardId,
+      record.ruleHash,
+      record.guideHash,
+      record.promptVersion,
+    );
+    map.set(key, record);
   }
 
   return map;

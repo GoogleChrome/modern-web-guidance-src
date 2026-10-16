@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   buildGeminiRequestBody,
   checkCanaries,
+  deriveJudgeVerdictFromFacts,
   evaluateJudgeMetrics,
   evaluateJudgeStability,
   extractCodeSnippet,
@@ -88,14 +89,14 @@ describe('blind card formatting & request construction', () => {
     assert.doesNotMatch(prompt, /uses-old-pattern/);
   });
 
-  it('builds Gemini request body with JSON schema and temperature 0', () => {
+  it('builds Gemini request body with JSON schema and temperature 0.2', () => {
     const body = buildGeminiRequestBody(SAMPLE_BLIND_CARD) as {
       generationConfig: { responseMimeType: string; temperature: number };
       contents: Array<{ parts: Array<{ text: string }> }>;
     };
 
     assert.equal(body.generationConfig.responseMimeType, 'application/json');
-    assert.equal(body.generationConfig.temperature, 0.0);
+    assert.equal(body.generationConfig.temperature, 0.2);
     assert.equal(body.contents.length, 1);
     assert.match(body.contents[0].parts[0].text, /scripts\/analyze\.js/);
   });
@@ -165,7 +166,7 @@ describe('parseJudgeJsonContent', () => {
     assert.equal(result.facts.modern_feature_applies_here, true);
   });
 
-  it('cross-checks and computes unambiguous verdicts from 3 boolean facts (R29)', () => {
+  it('cross-checks and computes unambiguous verdicts from 3 boolean facts (R29 and Spec §2.2)', () => {
     // 1. !matches_before_syntax -> 'not-old-pattern' regardless of model verdict
     const rawNotOld = JSON.stringify({
       matches_before_syntax: false,
@@ -176,6 +177,7 @@ describe('parseJudgeJsonContent', () => {
     });
     const res1 = parseJudgeJsonContent(rawNotOld, 'c1');
     assert.equal(res1.verdict, 'not-old-pattern');
+    assert.equal(res1.facts.rawVerdict, 'unsure');
 
     // 2. matches_before_syntax && has_fallback_or_feature_guard -> 'leave-it'
     const rawLeaveIt = JSON.stringify({
@@ -187,6 +189,7 @@ describe('parseJudgeJsonContent', () => {
     });
     const res2 = parseJudgeJsonContent(rawLeaveIt, 'c2');
     assert.equal(res2.verdict, 'leave-it');
+    assert.equal(res2.facts.rawVerdict, 'right');
 
     // 3. matches_before_syntax && !has_fallback_or_feature_guard && modern_feature_applies_here -> 'right'
     const rawRight = JSON.stringify({
@@ -194,10 +197,91 @@ describe('parseJudgeJsonContent', () => {
       has_fallback_or_feature_guard: false,
       modern_feature_applies_here: true,
       reasoning: 'Clean legacy match.',
-      verdict: 'unsure',
+      verdict: 'right',
     });
     const res3 = parseJudgeJsonContent(rawRight, 'c3');
     assert.equal(res3.verdict, 'right');
+    assert.equal(res3.facts.rawVerdict, 'right');
+
+    // 4. matches_before_syntax && !has_fallback_or_feature_guard && !modern_feature_applies_here -> 'leave-it' (Spec §2.2)
+    const rawNoModern = JSON.stringify({
+      matches_before_syntax: true,
+      has_fallback_or_feature_guard: false,
+      modern_feature_applies_here: false,
+      reasoning: 'Modern replacement would not work for this case.',
+      verdict: 'leave-it',
+    });
+    const res4 = parseJudgeJsonContent(rawNoModern, 'c4');
+    assert.equal(res4.verdict, 'leave-it');
+    assert.equal(res4.facts.rawVerdict, 'leave-it');
+
+    // 5. rawVerdict === 'unsure' is preserved and NOT overwritten to 'right' (O55f)
+    const rawUnsure = JSON.stringify({
+      matches_before_syntax: true,
+      has_fallback_or_feature_guard: false,
+      modern_feature_applies_here: true,
+      reasoning: 'Unsure about surrounding context.',
+      verdict: 'unsure',
+    });
+    const res5 = parseJudgeJsonContent(rawUnsure, 'c5');
+    assert.equal(res5.verdict, 'unsure');
+    assert.equal(res5.facts.rawVerdict, 'unsure');
+  });
+
+  it('deriveJudgeVerdictFromFacts covers all truth table branches strictly (O55f)', () => {
+    // rawVerdict === 'guide-wrong' always returns 'guide-wrong'
+    assert.equal(
+      deriveJudgeVerdictFromFacts(
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true },
+        'guide-wrong',
+      ),
+      'guide-wrong',
+    );
+
+    // !matches_before_syntax -> 'not-old-pattern'
+    assert.equal(
+      deriveJudgeVerdictFromFacts(
+        { matches_before_syntax: false, has_fallback_or_feature_guard: false, modern_feature_applies_here: true },
+        'right',
+      ),
+      'not-old-pattern',
+    );
+
+    // has_fallback_or_feature_guard -> 'leave-it'
+    assert.equal(
+      deriveJudgeVerdictFromFacts(
+        { matches_before_syntax: true, has_fallback_or_feature_guard: true, modern_feature_applies_here: true },
+        'right',
+      ),
+      'leave-it',
+    );
+
+    // !modern_feature_applies_here -> 'leave-it' (Spec §2.2)
+    assert.equal(
+      deriveJudgeVerdictFromFacts(
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: false },
+        'leave-it',
+      ),
+      'leave-it',
+    );
+
+    // rawVerdict === 'unsure' -> 'unsure'
+    assert.equal(
+      deriveJudgeVerdictFromFacts(
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true },
+        'unsure',
+      ),
+      'unsure',
+    );
+
+    // clean right match
+    assert.equal(
+      deriveJudgeVerdictFromFacts(
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true },
+        'right',
+      ),
+      'right',
+    );
   });
 
   it('throws an error on malformed or non-JSON output per Fail Fast (R22)', () => {

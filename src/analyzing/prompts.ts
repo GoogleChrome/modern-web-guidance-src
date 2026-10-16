@@ -53,7 +53,7 @@ Your task is to classify whether a published feature guide has a statically dete
 You must classify the guide into exactly one of three Gate 0 buckets:
 1. 'detectable':
    The guide replaces one or more concrete, identifiable legacy browser APIs, CSS property/selector workarounds, DOM markup patterns, or third-party npm packages in brownfield code.
-   Guides often only show the modern "After" API. Use both guide.md AND your knowledge of the web ecosystem (legacy npm packages in package.json like select2/chosen-js, moment-timezone/getTimezoneOffset() for timezone math, legacy CSS workarounds like ::-webkit-scrollbar, vendor prefixes, or DOM attributes) to identify whether concrete old techniques exist.
+   Guides often only show the modern "After" API. Use both guide.md AND your knowledge of the web ecosystem (legacy npm packages in package.json, legacy timezone math, legacy CSS workarounds, vendor prefixes, or DOM attributes) to identify whether concrete old techniques exist.
    Boundary rule: If a guide's feature replaces a specific legacy API, CSS property/selector, DOM attribute, or npm package in package.json, classify as 'detectable' and list those in candidateTechniques.
 2. 'ui-recipe-multi-part':
    The guide teaches how to combine multiple HTML/CSS/JS parts to build a general UI component, widget, or layout pattern where legacy implementations vary wildly and lack a specific legacy API, library, or single technique being replaced.
@@ -66,7 +66,7 @@ Guidelines for classification:
 - Read the entire guide markdown carefully, paying attention to the problem statement, code examples, and the underlying modern API.
 - Do NOT require quoting a "Before" section from guide.md to classify a guide as 'detectable'. Guides frequently focus only on the modern solution. Use ecosystem knowledge to determine if common legacy workarounds, npm libraries, or idioms exist.
 - Do NOT pre-judge whether downstream static rules will have false positives; that is evaluated during detection rule development and held-out scoring. Gate 0 only asks whether concrete legacy techniques exist.
-- Identify all concrete legacy techniques in 'candidateTechniques' (array of strings, e.g. ["select2", "chosen-js", "custom dropdown wrapper"]).
+- Identify all concrete legacy techniques in 'candidateTechniques' (array of strings, e.g. ["legacy-library-name", "custom wrapper"]).
 - Set 'borderline' to true if the classification is ambiguous or on the boundary between buckets, false otherwise.
 - Set 'brownfieldTarget' to a concise summary of candidateTechniques (e.g. candidateTechniques joined by "; "), or "none (multi-part UI recipe)" / "none (greenfield capability)".
 - Set 'evidenceFromGuide' to evidence from the guide text or web ecosystem knowledge identifying the legacy pattern or lack thereof.
@@ -140,15 +140,18 @@ Analyze the entire guide markdown above and classify it into one of: 'detectable
 Identify candidateTechniques (if any), borderline flag, brownfieldTarget, cite evidenceFromGuide (from the guide or web ecosystem knowledge), and provide a 1-sentence reason.`;
 }
 
-export function computeGate0PromptVersion(): string {
+export function computeGate0PromptVersion(
+  temperature = 0.0,
+  enableSearchGrounding = true,
+): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
     systemPrompt: GATE0_SYSTEM_PROMPT,
     userPromptTemplateSource: formatGate0Prompt.toString(),
     schema: GATE0_RESPONSE_SCHEMA,
     thinkingBudget: GATE0_THINKING_BUDGET,
-    temperature: 0.0,
-    enableSearchGrounding: false,
+    temperature,
+    enableSearchGrounding,
   });
   return `${PROMPT_MODEL}:gate0-v2-${hash}`;
 }
@@ -234,10 +237,13 @@ export function formatPhase2Prompt(
   const dropList = rule.phase2Rubric.dropWhen.map((item) => `- ${item}`).join('\n');
   const contextSnippet = (finding.astSlice || finding.codeSnippet || '').trim();
 
-  let guideSection = '';
-  if (guideMarkdown && guideMarkdown.trim()) {
-    guideSection = `## Modern Web Guidance Guide (${rule.guideId || rule.id})\n\`\`\`markdown\n${guideMarkdown.trim()}\n\`\`\`\n\n`;
+  if (!guideMarkdown || !guideMarkdown.trim()) {
+    throw new Error(
+      `formatPhase2Prompt failed: guideMarkdown is required for rule ${rule.id} (guide ${rule.guideId ?? rule.id}). Failing fast per R28/O55a.`,
+    );
   }
+
+  const guideSection = `## Modern Web Guidance Guide (${rule.guideId || rule.id})\n\`\`\`markdown\n${guideMarkdown.trim()}\n\`\`\`\n\n`;
 
   return `${guideSection}## Rule: ${rule.id}
 Summary: ${rule.summary}
@@ -282,18 +288,8 @@ export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization
 
 The Modern Web Guidance mission is to identify old web patterns and brownfield library workarounds, and modernize them with standard web platform features to reduce dependencies and improve browser behavior.
 
-Core Evaluation Principles:
-1. ALWAYS ASSUME MODERN PLATFORM SUPPORT: Always assume the target runtime supports the guide's modern web platform feature. NEVER mark 'leave-it' or reject a finding based on browser support, runtime availability, or spec draft maturity (e.g. appearance: base-select, Temporal, popover, scrollbar-color/width).
-2. PLATFORM PRIMITIVE SIMPLIFICATION IS DESIRED: Modernizing to native web platform primitives (scrollbar-color, scrollbar-width, accent-color, appearance: base-select, <dialog>, popover) intentionally trades bespoke pixel-level styling, box-shadows, or heavy plugin complexity for clean, accessible, standard platform styling. When code uses custom CSS/JS to emulate or enhance a standard UI element (such as ::-webkit-scrollbar with pixel widths and box-shadows, jQuery .chosen() / .select2() dropdowns, or custom slider styling), adopting the standard platform property is 'right', NOT 'leave-it'.
-3. RECOGNIZE ECOSYSTEM BROWNFIELD PATTERNS: Guides often focus on the modern solution rather than cataloging every legacy workaround. Use both guide.md AND your knowledge of web ecosystem patterns that the guide replaces:
-   - CSS sibling-combinator state hacks (:checked ~, :checked +) replaced by modern state styling
-   - Client-side <script type="text/template"> blocks replaced by <template>
-   - Legacy vendor visibility properties (webkitHidden, msHidden) replaced by document.visibilityState
-   - Bootstrap/jQuery toggle attributes (data-toggle, data-bs-toggle) replaced by native popover/dialog
-   - Manual Date UTC string slicing, epoch math, or getTimezoneOffset() replaced by modern date APIs / Temporal
-   - Imperative jQuery animations (.fadeIn(), .fadeOut(), .slideToggle()) replaced by CSS transitions / @starting-style
-   - Imperative setInterval/setTimeout loops replaced by modern scheduling / requestVideoFrameCallback
-   These are genuine legacy targets: mark matches_before_syntax = true and modern_feature_applies_here = true unless the snippet is an unrelated token collision or already protected by a feature guard.
+Core Evaluation Principle:
+- ASSUME MODERN PLATFORM SUPPORT: Target environments support the guide's modern web platform feature unless the code is inside an explicit feature-detection or fallback guard. Never reject a finding solely on browser support, runtime availability, or spec draft maturity.
 
 Detective-then-Judge methodology:
 1. \`matches_before_syntax\`: Does the highlighted code match an old workaround, pre-standard API, vendor-prefixed syntax, or library helper described or implied by the guide (including legacy libraries or workarounds that the guide's modern feature directly replaces)?
@@ -303,7 +299,7 @@ Detective-then-Judge methodology:
 5. \`verdict\`: One of the following 5 values strictly aligned with the criteria below:
    - 'right': The code really is the legacy/"Before" pattern (or legacy library/workaround replaced by this guide), is not an intentional fallback, and the guide's modern way makes sense here.
    - 'not-old-pattern': The code isn't doing the legacy thing at all (detector mistake / token collision).
-   - 'leave-it': It IS the old pattern, but it should stay: either a deliberate fallback/feature-guard/polyfill, or non-browser code. Do NOT vote 'leave-it' based on browser support or because the modern platform primitive is simpler than custom CSS/plugins.
+   - 'leave-it': It IS the old pattern, but it should stay: either a deliberate fallback/feature-guard/polyfill, non-browser code, or the guide's modern replacement wouldn't work for this specific use case. Do NOT vote 'leave-it' based on browser support.
    - 'guide-wrong': The guide itself is wrong to call this pattern a problem.
    - 'unsure': Insufficient context to determine.`;
 
@@ -381,19 +377,22 @@ ${card.codeSnippet}
 \`\`\``;
 }
 
-export function computeJudgePromptVersion(): string {
+export function computeJudgePromptVersion(
+  temperature = 0.2,
+): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
     systemPrompt: JUDGE_SYSTEM_PROMPT,
     userPromptTemplateSource: formatBlindCardPrompt.toString(),
     schema: JUDGE_RESPONSE_SCHEMA,
     thinkingBudget: JUDGE_THINKING_BUDGET,
-    temperature: 0.2,
+    temperature,
     enableSearchGrounding: false,
   });
   return `${PROMPT_MODEL}:detective-v6-spec22-${hash}`;
 }
 
+export const computeJudgeVersion = computeJudgePromptVersion;
 export const JUDGE_VERSION = computeJudgePromptVersion();
 
 // ============================================================================

@@ -59,19 +59,21 @@ export interface DetectiveFactCheck {
   modern_feature_applies_here: boolean;
   reasoning: string;
   verdict: JudgeVerdict;
+  rawVerdict?: JudgeVerdict;
 }
 
 export function isDetectiveFactCheck(obj: unknown): obj is DetectiveFactCheck {
   if (typeof obj !== 'object' || obj === null) {
     return false;
   }
-  const rec = obj as Record<string, unknown>;
+  const rec = Object(obj);
   return (
     typeof rec.matches_before_syntax === 'boolean' &&
     typeof rec.has_fallback_or_feature_guard === 'boolean' &&
     typeof rec.modern_feature_applies_here === 'boolean' &&
     typeof rec.reasoning === 'string' &&
-    isJudgeVerdict(rec.verdict)
+    isJudgeVerdict(rec.verdict) &&
+    (rec.rawVerdict === undefined || isJudgeVerdict(rec.rawVerdict))
   );
 }
 
@@ -93,6 +95,8 @@ export interface BlindCardPayload {
   guideId: string;
   guideSummary: GuideSummaryInfo;
   codeSnippet: string;
+  ruleHash?: string;
+  guideHash?: string;
 }
 
 export interface JudgeResult {
@@ -119,7 +123,7 @@ export interface CanaryCheckResult {
 }
 
 export interface StabilityEvaluationResult {
-  stabilityRate: number;
+  stabilityRate: number | null;
   krippendorffAlpha: number;
   gwetAc1: number;
   pairwiseAlphas: readonly [number, number, number];
@@ -132,8 +136,9 @@ export interface JudgeEvaluationMetrics {
   gwetAc1: number;
   sensitivitySpecificity: SensitivitySpecificityResult;
   ppiPrecision: PpiPlusPlusResult;
-  retainedDroppedRate: number;
+  retainedDroppedRate: number | null;
   nPaired: number;
+  unsureCount?: number;
 }
 
 export interface JudgeRunOptions {
@@ -152,7 +157,7 @@ import { BROWNFIELD_GUIDE_RUBRIC } from './guide-rubrics.ts';
 /**
  * Helper to construct Gemini generateContent request body with structured schema and thinking budget.
  */
-export function buildGeminiRequestBody(card: BlindCardPayload, temperature = 0.0): unknown {
+export function buildGeminiRequestBody(card: BlindCardPayload, temperature = 0.2): unknown {
   return {
     systemInstruction: {
       parts: [{ text: JUDGE_SYSTEM_PROMPT }],
@@ -173,9 +178,12 @@ export function buildGeminiRequestBody(card: BlindCardPayload, temperature = 0.0
 }
 
 /**
- * Cross-checks and computes unambiguous judge verdict from the 3 boolean facts per R29:
+ * Cross-checks and computes unambiguous judge verdict from the 3 boolean facts per R29 and Spec §2.2:
  * - !matches_before_syntax -> 'not-old-pattern'
  * - matches_before_syntax && has_fallback_or_feature_guard -> 'leave-it'
+ * - matches_before_syntax && !has_fallback_or_feature_guard && !modern_feature_applies_here -> 'leave-it'
+ * - raw llmVerdict === 'guide-wrong' -> 'guide-wrong'
+ * - raw llmVerdict === 'unsure' -> 'unsure'
  * - matches_before_syntax && !has_fallback_or_feature_guard && modern_feature_applies_here -> 'right'
  */
 export function deriveJudgeVerdictFromFacts(
@@ -196,7 +204,10 @@ export function deriveJudgeVerdictFromFacts(
     return 'leave-it';
   }
   if (!facts.modern_feature_applies_here) {
-    return 'guide-wrong';
+    return 'leave-it';
+  }
+  if (llmVerdict === 'unsure') {
+    return 'unsure';
   }
   return 'right';
 }
@@ -231,6 +242,7 @@ export function parseJudgeJsonContent(rawText: string, cardId: string): JudgeRes
     facts: {
       ...parsed,
       verdict: finalVerdict,
+      rawVerdict: parsed.verdict,
     },
     rawResponse: rawText,
   };
@@ -677,7 +689,7 @@ export function evaluateJudgeStability(
   const avgAc1 = (ac101 + ac112 + ac102) / 3;
 
   return {
-    stabilityRate: n > 0 ? exactMatchCount / n : 1.0,
+    stabilityRate: n > 0 ? exactMatchCount / n : null,
     krippendorffAlpha: avgAlpha,
     gwetAc1: avgAc1,
     pairwiseAlphas: [alpha01, alpha12, alpha02],
@@ -700,15 +712,20 @@ export function evaluateJudgeMetrics(
 
   let retainedDroppedCount = 0;
   let totalDroppedEvaluated = 0;
+  let unsureCount = 0;
 
   for (const j of judgeResults) {
     const humanLabel = humanGrades.get(j.cardId);
     if (humanLabel) {
       nominalPairs.push([humanLabel, j.verdict]);
-      binaryPairs.push({
-        humanRight: humanLabel === 'right',
-        judgeRight: j.verdict === 'right',
-      });
+      if (humanLabel === 'unsure') {
+        unsureCount++;
+      } else {
+        binaryPairs.push({
+          humanRight: humanLabel === 'right',
+          judgeRight: j.verdict === 'right',
+        });
+      }
     }
 
     if (droppedCardIds.has(j.cardId)) {
@@ -725,7 +742,7 @@ export function evaluateJudgeMetrics(
   const ppiPrecision = ppiPlusPlusPrecision(judgeAllBools, binaryPairs);
 
   const retainedDroppedRate =
-    totalDroppedEvaluated > 0 ? retainedDroppedCount / totalDroppedEvaluated : 1.0;
+    totalDroppedEvaluated > 0 ? retainedDroppedCount / totalDroppedEvaluated : null;
 
   return {
     krippendorffAlpha: alpha,
@@ -734,6 +751,7 @@ export function evaluateJudgeMetrics(
     ppiPrecision,
     retainedDroppedRate,
     nPaired: nominalPairs.length,
+    unsureCount,
   };
 }
 
@@ -932,8 +950,7 @@ export function parseGuideSummaryMarkdown(
   const cleanedProblem = clean(problem);
   const cleanedBefore = clean(before);
   const cleanedNow = clean(now);
-  const fallbackBody = `# ${title}\n\n${cleanedProblem}\n\n**Legacy Approach:**\n${cleanedBefore}\n\n**Modern Solution:**\n${cleanedNow}`;
-  const finalMarkdownBody = markdownBody.trim().length > 0 ? markdownBody : fallbackBody;
+  const finalMarkdownBody = markdownBody.trim().length > 0 ? markdownBody : undefined;
 
   return {
     guideId,
@@ -1151,12 +1168,10 @@ export async function prepareBlindCards(
   const blindCards: BlindCardPayload[] = [];
 
   for (const item of items) {
-    const summary = guideSummaries.get(item.guideId) ?? {
-      guideId: item.guideId,
-      problem: 'Legacy web platform pattern',
-      before: 'Uses legacy platform API or workaround',
-      now: 'Modern web platform standard API',
-    };
+    const summary = guideSummaries.get(item.guideId);
+    if (!summary?.markdownBody?.trim()) {
+      continue;
+    }
 
     let snippet = item.code ?? '';
     if (!snippet) {

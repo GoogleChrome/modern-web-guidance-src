@@ -4,7 +4,9 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import {
   ALL_RULES,
+  JSON_QUALIFIED_RULES,
   QUALIFIED_RULES,
+  TERMINAL_QUALIFIED_RULES,
   TIER_1_GUIDE_IDS,
   TIER_1_RULES,
   TIER_2_GUIDE_IDS,
@@ -144,7 +146,9 @@ export async function runAnalyzeCli(
     ? TIER_1_RULES
     : useAllRules || Boolean(guideFilter)
       ? ALL_RULES
-      : QUALIFIED_RULES;
+      : isJson
+        ? JSON_QUALIFIED_RULES
+        : TERMINAL_QUALIFIED_RULES;
   const activeRulesList = options?.rules ?? defaultRules;
   const activeRules = guideFilter
     ? activeRulesList.filter((r) => r.guideId === guideFilter)

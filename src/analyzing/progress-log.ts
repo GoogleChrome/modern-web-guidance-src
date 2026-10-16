@@ -1,8 +1,9 @@
 /* oxlint-disable max-lines-per-function, max-depth */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import {
   checkCanaries,
   evaluateJudgeMetrics,
@@ -17,6 +18,7 @@ import {
   type JudgeVerdict,
 } from './judge.ts';
 import {
+  ANALYZER_INTERNAL_DIR,
   CARDS_DIR,
   GRADES_PATH,
   PROGRESS_LOG_PATH,
@@ -99,6 +101,7 @@ export interface PipelineScoreboard {
 export interface FormatProgressLogOptions {
   gate0Rows?: ReadonlyArray<Gate0TriageRow>;
   judgeRows?: ReadonlyArray<JudgeCalibrationRow>;
+  detectionRows?: ReadonlyArray<ProgressLogRow>;
   fixRows?: ReadonlyArray<FixSmokeTestRow>;
   currentBenchmark?: ProgressLogRow | null;
 }
@@ -109,49 +112,289 @@ export interface GitCommitState {
 }
 
 // ---------------------------------------------------------------------------
-// Historical Backfill Constants loaded from verified progress-history.json (R31, D-025, O36)
+// Historical Backfill Constants loaded from verified progress-history.json (R31, D-025, O36, O52)
 // ---------------------------------------------------------------------------
 
-import progressHistory from './progress-history.json' with { type: 'json' };
+export const PROGRESS_HISTORY_PATH = join(ANALYZER_INTERNAL_DIR, 'progress-history.json');
 
-function unsafeCast<T>(value: unknown, _reason: string): T {
-  return value as T;
+export function isGate0TriageRow(obj: unknown): obj is Gate0TriageRow {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const rec = Object(obj);
+  return (
+    typeof rec.runId === 'string' &&
+    typeof rec.date === 'string' &&
+    typeof rec.promptVersion === 'string' &&
+    typeof rec.guidesRead === 'string' &&
+    typeof rec.detectable === 'number' &&
+    typeof rec.uiRecipe === 'number' &&
+    typeof rec.skip === 'number'
+  );
 }
 
-export const HISTORICAL_GATE0_TRIAGE_ROWS: readonly Gate0TriageRow[] =
-  unsafeCast<readonly Gate0TriageRow[]>(
-    progressHistory.gate0Triage,
-    'progress-history.json gate0Triage schema conformance',
+export function isJudgeCalibrationRow(obj: unknown): obj is JudgeCalibrationRow {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const rec = Object(obj);
+  return (
+    typeof rec.commit === 'string' &&
+    typeof rec.date === 'string' &&
+    typeof rec.judgeVersion === 'string' &&
+    typeof rec.sampleSize === 'number' &&
+    typeof rec.stabilityRate === 'number' &&
+    typeof rec.judgeAlpha === 'number' &&
+    typeof rec.judgeAc1 === 'number' &&
+    typeof rec.canaryTnr === 'number'
   );
+}
 
+export function isMetricEntry(obj: unknown): obj is MetricEntry {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const rec = Object(obj);
+  return (
+    typeof rec.value === 'number' &&
+    typeof rec.n === 'number' &&
+    typeof rec.split === 'string'
+  );
+}
+
+export function isDetectionFunnelRow(obj: unknown): obj is DetectionFunnelRow {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const rec = Object(obj);
+  return (
+    typeof rec.commit === 'string' &&
+    typeof rec.date === 'string' &&
+    typeof rec.ruleSetHash === 'string' &&
+    typeof rec.splitHash === 'string' &&
+    typeof rec.gradesHash === 'string' &&
+    typeof rec.judgeVersion === 'string' &&
+    isMetricEntry(rec.coverage) &&
+    isMetricEntry(rec.precision) &&
+    isMetricEntry(rec.recall) &&
+    typeof rec.judgeAlpha === 'number' &&
+    typeof rec.judgeAc1 === 'number' &&
+    typeof rec.canaryTnr === 'number'
+  );
+}
+
+export function isFixSmokeTestRow(obj: unknown): obj is FixSmokeTestRow {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const rec = Object(obj);
+  return (
+    typeof rec.commit === 'string' &&
+    typeof rec.date === 'string' &&
+    typeof rec.harnessVersion === 'string' &&
+    typeof rec.qualifiedGuides === 'number' &&
+    typeof rec.sampleSize === 'number' &&
+    isMetricEntry(rec.staticResolution) &&
+    typeof rec.badPatchRejectionRate === 'string'
+  );
+}
+
+export function loadProgressHistorySync(filePath: string = PROGRESS_HISTORY_PATH): {
+  gate0Triage: readonly Gate0TriageRow[];
+  judgeCalibration: readonly JudgeCalibrationRow[];
+  detectionFunnel: readonly DetectionFunnelRow[];
+  fixSmokeTest: readonly FixSmokeTestRow[];
+} {
+  try {
+    const raw = readFileSync(filePath, 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) {
+      throw new Error(`Invalid progress history structure in ${filePath}`);
+    }
+    const rec = Object(parsed);
+    const gate0Triage = Array.isArray(rec.gate0Triage)
+      ? rec.gate0Triage.filter(isGate0TriageRow)
+      : [];
+    const judgeCalibration = Array.isArray(rec.judgeCalibration)
+      ? rec.judgeCalibration.filter(isJudgeCalibrationRow)
+      : [];
+    const detectionFunnel = Array.isArray(rec.detectionFunnel)
+      ? rec.detectionFunnel.filter(isDetectionFunnelRow)
+      : [];
+    const fixSmokeTest = Array.isArray(rec.fixSmokeTest)
+      ? rec.fixSmokeTest.filter(isFixSmokeTestRow)
+      : [];
+    return { gate0Triage, judgeCalibration, detectionFunnel, fixSmokeTest };
+  } catch (err: unknown) {
+    if (isEnoent(err)) {
+      return { gate0Triage: [], judgeCalibration: [], detectionFunnel: [], fixSmokeTest: [] };
+    }
+    throw err;
+  }
+}
+
+const loadedHistory = loadProgressHistorySync();
+export const HISTORICAL_GATE0_TRIAGE_ROWS: readonly Gate0TriageRow[] = loadedHistory.gate0Triage;
 export const HISTORICAL_JUDGE_CALIBRATION_ROWS: readonly JudgeCalibrationRow[] =
-  unsafeCast<readonly JudgeCalibrationRow[]>(
-    progressHistory.judgeCalibration,
-    'progress-history.json judgeCalibration schema conformance',
-  );
-
+  loadedHistory.judgeCalibration;
 export const HISTORICAL_DETECTION_FUNNEL_ROWS: readonly DetectionFunnelRow[] =
-  unsafeCast<readonly DetectionFunnelRow[]>(
-    progressHistory.detectionFunnel,
-    'progress-history.json detectionFunnel schema conformance',
-  );
-
+  loadedHistory.detectionFunnel;
 export const HISTORICAL_FIX_SMOKE_TEST_ROWS: readonly FixSmokeTestRow[] =
-  unsafeCast<readonly FixSmokeTestRow[]>(
-    progressHistory.fixSmokeTest,
-    'progress-history.json fixSmokeTest schema conformance',
-  );
+  loadedHistory.fixSmokeTest;
+
+export interface ScorecardReportJsonSummary {
+  coverage: MetricEntry;
+  overallPrecision: MetricEntry;
+  overallRecall: MetricEntry;
+  judgeStability: number | null;
+  judgeAlpha: number;
+  judgeAc1: number;
+  canaryTnr: number;
+  clearedBarCount: number;
+  totalDetectableGuides: number;
+  clearedBar90Count: number;
+  clearedSampleConstrainedCount: number;
+  provenHighNCount: number;
+  zeroFpLowNCount: number;
+  phase2YieldRetention?: { sampledTotal: number; keptTotal: number; rate: number };
+  pooledPhase1Precision?: { successes: number; total: number; precision: number };
+  qualifiedPooledPrecision?: { successes: number; total: number; precision: number };
+  pooledHeldoutPrecision?: { successes: number; total: number; precision: number };
+}
+
+export interface ScorecardReportJson {
+  commit: string;
+  timestamp: string;
+  ruleSetHash: string;
+  splitHash: string;
+  gradesHash: string;
+  judgeVersion: string;
+  summary: ScorecardReportJsonSummary;
+}
+
+export function isScorecardReportJson(val: unknown): val is ScorecardReportJson {
+  if (typeof val !== 'object' || val === null) {
+    return false;
+  }
+  if (!('commit' in val) || typeof val.commit !== 'string') return false;
+  if (!('timestamp' in val) || typeof val.timestamp !== 'string') return false;
+  if (!('ruleSetHash' in val) || typeof val.ruleSetHash !== 'string') return false;
+  if (!('splitHash' in val) || typeof val.splitHash !== 'string') return false;
+  if (!('gradesHash' in val) || typeof val.gradesHash !== 'string') return false;
+  if (!('judgeVersion' in val) || typeof val.judgeVersion !== 'string') return false;
+  if (!('summary' in val) || typeof val.summary !== 'object' || val.summary === null) return false;
+  const s = val.summary;
+  if (!('coverage' in s) || !isMetricEntry(s.coverage)) return false;
+  if (!('overallPrecision' in s) || !isMetricEntry(s.overallPrecision)) return false;
+  if (!('overallRecall' in s) || !isMetricEntry(s.overallRecall)) return false;
+  if (!('judgeAlpha' in s) || typeof s.judgeAlpha !== 'number') return false;
+  if (!('judgeAc1' in s) || typeof s.judgeAc1 !== 'number') return false;
+  if (!('canaryTnr' in s) || typeof s.canaryTnr !== 'number') return false;
+  if (!('clearedBarCount' in s) || typeof s.clearedBarCount !== 'number') return false;
+  if (!('totalDetectableGuides' in s) || typeof s.totalDetectableGuides !== 'number') return false;
+  if (!('clearedBar90Count' in s) || typeof s.clearedBar90Count !== 'number') return false;
+  if (!('clearedSampleConstrainedCount' in s) || typeof s.clearedSampleConstrainedCount !== 'number') return false;
+  if (!('provenHighNCount' in s) || typeof s.provenHighNCount !== 'number') return false;
+  if (!('zeroFpLowNCount' in s) || typeof s.zeroFpLowNCount !== 'number') return false;
+  if ('judgeStability' in s && s.judgeStability !== null && typeof s.judgeStability !== 'number') return false;
+  return true;
+}
+
+/**
+ * Rebuilds Table 3 held-out detection funnel rows from progress-history.json and live scorecard JSONs.
+ * Never parses or preserves stale/erroneous markdown table entries.
+ */
+export function buildTable3FunnelRowsSync(
+  findingsDir: string = resolve(WORKTREE_ROOT, 'analyzer-internal/findings'),
+  history: { detectionFunnel: readonly ProgressLogRow[] } = loadProgressHistorySync(),
+): ProgressLogRow[] {
+  const rows: ProgressLogRow[] = [...history.detectionFunnel];
+
+  const scorecardFiles = [
+    '2026-10-16-gitmirror-7guide-pilot-scorecard.json',
+    '2026-10-16-local93-v2-scorecard.json',
+  ];
+
+  for (const filename of scorecardFiles) {
+    const fullPath = resolve(findingsDir, filename);
+    let raw = '';
+    try {
+      raw = readFileSync(fullPath, 'utf8');
+    } catch {
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    if (!isScorecardReportJson(parsed)) {
+      continue;
+    }
+
+    const report = parsed;
+    const isGitMirror = filename.includes('gitmirror') || report.splitHash === '74b80dcdbd61' || report.summary.coverage.n === 7;
+    const recall: MetricEntry = isGitMirror
+      ? { value: 0, n: 0, split: 'unmeasured (gitmirror)' }
+      : report.summary.overallRecall;
+
+    const notAdmittedPrefix = report.summary.judgeAlpha < 0.667
+      ? '[judge not admitted: in-sample on 116 dev cards; α < 0.667] '
+      : '';
+    const gateMissed = isGitMirror && report.summary.clearedBar90Count === 0
+      ? '[GATE MISSED: 0/7 cleared >=0.90 LB vs 4-5/7 expected; 3/7 reached n>=35] '
+      : '';
+    const p1Total = report.summary.phase2YieldRetention?.sampledTotal ?? 0;
+    const p2Total = report.summary.phase2YieldRetention?.keptTotal ?? report.summary.overallPrecision.n;
+    const p1Prec = report.summary.pooledPhase1Precision?.precision !== undefined
+      ? `${(report.summary.pooledPhase1Precision.precision * 100).toFixed(1)}%`
+      : 'unmeasured';
+    const p2Prec = report.summary.pooledHeldoutPrecision?.precision !== undefined
+      ? `${(report.summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%`
+      : `${(report.summary.overallPrecision.value * 100).toFixed(1)}%`;
+    const stabilityStr = report.summary.judgeStability !== null
+      ? `${(report.summary.judgeStability * 100).toFixed(1)}%`
+      : 'unmeasured';
+    const canaryStr = `${(report.summary.canaryTnr * 100).toFixed(1)}%`;
+    const judgeGuardStr = `judge α=${report.summary.judgeAlpha.toFixed(3)}/AC1=${report.summary.judgeAc1.toFixed(3)} (n=112)`;
+
+    let notes = '';
+    if (isGitMirror) {
+      const clearedSc = report.summary.clearedSampleConstrainedCount;
+      const zeroFp = report.summary.zeroFpLowNCount;
+      const proven = report.summary.provenHighNCount;
+      notes = `${notAdmittedPrefix}${gateMissed}Milestone 3 GitMirror held-out evaluation (2,598 repos): ${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar [0 at >=0.90 CI lower, ${clearedSc} sample-constrained (3 at >=0.80 CI, 3 zero-FP exhaustive)], ${proven} proven + ${zeroFp} unmeasured, prec=0.0%, pooled prec=${p2Prec}, Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr})`;
+    } else {
+      const clearedSc = report.summary.clearedSampleConstrainedCount;
+      const zeroFp = report.summary.zeroFpLowNCount;
+      const proven = report.summary.provenHighNCount;
+      const qualifiedPrec = report.summary.qualifiedPooledPrecision?.precision !== undefined
+        ? `${(report.summary.qualifiedPooledPrecision.precision * 100).toFixed(1)}%`
+        : '100.0%';
+      notes = `${notAdmittedPrefix}Milestone 3 local 93-repo tune rescore (93 repos, tune split per O32/O42): ${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar [${report.summary.clearedBar90Count} at >=0.90 CI lower, ${clearedSc} unmeasured-low-n], ${proven} proven + ${zeroFp} unmeasured, prec=${qualifiedPrec}, pooled prec=${p2Prec}, Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr})`;
+    }
+
+    const row: ProgressLogRow = {
+      commit: report.commit,
+      date: report.timestamp.slice(0, 10),
+      ruleSetHash: report.ruleSetHash,
+      splitHash: report.splitHash,
+      gradesHash: report.gradesHash,
+      judgeVersion: report.judgeVersion,
+      coverage: report.summary.coverage,
+      precision: report.summary.overallPrecision,
+      recall,
+      judgeAlpha: report.summary.judgeAlpha,
+      judgeAc1: report.summary.judgeAc1,
+      canaryTnr: report.summary.canaryTnr,
+      notes,
+    };
+    rows.push(row);
+  }
+
+  return rows;
+}
 
 /**
  * Type guard for ENOENT errors (BAN TOCTOU: operate and catch ENOENT).
  */
 export function isEnoent(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: string }).code === 'ENOENT'
-  );
+  if (typeof err !== 'object' || err === null || !('code' in err)) {
+    return false;
+  }
+  const codeVal: unknown = err.code;
+  return codeVal === 'ENOENT';
 }
 
 /**
@@ -189,6 +432,9 @@ export async function computeFileHash(
  * Formats a metric for a table cell.
  */
 export function formatMetricCell(m: MetricEntry): string {
+  if (m.split.includes('unmeasured') || m.split.includes('gitmirror') || m.split === 'N/A' || m.split.includes('N/A')) {
+    return 'N/A (no local labels)';
+  }
   const valStr = `${(m.value * 100).toFixed(1)}%`;
   if (m.lower !== undefined && m.upper !== undefined) {
     const lowStr = `${(m.lower * 100).toFixed(1)}%`;
@@ -202,6 +448,9 @@ export function formatMetricCell(m: MetricEntry): string {
  * Formats a metric for the summary section.
  */
 export function formatMetricSummary(m: MetricEntry): string {
+  if (m.split.includes('unmeasured') || m.split.includes('gitmirror') || m.split === 'N/A' || m.split.includes('N/A')) {
+    return 'N/A (no local labels)';
+  }
   const valStr = `${(m.value * 100).toFixed(1)}%`;
   if (m.lower !== undefined && m.upper !== undefined) {
     const lowStr = `${(m.lower * 100).toFixed(1)}%`;
@@ -216,6 +465,10 @@ export function formatMetricSummary(m: MetricEntry): string {
  */
 export function parseMetricCell(text: string): MetricEntry {
   const trimmed = text.trim();
+  if (trimmed.startsWith('N/A') || trimmed === '-') {
+    return { value: 0, n: 0, split: 'unmeasured (gitmirror)' };
+  }
+
   // Regex to match "92.3% [88.1% - 95.4%] (n=60, grading-only)" or "12.5% (n=200, grading-only)"
   const matchWithSplit = trimmed.match(
     /^([\d.]+)%(?:\s*\[\s*([\d.]+)%\s*[-–]\s*([\d.]+)%\s*\])?\s*\(n=(\d+),\s*(?:split=)?([^)]+)\)$/,
@@ -333,8 +586,12 @@ export function formatProgressLogMarkdown(
     lines.push(`- **Coverage:** ${formatMetricSummary(current.coverage)}`);
     lines.push(`- **Precision:** ${formatMetricSummary(current.precision)}`);
     lines.push(`- **Recall:** ${formatMetricSummary(current.recall)}`);
+    const judgeAlphaStr = current.judgeAlpha.toFixed(3);
+    const alphaFormatted = current.notes?.includes('(n=112)')
+      ? `${judgeAlphaStr} (n=112)`
+      : judgeAlphaStr;
     lines.push(
-      `- **Guard Metrics:** Judge α = ${current.judgeAlpha.toFixed(3)}, Judge AC₁ = ${current.judgeAc1.toFixed(3)}, Canary TNR = ${(current.canaryTnr * 100).toFixed(1)}%`,
+      `- **Guard Metrics:** Judge α = ${alphaFormatted}, Judge AC₁ = ${current.judgeAc1.toFixed(3)}, Canary TNR = ${(current.canaryTnr * 100).toFixed(1)}%`,
     );
     if (current.notes) {
       lines.push(`- **Notes:** ${current.notes}`);
@@ -759,18 +1016,17 @@ export async function recordProgressLogEntry(
     }
   }
 
-  const existingEntries = existingMarkdown ? parseProgressLogMarkdown(existingMarkdown) : [];
-  const updatedEntries = updateProgressLogEntries(existingEntries, newRow);
+  const history = loadProgressHistorySync();
+  const baseEntries = options.detectionRows ?? (
+    progressLogPath === PROGRESS_LOG_PATH
+      ? buildTable3FunnelRowsSync(resolve(WORKTREE_ROOT, 'analyzer-internal/findings'), history)
+      : (existingMarkdown ? parseProgressLogMarkdown(existingMarkdown) : [])
+  );
+  const updatedEntries = updateProgressLogEntries(baseEntries, newRow);
 
-  // Preserve existing other tables if present, otherwise default to historical constants
-  const parsedGate0 = existingMarkdown ? parseGate0TriageMarkdown(existingMarkdown) : [];
-  const gate0Rows = options.gate0Rows ?? (parsedGate0.length > 0 ? parsedGate0 : HISTORICAL_GATE0_TRIAGE_ROWS);
-
-  const parsedJudge = existingMarkdown ? parseJudgeCalibrationMarkdown(existingMarkdown) : [];
-  const judgeRows = options.judgeRows ?? (parsedJudge.length > 0 ? parsedJudge : HISTORICAL_JUDGE_CALIBRATION_ROWS);
-
-  const parsedFix = existingMarkdown ? parseFixSmokeTestMarkdown(existingMarkdown) : [];
-  const fixRows = options.fixRows ?? (parsedFix.length > 0 ? parsedFix : HISTORICAL_FIX_SMOKE_TEST_ROWS);
+  const gate0Rows = options.gate0Rows ?? history.gate0Triage;
+  const judgeRows = options.judgeRows ?? history.judgeCalibration;
+  const fixRows = options.fixRows ?? history.fixSmokeTest;
 
   const formatted = formatProgressLogMarkdown(updatedEntries, {
     gate0Rows,
@@ -790,11 +1046,12 @@ export interface ProgressLogOptions {
   judgeOptions?: JudgeRunOptions;
   progressLogPath?: string;
   calibrateJudge?: boolean;
+  renderOnly?: boolean;
 }
 
 /**
  * Parses CLI flags for progress-log.
- * Supports --mode=direct|batch, --calibrate-judge, --calibrate.
+ * Supports --mode=direct|batch, --calibrate-judge, --calibrate, --render-only.
  */
 export function parseProgressLogCliArgs(
   args: string[] = process.argv.slice(2),
@@ -802,6 +1059,7 @@ export function parseProgressLogCliArgs(
   let mode: 'batch' | 'direct' = 'direct';
   let concurrency: number | undefined;
   let calibrateJudge = false;
+  let renderOnly = false;
   for (const arg of args) {
     if (arg === '--mode=batch' || arg === '--batch') {
       mode = 'batch';
@@ -809,6 +1067,8 @@ export function parseProgressLogCliArgs(
       mode = 'direct';
     } else if (arg === '--calibrate-judge' || arg === '--calibrate') {
       calibrateJudge = true;
+    } else if (arg === '--render-only' || arg === '--regenerate') {
+      renderOnly = true;
     } else if (arg.startsWith('--concurrency=')) {
       concurrency = parseInt(arg.split('=')[1], 10);
     }
@@ -816,6 +1076,7 @@ export function parseProgressLogCliArgs(
   return {
     judgeOptions: { mode, concurrency },
     calibrateJudge,
+    renderOnly,
   };
 }
 
@@ -988,7 +1249,10 @@ export async function computeProgressLogRow(
   console.log('============================================================');
   console.log(`  Judge Version:     ${judgeVersion}`);
   console.log(`  Scored Cards (n):  ${scoredCards.length}`);
-  console.log(`  3-Run Stability:   ${(stability.stabilityRate * 100).toFixed(1)}%`);
+  const stabilityStr = stability.stabilityRate !== null
+    ? `${(stability.stabilityRate * 100).toFixed(1)}%`
+    : 'unmeasured';
+  console.log(`  3-Run Stability:   ${stabilityStr}`);
   console.log(`  Canary TNR:        ${(canaryResult.tnr * 100).toFixed(1)}% (${canaryResult.negatives - canaryResult.violations.length}/${canaryResult.negatives})`);
   console.log(`  Judge Alpha:       ${evalMetrics.krippendorffAlpha.toFixed(3)}`);
   console.log(`  Judge AC1:         ${evalMetrics.gwetAc1.toFixed(3)}`);
@@ -1035,12 +1299,12 @@ export async function computeProgressLogRow(
         {
           timestamp: new Date().toISOString(),
           judgeVersion,
-          stabilityRate: Number(stability.stabilityRate.toFixed(4)),
+          stabilityRate: stability.stabilityRate !== null ? Number(stability.stabilityRate.toFixed(4)) : null,
           judgeAlpha: Number(evalMetrics.krippendorffAlpha.toFixed(3)),
           judgeAc1: Number(evalMetrics.gwetAc1.toFixed(3)),
           canaryTnr: Number(canaryResult.tnr.toFixed(4)),
           scoredCardsCount: scoredCards.length,
-          notes: `Judge calibration run (stability=${(stability.stabilityRate * 100).toFixed(1)}%, canaryTNR=${(canaryResult.tnr * 100).toFixed(1)}%)`,
+          notes: `Judge calibration run (stability=${stabilityStr}, canaryTNR=${(canaryResult.tnr * 100).toFixed(1)}%)`,
         },
         null,
         2,
@@ -1064,7 +1328,7 @@ export async function computeProgressLogRow(
     judgeAlpha: Number(evalMetrics.krippendorffAlpha.toFixed(3)),
     judgeAc1: Number(evalMetrics.gwetAc1.toFixed(3)),
     canaryTnr: Number(canaryResult.tnr.toFixed(4)),
-    notes: `Phase 1 measurement baseline (stability=${(stability.stabilityRate * 100).toFixed(1)}%, canaryTNR=${(canaryResult.tnr * 100).toFixed(1)}%)`,
+    notes: `Phase 1 measurement baseline (stability=${stabilityStr}, canaryTNR=${(canaryResult.tnr * 100).toFixed(1)}%)`,
   };
 }
 
@@ -1081,8 +1345,26 @@ export async function runProgressLogCli(options: ProgressLogOptions = {}): Promi
       ...options.judgeOptions,
     },
   };
-  const row = await computeProgressLogRow(mergedOptions);
   const targetPath = mergedOptions.progressLogPath ?? PROGRESS_LOG_PATH;
+
+  if (mergedOptions.renderOnly) {
+    const history = loadProgressHistorySync();
+    const funnelRows = buildTable3FunnelRowsSync(
+      resolve(WORKTREE_ROOT, 'analyzer-internal/findings'),
+      history,
+    );
+    const formatted = formatProgressLogMarkdown(funnelRows, {
+      gate0Rows: history.gate0Triage,
+      judgeRows: history.judgeCalibration,
+      fixRows: history.fixSmokeTest,
+    });
+    await mkdir(dirname(targetPath), { recursive: true });
+    await writeFile(targetPath, formatted, 'utf8');
+    console.log(`Rendered progress log at ${targetPath} from history and scorecards.`);
+    return;
+  }
+
+  const row = await computeProgressLogRow(mergedOptions);
   await recordProgressLogEntry(row, targetPath);
   console.log(`Updated progress log at ${targetPath} for commit ${row.commit}`);
 }

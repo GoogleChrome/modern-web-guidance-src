@@ -191,6 +191,7 @@ describe('formatPilotScorecardReport', () => {
     const mockReport: PilotScorecardReport = {
       timestamp: '2026-10-15T00:00:00.000Z',
       commit: 'abc1234',
+      gitDirty: false,
       ruleSetHash: '2661f572344c',
       splitHash: 'b8af9495f9ec',
       gradesHash: 'b6e5d6f718df',
@@ -299,24 +300,24 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.tier, 'unmeasured-low-n');
   });
 
-  it('identifies 35 <= n < 56 rules with high precision under sample-constrained bar (R20 unmeasured-low-n)', () => {
-    // 42/43: 97.7% precision, wilson95.lower = 0.879 >= 0.80, n = 43 < 56
+  it('identifies 35 <= n < 56 rules with lower bound < 0.90 as below-bar (O53, DECISIONS.md)', () => {
+    // 42/43: 97.7% precision, wilson95.lower = 0.879 < 0.90, n = 43 >= 35
     const qualified = evaluateGuideQualification(42, 43);
     assert.strictEqual(qualified.isSampleConstrained, true);
     assert.strictEqual(qualified.clearedHighN80, true);
     assert.strictEqual(qualified.clearsPrecisionBar, false);
     assert.strictEqual(qualified.clearsScreen80, true);
-    assert.strictEqual(qualified.tier, 'unmeasured-low-n');
+    assert.strictEqual(qualified.tier, 'below-bar');
     assert.strictEqual(Math.round(qualified.precision * 1000) / 10, 97.7);
     assert.strictEqual(Math.round(qualified.wilson95.lower * 1000) / 1000, 0.879);
 
-    // 39/43: 90.7% point precision (< 0.95), wilson95.lower = 0.784 (< 0.80), 4 FPs
+    // 39/43: 90.7% point precision (< 0.95), wilson95.lower = 0.784 (< 0.80), 4 FPs (n=43 >= 35 -> below-bar)
     const notQualified = evaluateGuideQualification(39, 43);
     assert.strictEqual(notQualified.isSampleConstrained, true);
     assert.strictEqual(notQualified.clearedHighN80, false);
     assert.strictEqual(notQualified.clearedZeroFpExhaustive, false);
     assert.strictEqual(notQualified.clearsPrecisionBar, false);
-    assert.strictEqual(notQualified.tier, 'experimental');
+    assert.strictEqual(notQualified.tier, 'below-bar');
   });
 
   it('qualifies sample-constrained guides with low n when all findings sampled and fpCount === 0 (clearedZeroFpExhaustive, unmeasured-low-n per R20)', () => {
