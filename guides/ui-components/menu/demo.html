@@ -417,7 +417,7 @@
           if (isPreviewed(menu) && fromPointer) focusFirst(menu);
           else if (isOpen(menu)) closeAndRestore(menu);
           else {
-            enterOnOpen.add(menu);
+            if (!fromPointer) enterOnOpen.add(menu);
             menu.showPopover({ source: trigger });
           }
         });
