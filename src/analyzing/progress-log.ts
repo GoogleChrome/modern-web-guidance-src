@@ -278,7 +278,9 @@ export function updateProgressLogEntries(
 
   for (const entry of existingEntries) {
     const entryBase = normalizeCommit(entry.commit);
-    if (entryBase === targetBase) {
+    const splitMatches =
+      !entry.splitHash || !newEntry.splitHash || entry.splitHash === newEntry.splitHash;
+    if (entryBase === targetBase && splitMatches) {
       result.push(newEntry);
       replaced = true;
     } else {
