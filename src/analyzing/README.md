@@ -25,8 +25,8 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `[dir]` | Positional | Directory to analyze (defaults to current working directory). |
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
-| `--tier=1`, `--proven-only` | Flag | Restrict analysis strictly to proven Tier 1 rules. |
-| `--all-rules`, `--experimental` | Flag | Run all 35 landed feature guides (48 rules total in `ALL_RULES`), including experimental and unmeasured rules. |
+| `--tier <tier>` | String | Restrict analysis to a confidence tier (`qualified` or `experimental`). |
+| `--all-rules`, `--experimental` | Flag | Run all 33 landed feature guides (45 rules total in `ALL_RULES`), including experimental and unmeasured rules. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
@@ -198,16 +198,16 @@ export const autofillSignInFormRule: AnalyzerRule = {
 ### Qualified Rules & Gated Execution (`R33`)
 
 To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
-- **`TERMINAL_QUALIFIED_RULES`:** In standard terminal CLI mode, the analyzer runs **deterministic Phase 1 only** for guides that clear the statistical held-out qualification bar (`TERMINAL_QUALIFIED_GUIDE_IDS`). Currently, `animate-element-entry-exit` is qualified on held-out repositories (`97.5%` precision, 95% CI `[91.2% - 99.3%]`).
+- **`TERMINAL_QUALIFIED_RULES`:** In standard terminal CLI mode, the analyzer runs **deterministic Phase 1 only** for guides that clear the statistical held-out qualification bar (`TERMINAL_QUALIFIED_GUIDE_IDS`). Currently, all default shipping lists (`TERMINAL_QUALIFIED_GUIDE_IDS`, `JSON_QUALIFIED_GUIDE_IDS`, `QUALIFIED_GUIDE_IDS`) default to empty `[]` until the judge is admitted on unseen human labels.
 - **`JSON_QUALIFIED_RULES`:** In `--json` mode for AI coding agents, the analyzer runs `JSON_QUALIFIED_GUIDE_IDS` and emits complete `phase2Rubric` definitions (`keepWhen` and `dropWhen`) so autonomous agents can verify candidate findings before proposing edits.
-- **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 35 landed feature guides across 48 rules, enabling research and broader scanning.
+- **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 33 landed feature guides across 45 rules, enabling research and broader scanning.
 
-### Registered Feature Guides (35 Guides, 48 Rules in `ALL_RULES`)
+### Registered Feature Guides (33 Guides, 45 Rules in `ALL_RULES`)
 
 | # | Guide ID | Tier | Held-Out Tune Prec (`local-93`) | Untuned Final Prec (`gitmirror`) | Modern Platform Target |
 | :- | :--- | :--- | :--- | :--- | :--- |
 | 1 | `animate-element-entry-exit` | **Qualified (`proven-high-n`)** | `77/79 = 97.5%` (95% CI `[91.2% - 99.3%]`) | `46/58 = 79.3%` | `@starting-style` and `transition-behavior: allow-discrete` |
-| 2 | `individual-transform-properties` | Proven High-$n$ (Final) | `58/68 = 85.3%` | `94/95 = 99.0%` (95% CI `[94.3% - 99.8%]`) | Individual transform properties (`rotate`, `scale`, `translate`) |
+| 2 | `individual-transform-properties` | Proven High-$n$ (Final) | `58/68 = 85.3%` | `94/95 = 98.9%` (95% CI `[94.3% - 99.8%]`) | Individual transform properties (`rotate`, `scale`, `translate`) |
 | 3 | `autofill-sign-in-form` | Unmeasured Low-$n$ | `23/23 = 100.0%` | `68/75 = 90.7%` | Standard `autocomplete="username"` and `autocomplete="current-password"` |
 | 4 | `animate-to-intrinsic-sizes` | Unmeasured Low-$n$ | `4/4 = 100.0%` | `12/13 = 92.3%` | `calc-size()` and `interpolate-size: allow-keywords` |
 | 5 | `declarative-dialog-popover-control` | Experimental (Tuned) | `27/33 = 81.8%` | `57/73 = 78.1%` | Declarative `commandfor` / `command` and `popovertarget` |
@@ -224,7 +224,7 @@ To guarantee zero hallucinated false alarms when run in interactive developer te
 | 16 | `brand-consistent-forms` | Experimental | `2/7 = 28.6%` | `30/57 = 52.6%` | CSS `accent-color` for custom form controls |
 | 17 | `scrollspy` | Experimental | `0/0 = N/A` | `40/53 = 75.5%` | CSS `scroll-target-group: auto` and `:target-current` |
 | 18 | `autofill-address-form` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `1/1 = 100.0%` | Standard `autocomplete` attributes on address form inputs |
-| 19 | `shadow-dom` | Experimental | `12/25 = 48.0%` | `12/25 = 48.0%` | Native `<template>` and Declarative Shadow DOM |
+| 19 | `shadow-dom` | Experimental | `0/13 = 0.0%` | `12/25 = 48.0%` | Native `<template>` and Declarative Shadow DOM |
 | 20 | `branded-select-styling` | Experimental | `3/7 = 42.9%` | `11/17 = 64.7%` | Customizable native `<select>` with `appearance: base-select` |
 | 21 | `adapt-scrollbar-to-contrast-preferences` | Experimental | `0/1 = 0.0%` | `0/15 = 0.0%` | `scrollbar-color`, `scrollbar-width`, and `prefers-contrast` |
 | 22 | `checkbox` | Unmeasured Low-$n$ (Tuned) | `5/5 = 100.0%` | `32/35 = 91.4%` | CSS `accent-color` for styled checkboxes |
@@ -237,10 +237,8 @@ To guarantee zero hallucinated false alarms when run in interactive developer te
 | 29 | `manage-recurring-intervals` | Experimental (Tuned) | `3/4 = 75.0%` | `5/12 = 41.7%` | Temporal API (`Temporal.PlainDate.add` / `Temporal.Duration`) |
 | 30 | `drag` | Experimental / Low-$n$ | `0/0 = N/A` | `1/1 = 100.0%` | Native HTML Drag and Drop standards |
 | 31 | `format-human-readable-durations` | Unmeasured Low-$n$ | `7/7 = 100.0%` | `17/19 = 89.5%` | `Intl.DurationFormat` |
-| 32 | `model-partial-time-concepts` | Experimental | `0/1 = 0.0%` | `0/26 = 0.0%` | Temporal API (`Temporal.PlainYearMonth` / `Temporal.PlainMonthDay`) |
-| 33 | `sanitize-untrusted-html` | Unmeasured Low-$n$ | `2/2 = 100.0%` | `9/16 = 56.3%` | Native `Sanitizer` API and `setHTML()` |
-| 34 | `custom-select-picker-layouts` | Experimental | `0/2 = 0.0%` | `0/11 = 0.0%` | `<select>` popover customization |
-| 35 | `scroll-position-aware-elements` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `9/16 = 56.3%` | CSS Scroll-Driven Animations (`animation-timeline: scroll()`) |
+| 32 | `sanitize-untrusted-html` | Unmeasured Low-$n$ | `2/2 = 100.0%` | `9/16 = 56.3%` | Native `Sanitizer` API and `setHTML()` |
+| 33 | `scroll-position-aware-elements` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `9/16 = 56.3%` | CSS Scroll-Driven Animations (`animation-timeline: scroll()`) |
 
 ---
 

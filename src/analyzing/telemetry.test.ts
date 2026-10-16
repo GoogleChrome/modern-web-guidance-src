@@ -45,6 +45,8 @@ describe('telemetry ledger (P2)', () => {
 
       // 2. Append records
       const record1: CardTelemetryRecord = {
+        runId: 'test-run-1',
+        source: 'live',
         cardId: 'card-1',
         repo: 'repo-1',
         commit: 'commit-1',

@@ -66,14 +66,18 @@ export function isDetectiveFactCheck(obj: unknown): obj is DetectiveFactCheck {
   if (typeof obj !== 'object' || obj === null) {
     return false;
   }
-  const rec = Object(obj);
   return (
-    typeof rec.matches_before_syntax === 'boolean' &&
-    typeof rec.has_fallback_or_feature_guard === 'boolean' &&
-    typeof rec.modern_feature_applies_here === 'boolean' &&
-    typeof rec.reasoning === 'string' &&
-    isJudgeVerdict(rec.verdict) &&
-    (rec.rawVerdict === undefined || isJudgeVerdict(rec.rawVerdict))
+    'matches_before_syntax' in obj &&
+    typeof obj.matches_before_syntax === 'boolean' &&
+    'has_fallback_or_feature_guard' in obj &&
+    typeof obj.has_fallback_or_feature_guard === 'boolean' &&
+    'modern_feature_applies_here' in obj &&
+    typeof obj.modern_feature_applies_here === 'boolean' &&
+    'reasoning' in obj &&
+    typeof obj.reasoning === 'string' &&
+    'verdict' in obj &&
+    isJudgeVerdict(obj.verdict) &&
+    (!('rawVerdict' in obj) || obj.rawVerdict === undefined || isJudgeVerdict(obj.rawVerdict))
   );
 }
 
@@ -90,9 +94,11 @@ export interface GuideSummaryInfo {
 export interface BlindCardPayload {
   cardId: string;
   repo: string;
+  commit?: string;
   file: string;
   line: number;
   guideId: string;
+  ruleId?: string;
   guideSummary: GuideSummaryInfo;
   codeSnippet: string;
   ruleHash?: string;

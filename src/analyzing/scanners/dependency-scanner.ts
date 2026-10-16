@@ -13,13 +13,57 @@ const DEPENDENCY_FIELDS = [
 
 /**
  * Finds the 1-based line number where a package name is defined in package.json text.
+ * Strictly scopes the search inside dependency blocks (dependencies, devDependencies,
+ * peerDependencies, optionalDependencies) to avoid false line matches in keywords,
+ * descriptions, or script commands (O69).
  */
 function findPackageLine(packageJsonContent: string, pkgName: string): number {
   const lines = packageJsonContent.split('\n');
-  const targetPattern = `"${pkgName}"`;
+  const targetKey = `"${pkgName}"`;
+  let insideDepsSection = false;
+  let sectionBraceDepth = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+
+    if (!insideDepsSection) {
+      for (const field of DEPENDENCY_FIELDS) {
+        const fieldIdx = line.indexOf(`"${field}"`);
+        if (fieldIdx !== -1) {
+          insideDepsSection = true;
+          sectionBraceDepth = 0;
+          for (const char of line.slice(fieldIdx)) {
+            if (char === '{') sectionBraceDepth++;
+            if (char === '}') sectionBraceDepth--;
+          }
+          break;
+        }
+      }
+    } else {
+      for (const char of line) {
+        if (char === '{') sectionBraceDepth++;
+        if (char === '}') sectionBraceDepth--;
+      }
+
+      const trimmed = line.trim();
+      if (trimmed.startsWith(targetKey)) {
+        const afterKey = trimmed.slice(targetKey.length).trim();
+        if (afterKey.startsWith(':')) {
+          return i + 1;
+        }
+      }
+
+      if (sectionBraceDepth <= 0) {
+        insideDepsSection = false;
+      }
+    }
+  }
+
+  // Fallback: search anywhere if structure is non-standard
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
-    if (l && l.includes(targetPattern)) {
+    if (l && l.includes(targetKey)) {
       return i + 1;
     }
   }

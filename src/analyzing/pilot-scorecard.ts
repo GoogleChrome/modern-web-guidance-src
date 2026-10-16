@@ -6,6 +6,7 @@ import {
   checkCanaries,
   evaluateJudgeMetrics,
   evaluateJudgeStability,
+  isJudgeVerdict,
   loadGuideSummariesMap,
   loadPaulIrishScoredCards,
   prepareBlindCards,
@@ -153,7 +154,9 @@ export function evaluateGuideQualification(
   const clearedZeroFpExhaustive =
     isSampleConstrained && p1Sampled === p1Total && p2KeptCount >= 1 && fpCount === 0;
   const clearsSampleConstrained = clearedHighN80 || clearedZeroFpExhaustive;
-  const clearsScreen80 = wilson95.lower >= 0.8 || clearsSampleConstrained;
+  // Per O72: clearsScreen80 evaluates statistical lower bound >= 0.80 strictly,
+  // decoupled from zero-FP sample-constrained small samples.
+  const clearsScreen80 = wilson95.lower >= 0.8;
   // Per R20: clearsPrecisionBar strictly requires clearsBar90 (wilson95.lower >= 0.90)
   const clearsPrecisionBar = clearsBar90;
   let tier: QualificationTier;
@@ -317,9 +320,21 @@ export interface GuideRecallMetrics {
   readonly phase2RecallRate: number;
 }
 
+export interface RuleScorecard {
+  readonly ruleId: string;
+  readonly phase1TotalYield: number;
+  readonly phase2KeptCount: number;
+  readonly judgeJudgedCount: number;
+  readonly judgeRightCount: number;
+  readonly judgeFalsePositiveCount: number;
+  readonly precision: number;
+  readonly wilson95: BinomialInterval;
+}
+
 export interface GuideScorecard {
   readonly guideId: string;
   readonly ruleIds: readonly string[];
+  readonly rules?: readonly RuleScorecard[];
   readonly phase1TotalYield: number;
   readonly phase1SampledCount: number;
   readonly phase2KeptCount: number;
@@ -357,7 +372,9 @@ export interface PilotScorecardSummary {
   readonly clearedSampleConstrainedCount?: number;
   readonly clearedHighN80Count?: number;
   readonly clearedZeroFpExhaustiveCount?: number;
+  readonly clearsScreen80Count?: number;
   readonly clearedScreenCount: number;
+  readonly coverageGate0?: MetricEntry;
   readonly provenHighNCount?: number;
   readonly zeroFpLowNCount?: number;
   readonly singleShotQualifiedCount?: number;
@@ -620,6 +637,7 @@ export async function scanGradingRepos(
     const findings = await scanRepoFiles(dir, rules, {
       repo: entry.repo,
       commit: entry.commit,
+      excludeCorpusNonAppDirs: true,
     });
     allFindings.push(...findings);
   }
@@ -706,25 +724,24 @@ function createBlindCardPayloads(
   rulesById: ReadonlyMap<string, AnalyzerRule>,
 ): BlindCardPayload[] {
   return findings.map((finding) => {
-    const summary = summaries.get(finding.guideId) ?? {
-      guideId: finding.guideId,
-      problem: 'Legacy web platform pattern',
-      before: 'Uses legacy platform API or workaround',
-      now: 'Modern web platform standard API',
-    };
+    const summary = summaries.get(finding.guideId);
+    if (!summary) {
+      throw new Error(`Missing guide summary for guide ${finding.guideId} (O56/O71)`);
+    }
     const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
-    const rHash = rule ? computeRuleHash(rule) : '';
-    const enrichedSummary: GuideSummaryInfo = {
-      ...summary,
-      ...(rule ? { ruleSummary: rule.summary } : {}),
-    };
+    if (!rule) {
+      throw new Error(`Missing rule for finding ruleId ${finding.ruleId} (O71)`);
+    }
+    const rHash = computeRuleHash(rule);
     return {
       cardId: finding.cardId,
       repo: finding.repo,
+      commit: finding.commit,
       file: finding.file,
       line: finding.line,
       guideId: finding.guideId,
-      guideSummary: enrichedSummary,
+      ruleId: finding.ruleId,
+      guideSummary: summary,
       codeSnippet: finding.astSlice || finding.codeSnippet,
       ruleHash: rHash,
       guideHash: finding.guideHash,
@@ -745,6 +762,7 @@ async function runPhase2ForBatch(
     readonly apiKey?: string;
     readonly fetchFn?: typeof fetch;
     readonly concurrency: number;
+    readonly runId?: string;
   },
 ): Promise<Phase2BatchResult> {
   const verdictsMap = new Map<string, Phase2Verdict>();
@@ -797,6 +815,8 @@ async function runPhase2ForBatch(
           guideHash: finding.guideHash,
           promptVersion: PHASE2_PROMPT_VERSION,
           timestamp: new Date().toISOString(),
+          runId: options.runId ?? 'phase2-run',
+          source: 'live',
           phase2: {
             keep: v.keep,
             confidence: v.confidence,
@@ -825,6 +845,7 @@ async function runJudgeForBatch(
     readonly fetchFn?: typeof fetch;
     readonly concurrency: number;
     readonly temperature: number;
+    readonly runId?: string;
   },
 ): Promise<JudgeBatchResult> {
   const consensusVerdicts = new Map<string, JudgeResult>();
@@ -833,14 +854,11 @@ async function runJudgeForBatch(
   const uncachedCards: BlindCardPayload[] = [];
 
   for (const card of cards) {
-    const cardRuleHash = card.ruleHash ?? '';
-    const cardGuideHash = card.guideHash ?? '';
-    const key = computeTelemetryCacheKey(card.cardId, cardRuleHash, cardGuideHash, JUDGE_VERSION);
-    let cached = telemetryMap.get(key);
-    if (!cached && (cardRuleHash !== '' || cardGuideHash !== '')) {
-      const legacyKey = computeTelemetryCacheKey(card.cardId, '', '', JUDGE_VERSION);
-      cached = telemetryMap.get(legacyKey);
+    if (!card.ruleHash || !card.guideHash) {
+      throw new Error(`BlindCardPayload missing ruleHash or guideHash for card ${card.cardId} (O71)`);
     }
+    const key = computeTelemetryCacheKey(card.cardId, card.ruleHash, card.guideHash, JUDGE_VERSION);
+    const cached = telemetryMap.get(key);
     if (cached?.judge) {
       if (!cached.judge.facts) {
         throw new Error(
@@ -853,11 +871,16 @@ async function runJudgeForBatch(
         facts: cached.judge.facts,
         rawResponse: '',
       });
-      if (Array.isArray(cached.judge.runVotes) && cached.judge.runVotes.length === 3) {
-        cardVotesMap.set(
-          card.cardId,
-          cached.judge.runVotes as [JudgeVerdict, JudgeVerdict, JudgeVerdict],
-        );
+      if (
+        Array.isArray(cached.judge.runVotes) &&
+        cached.judge.runVotes.length === 3 &&
+        cached.judge.runVotes.every(isJudgeVerdict)
+      ) {
+        cardVotesMap.set(card.cardId, [
+          cached.judge.runVotes[0],
+          cached.judge.runVotes[1],
+          cached.judge.runVotes[2],
+        ]);
       }
     } else {
       uncachedCards.push(card);
@@ -883,24 +906,31 @@ async function runJudgeForBatch(
       consensusVerdicts.set(res.cardId, res);
       const card = uncachedCards.find((c) => c.cardId === res.cardId);
       if (card) {
+        const v0 = run0.find((r) => r.cardId === res.cardId);
+        const v1 = run1.find((r) => r.cardId === res.cardId);
+        const v2 = run2.find((r) => r.cardId === res.cardId);
+        if (!v0 || !v1 || !v2) {
+          throw new Error(`Missing run vote for card ${res.cardId} in judge consensus (O71)`);
+        }
         const votes: [JudgeVerdict, JudgeVerdict, JudgeVerdict] = [
-          run0.find((r) => r.cardId === res.cardId)?.verdict ?? res.verdict,
-          run1.find((r) => r.cardId === res.cardId)?.verdict ?? res.verdict,
-          run2.find((r) => r.cardId === res.cardId)?.verdict ?? res.verdict,
+          v0.verdict,
+          v1.verdict,
+          v2.verdict,
         ];
         cardVotesMap.set(card.cardId, votes);
         telemetryRecords.push({
           cardId: card.cardId,
           repo: card.repo,
-          commit: 'head',
+          commit: card.commit ?? 'uncommitted',
           file: card.file,
           line: card.line,
           guideId: card.guideId,
-          ruleId: card.ruleHash ? (rulesById.get(card.guideId)?.id ?? '') : '',
+          ruleId: card.ruleId ?? card.guideId,
           ruleHash: card.ruleHash ?? '',
           guideHash: card.guideHash ?? '',
           promptVersion: JUDGE_VERSION,
           timestamp: new Date().toISOString(),
+          runId: options.runId ?? 'judge-consensus-run',
           source: 'live',
           judge: {
             runVotes: votes,
@@ -992,10 +1022,13 @@ export async function runPilotScorecard(
     // Group files by repository
     const byRepo = new Map<string, { commit: string; files: string[] }>();
     for (const entry of splitEntries) {
+      if (!entry.commit_id) {
+        throw new Error(`GitMirror manifest entry for ${entry.repository} missing commit_id (O71)`);
+      }
       let repoGroup = byRepo.get(entry.repository);
       if (!repoGroup) {
         repoGroup = {
-          commit: entry.commit_id ?? 'head',
+          commit: entry.commit_id,
           files: [],
         };
         byRepo.set(entry.repository, repoGroup);
@@ -1036,6 +1069,7 @@ export async function runPilotScorecard(
         const findings = scanFiles(fileMap, rules, {
           repo,
           commit: group.commit,
+          excludeCorpusNonAppDirs: true,
         });
         phase1Findings.push(...findings);
       }
@@ -1256,19 +1290,22 @@ export async function runPilotScorecard(
   // 7. Verify canaries strictly on Paul's real human-labeled negative cards from grades.paulirish.jsonl (R13)
   const realHumanNegatives: CanaryCard[] = [];
   for (const [cardId, verdict] of humanVerdicts.entries()) {
-    if (verdict !== 'right' && verdict !== 'unsure') {
+    if (verdict !== 'right' && verdict !== 'unsure' && isJudgeVerdict(verdict)) {
       realHumanNegatives.push({
         cardId,
-        expectedVerdict: verdict as JudgeVerdict,
+        expectedVerdict: verdict,
         description: `Paul Irish human-labeled negative (${verdict})`,
       });
     }
   }
 
   const consensusList = Array.from(consensusVerdicts.values());
+  if (realHumanNegatives.length === 0) {
+    throw new Error('No real human-labeled negative cards found for canary verification (O71)');
+  }
   const canaryResult: CanaryCheckResult = checkCanaries(
     consensusList,
-    realHumanNegatives.length > 0 ? realHumanNegatives : CANARY_CONFIG,
+    realHumanNegatives,
   );
   if (canaryResult.tnr < 1.0) {
     throw new Error(
@@ -1330,7 +1367,8 @@ export async function runPilotScorecard(
     const guideRules = rules.filter((r) => r.guideId === gid);
     const ruleIds = guideRules.map((r) => r.id);
 
-    const p1Total = (findingsByGuide.get(gid) ?? []).length;
+    const guideFindings = findingsByGuide.get(gid) ?? [];
+    const p1Total = guideFindings.length;
     const p1SampledFindings = sampledFindingsByGuide.get(gid) ?? [];
     const p1Sampled = p1SampledFindings.length;
     const p2Kept = phase2KeptByGuide.get(gid) ?? [];
@@ -1421,9 +1459,34 @@ export async function runPilotScorecard(
     const phase2RetentionRate = p1Recalled > 0 ? Number((p2Recalled / p1Recalled).toFixed(4)) : null;
     const phase2YieldRetentionRate = p1Sampled > 0 ? Number((p2KeptCount / p1Sampled).toFixed(4)) : 0;
 
+    const rulesForGuide: string[] = Array.from(new Set(guideFindings.map((f) => f.ruleId)));
+    const ruleScorecards: RuleScorecard[] = rulesForGuide.map((rid) => {
+      const p1RuleTotal = guideFindings.filter((f) => f.ruleId === rid).length;
+      const p2RuleKept = p2Kept.filter((f) => f.ruleId === rid);
+      let rRight = 0;
+      for (const rf of p2RuleKept) {
+        const res = consensusVerdicts.get(rf.cardId);
+        if (res && res.verdict === 'right') rRight++;
+      }
+      const rFp = p2RuleKept.length - rRight;
+      const rPrec = p2RuleKept.length > 0 ? Number((rRight / p2RuleKept.length).toFixed(4)) : 0;
+      const rWilson = wilsonInterval(rRight, p2RuleKept.length, Z_95);
+      return {
+        ruleId: rid,
+        phase1TotalYield: p1RuleTotal,
+        phase2KeptCount: p2RuleKept.length,
+        judgeJudgedCount: p2RuleKept.length,
+        judgeRightCount: rRight,
+        judgeFalsePositiveCount: rFp,
+        precision: rPrec,
+        wilson95: rWilson,
+      };
+    });
+
     guideScorecards.push({
       guideId: gid,
       ruleIds,
+      rules: ruleScorecards,
       phase1TotalYield: p1Total,
       phase1SampledCount: p1Sampled,
       phase2KeptCount: p2KeptCount,
@@ -1544,6 +1607,7 @@ export async function runPilotScorecard(
     clearedSampleConstrainedCount,
     clearedHighN80Count,
     clearedZeroFpExhaustiveCount,
+    clearsScreen80Count: clearedScreenCount,
     clearedScreenCount,
     provenHighNCount,
     zeroFpLowNCount,
@@ -1556,6 +1620,11 @@ export async function runPilotScorecard(
       wilson95: wilsonInterval(qualifiedRight, qualifiedKept, Z_95),
     },
     coverage: coverageMetric,
+    coverageGate0: {
+      value: Number((clearedBarCount / 116).toFixed(4)),
+      n: 116,
+      split: splitLabel,
+    },
     overallPrecision: heldOutPrecisionMetric,
     overallRecall: recallMetric,
     pooledHeldoutPrecision: {
@@ -1564,7 +1633,7 @@ export async function runPilotScorecard(
       precision: totalPhase2Kept > 0 ? Number((totalJudgedRight / totalPhase2Kept).toFixed(4)) : 0,
       wilson95: pooledHeldoutWilson,
     },
-    ppiPrecision: ppiPrecisionMetric,
+    ...(mode !== 'gitmirror' ? { ppiPrecision: ppiPrecisionMetric } : {}),
     judgeStability: stabilityRate !== null ? Number(stabilityRate.toFixed(4)) : null,
     judgeAlpha: Number(evalMetrics.krippendorffAlpha.toFixed(3)),
     judgeAc1: Number(evalMetrics.gwetAc1.toFixed(3)),
@@ -1601,7 +1670,7 @@ export async function runPilotScorecard(
     judgeVersion,
     guides: guideScorecards,
     summary,
-    canaries: CANARY_CONFIG,
+    canaries: realHumanNegatives,
   };
 
   // 12. Save scorecard JSON to analyzer-internal/findings/ (R24 separate row / file)
@@ -1616,7 +1685,9 @@ export async function runPilotScorecard(
   // Save spot-check deck per G6
   const defaultSpotcheckPath =
     mode === 'gitmirror'
-      ? join(ANALYZER_INTERNAL_DIR, 'labels', 'gitmirror-spotcheck-deck.json')
+      ? (split === 'final'
+          ? join(ANALYZER_INTERNAL_DIR, 'labels', 'gitmirror-final-spotcheck-deck.json')
+          : join(ANALYZER_INTERNAL_DIR, 'labels', 'gitmirror-spotcheck-deck.json'))
       : M3_SPOTCHECK_DECK_PATH;
   const spotcheckPath = options.spotcheckDeckPath ?? defaultSpotcheckPath;
   const spotcheckCards = sampleM3SpotcheckDeck(allKeptFindings, 10);
@@ -1778,6 +1849,20 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
  * CLI runner for pilot scorecard.
  */
 export async function runPilotScorecardCli(): Promise<void> {
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log(`Usage: node src/analyzing/pilot-scorecard.ts [options]
+
+Options:
+  --mode=<local|gitmirror|all>        Scan mode (default: local)
+  --split=<tune|final|grading-only>   Corpus split (default: tune)
+  --guides=<g1,g2,...>                Filter scorecard to specific guide IDs
+  --out=<path>                        Output path for scorecard report JSON
+  --no-write-progress                 Disable writing progress row to PROGRESS.md
+  -h, --help                          Show this help message
+`);
+    return;
+  }
+
   const writeProgress = !process.argv.includes('--no-write-progress');
   const scorecardArg = process.argv.find(
     (a) => a.startsWith('--out=') || a.startsWith('--scorecard='),

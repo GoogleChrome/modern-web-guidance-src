@@ -21,6 +21,7 @@ export interface Gate0Entry {
   readonly evidenceFromGuide?: string;
   readonly reason: string;
   readonly gate0PromptVersion?: string;
+  readonly webSearchQueries?: readonly string[];
 }
 
 export interface Phase2Rubric {

@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   GRADES_PATH,
   REPOS_CONFIG_PATH,
+  WORKTREE_ROOT,
 } from './paths.ts';
 import {
   buildTable3FunnelRowsSync,
@@ -382,9 +383,9 @@ describe('file operations and hashes', () => {
 
     const local93Row = rows.find((r) => r.commit === '8f6e2bb' && r.splitHash === '845acda987f8');
     assert.ok(local93Row, '8f6e2bb Local93 row must exist');
-    assert.ok(local93Row.notes?.includes('[judge not admitted: in-sample on 116 dev cards; α < 0.667]'));
+    assert.ok(local93Row.notes?.includes('[judge not admitted: in-sample on 114 dev cards; α < 0.667]'));
     assert.ok(local93Row.notes?.includes('Phase 1 -> Phase 2: 459 -> 354 (Phase-1 prec=61.0%)'));
-    assert.ok(local93Row.notes?.includes('(n=112)'));
+    assert.ok(local93Row.notes?.includes('(n=110)'));
 
     // Live scorecard for untuned final GitMirror
     const gitmirrorFinalRow = rows.find((r) => r.splitHash === 'd26557cf4124');
@@ -392,5 +393,68 @@ describe('file operations and hashes', () => {
     assert.strictEqual(formatMetricCell(gitmirrorFinalRow.recall), 'N/A (no local labels)');
     assert.strictEqual(formatMetricCell(gitmirrorFinalRow.coverage), '2.9% (n=35, final)');
     assert.ok(gitmirrorFinalRow.notes?.includes('[GATE MISSED: 1/35 cleared >=0.90 LB on untuned final split'));
+    assert.ok(gitmirrorFinalRow.notes?.includes('[judge not admitted: in-sample on 114 dev cards; α < 0.667]'));
+    assert.ok(gitmirrorFinalRow.notes?.includes('(n=110)'));
+  });
+
+  it('verifies that each entry in progress-history.json matches the numbers in its cited artifact (O66)', async () => {
+    const raw = await readFile(PROGRESS_HISTORY_PATH, 'utf8');
+    const history = JSON.parse(raw);
+
+    // 1. Gate 0 triage rows
+    for (const row of history.gate0Triage) {
+      if (row.sourceArtifact.startsWith('analyzer-internal/')) {
+        const fullPath = resolve(WORKTREE_ROOT, row.sourceArtifact);
+        const art = JSON.parse(await readFile(fullPath, 'utf8'));
+        assert.strictEqual(row.detectable, art.summary.detectable);
+        assert.strictEqual(row.uiRecipe, art.summary['ui-recipe-multi-part']);
+        assert.strictEqual(row.skip, art.summary['skip-no-old-way']);
+      }
+    }
+
+    // 2. Judge calibration rows
+    for (const row of history.judgeCalibration) {
+      if (row.sourceArtifact.startsWith('analyzer-internal/') && row.sourceArtifact.endsWith('.json')) {
+        const fullPath = resolve(WORKTREE_ROOT, row.sourceArtifact);
+        const art = JSON.parse(await readFile(fullPath, 'utf8'));
+        if (art.judgeVersion === row.judgeVersion) {
+          const alpha = art.krippendorffAlphaScored ?? art.metrics?.krippendorffAlphaScored112;
+          const ac1 = art.gwetAc1Scored ?? art.metrics?.gwetAc1Scored112;
+          if (alpha !== undefined) {
+            assert.ok(Math.abs(row.judgeAlpha - alpha) < 0.005);
+          }
+          if (ac1 !== undefined) {
+            assert.ok(Math.abs(row.judgeAc1 - ac1) < 0.005);
+          }
+          const candidateSizes: number[] = [];
+          if (typeof art.totalCardsEvaluated === 'number') candidateSizes.push(art.totalCardsEvaluated);
+          if (typeof art.scoredCardsCount === 'number') candidateSizes.push(art.scoredCardsCount);
+          if (art.humanBreakdown && typeof art.humanBreakdown.total === 'number') {
+            candidateSizes.push(art.humanBreakdown.total - (typeof art.humanBreakdown.unsure === 'number' ? art.humanBreakdown.unsure : 0));
+          }
+          if (candidateSizes.length > 0) {
+            assert.ok(
+              candidateSizes.includes(row.sampleSize),
+              `Row sampleSize ${row.sampleSize} must match one of ${candidateSizes.join(', ')} in ${row.sourceArtifact}`,
+            );
+          }
+        }
+      }
+    }
+
+    // 3. Detection funnel rows
+    for (const row of history.detectionFunnel) {
+      if (row.sourceArtifact.startsWith('analyzer-internal/') && row.sourceArtifact.endsWith('.json')) {
+        const fullPath = resolve(WORKTREE_ROOT, row.sourceArtifact);
+        const art = JSON.parse(await readFile(fullPath, 'utf8'));
+        if (art.summary?.overallPrecision) {
+          assert.strictEqual(row.precision.n, art.summary.overallPrecision.n);
+          assert.strictEqual(row.recall.n, art.summary.overallRecall.n);
+          assert.ok(Math.abs(row.judgeAlpha - art.summary.judgeAlpha) < 0.001);
+          assert.ok(Math.abs(row.judgeAc1 - art.summary.judgeAc1) < 0.001);
+          assert.strictEqual(row.canaryTnr, art.summary.canaryTnr);
+        }
+      }
+    }
   });
 });

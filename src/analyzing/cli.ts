@@ -5,25 +5,18 @@ import { parseArgs } from 'node:util';
 import {
   ALL_RULES,
   JSON_QUALIFIED_RULES,
+  QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
   TERMINAL_QUALIFIED_RULES,
-  TIER_1_GUIDE_IDS,
-  TIER_1_RULES,
-  TIER_2_GUIDE_IDS,
 } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerFinding, AnalyzerRule, Phase2Rubric } from './schema.ts';
 
-export type GuideConfidenceTier =
-  | 'tier-1-proven'
-  | 'tier-2-unmeasured'
-  | 'tier-2-zero-fp'
-  | 'tier-3-experimental';
+export type GuideConfidenceTier = 'qualified' | 'experimental';
 
 export function getGuideConfidenceTier(guideId: string): GuideConfidenceTier {
-  if (TIER_1_GUIDE_IDS.includes(guideId)) return 'tier-1-proven';
-  if (TIER_2_GUIDE_IDS.includes(guideId)) return 'tier-2-unmeasured';
-  return 'tier-3-experimental';
+  if (QUALIFIED_GUIDE_IDS.includes(guideId)) return 'qualified';
+  return 'experimental';
 }
 
 export interface AnalyzeCliFinding {
@@ -74,9 +67,7 @@ Arguments:
 Options:
   --json             Output findings as structured JSON for coding agents
   --guide <guideId>  Filter analysis to a specific guide ID
-  --tier=1           Scan strictly with Tier 1 proven rules (8 high-N guides, 99.1% precision)
-  --proven-only      Alias for --tier=1
-  --all-rules        Include all experimental/unqualified rules (defaults to 25 verified qualified rules)
+  --all-rules        Include all experimental rules (pass to scan all available rules)
   --experimental     Alias for --all-rules
   -h, --help         Show this help message
 `.trim();
@@ -98,8 +89,6 @@ export async function runAnalyzeCli(
       guide: { type: 'string' },
       'all-rules': { type: 'boolean' },
       experimental: { type: 'boolean' },
-      tier: { type: 'string' },
-      'proven-only': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: true,
@@ -109,7 +98,6 @@ export async function runAnalyzeCli(
   const isJson = Boolean(parsed.values.json);
   const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
   const isHelp = Boolean(parsed.values.help);
-  const isTier1Only = Boolean(parsed.values['proven-only'] || parsed.values.tier === '1');
   const useAllRules = Boolean(parsed.values['all-rules'] || parsed.values.experimental);
   const targetDir = parsed.positionals[0] || '.';
 
@@ -142,9 +130,8 @@ export async function runAnalyzeCli(
     return { exitCode: 1, output: `Error: ${err}\n` };
   }
 
-  const defaultRules = isTier1Only
-    ? TIER_1_RULES
-    : useAllRules || Boolean(guideFilter)
+  const defaultRules =
+    useAllRules || Boolean(guideFilter)
       ? ALL_RULES
       : isJson
         ? JSON_QUALIFIED_RULES
@@ -235,12 +222,7 @@ export async function runAnalyzeCli(
   ];
 
   for (const g of guides) {
-    const badge =
-      g.tier === 'tier-1-proven'
-        ? '[tier-1]'
-        : g.tier === 'tier-2-unmeasured' || g.tier === 'tier-2-zero-fp'
-          ? '[tier-2: unmeasured (too few findings)]'
-          : '[experimental]';
+    const badge = g.tier === 'qualified' ? '[qualified]' : '[experimental]';
     lines.push(`* ${badge} ${g.guideId} (${g.count} ${g.count === 1 ? 'finding' : 'findings'})`);
     lines.push(`  Summary: ${g.summary}`);
     lines.push(`  Retrieve: ${g.retrieveCommand}`);

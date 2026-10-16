@@ -25,8 +25,8 @@ export interface CardTelemetryRecord {
   readonly guideHash: string;
   readonly promptVersion: string;
   readonly timestamp: string;
-  readonly runId?: string;
-  readonly source?: 'live' | 'synthetic';
+  readonly runId: string;
+  readonly source: 'live';
   readonly phase2?: {
     readonly keep: boolean;
     readonly confidence?: Phase2Confidence;
@@ -44,21 +44,34 @@ export function isCardTelemetryRecord(obj: unknown): obj is CardTelemetryRecord 
   if (typeof obj !== 'object' || obj === null) {
     return false;
   }
-  const rec = Object(obj);
   return (
-    typeof rec.cardId === 'string' &&
-    typeof rec.repo === 'string' &&
-    typeof rec.commit === 'string' &&
-    typeof rec.file === 'string' &&
-    typeof rec.line === 'number' &&
-    typeof rec.guideId === 'string' &&
-    typeof rec.ruleId === 'string' &&
-    typeof rec.ruleHash === 'string' &&
-    typeof rec.guideHash === 'string' &&
-    typeof rec.promptVersion === 'string' &&
-    typeof rec.timestamp === 'string' &&
-    (rec.runId === undefined || typeof rec.runId === 'string') &&
-    (rec.source === undefined || rec.source === 'live' || rec.source === 'synthetic')
+    'cardId' in obj &&
+    typeof obj.cardId === 'string' &&
+    'repo' in obj &&
+    typeof obj.repo === 'string' &&
+    'commit' in obj &&
+    typeof obj.commit === 'string' &&
+    'file' in obj &&
+    typeof obj.file === 'string' &&
+    'line' in obj &&
+    typeof obj.line === 'number' &&
+    'guideId' in obj &&
+    typeof obj.guideId === 'string' &&
+    'ruleId' in obj &&
+    typeof obj.ruleId === 'string' &&
+    'ruleHash' in obj &&
+    typeof obj.ruleHash === 'string' &&
+    'guideHash' in obj &&
+    typeof obj.guideHash === 'string' &&
+    'promptVersion' in obj &&
+    typeof obj.promptVersion === 'string' &&
+    'timestamp' in obj &&
+    typeof obj.timestamp === 'string' &&
+    'runId' in obj &&
+    typeof obj.runId === 'string' &&
+    obj.runId.length > 0 &&
+    'source' in obj &&
+    obj.source === 'live'
   );
 }
 

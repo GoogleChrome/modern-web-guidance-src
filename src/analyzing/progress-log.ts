@@ -1,7 +1,7 @@
 /* oxlint-disable max-lines-per-function, max-depth */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import {
@@ -24,6 +24,7 @@ import {
   PROGRESS_LOG_PATH,
   REPOS_CONFIG_PATH,
   WORKTREE_ROOT,
+  resolveGitMirrorCacheDir,
 } from './paths.ts';
 
 export const DEFAULT_HASH_LENGTH = 12;
@@ -119,73 +120,68 @@ export const PROGRESS_HISTORY_PATH = join(ANALYZER_INTERNAL_DIR, 'progress-histo
 
 export function isGate0TriageRow(obj: unknown): obj is Gate0TriageRow {
   if (typeof obj !== 'object' || obj === null) return false;
-  const rec = Object(obj);
   return (
-    typeof rec.runId === 'string' &&
-    typeof rec.date === 'string' &&
-    typeof rec.promptVersion === 'string' &&
-    typeof rec.guidesRead === 'string' &&
-    typeof rec.detectable === 'number' &&
-    typeof rec.uiRecipe === 'number' &&
-    typeof rec.skip === 'number'
+    'runId' in obj && typeof obj.runId === 'string' &&
+    'date' in obj && typeof obj.date === 'string' &&
+    'promptVersion' in obj && typeof obj.promptVersion === 'string' &&
+    'guidesRead' in obj && typeof obj.guidesRead === 'string' &&
+    'detectable' in obj && typeof obj.detectable === 'number' &&
+    'uiRecipe' in obj && typeof obj.uiRecipe === 'number' &&
+    'skip' in obj && typeof obj.skip === 'number'
   );
 }
 
 export function isJudgeCalibrationRow(obj: unknown): obj is JudgeCalibrationRow {
   if (typeof obj !== 'object' || obj === null) return false;
-  const rec = Object(obj);
   return (
-    typeof rec.commit === 'string' &&
-    typeof rec.date === 'string' &&
-    typeof rec.judgeVersion === 'string' &&
-    typeof rec.sampleSize === 'number' &&
-    typeof rec.stabilityRate === 'number' &&
-    typeof rec.judgeAlpha === 'number' &&
-    typeof rec.judgeAc1 === 'number' &&
-    typeof rec.canaryTnr === 'number'
+    'commit' in obj && typeof obj.commit === 'string' &&
+    'date' in obj && typeof obj.date === 'string' &&
+    'judgeVersion' in obj && typeof obj.judgeVersion === 'string' &&
+    'sampleSize' in obj && typeof obj.sampleSize === 'number' &&
+    'stabilityRate' in obj && typeof obj.stabilityRate === 'number' &&
+    'judgeAlpha' in obj && typeof obj.judgeAlpha === 'number' &&
+    'judgeAc1' in obj && typeof obj.judgeAc1 === 'number' &&
+    'canaryTnr' in obj && typeof obj.canaryTnr === 'number'
   );
 }
 
 export function isMetricEntry(obj: unknown): obj is MetricEntry {
   if (typeof obj !== 'object' || obj === null) return false;
-  const rec = Object(obj);
   return (
-    typeof rec.value === 'number' &&
-    typeof rec.n === 'number' &&
-    typeof rec.split === 'string'
+    'value' in obj && typeof obj.value === 'number' &&
+    'n' in obj && typeof obj.n === 'number' &&
+    'split' in obj && typeof obj.split === 'string'
   );
 }
 
 export function isDetectionFunnelRow(obj: unknown): obj is DetectionFunnelRow {
   if (typeof obj !== 'object' || obj === null) return false;
-  const rec = Object(obj);
   return (
-    typeof rec.commit === 'string' &&
-    typeof rec.date === 'string' &&
-    typeof rec.ruleSetHash === 'string' &&
-    typeof rec.splitHash === 'string' &&
-    typeof rec.gradesHash === 'string' &&
-    typeof rec.judgeVersion === 'string' &&
-    isMetricEntry(rec.coverage) &&
-    isMetricEntry(rec.precision) &&
-    isMetricEntry(rec.recall) &&
-    typeof rec.judgeAlpha === 'number' &&
-    typeof rec.judgeAc1 === 'number' &&
-    typeof rec.canaryTnr === 'number'
+    'commit' in obj && typeof obj.commit === 'string' &&
+    'date' in obj && typeof obj.date === 'string' &&
+    'ruleSetHash' in obj && typeof obj.ruleSetHash === 'string' &&
+    'splitHash' in obj && typeof obj.splitHash === 'string' &&
+    'gradesHash' in obj && typeof obj.gradesHash === 'string' &&
+    'judgeVersion' in obj && typeof obj.judgeVersion === 'string' &&
+    'coverage' in obj && isMetricEntry(obj.coverage) &&
+    'precision' in obj && isMetricEntry(obj.precision) &&
+    'recall' in obj && isMetricEntry(obj.recall) &&
+    'judgeAlpha' in obj && typeof obj.judgeAlpha === 'number' &&
+    'judgeAc1' in obj && typeof obj.judgeAc1 === 'number' &&
+    'canaryTnr' in obj && typeof obj.canaryTnr === 'number'
   );
 }
 
 export function isFixSmokeTestRow(obj: unknown): obj is FixSmokeTestRow {
   if (typeof obj !== 'object' || obj === null) return false;
-  const rec = Object(obj);
   return (
-    typeof rec.commit === 'string' &&
-    typeof rec.date === 'string' &&
-    typeof rec.harnessVersion === 'string' &&
-    typeof rec.qualifiedGuides === 'number' &&
-    typeof rec.sampleSize === 'number' &&
-    isMetricEntry(rec.staticResolution) &&
-    typeof rec.badPatchRejectionRate === 'string'
+    'commit' in obj && typeof obj.commit === 'string' &&
+    'date' in obj && typeof obj.date === 'string' &&
+    'harnessVersion' in obj && typeof obj.harnessVersion === 'string' &&
+    'qualifiedGuides' in obj && typeof obj.qualifiedGuides === 'number' &&
+    'sampleSize' in obj && typeof obj.sampleSize === 'number' &&
+    'staticResolution' in obj && isMetricEntry(obj.staticResolution) &&
+    'badPatchRejectionRate' in obj && typeof obj.badPatchRejectionRate === 'string'
   );
 }
 
@@ -232,6 +228,20 @@ export const HISTORICAL_DETECTION_FUNNEL_ROWS: readonly DetectionFunnelRow[] =
 export const HISTORICAL_FIX_SMOKE_TEST_ROWS: readonly FixSmokeTestRow[] =
   loadedHistory.fixSmokeTest;
 
+export interface GuideScorecardJson {
+  guideId: string;
+  precision: number;
+  clearsBar90: boolean;
+  phase2KeptCount: number;
+  judgeRightCount: number;
+  judgeJudgedCount: number;
+  wilson95: { lower: number; upper: number; proportion: number; n: number };
+  phase1Precision?: number;
+  phase1RightCount?: number;
+  phase1SampledCount?: number;
+  phase1Wilson95?: { lower: number; upper: number; proportion: number; n: number };
+}
+
 export interface ScorecardReportJsonSummary {
   coverage: MetricEntry;
   overallPrecision: MetricEntry;
@@ -244,8 +254,12 @@ export interface ScorecardReportJsonSummary {
   totalDetectableGuides: number;
   clearedBar90Count: number;
   clearedSampleConstrainedCount: number;
+  clearedScreenCount?: number;
+  clearedHighN80Count?: number;
+  clearedZeroFpExhaustiveCount?: number;
   provenHighNCount: number;
   zeroFpLowNCount: number;
+  phase2DroppedRightTotal?: number;
   phase2YieldRetention?: { sampledTotal: number; keptTotal: number; rate: number };
   pooledPhase1Precision?: { successes: number; total: number; precision: number };
   qualifiedPooledPrecision?: { successes: number; total: number; precision: number };
@@ -257,9 +271,11 @@ export interface ScorecardReportJson {
   timestamp: string;
   ruleSetHash: string;
   splitHash: string;
+  split?: string;
   gradesHash: string;
   judgeVersion: string;
   summary: ScorecardReportJsonSummary;
+  guides?: readonly GuideScorecardJson[];
 }
 
 export function isScorecardReportJson(val: unknown): val is ScorecardReportJson {
@@ -290,60 +306,133 @@ export function isScorecardReportJson(val: unknown): val is ScorecardReportJson 
   return true;
 }
 
+interface GitMirrorCounts {
+  readonly tuneRepos: number;
+  readonly tuneFiles: number;
+  readonly finalRepos: number;
+  readonly finalFiles: number;
+}
+
+function loadGitMirrorManifestCounts(): GitMirrorCounts | null {
+  try {
+    const manifestPath = join(resolveGitMirrorCacheDir(), 'manifest.json');
+    const raw = readFileSync(manifestPath, 'utf8');
+    const entries = JSON.parse(raw) as ReadonlyArray<{ readonly repository: string; readonly split: string }>;
+    const tuneRepos = new Set(entries.filter((e) => e.split === 'tune' || e.split === 'grading-only').map((e) => e.repository)).size;
+    const tuneFiles = entries.filter((e) => e.split === 'tune' || e.split === 'grading-only').length;
+    const finalRepos = new Set(entries.filter((e) => e.split === 'final').map((e) => e.repository)).size;
+    const finalFiles = entries.filter((e) => e.split === 'final').length;
+    return { tuneRepos, tuneFiles, finalRepos, finalFiles };
+  } catch {
+    return null;
+  }
+}
+
+interface CalibrationMeta {
+  readonly totalCardsEvaluated: number;
+  readonly scoredCardsCount: number;
+}
+
+function loadCalibrationMetaMap(
+  findingsDir: string,
+  history: { judgeCalibration?: readonly JudgeCalibrationRow[] },
+): Map<string, CalibrationMeta> {
+  const map = new Map<string, CalibrationMeta>();
+  if (history.judgeCalibration) {
+    for (const row of history.judgeCalibration) {
+      map.set(row.judgeVersion, {
+        totalCardsEvaluated: row.sampleSize,
+        scoredCardsCount: row.sampleSize,
+      });
+    }
+  }
+  try {
+    const files = readdirSync(findingsDir).filter((f) => f.endsWith('.json') && f.includes('calibration'));
+    for (const f of files) {
+      const fullPath = join(findingsDir, f);
+      const raw = readFileSync(fullPath, 'utf8');
+      const parsed: unknown = JSON.parse(raw);
+      if (typeof parsed === 'object' && parsed !== null && 'judgeVersion' in parsed && typeof parsed.judgeVersion === 'string') {
+        const totalCardsEvaluated = 'totalCardsEvaluated' in parsed && typeof parsed.totalCardsEvaluated === 'number'
+          ? parsed.totalCardsEvaluated
+          : ('sampleSize' in parsed && typeof parsed.sampleSize === 'number' ? parsed.sampleSize : 0);
+        const scoredCardsCount = 'scoredCardsCount' in parsed && typeof parsed.scoredCardsCount === 'number'
+          ? parsed.scoredCardsCount
+          : totalCardsEvaluated;
+        map.set(parsed.judgeVersion, { totalCardsEvaluated, scoredCardsCount });
+      }
+    }
+  } catch {
+    // findingsDir may not exist in minimal test environments
+  }
+  return map;
+}
+
 /**
  * Rebuilds Table 3 held-out detection funnel rows from progress-history.json and live scorecard JSONs.
  * Never parses or preserves stale/erroneous markdown table entries.
  */
 export function buildTable3FunnelRowsSync(
   findingsDir: string = resolve(WORKTREE_ROOT, 'analyzer-internal/findings'),
-  history: { detectionFunnel: readonly ProgressLogRow[] } = loadProgressHistorySync(),
+  history: {
+    detectionFunnel: readonly ProgressLogRow[];
+    judgeCalibration?: readonly JudgeCalibrationRow[];
+  } = loadProgressHistorySync(),
 ): ProgressLogRow[] {
   const rows: ProgressLogRow[] = [...history.detectionFunnel];
 
-  const scorecardFiles = [
-    '2026-10-16-gitmirror-7guide-pilot-scorecard.json',
-    '2026-10-16-local93-v2-scorecard.json',
-    '2026-10-16-gitmirror-final-scorecard.json',
-  ];
+  let scorecardFiles: string[] = [];
+  try {
+    scorecardFiles = readdirSync(findingsDir)
+      .filter((f) => f.endsWith('.json') && f.includes('scorecard') && !f.includes('fix'))
+      .sort();
+  } catch (err: unknown) {
+    if (!isEnoent(err)) {
+      throw err;
+    }
+  }
+
+  const calibrationMap = loadCalibrationMetaMap(findingsDir, history);
+  const gitMirrorCounts = loadGitMirrorManifestCounts();
 
   for (const filename of scorecardFiles) {
     const fullPath = resolve(findingsDir, filename);
-    let raw = '';
-    try {
-      raw = readFileSync(fullPath, 'utf8');
-    } catch {
-      continue;
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      continue;
-    }
+    const raw = readFileSync(fullPath, 'utf8');
+    const parsed: unknown = JSON.parse(raw);
     if (!isScorecardReportJson(parsed)) {
-      continue;
+      throw new Error(`Invalid scorecard report JSON schema in file: ${filename}`);
     }
 
     const report = parsed;
-    const isGitMirror = filename.includes('gitmirror') || report.splitHash === '74b80dcdbd61' || report.splitHash === 'd26557cf4124' || report.summary.coverage.n === 7 || report.summary.coverage.split === 'final';
-    const isFinalGitMirror = filename.includes('final') || report.splitHash === 'd26557cf4124' || report.summary.coverage.split === 'final';
+    // Skip if already in historical funnel
+    if (history.detectionFunnel.some((r) => r.commit === report.commit && r.splitHash === report.splitHash)) {
+      continue;
+    }
+
+    const isFinalGitMirror = report.split === 'final' || report.summary.coverage?.split === 'final' || filename.includes('final');
+    const isGitMirror = filename.includes('gitmirror') ||
+      (typeof report.summary.overallRecall?.split === 'string' && report.summary.overallRecall.split.includes('gitmirror')) ||
+      isFinalGitMirror;
+
     const recall: MetricEntry = isGitMirror
       ? { value: 0, n: 0, split: isFinalGitMirror ? 'unmeasured (gitmirror, final)' : 'unmeasured (gitmirror)' }
       : report.summary.overallRecall;
 
+    const calib = calibrationMap.get(report.judgeVersion);
+    const totalCardsEvaluated = calib?.totalCardsEvaluated ?? 116;
+    const scoredCardsCount = calib?.scoredCardsCount ?? totalCardsEvaluated;
+
     const notAdmittedPrefix = report.summary.judgeAlpha < 0.667
-      ? (isFinalGitMirror
-          ? '[judge not admitted: in-sample on 114 dev cards; α < 0.667] '
-          : '[judge not admitted: in-sample on 116 dev cards; α < 0.667] ')
+      ? `[judge not admitted: in-sample on ${totalCardsEvaluated} dev cards; α < 0.667] `
       : '';
-    const gateMissed = isGitMirror && report.summary.clearedBar90Count === 0
-      ? '[GATE MISSED: 0/7 cleared >=0.90 LB vs 4-5/7 expected; 3/7 reached n>=35] '
-      : '';
+
     const p1Total = report.summary.phase2YieldRetention?.sampledTotal ?? 0;
     const p2Total = report.summary.phase2YieldRetention?.keptTotal ?? report.summary.overallPrecision.n;
-    const p1Prec = report.summary.pooledPhase1Precision?.precision !== undefined
-      ? `${(report.summary.pooledPhase1Precision.precision * 100).toFixed(1)}%`
-      : 'unmeasured';
+    const p1Prec = report.summary.pooledPhase1Precision?.total
+      ? `${((report.summary.pooledPhase1Precision.successes / report.summary.pooledPhase1Precision.total) * 100).toFixed(1)}%`
+      : (report.summary.pooledPhase1Precision?.precision !== undefined
+        ? `${(report.summary.pooledPhase1Precision.precision * 100).toFixed(1)}%`
+        : 'unmeasured');
     const p2Prec = report.summary.pooledHeldoutPrecision?.precision !== undefined
       ? `${(report.summary.pooledHeldoutPrecision.precision * 100).toFixed(1)}%`
       : `${(report.summary.overallPrecision.value * 100).toFixed(1)}%`;
@@ -351,26 +440,76 @@ export function buildTable3FunnelRowsSync(
       ? `${(report.summary.judgeStability * 100).toFixed(1)}%`
       : 'unmeasured';
     const canaryStr = `${(report.summary.canaryTnr * 100).toFixed(1)}%`;
-    const judgeGuardStr = `judge α=${report.summary.judgeAlpha.toFixed(3)}/AC1=${report.summary.judgeAc1.toFixed(3)} (n=112)`;
+    const judgeGuardStr = `judge α=${report.summary.judgeAlpha.toFixed(3)}/AC1=${report.summary.judgeAc1.toFixed(3)} (n=${scoredCardsCount})`;
 
+    const guides = report.guides ?? [];
     let notes = '';
     if (isGitMirror) {
       if (isFinalGitMirror) {
-        notes = `${notAdmittedPrefix}[GATE MISSED: 1/35 cleared >=0.90 LB on untuned final split (individual-transform-properties at 94/95 = 98.9%, 95% CI [94.3% - 99.8%]; Phase-1 95/97 = 97.9%, 95% CI [92.8% - 99.4%])] Milestone 3 GitMirror untuned final evaluation (2,336 repos, 2,713 files): 1/35 guides cleared >=0.90 LB [8 cleared >=0.80 screen, 5 zero-FP low-n], qualified prec=98.9%, pooled prec=72.0%, Phase 1 -> Phase 2: 1359 -> 966 (Phase-1 prec=53.1%, 26 Phase 2 false drops), stability=87.1%, canaryTNR=100.0%, judge α=-0.099/AC1=0.498 (n=108)`;
+        const cleared90Guides = guides.filter((g) => g.clearsBar90);
+        let guideDetail = '';
+        if (cleared90Guides.length > 0) {
+          const g = cleared90Guides[0];
+          const p2PrecStr = g.judgeJudgedCount > 0
+            ? `${((g.judgeRightCount / g.judgeJudgedCount) * 100).toFixed(1)}%`
+            : `${(g.precision * 100).toFixed(1)}%`;
+          const p2Ci = `[${(g.wilson95.lower * 100).toFixed(1)}% - ${(g.wilson95.upper * 100).toFixed(1)}%]`;
+          let p1Detail = '';
+          if (
+            g.phase1Precision !== undefined &&
+            g.phase1Wilson95 !== undefined &&
+            g.phase1RightCount !== undefined &&
+            g.phase1SampledCount !== undefined
+          ) {
+            p1Detail = `; Phase-1 ${g.phase1RightCount}/${g.phase1SampledCount} = ${(g.phase1Precision * 100).toFixed(1)}%, 95% CI [${(g.phase1Wilson95.lower * 100).toFixed(1)}% - ${(g.phase1Wilson95.upper * 100).toFixed(1)}%]`;
+          }
+          guideDetail = ` (${g.guideId} at ${g.judgeRightCount}/${g.judgeJudgedCount} = ${p2PrecStr}, 95% CI ${p2Ci}${p1Detail})`;
+        }
+        const gateNotice = `[GATE MISSED: ${report.summary.clearedBar90Count}/${report.summary.totalDetectableGuides} cleared >=0.90 LB on untuned final split${guideDetail}] `;
+        const repoFileStr = gitMirrorCounts
+          ? `${gitMirrorCounts.finalRepos.toLocaleString()} repos, ${gitMirrorCounts.finalFiles.toLocaleString()} files`
+          : '2,336 repos, 2,713 files';
+        const qualPrecStr = report.summary.qualifiedPooledPrecision?.total
+          ? `${((report.summary.qualifiedPooledPrecision.successes / report.summary.qualifiedPooledPrecision.total) * 100).toFixed(1)}%`
+          : (report.summary.qualifiedPooledPrecision?.precision !== undefined
+            ? `${(report.summary.qualifiedPooledPrecision.precision * 100).toFixed(1)}%`
+            : 'unmeasured');
+        const p1DropStr = report.summary.phase2DroppedRightTotal !== undefined
+          ? `, ${report.summary.phase2DroppedRightTotal} Phase 2 false drops`
+          : '';
+        const clearedScreen = report.summary.clearedScreenCount ?? 0;
+
+        notes = `${notAdmittedPrefix}${gateNotice}Milestone 3 GitMirror untuned final evaluation (${repoFileStr}): ${report.summary.clearedBar90Count}/${report.summary.totalDetectableGuides} guides cleared >=0.90 LB [${clearedScreen} cleared >=0.80 screen, ${report.summary.zeroFpLowNCount} zero-FP low-n], qualified prec=${qualPrecStr}, pooled prec=${p2Prec}, Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}${p1DropStr}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr}`;
       } else {
         const clearedSc = report.summary.clearedSampleConstrainedCount;
         const zeroFp = report.summary.zeroFpLowNCount;
         const proven = report.summary.provenHighNCount;
-        notes = `${notAdmittedPrefix}${gateMissed}Milestone 3 GitMirror held-out evaluation (2,598 repos): ${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar [0 at >=0.90 CI lower, ${clearedSc} sample-constrained (3 at >=0.80 CI, 3 zero-FP exhaustive)], ${proven} proven + ${zeroFp} unmeasured, prec=0.0%, pooled prec=${p2Prec}, Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr})`;
+        const reached35Count = guides.filter((g) => g.phase2KeptCount >= 35).length;
+        const gateMissed = isGitMirror && report.summary.clearedBar90Count === 0
+          ? `[GATE MISSED: ${report.summary.clearedBar90Count}/${report.summary.totalDetectableGuides} cleared >=0.90 LB vs 4-5/${report.summary.totalDetectableGuides} expected; ${reached35Count}/${report.summary.totalDetectableGuides} reached n>=35] `
+          : '';
+        const qualPrecStr = report.summary.qualifiedPooledPrecision?.precision !== undefined
+          ? `${(report.summary.qualifiedPooledPrecision.precision * 100).toFixed(1)}%`
+          : '0.0%';
+        const repoStr = gitMirrorCounts
+          ? `${gitMirrorCounts.tuneRepos.toLocaleString()} repos`
+          : '2,598 repos';
+        const clearedHighN80 = report.summary.clearedHighN80Count ?? 0;
+        const clearedZeroFpExhaustive = report.summary.clearedZeroFpExhaustiveCount ?? 0;
+
+        notes = `${notAdmittedPrefix}${gateMissed}Milestone 3 GitMirror held-out evaluation (${repoStr}): ${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar [${report.summary.clearedBar90Count} at >=0.90 CI lower, ${clearedSc} sample-constrained (${clearedHighN80} at >=0.80 CI, ${clearedZeroFpExhaustive} zero-FP exhaustive)], ${proven} proven + ${zeroFp} unmeasured, prec=${qualPrecStr}, pooled prec=${p2Prec}, Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr}`;
       }
     } else {
       const clearedSc = report.summary.clearedSampleConstrainedCount;
       const zeroFp = report.summary.zeroFpLowNCount;
       const proven = report.summary.provenHighNCount;
-      const qualifiedPrec = report.summary.qualifiedPooledPrecision?.precision !== undefined
+      const qualPrecStr = report.summary.qualifiedPooledPrecision?.total
         ? `${(report.summary.qualifiedPooledPrecision.precision * 100).toFixed(1)}%`
-        : '100.0%';
-      notes = `${notAdmittedPrefix}Milestone 3 local 93-repo tune rescore (93 repos, tune split per O32/O42): ${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar [${report.summary.clearedBar90Count} at >=0.90 CI lower, ${clearedSc} unmeasured-low-n], ${proven} proven + ${zeroFp} unmeasured, prec=${qualifiedPrec}, pooled prec=${p2Prec}, Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr})`;
+        : (report.summary.qualifiedPooledPrecision?.precision !== undefined
+          ? `${(report.summary.qualifiedPooledPrecision.precision * 100).toFixed(1)}%`
+          : 'unmeasured');
+
+      notes = `${notAdmittedPrefix}Milestone 3 local 93-repo tune rescore (93 repos, tune split per O32/O42): ${report.summary.clearedBarCount}/${report.summary.totalDetectableGuides} guides cleared bar [${report.summary.clearedBar90Count} at >=0.90 CI lower, ${clearedSc} unmeasured-low-n], ${proven} proven + ${zeroFp} unmeasured, prec=${qualPrecStr}, pooled prec=${p2Prec}, Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr}`;
     }
 
     const row: ProgressLogRow = {
@@ -605,8 +744,9 @@ export function formatProgressLogMarkdown(
     lines.push(`- **Precision:** ${formatMetricSummary(current.precision)}`);
     lines.push(`- **Recall:** ${formatMetricSummary(current.recall)}`);
     const judgeAlphaStr = current.judgeAlpha.toFixed(3);
-    const alphaFormatted = current.notes?.includes('(n=112)')
-      ? `${judgeAlphaStr} (n=112)`
+    const nMatch = current.notes?.match(/\(n=(\d+)\)/);
+    const alphaFormatted = nMatch
+      ? `${judgeAlphaStr} (n=${nMatch[1]})`
       : judgeAlphaStr;
     lines.push(
       `- **Guard Metrics:** Judge α = ${alphaFormatted}, Judge AC₁ = ${current.judgeAc1.toFixed(3)}, Canary TNR = ${(current.canaryTnr * 100).toFixed(1)}%`,

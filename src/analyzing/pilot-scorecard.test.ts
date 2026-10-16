@@ -18,6 +18,7 @@ import {
   type ScorecardSplit,
 } from './pilot-scorecard.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
+import { scanFiles } from './scanners/index.ts';
 import type { Phase2Verdict } from './phase2.ts';
 import { checkCanaries, type JudgeResult, JUDGE_VERSION } from './judge.ts';
 import { resolveGitMirrorCacheDir } from './paths.ts';
@@ -339,7 +340,7 @@ describe('evaluateGuideQualification (G7 sample-constrained criteria)', () => {
     assert.strictEqual(result.clearedHighN80, false);
     assert.strictEqual(result.clearedZeroFpExhaustive, true);
     assert.strictEqual(result.clearsSampleConstrained, true);
-    assert.strictEqual(result.clearsScreen80, true);
+    assert.strictEqual(result.clearsScreen80, false);
     assert.strictEqual(result.clearsPrecisionBar, false);
     assert.strictEqual(result.tier, 'unmeasured-low-n');
   });
@@ -620,6 +621,8 @@ describe('telemetry cache key strictness and version alignment (R17, R18, R28, R
 
     // A mock telemetry record with a stale version must not match current prompt version
     const staleRecord: CardTelemetryRecord = {
+      runId: 'test-run-1',
+      source: 'live',
       cardId,
       repo: 'repo1',
       commit: 'c1',
@@ -752,5 +755,38 @@ describe('3-way split infrastructure and sequential sampling (R23, O32, O60)', (
     }
   });
 });
+
+describe('excludeCorpusNonAppDirs scorecard scan filter (R24, O68)', () => {
+  it('excludes docs and site files when scanFiles is called with excludeCorpusNonAppDirs', () => {
+    const files = new Map<string, string>([
+      ['src/app.js', 'const x = 1;'],
+      ['docs/guide.js', 'const x = 1;'],
+      ['site/content/docs/page.js', 'const x = 1;'],
+    ]);
+
+    const dummyRule: AnalyzerRule = {
+      id: 'test-rule',
+      guideId: 'test-guide',
+      guideHash: '123456789012',
+      summary: 'test',
+      phase2Rubric: { keepWhen: ['test'], dropWhen: ['test'] },
+      matcher: {
+        kind: 'js',
+        fastTokens: ['const'],
+        matchFile: (_sf, _ctx) => [{ line: 1, message: 'hit' }],
+      },
+    };
+
+    const findingsWithoutFilter = scanFiles(files, [dummyRule], {});
+    assert.strictEqual(findingsWithoutFilter.length, 3);
+
+    const findingsWithFilter = scanFiles(files, [dummyRule], {
+      excludeCorpusNonAppDirs: true,
+    });
+    assert.strictEqual(findingsWithFilter.length, 1);
+    assert.strictEqual(findingsWithFilter[0]?.file, 'src/app.js');
+  });
+});
+
 
 

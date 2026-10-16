@@ -23,8 +23,6 @@ import type {
 export const SANITIZE_UNTRUSTED_HTML_GUIDE_HASH = '5ce9f1fd24c2';
 
 const SANITIZER_PACKAGES = [
-  'dompurify',
-  'isomorphic-dompurify',
   'sanitize-html',
   'xss',
   'insane',
@@ -232,11 +230,11 @@ export const sanitizeUntrustedHtmlPackageRule: AnalyzerRule = {
   guideId: 'sanitize-untrusted-html',
   guideHash: SANITIZE_UNTRUSTED_HTML_GUIDE_HASH,
   summary:
-    'Legacy HTML sanitization libraries (dompurify, isomorphic-dompurify, sanitize-html, xss, insane) can be modernized with native browser Sanitizer API and setHTML().',
+    'Legacy HTML sanitization libraries (sanitize-html, xss, insane) can be modernized with native browser Sanitizer API and setHTML().',
   matcher: sanitizerDependencyMatcher,
   phase2Rubric: {
     keepWhen: [
-      'Using third-party HTML sanitization packages (dompurify, isomorphic-dompurify, sanitize-html, xss, insane) in dependencies to prevent XSS.',
+      'Using third-party HTML sanitization packages (sanitize-html, xss, insane) in dependencies to prevent XSS.',
       'Assigning sanitized untrusted markup to DOM insertion sinks via element.innerHTML = DOMPurify.sanitize(...) or insertAdjacentHTML.',
     ],
     dropWhen: [

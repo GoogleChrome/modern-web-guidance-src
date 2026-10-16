@@ -207,15 +207,22 @@ export async function classifyGuideGate0(
   }
 
   const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      groundingMetadata?: {
+        webSearchQueries?: string[];
+      };
+    }>;
   };
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = data.candidates?.[0];
+  const text = candidate?.content?.parts?.[0]?.text;
   if (!text) {
     throw new Error(
       `Gate 0 classifyGuide returned empty candidate text for guide ${guide.guideId}`,
     );
   }
 
+  const webSearchQueries = candidate?.groundingMetadata?.webSearchQueries ?? [];
   const parsed = parseGate0Response(text, guide.guideId);
   const enableSearchGrounding = options?.enableSearchGrounding ?? true;
 
@@ -229,5 +236,6 @@ export async function classifyGuideGate0(
     evidenceFromGuide: parsed.evidenceFromGuide,
     reason: parsed.reason,
     gate0PromptVersion: computeGate0PromptVersion(0.0, enableSearchGrounding),
+    webSearchQueries,
   };
 }

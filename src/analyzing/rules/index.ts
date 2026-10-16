@@ -117,84 +117,27 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...darkModeRules,
   ...manageRecurringIntervalsRules,
 
-  // Batch 3 Wild-Verified Guides (6 guides, 12 rules -> 48 rules across 35 feature guides total):
+  // Batch 3 Wild-Verified Guides (4 active guides, 7 rules -> 45 rules across 33 feature guides total;
+  // model-partial-time-concepts and custom-select-picker-layouts removed per O69 guide mismatch):
   ...dragRules,
   ...formatHumanReadableDurationsRules,
-  ...modelPartialTimeConceptsRules,
   ...sanitizeUntrustedHtmlRules,
-  ...customSelectPickerLayoutsRules,
   ...scrollPositionAwareElementsRules,
 ];
 
 export const ALL_RULES: readonly AnalyzerRule[] = PILOT_RULES;
 
-/**
- * Tier 1: Proven high-N qualified guides.
- */
-export const TIER_1_GUIDE_IDS: readonly string[] = [
-  'autofill-sign-in-form',
-  'declarative-dialog-popover-control',
-  'animate-element-entry-exit',
-  'individual-transform-properties',
-  'child-state-based-styling',
-  'resilient-context-menus-and-nested-dropdowns',
-  'shadow-dom',
-] as const;
+export {
+  TERMINAL_QUALIFIED_GUIDE_IDS,
+  JSON_QUALIFIED_GUIDE_IDS,
+  QUALIFIED_GUIDE_IDS,
+  deriveQualifiedGuideIds,
+} from '../qualification.ts';
 
-/**
- * Production rules for Tier 1 proven-high-N guides.
- */
-export const TIER_1_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
-  TIER_1_GUIDE_IDS.includes(r.guideId),
-);
-
-/**
- * Tier 2: Guides unmeasured under high-N threshold (too few findings: n < 8, lower bound unmeasured per R20).
- */
-export const TIER_2_GUIDE_IDS: readonly string[] = [
-  'animate-to-intrinsic-sizes',
-  'coordinate-global-events',
-  'accessible-error-announcement',
-  'ime-safe-enter-submit',
-  'stack-drill-down',
-  'calculate-event-differentials',
-  'form-fields-automatically-fit-contents',
-  'brand-consistent-forms',
-  'autofill-address-form',
-  'branded-select-styling',
-  'adapt-scrollbar-to-contrast-preferences',
-  'checkbox',
-  'prevent-page-scroll-under-modal-dialog',
-  'dark-mode',
-  'manage-recurring-intervals',
-  'customize-scrollbar-color-and-thickness',
-  'break-up-long-tasks',
-  'detect-initial-visibility-state',
-] as const;
-
-/**
- * Production rules for Tier 2 zero-FP low-N guides.
- */
-export const TIER_2_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
-  TIER_2_GUIDE_IDS.includes(r.guideId),
-);
-
-/**
- * Strict qualified guides clearing the held-out precision bar (wilson95.lower >= 0.90 at n >= 35) per R10, R32.5, R33, O40, O60.
- *
- * NOTE (O60): No guides have been measured on an untuned final split yet.
- * On held-out local-93 tuning repos, 'animate-element-entry-exit' clears the bar provisionally.
- * 'individual-transform-properties' scored 57/59 (wilson95.lower = 0.885 < 0.90) and is excluded.
- */
-export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [
-  'animate-element-entry-exit',
-] as const;
-
-export const JSON_QUALIFIED_GUIDE_IDS: readonly string[] = [
-  'animate-element-entry-exit',
-] as const;
-
-export const QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;
+import {
+  TERMINAL_QUALIFIED_GUIDE_IDS,
+  JSON_QUALIFIED_GUIDE_IDS,
+} from '../qualification.ts';
 
 /**
  * Production rules gated to terminal qualified guides only.
@@ -211,7 +154,7 @@ export const JSON_QUALIFIED_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r
 );
 
 /**
- * Production rules gated to qualified guides only (clearing wilson95.lower >= 0.90).
+ * Production rules gated to qualified guides only (clearing wilson95.lower >= 0.90 on admitted split).
  * All landed guides remain available via ALL_RULES (--experimental / --all-rules).
  */
 export const QUALIFIED_RULES: readonly AnalyzerRule[] = TERMINAL_QUALIFIED_RULES;

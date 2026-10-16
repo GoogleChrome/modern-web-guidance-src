@@ -59,6 +59,7 @@ export interface ScanOptions {
   readonly repo?: string;
   readonly commit?: string;
   readonly fileFilterOptions?: FileFilterOptions;
+  readonly excludeCorpusNonAppDirs?: boolean;
   readonly project?: Project;
 }
 
@@ -466,8 +467,14 @@ export function scanFiles(
   const findings: AnalyzerFinding[] = [];
   const project = options?.project ?? createInMemoryProject();
 
+  const filterOpts: FileFilterOptions | undefined =
+    options?.fileFilterOptions ??
+    (options?.excludeCorpusNonAppDirs !== undefined
+      ? { excludeCorpusNonAppDirs: options.excludeCorpusNonAppDirs }
+      : undefined);
+
   for (const [relPath, content] of files) {
-    if (!shouldScanFile(relPath, content, options?.fileFilterOptions)) {
+    if (!shouldScanFile(relPath, content, filterOpts)) {
       continue;
     }
 
@@ -546,7 +553,7 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
     const relPath = relative(state.repoDirPath, fullPath);
 
     if (entry.isDirectory()) {
-      if (!isVendoredOrGeneratedPath(relPath)) {
+      if (!isVendoredOrGeneratedPath(relPath, state.fileFilterOptions)) {
         await walkDirectory(fullPath, state);
       }
       continue;
@@ -576,11 +583,17 @@ export async function scanRepoFiles(
   const fileMap = new Map<string, string>();
   const maxFiles = options?.maxFiles ?? 5000;
 
+  const fileFilterOptions: FileFilterOptions | undefined =
+    options?.fileFilterOptions ??
+    (options?.excludeCorpusNonAppDirs !== undefined
+      ? { excludeCorpusNonAppDirs: options.excludeCorpusNonAppDirs }
+      : undefined);
+
   await walkDirectory(repoDirPath, {
     repoDirPath,
     fileMap,
     maxFiles,
-    fileFilterOptions: options?.fileFilterOptions,
+    fileFilterOptions,
   });
 
   return scanFiles(fileMap, rules, options);

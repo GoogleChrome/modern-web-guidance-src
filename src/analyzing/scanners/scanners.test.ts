@@ -931,6 +931,31 @@ void test('dependency-scanner: package.json dependency detection', () => {
   assert.match(matches[0]?.message ?? '', /moment-timezone/);
 });
 
+void test('dependency-scanner: findPackageLine skips keywords and finds dependencies line (O69)', () => {
+  const pkgJson = JSON.stringify(
+    {
+      name: 'my-app',
+      keywords: ['react-select', 'ui'],
+      description: 'An app with react-select',
+      dependencies: {
+        'react-select': '^5.0.0',
+      },
+    },
+    null,
+    2,
+  );
+
+  const rule: DependencyRuleMatcher = {
+    kind: 'dependency',
+    packages: ['react-select'],
+  };
+
+  const matches = scanPackageJson('package.json', pkgJson, [rule]);
+  assert.equal(matches.length, 1);
+  // Line 4 is inside keywords ("react-select"), while line 9 is inside dependencies
+  assert.equal(matches[0]?.line, 9);
+});
+
 void test('scanFiles and computeGuideHash: end-to-end integration', () => {
   const guideContent = '# Autofill Sign In Form Guide\n\nModern pattern.';
   const hash = computeGuideHash(guideContent);

@@ -13,12 +13,12 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing all 48 rules across the 35 landed feature guides', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 48);
-    assert.strictEqual(ALL_RULES.length, 48);
+  it('exports PILOT_RULES containing 45 rules across the 33 active feature guides (O69)', async (t) => {
+    assert.strictEqual(PILOT_RULES.length, 45);
+    assert.strictEqual(ALL_RULES.length, 45);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 35);
+    assert.strictEqual(guideIds.size, 33);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
@@ -35,7 +35,6 @@ describe('rules/index export registry', () => {
         'checkbox',
         'child-state-based-styling',
         'coordinate-global-events',
-        'custom-select-picker-layouts',
         'customize-scrollbar-color-and-thickness',
         'dark-mode',
         'declarative-dialog-popover-control',
@@ -47,7 +46,6 @@ describe('rules/index export registry', () => {
         'ime-safe-enter-submit',
         'individual-transform-properties',
         'manage-recurring-intervals',
-        'model-partial-time-concepts',
         'prevent-page-scroll-under-modal-dialog',
         'resilient-context-menus-and-nested-dropdowns',
         'sanitize-untrusted-html',
@@ -74,37 +72,19 @@ describe('rules/index export registry', () => {
     }
   });
 
-  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 1 provisional guide clearing 0.90 lower bound (R32.5, R33, O40, O60)', async (t) => {
-    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 1);
+  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES empty while judge is unadmitted (R32.5, R33, O40, O60, O64)', async () => {
+    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 0);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
     assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_RULES, QUALIFIED_RULES);
     assert.deepStrictEqual(JSON_QUALIFIED_RULES, QUALIFIED_RULES);
+    assert.strictEqual(QUALIFIED_RULES.length, 0);
 
     const qualifiedGuideSet = new Set(QUALIFIED_GUIDE_IDS);
-    assert.strictEqual(qualifiedGuideSet.size, 1);
-    assert.ok(qualifiedGuideSet.has('animate-element-entry-exit'));
+    assert.strictEqual(qualifiedGuideSet.size, 0);
+  });
 
-    const qualifiedRuleGuideIds = new Set(QUALIFIED_RULES.map((r) => r.guideId));
-    assert.strictEqual(qualifiedRuleGuideIds.size, 1);
-    assert.deepStrictEqual(Array.from(qualifiedRuleGuideIds).sort(), [...QUALIFIED_GUIDE_IDS].sort());
-
-    // Excluded experimental / low-n sample-constrained guides and sub-bar guides
-    const unmeasuredGuides = [
-      'autofill-sign-in-form',
-      'declarative-dialog-popover-control',
-      'individual-transform-properties',
-      'schedule-tasks-by-priority',
-      'scrollspy',
-      'size-aware-styling',
-      'defer-work-until-scroll-ends',
-    ];
-    for (const exp of unmeasuredGuides) {
-      await t.test(`excludes unmeasured guide ${exp}`, () => {
-        assert.strictEqual(qualifiedGuideSet.has(exp), false, `${exp} should not be in qualified guides`);
-      });
-    }
-
+  it('exports POST_SELECTION_TUNED_GUIDE_IDS', () => {
     assert.deepStrictEqual(POST_SELECTION_TUNED_GUIDE_IDS, [
       'manage-recurring-intervals',
       'calculate-event-differentials',

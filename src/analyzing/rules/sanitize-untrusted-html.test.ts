@@ -11,24 +11,12 @@ const depMatcher = sanitizerDependencyMatcher;
 const jsMatcher = sanitizerJsMatcher;
 
 void test('sanitize-untrusted-html dependency matcher', async (t) => {
-  await t.test('flags dompurify in dependencies', () => {
+  await t.test('exempts dompurify and isomorphic-dompurify as recommended fallbacks (O69)', () => {
     const pkg = JSON.stringify(
       {
         dependencies: {
           dompurify: '^3.0.0',
         },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [depMatcher]);
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /dompurify/);
-  });
-
-  await t.test('flags isomorphic-dompurify in devDependencies', () => {
-    const pkg = JSON.stringify(
-      {
         devDependencies: {
           'isomorphic-dompurify': '^2.0.0',
         },
@@ -37,8 +25,7 @@ void test('sanitize-untrusted-html dependency matcher', async (t) => {
       2,
     );
     const matches = scanPackageJson('package.json', pkg, [depMatcher]);
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /isomorphic-dompurify/);
+    assert.equal(matches.length, 0);
   });
 
   await t.test('flags sanitize-html in dependencies', () => {

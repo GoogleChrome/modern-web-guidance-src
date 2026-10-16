@@ -153,6 +153,9 @@ void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
                 },
               ],
             },
+            groundingMetadata: {
+              webSearchQueries: ['legacy scrollend replacement'],
+            },
           },
         ],
       };
@@ -185,6 +188,7 @@ void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
     assert.equal(entry.brownfieldTarget, 'manual wheel event listeners');
     assert.equal(entry.evidenceFromGuide, 'Replaces window.addEventListener("wheel", ...)');
     assert.equal(entry.gate0PromptVersion, GATE0_PROMPT_VERSION);
+    assert.deepEqual(entry.webSearchQueries, ['legacy scrollend replacement']);
   });
 
   await t.test('retries on 429 and eventually succeeds', async () => {
