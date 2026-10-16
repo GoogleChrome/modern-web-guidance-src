@@ -21,5 +21,5 @@
 - While a top-level menu is open, moving the pointer over a different top-level trigger closes the open menu and previews the hovered one with focus on that trigger; with no menu open, hovering a trigger does nothing.
 - Moving the pointer over a submenu trigger previews its submenu after a short delay, and moving to a sibling item closes that submenu.
 - Activating a command item closes all open menu levels, restores focus to the root menu trigger, and never leaves focus inside hidden content.
-- Menus are anchored to their triggers via CSS Anchor Positioning (using the invoker or `showPopover({ source: trigger })` without per-menu CSS anchor rules), positioning top-level menus below their trigger and submenus beside their trigger on wide viewports.
+- Menus are anchored to their triggers via CSS Anchor Positioning (using the invoker or `showPopover({ source: trigger })` without per-menu CSS anchor rules), positioning top-level menus below their trigger and submenus beside their trigger on wide viewports, and falling back to below the submenu trigger, indented, when neither side fits so a submenu never covers its parent menu.
 - Menu items align their content columns across rows using CSS Grid and `grid-template-columns: subgrid`.

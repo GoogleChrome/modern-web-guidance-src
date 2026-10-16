@@ -95,9 +95,17 @@ Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-po
 /* A popover nested in another popover is a submenu: beside its parent item, flipping when it would overflow. */
 [popover] [popover] {
   position-area: inline-end span-block-end;
-  position-try-fallbacks: flip-inline, flip-block;
+  position-try-fallbacks: flip-inline, flip-block, --below;
+}
+
+/* Last resort for narrow viewports: below the trigger, indented, so the submenu never covers its parent. */
+@position-try --below {
+  position-area: block-end span-inline-end;
+  margin-inline-start: 1rem;
 }
 ```
+
+List `--below` last so it is used only when neither side fits. Without it, a submenu in a narrow viewport overlaps its parent menu and hides the items the user came from.
 
 ## Keyboard and focus
 
