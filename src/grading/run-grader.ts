@@ -127,22 +127,23 @@ export async function runPlaywright(
 
     await once(child, 'close');
 
-    // Move any retained trace.zip files out of test-results into tracesDir/<slug>.zip
+    // Keep retained traces only for tests that drove a browser. Static (no-fixture) tests still get a
+    // trace.zip, but it holds just `test.trace` (step list), while browser tests add `<n>-trace.trace`.
+    // Zip entry names are stored uncompressed, so a byte search on the archive is enough.
     if (tracesDir) {
       const entries = await fs.promises.readdir(resolvedTestResultsDir, { withFileTypes: true }).catch((err: any) => {
         if (err.code !== 'ENOENT') throw err;
         return [];
       });
       for (const entry of entries) {
-        if (entry.isDirectory()) {
-          const traceSource = path.join(resolvedTestResultsDir, entry.name, 'trace.zip');
-          try {
-            await fs.promises.mkdir(tracesDir, { recursive: true });
-            await fs.promises.copyFile(traceSource, path.join(tracesDir, `${entry.name}.zip`));
-          } catch (err: any) {
-            if (err.code !== 'ENOENT') throw err;
-          }
-        }
+        if (!entry.isDirectory()) continue;
+        const zip = await fs.promises.readFile(path.join(resolvedTestResultsDir, entry.name, 'trace.zip')).catch((err: any) => {
+          if (err.code !== 'ENOENT') throw err;
+          return null;
+        });
+        if (!zip?.includes('-trace.trace')) continue;
+        await fs.promises.mkdir(tracesDir, { recursive: true });
+        await fs.promises.writeFile(path.join(tracesDir, `${entry.name}.zip`), zip);
       }
     }
 
