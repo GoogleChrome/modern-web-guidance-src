@@ -204,6 +204,8 @@ export const SYNTHETIC_CANARY_CARDS: readonly BlindCardPayload[] = [
       problem: 'CSS transition on max-height simulates intrinsic size animation',
       before: 'transition: max-height 0.5s ease',
       now: 'interpolate-size: allow-keywords; transition: height 0.5s ease;',
+      markdownBody:
+        '# Animate to Intrinsic Sizes\n\n### Problem\nCSS transition on max-height simulates intrinsic size animation\n\n### Before\ntransition: max-height 0.5s ease\n\n### Now\ninterpolate-size: allow-keywords; transition: height 0.5s ease;',
     },
     codeSnippet: `:root {
   interpolate-size: allow-keywords;
@@ -226,6 +228,8 @@ export const SYNTHETIC_CANARY_CARDS: readonly BlindCardPayload[] = [
       problem: 'Legacy timezone math or moment-timezone instead of Temporal.ZonedDateTime',
       before: 'moment.tz(d, "America/New_York") or Date.prototype.getTimezoneOffset()',
       now: 'Temporal.ZonedDateTime',
+      markdownBody:
+        '# Coordinate Global Events\n\n### Problem\nLegacy timezone math or moment-timezone instead of Temporal.ZonedDateTime\n\n### Before\nmoment.tz(d, "America/New_York") or Date.prototype.getTimezoneOffset()\n\n### Now\nTemporal.ZonedDateTime',
     },
     codeSnippet: `function logTimestampWithMoment(moment: { name: string; tz: string; timestamp: number }): string {
   const tz = moment.tz ?? 'UTC';
@@ -243,6 +247,8 @@ export const SYNTHETIC_CANARY_CARDS: readonly BlindCardPayload[] = [
       problem: 'Imperative click listener toggles dialog instead of declarative commandfor',
       before: 'btn.addEventListener("click", () => dialog.showModal())',
       now: '<button commandfor="my-dialog" command="show-modal">',
+      markdownBody:
+        '# Declarative Dialog Control\n\n### Problem\nImperative click listener toggles dialog instead of declarative commandfor\n\n### Before\nbtn.addEventListener("click", () => dialog.showModal())\n\n### Now\n<button commandfor="my-dialog" command="show-modal">',
     },
     codeSnippet: `if ('commandForElement' in HTMLButtonElement.prototype) {
   openButton.commandForElement = targetDialog;
@@ -924,7 +930,11 @@ export async function runPilotScorecard(
     combinedCardsMap.set(c.cardId, c);
   }
   for (const c of SYNTHETIC_CANARY_CARDS) {
-    combinedCardsMap.set(c.cardId, c);
+    const diskSummary = summaries.get(c.guideId);
+    combinedCardsMap.set(c.cardId, {
+      ...c,
+      guideSummary: diskSummary ?? c.guideSummary,
+    });
   }
 
   const allEvaluationCards = Array.from(combinedCardsMap.values());
