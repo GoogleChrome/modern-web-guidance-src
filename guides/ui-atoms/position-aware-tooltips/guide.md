@@ -108,6 +108,9 @@ If you need to change properties on the container itself (like `margin` or `back
 - **Prefer logical fallbacks**: Use keywords like `flip-block` and `flip-inline` in `position-try-fallbacks` for simpler queries that handle RTL and different writing modes automatically.
 - **Use pseudo-elements for arrows**: Tooltip arrows are purely decorative and are perfect candidates for `::before` or `::after`, which can be styled via anchored container queries without extra DOM.
 
+## Accessibility considerations
+
+Ensure that the positioning of tooltips will not obscure interactive elements as they receive focus. If the tooltip is likely to obscure an interactive element when it receives focus, either change the position of the tooltip to prevent focus being obscured, or dismiss the tooltip.
 
 ## Fallback strategies
 
