@@ -63,9 +63,7 @@ function cardHTML(guide) {
         <div class="card-desc" title="${guide.description}">${guide.description}</div>
         <div class="card-features">${guide.features.map(f => dom`<button type="button" class="feature-tag" data-action="feature" title="Filter by ${f}">${f}</button>`)}</div>
       </div>
-      <div class="iframe-container">
-        <iframe loading="lazy" sandbox="${SANDBOX}" title="${guide.id} demo" src="${src}"></iframe>
-      </div>
+      <div class="iframe-container"></div>
     </article>`;
 }
 
@@ -93,6 +91,17 @@ const views = guides.map(guide => ({
   card: $(`#${CSS.escape(guide.id)}`, main),
   tocItem: /** @type {HTMLElement} */ ($(`.toc-link[href="#${guide.id}"]`, tocGrid).parentElement),
 }));
+
+// <iframe> is "Sanitization: Unsafe" in the HTML spec, so render() always drops it (setHTML and the fallback alike).
+// Build each one with DOM APIs instead: no string parsing, and every value is set as a property/attribute directly.
+for (const { guide, card } of views) {
+  const iframe = document.createElement('iframe');
+  iframe.loading = 'lazy'; // Must be set before src, or the browser starts loading eagerly.
+  iframe.setAttribute('sandbox', SANDBOX);
+  iframe.title = `${guide.id} demo`;
+  iframe.src = /** @type {string} */ (card.dataset.src);
+  $('.iframe-container', card).append(iframe);
+}
 
 // Loading is native (`loading="lazy"`); the observer only unloads far-offscreen frames and restores them on return.
 const unloader = new IntersectionObserver(entries => {
