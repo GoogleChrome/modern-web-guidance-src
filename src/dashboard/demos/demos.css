@@ -39,10 +39,12 @@ body {
     font-size: 1.15rem;
     font-weight: 600;
     letter-spacing: -0.01em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    text-transform: lowercase;
   }
 
   input {
-    flex: 0 1 360px;
+    flex: 0 1 320px;
     margin-inline-start: auto;
     padding: 6px 12px;
     background: var(--demos-panel);
@@ -50,7 +52,7 @@ body {
     border-radius: 6px;
     color: var(--demos-text);
     font: inherit;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
 
@@ -62,9 +64,10 @@ body {
 
   a {
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     padding: 4px 8px;
     border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     transition: color 0.15s, background-color 0.15s;
 
     &:hover {
@@ -74,39 +77,74 @@ body {
 
     &:active {
       background: var(--demos-panel-active);
+      color: var(--demos-accent);
     }
   }
 }
 
 /* Table of Contents */
 .toc {
-  padding: 16px 24px;
+  padding: 18px 24px 22px;
   border-bottom: 1px solid var(--demos-border);
   background: var(--demos-bg);
 }
 
-.toc-title {
-  font-size: 0.72rem;
+.toc-grid {
+  columns: 6 200px;
+  column-gap: 24px;
+}
+
+.toc-col {
+  break-inside: avoid;
+  margin-bottom: 18px;
+}
+
+.toc-cat-header {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--demos-text-muted);
-  margin-bottom: 8px;
+  color: var(--demos-accent);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--demos-border);
+  display: block;
+  text-decoration: none;
+  transition: color 0.12s, border-color 0.12s;
+
+  &:hover {
+    color: var(--demos-text);
+    border-color: var(--demos-border-active);
+  }
+
+  &:active {
+    color: var(--demos-accent);
+    transform: scale(0.98);
+  }
 }
 
 .toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .toc-link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.73rem;
   color: var(--demos-text-muted);
   text-decoration: none;
-  font-size: 0.85rem;
-  padding: 3px 8px;
-  border-radius: 4px;
-  transition: color 0.15s, background-color 0.15s;
+  display: block;
+  padding: 1px 4px;
+  border-radius: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.12s, background-color 0.12s, transform 0.1s;
 
   &:hover {
     color: var(--demos-text);
@@ -114,21 +152,15 @@ body {
   }
 
   &:active {
-    background: var(--demos-panel-active);
     color: var(--demos-accent);
+    background: var(--demos-panel-active);
+    transform: scale(0.97);
   }
 
   &.active {
     color: var(--demos-accent);
-    background: rgba(88, 166, 255, 0.1);
-    font-weight: 600;
+    background: rgba(88, 166, 255, 0.12);
   }
-}
-
-.toc-count {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  margin-left: 2px;
 }
 
 main {
@@ -142,8 +174,9 @@ main {
     margin: 32px 0 16px;
     font-size: 0.85rem;
     font-weight: 700;
-    text-transform: uppercase;
+    text-transform: lowercase;
     letter-spacing: 0.06em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     color: var(--demos-text-muted);
     border-bottom: 1px solid var(--demos-border);
     padding-bottom: 6px;
@@ -164,6 +197,7 @@ main {
   background: var(--demos-panel);
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  scroll-margin-top: 64px;
   transition: border-color 0.15s, box-shadow 0.15s;
   /* Skip layout/paint for far-offscreen cards. */
   content-visibility: auto;
@@ -171,10 +205,6 @@ main {
 
   &:hover {
     border-color: var(--demos-border-active);
-  }
-
-  &:active {
-    border-color: var(--demos-accent);
   }
 
   &.showing-unset {
@@ -220,7 +250,7 @@ main {
     color: var(--demos-text-muted);
     border-radius: 3px;
     cursor: pointer;
-    transition: background 0.12s, color 0.12s;
+    transition: background 0.12s, color 0.12s, transform 0.1s;
 
     &:hover {
       color: var(--demos-text);
@@ -249,7 +279,7 @@ main {
     padding: 4px;
     border-radius: 4px;
     text-decoration: none;
-    transition: color 0.15s, background-color 0.15s;
+    transition: color 0.15s, background-color 0.15s, transform 0.1s;
 
     &:hover {
       color: var(--demos-accent);

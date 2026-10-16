@@ -5,7 +5,6 @@
  * @typedef {{
  *   id: string;
  *   category: string;
- *   categoryTitle: string;
  *   title: string;
  *   description: string;
  *   features: string[];
@@ -25,16 +24,13 @@ const SVG_OPEN_IN_NEW = `
 </svg>`.trim();
 
 const main = /** @type {HTMLElement} */ (document.getElementById('demos'));
-const tocList = /** @type {HTMLElement} */ (document.getElementById('toc-list'));
+const tocGrid = /** @type {HTMLElement} */ (document.getElementById('toc-grid'));
 const filterInput = /** @type {HTMLInputElement} */ (document.getElementById('demo-filter'));
-const countEl = /** @type {HTMLElement} */ (document.getElementById('demo-count'));
 
 const resp = await fetch('../demos.gen.json');
 if (!resp.ok) throw new Error(`Failed to load demos.gen.json: ${resp.status}`);
 /** @type {{ guides: DemoGuide[] }} */
 const { guides } = await resp.json();
-
-countEl.textContent = `(${guides.length})`;
 
 // Loading is native (`loading="lazy"`); the observer only unloads far-offscreen frames and restores them on return.
 const unloader = new IntersectionObserver(entries => {
@@ -56,21 +52,31 @@ const tocObserver = new IntersectionObserver(entries => {
   for (const { target, isIntersecting } of entries) {
     if (isIntersecting) {
       const activeId = target.id;
-      for (const link of tocList.querySelectorAll('.toc-link')) {
-        link.classList.toggle('active', link.getAttribute('href') === `#${activeId}`);
+      for (const header of tocGrid.querySelectorAll('.toc-cat-header')) {
+        header.classList.toggle('active', header.getAttribute('href') === `#${activeId}`);
       }
     }
   }
-}, { rootMargin: '-20% 0px -70% 0px' });
+}, { rootMargin: '-10% 0px -75% 0px' });
 
-for (const [category, group] of Object.entries(Object.groupBy(guides, g => g.category))) {
-  if (!group) continue;
+// Group and sort categories alphabetically
+const grouped = Object.groupBy(guides, g => g.category);
+const sortedCategories = Object.keys(grouped).sort();
+
+for (const category of sortedCategories) {
+  const group = grouped[category];
+  if (!group || group.length === 0) continue;
+
+  // Sort demos within category by id
+  group.sort((a, b) => a.id.localeCompare(b.id));
+
+  // Category section in main
   const section = document.createElement('section');
   section.className = 'category';
   section.id = `cat-${category}`;
 
   const h2 = document.createElement('h2');
-  h2.textContent = `${group[0].categoryTitle} (${group.length})`;
+  h2.textContent = category;
 
   const grid = document.createElement('div');
   grid.className = 'grid';
@@ -80,23 +86,63 @@ for (const [category, group] of Object.entries(Object.groupBy(guides, g => g.cat
   main.append(section);
   tocObserver.observe(section);
 
-  const link = document.createElement('a');
-  link.className = 'toc-link';
-  link.href = `#${section.id}`;
-  link.innerHTML = `${escapeHtml(group[0].categoryTitle)}<span class="toc-count">(${group.length})</span>`;
-  tocList.append(link);
+  // Category column in TOC
+  const col = document.createElement('div');
+  col.className = 'toc-col';
+  col.dataset.category = category;
+
+  const catHeader = document.createElement('a');
+  catHeader.className = 'toc-cat-header';
+  catHeader.href = `#${section.id}`;
+  catHeader.textContent = category;
+
+  const ul = document.createElement('ul');
+  ul.className = 'toc-list';
+
+  for (const guide of group) {
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.className = 'toc-link';
+    a.href = `#${guide.id}`;
+    a.textContent = guide.id;
+    a.title = guide.description;
+    li.append(a);
+    ul.append(li);
+  }
+
+  col.append(catHeader, ul);
+  tocGrid.append(col);
 }
 
 filterInput.addEventListener('input', () => {
   const query = filterInput.value.trim().toLowerCase();
-  for (const section of main.querySelectorAll('section')) {
+
+  // Filter cards & main sections
+  const sections = /** @type {NodeListOf<HTMLElement>} */ (main.querySelectorAll('section'));
+  for (const section of sections) {
     let anyVisible = false;
-    for (const card of section.querySelectorAll('article')) {
-      const match = !query || (/** @type {HTMLElement} */ (card).dataset.search ?? '').includes(query);
+    const cards = /** @type {NodeListOf<HTMLElement>} */ (section.querySelectorAll('article'));
+    for (const card of cards) {
+      const match = !query || (card.dataset.search ?? '').includes(query);
       card.hidden = !match;
       anyVisible ||= match;
     }
     section.hidden = !anyVisible;
+  }
+
+  // Filter TOC links & category columns
+  const cols = /** @type {NodeListOf<HTMLElement>} */ (tocGrid.querySelectorAll('.toc-col'));
+  for (const col of cols) {
+    let anyLinkVisible = false;
+    const links = /** @type {NodeListOf<HTMLElement>} */ (col.querySelectorAll('.toc-link'));
+    for (const link of links) {
+      const linkText = link.textContent?.toLowerCase() ?? '';
+      const match = !query || linkText.includes(query);
+      const parentLi = link.parentElement;
+      if (parentLi) parentLi.hidden = !match;
+      anyLinkVisible ||= match;
+    }
+    col.hidden = !anyLinkVisible;
   }
 });
 
@@ -114,6 +160,7 @@ function renderCard(guide) {
 
   const card = document.createElement('article');
   card.className = 'card';
+  card.id = guide.id;
   card.dataset.src = primaryUrl;
   card.dataset.search = [guide.id, guide.title, guide.category, guide.description, ...guide.features].join(' ').toLowerCase();
 
@@ -191,11 +238,4 @@ function renderCard(guide) {
   card.append(header, container);
   unloader.observe(card);
   return card;
-}
-
-/**
- * @param {string} str
- */
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
