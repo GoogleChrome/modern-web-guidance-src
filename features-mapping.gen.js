@@ -876,7 +876,10 @@ window.__featuresMapping = {
   ],
   "progress": [
     "accent-color",
-    "progress"
+    "progress",
+    "revert-rule",
+    "container-queries",
+    "individual-transforms"
   ],
   "progress-ring": [
     "progress",
