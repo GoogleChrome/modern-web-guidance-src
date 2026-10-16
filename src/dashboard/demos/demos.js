@@ -1,7 +1,6 @@
 // @ts-check
 
 import { $ } from '../utils.js';
-import { dom, render } from '../dom.js';
 
 /**
  * @typedef {{ id: string; path: string }} DemoFile
@@ -13,6 +12,7 @@ import { dom, render } from '../dom.js';
  *   features: string[];
  *   demos: DemoFile[];
  * }} DemoGuide
+ * @typedef {Node | string | null | undefined | false} Child
  */
 
 /** Unload iframes once they're this far outside the viewport, to cap memory with ~180 demos. */
@@ -21,7 +21,31 @@ const UNLOAD_MARGIN = '200% 0px';
 /** Demos run with an opaque origin (no allow-same-origin) so they can't reach dashboard storage. */
 const SANDBOX = 'allow-scripts allow-forms allow-popups allow-modals';
 
-const SVG_OPEN_IN_NEW = dom`<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10.75 1a.75.75 0 0 0 0 1.5h1.69L6.22 8.72a.75.75 0 0 0 1.06 1.06l6.22-6.22v1.69a.75.75 0 0 0 1.5 0V1a.75.75 0 0 0-.75-.75h-4.5zM2.5 3A1.5 1.5 0 0 0 1 4.5v9A1.5 1.5 0 0 0 2.5 15h9a1.5 1.5 0 0 0 1.5-1.5v-4.25a.75.75 0 0 0-1.5 0v4.25a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h4.25a.75.75 0 0 0 0-1.5H2.5z"/></svg>`;
+/**
+ * createElement shorthand. Attributes go through setAttribute and string children become text nodes, so nothing is
+ * ever parsed as HTML. Arrays of children are flattened one level; null/undefined/false children are skipped.
+ * @template {keyof HTMLElementTagNameMap} K
+ * @param {K} tag
+ * @param {Record<string, string>} [attrs]
+ * @param {...(Child | Child[])} children
+ * @returns {HTMLElementTagNameMap[K]}
+ */
+function h(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [name, value] of Object.entries(attrs)) el.setAttribute(name, value);
+  el.append(...children.flat().filter(/** @returns {c is Node | string} */ c => c != null && c !== false));
+  return el;
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const openInNewIcon = document.createElementNS(SVG_NS, 'svg');
+openInNewIcon.setAttribute('viewBox', '0 0 16 16');
+openInNewIcon.setAttribute('fill', 'currentColor');
+openInNewIcon.setAttribute('aria-hidden', 'true');
+const openInNewPath = document.createElementNS(SVG_NS, 'path');
+openInNewPath.setAttribute('fill-rule', 'evenodd');
+openInNewPath.setAttribute('d', 'M10.75 1a.75.75 0 0 0 0 1.5h1.69L6.22 8.72a.75.75 0 0 0 1.06 1.06l6.22-6.22v1.69a.75.75 0 0 0 1.5 0V1a.75.75 0 0 0-.75-.75h-4.5zM2.5 3A1.5 1.5 0 0 0 1 4.5v9A1.5 1.5 0 0 0 2.5 15h9a1.5 1.5 0 0 0 1.5-1.5v-4.25a.75.75 0 0 0-1.5 0v4.25a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h4.25a.75.75 0 0 0 0-1.5H2.5z');
+openInNewIcon.append(openInNewPath);
 
 const main = $('#demos');
 const tocGrid = $('#toc-grid');
@@ -34,74 +58,65 @@ if (!resp.ok) throw new Error(`Failed to load demos.gen.json: ${resp.status}`);
 /** @type {{ guides: DemoGuide[]; features: string[] }} */
 const { guides, features } = await resp.json();
 
-// The manifest is already sorted by category, then id; groupBy preserves that order.
-const grouped = /** @type {Record<string, DemoGuide[]>} */ (Object.groupBy(guides, g => g.category));
-const categories = Object.entries(grouped);
-
 /**
  * @param {DemoGuide} guide
  */
-function cardHTML(guide) {
+function renderCard(guide) {
   const [primary] = guide.demos;
   const unsetDemo = guide.demos.find(d => d.id === 'negative-demo');
   // Relative to demos/index.html, guides are at ../guides/...
   const src = `../${primary.path}`;
-  const toggle = unsetDemo && dom`
-    <div class="toggle-group" role="group" aria-label="Demo variant">
-      <button type="button" class="toggle-btn active" data-action="variant" data-src="${src}" aria-pressed="true">demo</button>
-      <button type="button" class="toggle-btn unset" data-action="variant" data-src="../${unsetDemo.path}" aria-pressed="false">unset</button>
-    </div>`;
 
-  return dom`
-    <article class="card" id="${guide.id}" data-src="${src}">
-      <div class="card-header" data-action="expand">
-        <div class="card-header-top">
-          <span class="guide-id" title="${guide.title}: ${guide.description}">${guide.id}</span>
-          ${toggle}
-          <a class="open-link" href="${src}" target="_blank" rel="noopener" title="Open in a new tab" aria-label="Open ${guide.id} in a new tab">${SVG_OPEN_IN_NEW}</a>
-        </div>
-        <div class="card-desc" title="${guide.description}">${guide.description}</div>
-        <div class="card-features">${guide.features.map(f => dom`<button type="button" class="feature-tag" data-action="feature" title="Filter by ${f}">${f}</button>`)}</div>
-      </div>
-      <div class="iframe-container"></div>
-    </article>`;
+  return h('article', { class: 'card', id: guide.id, 'data-src': src },
+    h('div', { class: 'card-header', 'data-action': 'expand' },
+      h('div', { class: 'card-header-top' },
+        h('span', { class: 'guide-id', title: `${guide.title}: ${guide.description}` }, guide.id),
+        unsetDemo && h('div', { class: 'toggle-group', role: 'group', 'aria-label': 'Demo variant' },
+          h('button', { type: 'button', class: 'toggle-btn active', 'data-action': 'variant', 'data-src': src, 'aria-pressed': 'true' }, 'demo'),
+          h('button', { type: 'button', class: 'toggle-btn unset', 'data-action': 'variant', 'data-src': `../${unsetDemo.path}`, 'aria-pressed': 'false' }, 'unset'),
+        ),
+        h('a', { class: 'open-link', href: src, target: '_blank', rel: 'noopener', title: 'Open in a new tab', 'aria-label': `Open ${guide.id} in a new tab` },
+          openInNewIcon.cloneNode(true),
+        ),
+      ),
+      h('div', { class: 'card-desc', title: guide.description }, guide.description),
+      h('div', { class: 'card-features' },
+        guide.features.map(f => h('button', { type: 'button', class: 'feature-tag', 'data-action': 'feature', title: `Filter by ${f}` }, f)),
+      ),
+    ),
+    h('div', { class: 'iframe-container' },
+      h('iframe', { loading: 'lazy', sandbox: SANDBOX, title: `${guide.id} demo`, src }),
+    ),
+  );
 }
-
-render(main, dom`${categories.map(([category, group]) => dom`
-  <section class="category" id="cat-${category}">
-    <h2>${category}</h2>
-    <div class="grid">${group.map(cardHTML)}</div>
-  </section>`)}`);
-
-render(tocGrid, dom`${categories.map(([category, group]) => dom`
-  <div class="toc-col" data-category="${category}">
-    <a class="toc-cat-header" href="#cat-${category}">${category}</a>
-    <ul class="toc-list">${group.map(g => dom`<li><a class="toc-link" href="#${g.id}" title="${g.description}">${g.id}</a></li>`)}</ul>
-  </div>`)}`);
-
-render($('#features-datalist'), dom`${features.map(feat => {
-  const count = guides.filter(g => g.features.includes(feat)).length;
-  return dom`<option value="${feat}" label="${count} ${count === 1 ? 'guide' : 'guides'}"></option>`;
-})}`);
 
 const views = guides.map(guide => ({
   guide,
   searchText: [guide.id, guide.title, guide.category, guide.description, ...guide.features].join(' ').toLowerCase(),
-  // Some ids start with a digit (2d-panning), so escape them for the selector.
-  card: $(`#${CSS.escape(guide.id)}`, main),
-  tocItem: /** @type {HTMLElement} */ ($(`.toc-link[href="#${guide.id}"]`, tocGrid).parentElement),
+  card: renderCard(guide),
+  tocItem: h('li', {}, h('a', { class: 'toc-link', href: `#${guide.id}`, title: guide.description }, guide.id)),
 }));
 
-// <iframe> is "Sanitization: Unsafe" in the HTML spec, so render() always drops it (setHTML and the fallback alike).
-// Build each one with DOM APIs instead: no string parsing, and every value is set as a property/attribute directly.
-for (const { guide, card } of views) {
-  const iframe = document.createElement('iframe');
-  iframe.loading = 'lazy'; // Must be set before src, or the browser starts loading eagerly.
-  iframe.setAttribute('sandbox', SANDBOX);
-  iframe.title = `${guide.id} demo`;
-  iframe.src = /** @type {string} */ (card.dataset.src);
-  $('.iframe-container', card).append(iframe);
-}
+// The manifest is already sorted by category, then id; groupBy preserves that order.
+const categories = Object.entries(Object.groupBy(views, v => v.guide.category)).map(([name, items = []]) => ({
+  name,
+  items,
+  section: h('section', { class: 'category', id: `cat-${name}` },
+    h('h2', {}, name),
+    h('div', { class: 'grid' }, items.map(v => v.card)),
+  ),
+  tocCol: h('div', { class: 'toc-col' },
+    h('a', { class: 'toc-cat-header', href: `#cat-${name}` }, name),
+    h('ul', { class: 'toc-list' }, items.map(v => v.tocItem)),
+  ),
+}));
+
+main.append(...categories.map(c => c.section));
+tocGrid.append(...categories.map(c => c.tocCol));
+$('#features-datalist').append(...features.map(feat => {
+  const count = guides.filter(g => g.features.includes(feat)).length;
+  return h('option', { value: feat, label: `${count} ${count === 1 ? 'guide' : 'guides'}` });
+}));
 
 // Loading is native (`loading="lazy"`); the observer only unloads far-offscreen frames and restores them on return.
 const unloader = new IntersectionObserver(entries => {
@@ -126,7 +141,7 @@ const tocObserver = new IntersectionObserver(entries => {
     }
   }
 }, { rootMargin: '-10% 0px -75% 0px' });
-for (const section of main.querySelectorAll('section.category')) tocObserver.observe(section);
+for (const { section } of categories) tocObserver.observe(section);
 
 /** @type {Record<string, (el: HTMLElement, card: HTMLElement) => void>} */
 const clickActions = {
@@ -149,6 +164,8 @@ const clickActions = {
   },
 };
 
+// One delegated listener for every card. The innermost [data-action] wins, so a tag/toggle click doesn't also expand
+// the header. Links (open-in-new-tab) keep their default behavior.
 main.addEventListener('click', e => {
   const target = /** @type {Element} */ (e.target);
   if (target.closest('a')) return;
@@ -178,26 +195,26 @@ $('header.demos-header h1').addEventListener('click', () => {
 function applyFilters() {
   const textQuery = demoFilter.value.trim().toLowerCase();
   const featQuery = featureFilter.value.trim().toLowerCase();
-  const visibleCategories = new Set();
+  let anyVisible = false;
 
-  for (const { guide, searchText, card, tocItem } of views) {
-    const match = (!textQuery || searchText.includes(textQuery)) &&
-                  (!featQuery || guide.features.some(f => f.toLowerCase().includes(featQuery)));
-    card.hidden = !match;
-    tocItem.hidden = !match;
-    if (match) visibleCategories.add(guide.category);
+  for (const { items, section, tocCol } of categories) {
+    let categoryVisible = false;
+    for (const { guide, searchText, card, tocItem } of items) {
+      const match = (!textQuery || searchText.includes(textQuery)) &&
+                    (!featQuery || guide.features.some(f => f.toLowerCase().includes(featQuery)));
+      card.hidden = !match;
+      tocItem.hidden = !match;
+      categoryVisible ||= match;
 
-    for (const tag of card.querySelectorAll('.feature-tag')) {
-      tag.classList.toggle('active', Boolean(featQuery && tag.textContent?.toLowerCase().includes(featQuery)));
+      for (const tag of card.querySelectorAll('.feature-tag')) {
+        tag.classList.toggle('active', Boolean(featQuery && tag.textContent?.toLowerCase().includes(featQuery)));
+      }
     }
+    section.hidden = !categoryVisible;
+    tocCol.hidden = !categoryVisible;
+    anyVisible ||= categoryVisible;
   }
-
-  for (const [category] of categories) {
-    const hidden = !visibleCategories.has(category);
-    $(`#cat-${category}`, main).hidden = hidden;
-    $(`.toc-col[data-category="${category}"]`, tocGrid).hidden = hidden;
-  }
-  noResults.hidden = visibleCategories.size > 0;
+  noResults.hidden = anyVisible;
 }
 
 demoFilter.addEventListener('input', applyFilters);
