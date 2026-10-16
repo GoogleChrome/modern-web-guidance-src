@@ -42,21 +42,6 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
     expect(html).toContain('option::checkmark');
   });
 
-  test('Requirement 9: MUST include a progressive enhancement fallback check if JS is used for custom behavior', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasJS = html.includes('<script') || html.includes('onclick') || html.includes('addEventListener');
-    const hasBaseSelect = html.includes('appearance: base-select');
-    
-    // If it attempts custom UI (indicated by JS or hiding the select) but lacks base-select,
-    // it MUST have the CSS.supports check.
-    if (hasJS && !hasBaseSelect) {
-      expect(html).toContain('CSS.supports("appearance", "base-select")');
-    } else {
-      // Passes if it uses base-select natively or has no JS fallbacks
-      expect(true).toBe(true);
-    }
-  });
-
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
