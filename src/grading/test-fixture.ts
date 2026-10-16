@@ -1,4 +1,4 @@
-import { test as base, type Page } from '@playwright/test';
+import { test as base, type Page, type BrowserContext } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, spawnSync } from 'child_process';
@@ -28,7 +28,20 @@ async function getFreePort(): Promise<number> {
   });
 }
 
-export const test = base.extend<{ page: Page }, ServerWorkerFixtures>({
+export const test = base.extend<{ page: Page; context: BrowserContext }, ServerWorkerFixtures>({
+  // devtools-times loads a live analytics beacon (intentionally janky; it's a DevTools demo, and some
+  // graders inspect its <script>). It POSTs to a Cloud Function whose CORS allowlist excludes localhost,
+  // so every browser test logged a CORS error + failed request. Answer it locally so grading stays
+  // hermetic and console/network errors only show real problems. The script itself still loads and runs.
+  context: async ({ context }, use) => {
+    await context.route('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/analytics', (route) =>
+      route.fulfill({
+        status: 204,
+        headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' },
+      }));
+    await use(context);
+  },
+
   page: async ({ page }, use, testInfo) => {
     const diagnostics: string[] = [];
 
@@ -76,7 +89,6 @@ export const test = base.extend<{ page: Page }, ServerWorkerFixtures>({
       }
     }
   },
-
   // eslint-disable-next-line no-empty-pattern
   TARGET_URL: [async ({}, use) => {
     const targetDir = process.cwd();
