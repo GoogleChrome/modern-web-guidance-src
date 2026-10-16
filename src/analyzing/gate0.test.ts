@@ -24,7 +24,7 @@ void test('gate0: prompt formatting and request body construction', async (t) =>
     assert.ok(prompt.includes('Replaces moment timezone.'));
   });
 
-  await t.test('buildGate0RequestBody creates temperature 0 request with schema', () => {
+  await t.test('buildGate0RequestBody creates temperature 0 request with schema and default search grounding', () => {
     const body = buildGate0RequestBody({
       guideId: 'temporal-now',
       category: 'javascript',
@@ -38,6 +38,7 @@ void test('gate0: prompt formatting and request body construction', async (t) =>
         responseMimeType: string;
         responseSchema: typeof GATE0_RESPONSE_SCHEMA;
       };
+      tools?: Array<{ googleSearch: Record<string, unknown> }>;
     };
 
     assert.equal(body.systemInstruction.parts[0]?.text, GATE0_SYSTEM_PROMPT);
@@ -45,9 +46,11 @@ void test('gate0: prompt formatting and request body construction', async (t) =>
     assert.equal(body.generationConfig.thinkingConfig.thinkingBudget, 2048);
     assert.equal(body.generationConfig.responseMimeType, 'application/json');
     assert.deepEqual(body.generationConfig.responseSchema, GATE0_RESPONSE_SCHEMA);
+    assert.ok(body.tools, 'tools array should be defined by default');
+    assert.deepEqual(body.tools[0], { googleSearch: {} });
   });
 
-  await t.test('buildGate0RequestBody supports enableSearchGrounding option', () => {
+  await t.test('buildGate0RequestBody supports enableSearchGrounding: false to disable', () => {
     const body = buildGate0RequestBody(
       {
         guideId: 'temporal-now',
@@ -55,11 +58,10 @@ void test('gate0: prompt formatting and request body construction', async (t) =>
         guideHash: '1234567890ab',
         markdownContent: '# Temporal Guide',
       },
-      { enableSearchGrounding: true },
+      { enableSearchGrounding: false },
     ) as { tools?: Array<{ googleSearch: Record<string, unknown> }> };
 
-    assert.ok(body.tools, 'tools array should be defined when grounding enabled');
-    assert.deepEqual(body.tools[0], { googleSearch: {} });
+    assert.equal(body.tools, undefined, 'tools array should be undefined when grounding disabled');
   });
 });
 

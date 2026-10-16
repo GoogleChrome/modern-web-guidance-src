@@ -49,7 +49,7 @@ describe('prompts: content-hashed versions (R31)', () => {
       schema: GATE0_RESPONSE_SCHEMA,
       thinkingBudget: GATE0_THINKING_BUDGET,
       temperature: 0.0,
-      enableSearchGrounding: false,
+      enableSearchGrounding: true,
     });
     assert.strictEqual(GATE0_PROMPT_VERSION, `${PROMPT_MODEL}:gate0-v2-${expectedHash}`);
     assert.match(GATE0_PROMPT_VERSION, /^gemini-3\.8-flash:gate0-v2-[0-9a-f]{8}$/);

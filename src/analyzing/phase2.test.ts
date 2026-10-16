@@ -61,7 +61,7 @@ const mockFindings: AnalyzerFinding[] = [
 
 describe('phase2 LLM verifier', () => {
   test('formats prompt with rule summary, rubrics, and AST slice', () => {
-    const prompt = formatPhase2Prompt(mockFindings[0], mockRule);
+    const prompt = formatPhase2Prompt(mockFindings[0], mockRule, '# Test Guide Markdown');
     assert.match(prompt, /Rule: test-rule/);
     assert.match(prompt, /Summary: Detects old-pattern/);
     assert.match(prompt, /Keep When:/);

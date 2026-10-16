@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   CANARY_CONFIG,
+  GITMIRROR_FINAL_SCORECARD_PATH,
+  INITIAL_SAMPLE_BATCH,
+  MAX_EXTENDED_SAMPLE,
+  MAX_SAMPLE_PER_GUIDE,
   SYNTHETIC_CANARY_CARDS,
   buildRulesByIdMap,
   computeRuleSetHash,
@@ -11,6 +15,7 @@ import {
   samplePhase2DropsDeck,
   stratifiedSampleFindings,
   type PilotScorecardReport,
+  type ScorecardSplit,
 } from './pilot-scorecard.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import type { Phase2Verdict } from './phase2.ts';
@@ -194,6 +199,7 @@ describe('formatPilotScorecardReport', () => {
       gitDirty: false,
       ruleSetHash: '2661f572344c',
       splitHash: 'b8af9495f9ec',
+      split: 'grading-only',
       gradesHash: 'b6e5d6f718df',
       judgeVersion: 'gemini-3.8-flash:detective-v4-guide-only',
       guides: [
@@ -628,6 +634,122 @@ describe('telemetry cache key strictness and version alignment (R17, R18, R28, R
       phase2: { keep: true, confidence: 'high', reason: 'old reason' },
     };
     assert.notStrictEqual(staleRecord.promptVersion, PHASE2_PROMPT_VERSION);
+  });
+});
+
+describe('3-way split infrastructure and sequential sampling (R23, O32, O60)', () => {
+  it('exports correct constants for 2-stage sequential sampling batches', () => {
+    assert.strictEqual(INITIAL_SAMPLE_BATCH, 60);
+    assert.strictEqual(MAX_EXTENDED_SAMPLE, 100);
+    assert.strictEqual(MAX_SAMPLE_PER_GUIDE, 60);
+    assert.ok(GITMIRROR_FINAL_SCORECARD_PATH.endsWith('2026-10-16-gitmirror-final-scorecard.json'));
+  });
+
+  it('renders split label in formatPilotScorecardReport', () => {
+    const mockReport: PilotScorecardReport = {
+      timestamp: '2026-10-16T00:00:00.000Z',
+      commit: 'abc1234',
+      gitDirty: false,
+      ruleSetHash: '2661f572344c',
+      splitHash: 'b8af9495f9ec',
+      split: 'final',
+      gradesHash: 'b6e5d6f718df',
+      judgeVersion: 'gemini-3.8-flash:detective-v6-spec22-3233a247',
+      guides: [],
+      summary: {
+        totalDetectableGuides: 1,
+        clearedBarCount: 0,
+        clearedScreenCount: 0,
+        coverage: { value: 0, n: 1, split: 'final' },
+        overallPrecision: { value: 0, n: 0, split: 'final, judged' },
+        overallRecall: { value: 0, n: 0, split: 'final' },
+        pooledHeldoutPrecision: {
+          successes: 0,
+          total: 0,
+          precision: 0,
+          wilson95: { proportion: 0, lower: 0, upper: 0, n: 0 },
+        },
+        judgeStability: null,
+        judgeAlpha: 1.0,
+        judgeAc1: 1.0,
+        canaryTnr: 1.0,
+        canaryViolations: [],
+      },
+      canaries: CANARY_CONFIG,
+    };
+
+    const formatted = formatPilotScorecardReport(mockReport);
+    assert.ok(formatted.includes('Split Hash:    b8af9495f9ec (final)'));
+  });
+
+  it('filters repos by split matching tune (tune + grading-only) and final strictly', () => {
+    const repos = [
+      { repo: 'r1', split: 'rule-writing', commit: 'c1' },
+      { repo: 'r2', split: 'tune', commit: 'c2' },
+      { repo: 'r3', split: 'grading-only', commit: 'c3' },
+      { repo: 'r4', split: 'final', commit: 'c4' },
+    ];
+
+    const filterTune = (split: ScorecardSplit) =>
+      repos.filter((r) => {
+        if (split === 'tune') return r.split === 'tune' || r.split === 'grading-only';
+        if (split === 'grading-only') return r.split === 'grading-only' || r.split === 'tune';
+        return r.split === split;
+      });
+
+    const tuneRepos = filterTune('tune');
+    assert.deepStrictEqual(
+      tuneRepos.map((r) => r.repo),
+      ['r2', 'r3'],
+    );
+
+    const finalRepos = filterTune('final');
+    assert.deepStrictEqual(
+      finalRepos.map((r) => r.repo),
+      ['r4'],
+    );
+  });
+
+  it('guarantees deterministic prefix preservation when extending sample from 60 to 100', () => {
+    const findings: AnalyzerFinding[] = [];
+    for (let r = 0; r < 4; r++) {
+      for (let i = 0; i < 35; i++) {
+        findings.push({
+          cardId: `c_${r}_${i}`,
+          ruleId: 'test-rule',
+          guideId: 'test-guide',
+          guideHash: '123456789012',
+          repo: `repo-${r}`,
+          commit: 'abc1234',
+          file: `src/file${i}.ts`,
+          line: i + 1,
+          message: 'msg',
+          codeSnippet: 'code',
+          astSlice: 'ast',
+        });
+      }
+    }
+    assert.strictEqual(findings.length, 140);
+
+    const sample60 = stratifiedSampleFindings(findings, INITIAL_SAMPLE_BATCH);
+    const sample100 = stratifiedSampleFindings(findings, MAX_EXTENDED_SAMPLE);
+
+    assert.strictEqual(sample60.length, 60);
+    assert.strictEqual(sample100.length, 100);
+
+    // Initial batch is exact prefix of extended batch
+    assert.deepStrictEqual(
+      sample100.slice(0, 60).map((f) => f.cardId),
+      sample60.map((f) => f.cardId),
+    );
+
+    // Extension findings are the remaining 40 items
+    const additional = sample100.slice(60);
+    assert.strictEqual(additional.length, 40);
+    const initialSet = new Set(sample60.map((f) => f.cardId));
+    for (const f of additional) {
+      assert.strictEqual(initialSet.has(f.cardId), false);
+    }
   });
 });
 

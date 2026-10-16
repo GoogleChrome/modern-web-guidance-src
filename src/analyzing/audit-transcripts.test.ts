@@ -53,6 +53,16 @@ const MOCK_REPOS: RepoEntry[] = [
     subpaths: [],
     localPath: '~/.cache/analyzer-repos/trajectoryview-pinned',
   },
+  {
+    repo: 'tastejs-todomvc',
+    split: 'tune',
+    localPath: null,
+  },
+  {
+    repo: 'final-eval-repo',
+    split: 'final',
+    localPath: null,
+  },
 ];
 
 describe('parseTranscriptJsonl', () => {
@@ -151,6 +161,43 @@ describe('isGradingRepoMatch', () => {
       gradingRepos,
     );
     assert.strictEqual(res2.matched, false);
+  });
+
+  it('matches tune and final split repos and gitmirror paths', () => {
+    const resTune = isGradingRepoMatch(
+      '/home/user/.cache/analyzer-repos/tastejs-todomvc/index.html',
+      gradingRepos,
+    );
+    assert.strictEqual(resTune.matched, true);
+    assert.strictEqual(resTune.repoName, 'tastejs-todomvc');
+
+    const resFinal = isGradingRepoMatch(
+      '/home/user/.cache/analyzer-repos/final-eval-repo/app.js',
+      gradingRepos,
+    );
+    assert.strictEqual(resFinal.matched, true);
+    assert.strictEqual(resFinal.repoName, 'final-eval-repo');
+
+    const resGmGrading = isGradingRepoMatch(
+      'cat ~/.cache/analyzer-gitmirror/grading-only/some-repo/index.ts',
+      gradingRepos,
+    );
+    assert.strictEqual(resGmGrading.matched, true);
+    assert.strictEqual(resGmGrading.repoName, 'analyzer-gitmirror');
+
+    const resGmTune = isGradingRepoMatch(
+      'cat ~/.cache/analyzer-gitmirror/tune/some-repo/index.ts',
+      gradingRepos,
+    );
+    assert.strictEqual(resGmTune.matched, true);
+    assert.strictEqual(resGmTune.repoName, 'analyzer-gitmirror');
+
+    const resGmFinal = isGradingRepoMatch(
+      'cat ~/.cache/analyzer-gitmirror/final/some-repo/index.ts',
+      gradingRepos,
+    );
+    assert.strictEqual(resGmFinal.matched, true);
+    assert.strictEqual(resGmFinal.repoName, 'analyzer-gitmirror');
   });
 });
 

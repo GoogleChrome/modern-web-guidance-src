@@ -116,6 +116,18 @@ describe('checkSequentialStop', () => {
     // 50 of 60 lower bound is ~0.69 < 0.9, fails at 60
     assert.strictEqual(checkSequentialStop(50, 60, 0.9), 'fail');
   });
+
+  it('supports custom maxGrades cap (e.g. 100) for extended sequential sampling', () => {
+    // 58 of 60: lower bound ~0.859 < 0.9, upper bound ~0.993 > 0.9
+    // At default maxGrades=60, 60 grades fails terminally:
+    assert.strictEqual(checkSequentialStop(58, 60, 0.9), 'fail');
+    // With maxGrades=100, 60 grades continues:
+    assert.strictEqual(checkSequentialStop(58, 60, 0.9, 100), 'continue');
+    // At 100 grades with 95/100 (lower ~0.87 < 0.9), it fails terminally at 100:
+    assert.strictEqual(checkSequentialStop(95, 100, 0.9, 100), 'fail');
+    // At 98 of 100, lower bound is ~0.912 >= 0.9:
+    assert.strictEqual(checkSequentialStop(98, 100, 0.9, 100), 'pass');
+  });
 });
 
 describe('krippendorffAlphaNominal', () => {

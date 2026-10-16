@@ -94,6 +94,7 @@ export function checkSequentialStop(
   successes: number,
   total: number,
   targetLowerBound: number,
+  maxGrades: number = MAX_SEQUENTIAL_GRADES,
 ): SequentialStopDecision {
   if (total < MIN_SEQUENTIAL_GRADES) {
     return 'continue';
@@ -109,7 +110,7 @@ export function checkSequentialStop(
     return 'fail';
   }
 
-  if (total >= MAX_SEQUENTIAL_GRADES) {
+  if (total >= maxGrades) {
     return 'fail';
   }
 

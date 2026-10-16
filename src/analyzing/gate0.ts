@@ -6,6 +6,7 @@ export {
   GATE0_RESPONSE_SCHEMA,
   GATE0_SYSTEM_PROMPT,
   GATE0_THINKING_BUDGET,
+  computeGate0PromptVersion,
   formatGate0Prompt,
 } from './prompts.ts';
 import {
@@ -13,6 +14,7 @@ import {
   GATE0_RESPONSE_SCHEMA,
   GATE0_SYSTEM_PROMPT,
   GATE0_THINKING_BUDGET,
+  computeGate0PromptVersion,
   formatGate0Prompt,
 } from './prompts.ts';
 
@@ -35,6 +37,7 @@ export interface Gate0Options {
 }
 
 export function buildGate0RequestBody(guide: Gate0GuideInput, options?: Gate0Options): unknown {
+  const enableSearchGrounding = options?.enableSearchGrounding ?? true;
   const body: Record<string, unknown> = {
     systemInstruction: {
       parts: [{ text: GATE0_SYSTEM_PROMPT }],
@@ -53,7 +56,7 @@ export function buildGate0RequestBody(guide: Gate0GuideInput, options?: Gate0Opt
     },
   };
 
-  if (options?.enableSearchGrounding) {
+  if (enableSearchGrounding) {
     body.tools = [{ googleSearch: {} }];
   }
 
@@ -214,6 +217,7 @@ export async function classifyGuideGate0(
   }
 
   const parsed = parseGate0Response(text, guide.guideId);
+  const enableSearchGrounding = options?.enableSearchGrounding ?? true;
 
   return {
     guideId: guide.guideId,
@@ -224,6 +228,6 @@ export async function classifyGuideGate0(
     brownfieldTarget: parsed.brownfieldTarget,
     evidenceFromGuide: parsed.evidenceFromGuide,
     reason: parsed.reason,
-    gate0PromptVersion: GATE0_PROMPT_VERSION,
+    gate0PromptVersion: computeGate0PromptVersion(0.0, enableSearchGrounding),
   };
 }

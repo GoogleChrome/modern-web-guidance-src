@@ -3,7 +3,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { LABELS_DIR, REPOS_CONFIG_PATH } from './paths.ts';
 import { isEnoent } from './progress-log.ts';
 
-export type RepoSplit = 'rule-writing' | 'grading-only';
+export type RepoSplit = 'rule-writing' | 'grading-only' | 'tune' | 'final';
 
 export interface RepoEntry {
   repo: string;
@@ -137,9 +137,14 @@ export async function loadRepos(
     if (typeof rec.repo !== 'string' || rec.repo.length === 0) {
       throw new Error(`${reposPath}[${index}]: missing string 'repo'`);
     }
-    if (rec.split !== 'rule-writing' && rec.split !== 'grading-only') {
+    if (
+      rec.split !== 'rule-writing' &&
+      rec.split !== 'grading-only' &&
+      rec.split !== 'tune' &&
+      rec.split !== 'final'
+    ) {
       throw new Error(
-        `${reposPath}[${index}] (${rec.repo}): split must be 'rule-writing' or 'grading-only', got ${JSON.stringify(rec.split)}`,
+        `${reposPath}[${index}] (${rec.repo}): split must be 'rule-writing', 'grading-only', 'tune', or 'final', got ${JSON.stringify(rec.split)}`,
       );
     }
     return {
@@ -156,10 +161,10 @@ export async function loadRepos(
 }
 
 /**
- * Filters a list of repos to only those in the grading-only split.
+ * Filters a list of repos to only those in non-rule-writing splits (grading-only, tune, final).
  */
 export function extractGradingRepos(repos: RepoEntry[]): RepoEntry[] {
-  return repos.filter((r) => r.split === 'grading-only');
+  return repos.filter((r) => r.split !== 'rule-writing');
 }
 
 /**
@@ -224,6 +229,14 @@ export function isGradingRepoMatch(
   // Reading repos.json itself is allowed; it does not constitute reading repo content
   if (normalized === 'repos.json' || normalized.endsWith('/repos.json')) {
     return { matched: false };
+  }
+
+  if (
+    normalized.includes('analyzer-gitmirror/grading-only') ||
+    normalized.includes('analyzer-gitmirror/tune') ||
+    normalized.includes('analyzer-gitmirror/final')
+  ) {
+    return { matched: true, repoName: 'analyzer-gitmirror' };
   }
 
   for (const repo of gradingRepos) {
