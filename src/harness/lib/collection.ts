@@ -283,7 +283,9 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   }
 
   const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
-  fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
+  // List only the tasks prepared above. A '**' glob would also re-run every task that was graded before
+  // (their run-grader scripts linger), using whatever checkout their grade.mjs points at.
+  fs.writeFileSync(pnpmWorkspacePath, ['packages:', ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)].join('\n') + '\n');
 
   try {
     console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
