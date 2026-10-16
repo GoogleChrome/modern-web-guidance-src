@@ -4,8 +4,9 @@
  * Escaping-only subset of safedom (~/code/safedom). The dom`` tag is the safety layer: every interpolation is
  * HTML-escaped unless it's already a SafeHTML.
  *
- * render() uses innerHTML, not setHTML(). Two reasons: Safari has no Sanitizer API, and setHTML() always strips
- * <iframe> (and <button>, target/rel) even with a custom Sanitizer allowing them, which kills the demo gallery.
+ * render() uses innerHTML, not setHTML(). Two reasons: Safari has no Sanitizer API, and setHTML() always runs the
+ * safe baseline removal, which drops <iframe> (spec-marked "Sanitization: Unsafe") no matter what Sanitizer config is
+ * passed. That kills the demo gallery.
  * https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#built-in-safe-baseline-configuration
  *
  * Caveats (no attribute-context awareness): always quote attribute values, and never interpolate untrusted values
