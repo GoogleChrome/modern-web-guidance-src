@@ -22,7 +22,16 @@ Include:
 
 # Build an application menu
 
-Use this pattern for actions that change the current interface, such as creating, saving, or changing preferences. Use ordinary links in a `<nav>` when items take users to destinations; that pattern uses `Tab`, not a menu.
+This guide covers any popup menu: dropdown, context, overflow, and the menu bars that open them. The worked example is an application command menu, where items change the current interface, such as creating, saving, or changing preferences.
+
+### Command menus and navigation menus
+
+Command and navigation menu bars differ in two places. Everything else here applies to both.
+
+* **Item element.** A command is a `<button type="button">`; a destination is an `<a href>`. A link must still open in a new tab, copy as a URL, and work without script.
+* **Roles.** Plain links in a `<nav>` are not a menu: they use `Tab`, and `role="menu"`, `role="menuitem"`, and `aria-haspopup="menu"` do not belong there.
+
+In practice it is a spectrum: a "Products" dropdown of links beside an "Account" menu of commands, or one menu holding both "Settings" and "Help centre". Choose the element per item, not per menu bar, and reuse the popover, positioning, submenu, and keyboard behavior here for both. For links-only menus where users expect `Tab`, drop the focusgroup and roles and use the navbar guide.
 
 Use the menu pattern only for a composite widget with one tab stop and arrow-key navigation. Use a `<div focusgroup="menu nomemory">`, not the HTML `<menu>` element. Do not add `role="menu"` or `role="menuitem"` in the shared markup: native focusgroup infers those roles, and explicit roles block that inference. Add them only in the unsupported-browser fallback below. `nomemory` makes reopening start at the first item. Focusgroup moves focus; script handles preview, activation, and focus restoration.
 
