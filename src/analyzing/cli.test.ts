@@ -197,11 +197,11 @@ describe('runAnalyzeCli', () => {
   it('gates CLI to QUALIFIED_RULES by default and includes experimental rules with --all-rules', async () => {
     const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
     try {
-      // 1. Create a qualified pattern: CSS hover transform -> individual-transform-properties
-      const transformCss = `.box:hover {
-  transform: translateY(-5px) scale(1.05);
+      // 1. Create a qualified pattern: jQuery fadeIn -> animate-element-entry-exit
+      const animateJs = `function showModal() {
+  $('#modal').fadeIn(300);
 }`;
-      await writeFile(join(testDir, 'transform.css'), transformCss, 'utf8');
+      await writeFile(join(testDir, 'animate.js'), animateJs, 'utf8');
 
       // 2. Create an experimental pattern: requestIdleCallback -> schedule-tasks-by-priority
       const idleJs = `function runIdleTask() {
@@ -215,7 +215,7 @@ describe('runAnalyzeCli', () => {
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
       const defaultGuideIds = parsedDefault.guides.map((g) => g.guideId);
 
-      assert.ok(defaultGuideIds.includes('individual-transform-properties'), 'Default includes qualified rule');
+      assert.ok(defaultGuideIds.includes('animate-element-entry-exit'), 'Default includes qualified rule');
       assert.ok(
         !defaultGuideIds.includes('schedule-tasks-by-priority'),
         'Default excludes experimental rule schedule-tasks-by-priority',
@@ -227,7 +227,7 @@ describe('runAnalyzeCli', () => {
       const parsedAll = JSON.parse(resAll.output) as AnalyzeJsonOutput;
       const allGuideIds = parsedAll.guides.map((g) => g.guideId);
 
-      assert.ok(allGuideIds.includes('individual-transform-properties'), 'All-rules includes qualified rule');
+      assert.ok(allGuideIds.includes('animate-element-entry-exit'), 'All-rules includes qualified rule');
       assert.ok(
         allGuideIds.includes('schedule-tasks-by-priority'),
         'All-rules includes experimental rule schedule-tasks-by-priority',

@@ -11,6 +11,8 @@ import type {
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
+  DependencyMatcherContext,
+  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -242,9 +244,43 @@ function matchClassListAdd(callExpr: CallExpression): AnalyzerMatch | null {
   };
 }
 
+/**
+ * Checks whether a call expression is disableBodyScroll(...) or enableBodyScroll(...).
+ */
+function matchScrollLockCall(callExpr: CallExpression): AnalyzerMatch | null {
+  const expr = unwrapExpression(callExpr.getExpression());
+  let fnName = '';
+  if (Node.isIdentifier(expr)) {
+    fnName = expr.getText();
+  } else if (Node.isPropertyAccessExpression(expr)) {
+    fnName = expr.getName();
+  }
+
+  if (fnName === 'disableBodyScroll' || fnName === 'enableBodyScroll') {
+    if (isInsideFullscreenToggle(callExpr)) {
+      return null;
+    }
+    return {
+      line: callExpr.getStartLineNumber(),
+      message:
+        `Imperative body scroll lock call (${fnName}(...)) used for modal/overlay instead of native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
+    };
+  }
+
+  return null;
+}
+
 export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['overflow', 'modal-open', 'no-scroll', 'scroll-lock', 'overflow-hidden'],
+  fastTokens: [
+    'overflow',
+    'modal-open',
+    'no-scroll',
+    'scroll-lock',
+    'overflow-hidden',
+    'disableBodyScroll',
+    'enableBodyScroll',
+  ],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
 
@@ -258,6 +294,12 @@ export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {
 
     const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
     for (const callExpr of callExpressions) {
+      const scrollLockMatch = matchScrollLockCall(callExpr);
+      if (scrollLockMatch) {
+        matches.push(scrollLockMatch);
+        continue;
+      }
+
       const setPropMatch = matchSetPropertyCall(callExpr);
       if (setPropMatch) {
         matches.push(setPropMatch);
@@ -338,7 +380,41 @@ export const preventPageScrollUnderModalDialogCssRule: AnalyzerRule = {
   },
 };
 
+export const preventPageScrollUnderModalDialogDependencyMatcher: DependencyRuleMatcher = {
+  kind: 'dependency',
+  packages: ['body-scroll-lock', 'scroll-lock', 'no-scroll'],
+  matchPackage(
+    pkgName: string,
+    versionRange: string,
+    _ctx: DependencyMatcherContext,
+  ): { message: string } | null {
+    return {
+      message:
+        `Legacy body scroll lock library "${pkgName}" (${versionRange}) can be replaced with native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
+    };
+  },
+};
+
+export const preventPageScrollUnderModalDialogDependencyRule: AnalyzerRule = {
+  id: 'prevent-page-scroll-under-modal-dialog/package-scroll-lock',
+  guideId: 'prevent-page-scroll-under-modal-dialog',
+  guideHash: PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
+  summary:
+    'Flag dependencies on legacy body scroll lock packages (body-scroll-lock, scroll-lock, no-scroll) that freeze viewport scroll during modal dialogs.',
+  matcher: preventPageScrollUnderModalDialogDependencyMatcher,
+  phase2Rubric: {
+    keepWhen: [
+      'Projects depending on legacy body scroll lock packages (body-scroll-lock, scroll-lock, no-scroll) to prevent background page scrolling during modal dialogs or overlays.',
+    ],
+    dropWhen: [
+      'Native <dialog> elements utilizing CSS overscroll-behavior: contain to isolate scroll without third-party libraries.',
+      'Full-page canvas or game views requiring total viewport scroll management rather than modal overlays.',
+    ],
+  },
+};
+
 export const preventPageScrollUnderModalDialogRules: readonly AnalyzerRule[] = [
   preventPageScrollUnderModalDialogRule,
   preventPageScrollUnderModalDialogCssRule,
+  preventPageScrollUnderModalDialogDependencyRule,
 ];

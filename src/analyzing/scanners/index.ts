@@ -24,9 +24,7 @@ import {
 } from './file-filter.ts';
 import {
   createInMemoryProject,
-  getSharedInMemoryProject,
   matchesFastTokens,
-  resetSharedInMemoryProject,
   scanJsSource,
 } from './js-scanner.ts';
 import {
@@ -466,7 +464,7 @@ export function scanFiles(
 
   const ruleBundle = { dom: domRules, js: jsRules, css: cssRules };
   const findings: AnalyzerFinding[] = [];
-  const project = options?.project ?? getSharedInMemoryProject();
+  const project = options?.project ?? createInMemoryProject();
 
   for (const [relPath, content] of files) {
     if (!shouldScanFile(relPath, content, options?.fileFilterOptions)) {

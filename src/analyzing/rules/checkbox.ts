@@ -18,22 +18,14 @@ const CHECKBOX_TARGET_PATTERNS = [
 const CHECKED_PSEUDO_ICON_REGEX =
   /:checked\s*[+~]\s*(?:label|span)::(?:before|after)\b/i;
 
+const SIBLING_CUSTOM_BOX_REGEX =
+  /(?:[+~]\s*(?:label|span)|::?(?:before|after)|\.custom-checkbox|\.custom-control)/i;
+
 const SR_ONLY_REGEX = /\.(?:sr-only|visually-hidden)\b/i;
 
 function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
-  const displayVal = (styleRule.getPropertyValue('display') ?? '').trim().toLowerCase();
-  if (displayVal === 'none') {
-    return true;
-  }
-
-  const visibilityVal = (styleRule.getPropertyValue('visibility') ?? '').trim().toLowerCase();
-  if (visibilityVal === 'hidden') {
-    return true;
-  }
-
   const opacityVal = (styleRule.getPropertyValue('opacity') ?? '').trim();
-  const positionVal = (styleRule.getPropertyValue('position') ?? '').trim().toLowerCase();
-  if ((opacityVal === '0' || opacityVal === '0%') && positionVal === 'absolute') {
+  if (opacityVal === '0' || opacityVal === '0%') {
     return true;
   }
 
@@ -48,7 +40,7 @@ function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
   return false;
 }
 
-const checkboxCssMatcher: CssRuleMatcher = {
+export const checkboxCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: ['checkbox', ':checked'],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
@@ -70,7 +62,7 @@ const checkboxCssMatcher: CssRuleMatcher = {
       };
     }
 
-    // 4. Case B: Hiding or stripping native checkbox controls
+    // 4. Case B: Hiding or stripping native checkbox controls (R32.4)
     const matchesTarget = CHECKBOX_TARGET_PATTERNS.some((pattern) =>
       pattern.test(styleRule.selectorText),
     );
@@ -79,6 +71,14 @@ const checkboxCssMatcher: CssRuleMatcher = {
     }
 
     if (!hasHidingOrStrippingDeclaration(styleRule)) {
+      return null;
+    }
+
+    // Require sibling/custom-box selector or custom checkbox styling in stylesheet
+    const hasVisualReplacement =
+      SIBLING_CUSTOM_BOX_REGEX.test(styleRule.selectorText) ||
+      SIBLING_CUSTOM_BOX_REGEX.test(ctx.stylesheetText);
+    if (!hasVisualReplacement) {
       return null;
     }
 
@@ -94,14 +94,15 @@ export const checkboxRule: AnalyzerRule = {
   guideId: 'checkbox',
   guideHash: '1b9c35459943',
   summary:
-    'Hiding or stripping native checkboxes with display: none, opacity: 0, or custom sibling pseudo-elements should be replaced with native accent-color.',
+    'Hiding or stripping native checkboxes with opacity: 0, appearance: none, or custom sibling pseudo-elements should be replaced with native accent-color.',
   matcher: checkboxCssMatcher,
   phase2Rubric: {
     keepWhen: [
-      'The CSS rule targets checkboxes (input[type="checkbox"], .checkbox input, .custom-checkbox, .custom-control-input) and hides or strips native appearance using display: none, opacity: 0, visibility: hidden, or appearance: none.',
+      'The CSS rule targets checkboxes (input[type="checkbox"], .custom-checkbox, .custom-control-input) and hides or strips native appearance (opacity: 0, appearance: none) alongside sibling custom-box selectors (+ label, ~ label, + span, ::before, ::after) or custom checkbox styling.',
       'The CSS rule styles custom checkbox checkmark icons on sibling pseudo-elements (:checked + label::before / :checked + span::before) without using accent-color.',
     ],
     dropWhen: [
+      'Bare utility rules setting display: none or opacity: 0 on inputs with no sibling/custom-box visual replacement.',
       'The stylesheet already defines standard accent-color property declarations.',
       'The selector is an accessible screen-reader utility class (.sr-only or .visually-hidden) that preserves keyboard accessibility and element geometry.',
       'The rule is within a fallback stylesheet guarded by @supports (accent-color: red).',

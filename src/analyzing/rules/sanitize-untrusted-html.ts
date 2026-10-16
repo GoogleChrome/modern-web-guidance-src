@@ -1,0 +1,263 @@
+import {
+  Node,
+  SyntaxKind,
+  type BinaryExpression,
+  type CallExpression,
+  type PropertyAssignment,
+  type SourceFile,
+} from 'ts-morph';
+import {
+  isProtectedByFeatureGuard,
+  resolveLocalExpression,
+  unwrapExpression,
+} from '../scanners/ast-helpers.ts';
+import type {
+  AnalyzerMatch,
+  AnalyzerRule,
+  DependencyMatcherContext,
+  DependencyRuleMatcher,
+  JsMatcherContext,
+  JsRuleMatcher,
+} from '../schema.ts';
+
+export const SANITIZE_UNTRUSTED_HTML_GUIDE_HASH = '5ce9f1fd24c2';
+
+const SANITIZER_PACKAGES = [
+  'dompurify',
+  'isomorphic-dompurify',
+  'sanitize-html',
+  'xss',
+  'insane',
+] as const;
+
+const SANITIZER_FEATURE_TOKENS = [
+  'setHTML',
+  'Sanitizer',
+  'setHTMLUnsafe',
+  'parseHTML',
+  'parseHTMLUnsafe',
+] as const;
+
+export const sanitizerDependencyMatcher: DependencyRuleMatcher = {
+  kind: 'dependency',
+  packages: SANITIZER_PACKAGES,
+  matchPackage: (
+    pkgName: string,
+    versionRange: string,
+    _ctx: DependencyMatcherContext,
+  ) => {
+    return {
+      message:
+        `Legacy HTML sanitization package "${pkgName}" (${versionRange}) can be modernized with native browser Sanitizer API and Element.prototype.setHTML().`,
+    };
+  },
+};
+
+/**
+ * Checks whether an expression is a call to a third-party sanitizer like
+ * DOMPurify.sanitize(...), sanitizeHtml(...), xss(...), or insane(...).
+ */
+function isSanitizerCall(expr: Node): boolean {
+  const unwrapped = unwrapExpression(expr);
+  if (!Node.isCallExpression(unwrapped)) {
+    return false;
+  }
+  const callee = unwrapExpression(unwrapped.getExpression());
+  if (Node.isIdentifier(callee)) {
+    const name = callee.getText();
+    return name === 'sanitizeHtml' || name === 'xss' || name === 'insane';
+  }
+  if (Node.isPropertyAccessExpression(callee)) {
+    const propName = callee.getName();
+    if (propName === 'sanitize') {
+      const obj = unwrapExpression(callee.getExpression());
+      const objText = obj.getText();
+      return (
+        objText === 'DOMPurify' ||
+        objText === 'dompurify' ||
+        objText === 'window.DOMPurify' ||
+        objText === 'globalThis.DOMPurify' ||
+        /purify/i.test(objText)
+      );
+    }
+  }
+  return false;
+}
+
+/**
+ * Resolves local identifiers to check if the value derives from a sanitizer call.
+ */
+function resolvesToSanitizerCall(node: Node): boolean {
+  if (isSanitizerCall(node)) {
+    return true;
+  }
+  const resolved = resolveLocalExpression(node);
+  return isSanitizerCall(resolved);
+}
+
+/**
+ * Checks whether a binary expression is an assignment to innerHTML or outerHTML
+ * receiving a sanitized string value.
+ */
+function matchHtmlPropertyAssignment(binaryExpr: BinaryExpression): AnalyzerMatch | null {
+  if (binaryExpr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
+    return null;
+  }
+
+  const left = unwrapExpression(binaryExpr.getLeft());
+  if (!Node.isPropertyAccessExpression(left)) {
+    return null;
+  }
+
+  const propName = left.getName();
+  if (propName !== 'innerHTML' && propName !== 'outerHTML') {
+    return null;
+  }
+
+  const right = unwrapExpression(binaryExpr.getRight());
+  if (!resolvesToSanitizerCall(right)) {
+    return null;
+  }
+
+  return {
+    line: binaryExpr.getStartLineNumber(),
+    message:
+      `Assignment to .${propName} with third-party sanitizer output can be replaced with native Element.prototype.setHTML() and Sanitizer API.`,
+  };
+}
+
+/**
+ * Checks whether a call expression is a DOM insertion sink receiving sanitized HTML,
+ * such as insertAdjacentHTML or $(...).html().
+ */
+function matchDomInsertionSink(callExpr: CallExpression): AnalyzerMatch | null {
+  const expr = unwrapExpression(callExpr.getExpression());
+  if (!Node.isPropertyAccessExpression(expr)) {
+    return null;
+  }
+
+  const methodName = expr.getName();
+  const args = callExpr.getArguments();
+
+  if (methodName === 'insertAdjacentHTML' && args.length >= 2) {
+    const htmlArg = args[1];
+    if (htmlArg && resolvesToSanitizerCall(htmlArg)) {
+      return {
+        line: callExpr.getStartLineNumber(),
+        message:
+          'Method insertAdjacentHTML(...) with third-party sanitizer output can be modernized with native Element.prototype.setHTML() and Sanitizer API.',
+      };
+    }
+  }
+
+  if (methodName === 'html' && args.length >= 1) {
+    const htmlArg = args[0];
+    if (htmlArg && resolvesToSanitizerCall(htmlArg)) {
+      return {
+        line: callExpr.getStartLineNumber(),
+        message:
+          'jQuery .html(...) with third-party sanitizer output can be replaced with native Element.prototype.setHTML() and Sanitizer API.',
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Checks whether a property assignment is React's dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(...) }}.
+ */
+function matchReactDangerousHtml(propAssign: PropertyAssignment): AnalyzerMatch | null {
+  const name = propAssign.getName();
+  if (name !== '__html') {
+    return null;
+  }
+
+  const init = unwrapExpression(propAssign.getInitializer() ?? propAssign);
+  if (resolvesToSanitizerCall(init)) {
+    return {
+      line: propAssign.getStartLineNumber(),
+      message:
+        'React dangerouslySetInnerHTML with third-party sanitizer output can be modernized using native Sanitizer API and Element.prototype.setHTML().',
+    };
+  }
+
+  return null;
+}
+
+export const sanitizerJsMatcher: JsRuleMatcher = {
+  kind: 'js',
+  fastTokens: ['DOMPurify', 'sanitize', 'sanitizeHtml', 'xss', 'insane', 'innerHTML', 'outerHTML'],
+  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
+    const matches: AnalyzerMatch[] = [];
+    const visitedLines = new Set<number>();
+
+    const recordMatch = (match: AnalyzerMatch | null): void => {
+      if (!match) {
+        return;
+      }
+      if (visitedLines.has(match.line)) {
+        return;
+      }
+      visitedLines.add(match.line);
+      matches.push(match);
+    };
+
+    sourceFile.forEachDescendant((node) => {
+      if (isProtectedByFeatureGuard(node, SANITIZER_FEATURE_TOKENS)) {
+        return;
+      }
+
+      if (Node.isBinaryExpression(node)) {
+        recordMatch(matchHtmlPropertyAssignment(node));
+        return;
+      }
+
+      if (Node.isCallExpression(node)) {
+        recordMatch(matchDomInsertionSink(node));
+        return;
+      }
+
+      if (Node.isPropertyAssignment(node)) {
+        recordMatch(matchReactDangerousHtml(node));
+      }
+    });
+
+    return matches;
+  },
+};
+
+export const sanitizeUntrustedHtmlPackageRule: AnalyzerRule = {
+  id: 'sanitize-untrusted-html/package-sanitizer',
+  guideId: 'sanitize-untrusted-html',
+  guideHash: SANITIZE_UNTRUSTED_HTML_GUIDE_HASH,
+  summary:
+    'Legacy HTML sanitization libraries (dompurify, isomorphic-dompurify, sanitize-html, xss, insane) can be modernized with native browser Sanitizer API and setHTML().',
+  matcher: sanitizerDependencyMatcher,
+  phase2Rubric: {
+    keepWhen: [
+      'Using third-party HTML sanitization packages (dompurify, isomorphic-dompurify, sanitize-html, xss, insane) in dependencies to prevent XSS.',
+      'Assigning sanitized untrusted markup to DOM insertion sinks via element.innerHTML = DOMPurify.sanitize(...) or insertAdjacentHTML.',
+    ],
+    dropWhen: [
+      'Code already utilizing native Element.prototype.setHTML() or Document.parseHTML() with Sanitizer configurations.',
+      'Guarded by feature detection checks verifying "setHTML" in Element.prototype or typeof Sanitizer !== "undefined".',
+      'Server-side HTML sanitization pipelines in Node.js or SSR backend middleware where browser DOM Sanitizer API is not available.',
+    ],
+  },
+};
+
+export const sanitizeUntrustedHtmlJsRule: AnalyzerRule = {
+  id: 'sanitize-untrusted-html/js-dompurify-innerhtml',
+  guideId: 'sanitize-untrusted-html',
+  guideHash: SANITIZE_UNTRUSTED_HTML_GUIDE_HASH,
+  summary:
+    'Sanitized untrusted markup assigned to DOM insertion sinks (.innerHTML = DOMPurify.sanitize(...)) can be modernized with native setHTML().',
+  matcher: sanitizerJsMatcher,
+  phase2Rubric: sanitizeUntrustedHtmlPackageRule.phase2Rubric,
+};
+
+export const sanitizeUntrustedHtmlRules: readonly AnalyzerRule[] = [
+  sanitizeUntrustedHtmlPackageRule,
+  sanitizeUntrustedHtmlJsRule,
+];

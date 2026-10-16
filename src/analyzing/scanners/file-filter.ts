@@ -1,11 +1,9 @@
-const DEFAULT_IGNORED_DIRS: ReadonlySet<string> = new Set([
+export const VENDORED_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'node_modules',
   'dist',
   'build',
   'out',
-  'generated',
   '_generated',
-  'gen',
   'vendor',
   'third_party',
   'external',
@@ -22,10 +20,16 @@ const DEFAULT_IGNORED_DIRS: ReadonlySet<string> = new Set([
   'temp',
   'libs',
   'non-npm',
+]);
+
+export const CORPUS_NON_APP_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'docs',
+  'doc',
   'site',
   'website',
   'gh-pages',
+  'gen',
+  'generated',
 ]);
 
 const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
@@ -68,31 +72,51 @@ export interface FileFilterOptions {
   readonly ownNames?: readonly string[];
   readonly customIgnoredDirs?: ReadonlySet<string>;
   readonly maxLineLength?: number;
+  readonly excludeCorpusNonAppDirs?: boolean;
+}
+
+function isStringSet(value: unknown): value is ReadonlySet<string> {
+  return value instanceof Set;
 }
 
 /**
  * Checks whether a relative path represents a vendored, generated, or build-output location.
+ * When options.excludeCorpusNonAppDirs is true, also excludes docs/, site/, website/, gh-pages/, gen/.
  */
 export function isVendoredOrGeneratedPath(
   relPath: string,
-  customIgnoredDirs?: ReadonlySet<string>,
+  optionsOrCustomDirs?: FileFilterOptions | ReadonlySet<string>,
 ): boolean {
   const normalized = relPath.replace(/\\/g, '/').toLowerCase();
   const segments = normalized.split('/').filter(Boolean);
 
-  const ignoredDirs = customIgnoredDirs ?? DEFAULT_IGNORED_DIRS;
+  let ignoredDirs: ReadonlySet<string>;
+  let excludeCorpus = false;
+
+  if (isStringSet(optionsOrCustomDirs)) {
+    ignoredDirs = optionsOrCustomDirs;
+  } else {
+    ignoredDirs = optionsOrCustomDirs?.customIgnoredDirs ?? VENDORED_DIR_SEGMENTS;
+    excludeCorpus = optionsOrCustomDirs?.excludeCorpusNonAppDirs === true;
+  }
+
   for (const segment of segments.slice(0, -1)) {
     if (ignoredDirs.has(segment)) {
       return true;
     }
+    if (excludeCorpus && CORPUS_NON_APP_DIR_SEGMENTS.has(segment)) {
+      return true;
+    }
   }
 
-  // Filter generated documentation paths (R24)
-  if (
-    /(?:^|\/)(?:docs|site|website|gh-pages)\//i.test(normalized) ||
-    /(?:^|\/)content\/.*\/docs\//i.test(normalized)
-  ) {
-    return true;
+  // Filter corpus non-app / documentation paths (R24, O46)
+  if (excludeCorpus) {
+    if (
+      /(?:^|\/)(?:docs|doc|site|website|gh-pages)\//i.test(normalized) ||
+      /(?:^|\/)content\/.*\/docs\//i.test(normalized)
+    ) {
+      return true;
+    }
   }
 
   for (const ext of DEFAULT_IGNORED_EXTENSIONS) {
@@ -172,7 +196,7 @@ export function shouldScanFile(
   content?: string,
   options?: FileFilterOptions,
 ): boolean {
-  if (isVendoredOrGeneratedPath(relPath, options?.customIgnoredDirs)) {
+  if (isVendoredOrGeneratedPath(relPath, options)) {
     return false;
   }
 

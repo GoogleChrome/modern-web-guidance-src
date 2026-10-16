@@ -275,4 +275,28 @@ void test('declarative-dialog-popover-control JS: negative / exempt cases', asyn
     const { matches } = scanJsSource('app.js', js, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts click handlers with form validation or state mutation before showModal (R32.4)', () => {
+    const js = `
+      submitBtn.addEventListener('click', (e) => {
+        if (!form.checkValidity()) {
+          return;
+        }
+        dialog.showModal();
+      });
+
+      fetchBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const data = await fetch('/api/user');
+        dialog.showModal();
+      });
+
+      stateBtn.addEventListener('click', (e) => {
+        setLoading(true);
+        dialog.showModal();
+      });
+    `;
+    const { matches } = scanJsSource('app.js', js, [jsMatcher]);
+    assert.equal(matches.length, 0);
+  });
 });

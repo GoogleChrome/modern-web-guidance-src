@@ -1,36 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
-import type { CssRuleMatcher } from '../schema.ts';
-import { checkboxRule } from './checkbox.ts';
+import { checkboxCssMatcher, checkboxRule } from './checkbox.ts';
 
-const matcher = checkboxRule.matcher as CssRuleMatcher;
+const matcher = checkboxCssMatcher;
 
 void test('checkbox: positive brownfield matches', async (t) => {
-  await t.test('flags input[type="checkbox"] with display: none', () => {
-    const css = `
-      input[type="checkbox"] {
-        display: none;
-      }
-    `;
-    const matches = scanCss('checkbox.css', css, [matcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
-    assert.match(matches[0]?.message ?? '', /accent-color/);
-  });
-
-  await t.test('flags .checkbox input with display: none', () => {
-    const css = `
-      .checkbox input {
-        display: none;
-      }
-    `;
-    const matches = scanCss('form.css', css, [matcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
-  });
-
-  await t.test('flags [type="checkbox"] with opacity: 0 and position: absolute', () => {
+  await t.test('flags [type="checkbox"] with opacity: 0 and sibling replacement', () => {
     const css = `
       [type="checkbox"]:not(:checked),
       [type="checkbox"]:checked {
@@ -38,20 +14,15 @@ void test('checkbox: positive brownfield matches', async (t) => {
         opacity: 0;
         pointer-events: none;
       }
+      [type="checkbox"] + label {
+        position: relative;
+        padding-left: 25px;
+      }
     `;
     const matches = scanCss('material.css', css, [matcher]);
     assert.equal(matches.length, 1);
-  });
-
-  await t.test('flags .custom-control-input with visibility: hidden in checkbox styles', () => {
-    const css = `
-      .custom-checkbox .custom-control-input {
-        visibility: hidden;
-      }
-    `;
-    const matches = scanCss('bootstrap.css', css, [matcher]);
-    assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
+    assert.match(matches[0]?.message ?? '', /accent-color/);
   });
 
   await t.test('flags custom checkbox pseudo-element checkmark styling', () => {
@@ -81,6 +52,25 @@ void test('checkbox: positive brownfield matches', async (t) => {
 });
 
 void test('checkbox: negative / exempt cases', async (t) => {
+  await t.test('exempts bare input[type="checkbox"] with display: none without visual replacement (R32.4)', () => {
+    const css = `
+      input[type="checkbox"] {
+        display: none;
+      }
+    `;
+    const matches = scanCss('checkbox.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts bare opacity: 0 without sibling custom-box replacement', () => {
+    const css = `
+      input[type="checkbox"] {
+        opacity: 0;
+      }
+    `;
+    const matches = scanCss('hidden.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
   await t.test('exempts stylesheets already using accent-color', () => {
     const css = `
       :root {

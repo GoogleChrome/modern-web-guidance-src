@@ -37,8 +37,9 @@ function isModalOrPopoverCall(call: CallExpression): boolean {
   }
   if (name === 'modal' || name === 'popover') {
     const args = call.getArguments();
-    if (args.length > 0) {
-      const firstArg = unwrapExpression(args[0] as Node);
+    const firstNode = args[0];
+    if (firstNode) {
+      const firstArg = unwrapExpression(firstNode);
       if (Node.isStringLiteral(firstArg)) {
         const val = firstArg.getLiteralText().toLowerCase();
         if (val === 'show' || val === 'hide' || val === 'toggle') {
@@ -73,12 +74,32 @@ function isJqueryModalOrPopoverCall(call: CallExpression): boolean {
   if (args.length === 0) {
     return false;
   }
-  const firstArg = unwrapExpression(args[0] as Node);
+  const firstNode = args[0];
+  if (!firstNode) {
+    return false;
+  }
+  const firstArg = unwrapExpression(firstNode);
   if (Node.isStringLiteral(firstArg)) {
     const val = firstArg.getLiteralText().toLowerCase();
     return val === 'show' || val === 'hide' || val === 'toggle';
   }
   return false;
+}
+
+function isEventControlCall(node: Node): boolean {
+  if (!Node.isCallExpression(node)) {
+    return false;
+  }
+  const expr = unwrapExpression(node.getExpression());
+  if (!Node.isPropertyAccessExpression(expr)) {
+    return false;
+  }
+  const name = expr.getName();
+  return (
+    name === 'preventDefault' ||
+    name === 'stopPropagation' ||
+    name === 'stopImmediatePropagation'
+  );
 }
 
 function extractModalCallFromCallback(callbackNode: Node): CallExpression | null {
@@ -87,19 +108,67 @@ function extractModalCallFromCallback(callbackNode: Node): CallExpression | null
     return null;
   }
 
-  const allCalls: CallExpression[] = [];
-  resolved.forEachDescendant((node) => {
-    if (Node.isCallExpression(node)) {
-      allCalls.push(node);
-    }
-  });
+  const body = resolved.getBody();
+  if (!body) {
+    return null;
+  }
 
-  for (const call of allCalls) {
-    if (isModalOrPopoverCall(call)) {
-      return call;
+  // Concise arrow function body: () => dialog.showModal()
+  if (!Node.isBlock(body)) {
+    const expr = unwrapExpression(body);
+    if (Node.isCallExpression(expr)) {
+      if (isModalOrPopoverCall(expr) || isJqueryModalOrPopoverCall(expr)) {
+        return expr;
+      }
+    }
+    return null;
+  }
+
+  // Block body: must consist strictly of pure declarative modal call + optional preventDefault/stopPropagation (R32.4)
+  const statements = body.getStatements();
+  if (statements.length === 0) {
+    return null;
+  }
+
+  let matchedModalCall: CallExpression | null = null;
+
+  for (const stmt of statements) {
+    if (Node.isReturnStatement(stmt)) {
+      const returnExpr = stmt.getExpression();
+      if (!returnExpr) {
+        continue;
+      }
+      const unwrapped = unwrapExpression(returnExpr);
+      if (Node.isCallExpression(unwrapped)) {
+        if (isModalOrPopoverCall(unwrapped) || isJqueryModalOrPopoverCall(unwrapped)) {
+          matchedModalCall = unwrapped;
+          continue;
+        }
+      }
+      return null;
+    }
+
+    if (!Node.isExpressionStatement(stmt)) {
+      // Disqualify handlers with if-statements (validation), variable declarations, loops
+      return null;
+    }
+
+    const expr = unwrapExpression(stmt.getExpression());
+    if (!Node.isCallExpression(expr)) {
+      return null;
+    }
+
+    if (isModalOrPopoverCall(expr) || isJqueryModalOrPopoverCall(expr)) {
+      matchedModalCall = expr;
+    } else if (isEventControlCall(expr)) {
+      continue;
+    } else {
+      // Disqualify handlers with data fetching, state mutations, etc.
+      return null;
     }
   }
-  return null;
+
+  return matchedModalCall;
 }
 
 const declarativeDialogPopoverControlJsMatcher: JsRuleMatcher = {
@@ -136,20 +205,22 @@ const declarativeDialogPopoverControlJsMatcher: JsRuleMatcher = {
 
         if (propName === 'addEventListener' || propName === 'on') {
           const args = node.getArguments();
-          if (args.length >= 2) {
-            const first = unwrapExpression(args[0] as Node);
+          const firstNode = args[0];
+          if (args.length >= 2 && firstNode) {
+            const first = unwrapExpression(firstNode);
             if (
               Node.isStringLiteral(first) &&
               first.getLiteralText().toLowerCase() === 'click'
             ) {
               isClick = true;
-              callbackArg = (args[1] as Node) ?? null;
+              callbackArg = args[1] ?? null;
             }
           }
         } else if (propName === 'click') {
           const args = node.getArguments();
-          if (args.length === 1) {
-            const first = unwrapExpression(args[0] as Node);
+          const firstNode = args[0];
+          if (args.length === 1 && firstNode) {
+            const first = unwrapExpression(firstNode);
             if (
               Node.isArrowFunction(first) ||
               Node.isFunctionExpression(first) ||

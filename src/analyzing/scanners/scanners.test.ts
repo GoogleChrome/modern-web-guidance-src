@@ -42,9 +42,7 @@ import {
   createInMemoryProject,
   extractScriptBlocks,
   extractStyleBlocks,
-  getSharedInMemoryProject,
   prepareHtmlForDomScan,
-  resetSharedInMemoryProject,
   scanFiles,
   scanJsSource,
 } from './index.ts';
@@ -58,12 +56,44 @@ void test('file-filter: path and content classification', async (t) => {
     assert.equal(isVendoredOrGeneratedPath('src/types/index.d.ts'), true);
     assert.equal(isVendoredOrGeneratedPath('src/components/Dialog.tsx'), false);
     assert.equal(isVendoredOrGeneratedPath('views/login.blade.php'), false);
-    // Generated documentation paths per R24
-    assert.equal(isVendoredOrGeneratedPath('docs/3.1/reference/index.html'), true);
-    assert.equal(isVendoredOrGeneratedPath('content/zh-cn/docs/setup.html'), true);
-    assert.equal(isVendoredOrGeneratedPath('website/docs/intro.md'), true);
-    assert.equal(isVendoredOrGeneratedPath('site/pages/index.html'), true);
-    assert.equal(isVendoredOrGeneratedPath('gh-pages/index.html'), true);
+    // By default, user project docs/site/website are NOT excluded (O46)
+    assert.equal(isVendoredOrGeneratedPath('docs/3.1/reference/index.html'), false);
+    assert.equal(isVendoredOrGeneratedPath('content/zh-cn/docs/setup.html'), false);
+    assert.equal(isVendoredOrGeneratedPath('website/docs/intro.md'), false);
+    assert.equal(isVendoredOrGeneratedPath('site/pages/index.html'), false);
+    assert.equal(isVendoredOrGeneratedPath('gh-pages/index.html'), false);
+
+    // Corpus non-app documentation paths per R24 / O46 when explicitly requested
+    assert.equal(
+      isVendoredOrGeneratedPath('docs/3.1/reference/index.html', {
+        excludeCorpusNonAppDirs: true,
+      }),
+      true,
+    );
+    assert.equal(
+      isVendoredOrGeneratedPath('content/zh-cn/docs/setup.html', {
+        excludeCorpusNonAppDirs: true,
+      }),
+      true,
+    );
+    assert.equal(
+      isVendoredOrGeneratedPath('website/docs/intro.md', {
+        excludeCorpusNonAppDirs: true,
+      }),
+      true,
+    );
+    assert.equal(
+      isVendoredOrGeneratedPath('site/pages/index.html', {
+        excludeCorpusNonAppDirs: true,
+      }),
+      true,
+    );
+    assert.equal(
+      isVendoredOrGeneratedPath('gh-pages/index.html', {
+        excludeCorpusNonAppDirs: true,
+      }),
+      true,
+    );
   });
 
   await t.test('detects minified content', () => {
@@ -345,7 +375,9 @@ void test('ast-helpers: AST combinators and branch-aware feature guards', async 
       assert.ok(fn, `missing function ${fnName}`);
       const ret = fn.getDescendantsOfKind(SyntaxKind.ReturnStatement)[0];
       assert.ok(ret, `missing return in ${fnName}`);
-      return ret.getExpression()!;
+      const expr = ret.getExpression();
+      assert.ok(expr, `missing return expression in ${fnName}`);
+      return expr;
     };
 
     assert.equal(isGlobalReference(getReturnExpr('directGlobal'), 'ResizeObserver'), true);
@@ -502,9 +534,10 @@ void test('ast-helpers: AST combinators and branch-aware feature guards', async 
     const readOnlyFn = source.getFunction('readOnlyOperations');
     assert.ok(readOnlyFn);
     const readStmts = readOnlyFn.getDescendantsOfKind(SyntaxKind.VariableDeclaration);
-    for (const stmt of readStmts) {
-      assert.equal(isDomClassOrAttrMutation(stmt), false);
-    }
+    assert.deepEqual(
+      readStmts.map((stmt) => isDomClassOrAttrMutation(stmt)),
+      readStmts.map(() => false),
+    );
   });
 
   await t.test('isProtectedByFeatureGuard: early-return in callbacks and enclosing functions', () => {
@@ -650,15 +683,10 @@ void test('js-scanner: scanJsSource with fastTokens and AST matching', () => {
   assert.equal(skipped.matches.length, 0);
 });
 
-void test('js-scanner: singleton in-memory Project reuse and reset (R24)', () => {
-  resetSharedInMemoryProject();
-  const proj1 = getSharedInMemoryProject();
-  const proj2 = getSharedInMemoryProject();
-  assert.equal(proj1, proj2, 'Repeated calls must return the same singleton Project');
-
-  resetSharedInMemoryProject();
-  const proj3 = getSharedInMemoryProject();
-  assert.notEqual(proj1, proj3, 'resetSharedInMemoryProject clears the cached singleton');
+void test('js-scanner: createInMemoryProject generates fresh isolated instances (O33, O60)', () => {
+  const proj1 = createInMemoryProject();
+  const proj2 = createInMemoryProject();
+  assert.notEqual(proj1, proj2, 'createInMemoryProject creates independent project instances without module singleton');
 });
 
 void test('dom-scanner: HTML bare-attributes and JSX-DOM bridge', async (t) => {

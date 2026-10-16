@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import { createInMemoryProject, scanCss, scanJsSource } from '../scanners/index.ts';
+import { createInMemoryProject, scanCss, scanJsSource, scanPackageJson } from '../scanners/index.ts';
 import {
   PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
   preventPageScrollUnderModalDialogCssMatcher,
   preventPageScrollUnderModalDialogCssRule,
+  preventPageScrollUnderModalDialogDependencyMatcher,
+  preventPageScrollUnderModalDialogDependencyRule,
   preventPageScrollUnderModalDialogMatcher,
   preventPageScrollUnderModalDialogRule,
   preventPageScrollUnderModalDialogRules,
@@ -31,7 +33,21 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
       PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
     );
     assert.ok(preventPageScrollUnderModalDialogCssRule.phase2Rubric.dropWhen.length >= 2);
-    assert.equal(preventPageScrollUnderModalDialogRules.length, 2);
+
+    assert.equal(
+      preventPageScrollUnderModalDialogDependencyRule.id,
+      'prevent-page-scroll-under-modal-dialog/package-scroll-lock',
+    );
+    assert.equal(
+      preventPageScrollUnderModalDialogDependencyRule.guideId,
+      'prevent-page-scroll-under-modal-dialog',
+    );
+    assert.equal(
+      preventPageScrollUnderModalDialogDependencyRule.guideHash,
+      PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
+    );
+    assert.ok(preventPageScrollUnderModalDialogDependencyRule.phase2Rubric.dropWhen.length >= 2);
+    assert.equal(preventPageScrollUnderModalDialogRules.length, 3);
   });
 
   test('flags document.body.style.overflow = "hidden" in modal open handler', () => {
@@ -142,18 +158,41 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.match(matches[0].message, /overscroll-behavior/);
   });
 
-  test('ignores CSS when stylesheet declares overscroll-behavior', () => {
-    const css = `
-      body.modal-open {
-        overflow: hidden;
+  test('flags disableBodyScroll and enableBodyScroll calls', () => {
+    const code = `
+      import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock';
+      function openModal(modalEl) {
+        disableBodyScroll(modalEl);
       }
-      dialog:modal {
-        overscroll-behavior: contain;
+      function closeModal(modalEl) {
+        enableBodyScroll(modalEl);
       }
     `;
-    const matches = scanCss('styles/dialog.css', css, [
-      preventPageScrollUnderModalDialogCssMatcher,
+    const { matches } = scanJsSource(
+      'src/modal.js',
+      code,
+      [preventPageScrollUnderModalDialogMatcher],
+      project,
+    );
+    assert.equal(matches.length, 2);
+    assert.match(matches[0].message, /disableBodyScroll/);
+    assert.match(matches[1].message, /enableBodyScroll/);
+  });
+
+  test('flags package.json dependencies on scroll lock packages', () => {
+    const pkgJson = JSON.stringify({
+      dependencies: {
+        'body-scroll-lock': '^4.0.0-beta.0',
+        'scroll-lock': '^2.1.5',
+      },
+      devDependencies: {
+        'no-scroll': '^2.1.1',
+      },
+    });
+    const matches = scanPackageJson('package.json', pkgJson, [
+      preventPageScrollUnderModalDialogDependencyMatcher,
     ]);
-    assert.equal(matches.length, 0);
+    assert.equal(matches.length, 3);
+    assert.match(matches[0].message, /body-scroll-lock/);
   });
 });

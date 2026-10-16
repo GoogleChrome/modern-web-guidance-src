@@ -273,7 +273,7 @@ describe('checkModernFeaturePresent', () => {
 
   it('has explicit Gate 2c validators for all guides in ALL_RULES', () => {
     const allGuideIds = [...new Set(ALL_RULES.map((r) => r.guideId))];
-    assert.strictEqual(allGuideIds.length, 29);
+    assert.strictEqual(allGuideIds.length, 35);
     for (const guideId of allGuideIds) {
       assert.doesNotThrow(
         () => checkModernFeaturePresent(guideId, 'const dummy = 1;'),

@@ -255,6 +255,12 @@
     "defer-work-until-scroll-ends": "\\bscrollend\\b",
     "schedule-tasks-by-priority": "\\bpostTask\\b",
     "scrollspy": "scroll-target-group|:target-current",
-    "size-aware-styling": "@container\\b|container-type\\s*:"
+    "size-aware-styling": "@container\\b|container-type\\s*:",
+    "drag": "\\bdraggable\\b|dragstart|dragover|drop",
+    "format-human-readable-durations": "Intl\\.DurationFormat\\b|\\bformatDuration\\b|\\bDurationFormat\\b",
+    "model-partial-time-concepts": "\\bTemporal\\.(PlainDate|PlainTime|PlainMonthDay|PlainYearMonth)\\b",
+    "sanitize-untrusted-html": "setHTMLUnsafe\\s*\\(|parseHTMLUnsafe\\s*\\(|Sanitizer\\b",
+    "custom-select-picker-layouts": "base-select\\b|::picker\\s*\\(\\s*select\\s*\\)",
+    "scroll-position-aware-elements": "animation-timeline\\s*:|scroll\\s*\\(|view\\s*\\(|ScrollTimeline\\b|ViewTimeline\\b"
   }
 }
