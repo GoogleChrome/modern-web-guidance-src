@@ -1,0 +1,232 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..26b5866 100644
+--- a/index.html
++++ b/index.html
+@@ -2,9 +2,11 @@
+ <html lang="en">
+ 
+ <head>
++  <meta http-equiv="Content-Security-Policy" content="require-trusted-types-for 'script'; trusted-types escape-html;">
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/trusted-types.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -171,6 +173,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <p id="welcome-message">Welcome to The Daily Grind!</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..0f2cf49 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "tsc && node scripts/build.mjs",
++    "test": "node --test tests/trusted-types.test.mjs"
++  },
++  "devDependencies": {
++    "playwright": "^1.58.2",
++    "typescript": "^5.9.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..f16ece3
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,6 @@
++import { mkdir, copyFile } from 'node:fs/promises';
++
++await mkdir(new URL('../dist/', import.meta.url), { recursive: true });
++for (const file of ['index.html', 'trusted-types.js']) {
++  await copyFile(new URL(`../${file}`, import.meta.url), new URL(`../dist/${file}`, import.meta.url));
++}
+diff --git a/tests/trusted-types.test.mjs b/tests/trusted-types.test.mjs
+new file mode 100644
+index 0000000..a6a7693
+--- /dev/null
++++ b/tests/trusted-types.test.mjs
+@@ -0,0 +1,99 @@
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import { createServer } from 'node:http';
++import { after, before, test } from 'node:test';
++import { chromium } from 'playwright';
++
++let browser;
++let server;
++let origin;
++
++before(async () => {
++  server = createServer(async (request, response) => {
++    const path = new URL(request.url, 'http://localhost').pathname;
++    const file = path === '/' ? 'index.html' : path === '/trusted-types.js' ? 'trusted-types.js' : null;
++    if (!file) {
++      response.writeHead(404).end();
++      return;
++    }
++    try {
++      const body = await readFile(new URL(`../${file}`, import.meta.url));
++      response.writeHead(200, { 'Content-Type': file.endsWith('.js') ? 'text/javascript' : 'text/html' });
++      response.end(body);
++    } catch {
++      response.writeHead(500).end();
++    }
++  });
++  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
++  origin = `http://127.0.0.1:${server.address().port}`;
++  browser = await chromium.launch({ headless: true, channel: 'chromium' });
++});
++
++after(async () => {
++  await browser?.close();
++  if (server) await new Promise((resolve) => server.close(resolve));
++});
++
++async function openPage(fallback = false) {
++  const page = await browser.newPage();
++  await page.route('https://images.unsplash.com/**', (route) => route.abort());
++  if (fallback) {
++    // Model a browser without either the API or CSP enforcement. Removing only
++    // the API in Chromium would leave its native sink enforcement active.
++    await page.route(`${origin}/**`, async (route) => {
++      if (route.request().resourceType() !== 'document') return route.continue();
++      const response = await route.fetch();
++      const body = (await response.text()).replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/, '');
++      await route.fulfill({ response, body });
++    });
++    await page.addInitScript(() => {
++      Object.defineProperty(window, 'trustedTypes', { value: undefined, configurable: true, writable: true });
++    });
++  }
++  return page;
++}
++
++test('native CSP rejects raw innerHTML and unauthorized policies', async () => {
++  const page = await openPage();
++  try {
++    await page.goto(origin);
++    assert.equal(await page.locator('#welcome-message').textContent(), 'Welcome to The Daily Grind!');
++    const result = await page.evaluate(() => {
++      const element = document.createElement('div');
++      let sinkError;
++      let policyError;
++      try { element.innerHTML = '<img src=x onerror="alert(1)">'; } catch (error) { sinkError = error.name; }
++      try { trustedTypes.createPolicy('unapproved', { createHTML: (value) => value }); } catch (error) { policyError = error.name; }
++      return { sinkError, policyError, content: element.innerHTML, defaultPolicy: trustedTypes.defaultPolicy };
++    });
++    assert.deepEqual(result, { sinkError: 'TypeError', policyError: 'TypeError', content: '', defaultPolicy: null });
++  } finally {
++    await page.close();
++  }
++});
++
++const payload = '<script>window.compromised=true</script><img src=x onerror="window.compromised=true"><svg onload="window.compromised=true"></svg>&lt;img src=x onerror=alert(1)&gt; " \' &';
++
++for (const fallback of [false, true]) {
++  test(`untrusted markup is escaped ${fallback ? 'with the tinyfill' : 'under native enforcement'}`, async () => {
++    const page = await openPage(fallback);
++    const errors = [];
++    page.on('pageerror', (error) => errors.push(error.message));
++    try {
++      await page.goto(`${origin}/?name=${encodeURIComponent(payload)}`);
++      assert.equal(await page.locator('#welcome-message').textContent(), `Welcome to The Daily Grind, ${payload}!`);
++      const result = await page.evaluate(() => {
++        const element = document.getElementById('welcome-message');
++        return {
++          childElements: element.childElementCount,
++          compromised: Boolean(window.compromised),
++          hasPolicyFactory: typeof window.trustedTypes.createPolicy === 'function',
++        };
++      });
++      assert.deepEqual(result, { childElements: 0, compromised: false, hasPolicyFactory: true });
++      assert.deepEqual(errors, []);
++    } finally {
++      await page.close();
++    }
++  });
++}
+diff --git a/trusted-types.js b/trusted-types.js
+new file mode 100644
+index 0000000..9bfefb2
+--- /dev/null
++++ b/trusted-types.js
+@@ -0,0 +1,40 @@
++// @ts-check
++(() => {
++  /** @typedef {{ readonly __trustedHTML: unique symbol, toString(): string }} TrustedHTML */
++  /** @typedef {{ createHTML(input: string): string }} HTMLRules */
++  /** @typedef {{ createHTML(input: string): TrustedHTML | string }} HTMLPolicy */
++  /** @typedef {{ createPolicy(name: string, rules: HTMLRules): HTMLPolicy }} HTMLPolicyFactory */
++
++  // Older browsers still run the same escaping rule, without native enforcement.
++  const browser = /** @type {Window & { trustedTypes?: HTMLPolicyFactory }} */ (window);
++  if (!browser.trustedTypes) {
++    browser.trustedTypes = {
++      createPolicy: (_name, rules) => ({
++        createHTML: (input) => rules.createHTML(input),
++      }),
++    };
++  }
++
++  // This policy renders untrusted markup as literal text. It never parses HTML
++  // or writes to a sink while creating a TrustedHTML value.
++  const policy = browser.trustedTypes.createPolicy('escape-html', {
++    createHTML: (input) => String(input)
++      .replaceAll('&', '&amp;')
++      .replaceAll('<', '&lt;')
++      .replaceAll('>', '&gt;')
++      .replaceAll('"', '&quot;')
++      .replaceAll("'", '&#39;'),
++  });
++
++  const welcome = document.getElementById('welcome-message');
++  if (welcome) {
++    const name = new URLSearchParams(window.location.search).get('name');
++    const message = name ? `Welcome to The Daily Grind, ${name}!` : 'Welcome to The Daily Grind!';
++    // TypeScript's DOM declarations only model string writes. Widen the sink
++    // locally; the native TrustedHTML object must reach it without stringifying.
++    const sink = /** @type {{ innerHTML: TrustedHTML | string }} */ (
++      /** @type {unknown} */ (welcome)
++    );
++    sink.innerHTML = policy.createHTML(message);
++  }
++})();
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..f9ca115
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "strict": true,
++    "noEmit": true,
++    "target": "ES2021",
++    "lib": ["ES2021", "DOM"],
++    "types": []
++  },
++  "include": ["trusted-types.js"]
++}

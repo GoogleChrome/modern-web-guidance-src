@@ -1,0 +1,1 @@
+- Help prevent DOM-based XSS attacks in the application by locking down dangerous DOM sinks so they reject raw strings and only accept policy-validated HTML.
