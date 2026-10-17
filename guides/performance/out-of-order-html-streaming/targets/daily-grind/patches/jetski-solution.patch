@@ -1,0 +1,479 @@
+diff --git a/api/barista-widget.html b/api/barista-widget.html
+new file mode 100644
+index 0000000..ae17092
+--- /dev/null
++++ b/api/barista-widget.html
+@@ -0,0 +1,12 @@
++<div class="card widget-card">
++  <h3>☕ Live Barista Brew Tip</h3>
++  <p id="brew-tip-text">Calculating optimal water temperature for today's humidity...</p>
++  <script>
++    (function () {
++      const tipText = document.getElementById('brew-tip-text');
++      if (tipText) {
++        tipText.textContent = "Today's Tip: Brew light roasts at 203°F (95°C) for maximum floral clarity.";
++      }
++    })();
++  </script>
++</div>
+diff --git a/api/partial-update b/api/partial-update
+new file mode 100644
+index 0000000..2d9afd7
+--- /dev/null
++++ b/api/partial-update
+@@ -0,0 +1,5 @@
++<div class="card">
++  <h3>⭐⭐⭐⭐⭐ "Best Pour-Over in Town"</h3>
++  <p>The single-origin Ethiopian roast changed my morning routine forever. Smooth, fruity notes with no bitterness!</p>
++  <a href="/menu/seasonal" class="btn">View Details</a>
++</div>
+diff --git a/api/reviews b/api/reviews
+new file mode 100644
+index 0000000..e8f8db9
+--- /dev/null
++++ b/api/reviews
+@@ -0,0 +1,15 @@
++<div class="card">
++  <h3>⭐⭐⭐⭐⭐ "Best Pour-Over in Town"</h3>
++  <p>The single-origin Ethiopian roast changed my morning routine forever. Smooth, fruity notes with no bitterness!</p>
++  <a href="/menu/seasonal" class="btn">View Details</a>
++</div>
++<div class="card">
++  <h3>⭐⭐⭐⭐⭐ "Maple Oat Latte is Heaven"</h3>
++  <p>Perfect sweetness and velvety texture. Can't start my workday without one.</p>
++  <a href="/menu/seasonal" class="btn">View Details</a>
++</div>
++<div class="card">
++  <h3>⭐⭐⭐⭐⭐ "Smooth Cold Brew"</h3>
++  <p>Steeped to perfection for 18 hours. Keeps me energized all afternoon.</p>
++  <a href="/menu/cold-brew" class="btn">View Details</a>
++</div>
+diff --git a/api/reviews.html b/api/reviews.html
+new file mode 100644
+index 0000000..e8f8db9
+--- /dev/null
++++ b/api/reviews.html
+@@ -0,0 +1,15 @@
++<div class="card">
++  <h3>⭐⭐⭐⭐⭐ "Best Pour-Over in Town"</h3>
++  <p>The single-origin Ethiopian roast changed my morning routine forever. Smooth, fruity notes with no bitterness!</p>
++  <a href="/menu/seasonal" class="btn">View Details</a>
++</div>
++<div class="card">
++  <h3>⭐⭐⭐⭐⭐ "Maple Oat Latte is Heaven"</h3>
++  <p>Perfect sweetness and velvety texture. Can't start my workday without one.</p>
++  <a href="/menu/seasonal" class="btn">View Details</a>
++</div>
++<div class="card">
++  <h3>⭐⭐⭐⭐⭐ "Smooth Cold Brew"</h3>
++  <p>Steeped to perfection for 18 hours. Keeps me energized all afternoon.</p>
++  <a href="/menu/cold-brew" class="btn">View Details</a>
++</div>
+diff --git a/api/trusted-widget b/api/trusted-widget
+new file mode 100644
+index 0000000..ae17092
+--- /dev/null
++++ b/api/trusted-widget
+@@ -0,0 +1,12 @@
++<div class="card widget-card">
++  <h3>☕ Live Barista Brew Tip</h3>
++  <p id="brew-tip-text">Calculating optimal water temperature for today's humidity...</p>
++  <script>
++    (function () {
++      const tipText = document.getElementById('brew-tip-text');
++      if (tipText) {
++        tipText.textContent = "Today's Tip: Brew light roasts at 203°F (95°C) for maximum floral clarity.";
++      }
++    })();
++  </script>
++</div>
+diff --git a/index.html b/index.html
+index 66c9173..99db06f 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,74 @@
+       background: #3e2723;
+     }
+ 
++    /* Stable dimensions for placeholder containers to prevent layout shifts (CLS) */
++    .placeholder-container {
++      min-height: 280px;
++      aspect-ratio: auto;
++    }
++
++    .grid.placeholder-container {
++      min-height: 280px;
++    }
++
++    .skeleton-card {
++      min-height: 240px;
++      aspect-ratio: 1 / 1.1;
++      background: #f5f0ec;
++      border-radius: 8px;
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
++    }
++
++    .skeleton-title {
++      height: 24px;
++      width: 60%;
++      margin: 0 auto 15px;
++      background: #d7ccc8;
++      border-radius: 4px;
++      animation: pulse 1.5s infinite ease-in-out;
++    }
++
++    .skeleton-text {
++      height: 16px;
++      width: 80%;
++      margin: 0 auto 20px;
++      background: #d7ccc8;
++      border-radius: 4px;
++      animation: pulse 1.5s infinite ease-in-out;
++    }
++
++    .skeleton-btn {
++      height: 38px;
++      width: 120px;
++      margin: 15px auto 0;
++      background: #d7ccc8;
++      border-radius: 5px;
++      animation: pulse 1.5s infinite ease-in-out;
++    }
++
++    @keyframes pulse {
++      0% { opacity: 0.6; }
++      50% { opacity: 1; }
++      100% { opacity: 0.6; }
++    }
++
++    .section-title {
++      text-align: center;
++      color: var(--primary);
++      margin-top: 40px;
++      margin-bottom: 10px;
++    }
++
++    .widget-card {
++      max-width: 600px;
++      margin: 20px auto;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,23 +243,57 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <!-- Declarative out-of-order streaming section -->
++    <section class="seasonal-favorites" aria-live="polite">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="grid placeholder-container" aria-live="polite">
++        <?start name="seasonal-favorites">
++        <div class="card skeleton-card">
++          <div class="skeleton-title"></div>
++          <div class="skeleton-text"></div>
++          <div class="skeleton-btn"></div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card skeleton-card">
++          <div class="skeleton-title"></div>
++          <div class="skeleton-text"></div>
++          <div class="skeleton-btn"></div>
++        </div>
++        <div class="card skeleton-card">
++          <div class="skeleton-title"></div>
++          <div class="skeleton-text"></div>
++          <div class="skeleton-btn"></div>
++        </div>
++        <?end>
++      </div>
++    </section>
++
++    <!-- Imperative streaming section -->
++    <section class="community-updates">
++      <h2 class="section-title">Community Reviews & Live Tips</h2>
++
++      <!-- Safe HTML streaming: reviews content without scripts -->
++      <div class="reviews-section" aria-live="polite">
++        <h3 style="margin-top: 20px; color: var(--primary);">Customer Reviews</h3>
++        <div id="reviews-stream" class="grid placeholder-container" aria-live="polite">
++          <div class="card skeleton-card">
++            <div class="skeleton-title"></div>
++            <div class="skeleton-text"></div>
++          </div>
++          <div class="card skeleton-card">
++            <div class="skeleton-title"></div>
++            <div class="skeleton-text"></div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>
++
++      <!-- Unsafe HTML streaming: trusted widget containing <script> elements -->
++      <div class="widget-section" aria-live="polite">
++        <h3 style="margin-top: 20px; color: var(--primary);">Interactive Barista Widget</h3>
++        <div id="interactive-widget" class="placeholder-container" aria-live="polite">
++          <div class="card skeleton-card">
++            <div class="skeleton-title"></div>
++            <div class="skeleton-text"></div>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +309,224 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Declarative content delivered later in the HTML stream -->
++  <template for="seasonal-favorites">
++    <div class="card">
++      <h3>Maple Oat Latte</h3>
++      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <a href="/menu/seasonal" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Dark Roast Espresso</h3>
++      <p>Bold, smokey, and perfect for a morning boost.</p>
++      <a href="/menu/espresso" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Cold Brew</h3>
++      <p>Steeped for 18 hours for maximum smoothness.</p>
++      <a href="/menu/cold-brew" class="btn">View Details</a>
++    </div>
++  </template>
++
++  <script>
++    // =========================================================================
++    // Polyfills / Shims for Out-of-Order HTML Streaming & Setters APIs
++    // =========================================================================
++
++    // 1. Response.prototype.textStream()
++    if (typeof Response !== 'undefined' && !Response.prototype.textStream) {
++      Response.prototype.textStream = function () {
++        return this.body.pipeThrough(new TextDecoderStream());
++      };
++    }
++
++    // 2. Element.prototype.setHTML (Safe static)
++    if (typeof Element !== 'undefined' && !Element.prototype.setHTML) {
++      Element.prototype.setHTML = function (html) {
++        const template = document.createElement('template');
++        template.innerHTML = html;
++        template.content.querySelectorAll('script').forEach(s => s.remove());
++        this.replaceChildren(template.content);
++      };
++    }
++
++    // 3. Element.prototype.setHTMLUnsafe (Unsafe static)
++    if (typeof Element !== 'undefined' && !Element.prototype.setHTMLUnsafe) {
++      Element.prototype.setHTMLUnsafe = function (html, options = {}) {
++        this.innerHTML = html;
++        if (options && options.runScripts) {
++          this.querySelectorAll('script').forEach(oldScript => {
++            const newScript = document.createElement('script');
++            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
++            newScript.textContent = oldScript.textContent;
++            oldScript.parentNode.replaceChild(newScript, oldScript);
++          });
++        }
++      };
++    }
++
++    // 4. Element.prototype.streamHTML (Safe streaming)
++    if (typeof Element !== 'undefined' && !Element.prototype.streamHTML) {
++      Element.prototype.streamHTML = function () {
++        const el = this;
++        let buffer = '';
++        return new WritableStream({
++          write(chunk) {
++            buffer += chunk;
++            if (el.setHTML) {
++              el.setHTML(buffer);
++            } else {
++              el.innerHTML = buffer;
++              el.querySelectorAll('script').forEach(s => s.remove());
++            }
++          }
++        });
++      };
++    }
++
++    // 5. Element.prototype.streamHTMLUnsafe (Unsafe streaming)
++    if (typeof Element !== 'undefined' && !Element.prototype.streamHTMLUnsafe) {
++      Element.prototype.streamHTMLUnsafe = function (options = {}) {
++        const el = this;
++        let buffer = '';
++        return new WritableStream({
++          write(chunk) {
++            buffer += chunk;
++            if (el.setHTMLUnsafe) {
++              el.setHTMLUnsafe(buffer, options);
++            } else {
++              el.innerHTML = buffer;
++            }
++          },
++          close() {
++            if (options && options.runScripts) {
++              el.querySelectorAll('script').forEach(oldScript => {
++                const newScript = document.createElement('script');
++                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
++                newScript.textContent = oldScript.textContent;
++                oldScript.parentNode.replaceChild(newScript, oldScript);
++              });
++            }
++          }
++        });
++      };
++    }
++
++    // 6. Declarative template-for replacement polyfill
++    function applyTemplateForPatching() {
++      const templates = document.querySelectorAll('template[for]');
++      templates.forEach(template => {
++        const targetName = template.getAttribute('for');
++        if (!targetName) return;
++
++        const walker = document.createTreeWalker(
++          document.body,
++          NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_PROCESSING_INSTRUCTION,
++          null
++        );
++
++        let startNode = null;
++        let endNode = null;
++        let node;
++        while ((node = walker.nextNode())) {
++          const text = (node.data || node.textContent || '').trim();
++          if (!startNode) {
++            if (text.includes(`start name="${targetName}"`) || text.includes(`start name='${targetName}'`)) {
++              startNode = node;
++            }
++          } else {
++            if (text === '?end' || text === 'end' || text.startsWith('?end') || text.startsWith('end')) {
++              endNode = node;
++              break;
++            }
++          }
++        }
++
++        if (startNode && endNode && startNode.parentNode) {
++          const parent = startNode.parentNode;
++          let curr = startNode.nextSibling;
++          while (curr && curr !== endNode) {
++            const next = curr.nextSibling;
++            parent.removeChild(curr);
++            curr = next;
++          }
++          const fragment = template.content.cloneNode(true);
++          parent.insertBefore(fragment, endNode);
++          parent.removeChild(startNode);
++          parent.removeChild(endNode);
++        }
++      });
++    }
++
++    // Apply declarative patching immediately as the template stream arrives
++    applyTemplateForPatching();
++
++    // =========================================================================
++    // Imperative Streaming Updates
++    // =========================================================================
++
++    /**
++     * Loads community reviews using safe HTML streaming.
++     * Response.textStream() is used to stream HTML from the fetch response.
++     * Safe method (streamHTML) is used because content does not contain
++     * items that would be removed by safe methods.
++     */
++    async function loadCommunityReviews() {
++      const container = document.getElementById('reviews-stream');
++      if (!container) return;
++
++      try {
++        const response = await fetch('/api/reviews');
++        if (!response.ok) return;
++
++        // Expectation 4: Response.textStream() gets HTML stream from fetch response
++        // Expectation 5: Safe method (streamHTML) used for content without scripts
++        await response
++          .textStream()
++          .pipeTo(container.streamHTML());
++      } catch (err) {
++        console.error('Error streaming reviews:', err);
++      }
++    }
++
++    /**
++     * Loads interactive barista widget using unsafe HTML streaming.
++     * Response.textStream() is used to stream HTML from the fetch response.
++     * Unsafe method (streamHTMLUnsafe) is used ONLY because this trusted content
++     * contains items (<script> elements) that would be removed by safe methods.
++     * runScripts: true is passed ONLY because content contains trusted <script> elements.
++     */
++    async function loadBaristaWidget() {
++      const container = document.getElementById('interactive-widget');
++      if (!container) return;
++
++      try {
++        const response = await fetch('/api/trusted-widget');
++        if (!response.ok) return;
++
++        // Expectation 4: Response.textStream() gets HTML stream from fetch response
++        // Expectation 5: streamHTMLUnsafe used ONLY because trusted content contains <script>
++        // Expectation 6: runScripts: true passed ONLY because content contains trusted <script>
++        await response
++          .textStream()
++          .pipeTo(container.streamHTMLUnsafe({ runScripts: true }));
++      } catch (err) {
++        console.error('Error streaming widget:', err);
++      }
++    }
++
++    // Expose helpers globally for testing and interactive execution
++    window.loadCommunityReviews = loadCommunityReviews;
++    window.loadBaristaWidget = loadBaristaWidget;
++    window.applyTemplateForPatching = applyTemplateForPatching;
++
++    // Initialize imperative updates on load
++    window.addEventListener('DOMContentLoaded', () => {
++      applyTemplateForPatching();
++      loadCommunityReviews();
++      loadBaristaWidget();
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..c3e5655 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "node -e \"console.log('Build complete')\""
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []

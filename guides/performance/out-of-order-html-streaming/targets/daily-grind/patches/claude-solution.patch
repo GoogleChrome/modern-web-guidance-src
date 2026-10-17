@@ -1,0 +1,168 @@
+diff --git a/index.html b/index.html
+index 66c9173..6546c71 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,29 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Out-of-order streaming placeholders.
++       Stable min-height keeps layout from shifting when the
++       <?start>/<?end> range or streamed content is patched in. */
++    .streamed-region {
++      min-height: 220px;
++    }
++
++    .skeleton-card {
++      min-height: 220px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      background: var(--secondary);
++      border-radius: 8px;
++      color: var(--text);
++      animation: skeleton-pulse 1.4s ease-in-out infinite;
++    }
++
++    @keyframes skeleton-pulse {
++      0%, 100% { opacity: 1; }
++      50% { opacity: 0.5; }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +218,40 @@
+         </div>
+       </div>
+     </section>
++
++    <!--
++      Declarative OOO streaming: the store lookup is "expensive" (it would
++      normally hit a live inventory/seating service), so the shell ships a
++      skeleton immediately and the real markup patches in via the
++      <template for="store-status"> defined later in this same document.
++      Browsers without html-processing-instructions support simply see
++      <?start>/<?end> as comments and keep rendering the skeleton, so do
++      not rewrite them as elements or HTML comments -- the
++      template-for-polyfill relies on this exact syntax.
++    -->
++    <section>
++      <h2 style="text-align: center;">Nearby Store Availability</h2>
++      <div class="streamed-region" aria-live="polite">
++        <?start name="store-status">
++        <div class="skeleton-card" aria-hidden="true">Checking live seating &amp; wait times&hellip;</div>
++        <?end>
++      </div>
++    </section>
++
++    <!--
++      Imperative OOO streaming: reviews are populated via
++      Response.textStream() piped into streamHTMLUnsafe(). Unsafe is
++      required because the fragment includes a trusted, first-party
++      <script> (a "mark helpful" handler) that the safe setters would
++      strip; runScripts is only enabled because we authored and serve
++      that fragment ourselves.
++    -->
++    <section>
++      <h2 style="text-align: center;">Customer Reviews</h2>
++      <div id="reviews" class="streamed-region" aria-live="polite">
++        <div class="skeleton-card" aria-hidden="true">Loading reviews&hellip;</div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +264,55 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Arrives later in the stream and patches the "store-status" placeholder above. -->
++  <template for="store-status">
++    <div class="grid">
++      <div class="card">
++        <h3>Downtown Roastery</h3>
++        <p>Open now &middot; 3 seats available &middot; ~5 min wait</p>
++      </div>
++      <div class="card">
++        <h3>Riverside Caf&eacute;</h3>
++        <p>Open now &middot; Patio seating available</p>
++      </div>
++      <div class="card">
++        <h3>Uptown Express</h3>
++        <p>Open now &middot; Mobile pickup only, no wait</p>
++      </div>
++    </div>
++  </template>
++
++  <script>
++    (function () {
++      var reviews = document.querySelector('#reviews');
++
++      var supportsImperativeStreaming =
++        typeof Element !== 'undefined' &&
++        'streamHTMLUnsafe' in Element.prototype &&
++        typeof Response !== 'undefined' &&
++        'textStream' in Response.prototype;
++
++      if (!supportsImperativeStreaming) {
++        // Fallback strategy for browsers lacking html-streaming-setters
++        // support: use html-setters-polyfill, or degrade to a static link.
++        reviews.innerHTML = '<p>Reviews are loading. <a href="/reviews">View all reviews</a>.</p>';
++        return;
++      }
++
++      fetch('/partials/reviews.html')
++        .then(function (response) {
++          return response
++            .textStream()
++            .pipeTo(reviews.streamHTMLUnsafe({ runScripts: true }));
++        })
++        .catch(function () {
++          // setHTML is the safe setter: fine here since this fallback
++          // string is static, trusted, and contains nothing to sanitize.
++          reviews.setHTML('<p>Could not load reviews right now. Please try again later.</p>');
++        });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/partials/reviews.html b/partials/reviews.html
+new file mode 100644
+index 0000000..1eb95db
+--- /dev/null
++++ b/partials/reviews.html
+@@ -0,0 +1,31 @@
++<div class="grid">
++  <div class="card">
++    <h3>&#9733;&#9733;&#9733;&#9733;&#9733; Maria S.</h3>
++    <p>"The Maple Oat Latte is a religious experience. Staff remembered my order on my second visit!"</p>
++    <button type="button" class="btn helpful-btn">Helpful (<span class="helpful-count">12</span>)</button>
++  </div>
++  <div class="card">
++    <h3>&#9733;&#9733;&#9733;&#9733;&#9733; Dev P.</h3>
++    <p>"Cold brew is smooth as silk. My daily non-negotiable before standups."</p>
++    <button type="button" class="btn helpful-btn">Helpful (<span class="helpful-count">8</span>)</button>
++  </div>
++  <div class="card">
++    <h3>&#9733;&#9733;&#9733;&#9733;&#9734; Jamie L.</h3>
++    <p>"Great espresso, a little pricey, but worth it for the atmosphere."</p>
++    <button type="button" class="btn helpful-btn">Helpful (<span class="helpful-count">3</span>)</button>
++  </div>
++</div>
++
++<script>
++  // This fragment is first-party markup authored and served by The Daily
++  // Grind (not user-submitted content), so it is safe to execute via
++  // streamHTMLUnsafe's runScripts option. It only wires up a local
++  // "mark helpful" counter -- no external calls, no untrusted data.
++  document.querySelectorAll('#reviews .helpful-btn').forEach(function (button) {
++    button.addEventListener('click', function () {
++      var countEl = button.querySelector('.helpful-count');
++      countEl.textContent = String(Number(countEl.textContent) + 1);
++      button.disabled = true;
++    }, { once: true });
++  });
++</script>
