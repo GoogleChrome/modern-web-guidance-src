@@ -1,0 +1,228 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..3d9391b 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,160 @@
+       background: #3e2723;
+     }
+ 
++    nav {
++      flex-wrap: wrap;
++      gap: 0.75rem;
++    }
++
++    nav ul {
++      flex-wrap: wrap;
++      gap: 0.5rem 1.25rem;
++    }
++
++    nav ul li {
++      margin-left: 0;
++    }
++
++    .menu-section {
++      margin-block-start: 2.5rem;
++    }
++
++    .menu-section > p {
++      margin-block: 0.5rem 1rem;
++    }
++
++    .table-wrapper {
++      overflow: auto;
++      max-inline-size: 100%;
++      max-block-size: min(500px, 80vh);
++      container-type: inline-size;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .table-wrapper:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    table {
++      inline-size: 100%;
++      min-inline-size: 960px;
++      border-collapse: separate;
++      border-spacing: 0;
++      --label-2: "Style";
++      --label-3: "Size";
++      --label-4: "Price";
++      --label-5: "Tasting notes";
++    }
++
++    th, td {
++      padding: 1rem 1.25rem;
++      text-align: start;
++      vertical-align: top;
++      border-block-end: 1px solid var(--secondary);
++    }
++
++    thead {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 3;
++    }
++
++    thead th {
++      background: var(--primary);
++      color: white;
++      white-space: nowrap;
++    }
++
++    thead th:first-child {
++      position: sticky;
++      inset-inline-start: 0;
++      z-index: 4;
++    }
++
++    tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      z-index: 1;
++      background: white;
++      min-inline-size: 220px;
++      border-inline-end: 1px solid var(--secondary);
++    }
++
++    tbody tr:nth-child(even) > * {
++      background: #f5f0ed;
++    }
++
++    @container (width < 600px) {
++      table, tbody, tr, th, td {
++        display: block;
++      }
++
++      table {
++        min-inline-size: 0;
++        padding: 0.75rem;
++      }
++
++      thead {
++        display: none;
++      }
++
++      tbody tr {
++        margin-block-end: 1.5rem;
++        border: 1px solid var(--secondary);
++        border-radius: 6px;
++      }
++
++      tbody tr:last-child {
++        margin-block-end: 0;
++      }
++
++      tbody th {
++        inset-inline-start: auto;
++        inset-block-start: 0;
++        z-index: 2;
++        min-inline-size: 0;
++        background: var(--secondary);
++        border-inline-end: 0;
++        border-start-start-radius: 5px;
++        border-start-end-radius: 5px;
++      }
++
++      tbody tr:nth-child(even) > th {
++        background: var(--secondary);
++      }
++
++      td {
++        overflow-wrap: anywhere;
++      }
++
++      td:last-child {
++        border-block-end: 0;
++      }
++
++      td::before {
++        font-weight: 700;
++      }
++
++      td:nth-child(2)::before {
++        content: var(--label-2) ": " / var(--label-2);
++      }
++
++      td:nth-child(3)::before {
++        content: var(--label-3) ": " / var(--label-3);
++      }
++
++      td:nth-child(4)::before {
++        content: var(--label-4) ": " / var(--label-4);
++      }
++
++      td:nth-child(5)::before {
++        content: var(--label-5) ": " / var(--label-5);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +349,37 @@
+         </div>
+       </div>
+     </section>
++    <section class="menu-section" aria-labelledby="coffee-menu-heading">
++      <h2 id="coffee-menu-heading">Coffee Menu</h2>
++      <p id="menu-help">Explore our coffees and seasonal favorites. Scroll to see the full menu.</p>
++      <div class="table-wrapper" tabindex="0" role="region" aria-labelledby="coffee-menu-heading" aria-describedby="menu-help">
++        <table aria-labelledby="coffee-menu-heading">
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Style</th>
++              <th scope="col">Size</th>
++              <th scope="col">Price</th>
++              <th scope="col">Tasting notes</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr><th scope="row">Maple Oat Latte</th><td>Seasonal latte</td><td>12 oz</td><td>$5.50</td><td>Vermont maple syrup and creamy oat milk</td></tr>
++            <tr><th scope="row">Dark Roast Espresso</th><td>Espresso</td><td>2 oz</td><td>$3.00</td><td>Bold cocoa with a smoky finish</td></tr>
++            <tr><th scope="row">Cold Brew</th><td>Cold coffee</td><td>16 oz</td><td>$4.50</td><td>Steeped for 18 hours for a smooth finish</td></tr>
++            <tr><th scope="row">House Coffee</th><td>Drip coffee</td><td>12 oz</td><td>$3.00</td><td>Balanced caramel and toasted nuts</td></tr>
++            <tr><th scope="row">Americano</th><td>Espresso</td><td>12 oz</td><td>$3.50</td><td>Rich espresso with hot water</td></tr>
++            <tr><th scope="row">Cappuccino</th><td>Espresso with milk</td><td>8 oz</td><td>$4.25</td><td>Velvety foam and a bold coffee base</td></tr>
++            <tr><th scope="row">Classic Latte</th><td>Espresso with milk</td><td>12 oz</td><td>$4.75</td><td>Silky steamed milk and mellow espresso</td></tr>
++            <tr><th scope="row">Mocha</th><td>Chocolate latte</td><td>12 oz</td><td>$5.25</td><td>Dark chocolate and freshly pulled espresso</td></tr>
++            <tr><th scope="row">Flat White</th><td>Espresso with milk</td><td>8 oz</td><td>$4.50</td><td>Fine microfoam with a rich coffee finish</td></tr>
++            <tr><th scope="row">Vanilla Latte</th><td>Flavored latte</td><td>12 oz</td><td>$5.00</td><td>Fragrant vanilla and creamy steamed milk</td></tr>
++            <tr><th scope="row">Iced Americano</th><td>Cold espresso</td><td>16 oz</td><td>$3.75</td><td>Crisp espresso poured over ice</td></tr>
++            <tr><th scope="row">Decaf House Coffee</th><td>Drip coffee</td><td>12 oz</td><td>$3.00</td><td>Toasted almond and a gentle cocoa finish</td></tr>
++          </tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/package.json b/package.json
+index 2bd4d77..3ba2597 100644
+--- a/package.json
++++ b/package.json
+@@ -2,8 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "vite build",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
++  "devDependencies": {
++    "vite": "^7.1.0"
++  },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+   }
