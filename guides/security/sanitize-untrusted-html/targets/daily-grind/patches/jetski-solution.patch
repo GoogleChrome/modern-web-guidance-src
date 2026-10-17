@@ -1,0 +1,269 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..f0a232b
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++node_modules/
++dist/
++test-results/
++playwright-report/
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..6632cd9
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,134 @@
++// @ts-check
++
++const elements = ['p', 'b', 'i', 'strong', 'em'];
++const attributes = ['class'];
++
++const DOMPURIFY_CDN = 'https://unpkg.com/dompurify@3.4.16/dist/purify.es.mjs';
++
++/** @type {Promise<any> | undefined} */
++let domPurifyPromise;
++
++/** @type {WeakMap<Element, number>} */
++const revisions = new WeakMap();
++
++/**
++ * Dynamically load DOMPurify only when native Sanitizer API is missing.
++ * @returns {Promise<any>}
++ */
++export function loadDOMPurify() {
++  domPurifyPromise ??= import('dompurify')
++    .then((mod) => mod.default ?? mod)
++    .catch(() => import('/node_modules/dompurify/dist/purify.es.mjs').then((mod) => mod.default ?? mod))
++    .catch(() => import(DOMPURIFY_CDN).then((mod) => mod.default ?? mod))
++    .catch((error) => {
++      domPurifyPromise = undefined;
++      throw error;
++    });
++  return domPurifyPromise;
++}
++
++/**
++ * Safely parse untrusted HTML without inserting into live DOM.
++ * @param {string} html
++ * @returns {Promise<Document | DocumentFragment>}
++ */
++export async function safeParseHTML(html) {
++  if ('parseHTML' in Document) {
++    // @ts-ignore
++    return Document.parseHTML(html);
++  }
++  const DOMPurify = await loadDOMPurify();
++  return DOMPurify.sanitize(html, {
++    ALLOWED_TAGS: [...elements, '#text'],
++    ALLOWED_ATTR: [...attributes],
++    KEEP_CONTENT: false,
++    RETURN_DOM_FRAGMENT: true,
++  });
++}
++
++/**
++ * Safely parse and display untrusted HTML into the specified container element.
++ * Uses native Element.prototype.setHTML() when available, falling back to DOMPurify.
++ *
++ * @param {Element} element
++ * @param {string} html
++ * @returns {Promise<void>}
++ */
++export async function safeSetHTML(element, html) {
++  const revision = (revisions.get(element) ?? 0) + 1;
++  revisions.set(element, revision);
++
++  if ('setHTML' in Element.prototype) {
++    /** @type {any} */
++    let sanitizerConfig = { elements: [...elements], attributes: [...attributes] };
++    if (typeof Sanitizer === 'function') {
++      try {
++        sanitizerConfig = new Sanitizer({ elements: [...elements], attributes: [...attributes] });
++      } catch {
++        // Fall back to plain config object
++      }
++    }
++    try {
++      /** @type {any} */ (element).setHTML(html, { sanitizer: sanitizerConfig });
++    } catch {
++      /** @type {any} */ (element).setHTML(html);
++    }
++    return;
++  }
++
++  const DOMPurify = await loadDOMPurify();
++  if (revisions.get(element) !== revision) return;
++
++  const fragment = DOMPurify.sanitize(html, {
++    ALLOWED_TAGS: [...elements, '#text'],
++    ALLOWED_ATTR: [...attributes],
++    ALLOW_ARIA_ATTR: false,
++    ALLOW_DATA_ATTR: false,
++    KEEP_CONTENT: false,
++    RETURN_DOM_FRAGMENT: true,
++  });
++  element.replaceChildren(fragment);
++}
++
++// Expose globally for testing or script invocation
++if (typeof window !== 'undefined') {
++  /** @type {any} */ (window).safeSetHTML = safeSetHTML;
++  /** @type {any} */ (window).safeParseHTML = safeParseHTML;
++}
++
++function initPreview() {
++  const form = document.querySelector('#preview-form');
++  const input = /** @type {HTMLTextAreaElement | null} */ (document.querySelector('#html-input'));
++  const output = document.querySelector('#output');
++  const status = document.querySelector('#preview-status');
++
++  if (!form || !input || !output || !status) {
++    return;
++  }
++
++  let request = 0;
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++    const current = ++request;
++    status.textContent = 'Preparing preview…';
++    try {
++      await safeSetHTML(output, input.value);
++      if (current === request) {
++        status.textContent = 'Preview updated. Only supported formatting is shown.';
++      }
++    } catch {
++      if (current === request) {
++        output.replaceChildren();
++        status.textContent = 'The preview could not be loaded. Please try again.';
++      }
++    }
++  });
++}
++
++if (typeof document !== 'undefined') {
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', initPreview);
++  } else {
++    initPreview();
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..c8419cb 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,30 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .preview-section { margin-top: 40px; }
++    .preview-section label { display: block; margin-top: 16px; font-weight: bold; }
++    .preview-section textarea {
++      display: block;
++      width: 100%;
++      min-height: 140px;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      resize: vertical;
++    }
++    button.btn { border: 0; font: inherit; cursor: pointer; }
++    #output { min-height: 80px; margin-top: 12px; padding: 20px; background: white; border: 1px solid var(--secondary); border-radius: 5px; }
++    #preview-status { min-height: 1.6em; margin: 12px 0; }
+   </style>
++  <script type="importmap">
++    {
++      "imports": {
++        "dompurify": "/node_modules/dompurify/dist/purify.es.mjs"
++      }
++    }
++  </script>
+ </head>
+ 
+ <body>
+@@ -195,6 +218,20 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="preview-section" aria-labelledby="preview-heading">
++      <h2 id="preview-heading">Preview your coffee note</h2>
++      <p>Add a little formatting to your note before sharing it.</p>
++      <form id="preview-form">
++        <label for="html-input">Your note (HTML)</label>
++        <p id="format-help">Supported tags: p, b, i, strong, and em. Other elements and their contents are removed.</p>
++        <textarea id="html-input" name="html" aria-describedby="format-help" spellcheck="false" placeholder="&lt;p&gt;I love a &lt;b&gt;bold roast&lt;/b&gt;.&lt;/p&gt;"></textarea>
++        <button class="btn" type="submit" id="btn-run">Render preview</button>
++      </form>
++      <p id="preview-status" role="status" aria-live="polite"></p>
++      <h3 id="output-heading">Preview</h3>
++      <div id="output" class="output-box" role="region" aria-labelledby="output-heading"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +244,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..30dc68d 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,13 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "node --check app.js"
++  },
++  "dependencies": {
++    "dompurify": "^3.4.16"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+new file mode 100644
+index 0000000..776a850
+--- /dev/null
++++ b/pnpm-lock.yaml
+@@ -0,0 +1,30 @@
++lockfileVersion: '9.0'
++
++settings:
++  autoInstallPeers: true
++  excludeLinksFromLockfile: false
++
++importers:
++
++  .:
++    dependencies:
++      dompurify:
++        specifier: ^3.4.16
++        version: 3.4.16
++
++packages:
++
++  '@types/trusted-types@2.0.7':
++    resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
++
++  dompurify@3.4.16:
++    resolution: {integrity: sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ==}
++
++snapshots:
++
++  '@types/trusted-types@2.0.7':
++    optional: true
++
++  dompurify@3.4.16:
++    optionalDependencies:
++      '@types/trusted-types': 2.0.7
