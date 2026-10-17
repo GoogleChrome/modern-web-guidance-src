@@ -692,6 +692,14 @@ describe('INCLUDE', () => {
       assert.equal(result, '[Break Up Long Tasks](../performance/break-up-long-tasks.md)');
     });
 
+    it('throws for unpublished guides on the static-site target', () => {
+      const content = '{{ GUIDE_REF("slider-tooltip") }}';
+      assert.throws(
+        () => replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' }),
+        /links to an unpublished guide/,
+      );
+    });
+
     it('throws error for non-existent guide', () => {
       const content = '{{ GUIDE_REF("non-existent-guide-xyz") }}';
       assert.throws(() => replaceMacros(content, path.join(rootDir, 'test.md')), /Guide "non-existent-guide-xyz" not found/);

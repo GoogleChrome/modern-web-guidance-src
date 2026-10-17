@@ -274,8 +274,10 @@ export function validateGuide(filePath: string): ValidationResult {
   }
 
   const maskedBody = maskComments(body);
-  errors.push(...validateMacros(maskedBody, relativePath));
+  const isPublished = isGuidePublished(stripAllComments(body).trim().length > 0, data.draft);
+  errors.push(...validateMacros(maskedBody, relativePath, { target: isPublished ? 'static-site' : 'local-dev' }));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
+  errors.push(...validateCallouts(maskedBody, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
@@ -483,6 +485,7 @@ export interface TargetInventory {
 export interface GuideInventory {
   dir: string;
   name: string;
+  title?: string;
   category: string;
   hasGuide: boolean;
   isStub: boolean;
@@ -604,6 +607,14 @@ export function stripAllComments(content: string): string {
   return stripComments(content).replace(/<!--[\s\S]*?-->/g, '');
 }
 
+export function isGuidePublished(hasContent: boolean, draft: unknown): boolean {
+  return Boolean(hasContent && !isDraftStub(draft) && !draft);
+}
+
+export function stripLeadingH1(markdown: string): string {
+  return markdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
+}
+
 export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean }): GuideInventory {
   const name = path.basename(dir);
   const category = path.basename(path.dirname(dir));
@@ -621,7 +632,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   const { draft, draftReason } = parseDraft(data, guideFilePath);
   const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
   const hasGuide = hasContent && !isDraftStub(draft);
-  const isPublished = hasGuide && !draft;
+  const isPublished = isGuidePublished(hasContent, draft);
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();
@@ -676,6 +687,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   return {
     dir,
     name,
+    title: (data.title as string | undefined) || extractH1Heading(content),
     category,
     hasGuide,
     isStub,
@@ -900,6 +912,36 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
     }
   }
 
+  return errors;
+}
+
+export const GITHUB_ALERT_TYPES = ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'] as const;
+export type GithubAlertType = typeof GITHUB_ALERT_TYPES[number];
+
+export function isGithubAlertType(type: string): type is GithubAlertType {
+  return (GITHUB_ALERT_TYPES as readonly string[]).includes(type);
+}
+
+export const ALERT_MARKER_PATTERN = /^> ?\[!(\w+)\]/;
+export const BOLD_CALLOUT_PATTERN = new RegExp(`^> ?\\*\\*(${GITHUB_ALERT_TYPES.join('|')})(?::\\*\\*|\\*\\*:)`, 'i');
+
+/**
+ * Callouts must use GitHub alert syntax (`> [!NOTE]`) with a known type, so the
+ * static-site build can map them to DevSite notices.
+ */
+export function validateCallouts(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  marked.walkTokens(marked.lexer(body), token => {
+    if (token.type !== 'blockquote') return;
+    const alertType = token.raw.match(ALERT_MARKER_PATTERN)?.[1];
+    if (alertType && !isGithubAlertType(alertType.toUpperCase())) {
+      errors.push(`Unsupported alert type "[!${alertType}]" in ${relativePath}. Use one of: ${GITHUB_ALERT_TYPES.join(', ')}.`);
+    }
+    const boldLabel = token.raw.match(BOLD_CALLOUT_PATTERN)?.[1];
+    if (boldLabel) {
+      errors.push(`Bold callout "> **${boldLabel}:**" in ${relativePath}. Use GitHub alert syntax instead: "> [!${boldLabel.toUpperCase()}]".`);
+    }
+  });
   return errors;
 }
 
