@@ -76,7 +76,6 @@
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
     "@types/gh-pages": "^6.1.0",
-    "@types/minimatch": "^6.0.0",
     "@types/node": "^25.6.0",
     "@types/omelette": "^0.4.5",
     "cssomnom": "^0.1.4",
@@ -91,7 +90,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@anthropic-ai/vertex-sdk": "^0.20.4",
     "@google-cloud/storage": "^7.19.0",
     "@google/gemini-cli": "0.61.0",
     "@huggingface/tokenizers": "^0.2.0",
@@ -105,7 +103,6 @@
     "@webref/elements": "^2.7.1",
     "@webref/idl": "^3.82.0",
     "caniuse-lite": "1.0.30001806",
-    "cheerio": "^1.2.0",
     "colors": "^1.4.0",
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3",
