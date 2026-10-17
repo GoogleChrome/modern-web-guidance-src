@@ -103,6 +103,24 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
       assert.ok(res[0].failureReason?.includes('Playwright test runner failed'));
     });
 
+    await t.test('missing grader results JSON (ENOENT) without generation_failed.json is an agent failure (0/N checks)', () => {
+      const res = evaluateScenarioResults(
+        tempDir,
+        'test-guide',
+        graderPath,
+        path.join(tempDir, 'non_existent_results.json'),
+        true,
+        path.join(tempDir, 'index.html')
+      );
+      assert.strictEqual(res.length, 5);
+      assert.deepStrictEqual(
+        res.map(c => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure })),
+        Array(5).fill({ passed: false, isEarlyFailure: undefined })
+      );
+      assert.strictEqual(res[0].message, 'check 1: has header element');
+      assert.strictEqual(res[0].failureReason, 'Playwright test runner failed to produce a results file');
+    });
+
     await t.test('crashed or timed-out generation with generation_failed.json is an infra error (single isEarlyFailure entry)', () => {
       fs.writeFileSync(
         path.join(tempDir, 'generation_failed.json'),

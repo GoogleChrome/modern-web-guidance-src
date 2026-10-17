@@ -38,37 +38,6 @@ export function extractTokenUsageFromResults(resultsDir: string): { total: numbe
   return null;
 }
 
-function extractErrorMessage(dir: string, targetFile: string): string {
-  const failureFile = path.join(dir, 'generation_failed.json');
-  try {
-    const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
-    return `Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`;
-  } catch (err) {
-    if (!isEnoent(err)) {
-      return 'Generation failed (could not parse failure info)';
-    }
-  }
-
-  const stderrPath = path.join(dir, 'agent_stderr.log');
-  try {
-    return fs.readFileSync(stderrPath, 'utf8')
-      .split('\n')
-      .map(l => l.trim())
-      .filter(l => l && !l.includes('YOLO mode'))
-      .pop()?.slice(0, 100) || 'Generation mysteriously failed';
-  } catch (err) {
-    if (!isEnoent(err)) throw err;
-  }
-
-  const fileName = path.relative(dir, targetFile) || path.basename(targetFile) || 'index.html';
-  try {
-    fs.statSync(targetFile);
-    return 'Generation failed';
-  } catch {
-    return `${fileName} not found`;
-  }
-}
-
 export function parseResultPath(relPath: string): { guide: string, taskName: string, runType: string } | null {
   const parts = relPath.split(/[/\\]/).filter(Boolean);
   let guide: string, taskName: string, runType: string;
@@ -352,7 +321,7 @@ export function evaluateScenarioResults(
   graderPath: string,
   graderResults: string,
   targetAppExists: boolean,
-  targetFile: string
+  _targetFile?: string
 ): ScenarioCheck[] {
   const makeInfraError = (reason: string): ScenarioCheck[] => [{
     id: 'early-failure-1',
@@ -422,7 +391,7 @@ export function evaluateScenarioResults(
     return makeAgentFailures('Playwright test runner failed or produced no test results');
   } catch (err: any) {
     if (isEnoent(err)) {
-      return makeAgentFailures(extractErrorMessage(dir, targetFile));
+      return makeAgentFailures('Playwright test runner failed to produce a results file');
     }
     console.error(`Error processing results for ${dir}:`, err);
     return makeAgentFailures(err.message || 'System Error');

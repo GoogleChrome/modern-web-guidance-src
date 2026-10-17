@@ -880,13 +880,16 @@ function renderPivotInsights() {
         const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
         const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
 
-        const entry = { uplift, uRate, gRate, uErr, gErr };
-        if (testInfo.agent) (grouped.agent[testInfo.agent] ??= []).push(entry);
-        if (testInfo.serving) (grouped.serving[testInfo.serving] ??= []).push(entry);
-        if (testInfo.model) (grouped.model[testInfo.model] ??= []).push(entry);
+        if (gStats.total > 0 && uStats.total > 0) {
+            const entry = { uplift, uRate, gRate, uErr, gErr };
+            if (testInfo.agent) (grouped.agent[testInfo.agent] ??= []).push(entry);
+            if (testInfo.serving) (grouped.serving[testInfo.serving] ??= []).push(entry);
+            if (testInfo.model) (grouped.model[testInfo.model] ??= []).push(entry);
+        }
 
         const suiteGuides = testInfo.guides || {};
         Object.keys(suiteGuides).forEach(guide => {
+            if (!suiteGuides[guide].guidedTotal || !suiteGuides[guide].unguidedTotal) return;
             const { guidedRate = 0, unguidedRate = 0, uplift = 0 } = suiteGuides[guide];
             if (!grouped.guide[guide]) grouped.guide[guide] = [];
             grouped.guide[guide].push({ uplift, uRate: unguidedRate, gRate: guidedRate });
