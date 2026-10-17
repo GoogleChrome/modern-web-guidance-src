@@ -83,13 +83,12 @@ Contents:
 
 ### Skip links
 
-- **Provide skip links** prior to repeated content like site headers with navigation or long/infinite lists, so that keyboard users can easily bypass them. Make sure the target is focusable (e.g. `<main id="content" tabindex="-1">`).
-
-```html
-<!-- Good: Skip to main content -->
-<a href="#content" class="skip-link">Skip to main content</a>
-<main id="content" tabindex="-1">...</main>
-```
+- **Provide skip links** prior to repeated content like site headers with navigation or long/infinite lists, so that keyboard users can easily bypass them.
+  - **Caveat**: Sometimes screen magnifiers do not follow the focus when a skip link’s target is not normally focusable.
+    A common workaround is to make the target programmatically focusable, but not a part of the tab order, using `tabindex="-1"`.
+    If the target contains focusable elements, this can create another usability issue as clicking within the target will always set the sequential focus navigation start point to the target rather than at a point between focusable elements as would be expected.
+    A solution that can satisfy both user expectations is to make the first meaningful element within the intended target the actual target of the skip link with `tabindex="-1"` (e.g., `<h1 id="content" tabindex="-1">`).
+    Beware that any content prior to such an element will be skipped, including other relevant content within the targeted section, and this can create usability gaps for other assistive tech users.
 
 ```html
 <!-- Good: Semantic landmarks, heading hierarchy, skip link -->
@@ -101,7 +100,7 @@ Contents:
     </ul>
   </nav>
 </header>
-<main id="content" tabindex="-1">
+<main id="content">
   <h1>Platform Dashboard</h1>
   <section>
     <h2>User Statistics</h2>
