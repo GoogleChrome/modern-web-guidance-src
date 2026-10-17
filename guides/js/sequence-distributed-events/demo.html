@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>High-Frequency Tracing: Temporal.Instant vs Date.now()</title>
+  <title>Sequencing Distributed Events: Temporal.Instant vs Date</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -288,55 +288,56 @@
     <header>
       <h1>Sequence Distributed Events</h1>
       <p class="description">
-        Simulate high-frequency events across distributed nodes. Compare how millisecond resolution
-        (<code>Date.now()</code>) causes sorting collisions, while <code>Temporal.Instant</code> (nanosecond resolution)
-        maintains absolute chronological order.
+        Load a trace of events stamped by a central tracing backend with nanosecond-precision ISO 8601
+        timestamps. Compare how parsing them with the legacy <code>Date</code> object truncates to milliseconds
+        and causes sorting collisions, while <code>Temporal.Instant</code> preserves the recorded precision and
+        keeps the events in their true order.
       </p>
     </header>
 
     <div class="controls">
       <div class="control-group">
-        <label for="eventCount">Events Count:</label>
-        <input type="range" id="eventCount" min="20" max="100" value="50">
-        <span id="countDisplay">50</span>
+        <label for="eventCount">Events to load:</label>
+        <input type="range" id="eventCount" min="10" max="60" value="30">
+        <span id="countDisplay">30</span>
       </div>
-      <button id="simulateBtn">
+      <button id="loadBtn">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <polygon points="5 3 19 12 5 21 5 3"></polygon>
         </svg>
-        Simulate High-Freq Events
+        Load Trace Events
       </button>
     </div>
 
     <div id="unsupportedBanner" class="banner" style="background-color: #1e3a5f; border-color: #3b82f6; display: none;">
-      <div class="banner-icon">ℹ️</div>
+      <div class="banner-icon" aria-hidden="true">ℹ️</div>
       <div id="unsupportedBannerText">Native Temporal API not found. Loading polyfill fallback...</div>
     </div>
 
     <div id="collisionBanner" class="banner">
-      <div class="banner-icon">⚠️</div>
+      <div class="banner-icon" aria-hidden="true">⚠️</div>
       <div>
         <strong style="color: var(--warning-text)">Timestamp Collision Detected!</strong><br>
-        Multiple events share the exact same timestamp in <code>Date.now()</code>.
-        Their sorted order is unstable, leading to potential data racing/out-of-order execution in traces.
+        Multiple events share the exact same timestamp after parsing with <code>Date</code>.
+        Their sorted order is unstable, leading to misleading traces.
       </div>
     </div>
 
     <div class="dashboard">
-      <!-- Date.now() Panel -->
+      <!-- Date Panel -->
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">
-            Date.now()
+            new Date(ts)
             <span class="badge date">ms precision</span>
           </div>
           <div id="dateCollisions" class="status"></div>
         </div>
         <div class="table-container" id="dateContainer">
           <div class="placeholder">
-            <div class="placeholder-icon">📊</div>
-            <div>Click Simulate to generate events</div>
+            <div class="placeholder-icon" aria-hidden="true">📊</div>
+            <div>Click Load to fetch the trace</div>
           </div>
         </div>
       </div>
@@ -345,15 +346,15 @@
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">
-            Temporal.Instant
+            Temporal.Instant.from(ts)
             <span class="badge temporal">ns precision</span>
           </div>
           <div id="temporalCollisions" class="status"></div>
         </div>
         <div class="table-container" id="temporalContainer">
           <div class="placeholder">
-            <div class="placeholder-icon">🧬</div>
-            <div>Click Simulate to generate events</div>
+            <div class="placeholder-icon" aria-hidden="true">🧬</div>
+            <div>Click Load to fetch the trace</div>
           </div>
         </div>
       </div>
@@ -361,32 +362,34 @@
   </div>
 
   <script>
-    const simulateBtn = document.getElementById('simulateBtn');
+    const loadBtn = document.getElementById('loadBtn');
     const eventCountSlider = document.getElementById('eventCount');
     const countDisplay = document.getElementById('countDisplay');
     const dateContainer = document.getElementById('dateContainer');
     const temporalContainer = document.getElementById('temporalContainer');
     const collisionBanner = document.getElementById('collisionBanner');
     const dateCollisionsStatus = document.getElementById('dateCollisions');
+    const temporalCollisionsStatus = document.getElementById('temporalCollisions');
 
     (async () => {
       if (typeof Temporal === 'undefined') {
         const unsupportedBanner = document.getElementById('unsupportedBanner');
         const bannerText = document.getElementById('unsupportedBannerText');
         if (unsupportedBanner) unsupportedBanner.style.display = 'flex';
-        
-        simulateBtn.disabled = true;
-        simulateBtn.style.opacity = '0.5';
-        simulateBtn.style.cursor = 'not-allowed';
+
+        loadBtn.disabled = true;
+        loadBtn.style.opacity = '0.5';
+        loadBtn.style.cursor = 'not-allowed';
 
         try {
           const module = await import('https://esm.sh/@js-temporal/polyfill');
+          // The polyfill does not install a global, so assign it explicitly.
           globalThis.Temporal = module.Temporal;
-          
+
           if (unsupportedBanner) unsupportedBanner.style.display = 'none';
-          simulateBtn.disabled = false;
-          simulateBtn.style.opacity = '1';
-          simulateBtn.style.cursor = 'pointer';
+          loadBtn.disabled = false;
+          loadBtn.style.opacity = '1';
+          loadBtn.style.cursor = 'pointer';
         } catch (e) {
           console.error('Failed to load Temporal polyfill:', e);
           if (bannerText) bannerText.innerHTML = '🚫 Failed to load Temporal polyfill. This demo requires Temporal support.';
@@ -402,56 +405,74 @@
       countDisplay.textContent = e.target.value;
     });
 
-    simulateBtn.addEventListener('click', runSimulation);
+    loadBtn.addEventListener('click', loadTrace);
 
-    function runSimulation() {
-      if (typeof Temporal === 'undefined') {
-        alert('Temporal API is not available/loaded yet.');
-        return;
-      }
-
-      const count = parseInt(eventCountSlider.value);
+    /**
+     * Simulates fetching a trace from a central tracing backend. Every event is
+     * stamped by the same server clock and serialized as an ISO 8601 string with
+     * nanosecond precision, exactly as a database or log pipeline would emit it.
+     * The events are returned out of order, as they would be when collected from
+     * several services.
+     */
+    function fetchTraceFromBackend(count) {
+      const eventTypes = ['request.start', 'auth.check', 'db.query', 'cache.read', 'render', 'request.end'];
+      const base = Temporal.Instant.from('2026-04-01T12:00:00Z');
       const events = [];
+      let offsetNs = 0n;
 
-      // Simulate 3 nodes emitting events back-to-back
       for (let i = 0; i < count; i++) {
-        const nodeId = Math.floor(Math.random() * 3) + 1;
-        const eventType = ['INFO', 'TRACE', 'DEBUG'][Math.floor(Math.random() * 3)];
-
-        // Capture both timestamps
-        const dateMs = Date.now();
-        const temporalInstant = Temporal.Now.instant();
-
-        // Micro-burn loop to simulate high-frequency events occurrence
-        for (let j = 0; j < 500; j++) { Math.random(); }
-
+        // Services often emit several events within the same millisecond, so
+        // advance the clock by a few microseconds most of the time and by a
+        // few milliseconds occasionally.
+        offsetNs += i % 4 === 3 ? BigInt(1_500_000 + (i * 37) % 900_000) : BigInt(2_000 + (i * 113) % 60_000);
+        const ts = base.add({ nanoseconds: Number(offsetNs % 1_000_000_000n), seconds: Number(offsetNs / 1_000_000_000n) });
         events.push({
           id: i + 1,
-          nodeId,
-          eventType,
-          dateMs,
-          temporalInstant
+          nodeId: (i % 3) + 1,
+          eventType: eventTypes[i % eventTypes.length],
+          // toString() serializes the full nanosecond precision in UTC.
+          ts: ts.toString(),
         });
       }
+
+      // Shuffle to mimic events arriving from different services out of order.
+      for (let i = events.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [events[i], events[j]] = [events[j], events[i]];
+      }
+      return events;
+    }
+
+    function loadTrace() {
+      // The button is disabled until Temporal is available, so this is just a guard.
+      if (typeof Temporal === 'undefined') return;
+
+      const rawEvents = fetchTraceFromBackend(parseInt(eventCountSlider.value));
+
+      const events = rawEvents.map((evt) => ({
+        ...evt,
+        // Legacy approach: new Date() truncates everything below the millisecond.
+        dateMs: new Date(evt.ts).getTime(),
+        // Recommended approach: parse the recorded timestamp as a Temporal.Instant,
+        // which keeps the full nanosecond precision the backend recorded.
+        instant: Temporal.Instant.from(evt.ts),
+      }));
 
       renderDashboard(events);
     }
 
     function renderDashboard(events) {
-      const shuffledEvents = [...events].sort(() => Math.random() - 0.5);
+      // 1. Sort for the Date view (loses sub-millisecond ordering)
+      const dateSorted = [...events].sort((a, b) => a.dateMs - b.dateMs);
 
-      // 1. Sort for Date.now() view
-      const dateSorted = [...shuffledEvents].sort((a, b) => a.dateMs - b.dateMs);
-
-      // 2. Sort for Temporal view
-      const temporalSorted = [...shuffledEvents].sort((a, b) =>
-        Temporal.Instant.compare(a.temporalInstant, b.temporalInstant)
+      // 2. Sort for the Temporal view using the static compare() method
+      const temporalSorted = [...events].sort((a, b) =>
+        Temporal.Instant.compare(a.instant, b.instant)
       );
 
-      // 3. Count Collisions in Date.now() sorted array
+      // 3. Count collisions in the Date-sorted array
       let collisionsCount = 0;
       const collisionGroups = new Set();
-
       for (let i = 1; i < dateSorted.length; i++) {
         if (dateSorted[i].dateMs === dateSorted[i - 1].dateMs) {
           collisionsCount++;
@@ -459,22 +480,21 @@
         }
       }
 
-      // 4. Count Collisions in Temporal sorted array
+      // 4. Count collisions in the Temporal-sorted array using equals()
       let temporalCollisionsCount = 0;
       const temporalCollisionGroups = new Set();
       for (let i = 1; i < temporalSorted.length; i++) {
-        if (Temporal.Instant.compare(temporalSorted[i].temporalInstant, temporalSorted[i - 1].temporalInstant) === 0) {
+        if (temporalSorted[i].instant.equals(temporalSorted[i - 1].instant)) {
           temporalCollisionsCount++;
-          temporalCollisionGroups.add(temporalSorted[i].temporalInstant.toString());
+          temporalCollisionGroups.add(temporalSorted[i].instant.toString());
         }
       }
 
-      // 5. Update Individual Status Indicators
+      // 5. Update status indicators
       dateCollisionsStatus.innerHTML = collisionsCount > 0
         ? `⚠️ <span style="font-weight:600">${collisionsCount}</span> Collision${collisionsCount > 1 ? 's' : ''}`
         : '✓ No Collisions';
 
-      const temporalCollisionsStatus = document.getElementById('temporalCollisions');
       if (temporalCollisionsCount > 0) {
         temporalCollisionsStatus.innerHTML = `⚠️ <span style="font-weight:600">${temporalCollisionsCount}</span> Collision${temporalCollisionsCount > 1 ? 's' : ''}`;
         temporalCollisionsStatus.style.color = '#f59e0b';
@@ -483,29 +503,8 @@
         temporalCollisionsStatus.style.color = 'var(--accent-secondary)';
       }
 
-      // 6. Update Main Banner Alert
-      if (collisionsCount > 0 || temporalCollisionsCount > 0) {
-        collisionBanner.style.display = 'flex';
-        let sourceText = 'in <code>Date.now()</code>';
-        if (collisionsCount > 0 && temporalCollisionsCount > 0) {
-          sourceText = 'in BOTH <code>Date.now()</code> and <code>Temporal.Instant</code>';
-        } else if (temporalCollisionsCount > 0) {
-          sourceText = 'in <code>Temporal.Instant</code>';
-        }
+      collisionBanner.style.display = collisionsCount > 0 ? 'flex' : 'none';
 
-        collisionBanner.innerHTML = `
-          <div class="banner-icon">⚠️</div>
-          <div>
-            <strong style="color: var(--warning-text)">Timestamp Collision Detected!</strong><br>
-            Multiple events share the exact same timestamp ${sourceText}.
-            Their sorted order is unstable, leading to potential data racing/out-of-order execution in traces.
-          </div>
-        `;
-      } else {
-        collisionBanner.style.display = 'none';
-      }
-
-      // Render Tables
       renderDateTable(dateSorted, collisionGroups);
       renderTemporalTable(temporalSorted, temporalCollisionGroups);
     }
@@ -514,10 +513,10 @@
       let html = `<table>
             <thead>
                 <tr>
-                    <th>Seq</th>
-                    <th>Node</th>
-                    <th>Type</th>
-                    <th>Timestamp (ms)</th>
+                    <th scope="col">Seq</th>
+                    <th scope="col">Node</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Timestamp (ms)</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -525,12 +524,13 @@
       sortedEvents.forEach((evt) => {
         const isCollided = collisionGroups.has(evt.dateMs);
         const rowClass = isCollided ? 'collision-row' : '';
+        const rowTitle = isCollided ? ' title="Shares a millisecond timestamp with a neighboring event"' : '';
 
-        html += `<tr class="${rowClass}">
+        html += `<tr class="${rowClass}"${rowTitle}>
                 <td>${evt.id}</td>
                 <td><span class="node-tag node-${evt.nodeId}">N-${evt.nodeId}</span></td>
                 <td>${evt.eventType}</td>
-                <td>${evt.dateMs}</td>
+                <td>${new Date(evt.dateMs).toISOString()}</td>
             </tr>`;
       });
 
@@ -542,31 +542,31 @@
       let html = `<table>
             <thead>
                 <tr>
-                    <th>Seq</th>
-                    <th>Node</th>
-                    <th>Type</th>
-                    <th>Timestamp (ns/iso)</th>
+                    <th scope="col">Seq</th>
+                    <th scope="col">Node</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Timestamp (ISO) / gap</th>
                 </tr>
             </thead>
             <tbody>`;
 
       sortedEvents.forEach((evt, index) => {
-        const iso = evt.temporalInstant.toString();
+        const iso = evt.instant.toString();
         const isCollided = temporalCollisionGroups.has(iso);
         const rowClass = isCollided ? 'collision-row' : '';
-        // Extract the time part for cleaner display, showing the nanoseconds better
-        // e.g., 2026-03-11T16:28:02.499925049Z => 16:28:02.499925049
-        const timePart = iso.split('T')[1].replace('Z', '');
 
-        // Calculate diff from previous row to show precision
-        let diffHtml = '';
+        let gapHtml = '';
         if (index > 0) {
-          const prev = sortedEvents[index - 1].temporalInstant;
-          // Calculate difference in nanoseconds
-          const duration = evt.temporalInstant.since(prev);
-          const nsDiff = duration.total('nanoseconds');
-          if (nsDiff > 0) {
-            diffHtml = `<span class="value-diff">+${nsDiff.toLocaleString()}ns</span>`;
+          const prev = sortedEvents[index - 1].instant;
+
+          // since() returns a Temporal.Duration with full nanosecond precision.
+          const gap = evt.instant.since(prev);
+
+          // Format with toLocaleString() (Intl.DurationFormat) instead of
+          // collapsing to a single Number with total('nanoseconds').
+          if (gap.sign > 0) {
+            // undefined locale = the user's locale, so the output is localized automatically.
+            gapHtml = `<span class="value-diff">+${gap.toLocaleString(undefined, { style: 'narrow' })}</span>`;
           }
         }
 
@@ -574,7 +574,7 @@
                 <td>${evt.id}</td>
                 <td><span class="node-tag node-${evt.nodeId}">N-${evt.nodeId}</span></td>
                 <td>${evt.eventType}</td>
-                <td title="${iso}">${timePart}${diffHtml}</td>
+                <td>${iso}${gapHtml}</td>
             </tr>`;
       });
 
