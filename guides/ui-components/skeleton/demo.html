@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skeleton loading patterns</title>
+  <style>
+    @layer reset, page, skeleton;
+
+    @layer reset {
+      * { box-sizing: border-box; }
+      h2, p, figure { margin: 0; }
+      a { color: inherit; text-decoration: underline .12em var(--accent); text-underline-offset: .18em; }
+    }
+
+    @layer page {
+      :root {
+        color-scheme: light dark;
+        --page: light-dark(#f5f6f8, #17191d);
+        --surface: light-dark(#fff, #22252b);
+        --ink: light-dark(#17191d, #f4f5f7);
+        --muted: light-dark(#626873, #aeb4bf);
+        --line: light-dark(#dfe2e7, #3b404a);
+        --accent: light-dark(#075fe6, #72a8ff);
+        --pad: 1.25rem;
+      }
+
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font: 1rem/1.5 system-ui, sans-serif;
+      }
+
+      main { max-inline-size: 70rem; margin: auto; padding: 2rem var(--pad); }
+      #toggle { margin-block-end: 1.5rem; border: 0; padding: .7rem 1rem; background: var(--accent); color: white; font: inherit; font-weight: 700; cursor: pointer; }
+
+      #demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); gap: 1rem; }
+      article { overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+      article:not(:has(> figure)) { padding: var(--pad); }
+      article:has(> figure) > div { padding: var(--pad); }
+      article:has(> .avatar) { display: flex; align-items: flex-start; gap: 1rem; padding: var(--pad); }
+      article:has(> .avatar) > div { flex: 1; min-inline-size: 0; padding: 0; }
+      figure { aspect-ratio: 16 / 10; }
+      figure img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
+      .avatar { inline-size: 4rem; block-size: 4rem; display: grid; place-items: center; flex: none; background: var(--accent); color: white; font-weight: 800; }
+      .meta { min-block-size: 1lh; color: var(--muted); font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+      h2 { margin-block: .6rem .4rem; min-block-size: 2lh; font-size: 1.35rem; line-height: 1.2; }
+      h2 + p { min-block-size: 3lh; color: var(--muted); }
+      article > a, article button.action { display: inline-block; margin-block-start: 1.5rem; font: inherit; font-weight: 700; }
+      article button.action { border: 0; padding: .65rem .9rem; background: var(--accent); color: white; cursor: pointer; }
+      p:has(> a) { margin-block-start: 1rem; }
+    }
+
+    @layer skeleton {
+      @property --skeleton-x {
+        syntax: '<percentage>';
+        inherits: false;
+        initial-value: -100%;
+      }
+
+      @property --skeleton-tone {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #c7cbd2;
+      }
+
+      :root {
+        --skeleton-base: light-dark(#c7cbd2, #30353d);
+        --skeleton-pulse: light-dark(#d9dce1, #3a4049);
+        --skeleton-highlight: light-dark(#eceef1, #4a525d);
+      }
+
+      .skeleton[aria-busy="true"] {
+        --skeleton-tone: var(--skeleton-base);
+        animation: skeleton-pulse 1.6s ease-in-out infinite alternate;
+      }
+
+      .skeleton[aria-busy="true"] :empty:not(figure, .avatar)::before {
+        content: "";
+        display: block;
+        inline-size: var(--skeleton-width, 82%);
+        block-size: calc(var(--skeleton-lines, 1) * 1lh);
+        border-radius: .25em;
+        background: linear-gradient(110deg, transparent 20%, var(--skeleton-highlight) 45%, transparent 70%) var(--skeleton-x) 0 / 200% 100% no-repeat, var(--skeleton-tone);
+        mask: repeating-linear-gradient(to bottom, transparent 0 .1lh, #000 .1lh .9lh, transparent .9lh 1lh);
+        animation: skeleton-shimmer 1.8s linear infinite;
+      }
+
+      .skeleton[aria-busy="true"] :is(h1, h2, h3, h4, h5, h6):empty { --skeleton-lines: 2; }
+      .skeleton[aria-busy="true"] p:empty { --skeleton-lines: 3; --skeleton-width: 100%; }
+
+      .skeleton[aria-busy="true"] article:nth-child(3) h2:empty { --skeleton-lines: 1; }
+      .skeleton[aria-busy="true"] .meta:empty { --skeleton-lines: 1; --skeleton-width: 42%; }
+      .skeleton[aria-busy="true"] a:empty { --skeleton-lines: 1; --skeleton-width: 55%; }
+      .skeleton[aria-busy="true"] a.action:empty {
+        --skeleton-width: 7.5rem;
+        --skeleton-height: 2.4rem;
+        margin-block-start: 1.5rem;
+      }
+      .skeleton[aria-busy="true"] button:empty {
+        --skeleton-lines: 1;
+        --skeleton-width: 7.5rem;
+        padding: 0;
+        border: 0;
+        background: none;
+      }
+      .skeleton[aria-busy="true"] button:empty::before { block-size: 2.4rem; }
+
+      .skeleton[aria-busy="true"] :is(.avatar, .image) {
+        background:
+          linear-gradient(110deg, transparent 20%, var(--skeleton-highlight) 45%, transparent 70%)
+            var(--skeleton-x) 0 / 200% 100% no-repeat,
+          var(--skeleton-tone);
+        animation: skeleton-shimmer 1.8s linear infinite;
+      }
+
+      .avatar { inline-size: 4rem; block-size: 4rem; flex: none; border-radius: 50%; }
+      .skeleton[aria-busy="true"] figure.image {
+        mask:
+          linear-gradient(#000 0 0),
+          linear-gradient(#000 0 0) center / 3.5rem 2.75rem no-repeat,
+          radial-gradient(circle, #000 .45rem, transparent calc(.45rem + 1px)) center / 100% 100% no-repeat;
+        mask-composite: exclude;
+      }
+
+      @keyframes skeleton-shimmer { to { --skeleton-x: 100%; } }
+      @keyframes skeleton-pulse { to { --skeleton-tone: var(--skeleton-pulse); } }
+
+      @media (prefers-reduced-motion: reduce) {
+        .skeleton[aria-busy="true"],
+        .skeleton[aria-busy="true"] :is(.avatar, .image),
+        .skeleton[aria-busy="true"] :empty::before { animation: none; }
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <button id="toggle" type="button">Show loaded state</button>
+
+    <section id="demos" class="skeleton" aria-busy="true" inert>
+      <article>
+        <figure class="image" aria-hidden="true"></figure>
+        <div aria-hidden="true">
+          <p class="meta"></p>
+          <h2></h2>
+          <p></p>
+          <button class="action" aria-hidden="true"></button>
+        </div>
+      </article>
+
+      <article>
+        <div aria-hidden="true">
+          <p class="meta"></p>
+          <h2></h2>
+          <p></p>
+          <a class="action" aria-hidden="true"></a>
+        </div>
+      </article>
+
+      <article>
+        <div class="avatar" aria-hidden="true"></div>
+        <div aria-hidden="true">
+          <h2></h2>
+          <p></p>
+          <p class="meta"></p>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const demos = document.getElementById('demos');
+    const toggle = document.getElementById('toggle');
+    const skeletonCards = [...demos.children].map((card) => card.cloneNode(true));
+    const cards = [
+      {
+        image: 'https://picsum.photos/seed/skeleton-demo/640/400',
+        alt: 'A bottle of Molten Mango hot sauce',
+        category: 'Hot sauce · Heat 7/10',
+        title: 'Molten Mango Habanero Blaze',
+        description: 'Ripe mango and smoked habanero with a slow, warm finish that works on almost anything.',
+        action: 'Add to basket',
+        actionType: 'button'
+      },
+      {
+        category: 'New this week',
+        title: 'Ghost Pepper Garlic Inferno',
+        description: 'Roasted garlic, black vinegar and enough ghost pepper to make you question your choices.',
+        action: 'See the full range',
+        actionType: 'link'
+      },
+      {
+        avatar: 'SC',
+        title: 'Scorch Co.',
+        description: 'Small-batch hot sauce from a shed in Hampshire',
+        links: ['Shop', 'Stockists']
+      }
+    ];
+
+    function element(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text) node.textContent = text;
+      return node;
+    }
+
+    function renderCard(data) {
+      const article = element('article');
+      if (data.image) {
+        const figure = element('figure');
+        const image = element('img');
+        image.src = data.image;
+        image.width = 640;
+        image.height = 400;
+        image.alt = data.alt;
+        figure.append(image);
+        article.append(figure);
+      }
+      if (data.avatar) {
+        const avatar = element('div', 'avatar', data.avatar);
+        avatar.setAttribute('aria-hidden', 'true');
+        article.append(avatar);
+      }
+
+      const content = element('div');
+      if (data.category) content.append(element('p', 'meta', data.category));
+
+      const heading = element('h2');
+      const title = element('a', '', data.title);
+      title.href = '#';
+      heading.append(title);
+      content.append(heading);
+      content.append(element('p', '', data.description));
+
+      if (data.actionType === 'button') {
+        content.append(element('button', 'action', data.action));
+      } else if (data.actionType === 'link') {
+        const action = element('a', '', data.action);
+        action.href = '#';
+        content.append(action);
+      }
+      if (data.links) {
+        const links = element('p');
+        data.links.forEach((label, index) => {
+          if (index) links.append(document.createTextNode(' · '));
+          const link = element('a', '', label);
+          link.href = '#';
+          links.append(link);
+        });
+        content.append(links);
+      }
+      article.append(content);
+      return article;
+    }
+
+    function setLoading(loading) {
+      demos.setAttribute('aria-busy', String(loading));
+      demos.toggleAttribute('inert', loading);
+      toggle.textContent = loading ? 'Show loaded state' : 'Show loading state';
+      demos.replaceChildren(...(loading ? skeletonCards.map((card) => card.cloneNode(true)) : cards.map(renderCard)));
+    }
+
+    toggle.addEventListener('click', () => {
+      const isLoading = demos.getAttribute('aria-busy') === 'true';
+      if (!isLoading) {
+        setLoading(true);
+        return;
+      }
+      toggle.disabled = true;
+      toggle.textContent = 'Loading…';
+      window.setTimeout(() => {
+        setLoading(false);
+        toggle.disabled = false;
+      }, 650);
+    });
+  </script>
+</body>
+</html>

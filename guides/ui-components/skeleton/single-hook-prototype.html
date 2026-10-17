@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Type-driven skeleton prototype</title>
+  <style>
+    @layer reset, page, skeleton;
+
+    @layer reset {
+      *, *::before, *::after { box-sizing: border-box; }
+      body, h1, h2, p, ul { margin: 0; }
+      ul { padding-inline-start: 1.25em; }
+    }
+
+    @layer page {
+      :root {
+        color-scheme: light dark;
+        --page: light-dark(#f5f6f8, #17191d);
+        --surface: light-dark(#fff, #22252b);
+        --ink: light-dark(#17191d, #f4f5f7);
+        --muted: light-dark(#626873, #aeb4bf);
+        --line: light-dark(#dfe2e7, #3b404a);
+        --pad: 1.25rem;
+      }
+      body { min-block-size: 100vh; background: var(--page); color: var(--ink); font: 1rem/1.5 system-ui, sans-serif; }
+      main { max-inline-size: 70rem; margin-inline: auto; padding: 2rem var(--pad); }
+      h1 { margin-block-end: .5rem; font-size: 1.5rem; }
+      .intro { margin-block-end: 1.5rem; color: var(--muted); }
+      .visually-hidden {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); gap: 1rem; }
+      article { overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+      article > :not(.media) { padding-inline: var(--pad); }
+      article:not(:has(> .media, > .content > .media)) { padding: var(--pad); }
+      .media { aspect-ratio: 16 / 10; }
+      .content { display: flex; flex-direction: column; gap: .4rem; padding-block: var(--pad); }
+      .content h2 { margin-block-end: 0; }
+      .content ul { margin-block-end: 0; }
+      .content li + li { margin-block-start: 0; }
+      article:has(> .media[data-skeleton="avatar"]) {
+        display: grid;
+        grid-template-columns: 5rem minmax(0, 1fr);
+        align-items: start;
+        gap: 1rem;
+        padding: var(--pad);
+      }
+      article:has(> .media[data-skeleton="avatar"]) > .content { padding: 0; }
+      .media[data-skeleton="avatar"] { inline-size: 5rem; aspect-ratio: 1; border-radius: 50%; }
+      h2 { margin-block-end: .5rem; font-size: 1.4em; line-height: 1.2; }
+      p { color: var(--muted); }
+      ul { margin-block: 0 1rem; padding-inline-start: 1.25em; color: var(--muted); }
+      li + li { margin-block-start: .35rem; }
+      a { color: inherit; }
+      input, button { font: inherit; inline-size: 100%; margin-block-start: .75rem; padding: .6em .9em; border: 1px solid var(--line); border-radius: .4em; background: var(--surface); color: inherit; }
+      button { inline-size: auto; font-weight: 700; }
+    }
+
+    @layer skeleton {
+      @property --skeleton-tone {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #c7cbd2;
+      }
+
+      /* Match the border-shape prototype's surface-relative palette and
+         per-card fixed-coordinate shimmer; role attributes only choose shapes. */
+      .skeleton[aria-busy="true"] {
+        --skeleton-tone: color-mix(in oklch, var(--surface) 88%, var(--ink));
+        --skeleton-highlight: color-mix(in oklch, var(--surface) 70%, white);
+      }
+
+      .skeleton[aria-busy="true"] > article { position: relative; }
+
+      .skeleton[aria-busy="true"] > article::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image: linear-gradient(110deg, transparent 40%, var(--skeleton-highlight) 50%, transparent 60%);
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-size: 200% 100%;
+        background-position: 200% 0;
+        mix-blend-mode: screen;
+        animation: sweep 1.8s linear infinite;
+      }
+
+      .skeleton[aria-busy="true"] [data-skeleton] {
+        color: transparent !important;
+        text-decoration: none !important;
+        background: var(--skeleton-tone);
+        border: 0;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      .skeleton[aria-busy="true"] [data-skeleton="heading"] {
+        --pill-height: .72lh;
+        --pill-radius: .16lh;
+        --pill-gap: .38lh;
+        --line-one: 82%;
+        --line-two: 64%;
+        --block: calc(2 * var(--pill-height) + var(--pill-gap));
+        display: block;
+        block-size: var(--block);
+        border-shape: shape(from var(--pill-radius) 0,
+          hline to calc(var(--line-one) - var(--pill-radius)),
+          arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
+          vline to calc(var(--pill-height) - var(--pill-radius)),
+          arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
+          hline to var(--pill-radius), arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+          vline to var(--pill-radius), arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw, close,
+          move to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)),
+          hline to calc(var(--line-two) - var(--pill-radius)),
+          arc to var(--line-two) calc(var(--pill-height) + var(--pill-gap) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+          vline to calc(2 * var(--pill-height) + var(--pill-gap) - var(--pill-radius)),
+          arc to calc(var(--line-two) - var(--pill-radius)) calc(2 * var(--pill-height) + var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw,
+          hline to var(--pill-radius), arc to 0 calc(2 * var(--pill-height) + var(--pill-gap) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+          vline to calc(var(--pill-height) + var(--pill-gap) + var(--pill-radius)),
+          arc to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw, close);
+      }
+
+      .skeleton[aria-busy="true"] [data-skeleton="paragraph"] {
+        --pill-height: .56lh;
+        --pill-radius: .16lh;
+        --pill-gap: .34lh;
+        --line-one: 94%;
+        --line-two: 92%;
+        --line-three: 68%;
+        --block: calc(3 * var(--pill-height) + 2 * var(--pill-gap));
+        display: block;
+        block-size: var(--block);
+        border-shape: shape(from var(--pill-radius) 0,
+          hline to calc(var(--line-one) - var(--pill-radius)),
+          arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
+          vline to calc(var(--pill-height) - var(--pill-radius)),
+          arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
+          hline to var(--pill-radius), arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+          vline to var(--pill-radius), arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw, close,
+          move to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)),
+          hline to calc(var(--line-two) - var(--pill-radius)),
+          arc to var(--line-two) calc(var(--pill-height) + var(--pill-gap) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+          vline to calc(2 * var(--pill-height) + var(--pill-gap) - var(--pill-radius)),
+          arc to calc(var(--line-two) - var(--pill-radius)) calc(2 * var(--pill-height) + var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw,
+          hline to var(--pill-radius), arc to 0 calc(2 * var(--pill-height) + var(--pill-gap) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+          vline to calc(var(--pill-height) + var(--pill-gap) + var(--pill-radius)),
+          arc to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw, close,
+          move to var(--pill-radius) calc(2 * (var(--pill-height) + var(--pill-gap))),
+          hline to calc(var(--line-three) - var(--pill-radius)),
+          arc to var(--line-three) calc(2 * (var(--pill-height) + var(--pill-gap)) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+          vline to calc(3 * var(--pill-height) + 2 * var(--pill-gap) - var(--pill-radius)),
+          arc to calc(var(--line-three) - var(--pill-radius)) calc(3 * var(--pill-height) + 2 * var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw,
+          hline to var(--pill-radius), arc to 0 calc(3 * var(--pill-height) + 2 * var(--pill-gap) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+          vline to calc(2 * (var(--pill-height) + var(--pill-gap)) + var(--pill-radius)),
+          arc to var(--pill-radius) calc(2 * (var(--pill-height) + var(--pill-gap))) of var(--pill-radius) var(--pill-radius) cw, close);
+      }
+
+      /* Link and button share one single-pill path; only dimensions differ. */
+      .skeleton[aria-busy="true"] :is([data-skeleton="link"], [data-skeleton="button"]) {
+        --pill-height: .56lh;
+        --pill-radius: .16lh;
+        --line-one: 42%;
+        display: block;
+        block-size: var(--pill-height);
+        border-shape: shape(from var(--pill-radius) 0,
+          hline to calc(var(--line-one) - var(--pill-radius)),
+          arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
+          vline to calc(var(--pill-height) - var(--pill-radius)),
+          arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
+          hline to var(--pill-radius), arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+          vline to var(--pill-radius), arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw, close);
+      }
+
+      .skeleton[aria-busy="true"] [data-skeleton="button"] {
+        --pill-height: 2.4em;
+        --pill-radius: 1.2em;
+        --line-one: 100%;
+        inline-size: 8rem;
+        padding: 0;
+      }
+
+      .skeleton[aria-busy="true"] [data-skeleton="list-item"] {
+        --pill-height: .56lh;
+        --pill-radius: .16lh;
+        --dot: .5lh;
+        --dot-gap: .4lh;
+        --text-start: calc(var(--dot) + var(--dot-gap));
+        --line-one: 72%;
+        display: block;
+        block-size: var(--pill-height);
+        list-style: none;
+        border-shape: shape(from 0 calc(var(--pill-height) / 2),
+          arc to var(--dot) calc(var(--pill-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw,
+          arc to 0 calc(var(--pill-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw, close,
+          move to calc(var(--text-start) + var(--pill-radius)) 0,
+          hline to calc(var(--line-one) - var(--pill-radius)),
+          arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
+          vline to calc(var(--pill-height) - var(--pill-radius)),
+          arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
+          hline to calc(var(--text-start) + var(--pill-radius)),
+          arc to var(--text-start) calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+          vline to var(--pill-radius), arc to calc(var(--text-start) + var(--pill-radius)) 0 of var(--pill-radius) var(--pill-radius) cw, close);
+      }
+
+      .skeleton[aria-busy="true"] [data-skeleton="image"] {
+        display: block;
+        background-color: var(--skeleton-tone);
+        color: transparent !important;
+      }
+
+      .skeleton[aria-busy="true"] [data-skeleton="avatar"] {
+        inline-size: 5rem;
+        block-size: 5rem;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: var(--skeleton-tone);
+        color: transparent !important;
+      }
+
+      @keyframes sweep {
+        from { background-position: 200% 0; }
+        to { background-position: -100% 0; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .skeleton[aria-busy="true"] > article::after { animation: none; }
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Type-driven skeleton prototype</h1>
+    <p class="intro">One loading-state hook on the grid; data attributes describe each intended placeholder type.</p>
+    <p class="visually-hidden" role="status">Loading cards…</p>
+    <section class="cards skeleton" aria-busy="true" inert aria-hidden="true">
+      <article>
+        <div class="media" data-skeleton="image" role="img" aria-label="Product image" style="aspect-ratio: 16 / 10"></div>
+        <div class="content">
+          <h2 data-skeleton="heading">Molten Mango Habanero Blaze</h2>
+          <p data-skeleton="paragraph">Ripe mango and smoked habanero with a slow, warm finish.</p>
+          <a data-skeleton="link" href="#">View product</a>
+          <button data-skeleton="button" type="button">Add to basket</button>
+        </div>
+      </article>
+
+      <article>
+        <div class="media" data-skeleton="avatar" aria-hidden="true"></div>
+        <div class="content">
+          <h2 data-skeleton="heading">Scorch Co.</h2>
+          <p data-skeleton="paragraph">Small-batch hot sauce made in Hampshire.</p>
+          <ul>
+            <li data-skeleton="list-item">Shop</li>
+            <li data-skeleton="list-item">Stockists</li>
+          </ul>
+          <a data-skeleton="link" href="#">Visit the brand</a>
+        </div>
+      </article>
+
+      <article>
+        <h2 data-skeleton="heading">A heading with supporting copy</h2>
+        <p data-skeleton="paragraph">A short description with enough content to wrap naturally in this card layout.</p>
+        <ul>
+          <li data-skeleton="list-item">First detail</li>
+          <li data-skeleton="list-item">Second detail</li>
+        </ul>
+        <a data-skeleton="link" href="#">Read the article</a>
+        <button data-skeleton="button" type="button">Continue</button>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
