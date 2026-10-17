@@ -1,0 +1,65 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..1eae0cf
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++dist/
++node_modules/
+diff --git a/index.html b/index.html
+index 66c9173..dc03580 100644
+--- a/index.html
++++ b/index.html
+@@ -14,6 +14,16 @@
+       --light: #fafafa;
+     }
+ 
++    /* Detects @property support: the var() fallback below only applies when this is registered */
++    @property --supports-atproperty {
++      syntax: "*";
++      inherits: false;
++    }
++
++    :root {
++      --supports-atproperty: ;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+@@ -113,6 +123,8 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      /* Accent top border only if @property is supported */
++      border-top: var(--supports-atproperty, 4px solid var(--accent));
+     }
+ 
+     .card h3 {
+diff --git a/package.json b/package.json
+index 2bd4d77..28acf96 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node scripts/build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..057ef6c
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,9 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const root = new URL('../', import.meta.url);
++const output = new URL('dist/', root);
++
++await mkdir(output, { recursive: true });
++await copyFile(new URL('index.html', root), new URL('index.html', output));
++
++console.log('Built static application in dist/');
