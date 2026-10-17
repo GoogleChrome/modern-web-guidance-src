@@ -122,9 +122,9 @@ test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping
   assert.ok(!buildZeroPassratePrompt(baseOpts).includes('discipline guide'));
 });
 
-test('buildTargetTaskPrompt creates clean developer prompt instructions', () => {
+test('buildTargetTaskPrompt creates clean developer prompt instructions and treats expectations as spoiler blocklist', () => {
   const baseOpts = {
-    guideFile: 'guide.md',
+    guideDescription: 'Enable users to view, manage, and revoke WebAuthn passkeys.',
     taskFile: 'task.md',
     baseApp: 'daily-grind',
   };
@@ -132,13 +132,77 @@ test('buildTargetTaskPrompt creates clean developer prompt instructions', () => 
   assert.ok(prompt.includes('task.md'));
   assert.ok(prompt.includes('codebase files'));
   assert.ok(prompt.includes('understand the use case'));
+  assert.ok(prompt.includes('Enable users to view, manage, and revoke WebAuthn passkeys.'));
   assert.ok(prompt.includes('Do NOT name the guide itself'));
   assert.ok(prompt.includes('Write the prompt as a developer talking'));
+  assert.ok(prompt.includes('Negative Constraint / Spoiler Blocklist'));
+  assert.ok(prompt.includes('Preserve High-Level Capability Boundary'));
+  assert.ok(prompt.includes('prefers-reduced-motion'));
 
   const disciplinePrompt = buildTargetTaskPrompt({ ...baseOpts, isDisciplineGuide: true });
   assert.ok(disciplinePrompt.includes('understand the discipline guidance'));
   assert.ok(disciplinePrompt.includes('apply the discipline guidance'));
   assert.ok(!disciplinePrompt.includes('understand the use case'));
+});
+
+test('buildTargetGraderPrompt includes anti-overfitting, AST unwrapping, and non-vacuous rules', () => {
+  const prompt = buildTargetGraderPrompt({
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+      [Agents.CLAUDE_CODE]: 'patches/claude-solution.patch',
+      [Agents.CODEX_CLI]: 'patches/codex-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
+    graderFile: 'grader.ts',
+    baseApp: 'daily-grind',
+    templateFile: 'template.grader.ts',
+  });
+
+  assert.ok(prompt.includes('No Overfitting to Golden Solution Patches'));
+  assert.ok(prompt.includes('Unwrap Type Assertions & Wrappers'));
+  assert.ok(prompt.includes('AsExpression'));
+  assert.ok(prompt.includes('SatisfiesExpression'));
+  assert.ok(prompt.includes('ParenthesizedExpression'));
+  assert.ok(prompt.includes('Follow Identifier & Variable Indirection'));
+  assert.ok(prompt.includes('Trace Helper & Wrapper Functions'));
+  assert.ok(prompt.includes('Flexible Error Handling'));
+  assert.ok(prompt.includes('TryStatement'));
+  assert.ok(prompt.includes('.catch()'));
+  assert.ok(prompt.includes('No Vacuous Conditional Checks'));
+  assert.ok(prompt.includes('expect(items.length).toBeGreaterThan(0)'));
+  assert.ok(prompt.includes('test.skip()'));
+  assert.ok(prompt.includes('Never write browser E2E tests that depend on newly invented page routes'));
+});
+
+test('buildTargetGraderPrompt truncates oversized failureContext to prevent spawn E2BIG', () => {
+  const hugeError = 'x'.repeat(25_000);
+  const prompt = buildTargetGraderPrompt({
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
+    graderFile: 'grader.ts',
+    baseApp: 'devtools-times',
+    templateFile: 'template.grader.ts',
+    failureContext: hugeError,
+  });
+
+  assert.ok(prompt.includes('...[truncated 9000 chars]'));
+  assert.ok(prompt.length < 25_000);
+});
+
+test('buildZeroPassratePrompt includes requirement to genuinely violate each expectation', () => {
+  const prompt = buildZeroPassratePrompt({
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    workDir: '/tmp/test-sandbox',
+  });
+  assert.ok(prompt.includes('Genuinely Violate Each Expectation'));
+  assert.ok(prompt.includes('Do NOT rely on compound boolean guards'));
 });
 
 test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags and inputs', () => {

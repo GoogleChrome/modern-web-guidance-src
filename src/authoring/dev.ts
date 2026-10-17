@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import matter from 'gray-matter';
 import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
@@ -253,17 +254,28 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
   }
 }
 
+export function extractGuideDescription(rawGuide: string): string {
+  const description = String(matter(rawGuide).data?.description ?? '').trim();
+  if (!description) {
+    throw new Error(`${GUIDE_FILE} is missing a required frontmatter 'description' field.`);
+  }
+  return description;
+}
+
 async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
   const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-task`);
   try {
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    const rawGuide = fs.readFileSync(path.join(guideDirAbs, GUIDE_FILE), 'utf-8');
+    const guideDescription = extractGuideDescription(rawGuide);
+
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
     await copyBaseAppToWorkspace(baseApp, workDir);
 
     const prompt = buildTargetTaskPrompt({
-      guideFile: GUIDE_FILE,
+      guideDescription,
       taskFile: TASK_FILE,
       baseApp,
+      expectationsFile: EXPECTATIONS_FILE,
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
     });
 

@@ -1,6 +1,7 @@
 import test from 'node:test';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
 import { parsePassRates } from '../harness/lib/utils.ts';
+import { extractGuideDescription } from './dev.ts';
 
 test('parsePassRates parses multi-dimensional base-app scores correctly', () => {
   const output = `
@@ -246,5 +247,32 @@ test('exciseOldEvalArtifacts handles directory when old artifacts do not exist',
 
   assert.strictEqual(fs.existsSync(path.join(tmpDir, 'guide.md')), true);
 });
+
+test('extractGuideDescription extracts frontmatter description and throws when missing', () => {
+  const fullGuideMarkdown = `---
+title: "Passkey Management"
+description: "Enable users to view, manage, and revoke WebAuthn passkeys."
+category: "security"
+---
+
+# Passkey Management
+
+Secondary details and API spoilers:
+- Use navigator.credentials.get
+- Use prefers-reduced-motion fallback
+- Use credentialId and syncAcceptedCredentials
+`;
+
+  assert.strictEqual(
+    extractGuideDescription(fullGuideMarkdown),
+    'Enable users to view, manage, and revoke WebAuthn passkeys.',
+  );
+
+  assert.throws(
+    () => extractGuideDescription('---\ntitle: "Missing Description"\n---\n# Body'),
+    /missing a required frontmatter 'description' field/,
+  );
+});
+
 
 
