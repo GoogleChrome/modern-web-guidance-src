@@ -841,7 +841,6 @@ export function getGraderScriptContent(
 ): string {
   const runGraderModulePath = path.join(rootDir, 'src/grading/run-grader.ts');
   const targetFile = path.join(targetDir, 'index.html');
-  const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
   const agentPatch = path.join(targetDir, 'agent.patch');
   const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
@@ -856,7 +855,6 @@ async function run() {
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
-      ${JSON.stringify(gradeReportDir)},
       'inherit',
       patchFile,
       zeroPassrateFile

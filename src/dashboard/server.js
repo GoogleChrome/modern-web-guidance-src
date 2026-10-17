@@ -402,12 +402,6 @@ const server = http.createServer(async (req, res) => {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
             .filter(d => !d.isDirectory())
             .map(d => d.name);
-          const gradeReportDataDir = path.join(targetDir, 'grade-report', 'data');
-          if (fs.existsSync(gradeReportDataDir)) {
-            const dataFiles = fs.readdirSync(gradeReportDataDir)
-              .map(f => `grade-report/data/${f}`);
-            files.push(...dataFiles);
-          }
         }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);

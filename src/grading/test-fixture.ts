@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test';
+import { test as base, type Page } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, spawnSync } from 'child_process';
@@ -28,7 +28,55 @@ async function getFreePort(): Promise<number> {
   });
 }
 
-export const test = base.extend<{}, ServerWorkerFixtures>({
+export const test = base.extend<{ page: Page }, ServerWorkerFixtures>({
+  page: async ({ page }, use, testInfo) => {
+    const diagnostics: string[] = [];
+
+    page.on('console', (msg) => {
+      const type = msg.type();
+      if (type === 'error' || type === 'warning') {
+        const loc = msg.location();
+        const locSuffix = loc.url ? ` (${loc.url}:${loc.lineNumber})` : '';
+        diagnostics.push(`[console.${type}] ${msg.text()}${locSuffix}`);
+      }
+    });
+
+    page.on('pageerror', (err) => {
+      diagnostics.push(`[pageerror] ${err.stack || err.message || String(err)}`);
+    });
+
+    page.on('requestfailed', (req) => {
+      const failure = req.failure();
+      diagnostics.push(`[requestfailed] ${req.method()} ${req.url()}: ${failure?.errorText || 'failed'}`);
+    });
+
+    page.on('response', (res) => {
+      if (res.status() >= 400) {
+        diagnostics.push(`[response ${res.status()}] ${res.request().method()} ${res.url()} ${res.statusText()}`);
+      }
+    });
+
+    try {
+      await use(page);
+    } finally {
+      const failed = (testInfo.status !== 'passed' && testInfo.status !== 'skipped') || testInfo.errors.length > 0;
+      if (failed) {
+        if (!page.isClosed()) {
+          await testInfo.attach('page-snapshot', {
+            body: await page.locator('body').ariaSnapshot(),
+            contentType: 'text/plain',
+          });
+        }
+        if (diagnostics.length > 0) {
+          await testInfo.attach('browser-errors', {
+            body: diagnostics.join('\n'),
+            contentType: 'text/plain',
+          });
+        }
+      }
+    }
+  },
+
   // eslint-disable-next-line no-empty-pattern
   TARGET_URL: [async ({}, use) => {
     const targetDir = process.cwd();

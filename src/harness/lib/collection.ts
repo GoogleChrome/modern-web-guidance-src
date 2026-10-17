@@ -1,10 +1,13 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
+import { stripVTControlCharacters } from 'util';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guide-usage.ts';
 import { type SuiteConfig } from '../config.ts';
 import { getTaskMap } from '../../core/guide-validation.ts';
 import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
+import { rootDir } from '../../core/paths.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
@@ -88,6 +91,7 @@ function getAppFiles(currentDir: string, base = ''): string[] {
       entry.name === 'dist' ||
       entry.name === 'test-results' ||
       entry.name === 'grade-report' ||
+      entry.name === 'traces' ||
       entry.name.startsWith('.')
     ) {
       continue;
@@ -307,12 +311,18 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
   fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
 
+  const suiteConfigPath = path.join(resultsDir, 'suite_config.json');
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  if (fs.existsSync(suiteConfigPath) && !env.GD_SUITE_CONFIG) {
+    env.GD_SUITE_CONFIG = suiteConfigPath;
+  }
+
   try {
     console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
-    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
+    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32', env });
 
     console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
-    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
+    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32', env });
   } finally {
     if (fs.existsSync(pnpmWorkspacePath)) {
       fs.unlinkSync(pnpmWorkspacePath);
@@ -382,11 +392,42 @@ function evaluateScenarioResults(
         json.suites.forEach(traverse);
 
         return specs.map((spec: any) => {
-          const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
+          const lastResult = spec.tests?.[0]?.results?.[spec.tests[0].results.length - 1];
+          const passed = lastResult?.status === 'passed';
+          if (passed) {
+            return {
+              passed: true,
+              message: spec.title,
+              testId: spec.id,
+            };
+          }
+
+          const rawError = lastResult?.error?.message || lastResult?.errors?.[0]?.message;
+          const errorMsg = rawError
+            ? stripVTControlCharacters(rawError)
+                .replaceAll(rootDir + path.sep, '')
+                .replace(/\/tmp\/grade-run-[^/]+\//g, '')
+                .replaceAll(os.homedir(), '~')
+                .trim()
+            : undefined;
+
+          const loc = lastResult?.errorLocation;
+          const errorLocation = loc ? `${path.relative(rootDir, loc.file)}:${loc.line}` : undefined;
+
+          const snapshotAtt = lastResult?.attachments?.find((a: any) => a.name === 'page-snapshot');
+          const pageSnapshot = snapshotAtt?.body ? Buffer.from(snapshotAtt.body, 'base64').toString('utf8') : undefined;
+
+          const browserErrorsAtt = lastResult?.attachments?.find((a: any) => a.name === 'browser-errors');
+          const browserErrors = browserErrorsAtt?.body ? Buffer.from(browserErrorsAtt.body, 'base64').toString('utf8') : undefined;
+
           return {
-            passed: lastResult.status === 'passed',
+            passed: false,
             message: spec.title,
-            testId: spec.id
+            testId: spec.id,
+            ...(errorMsg ? { error: errorMsg } : {}),
+            ...(errorLocation ? { errorLocation } : {}),
+            ...(pageSnapshot ? { pageSnapshot } : {}),
+            ...(browserErrors ? { browserErrors } : {}),
           };
         });
       }
