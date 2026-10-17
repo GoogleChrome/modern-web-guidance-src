@@ -112,13 +112,13 @@ describe('gcs-downloader', () => {
     const resolved1 = resolveRunPath(relativeSuite);
     assert.ok(resolved1);
     assert.strictEqual(resolved1.relativeRunPath, relativeSuite);
-    assert.ok(resolved1.absoluteRunDir.endsWith(relativeSuite));
+    assert.ok(resolved1.absoluteRunDir.endsWith(path.join(...relativeSuite.split('/'))));
 
     // Repo-relative path
     const resolved2 = resolveRunPath(`harness/results/${relativeSuite}`);
     assert.ok(resolved2);
     assert.strictEqual(resolved2.relativeRunPath, relativeSuite);
-    assert.ok(resolved2.absoluteRunDir.endsWith(relativeSuite));
+    assert.ok(resolved2.absoluteRunDir.endsWith(path.join(...relativeSuite.split('/'))));
   });
 
   test('resolveRunPath handles results/suites paths without prefixing suites/ to relativeRunPath', async () => {
