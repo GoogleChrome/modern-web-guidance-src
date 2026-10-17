@@ -1,0 +1,10 @@
+- The document links to a web app manifest whose `id` provides a stable identity for the installable app.
+- The page contains either an `<install>` element that offers browser-controlled installation of the current web app, or a custom install button that uses `navigator.install()` or the `beforeinstallprompt` event.
+- When the page uses an `<install>` element, a successful `installresult` event reports that the app was installed.
+- When the page uses an `<install>` element, an aborted `installresult` event reports that installation was canceled or could not complete.
+- When the page uses an `<install>` element, an invalid-data `installresult` event reports that installation could not start because the app data is invalid.
+- When the page uses a custom install button, it remains hidden if neither `navigator.install()` nor a `beforeinstallprompt` event is available.
+- When the page uses a custom install button and `navigator.install()` is available, the button is visible and activating it requests installation exactly once.
+- When the page uses a custom install button and a `beforeinstallprompt` event is available without `navigator.install()`, the button becomes visible and activating it calls the captured event's `prompt()` method exactly once.
+- When the page uses a custom install button, accepting or dismissing the `beforeinstallprompt` fallback discards the captured event and hides the button.
+- A successful installation reports success to the user, while cancellation is reported as cancellation rather than as an application error.
