@@ -1,0 +1,406 @@
+diff --git a/src/components/ProgressRing.astro b/src/components/ProgressRing.astro
+new file mode 100644
+index 0000000..bde742a
+--- /dev/null
++++ b/src/components/ProgressRing.astro
+@@ -0,0 +1,80 @@
++---
++export interface Props {
++  value?: number;
++  max?: number;
++  ariaLabel?: string;
++  size?: string;
++  thickness?: string;
++  class?: string;
++}
++
++const {
++  value = 75,
++  max = 100,
++  ariaLabel = "Task progress",
++  size,
++  thickness,
++  class: className = "",
++} = Astro.props;
++
++const styleMap: string[] = [];
++if (size) styleMap.push(`--size: ${size}`);
++if (thickness) styleMap.push(`--thickness: ${thickness}`);
++const inlineStyle = styleMap.length > 0 ? styleMap.join("; ") : undefined;
++---
++
++<div class={`progress-ring-wrapper ring-wrapper ${className}`.trim()}>
++  <progress
++    value={value}
++    max={max}
++    aria-label={ariaLabel}
++    class="progress-ring"
++    style={inlineStyle}
++  ></progress>
++  <!-- Optional: Content to display in the center -->
++  <div class="progress-ring-content ring-content">
++    <slot>{value}%</slot>
++  </div>
++</div>
++
++<script>
++  function initProgressRings() {
++    if (!CSS.supports("width: attr(value type(<number>))")) {
++      const rings = document.querySelectorAll<HTMLProgressElement>("progress.progress-ring");
++      rings.forEach((progress) => {
++        progress.style.setProperty("--value", progress.getAttribute("value"));
++        if ((progress as any)._hasObserver) return;
++        (progress as any)._hasObserver = true;
++
++        const observer = new MutationObserver(() => {
++          progress.style.setProperty("--value", progress.getAttribute("value"));
++          const wrapper = progress.closest(".progress-ring-wrapper, .ring-wrapper");
++          if (wrapper) {
++            const content = wrapper.querySelector(".progress-ring-content, .ring-content");
++            if (content && content.textContent && content.textContent.trim().endsWith("%")) {
++              content.textContent = `${progress.getAttribute("value")}%`;
++            }
++          }
++        });
++        observer.observe(progress, {
++          attributes: true,
++          attributeFilter: ["value"],
++        });
++      });
++    }
++  }
++
++  initProgressRings();
++  document.addEventListener("DOMContentLoaded", initProgressRings);
++  document.addEventListener("astro:page-load", initProgressRings);
++
++  if (typeof MutationObserver !== "undefined") {
++    const docObserver = new MutationObserver(() => {
++      initProgressRings();
++    });
++    docObserver.observe(document.documentElement, {
++      childList: true,
++      subtree: true,
++    });
++  }
++</script>
+diff --git a/src/components/ProgressRing.tsx b/src/components/ProgressRing.tsx
+new file mode 100644
+index 0000000..a50500a
+--- /dev/null
++++ b/src/components/ProgressRing.tsx
+@@ -0,0 +1,72 @@
++import React, { useEffect, useRef } from 'react';
++
++export interface ProgressRingProps {
++  value?: number;
++  max?: number;
++  ariaLabel?: string;
++  size?: string;
++  thickness?: string;
++  className?: string;
++  children?: React.ReactNode;
++}
++
++export const ProgressRing: React.FC<ProgressRingProps> = ({
++  value = 75,
++  max = 100,
++  ariaLabel = "Task progress",
++  size,
++  thickness,
++  className = "",
++  children,
++}) => {
++  const progressRef = useRef<HTMLProgressElement>(null);
++  const contentRef = useRef<HTMLDivElement>(null);
++
++  useEffect(() => {
++    const progress = progressRef.current;
++    if (!progress) return;
++
++    if (typeof CSS === "undefined" || !CSS.supports("width: attr(value type(<number>))")) {
++      progress.style.setProperty("--value", progress.getAttribute("value") || String(value));
++
++      const observer = new MutationObserver(() => {
++        const val = progress.getAttribute("value");
++        if (val !== null) {
++          progress.style.setProperty("--value", val);
++          if (contentRef.current && contentRef.current.textContent?.trim().endsWith("%")) {
++            contentRef.current.textContent = `${val}%`;
++          }
++        }
++      });
++      observer.observe(progress, {
++        attributes: true,
++        attributeFilter: ["value"],
++      });
++
++      return () => observer.disconnect();
++    }
++  }, [value]);
++
++  const style: React.CSSProperties & Record<string, string | number> = {};
++  if (size) style["--size"] = size;
++  if (thickness) style["--thickness"] = thickness;
++
++  return (
++    <div className={`progress-ring-wrapper ring-wrapper ${className}`.trim()}>
++      <progress
++        ref={progressRef}
++        value={value}
++        max={max}
++        aria-label={ariaLabel}
++        className="progress-ring"
++        style={style}
++      />
++      {/* Optional: Content to display in the center */}
++      <div ref={contentRef} className="progress-ring-content ring-content">
++        {children !== undefined ? children : `${value}%`}
++      </div>
++    </div>
++  );
++};
++
++export default ProgressRing;
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..0496bb6 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,7 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script src="../scripts/progress-ring.ts"></script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..f8fb3c8 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import ProgressRing from '../components/ProgressRing.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -54,6 +55,11 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
++    <!-- Progress Ring Section -->
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 my-6 flex justify-center">
++        <ProgressRing value={75} max={100} ariaLabel="Task progress">75%</ProgressRing>
++    </div>
++
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+diff --git a/src/pages/progress-ring.astro b/src/pages/progress-ring.astro
+new file mode 100644
+index 0000000..e74cd82
+--- /dev/null
++++ b/src/pages/progress-ring.astro
+@@ -0,0 +1,11 @@
++---
++import Layout from '../layouts/Layout.astro';
++import ProgressRing from '../components/ProgressRing.astro';
++---
++
++<Layout title="Progress Ring">
++  <div class="max-w-3xl mx-auto px-4 py-8 md:py-12 flex flex-col items-center justify-center">
++    <h1 class="text-3xl font-bold text-gray-900 mb-8">Progress Ring</h1>
++    <ProgressRing value={75} max={100} ariaLabel="Task progress">75%</ProgressRing>
++  </div>
++</Layout>
+diff --git a/src/scripts/progress-ring.ts b/src/scripts/progress-ring.ts
+new file mode 100644
+index 0000000..4232a9c
+--- /dev/null
++++ b/src/scripts/progress-ring.ts
+@@ -0,0 +1,48 @@
++export function initProgressRings() {
++  if (typeof CSS === "undefined" || !CSS.supports("width: attr(value type(<number>))")) {
++    const rings = document.querySelectorAll<HTMLProgressElement>("progress.progress-ring");
++    rings.forEach((progress) => {
++      const val = progress.getAttribute("value");
++      if (val !== null) {
++        progress.style.setProperty("--value", val);
++      }
++
++      if ((progress as any)._hasObserver) return;
++      (progress as any)._hasObserver = true;
++
++      const observer = new MutationObserver(() => {
++        const currentVal = progress.getAttribute("value");
++        if (currentVal !== null) {
++          progress.style.setProperty("--value", currentVal);
++          const wrapper = progress.closest(".progress-ring-wrapper, .ring-wrapper");
++          if (wrapper) {
++            const content = wrapper.querySelector(".progress-ring-content, .ring-content");
++            if (content && content.textContent && content.textContent.trim().endsWith("%")) {
++              content.textContent = `${currentVal}%`;
++            }
++          }
++        }
++      });
++      observer.observe(progress, {
++        attributes: true,
++        attributeFilter: ["value"],
++      });
++    });
++  }
++}
++
++if (typeof window !== "undefined") {
++  initProgressRings();
++  document.addEventListener("DOMContentLoaded", initProgressRings);
++  document.addEventListener("astro:page-load", initProgressRings);
++
++  if (typeof MutationObserver !== "undefined") {
++    const docObserver = new MutationObserver(() => {
++      initProgressRings();
++    });
++    docObserver.observe(document.documentElement, {
++      childList: true,
++      subtree: true,
++    });
++  }
++}
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ba7e880 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,129 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++@property --value {
++  syntax: '<number>';
++  inherits: true;
++  initial-value: 0;
++}
++
++/* Hide native bars */
++progress.progress-ring {
++  -webkit-appearance: none;
++  -moz-appearance: none;
++  appearance: none;
++}
++progress.progress-ring::-webkit-progress-bar {
++  display: none;
++  background: none;
++}
++progress.progress-ring::-webkit-progress-value {
++  display: none;
++  background: none;
++}
++progress.progress-ring::-moz-progress-bar {
++  display: none;
++  background: none;
++}
++progress.loading-spinner:indeterminate::-webkit-progress-bar {
++  display: none;
++  background: none;
++}
++progress.loading-spinner:indeterminate::-webkit-progress-value {
++  display: none;
++  background: none;
++}
++progress.loading-spinner:indeterminate::-moz-progress-bar {
++  display: none;
++  background: none;
++}
++progress.loading-spinner:indeterminate::slider-fill {
++  display: none;
++  background: none;
++}
++
++.progress-ring-wrapper,
++.ring-wrapper {
++  position: relative;
++  display: grid;
++  place-items: center;
++}
++
++progress.progress-ring {
++  --size: 150px;
++  --thickness: 16px;
++  --track-color: #f1f5f9;
++  --fill-color: #3b82f6;
++  --value: attr(value type(<number>));
++  box-sizing: border-box;
++  width: var(--size);
++  height: var(--size);
++
++  transition: --value 0s ease-in-out;
++  border-radius: 50%;
++
++  background: conic-gradient(
++    var(--fill-color) calc(var(--value) * 1%),
++    var(--track-color) 0
++  );
++
++  /* MANDATORY: Clip the background to the border-area. */
++  background-clip: border-area;
++  border: var(--thickness) solid transparent;
++  background-origin: border-box;
++
++  @media (prefers-reduced-motion: no-preference) {
++    transition-duration: 0.4s;
++  }
++
++  @supports not (background-clip: border-area) {
++    -webkit-mask-image: radial-gradient(
++      transparent calc(50% - var(--thickness)),
++      black calc(50% - var(--thickness) + 0.5px)
++    );
++    mask-image: radial-gradient(
++      transparent calc(50% - var(--thickness)),
++      black calc(50% - var(--thickness) + 0.5px)
++    );
++    border: 0;
++  }
++}
++
++@media (prefers-reduced-motion: no-preference) {
++  progress.progress-ring {
++    transition-duration: 0.4s;
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  progress.progress-ring {
++    transition-duration: 0s;
++  }
++}
++
++@supports not (background-clip: border-area) {
++  progress.progress-ring {
++    -webkit-mask-image: radial-gradient(
++      transparent calc(50% - var(--thickness)),
++      black calc(50% - var(--thickness) + 0.5px)
++    );
++    mask-image: radial-gradient(
++      transparent calc(50% - var(--thickness)),
++      black calc(50% - var(--thickness) + 0.5px)
++    );
++    border: 0;
++  }
++}
++
++.progress-ring-content,
++.ring-content {
++  /* Positioned in the center of the wrapper */
++  position: absolute;
++}
++
++/* Change the fill color to green when the progress reaches 100% */
++progress.progress-ring[value="100"] {
++  --fill-color: #10b981;
+ }
+\ No newline at end of file
