@@ -150,6 +150,11 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.deleteLocalBranch = b => { calls.push(`delete ${b}`); };
     evalGapFixCli.listDevBranches = () => new Set();
     evalGapFixCli.listOpenPrs = () => [];
+    evalGapFixCli.fetchPrReviewContext = () => ({});
+    evalGapFixCli.getHeadCommitSha = () => 'abc1234';
+    evalGapFixCli.replyToReviewThread = (threadId, message) => {
+      calls.push(`reply ${threadId}: ${message}`);
+    };
     evalGapFixCli.runDevPr = async dir => {
       const name = path.basename(dir);
       calls.push(`pr ${name}`);
@@ -192,7 +197,7 @@ describe('fixEvalGaps', () => {
     ]);
   });
 
-  it('deletes target evals before running gd dev when rerunning a PR with needs-eval-gen', async () => {
+  it('passes needs-eval-gen rerunMode to gd dev when rerunning a PR with needs-eval-gen', async () => {
     const guide = tempGuide('scrollspy');
     const dailyGrindDir = path.join(guide.dir, TARGETS_DIR, 'daily-grind');
     const devtoolsTimesDir = path.join(guide.dir, TARGETS_DIR, 'devtools-times');
@@ -202,17 +207,16 @@ describe('fixEvalGaps', () => {
     fs.writeFileSync(path.join(devtoolsTimesDir, 'grader.ts'), '// devtools-times grader untouched\n');
     evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-eval-gen'], 'gd-dev/scrollspy')];
 
-    let dailyGrindExistedDuringDev = true;
-    evalGapFixCli.runDevGuide = async inv => {
-      dailyGrindExistedDuringDev = fs.existsSync(dailyGrindDir);
+    let passedPrContext: any = null;
+    evalGapFixCli.runDevGuide = async (inv, opts) => {
+      passedPrContext = opts?.prContext;
       fs.mkdirSync(resultsDir(inv), { recursive: true });
       fs.writeFileSync(path.join(resultsDir(inv), REPORT_FILE), '# Report\n');
       return true;
     };
 
     assert.strictEqual(await run([guide]), true);
-    assert.strictEqual(dailyGrindExistedDuringDev, false);
-    assert.strictEqual(fs.existsSync(path.join(devtoolsTimesDir, 'grader.ts')), true);
+    assert.strictEqual(passedPrContext?.rerunMode, 'needs-eval-gen');
     assert.deepStrictEqual(calls, [
       'pull',
       'checkout-pr gd-dev/scrollspy',
@@ -220,6 +224,52 @@ describe('fixEvalGaps', () => {
       'reset scrollspy',
       'delete gd-dev/scrollspy',
     ]);
+  });
+
+  it('fetches PR review context and passes it to runDevGuide on PR reruns', async () => {
+    const guide = tempGuide('scrollspy');
+    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-eval-run'], 'gd-dev/scrollspy')];
+
+    let passedPrContext: any = null;
+    evalGapFixCli.fetchPrReviewContext = (prNum, branch) => {
+      calls.push(`fetch-context #${prNum} ${branch}`);
+      return {
+        branchCommits: 'commit 123',
+        branchDiff: '+diff',
+        comments: '- **@reviewer**: fix this',
+      };
+    };
+    evalGapFixCli.runDevGuide = async (inv, opts) => {
+      passedPrContext = opts.prContext;
+      fs.mkdirSync(resultsDir(inv), { recursive: true });
+      fs.writeFileSync(path.join(resultsDir(inv), REPORT_FILE), '# Report\n');
+      return true;
+    };
+
+    assert.strictEqual(await run([guide]), true);
+    assert.deepStrictEqual(passedPrContext, {
+      branchCommits: 'commit 123',
+      branchDiff: '+diff',
+      comments: '- **@reviewer**: fix this',
+      rerunMode: 'needs-eval-run',
+    });
+    assert.ok(calls.includes('fetch-context #42 gd-dev/scrollspy'));
+  });
+
+  it('replies to unresolved review threads after updating a PR', async () => {
+    const guide = tempGuide('scrollspy');
+    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-eval-run'], 'gd-dev/scrollspy')];
+    evalGapFixCli.fetchPrReviewContext = () => ({
+      comments: '- **@micahjo7**: please fix this',
+      threadIds: ['PRRT_1', 'PRRT_2'],
+    });
+    evalGapFixCli.getHeadCommitSha = () => 'fedcba9';
+
+    stubDev([guide]);
+
+    assert.strictEqual(await run([guide]), true);
+    assert.ok(calls.includes('reply PRRT_1: 🤖 *[gd dev]* Addressed in fedcba9'));
+    assert.ok(calls.includes('reply PRRT_2: 🤖 *[gd dev]* Addressed in fedcba9'));
   });
 
   it('defaults targets to daily-grind and respects custom targets', async () => {
@@ -243,7 +293,7 @@ describe('fixEvalGaps', () => {
     stubDev([passing]);
 
     assert.strictEqual(await run([failing, passing]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset spinner', ...prCalls('progress-ring')]);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/spinner', 'reset spinner', 'delete gd-dev/spinner', ...prCalls('progress-ring')]);
   });
 
   it('continues when gd dev throws', async () => {
@@ -257,7 +307,7 @@ describe('fixEvalGaps', () => {
     };
 
     assert.strictEqual(await run([throwing, passing]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset spinner', ...prCalls('progress-ring')]);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/spinner', 'reset spinner', 'delete gd-dev/spinner', ...prCalls('progress-ring')]);
   });
 
   it('clears results from an earlier run so they cannot reach the PR', async () => {
@@ -267,7 +317,7 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.runDevGuide = async () => true; // "succeeds" without writing a new report
 
     assert.strictEqual(await run([guide]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset scrollspy']);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/scrollspy', 'reset scrollspy', 'delete gd-dev/scrollspy']);
   });
 
   it('drops the branch and continues when gd pr fails', async () => {
@@ -322,7 +372,7 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.resetToMain = dir => { calls.push(`reset ${path.basename(dir)}`); treeStatus = '?? stray.txt'; };
 
     assert.strictEqual(await run([first, second]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset spinner']);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/spinner', 'reset spinner', 'delete gd-dev/spinner']);
   });
 
   it('processes at most --limit guides', async () => {
