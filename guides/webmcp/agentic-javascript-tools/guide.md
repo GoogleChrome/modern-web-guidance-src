@@ -1,6 +1,6 @@
 ---
 name: agentic-javascript-tools
-description: Programmatically register client-side JavaScript functions as tools for AI agents using the WebMCP Imperative API.
+description: Programmatically register client-side JavaScript functions as tools for AI agents using the WebMCP Imperative API, including frameworks support.
 web-feature-ids:
   - document-modelcontext
 ---
@@ -382,6 +382,24 @@ In TypeScript projects, **DO NOT** hand-write declarations for `document.modelCo
 * `document.modelContext` is typed as optional, so guard it with `if (document.modelContext)` before use.
 * With an inline `inputSchema`, the `execute` input type is inferred from the schema.
 * Named types such as `WebMCP.ModelContextTool` are global (no import needed), useful for typing tool factories.
+
+## Frameworks support
+
+**MANDATORY:** If the app uses React, Angular, or Vue, register tools through that framework's official WebMCP integration, listed below. **DO NOT** call `document.modelContext.registerTool()` from components or write your own lifecycle wrapper. Each integration already handles feature detection, `AbortSignal` cleanup, and scoping tools to the component or injector lifecycle. These APIs are experimental, so before writing code, look up the current signature in the package's types or docs.
+
+| Framework | Package | API | Docs |
+|---|---|---|---|
+| React 18+ | `use-webmcp-tool` | `useWebMCP(options)`: one call per tool | npmjs.com/package/use-webmcp-tool |
+| Angular | `@angular/core`, `@angular/forms/signals` | `provideExperimentalWebMcpTools([...])` (app or route providers), `declareExperimentalWebMcpTool(...)` (inside services), `provideExperimentalWebMcpForms()` + the `experimentalWebMcpTool` option on Signal Forms | angular.dev/ai/webmcp |
+| Vue | `@vueuse/core` | `useWebMCP(options)` composable | vueuse.org/core/usewebmcp |
+
+All the rules in this guide still apply when you use these integrations:
+* Keep the tool definition shape the same: `name`, `description`, `inputSchema`, `execute(input, { signal })`, and `annotations`.
+* Follow the rules for descriptions and annotations.
+* Validate input and apply defaults inside `execute`.
+* Pass `signal` to long-running work.
+* To offer a tool only some of the time, pass `enabled` (React, Vue). **DO NOT** wrap the hook or composable call in a condition.
+* Integrations may wrap results and errors (for example as `{ content, isError }`). Check the integration's docs before relying on how errors reach the agent.
 
 ## API Notes
 
