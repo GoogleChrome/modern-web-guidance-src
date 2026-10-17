@@ -1,0 +1,1 @@
+- Refactor the cards into a component that encapsulates its DOM and styles, constructs the tree efficiently, and projects consumer content.

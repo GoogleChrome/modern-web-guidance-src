@@ -1,0 +1,311 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..f0a232b
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++node_modules/
++dist/
++test-results/
++playwright-report/
+diff --git a/index.html b/index.html
+index 66c9173..c2b2fe3 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -153,6 +140,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/src/coffee-card.ts"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +166,21 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <coffee-card>
++          <h3 slot="header">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <a slot="footer" href="/menu/seasonal">View Details</a>
++        </coffee-card>
++        <coffee-card>
++          <h3 slot="header">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <a slot="footer" href="/menu/espresso">View Details</a>
++        </coffee-card>
++        <coffee-card>
++          <h3 slot="header">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <a slot="footer" href="/menu/cold-brew">View Details</a>
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+diff --git a/package.json b/package.json
+index 2bd4d77..9ef5f3c 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,14 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "tsc --noEmit && vite build",
++    "test": "playwright test"
++  },
++  "devDependencies": {
++    "@playwright/test": "^1.64.0",
++    "typescript": "~5.9.3",
++    "vite": "^7.1.0"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/playwright.config.ts b/playwright.config.ts
+new file mode 100644
+index 0000000..4356e6b
+--- /dev/null
++++ b/playwright.config.ts
+@@ -0,0 +1,11 @@
++import { defineConfig } from '@playwright/test';
++
++export default defineConfig({
++  testDir: './tests',
++  use: { baseURL: 'http://127.0.0.1:28471', channel: 'chrome' },
++  webServer: {
++    command: 'npm run start -- --port 28471 --strictPort',
++    url: 'http://127.0.0.1:28471',
++    reuseExistingServer: !process.env.CI,
++  },
++});
+diff --git a/src/coffee-card.ts b/src/coffee-card.ts
+new file mode 100644
+index 0000000..fa3c5d1
+--- /dev/null
++++ b/src/coffee-card.ts
+@@ -0,0 +1,90 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <article class="card">
++    <header><slot name="header"></slot></header>
++    <div class="body"><slot></slot></div>
++    <footer><slot name="footer"></slot></footer>
++  </article>
++`;
++
++const styles = `
++  :host { display: block; }
++  *, *::before, *::after { box-sizing: border-box; }
++  .card {
++    height: 100%;
++    background: white;
++    padding: 20px;
++    border-radius: 8px;
++    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    text-align: center;
++  }
++  header, .body, footer { margin: 0; padding: 0; }
++  :host(:not([has-header])) header,
++  :host(:not([has-content])) .body,
++  :host(:not([has-footer])) footer { display: none; }
++  ::slotted([slot="header"]) {
++    margin: 0 0 10px;
++    color: var(--primary, #4e342e);
++  }
++  ::slotted(p) { margin: 0; }
++  ::slotted(a[slot="footer"]) {
++    display: inline-block;
++    background: var(--primary, #4e342e);
++    color: white;
++    padding: 10px 20px;
++    text-decoration: none;
++    border-radius: 5px;
++    margin-top: 15px;
++    transition: background 0.3s;
++  }
++  ::slotted(a[slot="footer"]:hover) { background: #3e2723; }
++  ::slotted(a[slot="footer"]:focus-visible) {
++    outline: 3px solid var(--accent, #ffab40);
++    outline-offset: 3px;
++  }
++`;
++
++// Reuse the same parsed stylesheet across every card where supported.
++const sheet = typeof CSSStyleSheet !== 'undefined' &&
++  'replaceSync' in CSSStyleSheet.prototype &&
++  'adoptedStyleSheets' in ShadowRoot.prototype
++  ? new CSSStyleSheet()
++  : null;
++if (sheet) {
++  sheet.replaceSync(styles);
++} else {
++  const style = document.createElement('style');
++  style.textContent = styles;
++  template.content.prepend(style);
++}
++
++export class CoffeeCard extends HTMLElement {
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.append(template.content.cloneNode(true));
++    if (sheet) root.adoptedStyleSheets = [sheet];
++
++    for (const slot of root.querySelectorAll<HTMLSlotElement>('slot')) {
++      slot.addEventListener('slotchange', () => this.updateSlot(slot));
++    }
++  }
++
++  connectedCallback(): void {
++    // Also refresh on reconnection; initial light DOM assignment is handled
++    // by slotchange even when children arrive after the element upgrades.
++    for (const slot of this.shadowRoot!.querySelectorAll<HTMLSlotElement>('slot')) {
++      this.updateSlot(slot);
++    }
++  }
++
++  private updateSlot(slot: HTMLSlotElement): void {
++    const hasContent = slot.assignedNodes().some(node =>
++      node.nodeType === Node.ELEMENT_NODE ||
++      (node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim()))
++    );
++    this.toggleAttribute(slot.name ? `has-${slot.name}` : 'has-content', hasContent);
++  }
++}
++
++customElements.define('coffee-card', CoffeeCard);
+diff --git a/tests/coffee-card.spec.ts b/tests/coffee-card.spec.ts
+new file mode 100644
+index 0000000..03fbd3e
+--- /dev/null
++++ b/tests/coffee-card.spec.ts
+@@ -0,0 +1,79 @@
++import { expect, test } from '@playwright/test';
++
++test.beforeEach(async ({ page }) => {
++  await page.goto('/');
++  await page.evaluate(() => customElements.whenDefined('coffee-card'));
++});
++
++test('cards clone independent trees and share encapsulated styles', async ({ page }) => {
++  const result = await page.evaluate(() => {
++    const cards = [...document.querySelectorAll('coffee-card')];
++    const roots = cards.map(card => card.shadowRoot!);
++    const outside = document.createElement('div');
++    outside.className = 'card';
++    document.body.append(outside);
++    const internal = roots[0].querySelector('.card')!;
++    return {
++      count: cards.length,
++      open: roots.every(root => root.mode === 'open'),
++      delegatesFocus: roots.every(root => root.delegatesFocus),
++      independent: internal !== roots[1].querySelector('.card'),
++      sharedStyles: roots.every(root => root.adoptedStyleSheets[0] === roots[0].adoptedStyleSheets[0]),
++      internalPadding: getComputedStyle(internal).padding,
++      outsidePadding: getComputedStyle(outside).padding,
++      assignments: roots.map(root => [...root.querySelectorAll('slot')].map(slot =>
++        slot.assignedElements().map(element => element.textContent))),
++    };
++  });
++  expect(result).toMatchObject({
++    count: 3, open: true, delegatesFocus: true, independent: true,
++    sharedStyles: true, internalPadding: '20px', outsidePadding: '0px',
++  });
++  expect(result.assignments[0]).toEqual([
++    ['Maple Oat Latte'], ['Creamy oat milk with a hint of Vermont maple syrup.'], ['View Details'],
++  ]);
++});
++
++test('late slot assignment and removal update state without counting whitespace', async ({ page }) => {
++  await page.evaluate(() => {
++    const card = document.createElement('coffee-card');
++    card.id = 'dynamic-card';
++    card.append(document.createTextNode(' \n  '));
++    document.querySelector('main')!.append(card);
++  });
++  const card = page.locator('#dynamic-card');
++  await expect(card).not.toHaveAttribute('has-content');
++  await expect(card).not.toHaveAttribute('has-header');
++  await expect(card).not.toHaveAttribute('has-footer');
++
++  await card.evaluate(host => {
++    const header = document.createElement('h3');
++    header.slot = 'header';
++    header.textContent = 'New coffee';
++    const footer = document.createElement('a');
++    footer.slot = 'footer';
++    footer.href = '/menu';
++    footer.textContent = 'Details';
++    host.append(header, document.createTextNode('Freshly roasted'), footer);
++  });
++  for (const attribute of ['has-header', 'has-content', 'has-footer']) {
++    await expect(card).toHaveAttribute(attribute, '');
++  }
++  await expect(card.locator('header')).toBeVisible();
++  await card.evaluate(host => host.replaceChildren(document.createTextNode(' \n ')));
++  for (const attribute of ['has-header', 'has-content', 'has-footer']) {
++    await expect(card).not.toHaveAttribute(attribute);
++  }
++  await expect(card.locator('header')).toBeHidden();
++});
++
++test('page styles stay outside the shadow tree and slot reassignment updates state', async ({ page }) => {
++  await page.addStyleTag({ content: '.card { padding: 99px; }' });
++  const card = page.locator('coffee-card').first();
++  await expect(card.locator('.card')).toHaveCSS('padding', '20px');
++  await card.locator('[slot="header"]').evaluate(header => {
++    header.setAttribute('slot', 'footer');
++  });
++  await expect(card).not.toHaveAttribute('has-header');
++  await expect(card).toHaveAttribute('has-footer', '');
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..0027b58
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,11 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "noEmit": true
++  },
++  "include": ["src/**/*.ts"]
++}
