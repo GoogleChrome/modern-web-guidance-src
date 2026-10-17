@@ -1,0 +1,6 @@
+- External HTML subresource elements (`<script>` or `<link rel="stylesheet">`) include a cryptographic `integrity` attribute (`sha384-`, `sha512-`, or `sha256-`), a `crossorigin` attribute (`"anonymous"` or `"use-credentials"`), and a `referrerpolicy` attribute.
+- The document configures a fallback referrer policy via a `<meta name="referrer">` element or `Referrer-Policy` HTTP response header so requests in browsers without CSS `url()` modifier support do not leak full referrer URLs.
+- CSS subresource rules (such as `background-image`, `content`, or `@font-face` `src`) use a quoted URL string inside `url("...")` paired with unquoted `cross-origin()` and `referrer-policy()` keyword modifiers and a quoted `integrity("...")` cryptographic digest modifier (`sha384-`, `sha512-`, or `sha256-`).
+- Stylesheets provide a preceding fallback declaration before the modifier-equipped `url("..." cross-origin(...) referrer-policy(...) integrity("..."))` declaration rather than placing an unverified `url()` inside the same comma-separated `@font-face` `src` list.
+- Subresources whose content matches their declared Subresource Integrity digest load and apply in the page.
+- When a subresource response does not match its declared Subresource Integrity digest, the browser blocks it from executing or applying.
