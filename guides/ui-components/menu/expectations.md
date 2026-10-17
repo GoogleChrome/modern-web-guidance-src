@@ -1,0 +1,29 @@
+# Menu expectations
+
+- Each menu list has `focusgroup="menu nomemory"` on an element inside its popover (not on the popover element), exposes `role="menu"` labeled by its trigger via `aria-labelledby`, and exposes `role="menuitem"` on its command buttons.
+- Separators between item groups are `<hr>` elements, and checkable items are `<button type="button">` elements with an explicit `role="menuitemcheckbox"` or `role="menuitemradio"` (radios wrapped in a named `role="group"`) and `aria-checked`; `Space` on a checkbox item toggles it and keeps the menu open, `Enter` toggles it and closes the menu, and radio items close on either key.
+- The top-level triggers are either inside a container with `role="menubar"` that is styled as one continuous bar and acts as a single `Tab` stop, or are separate `Tab` stops with no `role="menubar"`, no arrow-key movement between them, and no preview or hover switching; the role, keyboard model, and styling never disagree.
+- Each trigger is a `<button type="button">` with `aria-haspopup="menu"`, `commandfor`, and `command="toggle-popover"`, and has no `popovertarget` or `popovertargetaction` attribute.
+- Each popover is the immediate next sibling of its trigger (and each submenu is a `popover="auto"` placed after its trigger inside the parent menu's focusgroup), so no `aria-details` relation is exposed on the trigger and closed submenus are not rendered inline.
+- Focusing a top-level or submenu trigger previews its menu and sets `aria-expanded="true"` without moving focus into the menu, and blurring a trigger that is only previewing closes that menu and sets `aria-expanded="false"`.
+- Focus returning to a trigger because the window regained focus does not preview or reopen its menu.
+- Pressing `Enter` or `Space` on a previewed top-level or submenu trigger closes that preview and sets `aria-expanded="false"` without moving focus from the trigger.
+- Pressing `Enter` or `Space` on a closed trigger opens its menu, sets `aria-expanded="true"`, and moves focus to the first enabled item.
+- Pressing `ArrowDown` on a previewed top-level trigger converts it to open and moves focus to the first enabled item in the same turn.
+- Inside an open menu, `ArrowUp` and `ArrowDown` move focus between enabled items, and `Home` and `End` move focus to the first and last enabled item; on a top-level trigger, `Home` and `End` enter its menu at the first or last enabled item.
+- Pressing `ArrowRight` on a submenu trigger opens the submenu and moves focus to its first enabled item, while pressing `ArrowLeft` in a submenu closes only that submenu and restores focus to its parent trigger.
+- Pressing `ArrowRight` on a submenu item without a child submenu closes the open hierarchy and previews the next top-level menu with focus on its trigger.
+- From a focused top-level trigger, `ArrowRight` and `ArrowLeft` move focus to the next and previous top-level trigger (wrapping at either end) and preview its menu with focus staying on the trigger.
+- From inside an open top-level menu, `ArrowRight` and `ArrowLeft` close the current menu and preview the next or previous top-level menu (wrapping at either end) with focus on its trigger and no item focused; `ArrowDown` then enters it.
+- Pressing `Escape` closes only the current menu level, sets its trigger's `aria-expanded` to `"false"`, and restores focus to the trigger that opened it, including for nested submenus.
+- Pressing `Tab` from a trigger or inside an open menu closes all open menus and leaves the menu system instead of stepping through every command.
+- Clicking a previewed trigger enters its menu and focuses the first enabled item, clicking an open trigger closes its menu and restores focus to the trigger, and clicking outside closes every open menu level.
+- Opening a menu by pointer keeps focus on its trigger with no item focused or matching `:focus-visible`; opening by keyboard focuses the first enabled item.
+- Any open or close animation is under 150 ms, changes only opacity and a small translate, is off under `prefers-reduced-motion: reduce`, and never delays focus.
+- Moving the pointer over a menu item focuses that item without a visible focus ring, so at most one item is styled as active at a time.
+- While a top-level menu is open, moving the pointer over a different top-level trigger closes the open menu and previews the hovered one with focus on that trigger; with no menu open, hovering a trigger does nothing.
+- Moving the pointer over a submenu trigger previews its submenu after a short delay, and moving to a sibling item closes that submenu.
+- Activating a command item closes all open menu levels, restores focus to the root menu trigger, and never leaves focus inside hidden content.
+- A submenu trigger only opens its submenu and never also runs a command; a default action is the first submenu item or a separate command item.
+- Menus are anchored to their triggers via CSS Anchor Positioning (using the invoker or `showPopover({ source: trigger })` without per-menu CSS anchor rules), positioning top-level menus below their trigger and submenus beside their trigger on wide viewports, and falling back to below the submenu trigger, indented, when neither side fits so a submenu never covers its parent menu.
+- Menu items align their content columns across rows using CSS Grid and `grid-template-columns: subgrid`.

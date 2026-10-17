@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accessible application command menu</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #eef5f2;
+      --surface: Canvas;
+      --ink: CanvasText;
+      --accent: #006b58;
+      --line: color-mix(in srgb, CanvasText, transparent 65%);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-block-size: 140vh;
+      font: 1rem/1.5 system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .bar-wrap {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 1;
+      container-type: scroll-state;
+      container-name: bar;
+    }
+
+    /* role="menubar": one continuous bar, no gaps or borders between triggers, so it reads as a single Tab stop. */
+    .bar {
+      display: flex;
+      gap: 0;
+      padding: .5rem max(1rem, calc((100% - 48rem) / 2));
+      border-block-end: 1px solid var(--line);
+      background: var(--surface);
+      transition: box-shadow .2s ease;
+    }
+
+    @container bar scroll-state(stuck: top) {
+      .bar {
+        box-shadow: 0 .2rem .8rem #0003;
+      }
+    }
+
+    main {
+      max-inline-size: 48rem;
+      margin: auto;
+      padding: 2rem 1rem;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .trigger {
+      padding: .5rem .8rem;
+      border: 0;
+      border-radius: .3rem;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .trigger[aria-expanded="true"],
+    [focusgroup~="menu"] button[aria-expanded="true"] {
+      background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+    }
+
+    /* Active = focused. Inside a menu, pointer hover moves focus (see script), so hover and focus are
+       always one item and only one item is highlighted. Do not add :hover for items. Top-level
+       triggers keep :hover: with nothing open it is plain button feedback, with a menu open hover
+       switches menus and focus follows. */
+    .trigger:hover,
+    .trigger:focus,
+    [focusgroup~="menu"] button:focus {
+      background: var(--accent);
+      color: white;
+    }
+
+    /* Keyboard-only ring, separate from the active style. */
+    :focus-visible {
+      outline: .2rem solid #f90;
+      outline-offset: -.2rem;
+    }
+
+    [popover] {
+      min-inline-size: 14rem;
+      padding: .3rem;
+      border: 1px solid var(--line);
+      border-radius: .4rem;
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 .7rem 1.8rem #0004;
+    }
+
+    /* Open and close: short, opacity plus a small slide, no submenu-specific variant. Keyboard users
+       are never waiting on it because focus moves on the toggle event, not the transition end. */
+    @media (prefers-reduced-motion: no-preference) {
+      [popover] {
+        opacity: 0;
+        translate: 0 -.25rem;
+        transition: opacity .12s ease, translate .12s ease, display .12s allow-discrete, overlay .12s allow-discrete;
+      }
+
+      [popover]:popover-open {
+        opacity: 1;
+        translate: 0 0;
+
+        @starting-style {
+          opacity: 0;
+          translate: 0 -.25rem;
+        }
+      }
+    }
+
+    /* Guard the anchor layout so browsers without anchor positioning keep centered popover placement. */
+    @supports (position-area: block-end) {
+      /* Top-level menus sit below their trigger. The implicit anchor comes from the invoker or source. */
+      [popover] {
+        position-area: block-end span-inline-end;
+        inset: auto;
+        margin: 0;
+      }
+
+      /* A popover nested in another popover is a submenu: beside its parent item, flipping when it would overflow. */
+      [popover] [popover] {
+        position-area: inline-end span-block-end;
+        position-try-fallbacks: flip-inline, flip-block, --below;
+      }
+
+      /* Last resort for narrow viewports: below the trigger, indented, so the submenu never covers its parent. */
+      @position-try --below {
+        position-area: block-end span-inline-end;
+        margin-inline-start: 1rem;
+      }
+    }
+
+    /* Define the columns once on the focusgroup; each row inherits them with subgrid. */
+    [focusgroup~="menu"] {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      row-gap: .1rem;
+      min-inline-size: 14rem;
+    }
+
+    /* Scope to items: a closed submenu popover inside the focusgroup must keep display: none. */
+    [focusgroup~="menu"]>button,
+    [focusgroup~="menu"]>[role="group"]>button {
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: subgrid;
+      align-items: center;
+      inline-size: 100%;
+      padding: .55rem .7rem;
+      border: 0;
+      border-radius: .2rem;
+      background: transparent;
+      color: inherit;
+      text-align: start;
+      cursor: pointer;
+    }
+
+    /* Column 1 holds the check mark so labels align whether or not an item is checkable. */
+    [focusgroup~="menu"] button::before {
+      content: '';
+      grid-column: 1;
+      inline-size: 1.2em;
+    }
+
+    [aria-checked="true"]::before {
+      content: '✓';
+    }
+
+    /* Separators and groups span the row; a group passes the columns through to its buttons. */
+    [focusgroup~="menu"]>hr,
+    [focusgroup~="menu"]>[role="group"] {
+      grid-column: 1 / -1;
+    }
+
+    [focusgroup~="menu"]>hr {
+      inline-size: 100%;
+      margin: .2rem 0;
+      border: 0;
+      border-block-start: 1px solid var(--line);
+    }
+
+    [focusgroup~="menu"]>[role="group"] {
+      display: grid;
+      grid-template-columns: subgrid;
+    }
+
+    .hint {
+      grid-column: 3;
+      margin-inline-start: 1.5rem;
+      opacity: .75;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bar-wrap">
+    <!-- Each trigger is a command invoker; its popover is the next sibling, so browsers add no implicit aria-details. -->
+    <!-- Keep each focusgroup inside its popover: popover can otherwise clobber its semantics. -->
+    <div class="bar" role="menubar" aria-label="Document commands">
+      <button id="file-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="file-menu" command="toggle-popover"
+        aria-expanded="false">File</button>
+      <div id="file-menu" popover="auto">
+        <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
+          <button type="button">New file</button>
+          <button type="button">Open…</button>
+          <button id="open-recent-trigger" type="button" aria-haspopup="menu" commandfor="open-recent-menu" command="toggle-popover" aria-expanded="false">Open Recent <span
+              class="hint" aria-hidden="true">›</span></button>
+          <div id="open-recent-menu" popover="auto">
+            <div focusgroup="menu nomemory" aria-labelledby="open-recent-trigger">
+              <button type="button">Project brief</button>
+              <button type="button">Design notes</button>
+              <button type="button">Meeting agenda</button>
+            </div>
+          </div>
+          <button type="button">Save</button>
+          <button id="export-trigger" type="button" aria-haspopup="menu" commandfor="export-menu" command="toggle-popover" aria-expanded="false">Export <span class="hint"
+              aria-hidden="true">›</span></button>
+          <div id="export-menu" popover="auto">
+            <div focusgroup="menu nomemory" aria-labelledby="export-trigger">
+              <button type="button">PDF</button>
+              <button type="button">Rich Text</button>
+              <button type="button">Plain Text</button>
+            </div>
+          </div>
+          <button type="button">Close window</button>
+        </div>
+      </div>
+
+      <button id="edit-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="edit-menu" command="toggle-popover" aria-expanded="false"
+        tabindex="-1">Edit</button>
+      <div id="edit-menu" popover="auto">
+        <div focusgroup="menu nomemory" aria-labelledby="edit-trigger">
+          <button type="button">Undo</button>
+          <button type="button">Redo</button>
+          <button type="button">Cut</button>
+          <button type="button">Copy</button>
+          <button type="button">Paste</button>
+        </div>
+      </div>
+
+      <button id="view-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="view-menu" command="toggle-popover" aria-expanded="false"
+        tabindex="-1">View</button>
+      <div id="view-menu" popover="auto">
+        <div focusgroup="menu nomemory" aria-labelledby="view-trigger">
+          <!-- Checkable items keep an explicit role: focusgroup only infers menuitem. -->
+          <button type="button" role="menuitemcheckbox" aria-checked="true">Show Toolbar</button>
+          <button type="button" role="menuitemcheckbox" aria-checked="false">Show Status Bar</button>
+          <hr>
+          <button id="appearance-trigger" type="button" aria-haspopup="menu" commandfor="appearance-menu" command="toggle-popover" aria-expanded="false">Appearance <span
+              class="hint" aria-hidden="true">›</span></button>
+          <div id="appearance-menu" popover="auto">
+            <div focusgroup="menu nomemory" aria-labelledby="appearance-trigger">
+              <div role="group" aria-label="Appearance">
+                <button type="button" role="menuitemradio" aria-checked="false">Light</button>
+                <button type="button" role="menuitemradio" aria-checked="false">Dark</button>
+                <button type="button" role="menuitemradio" aria-checked="true">System</button>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <button type="button">Enter Full Screen</button>
+        </div>
+      </div>
+
+      <button id="help-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="help-menu" command="toggle-popover" aria-expanded="false"
+        tabindex="-1">Help</button>
+      <div id="help-menu" popover="auto">
+        <div focusgroup="menu nomemory" aria-labelledby="help-trigger">
+          <button type="button">Search Documentation</button>
+          <button type="button">Keyboard Shortcuts</button>
+          <button type="button">About Document</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <h1>Document</h1>
+    <p>This is an application command menu. Open <strong>File</strong>, then use arrow keys within the menu. The
+      navigation links on this page remain ordinary links and use normal Tab navigation.</p>
+    <p><a href="#keyboard">Keyboard guidance</a> · <a href="#testing">Testing guidance</a></p>
+    <h2 id="keyboard">Keyboard guidance</h2>
+    <p>Focus a top-level trigger to preview its menu; press Enter or Space to dismiss the preview, or Down Arrow to
+      enter it, or Home or End to enter at the first or last command. In an open top-level menu, Left and Right Arrow
+      preview the adjacent menu with focus on its trigger.
+      Use Up and Down to move between commands, Right Arrow to open a submenu such as Export, Left Arrow or Escape to
+      return from the submenu, Right Arrow on a submenu item without a child submenu to preview the next top-level menu, and Tab to
+      leave the menu.</p>
+    <h2 id="testing">Testing guidance</h2>
+    <p>Test this demo with keyboard-only input, VoiceOver, and NVDA. The visible focus indicator and status message make
+      the result easy to inspect.</p>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+
+  <script type="module">
+    // Native focusgroup supplies menu navigation and inferred roles where supported.
+    // Only install the local navigation and semantic fallback when it is unavailable.
+    function installFocusgroupFallback() {
+      if ('focusGroup' in HTMLElement.prototype) return;
+
+      document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
+        group.setAttribute('role', 'menu');
+        // Checkable items already carry menuitemcheckbox or menuitemradio.
+        group.querySelectorAll('button:not([role])').forEach(item => {
+          item.setAttribute('role', 'menuitem');
+        });
+        group.addEventListener('keydown', event => {
+          if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+          // Own items only: a nested submenu has its own focusgroup, a role="group" wrapper does not.
+          const items = [...group.querySelectorAll('button')]
+            .filter(item => item.closest('[focusgroup]') === group)
+            .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+          const current = items.indexOf(document.activeElement);
+          if (current < 0) return;
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 :
+            (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          items[next].focus({ preventScroll: true });
+        }, true);
+      });
+    }
+
+    installFocusgroupFallback();
+
+    const status = document.querySelector('#status');
+    const menus = [...document.querySelectorAll('[popover]')];
+    const triggers = [...document.querySelectorAll('[commandfor]')];
+    // Direct children only: submenu triggers live inside the menubar's nested popovers.
+    const rootTriggers = [...document.querySelectorAll('[role="menubar"] > [commandfor]')];
+    // Menus that should focus their first item once the native toggle has opened them.
+    const enterOnOpen = new WeakSet();
+    // The trigger a pointer is pressing, so a pointer click on a preview enters the menu
+    // while Enter or Space on the same preview lets toggle-popover close it.
+    let pointerTrigger = null;
+    // The key that produced the current activation, so Space on a checkbox item can keep the menu open.
+    let lastKey = null;
+
+    const menuFor = trigger => document.getElementById(trigger.getAttribute('commandfor'));
+    const triggerFor = menu => triggers.find(trigger => menuFor(trigger) === menu);
+    const isOpen = menu => menu.matches(':popover-open');
+    // A previewed menu is open with focus still on its trigger; no item inside it is focused.
+    const isPreviewed = menu => menu.matches(':popover-open:not(:focus-within)');
+    const rootMenuOf = menu => {
+      let root = menu;
+      while (root.parentElement.closest('[popover]')) root = root.parentElement.closest('[popover]');
+      return root;
+    };
+    const menuItems = menu => {
+      const group = menu.querySelector(':scope > [focusgroup~="menu"]');
+      return [...group.querySelectorAll('button')]
+        .filter(item => item.closest('[focusgroup]') === group)
+        .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+    };
+
+    function focusFirst(menu) {
+      const first = menuItems(menu)[0];
+      if (first && isOpen(menu)) first.focus({ preventScroll: true });
+    }
+
+    // Close a menu level and put focus back on its trigger. HTML only restores focus for the
+    // first popover in a light-dismiss stack, so nested submenus need this explicitly. Focus
+    // moves first: focus arriving from inside the menu does not start a new preview.
+    function closeAndRestore(menu) {
+      triggerFor(menu)?.focus({ preventScroll: true });
+      menu.hidePopover();
+    }
+
+    function closeAllMenus() {
+      rootTriggers.map(menuFor).filter(isOpen).forEach(menu => menu.hidePopover());
+    }
+
+    // Left/Right always land on the adjacent trigger as a preview, never inside its menu, matching
+    // native menubars. ArrowDown then enters.
+    function moveToRootTrigger(from, direction) {
+      const next = rootTriggers[(rootTriggers.indexOf(from) + direction + rootTriggers.length) % rootTriggers.length];
+      rootTriggers.forEach(item => { item.tabIndex = item === next ? 0 : -1; });
+      closeAllMenus();
+      // Focusing the trigger previews its menu.
+      next.focus({ preventScroll: true });
+    }
+
+    // If targeting earlier implementations where showPopover({ source }) does not establish an
+    // implicit anchor, link each trigger and menu in JavaScript instead of per-menu CSS rules.
+    if (!('ToggleEvent' in window && Object.hasOwn(ToggleEvent.prototype, 'source'))) {
+      triggers.forEach((trigger, index) => {
+        const anchorName = `--menu-trigger-${index}`;
+        trigger.style.anchorName = anchorName;
+        menuFor(trigger).style.positionAnchor = anchorName;
+      });
+    }
+
+    // Without command invokers, the command attribute does nothing, so a click has to toggle the
+    // popover itself. Mirror the native behavior: a pointer click on a preview enters the menu.
+    if (!('commandForElement' in HTMLButtonElement.prototype)) {
+      triggers.forEach(trigger => {
+        const menu = menuFor(trigger);
+        trigger.addEventListener('click', event => {
+          // Cancel the default action too, so a browser that does support invokers cannot toggle twice.
+          event.preventDefault();
+          const fromPointer = pointerTrigger === trigger;
+          pointerTrigger = null;
+          if (isPreviewed(menu) && fromPointer) focusFirst(menu);
+          else if (isOpen(menu)) closeAndRestore(menu);
+          else {
+            if (!fromPointer) enterOnOpen.add(menu);
+            menu.showPopover({ source: trigger });
+          }
+        });
+      });
+    }
+
+    rootTriggers.forEach((trigger, index) => {
+      trigger.tabIndex = index === 0 ? 0 : -1;
+    });
+
+    // Focus coming back from another window is not a new intent either: without this guard the
+    // last-used trigger previews its menu every time the user switches back to the app.
+    let returningToWindow = false;
+    window.addEventListener('blur', () => { returningToWindow = true; });
+    window.addEventListener('focus', () => setTimeout(() => { returningToWindow = false; }));
+
+    triggers.forEach(trigger => {
+      const menu = menuFor(trigger);
+
+      // Focusing a trigger previews its menu without moving focus. Focus returning from inside
+      // its own menu, or from another window, is not a new intent, so it does not start a preview.
+      trigger.addEventListener('focus', event => {
+        if (menu.contains(event.relatedTarget) || returningToWindow) return;
+        if (!isOpen(menu)) menu.showPopover({ source: trigger });
+      });
+
+      // Leaving a trigger that is only previewing closes that preview.
+      trigger.addEventListener('blur', event => {
+        if (isPreviewed(menu) && !menu.contains(event.relatedTarget)) menu.hidePopover();
+      });
+
+      // Keep focus where it is on mousedown, so a click cannot start a preview mid-click.
+      trigger.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        pointerTrigger = trigger;
+      });
+
+      // Tab leaves the menu system rather than moving into the previewed menu that follows the trigger.
+      trigger.addEventListener('keydown', event => {
+        if (event.key === 'Tab') closeAllMenus();
+      });
+    });
+
+    rootTriggers.forEach(trigger => {
+      const menu = menuFor(trigger);
+
+      // Hover switches between top-level menus once one is open. Focusing the hovered trigger
+      // (without a ring) runs the same preview-on-focus as keyboard. Nothing open: do nothing.
+      trigger.addEventListener('pointerenter', () => {
+        const open = rootTriggers.map(menuFor).find(isOpen);
+        if (!open || open === menu) return;
+        open.hidePopover();
+        trigger.focus({ preventScroll: true, focusVisible: false });
+      });
+
+      trigger.addEventListener('keydown', event => {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+          event.preventDefault();
+          moveToRootTrigger(trigger, event.key === 'ArrowRight' ? 1 : -1);
+        } else if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          if (isOpen(menu)) focusFirst(menu);
+          else {
+            enterOnOpen.add(menu);
+            trigger.click(); // One entry point for every intentional open.
+          }
+        } else if (event.key === 'Home' || event.key === 'End') {
+          // Enter the previewed menu at its first or last item instead of scrolling the page.
+          event.preventDefault();
+          if (!isOpen(menu)) menu.showPopover({ source: trigger });
+          const items = menuItems(menu);
+          (event.key === 'Home' ? items[0] : items.at(-1))?.focus({ preventScroll: true });
+        }
+      });
+    });
+
+    menus.forEach(menu => {
+      // The command event fires on the popover, before toggle-popover runs. Intercept only a pointer
+      // click on a preview, which enters the menu; every other activation opens, closes, or
+      // dismisses natively.
+      menu.addEventListener('command', event => {
+        if (event.command !== 'toggle-popover') return;
+        const fromPointer = pointerTrigger === event.source;
+        pointerTrigger = null;
+        if (isPreviewed(menu) && fromPointer) {
+          event.preventDefault();
+          focusFirst(menu);
+        } else if (!isOpen(menu)) {
+          // Only a keyboard open enters the menu. A pointer open leaves focus on the trigger.
+          if (!fromPointer) enterOnOpen.add(menu);
+        } else {
+          event.source?.focus({ preventScroll: true });
+        }
+      });
+
+      menu.addEventListener('toggle', event => {
+        const trigger = triggerFor(menu);
+        trigger?.setAttribute('aria-expanded', String(event.newState === 'open'));
+        if (event.newState !== 'open') return;
+        if (enterOnOpen.delete(menu)) focusFirst(menu);
+        // Pointer open: keep focus on the trigger (no ring) so arrow keys work. The menu is already
+        // open, so the trigger's focus listener does not start a second preview.
+        else if (!menu.contains(document.activeElement)) trigger?.focus({ preventScroll: true, focusVisible: false });
+      });
+
+      // Hover follows focus: the pointed-at item takes focus without a ring, so hover and focus
+      // are one item. Focus is immediate, except while a submenu is open (safe triangle).
+      let hoverTimer;
+      menu.addEventListener('pointermove', event => {
+        const item = event.target.closest('button');
+        clearTimeout(hoverTimer);
+        // Pointer is over a nested submenu or on the focused item: nothing pending.
+        if (!item || item.closest('[popover]') !== menu || item === document.activeElement) return;
+        const focusItem = () => item.focus({ preventScroll: true, focusVisible: false });
+        // Hover feedback is immediate. Only while a submenu is open does a short delay apply, so a
+        // diagonal move toward it does not switch focus (and close it) on the way.
+        if (menu.querySelector('[popover]:popover-open')) hoverTimer = setTimeout(focusItem, 80);
+        else focusItem();
+      });
+      menu.addEventListener('pointerleave', () => clearTimeout(hoverTimer));
+
+      menu.addEventListener('keydown', event => {
+        lastKey = event.key;
+        const active = document.activeElement;
+        const parentMenu = menu.parentElement.closest('[popover]');
+        const activeSubmenu = active.matches('[commandfor]') ? menuFor(active) : null;
+        if (event.key === 'Tab') {
+          // Leave the menu system: close everything, then let Tab continue from the trigger.
+          closeAllMenus();
+        } else if ((event.key === 'Home' || event.key === 'End') && menuItems(menu).includes(active)) {
+          // Home and End move to the first and last enabled item in this level.
+          event.preventDefault();
+          const items = menuItems(menu);
+          (event.key === 'Home' ? items[0] : items.at(-1)).focus({ preventScroll: true });
+        } else if (event.key === 'ArrowRight' && activeSubmenu) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (isOpen(activeSubmenu)) focusFirst(activeSubmenu);
+          else {
+            enterOnOpen.add(activeSubmenu);
+            active.click();
+          }
+        } else if (event.key === 'ArrowRight' && parentMenu) {
+          // APG: from a submenu item without a submenu, move to the next menubar item.
+          // Keep focus on its trigger while previewing; explicit activation enters its menu.
+          event.preventDefault();
+          event.stopPropagation();
+          moveToRootTrigger(triggerFor(rootMenuOf(menu)), 1);
+        } else if ((event.key === 'ArrowLeft' && parentMenu) || event.key === 'Escape') {
+          // Close only this level; the parent menu stays open.
+          event.preventDefault();
+          event.stopPropagation();
+          closeAndRestore(menu);
+        } else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !parentMenu) {
+          event.preventDefault();
+          event.stopPropagation();
+          // Switch to the adjacent top-level menu as a preview; ArrowDown enters it.
+          moveToRootTrigger(triggerFor(menu), event.key === 'ArrowRight' ? 1 : -1);
+        }
+      });
+
+      // Commands activate on click, whether from pointer, Enter, or Space.
+      // Submenu triggers are invokers, so their click toggles the submenu natively.
+      menu.addEventListener('click', event => {
+        const item = event.target.closest('button');
+        if (!item || item.matches('[commandfor]') || item.closest('[popover]') !== menu) return;
+        event.stopPropagation();
+        const role = item.getAttribute('role');
+        if (role === 'menuitemcheckbox') {
+          const checked = item.getAttribute('aria-checked') !== 'true';
+          item.setAttribute('aria-checked', String(checked));
+          status.textContent = `${item.textContent.trim()} ${checked ? 'on' : 'off'}`;
+          // APG: Space toggles and keeps the menu open; Enter (or pointer) toggles and closes.
+          if (lastKey === ' ') { lastKey = null; return; }
+        } else if (role === 'menuitemradio') {
+          item.closest('[role="group"]').querySelectorAll('[role="menuitemradio"]')
+            .forEach(radio => radio.setAttribute('aria-checked', String(radio === item)));
+          status.textContent = `${item.textContent.trim()} selected`;
+        } else {
+          status.textContent = `${item.textContent.trim()} selected`;
+        }
+        lastKey = null;
+        closeAndRestore(rootMenuOf(menu));
+      });
+    });
+
+    // Tab leaves the menu system: once focus lands on page content, close every open menu.
+    document.addEventListener('focusin', event => {
+      if (!event.target.closest('[popover], [role="menubar"]')) closeAllMenus();
+    });
+  </script>
+</body>
+
+</html>
