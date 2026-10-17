@@ -21,6 +21,17 @@
         {
           "tag": "prerender-spec-rules",
           "urls": ["./?page=next", "./?page=next2"]
+        },
+        {
+          "tag": "prerender-document-rules",
+          "where": {
+            "and": [
+              { "href_matches": "/*" },
+              { "not": { "href_matches": "/logout" } },
+              { "not": { "href_matches": "/logout/*" } },
+              { "not": { "href_matches": "/wp-admin/*" } }
+            ]
+          }
         }
       ]
     }
