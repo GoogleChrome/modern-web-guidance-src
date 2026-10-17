@@ -4,7 +4,8 @@ import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { retrieveUseCase } from "../rag/retrieve.ts";
+import { retrieveUseCase, OriginTrialGateError } from "../rag/retrieve.ts";
+import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
@@ -32,6 +33,7 @@ Commands:
   search <query>            Search use cases by query
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
+  set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   install [options]         Install the modern-web-guidance skill
   uninstall                 Uninstall the modern-web-guidance skill
   update                    Update skills
@@ -130,7 +132,11 @@ async function main() {
         await getLogger().logRetrieveResult(Date.now() - startTime, true, id);
       } catch (error) {
         hasError = true;
-        console.error(`Retrieve failed for ${id}:`, error);
+        if (error instanceof OriginTrialGateError) {
+          console.error(error.message);
+        } else {
+          console.error(`Retrieve failed for ${id}:`, error);
+        }
         await getLogger().logRetrieveResult(Date.now() - startTime, false, id);
       }
     }
@@ -176,6 +182,9 @@ async function main() {
     if (result.error) {
       console.error("Update failed:", result.error);
     }
+  } else if (command === "set-allow-origin-trials") {
+    const code = await handleSetAllowOriginTrials();
+    process.exit(code);
   } else if (command === "uninstall") {
     const startTime = Date.now();
     const skills = getOurCLIAdjacentSkillIDs();
