@@ -1,0 +1,695 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..3c7f7fb
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,12 @@
++# The Daily Grind
++
++Run `npm install`, then `npm start` (default port 11222; override with `PORT`).
++`npm run build` compiles the strict TypeScript server and client and copies the public assets into `dist/public`. Run `npm test` for policy, HTTP integration and client error-handling checks.
++
++Serve through the included server to deliver the required HTTP headers. If deploying behind a proxy, preserve `Connection-Allowlist`, `Reporting-Endpoints`, `Content-Security-Policy` and `Vary`. Static hosting must configure equivalent HTTP response headers; the HTML CSP meta element provides only document-level fallback restrictions.
++
++The policy permits the response origin and the existing Unsplash image origin. Redirects and WebRTC stay blocked by default. Scripts and styles are local files so the CSP needs no inline exceptions. Dedicated, shared and service worker requests receive the same policy as documents, a superset of every document policy. There are currently no worker scripts or WebSocket connections in the app.
++
++Set `CONNECTION_POLICY_MODE=report-only` to audit the connection allowlist during rollout. CSP remains enforced as a fallback. The policy helper also supports a simultaneous stricter `reportOnlyPatterns` candidate. The same-origin reporting endpoint accepts bounded JSON report batches and returns 204; connect it to your reporting storage for durable analysis. Reports are not persisted or logged by this demo server.
++
++Use the connection status buttons to check a same-origin request and a blocked third-party request. Connection-Allowlist is browser enforced and cannot be polyfilled; CSP supplies fetch restrictions in browsers without support. Client errors cover both policy rejection and network failure, since fetch cannot reliably distinguish them. Allowed external requests are still subject to CORS and endpoint availability.
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..cd7434d
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,7 @@
++import { mkdir, copyFile } from 'node:fs/promises';
++
++await mkdir('dist/public', { recursive: true });
++for (const asset of ['index.html', 'styles.css']) {
++  await copyFile(asset, `dist/public/${asset}`);
++}
++await copyFile('dist/client.js', 'dist/public/client.js');
+diff --git a/index.html b/index.html
+index 66c9173..0aa1a94 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://images.unsplash.com; img-src 'self' https://images.unsplash.com data: blob:; style-src 'self'; script-src 'self'; font-src 'self'; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'">
++  <link rel="stylesheet" href="/styles.css">
++  <script type="module" src="/client.js"></script>
+ </head>
+ 
+ <body>
+@@ -176,7 +31,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +50,13 @@
+         </div>
+       </div>
+     </section>
++    <section class="connection-check" aria-labelledby="connection-title">
++      <h2 id="connection-title">Connection status</h2>
++      <p>Check store connectivity or verify that an unapproved external connection is blocked.</p>
++      <button type="button" class="btn" data-request-url="/api/health">Check store connection</button>
++      <button type="button" class="btn" data-request-url="https://example.com/">Check blocked connection</button>
++      <p id="connection-status" role="status" aria-live="polite">Ready to check a connection.</p>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/package.json b/package.json
+index 2bd4d77..dd42ed6 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,15 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "tsc && node build.mjs",
++    "start": "npm run build && node dist/server.js",
++    "test": "npm run build && node --test tests/*.test.mjs"
++  },
++  "devDependencies": {
++    "@types/node": "^22.0.0",
++    "typescript": "^5.9.0"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/src/client.ts b/src/client.ts
+new file mode 100644
+index 0000000..3ffafc4
+--- /dev/null
++++ b/src/client.ts
+@@ -0,0 +1,27 @@
++type FetchResult = { ok: true; body: string; error: null } | { ok: false; body: null; error: string };
++
++export async function fetchWithPolicyHandling(url: string, statusElement: HTMLElement): Promise<FetchResult> {
++  statusElement.textContent = 'Checking connection…';
++  try {
++    const response = await fetch(url);
++    if (!response.ok) throw new Error(`HTTP ${response.status}`);
++    const body = await response.text();
++    statusElement.textContent = 'Allowed: The request completed successfully.';
++    return { ok: true, body, error: null };
++  } catch (error: unknown) {
++    const message = error instanceof Error ? error.message : String(error);
++    statusElement.textContent = `Blocked or unavailable: The request could not complete. The outbound policy may have rejected it (${message}).`;
++    return { ok: false, body: null, error: message };
++  }
++}
++
++const status = document.getElementById('connection-status');
++if (status) {
++  for (const button of document.querySelectorAll<HTMLButtonElement>('button[data-request-url]')) {
++    button.addEventListener('click', async () => {
++      button.disabled = true;
++      try { await fetchWithPolicyHandling(button.dataset.requestUrl ?? '/api/health', status); }
++      finally { button.disabled = false; }
++    });
++  }
++}
+diff --git a/src/policy.ts b/src/policy.ts
+new file mode 100644
+index 0000000..595c8cb
+--- /dev/null
++++ b/src/policy.ts
+@@ -0,0 +1,79 @@
++import type { ServerResponse } from 'node:http';
++
++const POLICY_DESTINATIONS = new Set(['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']);
++export const EXTERNAL_PATTERNS = ['https://images.unsplash.com'] as const;
++const REPORT_NAME = 'conn-reports';
++export const CSP = [
++  "default-src 'self'",
++  "connect-src 'self' https://images.unsplash.com",
++  "img-src 'self' https://images.unsplash.com data: blob:",
++  "style-src 'self'",
++  "script-src 'self'",
++  "font-src 'self'",
++  "form-action 'self'",
++  "worker-src 'self'",
++  "object-src 'none'",
++  "base-uri 'self'",
++  `report-to ${REPORT_NAME}`,
++].join('; ');
++
++export function normalizeAllowlistPattern(pattern: string | URL): string {
++  const normalized = String(pattern).trim().replace(/^ws(s?):\/\//i, 'http$1://');
++  if (!/^https?:\/\/[^/?#]+/i.test(normalized) || /[\s,()]/.test(normalized)
++      || /[^\x20-\x7e]/.test(normalized)) {
++    throw new Error('Allowlist patterns require an HTTP(S) hostname and cannot contain whitespace, commas or regex groups.');
++  }
++  return normalized.replace(/^(https?:\/\/[^/?#]+)\/$/i, '$1');
++}
++
++interface AllowlistOptions {
++  allowSelf?: boolean;
++  patterns?: readonly (string | URL)[];
++  reportTo?: string;
++  redirects?: 'block' | 'allow';
++  webrtc?: 'block' | 'allow';
++}
++
++export function buildConnectionAllowlistHeader({
++  allowSelf = true, patterns = [], reportTo = REPORT_NAME, redirects = 'block', webrtc = 'block',
++}: AllowlistOptions = {}): string {
++  const items = new Set<string>(allowSelf ? ['response-origin'] : []);
++  for (const pattern of patterns) {
++    if (String(pattern).trim() === 'response-origin') items.add('response-origin');
++    else items.add(`"${normalizeAllowlistPattern(pattern).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
++  }
++  let value = `(${[...items].join(' ')})`;
++  if (redirects === 'allow') value += '; redirects=allow';
++  if (webrtc === 'allow') value += '; webrtc=allow';
++  if (reportTo) {
++    if (!/^[a-z*][a-z0-9_.*-]*$/.test(reportTo)) throw new Error('Invalid reporting endpoint name.');
++    value += `; report-to=${reportTo}`;
++  }
++  return value;
++}
++
++interface PolicyOptions {
++  destination?: string;
++  isDocument?: boolean;
++  isWorker?: boolean;
++  reportOnly?: boolean;
++  reportOnlyPatterns?: readonly (string | URL)[];
++}
++
++export function setConnectionAllowlistHeaders(res: ServerResponse, {
++  destination, isDocument = false, isWorker = false, reportOnly = false, reportOnlyPatterns,
++}: PolicyOptions = {}): void {
++  const existing = String(res.getHeader('Vary') ?? '').split(',').map(value => value.trim()).filter(Boolean);
++  if (!existing.some(value => value.toLowerCase() === 'sec-fetch-dest')) existing.push('Sec-Fetch-Dest');
++  res.setHeader('Vary', existing.join(', '));
++  // Apply by response type too, covering direct requests without Fetch Metadata.
++  if (!isDocument && !isWorker && !POLICY_DESTINATIONS.has(destination?.toLowerCase() ?? '')) return;
++  res.setHeader('Reporting-Endpoints', `${REPORT_NAME}="/api/security-reports"`);
++  res.setHeader('Content-Security-Policy', CSP);
++  // All workers use the same superset as controlled documents, including service workers.
++  res.setHeader(reportOnly ? 'Connection-Allowlist-Report-Only' : 'Connection-Allowlist',
++    buildConnectionAllowlistHeader({ patterns: EXTERNAL_PATTERNS }));
++  if (!reportOnly && reportOnlyPatterns) {
++    res.setHeader('Connection-Allowlist-Report-Only', buildConnectionAllowlistHeader({ patterns: reportOnlyPatterns }));
++  }
++}
+diff --git a/src/server.ts b/src/server.ts
+new file mode 100644
+index 0000000..30c8153
+--- /dev/null
++++ b/src/server.ts
+@@ -0,0 +1,58 @@
++import { createServer } from 'node:http';
++import { readFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import { setConnectionAllowlistHeaders } from './policy.js';
++
++const publicRoot = new URL('./public/', import.meta.url);
++const assets = new Map([
++  ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
++  ['/client.js', ['client.js', 'text/javascript; charset=utf-8']],
++]);
++
++export const server = createServer(async (req, res) => {
++  try {
++    const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
++    const dest = req.headers['sec-fetch-dest'];
++    const destination = typeof dest === 'string' ? dest : undefined;
++    res.setHeader('X-Content-Type-Options', 'nosniff');
++    if (pathname === '/api/security-reports' && req.method === 'POST') {
++      // Bounded ingestion. Do not echo or log potentially sensitive destination URLs.
++      let size = 0;
++      const chunks: Buffer[] = [];
++      for await (const chunk of req) {
++        size += Buffer.byteLength(chunk);
++        if (size > 65536) { res.writeHead(413).end(); return; }
++        chunks.push(Buffer.from(chunk));
++      }
++      try {
++        const reports: unknown = JSON.parse(Buffer.concat(chunks).toString());
++        if (!Array.isArray(reports)) throw new Error('Expected reporting batch');
++      } catch { res.writeHead(400).end(); return; }
++      res.writeHead(204).end();
++      return;
++    }
++    if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405, { Allow: 'GET, HEAD' }).end(); return; }
++    if (pathname === '/api/health') {
++      res.writeHead(200, { 'Content-Type': 'application/json' });
++      res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ ok: true }));
++      return;
++    }
++    const asset = assets.get(pathname);
++    // Serve the existing same-origin navigation routes without HTTP redirects.
++    const isDocument = !asset && !/\.[^/]+$/.test(pathname);
++    if (!asset && !isDocument) { res.writeHead(404).end('Not found'); return; }
++    setConnectionAllowlistHeaders(res, {
++      destination, isDocument,
++      reportOnly: process.env.CONNECTION_POLICY_MODE === 'report-only',
++    });
++    const body = await readFile(fileURLToPath(new URL(asset?.[0] ?? 'index.html', publicRoot)));
++    res.writeHead(200, { 'Content-Type': asset?.[1] ?? 'text/html; charset=utf-8' });
++    res.end(req.method === 'HEAD' ? undefined : body);
++  } catch {
++    res.writeHead(500).end('Unable to serve this request.');
++  }
++});
++
++const port = Number(process.env.PORT ?? 11222);
++if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid PORT');
++server.listen(port, () => console.log(`Daily Grind listening on port ${port}`));
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..6351ff5
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,154 @@
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++.section-title { text-align: center; }
++button.btn { border: 0; font: inherit; cursor: pointer; margin-right: 10px; }
++button:disabled { opacity: 0.6; cursor: wait; }
++#connection-status { margin-top: 12px; overflow-wrap: anywhere; }
++.connection-check { margin-top: 40px; }
++@media (max-width: 640px) { nav { flex-wrap: wrap; gap: 12px; } nav ul { flex-wrap: wrap; gap: 10px; } nav ul li { margin-left: 0; } }
++
+diff --git a/tests/policy.test.mjs b/tests/policy.test.mjs
+new file mode 100644
+index 0000000..6d719cd
+--- /dev/null
++++ b/tests/policy.test.mjs
+@@ -0,0 +1,82 @@
++import assert from 'node:assert/strict';
++import { test, after } from 'node:test';
++import { once } from 'node:events';
++import { buildConnectionAllowlistHeader, normalizeAllowlistPattern, setConnectionAllowlistHeaders } from '../dist/policy.js';
++
++test('serializes an inner list, normalizes origins and WebSocket schemes', () => {
++  assert.equal(buildConnectionAllowlistHeader({ patterns: [new URL('https://api.example.com'), 'wss://realtime.example.com/', 'https://*.cdn.example.com/*'] }),
++    '(response-origin "https://api.example.com" "https://realtime.example.com" "https://*.cdn.example.com/*"); report-to=conn-reports');
++  assert.equal(normalizeAllowlistPattern('ws://example.com/path'), 'http://example.com/path');
++  assert.equal(buildConnectionAllowlistHeader({ allowSelf: false, reportTo: '' }), '()');
++  assert.equal(buildConnectionAllowlistHeader({ redirects: 'allow', webrtc: 'allow' }),
++    '(response-origin); redirects=allow; webrtc=allow; report-to=conn-reports');
++  for (const pattern of ['/api/*', 'https://api.example.com/(a)', 'https://api.example.com,a', 'https://']) {
++    assert.throws(() => normalizeAllowlistPattern(pattern));
++  }
++  assert.throws(() => buildConnectionAllowlistHeader({ reportTo: '"conn-reports"' }));
++});
++
++test('preserves Vary and supports worker, staged and dual policies', () => {
++  for (const destination of ['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']) {
++    const headers = new Map([['Vary', 'Accept-Encoding']]);
++    const response = { getHeader: name => headers.get(name), setHeader: (name, value) => headers.set(name, value) };
++    setConnectionAllowlistHeaders(response, { destination, reportOnlyPatterns: [] });
++    assert.equal(headers.get('Vary'), 'Accept-Encoding, Sec-Fetch-Dest');
++    assert.equal(headers.get('Connection-Allowlist'), '(response-origin "https://images.unsplash.com"); report-to=conn-reports');
++    assert.equal(headers.get('Connection-Allowlist-Report-Only'), '(response-origin); report-to=conn-reports');
++  }
++  const headers = new Map();
++  const response = { getHeader: name => headers.get(name), setHeader: (name, value) => headers.set(name, value) };
++  setConnectionAllowlistHeaders(response, { destination: 'worker', reportOnly: true });
++  assert.equal(headers.has('Connection-Allowlist'), false);
++  assert.ok(headers.has('Connection-Allowlist-Report-Only'));
++});
++
++process.env.PORT = '0';
++const { server } = await import('../dist/server.js');
++if (!server.listening) await once(server, 'listening');
++after(() => new Promise(resolve => server.close(resolve)));
++const base = `http://127.0.0.1:${server.address().port}`;
++
++test('real HTTP document and worker responses contain matching policies', async () => {
++  for (const [path, destination] of [['/', 'document'], ['/menu/seasonal', 'iframe'], ['/client.js', 'worker'], ['/client.js', 'sharedworker'], ['/client.js', 'serviceworker']]) {
++    const response = await fetch(base + path, { headers: { 'Sec-Fetch-Dest': destination }, redirect: 'error' });
++    assert.equal(response.status, 200);
++    assert.equal(response.headers.get('connection-allowlist'), '(response-origin "https://images.unsplash.com"); report-to=conn-reports');
++    assert.equal(response.headers.get('reporting-endpoints'), 'conn-reports="/api/security-reports"');
++    assert.match(response.headers.get('content-security-policy'), /default-src 'self'.*connect-src 'self'.*form-action 'self'.*worker-src 'self'/);
++    assert.match(response.headers.get('vary'), /Sec-Fetch-Dest/);
++  }
++  const css = await fetch(base + '/styles.css', { headers: { 'Sec-Fetch-Dest': 'style' } });
++  assert.equal(css.headers.get('connection-allowlist'), null);
++  assert.match(css.headers.get('vary'), /Sec-Fetch-Dest/);
++  assert.equal((await fetch(base)).headers.has('connection-allowlist'), true);
++});
++
++test('same-origin connectivity and violation reporting endpoints work', async () => {
++  assert.deepEqual(await (await fetch(base + '/api/health')).json(), { ok: true });
++  const reports = [{ type: 'connection-allowlist', body: { url: base, connection: 'https://example.com/', allowlist: '(response-origin)', disposition: 'enforce' } }];
++  assert.equal((await fetch(base + '/api/security-reports', { method: 'POST', body: JSON.stringify(reports), headers: { 'Content-Type': 'application/reports+json' } })).status, 204);
++  assert.equal((await fetch(base + '/api/security-reports', { method: 'POST', body: 'invalid' })).status, 400);
++});
++
++test('client handles policy TypeError and updates visible status without rejection', async () => {
++  const originalDocument = globalThis.document;
++  const originalFetch = globalThis.fetch;
++  globalThis.document = { getElementById: () => null };
++  try {
++    const { fetchWithPolicyHandling } = await import('../dist/client.js');
++    const status = { textContent: '' };
++    globalThis.fetch = async () => { throw new TypeError('net::ERR_NETWORK_ACCESS_REVOKED'); };
++    const blocked = await fetchWithPolicyHandling('https://example.com/', status);
++    assert.equal(blocked.ok, false);
++    assert.match(status.textContent, /Blocked or unavailable/);
++    globalThis.fetch = originalFetch;
++    const allowed = await fetchWithPolicyHandling(base + '/api/health', status);
++    assert.equal(allowed.ok, true);
++    assert.match(status.textContent, /Allowed:/);
++  } finally {
++    globalThis.fetch = originalFetch;
++    globalThis.document = originalDocument;
++  }
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..54a5103
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,14 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "NodeNext",
++    "moduleResolution": "NodeNext",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "noUncheckedIndexedAccess": true,
++    "outDir": "dist",
++    "rootDir": "src",
++    "skipLibCheck": true
++  },
++  "include": ["src/**/*.ts"]
++}
