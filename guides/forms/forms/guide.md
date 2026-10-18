@@ -10,41 +10,57 @@ description: Best practices for building accessible, secure, and user-friendly w
 ### Guidelines
 
 - **DO** use the `<form>` element to wrap interactive controls for data collection.
+- **DO** wrap search forms and filtering controls in a `<search>` element.
+- **DO** give `<form>` elements an accessibile name via `aria-labelledby` (pointing to the forms heading) when a page has multiple forms.
 - **DO** use `method="POST"` for sensitive data and mutations; use `method="GET"` for idempotent requests (e.g., search).
 - **DO** specify the `action` attribute for the destination URL.
 - **DO** specify a `name` attribute for every form control to identify data on submission.
-- **DO** use semantic tags like `<button type="submit">`, `<textarea>`, and `<select>`.
-- **DO** use `<fieldset>` and `<legend>` to group related controls.
+- **DO** use semantic tags like `<button type="submit">`, `<textarea>`, `<select>`, and specific `<input>` types.
+- **DO** explicitly set `type="button"` on secondary or helper buttons so they don't default to type="submit".
+- **DO** use `<fieldset>` and `<legend>` (with `<legend>` as the first child) to group related controls.
 - **DO** use actionable language on submit buttons (e.g., "Save changes").
 
+- **DON'T** nest `<form>` elements inside other `<form>` elements.
+- **DON'T** use `<fieldset>` for visual styling without a `<legend>`
 - **DON'T** use `GET` for sensitive data (it exposes data in history/logs).
-- **DON'T** use generic `<div>` or `<span>` for form controls.
+- **DON'T** use generic `<div>`, `<span>`, or `<a>` elements for form controls.
 - **DON'T** use `type="button"` for primary submission buttons.
 - **DON'T** disable textarea resizing without alternate layout provisions.
+- **DON'T** use CSS to visually reorder form controls away from their DOM/keyboard `Tab` order.
+- **DON'T** auto-submit a form when a user changes `<select>`, radio buttons, or checkbox without an explicit submit action.
 
 ### Code Example
 
 ```html
-<form action="/search" method="GET">
-  <fieldset>
-    <legend>Search Preferences</legend>
-    <label for="q">Query:</label>
-    <input type="text" id="q" name="q" required>
+<search>
+  <form action="/search" method="GET">
+    <label for="q">Search query</label>
+    <input type="search" id="q" name="q">
+  
+    <fieldset>
+      <legend>Search filters</legend>
+      <input type="checkbox" id="exact" name="exact" value="true">
+      <label for="exact">Exact match only</label>
+      <input type="checkbox" id="archived" name="archived" value="true">
+      <label for="archived">Include archived results</label>
+    </fieldset>
+
     <button type="submit">Search</button>
-  </fieldset>
-</form>
+  </form>
+</search>
 ```
 
 ### Selection Control Decision Matrix
 
 | Options Count | Choice Type | Recommended Element | Usability & Accessibility Logic |
 | :--- | :--- | :--- | :--- |
-| **1–5** | Single (Exclusive) | `<input type="radio">` | **Zero-click scanning**: All choices are immediately visible. Faster scan time. |
+| **1** | Binary toggle (Yes/No) | `<input type="checkbox">` | **Reversible State**: Can be checked and unchecked with space unlike a radio button, which gets stuck once checked. |
+| **2–5** | Single (Exclusive) | `<input type="radio">` | **Zero-click scanning**: All choices are immediately visible. Faster scan time. |
 | **6+** | Single (Exclusive) | `<select>` | **Space conservation**: Use only when vertical space is premium or the list is long. |
 | **10+ / Dynamic** | Single (Exclusive) | `<input list="id">` (`<datalist>`) | **Fuzzy Search**: Prevents scrolling fatigue in massive sets (e.g., countries). |
-| **Any** | Multi-select | `<input type="checkbox">` | **Standard semantics**: Native non-exclusive toggles. |
+| **2+** | Multi-select | `<input type="checkbox">` | **Standard semantics**: Native non-exclusive toggles. |
 
-**Single-Sentence Mental Model**: "Expose mutually exclusive options as visible radio buttons when choices are fewer than six; use `<select>` only when space is constrained or the list is long."
+**Single-Sentence Mental Model**: "Expose 2 to 5 mutually exclusive options as visible radio buttons when choices are fewer than six; use `<select>` only when space is constrained or the list is long."
 
 ## 2. Accessible Labeling and State
 
@@ -62,7 +78,6 @@ description: Best practices for building accessible, secure, and user-friendly w
 
 - **DON'T** use `placeholder` as a replacement for labels.
 - **DON'T** use `aria-label` as the sole text description if translation is needed.
-- **DON'T** disable focus outlines without providing a high-contrast alternative.
 
 ### Code Example
 
@@ -189,6 +204,7 @@ input {
 - **DO** use `accent-color` for quick branding of native radios/checkboxes.
 - **DO** use `appearance: none` for custom dropdown arrows without breaking semantics.
 - **DO** ensure inputs are clearly visible with adequate border contrast (e.g., `#ccc` or darker on white backgrounds).
+- **DO** maintain a visible `:focus-visible` indicator on all controls. Never disable focus outlines (`outline:none`) without providing a high-contrast alternative.
 - **DO** hide inputs visually using the canonical `.visually-hidden` recipe (`clip-path: inset(50%)` with 1px dimensions) — NOT `display: none`, which removes them from the accessibility tree.
 
 ### Code Example
@@ -216,7 +232,7 @@ input {
     display: inline-block;
     width: 1.25rem;
     height: 1.25rem;
-    border: 2px solid #ccc;
+    border: 2px solid #767676;
   }
   input:focus-visible + .checkbox-label::before {
     outline: 2px solid #0b57d0;
@@ -231,9 +247,11 @@ input {
 - **DO** check `KeyboardEvent.isComposing` before treating the `Enter` key as a submit action in chat or text inputs to ensure IME text composition is not interrupted. See guide {{ GUIDE_REF("ime-safe-enter-submit") }}.
 - **DO** prevent default navigation on form submit for AJAX (`e.preventDefault()`).
 - **DO** use `ValidityState` interfaces for real-time validation checks.
+- **DO** announce AJAX subbmission results via `role-status` or `aria-live`. 
 - **DO** use `aria-expanded` and `aria-controls` for dynamic UI reveals.
 
 - **DON'T** block page submission if JS fails; ensure server-side fallback.
+- **DON'T** auto-submit forms on `<select>/radio change` events or auto-advance focus to the next input while typing.
 
 ### Code Example
 
@@ -251,13 +269,13 @@ form.addEventListener('submit', (e) => {
 
 - **DO** use `autocomplete="new-password"` for sign-up and `autocomplete="current-password"` for sign-in.
 - **DO** allow pasting into password fields.
-- **DO** provide a toggle capability allowing users to unmask password input.
+- **DO** provide an accessible toggle `<button type="button>` with `aria-pressed` allowing users to unmask password input.
 - **DO** indicate exact amounts on pay buttons (e.g., "Pay $100").
 - **DO** use `autocomplete="cc-number"`, `cc-exp`, `cc-csc`.
 - **DO** use HTTPS for all pages.
 - **DO** implement cryptographically secure anti-CSRF tokens for mutating actions (POST/PUT/DELETE).
 - **DO** sanitize user input (e.g., via DOMPurify) before injecting it into the DOM to prevent XSS.
-- **DO** implement spam protection (honeypots or CAPTCHA) for open forms.
+- **DO** implement spam protection for open forms using accessible CAPTCHAs (e.g., invisible reCAPTCHA) or honeypot fields hidden from assistive tech (`tabindex="-1" and `aria-hidden="true"`)
 
 - **DON'T** utilize HTTP `GET` for endpoints executing state changes.
 - **DON'T** use inline JavaScript (e.g., `onclick="..."`) directly within form markup to satisfy strict Content Security Policies (CSP).
@@ -291,7 +309,7 @@ form.addEventListener('submit', (e) => {
     <div id="password-constraints">Eight or more characters.</div>
   </div>
 
-  <button id="sign-up">Sign up</button>
+  <button id="sign-up" type="submit">Sign up</button>
 </form>
 ```
 
@@ -333,7 +351,7 @@ form.addEventListener('submit', (e) => {
 ### Guidelines
 
 - **DO** test forms across multiple devices, browsers, and screen sizes.
-- **DO** test keyboard-only navigation (using `Tab` and `Shift+Tab`) and verify visual focus.
+- **DO** test keyboard-only navigation (using `Tab`, `Shift+Tab`, `Space`, `Enter`, and Arrow keys) and verify visual focus.
 - **DO** emulate various impairments (visual, motor) using browser tools.
 - **DO** use analytics to monitor form completion rates and bounce points.
 - **DO** track discrete events (e.g., field focus, click) to find micro-friction points.
@@ -364,8 +382,9 @@ form.addEventListener('submit', (e) => {
 
 ### Guidelines
 
-- **DO** clearly display progress through a multi-page form with clear labels and progress indicators.
-- **DO** allow users to navigate backwards and forwards between pages.
+- **DO** clearly display progress through a multi-page form with clear labels and accessible progress indicators (e.g., `aria-current="step" or `<progress`).
+- **DO** allow users to navigate backwards and forwards between pages without losing previously entered data.
+- **DO** move focus to the new step's heading (`tabindex="-1"`) or first input when transitioning between steps dynamically without a full page reload.
 - **DO** use context-specific `enterkeyhint` values (e.g., `"previous"`, `"next"`) to guide navigation via on-screen keyboards.
 - **DO** design layouts so that the mobile keyboard does not obscure inputs or buttons (e.g., by placing them in the upper half of the viewport when focused or using CSS scroll-padding).
 
@@ -374,7 +393,7 @@ form.addEventListener('submit', (e) => {
 ```html
 <nav aria-label="Progress">
   <ol class="progress-tracker">
-    <li class="step-done">Step 1: Account</li>
+    <li class="step-done">Step 1: Account (completed)</span></li>
     <li class="step-active" aria-current="step">Step 2: Shipping</li>
     <li class="step-todo">Step 3: Payment</li>
   </ol>
