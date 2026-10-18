@@ -4,15 +4,11 @@
   <meta charset="utf-8">
   <title>Highlight Autofill Inputs</title>
   <style>
-    input:autofill,
-    input:-webkit-autofill {
-      border: 2px solid #2e7d32;
-      box-shadow: 0 0 0 100vmax #e8f5e9 inset;
-    }
-    input:autofill:focus-visible,
-    input:-webkit-autofill:focus-visible {
-      outline: 3px solid #000;
-      outline-offset: 2px;
+    input:autofill {
+      box-shadow:
+        inset 0 0 0 2px #2e7d32,
+        inset 0 0 0 100vmax #e8f5e9;
+      filter: none;
     }
   </style>
 </head>
