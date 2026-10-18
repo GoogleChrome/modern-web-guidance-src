@@ -917,6 +917,35 @@ window.__featuresMapping = {
     "popover",
     "scroll-buttons"
   ],
+  "content-first-noise-reduction": [
+    "popover",
+    "details"
+  ],
+  "form-factor-adaptation": [
+    "container-queries",
+    "safe-area-inset",
+    "text-wrap-balance",
+    "text-wrap-pretty"
+  ],
+  "guided-navigation": [
+    "view-transitions",
+    "cross-document-view-transitions",
+    "speculation-rules"
+  ],
+  "natural-interactions": [
+    "focus-visible",
+    "linear-easing",
+    "scroll-snap"
+  ],
+  "preference-aware-ui": [
+    "prefers-color-scheme",
+    "color-scheme",
+    "light-dark",
+    "prefers-reduced-motion",
+    "intl",
+    "network-information",
+    "service-workers"
+  ],
   "adapt-scrollbar-to-contrast-preferences": [
     "scrollbar-color",
     "prefers-contrast"
