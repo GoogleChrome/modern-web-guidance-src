@@ -1,50 +1,73 @@
 ---
 name: autofill-highlight-inputs
-description: Use CSS to highlight form fields that have been autofilled by the browser and not edited by the user.
+description: Customize the styling of form fields that have been autofilled and not edited by the user
 web-feature-ids:
   - autofill
+  - text-stroke-fill
 ---
 
-# Use the CSS :autofill pseudo-class to highlight form fields that have been autofilled by the browser and not edited by the user
+# Customize the styling of autofilled form fields
 
-Use the CSS `:autofill` to highlight fields that have (or have not been) autofilled, to help guide the user to successful form completion.
+Use the CSS `:autofill` pseudo-class to replace the browser's default highlight for autofilled `<input>`, `<select>`, and `<textarea>` elements. It matches fields filled by the browser or by the user picking an autofill suggestion, and stops matching once the user edits the field, even if the value is identical.
+
+It never matches checkbox, radio, file, or button inputs, form-associated custom elements, or `contenteditable`: browsers do not autofill those. A native control inside a custom element's shadow DOM matches; style it from inside, or via `::part(name):autofill`.
 
 ## How to implement
 
-To highlight a form field that has been autofilled by the browser (and not edited by the user) add a selector to your CSS using the `:autofill` class. This can be used for an `<input>`, `<select>`, or `<textarea>` element.
-
-When styling autofilled states, you must adhere to accessibility best practices:
-- **Multiple State Indicators**: Do not rely on border color alone to indicate the autofilled state. Use multiple indicators such as border thickness and custom background shading to ensure the state is perceivable.
-- **Preserve Focus Indicators**: Never remove focus outlines (`outline: none`) without providing a clear, high-contrast replacement for keyboard users.
-
-The following example uses `:autofill` to set a custom border and background, along with explicit focus styles:
+- Add at least one non-color indicator (e.g. a thicker inset ring). The browser's default highlight is color only.
+- Do not remove the focus outline (`outline: none`). If you use `outline` for the autofill styling, give `:autofill:focus-visible` an outline that differs in more than color (e.g. thickness, style, or offset) so focus remains perceivable.
+- Do not change layout-affecting properties (`border-width`, `padding`); the state toggles with user activity so that would shift content.
 
 ```css
-input:autofill,
-input:-webkit-autofill {
-  /* Multiple indicators: use both a distinct border and background color via box-shadow to avoid color-only state */
-  border: 2px solid #2e7d32;
-  box-shadow: 0 0 0 100vmax #e8f5e9 inset;
-}
-
-/* MANDATORY: Always provide an explicit focus indicator when styling autofilled states */
-input:autofill:focus-visible,
-input:-webkit-autofill:focus-visible {
-  outline: 3px solid #000;
-  outline-offset: 2px;
+input:autofill {
+  /* Non-color indicator without layout shift: a thicker inset ring */
+  box-shadow: inset 0 0 0 2px var(--autofill-ring-color);
+  border-color: var(--autofill-ring-color);
+  /* Firefox tints autofilled fields with a filter instead of a background */
+  filter: none;
 }
 ```
 
-As shown in this example, the `box-shadow` property is used to customize the background, since `background-color` cannot be overridden directly on autofilled fields.
+### Overriding the background and text color
 
-## Use the correct CSS pseudo-class name
+Prefer to keep the browser's background and text color. Users have learned that the default highlight means "this was autofilled", and replacing it breaks that association.
+Chromium and WebKit also set `background-color`, `background-image`, and `color` on autofilled fields with `!important` in their user agent stylesheets, so overriding them relies on workarounds.
 
-**Do not** use `:auto-fill`: this is incorrect.
+If your design requires it:
 
-MANDATORY: Use `:autofill` as this is the correct pseudo-class name.
+```css
+input:autofill {
+  /* Fill: an inset box-shadow paints over the forced background */
+  box-shadow:
+    inset 0 0 0 2px var(--autofill-ring-color),
+    inset 0 0 0 100vmax var(--autofill-background-color);
+  /* Text color: -webkit-text-fill-color is not forced by the UA */
+  -webkit-text-fill-color: var(--autofill-text-color);
+  /* The caret still follows the forced color, so set it explicitly */
+  caret-color: var(--autofill-text-color);
+}
+```
 
-### Fallback strategies
+Caveats:
+- The forced text color is `FieldText`: black in a light color scheme, white in a dark one. Keep the fill legible against it (e.g. via `light-dark()`), so the field stays readable even if the text color override does not apply.
+- The fill is painted over the browser's color, not your page background, so use an opaque `--autofill-background-color`.
+- The rule replaces any other `box-shadow` on the field (e.g. a focus ring done with `box-shadow`); repeat those shadows in the same declaration.
+- `-webkit-text-fill-color` changes painted text only. `color`, and therefore `currentColor`, still resolve to the forced value.
+
+## Fallback strategies
 
 {{ BASELINE_STATUS("autofill") }}
 
-The `:autofill` pseudo-class is a progressive enhancement. In browsers that do not support it, the form will still function normally, but the inputs will simply not receive the custom autofill highlighting. Users will still be able to successfully complete the form. No additional JavaScript fallback should be used.
+{# https://bugzilla.mozilla.org/show_bug.cgi?id=1923525 #}
+
+Firefox only matches `:autofill` on autofilled username and password fields (bug 1923525). No workaround; other fields keep the default tint.
+
+Chrome before 110 and Safari before 15 only support `:-webkit-autofill`. If they are in your Baseline target, wrap both names in `:is()` so an unrecognized pseudo-class does not invalidate the whole rule:
+
+```css
+input:is(:autofill, :-webkit-autofill) {
+  /* same declarations as above */
+}
+```
+
+This is progressive enhancement: unsupported browsers keep their default highlight. Do not add a JavaScript fallback.
