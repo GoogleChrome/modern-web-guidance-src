@@ -71,7 +71,7 @@
     }
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "^2.1.296",
+    "@anthropic-ai/claude-code": "^2.1.302",
     "@google/gemini-cli-core": "0.61.0",
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
@@ -95,7 +95,7 @@
     "@huggingface/tokenizers": "^0.2.0",
     "@huggingface/transformers": "^4.3.0",
     "@mdn/browser-compat-data": "^8.0.7",
-    "@openai/codex": "0.162.1",
+    "@openai/codex": "0.163.0",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
