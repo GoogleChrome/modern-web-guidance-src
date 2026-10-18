@@ -2,7 +2,7 @@
 name: button-group
 description: "Build a button group: a set of options (mutually exclusive or not) laid out horizontally and presented as visually connected buttons."
 web-feature-ids:
-  - customizable-select
+  - tmp-customizable-select-listbox
 draft: blocked
 draft-reason: "customizable-select listbox lacks horizontal keyboard nav and clean fallback (#1275)"
 ---
@@ -160,7 +160,7 @@ With `appearance: base-select` applied to a `<select>` element, users don't have
 
 ### Fallbacks
 
-{{ BASELINE_STATUS("customizable-select") }}
+{# {{ BASELINE_STATUS("tmp-customizable-select-listbox") }} #}
 
 For browsers that do not support customizable select, there is not a reasonable fallback with similar styling. If the default system UI is acceptable, only apply the styles in browsers that support `appearance: base-select`.
 
