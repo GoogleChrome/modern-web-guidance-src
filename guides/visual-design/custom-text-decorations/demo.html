@@ -154,30 +154,28 @@
 
     /* ---------- 4. text-decoration-inset ---------- */
 
-    @supports (text-decoration-inset: 0) {
-      .inset-trim {
-        text-decoration-inset: var(--deco-inset);
-      }
+    .inset-trim {
+      text-decoration-inset: var(--deco-inset);
+    }
 
-      .inset-extend {
-        text-decoration-inset: calc(var(--deco-inset) * -1);
-      }
+    .inset-extend {
+      text-decoration-inset: calc(var(--deco-inset) * -1);
+    }
 
-      /* Hover reveal: the underline starts trimmed to nothing, then grows as the end inset returns to 0 */
+    /* Hover reveal: the underline starts trimmed to nothing, then grows as the end inset returns to 0 */
+    .reveal {
+      color: var(--color-primary-dark, #272eb5);
+      font-weight: 500;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
       .reveal {
-        color: var(--color-primary-dark, #272eb5);
-        font-weight: 500;
+        text-decoration-inset: 0 100%;
+        transition: text-decoration-inset var(--reveal-duration) var(--reveal-easing);
       }
 
-      @media (prefers-reduced-motion: no-preference) {
-        .reveal {
-          text-decoration-inset: 0 100%;
-          transition: text-decoration-inset var(--reveal-duration) var(--reveal-easing);
-        }
-
-        .reveal:is(:hover, :focus-visible) {
-          text-decoration-inset: 0 0;
-        }
+      .reveal:is(:hover, :focus-visible) {
+        text-decoration-inset: 0 0;
       }
     }
 
@@ -246,16 +244,35 @@
     /* ---------- 7. border-shape ---------- */
 
     .tag {
+      --stroke: var(--shape-stroke);
+      position: relative;
       display: inline-block;
       padding: 0.2em 1.5em 0.2em 0.9em;
-      border: var(--shape-stroke) solid var(--shape-color);
-      border-radius: 0.25em;
+      border: var(--stroke) solid transparent;
       font-weight: 500;
+    }
+
+    /* Fallback: a clipped pseudo-element draws the outline where border-shape is unsupported */
+    @supports not (border-shape: circle(50%)) {
+      .tag::before {
+        content: "";
+        position: absolute;
+        inset: calc(var(--stroke) * -1);
+        background: var(--shape-color);
+        pointer-events: none;
+        clip-path: polygon(evenodd,
+          0 0, 85% 0, 100% 50%, 85% 100%, 0 100%,
+          var(--stroke) var(--stroke),
+          calc(85% - var(--stroke)) var(--stroke),
+          calc(100% - var(--stroke) * 2) 50%,
+          calc(85% - var(--stroke)) calc(100% - var(--stroke)),
+          var(--stroke) calc(100% - var(--stroke)));
+      }
     }
 
     @supports (border-shape: circle(50%)) {
       .tag {
-        border-radius: 0;
+        border-color: var(--shape-color);
         border-shape: polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%);
       }
     }
@@ -271,8 +288,8 @@
         Every value is a custom property, so the styles are easy to change.</p>
 
       <div class="callout">
-        <p>Several of these properties are new. Each is wrapped in <code>@supports</code> and falls back to a plain
-          underline or border. The list shows what this browser supports.</p>
+        <p>Several of these properties are new. Most are wrapped in <code>@supports</code> and fall back to a plain
+          underline or border, and the rest are simply ignored where unsupported. The list shows what this browser supports.</p>
         <ul class="support" id="support" aria-label="Browser support for the properties on this page"></ul>
       </div>
     </header>

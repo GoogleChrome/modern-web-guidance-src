@@ -253,65 +253,11 @@ If your Baseline target does not support `text-decoration-skip-spaces`, the brow
 
 {# {{ BASELINE_STATUS("tmp-text-decoration-inset") }} #}
 
-If your Baseline target does not support `text-decoration-inset`, wrap every inset rule in `@supports` so unsupported browsers keep a normal, fully visible underline instead of an invisible one. This is progressive enhancement: the hover reveal is lost and the link stays underlined.
+If your Baseline target does not support `text-decoration-inset`, the
+declaration is ignored, so the link keeps its normal, fully visible underline
+and the transition has nothing to animate. This is graceful degradation: the
+hover reveal is lost and the link stays underlined.
 
-```css
-.reveal {
-  text-decoration: underline; /* Always visible without inset support */
-}
+{{ FEATURE_FALLBACKS("background-clip-border-area") }}
 
-@supports (text-decoration-inset: 0) {
-  @media (prefers-reduced-motion: no-preference) {
-    .reveal {
-      text-decoration-inset: 0 100%; /* Only hide the line where it can be revealed again */
-      transition: text-decoration-inset var(--reveal-duration, 0.25s) ease-out; /* Example duration */
-    }
-
-    .reveal:is(:hover, :focus-visible) {
-      text-decoration-inset: 0 0;
-    }
-  }
-}
-```
-
-### Border area
-
-{{ BASELINE_STATUS("background-clip-border-area") }}
-
-If your Baseline target does not support `background-clip: border-area`, the declaration is ignored and the background paints under the whole border box, filling the text instead of only its outline. Use a solid border color outside the feature, and apply `background-clip: border-area` and its gradient only inside `@supports`. This is progressive enhancement: unsupported browsers show a solid outline.
-
-```css
-.ring {
-  border: var(--ring-width, max(2px, 0.12em)) solid var(--ring-start, #2563eb); /* Solid fallback; example width */
-}
-
-@supports (background-clip: border-area) {
-  .ring {
-    border-color: transparent; /* Reveal the gradient painted under the border */
-    background: linear-gradient(135deg, var(--ring-start, #2563eb), var(--ring-end, #db2777)) border-box;
-    background-clip: border-area;
-  }
-}
-```
-
-### Border shape
-
-{{ BASELINE_STATUS("border-shape") }}
-
-If your Baseline target does not support `border-shape`, the declaration is ignored and the element keeps its normal rectangular border. Keep a rounded border outside the feature, and apply `border-shape`, plus any `border-radius` or padding changes that only make sense with the shape, inside `@supports`. This is progressive enhancement: unsupported browsers show a plain rounded outline.
-
-```css
-.tag {
-  padding: 0.2em 0.9em; /* Example values */
-  border: var(--shape-stroke, max(2px, 0.08em)) solid var(--shape-color, currentColor);
-  border-radius: 0.25em; /* Fallback outline */
-}
-
-@supports (border-shape: circle(50%)) {
-  .tag {
-    border-radius: 0; /* The shape replaces the rounded corners */
-    padding-inline-end: 1.5em; /* Example value: extra room at the point */
-    border-shape: polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%);
-  }
-}
-```
+{{ FEATURE_FALLBACKS("border-shape") }}
