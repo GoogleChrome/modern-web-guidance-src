@@ -374,6 +374,9 @@
       "light-dismiss-a-dialog": [
         "task"
       ],
+      "motion": [
+        "daily-grind"
+      ],
       "move-dom-element-without-losing-state": [
         "task"
       ],
