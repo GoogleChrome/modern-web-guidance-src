@@ -285,18 +285,12 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
   fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
 
-  const suiteConfigPath = path.join(resultsDir, 'suite_config.json');
-  const env: NodeJS.ProcessEnv = { ...process.env };
-  if (fs.existsSync(suiteConfigPath) && !env.GD_SUITE_CONFIG) {
-    env.GD_SUITE_CONFIG = suiteConfigPath;
-  }
-
   try {
     console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
-    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32', env });
+    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
 
     console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
-    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32', env });
+    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
   } finally {
     if (fs.existsSync(pnpmWorkspacePath)) {
       fs.unlinkSync(pnpmWorkspacePath);
@@ -393,23 +387,25 @@ export function evaluateScenarioResults(
             return { id: spec.id, passed: true, message: spec.title };
           }
 
-          const rawError = lastResult?.error?.message || lastResult?.errors?.[0]?.message;
-          const errorMsg = rawError
-            ? stripVTControlCharacters(rawError)
-                .replaceAll(rootDir + path.sep, '')
-                .replace(/\/tmp\/grade-run-[^/]+\//g, '')
-                .replaceAll(os.homedir(), '~')
-                .trim()
-            : undefined;
+          // Strip ANSI colors and local paths (repo root, temp grading dir, home) so diagnostics are portable and shareable.
+          const clean = (text: string) => stripVTControlCharacters(text)
+            .replaceAll(rootDir + path.sep, '')
+            .replace(/\/tmp\/grade-run-[^/]+\//g, '')
+            .replaceAll(os.homedir(), '~')
+            .trim();
+          // A timeout reports "Test timeout exceeded" first (no location) and the action that was cut off second.
+          const errors: { message?: string; location?: { file: string; line: number } }[] = lastResult?.errors ?? [];
+          const rawError = errors.map(e => e.message).filter(Boolean).join('\n\n');
+          const errorMsg = rawError ? clean(rawError) : undefined;
 
-          const loc = lastResult?.errorLocation;
+          const loc = lastResult?.errorLocation ?? errors.find(e => e.location)?.location;
           const errorLocation = loc ? `${path.relative(rootDir, loc.file)}:${loc.line}` : undefined;
 
           const snapshotAtt = lastResult?.attachments?.find((a: any) => a.name === 'page-snapshot');
           const pageSnapshot = snapshotAtt?.body ? Buffer.from(snapshotAtt.body, 'base64').toString('utf8') : undefined;
 
           const browserErrorsAtt = lastResult?.attachments?.find((a: any) => a.name === 'browser-errors');
-          const browserErrors = browserErrorsAtt?.body ? Buffer.from(browserErrorsAtt.body, 'base64').toString('utf8') : undefined;
+          const browserErrors = browserErrorsAtt?.body ? clean(Buffer.from(browserErrorsAtt.body, 'base64').toString('utf8')) : undefined;
 
           return {
             id: spec.id,

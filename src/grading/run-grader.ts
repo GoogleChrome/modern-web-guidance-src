@@ -15,7 +15,7 @@ import { applyPatchSync } from '../core/patch-utils.ts';
 export interface PlaywrightOptions {
   targetPathAbs: string;
   graderPath: string;
-  reporters?: string[];
+  reporters: string[];
   testResultsDir?: string;
   jsonOutputName?: string;
   patchFile?: string;
@@ -46,8 +46,7 @@ async function stageGradingWorkspace(
 
 export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   const playwrightConfig = path.join(import.meta.dirname, 'playwright.config.ts');
-  const reporterList = opts.reporters && opts.reporters.length > 0 ? opts.reporters : ['json'];
-  const reporterArgs = [`--reporter=${reporterList.join(',')}`];
+  const reporterArgs = opts.reporters.length > 0 ? ['--reporter=' + opts.reporters.join(',')] : [];
 
   const isDir = fs.existsSync(opts.targetPathAbs) && fs.statSync(opts.targetPathAbs).isDirectory();
   const appDir = isDir ? opts.targetPathAbs : path.dirname(opts.targetPathAbs);
@@ -125,16 +124,15 @@ export async function runPlaywright(
 
     await once(child, 'close');
 
+    await fs.promises.rm(resolvedTestResultsDir, { recursive: true, force: true }).catch(() => {});
+
     const content = await fs.promises.readFile(tmpJson, 'utf-8').catch(() => null);
     if (!content) {
       throw new Error(`Playwright did not produce a JSON report at ${tmpJson}.\nStderr: ${stderrData}`);
     }
 
-    const json = JSON.parse(content);
-
-    await fs.promises.rm(resolvedTestResultsDir, { recursive: true, force: true }).catch(() => {});
     await fs.promises.unlink(tmpJson).catch(() => {});
-    return json;
+    return JSON.parse(content);
   } finally {
     await fs.promises.rm(`${tmpJson}-cache`, { recursive: true, force: true }).catch(() => {});
     if (cleanupGradingDir) {

@@ -402,6 +402,7 @@ async function runAgentTest(
       const guideResultsDir = getGuideResultsDir({ category, name: name || guideName });
       const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
       const preResults = await gradeOutput(
+        baseApp,
         targetsDir,
         targetGraderPath,
         zeroPassratePatch
@@ -431,6 +432,7 @@ async function runAgentTest(
         if (!fs.existsSync(resultDir)) continue;
         const patchFile = path.join(resultDir, 'agent.patch');
         const gradeResults = await gradeOutput(
+          runType,
           resultDir,
           targetGraderPath,
           patchFile,
@@ -452,12 +454,12 @@ async function runAgentTest(
 }
 
 async function gradeOutput(
+  label: string,
   appDir: string,
   graderPath: string,
   patchFile?: string,
   zeroPassrateFile?: string
 ): Promise<{ passed: number; total: number } | null> {
-  const label = path.basename(appDir);
   console.log(cYellow(`\nGrading ${label}...`));
 
   try {

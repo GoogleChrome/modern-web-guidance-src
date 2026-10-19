@@ -913,11 +913,12 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                             browserErrors: null,
                         };
                         existing[type][runIndex] = check.passed;
+                        // Guided runs are processed last, so when both fail, guided diagnostics win.
                         if (!check.passed) {
-                            if (check.error && !existing.error) existing.error = check.error;
-                            if (check.errorLocation && !existing.errorLocation) existing.errorLocation = check.errorLocation;
-                            if (check.pageSnapshot && !existing.pageSnapshot) existing.pageSnapshot = check.pageSnapshot;
-                            if (check.browserErrors && !existing.browserErrors) existing.browserErrors = check.browserErrors;
+                            if (check.error) existing.error = check.error;
+                            if (check.errorLocation) existing.errorLocation = check.errorLocation;
+                            if (check.pageSnapshot) existing.pageSnapshot = check.pageSnapshot;
+                            if (check.browserErrors) existing.browserErrors = check.browserErrors;
                         }
                         assertionMap.set(check.message, existing);
                     });
@@ -983,20 +984,14 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             }
             let diagnosticsHtml = '';
             if (status.error) {
-                const loc = status.errorLocation ? ` <span style="opacity: 0.75; font-size: 0.68rem;">(${escapeHtml(status.errorLocation)})</span>` : '';
-                diagnosticsHtml += `<div class="assertion-error-snippet" style="font-size: 0.72rem; color: var(--color-accent-failure, #da3633); font-family: monospace; white-space: pre-wrap; margin-top: 4px; max-height: 80px; overflow-y: auto; background: rgba(218, 54, 51, 0.08); padding: 4px 6px; border-radius: 4px;">${escapeHtml(status.error.length > 300 ? status.error.substring(0, 300) + '...' : status.error)}${loc}</div>`;
+                const loc = status.errorLocation ? ` <span class="assertion-error-loc">(${escapeHtml(status.errorLocation)})</span>` : '';
+                diagnosticsHtml += `<div class="assertion-error">${escapeHtml(status.error.length > 300 ? status.error.substring(0, 300) + '...' : status.error)}${loc}</div>`;
             }
             if (status.pageSnapshot) {
-                diagnosticsHtml += `<details style="margin-top: 4px; font-size: 0.72rem; font-family: monospace;">
-                    <summary style="cursor: pointer; color: var(--color-accent-primary, #0969da); user-select: none;">Page Snapshot</summary>
-                    <pre style="margin: 4px 0 0 0; padding: 6px; max-height: 160px; overflow: auto; background: var(--color-canvas-subtle, #f6f8fa); border: 1px solid var(--color-border-default, #d0d7de); border-radius: 4px; white-space: pre-wrap; font-size: 0.70rem;">${escapeHtml(status.pageSnapshot)}</pre>
-                </details>`;
+                diagnosticsHtml += `<details class="assertion-diagnostic"><summary>Page Snapshot</summary><pre>${escapeHtml(status.pageSnapshot)}</pre></details>`;
             }
             if (status.browserErrors) {
-                diagnosticsHtml += `<details style="margin-top: 4px; font-size: 0.72rem; font-family: monospace;">
-                    <summary style="cursor: pointer; color: var(--color-accent-failure, #da3633); user-select: none;">Browser Errors</summary>
-                    <pre style="margin: 4px 0 0 0; padding: 6px; max-height: 160px; overflow: auto; background: rgba(218, 54, 51, 0.05); border: 1px solid rgba(218, 54, 51, 0.2); border-radius: 4px; white-space: pre-wrap; font-size: 0.70rem; color: var(--color-accent-failure, #da3633);">${escapeHtml(status.browserErrors)}</pre>
-                </details>`;
+                diagnosticsHtml += `<details class="assertion-diagnostic browser-errors"><summary>Browser Errors</summary><pre>${escapeHtml(status.browserErrors)}</pre></details>`;
             }
             truthMatrixHtml += `<td>
                 ${escapeHtml(message)}

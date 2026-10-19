@@ -61,17 +61,17 @@ export const test = base.extend<{ page: Page }, ServerWorkerFixtures>({
     } finally {
       const failed = (testInfo.status !== 'passed' && testInfo.status !== 'skipped') || testInfo.errors.length > 0;
       if (failed) {
-        if (!page.isClosed()) {
-          await testInfo.attach('page-snapshot', {
-            body: await page.locator('body').ariaSnapshot(),
-            contentType: 'text/plain',
-          });
-        }
         if (diagnostics.length > 0) {
           await testInfo.attach('browser-errors', {
             body: diagnostics.join('\n'),
             contentType: 'text/plain',
           });
+        }
+        if (!page.isClosed()) {
+          // A crashed or hung page can't be snapshotted. Record why rather than failing fixture teardown.
+          const body = await page.locator('body').ariaSnapshot({ timeout: 2000 })
+            .catch((err: Error) => `(page snapshot unavailable: ${err.message})`);
+          await testInfo.attach('page-snapshot', { body, contentType: 'text/plain' });
         }
       }
     }
