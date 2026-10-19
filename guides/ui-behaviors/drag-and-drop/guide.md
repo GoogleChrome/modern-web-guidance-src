@@ -23,6 +23,10 @@ Keep the drag active after the pointer leaves the handle with `handle.setPointer
 
 When the destination changes, move the existing item node atomically with `container.moveBefore(item, referenceNode)` rather than recreating it so internal state (such as focused controls, input values, scroll position, media, or custom element instances) and active pointer capture are preserved. Animate the move so items visibly travel instead of jumping, including keyboard moves: record each sibling's `getBoundingClientRect()` before the move, then afterwards animate the `translate` property from the old offset to `0 0` (FLIP). When the pointer is released, animate the preview to the item's final rect and remove it when the animation finishes. Skip the animations under `prefers-reduced-motion: reduce`. If the design calls for a faded copy that follows the pointer, clone the item with `pointer-events: none`, `aria-hidden="true"`, and `inert` so it does not block hit-testing or expose duplicate content to assistive technology; otherwise, move the original item without creating a clone.
 
+## Scroll while dragging
+
+If the items live in a scrollable container, scroll it while the pointer is near or beyond its top or bottom edge, so off-screen items stay reachable (especially on small viewports). Run a `requestAnimationFrame` loop for the duration of the drag that scales scroll speed with how far the pointer is into an edge zone (about 56px), continuing to increase beyond the edge up to a cap, and uses frame time rather than a fixed step. After each scroll change, re-run destination hit-testing with the last pointer position, clamped into the container's bounds, because the pointer hasn't moved. Avoid `scroll-behavior: smooth` on that container, give it padding so focus rings and elevation shadows aren't clipped, and cancel the loop when the drag ends.
+
 ## Support keyboard reordering
 
 Provide a keyboard-accessible alternative to pointer reordering. Choose an interaction that fits how frequently users reorder items and how easily they need to discover it:

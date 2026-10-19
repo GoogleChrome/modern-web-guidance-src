@@ -43,7 +43,9 @@
       display: grid;
       gap: 0.75rem;
       max-width: 32rem;
-      padding: 0;
+      max-height: 22rem;
+      padding: 0.5rem;
+      overflow-y: auto;
       list-style: none;
     }
 
@@ -231,7 +233,8 @@
     let pointerPreview = null;
     let pointerOffsetX = 0;
     let pointerOffsetY = 0;
-
+    let pointerX = 0;
+    let pointerY = 0;
     function getPosition(item) {
       return [...list.children].indexOf(item) + 1;
     }
@@ -292,22 +295,51 @@
       }
       pointerItem = null;
       pointerPreview = null;
+      cancelAnimationFrame(scrollFrame);
       document.removeEventListener('pointermove', movePointerItem);
       document.removeEventListener('pointerup', finishPointerReorder);
       document.removeEventListener('pointercancel', finishPointerReorder);
     }
 
     function movePointerItem(event) {
-      pointerPreview.style.left = `${event.clientX - pointerOffsetX}px`;
-      pointerPreview.style.top = `${event.clientY - pointerOffsetY}px`;
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      pointerPreview.style.left = `${pointerX - pointerOffsetX}px`;
+      pointerPreview.style.top = `${pointerY - pointerOffsetY}px`;
+      updateDropTarget();
+    }
 
-      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.task');
+    // Hit-test with the pointer clamped to the list so dragging past an edge still targets its end items.
+    function updateDropTarget() {
+      const bounds = list.getBoundingClientRect();
+      const x = Math.min(Math.max(pointerX, bounds.left + 1), bounds.right - 1);
+      const y = Math.min(Math.max(pointerY, bounds.top + 1), bounds.bottom - 1);
+      const target = document.elementFromPoint(x, y)?.closest('.task');
       if (!target || target.parentElement !== list || target === pointerItem) return;
 
       const rect = target.getBoundingClientRect();
-      const before = event.clientY < rect.top + rect.height / 2 ? target : target.nextElementSibling;
+      const before = y < rect.top + rect.height / 2 ? target : target.nextElementSibling;
       if (before === pointerItem || before === pointerItem.nextElementSibling) return;
       moveItem(pointerItem, before);
+    }
+
+    const EDGE_ZONE = 56;
+    const MAX_SPEED = 700; // px per second at the edge, up to 2x beyond it
+    let scrollFrame = 0;
+    let lastFrame = 0;
+
+    function autoScroll(now) {
+      const bounds = list.getBoundingClientRect();
+      const into = pointerY < bounds.top + EDGE_ZONE ? bounds.top + EDGE_ZONE - pointerY
+        : pointerY > bounds.bottom - EDGE_ZONE ? bounds.bottom - EDGE_ZONE - pointerY : 0;
+      const speed = Math.min(Math.abs(into) / EDGE_ZONE, 2) * MAX_SPEED * Math.sign(-into);
+      if (speed && lastFrame) {
+        const before = list.scrollTop;
+        list.scrollTop += speed * (now - lastFrame) / 1000;
+        if (list.scrollTop !== before) updateDropTarget();
+      }
+      lastFrame = now;
+      scrollFrame = requestAnimationFrame(autoScroll);
     }
 
     list.addEventListener('pointerdown', (event) => {
@@ -329,7 +361,10 @@
       pointerPreview.style.top = `${rect.top}px`;
       document.body.append(pointerPreview);
       pointerItem.classList.add('pointer-dragging');
-
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      lastFrame = 0;
+      scrollFrame = requestAnimationFrame(autoScroll);
       document.addEventListener('pointermove', movePointerItem);
       document.addEventListener('pointerup', finishPointerReorder);
       document.addEventListener('pointercancel', finishPointerReorder);
@@ -425,6 +460,21 @@
         moveKeyboardItem(item, 'down');
       }
     });
+
+    // Add enough items for the list to scroll.
+    for (let i = 4; i <= 10; i++) {
+      const item = list.firstElementChild.cloneNode(true);
+      const label = `Task ${i}`;
+      item.dataset.label = label;
+      const handle = item.querySelector('.drag-handle');
+      handle.setAttribute('aria-label', `Reorder ${label}`);
+      handle.title = `Drag to reorder ${label}`;
+      item.querySelector('.move-up-button').setAttribute('aria-label', `Move ${label} up`);
+      item.querySelector('.move-down-button').setAttribute('aria-label', `Move ${label} down`);
+      item.querySelector('label').firstChild.textContent = `${label} `;
+      item.querySelector('input').value = '';
+      list.append(item);
+    }
 
     // Initialize disabled states
     updateDisabledStates();
