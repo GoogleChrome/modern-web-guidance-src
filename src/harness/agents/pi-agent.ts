@@ -9,17 +9,16 @@ import {
   cleanupIsolatedHome,
   copyFileIfExists,
   parseAgentArgs,
-  watchLogFile,
   runCliAgentCommand,
   parseJsonlFile,
   setupIsolatedWorkDir,
   type GuideUsage
 } from '../lib/agent-shared.ts';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
   truncateMessage,
@@ -97,7 +96,7 @@ export function exportPiTrajectories(workDir: string, targetDir: string): void {
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('pi-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType);
 
   if (!workDir) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -110,13 +109,9 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
     process.env.PI_CODING_AGENT = 'true';
-    let stopWatchingMcpLog = () => { };
 
     try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
       await runCliAgentCommand(
         command,
         commandArgs,
@@ -126,7 +121,6 @@ async function run() {
         runType
       );
     } finally {
-      stopWatchingMcpLog();
       exportPiTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
     }
@@ -350,7 +344,7 @@ export function loadPiLogs(dir: string): { logData: any[]; subagentsMap: Record<
 
   for (const file of subFiles) {
     try {
-      const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+      const subId = extractSubagentIdFromFilename(file);
       subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
     } catch {}
   }

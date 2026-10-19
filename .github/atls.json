@@ -5,12 +5,20 @@
       "jenknoll"
     ],
     "built-in-ai": "tomayac",
+    "chrome-extensions": [
+      "oliverdunk",
+      "patrickkettner"
+    ],
     "css": "LeaVerou",
     "html": "LeaVerou",
     "forms": "LeaVerou",
     "ui-behaviors": "LeaVerou",
     "ui-atoms": "LeaVerou",
     "ui-components": "LeaVerou",
+    "user-experience": [
+      "NourNabil",
+      "LeaVerou"
+    ],
     "visual-design": "LeaVerou",
     "performance": [
       "tunetheweb",
@@ -28,6 +36,8 @@
   "web_features": {
     "canvas-html": "ewewraw",
     "container-scroll-state-queries": "bramus",
+    "credential-management": "agektmr",
+    "password-credentials": "agektmr",
     "tmp-cross-origin-storage": "tomayac",
     "prefers-reduced-motion": "bramus",
     "web-otp": "agektmr"

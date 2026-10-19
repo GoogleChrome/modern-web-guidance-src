@@ -14,6 +14,7 @@ import {
   type StandardizedAction,
   type TrajectorySummary,
   TRAJECTORY_SUMMARY_FILE,
+  extractSubagentIdFromFilename,
   extractClaudeMetadata,
   extractCodexMetadata,
   extractGeminiMetadata,
@@ -624,4 +625,15 @@ test('parseJetskiCliSession and findProtoTimestamp recover step timestamps from 
     removeTempDir(tempDir);
   }
 });
+
+test('extractSubagentIdFromFilename extracts clean subagent id across formats and prefixes', () => {
+  assert.strictEqual(extractSubagentIdFromFilename('subagent-agent-worker-cdx.jsonl'), 'worker-cdx');
+  assert.strictEqual(extractSubagentIdFromFilename('subagent-subagents-agent-worker-sub-1.jsonl'), 'worker-sub-1');
+  assert.strictEqual(extractSubagentIdFromFilename('subagent-subagents-agent-subagent-array-456.jsonl'), 'subagent-array-456');
+  assert.strictEqual(extractSubagentIdFromFilename('subagent-agent-worker-gem.json'), 'worker-gem');
+  assert.strictEqual(extractSubagentIdFromFilename('subagent-subagents-worker.jsonl'), 'worker');
+  assert.strictEqual(extractSubagentIdFromFilename('subagent-worker.jsonl'), 'worker');
+  assert.strictEqual(extractSubagentIdFromFilename('/path/to/subagent-agent-worker.jsonl'), 'worker');
+});
+
 
