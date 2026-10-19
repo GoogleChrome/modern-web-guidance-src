@@ -97,7 +97,7 @@ On narrow containers, keep `popover="auto"` on the navigation list. Anchor the f
 }
 ```
 
-The first `inset-block-start` declaration is the fallback; the later `anchor()` declaration overrides it where Anchor Positioning is supported. For collision-aware positioning near viewport edges, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }}.
+The first `inset-block-start` declaration is the fallback; the later `anchor()` declaration overrides it where Anchor Positioning is supported. For collision-aware positioning near viewport edges, see {{ GUIDE_REF("viewport-aware-dropdowns") }}.
 
 ---
 
@@ -186,7 +186,7 @@ layoutObserver.observe(header);
 
 Do not add document-level click-outside, Escape, focus-restoration, or expanded-state handlers. Native disclosure and popover behaviour provide those interactions. Let `<details>` own the summary click: intercepting it can reopen a submenu that light dismiss is trying to close. The `source: summary` option supplies the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
 
-For collision-aware submenu positioning, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }}. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
+For collision-aware submenu positioning, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 
 ```css
 @container (inline-size >= 45rem) {
