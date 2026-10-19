@@ -117,7 +117,7 @@ If the primary implementation uses features that are not Baseline Widely Availab
 | `{{ FEATURE("feature-id", "section") }}` | Sugar for `INCLUDE("features/<feature-id>.md#<section>")`. |
 | `{{ FEATURE_FALLBACKS("feature-id") }}` | `### Fallbacks & browser support for <Feature name>` + `BASELINE_STATUS` + the `#fallbacks` section. If `#fallbacks` is empty, emits only `BASELINE_STATUS` (no heading). |
 | `{{ FEATURE_ISSUES("feature-id") }}` | `### Issues to be aware of when using <Feature name>` + the `#issues` section. Returns `""` if `#issues` is empty/missing. |
-| `{{ GUIDE_REF("guide-slug") }}` | Cross-reference to another guide (`\`guide-slug\` (via \`npx -y modern-web-guidance@latest retrieve "guide-slug"\`)` in `skills-cli`; relative path in `local-dev`; markdown link in `static-site`). |
+| `{{ GUIDE_REF("guide-slug") }}` | Cross-reference to another guide (`\`guide-slug\` (via \`npx -y modern-web-guidance@latest retrieve "guide-slug"\`)` in `skills-cli`; markdown link in `static-site`). |
 
 * **Errors**: invalid feature/guide ID or missing required argument → `MacroError` (build fails loudly). Missing referenced *content* in `INCLUDE`/`FEATURE` (file or section) → `MacroError` for `INCLUDE`/`FEATURE`, or falls back to `BASELINE_STATUS` / `""` for `FEATURE_FALLBACKS` / `FEATURE_ISSUES`.
 * **Section IDs**: slugified heading text (`### Fallback strategies` → `fallback-strategies`), or an explicit `{#id}` suffix on the heading. Avoid leaving an explicit `{#section-id}` suffix on a heading in `guide.md` when `slugify(heading)` already matches `#section-id`.
