@@ -24,14 +24,14 @@ Include:
 
 This guide covers any popup menu: dropdown, context, overflow, and the menu bars that open them. The worked example is an application command menu, where items change the interface (create, save, preferences).
 
-### Command menus and navigation menus
+### Commands, links, and what makes a menu
 
-Command and navigation menu bars differ in two places. Everything else here applies to both.
+Two independent choices. Everything else here applies to both.
 
-* **Item element.** A command is a `<button type="button">`; a destination is an `<a href>` that still opens in a new tab, copies as a URL, and works without script.
-* **Roles.** Plain links in a `<nav>` are not a menu: they use `Tab`, with no `role="menu"`, `role="menuitem"`, or `aria-haspopup="menu"`.
+* **Element, per item.** A command is a `<button type="button">`; a destination is an `<a href>` that still opens in a new tab, copies as a URL, and works without script. A dropdown may mix them freely: two links and six commands, or one command and six links, changes nothing below.
+* **Interaction model, per dropdown.** Arrow keys, `Home`/`End`, and `Esc` make it a menu: add the focusgroup, let it infer `menuitem` on every item whether button or link, and make it look like one (a continuous bar or a trigger with a dropdown indicator; see "Menubar or separate menu buttons" below). A short list of links users `Tab` through is navigation: no focusgroup, no `role="menu"`, `role="menuitem"`, or `aria-haspopup="menu"`; keep the popover, `Esc`, and focus restoration, and see the navbar guide.
 
-In practice it is a spectrum: a "Products" dropdown of links beside an "Account" menu of commands, or one menu mixing both. Decide per dropdown by interaction model, not element. Arrow keys, `Home`/`End`, and `Esc` make it a menu: add the focusgroup and roles, and make it look like one (a continuous bar or a trigger with a dropdown indicator; see "Menubar or separate menu buttons" below). Choose the element per item; the popover, positioning, submenu, and keyboard behaviour here apply to both. A short list of links users `Tab` through is navigation: drop the focusgroup and roles, keep the popover, `Esc`, and focus restoration, and see the navbar guide.
+Content never decides the roles. A "Products" dropdown of links can be a menu; an "Account" dropdown of commands cannot be navigation.
 
 Use the menu pattern only for a composite widget with one tab stop and arrow-key navigation. Use a `<div focusgroup="menu nomemory">`, not the HTML `<menu>` element. Do not add `role="menu"` or `role="menuitem"` in the shared markup: native focusgroup infers those roles, and explicit roles block that inference. Add them only in the unsupported-browser fallback below. `nomemory` makes reopening start at the first item. Focusgroup moves focus; script handles preview, activation, and focus restoration.
 
