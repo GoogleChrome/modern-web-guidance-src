@@ -186,12 +186,11 @@ Without `border-shape` the line is straight but still draws on, so the animation
 
 ## Outline text with a box instead
 
-Two box properties decorate text by outlining it rather than running a line along it. Use them on an inline-block, and give the text padding so the outline does not touch it.
+Two box properties decorate text by outlining it rather than running a line along it. Give the text padding so the outline does not touch it.
 
 ```css
 /* Gradient outline with a see-through middle */
 .ring {
-  display: inline-block;
   padding: 0.2em 0.75em; /* Example values: enough room that the outline does not touch the text */
   /* The border width is the visible outline thickness. Relative to the font size, with a 2px
      minimum so it stays visible on small text; example value. */
@@ -203,7 +202,6 @@ Two box properties decorate text by outlining it rather than running a line alon
 
 /* Border that follows a shape, such as a circled word */
 .circled {
-  display: inline-block;
   padding: 0.2em 1.1em; /* Example values: wide enough that the ellipse does not clip the text */
   border: var(--shape-stroke, max(2px, 0.08em)) solid var(--shape-color, currentColor); /* Example stroke width */
   /* A single shape strokes along its path. Two shapes fill the area between them.
@@ -291,7 +289,6 @@ If your Baseline target does not support `border-shape`, the declaration is igno
 
 ```css
 .circled {
-  display: inline-block;
   padding: 0.2em 0.9em; /* Example values */
   border: var(--shape-stroke, max(2px, 0.08em)) solid var(--shape-color, currentColor);
   border-radius: 999px; /* Fallback outline; any value large enough to round the ends works */
