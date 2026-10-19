@@ -43,14 +43,14 @@ Use one `<nav>` landmark for narrow and wide layouts. Wrap it in a semantic `<he
       </button>
 
       <ul id="site-menu" class="site-menu" popover="auto">
-        <li><a class="menu-link" href="index.html" aria-current="page">Home</a></li>
-        <li><a class="menu-link" href="about.html">About</a></li>
+        <li><a href="index.html" aria-current="page">Home</a></li>
+        <li><a href="about.html">About</a></li>
         <li>
           <details class="nav-dropdown">
-            <summary class="menu-link dropdown-trigger">Services</summary>
+            <summary>Services</summary>
             <ul class="dropdown-list">
-              <li><a class="menu-link" href="design.html">Design</a></li>
-              <li><a class="menu-link" href="development.html">Development</a></li>
+              <li><a href="design.html">Design</a></li>
+              <li><a href="development.html">Development</a></li>
             </ul>
           </details>
         </li>
