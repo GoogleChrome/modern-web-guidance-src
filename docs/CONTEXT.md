@@ -132,6 +132,7 @@ pnpm link --global && gd setup-completion
 | Command | What it does |
 |---|---|
 | `gd audit` | Prints a matrix of all guides across maturity stages. |
+| `gd audit-evals [pattern]` | Audits expectation completeness (`expectations.md` vs `guide.md` & `CONTEXT.md`) and/or grader fidelity (`grader.ts` vs `expectations.md` & `task.md`) with adversarial review, generating Markdown, JSON, and interactive HTML reports (`--expectations-only`, `--grader-only`, or `--scope both`). |
 | `gd dev <dir>` | The main pipeline command. Takes a guide from "has guide.md + expectations.md" through target generation, calibration, agent tests, and report creation (`--targets <apps>`). |
 | `gd dev <dir> --test-grader` | Run calibration check across target apps (golden patches should pass 100%, zero-passrate should fail 100%). |
 | `gd pr <dir>` | Opens a GitHub Pull Request with auto-labeled classification and `report.md` body. |
