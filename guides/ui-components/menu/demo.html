@@ -154,7 +154,7 @@
 
     /* Scope to items: a closed submenu popover inside the focusgroup must keep display: none. */
     [focusgroup~="menu"]>button,
-    [focusgroup~="menu"]>[role="group"]>button {
+    [focusgroup~="menu"]>:where([role="group"])>button {
       display: grid;
       grid-column: 1 / -1;
       grid-template-columns: subgrid;
