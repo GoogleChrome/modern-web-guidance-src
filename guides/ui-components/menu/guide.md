@@ -143,8 +143,7 @@ Do not add a second roving-tabindex system inside a focusgroup. Script covers on
 * **Preview.** Focusing a top-level trigger shows its menu and sets `aria-expanded="true"`. Focus stays on the trigger, and no item is focused. Blurring the trigger closes a preview-only menu.
 * **Enter and Space on a preview.** They close the preview and keep focus on the trigger. The native `toggle-popover` action handles this, so the script must not intercept these keys.
 * **ArrowDown on a preview.** Converts it to an open menu and focuses the first item.
-* **Pointer click on a preview.** Enters the menu and focuses the first item. This is the only activation the script intercepts.
-* **Pointer click on an open trigger.** Closes it natively.
+* **Pointer click on an open or previewed trigger.** Closes it natively; it does not enter the menu.
 * **Pointer click on a closed trigger.** Opens it natively. Focus stays on the trigger; no item is focused. Only keyboard opens enter the menu.
 * **Pointer over an item.** Focuses it without a ring, so hover and focus are one item.
 * **Pointer over another top-level trigger while a menu is open.** Closes it and previews the hovered one, focusing its trigger without a ring. Nothing open: hover does nothing.
@@ -165,7 +164,7 @@ Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`,
 
 1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler enters it, keyboard opens only. On a pointer open, `toggle` focuses the trigger without a ring instead, because `pointerdown` prevented focus and arrow keys must still work.
 2. **Preview on focus.** Focusing a trigger calls `showPopover({ source: trigger })` so the menu anchors to it. Ignore focus returning from inside the trigger's own menu, or from another window (flag on window `blur`, cleared a tick after window `focus`, or app-switching reopens the last menu). Hide a previewed menu on `blur` unless focus moved into it.
-3. **Pointer click on a preview.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus and start a preview mid-click. Remember which trigger was pressed. In the `command` handler, a `toggle-popover` from that trigger while the menu is only previewed is the one case to intercept: cancel it and focus the first item.
+3. **Pointer click toggles.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus and start a preview mid-click. Remember which trigger was pressed. Clicking a closed or previewed trigger opens or closes it natively and never enters the menu; only keyboard opens enter it. Do not intercept the click.
 4. **Move focus in `toggle`, not `command`.** `command` fires before the menu opens.
 5. **Restore focus to the trigger yourself.** Focus the trigger before `hidePopover()`.
 6. **Close one level at a time.** Call `stopPropagation()` on `Escape` and `ArrowLeft` in a submenu, or the parent's listener closes it too.
@@ -184,18 +183,11 @@ trigger.addEventListener('focus', event => {
   if (!menu.matches(':popover-open')) menu.showPopover({ source: trigger });
 });
 
-// 3. A click on a preview enters the menu; everything else is native.
-// 1. Only a keyboard open is marked to enter the menu.
+// 3. Pointer open leaves focus on the trigger; only a keyboard open is marked to enter the menu.
 menu.addEventListener('command', event => {
-  const previewed = menu.matches(':popover-open:not(:focus-within)') && event.source.matches(':focus-visible');
   const fromPointer = pointerTrigger === event.source;
   pointerTrigger = null;
-  if (event.command === 'toggle-popover' && previewed && fromPointer) {
-    event.preventDefault();
-    focusFirst(menu);
-  } else if (!menu.matches(':popover-open') && !fromPointer) {
-    enterOnOpen.add(menu);
-  }
+  if (!menu.matches(':popover-open') && !fromPointer) enterOnOpen.add(menu);
 });
 
 // 7. Pointer over an item moves focus to it, so hover and focus are one item.
@@ -380,7 +372,7 @@ if (!('ToggleEvent' in window && Object.hasOwn(ToggleEvent.prototype, 'source'))
 
 Without invokers, `command="toggle-popover"` does nothing, so clicking a trigger will not open its menu. The fallback must perform the toggle in script. Feature-detect the interface rather than an instance: `commandForElement` lives on `HTMLButtonElement.prototype`.
 
-The fallback reproduces the native behavior: a pointer click on a preview enters the menu, and every other click toggles the menu. Enter and Space still work because they generate a click on buttons.
+The fallback reproduces the native behavior: every click toggles the menu, and only keyboard opens enter it. Enter and Space still work because they generate a click on buttons.
 
 ```js
 // Invokers are unsupported when the button interface has no commandForElement property.
@@ -392,8 +384,7 @@ if (!('commandForElement' in HTMLButtonElement.prototype)) {
       event.preventDefault();
       const fromPointer = pointerTrigger === trigger;
       pointerTrigger = null;
-      if (isPreviewed(menu) && fromPointer && trigger.matches(':focus-visible')) focusFirst(menu);
-      else if (isOpen(menu)) closeAndRestore(menu);
+      if (isOpen(menu)) closeAndRestore(menu);
       else {
         if (!fromPointer) enterOnOpen.add(menu);
         menu.showPopover({ source: trigger });

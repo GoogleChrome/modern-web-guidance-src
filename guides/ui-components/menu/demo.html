@@ -414,7 +414,7 @@
     }
 
     // Without command invokers, the command attribute does nothing, so a click has to toggle the
-    // popover itself. Mirror the native behavior: a pointer click on a preview enters the menu.
+    // popover itself.
     if (!('commandForElement' in HTMLButtonElement.prototype)) {
       triggers.forEach(trigger => {
         const menu = menuFor(trigger);
@@ -423,8 +423,7 @@
           event.preventDefault();
           const fromPointer = pointerTrigger === trigger;
           pointerTrigger = null;
-          if (isPreviewed(menu) && fromPointer && trigger.matches(':focus-visible')) focusFirst(menu);
-          else if (isOpen(menu)) closeAndRestore(menu);
+          if (isOpen(menu)) closeAndRestore(menu);
           else {
             if (!fromPointer) enterOnOpen.add(menu);
             menu.showPopover({ source: trigger });
@@ -511,18 +510,15 @@
     });
 
     menus.forEach(menu => {
-      // The command event fires on the popover, before toggle-popover runs. Intercept only a pointer
-      // click on a preview, which enters the menu; every other activation opens, closes, or
-      // dismisses natively.
+      // The command event fires on the popover, before toggle-popover runs. It only decides whether
+      // a keyboard open should enter the menu; every activation opens or closes natively.
       menu.addEventListener('command', event => {
         if (event.command !== 'toggle-popover') return;
         const fromPointer = pointerTrigger === event.source;
         pointerTrigger = null;
-        if (isPreviewed(menu) && fromPointer && event.source.matches(':focus-visible')) {
-          event.preventDefault();
-          focusFirst(menu);
-        } else if (!isOpen(menu)) {
-          // Only a keyboard open enters the menu. A pointer open leaves focus on the trigger.
+        if (!isOpen(menu)) {
+          // Only a keyboard open enters the menu. A pointer open leaves focus on the trigger, and a
+          // pointer click on an open menu's trigger closes it natively.
           if (!fromPointer) enterOnOpen.add(menu);
         } else {
           event.source?.focus({ preventScroll: true });

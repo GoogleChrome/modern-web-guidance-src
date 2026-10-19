@@ -17,7 +17,7 @@
 - From inside an open top-level menu, `ArrowRight` and `ArrowLeft` close the current menu and preview the next or previous top-level menu (wrapping at either end) with focus on its trigger and no item focused; `ArrowDown` then enters it.
 - Pressing `Escape` closes only the current menu level, sets its trigger's `aria-expanded` to `"false"`, and restores focus to the trigger that opened it, including for nested submenus.
 - Pressing `Tab` from a trigger or inside an open menu closes all open menus and leaves the menu system instead of stepping through every command.
-- Clicking a previewed trigger enters its menu and focuses the first enabled item, clicking an open trigger closes its menu and restores focus to the trigger, and clicking outside closes every open menu level.
+- Clicking a closed trigger opens its menu with focus left on the trigger (no item focused), clicking an open or previewed trigger closes its menu and leaves focus on the trigger, and clicking outside closes every open menu level.
 - Opening a menu by pointer keeps focus on its trigger with no item focused or matching `:focus-visible`; opening by keyboard focuses the first enabled item.
 - Any open or close animation is under 150 ms, changes only opacity and a small translate, is off under `prefers-reduced-motion: reduce`, and never delays focus.
 - Moving the pointer over a menu item focuses that item without a visible focus ring, so at most one item is styled as active at a time.
