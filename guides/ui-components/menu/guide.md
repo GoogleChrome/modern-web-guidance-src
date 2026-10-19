@@ -20,7 +20,7 @@ Include:
 - converting to drawer on small screens?
 -->
 
-# Build an application menu
+# Build a dropdown menu
 
 This guide covers any popup menu: dropdown, context, overflow, and the menu bars that open them. The worked example is an application command menu, where items change the interface (create, save, preferences).
 
