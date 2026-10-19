@@ -1,1 +1,1 @@
-- Refactor the seasonal favorites cards into reusable UI components.
+- Build reusable UI components for the application.
