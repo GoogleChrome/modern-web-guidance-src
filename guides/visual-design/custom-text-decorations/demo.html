@@ -168,12 +168,17 @@
       .reveal {
         color: var(--color-primary-dark, #272eb5);
         font-weight: 500;
-        text-decoration-inset: 0 100%;
-        transition: text-decoration-inset var(--reveal-duration) var(--reveal-easing);
       }
 
-      .reveal:is(:hover, :focus-visible) {
-        text-decoration-inset: 0 0;
+      @media (prefers-reduced-motion: no-preference) {
+        .reveal {
+          text-decoration-inset: 0 100%;
+          transition: text-decoration-inset var(--reveal-duration) var(--reveal-easing);
+        }
+
+        .reveal:is(:hover, :focus-visible) {
+          text-decoration-inset: 0 0;
+        }
       }
     }
 
@@ -205,12 +210,17 @@
       /* Normalize the path so dash values are the same whatever its real length */
       path-length: var(--path-length);
       stroke-dasharray: var(--path-length);
-      stroke-dashoffset: var(--path-length);
-      transition: stroke-dashoffset var(--draw-duration) ease-out;
     }
 
-    .draw:is(:hover, :focus-visible) path {
-      stroke-dashoffset: 0;
+    @media (prefers-reduced-motion: no-preference) {
+      .draw path {
+        stroke-dashoffset: var(--path-length);
+        transition: stroke-dashoffset var(--draw-duration) ease-out;
+      }
+
+      .draw:is(:hover, :focus-visible) path {
+        stroke-dashoffset: 0;
+      }
     }
 
     /* ---------- 6. background-clip: border-area ---------- */
@@ -258,18 +268,6 @@
       .tag {
         border-radius: 0;
         border-shape: polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-
-      .reveal,
-      .draw path {
-        transition: none;
-      }
-
-      .draw path {
-        stroke-dashoffset: 0;
       }
     }
   </style>

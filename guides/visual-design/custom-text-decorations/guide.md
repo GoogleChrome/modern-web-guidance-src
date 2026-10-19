@@ -107,22 +107,21 @@ To reveal an underline on hover without a border or background gradient, trim th
 
 ```css
 .reveal {
-  text-decoration: underline;
-  /* Trim the end by the full inline size so the line starts with zero length. */
-  text-decoration-inset: 0 100%;
-  /* 150ms to 300ms feels responsive without lagging; ease-out starts quickly. Example values. */
-  transition: text-decoration-inset var(--reveal-duration, 0.25s) ease-out;
+  text-decoration: underline; /* Always visible, including for reduced motion */
 }
 
-/* Include :focus-visible so keyboard users get the same reveal as pointer users. */
-.reveal:is(:hover, :focus-visible) {
-  text-decoration-inset: 0 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
+/* Only hide and animate the line when the user has not asked for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
   .reveal {
-    transition: none;
-    text-decoration-inset: 0 0; /* Keep the underline visible without animation */
+    /* Trim the end by the full inline size so the line starts with zero length. */
+    text-decoration-inset: 0 100%;
+    /* 150ms to 300ms feels responsive without lagging; ease-out starts quickly. Example values. */
+    transition: text-decoration-inset var(--reveal-duration, 0.25s) ease-out;
+  }
+
+  /* Include :focus-visible so keyboard users get the same reveal as pointer users. */
+  .reveal:is(:hover, :focus-visible) {
+    text-decoration-inset: 0 0;
   }
 }
 ```
@@ -166,17 +165,20 @@ Use an SVG path when the line must be a shape `text-decoration` cannot draw, suc
      path, whatever its real length. */
   path-length: 100;
   stroke-dasharray: 100;
-  stroke-dashoffset: 100; /* Fully hidden */
-  /* A slightly slower draw than a hover reveal reads as drawing; example duration. */
-  transition: stroke-dashoffset var(--draw-duration, 0.6s) ease-out;
 }
 
-.draw:is(:hover, :focus-visible) path {
-  stroke-dashoffset: 0; /* Fully drawn */
-}
+/* Only hide and animate the line when the user has not asked for reduced motion;
+   otherwise it stays fully drawn. */
+@media (prefers-reduced-motion: no-preference) {
+  .draw path {
+    stroke-dashoffset: 100; /* Fully hidden */
+    /* A slightly slower draw than a hover reveal reads as drawing; example duration. */
+    transition: stroke-dashoffset var(--draw-duration, 0.6s) ease-out;
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  .draw path { transition: none; stroke-dashoffset: 0; }
+  .draw:is(:hover, :focus-visible) path {
+    stroke-dashoffset: 0; /* Fully drawn */
+  }
 }
 ```
 
@@ -250,18 +252,13 @@ If your Baseline target does not support `text-decoration-inset`, wrap every ins
 }
 
 @supports (text-decoration-inset: 0) {
-  .reveal {
-    text-decoration-inset: 0 100%; /* Only hide the line where it can be revealed again */
-    transition: text-decoration-inset var(--reveal-duration, 0.25s) ease-out; /* Example duration */
-  }
-
-  .reveal:is(:hover, :focus-visible) {
-    text-decoration-inset: 0 0;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
+  @media (prefers-reduced-motion: no-preference) {
     .reveal {
-      transition: none;
+      text-decoration-inset: 0 100%; /* Only hide the line where it can be revealed again */
+      transition: text-decoration-inset var(--reveal-duration, 0.25s) ease-out; /* Example duration */
+    }
+
+    .reveal:is(:hover, :focus-visible) {
       text-decoration-inset: 0 0;
     }
   }
