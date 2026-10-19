@@ -180,7 +180,7 @@ trigger.addEventListener('focus', event => {
 // 3. A click on a preview enters the menu; everything else is native.
 // 1. Only a keyboard open is marked to enter the menu.
 menu.addEventListener('command', event => {
-  const previewed = menu.matches(':popover-open:not(:focus-within)');
+  const previewed = menu.matches(':popover-open:not(:focus-within)') && event.source.matches(':focus-visible');
   const fromPointer = pointerTrigger === event.source;
   pointerTrigger = null;
   if (event.command === 'toggle-popover' && previewed && fromPointer) {
