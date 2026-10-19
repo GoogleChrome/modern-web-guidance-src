@@ -9,6 +9,7 @@ web-feature-ids:
   - text-decoration-skip-spaces
   - background-clip-border-area
   - border-shape
+  - corner-shape
 ---
 
 # Custom text decorations
@@ -200,24 +201,36 @@ Two box properties decorate text by outlining it rather than running a line alon
   background-clip: border-area;
 }
 
-/* Border that follows a shape, such as a circled word */
-.circled {
-  padding: 0.2em 1.1em; /* Example values: wide enough that the ellipse does not clip the text */
+/* Border that follows a shape that border-radius cannot draw, such as a tag with a pointed end */
+.tag {
+  padding: 0.2em 1.5em 0.2em 0.9em; /* Example values: extra room at the point so the text is not clipped */
   border: var(--shape-stroke, max(2px, 0.08em)) solid var(--shape-color, currentColor); /* Example stroke width */
   /* A single shape strokes along its path. Two shapes fill the area between them.
-     ellipse(50% 50%) is an example; use circle(), polygon(), or shape() for other outlines. */
-  border-shape: ellipse(50% 50%);
+     This polygon is an example; use shape() for curves. */
+  border-shape: polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%);
 }
 ```
 
 `border-shape` replaces only the border. The background is still the rectangular box, so do not rely on it to fill a shape.
+
+When only the corners need a different shape, such as a bevelled, scooped, or notched label, use `corner-shape` with `border-radius` instead. It keeps the background and border following the corners, and unsupported browsers fall back to ordinary rounded corners.
+
+```css
+.label {
+  padding: 0.2em 0.9em; /* Example values */
+  border: var(--shape-stroke, max(2px, 0.08em)) solid var(--shape-color, currentColor);
+  border-radius: 0.6em; /* Corner size; example value */
+  corner-shape: bevel; /* round (default) | scoop | bevel | notch | square | squircle */
+}
+```
 
 ## Choose a technique
 
 * **`text-decoration`** (line, ink skipping, spaces, inset): the line should run along the text, wrap with it, and follow its font metrics. This is the default choice.
 * **Pseudo-element with `border-shape` and `clip-path`**: the line is a custom shape or needs a draw-on animation. Choose it only when `text-decoration-style` cannot produce the look, because it needs extra positioning. For vector path animations, see {{ GUIDE_REF("line-drawing-animation") }}.
 * **`background-clip: border-area`**: the text needs a gradient outline. Use plain `border-color` when a solid outline is enough. For complete gradient border styling, see {{ GUIDE_REF("gradient-borders") }}.
-* **`border-shape`**: the outline needs a non-rectangular shape, such as a circle or tag. Use `border-radius` when rounded corners are enough. For shaped element styling, see {{ GUIDE_REF("element-shape") }}.
+* **`corner-shape`**: only the corners need a different shape, such as bevelled, scooped, or notched. Pair it with `border-radius`, which sets the corner size.
+* **`border-shape`**: the outline needs a shape `border-radius` cannot draw, such as a tag or arrow. Use `border-radius` when rounded corners are enough. For shaped element styling, see {{ GUIDE_REF("element-shape") }}.
 * **Inset hover reveal**: worth adding when a link needs a hover affordance beyond a color change. Skip it for text that is not interactive.
 
 ## Fallback Strategies
@@ -285,20 +298,20 @@ If your Baseline target does not support `background-clip: border-area`, the dec
 
 {{ BASELINE_STATUS("border-shape") }}
 
-If your Baseline target does not support `border-shape`, the declaration is ignored and the element keeps its normal rectangular border. Keep a pill-shaped border outside the feature, and apply `border-shape`, plus any `border-radius` or padding changes that only make sense with the shape, inside `@supports`. This is progressive enhancement: unsupported browsers show a plain rounded outline.
+If your Baseline target does not support `border-shape`, the declaration is ignored and the element keeps its normal rectangular border. Keep a rounded border outside the feature, and apply `border-shape`, plus any `border-radius` or padding changes that only make sense with the shape, inside `@supports`. This is progressive enhancement: unsupported browsers show a plain rounded outline.
 
 ```css
-.circled {
+.tag {
   padding: 0.2em 0.9em; /* Example values */
   border: var(--shape-stroke, max(2px, 0.08em)) solid var(--shape-color, currentColor);
-  border-radius: 999px; /* Fallback outline; any value large enough to round the ends works */
+  border-radius: 0.25em; /* Fallback outline */
 }
 
 @supports (border-shape: circle(50%)) {
-  .circled {
+  .tag {
     border-radius: 0; /* The shape replaces the rounded corners */
-    padding-inline: 1.1em; /* Example value: extra room for the ellipse */
-    border-shape: ellipse(50% 50%);
+    padding-inline-end: 1.5em; /* Example value: extra room at the point */
+    border-shape: polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%);
   }
 }
 ```

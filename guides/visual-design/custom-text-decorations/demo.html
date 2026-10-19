@@ -245,27 +245,15 @@
 
     /* ---------- 7. border-shape ---------- */
 
-    .circled,
     .tag {
       display: inline-block;
-      padding: 0.2em 0.9em;
+      padding: 0.2em 1.5em 0.2em 0.9em;
       border: var(--shape-stroke) solid var(--shape-color);
-      border-radius: 999px;
+      border-radius: 0.25em;
       font-weight: 500;
     }
 
-    .tag {
-      border-radius: 0.25em;
-      padding-inline-end: 1.5em;
-    }
-
     @supports (border-shape: circle(50%)) {
-      .circled {
-        border-radius: 0;
-        padding-inline: 1.1em;
-        border-shape: ellipse(50% 50%);
-      }
-
       .tag {
         border-radius: 0;
         border-shape: polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%);
@@ -435,16 +423,10 @@
 
     <section class="flow" id="border-shape" style="--flow-space: 1rem">
       <h2>border-shape</h2>
-      <p>The border follows a basic shape instead of the box, so a word can be circled or tagged without extra markup or
-        SVG.</p>
-      <p class="sample">Do not skip <span class="circled">this word</span>, and read the <span class="tag">new</span>
-        notes.</p>
-      <pre><code>.circled {
-  border: var(--shape-stroke) solid var(--shape-color);
-  border-shape: ellipse(50% 50%);
-}
-
-.tag {
+      <p>The border follows a shape <code>border-radius</code> cannot draw, so a word can be tagged without extra markup
+        or SVG.</p>
+      <p class="sample">Read the <span class="tag">new</span> notes.</p>
+      <pre><code>.tag {</code>
   border: var(--shape-stroke) solid var(--shape-color);
   border-shape: polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%);
 }</code></pre>
