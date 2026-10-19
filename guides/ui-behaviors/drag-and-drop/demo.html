@@ -67,7 +67,17 @@
       z-index: 1;
       pointer-events: none;
       opacity: 0.9;
-      transform: rotate(1deg);
+      transform: scale(1.02);
+      box-shadow: 0 12px 28px rgb(25 52 45 / 28%);
+    }
+
+    .task:has(.drag-handle:focus-visible) {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .task:has(.drag-handle[aria-pressed="true"]) {
+      transform: scale(1.02);
       box-shadow: 0 12px 28px rgb(25 52 45 / 28%);
     }
 
@@ -92,8 +102,7 @@
     }
 
     .drag-handle:focus-visible {
-      outline: 3px solid var(--accent);
-      outline-offset: 2px;
+      outline: none;
     }
 
     .task-controls {
@@ -168,11 +177,11 @@
 <body>
   <main>
     <h1>Tasks</h1>
-    <p>Drag an item with its handle, use <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd> when the handle is focused, or use the movement buttons.</p>
+    <p>Drag an item with its handle, press <kbd>Space</kbd> on a focused handle to grab it, move it with <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd>, then press <kbd>Space</kbd> to drop or <kbd>Escape</kbd> to cancel, or use the movement buttons.</p>
 
     <ol class="task-list" id="taskList">
       <li class="task" data-reorder-item data-label="Outline project">
-        <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" title="Drag to reorder Outline project"
+        <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project"
           style="--icon: var(--icon-grip);"></button>
         <label>Outline project <input value="Write the first draft"></label>
         <div class="task-controls">
@@ -185,7 +194,7 @@
         </div>
       </li>
       <li class="task" data-reorder-item data-label="Review research">
-        <button class="drag-handle icon" type="button" aria-label="Reorder Review research" title="Drag to reorder Review research"
+        <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research"
           style="--icon: var(--icon-grip);"></button>
         <label>Review research <input value="Collect source notes"></label>
         <div class="task-controls">
@@ -198,7 +207,7 @@
         </div>
       </li>
       <li class="task" data-reorder-item data-label="Schedule review">
-        <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" title="Drag to reorder Schedule review"
+        <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review"
           style="--icon: var(--icon-grip);"></button>
         <label>Schedule review <input value="Invite the team"></label>
         <div class="task-controls">
@@ -336,12 +345,47 @@
       announce(`${item.dataset.label} moved ${direction}. Position ${getPosition(item)} of ${list.children.length}.`);
     }
 
+    let grabbedHandle = null;
+    let grabbedNext = null;
+
+    function releaseHandle() {
+      grabbedHandle.setAttribute('aria-pressed', 'false');
+      grabbedHandle = null;
+    }
+
     list.addEventListener('keydown', (event) => {
       const handle = event.target.closest('.drag-handle');
-      if (!handle || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+      if (!handle) return;
+      const item = handle.closest('.task');
 
-      event.preventDefault();
-      moveKeyboardItem(handle.closest('.task'), event.key === 'ArrowUp' ? 'up' : 'down');
+      if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        if (grabbedHandle === handle) {
+          releaseHandle();
+          announce(`Dropped ${item.dataset.label} at position ${getPosition(item)} of ${list.children.length}.`);
+        } else {
+          grabbedHandle = handle;
+          grabbedNext = item.nextElementSibling;
+          handle.setAttribute('aria-pressed', 'true');
+          announce(`Grabbed ${item.dataset.label}, position ${getPosition(item)} of ${list.children.length}. Use arrow keys to move, Space to drop, Escape to cancel.`);
+        }
+      } else if (grabbedHandle !== handle) {
+        return;
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        moveItem(item, grabbedNext);
+        updateDisabledStates();
+        handle.focus();
+        releaseHandle();
+        announce(`Cancelled. ${item.dataset.label} returned to position ${getPosition(item)} of ${list.children.length}.`);
+      } else if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
+        event.preventDefault();
+        moveKeyboardItem(item, event.key === 'ArrowUp' ? 'up' : 'down');
+      }
+    });
+
+    list.addEventListener('focusout', (event) => {
+      if (grabbedHandle && event.target === grabbedHandle && !list.contains(event.relatedTarget)) releaseHandle();
     });
 
     list.addEventListener('click', (event) => {

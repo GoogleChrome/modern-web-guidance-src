@@ -29,9 +29,9 @@ Provide a keyboard-accessible alternative to pointer reordering. Choose an inter
 
 - **Visible movement controls or an actions menu**: Best default for discoverability and screen-reader compatibility, because activating standard buttons works in screen-reader browse modes without intercepting arrow keys. Use an actions menu when persistent inline buttons add too much visual clutter.
 - **Direct arrow keys (or modifier + arrow keys, such as `Alt` + arrow keys) on a focusable handle or item**: Suits frequent reordering with minimal UI chrome. Give the handle an accessible name that identifies both the item and the reorder action, and note that screen-reader browse modes may intercept bare arrow keys on a `<button>` handle unless paired with explicit movement controls or modifier keys.
-- **Grab–move–drop mode (`Space` or `Enter` to pick up, arrow keys to move, `Space` or `Enter` to drop, `Escape` to cancel)**: Useful when reordering is infrequent and persistent controls are undesirable. Expose or announce the grabbed state and available keys on pickup, restore the item to its original DOM position on `Escape`, and verify how screen-reader browse modes interact with the arrow keys.
+- **Grab–move–drop mode (`Space` or `Enter` to pick up, arrow keys to move, `Space` or `Enter` to drop, `Escape` to cancel)**: Arrow keys do nothing until the item is grabbed, which keeps them from conflicting with screen-reader navigation. Toggle `aria-pressed` on the handle, announce the grabbed state and available keys on pickup, restore the item to its original DOM position on `Escape`, and drop on blur.
 
-For any approach, announce the item and its new position in a polite live region.
+For any approach, announce the item and its new position in a polite live region. Show focus and the grabbed state on the item being moved, not just the handle: draw the focus ring with `.item:has(.handle:focus-visible)` and elevate the grabbed item (and any drag preview) with a slight `scale()` and `box-shadow`, without rotation since movement is on one axis.
 
 ### Align reading order with visual layout
 
