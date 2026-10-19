@@ -112,13 +112,13 @@ describe('gcs-downloader', () => {
     const resolved1 = resolveRunPath(relativeSuite);
     assert.ok(resolved1);
     assert.strictEqual(resolved1.relativeRunPath, relativeSuite);
-    assert.ok(resolved1.absoluteRunDir.endsWith(relativeSuite));
+    assert.ok(resolved1.absoluteRunDir.endsWith(path.normalize(relativeSuite)));
 
     // Repo-relative path
     const resolved2 = resolveRunPath(`harness/results/${relativeSuite}`);
     assert.ok(resolved2);
     assert.strictEqual(resolved2.relativeRunPath, relativeSuite);
-    assert.ok(resolved2.absoluteRunDir.endsWith(relativeSuite));
+    assert.ok(resolved2.absoluteRunDir.endsWith(path.normalize(relativeSuite)));
   });
 
   test('resolveRunPath handles results/suites paths without prefixing suites/ to relativeRunPath', async () => {
@@ -128,11 +128,11 @@ describe('gcs-downloader', () => {
     const resolved = resolveRunPath(`results/suites/${suiteRun}`);
     assert.ok(resolved);
     assert.strictEqual(resolved.relativeRunPath, suiteRun);
-    assert.ok(resolved.absoluteRunDir.endsWith(path.join('results', 'suites', ...suiteRun.split('/'))));
+    assert.ok(resolved.absoluteRunDir.endsWith(path.join('results', 'suites', suiteRun)));
 
     const resolved2 = resolveRunPath(`harness/results/suites/${suiteRun}`);
     assert.ok(resolved2);
     assert.strictEqual(resolved2.relativeRunPath, suiteRun);
-    assert.ok(resolved2.absoluteRunDir.endsWith(path.join('results', 'suites', ...suiteRun.split('/'))));
+    assert.ok(resolved2.absoluteRunDir.endsWith(path.join('results', 'suites', suiteRun)));
   });
 });
