@@ -228,9 +228,9 @@ test('collectResults extracts error, errorLocation, pageSnapshot, and browserErr
                                     results: [
                                         {
                                             status: 'failed',
-                                            error: {
-                                                message: '\u001b[31mError: expected true but received false\u001b[39m',
-                                            },
+                                            errors: [
+                                                { message: '\u001b[31mError: expected true but received false\u001b[39m' },
+                                            ],
                                             errorLocation: {
                                                 file: path.join(guidesDir, 'performance', guideName, 'grader.ts'),
                                                 line: 42,
