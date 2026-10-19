@@ -19,8 +19,8 @@ A card groups one related piece of content or one choice. It is a visual pattern
 
 Choose semantics for the content and its interaction separately:
 
-- use an `article` for independently understandable content, whether or not it links to a destination;
-- use a native link for navigation. When the whole card is one destination, the link may wrap the `article` if the content merits article semantics and contains no other interactive elements;
+- use `<article>` as the card root, whether or not it links to a destination;
+- use a native link for navigation. When the whole card is one destination, a single link may wrap the `<article>` only if the card contains no other interactive elements (`a`, `button`, `input`, `select`, `textarea`);
 - keep links and buttons for independent actions as separate native controls;
 - use a radio button or checkbox with an associated `<label>`, or an `option` in a native `<select>`, when the card is a choice.
 
@@ -51,11 +51,11 @@ When cards in a row should share the heights of their regions, use `subgrid`: ma
 
 ### Content cards
 
-Use an `<article>` for independently understandable card content. Keep links and buttons as separate native controls.
+Use an `<article>` as the card root. Keep links and buttons as separate native controls.
 
 ### Single-destination cards
 
-When the whole card is one destination and has no independent actions, use one native link. If the content is independently understandable, the link can wrap an `<article>`. Do not nest other links, buttons, or form controls inside the link, and keep any "read more" text a plain `<p>` or `<span>`. Because the link's accessible name is all of the card's text, keep the content short; if the card has a lot of text or other actions, use the stretched-link pattern below so only the heading is the link:
+When the whole card is one destination and has no independent actions, use one native link. The link can wrap the `<article>`. Do not nest other links, buttons, or form controls inside the link, and keep any "read more" text a plain `<p>` or `<span>`. Because the link's accessible name is all of the card's text, keep the content short; if the card has a lot of text or other actions, use the stretched-link pattern below so only the heading is the link:
 
 ```html
 <a href="/recipes/poached-eggs">
