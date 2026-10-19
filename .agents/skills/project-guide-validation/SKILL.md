@@ -20,14 +20,11 @@ When assigned to validate a guide, create a task list artifact based on this che
 
 ---
 
-## 1. Familiarization & Automated Inspection
+## 1. Familiarization & Automated Validation
 
-Before performing qualitative or browser verification, read the `guide.md` file in its entirety and run the automated guide inspector:
+Before performing qualitative or browser verification, read the `guide.md` file in its entirety and run the automated guide validation suite:
 *   **Understand the Problem & Solution**: Identify the core developer problem the guide addresses and the recommended API, property, or architectural approach.
-*   **Run Automated Validation & Macro Inspection**: Run [scripts/inspect-guide.ts](./scripts/inspect-guide.ts) to validate frontmatter, `web-feature-ids`, markdown soundness, transclusion macros, and grader expectation coverage, and to inspect the exact macro-expanded markdown served to coding agents (`skills-cli` target):
-    ```bash
-    node .agents/skills/project-guide-validation/scripts/inspect-guide.ts guides/<category>/<slug>
-    ```
+*   **Run Automated Validation**: Run `node --test src/authoring/guides-integrity.test.ts` to validate frontmatter, `web-feature-ids`, markdown soundness, transclusion macros, and grader expectation coverage (and inspect the macro-expanded output in `out/build/skills-cli/guides/<category>/<slug>.md` after `pnpm build` when using macros).
 *   **When Reviewing a PR (Splits, Merges, & Reorgs)**: Inspect existing review threads first to avoid duplicating open feedback or rehashing settled discussions. Compare full `BASE` and `HEAD` files (`git show <base_sha>:<path>`) bullet-by-bullet and code-block-by-code-block to catch silently dropped guidance or duplicate bullets, and check for stale `GUIDE_REF` or `INCLUDE` targets across `guides/` and `features/`.
 
 ## 2. Qualitative & Best Practices Review

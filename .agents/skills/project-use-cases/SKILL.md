@@ -102,4 +102,4 @@ The following steps are REQUIRED for creating a new use case:
 
   Submit the use case for review by creating a Pull Request with the `guide.md` stub (or by filing a [new-use-case issue](../../../.github/ISSUE_TEMPLATE/new-use-case.yml)).
 
-After the use case is approved, proceed to Stage 2 (`project-guides` skill) to author the full `guide.md`, `expectations.md`, and `demo.html`; Stage 3 evaluation capsules under `targets/<base_app>/` are then generated automatically by `gd dev`.
+After the use case is approved, proceed to Stage 2 (`project-guides` skill) to author the full `guide.md`, `expectations.md`, and `demo.html`.
