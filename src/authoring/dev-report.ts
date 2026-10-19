@@ -187,6 +187,10 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
     content += `> - For edits to \`targets/\` (\`task.md\` or \`grader.ts\`): review the changes, then add the **\`needs-eval-run\`** label to re-run calibration and agent evaluations.\n\n`;
   }
 
+  content += `## Summary\n\n`;
+  content += `<!-- TODO: Complete overall summary across all targets -->\n\n`;
+  content += `---\n\n`;
+
   for (const s of summaries) {
     content += `## Target: \`${s.baseApp}\` (Status: \`${s.flag}\`)\n\n`;
     content += `### Evaluation Results\n\n`;
