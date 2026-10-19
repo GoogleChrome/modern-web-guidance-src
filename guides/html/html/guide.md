@@ -32,7 +32,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** use `<button>` for triggered actions (JS, Modals, Forms) and `<a>` strictly for URL navigation. Set `type="button"` for non-submit buttons in forms to prevent unintended submission.
 - **DO** use `<ul>`, `<ol>`, and `<dl>` elements for list content.
 - **DO** ensure that all interactive elements like links and buttons have accessible names.
-- **DO** ensure that all interactive elements have a role that matches the interaction that they facilitate.
+- **DO** ensure that all interactive elements have a role that matches the interaction that they facilitate. Controls that trigger an interaction on the same page/in the same view should have a role of `button`, controls that redirect people should have a role of `link`.
 - **DO** hide purely decorative SVG images from assistive technology using `aria-hidden="true"`. If using a decorative `<img>`, always include an empty `alt` attribute (e.g. `alt=""`).
 - **DO** ensure that informative SVGs like logos, data visualizations, or icon buttons have a proper accessible name, and for more complex visuals, an accompanying text alternative, providing the same information as that conveyed visually.
 
@@ -215,7 +215,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallback strategies for using the Popover API in a cross-browser way.
 - **DO** use `<dialog>` for modal overlays (requires JS `.showModal()`) to automatically trap focus, dim backgrounds, and support dismissing via `Esc`. Use the `closedby="any"` attribute to enable native "light-dismiss" (closing on backdrop click) without custom JavaScript.
-- **DO** provide a way visble control for closing modal overlays, so that people using voice control software can easily determine how to close the modal dialog.
+- **DO** provide a visble control for closing modal overlays, so that people using voice control software can easily determine how to dismiss the modal dialog.
 - **DO** utilize the Popover API (`popover` attribute) for non-modal UI (menus, tooltips) that do not require focus traps.
 - **DO** use `::backdrop` to style modal backgrounds.
 - **DO** use `<form method="dialog">` to dismiss dialogs without manual JS handlers. Combined button `formmethod="dialog"` yields the button's value to the dialog `.returnValue`.
@@ -289,14 +289,16 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 
 ```html
 <!-- Exclusive Accordion Set -->
-<details name="faq">
-  <summary>Item 1</summary>
-  <p>Contents...</p>
-</details>
-<details name="faq">
-  <summary>Item 2</summary>
-  <p>Contents...</p>
-</details>
+<section aria-label="Frequently asked questions">
+  <details name="faq">
+    <summary>Item 1</summary>
+    <p>Contents...</p>
+  </details>
+  <details name="faq">
+    <summary>Item 2</summary>
+    <p>Contents...</p>
+  </details>
+</section>
 ```
 
 ## 6. Focus Boundaries and Visibility
@@ -306,7 +308,7 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 - **DO** use the global `inert` attribute for entire hidden sections (off-screen menus, background while custom modal is open) to remove them from tab flows and accessibility trees.
 - **DO** pair `[inert]` with CSS (`opacity: 0.5`) to visually signify inactivity.
 - **DO** rely on natural DOM order for sequential navigation.
-- **DO** ensure that focusable elements aren't obscured by anything when they receive focus.
+- **DO** ensure that focusable elements aren't obscured by anything when they receive focus (for example, focus should move to modal dialogs and be constrained in them, rather than being able to access obscured content behind the modal).
 - **DO** maintain focus, and move it to an adjacent element or return it to a trigger control, when the currently focused element is hidden, or removed
 - **DO** move focus to the start of the new content, when dynamically injecting new content
 
@@ -342,7 +344,7 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 
 - **DO** utilize the `form="form-id"` attribute to decouple inputs from the physical `<form>` tree.
 - **DO** use `<datalist>` coupled with `<input list="id">` for lightweight auto-suggestions (note: visually unstylable and has screen-reader quirks).
-- **DO** use the `autocomplete` attribute and appropriate value on input fields that request personal information.
+- **DO** use the `autocomplete` attribute and appropriate value on input fields that request personal information (for combined name fields use `autocomplete="name"`, for a given name use `autocomplete="given-name"`, for a family name use `autocomplete="family-name"`.)
 - **DO** distinguish `autocomplete="current-password"` (sign-in) from `autocomplete="new-password"` (registration / password change) so password managers offer the right action.
 - **DO** match `autocomplete` tokens with appropriate `inputmode` and `type` (`type="email"` + `inputmode="email"` + `autocomplete="email"`). They control different things — keyboard, validation, and autofill respectively — and reinforce each other.
 
@@ -376,7 +378,7 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 
 - **DON'T** rely on JS for basic video controls if native `controls` attribute is sufficient.
 - **DON'T** apply `role="none"` or `aria-hidden="true"` to focusable elements (such as embedded interactive `<iframe>` components). Hiding elements from the assistive technology tree while leaving them accessible to sequential keyboard navigation violates core accessibility heuristics. The background video exception holds solely because omitting the `controls` attribute renders the `<video>` element fully non-focusable.
-- **DON'T** automatically play audio when a page is opened, unless there is an accessible stop or pause control, or a way to change the volume of the audio, independent from the operating system's volume level (WCAG 1.4.2 Audio Control, Level A).
+- **DON'T** automatically play audio when a page is opened, unless there is an accessible stop or pause control, or a way to change the volume of the audio, independent from the operating system's volume level, as to adhere to WCAG 1.4.2 Audio Control, Level A.
 
 ### Code Example
 
