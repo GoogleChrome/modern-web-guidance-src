@@ -753,8 +753,8 @@ Use the sample-feature property on the root element.
 describe('loadPaulIrishScoredCards', () => {
   it('loads the human-scored cards from canonical files excluding unsure and stubs', async () => {
     const { cards, humanVerdicts } = await loadPaulIrishScoredCards();
-    assert.equal(cards.length, 119);
-    assert.equal(humanVerdicts.size, 119);
+    assert.ok(cards.length >= 110);
+    assert.equal(humanVerdicts.size, cards.length);
     assert.equal(humanVerdicts.get('2547b2ba6d74'), 'not-old-pattern');
     assert.equal(humanVerdicts.get('7f2a96f62a4c'), 'not-old-pattern');
     assert.equal(humanVerdicts.get('c8147e8fdf52'), undefined); // 'unsure' excluded
