@@ -339,6 +339,7 @@ form.addEventListener('submit', (e) => {
 - **DO** use `autocomplete="street-address"`.
 - If the site has users in different countries, **DO** use the `<textarea>` element for addresses, to accommodate different address formats in different geographical regions. If the form uses separate inputs for address parts (e.g. Street, City), **DO** use `autocomplete` values `address-line1`, `address-line2`, etc.
 - **DO** make postal codes optional.
+- **DO** provide a "Same as shipping address" checkbox when collecting both shipping and billing addresses (and scope `autocomplete` with `shipping` or `billing` inside a `<fieldset>`).
 
 - **DON'T** split name inputs into rigid variables ("First", "Last") for global audiences.
 - **DON'T** enforce Latin-only characters for names and usernames.
