@@ -151,5 +151,45 @@ describe('runCliAgentCommand', () => {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  test('strips harness and pnpm environment leaks and results/ PATH entries from child environment', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-env-'));
+    const workDir = path.join(tempDir, 'work');
+    const targetDir = path.join(tempDir, 'target');
+    const shimDir = path.join(tempDir, '.gd-bin');
+    for (const d of [workDir, targetDir, shimDir]) fs.mkdirSync(d, { recursive: true });
+    const envDumpFile = path.join(workDir, 'env.json');
+
+    const prevNoSandbox = process.env[UNSAFE_NO_SANDBOX_ENV];
+    const prevPkgName = process.env.PNPM_PACKAGE_NAME;
+    const prevSuiteCfg = process.env.GD_SUITE_CONFIG;
+    const prevPath = process.env.PATH;
+    const pnpmInjectedBin = path.join(process.cwd(), 'results', 'suites', 's', '1', 'secret-guide', 'demo', 'unguided', 'node_modules', '.bin');
+    process.env[UNSAFE_NO_SANDBOX_ENV] = '1';
+    process.env.PNPM_PACKAGE_NAME = 'modern-web-guidance-src';
+    process.env.GD_SUITE_CONFIG = '/repo/results/suites/s/suite_config.json';
+    process.env.PATH = `${pnpmInjectedBin}:${path.join(targetDir, 'node_modules', '.bin')}:${prevPath || ''}`;
+
+    try {
+      const script = `require('fs').writeFileSync(${JSON.stringify(envDumpFile)}, JSON.stringify(process.env));`;
+      await runCliAgentCommand(process.execPath, ['-e', script], workDir, targetDir, 'TestAgent', 'unguided');
+      const childEnv = JSON.parse(fs.readFileSync(envDumpFile, 'utf8'));
+      assert.strictEqual(childEnv.PNPM_PACKAGE_NAME, undefined);
+      assert.strictEqual(childEnv.GD_SUITE_CONFIG, undefined);
+      const pathEntries = (childEnv.PATH || '').split(path.delimiter);
+      assert.strictEqual(pathEntries[0], shimDir);
+      assert.ok(!pathEntries.some((p: string) => p.includes('secret-guide') || p.startsWith(targetDir)));
+    } finally {
+      if (prevNoSandbox === undefined) delete process.env[UNSAFE_NO_SANDBOX_ENV];
+      else process.env[UNSAFE_NO_SANDBOX_ENV] = prevNoSandbox;
+      if (prevPkgName === undefined) delete process.env.PNPM_PACKAGE_NAME;
+      else process.env.PNPM_PACKAGE_NAME = prevPkgName;
+      if (prevSuiteCfg === undefined) delete process.env.GD_SUITE_CONFIG;
+      else process.env.GD_SUITE_CONFIG = prevSuiteCfg;
+      if (prevPath === undefined) delete process.env.PATH;
+      else process.env.PATH = prevPath;
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });
 

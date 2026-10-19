@@ -2,9 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config, { Agents } from '../config.ts';
-import { cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import { cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, exportTrajectories, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import type { ConversationRecord } from '@google/gemini-cli-core';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import {
   type StandardizedStep,
   type SubagentMetadata,
@@ -58,7 +57,7 @@ function getSessionFiles(dir: string): string[] {
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.GEMINI_CLI, templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.GEMINI_CLI, templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -71,12 +70,7 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
-    let stopWatchingMcpLog = () => { };
-
     try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
       await runCliAgentCommand(
         command,
         commandArgs,
@@ -86,7 +80,6 @@ async function run() {
         runType
       );
     } finally {
-      stopWatchingMcpLog();
       const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
       exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
       exportTrajectories(tmpDir, '*/chats/*.jsonl', targetDir);

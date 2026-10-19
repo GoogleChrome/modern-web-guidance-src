@@ -8,6 +8,8 @@ import { type SuiteConfig } from '../config.ts';
 import { getTaskMap } from '../../core/guide-validation.ts';
 import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
 import { rootDir } from '../../core/paths.ts';
+import { extractTestTitles } from '../../core/grader-coverage.ts';
+import { type ScenarioCheck } from './metrics.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
@@ -37,31 +39,6 @@ export function extractTokenUsageFromResults(resultsDir: string): { total: numbe
     if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
   }
   return null;
-}
-
-function extractErrorMessage(dir: string, targetFile: string): string {
-  const failureFile = path.join(dir, 'generation_failed.json');
-  if (fs.existsSync(failureFile)) {
-    try {
-      const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
-      return `Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`;
-    } catch (e) {
-      return 'Generation failed (could not parse failure info)';
-    }
-  }
-
-  const stderrPath = path.join(dir, 'agent_stderr.log');
-  
-  if (!fs.existsSync(stderrPath)) {
-    const fileName = path.relative(dir, targetFile) || path.basename(targetFile) || 'index.html';
-    return fs.existsSync(targetFile) ? 'Generation failed' : `${fileName} not found`;
-  }
-
-  return fs.readFileSync(stderrPath, 'utf8')
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l && !l.includes('YOLO mode'))
-    .pop()?.slice(0, 100) || 'Generation mysteriously failed';
 }
 
 export function parseResultPath(relPath: string): { guide: string, taskName: string, runType: string } | null {
@@ -264,13 +241,10 @@ function setupGraderForTask(
   if (!ctx) return null;
 
   const failureFile = path.join(dir, 'generation_failed.json');
-
-  // If grader is missing, generation failed, target file is missing, or results already exist, skip generating a runner.
   if (!fs.existsSync(ctx.graderPath) || fs.existsSync(failureFile) || !ctx.targetAppExists || fs.existsSync(ctx.graderResults)) {
     return null;
   }
 
-  // Generate a runner script to be picked up by pnpm -r run-grader
   const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide);
   const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
   fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
@@ -351,55 +325,72 @@ async function collectGuideUsage(dir: string, runType: string) {
   return { guidesUsedResult, retrievedGuides, fileReadGuides, guidanceToolsUsedResult };
 }
 
-function evaluateScenarioResults(
+export function evaluateScenarioResults(
   dir: string,
   guide: string,
   graderPath: string,
   graderResults: string,
   targetAppExists: boolean,
-  targetFile: string
-): any[] {
-  const scenarioResults: any[] = [];
+  _targetFile?: string
+): ScenarioCheck[] {
+  const makeInfraError = (reason: string): ScenarioCheck[] => [{
+    id: 'early-failure-1',
+    passed: false,
+    message: reason,
+    isEarlyFailure: true,
+  }];
+
+  const makeAgentFailures = (reason: string): ScenarioCheck[] => {
+    const titles = extractTestTitles(graderPath);
+    if (titles.length === 0) {
+      return [{
+        id: 'agent-failure-1',
+        passed: false,
+        message: reason,
+        failureReason: reason,
+      }];
+    }
+    return titles.map((title, idx) => ({
+      id: `agent-failure-${idx + 1}`,
+      passed: false,
+      message: title,
+      failureReason: reason,
+    }));
+  };
 
   if (!fs.existsSync(graderPath)) {
     console.warn(`Grader not found for ${guide} at ${graderPath}`);
-    scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
-  } else if (!targetAppExists) {
-    scenarioResults.push({ name: 'File Check', status: 'fail', message: 'Target app missing' });
-  } else if (!fs.existsSync(graderResults)) {
-    const errorMessage = extractErrorMessage(dir, targetFile);
-    scenarioResults.push({ passed: false, message: errorMessage, isEarlyFailure: true });
-  } else {
-    try {
-      let json: any = null;
+    return makeInfraError('Grader not found');
+  }
+  const failureFile = path.join(dir, 'generation_failed.json');
+  try {
+    const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
+    return makeInfraError(`Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`);
+  } catch (err) {
+    if (!isEnoent(err)) {
+      return makeInfraError('Generation failed (could not parse failure info)');
+    }
+  }
+  if (!targetAppExists) {
+    return makeAgentFailures('Target app missing');
+  }
 
-      if (fs.existsSync(graderResults)) {
-        try {
-          json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
-        } catch (e) {
-          console.error(`Error parsing JSON results for ${guide} in ${dir}`, e);
-        }
-      } else {
-        console.error(`Missing grader results JSON for ${guide} in ${dir}`);
-      }
+  try {
+    const json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
 
-      if (json && json.suites && json.suites.length > 0) {
-        const specs: any[] = [];
-        const traverse = (suite: any) => {
-          if (suite.specs) specs.push(...suite.specs);
-          if (suite.suites) suite.suites.forEach(traverse);
-        };
-        json.suites.forEach(traverse);
+    if (Array.isArray(json?.suites) && json.suites.length > 0) {
+      const specs: any[] = [];
+      const traverse = (suite: any) => {
+        if (suite.specs) specs.push(...suite.specs);
+        if (suite.suites) suite.suites.forEach(traverse);
+      };
+      json.suites.forEach(traverse);
 
+      if (specs.length > 0) {
         return specs.map((spec: any) => {
-          const lastResult = spec.tests?.[0]?.results?.[spec.tests[0].results.length - 1];
-          const passed = lastResult?.status === 'passed';
-          if (passed) {
-            return {
-              passed: true,
-              message: spec.title,
-              testId: spec.id,
-            };
+          const lastResult = spec.tests?.[0]?.results?.at(-1);
+          if (lastResult?.status === 'passed') {
+            return { id: spec.id, passed: true, message: spec.title };
           }
 
           const rawError = lastResult?.error?.message || lastResult?.errors?.[0]?.message;
@@ -421,9 +412,9 @@ function evaluateScenarioResults(
           const browserErrors = browserErrorsAtt?.body ? Buffer.from(browserErrorsAtt.body, 'base64').toString('utf8') : undefined;
 
           return {
+            id: spec.id,
             passed: false,
             message: spec.title,
-            testId: spec.id,
             ...(errorMsg ? { error: errorMsg } : {}),
             ...(errorLocation ? { errorLocation } : {}),
             ...(pageSnapshot ? { pageSnapshot } : {}),
@@ -431,13 +422,16 @@ function evaluateScenarioResults(
           };
         });
       }
-    } catch (err: any) {
-      console.error(`Error processing results for ${dir}:`, err);
-      scenarioResults.push({ name: 'System Error', status: 'fail', message: err.message });
     }
-  }
 
-  return scenarioResults;
+    return makeAgentFailures('Playwright test runner failed or produced no test results');
+  } catch (err: any) {
+    if (isEnoent(err)) {
+      return makeAgentFailures('Playwright test runner failed to produce a results file');
+    }
+    console.error(`Error processing results for ${dir}:`, err);
+    return makeAgentFailures(err.message || 'System Error');
+  }
 }
 
 function readRuntimeData(dir: string): any | undefined {
@@ -583,13 +577,8 @@ export async function collectResults(resultsDir: string, _suiteConfig?: SuiteCon
   const taskMap = getTaskMap();
   const runDirs = getRunNumberDirs(resultsDir);
 
-  // PASS 1: Generate parallel grader scripts for missing results
   const graderPackages = prepareGradersForRuns(resultsDir, runDirs, taskMap);
-
-  // PASS 1.5: Execute parallel grading runs
   await executeParallelGrading(resultsDir, graderPackages);
-
-  // PASS 2: Collect all results and formulate report
   const { allResults, model } = await collectAllResults(resultsDir, runDirs, taskMap);
 
   const estimatedRuntime = estimateTotalRuntime(resultsDir);
