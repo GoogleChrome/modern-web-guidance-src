@@ -79,7 +79,7 @@ Pick one form for the top-level triggers. Role, keyboard model, and styling must
 * **Menubar.** `role="menubar"` on the container (never on a popover), styled as one continuous bar with no gaps between triggers. One `Tab` stop; `ArrowLeft`/`ArrowRight` move between triggers; hover switches open menus. Use for an application command bar.
 * **Separate menu buttons.** Each trigger is its own `Tab` stop and looks like a standalone button. No `role="menubar"`, no arrow keys between triggers, no preview on focus, no hover switching. Wrap in `<nav>` if they navigate, otherwise no role. Use for toolbars and page headers.
 
-The rest of this guide describes the menubar form. For separate buttons, keep everything inside each menu and drop the menubar-level behaviour.
+The rest of this guide describes the menubar form. For separate buttons, keep everything inside each menu and drop the menubar-level behavior.
 
 ### Position the menu with CSS Anchor Positioning
 
