@@ -1,6 +1,6 @@
-- Independently understandable content uses an `<article>`; a single-destination link may wrap that article if it contains no other interactive elements.
-- A card's regions (media, heading or header, content, footer) are direct children of the card, with no wrapper element grouping them, and a single-paragraph content region is the `<p>` itself, not wrapped.
-- Each card's ancestor wrapper establishes an inline-size query container (`container-type: inline-size`); the card itself is not the container its layout queries.
+- The card root is an `<article>`; a single link may wrap it only if the card contains no other interactive elements.
+- A card's regions (media, heading or header, content, footer) are direct children of the card. A region with a single element is that element itself, not wrapped, and a wrapper appears only around multiple elements.
+- A card's descendants adapt with `@container` rules, and the size container is the card itself, not the grid or list parent.
 - A card with media stacks its media above its text content in a single column when its container is narrow, regardless of viewport width.
 - A card with media places its media in a side column beside its text content when its container is wide.
 - A card without media renders in a single-column layout at both narrow and wide container widths, with no empty media column; the side-column rules apply only to cards that contain media.
