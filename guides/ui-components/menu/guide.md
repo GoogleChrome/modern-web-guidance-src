@@ -1,6 +1,6 @@
 ---
 name: menu
-description: Build an accessible application command menu with nested submenus.
+description: Build a menu component that displays a list of options or actions, with support for nested submenus.
 web-feature-ids:
   - popover
   - invoker-commands
