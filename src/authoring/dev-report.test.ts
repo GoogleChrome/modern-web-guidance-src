@@ -164,6 +164,9 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
 
   const report = buildInitialDevReport(tmpDir, summaries, { category, name });
   assert.ok(report.includes('# Evaluation Report: size-aware-styling'));
+  assert.ok(report.includes('## Summary'));
+  assert.ok(report.includes('<!-- TODO: Complete overall summary across all targets -->'));
+  assert.ok(report.indexOf('## Summary') < report.indexOf('## Target: `daily-grind`'));
   assert.ok(report.includes('## Target: `daily-grind` (Status: `HEALTHY`)'));
   assert.ok(report.includes('### Evaluation Results'));
   assert.ok(report.includes('#### DAILY-GRIND - GUIDED'));

@@ -118,6 +118,10 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
   const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
   let content = `# Evaluation Report: ${guideName}\n\n`;
 
+  content += `## Summary\n\n`;
+  content += `<!-- TODO: Complete overall summary across all targets -->\n\n`;
+  content += `---\n\n`;
+
   for (const s of summaries) {
     content += `## Target: \`${s.baseApp}\` (Status: \`${s.flag}\`)\n\n`;
     content += `### Evaluation Results\n\n`;

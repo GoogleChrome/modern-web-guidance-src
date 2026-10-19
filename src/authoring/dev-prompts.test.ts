@@ -157,6 +157,8 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
 
   assert.ok(prompt.includes('size-aware-styling'));
   assert.ok(prompt.includes('report.md'));
+  assert.ok(prompt.includes('## Summary'));
+  assert.ok(prompt.includes('Top-Level Summary'));
   assert.ok(prompt.includes('LOW_GUIDED_PASS_RATE'));
   assert.ok(prompt.includes('daily-grind'));
   assert.ok(prompt.includes('Evaluation Results'));
