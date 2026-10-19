@@ -164,6 +164,12 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
 
   const report = buildInitialDevReport(tmpDir, summaries, { category, name });
   assert.ok(report.includes('# Evaluation Report: size-aware-styling'));
+  assert.ok(report.includes('> [!NOTE]'));
+  assert.ok(report.includes('needs-eval-gen'));
+  assert.ok(report.includes('needs-eval-run'));
+  assert.ok(report.includes('## Summary'));
+  assert.ok(report.includes('<!-- TODO: Complete overall summary across all targets -->'));
+  assert.ok(report.indexOf('## Summary') < report.indexOf('## Target: `daily-grind`'));
   assert.ok(report.includes('## Target: `daily-grind` (Status: `HEALTHY`)'));
   assert.ok(report.includes('### Evaluation Results'));
   assert.ok(report.includes('#### DAILY-GRIND - GUIDED'));
@@ -173,4 +179,8 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
   assert.ok(report.includes('## Target: `devtools-times` (Status: `LOW_GUIDED_PASS_RATE`)'));
   assert.ok(report.includes('#### DEVTOOLS-TIMES - GUIDED'));
   assert.ok(report.includes('Check 2'));
+
+  const healthyReport = buildInitialDevReport(tmpDir, [summaries[0]!], { category, name });
+  assert.ok(!healthyReport.includes('> [!NOTE]'));
+  assert.ok(!healthyReport.includes('needs-eval-gen'));
 });

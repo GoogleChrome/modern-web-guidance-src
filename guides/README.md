@@ -74,11 +74,12 @@ Run it from a clean, up-to-date `main`. For each guide it runs `gd dev`, opens o
 
 It skips guides that already have an open `grader updates: <guide-name>` PR (unless labeled `needs-eval-gen` or `needs-eval-run`) and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` without an open PR (delete the branch to retry).
 
-To rerun an open `gd pr` PR after editing `guide.md`, `expectations.md`, `task.md`, or `grader.ts` on the PR branch:
-- Label the PR **`needs-eval-gen`** to delete `targets/<target>/` for the configured target(s), regenerate solutions, tasks, and graders, and re-run evaluations.
-- Label the PR **`needs-eval-run`** to keep existing target evals and re-run calibration, agent evaluations, and report generation.
+When an evaluation report in a PR is unhealthy, `gd dev` applies recommended fixes directly to the files in the PR (committed as a separate post-report commit from the initial target generation).
+Reviewers can inspect the file diffs in the PR, leave inline comments or push adjustments, and trigger the next automated pass:
+- Label the PR **`needs-eval-gen`** if `guide.md` or `expectations.md` was changed. This wipes `targets/<target>/`, regenerates solutions, tasks, and graders against the updated guidance, and re-runs evaluations.
+- Label the PR **`needs-eval-run`** if only `task.md` or `grader.ts` was changed. This preserves existing targets and re-runs calibration and agent evaluation.
 
-Separately, `src/ci/expectations-watch.ts` files an "Expectations changed for the \<guide-name\> guide" issue (label `expectations-changed`) whenever a push edits `expectations.md` on a guide that already has evals without updating them.
+Separately, `src/ci/sync-pipeline-issue.ts` maintains the canonical [Content & Eval Pipeline issue (#1815)](https://github.com/GoogleChrome/modern-web-guidance-src/issues/1815), including flagging guides under **Stale evals** whenever `expectations.md` has substantive changes newer than `grader.ts` or `targets/`.
 
 ### Checking Status: `gd audit`
 

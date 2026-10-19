@@ -1,0 +1,40 @@
+diff --git a/index.html b/index.html
+index 66c9173..4939caf 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,23 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @property --animation-reduced {
++      syntax: "*";
++      inherits: false;
++      initial-value: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      * {
++        animation: var(--animation-reduced) !important;
++      }
++
++      nav a,
++      .btn {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..7fdeb3b 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "true",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

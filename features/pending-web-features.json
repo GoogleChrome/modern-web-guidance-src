@@ -35,14 +35,6 @@
     "issue": "https://github.com/web-platform-dx/web-features/issues/4292",
     "compat_features": "html.elements.iframe.allow.media-playback-while-not-visible"
   },
-  "tmp-scroll-triggered-animations": {
-    "issue": "https://github.com/web-platform-dx/web-features/pull/4163",
-    "group": [
-      "scrolling",
-      "animation"
-    ],
-    "compat_features": "css.properties.animation-trigger"
-  },
   "tmp-navigation-source": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4301",
     "group": "css",
@@ -66,11 +58,6 @@
     "issue": "https://github.com/web-platform-dx/web-features/issues/4430",
     "group": "css",
     "compat_features": "css.properties.column-wrap"
-  },
-  "tmp-revert-rule": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4431",
-    "group": "css",
-    "compat_features": "css.types.global_keywords.revert-rule"
   },
   "tmp-path-length": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4307",
