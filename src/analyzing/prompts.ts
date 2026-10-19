@@ -15,7 +15,7 @@ import { createHash } from 'node:crypto';
 export const PROMPT_MODEL = 'gemini-3.8-flash';
 export const GATE0_THINKING_BUDGET = 2048;
 export const PHASE2_THINKING_BUDGET = 1024;
-export const JUDGE_THINKING_BUDGET = 512;
+export const JUDGE_THINKING_BUDGET = 2048;
 export const FIX_SIMULATION_THINKING_BUDGET = 1024;
 
 /**
@@ -288,8 +288,9 @@ export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization
 
 The Modern Web Guidance mission is to identify old web patterns and brownfield library workarounds, and modernize them with standard web platform features to reduce dependencies and improve browser behavior.
 
-Core Evaluation Principle:
+Core Evaluation Principles:
 - ASSUME MODERN PLATFORM SUPPORT: Target environments support the guide's modern web platform feature unless the code is inside an explicit feature-detection or fallback guard. Never reject a finding solely on browser support, runtime availability, or spec draft maturity.
+- GUIDES OFTEN ONLY SHOW THE MODERN "AFTER" API: Many guides in this catalog focus solely on teaching the modern web platform solution and do not include an explicit "Before" section or list every legacy library/workaround. Do NOT require the legacy pattern to be explicitly mentioned or quoted in guide.md. Use both guide.md AND your general knowledge of web development history and the web ecosystem to recognize when the highlighted code is a real legacy workaround, pre-standard idiom, or third-party library pattern that the guide's modern feature replaces.
 
 Detective-then-Judge methodology:
 1. \`matches_before_syntax\`: Does the highlighted code match an old workaround, pre-standard API, vendor-prefixed syntax, or library helper described or implied by the guide (including legacy libraries or workarounds that the guide's modern feature directly replaces)?

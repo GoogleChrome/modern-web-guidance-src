@@ -13,16 +13,15 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing 45 rules across the 33 active feature guides (O69)', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 45);
-    assert.strictEqual(ALL_RULES.length, 45);
+  it('exports PILOT_RULES containing 41 rules across the 30 active feature guides (O69, O38 retired 3)', async (t) => {
+    assert.strictEqual(PILOT_RULES.length, 41);
+    assert.strictEqual(ALL_RULES.length, 41);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 33);
+    assert.strictEqual(guideIds.size, 30);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
-        'accessible-error-announcement',
         'adapt-scrollbar-to-contrast-preferences',
         'animate-element-entry-exit',
         'animate-to-intrinsic-sizes',
@@ -52,9 +51,7 @@ describe('rules/index export registry', () => {
         'schedule-tasks-by-priority',
         'scroll-position-aware-elements',
         'scrollspy',
-        'shadow-dom',
         'size-aware-styling',
-        'stack-drill-down',
       ].sort(),
     );
 

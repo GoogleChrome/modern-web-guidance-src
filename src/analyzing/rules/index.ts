@@ -1,5 +1,4 @@
 import type { AnalyzerRule } from '../schema.ts';
-import { accessibleErrorAnnouncementRule } from './accessible-error-announcement.ts';
 import { adaptScrollbarToContrastPreferencesRules } from './adapt-scrollbar-to-contrast-preferences.ts';
 import { animateElementEntryExitRule } from './animate-element-entry-exit.ts';
 import { animateToIntrinsicSizesRule } from './animate-to-intrinsic-sizes.ts';
@@ -40,11 +39,8 @@ import { sanitizeUntrustedHtmlRules } from './sanitize-untrusted-html.ts';
 import { scheduleTasksByPriorityRule } from './schedule-tasks-by-priority.ts';
 import { scrollPositionAwareElementsRules } from './scroll-position-aware-elements.ts';
 import { scrollspyRules } from './scrollspy.ts';
-import { shadowDomRules } from './shadow-dom.ts';
 import { sizeAwareStylingRules } from './size-aware-styling.ts';
-import { stackDrillDownRule } from './stack-drill-down.ts';
 
-export * from './accessible-error-announcement.ts';
 export * from './adapt-scrollbar-to-contrast-preferences.ts';
 export * from './animate-element-entry-exit.ts';
 export * from './animate-to-intrinsic-sizes.ts';
@@ -76,12 +72,10 @@ export * from './sanitize-untrusted-html.ts';
 export * from './schedule-tasks-by-priority.ts';
 export * from './scroll-position-aware-elements.ts';
 export * from './scrollspy.ts';
-export * from './shadow-dom.ts';
 export * from './size-aware-styling.ts';
-export * from './stack-drill-down.ts';
 
 export const PILOT_RULES: readonly AnalyzerRule[] = [
-  // Pilot Batch 1 & Earlier (16 guides, 19 rules):
+  // Pilot Batch 1 & Earlier (14 guides, 17 rules; accessible-error-announcement and stack-drill-down retired per Gate 0 / O38):
   autofillSignInFormRule,
   animateToIntrinsicSizesRule,
   declarativeDialogPopoverControlRule,
@@ -92,20 +86,17 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   individualTransformPropertiesRule,
   childStateBasedStylingRule,
   childStateBasedStylingJsParentClassRule,
-  accessibleErrorAnnouncementRule,
   breakUpLongTasksRule,
   imeSafeEnterSubmitRule,
-  stackDrillDownRule,
   calculateEventDifferentialsRule,
   resilientContextMenusAndNestedDropdownsRule,
   resilientContextMenusAndNestedDropdownsPositioningRule,
   formFieldsAutomaticallyFitContentsRule,
   brandConsistentFormsRule,
 
-  // Batch 2 & Reserve (13 guides, 17 rules -> 36 rules across 29 landed feature guides):
+  // Batch 2 & Reserve (12 guides, 17 rules -> 34 rules across 26 landed feature guides; shadow-dom retired per Gate 0 / O38):
   ...scrollspyRules,
   ...autofillAddressFormRules,
-  ...shadowDomRules,
   ...brandedSelectStylingRules,
   ...adaptScrollbarToContrastPreferencesRules,
   ...checkboxRules,
@@ -117,7 +108,7 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...darkModeRules,
   ...manageRecurringIntervalsRules,
 
-  // Batch 3 Wild-Verified Guides (4 active guides, 7 rules -> 45 rules across 33 feature guides total;
+  // Batch 3 Wild-Verified Guides (4 active guides, 7 rules -> 41 rules across 30 feature guides total;
   // model-partial-time-concepts and custom-select-picker-layouts removed per O69 guide mismatch):
   ...dragRules,
   ...formatHumanReadableDurationsRules,

@@ -1,6 +1,6 @@
 /* oxlint-disable max-lines-per-function, max-depth */
 import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 export {
   JUDGE_VERSION,
@@ -1074,12 +1074,25 @@ export async function loadPaulIrishScoredCards(
   await ingestJsonFile(join(cardsDir, '_calibration-deck.json'));
   await ingestJsonFile(join(cardsDir, '_m3-spotcheck-deck.json'));
 
-  const entries = await readdir(cardsDir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.isFile() && entry.name.endsWith('.json')) {
-      await ingestJsonFile(join(cardsDir, entry.name));
+  async function scanDirectory(dir: string, maxDepth = 3): Promise<void> {
+    if (maxDepth < 0) return;
+    try {
+      const entries = await readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          await scanDirectory(fullPath, maxDepth - 1);
+        } else if (entry.isFile() && entry.name.endsWith('.json')) {
+          await ingestJsonFile(fullPath);
+        }
+      }
+    } catch {
+      /* ignore unreadable dir */
     }
   }
+
+  await scanDirectory(cardsDir);
+  await scanDirectory(dirname(cardsDir), 1);
 
   const scoredCards: CalibrationDeckItem[] = [];
   const scoredVerdicts = new Map<string, JudgeVerdict>();
