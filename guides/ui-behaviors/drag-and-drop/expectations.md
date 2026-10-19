@@ -5,5 +5,8 @@
 - The keyboard reordering mechanism moves the item down in the collection.
 - Focus remains on the keyboard reordering mechanism after reordering, shifting to an alternative control on the same item when necessary to prevent focus loss.
 - The keyboard reordering mechanism prevents movement beyond the first and last items.
+- If the keyboard mechanism is a drag handle, `Space` or `Enter` toggles a grabbed state exposed with `aria-pressed`, arrow keys move the item only while grabbed, and `Escape` restores the item's original position.
+- Reordering is animated: displaced siblings and a released drag preview travel to their new positions instead of jumping, and the animation is skipped under `prefers-reduced-motion: reduce`.
+- When the items are in a scrollable container, holding a dragged item near or beyond the container's top or bottom edge scrolls the container, and the item can still be dropped at the first or last position.
 - Reordering actions are announced in a live region with the item's new position.
 - The collection renders its items in a readable and usable default DOM order before any reordering interaction occurs.
