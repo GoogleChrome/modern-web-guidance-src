@@ -324,13 +324,21 @@ track.prepend(...slides.slice(-offset).map(clone));
 track.append(...slides.slice(0, offset).map(clone));
 
 const items = [...track.children];
-show(items[offset], "instant");
+
+// Reposition without scrollIntoView(), which would move the sequential focus starting point
+// into an inert clone and make Tab skip the carousel controls.
+const jump = (item) => {
+  const t = track.getBoundingClientRect();
+  const r = item.getBoundingClientRect();
+  track.scrollBy({ left: r.left + r.width / 2 - (t.left + track.clientWidth / 2), behavior: "instant" });
+};
+jump(items[offset]);
 
 // Landed on a clone: jump invisibly to the identical real slide, `slides.length` positions away.
 onSettled(() => {
   const item = nearest();
   const k = items.indexOf(item);
-  if (item.dataset.clone) show(items[k < offset ? k + slides.length : k - slides.length], "instant");
+  if (item.dataset.clone) jump(items[k < offset ? k + slides.length : k - slides.length]);
 });
 sync();
 ```

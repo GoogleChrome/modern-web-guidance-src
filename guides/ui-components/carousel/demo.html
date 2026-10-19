@@ -146,14 +146,21 @@
       content: none;
     }
 
+    /* Overlay the buttons at the track's left and right edges, centered on the slide height */
     .fallback-controls {
+      position: absolute;
+      inset-inline: 0.5rem;
+      inset-block-start: 0;
+      block-size: 12rem;
       display: flex;
-      justify-content: center;
-      gap: 1rem;
-      margin-block-end: 0.75rem;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 1;
     }
 
     .fallback-controls button {
+      pointer-events: auto;
       font: inherit;
       inline-size: 2.5rem;
       block-size: 2.5rem;
@@ -315,13 +322,21 @@
     track.append(...slides.slice(0, offset).map(clone));
 
     const items = [...track.children];
-    show(items[offset], "instant");
+
+    // Reposition without scrollIntoView(), which would move the sequential focus starting point
+    // into an inert clone and make Tab skip the carousel controls.
+    const jump = (item) => {
+      const t = track.getBoundingClientRect();
+      const r = item.getBoundingClientRect();
+      track.scrollBy({ left: r.left + r.width / 2 - (t.left + track.clientWidth / 2), behavior: "instant" });
+    };
+    jump(items[offset]);
 
     // Landed on a clone: jump invisibly to the identical real slide, `slides.length` positions away.
     onSettled(() => {
       const item = nearest();
       const k = items.indexOf(item);
-      if (item.dataset.clone) show(items[k < offset ? k + slides.length : k - slides.length], "instant");
+      if (item.dataset.clone) jump(items[k < offset ? k + slides.length : k - slides.length]);
     });
     sync();
   </script>
