@@ -38,6 +38,7 @@
       display: flex;
       overflow-x: auto;
       scroll-snap-type: x mandatory;
+      scrollbar-width: none;
       gap: 1rem;
       border-radius: 0.5rem;
     }
@@ -235,81 +236,60 @@
   </section>
 
   <script type="module">
-    const track = document.querySelector('.carousel-track');
-    const items = [...track.querySelectorAll('.carousel-item')];
+    const track = document.querySelector(".carousel-track");
+    const slides = [...track.children];
     const status = document.querySelector('.carousel [role="status"]');
-    const hasNativeButtons = CSS.supports('selector(::scroll-button(*))') &&
-      CSS.supports('anchor-name: --carousel-track');
-    const hasNativeMarkers = CSS.supports('selector(::scroll-marker)');
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const controls = document.querySelector(".fallback-controls");
+    const markerNav = document.querySelector(".fallback-markers");
+    const [prevBtn, nextBtn] = controls.querySelectorAll("button");
+    const hasButtons = CSS.supports("selector(::scroll-button(*))") &&
+      CSS.supports("anchor-name: --carousel-track");
+    const hasMarkers = CSS.supports("selector(::scroll-marker)");
+    let markers = [];
+    let timer;
 
+    // Inline (x) axis only.
     function currentIndex() {
-      const trackRect = track.getBoundingClientRect();
-      const center = trackRect.left + trackRect.width / 2;
-      return items.reduce((closest, item, index) => {
-        const rect = item.getBoundingClientRect();
-        const distance = Math.abs(rect.left + rect.width / 2 - center);
-        return distance < closest.distance ? { index, distance } : closest;
-      }, { index: 0, distance: Infinity }).index;
+      const center = track.getBoundingClientRect().left + track.clientWidth / 2;
+      const distance = (s) => {
+        const r = s.getBoundingClientRect();
+        return Math.abs(r.left + r.width / 2 - center);
+      };
+      return slides.indexOf(slides.reduce((a, b) => (distance(b) < distance(a) ? b : a)));
     }
 
-    function scrollToIndex(index) {
-      items[index]?.scrollIntoView({
-        behavior: prefersReducedMotion ? 'instant' : 'smooth',
-        inline: 'center',
-        block: 'nearest'
+    const goTo = (i) => slides[i]?.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
+
+    controls.hidden = hasButtons;
+    if (!hasButtons) {
+      prevBtn.addEventListener("click", () => goTo(Math.max(0, currentIndex() - 1)));
+      nextBtn.addEventListener("click", () => goTo(Math.min(slides.length - 1, currentIndex() + 1)));
+    }
+    markerNav.hidden = hasMarkers;
+    if (!hasMarkers) {
+      markers = slides.map((slide, i) => {
+        const button = Object.assign(document.createElement("button"), { type: "button", textContent: i + 1 });
+        button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
+        button.addEventListener("click", () => goTo(i));
+        markerNav.append(button);
+        return button;
       });
     }
 
-    if (!hasNativeButtons) {
-      const controls = document.querySelector('.fallback-controls');
-      controls.hidden = false;
-      controls.querySelector('.carousel-prev').addEventListener('click', () => {
-        scrollToIndex(Math.max(0, currentIndex() - 1));
-      });
-      controls.querySelector('.carousel-next').addEventListener('click', () => {
-        scrollToIndex(Math.min(items.length - 1, currentIndex() + 1));
-      });
+    function sync() {
+      const i = currentIndex();
+      status.textContent = `Slide ${i + 1} of ${slides.length}`;
+      markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
+      prevBtn.disabled = i === 0;
+      nextBtn.disabled = i === slides.length - 1;
     }
 
-    let markerButtons = [];
-    if (!hasNativeMarkers) {
-      const markers = document.querySelector('.fallback-markers');
-      markers.hidden = false;
-      items.forEach((item, index) => {
-        const marker = document.createElement('button');
-        marker.type = 'button';
-        marker.setAttribute('aria-label', item.dataset.markerName || `Go to slide ${index + 1}`);
-        marker.addEventListener('click', () => scrollToIndex(index));
-        markers.append(marker);
-      });
-      markerButtons = [...markers.children];
-    }
-
-    // MANDATORY: runs regardless of native vs. fallback controls, so the
-    // status region and marker highlight always match the settled slide.
-    let announceTimeout;
-    function syncCurrentSlide() {
-      const active = currentIndex();
-      status.textContent = `Slide ${active + 1} of ${items.length}`;
-      markerButtons.forEach((marker, index) => {
-        marker.setAttribute('aria-current', String(index === active));
-      });
-      if (!hasNativeButtons) {
-        const prevBtn = document.querySelector('.carousel-prev');
-        const nextBtn = document.querySelector('.carousel-next');
-        if (prevBtn) prevBtn.disabled = active === 0;
-        if (nextBtn) nextBtn.disabled = active === items.length - 1;
-      }
-    }
-
-    track.addEventListener('scrollend', syncCurrentSlide);
-    track.addEventListener('scroll', () => {
-      clearTimeout(announceTimeout);
-      announceTimeout = setTimeout(syncCurrentSlide, 150);
+    track.addEventListener("scrollend", sync);
+    track.addEventListener("scroll", () => {
+      clearTimeout(timer);
+      timer = setTimeout(sync, 150); // fallback when scrollend is unsupported
     }, { passive: true });
-
-    syncCurrentSlide();
+    sync();
   </script>
 </body>
 

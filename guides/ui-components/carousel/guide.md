@@ -82,6 +82,7 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
   gap: 1rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
+  scrollbar-width: none;
 }
 
 .carousel-slide {
