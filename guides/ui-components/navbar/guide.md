@@ -5,10 +5,13 @@ web-feature-ids:
   - popover
   - anchor-positioning
   - container-queries
+  - interpolate-size
+  - details-content
 # - local-link
 guides:
   - responsive-disclosure
   - icons
+  - animate-to-intrinsic-sizes
 ---
 
 # Responsive Site Navigation
@@ -213,7 +216,16 @@ Use `aria-current="page"` to identify the current page. Set it at build time or 
 
 ## Transitions and Accessibility
 
-If the navigation is animated, use `@starting-style` and `allow-discrete` for popover entry and exit, animate only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}.
+If the navigation is animated, use `@starting-style` and `allow-discrete` for popover entry and exit, animate the popover with only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}.
+
+### Narrow submenu slide-down
+
+In the narrow layout the submenu is an inline `<details>`, which opens instantly by default. To slide it open and closed:
+
+- Animate `details::details-content` between `block-size: 0` and `auto`, with `interpolate-size: allow-keywords` and `overflow: clip`.
+- Include `content-visibility` with `allow-discrete` in the transition so the content stays rendered until the close finishes.
+- Scope it to the narrow container query and `prefers-reduced-motion: no-preference`. In the wide layout the submenu is a popover and must not be clipped.
+- Browsers without `interpolate-size` or `::details-content` support open and close the submenu instantly. For the general technique, see {{ GUIDE_REF("animate-to-intrinsic-sizes") }}.
 
 Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh` for viewport-relative limits, provide visible `:focus-visible` indicators, and adapt custom borders and current-page indicators under `forced-colors: active`.
 
