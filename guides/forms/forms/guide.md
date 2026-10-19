@@ -113,20 +113,22 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** use the `autocomplete` attribute to specify expected data (e.g., `email`, `tel`, `current-password`, `new-password`).
 - **DO** use `inputmode` to optimize on-screen keyboards (e.g., `inputmode="numeric"` for PINs).
 - **DO** use `enterkeyhint` to set the Enter key label (e.g., `next`, `done`).
-- **DO** turn off text correction on fields that hold identifiers rather than prose: `autocorrect="off"` (plus `autocapitalize="off"` and `spellcheck="false"`) on usernames, emails, URLs, codes, and search inputs. Leave the defaults on for free-text fields like messages and comments.
+- **DO** turn off text correction on fields that hold identifiers rather than prose: `autocorrect="off"` (plus `autocapitalize="none"` and `spellcheck="false"`) on usernames, emails, URLs, codes, and search inputs. Leave the defaults on for free-text fields like messages and comments.
 - **DO** use single-field inputs for complex numbers (credit cards, phones) to help autofill.
 - **DO** use a single `<input type="text" inputmode="numeric" autocomplete="one-time-code">` and the WebOTP API for SMS one-time passcode verification. See guide {{ GUIDE_REF("sms-otp-form") }}.
 
 - **DON'T** use `type="number"` for credit cards, ZIP codes, or one-time passcodes (causes UI scroll issues and removes leading zeros).
+- **DON'T** split a single value (such as a 6-digit OTP, phone number, or credit card across multiple `<input>` boxes that auto-advance focus on keypress.
+- **DON'T** block copy-and-paste (`paste` events) or disable `autocomplete` on passwords, verification codes, or other authentication fields.
 
 ### Code Example
 
 ```html
 <label for="zip">ZIP Code:</label>
-<input type="text" id="zip" name="zip" autocomplete="postal-code" inputmode="numeric" pattern="\d{5}">
+<input type="text" id="zip" name="zip" autocomplete="postal-code" inputmode="numeric" pattern="\d{5}" enterkeyhint="next">
 
 <label for="username">Username:</label>
-<input type="text" id="username" name="username" autocomplete="username" autocorrect="off" autocapitalize="off" spellcheck="false">
+<input type="text" id="username" name="username" autocomplete="username" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="done">
 ```
 
 ## 4. Constraints and Validation
