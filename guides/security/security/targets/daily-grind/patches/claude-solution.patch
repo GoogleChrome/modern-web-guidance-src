@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+index 66c9173..240b763 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+diff --git a/package.json b/package.json
+index 2bd4d77..52fef7d 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "node --check server.js",
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..ef57263
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,72 @@
++const http = require('node:http');
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++
++const PORT = parseInt(process.env.PORT || '11222', 10);
++const WORK_DIR = __dirname;
++
++const server = http.createServer((req, res) => {
++  const site = req.headers['sec-fetch-site'];
++  const mode = req.headers['sec-fetch-mode'];
++  const dest = req.headers['sec-fetch-dest'];
++
++  if (site && site !== 'same-origin' && site !== 'same-site' && site !== 'none') {
++    const isAllowedNav = site === 'cross-site' && mode === 'navigate' &&
++      (req.method === 'GET' || req.method === 'HEAD') && !['object', 'embed'].includes(dest);
++    if (!isAllowedNav) {
++      res.writeHead(403, {
++        'Content-Type': 'text/plain; charset=utf-8',
++        'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++      });
++      res.end('Forbidden');
++      return;
++    }
++  }
++
++  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
++  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
++  res.setHeader('X-Content-Type-Options', 'nosniff');
++  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++  res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=()');
++  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++  res.setHeader('Reporting-Endpoints', 'default="https://report.example.com/csp"');
++
++  const nonce = crypto.randomBytes(16).toString('base64');
++  res.setHeader('Content-Security-Policy', [
++    "default-src 'self'",
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'self'",
++    "require-trusted-types-for 'script'",
++    "report-to default",
++  ].join('; '));
++
++  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
++  const pathname = parsedUrl.pathname;
++
++  if (pathname === '/logout' || pathname === '/logout/') {
++    res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
++    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.end('Logged out');
++    return;
++  }
++
++  const filePath = path.join(WORK_DIR, 'index.html');
++  fs.readFile(filePath, (err, data) => {
++    if (err) {
++      res.writeHead(500);
++      res.end('Server error');
++      return;
++    }
++    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.end(data);
++  });
++});
++
++server.listen(PORT, () => {
++  console.log(`Claude solution running on http://localhost:${PORT}`);
++});
