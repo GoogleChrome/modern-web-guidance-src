@@ -96,6 +96,17 @@ Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-po
 [popover] [popover] {
   position-area: inline-end span-block-end;
   position-try-fallbacks: flip-inline, flip-block, --below;
+  overflow: visible;
+}
+
+/* Safe triangle: an invisible bridge over the parent's edge, so a diagonal move toward the submenu
+   stays over it instead of sibling items. */
+[popover] [popover]::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -1.5rem;
+  inline-size: 1.5rem;
 }
 
 /* Last resort for narrow viewports: below the trigger, indented, so the submenu never covers its parent. */
