@@ -137,6 +137,12 @@ Target is healthy.
     assert.ok(labels.includes('gd-dev-content'));
     assert.ok(labels.includes('gd-dev-eval'));
   });
+
+  it('returns empty labels on healthy reports so computeLabelDiff can clear previous labels', () => {
+    const emptyReport = `# Evaluation Report: test\n\n## Target: \`daily-grind\` (Status: \`HEALTHY\`)\n\n#### Actionable Recommendations:\n- None (target is healthy and verified).\n`;
+    const labels = determinePrLabels(emptyReport);
+    assert.deepEqual(labels, []);
+  });
 });
 
 describe('computeLabelDiff', () => {

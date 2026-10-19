@@ -21,7 +21,16 @@ import {
 } from '../core/guide-validation.ts';
 import { cCyan, cGreen } from '../core/colors.ts';
 
-export async function generateTargetGrader(guideDirAbs: string, baseApp: string, failureContext?: string): Promise<void> {
+export async function generateTargetGrader(
+  guideDirAbs: string,
+  baseApp: string,
+  failureContext?: string,
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+  }
+): Promise<void> {
   const repoRoot = rootDir;
   const relativeGuidePath = path.relative(repoRoot, guideDirAbs);
   const relativeWorkSubdir = path.join(relativeGuidePath, 'targets', baseApp);
@@ -96,6 +105,11 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       fs.cpSync(sourcePatches, path.join(workDir, PATCHES_DIR), { recursive: true });
     }
 
+    const existingGrader = path.join(guideDirAbs, TARGETS_DIR, baseApp, GRADER_FILE);
+    if (failureContext && fs.existsSync(existingGrader)) {
+      fs.copyFileSync(existingGrader, path.join(workDir, GRADER_FILE));
+    }
+
     const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
     const activeAgents = getActiveSolutionAgents(targetDir);
     const solutionPatchFiles: Partial<Record<SolutionAgent, string>> = {};
@@ -119,6 +133,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       cssomnomDtsPath: path.join(workDir, 'cssomnom.d.ts'),
       failureContext,
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
+      prContext,
     });
 
     await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
