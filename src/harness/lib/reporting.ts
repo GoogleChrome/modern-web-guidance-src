@@ -17,7 +17,7 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
     const stats = testStats[name];
     
     md += `## ${name.toUpperCase()} (Median: ${stats.medianPassRate}%)\n\n`;
-    md += `**Pass rates across runs:** ${stats.runPassRates.join('%, ')}%\n\n`;
+    md += `**Pass rates across runs:** ${stats.runPassRates.length ? `${stats.runPassRates.join('%, ')}%` : 'N/A'}\n\n`;
 
     // Show the median run's detailed results
     const medianRunIndex = runs.findIndex((run: RunResult) => {

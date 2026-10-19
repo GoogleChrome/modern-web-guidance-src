@@ -1,9 +1,10 @@
 import test from 'node:test';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
 import { defaultSuiteConfig, Agents } from '../config.ts';
 import { collectResults } from './collection.ts';
+import type { ScenarioCheck } from './metrics.ts';
 import { generateNormalizedTrajectory } from './trajectory-normalizer.ts';
 import { guidesDir } from '../../core/paths.ts';
 
@@ -187,6 +188,76 @@ base_app: test-app
         assert.strictEqual(numRuns, 1);
         assert.strictEqual(model, 'claude-3-7-sonnet-20250219');
         assert.ok(allResults[`task - ${guideName} - guided`]);
+    } finally {
+        if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
+        if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
+    }
+});
+
+test('collectResults records generation_failed as a single isEarlyFailure entry and broken app as N failed checks', async (_t) => {
+    const resultsBase = path.resolve(testDir, 'fixtures-results-e2e-early-failure');
+    const guideName = '_e2e_test_guide_early_fail';
+    const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
+    const tasksDir = path.join(performanceGuideDir, 'tasks');
+    const taskPath = path.join(tasksDir, 'task.md');
+
+    try {
+        if (!fs.existsSync(tasksDir)) fs.mkdirSync(tasksDir, { recursive: true });
+        const graderPath = path.join(performanceGuideDir, 'grader.ts');
+        fs.writeFileSync(graderPath, `
+            import { test, expect } from '@playwright/test';
+            test('test 1: check element exists', async ({ page }) => {});
+            test('test 2: check styling applied', async ({ page }) => {});
+            test('test 3: check interaction behaves', async ({ page }) => {});
+        `);
+
+        fs.writeFileSync(taskPath, `---
+base_app: test-app
+---
+- E2E Mock Prompt`);
+
+        const runNumberDir = path.join(resultsBase, '1');
+        const guidedDir = path.join(runNumberDir, guideName, 'task', 'guided');
+        const unguidedDir = path.join(runNumberDir, guideName, 'task', 'unguided');
+        fs.mkdirSync(guidedDir, { recursive: true });
+        fs.mkdirSync(unguidedDir, { recursive: true });
+
+        // Guided: generation_failed.json exists -> infra error (single isEarlyFailure entry)
+        fs.writeFileSync(path.join(guidedDir, 'index.html'), '<html>Mock HTML</html>');
+        fs.writeFileSync(path.join(guidedDir, 'generation_failed.json'), JSON.stringify({
+            agentName: 'antigravity_cli',
+            exitCode: 'SIGTERM'
+        }));
+
+        // Unguided: agent finished cleanly (no generation_failed.json), but Playwright produced empty suites -> 0/3 agent failure
+        fs.writeFileSync(path.join(unguidedDir, 'index.html'), '<html>Broken Build</html>');
+        fs.writeFileSync(path.join(unguidedDir, `${guideName}_results.json`), JSON.stringify({ suites: [] }));
+
+        const { allResults, numRuns } = await collectResults(resultsBase, defaultSuiteConfig);
+
+        assert.strictEqual(numRuns, 1);
+        const guidedKey = `task - ${guideName} - guided`;
+        const unguidedKey = `task - ${guideName} - unguided`;
+
+        const guidedPayload = allResults[guidedKey][0];
+        assert.deepStrictEqual(guidedPayload.results, [{
+            id: 'early-failure-1',
+            passed: false,
+            message: 'Generation failed: antigravity_cli exited with SIGTERM',
+            isEarlyFailure: true,
+        }]);
+
+        const unguidedPayload = allResults[unguidedKey][0];
+        assert.strictEqual(unguidedPayload.results.length, 3);
+        assert.deepStrictEqual(
+            unguidedPayload.results.map((c: ScenarioCheck) => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure, message: c.message })),
+            [
+                { passed: false, isEarlyFailure: undefined, message: 'test 1: check element exists' },
+                { passed: false, isEarlyFailure: undefined, message: 'test 2: check styling applied' },
+                { passed: false, isEarlyFailure: undefined, message: 'test 3: check interaction behaves' },
+            ]
+        );
+        assert.ok(unguidedPayload.results[0].failureReason?.includes('Playwright test runner failed'));
     } finally {
         if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
         if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
