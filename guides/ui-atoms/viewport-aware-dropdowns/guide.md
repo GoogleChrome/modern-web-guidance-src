@@ -1,12 +1,12 @@
 ---
-name: resilient-context-menus-and-nested-dropdowns
-description: Build accessible, responsive menus, tooltips, dropdowns, or contextual overlays that must be tethered to specific UI elements, guaranteeing that the overlay automatically repositions itself (e.g., flipping axes) when it encounters viewport edges, ensuring it never gets cut off.
+name: viewport-aware-dropdowns
+description: Position dropdowns, flyouts, or contextual action panels tethered to a trigger button so they automatically flip axes at viewport edges instead of getting clipped.
 web-feature-ids:
   - anchor-positioning
   - popover
 ---
 
-# Resilient Context Menus And Nested Dropdowns
+# Viewport-Aware Dropdowns
 
 A revealed action panel or popover button group is a useful pattern for users to access additional functionality while taking up minimal space. This overlay pattern comes with layout complexity, as the panel must remain tethered to a trigger element while adapting to viewport constraints. Traditionally, this required complex JavaScript libraries (like Popper.js or Floating UI) to calculate positions and handle collisions.
 
@@ -68,6 +68,8 @@ To prevent the panel from being cut off at the edge of the screen, define "try t
   position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
 }
 ```
+
+If your dropdown or flyout includes a directional arrow or border that needs to change style depending on which fallback position was chosen, see {{ GUIDE_REF("position-aware-tooltips") }}. For declarative invocation of dialogs and popovers without JavaScript, see {{ GUIDE_REF("declarative-dialog-popover-control") }}.
 
 ## Fallback strategies
 

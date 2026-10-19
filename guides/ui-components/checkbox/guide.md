@@ -21,7 +21,7 @@ For simple, brand-consistent styling that retains native rendering, keyboard beh
 ```css
 .checkbox-native {
   accent-color: #1a73e8;
-  
+
   /* Sizing is controlled via relative units */
   inline-size: 1.25em;
   aspect-ratio: 1;
@@ -129,10 +129,12 @@ selectAll.indeterminate = true;
   ```
 - **DO** provide a `:disabled` style variant that lowers opacity and sets `cursor: not-allowed` to convey inactive states clearly.
 
+{{ FEATURE_ISSUES("accent-color") }}
 
 ## Fallback strategies
 
 {{ FEATURE_FALLBACKS("accent-color") }}
+
 ### CSS Masks
 
 {{ BASELINE_STATUS("masks") }}
