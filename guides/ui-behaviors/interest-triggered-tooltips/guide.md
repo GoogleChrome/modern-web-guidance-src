@@ -51,13 +51,13 @@ Even with `interestfor` handling the semantics above, your implementation MUST s
 
 ### Positioning the tooltip
 
-The tooltip is positioned using **CSS Anchor Positioning**. When the tooltip is opened using `interestfor` (or a popover invoker like `popovertarget`), the trigger element automatically becomes an **implicit anchor** for the popover.
+The tooltip is positioned using **CSS Anchor Positioning**. When the tooltip is opened using `interestfor`, the trigger element automatically becomes an **implicit anchor** for the popover.
 
 In modern browsers supporting native anchor positioning, you do **not** need to define an `anchor-name` on the trigger or a `position-anchor` on the tooltip. You can position the tooltip directly relative to its implicit anchor using `position-area` and handle collision flipping with `position-try-fallbacks`:
 
 ```css
 [popover] {
-  /* Implicit anchor from interestfor / popovertarget: no anchor-name or position-anchor needed */
+  /* Implicit anchor from interestfor: no anchor-name or position-anchor needed */
   position-area: top;
   position-try-fallbacks: flip-block;
   margin: unset;
@@ -76,9 +76,9 @@ The `popover-polyfill` does not polyfill the hint behavior in browsers that supp
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 
-When using the `@oddbird/css-anchor-positioning` polyfill for legacy browser support, be aware that the polyfill does not support implicit anchors or `position-area` on popovers.
+To support browsers without anchor positioning, you can use the `@oddbird/css-anchor-positioning` polyfill. Alternatively, you can use `@supports` to specify a fallback position.
 
-To support browsers without anchor positioning, you must conditionally install the polyfill, explicitly set an `anchor-name` on the trigger, set `position-anchor` on the popover, and position using `anchor()` inset functions instead of `position-area`: 
+When using the `@oddbird/css-anchor-positioning` polyfill for legacy browser support, be aware that the polyfill does not support implicit anchors or `position-area` on popovers. Explicitly set an `anchor-name` on the trigger, set `position-anchor` on the popover, and position using `anchor()` inset functions instead of `position-area`: 
 
 ```html
 <!-- MANDATORY: Conditionally install the anchor positioning polyfill -->
