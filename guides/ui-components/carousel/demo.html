@@ -142,6 +142,10 @@
       }
     }
 
+    .carousel-item[data-clone]::scroll-marker {
+      content: none;
+    }
+
     .fallback-controls {
       display: flex;
       justify-content: center;
@@ -237,7 +241,7 @@
 
   <script type="module">
     const track = document.querySelector(".carousel-track");
-    const slides = [...track.children];
+    const slides = [...track.querySelectorAll(".carousel-item")];
     const status = document.querySelector('.carousel [role="status"]');
     const controls = document.querySelector(".fallback-controls");
     const markerNav = document.querySelector(".fallback-markers");
@@ -246,49 +250,79 @@
       CSS.supports("anchor-name: --carousel-track");
     const hasMarkers = CSS.supports("selector(::scroll-marker)");
     let markers = [];
-    let timer;
+
+    const show = (item, behavior = "auto") =>
+      item?.scrollIntoView({ behavior, inline: "center", block: "nearest" });
 
     // Inline (x) axis only.
-    function currentIndex() {
+    function nearest() {
       const center = track.getBoundingClientRect().left + track.clientWidth / 2;
       const distance = (s) => {
         const r = s.getBoundingClientRect();
         return Math.abs(r.left + r.width / 2 - center);
       };
-      return slides.indexOf(slides.reduce((a, b) => (distance(b) < distance(a) ? b : a)));
+      return [...track.children].reduce((a, b) => (distance(b) < distance(a) ? b : a));
     }
 
-    const goTo = (i) => slides[i]?.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
+    // Run a callback once scrolling settles, with a debounced fallback when scrollend is unsupported.
+    function onSettled(fn) {
+      let timer;
+      track.addEventListener("scrollend", fn);
+      track.addEventListener("scroll", () => {
+        clearTimeout(timer);
+        timer = setTimeout(fn, 150);
+      }, { passive: true });
+    }
 
     controls.hidden = hasButtons;
     if (!hasButtons) {
-      prevBtn.addEventListener("click", () => goTo(Math.max(0, currentIndex() - 1)));
-      nextBtn.addEventListener("click", () => goTo(Math.min(slides.length - 1, currentIndex() + 1)));
+      prevBtn.addEventListener("click", () => show(nearest().previousElementSibling));
+      nextBtn.addEventListener("click", () => show(nearest().nextElementSibling));
     }
     markerNav.hidden = hasMarkers;
     if (!hasMarkers) {
       markers = slides.map((slide, i) => {
         const button = Object.assign(document.createElement("button"), { type: "button", textContent: i + 1 });
         button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
-        button.addEventListener("click", () => goTo(i));
+        button.addEventListener("click", () => show(slide));
         markerNav.append(button);
         return button;
       });
     }
 
     function sync() {
-      const i = currentIndex();
+      const item = nearest();
+      if (item.dataset.clone) return; // looping clones are resolved by the looping script
+      const i = slides.indexOf(item);
       status.textContent = `Slide ${i + 1} of ${slides.length}`;
       markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
-      prevBtn.disabled = i === 0;
-      nextBtn.disabled = i === slides.length - 1;
+      prevBtn.disabled = !item.previousElementSibling;
+      nextBtn.disabled = !item.nextElementSibling;
     }
 
-    track.addEventListener("scrollend", sync);
-    track.addEventListener("scroll", () => {
-      clearTimeout(timer);
-      timer = setTimeout(sync, 150); // fallback when scrollend is unsupported
-    }, { passive: true });
+    onSettled(sync);
+    sync();
+
+    // Two inert, hidden clones on each side keep the track away from its scroll limits, so
+    // native scroll buttons never disable and keyboard focus stays on them.
+    const offset = 2;
+    const clone = (slide) => {
+      const copy = Object.assign(slide.cloneNode(true), { inert: true });
+      copy.dataset.clone = copy.ariaHidden = "true";
+      return copy;
+    };
+    track.prepend(...slides.slice(-offset).map(clone));
+    track.append(...slides.slice(0, offset).map(clone));
+
+    const items = [...track.children];
+    show(items[offset], "instant");
+
+    // Landed on a clone: jump invisibly to the identical real slide, `slides.length` positions away.
+    onSettled(() => {
+      const item = nearest();
+      const k = items.indexOf(item);
+      if (item.dataset.clone) show(items[k < offset ? k + slides.length : k - slides.length], "instant");
+    });
     sync();
   </script>
 </body>

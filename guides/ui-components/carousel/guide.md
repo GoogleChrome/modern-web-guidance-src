@@ -32,7 +32,7 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 
 - Make the track natively scrollable and snap slides on its scrolling axis. For horizontal carousels, arrange slides in a row and use the inline axis; for vertical carousels, use a column and the block axis.
 - Where supported, use `::scroll-button()` for previous/next controls and `::scroll-marker` for direct navigation. Set `scroll-marker-group: after` to place markers after the slides in focus order, and use `:target-current` to distinguish the current marker.
-- Keep controls visible, operable, and clearly focused with `:focus-visible`. Disable previous/next controls at the ends. Preserve native keyboard behavior; do not intercept keys from links, form fields, scroll buttons, or markers. Add custom key handling only for a defined interaction need, and avoid overriding nested controls.
+- Keep controls visible, operable, and clearly focused with `:focus-visible`. Disable previous/next controls at the ends unless the carousel loops (see Looping). Preserve native keyboard behavior; do not intercept keys from links, form fields, scroll buttons, or markers. Add custom key handling only for a defined interaction need, and avoid overriding nested controls.
 
 ## Related patterns
 
@@ -239,48 +239,98 @@ const hasButtons = CSS.supports("selector(::scroll-button(*))") &&
   CSS.supports("anchor-name: --carousel-track");
 const hasMarkers = CSS.supports("selector(::scroll-marker)");
 let markers = [];
-let timer;
+
+const show = (item, behavior = "auto") =>
+  item?.scrollIntoView({ behavior, inline: "center", block: "nearest" });
 
 // Horizontal axis only; use top/height/clientHeight for vertical carousels.
-function currentIndex() {
+function nearest() {
   const center = track.getBoundingClientRect().left + track.clientWidth / 2;
   const distance = (s) => {
     const r = s.getBoundingClientRect();
     return Math.abs(r.left + r.width / 2 - center);
   };
-  return slides.indexOf(slides.reduce((a, b) => (distance(b) < distance(a) ? b : a)));
+  return [...track.children].reduce((a, b) => (distance(b) < distance(a) ? b : a));
 }
 
-const goTo = (i) => slides[i]?.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
+// Run a callback once scrolling settles, with a debounced fallback when scrollend is unsupported.
+function onSettled(fn) {
+  let timer;
+  track.addEventListener("scrollend", fn);
+  track.addEventListener("scroll", () => {
+    clearTimeout(timer);
+    timer = setTimeout(fn, 150);
+  }, { passive: true });
+}
 
 controls.hidden = hasButtons;
 if (!hasButtons) {
-  prevBtn.addEventListener("click", () => goTo(Math.max(0, currentIndex() - 1)));
-  nextBtn.addEventListener("click", () => goTo(Math.min(slides.length - 1, currentIndex() + 1)));
+  prevBtn.addEventListener("click", () => show(nearest().previousElementSibling));
+  nextBtn.addEventListener("click", () => show(nearest().nextElementSibling));
 }
 markerNav.hidden = hasMarkers;
 if (!hasMarkers) {
   markers = slides.map((slide, i) => {
     const button = Object.assign(document.createElement("button"), { type: "button", textContent: i + 1 });
     button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
-    button.addEventListener("click", () => goTo(i));
+    button.addEventListener("click", () => show(slide));
     markerNav.append(button);
     return button;
   });
 }
 
 function sync() {
-  const i = currentIndex();
+  const item = nearest();
+  if (item.dataset.clone) return; // looping clones are resolved by the looping script
+  const i = slides.indexOf(item);
   status.textContent = `Slide ${i + 1} of ${slides.length}`;
   markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
-  prevBtn.disabled = i === 0;
-  nextBtn.disabled = i === slides.length - 1;
+  prevBtn.disabled = !item.previousElementSibling;
+  nextBtn.disabled = !item.nextElementSibling;
 }
 
-track.addEventListener("scrollend", sync);
-track.addEventListener("scroll", () => {
-  clearTimeout(timer);
-  timer = setTimeout(sync, 150); // fallback when scrollend is unsupported
-}, { passive: true });
+onSettled(sync);
+sync();
+```
+
+## Looping (continuous navigation)
+
+For previous/next that wrap from the last slide to the first and back, make the track endless instead of disabling controls at the ends. Native scroll buttons disable at the ends, so bracket the real slides with clones of the last two slides before them and the first two after them. The track then always has a neighbor to scroll to, so native buttons, keyboard scrolling, touch, and snapping all keep working and look unchanged.
+
+- Create clones in JavaScript so the no-JavaScript carousel stays a plain finite list. Mark each clone `inert` and `aria-hidden="true"` so it cannot take focus or be exposed to assistive technology, and exclude it from `::scroll-marker` generation with `content: none`.
+- Use two clones per side. A native scroll button that reaches a scroll limit becomes disabled and drops keyboard focus; two clones keep the track away from the limits.
+- Start on the first real slide with an instant scroll. When scrolling settles on a clone, jump instantly to the identical real slide. The jump is invisible because both render the same content at the same snap position.
+- The status and fallback code count real slides only and ignore clones, so "Slide N of M" announces after the jump settles. Keep `scroll-behavior: smooth` inside `prefers-reduced-motion: no-preference` for user navigation; only the reposition is instant.
+- Looping needs at least two slides. Strip `id` attributes from slides, or avoid them, because clones duplicate them.
+
+```css
+.carousel-slide[data-clone]::scroll-marker {
+  content: none;
+}
+```
+
+Append this to the script in "Status updates and fallback controls"; it reuses `slides`, `show()`, `nearest()`, `onSettled()`, and `sync()`.
+
+```javascript
+// Two inert, hidden clones on each side keep the track away from its scroll limits, so
+// native scroll buttons never disable and keyboard focus stays on them.
+const offset = 2;
+const clone = (slide) => {
+  const copy = Object.assign(slide.cloneNode(true), { inert: true });
+  copy.dataset.clone = copy.ariaHidden = "true";
+  return copy;
+};
+track.prepend(...slides.slice(-offset).map(clone));
+track.append(...slides.slice(0, offset).map(clone));
+
+const items = [...track.children];
+show(items[offset], "instant");
+
+// Landed on a clone: jump invisibly to the identical real slide, `slides.length` positions away.
+onSettled(() => {
+  const item = nearest();
+  const k = items.indexOf(item);
+  if (item.dataset.clone) show(items[k < offset ? k + slides.length : k - slides.length], "instant");
+});
 sync();
 ```
