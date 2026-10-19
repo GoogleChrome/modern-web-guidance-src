@@ -105,20 +105,29 @@
     /* Open and close: short, opacity plus a small slide, no submenu-specific variant. Keyboard users
        are never waiting on it because focus moves on the toggle event, not the transition end. */
     @media (prefers-reduced-motion: no-preference) {
+      /* Closing: this rule is in effect once :popover-open is removed. */
       [popover] {
         opacity: 0;
         translate: 0 -.25rem;
-        transition: opacity .12s ease, translate .12s ease, display .12s allow-discrete, overlay .12s allow-discrete;
+        transition: opacity .15s ease, translate .15s ease, display .15s allow-discrete, overlay .15s allow-discrete;
       }
 
+      /* Opening: faster. @starting-style is required: a closed popover is display: none, and
+         transitions do not run from an unrendered state, so this supplies the before-values. */
       [popover]:popover-open {
         opacity: 1;
         translate: 0 0;
+        transition-duration: .1s;
 
         @starting-style {
           opacity: 0;
           translate: 0 -.25rem;
         }
+      }
+
+      /* Switching between open menubar menus is instant, as in native menubars. */
+      [role="menubar"]:has(> [popover]:popover-open) > [popover] {
+        transition: none;
       }
     }
 

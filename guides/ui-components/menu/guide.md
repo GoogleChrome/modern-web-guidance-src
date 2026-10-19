@@ -113,20 +113,27 @@ Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenu
 
 ```css
 @media (prefers-reduced-motion: no-preference) {
+  /* Closing: this rule is in effect once :popover-open is removed. */
   [popover] {
     opacity: 0;
     translate: 0 -.25rem;
-    transition: opacity .12s, translate .12s, display .12s allow-discrete, overlay .12s allow-discrete;
+    transition: opacity .15s, translate .15s, display .15s allow-discrete, overlay .15s allow-discrete;
   }
+  /* Opening: faster. */
   [popover]:popover-open {
     opacity: 1;
     translate: 0 0;
+    transition-duration: .1s;
     @starting-style { opacity: 0; translate: 0 -.25rem; }
+  }
+  /* Switching between open menubar menus is instant, as in native menubars. */
+  [role="menubar"]:has(> [popover]:popover-open) > [popover] {
+    transition: none;
   }
 }
 ```
 
-`display` and `overlay` with `allow-discrete` keep the popover rendered and in the top layer until the close transition ends.
+`@starting-style` is not a repeat of `[popover]`: a closed popover is `display: none`, and transitions do not run from an unrendered state, so it supplies the before-values for the open. Without it the open snaps and only the close animates. `display` and `overlay` with `allow-discrete` keep the popover rendered and in the top layer until the close transition ends.
 
 ## Keyboard and focus
 
