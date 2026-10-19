@@ -568,7 +568,18 @@ function renderSuites() {
         const taskCount = testInfo.taskCount || 0;
         const maxRuns = testInfo.maxRuns || 1;
         const earlyFailureRate = testInfo.earlyFailureRate || 0;
+        const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
+        const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
         const isFaulty = earlyFailureRate === 100;
+
+        const errColor = earlyFailureRate <= 15
+            ? `color-mix(in oklch, var(--text-secondary), oklch(72% 0.15 74) ${Math.round((earlyFailureRate / 15) * 100)}%)`
+            : `color-mix(in oklch, oklch(72% 0.15 74), oklch(58% 0.19 26) ${Math.min(100, Math.round(((earlyFailureRate - 15) / 35) * 100))}%)`;
+        const errOpacity = Math.min(1, Number((0.4 + (earlyFailureRate / 15) * 0.6).toFixed(2)));
+        const errWeight = earlyFailureRate >= 10 ? 600 : 400;
+
+        const uErrBand = uErr > 0 ? `<div class="variance-band unguided" style="left: ${(uRate * (1 - uErr / 100)).toFixed(1)}%; width: ${uErr}%;"></div>` : '';
+        const gErrBand = gErr > 0 ? `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - gErr / 100)).toFixed(1)}%; width: ${gErr}%;"></div>` : '';
 
         const { label, ldap } = formatSuiteLabel(testInfo);
 
@@ -583,10 +594,15 @@ function renderSuites() {
                 <td>${getAgentBadge(testInfo.agent)}${escapeHtml(testInfo.agent)}</td>
                 <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
                 <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${(escapeHtml(testInfo.model) || '').replaceAll('-', '-<wbr>')}</td>
-                <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
+                <td style="font-weight: 600; line-height: 1.2;">
+                    <div>${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</div>
+                    ${earlyFailureRate > 0 ? `<div style="font-size: 0.72rem; font-weight: ${errWeight}; color: ${errColor}; opacity: ${errOpacity}; margin-top: 2px;" title="${earlyFailureRate}% of runs encountered infrastructure errors and were excluded">${earlyFailureRate}% err</div>` : ''}
+                </td>
                 <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
                     <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
                         <div class="suite-dumbbell-track">
+                            ${uErrBand}
+                            ${gErrBand}
                             <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px);"></div>
                             <div class="dot unguided" style="left: calc(${uRate}% - 3px);"></div>
                             <div class="dot guided" style="left: calc(${gRate}% - 4px);"></div>
@@ -668,7 +684,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
 
     const chartData = testInfo.chartData || (testInfo.data?.results ? calculateChartData(testInfo.data.results) : null);
     if (!chartData || !chartData.labels || chartData.labels.length < 1) return;
-    const { labels, guided, unguided } = chartData;
+    const { labels, guided, unguided, guided_failed, unguided_failed, guided_err_rate, unguided_err_rate } = chartData;
 
     tooltipContainer.classList.remove('hidden');
     updateTooltipPosition(x, y);
@@ -682,8 +698,8 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
     tooltipChartInstance.render({
         labels,
         datasets: [
-            { label: 'Unguided', data: unguided },
-            { label: 'Guided', data: guided }
+            { label: 'Unguided', data: unguided, failed: unguided_failed, errRate: unguided_err_rate },
+            { label: 'Guided', data: guided, failed: guided_failed, errRate: guided_err_rate }
         ]
     });
 }
@@ -839,10 +855,10 @@ function renderPivotInsights() {
         });
     }
     /** @type {{
-     *   agent: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
-     *   serving: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
-     *   model: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
-     *   guide: Record<string, { uplift: number, uRate: number, gRate: number }[]>
+     *   agent: Record<string, { uplift: number, uRate: number, gRate: number, uErr?: number, gErr?: number }[]>,
+     *   serving: Record<string, { uplift: number, uRate: number, gRate: number, uErr?: number, gErr?: number }[]>,
+     *   model: Record<string, { uplift: number, uRate: number, gRate: number, uErr?: number, gErr?: number }[]>,
+     *   guide: Record<string, { uplift: number, uRate: number, gRate: number, uErr?: number, gErr?: number }[]>
      * }} */
     const grouped = {
         agent: {},
@@ -860,18 +876,20 @@ function renderPivotInsights() {
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
         const uplift = gRate - uRate;
+        const earlyFailureRate = testInfo.earlyFailureRate || 0;
+        const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
+        const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
 
-        if (!grouped.agent[testInfo.agent]) grouped.agent[testInfo.agent] = [];
-        grouped.agent[testInfo.agent].push({ uplift, uRate, gRate });
-
-        if (!grouped.serving[testInfo.serving]) grouped.serving[testInfo.serving] = [];
-        grouped.serving[testInfo.serving].push({ uplift, uRate, gRate });
-
-        if (!grouped.model[testInfo.model]) grouped.model[testInfo.model] = [];
-        grouped.model[testInfo.model].push({ uplift, uRate, gRate });
+        if (gStats.total > 0 && uStats.total > 0) {
+            const entry = { uplift, uRate, gRate, uErr, gErr };
+            if (testInfo.agent) (grouped.agent[testInfo.agent] ??= []).push(entry);
+            if (testInfo.serving) (grouped.serving[testInfo.serving] ??= []).push(entry);
+            if (testInfo.model) (grouped.model[testInfo.model] ??= []).push(entry);
+        }
 
         const suiteGuides = testInfo.guides || {};
         Object.keys(suiteGuides).forEach(guide => {
+            if (!suiteGuides[guide].guidedTotal || !suiteGuides[guide].unguidedTotal) return;
             const { guidedRate = 0, unguidedRate = 0, uplift = 0 } = suiteGuides[guide];
             if (!grouped.guide[guide]) grouped.guide[guide] = [];
             grouped.guide[guide].push({ uplift, uRate: unguidedRate, gRate: guidedRate });
@@ -899,7 +917,7 @@ function renderPivotInsights() {
     };
 
     /**
-     * @param {Record<string, { uplift: number, uRate: number, gRate: number }[]>} groupObj
+     * @param {Record<string, { uplift: number, uRate: number, gRate: number, uErr?: number, gErr?: number }[]>} groupObj
      * @param {string} filterKey
      */
     const renderPivotTable = (groupObj, filterKey) => {
@@ -967,22 +985,30 @@ function renderPivotInsights() {
             const uRate = medianItem.uRate;
             const gRate = medianItem.gRate;
 
-            // Calculate Standard Deviation
-            const uSD = showVariance ? calculateSD(items.map(item => item.uRate)) : 0;
-            const gSD = showVariance ? calculateSD(items.map(item => item.gRate)) : 0;
-
-            const uSD_left = Math.max(0, uRate - uSD);
-            const uSD_width = Math.min(100, uRate + uSD) - uSD_left;
-
-            const gSD_left = Math.max(0, gRate - gSD);
-            const gSD_width = Math.min(100, gRate + gSD) - gSD_left;
+            // Calculate Standard Deviation (By Guide) or Manski Error Interval (By Agent / Serving / Model)
+            let uBandHtml = '';
+            let gBandHtml = '';
+            if (showVariance) {
+                const uSD = calculateSD(items.map(item => item.uRate));
+                const gSD = calculateSD(items.map(item => item.gRate));
+                if (uSD > 0) {
+                    const left = Math.max(0, uRate - uSD);
+                    uBandHtml = `<div class="variance-band unguided" style="left: ${left}%; width: ${Math.min(100, uRate + uSD) - left}%;"></div>`;
+                }
+                if (gSD > 0) {
+                    const left = Math.max(0, gRate - gSD);
+                    gBandHtml = `<div class="variance-band guided" style="left: ${left}%; width: ${Math.min(100, gRate + gSD) - left}%;"></div>`;
+                }
+            } else if (items.length > 0) {
+                const avgUErr = Math.round(items.reduce((s, it) => s + (it.uErr || 0), 0) / items.length);
+                const avgGErr = Math.round(items.reduce((s, it) => s + (it.gErr || 0), 0) / items.length);
+                if (avgUErr > 0) uBandHtml = `<div class="variance-band unguided" style="left: ${(uRate * (1 - avgUErr / 100)).toFixed(1)}%; width: ${avgUErr}%;"></div>`;
+                if (avgGErr > 0) gBandHtml = `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - avgGErr / 100)).toFixed(1)}%; width: ${avgGErr}%;"></div>`;
+            }
 
             const clickAttr = filterKey === 'guide'
                 ? `onclick="window.location.href='guide.html?guide=${encodeURIComponent(key)}'"`
                 : `onclick="setInsightFilter('${filterKey}', '${key}')"`;
-
-            const uBandHtml = uSD > 0 ? `<div class="variance-band unguided" style="left: ${uSD_left}%; width: ${uSD_width}%;"></div>` : '';
-            const gBandHtml = gSD > 0 ? `<div class="variance-band guided" style="left: ${gSD_left}%; width: ${gSD_width}%;"></div>` : '';
 
             rowsHtml += `
                 <tr ${clickAttr} style="cursor: pointer;">

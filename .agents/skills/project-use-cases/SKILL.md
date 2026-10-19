@@ -62,7 +62,7 @@ The following steps are REQUIRED for creating a new use case:
 
   Some categories are named after a technology domain (`css`, `html`, `canvas`) because they are anchored by a comprehensive reference guide for that technology (e.g. `html/html/guide.md`). These are valid homes for use cases genuinely about that technology, or that don't yet have enough siblings to form a use-case cluster.
 
-  **File by primary goal; cover cross-cutting concerns inline.** Performance, accessibility, privacy, security, and UX are *verticals* nearly every guide touches. File a guide by what it is primarily trying to accomplish and address secondary concerns in the `guide.md` body, not via category. A scroll-driven animation with a rendering cost still belongs in `motion` or `scroll`, with its performance notes in the guide, not in `performance`. (This is why the catch-all `user-experience` category was removed: UX is a vertical every guide addresses, not a bucket of its own.)
+  **File by primary goal; cover cross-cutting concerns inline.** Performance, accessibility, privacy, security, and UX are *verticals* nearly every guide touches. File a guide by what it is primarily trying to accomplish and address secondary concerns in the `guide.md` body, not via category. A scroll-driven animation with a rendering cost still belongs in `motion` or `scroll`, with its performance notes in the guide, not in `performance`. For example, `user-experience` holds only the holistic UX pillar guides rather than acting as a catch-all: individual components and behaviors belong in their own categories, such as `ui-components`, `ui-behaviors`, or `ui-atoms`.
 
 * **Step 3: Create the use case subdirectory**
 

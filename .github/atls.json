@@ -15,6 +15,10 @@
     "ui-behaviors": "LeaVerou",
     "ui-atoms": "LeaVerou",
     "ui-components": "LeaVerou",
+    "user-experience": [
+      "NourNabil",
+      "LeaVerou"
+    ],
     "visual-design": "LeaVerou",
     "performance": [
       "tunetheweb",
