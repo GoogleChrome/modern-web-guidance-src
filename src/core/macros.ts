@@ -1,6 +1,6 @@
 import path from "node:path";
 import { validateFeature, getStatusMessage, getFeatureName } from "./baseline.ts";
-import { getGuidesMap, getGuideMarkdownPath } from "./guide-validation.ts";
+import { getGuidesMap, getGuideMarkdownPath, type GuideInventory } from "./guide-validation.ts";
 import { resolveInclude } from "./include.ts";
 import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, stripComments, maskComments } from "./macro-parsing.ts";
 
@@ -18,12 +18,26 @@ export class MacroError extends Error {
   }
 }
 
-export function formatTitle(id: string): string {
-  return id
-    .split("-")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+type GuideRefFormatter = (guideInfo: GuideInventory, guideId: string, filePath: string) => string;
+
+const GUIDE_REF_FORMATTERS: Record<BuildTarget, GuideRefFormatter> = {
+  'static-site': (guideInfo, guideId, filePath) => {
+    if (!guideInfo.isPublished) {
+      throw new MacroError(`GUIDE_REF("${guideId}") in ${filePath} links to an unpublished guide; the static site would have a dead link.`);
+    }
+    if (!guideInfo.title) {
+      throw new MacroError(`Guide "${guideId}" has no H1 heading or frontmatter title (referenced in GUIDE_REF macro in ${filePath}).`);
+    }
+    return `[${guideInfo.title}](../${guideInfo.category}/${guideInfo.name}.md)`;
+  },
+  'skills-cli': (_guideInfo, guideId) => {
+    return `\`${guideId}\` (via \`npx -y modern-web-guidance@latest retrieve "${guideId}"\`)`;
+  },
+  'local-dev': (guideInfo, _guideId, filePath) => {
+    const relativePath = path.relative(path.dirname(filePath), getGuideMarkdownPath(guideInfo));
+    return `\`${relativePath}\``;
+  },
+};
 
 const MACRO_HANDLERS: Record<string, MacroHandler> = {
   INCLUDE: (args, filePath, options) => {
@@ -56,17 +70,7 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     }
 
     const target = options?.target || 'local-dev';
-
-    if (target === 'static-site') {
-      return `[${formatTitle(guideInfo.name)}](../${guideInfo.category}/${guideInfo.name}.md)`;
-    }
-
-    if (target === 'skills-cli') {
-      return `\`${guideId}\` (via \`npx -y modern-web-guidance@latest retrieve "${guideId}"\`)`;
-    }
-
-    const relativePath = path.relative(path.dirname(filePath), getGuideMarkdownPath(guideInfo));
-    return `\`${relativePath}\``;
+    return GUIDE_REF_FORMATTERS[target](guideInfo, guideId, filePath);
   }
 };
 
@@ -100,6 +104,11 @@ defineFeatureMacro("FEATURE", {
   }
 });
 
+function formatFeatureHeadingName(name: string): string {
+  // Wrap raw HTML tag names like `<select>` in backticks so they don't render as live HTML elements.
+  return name.replace(/`?<([a-zA-Z0-9:-]+)>`?/g, '`<$1>`');
+}
+
 defineFeatureMacro("FEATURE_FALLBACKS", {
   content: (args, filePath, options) => {
     const [featureId] = args;
@@ -119,7 +128,7 @@ defineFeatureMacro("FEATURE_FALLBACKS", {
     }
 
     return [
-      `### Fallbacks & browser support for ${getFeatureName(featureId)}`,
+      `### Fallbacks & browser support for ${formatFeatureHeadingName(getFeatureName(featureId))}`,
       baselineStatus,
       fallbacks
     ].join("\n\n");
@@ -141,7 +150,7 @@ defineFeatureMacro("FEATURE_ISSUES", {
     }
     if (!included) return "";
     return [
-      `### Issues to be aware of when using ${getFeatureName(featureId)}`,
+      `### Issues to be aware of when using ${formatFeatureHeadingName(getFeatureName(featureId))}`,
       included
     ].join("\n\n");
   }
@@ -197,11 +206,11 @@ function processMacros(
  * @param filePath - The path to the file (for error reporting)
  * @returns Array of validation errors
  */
-export function validateMacros(content: string, filePath: string): string[] {
+export function validateMacros(content: string, filePath: string, options: { target?: BuildTarget } = {}): string[] {
   const errors: string[] = [];
   processMacros(content, (handler, args, match) => {
     try {
-      handler(args, filePath);
+      handler(args, filePath, options);
     } catch (err: any) {
       if (err instanceof MacroError) {
         errors.push(err.message);

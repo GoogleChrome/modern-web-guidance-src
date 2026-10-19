@@ -3,9 +3,9 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateCallouts, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, ProjectStatus, type GuideInventory } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
-import { maskComments } from './macros.ts';
+import { maskComments, validateMacros } from './macros.ts';
 
 describe('extractH1Heading and extractAllH1Headings', () => {
   test('extracts standard ATX H1 heading', () => {
@@ -119,6 +119,59 @@ describe('parseExpectations', () => {
     assert.deepStrictEqual(result.mustPass, []);
     assert.deepStrictEqual(result.mustFail, []);
     assert.deepStrictEqual(result.appAgnostic, []);
+  });
+});
+
+describe('GUIDE_REF publication target validation', () => {
+  test('allows references to published guides', () => {
+    assert.deepStrictEqual(validateMacros('See {{ GUIDE_REF("forms") }}.', 'test.md', { target: 'static-site' }), []);
+  });
+
+  test('rejects references to unpublished guides', () => {
+    const errors = validateMacros(`See {{ GUIDE_REF('slider-tooltip') }}.`, 'test.md', { target: 'static-site' });
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /GUIDE_REF\("slider-tooltip"\).*unpublished/);
+  });
+
+  test('validateGuide only enforces it for published (non-draft) guides', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-ref-'));
+    const guidePath = path.join(dir, 'ref-test', 'guide.md');
+    fs.mkdirSync(path.dirname(guidePath));
+    const write = (draftLine: string) => fs.writeFileSync(guidePath, `---\nname: ref-test\ndescription: d\nweb-feature-ids: []\n${draftLine}---\n# Ref test\n\nSee {{ GUIDE_REF("slider-tooltip") }}.\n`);
+    try {
+      write('');
+      assert.ok(validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
+      write('draft: wip\n');
+      assert.ok(!validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('validateCallouts', () => {
+  test('allows known GitHub alert types and plain blockquotes', () => {
+    const body = `> [!NOTE]\n> A note.\n\n> [!important]\n> Lowercase is fine.\n\n> Just a quote.\n\n> **Note on kid handling:** prose label, not a callout.\n`;
+    assert.deepStrictEqual(validateCallouts(body, 'test.md'), []);
+  });
+
+  test('rejects unknown alert types', () => {
+    const errors = validateCallouts(`> [!DANGER]\n> Boom.\n`, 'test.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /Unsupported alert type "\[!DANGER\]"/);
+  });
+
+  test('rejects bold-label callouts, including inside list items', () => {
+    const body = `> **Important:** Top level.\n\n- item\n\n  > **Note**: Nested.\n`;
+    const errors = validateCallouts(body, 'test.md');
+    assert.strictEqual(errors.length, 2);
+    assert.match(errors[0], /\[!IMPORTANT\]/);
+    assert.match(errors[1], /\[!NOTE\]/);
+  });
+
+  test('ignores callout-like text inside code fences', () => {
+    const body = '```md\n> **Note:** example\n> [!BOGUS]\n```\n';
+    assert.deepStrictEqual(validateCallouts(body, 'test.md'), []);
   });
 });
 
