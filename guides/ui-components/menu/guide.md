@@ -385,7 +385,7 @@ if (!('commandForElement' in HTMLButtonElement.prototype)) {
       event.preventDefault();
       const fromPointer = pointerTrigger === trigger;
       pointerTrigger = null;
-      if (isPreviewed(menu) && fromPointer) focusFirst(menu);
+      if (isPreviewed(menu) && fromPointer && trigger.matches(':focus-visible')) focusFirst(menu);
       else if (isOpen(menu)) closeAndRestore(menu);
       else {
         if (!fromPointer) enterOnOpen.add(menu);
