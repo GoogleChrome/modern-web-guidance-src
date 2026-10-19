@@ -292,7 +292,7 @@ form.addEventListener('submit', (e) => {
 - **DO** use HTTPS for all pages.
 - **DO** implement cryptographically secure anti-CSRF tokens for mutating actions (POST/PUT/DELETE).
 - **DO** sanitize user input (e.g., via DOMPurify) before injecting it into the DOM to prevent XSS.
-- **DO** implement spam protection for open forms using accessible CAPTCHAs (e.g., invisible reCAPTCHA) or honeypot fields hidden from assistive tech (`tabindex="-1" and `aria-hidden="true"`)
+- **DO** implement spam protection for open forms using accessible CAPTCHAs (e.g., invisible reCAPTCHA) or honeypot fields hidden from assistive tech (`tabindex="-1"` and `aria-hidden="true"`)
 
 - **DON'T** utilize HTTP `GET` for endpoints executing state changes.
 - **DON'T** use inline JavaScript (e.g., `onclick="..."`) directly within form markup to satisfy strict Content Security Policies (CSP).
