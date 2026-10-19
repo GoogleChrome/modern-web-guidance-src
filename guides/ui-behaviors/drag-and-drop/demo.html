@@ -250,12 +250,22 @@
       });
     }
 
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+    // FLIP: measure, move, then animate each sibling from its old position.
     function moveItem(item, before) {
+      const first = new Map([...list.children].map((el) => [el, el.getBoundingClientRect().top]));
       if ('moveBefore' in Element.prototype) {
         list.moveBefore(item, before);
+      } else if (before) {
+        before.before(item);
       } else {
-        if (before) before.before(item);
-        else list.append(item);
+        list.append(item);
+      }
+      if (reduceMotion.matches) return;
+      for (const [el, top] of first) {
+        const dy = top - el.getBoundingClientRect().top;
+        if (dy) el.animate({ translate: [`0 ${dy}px`, '0 0'] }, { duration: 200, easing: 'ease-out' });
       }
     }
 
@@ -263,8 +273,23 @@
       if (!pointerItem) return;
       updateDisabledStates();
       announce(`Moved ${pointerItem.dataset.label} to position ${getPosition(pointerItem)}.`);
-      pointerItem.classList.remove('pointer-dragging');
-      pointerPreview.remove();
+      const item = pointerItem;
+      const preview = pointerPreview;
+      const from = preview.getBoundingClientRect();
+      const to = item.getBoundingClientRect();
+      const done = () => {
+        item.classList.remove('pointer-dragging');
+        preview.remove();
+      };
+      if (reduceMotion.matches) {
+        done();
+      } else {
+        const snap = preview.animate(
+          { translate: [`0 0`, `${to.left - from.left}px ${to.top - from.top}px`] },
+          { duration: 200, easing: 'ease-out', fill: 'forwards' }
+        );
+        snap.finished.then(done, done);
+      }
       pointerItem = null;
       pointerPreview = null;
       document.removeEventListener('pointermove', movePointerItem);
