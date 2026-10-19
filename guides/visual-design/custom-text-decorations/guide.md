@@ -56,7 +56,9 @@ Starting points for the design:
 * **Color:** `currentColor` keeps the line matched to the text. A softer mix of the text color that firms up on hover keeps long runs of links calm.
 * **Style:** `solid` for links, `dotted` for terms and abbreviations, and `wavy` for annotations such as errors.
 
-## Control ink skipping
+## Control where the line is skipped
+
+### Ink skipping
 
 By default, underlines and overlines break around glyph parts that cross them, such as descenders. Set `text-decoration-skip-ink` to choose the behavior:
 
@@ -72,9 +74,8 @@ By default, underlines and overlines break around glyph parts that cross them, s
 * Use `all` when the underline sits close enough to the baseline to cross ideographic glyphs, or when mixed-script text must look consistent.
 * Use `none` for a very thick line, or a deliberately decorative one, where gaps would look like breaks.
 
-Ink skipping applies to underlines and overlines, not strikethroughs.
 
-## Control spaces
+### Skip spaces
 
 `text-decoration-skip-spaces` decides whether the line is drawn under spaces. The default, `start end`, leaves leading and trailing spaces undecorated.
 
