@@ -509,7 +509,7 @@
         if (event.command !== 'toggle-popover') return;
         const fromPointer = pointerTrigger === event.source;
         pointerTrigger = null;
-        if (isPreviewed(menu) && fromPointer) {
+        if (isPreviewed(menu) && fromPointer && event.source.matches(':focus-visible')) {
           event.preventDefault();
           focusFirst(menu);
         } else if (!isOpen(menu)) {
