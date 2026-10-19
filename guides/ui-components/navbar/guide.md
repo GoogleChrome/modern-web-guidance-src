@@ -15,7 +15,7 @@ guides:
 
 Build a site navigation bar that uses one semantic navigation tree at every size, presents a native popover on narrow containers, becomes an inline navigation on wide containers, and identifies the current page.
 
-This guide describes site-navigation integration. It does not define application-menu behaviour. For reusable responsive disclosure behaviour, see {{ GUIDE_REF("responsive-disclosure") }}. For the decorative chevron, see {{ GUIDE_REF("icons") }}.
+This guide describes site-navigation integration. It does not define application-menu behaviour. For reusable responsive disclosure behaviour, see {{ GUIDE_REF("responsive-disclosure") }}. For the menu and chevron icons, see {{ GUIDE_REF("icons") }}.
 
 For component-driven layouts, fluid sizing, and typographic line-wrapping, see {{ GUIDE_REF("size-aware-styling") }}, {{ GUIDE_REF("fluid-scaling") }}, and {{ GUIDE_REF("improve-text-layout-and-legibility") }}.
 
@@ -38,9 +38,7 @@ Use one `<nav>` landmark for narrow and wide layouts. Wrap it in a semantic `<he
         popovertargetaction="toggle"
         aria-controls="site-menu"
       >
-        <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
-        </svg>
+        <!-- Decorative menu icon: insert as described in the icons guide -->
         <span>Menu</span>
       </button>
 
@@ -62,7 +60,7 @@ Use one `<nav>` landmark for narrow and wide layouts. Wrap it in a semantic `<he
 </header>
 ```
 
-The button declaratively controls the menu with `popovertarget` and `aria-controls`. The `nav` remains the navigation landmark while the menu is closed. The decorative trigger icon is hidden from assistive technologies with `aria-hidden="true"` and `focusable="false"`. For the general popover control contract, see {{ GUIDE_REF("declarative-dialog-popover-control") }}.
+The button declaratively controls the menu with `popovertarget` and `aria-controls`. The `nav` remains the navigation landmark while the menu is closed. The trigger icon is decorative and the visible "Menu" text is the accessible name, so hide the icon from assistive technologies. For how to insert and hide icons, see {{ GUIDE_REF("icons") }}. For the general popover control contract, see {{ GUIDE_REF("declarative-dialog-popover-control") }}.
 
 ---
 
