@@ -439,13 +439,20 @@
 
       // Focusing a trigger previews its menu without moving focus. Focus returning from inside
       // its own menu, or from another window, is not a new intent, so it does not start a preview.
+      let previewTimer;
       trigger.addEventListener('focus', event => {
-        if (menu.contains(event.relatedTarget) || returningToWindow) return;
-        if (!isOpen(menu)) menu.showPopover({ source: trigger });
+        clearTimeout(previewTimer);
+        if (menu.contains(event.relatedTarget) || returningToWindow || isOpen(menu)) return;
+        if (trigger.closest('[popover]') && !trigger.matches(':focus-visible')) {
+          previewTimer = setTimeout(() => menu.showPopover({ source: trigger }), 80);
+        } else {
+          menu.showPopover({ source: trigger });
+        }
       });
 
       // Leaving a trigger that is only previewing closes that preview.
       trigger.addEventListener('blur', event => {
+        clearTimeout(previewTimer);
         if (isPreviewed(menu) && !menu.contains(event.relatedTarget)) menu.hidePopover();
       });
 
