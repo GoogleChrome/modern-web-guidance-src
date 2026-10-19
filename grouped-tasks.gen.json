@@ -138,6 +138,9 @@
       "html": [
         "daily-grind",
         "devtools-times"
+      ],
+      "prerendering-custom-elements": [
+        "daily-grind"
       ]
     },
     "js": {
