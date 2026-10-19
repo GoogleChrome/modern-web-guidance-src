@@ -20,27 +20,26 @@ Text decorations apply to any text, not only links. Where underlined text is not
 
 ## Style the line
 
-Set line, style, color, and thickness with the `text-decoration` shorthand, and the gap from the text with `text-underline-offset`. Expose each value as a custom property so a component or theme can restyle the decoration without touching the rule.
+Set line, style, color, and thickness with the `text-decoration` shorthand, and the gap from the text with `text-underline-offset`. Wrap the selector in `:where()` so the defaults have zero specificity and any later override wins, without needing custom properties.
 
 ```css
-.decorated {
-  /* Custom properties let any ancestor restyle the line. The fallbacks are starting points, not rules.
-     Thickness is relative to the font size (0.08em is an example value), so the line is not too heavy
+:where(.decorated) {
+  /* Thickness is relative to the font size (0.08em is an example value), so the line is not too heavy
      on small text or too light on large text, and max() keeps it at least 1px so it never disappears. */
-  text-decoration: underline var(--deco-style, solid) var(--deco-color, currentColor) var(--deco-thickness, max(1px, 0.08em));
+  text-decoration: underline solid currentColor max(1px, 0.08em);
   /* Use em so the gap scales with the font size. 0.2em clears most descenders; example value. */
-  text-underline-offset: var(--deco-offset, 0.2em);
+  text-underline-offset: 0.2em;
 }
 
 /* Example hover state: a softer line that firms up on hover and focus. The 50% mix and
    0.12em thickness are example values. */
-.decorated {
-  --deco-color: color-mix(in srgb, currentColor, transparent);
+:where(.decorated) {
+  text-decoration-color: color-mix(in srgb, currentColor, transparent);
 }
 
-.decorated:is(:hover, :focus-visible) {
-  --deco-color: currentColor;
-  --deco-thickness: max(1px, 0.12em);
+:where(.decorated:is(:hover, :focus-visible)) {
+  text-decoration-color: currentColor;
+  text-decoration-thickness: max(1px, 0.12em);
 }
 
 /* Other lines are a different text-decoration-line on the same properties */

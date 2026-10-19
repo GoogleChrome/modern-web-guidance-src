@@ -13,9 +13,7 @@
     /* Every value you might want to restyle is a custom property. */
     :root {
       --deco-color: var(--color-primary, #3740ff);
-      --deco-style: solid;
       --deco-thickness: 2px;
-      --deco-offset: 0.2em;
       --deco-inset: 0.5em;
 
       --sample-size: 1.75rem;
@@ -122,9 +120,10 @@
 
     /* ---------- 1. text-decoration ---------- */
 
-    .deco {
-      text-decoration: underline var(--deco-style) var(--deco-color) var(--deco-thickness);
-      text-underline-offset: var(--deco-offset);
+    /* :where() keeps the defaults at zero specificity so any override wins */
+    :where(.deco, .skip-ink, .skip-spaces, .inset, .reveal) {
+      text-decoration: underline solid var(--deco-color) var(--deco-thickness);
+      text-underline-offset: 0.2em;
     }
 
     .deco-over {
@@ -138,8 +137,6 @@
     /* ---------- 2. text-decoration-skip-ink ---------- */
 
     .skip-ink {
-      text-decoration: underline var(--deco-style) var(--deco-color) var(--deco-thickness);
-      text-underline-offset: var(--deco-offset);
       text-decoration-skip-ink: var(--skip-ink, auto);
     }
 
@@ -153,18 +150,10 @@
     .skip-spaces {
       display: inline-block;
       white-space: pre;
-      text-decoration: underline var(--deco-style) var(--deco-color) var(--deco-thickness);
-      text-underline-offset: var(--deco-offset);
       text-decoration-skip-spaces: var(--skip-spaces, start end);
     }
 
     /* ---------- 4. text-decoration-inset ---------- */
-
-    .inset,
-    .reveal {
-      text-decoration: underline var(--deco-style) var(--deco-color) var(--deco-thickness);
-      text-underline-offset: var(--deco-offset);
-    }
 
     @supports (text-decoration-inset: 0) {
       .inset-trim {
@@ -311,9 +300,9 @@
         <span class="deco deco-over">overline</span> and
         <span class="deco deco-through">strikethrough</span>
       </p>
-      <pre><code>.deco {
-  text-decoration: underline var(--deco-style) var(--deco-color) var(--deco-thickness);
-  text-underline-offset: var(--deco-offset);
+      <pre><code>:where(.deco) {
+  text-decoration: underline solid var(--deco-color) var(--deco-thickness);
+  text-underline-offset: 0.2em;
 }
 
 .deco-over    { text-decoration-line: overline; }
@@ -344,7 +333,6 @@
         </div>
       </div>
       <pre><code>.skip-ink {
-  text-decoration: underline var(--deco-style) var(--deco-color) var(--deco-thickness);
   text-decoration-skip-ink: all; /* auto | none | all */
 }</code></pre>
     </section>
@@ -371,7 +359,6 @@
       </div>
       <pre><code>.skip-spaces {
   white-space: pre; /* keep the spaces so there is something to skip */
-  text-decoration: underline var(--deco-style) var(--deco-color) var(--deco-thickness);
   text-decoration-skip-spaces: all; /* none | all | start | end | start end */
 }</code></pre>
     </section>
