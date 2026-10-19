@@ -182,56 +182,6 @@ export function isDraftStub(draft: unknown): boolean {
   return draft === 'stub';
 }
 
-export interface ParsedGuideMarkdown {
-  data: GuideData;
-  body: string;
-  hasFrontmatter: boolean;
-  hasContent: boolean;
-  draft?: DraftState;
-  draftReason?: string;
-  isStub: boolean;
-  hasGuide: boolean;
-  isPublished: boolean;
-  featureIds: string[];
-}
-
-export function parseGuideMarkdown(
-  guideContent: string,
-  where: string = GUIDE_FILE,
-  options?: { allowLegacyBooleanDraft?: boolean }
-): ParsedGuideMarkdown {
-  const { data: rawData = {}, content: body = '' } = guideContent ? matter(guideContent) : {};
-  const data = rawData as GuideData;
-  const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
-  const hasContent = stripAllComments(body).trim().length > 0;
-
-  const { draft, draftReason } = options?.allowLegacyBooleanDraft
-    ? isDraftStub(data.draft)
-      ? { draft: 'stub' as const }
-      : data.draft
-        ? { draft: 'wip' as const }
-        : {}
-    : parseDraft(data, where);
-
-  const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
-  const hasGuide = hasContent && !isDraftStub(draft);
-  const isPublished = hasGuide && !draft;
-  const featureIds = Array.isArray(data['web-feature-ids']) ? data['web-feature-ids'] : [];
-
-  return {
-    data,
-    body,
-    hasFrontmatter,
-    hasContent,
-    draft,
-    draftReason,
-    isStub,
-    hasGuide,
-    isPublished,
-    featureIds,
-  };
-}
-
 interface ValidationResult {
   errors: string[];
   data: GuideData;
@@ -283,11 +233,17 @@ export function getGuideStatusFromFiles(params: {
   where?: string;
   allowLegacyBooleanDraft?: boolean;
 }): ProjectStatus | null {
-  const parsed = parseGuideMarkdown(params.guideContent, params.where ?? GUIDE_FILE, {
-    allowLegacyBooleanDraft: params.allowLegacyBooleanDraft,
-  });
-  const relativeFiles = new Set(params.filePaths);
+  const { data = {}, content: body = '' } = params.guideContent ? matter(params.guideContent) : {};
+  const hasContent = stripAllComments(body).trim().length > 0;
+  const draft = params.allowLegacyBooleanDraft
+    ? isDraftStub(data.draft)
+      ? 'stub'
+      : data.draft
+        ? 'wip'
+        : undefined
+    : parseDraft(data as GuideData, params.where ?? GUIDE_FILE).draft;
 
+  const relativeFiles = new Set(params.filePaths);
   const hasGrader =
     relativeFiles.has(GRADER_FILE) ||
     Array.from(relativeFiles).some(k => k.startsWith(`${TARGETS_DIR}/`) && k.endsWith(`/${GRADER_FILE}`));
@@ -295,7 +251,7 @@ export function getGuideStatusFromFiles(params: {
     relativeFiles.has(`tasks/${TASK_FILE}`) ||
     Array.from(relativeFiles).some(k => k.startsWith(`${TARGETS_DIR}/`) && k.endsWith(`/${TASK_FILE}`));
 
-  return getStatusName(parsed.hasGuide, hasGrader, hasTask, Boolean(parsed.draft), params.hasExpectations);
+  return getStatusName(hasContent && !isDraftStub(draft), hasGrader, hasTask, Boolean(draft), params.hasExpectations);
 }
 
 export function isEvalFile(relPath: string): boolean {
@@ -731,11 +687,14 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
 
   const guideFilePath = path.join(dir, GUIDE_FILE);
   const guideContent = readFileSafe(guideFilePath);
-
-  const { draft, draftReason, isStub, hasGuide, isPublished, featureIds } = parseGuideMarkdown(
-    guideContent,
-    guideFilePath,
-  );
+  const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
+  const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
+  const hasContent = stripAllComments(content).trim().length > 0;
+  const { draft, draftReason } = parseDraft(data as GuideData, guideFilePath);
+  const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
+  const hasGuide = hasContent && !isDraftStub(draft);
+  const isPublished = hasGuide && !draft;
+  const featureIds = Array.isArray(data['web-feature-ids']) ? data['web-feature-ids'] : [];
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();

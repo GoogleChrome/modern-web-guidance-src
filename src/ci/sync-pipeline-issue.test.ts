@@ -6,14 +6,12 @@ import { type GuideInventory } from '../core/guide-validation.ts';
 import { rootDir } from '../core/paths.ts';
 import {
   buildPipelineReportData,
-  buildUseCaseIssueIndex,
   fetchWeeklyProgressHistory,
   filterCatchAllReviewers,
   countGen2Evals,
   findStaleEvals,
   formatReviewDecision,
   formatShortDate,
-  matchUseCaseIssue,
   parseEvalReportFromPrBody,
   PIPELINE_SCALE_MAX,
   renderPipelineIssueBody,
@@ -423,9 +421,24 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       assignees: ['LeaVerou'],
       labels: ['new-use-case'],
     };
-    const index = buildUseCaseIssueIndex([issue]);
-    const matched = matchUseCaseIssue('ui-atoms/custom-list-markers', 'custom-list-markers', index);
-    assert.equal(matched?.number, 1742);
+    const stub = makeGuide({
+      category: 'ui-atoms',
+      name: 'custom-list-markers',
+      isStub: true,
+      hasGuide: false,
+      hasGrader: false,
+      hasTask: false,
+    });
+    const report = buildPipelineReportData({
+      readySinceBySlug: readySince(),
+      guides: [stub],
+      openPrs: [],
+      openUseCaseIssues: [issue],
+      openFeatureIssues: [],
+      gitHistory: new Map(),
+      weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
+    });
+    assert.equal(report.needsGuidanceIssues[0]?.issueNumber, 1742);
     assert.equal(formatShortDate('2026-10-04'), 'Oct 4');
     assert.deepEqual(filterCatchAllReviewers(['paulirish', 'micahjo7', 'LeaVerou'], 'guidance'), ['LeaVerou']);
     assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'micahjo7', 'paulirish'], 'guidance'), ['TravenReese']);

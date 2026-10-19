@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, getGuideStatusFromFiles, parseGuideMarkdown, doesPrSupplyGuideEval, doesPrSupplyGuideContent, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, getGuideStatusFromFiles, doesPrSupplyGuideEval, doesPrSupplyGuideContent, ProjectStatus, type GuideInventory } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from './macros.ts';
 
@@ -968,11 +968,7 @@ describe('getStatusName and getGuideStatus lifecycle', () => {
     }
   });
 
-  test('parseGuideMarkdown and getGuideStatusFromFiles evaluate in-memory snapshots consistently', () => {
-    const stubParsed = parseGuideMarkdown('---\nname: stub\ndraft: stub\n---\n');
-    assert.strictEqual(stubParsed.isStub, true);
-    assert.strictEqual(stubParsed.hasGuide, false);
-
+  test('getGuideStatusFromFiles evaluates in-memory snapshots consistently', () => {
     const legacyDraftStatus = getGuideStatusFromFiles({
       guideContent: '---\nname: old\ndraft: true\n---\n# Old\nBody',
       hasExpectations: true,

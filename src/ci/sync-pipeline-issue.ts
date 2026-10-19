@@ -936,26 +936,6 @@ function fetchIssueBody(issueNumber: number): string {
   );
 }
 
-export interface UseCaseIssueIndex {
-  nameToIssueMap: Map<string, IssueSummary>;
-  subdirToIssueMap: Map<string, IssueSummary>;
-  useCaseIssueNumbers: Set<number>;
-}
-
-export function buildUseCaseIssueIndex(useCaseIssues: IssueSummary[]): UseCaseIssueIndex {
-  const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(useCaseIssues);
-  const useCaseIssueNumbers = new Set(useCaseIssues.map(i => i.number));
-  return { nameToIssueMap, subdirToIssueMap, useCaseIssueNumbers };
-}
-
-export function matchUseCaseIssue(
-  slug: string,
-  guideName: string,
-  index: UseCaseIssueIndex,
-): { number: number; assignees?: string[] } | null {
-  return index.subdirToIssueMap.get(`guides/${slug}`) ?? index.nameToIssueMap.get(guideName) ?? null;
-}
-
 const CATCHALL_INFRA_OWNERS = new Set(['paulirish', 'micahjo7']);
 const EVAL_INFRA_OWNERS = new Set(['paulirish', 'micahjo7', 'TravenReese']);
 
@@ -971,14 +951,34 @@ export function filterCatchAllReviewers(reviewers: string[], stage: 'guidance' |
   return nonPaul.length > 0 ? nonPaul : reviewers;
 }
 
-function resolveEvalPrs(
-  openPrs: PrSummary[],
-  guideBySlug: Map<string, GuideInventory>
-): { openEvalPrs: OpenEvalPrItem[]; evalPrSlugs: Set<string> } {
+export function buildPipelineReportData(params: {
+  guides: GuideInventory[];
+  openPrs: PrSummary[];
+  openUseCaseIssues: IssueSummary[];
+  openFeatureIssues: IssueSummary[];
+  gitHistory: Map<string, GitFileHistory>;
+  weeklyProgressPoints?: WeeklyProgressPoint[];
+  readySinceBySlug?: Map<string, string>;
+}): PipelineReportData {
+  const validGuides = params.guides.filter(g => g.category !== 'test-results' && (g.hasGuide || g.isStub));
+  const guideBySlug = new Map(validGuides.map(g => [`${g.category}/${g.name}`, g]));
+  const existingGuideNames = new Set(validGuides.map(g => g.name));
+
+  const completeCount = validGuides.filter(g => getGuideStatus(g) === null).length;
+  const needsEvalsGuides = validGuides.filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals);
+  const contentLandedCount = completeCount + needsEvalsGuides.length;
+
+  const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(params.openUseCaseIssues);
+  const useCaseIssueNumbers = new Set(params.openUseCaseIssues.map(i => i.number));
+  const findUseCaseIssue = (slug: string, guideName: string) =>
+    subdirToIssueMap.get(`guides/${slug}`) ?? nameToIssueMap.get(guideName) ?? null;
+
   const openEvalPrs: OpenEvalPrItem[] = [];
   const evalPrSlugs = new Set<string>();
+  const needsGuidancePrs: NeedsGuidancePrItem[] = [];
+  const slugsWithContentPr = new Set<string>();
 
-  for (const pr of openPrs) {
+  for (const pr of params.openPrs) {
     const touchedFilesBySlug = new Map<string, string[]>();
     for (const file of pr.files) {
       const m = /^guides\/([^/]+\/[^/]+)\/(.+)$/.exec(file);
@@ -993,123 +993,51 @@ function resolveEvalPrs(
       : null;
     if (touchedFilesBySlug.size === 0 && branchGuideName) {
       for (const [slug, g] of guideBySlug) {
-        if (g.name === branchGuideName) {
-          touchedFilesBySlug.set(slug, []);
-        }
+        if (g.name === branchGuideName) touchedFilesBySlug.set(slug, []);
       }
     }
+
     for (const [slug, touchedRelFiles] of touchedFilesBySlug) {
       const inv = guideBySlug.get(slug);
-      if (!inv) continue;
-      if (!doesPrSupplyGuideEval(inv, touchedRelFiles, branchGuideName === inv.name)) continue;
-      if (evalPrSlugs.has(slug)) continue;
-      evalPrSlugs.add(slug);
-      openEvalPrs.push({
-        slug,
-        prNumber: pr.number,
-        metrics: parseEvalReportFromPrBody(pr.body),
-        reviewDecision: pr.reviewDecision,
-        reviewers: filterCatchAllReviewers(pr.reviewers, 'evals'),
-      });
-    }
-  }
-  openEvalPrs.sort((a, b) => a.slug.localeCompare(b.slug));
-  return { openEvalPrs, evalPrSlugs };
-}
-
-function resolveNeedsGuidancePrs(
-  openPrs: PrSummary[],
-  guideBySlug: Map<string, GuideInventory>,
-  issueIndex: UseCaseIssueIndex
-): { needsGuidancePrs: NeedsGuidancePrItem[]; slugsWithContentPr: Set<string> } {
-  const needsGuidancePrs: NeedsGuidancePrItem[] = [];
-  const slugsWithContentPr = new Set<string>();
-  const existingGuideNames = new Set([...guideBySlug.values()].map(g => g.name));
-
-  for (const pr of openPrs) {
-    const touchedFilesBySlug = new Map<string, string[]>();
-    for (const file of pr.files) {
-      const m = /^guides\/([^/]+\/[^/]+)\/(.+)$/.exec(file);
-      if (m) {
-        const list = touchedFilesBySlug.get(m[1]) ?? [];
-        list.push(m[2]);
-        touchedFilesBySlug.set(m[1], list);
-      }
-    }
-
-    for (const [slug, touchedRelFiles] of touchedFilesBySlug.entries()) {
-      const inv = guideBySlug.get(slug);
       const guideName = slug.split('/')[1];
-      if (!doesPrSupplyGuideContent(inv, touchedRelFiles, !inv && existingGuideNames.has(guideName))) {
+
+      if (inv && doesPrSupplyGuideEval(inv, touchedRelFiles, branchGuideName === inv.name)) {
+        if (!evalPrSlugs.has(slug)) {
+          evalPrSlugs.add(slug);
+          openEvalPrs.push({
+            slug,
+            prNumber: pr.number,
+            metrics: parseEvalReportFromPrBody(pr.body),
+            reviewDecision: pr.reviewDecision,
+            reviewers: filterCatchAllReviewers(pr.reviewers, 'evals'),
+          });
+        }
         continue;
       }
 
-      if (slugsWithContentPr.has(slug)) continue;
-      slugsWithContentPr.add(slug);
-
-      const matchedIssue = matchUseCaseIssue(slug, guideName, issueIndex);
-      const issueFromTitle = /^\[#(\d+)\]/.exec(pr.title);
-      const titleIssueNum = issueFromTitle ? Number(issueFromTitle[1]) : null;
-      const issueNumber =
-        matchedIssue?.number ?? (titleIssueNum && issueIndex.useCaseIssueNumbers.has(titleIssueNum) ? titleIssueNum : null);
-
-      needsGuidancePrs.push({
-        slug,
-        hasDirOnMain: Boolean(inv),
-        prNumber: pr.number,
-        isDraft: pr.isDraft,
-        reviewDecision: pr.reviewDecision,
-        issueNumber,
-        author: pr.author,
-        reviewers: filterCatchAllReviewers(pr.reviewers, 'guidance'),
-      });
+      if (
+        !slugsWithContentPr.has(slug) &&
+        doesPrSupplyGuideContent(inv, touchedRelFiles, !inv && existingGuideNames.has(guideName))
+      ) {
+        slugsWithContentPr.add(slug);
+        const matchedIssue = findUseCaseIssue(slug, guideName);
+        const titleIssueNum = Number(/^\[#(\d+)\]/.exec(pr.title)?.[1]) || null;
+        needsGuidancePrs.push({
+          slug,
+          hasDirOnMain: Boolean(inv),
+          prNumber: pr.number,
+          isDraft: pr.isDraft,
+          reviewDecision: pr.reviewDecision,
+          issueNumber:
+            matchedIssue?.number ?? (titleIssueNum && useCaseIssueNumbers.has(titleIssueNum) ? titleIssueNum : null),
+          author: pr.author,
+          reviewers: filterCatchAllReviewers(pr.reviewers, 'guidance'),
+        });
+      }
     }
   }
+  openEvalPrs.sort((a, b) => a.slug.localeCompare(b.slug));
   needsGuidancePrs.sort((a, b) => a.slug.localeCompare(b.slug));
-  return { needsGuidancePrs, slugsWithContentPr };
-}
-
-function resolveNeedsGuidanceIssues(
-  validGuides: GuideInventory[],
-  slugsWithContentPr: Set<string>,
-  issueIndex: UseCaseIssueIndex
-): NeedsGuidanceIssueItem[] {
-  const needsGuidanceIssues: NeedsGuidanceIssueItem[] = [];
-  for (const g of validGuides) {
-    if (getGuideStatus(g) !== ProjectStatus.NeedsGuidance) continue;
-    const slug = `${g.category}/${g.name}`;
-    if (slugsWithContentPr.has(slug)) continue;
-
-    const matchedIssue = matchUseCaseIssue(slug, g.name, issueIndex);
-    needsGuidanceIssues.push({
-      slug,
-      issueNumber: matchedIssue?.number ?? null,
-      draft: g.draft,
-      draftReason: g.draftReason,
-      assignees: matchedIssue?.assignees ?? [],
-    });
-  }
-  return needsGuidanceIssues.sort((a, b) => a.slug.localeCompare(b.slug));
-}
-
-export function buildPipelineReportData(params: {
-  guides: GuideInventory[];
-  openPrs: PrSummary[];
-  openUseCaseIssues: IssueSummary[];
-  openFeatureIssues: IssueSummary[];
-  gitHistory: Map<string, GitFileHistory>;
-  weeklyProgressPoints?: WeeklyProgressPoint[];
-  readySinceBySlug?: Map<string, string>;
-}): PipelineReportData {
-  const validGuides = params.guides.filter(g => g.category !== 'test-results' && (g.hasGuide || g.isStub));
-  const guideBySlug = new Map(validGuides.map(g => [`${g.category}/${g.name}`, g]));
-
-  const completeCount = validGuides.filter(g => getGuideStatus(g) === null).length;
-  const needsEvalsGuides = validGuides.filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals);
-  const contentLandedCount = completeCount + needsEvalsGuides.length;
-
-  const issueIndex = buildUseCaseIssueIndex(params.openUseCaseIssues);
-  const { openEvalPrs, evalPrSlugs } = resolveEvalPrs(params.openPrs, guideBySlug);
 
   const readyForEvalSlugs = needsEvalsGuides
     .filter(g => !evalPrSlugs.has(`${g.category}/${g.name}`))
@@ -1122,12 +1050,20 @@ export function buildPipelineReportData(params: {
     );
   }
 
-  const { needsGuidancePrs, slugsWithContentPr } = resolveNeedsGuidancePrs(
-    params.openPrs,
-    guideBySlug,
-    issueIndex
-  );
-  const needsGuidanceIssues = resolveNeedsGuidanceIssues(validGuides, slugsWithContentPr, issueIndex);
+  const needsGuidanceIssues = validGuides
+    .filter(g => getGuideStatus(g) === ProjectStatus.NeedsGuidance && !slugsWithContentPr.has(`${g.category}/${g.name}`))
+    .map(g => {
+      const slug = `${g.category}/${g.name}`;
+      const matchedIssue = findUseCaseIssue(slug, g.name);
+      return {
+        slug,
+        issueNumber: matchedIssue?.number ?? null,
+        draft: g.draft,
+        draftReason: g.draftReason,
+        assignees: matchedIssue?.assignees ?? [],
+      };
+    })
+    .sort((a, b) => a.slug.localeCompare(b.slug));
   const staleEvals = findStaleEvals(validGuides, params.gitHistory);
   const { gen2CompleteCount, dualTargetCompleteCount } = countGen2Evals(validGuides);
 
