@@ -18,10 +18,7 @@ test.describe('devtools-times Translator Target Grader', () => {
     const project: Project = getJsProject(targetFiles);
     const allSourceFiles = project.getSourceFiles();
 
-    if (allSourceFiles.length === 0) {
-      expect(false).toBe(true);
-      return;
-    }
+    expect(allSourceFiles.length).toBeGreaterThan(0);
 
     // 1. Verify that deprecated window.ai.translator / ai.translator is NOT accessed
     const hasLegacyAiTranslator = allSourceFiles.some(sf => {
@@ -46,10 +43,7 @@ test.describe('devtools-times Translator Target Grader', () => {
     const project: Project = getJsProject(targetFiles);
     const appSourceFiles = getAppSourceFiles(project);
 
-    if (appSourceFiles.length === 0) {
-      expect(false).toBe(true);
-      return;
-    }
+    expect(appSourceFiles.length).toBeGreaterThan(0);
 
     const hasAvailabilityCall = appSourceFiles.some(sf => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression).filter(call => {
@@ -69,10 +63,7 @@ test.describe('devtools-times Translator Target Grader', () => {
     const project: Project = getJsProject(targetFiles);
     const allSourceFiles = project.getSourceFiles();
 
-    if (allSourceFiles.length === 0) {
-      expect(false).toBe(true);
-      return;
-    }
+    expect(allSourceFiles.length).toBeGreaterThan(0);
 
     const allText = allSourceFiles.map(sf => sf.getFullText()).join('\n');
     const validStatuses = ['available', 'downloadable', 'downloading', 'unavailable'];
@@ -85,10 +76,7 @@ test.describe('devtools-times Translator Target Grader', () => {
     const project: Project = getJsProject(targetFiles);
     const appSourceFiles = getAppSourceFiles(project);
 
-    if (appSourceFiles.length === 0) {
-      expect(false).toBe(true);
-      return;
-    }
+    expect(appSourceFiles.length).toBeGreaterThan(0);
 
     const allCalls = appSourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
 
@@ -114,10 +102,7 @@ test.describe('devtools-times Translator Target Grader', () => {
     const project: Project = getJsProject(targetFiles);
     const appSourceFiles = getAppSourceFiles(project);
 
-    if (appSourceFiles.length === 0) {
-      expect(false).toBe(true);
-      return;
-    }
+    expect(appSourceFiles.length).toBeGreaterThan(0);
 
     const calls = appSourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
     const hasTranslateCall = calls.some(call => {
@@ -132,10 +117,7 @@ test.describe('devtools-times Translator Target Grader', () => {
     const project: Project = getJsProject(targetFiles);
     const appSourceFiles = getAppSourceFiles(project);
 
-    if (appSourceFiles.length === 0) {
-      expect(false).toBe(true);
-      return;
-    }
+    expect(appSourceFiles.length).toBeGreaterThan(0);
 
     const hasDownloadProgressMonitor = appSourceFiles.some(sf => {
       const stringLiterals = sf.getDescendantsOfKind(SyntaxKind.StringLiteral);

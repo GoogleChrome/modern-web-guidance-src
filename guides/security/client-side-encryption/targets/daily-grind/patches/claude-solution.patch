@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+index 66c9173..b4db48f 100644
+--- a/index.html
++++ b/index.html
+@@ -195,6 +195,23 @@
+         </div>
+       </div>
+     </section>
++    <section id="secure-note" style="margin-top: 40px;">
++      <h2 style="text-align: center;">Secure Order Note</h2>
++      <div class="card" style="margin-top: 20px; text-align: left;">
++        <p>Your note is encrypted in your browser before it leaves this page.</p>
++        <label for="note-input">Note for the barista</label>
++        <textarea id="note-input" rows="3" style="width:100%; margin: 8px 0;">Extra hot, no foam, name: Alex</textarea>
++        <button id="encrypt-btn" class="btn" type="button" style="border: 0; cursor: pointer;">Encrypt &amp; Decrypt</button>
++        <dl style="margin-top: 15px; word-break: break-all; font-size: 0.85rem;">
++          <dt>Suite</dt><dd id="out-suite">–</dd>
++          <dt>Capsule (<span id="out-capsule-len">0</span> bytes)</dt><dd id="out-capsule">–</dd>
++          <dt>IV (12 bytes)</dt><dd id="out-iv">–</dd>
++          <dt>Ciphertext</dt><dd id="out-cipher">–</dd>
++          <dt>Decrypted plaintext</dt><dd id="out-plain" style="font-weight: bold;">–</dd>
++        </dl>
++        <p id="out-error" role="alert" style="color: #b71c1c;"></p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +224,107 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const KEM_PUBLIC_KEY_ALGORITHMS = {
++      1184: 'ML-KEM-768',
++      1216: 'MLKEM768-X25519',
++      1568: 'ML-KEM-1024',
++    };
++    const NO_BYTES = new Uint8Array(0);
++
++    function supportsPostQuantumEnvelope() {
++      return (
++        typeof globalThis.SubtleCrypto?.supports === 'function' &&
++        SubtleCrypto.supports('encapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305') &&
++        SubtleCrypto.supports('decapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305')
++      );
++    }
++
++    async function generateRecipientKeys() {
++      if (supportsPostQuantumEnvelope()) {
++        const keyPair = await crypto.subtle.generateKey(
++          'MLKEM768-X25519', false, ['encapsulateKey', 'decapsulateKey']);
++        const publicKeyBytes = new Uint8Array(
++          await crypto.subtle.exportKey('raw-public', keyPair.publicKey));
++        return { suite: 'MLKEM768-X25519+ChaCha20-Poly1305', keyPair, publicKeyBytes };
++      }
++      const keyPair = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++      const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
++      return { suite: 'X25519+HKDF+AES-GCM', keyPair, publicKeyBytes };
++    }
++
++    async function deriveFallbackAesKey(privateKey, peerPublicKey, infoBytes = NO_BYTES) {
++      const sharedSecret = await crypto.subtle.deriveBits(
++        { name: 'X25519', public: peerPublicKey }, privateKey, 256);
++      const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, ['deriveKey']);
++      return crypto.subtle.deriveKey(
++        { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: infoBytes },
++        hkdfKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
++    }
++
++    async function encapsulateEnvelopeKey(publicKeyBytes, infoBytes = NO_BYTES) {
++      const kemName = KEM_PUBLIC_KEY_ALGORITHMS[publicKeyBytes.byteLength];
++      if (kemName) {
++        const pubKey = await crypto.subtle.importKey(
++          'raw-public', publicKeyBytes, kemName, true, ['encapsulateKey']);
++        const { sharedKey, ciphertext } = await crypto.subtle.encapsulateKey(
++          kemName, pubKey, 'ChaCha20-Poly1305', false, ['encrypt', 'decrypt']);
++        return { sharedKey, capsuleBytes: new Uint8Array(ciphertext) };
++      }
++      const pubKey = await crypto.subtle.importKey('raw', publicKeyBytes, 'X25519', true, []);
++      const ephemeral = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++      const capsuleBytes = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
++      const sharedKey = await deriveFallbackAesKey(ephemeral.privateKey, pubKey, infoBytes);
++      return { sharedKey, capsuleBytes };
++    }
++
++    async function decapsulateEnvelopeKey(privateKey, capsuleBytes, infoBytes = NO_BYTES) {
++      if (privateKey.algorithm.name !== 'X25519') {
++        return crypto.subtle.decapsulateKey(
++          privateKey.algorithm.name, privateKey, capsuleBytes,
++          'ChaCha20-Poly1305', false, ['encrypt', 'decrypt']);
++      }
++      const ephemeralPubKey = await crypto.subtle.importKey('raw', capsuleBytes, 'X25519', true, []);
++      return deriveFallbackAesKey(privateKey, ephemeralPubKey, infoBytes);
++    }
++
++    async function encryptMessage(key, plaintext, additionalData = NO_BYTES) {
++      const iv = crypto.getRandomValues(new Uint8Array(12));
++      const buf = await crypto.subtle.encrypt(
++        { name: key.algorithm.name, iv, additionalData }, key, new TextEncoder().encode(plaintext));
++      return { iv, ciphertext: new Uint8Array(buf) };
++    }
++
++    async function decryptMessage(key, iv, ciphertext, additionalData = NO_BYTES) {
++      const buf = await crypto.subtle.decrypt(
++        { name: key.algorithm.name, iv, additionalData }, key, ciphertext);
++      return new TextDecoder().decode(buf);
++    }
++
++    const hex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
++    const $ = (id) => document.getElementById(id);
++
++    $('encrypt-btn').addEventListener('click', async () => {
++      $('out-error').textContent = '';
++      try {
++        const aad = new TextEncoder().encode('order-note-v1');
++        const { suite, keyPair, publicKeyBytes } = await generateRecipientKeys();
++        const privateKey = keyPair.privateKey;
++        const { sharedKey, capsuleBytes } = await encapsulateEnvelopeKey(publicKeyBytes);
++        const { iv, ciphertext } = await encryptMessage(sharedKey, $('note-input').value, aad);
++        const recipientKey = await decapsulateEnvelopeKey(privateKey, capsuleBytes);
++        const plain = await decryptMessage(recipientKey, iv, ciphertext, aad);
++        $('out-suite').textContent = suite;
++        $('out-capsule-len').textContent = capsuleBytes.byteLength;
++        $('out-capsule').textContent = hex(capsuleBytes);
++        $('out-iv').textContent = hex(iv);
++        $('out-cipher').textContent = hex(ciphertext);
++        $('out-plain').textContent = plain;
++      } catch (e) {
++        $('out-error').textContent = 'Encryption failed: ' + e.message;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..ff1bf3d 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "echo 'static site: nothing to build'",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
