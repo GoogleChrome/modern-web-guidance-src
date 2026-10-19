@@ -24,6 +24,19 @@ void test('gate0: prompt formatting and request body construction', async (t) =>
     assert.ok(prompt.includes('Replaces moment timezone.'));
   });
 
+  await t.test('formatGate0Prompt appends explainer context when supplied', () => {
+    const prompt = formatGate0Prompt({
+      guideId: 'temporal-now',
+      category: 'javascript',
+      guideHash: '1234567890ab',
+      markdownContent: '# Temporal Guide',
+      explainerContext: 'TC39 proposal motivation: developers currently rely on moment-timezone.',
+    });
+
+    assert.ok(prompt.includes('### Upstream W3C / TC39 / ChromeStatus Explainer & Motivation Context:'));
+    assert.ok(prompt.includes('developers currently rely on moment-timezone.'));
+  });
+
   await t.test('buildGate0RequestBody creates temperature 0 request with schema and default search grounding', () => {
     const body = buildGate0RequestBody({
       guideId: 'temporal-now',
@@ -128,7 +141,7 @@ void test('gate0: parseGate0Response validation', async (t) => {
 });
 
 void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
-  await t.test('classifies a guide end-to-end and returns Gate0Entry', async () => {
+  await t.test('classifies a guide end-to-end and returns Gate0Entry with grounding sources and evidenceSource', async () => {
     let capturedUrl = '';
     let capturedBody = '';
 
@@ -149,12 +162,17 @@ void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
                     brownfieldTarget: 'manual wheel event listeners',
                     evidenceFromGuide: 'Replaces window.addEventListener("wheel", ...)',
                     reason: 'Concrete legacy scroll listener replaced by scrollend.',
+                    evidenceSource: 'explainer',
                   }),
                 },
               ],
             },
             groundingMetadata: {
               webSearchQueries: ['legacy scrollend replacement'],
+              groundingChunks: [
+                { web: { uri: 'https://chromestatus.com/feature/5195248554278912', title: 'scrollend' } },
+                { web: { uri: 'https://github.com/w3c/csswg-drafts/issues/1234' } },
+              ],
             },
           },
         ],
@@ -172,6 +190,7 @@ void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
         category: 'javascript',
         guideHash: 'abcdef123456',
         markdownContent: '# Scrollend\nReplaces debounce wheel listeners.',
+        explainerContext: 'CSSWG scrollend explainer: developers used debounce wheel listeners.',
       },
       {
         apiKey: 'test-api-key',
@@ -182,13 +201,20 @@ void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
 
     assert.ok(capturedUrl.includes(`models/${GATE0_MODEL}:generateContent?key=test-api-key`));
     assert.ok(capturedBody.includes('scrollend-event'));
+    assert.ok(capturedBody.includes('CSSWG scrollend explainer'));
     assert.equal(entry.guideId, 'scrollend-event');
     assert.equal(entry.guideHash, 'abcdef123456');
     assert.equal(entry.classification, 'detectable');
     assert.equal(entry.brownfieldTarget, 'manual wheel event listeners');
     assert.equal(entry.evidenceFromGuide, 'Replaces window.addEventListener("wheel", ...)');
     assert.equal(entry.gate0PromptVersion, GATE0_PROMPT_VERSION);
+    assert.equal(entry.evidenceSource, 'explainer');
+    assert.ok(typeof entry.explainerContextHash === 'string' && entry.explainerContextHash.length > 0);
     assert.deepEqual(entry.webSearchQueries, ['legacy scrollend replacement']);
+    assert.deepEqual(entry.groundingSources, [
+      'https://chromestatus.com/feature/5195248554278912',
+      'https://github.com/w3c/csswg-drafts/issues/1234',
+    ]);
   });
 
   await t.test('retries on 429 and eventually succeeds', async () => {

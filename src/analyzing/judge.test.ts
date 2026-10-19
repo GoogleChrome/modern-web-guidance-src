@@ -89,6 +89,22 @@ describe('blind card formatting & request construction', () => {
     assert.doesNotMatch(prompt, /uses-old-pattern/);
   });
 
+  it('formats blind card prompt including explainerContext when present on guideSummary', () => {
+    const cardWithExplainer: BlindCardPayload = {
+      ...SAMPLE_BLIND_CARD,
+      cardId: 'card-with-explainer-1',
+      guideSummary: {
+        ...SAMPLE_GUIDE_SUMMARY,
+        explainerContext: 'TC39 Temporal explainer: Date subtraction fails around DST boundaries and developers used moment.',
+      },
+    };
+    const prompt = formatBlindCardPrompt(cardWithExplainer);
+
+    assert.match(prompt, /## Modern Web Guidance Guide \(calculate-event-differentials\)/);
+    assert.match(prompt, /## Upstream Feature Explainer & Motivation Context \(calculate-event-differentials\)/);
+    assert.match(prompt, /developers used moment/);
+  });
+
   it('builds Gemini request body with JSON schema and temperature 0.2', () => {
     const body = buildGeminiRequestBody(SAMPLE_BLIND_CARD) as {
       generationConfig: { responseMimeType: string; temperature: number };

@@ -16,17 +16,7 @@ import {
   JUDGE_THINKING_BUDGET,
   formatBlindCardPrompt,
 } from './prompts.ts';
-import {
-  CALIBRATION_DECK_PATH,
-  CARDS_DIR,
-  GRADES_PATH,
-  GUIDES_DIR,
-  M3_SPOTCHECK_DECK_PATH,
-  REPOS_CONFIG_PATH,
-  WORKTREE_ROOT,
-  repoDir,
-  type RepoConfigEntry,
-} from './paths.ts';
+import { CALIBRATION_DECK_PATH, CARDS_DIR, GRADES_PATH, GUIDES_DIR, M3_SPOTCHECK_DECK_PATH, REPOS_CONFIG_PATH, WORKTREE_ROOT, repoDir, type RepoConfigEntry, ANALYZER_INTERNAL_DIR } from './paths.ts';
 import {
   gwetAc1Nominal,
   krippendorffAlphaNominal,
@@ -89,6 +79,7 @@ export interface GuideSummaryInfo {
   markdownBody?: string;
   oldWayExamples?: string[];
   ruleSummary?: string;
+  readonly explainerContext?: string;
 }
 
 export interface BlindCardPayload {
@@ -994,32 +985,90 @@ export async function loadGuideSummariesMap(
       for (const item of list) {
         map.set(item.guideId, item);
       }
-      return map;
     } catch {
       /* ignore invalid JSON */
       return map;
     }
-  }
-
-  async function walk(dir: string): Promise<void> {
-    const entries = await readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        const guidePath = join(fullPath, 'guide.md');
-        try {
-          const content = await readFile(guidePath, 'utf8');
-          const summary = parseGuideSummaryMarkdown(content, entry.name);
-          map.set(entry.name, summary);
-        } catch {
-          /* ignore unreadable guide */
+  } else {
+    async function walk(dir: string): Promise<void> {
+      const entries = await readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          const guidePath = join(fullPath, 'guide.md');
+          try {
+            const content = await readFile(guidePath, 'utf8');
+            const summary = parseGuideSummaryMarkdown(content, entry.name);
+            map.set(entry.name, summary);
+          } catch {
+            /* ignore unreadable guide */
+          }
+          await walk(fullPath);
         }
-        await walk(fullPath);
       }
     }
+
+    await walk(guidesRootDirOrFile);
   }
 
-  await walk(guidesRootDirOrFile);
+  // Check if explainers JSON exists on disk, and if so, populate explainerContext on each guide
+  const explainersJsonPath = join(
+    ANALYZER_INTERNAL_DIR,
+    'findings',
+    '2026-10-19-guide-explainers-171.json',
+  );
+  try {
+    const explainersContent = await readFile(explainersJsonPath, 'utf8');
+    const parsed = JSON.parse(explainersContent) as unknown;
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (typeof item === 'object' && item !== null) {
+          const rec = item as Record<string, unknown>;
+          const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
+          const excerpt =
+            typeof rec.combinedExcerpt === 'string'
+              ? rec.combinedExcerpt
+              : typeof rec.explainerContext === 'string'
+                ? rec.explainerContext
+                : typeof rec.excerpt === 'string'
+                  ? rec.excerpt
+                  : '';
+          if (guideId && excerpt.trim()) {
+            const existing = map.get(guideId);
+            if (existing) {
+              map.set(guideId, { ...existing, explainerContext: excerpt.trim() });
+            }
+          }
+        }
+      }
+    } else if (typeof parsed === 'object' && parsed !== null) {
+      for (const [guideId, val] of Object.entries(parsed as Record<string, unknown>)) {
+        let excerpt = '';
+        if (typeof val === 'string') {
+          excerpt = val.trim();
+        } else if (typeof val === 'object' && val !== null) {
+          const rec = val as Record<string, unknown>;
+          excerpt =
+            typeof rec.combinedExcerpt === 'string'
+              ? rec.combinedExcerpt.trim()
+              : typeof rec.explainerContext === 'string'
+                ? rec.explainerContext.trim()
+                : typeof rec.excerpt === 'string'
+                  ? rec.excerpt.trim()
+                  : '';
+        }
+        if (excerpt) {
+          const existing = map.get(guideId);
+          if (existing) {
+            map.set(guideId, { ...existing, explainerContext: excerpt });
+          }
+        }
+      }
+    }
+  } catch {
+    /* ignore missing or unreadable explainers file */
+  }
+
   return map;
 }
 

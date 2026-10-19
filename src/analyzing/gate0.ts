@@ -1,5 +1,9 @@
-import type { Gate0Classification, Gate0Entry } from './schema.ts';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import type { Gate0Classification, Gate0Entry, Gate0EvidenceSource } from './schema.ts';
 import { getGeminiApiKey } from './judge.ts';
+import { ANALYZER_INTERNAL_DIR } from './paths.ts';
 
 export {
   GATE0_PROMPT_VERSION,
@@ -21,12 +25,105 @@ import {
 export const GATE0_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+export const DEFAULT_EXPLAINERS_JSON_PATH = join(
+  ANALYZER_INTERNAL_DIR,
+  'findings',
+  '2026-10-19-guide-explainers-171.json',
+);
+
+export interface ExplainerContextEntry {
+  readonly combinedExcerpt: string;
+  readonly explainerContextHash: string;
+}
+
+/**
+ * Loads the guide explainer context map from disk if the file exists.
+ * Returns an empty map if the file does not exist or has not been generated yet.
+ */
+export async function loadExplainerContextMap(
+  explainersJsonPath: string = DEFAULT_EXPLAINERS_JSON_PATH,
+): Promise<Map<string, ExplainerContextEntry>> {
+  const map = new Map<string, ExplainerContextEntry>();
+  let content: string;
+  try {
+    content = await readFile(explainersJsonPath, 'utf8');
+  } catch {
+    return map;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch (err: unknown) {
+    throw new Error(`Failed to parse explainers JSON from ${explainersJsonPath}: ${String(err)}`);
+  }
+
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error(`Invalid explainers JSON format at ${explainersJsonPath}: expected array or record`);
+  }
+
+  // Support either an array of objects or an object map
+  if (Array.isArray(parsed)) {
+    for (const item of parsed) {
+      if (typeof item === 'object' && item !== null) {
+        const rec = item as Record<string, unknown>;
+        const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
+        const combinedExcerpt =
+          typeof rec.combinedExcerpt === 'string'
+            ? rec.combinedExcerpt
+            : typeof rec.explainerContext === 'string'
+              ? rec.explainerContext
+              : typeof rec.excerpt === 'string'
+                ? rec.excerpt
+                : '';
+        if (guideId && combinedExcerpt.trim()) {
+          const explainerContextHash =
+            typeof rec.explainerContextHash === 'string' && rec.explainerContextHash
+              ? rec.explainerContextHash
+              : createHash('sha256').update(combinedExcerpt.trim()).digest('hex').slice(0, 12);
+          map.set(guideId, { combinedExcerpt: combinedExcerpt.trim(), explainerContextHash });
+        }
+      }
+    }
+  } else {
+    for (const [guideId, val] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof val === 'string' && val.trim()) {
+        const hash = createHash('sha256').update(val.trim()).digest('hex').slice(0, 12);
+        map.set(guideId, { combinedExcerpt: val.trim(), explainerContextHash: hash });
+      } else if (typeof val === 'object' && val !== null) {
+        const rec = val as Record<string, unknown>;
+        const combinedExcerpt =
+          typeof rec.combinedExcerpt === 'string'
+            ? rec.combinedExcerpt
+            : typeof rec.explainerContext === 'string'
+              ? rec.explainerContext
+              : typeof rec.excerpt === 'string'
+                ? rec.excerpt
+                : '';
+        if (combinedExcerpt.trim()) {
+          const hash =
+            typeof rec.explainerContextHash === 'string' && rec.explainerContextHash
+              ? rec.explainerContextHash
+              : createHash('sha256').update(combinedExcerpt.trim()).digest('hex').slice(0, 12);
+          map.set(guideId, { combinedExcerpt: combinedExcerpt.trim(), explainerContextHash: hash });
+        }
+      }
+    }
+  }
+
+  return map;
+}
+
 export interface Gate0GuideInput {
   readonly guideId: string;
   readonly category: string;
   readonly guideHash: string;
   readonly markdownContent: string;
+  readonly explainerContext?: string;
+  readonly explainerContextHash?: string;
 }
+
+export type Gate0Input = Gate0GuideInput;
 
 export interface Gate0Options {
   readonly apiKey?: string;
@@ -38,6 +135,13 @@ export interface Gate0Options {
 
 export function buildGate0RequestBody(guide: Gate0GuideInput, options?: Gate0Options): unknown {
   const enableSearchGrounding = options?.enableSearchGrounding ?? true;
+  const guidePromptInput = {
+    guideId: guide.guideId,
+    category: guide.category,
+    markdownContent: guide.markdownContent,
+    guideHash: guide.guideHash,
+    explainerContext: guide.explainerContext,
+  };
   const body: Record<string, unknown> = {
     systemInstruction: {
       parts: [{ text: GATE0_SYSTEM_PROMPT }],
@@ -45,7 +149,7 @@ export function buildGate0RequestBody(guide: Gate0GuideInput, options?: Gate0Opt
     contents: [
       {
         role: 'user',
-        parts: [{ text: formatGate0Prompt(guide) }],
+        parts: [{ text: formatGate0Prompt(guidePromptInput) }],
       },
     ],
     generationConfig: {
@@ -73,6 +177,7 @@ export function parseGate0Response(
   brownfieldTarget: string;
   evidenceFromGuide: string;
   reason: string;
+  evidenceSource?: Gate0EvidenceSource;
 } {
   let parsed: unknown;
   try {
@@ -125,6 +230,14 @@ export function parseGate0Response(
     throw new Error(`Gate 0 response missing string 'reason' for guide ${guideId}`);
   }
 
+  let evidenceSource: Gate0EvidenceSource | undefined;
+  if (typeof rec.evidenceSource === 'string') {
+    const validSources = ['guide', 'explainer', 'search', 'ecosystem-knowledge', 'none'] as const;
+    if (validSources.includes(rec.evidenceSource as Gate0EvidenceSource)) {
+      evidenceSource = rec.evidenceSource as Gate0EvidenceSource;
+    }
+  }
+
   return {
     classification,
     candidateTechniques,
@@ -132,6 +245,7 @@ export function parseGate0Response(
     brownfieldTarget,
     evidenceFromGuide: rec.evidenceFromGuide.trim(),
     reason: rec.reason.trim(),
+    ...(evidenceSource ? { evidenceSource } : {}),
   };
 }
 
@@ -211,6 +325,12 @@ export async function classifyGuideGate0(
       content?: { parts?: Array<{ text?: string }> };
       groundingMetadata?: {
         webSearchQueries?: string[];
+        groundingChunks?: Array<{
+          web?: {
+            uri?: string;
+            title?: string;
+          };
+        }>;
       };
     }>;
   };
@@ -223,8 +343,27 @@ export async function classifyGuideGate0(
   }
 
   const webSearchQueries = candidate?.groundingMetadata?.webSearchQueries ?? [];
+  const groundingSources: string[] = [];
+  if (Array.isArray(candidate?.groundingMetadata?.groundingChunks)) {
+    for (const chunk of candidate.groundingMetadata.groundingChunks) {
+      const uri = chunk.web?.uri?.trim();
+      const title = chunk.web?.title?.trim();
+      if (uri) {
+        groundingSources.push(uri);
+      } else if (title) {
+        groundingSources.push(title);
+      }
+    }
+  }
+
   const parsed = parseGate0Response(text, guide.guideId);
   const enableSearchGrounding = options?.enableSearchGrounding ?? true;
+
+  const explainerContextHash =
+    guide.explainerContextHash ??
+    (guide.explainerContext?.trim()
+      ? createHash('sha256').update(guide.explainerContext.trim()).digest('hex').slice(0, 12)
+      : undefined);
 
   return {
     guideId: guide.guideId,
@@ -236,6 +375,9 @@ export async function classifyGuideGate0(
     evidenceFromGuide: parsed.evidenceFromGuide,
     reason: parsed.reason,
     gate0PromptVersion: computeGate0PromptVersion(0.0, enableSearchGrounding),
+    ...(parsed.evidenceSource ? { evidenceSource: parsed.evidenceSource } : {}),
+    ...(explainerContextHash ? { explainerContextHash } : {}),
     webSearchQueries,
+    ...(groundingSources.length > 0 ? { groundingSources } : {}),
   };
 }

@@ -11,6 +11,13 @@ export type Gate0Classification =
   | 'ui-recipe-multi-part'
   | 'skip-no-old-way';
 
+export type Gate0EvidenceSource =
+  | 'guide'
+  | 'explainer'
+  | 'search'
+  | 'ecosystem-knowledge'
+  | 'none';
+
 export interface Gate0Entry {
   readonly guideId: string;
   readonly guideHash: string;
@@ -21,7 +28,10 @@ export interface Gate0Entry {
   readonly evidenceFromGuide?: string;
   readonly reason: string;
   readonly gate0PromptVersion?: string;
+  readonly evidenceSource?: Gate0EvidenceSource;
+  readonly explainerContextHash?: string;
   readonly webSearchQueries?: readonly string[];
+  readonly groundingSources?: readonly string[];
 }
 
 export interface Phase2Rubric {

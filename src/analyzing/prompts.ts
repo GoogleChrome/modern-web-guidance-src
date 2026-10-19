@@ -53,24 +53,28 @@ Your task is to classify whether a published feature guide has a statically dete
 You must classify the guide into exactly one of three Gate 0 buckets:
 1. 'detectable':
    The guide replaces one or more concrete, identifiable legacy browser APIs, CSS property/selector workarounds, DOM markup patterns, or third-party npm packages in brownfield code.
-   Guides often only show the modern "After" API. Use both guide.md AND your knowledge of the web ecosystem (legacy npm packages in package.json, legacy timezone math, legacy CSS workarounds, vendor prefixes, or DOM attributes) to identify whether concrete old techniques exist.
+   Use guide.md AND the provided Upstream Explainer & Motivation Context (which states the problem the spec was created to solve and what developers did before it existed) to classify the guide.
    Boundary rule: If a guide's feature replaces a specific legacy API, CSS property/selector, DOM attribute, or npm package in package.json, classify as 'detectable' and list those in candidateTechniques.
+   If a guide teaches a modern HTML/CSS/JS feature that directly replaces imperative JS boilerplate or legacy library triggers (e.g. declarative HTML attributes replacing imperative open/close listeners, or native HTML form attributes replacing missing/manual autofill wiring), classify as 'detectable'.
+   Guard against ungrounded over-calling: Do NOT classify a guide as 'detectable' merely because you can invent a hypothetical or tangential workaround from general knowledge. To classify as 'detectable', there must be a concrete, recognizable legacy API, CSS property/selector workaround, DOM attribute/pattern, or specific third-party npm library that developers actually used for this exact problem (supported by guide.md, the Explainer's motivation/prior-art, or established ecosystem usage).
 2. 'ui-recipe-multi-part':
    The guide teaches how to combine multiple HTML/CSS/JS parts to build a general UI component, widget, or layout pattern where legacy implementations vary wildly and lack a specific legacy API, library, or single technique being replaced.
    Boundary rule: If the guide teaches an architectural composition with no specific legacy API or library replaced, classify as 'ui-recipe-multi-part'. If there are still plausible heuristic hooks to search for in code, list them in candidateTechniques and set borderline: true.
 3. 'skip-no-old-way':
    The guide introduces a net-new web platform capability (e.g. WebGPU, WebNN, Passkeys, Prompt API, View Transitions between pages) with no direct legacy browser workaround to migrate from.
-   The capability simply could not be implemented previously with a legacy browser API, standard polyfill, or direct CSS workaround.
+   If a guide introduces a capability that was not previously achievable in client-side code (or where the explainer states it was not possible before), classify as 'skip-no-old-way'.
 
 Guidelines for classification:
 - Read the entire guide markdown carefully, paying attention to the problem statement, code examples, and the underlying modern API.
-- Do NOT require quoting a "Before" section from guide.md to classify a guide as 'detectable'. Guides frequently focus only on the modern solution. Use ecosystem knowledge to determine if common legacy workarounds, npm libraries, or idioms exist.
+- Also inspect the Upstream Explainer & Motivation Context if provided.
+- Do NOT require quoting a "Before" section from guide.md to classify a guide as 'detectable'. Guides frequently focus only on the modern solution. Use ecosystem knowledge and explainer context to determine if common legacy workarounds, npm libraries, or idioms exist.
 - Do NOT pre-judge whether downstream static rules will have false positives; that is evaluated during detection rule development and held-out scoring. Gate 0 only asks whether concrete legacy techniques exist.
 - Identify all concrete legacy techniques in 'candidateTechniques' (array of strings, e.g. ["legacy-library-name", "custom wrapper"]).
 - Set 'borderline' to true if the classification is ambiguous or on the boundary between buckets, false otherwise.
 - Set 'brownfieldTarget' to a concise summary of candidateTechniques (e.g. candidateTechniques joined by "; "), or "none (multi-part UI recipe)" / "none (greenfield capability)".
-- Set 'evidenceFromGuide' to evidence from the guide text or web ecosystem knowledge identifying the legacy pattern or lack thereof.
-- Set 'reason' to a single crisp sentence explaining the classification decision.`;
+- Set 'evidenceFromGuide' to evidence from the guide text, explainer context, or web ecosystem knowledge identifying the legacy pattern or lack thereof.
+- Set 'reason' to a single crisp sentence explaining the classification decision.
+- Set 'evidenceSource' to 'guide', 'explainer', 'search', 'ecosystem-knowledge', or 'none' indicating which primary source justified your classification.`;
 
 export const GATE0_RESPONSE_SCHEMA = {
   type: 'OBJECT',
@@ -100,6 +104,11 @@ export const GATE0_RESPONSE_SCHEMA = {
       type: 'STRING',
       description: 'A crisp explanation of the classification decision.',
     },
+    evidenceSource: {
+      type: 'STRING',
+      enum: ['guide', 'explainer', 'search', 'ecosystem-knowledge', 'none'],
+      description: 'Primary source of evidence that justified the classification.',
+    },
   },
   required: [
     'classification',
@@ -108,6 +117,7 @@ export const GATE0_RESPONSE_SCHEMA = {
     'brownfieldTarget',
     'evidenceFromGuide',
     'reason',
+    'evidenceSource',
   ],
 };
 
@@ -126,18 +136,24 @@ export interface Gate0PromptGuideInput {
   readonly category: string;
   readonly markdownContent: string;
   readonly guideHash?: string;
+  readonly explainerContext?: string;
 }
 
 export function formatGate0Prompt(guide: Gate0PromptGuideInput): string {
+  const explainerSection =
+    guide.explainerContext && guide.explainerContext.trim().length > 0
+      ? `\n\n### Upstream W3C / TC39 / ChromeStatus Explainer & Motivation Context:\n${guide.explainerContext.trim()}`
+      : '';
+
   return `## Guide: ${guide.guideId} (Category: ${guide.category})
 
 ### Full Guide Markdown:
 \`\`\`markdown
 ${guide.markdownContent}
-\`\`\`
+\`\`\`${explainerSection}
 
 Analyze the entire guide markdown above and classify it into one of: 'detectable', 'ui-recipe-multi-part', or 'skip-no-old-way'.
-Identify candidateTechniques (if any), borderline flag, brownfieldTarget, cite evidenceFromGuide (from the guide or web ecosystem knowledge), and provide a 1-sentence reason.`;
+Identify candidateTechniques (if any), borderline flag, brownfieldTarget, cite evidenceFromGuide (from the guide, explainer, or web ecosystem knowledge), select evidenceSource, and provide a 1-sentence reason.`;
 }
 
 export function computeGate0PromptVersion(
@@ -346,6 +362,7 @@ export interface BlindCardGuideSummaryInput {
   readonly before?: string;
   readonly now?: string;
   readonly ruleSummary?: string;
+  readonly explainerContext?: string;
 }
 
 export interface BlindCardPromptInput {
@@ -365,8 +382,12 @@ export function formatBlindCardPrompt(card: BlindCardPromptInput): string {
     );
   }
 
+  const explainerSection = card.guideSummary.explainerContext?.trim()
+    ? `\n\n## Upstream Feature Explainer & Motivation Context (${card.guideId})\n${card.guideSummary.explainerContext.trim()}`
+    : '';
+
   return `## Modern Web Guidance Guide (${card.guideId})
-${markdownBody}
+${markdownBody}${explainerSection}
 
 ## Code Location
 - File: ${card.file}

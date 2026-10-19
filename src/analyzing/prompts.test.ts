@@ -115,6 +115,17 @@ describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
     assert.match(formatted, /borderline flag/);
   });
 
+  it('formatGate0Prompt includes upstream explainer context when provided', () => {
+    const formatted = formatGate0Prompt({
+      guideId: 'test-guide',
+      category: 'css',
+      markdownContent: '# Test Guide\n\nUse text-wrap: balance.',
+      explainerContext: 'CSSWG proposal: developers currently use JS libraries like balance-text.',
+    });
+    assert.match(formatted, /### Upstream W3C \/ TC39 \/ ChromeStatus Explainer & Motivation Context:/);
+    assert.match(formatted, /developers currently use JS libraries like balance-text\./);
+  });
+
   it('formatPhase2Prompt includes full guide.md when provided', () => {
     const formatted = formatPhase2Prompt(
       {
@@ -172,6 +183,24 @@ describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
     assert.match(formatted, /## Modern Web Guidance Guide \(dialog\)/);
     assert.match(formatted, /Use native <dialog> element\./);
     assert.match(formatted, /\$\("#my-modal"\)\.show\(\);/);
+  });
+
+  it('formatBlindCardPrompt includes upstream explainer context when provided', () => {
+    const formatted = formatBlindCardPrompt({
+      cardId: 'card-with-explainer',
+      file: 'src/app.js',
+      line: 5,
+      guideId: 'dialog',
+      codeSnippet: '$("#my-modal").show();',
+      guideSummary: {
+        markdownBody: '# Dialog Guide\n\nUse native <dialog> element.',
+        explainerContext: 'HTML dialog explainer: developers historically used jquery-ui dialog or bootstrap modal.',
+      },
+    });
+
+    assert.match(formatted, /## Modern Web Guidance Guide \(dialog\)/);
+    assert.match(formatted, /## Upstream Feature Explainer & Motivation Context \(dialog\)/);
+    assert.match(formatted, /jquery-ui dialog or bootstrap modal/);
   });
 
   it('formatFixSimulationPrompt formats fix request cleanly', () => {
