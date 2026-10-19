@@ -535,9 +535,9 @@
       let hoverTimer;
       menu.addEventListener('pointermove', event => {
         const item = event.target.closest('button');
-        clearTimeout(hoverTimer);
-        // Pointer is over a nested submenu or on the focused item: nothing pending.
+        // Pointer is over a gap, a nested submenu, or the already-focused item: keep any pending timer.
         if (!item || item.closest('[popover]') !== menu || item === document.activeElement) return;
+        clearTimeout(hoverTimer);
         const focusItem = () => item.focus({ preventScroll: true, focusVisible: false });
         // Hover feedback is immediate. Only while a submenu is open does a short delay apply, so a
         // diagonal move toward it does not switch focus (and close it) on the way.
