@@ -536,20 +536,13 @@
       });
 
       // Hover follows focus: the pointed-at item takes focus without a ring, so hover and focus
-      // are one item. Focus is immediate, except while a submenu is open (safe triangle).
-      let hoverTimer;
+      // are one item. Focus is immediate: a delay can fire after the pointer has moved on and
+      // leave a submenu stuck open.
       menu.addEventListener('pointermove', event => {
         const item = event.target.closest('button');
-        // Pointer is over a gap, a nested submenu, or the already-focused item: keep any pending timer.
         if (!item || item.closest('[popover]') !== menu || item === document.activeElement) return;
-        clearTimeout(hoverTimer);
-        const focusItem = () => item.focus({ preventScroll: true, focusVisible: false });
-        // Hover feedback is immediate. Only while a submenu is open does a short delay apply, so a
-        // diagonal move toward it does not switch focus (and close it) on the way.
-        if (menu.querySelector('[popover]:popover-open')) hoverTimer = setTimeout(focusItem, 80);
-        else focusItem();
+        item.focus({ preventScroll: true, focusVisible: false });
       });
-      menu.addEventListener('pointerleave', () => clearTimeout(hoverTimer));
 
       // Focus landing on any other item in this menu closes its open submenus, including ones that
       // were entered (focus inside them), where no trigger blur would fire.
