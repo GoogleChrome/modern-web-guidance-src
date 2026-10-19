@@ -1,226 +1,132 @@
 ---
 name: skeleton
-description: Build skeleton placeholders that reserve space for loading content, improve perceived performance, and reduce layout shifts.
+description: Build skeleton placeholders from existing semantic content using one loading hook and border-shape, so loading states reserve space and reduce layout shifts.
 web-feature-ids:
-  - masks
-  - gradients
-  - box-decoration-break
-  - text-decoration
-  - prefers-reduced-motion
+  - border-shape
+  - color-mix
   - registered-custom-properties
+  - prefers-reduced-motion
   - inert
   - lh
-  - light-dark
+  - user-select
 ---
 
 # Skeleton loading pattern
 
-A skeleton loading pattern displays a low-fidelity visual placeholder while content loads, reducing perceived wait time and preventing layout shifts.
+A skeleton is a simplified placeholder shown while content loads. It reduces perceived wait time and layout shift.
 
-Unlike traditional placeholder patterns that insert temporary, empty `<div>` mockups, this pattern styles the actual semantic content in place:
-- **Zero layout shift**: The real semantic structure, font sizing, and text lengths determine wrapping and dimensions before data arrives.
-- **In-place styling**: Text glyphs are hidden with `color: transparent`, while inline `<span>` wrappers receive background bars using `box-decoration-break: clone`.
-- **Accessible**: Screen readers encounter `aria-busy="true"`, and `inert` prevents premature user interaction without tearing down semantic structure.
+Style the real semantic elements in place instead of inserting placeholder `<div>`s. One hook on the container (`aria-busy="true"`, scoped by a class such as `.skeleton`) applies a different treatment per element type: text becomes rounded bars, media and avatars become solid blocks, and buttons and inputs become a single pill. The markup does not change to suit the skeleton, and items can be empty or contain real text.
 
-For indeterminate activity when layout is unknown, see {{ GUIDE_REF("spinner") }}. For determinate loading with measurable completion, see {{ GUIDE_REF("progress") }}.
+`border-shape` draws the text bars. Each bar is one closed subpath of a single `shape()`, so bars can have rounded ends and variable lengths, which `text-decoration` and gradient tricks cannot do.
 
-## 1. Markup and loading state
+For indeterminate activity when layout is unknown, see {{ GUIDE_REF("spinner") }}. For determinate loading, see {{ GUIDE_REF("progress") }}.
 
-Mark the loading container with `aria-busy="true"` to communicate an updating state to assistive technology, and apply `inert` to prevent user interaction while loading. Scope styling with a container class (e.g., `.skeleton`) rather than styling `[aria-busy="true"]` globally.
+## 1. Loading state
 
-Wrap text runs in inline `<span>` tags. Semantic elements (headings, paragraphs, links) retain their block layout and typography, while the inner spans form the skeleton bars:
+MANDATORY: Put `aria-busy="true"` on the container and scope every skeleton style to it, so removing the attribute restores the real content.
 
 ```html
-<!-- Container marks busy state and disables interaction until loaded -->
-<section class="skeleton" aria-busy="true" inert>
+<!-- Announce loading once; hide the placeholders from assistive tech -->
+<p class="loading-status" role="status">Loading cards…</p>
+<section class="cards skeleton" aria-busy="true" inert aria-hidden="true">
   <article>
-    <figure>
-      <!-- Real media element with intrinsic dimensions prevents layout shift -->
-      <img src="sauce.jpg" width="640" height="400" alt="A bottle of hot sauce">
-    </figure>
-    <div>
-      <!-- Inline spans wrap text to generate per-line skeleton bars -->
-      <p class="meta"><span>Hot sauce · Heat 7/10</span></p>
-      <h2><a href="/products/mango"><span>Molten Mango Habanero Blaze</span></a></h2>
-      <p><span>Ripe mango and smoked habanero with a slow, warm finish.</span></p>
-    </div>
+    <div class="media"></div>
+    <h2></h2>
+    <p></p>
+    <a href="/more"></a>
+    <button type="button"></button>
   </article>
 </section>
 ```
 
-## 2. Reserve layout space
+- `inert` blocks interaction. `aria-hidden="true"` stops screen readers reading stale or empty text. The visually hidden `role="status"` message gives one generic announcement instead.
+- DO NOT depend on `<figure>` or other markup that exists only for the skeleton.
+- When loading finishes, toggle `aria-busy`, `inert` and `aria-hidden` together.
 
-To prevent Cumulative Layout Shift (CLS), reserve the expected geometry of media and multi-line text:
-- Set `aspect-ratio` on media containers to match the anticipated image crop.
-- Use `min-block-size` with `lh` (line-height) units on text containers to reserve vertical space for expected line counts.
+## 2. Colors
+
+Skeleton colors belong to the surface. Register `--skeleton-tone` with `@property` (`<color>`, inherits) and derive it from the surface with `color-mix()`, mixing a little of the text color into the surface color, so a darker surface gets a darker skeleton. Derive a lighter `--skeleton-highlight` the same way for the shimmer. Use the container's real background and text tokens.
+
+## 3. Elements
+
+Treat each element type differently. Text, links and list items share one rule (hide content, fill with the tone, shape with `border-shape`). Buttons and inputs reuse the same shape with fixed sizing. Media and avatars use a plain fill.
 
 ```css
-figure {
-  /* Example aspect ratio matching the media source */
-  aspect-ratio: 16 / 10;
-  margin: 0;
-}
-
-figure img {
+.skeleton[aria-busy="true"] :is(p, h2, li, a) {
+  /* lh units keep bars proportional to each element's own font size and line-height */
+  --pill-height: .68lh;
+  --pill-radius: .16lh; /* Example value; half the height gives fully round ends */
+  --pill-gap: .3lh;
+  --line-one: 78%;      /* Per-bar widths are overridable custom properties */
   display: block;
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-}
-
-/* Reserve minimum vertical space using lh units to prevent shift (context-dependent estimates) */
-.meta { min-block-size: 1lh; }
-h2 { min-block-size: 2lh; line-height: 1.2; }
-h2 + p { min-block-size: 3lh; }
-```
-
-## 3. Render text bars with inline fragments
-
-While `aria-busy="true"` is active, hide text glyphs and link underlines by setting `color: transparent` and `text-decoration: none`.
-
-Apply background and padding to the inner `<span>`. Use `box-decoration-break: clone` so the background and padding render across each line fragment independently as text wraps:
-
-```css
-/* Hide text glyphs and link underlines on semantic elements */
-.skeleton[aria-busy="true"] :is(h1, h2, h3, h4, h5, h6, p, a, li, dt, dd, th, td, figcaption, label, legend, summary, blockquote, time, small) {
+  min-block-size: var(--pill-height);
+  overflow: hidden;      /* Clips surplus real text so it cannot add lines */
+  user-select: none;
   color: transparent;
-  text-decoration: none;
-}
-
-/* Style inline spans as rounded bars across wrapped line fragments */
-.skeleton[aria-busy="true"] :is(h1, h2, h3, h4, h5, h6, p, a, li, dt, dd, th, td, figcaption, label, legend, summary, blockquote, time, small) > span {
-  /* Example vertical and horizontal padding around text runs */
-  padding: .08em .12em;
-  border-radius: .25em;
+  text-decoration: none; /* Link underlines would otherwise show through */
   background: var(--skeleton-tone);
-
-  /* MANDATORY: clone box decorations across each line wrap */
-  -webkit-box-decoration-break: clone; /* Safari compatibility */
-  box-decoration-break: clone;
+  /* One bar: a closed rounded rectangle, width --line-one */
+  border-shape: shape(from var(--pill-radius) 0,
+    hline to calc(var(--line-one) - var(--pill-radius)),
+    arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
+    vline to calc(var(--pill-height) - var(--pill-radius)),
+    arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
+    hline to var(--pill-radius),
+    arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+    vline to var(--pill-radius),
+    arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw,
+    close);
 }
 ```
 
-## 4. Animate block and text placeholders
+For more than one bar, append a `move to` and another closed rounded rectangle to the same `shape()` for each extra bar, offset vertically by `n × (--pill-height + --pill-gap)` and sized by its own `--line-two`, `--line-three` and so on. `shape()` cannot repeat a path from a count, so each bar is written out. Set `min-block-size` to the total height of all bars.
 
-Register custom properties with `@property` for shimmer position and pulse color, enabling smooth CSS interpolation.
+| Element | Treatment |
+|---|---|
+| `h1`–`h3` | 1–2 bars with a larger `--pill-height`, so hierarchy matches the real template |
+| `p` | 3 bars (2 in compact cards), last one shorter like a real paragraph |
+| `li` | 1 bar each, with a small circle subpath for the bullet; vary widths |
+| `a` | 1 short bar (`--line-one: 42%`) |
+| `button` | One fully rounded pill, fixed block size (for example `2.4em`) and inline size, no padding or border, no text |
+| `input` | One pill with a small radius, full width, fixed block size, no padding or border |
+| Media | `background-color: var(--skeleton-tone)` plus `aspect-ratio` to reserve space |
+| Avatar | Same as media with `border-radius: 50%` |
 
-Apply the pulsing `--skeleton-tone` to the container so text fragments inherit it, and apply a moving gradient shimmer to block-level surfaces (media, avatars, controls):
+DO NOT replace media with `content: linear-gradient()`: it is inconsistent across browsers, and the media can disappear or reflow the text.
 
-```css
-/* Register properties for smooth numeric and color interpolation */
-@property --skeleton-x {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: -100%;
-}
+## 4. Simplify
 
-@property --skeleton-tone {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #c7cbd2;
-}
+A skeleton is a simplification, not a copy. Keep what defines the silhouette (media, title, a few lines of body, the primary action) and hide the rest.
 
-:root {
-  color-scheme: light dark;
-  /* Adaptive theme tokens using light-dark() */
-  --skeleton-base: light-dark(#c7cbd2, #30353d);
-  --skeleton-pulse: light-dark(#d9dce1, #3a4049);
-  --skeleton-highlight: light-dark(#eceef1, #4a525d);
-}
+- Cap long text at 2–4 bars and collections at a few items, however much content exists.
+- To cap items, use a fixed `:nth-child(n + N)` selector with `display: none`. If the count must come from a custom property, read it in a small script, because CSS cannot use a custom property inside `:nth-child()`.
+- Remove whole cards or rows with `display: none`. For items inside a card, use `visibility: hidden` so the card height does not change when the real content arrives.
+- Decide what to hide by asking whether removing it changes the container's height. If it does, keep or reserve it.
 
-/* Pulse animation on container updates --skeleton-tone for all inherited text spans */
-.skeleton[aria-busy="true"] {
-  --skeleton-tone: var(--skeleton-base);
-  animation: skeleton-pulse 1.6s ease-in-out infinite alternate;
-}
+## 5. Shimmer
 
-/* Shimmer animation on block elements (figures, avatars, inputs) */
-.skeleton[aria-busy="true"] :is(figure, picture, .avatar, button, input, select, textarea, .skeleton-block) {
-  color: transparent;
-  border-color: transparent;
-  box-shadow: none;
-  background:
-    linear-gradient(110deg, transparent 20%, var(--skeleton-highlight) 45%, transparent 70%)
-      var(--skeleton-x) 0 / 200% 100% no-repeat,
-    var(--skeleton-tone);
-  animation: skeleton-shimmer 1.8s linear infinite;
-}
+Add a shimmer so users can tell the placeholders are actively loading and not broken.
 
-/* Visually hide replaced media and placeholder text */
-.skeleton[aria-busy="true"] :is(img, svg, video, canvas, iframe) {
-  visibility: hidden;
-}
+On each card, add an `::after` overlay (`position: absolute; inset: 0; pointer-events: none`) filled with a 110° `linear-gradient` that is transparent, then `--skeleton-highlight`, then transparent. Use `background-attachment: fixed` so the sweep is one continuous pass across all cards, `mix-blend-mode: screen`, and a keyframe animation of `background-position` over about 1.8s, linear and infinite. The card needs `position: relative`.
 
-.skeleton[aria-busy="true"] :is(input, select, textarea)::placeholder {
-  color: transparent;
-}
+DO NOT animate the `border-shape` path or the bars' visibility: it flashes in Chrome. Animate the overlay.
 
-@keyframes skeleton-shimmer {
-  to { --skeleton-x: 100%; }
-}
-
-@keyframes skeleton-pulse {
-  to { --skeleton-tone: var(--skeleton-pulse); }
-}
-```
-
-## 5. Decorative media placeholder icon
-
-Use CSS `mask` and `mask-composite` to display a cutout icon on shimmering media elements while keeping actual `<img>` or `<video>` elements hidden:
-
-```css
-/* Cut out a camera/image icon silhouette from the figure's shimmer background */
-.skeleton[aria-busy="true"] figure {
-  mask:
-    linear-gradient(#000 0 0),
-    linear-gradient(#000 0 0) center / 3.5rem 2.75rem no-repeat,
-    radial-gradient(circle, #000 .45rem, transparent calc(.45rem + 1px)) center / 100% 100% no-repeat;
-  mask-composite: exclude;
-}
-```
-
-## 6. Respect reduced motion
-
-Disable animations when the user prefers reduced motion, leaving static placeholder surfaces visible:
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  .skeleton[aria-busy="true"],
-  .skeleton[aria-busy="true"] :is(figure, picture, .avatar, button, input, select, textarea, .skeleton-block) {
-    animation: none;
-  }
-}
-```
-
-## 7. Toggle loading state
-
-When loading completes, set `aria-busy="false"` and remove `inert` to restore normal visibility, interaction, and styling:
-
-```javascript
-export function setLoading(element, isLoading) {
-  element.setAttribute('aria-busy', String(isLoading));
-  element.toggleAttribute('inert', isLoading);
-}
-```
+MANDATORY: Under `@media (prefers-reduced-motion: reduce)`, set `animation: none` on the overlay. The placeholders stay visible.
 
 ## Fallbacks
 
-### box-decoration-break
+### border-shape
 
-{{ BASELINE_STATUS("box-decoration-break") }}
+{{ BASELINE_STATUS("border-shape") }}
 
-Safari supports the WebKit-prefixed property `-webkit-box-decoration-break: clone`. Declare both `-webkit-box-decoration-break: clone` and `box-decoration-break: clone` for complete modern browser coverage. In browsers without support for either declaration, the span background renders as a single bounding box across wrapped lines, which gracefully degrades without breaking layout.
+If your Baseline target does not support `border-shape`, use `@supports (border-shape: shape(from 0 0, close))` to scope the bar shapes, and let other browsers show a solid `--skeleton-tone` fill with `border-radius` on the same elements, sized by `min-block-size` in `lh` units. Multi-line bars and variable lengths are the progressive enhancement. The layout reservation still prevents shift.
+
+### color-mix()
+
+{{ BASELINE_STATUS("color-mix") }}
 
 ### Registered custom properties
 
 {{ BASELINE_STATUS("registered-custom-properties") }}
 
-If your Baseline target does not support registered custom properties, CSS cannot interpolate custom property values for colors or percentages. Fall back by animating `background-position` directly on the shimmer gradient and using a static tone or opacity pulse.
-
-{{ FEATURE_FALLBACKS("light-dark") }}
-
-### CSS masks
-
-{{ BASELINE_STATUS("masks") }}
-
-If your Baseline target does not support CSS masks or `mask-composite`, omit the icon cutout. The media container still preserves its aspect ratio and shows a solid or shimmering placeholder surface.
+Without `@property`, the tone still resolves as a normal custom property. Only animated interpolation of the tone is lost.

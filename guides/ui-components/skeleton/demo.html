@@ -1,16 +1,27 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Skeleton loading patterns</title>
+  <title>Skeleton loading with border-shape</title>
   <style>
-    @layer reset, page, skeleton;
+    @layer reset, page, prototype;
 
     @layer reset {
-      * { box-sizing: border-box; }
-      h2, p, figure { margin: 0; }
-      a { color: inherit; text-decoration: underline .12em var(--accent); text-underline-offset: .18em; }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body,
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
     }
 
     @layer page {
@@ -21,260 +32,498 @@
         --ink: light-dark(#17191d, #f4f5f7);
         --muted: light-dark(#626873, #aeb4bf);
         --line: light-dark(#dfe2e7, #3b404a);
-        --accent: light-dark(#075fe6, #72a8ff);
         --pad: 1.25rem;
       }
 
       body {
-        margin: 0;
+        min-block-size: 100vh;
         background: var(--page);
         color: var(--ink);
         font: 1rem/1.5 system-ui, sans-serif;
       }
 
-      main { max-inline-size: 70rem; margin: auto; padding: 2rem var(--pad); }
-      #toggle { margin-block-end: 1.5rem; border: 0; padding: .7rem 1rem; background: var(--accent); color: white; font: inherit; font-weight: 700; cursor: pointer; }
-
-      #demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); gap: 1rem; }
-      article { overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
-      article:not(:has(> figure)) { padding: var(--pad); }
-      article:has(> figure) > div { padding: var(--pad); }
-      article:has(> .avatar) { display: flex; align-items: flex-start; gap: 1rem; padding: var(--pad); }
-      article:has(> .avatar) > div { flex: 1; min-inline-size: 0; padding: 0; }
-      figure { aspect-ratio: 16 / 10; }
-      figure img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
-      .avatar { inline-size: 4rem; block-size: 4rem; display: grid; place-items: center; flex: none; background: var(--accent); color: white; font-weight: 800; }
-      .meta { min-block-size: 1lh; color: var(--muted); font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-      h2 { margin-block: .6rem .4rem; min-block-size: 2lh; font-size: 1.35rem; line-height: 1.2; }
-      h2 + p { min-block-size: 3lh; color: var(--muted); }
-      article > a, article button.action { display: inline-block; margin-block-start: 1.5rem; font: inherit; font-weight: 700; }
-      article button.action { border: 0; padding: .65rem .9rem; background: var(--accent); color: white; cursor: pointer; }
-      p:has(> a) { margin-block-start: 1rem; }
-    }
-
-    @layer skeleton {
-      @property --skeleton-x {
-        syntax: '<percentage>';
-        inherits: false;
-        initial-value: -100%;
+      main {
+        max-inline-size: 70rem;
+        margin-inline: auto;
+        padding: 2rem var(--pad);
       }
 
+      h1 {
+        margin-block-end: 1.5rem;
+        font-size: 1.5rem;
+      }
+
+      .loading-status {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+        gap: 1rem;
+      }
+
+      article {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      article> :not(.media) {
+        padding-inline: var(--pad);
+      }
+
+      article:not(:has(> .media, > .content > .media)) {
+        padding: var(--pad);
+      }
+
+      .media {
+        aspect-ratio: 16 / 10;
+      }
+
+      .content {
+        padding-block: var(--pad);
+      }
+
+      .content:has(> .media) {
+        display: grid;
+        grid-template-columns: 5rem minmax(0, 1fr);
+        align-items: start;
+        gap: 1rem;
+        padding: var(--pad);
+      }
+
+      .content>.media {
+        aspect-ratio: 1;
+        border-radius: 50%;
+      }
+
+
+      /* One consistent vertical rhythm between content items. Media is excluded
+         because it sits flush with the card edge. */
+      :is(article, .content, .content > div)> :not(.media)+* {
+        margin-block-start: var(--flow-space, .75rem);
+      }
+
+      h2 {
+        font-size: 1.4em;
+        line-height: 1.2;
+      }
+
+      p {
+        color: var(--muted);
+      }
+
+      ul {
+        padding-inline-start: 1.25em;
+        color: var(--muted);
+      }
+
+      li+li {
+        margin-block-start: .35rem;
+      }
+
+      article>a {
+        display: block;
+        color: inherit;
+      }
+
+      input,
+      button {
+        font: inherit;
+        inline-size: 100%;
+        padding: .6em .9em;
+        border: 1px solid var(--line);
+        border-radius: .4em;
+        background: var(--surface);
+        color: inherit;
+      }
+
+      button {
+        inline-size: auto;
+        font-weight: 700;
+      }
+
+
+    }
+
+    @layer prototype {
       @property --skeleton-tone {
         syntax: '<color>';
         inherits: true;
         initial-value: #c7cbd2;
       }
 
-      :root {
-        --skeleton-base: light-dark(#c7cbd2, #30353d);
-        --skeleton-pulse: light-dark(#d9dce1, #3a4049);
-        --skeleton-highlight: light-dark(#eceef1, #4a525d);
-      }
-
       .skeleton[aria-busy="true"] {
-        --skeleton-tone: var(--skeleton-base);
-        animation: skeleton-pulse 1.6s ease-in-out infinite alternate;
+        --skeleton-tone: color-mix(in oklch, var(--surface) 88%, var(--ink));
+        /* not currentColor: pills set color: transparent */
+        --skeleton-highlight: color-mix(in oklch, var(--surface) 70%, white);
       }
 
-      .skeleton[aria-busy="true"] :empty:not(figure, .avatar)::before {
+      /* One shimmer per card, clipped to the card, so grid gaps and empty cells
+         don't show it. background-attachment: fixed keeps the gradient in one
+         viewport-wide coordinate space, so the sweep reads as a single pass
+         across all cards rather than a separate one per card. */
+      .skeleton[aria-busy="true"] article {
+        position: relative;
+      }
+
+      /* Configure the number of visible cards here. JavaScript reads this
+         value because CSS cannot use a custom property in :nth-child(). Whole
+         cards can be removed; in-card items may need visibility to reserve space. */
+      .skeleton[aria-busy="true"] {
+        --visible-cards: 6;
+      }
+
+      .skeleton[aria-busy="true"][data-ready] article[hidden] {
+        display: none;
+      }
+
+      .skeleton[aria-busy="true"] article::after {
         content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image: linear-gradient(110deg, transparent 40%, var(--skeleton-highlight) 50%, transparent 60%);
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-size: 200% 100%;
+        background-position: 200% 0;
+        mix-blend-mode: screen;
+        animation: sweep 1.8s linear infinite;
+      }
+
+      /* Metadata still contributes to the card silhouette, so give its real
+         inline content the same loading treatment rather than leaving a gap. */
+      .skeleton[aria-busy="true"] time {
+        display: inline-block;
+        max-inline-size: 100%;
+        min-block-size: 1lh;
+        overflow: hidden;
+        color: transparent;
+        background: var(--skeleton-tone);
+        border-radius: .16lh;
+        vertical-align: middle;
+      }
+
+      .skeleton[aria-busy="true"] .media {
+        background-color: var(--skeleton-tone);
+      }
+
+      /* Text bars: background fill, border-shape defines the pill outlines. */
+      .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button) {
+        --pill-height: .68lh;
+        --pill-radius: .16lh;
+        --pill-gap: .3lh;
+        --line-one: 78%;
+        --block: var(--pill-height);
         display: block;
-        inline-size: var(--skeleton-width, 82%);
-        block-size: calc(var(--skeleton-lines, 1) * 1lh);
-        border-radius: .25em;
-        background: linear-gradient(110deg, transparent 20%, var(--skeleton-highlight) 45%, transparent 70%) var(--skeleton-x) 0 / 200% 100% no-repeat, var(--skeleton-tone);
-        mask: repeating-linear-gradient(to bottom, transparent 0 .1lh, #000 .1lh .9lh, transparent .9lh 1lh);
-        animation: skeleton-shimmer 1.8s linear infinite;
+        inline-size: 100%;
+        min-block-size: var(--block);
+        overflow: hidden;
+        user-select: none;
+        background: var(--skeleton-tone);
+        border-shape: shape(from var(--pill-radius) 0,
+            hline to calc(var(--line-one) - var(--pill-radius)),
+            arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(var(--pill-height) - var(--pill-radius)),
+            arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
+            hline to var(--pill-radius),
+            arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to var(--pill-radius),
+            arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw,
+            close);
+        color: transparent;
+        /* Underlines would otherwise show through transparent link text */
+        text-decoration: none;
       }
 
-      .skeleton[aria-busy="true"] :is(h1, h2, h3, h4, h5, h6):empty { --skeleton-lines: 2; }
-      .skeleton[aria-busy="true"] p:empty { --skeleton-lines: 3; --skeleton-width: 100%; }
-
-      .skeleton[aria-busy="true"] article:nth-child(3) h2:empty { --skeleton-lines: 1; }
-      .skeleton[aria-busy="true"] .meta:empty { --skeleton-lines: 1; --skeleton-width: 42%; }
-      .skeleton[aria-busy="true"] a:empty { --skeleton-lines: 1; --skeleton-width: 55%; }
-      .skeleton[aria-busy="true"] a.action:empty {
-        --skeleton-width: 7.5rem;
-        --skeleton-height: 2.4rem;
-        margin-block-start: 1.5rem;
+      /* Links are a short single pill */
+      .skeleton[aria-busy="true"] a {
+        --line-one: 42%;
       }
-      .skeleton[aria-busy="true"] button:empty {
-        --skeleton-lines: 1;
-        --skeleton-width: 7.5rem;
+
+
+      /* Lists: a dot plus a pill per item. The dot is a circle drawn with two
+         arcs; the pill starts after it. */
+      .skeleton[aria-busy="true"] ul {
         padding: 0;
-        border: 0;
-        background: none;
-      }
-      .skeleton[aria-busy="true"] button:empty::before { block-size: 2.4rem; }
-
-      .skeleton[aria-busy="true"] :is(.avatar, .image) {
-        background:
-          linear-gradient(110deg, transparent 20%, var(--skeleton-highlight) 45%, transparent 70%)
-            var(--skeleton-x) 0 / 200% 100% no-repeat,
-          var(--skeleton-tone);
-        animation: skeleton-shimmer 1.8s linear infinite;
+        list-style: none;
       }
 
-      .avatar { inline-size: 4rem; block-size: 4rem; flex: none; border-radius: 50%; }
-      .skeleton[aria-busy="true"] figure.image {
-        mask:
-          linear-gradient(#000 0 0),
-          linear-gradient(#000 0 0) center / 3.5rem 2.75rem no-repeat,
-          radial-gradient(circle, #000 .45rem, transparent calc(.45rem + 1px)) center / 100% 100% no-repeat;
-        mask-composite: exclude;
+      .skeleton[aria-busy="true"] li {
+        --pill-height: .56lh;
+        --pill-radius: .16lh;
+        --dot: .5lh;
+        --dot-gap: .4lh;
+        --text-start: calc(var(--dot) + var(--dot-gap));
+        --line-one: 72%;
+        border-shape: shape(from 0 calc(var(--pill-height) / 2),
+            arc to var(--dot) calc(var(--pill-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw,
+            arc to 0 calc(var(--pill-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw,
+            close,
+            move to calc(var(--text-start) + var(--pill-radius)) 0,
+            hline to calc(var(--line-one) - var(--pill-radius)),
+            arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(var(--pill-height) - var(--pill-radius)),
+            arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
+            hline to calc(var(--text-start) + var(--pill-radius)),
+            arc to var(--text-start) calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to var(--pill-radius),
+            arc to calc(var(--text-start) + var(--pill-radius)) 0 of var(--pill-radius) var(--pill-radius) cw,
+            close);
       }
 
-      @keyframes skeleton-shimmer { to { --skeleton-x: 100%; } }
-      @keyframes skeleton-pulse { to { --skeleton-tone: var(--skeleton-pulse); } }
+      .skeleton[aria-busy="true"] li:nth-child(2) {
+        --line-one: 56%;
+      }
+
+      .skeleton[aria-busy="true"] li:nth-child(3) {
+        --line-one: 64%;
+      }
+
+      /* Inputs and buttons: one full-width pill with fixed sizes, same path as text. */
+      .skeleton[aria-busy="true"] :is(input, button) {
+        --pill-height: 2.4em;
+        --pill-radius: .4em;
+        --line-one: 100%;
+        padding: 0;
+        border-style: none;
+      }
+
+      .skeleton[aria-busy="true"] button {
+        inline-size: 8rem;
+        --pill-radius: 1.2em;
+      }
+
+      /* Line count is selected by element/layout rules, not a --lines variable:
+         border-shape has to enumerate every pill path explicitly. */
+      .skeleton[aria-busy="true"] h2 {
+        --pill-height: 1lh;
+        --pill-radius: .18lh;
+        --line-one: 88%;
+        --line-two: 64%;
+        --block: calc(2 * var(--pill-height) + var(--pill-gap));
+        border-shape: shape(from var(--pill-radius) 0,
+            hline to calc(var(--line-one) - var(--pill-radius)),
+            arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(var(--pill-height) - var(--pill-radius)),
+            arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
+            hline to var(--pill-radius),
+            arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to var(--pill-radius),
+            arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw,
+            close,
+            move to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)),
+            hline to calc(var(--line-two) - var(--pill-radius)),
+            arc to var(--line-two) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)),
+            arc to calc(var(--line-two) - var(--pill-radius)) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height)) of var(--pill-radius) var(--pill-radius) cw,
+            hline to var(--pill-radius),
+            arc to 0 calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)),
+            arc to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw,
+            close);
+      }
+
+      .skeleton[aria-busy="true"] p {
+        --pill-height: .56lh;
+        --pill-radius: .16lh;
+        --line-one: 100%;
+        --line-two: 92%;
+        --line-three: 68%;
+        --block: calc(3 * var(--pill-height) + 2 * var(--pill-gap));
+        border-shape: shape(from var(--pill-radius) 0,
+            hline to calc(var(--line-one) - var(--pill-radius)),
+            arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(var(--pill-height) - var(--pill-radius)),
+            arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
+            hline to var(--pill-radius),
+            arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to var(--pill-radius),
+            arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw,
+            close,
+            move to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)),
+            hline to calc(var(--line-two) - var(--pill-radius)),
+            arc to var(--line-two) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)),
+            arc to calc(var(--line-two) - var(--pill-radius)) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height)) of var(--pill-radius) var(--pill-radius) cw,
+            hline to var(--pill-radius),
+            arc to 0 calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)),
+            arc to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw,
+            close,
+            move to var(--pill-radius) calc(2 * (var(--pill-height) + var(--pill-gap))),
+            hline to calc(var(--line-three) - var(--pill-radius)),
+            arc to var(--line-three) calc(calc(2 * (var(--pill-height) + var(--pill-gap))) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(calc(2 * (var(--pill-height) + var(--pill-gap))) + var(--pill-height) - var(--pill-radius)),
+            arc to calc(var(--line-three) - var(--pill-radius)) calc(calc(2 * (var(--pill-height) + var(--pill-gap))) + var(--pill-height)) of var(--pill-radius) var(--pill-radius) cw,
+            hline to var(--pill-radius),
+            arc to 0 calc(calc(2 * (var(--pill-height) + var(--pill-gap))) + var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(calc(2 * (var(--pill-height) + var(--pill-gap))) + var(--pill-radius)),
+            arc to var(--pill-radius) calc(2 * (var(--pill-height) + var(--pill-gap))) of var(--pill-radius) var(--pill-radius) cw,
+            close);
+      }
+
+      .skeleton[aria-busy="true"] article:where(:not(:has(> .media)), :has(.content > .media)) p {
+        --line-one: 92%;
+        --line-two: 62%;
+        --block: calc(2 * var(--pill-height) + var(--pill-gap));
+        border-shape: shape(from var(--pill-radius) 0,
+            hline to calc(var(--line-one) - var(--pill-radius)),
+            arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(var(--pill-height) - var(--pill-radius)),
+            arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
+            hline to var(--pill-radius),
+            arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to var(--pill-radius),
+            arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw,
+            close,
+            move to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)),
+            hline to calc(var(--line-two) - var(--pill-radius)),
+            arc to var(--line-two) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)),
+            arc to calc(var(--line-two) - var(--pill-radius)) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height)) of var(--pill-radius) var(--pill-radius) cw,
+            hline to var(--pill-radius),
+            arc to 0 calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
+            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)),
+            arc to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw,
+            close);
+      }
+
+      @keyframes sweep {
+        from {
+          background-position: 200% 0;
+        }
+
+        to {
+          background-position: -100% 0;
+        }
+      }
 
       @media (prefers-reduced-motion: reduce) {
-        .skeleton[aria-busy="true"],
-        .skeleton[aria-busy="true"] :is(.avatar, .image),
-        .skeleton[aria-busy="true"] :empty::before { animation: none; }
+        .skeleton[aria-busy="true"] article::after {
+          animation: none;
+        }
       }
     }
   </style>
 </head>
+
 <body>
   <main>
-    <button id="toggle" type="button">Show loaded state</button>
+    <h1>Skeleton card variations</h1>
 
-    <section id="demos" class="skeleton" aria-busy="true" inert>
+    <p class="loading-status" role="status">Loading cards…</p>
+    <section class="cards skeleton" aria-busy="true" inert aria-hidden="true">
       <article>
-        <figure class="image" aria-hidden="true"></figure>
-        <div aria-hidden="true">
-          <p class="meta"></p>
+        <div class="media" aria-hidden="true"></div>
+        <div class="content" aria-hidden="true">
+          <p><time datetime="2026-10-14">Updated yesterday</time> · 4 min read</p>
           <h2></h2>
           <p></p>
-          <button class="action" aria-hidden="true"></button>
         </div>
       </article>
 
       <article>
-        <div aria-hidden="true">
-          <p class="meta"></p>
-          <h2></h2>
-          <p></p>
-          <a class="action" aria-hidden="true"></a>
+        <div class="content">
+          <div class="media"></div>
+          <div>
+            <h2>A heading with its real text still present while loading</h2>
+            <p>This deliberately longer paragraph tests that the fixed skeleton
+            block height clips surplus text instead of creating additional
+            skeleton lines or changing the card layout.</p>
+          </div>
         </div>
       </article>
 
       <article>
-        <div class="avatar" aria-hidden="true"></div>
-        <div aria-hidden="true">
+        <h2></h2>
+        <ul>
+          <li></li>
+          <li></li>
+          <li></li>
+        </ul>
+        <input type="text">
+        <button type="button"></button>
+      </article>
+
+      <article aria-hidden="true">
+        <div class="media" aria-hidden="true"></div>
+        <div class="content" aria-hidden="true">
+          <p><time datetime="2026-10-14">Updated yesterday</time> · 4 min read</p>
           <h2></h2>
           <p></p>
-          <p class="meta"></p>
         </div>
       </article>
+
+      <article aria-hidden="true">
+        <div class="content">
+          <div class="media"></div>
+          <div>
+            <h2>A heading with its real text still present while loading</h2>
+            <p>This deliberately longer paragraph tests that the fixed skeleton
+            block height clips surplus text instead of creating additional
+            skeleton lines or changing the card layout.</p>
+          </div>
+        </div>
+      </article>
+
+      <article aria-hidden="true">
+        <h2></h2>
+        <ul>
+          <li></li>
+          <li></li>
+          <li></li>
+        </ul>
+        <input type="text">
+        <button type="button"></button>
+      </article>
+
+      <article aria-hidden="true">
+        <div class="content">
+          <div class="media"></div>
+          <div>
+            <h2></h2>
+            <p></p>
+          </div>
+        </div>
+      </article>
+
+      <article aria-hidden="true">
+        <h2></h2>
+        <ul>
+          <li></li>
+          <li></li>
+          <li></li>
+        </ul>
+        <input type="text">
+        <button type="button"></button>
+      </article>
+
     </section>
   </main>
-
   <script>
-    const demos = document.getElementById('demos');
-    const toggle = document.getElementById('toggle');
-    const skeletonCards = [...demos.children].map((card) => card.cloneNode(true));
-    const cards = [
-      {
-        image: 'https://picsum.photos/seed/skeleton-demo/640/400',
-        alt: 'A bottle of Molten Mango hot sauce',
-        category: 'Hot sauce · Heat 7/10',
-        title: 'Molten Mango Habanero Blaze',
-        description: 'Ripe mango and smoked habanero with a slow, warm finish that works on almost anything.',
-        action: 'Add to basket',
-        actionType: 'button'
-      },
-      {
-        category: 'New this week',
-        title: 'Ghost Pepper Garlic Inferno',
-        description: 'Roasted garlic, black vinegar and enough ghost pepper to make you question your choices.',
-        action: 'See the full range',
-        actionType: 'link'
-      },
-      {
-        avatar: 'SC',
-        title: 'Scorch Co.',
-        description: 'Small-batch hot sauce from a shed in Hampshire',
-        links: ['Shop', 'Stockists']
-      }
-    ];
+    document.querySelectorAll('.skeleton[aria-busy="true"]').forEach((collection) => {
+      const configured = getComputedStyle(collection)
+        .getPropertyValue('--visible-cards')
+        .trim();
+      const count = Number.parseInt(configured, 10);
+      const cards = collection.querySelectorAll(':scope > article');
+      const visibleCount = Number.isFinite(count) ? Math.max(0, count) : cards.length;
 
-    function element(tag, className, text) {
-      const node = document.createElement(tag);
-      if (className) node.className = className;
-      if (text) node.textContent = text;
-      return node;
-    }
+      cards.forEach((card, index) => {
+        if (index >= visibleCount) card.hidden = true;
+      });
 
-    function renderCard(data) {
-      const article = element('article');
-      if (data.image) {
-        const figure = element('figure');
-        const image = element('img');
-        image.src = data.image;
-        image.width = 640;
-        image.height = 400;
-        image.alt = data.alt;
-        figure.append(image);
-        article.append(figure);
-      }
-      if (data.avatar) {
-        const avatar = element('div', 'avatar', data.avatar);
-        avatar.setAttribute('aria-hidden', 'true');
-        article.append(avatar);
-      }
-
-      const content = element('div');
-      if (data.category) content.append(element('p', 'meta', data.category));
-
-      const heading = element('h2');
-      const title = element('a', '', data.title);
-      title.href = '#';
-      heading.append(title);
-      content.append(heading);
-      content.append(element('p', '', data.description));
-
-      if (data.actionType === 'button') {
-        content.append(element('button', 'action', data.action));
-      } else if (data.actionType === 'link') {
-        const action = element('a', '', data.action);
-        action.href = '#';
-        content.append(action);
-      }
-      if (data.links) {
-        const links = element('p');
-        data.links.forEach((label, index) => {
-          if (index) links.append(document.createTextNode(' · '));
-          const link = element('a', '', label);
-          link.href = '#';
-          links.append(link);
-        });
-        content.append(links);
-      }
-      article.append(content);
-      return article;
-    }
-
-    function setLoading(loading) {
-      demos.setAttribute('aria-busy', String(loading));
-      demos.toggleAttribute('inert', loading);
-      toggle.textContent = loading ? 'Show loaded state' : 'Show loading state';
-      demos.replaceChildren(...(loading ? skeletonCards.map((card) => card.cloneNode(true)) : cards.map(renderCard)));
-    }
-
-    toggle.addEventListener('click', () => {
-      const isLoading = demos.getAttribute('aria-busy') === 'true';
-      if (!isLoading) {
-        setLoading(true);
-        return;
-      }
-      toggle.disabled = true;
-      toggle.textContent = 'Loading…';
-      window.setTimeout(() => {
-        setLoading(false);
-        toggle.disabled = false;
-      }, 650);
+      collection.dataset.ready = '';
     });
   </script>
 </body>
+
 </html>
