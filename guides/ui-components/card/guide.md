@@ -68,6 +68,8 @@ When the whole card is one destination and has no independent actions, use one n
 
 ### Clickable cards with independent actions
 
+If clicking the card triggers an action rather than navigating, use a `<button>` instead of a link.
+
 When a content card links to a primary destination, also contains other interactive elements, and needs to be clickable as a whole:
 - Use a single opt-in, on the primary link itself: put `.card-link` on exactly one link per card (the heading link). Footer and other links never get it, or each would stretch its own overlay and the last one would capture the whole card.
 - Link its title and stretch the pointer hit area across the card with `::after`
@@ -136,4 +138,4 @@ Style the selected card with `:has(:checked)`. Never change layout-affecting pro
 
 The visible checkbox or radio is itself a non-color indicator of selection, so the color change alone is sufficient. If the control is visually hidden (keep it focusable and in the accessibility tree, never `display: none`), add a non-color indicator that does not affect layout, such as a check icon or a thicker `outline`.
 
-When choices belong in a dropdown picker whose options are laid out as cards, use a native `<select>` with `appearance: base-select` and style `::picker(select)` and `<option>` elements rather than replacing the select with `<div>` cards; see {{ GUIDE_REF("custom-select-picker-layouts") }} for more details and fallbacks. Use `<button>` elements when selecting a card triggers an immediate action rather than setting form state.
+When choices belong in a dropdown picker whose options are laid out as cards, use a native `<select>` with `appearance: base-select` and style `::picker(select)` and `<option>` elements rather than replacing the select with `<div>` cards; see {{ GUIDE_REF("custom-select-picker-layouts") }} for more details and fallbacks.
