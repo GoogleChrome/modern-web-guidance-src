@@ -213,7 +213,7 @@ Two box properties decorate text by outlining it rather than running a line alon
 
 `border-shape` replaces only the border. The background is still the rectangular box, so do not rely on it to fill a shape.
 
-When only the corners need a different shape, such as a bevelled, scooped, or notched label, use `corner-shape` with `border-radius` instead. It keeps the background and border following the corners, and unsupported browsers fall back to ordinary rounded corners.
+When only the corners need a different shape, such as a beveled, scooped, or notched label, use `corner-shape` with `border-radius` instead. It keeps the background and border following the corners, and unsupported browsers fall back to ordinary rounded corners.
 
 ```css
 .label {
@@ -229,7 +229,7 @@ When only the corners need a different shape, such as a bevelled, scooped, or no
 * **`text-decoration`** (line, ink skipping, spaces, inset): the line should run along the text, wrap with it, and follow its font metrics. This is the default choice.
 * **Pseudo-element with `border-shape` and `clip-path`**: the line is a custom shape or needs a draw-on animation. Choose it only when `text-decoration-style` cannot produce the look, because it needs extra positioning. For vector path animations, see {{ GUIDE_REF("line-drawing-animation") }}.
 * **`background-clip: border-area`**: the text needs a gradient outline. Use plain `border-color` when a solid outline is enough. For complete gradient border styling, see {{ GUIDE_REF("gradient-borders") }}.
-* **`corner-shape`**: only the corners need a different shape, such as bevelled, scooped, or notched. Pair it with `border-radius`, which sets the corner size.
+* **`corner-shape`**: only the corners need a different shape, such as beveled, scooped, or notched. Pair it with `border-radius`, which sets the corner size.
 * **`border-shape`**: the outline needs a shape `border-radius` cannot draw, such as a tag or arrow. Use `border-radius` when rounded corners are enough. For shaped element styling, see {{ GUIDE_REF("element-shape") }}.
 * **Inset hover reveal**: worth adding when a link needs a hover affordance beyond a color change. Skip it for text that is not interactive.
 
@@ -258,6 +258,98 @@ declaration is ignored, so the link keeps its normal, fully visible underline
 and the transition has nothing to animate. This is graceful degradation: the
 hover reveal is lost and the link stays underlined.
 
-{{ FEATURE_FALLBACKS("background-clip-border-area") }}
+### Border area
 
-{{ FEATURE_FALLBACKS("border-shape") }}
+{{ BASELINE_STATUS("background-clip-border-area") }}
+
+If your Baseline target does not support `background-clip: border-area`, the declaration is ignored and the background paints under the whole border box, filling the text instead of only its outline. Do NOT settle for a plain solid border when the gradient is part of the design. Reproduce the gradient instead, and apply `background-clip: border-area` only inside `@supports`.
+
+Use an opaque layer when the element's background is a known flat color. Paint the surface color over the padding box and the gradient under the border box, so the gradient shows only through the transparent border:
+
+```css
+.ring {
+  border: var(--ring-width, max(2px, 0.12em)) solid transparent; /* Example width */
+  /* Fallback: an opaque surface layer hides the gradient inside the border. */
+  background:
+    linear-gradient(var(--surface, canvas) 0 100%) padding-box,
+    linear-gradient(135deg, var(--ring-start, #2563eb), var(--ring-end, #db2777)) border-box;
+}
+
+@supports (background-clip: border-area) {
+  .ring {
+    background: linear-gradient(135deg, var(--ring-start, #2563eb), var(--ring-end, #db2777)) border-box;
+    background-clip: border-area; /* The inside stays transparent */
+  }
+}
+```
+
+Use a masked pseudo-element when the inside must stay transparent. The pseudo-element carries the gradient, and a mask cuts out everything but its padding ring:
+
+```css
+@supports not (background-clip: border-area) {
+  .ring {
+    position: relative;
+    border-color: transparent;
+  }
+
+  .ring::before {
+    content: "";
+    position: absolute;
+    inset: calc(var(--ring-width, max(2px, 0.12em)) * -1); /* Cover the border box */
+    padding: var(--ring-width, max(2px, 0.12em)); /* Ring thickness */
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--ring-start, #2563eb), var(--ring-end, #db2777));
+    /* Keep only the area between the content box and the border box. */
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+```
+
+### Border shape
+
+{{ BASELINE_STATUS("border-shape") }}
+
+If your Baseline target does not support `border-shape`, the declaration is ignored and the element keeps its rectangular border. A rounded rectangle is only an acceptable fallback when the shape is purely decorative. When the shape carries meaning, such as a tag, arrow, or callout, reproduce it as closely as possible, and apply `border-shape` only inside `@supports`.
+
+Draw the outline with a clipped pseudo-element. Keep a transparent border so the box is the same size as in the supported case, fill the pseudo-element with the outline color, and cut it into a ring with an `evenodd` `clip-path`: the outer shape, then the same shape inset by the stroke width.
+
+```css
+.tag {
+  --stroke: max(2px, 0.08em); /* Example stroke width */
+  position: relative;
+  padding: 0.2em 1.5em 0.2em 0.9em; /* Example values */
+  border: var(--stroke) solid transparent;
+}
+
+@supports not (border-shape: circle(50%)) {
+  .tag::before {
+    content: "";
+    position: absolute;
+    inset: calc(var(--stroke) * -1); /* Cover the border box */
+    background: var(--shape-color, currentColor);
+    pointer-events: none;
+    /* Outer shape, then the inner shape inset by the stroke. The inner points are approximate on
+       diagonal edges, so the stroke looks slightly thinner there. */
+    clip-path: polygon(evenodd,
+      0 0, 85% 0, 100% 50%, 85% 100%, 0 100%,
+      var(--stroke) var(--stroke),
+      calc(85% - var(--stroke)) var(--stroke),
+      calc(100% - var(--stroke) * 2) 50%,
+      calc(85% - var(--stroke)) calc(100% - var(--stroke)),
+      var(--stroke) calc(100% - var(--stroke)));
+  }
+}
+
+@supports (border-shape: circle(50%)) {
+  .tag {
+    border-color: var(--shape-color, currentColor);
+    border-shape: polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%);
+  }
+}
+```
+
+For a filled shape rather than an outline, put `clip-path: polygon(...)` with the same points directly on the element.
+
+`clip-path` also clips focus rings and `box-shadow`. Do not rely on an outline on the clipped element to show focus; style `:focus-visible` with a color or background change instead.
