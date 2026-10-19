@@ -4,25 +4,22 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import matter from '@11ty/gray-matter';
+import { rootDir } from '../core/paths.ts';
+import type { CompactSearchResult, UseCaseResult } from '../rag/search.ts';
 
 export function assertSearchResults(output: string) {
-    const results = JSON.parse(output);
+    const results = JSON.parse(output) as CompactSearchResult[];
     assert.ok(Array.isArray(results), 'Output should be a JSON array');
-    assert.ok(results.length > 0, 'Search should find some results');
+    assert.strictEqual(results.length, 10, 'Default CLI search should return top-10 results');
     
-    // Find if 'autofill-address-form' is in the results
-    const hasAddressForm = results.some((r: any) => r.id === 'autofill-address-form');
+    const hasAddressForm = results.some(r => r.id === 'autofill-address-form');
     assert.ok(hasAddressForm, 'Results should contain autofill-address-form');
     
-    // Verify structure of the first item
     const topResult = results[0];
     assert.ok(topResult.id, 'Top result should have an id');
     assert.ok(topResult.description, 'Top result should have a description');
-    assert.ok(topResult.tokenCount !== undefined, 'Top result should have a tokenCount');
-    assert.ok(topResult.similarity, 'Top result should have a similarity');
+    assert.deepStrictEqual(Object.keys(topResult).sort(), ['description', 'id']);
 }
-
-import { rootDir } from '../core/paths.ts';
 
 const ROOT_DIR = rootDir; // modern-web-guidance-src/
 const STAGING_DIR = path.join(ROOT_DIR, "dist/skills-cli");
@@ -286,7 +283,11 @@ test('search operates strictly offline with zero socket or fetch calls', async (
     const res = await searchUseCases("address form", 2);
     console.log(JSON.stringify(res));
   '`, { encoding: 'utf8', cwd: ROOT_DIR });
-  assertSearchResults(searchOut);
+  const results = JSON.parse(searchOut) as UseCaseResult[];
+  assert.strictEqual(results.length, 2);
+  assert.ok(results.some(r => r.id === 'autofill-address-form'));
+  assert.ok(results[0].tokenCount > 0, 'Library result should include tokenCount');
+  assert.ok(results[0].similarity > 0.3, 'Library result should include similarity');
 });
 
 test('bundled search handles linguistic and sequence edge cases with precise kernels', async () => {
