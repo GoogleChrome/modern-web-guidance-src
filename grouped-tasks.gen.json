@@ -135,6 +135,9 @@
       ]
     },
     "html": {
+      "form-associated-custom-elements": [
+        "daily-grind"
+      ],
       "html": [
         "daily-grind",
         "devtools-times"
