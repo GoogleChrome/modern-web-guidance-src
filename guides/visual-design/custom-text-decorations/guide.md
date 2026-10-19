@@ -1,6 +1,6 @@
 ---
 name: custom-text-decorations
-description: Style and animate text underlines, overlines, and strikethroughs with native text-decoration—including hover-reveal animations, custom offsets and end insets, descender ink skipping, and leading or trailing space skipping—and fall back to SVG lines or gradient and shaped outlines only where text-decoration cannot draw the look.
+description: Style and animate text underlines, overlines, and strikethroughs with native text-decoration—including hover-reveal animations, custom offsets and end insets, descender ink skipping, and leading or trailing space skipping—and fall back to clipped pseudo-element lines or gradient and shaped outlines only where text-decoration cannot draw the look.
 web-feature-ids:
   - text-decoration
   - text-decoration-skip-ink
@@ -8,7 +8,6 @@ web-feature-ids:
   - tmp-text-decoration-inset
   - text-decoration-skip-spaces
   - background-clip-border-area
-  - tmp-path-length
   - border-shape
 ---
 
@@ -126,17 +125,12 @@ To reveal an underline on hover without a border or background gradient, trim th
 }
 ```
 
-## Draw a custom line with SVG and path-length
+## Draw a custom line with a pseudo-element
 
-Use an SVG path when the line must be a shape `text-decoration` cannot draw, such as a hand-drawn squiggle, and animate it by dashing its stroke. `path-length` sets the path's length to a fixed number, so one dash value works for any shape and size.
+Use a pseudo-element when the line must be a shape `text-decoration` cannot draw, such as a squiggle, and reveal it by clipping. No extra markup is needed, so the link stays a plain `<a>`.
 
 ```html
-<a class="draw" href="#">
-  Hover to draw underline
-  <svg viewBox="0 0 200 10" aria-hidden="true" focusable="false">
-    <path pathLength="100" d="M2 5 C 14 -1, 26 11, 38 5 S 62 -1, 74 5 S 98 11, 110 5 S 134 -1, 146 5 S 170 11, 182 5 S 194 3, 198 5" />
-  </svg>
-</a>
+<a class="draw" href="#">Hover to draw underline</a>
 ```
 
 ```css
@@ -145,46 +139,50 @@ Use an SVG path when the line must be a shape `text-decoration` cannot draw, suc
   display: inline-block;
   color: inherit;
   text-decoration: none;
-  padding-block-end: 0.3em; /* Space for the SVG line below the text; example value */
+  padding-block-end: 0.4em; /* Space for the line below the text; example value */
 }
 
-.draw svg {
+.draw::after {
+  content: "";
   position: absolute;
-  inset: auto 0 -0.4em 0; /* Position under the baseline; example value */
-  inline-size: 100%;
-  block-size: auto;
-  overflow: visible;
+  inset: auto 0 0 0;
   pointer-events: none;
+  /* Straight fallback line where border-shape is unsupported */
+  border-block-end: var(--deco-thickness, max(1px, 0.08em)) solid var(--deco-color, currentColor);
 }
 
-.draw path {
-  fill: none;
-  stroke: var(--deco-color, currentColor);
-  stroke-width: var(--deco-thickness, max(1px, 0.08em));
-  /* Normalize the path to 100 units. Every dash value below is then a percentage of the
-     path, whatever its real length. */
-  path-length: 100;
-  stroke-dasharray: 100;
+@supports (border-shape: circle(50%)) {
+  .draw::after {
+    block-size: 0.4em; /* Height of the squiggle; example value */
+    border: var(--deco-thickness, max(1px, 0.08em)) solid var(--deco-color, currentColor);
+    /* A single shape strokes along its path, using the border width as the stroke. Example squiggle. */
+    border-shape: shape(from 0% 50%,
+      curve to 20% 50% with 5% 0% / 15% 100%,
+      smooth to 40% 50% with 35% 100%,
+      smooth to 60% 50% with 55% 100%,
+      smooth to 80% 50% with 75% 100%,
+      smooth to 100% 50% with 95% 100%);
+  }
 }
 
 /* Only hide and animate the line when the user has not asked for reduced motion;
    otherwise it stays fully drawn. */
 @media (prefers-reduced-motion: no-preference) {
-  .draw path {
-    stroke-dashoffset: 100; /* Fully hidden */
+  .draw::after {
+    /* Clip the line away from the right edge. The negative block insets keep the stroke
+       from being cut off vertically. */
+    clip-path: inset(-1em 100% -1em 0);
     /* A slightly slower draw than a hover reveal reads as drawing; example duration. */
-    transition: stroke-dashoffset var(--draw-duration, 0.6s) ease-out;
+    transition: clip-path var(--draw-duration, 0.6s) ease-out;
   }
 
-  .draw:is(:hover, :focus-visible) path {
-    stroke-dashoffset: 0; /* Fully drawn */
+  .draw:is(:hover, :focus-visible)::after {
+    clip-path: inset(-1em 0 -1em 0); /* Fully drawn */
   }
 }
 ```
 
-Position the `<svg>` under the text, mark it `aria-hidden="true"`, and keep its `viewBox` aspect ratio instead of stretching it with `preserveAspectRatio="none"`.
-
-DO NOT use `vector-effect: non-scaling-stroke` on the path. It measures dashes in screen pixels, which defeats the normalization and leaves the line partly drawn.
+Without `border-shape` the line is straight but still draws on, so the animation does not depend on the shape. For a freeform path or a draw-on that follows the stroke, see {{ GUIDE_REF("line-drawing-animation") }}.
 
 ## Outline text with a box instead
 
@@ -219,7 +217,7 @@ Two box properties decorate text by outlining it rather than running a line alon
 ## Choose a technique
 
 * **`text-decoration`** (line, ink skipping, spaces, inset): the line should run along the text, wrap with it, and follow its font metrics. This is the default choice.
-* **SVG with `path-length`**: the line is a custom shape or needs a draw-on animation. Choose it only when `text-decoration-style` cannot produce the look, because it needs extra markup and positioning. For broader vector path animations, see {{ GUIDE_REF("line-drawing-animation") }}.
+* **Pseudo-element with `border-shape` and `clip-path`**: the line is a custom shape or needs a draw-on animation. Choose it only when `text-decoration-style` cannot produce the look, because it needs extra positioning. For vector path animations, see {{ GUIDE_REF("line-drawing-animation") }}.
 * **`background-clip: border-area`**: the text needs a gradient outline. Use plain `border-color` when a solid outline is enough. For complete gradient border styling, see {{ GUIDE_REF("gradient-borders") }}.
 * **`border-shape`**: the outline needs a non-rectangular shape, such as a circle or tag. Use `border-radius` when rounded corners are enough. For shaped element styling, see {{ GUIDE_REF("element-shape") }}.
 * **Inset hover reveal**: worth adding when a link needs a hover affordance beyond a color change. Skip it for text that is not interactive.
@@ -263,17 +261,6 @@ If your Baseline target does not support `text-decoration-inset`, wrap every ins
     }
   }
 }
-```
-
-### Path length
-
-{# {{ BASELINE_STATUS("tmp-path-length") }} #}
-
-If your Baseline target does not support the `path-length` CSS property, set the `pathLength` attribute on the SVG `<path>` to the same value. It normalizes `stroke-dasharray` and `stroke-dashoffset` identically in every browser, so the animation is unchanged. Keep the attribute and the CSS value in sync.
-
-```html
-<!-- Same value as path-length: 100 in the stylesheet -->
-<path pathLength="100" d="M2 5 C 14 -1, 26 11, 38 5 S 62 -1, 74 5"></path>
 ```
 
 ### Border area

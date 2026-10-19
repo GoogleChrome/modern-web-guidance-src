@@ -6,8 +6,8 @@
 - The hover reveal uses `text-decoration-inset` inside `@supports (text-decoration-inset: 0)`, and the link keeps a normal, fully visible underline outside it, so the underline is visible where `text-decoration-inset` is unsupported.
 - When the underline of mixed-script or Japanese or Chinese text must skip glyph ink, `text-decoration-skip-ink: all` is used. `text-decoration-skip-ink: auto` and `text-decoration-skip-spaces` are not declared when they would only restate the default or have no effect.
 - `text-decoration-skip-spaces` is declared only on text that preserves its spaces, such as `white-space: pre`, `pre-wrap`, or `break-spaces`.
-- A draw-on SVG line sets `path-length` on its path, with `stroke-dasharray` and `stroke-dashoffset` equal to that value, and does not use `vector-effect: non-scaling-stroke`.
-- The SVG path also carries a matching `pathLength` attribute, so the animation works where the `path-length` CSS property is unsupported.
+- A draw-on custom line is a pseudo-element on a plain `<a>` that is revealed by transitioning `clip-path` on both `:hover` and `:focus-visible`, not an inline SVG.
+- The draw-on line's `border-shape` is applied inside `@supports (border-shape: circle(50%))`, and a straight line that still draws on is used outside it.
 - Hover reveal and draw-on animations are not applied when `prefers-reduced-motion: reduce` matches, and the line is fully visible.
 - A gradient outline around text uses `background-clip: border-area` over a transparent border, so the inside of the element is transparent, with `background-clip: border-area` inside `@supports (background-clip: border-area)` and a solid border color outside it.
 - A text outline shaped by `border-shape` applies `border-shape` inside `@supports (border-shape: circle(50%))` and keeps a rounded rectangular border outside it.

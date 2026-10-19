@@ -29,7 +29,6 @@
       --shape-stroke: 2px;
       --shape-color: var(--color-primary-dark, #272eb5);
 
-      --path-length: 100;
       --draw-duration: 0.7s;
     }
 
@@ -182,7 +181,7 @@
       }
     }
 
-    /* ---------- 5. path-length ---------- */
+    /* ---------- 5. Pseudo-element line with border-shape ---------- */
 
     .draw {
       position: relative;
@@ -192,34 +191,36 @@
       text-decoration: none;
     }
 
-    .draw svg {
+    .draw::after {
+      content: "";
       position: absolute;
-      inset: auto 0 -0.45em 0;
-      inline-size: 100%;
-      block-size: auto;
-      aspect-ratio: 20 / 1;
-      overflow: visible;
+      inset: auto 0 0 0;
       pointer-events: none;
+      /* Straight fallback line where border-shape is unsupported */
+      border-block-end: var(--deco-thickness) solid var(--deco-color);
     }
 
-    .draw path {
-      fill: none;
-      stroke: var(--deco-color);
-      stroke-width: var(--deco-thickness);
-      stroke-linecap: round;
-      /* Normalize the path so dash values are the same whatever its real length */
-      path-length: var(--path-length);
-      stroke-dasharray: var(--path-length);
+    @supports (border-shape: circle(50%)) {
+      .draw::after {
+        block-size: 0.4em;
+        border: var(--deco-thickness) solid var(--deco-color);
+        border-shape: shape(from 0% 50%,
+          curve to 20% 50% with 5% 0% / 15% 100%,
+          smooth to 40% 50% with 35% 100%,
+          smooth to 60% 50% with 55% 100%,
+          smooth to 80% 50% with 75% 100%,
+          smooth to 100% 50% with 95% 100%);
+      }
     }
 
     @media (prefers-reduced-motion: no-preference) {
-      .draw path {
-        stroke-dashoffset: var(--path-length);
-        transition: stroke-dashoffset var(--draw-duration) ease-out;
+      .draw::after {
+        clip-path: inset(-1em 100% -1em 0);
+        transition: clip-path var(--draw-duration) ease-out;
       }
 
-      .draw:is(:hover, :focus-visible) path {
-        stroke-dashoffset: 0;
+      .draw:is(:hover, :focus-visible)::after {
+        clip-path: inset(-1em 0 -1em 0);
       }
     }
 
@@ -394,28 +395,21 @@
 
     <hr>
 
-    <section class="flow" id="path-length" style="--flow-space: 1rem">
-      <h2>path-length</h2>
-      <p>An SVG squiggle replaces the underline. <code>path-length</code> normalizes the path to a fixed length, so one
-        dash value draws any shape.</p>
+    <section class="flow" id="draw" style="--flow-space: 1rem">
+      <h2>Pseudo-element line</h2>
+      <p>A <code>border-shape</code> squiggle on a pseudo-element replaces the underline, and <code>clip-path</code>
+        draws it on. Without <code>border-shape</code> the line is straight but still draws on.</p>
       <p class="sample">
-        <a class="draw" href="#path-length">Hover or focus to draw this
-          <svg viewBox="0 0 200 10" aria-hidden="true" focusable="false">
-            <path pathLength="100"
-              d="M2 5 C 14 -1, 26 11, 38 5 S 62 -1, 74 5 S 98 11, 110 5 S 134 -1, 146 5 S 170 11, 182 5 S 194 3, 198 5">
-            </path>
-          </svg>
-        </a>
+        <a class="draw" href="#draw">Hover or focus to draw this</a>
       </p>
-      <pre><code>.draw path {
-  path-length: var(--path-length);      /* 100 */
-  stroke-dasharray: var(--path-length);
-  stroke-dashoffset: var(--path-length); /* fully hidden */
-  transition: stroke-dashoffset var(--draw-duration) ease-out;
+      <pre><code>.draw::after {
+  border-shape: shape(from 0% 50%, curve to 20% 50% with 5% 0% / 15% 100%, /* … */);
+  clip-path: inset(-1em 100% -1em 0);   /* fully hidden */
+  transition: clip-path var(--draw-duration) ease-out;
 }
 
-.draw:is(:hover, :focus-visible) path {
-  stroke-dashoffset: 0;                  /* fully drawn */
+.draw:is(:hover, :focus-visible)::after {
+  clip-path: inset(-1em 0 -1em 0);      /* fully drawn */
 }</code></pre>
     </section>
 
@@ -462,7 +456,6 @@
       ['text-decoration-skip-ink: all', () => CSS.supports('text-decoration-skip-ink', 'all')],
       ['text-decoration-skip-spaces', () => CSS.supports('text-decoration-skip-spaces', 'all')],
       ['text-decoration-inset', () => CSS.supports('text-decoration-inset', '0.25em')],
-      ['path-length', () => CSS.supports('path-length', '1')],
       ['background-clip: border-area', () => CSS.supports('background-clip', 'border-area')],
       ['border-shape', () => CSS.supports('border-shape', 'circle(50%)')]
     ];
