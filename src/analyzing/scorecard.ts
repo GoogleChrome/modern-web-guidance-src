@@ -1850,7 +1850,7 @@ export function formatPilotScorecardReport(report: PilotScorecardReport): string
  */
 export async function runPilotScorecardCli(): Promise<void> {
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
-    console.log(`Usage: node src/analyzing/pilot-scorecard.ts [options]
+    console.log(`Usage: node src/analyzing/scorecard.ts [options]
 
 Options:
   --mode=<local|gitmirror|all>        Scan mode (default: local)
@@ -1891,7 +1891,7 @@ Options:
   console.log(formatPilotScorecardReport(report));
 }
 
-if (import.meta.main || (process.argv[1] && process.argv[1].endsWith('pilot-scorecard.ts'))) {
+if (import.meta.main || (process.argv[1] && process.argv[1].endsWith('scorecard.ts'))) {
   runPilotScorecardCli().catch((err: unknown) => {
     console.error('Pilot scorecard error:', err);
     process.exitCode = 1;

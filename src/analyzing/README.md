@@ -292,7 +292,7 @@ node --test "src/analyzing/**/*.test.ts"
 pnpm run check:analyze
 
 # Generate held-out detection scorecard across the 93-repo corpus:
-node --env-file=.env src/analyzing/pilot-scorecard.ts
+node --env-file=.env src/analyzing/scorecard.ts
 
 # Run 75-patch sensitivity suite & end-to-end agentic fix evaluation:
 node --env-file=.env src/analyzing/fix-harness.ts

@@ -148,9 +148,6 @@ export interface JudgeRunOptions {
   temperature?: number;
 }
 
-export { BROWNFIELD_GUIDE_RUBRIC } from './guide-rubrics.ts';
-import { BROWNFIELD_GUIDE_RUBRIC } from './guide-rubrics.ts';
-
 /**
  * Helper to construct Gemini generateContent request body with structured schema and thinking budget.
  */

@@ -16,7 +16,7 @@ import {
   stratifiedSampleFindings,
   type PilotScorecardReport,
   type ScorecardSplit,
-} from './pilot-scorecard.ts';
+} from './scorecard.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import { scanFiles } from './scanners/index.ts';
 import type { Phase2Verdict } from './phase2.ts';
