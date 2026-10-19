@@ -245,7 +245,8 @@
       if ('moveBefore' in Element.prototype) {
         list.moveBefore(item, before);
       } else {
-        list.insertBefore(item, before);
+        if (before) before.before(item);
+        else list.append(item);
       }
     }
 

@@ -61,7 +61,7 @@ When reordering is supplementary, keep the collection readable and usable in its
 
 {{ BASELINE_STATUS("move-before") }}
 
-If your Baseline target does not support `moveBefore()`, feature-detect with `'moveBefore' in Element.prototype` and fall back to `insertBefore()` with the same destination and existing item node. Because `insertBefore()` removes and reinserts the node, it drops active pointer capture (so register `pointermove`, `pointerup`, and `pointercancel` on `document` during the drag rather than relying on `setPointerCapture()`) and blurs focused descendants (so explicitly call `.focus()` on the active handle or movement button after moving, and slightly delay or debounce the live-region update if focus re-announcement collides with the position announcement).
+If your Baseline target does not support `moveBefore()`, feature-detect with `'moveBefore' in Element.prototype` and fall back to `referenceNode.before(item)` (or `container.append(item)` when there is no reference node) with the existing item node. Because `before()` removes and reinserts the node, it drops active pointer capture (so register `pointermove`, `pointerup`, and `pointercancel` on `document` during the drag rather than relying on `setPointerCapture()`) and blurs focused descendants (so explicitly call `.focus()` on the active handle or movement button after moving, and slightly delay or debounce the live-region update if focus re-announcement collides with the position announcement).
 
 ### `reading-flow`
 
