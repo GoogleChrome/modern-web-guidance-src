@@ -400,11 +400,13 @@ form.addEventListener('submit', (e) => {
 
 ### Guidelines
 
-- **DO** clearly display progress through a multi-page form with clear labels and accessible progress indicators (e.g., `aria-current="step" or `<progress`).
+- **DO** clearly display progress through a multi-page form with clear labels and accessible progress indicators (e.g., `aria-current="step"` or `<progress>`).
 - **DO** allow users to navigate backwards and forwards between pages without losing previously entered data.
 - **DO** move focus to the new step's heading (`tabindex="-1"`) or first input when transitioning between steps dynamically without a full page reload.
 - **DO** use context-specific `enterkeyhint` values (e.g., `"previous"`, `"next"`) to guide navigation via on-screen keyboards.
 - **DO** design layouts so that the mobile keyboard does not obscure inputs or buttons (e.g., by placing them in the upper half of the viewport when focused or using CSS scroll-padding).
+
+- **DON'T** leave inactive wizard steps in the keyboard `Tab` order or accessibility tree (use `hidden`, `display:none`, or `inert` on non-active steps.
 
 ### Code Example
 
