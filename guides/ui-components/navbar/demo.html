@@ -396,6 +396,23 @@
             transform: translateY(-0.5rem);
           }
         }
+
+        /* Slide the inline submenu open and closed. */
+        .nav-dropdown {
+          interpolate-size: allow-keywords;
+        }
+
+        .nav-dropdown::details-content {
+          block-size: 0;
+          overflow: clip;
+          transition:
+            block-size 180ms ease,
+            content-visibility 180ms allow-discrete;
+        }
+
+        .nav-dropdown[open]::details-content {
+          block-size: auto;
+        }
       }
     }
 
