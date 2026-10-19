@@ -47,6 +47,8 @@ openInNewPath.setAttribute('fill-rule', 'evenodd');
 openInNewPath.setAttribute('d', 'M10.75 1a.75.75 0 0 0 0 1.5h1.69L6.22 8.72a.75.75 0 0 0 1.06 1.06l6.22-6.22v1.69a.75.75 0 0 0 1.5 0V1a.75.75 0 0 0-.75-.75h-4.5zM2.5 3A1.5 1.5 0 0 0 1 4.5v9A1.5 1.5 0 0 0 2.5 15h9a1.5 1.5 0 0 0 1.5-1.5v-4.25a.75.75 0 0 0-1.5 0v4.25a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h4.25a.75.75 0 0 0 0-1.5H2.5z');
 openInNewIcon.append(openInNewPath);
 
+const previewUrl = /** @param {string} url */ url => `${url}?preview=1`;
+
 const main = $('#demos');
 const tocGrid = $('#toc-grid');
 const demoFilter = /** @type {HTMLInputElement} */ ($('#demo-filter'));
@@ -66,8 +68,9 @@ function renderCard(guide) {
   const unsetDemo = guide.demos.find(d => d.id === 'negative-demo');
   // Relative to demos/index.html, guides are at ../guides/...
   const src = `../${primary.path}`;
+  const iframeSrc = previewUrl(src);
 
-  return h('article', { class: 'card', id: guide.id, 'data-src': src },
+  return h('article', { class: 'card', id: guide.id, 'data-src': iframeSrc },
     h('div', { class: 'card-header', 'data-action': 'expand' },
       h('div', { class: 'card-header-top' },
         h('span', { class: 'guide-id', title: `${guide.title}: ${guide.description}` }, guide.id),
@@ -85,7 +88,7 @@ function renderCard(guide) {
       ),
     ),
     h('div', { class: 'iframe-container' },
-      h('iframe', { loading: 'lazy', sandbox: SANDBOX, title: `${guide.id} demo`, src }),
+      h('iframe', { loading: 'lazy', sandbox: SANDBOX, title: `${guide.id} demo`, src: iframeSrc }),
     ),
   );
 }
@@ -147,7 +150,8 @@ for (const { section } of categories) tocObserver.observe(section);
 const clickActions = {
   expand: (_, card) => card.classList.toggle('expanded'),
   variant: (btn, card) => {
-    const src = /** @type {string} */ (btn.dataset.src);
+    const rawSrc = /** @type {string} */ (btn.dataset.src);
+    const src = previewUrl(rawSrc);
     for (const b of card.querySelectorAll('.toggle-btn')) {
       b.classList.toggle('active', b === btn);
       b.setAttribute('aria-pressed', String(b === btn));
@@ -155,7 +159,7 @@ const clickActions = {
     card.classList.toggle('showing-unset', btn.classList.contains('unset'));
     card.dataset.src = src;
     $('iframe', card).src = src;
-    $('a.open-link', card).href = src;
+    $('a.open-link', card).href = rawSrc;
   },
   feature: btn => {
     const feat = btn.textContent ?? '';

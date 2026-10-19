@@ -130,8 +130,28 @@ async function getGcsAccessToken() {
   });
 }
 
+/**
+ * Injected into guide demo previews rendered inside iframes (`?preview=1`).
+ * Defends the gallery against offscreen demos calling `.focus()` on load (e.g. persistent-app-tours)
+ * which would otherwise cause the browser to scroll the top-level parent window.
+ */
+const PREVIEW_SHIM = '<script>(() => { const f = Element.prototype.focus || HTMLElement.prototype.focus; if (f) { const s = function(o) { return f.call(this, Object.assign({}, o, { preventScroll: true })); }; Element.prototype.focus = s; HTMLElement.prototype.focus = s; } })();</script>';
+
+/**
+ * @param {string} html
+ */
+function injectPreviewShim(html) {
+  const m = html.match(/<head[^>]*>/i) || html.match(/<html[^>]*>/i);
+  if (m && m.index !== undefined) {
+    const idx = m.index + m[0].length;
+    return html.slice(0, idx) + PREVIEW_SHIM + html.slice(idx);
+  }
+  return PREVIEW_SHIM + html;
+}
+
 const server = http.createServer(async (req, res) => {
   const reqUrl = req.url || '';
+  const parsedUrl = new URL(reqUrl, 'http://localhost');
   
   // Handle CORS and Private Network Access for Playwright Trace Viewer
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -585,6 +605,15 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
+      if (isInsideGuides && extname === '.html' && parsedUrl.searchParams.has('preview')) {
+        const injected = injectPreviewShim(content.toString('utf-8'));
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Length': Buffer.byteLength(injected),
+        });
+        res.end(injected, 'utf-8');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(content, 'utf-8');
     }
