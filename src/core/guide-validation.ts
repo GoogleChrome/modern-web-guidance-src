@@ -244,12 +244,22 @@ export function getGuideStatusFromFiles(params: {
     : parseDraft(data as GuideData, params.where ?? GUIDE_FILE).draft;
 
   const relativeFiles = new Set(params.filePaths);
-  const hasGrader =
-    relativeFiles.has(GRADER_FILE) ||
-    Array.from(relativeFiles).some(k => k.startsWith(`${TARGETS_DIR}/`) && k.endsWith(`/${GRADER_FILE}`));
-  const hasTask =
-    relativeFiles.has(`tasks/${TASK_FILE}`) ||
-    Array.from(relativeFiles).some(k => k.startsWith(`${TARGETS_DIR}/`) && k.endsWith(`/${TASK_FILE}`));
+  const hasTasksDir = Array.from(relativeFiles).some(k => k.startsWith('tasks/'));
+  const supportedApps = new Set(getSupportedBaseApps());
+  const targetApps = Array.from(
+    new Set(
+      Array.from(relativeFiles)
+        .map(k => /^targets\/([^/]+)\//.exec(k)?.[1])
+        .filter((app): app is string => Boolean(app && supportedApps.has(app)))
+    )
+  );
+  const useTargets = targetApps.length > 0 && !hasTasksDir;
+  const hasGrader = useTargets
+    ? targetApps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${GRADER_FILE}`))
+    : relativeFiles.has(GRADER_FILE);
+  const hasTask = useTargets
+    ? targetApps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${TASK_FILE}`))
+    : relativeFiles.has(`tasks/${TASK_FILE}`);
 
   return getStatusName(hasContent && !isDraftStub(draft), hasGrader, hasTask, Boolean(draft), params.hasExpectations);
 }
@@ -754,7 +764,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     isStub,
     hasDemo,
     hasExpectations,
-    expectationsEmpty: hasExpectations && expectationsContent.length === 0,
+    expectationsEmpty: hasExpectations && expectationsContent.trim().length === 0,
     hasNegativeDemo,
     hasGrader,
     hasTask,

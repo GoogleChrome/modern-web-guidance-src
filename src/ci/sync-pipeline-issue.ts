@@ -7,6 +7,7 @@
  */
 
 import child_process from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -470,15 +471,22 @@ function findReadySince(slugs: string[]): Map<string, string> {
     let since: string | undefined;
     for (const line of log) {
       const [sha, date] = line.split(' ');
-      const present = child_process
-        .execFileSync('git', ['ls-tree', '--name-only', sha, '--', guidePath, expPath], { cwd, encoding: 'utf8' })
+      const treeLines = child_process
+        .execFileSync('git', ['ls-tree', sha, '--', guidePath, expPath], { cwd, encoding: 'utf8' })
         .trim()
-        .split('\n');
-      if (!present.includes(guidePath) || !present.includes(expPath)) break;
+        .split('\n')
+        .filter(Boolean);
+      const blobsByPath = new Map(
+        treeLines.map(l => {
+          const parts = l.split(/\s+/);
+          return [parts[3], parts[2]];
+        })
+      );
+      if (!blobsByPath.has(guidePath) || !blobsByPath.has(expPath)) break;
       const guideContent = child_process.execFileSync('git', ['show', `${sha}:${guidePath}`], { cwd, encoding: 'utf8' });
       const status = getGuideStatusFromFiles({
         guideContent,
-        hasExpectations: true,
+        hasExpectations: blobsByPath.get(expPath) !== EMPTY_BLOB_SHA,
         filePaths: [GUIDE_FILE, EXPECTATIONS_FILE],
         allowLegacyBooleanDraft: true,
       });
@@ -936,19 +944,41 @@ function fetchIssueBody(issueNumber: number): string {
   );
 }
 
-const CATCHALL_INFRA_OWNERS = new Set(['paulirish', 'micahjo7']);
-const EVAL_INFRA_OWNERS = new Set(['paulirish', 'micahjo7', 'TravenReese']);
+function loadInfraOwnersFromCodeowners(): { catchAllOwners: Set<string>; evalOwners: Set<string> } {
+  const catchAllOwners = new Set<string>();
+  const evalOwners = new Set<string>();
+  const content = fs.readFileSync(path.join(rootDir, 'CODEOWNERS'), 'utf8');
+  for (const rawLine of content.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const [pattern, ...owners] = line.split(/\s+/);
+    const handles = owners.filter(o => o.startsWith('@')).map(o => o.slice(1));
+    if (pattern === '*') {
+      for (const h of handles) catchAllOwners.add(h);
+    } else if (
+      pattern.includes('grader.ts') ||
+      pattern.includes('targets/') ||
+      pattern.includes('tasks/') ||
+      pattern.includes('src/grading/')
+    ) {
+      for (const h of handles) evalOwners.add(h);
+    }
+  }
+  return { catchAllOwners, evalOwners };
+}
+
+const { catchAllOwners: CATCHALL_INFRA_OWNERS, evalOwners: EVAL_CODEOWNERS } = loadInfraOwnersFromCodeowners();
 
 export function filterCatchAllReviewers(reviewers: string[], stage: 'guidance' | 'evals'): string[] {
   if (reviewers.length <= 1) return reviewers;
   if (stage === 'guidance') {
-    const nonEvalInfra = reviewers.filter(r => !EVAL_INFRA_OWNERS.has(r));
-    if (nonEvalInfra.length > 0) return nonEvalInfra;
+    const nonInfra = reviewers.filter(r => !CATCHALL_INFRA_OWNERS.has(r) && !EVAL_CODEOWNERS.has(r));
+    if (nonInfra.length > 0) return nonInfra;
     const nonCatchAll = reviewers.filter(r => !CATCHALL_INFRA_OWNERS.has(r));
     return nonCatchAll.length > 0 ? nonCatchAll : reviewers;
   }
-  const nonPaul = reviewers.filter(r => r !== 'paulirish');
-  return nonPaul.length > 0 ? nonPaul : reviewers;
+  const nonCatchAllOnly = reviewers.filter(r => !(CATCHALL_INFRA_OWNERS.has(r) && !EVAL_CODEOWNERS.has(r)));
+  return nonCatchAllOnly.length > 0 ? nonCatchAllOnly : reviewers;
 }
 
 export function buildPipelineReportData(params: {
