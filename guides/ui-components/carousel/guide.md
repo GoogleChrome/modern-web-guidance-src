@@ -233,60 +233,53 @@ const slides = [...track.children];
 const status = document.querySelector('[role="status"]');
 const controls = document.querySelector(".fallback-controls");
 const markerNav = document.querySelector(".fallback-markers");
+const [prevBtn, nextBtn] = controls.querySelectorAll("button");
 const hasButtons = CSS.supports("selector(::scroll-button(*))") &&
   CSS.supports("anchor-name: --carousel-track");
 const hasMarkers = CSS.supports("selector(::scroll-marker)");
-
 let markers = [];
 let timer;
 
+// Horizontal axis only; use top/height/clientHeight for vertical carousels.
 function currentIndex() {
   const center = track.getBoundingClientRect().left + track.clientWidth / 2;
-  return slides.reduce((best, slide, index) => {
-    const rect = slide.getBoundingClientRect();
-    const distance = Math.abs(rect.left + rect.width / 2 - center);
-    return distance < best.distance ? { index, distance } : best;
-  }, { index: 0, distance: Infinity }).index;
+  const distance = (s) => {
+    const r = s.getBoundingClientRect();
+    return Math.abs(r.left + r.width / 2 - center);
+  };
+  return slides.indexOf(slides.reduce((a, b) => (distance(b) < distance(a) ? b : a)));
 }
 
-function goTo(index) {
-  slides[index]?.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
-}
+const goTo = (i) => slides[i]?.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
+
+controls.hidden = hasButtons;
 if (!hasButtons) {
-  controls.hidden = false;
-  const prevBtn = controls.querySelector('[data-direction="previous"]');
-  const nextBtn = controls.querySelector('[data-direction="next"]');
-
   prevBtn.addEventListener("click", () => goTo(Math.max(0, currentIndex() - 1)));
   nextBtn.addEventListener("click", () => goTo(Math.min(slides.length - 1, currentIndex() + 1)));
 }
+markerNav.hidden = hasMarkers;
 if (!hasMarkers) {
-  markerNav.hidden = false;
-  markers = slides.map((slide, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = String(index + 1);
-    button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${index + 1}`);
-    button.addEventListener("click", () => goTo(index));
+  markers = slides.map((slide, i) => {
+    const button = Object.assign(document.createElement("button"), { type: "button", textContent: i + 1 });
+    button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
+    button.addEventListener("click", () => goTo(i));
     markerNav.append(button);
     return button;
   });
 }
 
 function sync() {
-  const index = currentIndex();
-  status.textContent = `Slide ${index + 1} of ${slides.length}`;
-  markers.forEach((marker, i) => marker.setAttribute("aria-current", String(i === index)));
-
-  if (!hasButtons) {
-    controls.querySelector('[data-direction="previous"]').disabled = index === 0;
-    controls.querySelector('[data-direction="next"]').disabled = index === slides.length - 1;
-  }
+  const i = currentIndex();
+  status.textContent = `Slide ${i + 1} of ${slides.length}`;
+  markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
+  prevBtn.disabled = i === 0;
+  nextBtn.disabled = i === slides.length - 1;
 }
+
 track.addEventListener("scrollend", sync);
 track.addEventListener("scroll", () => {
   clearTimeout(timer);
-  timer = setTimeout(sync, 150);
+  timer = setTimeout(sync, 150); // fallback when scrollend is unsupported
 }, { passive: true });
 sync();
 ```
