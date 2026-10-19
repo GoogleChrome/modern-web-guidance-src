@@ -168,6 +168,9 @@
       "model-partial-time-concepts": [
         "task"
       ],
+      "sequence-distributed-events": [
+        "task"
+      ],
       "stabilize-reactive-state": [
         "task"
       ],
@@ -250,9 +253,6 @@
         "task"
       ],
       "schedule-tasks-by-priority": [
-        "task"
-      ],
-      "sequence-distributed-events": [
         "task"
       ]
     },

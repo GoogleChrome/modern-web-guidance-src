@@ -292,6 +292,9 @@ window.__featuresMapping = {
   "model-partial-time-concepts": [
     "temporal"
   ],
+  "sequence-distributed-events": [
+    "temporal"
+  ],
   "stabilize-reactive-state": [
     "temporal"
   ],
@@ -402,9 +405,6 @@ window.__featuresMapping = {
   ],
   "schedule-tasks-by-priority": [
     "scheduler"
-  ],
-  "sequence-distributed-events": [
-    "temporal"
   ],
   "share-web-fonts-across-origins": [
     "tmp-cross-origin-storage",
