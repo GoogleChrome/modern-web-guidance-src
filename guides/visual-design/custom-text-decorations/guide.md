@@ -35,7 +35,7 @@ Set line, style, color, and thickness with the `text-decoration` shorthand, and 
 /* Example hover state: a softer line that firms up on hover and focus. The 50% mix and
    0.12em thickness are example values. */
 .decorated {
-  --deco-color: color-mix(in srgb, currentColor 50%, transparent);
+  --deco-color: color-mix(in srgb, currentColor, transparent);
 }
 
 .decorated:is(:hover, :focus-visible) {
