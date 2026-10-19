@@ -28,7 +28,7 @@ Keep media, title, supporting content, and actions in meaningful source order; d
 
 ## Implementation
 
-Keep the markup minimal and let CSS selectors recognize each region, so simple cards stay simple and richer cards stay possible. A card has up to four regions, in this source order, and any of them can be omitted. Regions are direct children of the card: do not group them in wrapper elements such as `.card__body`, which prevents placing and styling regions by selector.
+Keep the markup minimal and let CSS selectors recognize each region, so simple cards stay simple and richer cards stay possible. A card has up to four regions, in this source order, and any of them can be omitted. Regions are direct children of the card, not grouped in wrapper elements such as `.card__body`, which prevents placing and styling regions by selector. A region with a single element is that element itself, not wrapped: a lone paragraph is the `<p>`. Use a wrapper only when a region holds multiple elements.
 
 - **Media**: an `<img>`, `<picture>`, `<video>`, or `<svg>` as the first child. Add a `.media` class only to arbitrary hero content that is not one of those elements, and never wrap a plain `<img>` in a `.media` element.
 - **Header**: a heading on its own. Use `<hgroup>` only when the heading has a subtitle or tagline, and `<header>` when the region carries more than a title, such as a byline or badge. When the card has a primary destination, the link goes inside the heading.
