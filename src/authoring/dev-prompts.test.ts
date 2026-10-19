@@ -9,6 +9,7 @@ import {
   buildTargetGraderPrompt,
   buildTargetTaskPrompt,
   buildDevReportPrompt,
+  buildApplyReviewFeedbackPrompt,
 } from './dev-prompts.ts';
 import { Agents } from '../harness/config.ts';
 
@@ -62,6 +63,55 @@ test('buildTargetGraderPrompt includes Option B scoping rules', () => {
   assert.ok(prompt.includes('Codex CLI Solution'));
   assert.ok(prompt.includes('Utility CSS Flexibility'));
   assert.ok(prompt.includes('npx oxlint'));
+});
+
+test('buildTargetGraderPrompt includes reviewer feedback block only when comments are provided', () => {
+  const baseOpts = {
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
+    graderFile: 'grader.ts',
+    baseApp: 'daily-grind',
+    templateFile: 'template.grader.ts',
+  };
+
+  const withoutComments = buildTargetGraderPrompt(baseOpts);
+  assert.ok(!withoutComments.includes('REVIEWER FEEDBACK'));
+
+  const withComments = buildTargetGraderPrompt({
+    ...baseOpts,
+    prContext: {
+      comments: '- **@micahjo7**: relax assertion on container',
+    },
+  });
+  assert.ok(withComments.includes('REVIEWER FEEDBACK ON PREVIOUS GRADER & EVALUATIONS'));
+  assert.ok(withComments.includes('relax assertion on container'));
+  assert.ok(withComments.includes('If any reviewer comments above pertain to `grader.ts`'));
+  assert.ok(withComments.includes('adhering to `expectations.md`'));
+});
+
+test('buildTargetTaskPrompt includes reviewer feedback block only when comments are provided', () => {
+  const baseOpts = {
+    guideFile: 'guide.md',
+    taskFile: 'task.md',
+    baseApp: 'daily-grind',
+  };
+
+  const withoutComments = buildTargetTaskPrompt(baseOpts);
+  assert.ok(!withoutComments.includes('REVIEWER FEEDBACK'));
+
+  const withComments = buildTargetTaskPrompt({
+    ...baseOpts,
+    prContext: {
+      comments: '- **@micahjo7**: adjust phrasing to be more directive',
+    },
+  });
+  assert.ok(withComments.includes('REVIEWER FEEDBACK ON PREVIOUS TASK PROMPT / IMPLEMENTATION'));
+  assert.ok(withComments.includes('adjust phrasing to be more directive'));
+  assert.ok(withComments.includes('Carefully address any reviewer suggestions regarding the developer prompt in `task.md`'));
 });
 
 test('buildTargetGraderPrompt formats failure context correctly when provided', () => {
@@ -167,6 +217,47 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('needs-eval-gen'));
   assert.ok(prompt.includes('needs-eval-run'));
   assert.ok(prompt.includes('```diff'));
+  assert.ok(prompt.includes('DIRECT FILE UPDATES REQUIREMENT'));
+});
+
+test('buildDevReportPrompt includes PR context and reviewer feedback instructions when provided', () => {
+  const prompt = buildDevReportPrompt({
+    guideName: 'dialog',
+    targets: [
+      {
+        baseApp: 'daily-grind',
+        flag: 'LOW_GUIDED_PASS_RATE',
+        flagDetails: 'Guided pass rate is 50%',
+        guidedPassRate: 50,
+        unguidedPassRate: 20,
+      },
+    ],
+    prContext: {
+      branchCommits: '2657f38 Rename modal-dialog stub to dialog\n2f85978 Add modal-dialog use case stub',
+      branchDiff: '+# Dialog\n+Some notes...',
+      comments: '- **@LeaVerou** commented:\nOther guides that might be relevant: drag, animate-to-from-top-layer',
+    },
+  });
+
+  assert.ok(prompt.includes('EXISTING PULL REQUEST & REVIEW CONTEXT'));
+  assert.ok(prompt.includes('Branch Commits against main'));
+  assert.ok(prompt.includes('2657f38 Rename modal-dialog stub to dialog'));
+  assert.ok(prompt.includes('Branch Diff against main'));
+  assert.ok(prompt.includes('PR Comments & Reviewer Feedback'));
+  assert.ok(prompt.includes('LeaVerou'));
+  assert.ok(prompt.includes('Honor reviewer feedback'));
+  assert.ok(prompt.includes('without blindly overwriting human-authored changes'));
+});
+
+test('buildApplyReviewFeedbackPrompt formats context and includes needs-eval-gen note when applicable', () => {
+  const prompt = buildApplyReviewFeedbackPrompt({
+    guideName: 'dialog',
+    comments: 'Please fix selector',
+    rerunMode: 'needs-eval-gen',
+  });
+  assert.ok(prompt.includes('Please fix selector'));
+  assert.ok(prompt.includes('needs-eval-gen'));
+  assert.ok(prompt.includes('all target capsules under `targets/` will be wiped'));
 });
 
 import { rootDir } from '../core/paths.ts';
