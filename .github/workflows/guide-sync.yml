@@ -13,6 +13,12 @@ on:
       - reopened
     paths:
       - 'guides/**'
+  issues:
+    types:
+      - opened
+      - labeled
+      - closed
+      - reopened
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:

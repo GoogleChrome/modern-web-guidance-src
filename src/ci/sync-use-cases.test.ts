@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, REQUIRED_FILES_START, buildRequiredFilesChecklist, preserveTemplateUseCases } from './sync-use-cases.ts';
+import { getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, REQUIRED_FILES_START, buildRequiredFilesChecklist, preserveTemplateUseCases, reconcileNeedsUseCasesProjectStatus, NEEDS_INVESTIGATION_STATUS } from './sync-use-cases.ts';
 import { ProjectStatus, validateGuide, getStatusName, processGuideInventory, type GuideInventory } from '../core/guide-validation.ts';
 import { pendingFeatures } from '../core/baseline.ts';
 
@@ -948,6 +948,47 @@ describe('preserveTemplateUseCases', () => {
     assert.ok(featuresWithActiveUseCases.has('scroll-axis-lock'));
     assert.deepStrictEqual(featureUseCaseMap.get('scrollbar-color'), [
       { name: 'custom-scrollbars', issueNumber: 25, complete: false },
+    ]);
+  });
+});
+
+describe('reconcileNeedsUseCasesProjectStatus', () => {
+  test('moves issues against existing guides out of "Needs use cases" to "Needs investigation", moves open use cases to "Needs guidance", and clears completed feature issues', () => {
+    const issueStatusMap = new Map<number, string>([
+      [1550, ProjectStatus.NeedsUseCases], // open new-feature needing use cases -> keep
+      [2100, ProjectStatus.NeedsUseCases], // bug/feedback issue against existing guide -> Needs investigation
+      [1742, ProjectStatus.NeedsUseCases], // open new-use-case issue -> Needs guidance
+      [1200, ProjectStatus.NeedsUseCases], // completed new-feature issue -> null (clear)
+      [1300, ProjectStatus.NeedsGuidance], // already in Needs guidance -> ignore
+    ]);
+
+    const featuresToSync = [
+      {
+        featureId: 'autoplay',
+        issueNumber: 1550,
+        closeReason: null,
+        targetStatus: ProjectStatus.NeedsUseCases,
+      },
+      {
+        featureId: 'popover',
+        issueNumber: 1200,
+        closeReason: 'completed' as const,
+        targetStatus: null,
+      },
+    ];
+
+    const actions = reconcileNeedsUseCasesProjectStatus(
+      issueStatusMap,
+      featuresToSync,
+      new Set([1550, 1200]),
+      new Set([1742]),
+      new Set([1742]),
+    );
+
+    assert.deepStrictEqual(actions, [
+      { issueNumber: 2100, targetStatus: NEEDS_INVESTIGATION_STATUS },
+      { issueNumber: 1742, targetStatus: ProjectStatus.NeedsGuidance },
+      { issueNumber: 1200, targetStatus: null },
     ]);
   });
 });

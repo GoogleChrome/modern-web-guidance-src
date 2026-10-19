@@ -42,6 +42,15 @@ interface ProjectDetails {
   statusFieldId: string;
   statusOptions: any[];
   issueStatusMap: Map<number, string>;
+  issueItemIdMap: Map<number, string>;
+}
+
+export const NEEDS_INVESTIGATION_STATUS = 'Needs investigation';
+
+export interface ProjectStatusReconciliation {
+  issueNumber: number;
+  /** Target status name to set, or `null` to clear the status field. */
+  targetStatus: string | null;
 }
 
 interface GitHubData {
@@ -267,6 +276,49 @@ export function getFeaturesNeedingSync(
 }
 
 /**
+ * Reconciles items on Project #30 that currently have Status="Needs use cases"
+ * (which GitHub Project's built-in auto-add workflow assigns by default to newly
+ * opened issues):
+ * - Open `new-feature` issues with `targetStatus === ProjectStatus.NeedsUseCases` keep `"Needs use cases"`.
+ * - Open `new-use-case` issues (`openUseCaseIssueNumbers`) move to `"Needs guidance"`.
+ * - Completed or closed `new-feature` / `new-use-case` issues (`allFeatureIssueNumbers` or
+ *   `allUseCaseIssueNumbers`) have `"Needs use cases"` cleared (`null`).
+ * - Any other issue on the board (e.g. bug/feedback issues against existing guides like #2100)
+ *   moves from `"Needs use cases"` to `"Needs investigation"`.
+ */
+export function reconcileNeedsUseCasesProjectStatus(
+  issueStatusMap: Map<number, string>,
+  featuresToSync: FeatureToSync[],
+  allFeatureIssueNumbers: Set<number>,
+  openUseCaseIssueNumbers: Set<number>,
+  allUseCaseIssueNumbers: Set<number> = openUseCaseIssueNumbers,
+): ProjectStatusReconciliation[] {
+  const validNeedsUseCasesIssues = new Set(
+    featuresToSync
+      .filter(f => f.targetStatus === ProjectStatus.NeedsUseCases)
+      .map(f => f.issueNumber)
+  );
+
+  const actions: ProjectStatusReconciliation[] = [];
+  for (const [issueNumber, currentStatus] of issueStatusMap) {
+    if (currentStatus.toLowerCase() !== ProjectStatus.NeedsUseCases.toLowerCase()) {
+      continue;
+    }
+    if (validNeedsUseCasesIssues.has(issueNumber)) {
+      continue;
+    }
+    if (openUseCaseIssueNumbers.has(issueNumber)) {
+      actions.push({ issueNumber, targetStatus: ProjectStatus.NeedsGuidance });
+    } else if (allFeatureIssueNumbers.has(issueNumber) || allUseCaseIssueNumbers.has(issueNumber)) {
+      actions.push({ issueNumber, targetStatus: null });
+    } else {
+      actions.push({ issueNumber, targetStatus: NEEDS_INVESTIGATION_STATUS });
+    }
+  }
+  return actions;
+}
+
+/**
  * Builds maps from use case name and subdirectory to their existing GitHub issues.
  */
 export function buildUseCaseMaps<T extends { title: string; body?: string | null }>(
@@ -327,6 +379,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
               endCursor
             }
             nodes {
+              id
               content {
                 ... on Issue {
                   number
@@ -353,6 +406,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
 
   try {
     const issueStatusMap = new Map<number, string>();
+    const issueItemIdMap = new Map<number, string>();
     let cursor: string | null = null;
     let projectId: string | null = null;
     let statusFieldId: string | null = null;
@@ -373,6 +427,9 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
       for (const item of project.items.nodes) {
         const issueNumber = item.content?.number;
         if (!issueNumber) continue;
+        if (item.id) {
+          issueItemIdMap.set(issueNumber, item.id);
+        }
         const statusValue = item.fieldValues.nodes.find((v: any) => v.field?.name === 'Status');
         if (statusValue) {
           issueStatusMap.set(issueNumber, statusValue.name);
@@ -384,33 +441,42 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
     } while (cursor);
 
     console.log(`Fetched current status for ${issueStatusMap.size} project items.`);
-    return { projectId: projectId!, statusFieldId: statusFieldId!, statusOptions, issueStatusMap };
+    return { projectId: projectId!, statusFieldId: statusFieldId!, statusOptions, issueStatusMap, issueItemIdMap };
   } catch (err: any) {
     console.error('Error fetching project details:', err.message);
     return null;
   }
 }
 
-async function updateProjectItemStatus(issueNumber: number, projectId: string, fieldId: string, optionId: string) {
+async function updateProjectItemStatus(
+  issueNumber: number,
+  projectId: string,
+  fieldId: string,
+  optionId: string,
+  existingItemId?: string
+) {
   try {
-    const issueResponse = await octokit.rest.issues.get({
-      owner: ORG,
-      repo: REPO,
-      issue_number: issueNumber
-    });
-    const issueNodeId = issueResponse.data.node_id;
+    let itemId = existingItemId;
+    if (!itemId) {
+      const issueResponse = await octokit.rest.issues.get({
+        owner: ORG,
+        repo: REPO,
+        issue_number: issueNumber
+      });
+      const issueNodeId = issueResponse.data.node_id;
 
-    const addItemMutation = `
-      mutation($projectId: ID!, $contentId: ID!) {
-        addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
-          item {
-            id
+      const addItemMutation = `
+        mutation($projectId: ID!, $contentId: ID!) {
+          addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+            item {
+              id
+            }
           }
         }
-      }
-    `;
-    const addResult = await projectOctokit.graphql(addItemMutation, { projectId, contentId: issueNodeId }) as any;
-    const itemId = addResult.addProjectV2ItemById.item.id;
+      `;
+      const addResult = await projectOctokit.graphql(addItemMutation, { projectId, contentId: issueNodeId }) as any;
+      itemId = addResult.addProjectV2ItemById.item.id;
+    }
 
     const updateFieldMutation = `
       mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
@@ -431,6 +497,32 @@ async function updateProjectItemStatus(issueNumber: number, projectId: string, f
     await projectOctokit.graphql(updateFieldMutation, { projectId, itemId, fieldId, optionId });
   } catch (err: any) {
     console.error(`Error updating project for issue #${issueNumber}:`, err.message);
+  }
+}
+
+async function clearProjectItemStatus(
+  issueNumber: number,
+  projectId: string,
+  fieldId: string,
+  itemId: string
+) {
+  try {
+    const clearFieldMutation = `
+      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!) {
+        clearProjectV2ItemFieldValue(input: {
+          projectId: $projectId
+          itemId: $itemId
+          fieldId: $fieldId
+        }) {
+          projectV2Item {
+            id
+          }
+        }
+      }
+    `;
+    await projectOctokit.graphql(clearFieldMutation, { projectId, itemId, fieldId });
+  } catch (err: any) {
+    console.error(`Error clearing project status for issue #${issueNumber}:`, err.message);
   }
 }
 
@@ -684,7 +776,9 @@ async function syncFeatureIssues(
   featuresWithActiveUseCases: Set<string>,
   featuresWithAnyUseCases: Set<string>,
   featureUseCaseMap: Map<string, UseCaseEntry[]>,
-  projectDetails: ProjectDetails | null
+  projectDetails: ProjectDetails | null,
+  allUseCases: any[],
+  activeUseCaseIssueNumbers: Set<number>,
 ) {
   if (!GITHUB_TOKEN && !IS_DRY_RUN) return;
 
@@ -714,7 +808,13 @@ async function syncFeatureIssues(
         if (option) {
           console.log(`${IS_DRY_RUN ? '[DRY RUN] Would set' : 'Setting'} project status for feature #${issueNumber} to "${featureStatusName}"...`);
           if (!IS_DRY_RUN) {
-            await updateProjectItemStatus(issueNumber, projectDetails.projectId, projectDetails.statusFieldId, option.id);
+            await updateProjectItemStatus(
+              issueNumber,
+              projectDetails.projectId,
+              projectDetails.statusFieldId,
+              option.id,
+              projectDetails.issueItemIdMap.get(issueNumber)
+            );
           }
         } else {
           console.warn(`⚠️ Could not find option ID for status "${featureStatusName}"`);
@@ -722,6 +822,45 @@ async function syncFeatureIssues(
       }
     } else if (featureStatusName && IS_DRY_RUN) {
       console.log(`[DRY RUN] Would set project status to "${featureStatusName}" for feature #${issueNumber} (but project details are unavailable)`);
+    }
+  }
+
+  // Reconcile any items on Project #30 that were auto-assigned "Needs use cases" by GitHub's
+  // default project workflow (such as issues against existing guides like #2100) or completed features.
+  if (projectDetails && featureToIssueMap.size > 0) {
+    const allFeatureIssueNumbers = new Set([...featureToIssueMap.values()].map(f => f.number));
+    const allUseCaseIssueNumbers = new Set([
+      ...activeUseCaseIssueNumbers,
+      ...allUseCases.map((u: any) => u.number as number),
+    ]);
+    const openUseCaseIssueNumbers = new Set(
+      allUseCases
+        .filter((u: any) => u.state === 'open' && activeUseCaseIssueNumbers.has(u.number))
+        .map((u: any) => u.number as number)
+    );
+    const reconciliations = reconcileNeedsUseCasesProjectStatus(
+      projectDetails.issueStatusMap,
+      featuresToSync,
+      allFeatureIssueNumbers,
+      openUseCaseIssueNumbers,
+      allUseCaseIssueNumbers,
+    );
+    for (const { issueNumber, targetStatus } of reconciliations) {
+      const itemId = projectDetails.issueItemIdMap.get(issueNumber);
+      const option = targetStatus
+        ? projectDetails.statusOptions.find((o: any) => o.name.toLowerCase() === targetStatus.toLowerCase())
+        : null;
+      if (targetStatus && option) {
+        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would set' : 'Setting'} project status for #${issueNumber} from "${ProjectStatus.NeedsUseCases}" to "${targetStatus}"...`);
+        if (!IS_DRY_RUN) {
+          await updateProjectItemStatus(issueNumber, projectDetails.projectId, projectDetails.statusFieldId, option.id, itemId);
+        }
+      } else if (itemId) {
+        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would clear' : 'Clearing'} "${ProjectStatus.NeedsUseCases}" project status for #${issueNumber}...`);
+        if (!IS_DRY_RUN) {
+          await clearProjectItemStatus(issueNumber, projectDetails.projectId, projectDetails.statusFieldId, itemId);
+        }
+      }
     }
   }
 
@@ -797,7 +936,7 @@ async function run() {
   const { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
   const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors } = await processUseCases(featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails);
   await cleanupOrphanedIssues(allUseCases, activeIssueNumbers);
-  await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails);
+  await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails, allUseCases, activeIssueNumbers);
 
   if (hasError) {
     console.error('\n🛑 Sync failed due to validation errors:\n');

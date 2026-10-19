@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, getGuideStatusFromFiles, parseGuideMarkdown, doesPrSupplyGuideEval, doesPrSupplyGuideContent, ProjectStatus, type GuideInventory } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from './macros.ts';
 
@@ -966,6 +966,79 @@ describe('getStatusName and getGuideStatus lifecycle', () => {
       assert.strictEqual(getGuideStatus({ ...baseInv, hasExpectations: false }), ProjectStatus.NeedsGuidance);
       assert.strictEqual(getGuideStatus({ ...baseInv, draft: 'wip' }), ProjectStatus.NeedsGuidance);
     }
+  });
+
+  test('parseGuideMarkdown and getGuideStatusFromFiles evaluate in-memory snapshots consistently', () => {
+    const stubParsed = parseGuideMarkdown('---\nname: stub\ndraft: stub\n---\n');
+    assert.strictEqual(stubParsed.isStub, true);
+    assert.strictEqual(stubParsed.hasGuide, false);
+
+    const legacyDraftStatus = getGuideStatusFromFiles({
+      guideContent: '---\nname: old\ndraft: true\n---\n# Old\nBody',
+      hasExpectations: true,
+      filePaths: ['guide.md', 'expectations.md', 'grader.ts', 'tasks/task.md'],
+      allowLegacyBooleanDraft: true,
+    });
+    assert.strictEqual(legacyDraftStatus, ProjectStatus.NeedsGuidance);
+
+    const needsEvalStatus = getGuideStatusFromFiles({
+      guideContent: '---\nname: ready\n---\n# Ready\nBody',
+      hasExpectations: true,
+      filePaths: ['guide.md', 'expectations.md'],
+    });
+    assert.strictEqual(needsEvalStatus, ProjectStatus.NeedsEvals);
+
+    const completeGen2Status = getGuideStatusFromFiles({
+      guideContent: '---\nname: complete\n---\n# Complete\nBody',
+      hasExpectations: true,
+      filePaths: ['guide.md', 'expectations.md', 'targets/daily-grind/grader.ts', 'targets/daily-grind/task.md'],
+    });
+    assert.strictEqual(completeGen2Status, null);
+  });
+
+  test('doesPrSupplyGuideEval and doesPrSupplyGuideContent match stage exit requirements', () => {
+    const baseInv: GuideInventory = {
+      dir: '/tmp/guides/forms/slider',
+      name: 'slider',
+      category: 'forms',
+      hasGuide: true,
+      isStub: false,
+      hasDemo: true,
+      hasExpectations: true,
+      expectationsEmpty: false,
+      hasNegativeDemo: false,
+      hasGrader: false,
+      hasTask: false,
+      featureIds: [],
+      isDisciplineGuide: false,
+      draft: undefined,
+      isPublished: true,
+    };
+
+    // Eval PRs on NeedsEvals guides count even when also touching guide.md
+    assert.strictEqual(
+      doesPrSupplyGuideEval(baseInv, ['guide.md', 'targets/daily-grind/grader.ts'], true),
+      true
+    );
+    // Pure content PR touching only guide.md on a NeedsEvals guide is not an eval PR
+    assert.strictEqual(doesPrSupplyGuideEval(baseInv, ['guide.md'], false), false);
+    // Stubs require both guide.md and expectations.md/demo.html to count as a Guide PR
+    const stubInv: GuideInventory = {
+      ...baseInv,
+      hasGuide: false,
+      isStub: true,
+      hasDemo: false,
+      hasExpectations: false,
+    };
+    assert.strictEqual(doesPrSupplyGuideContent(stubInv, ['guide.md'], false), false);
+    assert.strictEqual(doesPrSupplyGuideContent(stubInv, ['guide.md', 'expectations.md'], false), true);
+    // Blocked guides require both guide.md and expectations.md/demo.html (frontmatter-only edits don't count)
+    const blockedInv: GuideInventory = { ...baseInv, draft: 'blocked' };
+    assert.strictEqual(doesPrSupplyGuideContent(blockedInv, ['guide.md'], false), false);
+    assert.strictEqual(doesPrSupplyGuideContent(blockedInv, ['guide.md', 'expectations.md'], false), true);
+    // WIP guides count when touching guide.md
+    const wipInv: GuideInventory = { ...baseInv, draft: 'wip' };
+    assert.strictEqual(doesPrSupplyGuideContent(wipInv, ['guide.md'], false), true);
   });
 });
 
