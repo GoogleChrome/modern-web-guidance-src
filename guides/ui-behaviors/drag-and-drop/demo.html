@@ -50,6 +50,7 @@
     }
 
     .task {
+      scroll-margin: 0.5rem;
       display: grid;
       grid-template-columns: auto 1fr auto;
       gap: 0.75rem;
@@ -256,8 +257,9 @@
     const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
     // FLIP: measure, move, then animate each sibling from its old position.
-    function moveItem(item, before) {
+    function moveItem(item, before, reveal = false) {
       const first = new Map([...list.children].map((el) => [el, el.getBoundingClientRect().top]));
+      const scrollBefore = list.scrollTop;
       if ('moveBefore' in Element.prototype) {
         list.moveBefore(item, before);
       } else if (before) {
@@ -265,9 +267,12 @@
       } else {
         list.append(item);
       }
+      // Scroll before animating so the item's layout position is used, not its animated offset.
+      if (reveal) item.scrollIntoView({ block: 'nearest' });
       if (reduceMotion.matches) return;
+      const scrolled = list.scrollTop - scrollBefore;
       for (const [el, top] of first) {
-        const dy = top - el.getBoundingClientRect().top;
+        const dy = top - scrolled - el.getBoundingClientRect().top;
         if (dy) el.animate({ translate: [`0 ${dy}px`, '0 0'] }, { duration: 200, easing: 'ease-out' });
       }
     }
@@ -380,7 +385,7 @@
       const wasUpFocused = activeElement?.classList.contains('move-up-button');
       const wasDownFocused = activeElement?.classList.contains('move-down-button');
 
-      moveItem(item, direction === 'up' ? sibling : sibling.nextElementSibling);
+      moveItem(item, direction === 'up' ? sibling : sibling.nextElementSibling, true);
       updateDisabledStates();
 
       // Restore focus to the moved item's active button or shift to prevent focus loss
