@@ -1,29 +1,25 @@
-# Creating Modern Web Guidance
+# AGENTS.md
 
-The goal of this project is to create Modern Web Guidance for web platform features. This guidance will be used by other AI agents to create web pages.
+This repository authors **Modern Web Guidance** for web platform features (`guides/`), standalone skills (`skills-src/`), and the evaluation harness (`src/`). Because `guide.md` is the **only** file retrieved by external coding agents at runtime (`demo.html`, `expectations.md`, and `targets/` are used within this repo for validation and evaluation), all guidance must be self-contained, deterministic, and command-oriented.
 
-The development process for creating modern web guidance is split into two distinct checkpoints. This ensures that the core use cases are reviewed and approved before significant effort is invested in documentation and evaluation logic.
+## Required Project Skills (Single Source of Truth)
 
-**Checkpoint 1: Use case identification**
+Always read and follow `.agents/skills/<skill>/SKILL.md` before starting a task:
 
-The first priority is to identify the right set of use cases for a given feature.
+- `project-features`: Filing & triaging `new-feature` issues
+- `project-use-cases`: Identifying use cases (Stage 1 — `guide.md` frontmatter stubs)
+- `project-guides`: Authoring guidance (Stage 2 — `guide.md`, `demo.html`, `expectations.md`)
+- `project-evals`: Authoring & reviewing evals (Stage 3 — `expectations.md`, `task.md`, `grader.ts`)
+- `project-guide-validation`: Validating & reviewing guides
+- `project-discipline-guides`: Discipline guides (`DISCIPLINE_GUIDES` in `src/core/guide-validation.ts`)
+- `project-coding-standards`: Repo TypeScript & CLI code (`src/`, `bin/`)
+- `eval-investigation`, `nightly-eval-investigation`, `dev-prompt-canary`: Eval diagnostics & `gd dev` prompt changes
+- `project-maintenance`, `coherence-auditor`: Routine maintenance & coherence audits
 
-- **Goal:** Define 2-5 action-oriented use cases that solve real-world developer problems.
-- **Deliverable:** Create a Pull Request containing **only** the `guide.md` frontmatter stubs. This includes creating the directory structure and outlining the use case definitions.
+For repository architecture and contributor workflows, see `docs/CONTEXT.md` and `CONTRIBUTING.md`.
 
-Always refer to the [Use Cases](../.agents/skills/project-use-cases/SKILL.md) skill for detailed instructions.
+## PR Review Etiquette
 
-**Checkpoint 2: Authoring guidance**
-
-Once the use cases are approved, the second stage is to complete the documentation, expectations, and reference demo.
-
-- **Goal:** Write the full content for the guides, define expectations, and build the reference demo.
-- **Deliverable:** A follow-up Pull Request with the complete `guide.md`, `expectations.md`, and `demo.html` for each use case.
-
-Always refer to the [Guides](../.agents/skills/project-guides/SKILL.md) skill for detailed instructions.
-
-When writing content, note that it is intended to be read by *other* coding agents. In particular, `guide.md` will be read by general web developers' coding agents to learn how to use the features. Other files like `demo.html` and `expectations.md` will be used by coding agents within this project to validate that the guidance is correct. Therefore, your writing must be highly structured, deterministic, and command-oriented.
-
-**Discipline guides**
-
-If you add a discipline guide, you MUST add its slug to `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts`.
+- Prefix agent-posted GitHub comments and replies to indicate human involvement: `🤖` autonomous (unsteered on this point), `✨` directed (from a quick human prompt), or `🧠` co-designed (shaped through multi-turn human iteration or debugging).
+- When accepting a ` ```suggestion ` block verbatim, commit it via the GitHub UI/API or in a dedicated commit (`Apply suggestions from code review`) with `Co-authored-by: Name <email>` trailers.
+- Reply to every addressed review thread (citing the commit SHA or explaining how a suggestion was adapted).
