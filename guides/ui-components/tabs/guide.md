@@ -33,7 +33,7 @@ Instead of manually implementing a roving tabindex or ARIA activedescendant patt
 </div>
 ```
 
-In example above, the element bearing `focusgroup=tablist` will receive a minimum ARIA role of `tablist` and the buttons will receive a minimum role of `tab`.
+In the example above, the element bearing `focusgroup=tablist` will receive a minimum ARIA role of `tablist` and the buttons will receive a minimum role of `tab`.
 
 Though `focusgroup` will apply the `tab` semantics to focusables within its scope, prefer `<button>` to avoid needing to reimplement button-like behaviour.
 Make sure to use `type=button` for any `<button>` elements to avoid unexpected submitter behaviour if nested within a form.
