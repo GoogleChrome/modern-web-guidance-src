@@ -54,36 +54,36 @@ Treat each element type differently. Text, links and list items share one rule (
 ```css
 .skeleton[aria-busy="true"] :is(p, h2, li, a) {
   /* lh units keep bars proportional to each element's own font size and line-height */
-  --pill-height: .68lh;
-  --pill-radius: .16lh; /* Example value; half the height gives fully round ends */
-  --pill-gap: .3lh;
+  --bar-height: .68lh;
+  --bar-radius: .16lh; /* Example value; half the height gives fully round ends */
+  --bar-gap: .3lh;
   --line-one: 78%;      /* Per-bar widths are overridable custom properties */
   display: block;
-  min-block-size: var(--pill-height);
+  min-block-size: var(--bar-height);
   overflow: hidden;      /* Clips surplus real text so it cannot add lines */
   user-select: none;
   color: transparent;
   text-decoration: none; /* Link underlines would otherwise show through */
   background: var(--skeleton-tone);
   /* One bar: a closed rounded rectangle, width --line-one */
-  border-shape: shape(from var(--pill-radius) 0,
-    hline to calc(var(--line-one) - var(--pill-radius)),
-    arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
-    vline to calc(var(--pill-height) - var(--pill-radius)),
-    arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
-    hline to var(--pill-radius),
-    arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-    vline to var(--pill-radius),
-    arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw,
+  border-shape: shape(from var(--bar-radius) 0,
+    hline to calc(var(--line-one) - var(--bar-radius)),
+    arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(var(--bar-height) - var(--bar-radius)),
+    arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
+    hline to var(--bar-radius),
+    arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to var(--bar-radius),
+    arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
     close);
 }
 ```
 
-For more than one bar, append a `move to` and another closed rounded rectangle to the same `shape()` for each extra bar, offset vertically by `n × (--pill-height + --pill-gap)` and sized by its own `--line-two`, `--line-three` and so on. `shape()` cannot repeat a path from a count, so each bar is written out. Set `min-block-size` to the total height of all bars.
+For more than one bar, append a `move to` and another closed rounded rectangle to the same `shape()` for each extra bar, offset vertically by `n × (--bar-height + --bar-gap)` and sized by its own `--line-two`, `--line-three` and so on. `shape()` cannot repeat a path from a count, so each bar is written out. Set `min-block-size` to the total height of all bars.
 
 | Element | Treatment |
 |---|---|
-| `h1`–`h3` | 1–2 bars with a larger `--pill-height`, so hierarchy matches the real template |
+| `h1`–`h3` | 1–2 bars with a larger `--bar-height`, so hierarchy matches the real template |
 | `p` | 3 bars (2 in compact cards), last one shorter like a real paragraph |
 | `li` | 1 bar each, with a small circle subpath for the bullet; vary widths |
 | `a` | 1 short bar (`--line-one: 42%`) |

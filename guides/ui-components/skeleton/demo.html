@@ -161,7 +161,7 @@
 
       .skeleton[aria-busy="true"] {
         --skeleton-tone: color-mix(in oklch, var(--surface) 88%, var(--ink));
-        /* not currentColor: pills set color: transparent */
+        /* not currentColor: bars set color: transparent */
         --skeleton-highlight: color-mix(in oklch, var(--surface) 70%, white);
       }
 
@@ -215,67 +215,67 @@
         background-color: var(--skeleton-tone);
       }
 
-      /* Text bars: background fill, border-shape defines the pill outlines. */
+      /* Text bars: background fill, border-shape defines the bar outlines. */
       .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button) {
-        --pill-height: .68lh;
-        --pill-radius: .16lh;
-        --pill-gap: .3lh;
+        --bar-height: .68lh;
+        --bar-radius: .16lh;
+        --bar-gap: .3lh;
         --line-one: 78%;
-        --block: var(--pill-height);
+        --block: var(--bar-height);
         display: block;
         inline-size: 100%;
         min-block-size: var(--block);
         overflow: hidden;
         user-select: none;
         background: var(--skeleton-tone);
-        border-shape: shape(from var(--pill-radius) 0,
-            hline to calc(var(--line-one) - var(--pill-radius)),
-            arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(var(--pill-height) - var(--pill-radius)),
-            arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
-            hline to var(--pill-radius),
-            arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to var(--pill-radius),
-            arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw,
+        border-shape: shape(from var(--bar-radius) 0,
+            hline to calc(var(--line-one) - var(--bar-radius)),
+            arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(var(--bar-height) - var(--bar-radius)),
+            arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
+            hline to var(--bar-radius),
+            arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to var(--bar-radius),
+            arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
             close);
         color: transparent;
         /* Underlines would otherwise show through transparent link text */
         text-decoration: none;
       }
 
-      /* Links are a short single pill */
+      /* Links are a short single bar */
       .skeleton[aria-busy="true"] a {
         --line-one: 42%;
       }
 
 
-      /* Lists: a dot plus a pill per item. The dot is a circle drawn with two
-         arcs; the pill starts after it. */
+      /* Lists: a dot plus a bar per item. The dot is a circle drawn with two
+         arcs; the bar starts after it. */
       .skeleton[aria-busy="true"] ul {
         padding: 0;
         list-style: none;
       }
 
       .skeleton[aria-busy="true"] li {
-        --pill-height: .56lh;
-        --pill-radius: .16lh;
+        --bar-height: .56lh;
+        --bar-radius: .16lh;
         --dot: .5lh;
         --dot-gap: .4lh;
         --text-start: calc(var(--dot) + var(--dot-gap));
         --line-one: 72%;
-        border-shape: shape(from 0 calc(var(--pill-height) / 2),
-            arc to var(--dot) calc(var(--pill-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw,
-            arc to 0 calc(var(--pill-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw,
+        border-shape: shape(from 0 calc(var(--bar-height) / 2),
+            arc to var(--dot) calc(var(--bar-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw,
+            arc to 0 calc(var(--bar-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw,
             close,
-            move to calc(var(--text-start) + var(--pill-radius)) 0,
-            hline to calc(var(--line-one) - var(--pill-radius)),
-            arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(var(--pill-height) - var(--pill-radius)),
-            arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
-            hline to calc(var(--text-start) + var(--pill-radius)),
-            arc to var(--text-start) calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to var(--pill-radius),
-            arc to calc(var(--text-start) + var(--pill-radius)) 0 of var(--pill-radius) var(--pill-radius) cw,
+            move to calc(var(--text-start) + var(--bar-radius)) 0,
+            hline to calc(var(--line-one) - var(--bar-radius)),
+            arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(var(--bar-height) - var(--bar-radius)),
+            arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
+            hline to calc(var(--text-start) + var(--bar-radius)),
+            arc to var(--text-start) calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to var(--bar-radius),
+            arc to calc(var(--text-start) + var(--bar-radius)) 0 of var(--bar-radius) var(--bar-radius) cw,
             close);
       }
 
@@ -289,8 +289,8 @@
 
       /* Inputs and buttons: one full-width pill with fixed sizes, same path as text. */
       .skeleton[aria-busy="true"] :is(input, button) {
-        --pill-height: 2.4em;
-        --pill-radius: .4em;
+        --bar-height: 2.4em;
+        --bar-radius: .4em;
         --line-one: 100%;
         padding: 0;
         border-style: none;
@@ -298,101 +298,101 @@
 
       .skeleton[aria-busy="true"] button {
         inline-size: 8rem;
-        --pill-radius: 1.2em;
+        --bar-radius: 1.2em;
       }
 
       /* Line count is selected by element/layout rules, not a --lines variable:
-         border-shape has to enumerate every pill path explicitly. */
+         border-shape has to enumerate every bar path explicitly. */
       .skeleton[aria-busy="true"] h2 {
-        --pill-height: 1lh;
-        --pill-radius: .18lh;
+        --bar-height: 1lh;
+        --bar-radius: .18lh;
         --line-one: 88%;
         --line-two: 64%;
-        --block: calc(2 * var(--pill-height) + var(--pill-gap));
-        border-shape: shape(from var(--pill-radius) 0,
-            hline to calc(var(--line-one) - var(--pill-radius)),
-            arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(var(--pill-height) - var(--pill-radius)),
-            arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
-            hline to var(--pill-radius),
-            arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to var(--pill-radius),
-            arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw,
+        --block: calc(2 * var(--bar-height) + var(--bar-gap));
+        border-shape: shape(from var(--bar-radius) 0,
+            hline to calc(var(--line-one) - var(--bar-radius)),
+            arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(var(--bar-height) - var(--bar-radius)),
+            arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
+            hline to var(--bar-radius),
+            arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to var(--bar-radius),
+            arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
             close,
-            move to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)),
-            hline to calc(var(--line-two) - var(--pill-radius)),
-            arc to var(--line-two) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)),
-            arc to calc(var(--line-two) - var(--pill-radius)) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height)) of var(--pill-radius) var(--pill-radius) cw,
-            hline to var(--pill-radius),
-            arc to 0 calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)),
-            arc to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw,
+            move to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)),
+            hline to calc(var(--line-two) - var(--bar-radius)),
+            arc to var(--line-two) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)),
+            arc to calc(var(--line-two) - var(--bar-radius)) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+            hline to var(--bar-radius),
+            arc to 0 calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)),
+            arc to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)) of var(--bar-radius) var(--bar-radius) cw,
             close);
       }
 
       .skeleton[aria-busy="true"] p {
-        --pill-height: .56lh;
-        --pill-radius: .16lh;
+        --bar-height: .56lh;
+        --bar-radius: .16lh;
         --line-one: 100%;
         --line-two: 92%;
         --line-three: 68%;
-        --block: calc(3 * var(--pill-height) + 2 * var(--pill-gap));
-        border-shape: shape(from var(--pill-radius) 0,
-            hline to calc(var(--line-one) - var(--pill-radius)),
-            arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(var(--pill-height) - var(--pill-radius)),
-            arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
-            hline to var(--pill-radius),
-            arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to var(--pill-radius),
-            arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw,
+        --block: calc(3 * var(--bar-height) + 2 * var(--bar-gap));
+        border-shape: shape(from var(--bar-radius) 0,
+            hline to calc(var(--line-one) - var(--bar-radius)),
+            arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(var(--bar-height) - var(--bar-radius)),
+            arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
+            hline to var(--bar-radius),
+            arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to var(--bar-radius),
+            arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
             close,
-            move to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)),
-            hline to calc(var(--line-two) - var(--pill-radius)),
-            arc to var(--line-two) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)),
-            arc to calc(var(--line-two) - var(--pill-radius)) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height)) of var(--pill-radius) var(--pill-radius) cw,
-            hline to var(--pill-radius),
-            arc to 0 calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)),
-            arc to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw,
+            move to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)),
+            hline to calc(var(--line-two) - var(--bar-radius)),
+            arc to var(--line-two) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)),
+            arc to calc(var(--line-two) - var(--bar-radius)) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+            hline to var(--bar-radius),
+            arc to 0 calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)),
+            arc to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)) of var(--bar-radius) var(--bar-radius) cw,
             close,
-            move to var(--pill-radius) calc(2 * (var(--pill-height) + var(--pill-gap))),
-            hline to calc(var(--line-three) - var(--pill-radius)),
-            arc to var(--line-three) calc(calc(2 * (var(--pill-height) + var(--pill-gap))) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(calc(2 * (var(--pill-height) + var(--pill-gap))) + var(--pill-height) - var(--pill-radius)),
-            arc to calc(var(--line-three) - var(--pill-radius)) calc(calc(2 * (var(--pill-height) + var(--pill-gap))) + var(--pill-height)) of var(--pill-radius) var(--pill-radius) cw,
-            hline to var(--pill-radius),
-            arc to 0 calc(calc(2 * (var(--pill-height) + var(--pill-gap))) + var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(calc(2 * (var(--pill-height) + var(--pill-gap))) + var(--pill-radius)),
-            arc to var(--pill-radius) calc(2 * (var(--pill-height) + var(--pill-gap))) of var(--pill-radius) var(--pill-radius) cw,
+            move to var(--bar-radius) calc(2 * (var(--bar-height) + var(--bar-gap))),
+            hline to calc(var(--line-three) - var(--bar-radius)),
+            arc to var(--line-three) calc(calc(2 * (var(--bar-height) + var(--bar-gap))) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(calc(2 * (var(--bar-height) + var(--bar-gap))) + var(--bar-height) - var(--bar-radius)),
+            arc to calc(var(--line-three) - var(--bar-radius)) calc(calc(2 * (var(--bar-height) + var(--bar-gap))) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+            hline to var(--bar-radius),
+            arc to 0 calc(calc(2 * (var(--bar-height) + var(--bar-gap))) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(calc(2 * (var(--bar-height) + var(--bar-gap))) + var(--bar-radius)),
+            arc to var(--bar-radius) calc(2 * (var(--bar-height) + var(--bar-gap))) of var(--bar-radius) var(--bar-radius) cw,
             close);
       }
 
       .skeleton[aria-busy="true"] article:where(:not(:has(> .media)), :has(.content > .media)) p {
         --line-one: 92%;
         --line-two: 62%;
-        --block: calc(2 * var(--pill-height) + var(--pill-gap));
-        border-shape: shape(from var(--pill-radius) 0,
-            hline to calc(var(--line-one) - var(--pill-radius)),
-            arc to var(--line-one) var(--pill-radius) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(var(--pill-height) - var(--pill-radius)),
-            arc to calc(var(--line-one) - var(--pill-radius)) var(--pill-height) of var(--pill-radius) var(--pill-radius) cw,
-            hline to var(--pill-radius),
-            arc to 0 calc(var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to var(--pill-radius),
-            arc to var(--pill-radius) 0 of var(--pill-radius) var(--pill-radius) cw,
+        --block: calc(2 * var(--bar-height) + var(--bar-gap));
+        border-shape: shape(from var(--bar-radius) 0,
+            hline to calc(var(--line-one) - var(--bar-radius)),
+            arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(var(--bar-height) - var(--bar-radius)),
+            arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
+            hline to var(--bar-radius),
+            arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to var(--bar-radius),
+            arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
             close,
-            move to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)),
-            hline to calc(var(--line-two) - var(--pill-radius)),
-            arc to var(--line-two) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)),
-            arc to calc(var(--line-two) - var(--pill-radius)) calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height)) of var(--pill-radius) var(--pill-radius) cw,
-            hline to var(--pill-radius),
-            arc to 0 calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-height) - var(--pill-radius)) of var(--pill-radius) var(--pill-radius) cw,
-            vline to calc(calc(var(--pill-height) + var(--pill-gap)) + var(--pill-radius)),
-            arc to var(--pill-radius) calc(var(--pill-height) + var(--pill-gap)) of var(--pill-radius) var(--pill-radius) cw,
+            move to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)),
+            hline to calc(var(--line-two) - var(--bar-radius)),
+            arc to var(--line-two) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)),
+            arc to calc(var(--line-two) - var(--bar-radius)) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+            hline to var(--bar-radius),
+            arc to 0 calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)),
+            arc to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)) of var(--bar-radius) var(--bar-radius) cw,
             close);
       }
 
