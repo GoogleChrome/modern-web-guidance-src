@@ -6,10 +6,18 @@
 
 /**
  * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
+ * @returns {boolean}
+ */
+export function isEarlyFailureRun(checks) {
+    return !!(checks && checks.some(c => c.isEarlyFailure));
+}
+
+/**
+ * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
  * @returns {{ rate: number, passed: number, total: number }}
  */
 export function getRunStats(checks) {
-    if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0 };
+    if (!checks || !checks.length || isEarlyFailureRun(checks)) return { rate: 0, passed: 0, total: 0 };
     const passed = checks.filter(c => c.passed).length;
     const total = checks.length;
     const rate = Math.round((passed / total) * 100);
@@ -124,6 +132,27 @@ export function parseResultKey(key) {
 }
 
 /**
+ * Returns the set of `${task} - ${guide}` scenario IDs that have valid runs.
+ * When both `guided` and `unguided` keys exist for a scenario, both must have at least one valid run.
+ *
+ * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
+ * @returns {Set<string>}
+ */
+export function getEligibleScenarioIds(results) {
+    const eligible = new Set();
+    for (const [key, runs] of Object.entries(results)) {
+        const parsed = parseResultKey(key);
+        if (!parsed || (parsed.runType !== 'guided' && parsed.runType !== 'unguided')) continue;
+        const otherKey = key.endsWith(' - guided') ? key.replace(/ - guided$/, ' - unguided') : key.replace(/ - unguided$/, ' - guided');
+        if (runs.some(r => getRunStats(r.results).total > 0) &&
+            (!results[otherKey] || results[otherKey].some(r => getRunStats(r.results).total > 0))) {
+            eligible.add(`${parsed.task} - ${parsed.guide}`);
+        }
+    }
+    return eligible;
+}
+
+/**
  * @typedef {Object} ChartAppData
  * @property {number[]} guided
  * @property {number[]} unguided
@@ -131,10 +160,13 @@ export function parseResultKey(key) {
  * @property {number[]} unguided_tokens
  * @property {boolean} guided_failed
  * @property {boolean} unguided_failed
+ * @property {number} guided_err_rate
+ * @property {number} unguided_err_rate
  */
 
 /**
  * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
+ * @param {Set<string>} [precomputedEligibleScenarios]
  * @returns {{
  *   labels: string[],
  *   guided: number[],
@@ -142,10 +174,13 @@ export function parseResultKey(key) {
  *   guided_tokens: number[],
  *   unguided_tokens: number[],
  *   guided_failed: boolean[],
- *   unguided_failed: boolean[]
+ *   unguided_failed: boolean[],
+ *   guided_err_rate: number[],
+ *   unguided_err_rate: number[]
  * }}
  */
-export function calculateChartData(results) {
+export function calculateChartData(results, precomputedEligibleScenarios) {
+    const eligibleScenarios = precomputedEligibleScenarios || getEligibleScenarioIds(results);
     /** @type {Record<string, ChartAppData>} */
     const apps = {};
     /** @type {Record<string, string>} */
@@ -157,9 +192,11 @@ export function calculateChartData(results) {
         const { task: taskName, guide, runType } = parsedKey;
 
         if (runType !== 'guided' && runType !== 'unguided') return;
+        if (!eligibleScenarios.has(`${taskName} - ${guide}`)) return;
         /** @type {'guided' | 'unguided'} */
         const rType = runType;
         const failedKey = rType === 'guided' ? 'guided_failed' : 'unguided_failed';
+        const errRateKey = rType === 'guided' ? 'guided_err_rate' : 'unguided_err_rate';
         const tokensKey = rType === 'guided' ? 'guided_tokens' : 'unguided_tokens';
 
         const scenario = `${taskName} (${guide})`;
@@ -170,7 +207,9 @@ export function calculateChartData(results) {
                 guided_tokens: [], 
                 unguided_tokens: [], 
                 guided_failed: false, 
-                unguided_failed: false 
+                unguided_failed: false,
+                guided_err_rate: 0,
+                unguided_err_rate: 0
             };
         }
         
@@ -179,16 +218,27 @@ export function calculateChartData(results) {
             taskNames[scenario] = runs[0].taskName;
         }
         
-        const isEarlyFailure = runs.some(r => r.results?.some(c => c.isEarlyFailure));
-        if (isEarlyFailure) {
+        let earlyFailureCount = 0;
+        let passed = 0;
+        let total = 0;
+        let totalTokens = 0;
+        for (const r of runs) {
+            if (isEarlyFailureRun(r.results)) {
+                earlyFailureCount++;
+            } else {
+                const s = getRunStats(r.results);
+                passed += s.passed;
+                total += s.total;
+            }
+            totalTokens += r.tokenUsage?.total || 0;
+        }
+
+        if (earlyFailureCount > 0) {
             apps[scenario][failedKey] = true;
+            apps[scenario][errRateKey] = Math.round((earlyFailureCount / runs.length) * 100);
         }
         
-        const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
-        const total = runs.reduce((acc, r) => acc + (r.results?.length || 0), 0);
         apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
-
-        const totalTokens = runs.reduce((acc, r) => acc + (r.tokenUsage?.total || 0), 0);
         const avgTokens = runs.length > 0 ? Math.round(totalTokens / runs.length) : 0;
         if (!apps[scenario][tokensKey]) {
             apps[scenario][tokensKey] = [];
@@ -230,7 +280,9 @@ export function calculateChartData(results) {
         guided_tokens: labels.map(l => getAvgTokens(l, 'guided')),
         unguided_tokens: labels.map(l => getAvgTokens(l, 'unguided')),
         guided_failed: labels.map(l => apps[l].guided_failed),
-        unguided_failed: labels.map(l => apps[l].unguided_failed)
+        unguided_failed: labels.map(l => apps[l].unguided_failed),
+        guided_err_rate: labels.map(l => apps[l].guided_err_rate),
+        unguided_err_rate: labels.map(l => apps[l].unguided_err_rate)
     };
 }
 
@@ -245,7 +297,7 @@ export function formatTestName(name) {
     if (parsedKey) {
         const { task: taskName, guide: guideName } = parsedKey;
         
-        const featuresMap = window.__featuresMapping || {};
+        const featuresMap = (typeof window !== 'undefined' && window.__featuresMapping) || {};
         const featureId = (featuresMap[guideName] && featuresMap[guideName][0]) || 'uncategorized';
         const displayName = `${guideName} (${taskName})`;
 

@@ -130,11 +130,35 @@ async function getGcsAccessToken() {
   });
 }
 
+/**
+ * Injected into guide demo previews rendered inside iframes (`?preview=1`).
+ * Defends the gallery against offscreen demos calling `.focus()` or `.scrollIntoView()` on load
+ * which would otherwise cause the browser to scroll the top-level parent window.
+ */
+const PREVIEW_SHIM = '<script>(() => { let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } })();</script>';
+
+/**
+ * @param {string} html
+ */
+function injectPreviewShim(html) {
+  const cleaned = html
+    .replace(/\bautofocus\b/gi, 'data-autofocus-disabled')
+    .replace(/scroll-initial-target\s*:\s*nearest/gi, '/* scroll-initial-target disabled in preview */');
+  const m = cleaned.match(/<head[^>]*>/i) || cleaned.match(/<html[^>]*>/i);
+  if (m && m.index !== undefined) {
+    const idx = m.index + m[0].length;
+    return cleaned.slice(0, idx) + PREVIEW_SHIM + cleaned.slice(idx);
+  }
+  return PREVIEW_SHIM + cleaned;
+}
+
 const server = http.createServer(async (req, res) => {
   const reqUrl = req.url || '';
+  const parsedUrl = new URL(reqUrl, 'http://localhost');
   
   // Handle CORS and Private Network Access for Playwright Trace Viewer
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', '*');
@@ -402,12 +426,6 @@ const server = http.createServer(async (req, res) => {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
             .filter(d => !d.isDirectory())
             .map(d => d.name);
-          const gradeReportDataDir = path.join(targetDir, 'grade-report', 'data');
-          if (fs.existsSync(gradeReportDataDir)) {
-            const dataFiles = fs.readdirSync(gradeReportDataDir)
-              .map(f => `grade-report/data/${f}`);
-            files.push(...dataFiles);
-          }
         }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
@@ -464,7 +482,7 @@ const server = http.createServer(async (req, res) => {
 
   let filePath;
   // Serve generated manifests from out/dashboard
-  if (decodedPath === '/features-mapping.gen.js' || decodedPath === '/features_mapping.gen.js' || decodedPath === '/grouped-tasks.gen.json' || decodedPath === '/suites.gen.json') {
+  if (path.dirname(decodedPath) === '/' && (decodedPath.endsWith('.gen.json') || decodedPath.endsWith('.gen.js'))) {
     const canonicalName = decodedPath === '/features_mapping.gen.js' ? 'features-mapping.gen.js' : decodedPath.substring(1);
     filePath = path.join(outDir, 'dashboard', canonicalName);
   } else if (decodedPath.startsWith('/base_apps/')) {
@@ -585,6 +603,15 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
+      if (isInsideGuides && extname === '.html' && parsedUrl.searchParams.has('preview')) {
+        const injected = injectPreviewShim(content.toString('utf-8'));
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Length': Buffer.byteLength(injected),
+        });
+        res.end(injected, 'utf-8');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(content, 'utf-8');
     }
