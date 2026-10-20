@@ -11,7 +11,7 @@ web-feature-ids:
   - scrollend
   - scroll-snap-events
   - scroll-driven-animations
-guides:
+  - sibling-count
   - carousel-slide-effects
   - carousel-snap-highlights
   - scroll-progress-indicator
@@ -232,29 +232,28 @@ Write a small script that adapts to your markup and covers these requirements:
 
 - **Detect each feature separately.** Feature-detect native scroll buttons (including the anchor positioning they depend on) and native scroll markers with `CSS.supports`. Hide the fallback controls only for features that exist natively, and wire up only the missing ones.
 - **Track the current slide** along the carousel's scrolling axis, for horizontal or vertical layouts.
-- **Fallback buttons** move to the adjacent slide and are disabled when none exists.
+- **Fallback buttons** move to the adjacent slide in visual order (which differs from DOM order when looping) and are disabled when none exists.
 - **Fallback markers** are one named button per slide that scrolls to that slide.
 - **Update state after scrolling settles**, not on every frame: announce "Slide N of M" in the status region and mark the active fallback marker with `aria-current`. Support browsers without `scrollend`, and run the update once on load.
 - **Respect reduced motion** for any smooth scrolling.
 
 ## Looping (continuous navigation)
 
-For previous/next that wrap from the last slide to the first and back, make the track endless instead of disabling controls at the ends. Native scroll buttons disable at the ends, so bracket the real slides with clones of the last two slides before them and the first two after them. The track then always has a neighbor to scroll to, so native buttons, keyboard scrolling, touch, and snapping all keep working and look unchanged.
+For previous/next that wrap from the last slide to the first and back, keep the track endless instead of disabling controls at the ends. Do not clone or move slides in the DOM, which conflicts with frameworks and duplicates content for assistive technology. Instead, treat the slides as a ring and rotate it with CSS `order` so the current slide always sits in the middle position. The track then always has a neighbor on both sides, so native scroll buttons never disable, and keyboard scrolling, touch, and snapping all keep working.
 
-- Create clones in JavaScript so the no-JavaScript carousel stays a plain finite list. Mark each clone `inert` and `aria-hidden="true"` so it cannot take focus or be exposed to assistive technology, and exclude it from `::scroll-marker` generation with `content: none`.
-- Use two clones per side. A native scroll button that reaches a scroll limit becomes disabled and drops keyboard focus; two clones keep the track away from the limits.
-- Start on the first real slide with an instant scroll. When scrolling settles on a clone, jump instantly to the identical real slide. The jump is invisible because both render the same content at the same snap position.
-- The status and fallback code count real slides only and ignore clones, so "Slide N of M" announces after the jump settles. Keep `scroll-behavior: smooth` inside `prefers-reduced-motion: no-preference` for user navigation; only the reposition is instant.
-- Looping needs at least two slides. Strip `id` attributes from slides, or avoid them, because clones duplicate them.
+{{ BASELINE_STATUS("sibling-count") }}
+
+- Drive `order` from `sibling-index()`, `sibling-count()`, and a `--current` custom property on the track (the zero-based index of the current slide), wrapped in `@supports` for `sibling-index()`. The formula below is the part that is easy to get wrong.
+- Start with `--current: 0` and park the track on the middle position with an instant scroll. When scrolling settles, work out how many positions the user moved from the middle, add that to `--current` (wrapping at the slide count), then park on the middle again in the same task. The reorder and the instant scroll must happen together so the change is invisible.
+- Looping needs at least three slides of equal size along the scrolling axis: the parking offset is the middle position times one slide plus the gap. Do not use it for peek layouts or slides of differing sizes.
+- Fallback previous/next controls and the status calculation must work from visual order, not DOM sibling order. Keep counting real slides, so "Slide N of M" announces after the rotation settles.
+- Keep `scroll-behavior: smooth` inside `prefers-reduced-motion: no-preference` for user navigation; only the re-centering is instant.
+- Without `sibling-index()` support, leave the carousel as a finite list: skip the rotation and keep disabling controls at the ends.
 
 ```css
-.carousel-slide[data-clone]::scroll-marker {
-  content: none;
+.carousel-slide {
+  order: mod(sibling-index() - 1 - var(--current) + round(down, sibling-count() / 2), sibling-count());
 }
 ```
 
-Extend the script from "Status updates and fallback controls" to cover these requirements:
-
-- Create the clones in JavaScript, mark them `inert` and as clones, and exclude them from slide counts and status updates.
-- Start on the first real slide, and when scrolling settles on a clone, jump instantly to its identical real slide.
-- Reposition without `scrollIntoView()`: it moves the sequential focus starting point into an inert clone, so Tab skips the carousel controls. Scroll the track directly instead.
+Accessibility trade-offs: `order` changes visual order but not DOM or Tab order, so focusable content inside slides can be reached in a different sequence from what is shown. Prefer slides without focusable content, or accept the mismatch knowingly. Native `::scroll-marker` markers follow DOM order, so they do not rotate with the slides; the current marker still highlights correctly.
