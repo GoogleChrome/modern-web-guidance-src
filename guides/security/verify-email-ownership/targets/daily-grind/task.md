@@ -1,0 +1,1 @@
+- Verify that a user owns an email address during account creation, sign-in, or recovery without sending a one-time passcode or magic link email.
