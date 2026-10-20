@@ -150,10 +150,12 @@ Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenu
 Do not add a second roving-tabindex system inside a focusgroup. Script covers only what the invokers and focusgroup do not:
 
 * **One tab stop for the menubar.** `Tab` enters at the first top-level trigger. `ArrowLeft` and `ArrowRight` move between top-level triggers and wrap at either end. `Home` and `End` on a trigger enter its menu at the first or last item.
+  * **Note: which trigger `Tab` returns to.** The APG allows either the first trigger or the last one used. The guide specifies the first, but the demo moves the tab stop with `ArrowLeft` and `ArrowRight`, so after keyboard navigation `Shift`+`Tab` returns to the last trigger reached. Pointer use does not move it, so the same sequence can land on a different trigger. Either behavior is acceptable; pick one and keep it consistent.
 * **Preview.** Focusing a top-level trigger shows its menu and sets `aria-expanded="true"`. Focus stays on the trigger, and no item is focused. Blurring the trigger closes a preview-only menu.
 * **Enter and Space on a preview.** They close the preview and keep focus on the trigger. The native `toggle-popover` action handles this, so the script must not intercept these keys.
 * **ArrowDown on a preview.** Converts it to an open menu and focuses the first item.
 * **Pointer click on an open or previewed trigger.** Closes it natively; it does not enter the menu.
+  * **Known difference on submenu triggers.** A pointer click on a submenu trigger also toggles natively, so it can close a submenu that hover already previewed, or open one that has not appeared yet. Native menus only open it and never close it. This is harmless, so the guide accepts it.
 * **Pointer click on a closed trigger.** Opens it natively. Focus stays on the trigger; no item is focused. Only keyboard opens enter the menu.
 * **Pointer over an item.** Focuses it without a ring, so hover and focus are one item.
 * **Pointer over another top-level trigger while a menu is open.** Closes it and previews the hovered one, focusing its trigger without a ring. Nothing open: hover does nothing.
