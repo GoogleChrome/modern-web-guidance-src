@@ -169,12 +169,26 @@ export type DraftState = 'stub' | 'wip' | 'blocked';
 const DRAFT_STATES: readonly DraftState[] = ['stub', 'wip', 'blocked'];
 
 /** Parses `draft` / `draft-reason`, throwing on anything else so a bad value can't publish a guide. */
-function parseDraft(data: GuideData, where: string): { draft?: DraftState; draftReason?: string } {
-  const { draft, 'draft-reason': draftReason } = data;
+export function parseDraft(data: GuideData, where: string, allowLegacy = false): { draft?: DraftState; draftReason?: string } {
+  let { draft } = data;
+  const { 'draft-reason': draftReason } = data;
+  
   if (draft === undefined) return {};
+  if (allowLegacy) {
+    if (draft === true) draft = 'wip';
+    if (draft === false) return {};
+  }
+  
   const state = DRAFT_STATES.find(s => s === draft);
-  if (!state) throw new Error(`${where}: draft must be one of ${DRAFT_STATES.join(', ')} (got ${JSON.stringify(draft)}). Omit it to publish.`);
-  if (state === 'blocked' && !draftReason?.trim()) throw new Error(`${where}: draft: blocked needs a draft-reason.`);
+  if (!state) {
+    if (allowLegacy) return {};
+    throw new Error(`${where}: draft must be one of ${DRAFT_STATES.join(', ')} (got ${JSON.stringify(draft)}). Omit it to publish.`);
+  }
+  
+  if (state === 'blocked' && !draftReason?.trim()) {
+    if (allowLegacy) return { draft: state, draftReason: 'legacy missing reason' };
+    throw new Error(`${where}: draft: blocked needs a draft-reason.`);
+  }
   return { draft: state, draftReason };
 }
 
@@ -226,24 +240,34 @@ export function getGuideStatus(inv: GuideInventory): ProjectStatus | null {
  * Evaluates a guide's project status from raw `guide.md` content and the set of relative
  * file paths present in the guide directory (e.g. from a git tree).
  */
-export function getGuideStatusFromFiles(params: {
-  guideContent: string;
-  hasExpectations: boolean;
-  filePaths: Iterable<string>;
-  where?: string;
-  allowLegacyBooleanDraft?: boolean;
-}): ProjectStatus | null {
-  const { data = {}, content: body = '' } = params.guideContent ? matter(params.guideContent) : {};
-  const hasContent = stripAllComments(body).trim().length > 0;
-  const draft = params.allowLegacyBooleanDraft
-    ? isDraftStub(data.draft)
-      ? 'stub'
-      : data.draft
-        ? 'wip'
-        : undefined
-    : parseDraft(data as GuideData, params.where ?? GUIDE_FILE).draft;
+export interface GuideMetadata {
+  hasGuide: boolean;
+  isStub: boolean;
+  draft?: DraftState;
+  draftReason?: string;
+  featureIds: string[];
+}
 
-  const relativeFiles = new Set(params.filePaths);
+export function parseGuideMetadata(
+  guideContent: string | null | undefined,
+  filePath: string = GUIDE_FILE,
+  allowLegacyDraft = false
+): GuideMetadata {
+  const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
+  const hasFrontmatter = Object.keys(data).length > 0 || (guideContent || '').startsWith('---');
+  const hasContent = stripAllComments(content).trim().length > 0;
+  
+  const { draft, draftReason } = parseDraft(data as GuideData, filePath, allowLegacyDraft);
+  
+  const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
+  const hasGuide = hasContent && !isDraftStub(draft);
+  const featureIds = Array.isArray(data['web-feature-ids']) ? data['web-feature-ids'] : [];
+
+  return { hasGuide, isStub, draft, draftReason, featureIds };
+}
+
+export function detectEvals(filePaths: Iterable<string>): { hasGrader: boolean; hasTask: boolean } {
+  const relativeFiles = new Set(filePaths);
   const hasTasksDir = Array.from(relativeFiles).some(k => k.startsWith('tasks/'));
   const supportedApps = new Set(getSupportedBaseApps());
   const targetApps = Array.from(
@@ -260,21 +284,13 @@ export function getGuideStatusFromFiles(params: {
   const hasTask = useTargets
     ? targetApps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${TASK_FILE}`))
     : relativeFiles.has(`tasks/${TASK_FILE}`);
-
-  return getStatusName(hasContent && !isDraftStub(draft), hasGrader, hasTask, Boolean(draft), params.hasExpectations);
+  return { hasGrader, hasTask };
 }
 
 export function isEvalFile(relPath: string): boolean {
   return relPath === GRADER_FILE || relPath.startsWith('tasks/') || relPath.startsWith(`${TARGETS_DIR}/`);
 }
 
-export interface PendingGuideChange {
-  touchedRelFiles: readonly string[];
-  /** Raw `guide.md` content in the pending branch when `guide.md` is touched. */
-  guideContent?: string;
-  matchesEvalBranch?: boolean;
-  guideNameExistsElsewhere?: boolean;
-}
 
 /**
  * Evaluates whether a pending change to a guide supplies work for its current pipeline stage
@@ -283,18 +299,21 @@ export interface PendingGuideChange {
  */
 export function getPendingGuideStage(
   inv: GuideInventory | undefined,
-  change: PendingGuideChange,
+  touchedRelFiles: readonly string[],
+  guideMetaAfter: Pick<GuideMetadata, 'hasGuide' | 'draft'> | undefined,
+  matchesEvalBranch: boolean,
+  guideNameExistsElsewhere: boolean
 ): ProjectStatus | null {
   const currentStatus = inv
     ? getGuideStatus(inv)
-    : change.guideNameExistsElsewhere
+    : guideNameExistsElsewhere
       ? null
       : ProjectStatus.NeedsGuidance;
   if (currentStatus === null) return null;
 
   if (currentStatus === ProjectStatus.NeedsEvals) {
-    return change.touchedRelFiles.some(isEvalFile) ||
-      (change.touchedRelFiles.length === 0 && Boolean(change.matchesEvalBranch))
+    return touchedRelFiles.some(isEvalFile) ||
+      (touchedRelFiles.length === 0 && Boolean(matchesEvalBranch))
       ? ProjectStatus.NeedsEvals
       : null;
   }
@@ -305,26 +324,18 @@ export function getPendingGuideStage(
 
   let hasGuideAfter = hasGuideBefore;
   let draftAfter = draftBefore;
-  if (change.guideContent !== undefined) {
-    const { data = {}, content: body = '' } = change.guideContent ? matter(change.guideContent) : {};
-    const hasContent = stripAllComments(body).trim().length > 0;
-    draftAfter = isDraftStub(data.draft)
-      ? 'stub'
-      : data.draft === 'blocked'
-        ? 'blocked'
-        : data.draft
-          ? 'wip'
-          : undefined;
-    hasGuideAfter = hasContent && !isDraftStub(draftAfter);
-  } else if (change.touchedRelFiles.includes(GUIDE_FILE)) {
+  if (guideMetaAfter) {
+    hasGuideAfter = guideMetaAfter.hasGuide;
+    draftAfter = guideMetaAfter.draft;
+  } else if (touchedRelFiles.includes(GUIDE_FILE)) {
     hasGuideAfter = true;
     if (draftBefore === 'wip') draftAfter = undefined;
   }
-  const hasExpectationsAfter = hasExpectationsBefore || change.touchedRelFiles.includes(EXPECTATIONS_FILE);
+  const hasExpectationsAfter = hasExpectationsBefore || touchedRelFiles.includes(EXPECTATIONS_FILE);
 
   const writesGuide = !hasGuideBefore && hasGuideAfter;
   const unblocksGuide = draftBefore === 'blocked' && draftAfter !== 'blocked';
-  const advancesWipGuide = draftBefore === 'wip' && change.touchedRelFiles.includes(GUIDE_FILE) && hasGuideAfter;
+  const advancesWipGuide = draftBefore === 'wip' && touchedRelFiles.includes(GUIDE_FILE) && hasGuideAfter;
   const addsMissingExpectations = !hasExpectationsBefore && hasExpectationsAfter && hasGuideAfter;
 
   return writesGuide || unblocksGuide || advancesWipGuide || addsMissingExpectations
@@ -725,14 +736,13 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
 
   const guideFilePath = path.join(dir, GUIDE_FILE);
   const guideContent = readFileSafe(guideFilePath);
-  const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
-  const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
-  const hasContent = stripAllComments(content).trim().length > 0;
-  const { draft, draftReason } = parseDraft(data as GuideData, guideFilePath);
-  const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
-  const hasGuide = hasContent && !isDraftStub(draft);
-  const isPublished = hasGuide && !draft;
-  const featureIds = Array.isArray(data['web-feature-ids']) ? data['web-feature-ids'] : [];
+  const meta = parseGuideMetadata(guideContent, guideFilePath);
+  const isStub = meta.isStub;
+  const hasGuide = meta.hasGuide;
+  const isPublished = hasGuide && !meta.draft;
+  const draft = meta.draft;
+  const draftReason = meta.draftReason;
+  const featureIds = meta.featureIds;
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();

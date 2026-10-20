@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, getGuideStatusFromFiles, getPendingGuideStage, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from './macros.ts';
 
@@ -968,28 +968,31 @@ describe('getStatusName and getGuideStatus lifecycle', () => {
     }
   });
 
-  test('getGuideStatusFromFiles evaluates in-memory snapshots consistently', () => {
-    const legacyDraftStatus = getGuideStatusFromFiles({
-      guideContent: '---\nname: old\ndraft: true\n---\n# Old\nBody',
-      hasExpectations: true,
-      filePaths: ['guide.md', 'expectations.md', 'grader.ts', 'tasks/task.md'],
-      allowLegacyBooleanDraft: true,
-    });
-    assert.strictEqual(legacyDraftStatus, ProjectStatus.NeedsGuidance);
+  test('getGuideStatus evaluates in-memory snapshots consistently', () => {
+    const meta1 = parseGuideMetadata(`---
+name: old
+draft: true
+---
+# Old
+Body`, undefined, true);
+    const evals1 = detectEvals(['guide.md', 'expectations.md', 'grader.ts', 'tasks/task.md']);
+    assert.strictEqual(getStatusName(meta1.hasGuide, evals1.hasGrader, evals1.hasTask, Boolean(meta1.draft), true), ProjectStatus.NeedsGuidance);
 
-    const needsEvalStatus = getGuideStatusFromFiles({
-      guideContent: '---\nname: ready\n---\n# Ready\nBody',
-      hasExpectations: true,
-      filePaths: ['guide.md', 'expectations.md'],
-    });
-    assert.strictEqual(needsEvalStatus, ProjectStatus.NeedsEvals);
+    const meta2 = parseGuideMetadata(`---
+name: ready
+---
+# Ready
+Body`, undefined, true);
+    const evals2 = detectEvals(['guide.md', 'expectations.md']);
+    assert.strictEqual(getStatusName(meta2.hasGuide, evals2.hasGrader, evals2.hasTask, Boolean(meta2.draft), true), ProjectStatus.NeedsEvals);
 
-    const completeGen2Status = getGuideStatusFromFiles({
-      guideContent: '---\nname: complete\n---\n# Complete\nBody',
-      hasExpectations: true,
-      filePaths: ['guide.md', 'expectations.md', 'targets/daily-grind/grader.ts', 'targets/daily-grind/task.md'],
-    });
-    assert.strictEqual(completeGen2Status, null);
+    const meta3 = parseGuideMetadata(`---
+name: complete
+---
+# Complete
+Body`, undefined, true);
+    const evals3 = detectEvals(['guide.md', 'expectations.md', 'targets/daily-grind/grader.ts', 'targets/daily-grind/task.md']);
+    assert.strictEqual(getStatusName(meta3.hasGuide, evals3.hasGrader, evals3.hasTask, Boolean(meta3.draft), true), null);
   });
 
   test('getPendingGuideStage compares before/after guide state across Stage 2 and Stage 3', () => {
@@ -1013,15 +1016,12 @@ describe('getStatusName and getGuideStatus lifecycle', () => {
 
     // Eval changes on NeedsEvals guides count even when also touching guide.md
     assert.strictEqual(
-      getPendingGuideStage(baseInv, {
-        touchedRelFiles: ['guide.md', 'targets/daily-grind/grader.ts'],
-        matchesEvalBranch: true,
-      }),
+      getPendingGuideStage(baseInv, ['guide.md', 'targets/daily-grind/grader.ts'], undefined, true, false),
       ProjectStatus.NeedsEvals
     );
     // Pure content change touching only guide.md on a NeedsEvals guide is not an eval change
     assert.strictEqual(
-      getPendingGuideStage(baseInv, { touchedRelFiles: ['guide.md'] }),
+      getPendingGuideStage(baseInv, ['guide.md'], undefined, false, false),
       null
     );
 
@@ -1034,42 +1034,30 @@ describe('getStatusName and getGuideStatus lifecycle', () => {
     };
     // Frontmatter-only edit on a stub stays a stub (null)
     assert.strictEqual(
-      getPendingGuideStage(stubInv, {
-        touchedRelFiles: ['guide.md'],
-        guideContent: '---\nname: slider\nweb-feature-ids:\n  - tmp-slider\n---\n',
-      }),
+      getPendingGuideStage(stubInv, ['guide.md'], parseGuideMetadata('---\nname: slider\nweb-feature-ids:\n  - tmp-slider\n---\n', undefined, true), false, false),
       null
     );
     // Writing guide.md body on a stub advances NeedsGuidance even before expectations.md is added
     assert.strictEqual(
-      getPendingGuideStage(stubInv, {
-        touchedRelFiles: ['guide.md'],
-        guideContent: '---\nname: slider\n---\n# Slider\nProse here.',
-      }),
+      getPendingGuideStage(stubInv, ['guide.md'], parseGuideMetadata('---\nname: slider\n---\n# Slider\nProse here.', undefined, true), false, false),
       ProjectStatus.NeedsGuidance
     );
 
     const blockedInv: GuideInventory = { ...baseInv, draft: 'blocked' };
     // Frontmatter retag on a blocked guide that keeps `draft: blocked` is ignored
     assert.strictEqual(
-      getPendingGuideStage(blockedInv, {
-        touchedRelFiles: ['guide.md'],
-        guideContent: '---\nname: slider\ndraft: blocked\ndraft-reason: still blocked\n---\n# Slider\nProse',
-      }),
+      getPendingGuideStage(blockedInv, ['guide.md'], parseGuideMetadata(`---\nname: slider\ndraft: blocked\ndraft-reason: still blocked\n---\n# Slider\nProse`, undefined, true), false, false),
       null
     );
     // Removing `draft: blocked` in guide.md unblocks the guide and counts as NeedsGuidance
     assert.strictEqual(
-      getPendingGuideStage(blockedInv, {
-        touchedRelFiles: ['guide.md'],
-        guideContent: '---\nname: slider\n---\n# Slider\nProse',
-      }),
+      getPendingGuideStage(blockedInv, ['guide.md'], parseGuideMetadata(`---\nname: slider\n---\n# Slider\nProse`, undefined, true), false, false),
       ProjectStatus.NeedsGuidance
     );
 
     const wipInv: GuideInventory = { ...baseInv, draft: 'wip' };
     assert.strictEqual(
-      getPendingGuideStage(wipInv, { touchedRelFiles: ['guide.md'] }),
+      getPendingGuideStage(wipInv, ['guide.md'], undefined, false, false),
       ProjectStatus.NeedsGuidance
     );
   });

@@ -16,8 +16,7 @@ import { parseBooleanEnv } from '../core/env.ts';
 import {
   EXPECTATIONS_FILE,
   getGuideStatus,
-  getGuideStatusFromFiles,
-  getPendingGuideStage,
+  getPendingGuideStage, detectEvals, parseGuideMetadata, getStatusName,
   GUIDE_FILE,
   isEvalFile,
   ProjectStatus,
@@ -437,12 +436,15 @@ function analyzeCommit(commitSha: string): CommitAnalysis {
     const guideContent = guideContentMap.get(slug) ?? '';
     const expBlobSha = files.get(EXPECTATIONS_FILE);
     const hasExpectations = files.has(EXPECTATIONS_FILE) && expBlobSha !== EMPTY_BLOB_SHA;
-    const status = getGuideStatusFromFiles({
-      guideContent,
-      hasExpectations,
-      filePaths: files.keys(),
-      allowLegacyBooleanDraft: true,
-    });
+    const meta = parseGuideMetadata(guideContent, undefined, true);
+    const evals = detectEvals(files.keys());
+    const status = getStatusName(
+      meta.hasGuide,
+      evals.hasGrader,
+      evals.hasTask,
+      Boolean(meta.draft),
+      hasExpectations
+    );
 
     if (status === null) {
       complete++;
@@ -486,12 +488,15 @@ function findReadySince(slugs: string[]): Map<string, string> {
       );
       if (!blobsByPath.has(guidePath) || !blobsByPath.has(expPath)) break;
       const guideContent = child_process.execFileSync('git', ['show', `${sha}:${guidePath}`], { cwd, encoding: 'utf8' });
-      const status = getGuideStatusFromFiles({
-        guideContent,
-        hasExpectations: blobsByPath.get(expPath) !== EMPTY_BLOB_SHA,
-        filePaths: [GUIDE_FILE, EXPECTATIONS_FILE],
-        allowLegacyBooleanDraft: true,
-      });
+      const meta = parseGuideMetadata(guideContent, undefined, true);
+      const evals = detectEvals([GUIDE_FILE, EXPECTATIONS_FILE]);
+      const status = getStatusName(
+        meta.hasGuide,
+        evals.hasGrader,
+        evals.hasTask,
+        Boolean(meta.draft),
+        blobsByPath.get(expPath) !== EMPTY_BLOB_SHA
+      );
       if (status === ProjectStatus.NeedsGuidance) break;
       since = date;
     }
@@ -1070,12 +1075,15 @@ export function buildPipelineReportData(params: {
     for (const [slug, touchedRelFiles] of touchedFilesBySlug) {
       const inv = guideBySlug.get(slug);
       const guideName = slug.split('/')[1];
-      const stage = getPendingGuideStage(inv, {
+      const guideContent = pr.guideContents?.[slug];
+      const guideMetaAfter = guideContent !== undefined ? parseGuideMetadata(guideContent, undefined, true) : undefined;
+      const stage = getPendingGuideStage(
+        inv,
         touchedRelFiles,
-        guideContent: pr.guideContents?.[slug],
-        matchesEvalBranch: branchGuideName === inv?.name,
-        guideNameExistsElsewhere: !inv && existingGuideNames.has(guideName),
-      });
+        guideMetaAfter,
+        branchGuideName === inv?.name,
+        !inv && existingGuideNames.has(guideName)
+      );
 
       if (stage === ProjectStatus.NeedsEvals) {
         if (!evalPrSlugs.has(slug)) {
