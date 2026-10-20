@@ -32,7 +32,7 @@ Keep the markup minimal and let CSS selectors recognize each region, so simple c
 
 - **Media**: an `<img>`, `<picture>`, `<video>`, or `<svg>` as the first child. Add a `.media` class only to arbitrary hero content that is not one of those elements, and never wrap a plain `<img>` in a `.media` element.
 - **Header**: a heading on its own. Use `<hgroup>` only when the heading has a subtitle or tagline, and `<header>` when the region carries more than a title, such as a byline or badge. When the card has a primary destination, the link goes inside the heading.
-- **Content**: whatever the content is, from a single `<p>` to several paragraphs, a list, or a `<dl>`. Do not wrap a single element.
+- **Content**: a single `<p>`, `<ul>`, or `<dl>` stands on its own. When the content is several elements, such as multiple paragraphs or a paragraph plus a list, group them in one `<div>` so the region is a single grid item.
 - **Footer**: a `<footer>` holding independent actions as native links and buttons. Link each destination once: if the heading is the primary link, the footer must not repeat it, and if the brief asks for a "read more" link, make that the card's primary link instead of also linking the heading.
 
 The simplest card is an `<article>` containing a heading and a paragraph. Choose the link and action pattern that matches the card's behavior; see [Interaction models](#interaction-models).
