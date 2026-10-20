@@ -27,6 +27,7 @@ test('buildSolutionPrompt includes instructions and paths', () => {
   assert.ok(prompt.includes('/tmp/test-sandbox'));
   assert.ok(!prompt.includes('expectations.md'));
   assert.ok(prompt.includes('complete the developer task'));
+  assert.ok(prompt.includes('Do NOT start dev servers, preview servers, or background processes'));
 });
 
 test('buildZeroPassratePrompt includes anti-pattern constraints and genuine expectation violation', () => {
@@ -39,6 +40,7 @@ test('buildZeroPassratePrompt includes anti-pattern constraints and genuine expe
   assert.ok(prompt.includes('Realistic Baseline'));
   assert.ok(prompt.includes('Never Copy Guide Examples or Plant Anti-Patterns'));
   assert.ok(prompt.includes('Inspect the clean codebase'));
+  assert.ok(prompt.includes('Do NOT start dev servers, preview servers, or background processes'));
 });
 
 test('buildTargetGraderPrompt includes Option B scoping rules and locked solution patches', () => {

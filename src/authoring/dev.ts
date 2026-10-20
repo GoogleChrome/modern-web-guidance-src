@@ -183,11 +183,21 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-  // Step 2: Parallel target generation across targets
-  await Promise.all(
+  // Step 2: Parallel target generation and calibration across targets
+  const calibrationFailures = new Map<string, string>();
+  const calibrationResults = await Promise.all(
     targets.map(async (baseApp) => {
       const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, baseApp);
       fs.mkdirSync(targetCapsuleDir, { recursive: true });
+
+      // Start zeroPassrateTask immediately in parallel with generateTargetTask
+      const zeroPassrateTask = (async () => {
+        const zeroPassratePatch = path.join(targetCapsuleDir, ZERO_PASSRATE_PATCH_FILE);
+        if (!fs.existsSync(zeroPassratePatch)) {
+          console.log(cCyan(`\n--- Generating ${ZERO_PASSRATE_PATCH_FILE} for ${baseApp} ---`));
+          await generateTargetPatch(targetDir, baseApp, 'zero-passrate');
+        }
+      })();
 
       // Generate task.md first so solution agents can consume it
       const taskFile = path.join(targetCapsuleDir, TASK_FILE);
@@ -196,6 +206,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         await generateTargetTask(targetDir, baseApp, options.prContext);
       }
 
+      // Once generateTargetTask finishes, run the solution agents in parallel
       const solutionAgents = getActiveSolutionAgents(targetCapsuleDir);
       const patchTasks = solutionAgents.map(async (agent) => {
         const solPatchFile = SOLUTION_PATCH_FILES[agent];
@@ -206,14 +217,6 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         }
       });
 
-      const zeroPassrateTask = (async () => {
-        const zeroPassratePatch = path.join(targetCapsuleDir, ZERO_PASSRATE_PATCH_FILE);
-        if (!fs.existsSync(zeroPassratePatch)) {
-          console.log(cCyan(`\n--- Generating ${ZERO_PASSRATE_PATCH_FILE} for ${baseApp} ---`));
-          await generateTargetPatch(targetDir, baseApp, 'zero-passrate');
-        }
-      })();
-
       // Wait for solution patches and zero-passrate patch to finish
       await Promise.all([...patchTasks, zeroPassrateTask]);
 
@@ -223,13 +226,8 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         console.log(cCyan(`\n--- Generating ${GRADER_FILE} for ${baseApp} ---`));
         await generateTargetGrader(targetDir, baseApp, undefined, options.prContext);
       }
-    })
-  );
 
-  // Step 3: Calibrate targets in parallel and retry grader if calibration fails
-  const calibrationFailures = new Map<string, string>();
-  const calibrationResults = await Promise.all(
-    targets.map(async (baseApp) => {
+      // Calibrate target and retry grader if calibration fails
       console.log(cCyan(`\n--- Calibrating target: ${baseApp} ---`));
       for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
         const res = await testGrader(path.join(targetDirRaw, TARGETS_DIR, baseApp));
@@ -290,9 +288,6 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
 
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
 
-    // Git init is required for capturePatchFromGit to extract git diffs
-    initGitRepo(workDir);
-
     let prompt: string;
     if (patchType === 'zero-passrate') {
       fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
@@ -314,6 +309,10 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
         isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
       });
     }
+
+    // Git init is required for capturePatchFromGit to extract git diffs.
+    // Initialized after copying expectations.md / task.md so they are part of initial commit.
+    initGitRepo(workDir);
 
     await runAgent(agent, prompt, workDir, { homeDir: tempHome });
 

@@ -44,6 +44,7 @@ Modify the web application codebase in the directory \`${opts.workDir}\` to comp
 1. Do NOT modify \`${opts.guideFile}\` or \`${taskFile}\`.
 2. Ensure your implementation is robust, complete, and type-safe.
 3. Your changes MUST compile cleanly. You can run \`npm run build\` inside your workspace to verify.
+4. Do NOT start dev servers, preview servers, or background processes (e.g., npm run dev, npm start, astro preview, or importing dist/server/entry.mjs). Only run npm run build to verify compilation.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
@@ -72,6 +73,7 @@ If the codebase already contains partial, complete, or conflicting implementatio
 4. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
 5. Ensure your modifications are robust, complete, and type-safe.
 6. Your changes MUST compile cleanly. You can run \`npm run build\` inside your workspace to verify.
+7. Do NOT start dev servers, preview servers, or background processes (e.g., npm run dev, npm start, astro preview, or importing dist/server/entry.mjs). Only run npm run build to verify compilation.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
