@@ -143,10 +143,10 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
     fs.rmSync(stageDir, { recursive: true, force: true });
     fs.mkdirSync(stageDir, { recursive: true });
 
-    // Copy static files from dashboardDir (.html, .js, .css, .svg, .png, etc.)
-    const staticExts = new Set(['.html', '.js', '.css', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico']);
+    // Copy static files from dashboardDir (.html, .js, .css, .json, .svg, .png, etc.)
+    const staticExts = new Set(['.html', '.js', '.css', '.json', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico']);
     for (const file of fs.readdirSync(dashboardDir)) {
-        if (file.endsWith('.test.ts') || file.endsWith('.spec.js') || file.startsWith('.')) continue;
+        if (file.endsWith('.test.ts') || file.endsWith('.spec.js') || file === 'tsconfig.json' || file.startsWith('.')) continue;
         const ext = path.extname(file);
         if (staticExts.has(ext)) {
             fs.copyFileSync(path.join(dashboardDir, file), path.join(stageDir, file));

@@ -183,13 +183,22 @@ async function reconcileAndUploadManifest(
 
   // Artifacts:
   //   suites.gen.json            full summaries (guides + chartData) for browsing views — always
-  //   suites.slim.gen.json       same entries minus guides/chartData (~2 KB/suite) for first paint — opt-in
-  //   headline-insights.gen.json precomputed landing-page hero numbers — opt-in
+  //   suites.slim.gen.json       same entries minus guides/chartData (~2 KB/suite) for first paint — opt-in, or auto-refreshed when already present in the bucket
+  //   headline-insights.gen.json precomputed landing-page hero numbers — opt-in, or auto-refreshed when already present in the bucket
   // The derived pair is written together with the full manifest so the three never disagree.
+  let shouldWriteDerived = Boolean(options.writeDerived);
+  if (!shouldWriteDerived && !options.dryRunOutput) {
+    try {
+      const [slimExists] = await bucket.file(MANIFEST_FILES.slim).exists();
+      shouldWriteDerived = Boolean(slimExists);
+    } catch {
+      shouldWriteDerived = false;
+    }
+  }
   const artifacts: Array<{ name: string; json: string }> = [
     { name: MANIFEST_FILES.full, json: JSON.stringify(updatedList, null, 2) },
   ];
-  if (options.writeDerived) {
+  if (shouldWriteDerived) {
     const insights = computeHeadlineInsights(updatedList);
     artifacts.push(
       { name: MANIFEST_FILES.slim, json: JSON.stringify(updatedList.map(toSlimSuiteSummary), null, 2) },

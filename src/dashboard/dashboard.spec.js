@@ -583,4 +583,59 @@ test.describe('A/B Task Spotlight & Progressive Disclosure IA', () => {
     const guideOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(guideOverflow).toBeLessThanOrEqual(0);
   });
+
+  test('applies Zipline UI refinements: stateful Filter runs trigger, breakdown panel Uplift sort & Expand controls, centered By Guide legend, combined sort pill, and flat vertical tick marks', async ({ page }) => {
+    const FIXTURE = new URL('./fixtures/hero-suites.fixture.json', import.meta.url).pathname;
+    await page.route('**/api/suites*', route => route.fulfill({ path: FIXTURE, contentType: 'application/json' }));
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+
+    // 1. Externalized & stateful Filter runs control
+    const filterLabel = page.locator('.filter-runs-label');
+    await expect(filterLabel).toContainText('Filter runs');
+    const filterBtnText = page.locator('#filter-btn-text');
+    await expect(filterBtnText).toHaveText('All selected (3)');
+    await page.locator('#filter-btn').click();
+    await page.locator('#deselect-all-btn').click();
+    await expect(filterBtnText).toHaveText('None selected');
+    await expect(page.locator('#filter-btn')).toHaveClass(/is-filtered/);
+    await page.locator('#select-all-btn').click();
+    await expect(filterBtnText).toHaveText('All selected (3)');
+    await expect(page.locator('#filter-btn')).not.toHaveClass(/is-filtered/);
+    await page.locator('#filter-btn').click();
+
+    // 2. Left-aligned single-line Model & Agent columns and flat vertical tick marks on suite dumbbells
+    const modelAlign = await page.locator('.suites-table td.model-cell').first().evaluate(el => ({
+      textAlign: getComputedStyle(el).textAlign,
+      whiteSpace: getComputedStyle(el).whiteSpace
+    }));
+    expect(modelAlign).toEqual({ textAlign: 'left', whiteSpace: 'nowrap' });
+
+    const dotStyle = await page.locator('.suite-dumbbell-track .dot.guided').first().evaluate(el => ({
+      borderRadius: getComputedStyle(el).borderRadius,
+      width: getComputedStyle(el).width
+    }));
+    expect(dotStyle.borderRadius).toBe('0px');
+    expect(parseFloat(dotStyle.width)).toBeLessThanOrEqual(3);
+
+    // 3. Breakdowns drawer: 3-state Uplift sort toggle, Expand/Collapse controls, centered legend, and combined sort pill
+    await page.locator('#breakdowns > summary').click();
+    const modelSortBtn = page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"]');
+    await expect(modelSortBtn).toBeVisible();
+    await expect(modelSortBtn.locator('.insights-uplift-sort-arrow')).toHaveText('↕');
+    await modelSortBtn.click();
+    await expect(modelSortBtn).toHaveClass(/is-sorted/);
+    await expect(modelSortBtn.locator('.insights-uplift-sort-arrow')).toHaveText('↓');
+
+    const expandBtn = page.locator('.insights-expand-btn[data-expand-panel="model"]');
+    await expect(expandBtn).toHaveAttribute('aria-expanded', 'false');
+    await expandBtn.click();
+    await expect(expandBtn).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.insights-table-scroll[data-scroll-section="model"]')).toHaveClass(/is-expanded/);
+
+    await expect(page.locator('.guide-legend')).toContainText(/Unguided\s*vs\.\s*Guided/);
+    await expect(page.locator('.sort-combined-control .sort-select-value')).toHaveText('Alphabetic');
+    const optionLabels = await page.locator('#guide-sort-select option').allInnerTexts();
+    expect(optionLabels).toEqual(['Alphabetic', 'Uplift', 'Unguided rate', 'Guided rate', 'Variance']);
+  });
 });

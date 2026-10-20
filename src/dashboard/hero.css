@@ -10,7 +10,7 @@
 
 .hero {
   container: hero / inline-size;
-  margin-block: var(--space-3) 0;
+  margin-block: 0;
 }
 
 /* Shared chapter rhythm & unified peer section heading scale -------------- */
@@ -297,9 +297,14 @@
   border-radius: 4px;
 }
 
-.takeaway-dumbbell .takeaway-track .dot {
-  inline-size: 11px;
-  block-size: 11px;
+.takeaway-dumbbell .takeaway-track .dot.unguided {
+  inline-size: 2.5px;
+  block-size: 12px;
+}
+
+.takeaway-dumbbell .takeaway-track .dot.guided {
+  inline-size: 3px;
+  block-size: 14px;
 }
 
 .takeaway-dumbbell .takeaway-track .connector {

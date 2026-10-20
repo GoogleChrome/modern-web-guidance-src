@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { generateSuitesManifest, generateHeadlineInsightsManifest } from './generate-manifests.js';
+import { generateSuitesManifest, generateHeadlineInsightsManifest, stagePages } from './generate-manifests.js';
 import { MANIFEST_FILES, toSlimSuiteSummary } from './summary-extractor.js';
 
 /** Minimal evals.json that yields one nightly antigravity suite with a11y + efficiency data. */
@@ -74,6 +74,26 @@ test('generateHeadlineInsightsManifest snapshots computeHeadlineInsights output'
         // Without an explicit array it reads the full manifest from outputDir.
         const fromDisk = await generateHeadlineInsightsManifest(outDir);
         assert.deepStrictEqual(fromDisk.suiteIds, fromArray.suiteIds);
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+    }
+});
+
+test('stagePages copies showcase-runs.json and generated manifests while excluding tsconfig and tests', async () => {
+    const { root, resultsDir, outDir } = makeTmpResults();
+    const stageDir = path.join(root, 'pages');
+    try {
+        const suites = await generateSuitesManifest(outDir, resultsDir);
+        await generateHeadlineInsightsManifest(outDir, suites);
+        stagePages(stageDir, outDir);
+
+        assert.ok(fs.existsSync(path.join(stageDir, 'index.html')), 'index.html should be staged');
+        assert.ok(fs.existsSync(path.join(stageDir, 'showcase-runs.json')), 'showcase-runs.json should be staged');
+        assert.ok(fs.existsSync(path.join(stageDir, MANIFEST_FILES.full)), 'suites.gen.json should be staged');
+        assert.ok(fs.existsSync(path.join(stageDir, MANIFEST_FILES.slim)), 'suites.slim.gen.json should be staged');
+        assert.ok(fs.existsSync(path.join(stageDir, MANIFEST_FILES.insights)), 'headline-insights.gen.json should be staged');
+        assert.ok(!fs.existsSync(path.join(stageDir, 'tsconfig.json')), 'tsconfig.json must not be staged');
+        assert.ok(!fs.existsSync(path.join(stageDir, 'dashboard.spec.js')), 'spec files must not be staged');
     } finally {
         fs.rmSync(root, { recursive: true, force: true });
     }

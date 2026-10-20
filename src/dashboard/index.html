@@ -201,10 +201,18 @@
           </div>
           <div class="browse-controls">
             <div class="filter-container-nav">
-              <button id="filter-btn" class="secondary-btn" type="button" aria-expanded="false" aria-controls="filter-menu">
-                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 4h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1 0-1zm2 3.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1zm2 3.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1 0-1z"/></svg>
-                Filter runs
-              </button>
+              <div class="filter-runs-control">
+                <label for="filter-btn" class="filter-runs-label">
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 4h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1 0-1zm2 3.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1zm2 3.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1 0-1z"/></svg>
+                  Filter runs
+                </label>
+                <button id="filter-btn" class="secondary-btn filter-runs-trigger" type="button" aria-expanded="false" aria-controls="filter-menu">
+                  <span id="filter-btn-text">All selected</span>
+                  <svg class="filter-runs-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                  </svg>
+                </button>
+              </div>
               <div id="filter-menu" class="filter-menu hidden">
                 <div class="filter-header">
                   <span class="filter-header-title">Filter runs</span>
@@ -235,17 +243,17 @@
             <thead>
               <tr>
                 <th scope="col" class="col-suite" aria-sort="descending"><button type="button" class="sort-btn" data-sort="date">Suite &amp; date</button></th>
-                <th scope="col">
+                <th scope="col" class="col-agent">
                   <label for="filter-agent" class="visually-hidden">Filter by agent</label>
-                  <select id="filter-agent" class="header-filter-select"><option value="all">Agent</option><optgroup label="Select agent" id="filter-agent-group"></optgroup></select>
+                  <select id="filter-agent" class="header-filter-select header-filter-select-left"><option value="all">Agent</option><optgroup label="Select agent" id="filter-agent-group"></optgroup></select>
                 </th>
                 <th scope="col">
                   <label for="filter-serving" class="visually-hidden">Filter by serving</label>
                   <select id="filter-serving" class="header-filter-select"><option value="all">Serving</option><optgroup label="Select architecture" id="filter-serving-group"></optgroup></select>
                 </th>
-                <th scope="col">
+                <th scope="col" class="col-model">
                   <label for="filter-model" class="visually-hidden">Filter by model</label>
-                  <select id="filter-model" class="header-filter-select"><option value="all">Model</option><optgroup label="Select model" id="filter-model-group"></optgroup></select>
+                  <select id="filter-model" class="header-filter-select header-filter-select-left"><option value="all">Model</option><optgroup label="Select model" id="filter-model-group"></optgroup></select>
                 </th>
                 <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="uplift">Pass rate</button></th>
                 <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y subscore</button></th>

@@ -93,6 +93,26 @@ async function loadAndRender() {
         const insights = await api.getHeadlineInsights({
             onUpdate: (final) => { paint(final); setBusy(false); }
         });
+        const noSourceParam = !new URLSearchParams(window.location.search).get('source');
+        if (api.source === 'local' && noSourceParam && !insights.families.length) {
+            const { suites = [] } = await api.getManifest('full');
+            if (suites.length === 0) {
+                api.source = 'remote';
+                if (!getAccessToken()) {
+                    renderPending();
+                    setStatus('auth');
+                    setBusy(false);
+                    return;
+                }
+                const remoteInsights = await api.getHeadlineInsights({
+                    onUpdate: (final) => { paint(final); setBusy(false); }
+                });
+                paint(remoteInsights);
+                if (remoteInsights.missingStats.length > 0) return;
+                setBusy(false);
+                return;
+            }
+        }
         paint(insights);
         // Hydration is still running when the manifest lacked stats; keep aria-busy until onUpdate.
         if (insights.missingStats.length > 0) return;
@@ -211,9 +231,9 @@ function renderTakeawayDumbbell(uRate, gRate) {
     return `
         <div class="takeaway-dumbbell" aria-hidden="true">
             <div class="suite-dumbbell-track takeaway-track">
-                <div class="connector" style="left: calc(${lo}% + 2px); width: calc(${span}% - 4px);"></div>
-                <div class="dot unguided" style="left: calc(${u}% - 4px);"></div>
-                <div class="dot guided" style="left: calc(${g}% - 4px);"></div>
+                <div class="connector" style="left: ${lo}%; width: ${span}%;"></div>
+                <div class="dot unguided" style="left: ${u}%;"></div>
+                <div class="dot guided" style="left: ${g}%;"></div>
             </div>
             <div class="takeaway-dumbbell-rates">
                 <span class="rate-u">${u}% without MWG</span>

@@ -138,6 +138,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         await loadSuites();
+        if (api.source === 'local' && !params.get('source') && Object.keys(allTestData).length === 0) {
+            api.source = 'remote';
+            if (!getAccessToken()) {
+                setEmptyState('No local evaluation runs found. Sign in with Google to load remote runs.');
+                renderSuites();
+                initGoogleAuth(async () => {
+                    await loadSuites();
+                    selectedTestIds = new Set(Object.keys(allTestData));
+                    applyTestsParam(params.get('tests'));
+                    renderFilterMenuItems();
+                    renderSuites();
+                    applyGuidesHash(window.location.hash, false);
+                });
+                return;
+            }
+            initGoogleAuth(() => {});
+            await loadSuites();
+        }
         selectedTestIds = new Set(Object.keys(allTestData));
         applyTestsParam(params.get('tests'));
 
@@ -148,6 +166,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error:', error);
         const emptyState = document.getElementById('empty-state');
         if (emptyState) emptyState.style.display = 'block';
+    }
+});
+
+// When v1 remote/static manifests finish hydrating a11yStats + efficiencyStats from evals.json,
+// refresh the table entries so the A11y subscore, Median time, and Tokens columns populate.
+window.addEventListener('mwg:manifest-hydrated', (e) => {
+    const detail = /** @type {CustomEvent<{ source: import('./api.js').DataSource, suites: import('./insights.js').ManifestSuite[] }>} */ (e).detail;
+    if (!detail || !Array.isArray(detail.suites)) return;
+    for (const suite of detail.suites) {
+        if (suite && suite.testId && suite.guidedStats) {
+            registerSuiteSummary(suite, detail.source);
+        }
+    }
+    renderSuites();
+    const drawer = document.getElementById('breakdowns');
+    if (drawer instanceof HTMLDetailsElement && drawer.open) {
+        renderPivotInsights();
     }
 });
 
@@ -508,6 +543,7 @@ function renderFilterMenuItems() {
             } else {
                 selectedTestIds.delete(compoundKey);
             }
+            updateFilterButtonLabel();
             updateUrlParams();
             renderSuites();
         });
@@ -526,6 +562,40 @@ function renderFilterMenuItems() {
         item.append(checkbox, labelContent);
         list.appendChild(item);
     });
+
+    updateFilterButtonLabel();
+}
+
+function updateFilterButtonLabel() {
+    const btnText = document.getElementById('filter-btn-text');
+    const btn = document.getElementById('filter-btn');
+    if (!btnText || !btn) return;
+
+    const allIds = Object.keys(allTestData);
+    const total = allIds.length;
+    const selected = Array.from(selectedTestIds).filter(id => allTestData[id]);
+    const count = selected.length;
+
+    if (total === 0 || count === total) {
+        btnText.textContent = total > 0 ? `All selected (${total})` : 'All selected';
+        btn.classList.remove('is-filtered');
+    } else if (count === 0) {
+        btnText.textContent = 'None selected';
+        btn.classList.add('is-filtered');
+    } else {
+        const selectedNames = selected.map(id => {
+            const t = allTestData[id];
+            return t ? t.testId.replace('test_', '') : id;
+        });
+        if (count === 1) {
+            btnText.textContent = selectedNames[0];
+        } else if (count === 2) {
+            btnText.textContent = `${selectedNames[0]}, ${selectedNames[1]}`;
+        } else {
+            btnText.textContent = `${count} selected (${selectedNames[0]}, +${count - 1} more)`;
+        }
+        btn.classList.add('is-filtered');
+    }
 }
 
 function updateUrlParams() {
@@ -815,9 +885,9 @@ function renderRateComparison(uRate, gRate, delta, label) {
     const deltaClass = delta > 0 ? 'delta up' : (delta < 0 ? 'delta down' : 'delta flat');
     return `
         <div class="suite-dumbbell-track" aria-hidden="true">
-            <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px);"></div>
-            <div class="dot unguided" style="left: calc(${uRate}% - 4px);"></div>
-            <div class="dot guided" style="left: calc(${gRate}% - 4px);"></div>
+            <div class="connector" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></div>
+            <div class="dot unguided" style="left: ${uRate}%;"></div>
+            <div class="dot guided" style="left: ${gRate}%;"></div>
         </div>
         <div class="rate-text">
             <span class="visually-hidden">${escapeHtml(label)}: unguided </span><span class="rate-u">${uRate}%</span>
@@ -958,7 +1028,7 @@ function renderSuites() {
                 </th>
                 <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
                 <td>${escapeHtml(servingDisplayNames[testInfo.serving] || testInfo.serving)}</td>
-                <td class="model-cell">${(escapeHtml(testInfo.model) || '').replaceAll('-', '-<wbr>')}</td>
+                <td class="model-cell">${escapeHtml(testInfo.model || '')}</td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}">
                     <a href="${localLink}" class="uplift-link">
                         ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate')}
@@ -1251,11 +1321,25 @@ function getInsightKeys() {
 }
 
 /** @typedef {{ uplift: number, uRate: number, gRate: number, rtDeltaPct?: number | null, tokDeltaPct?: number | null, description?: string }} PivotItem */
-let guideSubdrawerOpen = false;
+/** @typedef {'alpha' | 'uplift-desc' | 'uplift-asc'} PanelSortMode */
+let guideSubdrawerOpen = true;
+/** @type {Record<'model' | 'dimension', PanelSortMode>} */
+const currentPanelSorts = { model: 'alpha', dimension: 'uplift-desc' };
+/** @type {Record<'model' | 'dimension' | 'guide', boolean>} */
+const expandedPanels = { model: false, dimension: false, guide: false };
 
 function renderPivotInsights() {
     const container = document.getElementById('insights-container');
     if (!container) return;
+
+    // Preserve scroll positions across re-renders so sorting or filtering doesn't jump.
+    /** @type {Record<string, number>} */
+    const savedScrollPositions = {};
+    container.querySelectorAll('.insights-table-scroll[data-scroll-section]').forEach(el => {
+        if (el instanceof HTMLElement && el.dataset.scrollSection) {
+            savedScrollPositions[el.dataset.scrollSection] = el.scrollTop;
+        }
+    });
 
     // Preserve whether the nested guide drawer was opened by the user across re-renders.
     const existingGuideDrawer = container.querySelector('.insights-guide-drawer');
@@ -1407,10 +1491,18 @@ function renderPivotInsights() {
                 if (valA > valB) return currentGuideSortDir === 'asc' ? 1 : -1;
                 return 0;
             });
-        } else if (filterKey === 'dimension') {
-            keys.sort((a, b) => getMedianItem(groupObj[b]).uplift - getMedianItem(groupObj[a]).uplift);
         } else {
-            keys.sort((a, b) => a.localeCompare(b));
+            const sortMode = currentPanelSorts[filterKey] || 'alpha';
+            keys.sort((a, b) => {
+                if (sortMode === 'uplift-desc' || sortMode === 'uplift-asc') {
+                    const upliftA = getMedianItem(groupObj[a]).uplift;
+                    const upliftB = getMedianItem(groupObj[b]).uplift;
+                    if (upliftA !== upliftB) {
+                        return sortMode === 'uplift-desc' ? upliftB - upliftA : upliftA - upliftB;
+                    }
+                }
+                return a.toLowerCase().localeCompare(b.toLowerCase());
+            });
         }
 
         const showVariance = filterKey === 'guide';
@@ -1469,9 +1561,9 @@ function renderPivotInsights() {
                         <div class="insight-dumbbell-track" aria-hidden="true">
                             ${uBandHtml}
                             ${gBandHtml}
-                            <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px);"></div>
-                            <div class="dot unguided" style="left: calc(${uRate}% - 4px);"></div>
-                            <div class="dot guided" style="left: calc(${gRate}% - 4px);"></div>
+                            <div class="connector" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></div>
+                            <div class="dot unguided" style="left: ${uRate}%;"></div>
+                            <div class="dot guided" style="left: ${gRate}%;"></div>
                         </div>
                         <div class="rate-text">
                             <span class="visually-hidden">Median unguided </span>${uRate}%
@@ -1491,19 +1583,57 @@ function renderPivotInsights() {
                 <tbody>${rowsHtml}</tbody>
             </table>
         `;
-        // Long lists scroll inside a focusable region instead of stretching the page.
-        return filterKey === 'guide'
-            ? `<div class="pivot-scroll" tabindex="0" role="region" aria-label="By guide table (scrolls vertically)">${table}</div>`
-            : table;
+        const isExpanded = Boolean(expandedPanels[filterKey]);
+        const scrollCls = `insights-table-scroll${filterKey === 'guide' ? ' pivot-scroll' : ''}${isExpanded ? ' is-expanded' : ''}`;
+        const label = filterKey === 'guide' ? 'By guide table (scrolls vertically)' : `By ${captionNoun} table (scrolls vertically)`;
+        return `<div class="${scrollCls}" data-scroll-section="${filterKey}" tabindex="0" role="region" aria-label="${label}">${table}</div>`;
+    };
+
+    /**
+     * @param {'model' | 'dimension'} panelKey
+     * @param {string} titleHtml
+     */
+    const renderPanelHeader = (panelKey, titleHtml) => {
+        const sortMode = currentPanelSorts[panelKey] || 'alpha';
+        const isSorted = sortMode === 'uplift-desc' || sortMode === 'uplift-asc';
+        const arrow = sortMode === 'uplift-desc' ? '↓' : (sortMode === 'uplift-asc' ? '↑' : '↕');
+        const nextTitle = sortMode === 'alpha' ? 'Sort by uplift (high to low)' : (sortMode === 'uplift-desc' ? 'Sort by uplift (low to high)' : 'Reset to alphabetical sort');
+        return `
+            <div class="insights-panel-header">
+                <h3 class="insights-panel-title">
+                    <button type="button" class="insights-panel-title-btn" data-panel-title-sort="${panelKey}" title="Sort alphabetically">${titleHtml}</button>
+                </h3>
+                <button type="button" class="insights-uplift-sort-btn${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" title="${nextTitle}">
+                    <span>Uplift</span>
+                    <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span>
+                </button>
+            </div>
+        `;
+    };
+
+    /** @param {'model' | 'dimension' | 'guide'} panelKey */
+    const renderExpandRow = (panelKey) => {
+        const isExpanded = Boolean(expandedPanels[panelKey]);
+        return `
+            <div class="insights-expand-row">
+                <button type="button" class="insights-expand-btn${isExpanded ? ' is-expanded' : ''}" data-expand-panel="${panelKey}" aria-expanded="${isExpanded}">
+                    <span>${isExpanded ? 'Collapse' : 'Expand'}</span>
+                    <svg class="insights-expand-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                    </svg>
+                </button>
+            </div>
+        `;
     };
 
     const sortOptions = [
         { value: 'alphabetic', label: 'Alphabetic' },
-        { value: 'uplift', label: 'By uplift' },
+        { value: 'uplift', label: 'Uplift' },
         { value: 'unguided', label: 'Unguided rate' },
         { value: 'guided', label: 'Guided rate' },
-        { value: 'variance', label: 'By variance' }
+        { value: 'variance', label: 'Variance' }
     ];
+    const currentSortOption = sortOptions.find(opt => opt.value === currentGuideSort) || sortOptions[0];
     const sortOptionsHtml = sortOptions.map(opt =>
         `<option value="${opt.value}" ${currentGuideSort === opt.value ? 'selected' : ''}>${opt.label}</option>`
     ).join('');
@@ -1514,37 +1644,66 @@ function renderPivotInsights() {
     const runCount = keys.length;
     const dimensionPanelHtml = onlyA11y && Object.keys(grouped.dimension).length > 0
         ? `
-        <div class="insights-panel insights-dimension-panel">
-            <h3 class="insights-panel-title">By Accessibility Dimension (6)${modeSuffix}</h3>
+        <div class="insights-panel insights-dimension-panel" data-panel="dimension">
+            ${renderPanelHeader('dimension', `By Accessibility Dimension (${Object.keys(grouped.dimension).length})${modeSuffix}`)}
             ${renderPivotTable(grouped.dimension, 'dimension')}
+            ${renderExpandRow('dimension')}
         </div>`
         : '';
 
     container.innerHTML = `
         <p class="insights-scope">Based on ${runCount} run${runCount === 1 ? '' : 's'} matching current filters (medians across runs).</p>
         ${dimensionPanelHtml}
-        <div class="insights-panel">
-            <h3 class="insights-panel-title">By Model${modeSuffix}</h3>
+        <div class="insights-panel" data-panel="model">
+            ${renderPanelHeader('model', `By Model${modeSuffix}`)}
             ${renderPivotTable(grouped.model, 'model')}
+            ${renderExpandRow('model')}
         </div>
-        <details class="insights-panel insights-panel-full insights-guide-drawer"${guideSubdrawerOpen ? ' open' : ''}>
-            <summary class="insights-guide-summary">
-                <span class="insights-panel-title">By Guide (${guideCount})${modeSuffix}</span>
-            </summary>
+        <details class="insights-panel insights-panel-full insights-guide-drawer" data-panel="guide"${guideSubdrawerOpen ? ' open' : ''}>
+            <summary class="insights-guide-summary visually-hidden">By Guide (${guideCount})</summary>
             <div class="insights-guide-body">
                 <div class="insights-panel-header-row">
+                    <h3 class="insights-panel-title">By Guide (${guideCount})${modeSuffix}</h3>
+                    <div class="guide-legend" title="Shaded band shows ±1 standard deviation across runs; vertical tick mark shows median rate">
+                        <span class="guide-legend-item">
+                            <span class="guide-legend-swatch unguided"><span class="guide-legend-tick"></span></span>
+                            <span>Unguided</span>
+                        </span>
+                        <span class="guide-legend-vs">vs.</span>
+                        <span class="guide-legend-item">
+                            <span class="guide-legend-swatch guided"><span class="guide-legend-tick"></span></span>
+                            <span>Guided</span>
+                        </span>
+                    </div>
                     <div class="guide-sort-controls">
-                        <label for="guide-sort-select" class="sort-label">Sort:</label>
-                        <select id="guide-sort-select" class="sort-select">${sortOptionsHtml}</select>
-                        <button id="guide-sort-dir-btn" class="sort-direction-btn" type="button" aria-label="Sort direction: ${dirLabel}. Toggle." aria-pressed="${currentGuideSortDir === 'desc'}">
-                            <span aria-hidden="true">${dirArrow}</span>
-                        </button>
+                        <label for="guide-sort-select" class="sort-label">Sort by:</label>
+                        <div class="sort-combined-control">
+                            <div class="sort-select-pill">
+                                <span class="sort-select-value">${currentSortOption.label}</span>
+                                <svg class="sort-select-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                                </svg>
+                                <select id="guide-sort-select" class="sort-select">${sortOptionsHtml}</select>
+                            </div>
+                            <span class="sort-combined-divider" aria-hidden="true"></span>
+                            <button id="guide-sort-dir-btn" class="sort-direction-btn" type="button" aria-label="Sort direction: ${dirLabel}. Toggle." aria-pressed="${currentGuideSortDir === 'desc'}">
+                                <span class="sort-dir-arrow" aria-hidden="true">${dirArrow}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 ${renderPivotTable(grouped.guide, 'guide')}
+                ${renderExpandRow('guide')}
             </div>
         </details>
     `;
+
+    // Restore scroll positions
+    container.querySelectorAll('.insights-table-scroll[data-scroll-section]').forEach(el => {
+        if (el instanceof HTMLElement && el.dataset.scrollSection && savedScrollPositions[el.dataset.scrollSection] !== undefined) {
+            el.scrollTop = savedScrollPositions[el.dataset.scrollSection];
+        }
+    });
 
     const guideDrawer = container.querySelector('.insights-guide-drawer');
     if (guideDrawer instanceof HTMLDetailsElement) {
@@ -1552,6 +1711,38 @@ function renderPivotInsights() {
             guideSubdrawerOpen = guideDrawer.open;
         });
     }
+
+    container.querySelectorAll('.insights-panel-title-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!(btn instanceof HTMLElement)) return;
+            const key = /** @type {'model' | 'dimension' | undefined} */ (btn.dataset.panelTitleSort);
+            if (key && currentPanelSorts[key] !== 'alpha') {
+                currentPanelSorts[key] = 'alpha';
+                renderPivotInsights();
+            }
+        });
+    });
+
+    container.querySelectorAll('.insights-uplift-sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!(btn instanceof HTMLElement)) return;
+            const key = /** @type {'model' | 'dimension' | undefined} */ (btn.dataset.panelUpliftSort);
+            if (!key) return;
+            const cur = currentPanelSorts[key] || 'alpha';
+            currentPanelSorts[key] = cur === 'alpha' ? 'uplift-desc' : (cur === 'uplift-desc' ? 'uplift-asc' : 'alpha');
+            renderPivotInsights();
+        });
+    });
+
+    container.querySelectorAll('.insights-expand-btn[data-expand-panel]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!(btn instanceof HTMLElement)) return;
+            const key = /** @type {'model' | 'dimension' | 'guide' | undefined} */ (btn.dataset.expandPanel);
+            if (!key) return;
+            expandedPanels[key] = !expandedPanels[key];
+            renderPivotInsights();
+        });
+    });
 
     const sortSelect = document.getElementById('guide-sort-select');
     sortSelect?.addEventListener('change', (e) => {

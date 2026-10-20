@@ -24,26 +24,20 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
     if (!container) return;
 
     container.innerHTML = `<div class="stability-loading">Loading historical data...</div>`;
-    // This trend only exists for the local dev server (/api/suites), so links stay on the same source.
-    const sourceParam = new URLSearchParams(window.location.search).get('source') || 'local';
+    const sourceParam = api.source;
 
     try {
-        const response = await fetch('/api/suites');
-        if (!response.ok) throw new Error('Could not fetch suite manifest');
-        /** @type {{ suites: SuiteInfo[] }} */
-        const manifest = await response.json();
+        const { suites: manifestSuites = [] } = await api.getManifest('slim');
 
-        const currentSuite = manifest.suites.find(s => s.id === currentTestId);
+        const currentSuite = manifestSuites.find(s => (s.testId || /** @type {any} */ (s).id) === currentTestId);
         const criteria = currentSuite ? { agent: currentSuite.agent, model: currentSuite.model, serving: currentSuite.serving } : null;
 
         /** @type {string[]} */
         let currentAssertions = [];
         let currentPromptText = '';
         try {
-            const currentRes = await fetch(`${currentTestId}/evals.json`);
-            if (currentRes.ok) {
-                /** @type {import('../harness/lib/metrics.ts').EvalsReport} */
-                const currentData = await currentRes.json();
+            const currentData = await api.getEvals(currentTestId);
+            if (currentData && currentData.results) {
                 const guidedKey = `${scenarioName} - guided`;
                 const unguidedKey = `${scenarioName} - unguided`;
                 const currentRunResults = currentData.results[guidedKey] || currentData.results[unguidedKey];
@@ -63,17 +57,23 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
 
         /** @type {any[]} */
         let history = [];
-        for (const suite of manifest.suites) {
+        for (const suite of manifestSuites) {
+            const suiteId = suite.testId || /** @type {any} */ (suite).id;
+            if (!suiteId) continue;
             if (criteria) {
                 if (suite.agent !== criteria.agent || suite.model !== criteria.model || suite.serving !== criteria.serving) continue;
             }
 
-            const res = await fetch(`${suite.id}/evals.json`);
-            if (res.ok) {
-                /** @type {import('../harness/lib/metrics.ts').EvalsReport} */
-                const data = await res.json();
-                if (!data || !data.results) {
-                    console.warn(`[StabilityTrend] Suite ${suite.id} has no results.`);
+            /** @type {import('../harness/lib/metrics.ts').EvalsReport | null} */
+            let data = null;
+            try {
+                data = await api.getEvals(suiteId);
+            } catch {
+                continue;
+            }
+            if (data) {
+                if (!data.results) {
+                    console.warn(`[StabilityTrend] Suite ${suiteId} has no results.`);
                     continue;
                 }
                 const guidedKey = `${scenarioName} - guided`;
@@ -91,7 +91,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                     for (const run of guidedRun) {
                         const historyAssertions = run.results.map(r => r.message).sort();
                         if (currentAssertions.length > 0 && currentAssertions.join('|') !== historyAssertions.join('|')) {
-                             console.log(`[StabilityTrend] Skipping runs in suite ${suite.id} - Grader checks differ.`);
+                             console.log(`[StabilityTrend] Skipping runs in suite ${suiteId} - Grader checks differ.`);
                              continue; // Skip if checks differ!
                         }
                         guidedTrials.push(getRunStats(run.results).rate);
@@ -110,7 +110,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                     const candidateRun = (guidedRun && guidedRun[0]) || (unguidedRun && unguidedRun[0]);
                     if (candidateRun) {
                         const typeLabel = guidedRun && guidedRun[0] ? 'guided' : 'unguided';
-                        const resultInfo = await api.getResultInfo(suite.id, candidateRun, `${scenarioName} - ${typeLabel}`);
+                        const resultInfo = await api.getResultInfo(suiteId, candidateRun, `${scenarioName} - ${typeLabel}`);
                         if (resultInfo) {
                             const { usedBasePath } = resultInfo;
                             const runText = await api.getFileText(`${usedBasePath}/run.mjs`);
@@ -125,24 +125,24 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                 } catch (e) {}
 
                 if (currentPromptText && historyPromptText && currentPromptText !== historyPromptText) {
-                    console.log(`[StabilityTrend] Skipping suite ${suite.id} - Prompt text differs.`);
+                    console.log(`[StabilityTrend] Skipping suite ${suiteId} - Prompt text differs.`);
                     continue; 
                 }
 
                 if (guidedTrials.length > 0 || unguidedTrials.length > 0) {
-                    console.log(`[StabilityTrend] Matched suite ${suite.id} - Prompt and Assertions identical! (Guided Trials: ${guidedTrials.length}, Unguided Trials: ${unguidedTrials.length})`);
+                    console.log(`[StabilityTrend] Matched suite ${suiteId} - Prompt and Assertions identical! (Guided Trials: ${guidedTrials.length}, Unguided Trials: ${unguidedTrials.length})`);
                     
                     const gAvg = guidedTrials.length > 0 ? guidedTrials.reduce((a,b)=>a+b,0) / guidedTrials.length : null;
                     const uAvg = unguidedTrials.length > 0 ? unguidedTrials.reduce((a,b)=>a+b,0) / unguidedTrials.length : null;
 
                     history.push({
-                        testId: suite.id,
+                        testId: suiteId,
                         timestamp: suite.timestamp,
                         guidedAvg: gAvg,
                         unguidedAvg: uAvg,
                         guidedTrials,
                         unguidedTrials,
-                        isCurrent: suite.id === currentTestId
+                        isCurrent: suiteId === currentTestId
                     });
                 }
             }

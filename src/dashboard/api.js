@@ -240,6 +240,9 @@ export class ApiClient {
             if (insights.missingStats.length > 0) {
                 const hydrate = hydrateMissingStats(suites, id => this.getEvals(id), insightOptions)
                     .then(() => {
+                        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+                            window.dispatchEvent(new CustomEvent('mwg:manifest-hydrated', { detail: { source: this.source, suites } }));
+                        }
                         const updated = computeHeadlineInsights(suites, insightOptions);
                         if (onUpdate) onUpdate(updated);
                         return updated;

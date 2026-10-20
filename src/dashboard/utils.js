@@ -437,10 +437,8 @@ export function initGoogleAuth(onAuthSuccess) {
 
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
-            authBtn.style.display = 'block';
-            if (accessToken) {
-                authBtn.style.display = 'none';
-            }
+            authBtn.hidden = Boolean(accessToken);
+            authBtn.style.display = accessToken ? 'none' : 'block';
         }
 
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -455,6 +453,7 @@ export function initGoogleAuth(onAuthSuccess) {
                 localStorage.setItem('gcs_access_token', accessToken || '');
                 console.log('Successfully authenticated with Google.');
                 if (authBtn) {
+                    authBtn.hidden = true;
                     authBtn.style.display = 'none';
                 }
                 if (onAuthSuccess) onAuthSuccess();
@@ -489,6 +488,7 @@ export async function authenticatedFetch(url, options = {}) {
         // Reset button UI if available
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
+            authBtn.hidden = false;
             authBtn.style.display = 'block';
             authBtn.textContent = 'Sign in with Google';
             authBtn.disabled = false;
