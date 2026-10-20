@@ -228,70 +228,14 @@ Treat slide effects as optional enhancements and keep them inside `@media (prefe
 
 Update slide state after scrolling settles rather than on every animation frame, and measure only the carousel's scrolling axis.
 
-```javascript
-const track = document.querySelector(".carousel-track");
-const slides = [...track.children];
-const status = document.querySelector('[role="status"]');
-const controls = document.querySelector(".fallback-controls");
-const markerNav = document.querySelector(".fallback-markers");
-const [prevBtn, nextBtn] = controls.querySelectorAll("button");
-const hasButtons = CSS.supports("selector(::scroll-button(*))") &&
-  CSS.supports("anchor-name: --carousel-track");
-const hasMarkers = CSS.supports("selector(::scroll-marker)");
-let markers = [];
+Write a small script that adapts to your markup and covers these requirements:
 
-const show = (item, behavior = "auto") =>
-  item?.scrollIntoView({ behavior, inline: "center", block: "nearest" });
-
-// Horizontal axis only; use top/height/clientHeight for vertical carousels.
-function nearest() {
-  const center = track.getBoundingClientRect().left + track.clientWidth / 2;
-  const distance = (s) => {
-    const r = s.getBoundingClientRect();
-    return Math.abs(r.left + r.width / 2 - center);
-  };
-  return [...track.children].reduce((a, b) => (distance(b) < distance(a) ? b : a));
-}
-
-// Run a callback once scrolling settles, with a debounced fallback when scrollend is unsupported.
-function onSettled(fn) {
-  let timer;
-  track.addEventListener("scrollend", fn);
-  track.addEventListener("scroll", () => {
-    clearTimeout(timer);
-    timer = setTimeout(fn, 150);
-  }, { passive: true });
-}
-
-controls.hidden = hasButtons;
-if (!hasButtons) {
-  prevBtn.addEventListener("click", () => show(nearest().previousElementSibling));
-  nextBtn.addEventListener("click", () => show(nearest().nextElementSibling));
-}
-markerNav.hidden = hasMarkers;
-if (!hasMarkers) {
-  markers = slides.map((slide, i) => {
-    const button = Object.assign(document.createElement("button"), { type: "button", textContent: i + 1 });
-    button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
-    button.addEventListener("click", () => show(slide));
-    markerNav.append(button);
-    return button;
-  });
-}
-
-function sync() {
-  const item = nearest();
-  if (item.dataset.clone) return; // looping clones are resolved by the looping script
-  const i = slides.indexOf(item);
-  status.textContent = `Slide ${i + 1} of ${slides.length}`;
-  markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
-  prevBtn.disabled = !item.previousElementSibling;
-  nextBtn.disabled = !item.nextElementSibling;
-}
-
-onSettled(sync);
-sync();
-```
+- **Detect each feature separately.** Feature-detect native scroll buttons (including the anchor positioning they depend on) and native scroll markers with `CSS.supports`. Hide the fallback controls only for features that exist natively, and wire up only the missing ones.
+- **Track the current slide** along the carousel's scrolling axis, for horizontal or vertical layouts.
+- **Fallback buttons** move to the adjacent slide and are disabled when none exists.
+- **Fallback markers** are one named button per slide that scrolls to that slide.
+- **Update state after scrolling settles**, not on every frame: announce "Slide N of M" in the status region and mark the active fallback marker with `aria-current`. Support browsers without `scrollend`, and run the update once on load.
+- **Respect reduced motion** for any smooth scrolling.
 
 ## Looping (continuous navigation)
 
@@ -309,36 +253,8 @@ For previous/next that wrap from the last slide to the first and back, make the 
 }
 ```
 
-Append this to the script in "Status updates and fallback controls"; it reuses `slides`, `show()`, `nearest()`, `onSettled()`, and `sync()`.
+Extend the script from "Status updates and fallback controls" to cover these requirements:
 
-```javascript
-// Two inert, hidden clones on each side keep the track away from its scroll limits, so
-// native scroll buttons never disable and keyboard focus stays on them.
-const offset = 2;
-const clone = (slide) => {
-  const copy = Object.assign(slide.cloneNode(true), { inert: true });
-  copy.dataset.clone = copy.ariaHidden = "true";
-  return copy;
-};
-track.prepend(...slides.slice(-offset).map(clone));
-track.append(...slides.slice(0, offset).map(clone));
-
-const items = [...track.children];
-
-// Reposition without scrollIntoView(), which would move the sequential focus starting point
-// into an inert clone and make Tab skip the carousel controls.
-const jump = (item) => {
-  const t = track.getBoundingClientRect();
-  const r = item.getBoundingClientRect();
-  track.scrollBy({ left: r.left + r.width / 2 - (t.left + track.clientWidth / 2), behavior: "instant" });
-};
-jump(items[offset]);
-
-// Landed on a clone: jump invisibly to the identical real slide, `slides.length` positions away.
-onSettled(() => {
-  const item = nearest();
-  const k = items.indexOf(item);
-  if (item.dataset.clone) jump(items[k < offset ? k + slides.length : k - slides.length]);
-});
-sync();
-```
+- Create the clones in JavaScript, mark them `inert` and as clones, and exclude them from slide counts and status updates.
+- Start on the first real slide, and when scrolling settles on a clone, jump instantly to its identical real slide.
+- Reposition without `scrollIntoView()`: it moves the sequential focus starting point into an inert clone, so Tab skips the carousel controls. Scroll the track directly instead.
