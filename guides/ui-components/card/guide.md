@@ -33,7 +33,7 @@ Keep the markup minimal and let CSS selectors recognize each region, so simple c
 - **Media**: an `<img>`, `<picture>`, `<video>`, or `<svg>` as the first child. Add a `.media` class only to arbitrary hero content that is not one of those elements, and never wrap a plain `<img>` in a `.media` element.
 - **Header**: a heading on its own. Use `<hgroup>` only when the heading has a subtitle or tagline, and `<header>` when the region carries more than a title, such as a byline or badge. When the card has a primary destination, the link goes inside the heading.
 - **Content**: a single `<p>`, `<ul>`, or `<dl>` stands on its own. When the content is several elements, such as multiple paragraphs or a paragraph plus a list, group them in one `<div>` so the region is a single grid item.
-- **Footer**: a `<footer>` holding independent actions as native links and buttons. Link each destination once: if the heading is the primary link, the footer must not repeat it, and if the brief asks for a "read more" link, make that the card's primary link instead of also linking the heading.
+- **Footer**: a `<footer>` holding independent actions as native links and buttons. A "read more" link may share the heading link's URL, but give it a descriptive accessible name that starts with the visible text, using visually hidden text (for example, `Read more<span> about poached eggs</span>`), because identical "read more" links are ambiguous in a screen reader's link list. Don't add other footer links that repeat the heading's URL.
 
 The simplest card is an `<article>` containing a heading and a paragraph. Choose the link and action pattern that matches the card's behavior; see [Interaction models](#interaction-models).
 
@@ -41,7 +41,9 @@ For card images or video that should fill a fixed-ratio area, set `aspect-ratio`
 
 ### Adapt to available space
 
-A card cannot respond to its own container query, so make the card's parent the size container (`container-type: inline-size`) and write the `@container` rules against the card inside it. In a narrow container, stack the regions in source order. In a wide container, place the media in a side column beside the other regions, but only for cards that have media: scope those rules with `:has()` on the media child (for example `.card:has(> img)`) so the column definitions and `grid-column` placements never apply to a card without media. A card without media stays single-column at every width, and must not reserve an empty media column. Base the layout on the container's width, not the viewport's, so the same card works in a sidebar and in a main column.
+Base the layout on the card's available space, not the viewport. To adapt the card's descendants (media, text, actions), make the card the size container (`container-type: inline-size`) and write `@container` rules against its children. Avoid sizing from the grid or list parent: the card's actual width can depend on column count, gaps and so on, making parent-based breakpoints are noisy.
+
+In a narrow container, stack the regions in source order. In a wide container, place the media in a side column beside the other regions, but only for cards that have media: scope those rules with `:has()` on the media child (for example `.card:has(> img)`) so the column definitions and `grid-column` placements never apply to a card without media. A card without media stays single-column at every width, and must not reserve an empty media column.
 
 ### Align cards in a grid
 
