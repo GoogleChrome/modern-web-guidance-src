@@ -354,7 +354,7 @@ function renderGraphs(guideName) {
         if (!g) return false;
         const gTotal = g.guidedTotal || 0;
         const uTotal = g.unguidedTotal || 0;
-        return gTotal > 0 || uTotal > 0;
+        return gTotal > 0 && uTotal > 0;
     });
 
     if (filteredKeys.length === 0) {

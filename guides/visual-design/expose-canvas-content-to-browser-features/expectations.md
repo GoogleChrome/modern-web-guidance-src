@@ -1,7 +1,8 @@
 - Feature detection for HTML-in-Canvas MUST be conducted before using the HTML-in-Canvas API.
-- The `<canvas>` element MUST include the `layoutsubtree` attribute to allow descendant HTML elements to be exposed to browser features.
-- Canvas rendering MUST be executed inside an `onpaint` event handler attached to the canvas element to trigger re-rendering when descendant HTML elements change.
-- The rendering logic MUST use `drawElementImage` for 2D, `texElementImage2D` for WebGL, or `copyElementImageToTexture` for WebGPU to draw HTML elements onto the canvas.
-- The CSS `transform` property of the descendant HTML element MUST be updated based on the transform matrix calculated during rendering.
+- The `<canvas>` element MUST include the `content="drawable"` attribute to allow descendant HTML elements to be exposed to browser features.
+- Every HTML element that needs to be individually drawn into the canvas MUST include the `drawable` attribute. Direct canvas children of the `<canvas>` element MUST include the `drawable` attribute.
+- Canvas rendering MUST be executed inside a `paint` event handler attached to the canvas element to trigger re-rendering when descendant HTML elements change.
+- The rendering logic MUST use `drawElementImage` for 2D, `texElementSubImage2D` for WebGL, or `drawElementImageToTexture` for WebGPU to draw HTML elements onto the canvas.
+- The DOM position of each drawn HTML element MUST match where it's drawn, so its hit testing and accessibility bounds align with the canvas content: in 2D, `drawElementImage()` syncs it automatically, so its return value is not applied to `style.transform`; in WebGL and WebGPU, the element is registered with `canvas.updateElementGeometry()`, passing a `canvasTransform`.
 - A `ResizeObserver` MUST be used to observe the canvas size and update its dimensions to prevent blurriness.
 - A fallback UI strategy MUST be implemented for browsers that do not support HTML-in-Canvas.

@@ -1,0 +1,1 @@
+- Style a native range slider with custom track, thumb, fill, and focus states while preserving native functionality and accessibility.

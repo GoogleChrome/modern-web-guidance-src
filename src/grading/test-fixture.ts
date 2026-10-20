@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test';
+import { test as base, type Page, type BrowserContext } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, spawnSync } from 'child_process';
@@ -28,7 +28,67 @@ async function getFreePort(): Promise<number> {
   });
 }
 
-export const test = base.extend<{}, ServerWorkerFixtures>({
+export const test = base.extend<{ page: Page; context: BrowserContext }, ServerWorkerFixtures>({
+  // devtools-times loads a live analytics beacon (intentionally janky; it's a DevTools demo, and some
+  // graders inspect its <script>). It POSTs to a Cloud Function whose CORS allowlist excludes localhost,
+  // so every browser test logged a CORS error + failed request. Answer it locally so grading stays
+  // hermetic and console/network errors only show real problems. The script itself still loads and runs.
+  context: async ({ context }, use) => {
+    await context.route('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/analytics', (route) =>
+      route.fulfill({
+        status: 204,
+        headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' },
+      }));
+    await use(context);
+  },
+
+  page: async ({ page }, use, testInfo) => {
+    const diagnostics: string[] = [];
+
+    page.on('console', (msg) => {
+      const type = msg.type();
+      if (type === 'error' || type === 'warning') {
+        const loc = msg.location();
+        const locSuffix = loc.url ? ` (${loc.url}:${loc.lineNumber})` : '';
+        diagnostics.push(`[console.${type}] ${msg.text()}${locSuffix}`);
+      }
+    });
+
+    page.on('pageerror', (err) => {
+      diagnostics.push(`[pageerror] ${err.stack || err.message || String(err)}`);
+    });
+
+    page.on('requestfailed', (req) => {
+      const failure = req.failure();
+      diagnostics.push(`[requestfailed] ${req.method()} ${req.url()}: ${failure?.errorText || 'failed'}`);
+    });
+
+    page.on('response', (res) => {
+      if (res.status() >= 400) {
+        diagnostics.push(`[response ${res.status()}] ${res.request().method()} ${res.url()} ${res.statusText()}`);
+      }
+    });
+
+    try {
+      await use(page);
+    } finally {
+      const failed = (testInfo.status !== 'passed' && testInfo.status !== 'skipped') || testInfo.errors.length > 0;
+      if (failed) {
+        if (diagnostics.length > 0) {
+          await testInfo.attach('browser-errors', {
+            body: diagnostics.join('\n'),
+            contentType: 'text/plain',
+          });
+        }
+        if (!page.isClosed()) {
+          // A crashed or hung page can't be snapshotted. Record why rather than failing fixture teardown.
+          const body = await page.locator('body').ariaSnapshot({ timeout: 2000 })
+            .catch((err: Error) => `(page snapshot unavailable: ${err.message})`);
+          await testInfo.attach('page-snapshot', { body, contentType: 'text/plain' });
+        }
+      }
+    }
+  },
   // eslint-disable-next-line no-empty-pattern
   TARGET_URL: [async ({}, use) => {
     const targetDir = process.cwd();
@@ -152,6 +212,23 @@ const HTML_EXTS = /\.(html|htm|astro)$/i;
 const CSS_EXTS = /\.css$/i;
 const JS_EXTS = /\.(js|ts|tsx|jsx)$/i;
 
+function parseHtmlDocument(file: string, content: string): any {
+  const normalized = file.endsWith('.astro')
+    ? content
+        .replace(/^---[\r\n]+[\s\S]*?[\r\n]+---/, '')
+        .replace(/\b(class(?::list)?)=\{((?:[^{}]|\{[^{}]*\})+)\}/g, (_, attr: string, expr: string) => {
+          const clean = expr.replace(/\$\{[^{}]*\}/g, ' ');
+          const classes = Array.from(clean.matchAll(/['"`]([a-zA-Z0-9_\s-]+)['"`]/g), (m) => m[1].trim()).join(' ');
+          return `${attr}="${classes}"`;
+        })
+    : content;
+  const { document } = parseHTML(normalized);
+  document.querySelectorAll('[class\\:list]').forEach((el: any) => {
+    el.classList.add(...el.getAttribute('class:list').split(/\s+/).filter(Boolean));
+  });
+  return document;
+}
+
 /**
  * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
  * and inline styles into a CSSOMNom CSSStyleSheet object.
@@ -166,13 +243,15 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
       cssBlocks.push(content);
     } else if (HTML_EXTS.test(file)) {
       try {
-        const { document } = parseHTML(content);
+        const document = parseHtmlDocument(file, content);
         document.querySelectorAll('style').forEach((style: any) => {
           if (style.textContent) cssBlocks.push(style.textContent);
         });
         document.querySelectorAll('[style]').forEach((el: any) => {
-          const inlineStyle = el.getAttribute('style');
-          if (inlineStyle) cssBlocks.push(`[style] { ${inlineStyle} }`);
+          const inlineStyle = el.getAttribute('style')?.trim();
+          if (inlineStyle && !inlineStyle.startsWith('{')) {
+            cssBlocks.push(`[style] { ${inlineStyle} }`);
+          }
         });
       } catch {
         const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
@@ -209,7 +288,7 @@ export function populateJsProject(project: Project, files: string[]): void {
             project.createSourceFile(`${file}_frontmatter.ts`, frontmatter[1], { overwrite: true });
           }
         }
-        const { document } = parseHTML(content);
+        const document = parseHtmlDocument(file, content);
         document.querySelectorAll('script').forEach((script: any, idx: number) => {
           if (script.textContent) {
             project.createSourceFile(`${file}_script_${idx}.ts`, script.textContent, { overwrite: true });
@@ -234,7 +313,7 @@ export function getHtmlDocuments(files: string[]): Array<{ file: string; documen
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
     if (HTML_EXTS.test(file)) {
       const content = fs.readFileSync(file, 'utf8');
-      docs.push({ file, document: parseHTML(content).document });
+      docs.push({ file, document: parseHtmlDocument(file, content) });
     }
   }
   return docs;

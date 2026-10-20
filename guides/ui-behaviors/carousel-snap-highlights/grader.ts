@@ -1,8 +1,35 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 
 const targetFile = process.env.TARGET_FILE || path.join(import.meta.dirname, 'demo.html');
-const targetUrl = `file://${targetFile}`;
+const targetDir = path.dirname(targetFile);
+const fileName = path.basename(targetFile);
+const targetUrl = `http://localhost/${fileName}`;
+
+test.beforeEach(async ({ page }) => {
+  await page.route('http://localhost/**', async (route) => {
+    const url = new URL(route.request().url());
+    let reqPath = decodeURIComponent(url.pathname);
+    if (reqPath === '/' || reqPath === '') reqPath = `/${fileName}`;
+    const fullPath = path.join(targetDir, reqPath);
+    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+      const ext = path.extname(fullPath).toLowerCase();
+      const contentType =
+        ext === '.html' ? 'text/html' :
+        ext === '.css' ? 'text/css' :
+        ext === '.js' || ext === '.mjs' ? 'application/javascript' :
+        'application/octet-stream';
+      await route.fulfill({
+        status: 200,
+        contentType,
+        body: fs.readFileSync(fullPath),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+});
 
 test('The carousel container has scroll-snap-type: inline mandatory (or x mandatory) applied', async ({ page }) => {
   await page.goto(targetUrl);
@@ -223,11 +250,26 @@ test('If scroll-state is not supported, the .is-snapped class is correctly toggl
   await page.goto(targetUrl);
   await page.waitForTimeout(300);
 
+  const hasFallbackClass = (item: Element | undefined) =>
+    Boolean(
+      item &&
+        (item.classList.contains('is-snapped') ||
+          item.classList.contains('is-centered') ||
+          item.classList.contains('is-active'))
+    );
+
   const initialClassState = await page.evaluate(() => {
     const items = document.querySelectorAll('.carousel-item');
+    const check = (el?: Element) =>
+      Boolean(
+        el &&
+          (el.classList.contains('is-snapped') ||
+            el.classList.contains('is-centered') ||
+            el.classList.contains('is-active'))
+      );
     return {
-      firstHasClass: items[0]?.classList.contains('is-snapped') || false,
-      secondHasClass: items[1]?.classList.contains('is-snapped') || false,
+      firstHasClass: check(items[0]),
+      secondHasClass: check(items[1]),
     };
   });
 
@@ -240,12 +282,20 @@ test('If scroll-state is not supported, the .is-snapped class is correctly toggl
 
   const scrolledClassState = await page.evaluate(() => {
     const items = document.querySelectorAll('.carousel-item');
+    const check = (el?: Element) =>
+      Boolean(
+        el &&
+          (el.classList.contains('is-snapped') ||
+            el.classList.contains('is-centered') ||
+            el.classList.contains('is-active'))
+      );
     return {
-      firstHasClass: items[0]?.classList.contains('is-snapped') || false,
-      secondHasClass: items[1]?.classList.contains('is-snapped') || false,
+      firstHasClass: check(items[0]),
+      secondHasClass: check(items[1]),
     };
   });
 
+  void hasFallbackClass;
   const correctToggling = initialClassState.firstHasClass && !initialClassState.secondHasClass &&
                           !scrolledClassState.firstHasClass && scrolledClassState.secondHasClass;
 

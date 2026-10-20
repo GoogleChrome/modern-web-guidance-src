@@ -879,12 +879,18 @@ function sortSuiteKeys(keys) {
  * @param {number} gRate rounded guided rate
  * @param {number} delta percentage-point change, computed from unrounded rates
  * @param {string} label used for the screen-reader sentence
+ * @param {number} [uErr=0]
+ * @param {number} [gErr=0]
  */
-function renderRateComparison(uRate, gRate, delta, label) {
+function renderRateComparison(uRate, gRate, delta, label, uErr = 0, gErr = 0) {
     const sign = delta > 0 ? '+' : '';
     const deltaClass = delta > 0 ? 'delta up' : (delta < 0 ? 'delta down' : 'delta flat');
+    const uErrBand = uErr > 0 ? `<div class="variance-band unguided" style="left: ${(uRate * (1 - uErr / 100)).toFixed(1)}%; width: ${uErr}%;"></div>` : '';
+    const gErrBand = gErr > 0 ? `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - gErr / 100)).toFixed(1)}%; width: ${gErr}%;"></div>` : '';
     return `
         <div class="suite-dumbbell-track" aria-hidden="true">
+            ${uErrBand}
+            ${gErrBand}
             <div class="connector" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></div>
             <div class="dot unguided" style="left: ${uRate}%;"></div>
             <div class="dot guided" style="left: ${gRate}%;"></div>
@@ -973,7 +979,10 @@ function renderSuites() {
         const a11yLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${testInfo.source}&mode=a11y&sort=a11y-desc`;
         const taskCount = testInfo.taskCount || 0;
         const maxRuns = testInfo.maxRuns || 1;
-        const isFaulty = (testInfo.earlyFailureRate || 0) === 100;
+        const earlyFailureRate = testInfo.earlyFailureRate || 0;
+        const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
+        const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
+        const isFaulty = earlyFailureRate === 100;
         const scheduled = isScheduledSuite(testId);
         const { label, ldap } = formatSuiteLabel(testInfo);
         const agentDisplay = agentDisplayNames[testInfo.agent] || testInfo.agent;
@@ -1013,7 +1022,7 @@ function renderSuites() {
         const dateDisplay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const metaParts = [
             !scheduled && label ? escapeHtml(label) : '',
-            taskCount > 0 ? `${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}` : '',
+            taskCount > 0 ? `${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}` : '',
             escapeHtml(timeAgo(date)),
             ldap ? escapeHtml(ldap) : ''
         ].filter(Boolean).join(' · ');
@@ -1031,7 +1040,7 @@ function renderSuites() {
                 <td class="model-cell">${escapeHtml(testInfo.model || '')}</td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}">
                     <a href="${localLink}" class="uplift-link">
-                        ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate')}
+                        ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate', uErr, gErr)}
                         <span class="visually-hidden">— open per-guide results</span>
                     </a>
                 </td>
@@ -1191,7 +1200,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
         });
         return;
     }
-    const { labels, guided, unguided } = chartData;
+    const { labels, guided, unguided, guided_failed, unguided_failed, guided_err_rate, unguided_err_rate } = chartData;
 
     tooltipContainer.classList.remove('hidden');
     updateTooltipPosition(x, y);
@@ -1205,8 +1214,8 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
     tooltipChartInstance.render({
         labels,
         datasets: [
-            { label: 'Unguided', data: unguided },
-            { label: 'Guided', data: guided }
+            { label: 'Unguided', data: unguided, failed: unguided_failed, errRate: unguided_err_rate },
+            { label: 'Guided', data: guided, failed: guided_failed, errRate: guided_err_rate }
         ]
     });
 }
@@ -1320,7 +1329,7 @@ function getInsightKeys() {
     return keys;
 }
 
-/** @typedef {{ uplift: number, uRate: number, gRate: number, rtDeltaPct?: number | null, tokDeltaPct?: number | null, description?: string }} PivotItem */
+/** @typedef {{ uplift: number, uRate: number, gRate: number, uErr?: number, gErr?: number, rtDeltaPct?: number | null, tokDeltaPct?: number | null, description?: string }} PivotItem */
 /** @typedef {'alpha' | 'uplift-desc' | 'uplift-asc'} PanelSortMode */
 let guideSubdrawerOpen = true;
 /** @type {Record<'model' | 'dimension', PanelSortMode>} */
@@ -1367,13 +1376,16 @@ function renderPivotInsights() {
         const rtDeltaPct = (rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0)) ? rt.medianDeltaPct : null;
         const tok = testInfo.efficiencyStats?.tokens;
         const tokDeltaPct = (tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0)) ? tok.uncachedMedianDeltaPct : null;
+        const earlyFailureRate = testInfo.earlyFailureRate || 0;
+        const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
+        const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
 
         /** @type {PivotItem | null} */
         let item = null;
         if (onlyA11y) {
             const pair = a11yPair(testInfo.a11yStats);
             if (pair) {
-                item = { uplift: upliftPp(pair.u, pair.g), uRate: toRate(pair.u), gRate: toRate(pair.g), rtDeltaPct, tokDeltaPct };
+                item = { uplift: upliftPp(pair.u, pair.g), uRate: toRate(pair.u), gRate: toRate(pair.g), uErr, gErr, rtDeltaPct, tokDeltaPct };
             }
             const bySub = testInfo.a11yStats?.bySubCategory;
             if (bySub) {
@@ -1390,16 +1402,18 @@ function renderPivotInsights() {
                     });
                 });
             }
-        } else {
+        } else if ((testInfo.guidedStats?.total || 0) > 0 && (testInfo.unguidedStats?.total || 0) > 0) {
             item = {
                 uplift: upliftPp(testInfo.unguidedStats, testInfo.guidedStats),
                 uRate: toRate(testInfo.unguidedStats),
                 gRate: toRate(testInfo.guidedStats),
+                uErr,
+                gErr,
                 rtDeltaPct,
                 tokDeltaPct
             };
         }
-        if (item) {
+        if (item && testInfo.model) {
             (grouped.model[testInfo.model] ||= []).push(item);
         }
 
@@ -1409,11 +1423,16 @@ function renderPivotInsights() {
             const src = onlyA11y ? gEntry.a11y : gEntry;
             if (!src) return;
             const u = { passed: src.unguidedPassed || 0, total: src.unguidedTotal || 0 };
-            const g = { passed: src.guidedPassed || 0, total: src.guidedTotal || 0 };
-            if (u.total === 0 && g.total === 0) return;
+            const g = { passed: src.guidedPassed || 0, total: scOrGuideTotal(src.guidedTotal) };
+            if (onlyA11y ? (u.total === 0 && g.total === 0) : (u.total === 0 || g.total === 0)) return;
             (grouped.guide[guide] ||= []).push({ uplift: upliftPp(u, g), uRate: toRate(u), gRate: toRate(g) });
         });
     });
+
+    /** @param {number | undefined} n */
+    function scOrGuideTotal(n) {
+        return n || 0;
+    }
 
     /** @param {PivotItem[]} arr */
     const getMedianItem = (arr) => {
@@ -1515,14 +1534,25 @@ function renderPivotInsights() {
             const medianItem = getMedianItem(items);
             const { uRate, gRate, uplift: medUplift } = medianItem;
 
-            const uSD = showVariance ? calculateSD(items.map(i => i.uRate)) : 0;
-            const gSD = showVariance ? calculateSD(items.map(i => i.gRate)) : 0;
-            const uSD_left = Math.max(0, uRate - uSD);
-            const uSD_width = Math.min(100, uRate + uSD) - uSD_left;
-            const gSD_left = Math.max(0, gRate - gSD);
-            const gSD_width = Math.min(100, gRate + gSD) - gSD_left;
-            const uBandHtml = uSD > 0 ? `<div class="variance-band unguided" style="left: ${uSD_left}%; width: ${uSD_width}%;"></div>` : '';
-            const gBandHtml = gSD > 0 ? `<div class="variance-band guided" style="left: ${gSD_left}%; width: ${gSD_width}%;"></div>` : '';
+            let uBandHtml = '';
+            let gBandHtml = '';
+            if (showVariance) {
+                const uSD = calculateSD(items.map(i => i.uRate));
+                const gSD = calculateSD(items.map(i => i.gRate));
+                if (uSD > 0) {
+                    const left = Math.max(0, uRate - uSD);
+                    uBandHtml = `<div class="variance-band unguided" style="left: ${left}%; width: ${Math.min(100, uRate + uSD) - left}%;"></div>`;
+                }
+                if (gSD > 0) {
+                    const left = Math.max(0, gRate - gSD);
+                    gBandHtml = `<div class="variance-band guided" style="left: ${left}%; width: ${Math.min(100, gRate + gSD) - left}%;"></div>`;
+                }
+            } else if (filterKey === 'model' && items.length > 0) {
+                const avgUErr = Math.round(items.reduce((s, it) => s + (it.uErr || 0), 0) / items.length);
+                const avgGErr = Math.round(items.reduce((s, it) => s + (it.gErr || 0), 0) / items.length);
+                if (avgUErr > 0) uBandHtml = `<div class="variance-band unguided" style="left: ${(uRate * (1 - avgUErr / 100)).toFixed(1)}%; width: ${avgUErr}%;"></div>`;
+                if (avgGErr > 0) gBandHtml = `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - avgGErr / 100)).toFixed(1)}%; width: ${avgGErr}%;"></div>`;
+            }
 
             const isActive = filterKey === 'model' && currentModelFilter === key;
             let nameHtml = '';

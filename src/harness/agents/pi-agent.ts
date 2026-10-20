@@ -9,24 +9,24 @@ import {
   cleanupIsolatedHome,
   copyFileIfExists,
   parseAgentArgs,
-  watchLogFile,
   runCliAgentCommand,
   parseJsonlFile,
   setupIsolatedWorkDir,
   type GuideUsage
 } from '../lib/agent-shared.ts';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
   readTrajectorySummary,
-  getSessionFiles
+  getSessionFiles,
+  standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
@@ -96,7 +96,7 @@ export function exportPiTrajectories(workDir: string, targetDir: string): void {
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('pi-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType);
 
   if (!workDir) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -109,13 +109,9 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
     process.env.PI_CODING_AGENT = 'true';
-    let stopWatchingMcpLog = () => { };
 
     try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
       await runCliAgentCommand(
         command,
         commandArgs,
@@ -125,7 +121,6 @@ async function run() {
         runType
       );
     } finally {
-      stopWatchingMcpLog();
       exportPiTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
     }
@@ -209,7 +204,12 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
         } else {
           for (const tc of toolCalls) {
             const toolName = tc.function?.name || tc.name || 'unknown';
-            const params = tc.arguments || tc.function?.arguments || tc.input || {};
+            let params = tc.arguments || tc.function?.arguments || tc.input || {};
+            if (typeof params === 'string') {
+              try {
+                params = JSON.parse(params);
+              } catch {}
+            }
 
             if (toolName === 'modern-web-guidance' || toolName.includes('get_best_practices')) {
               toolsUsed.add('modern-web-guidance');
@@ -244,11 +244,7 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
               timestamp,
               subagentId,
               thought,
-              action: {
-                type: mapToolType(toolName),
-                name: toolName,
-                params
-              }
+              action: standardizeAction(mapToolType(toolName), toolName, params)
             }) - 1;
 
             if (subagentId) {
@@ -260,14 +256,23 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
             }
           }
         }
-      } else if (entry.role === 'user' || entry.type === 'tool_result') {
-        const content = entry.content || entry.output || '';
-        const toolUseId = entry.tool_use_id || entry.call_id;
+      } else if (
+        entry.role === 'user' ||
+        entry.type === 'tool_result' ||
+        (entry.type === 'message' && entry.message?.role === 'toolResult')
+      ) {
+        const msg = entry.message || entry;
+        const toolUseId = msg.toolCallId || entry.tool_use_id || entry.call_id;
+        let content = msg.content || entry.output || '';
+        if (Array.isArray(content)) {
+          content = content.map((c: any) => (typeof c === 'string' ? c : c?.text || JSON.stringify(c))).join('\n');
+        }
+        const isError = msg.isError !== undefined ? msg.isError : Boolean(entry.is_error);
         if (toolUseId) {
           const stepIdx = toolUseToStepMap.get(toolUseId);
           if (stepIdx !== undefined && steps[stepIdx]) {
             steps[stepIdx].outcome = {
-              status: entry.is_error ? 'error' : 'success',
+              status: isError ? 'error' : 'success',
               message: truncateMessage(content)
             };
           }
@@ -339,7 +344,7 @@ export function loadPiLogs(dir: string): { logData: any[]; subagentsMap: Record<
 
   for (const file of subFiles) {
     try {
-      const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+      const subId = extractSubagentIdFromFilename(file);
       subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
     } catch {}
   }

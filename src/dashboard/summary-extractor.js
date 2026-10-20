@@ -1,4 +1,4 @@
-import { getRunStats, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
+import { getRunStats, isEarlyFailureRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
 import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js';
 
 /** Per-attempt agent timeout enforced by the harness (src/harness/run_suite.ts). */
@@ -111,6 +111,8 @@ export const SUMMARY_SCHEMA_VERSION = 2;
  * @property {SuiteA11yStats} a11yStats
  * @property {SuiteEfficiencyStats} efficiencyStats
  * @property {number} earlyFailureRate
+ * @property {number} [guidedErrorRate]
+ * @property {number} [unguidedErrorRate]
  * @property {Record<string, GuideSummary>} guides
  * @property {ReturnType<typeof calculateChartData>} chartData
  */
@@ -145,7 +147,7 @@ export function toSlimSuiteSummary(summary) {
  * Extracts a compact summary object from an evals.json payload.
  *
  * @param {string} testId
- * @param {import('../harness/lib/metrics.ts').EvalsReport & { enableSkills?: boolean }} evalsData
+ * @param {Partial<import('../harness/lib/metrics.ts').EvalsReport> & { enableSkills?: boolean }} evalsData
  * @param {string|null} [forcedTimestamp=null]
  * @returns {SuiteSummary|null}
  */
@@ -161,12 +163,18 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
     const results = evalsData.results || {};
     const scenarioKeys = Object.keys(results);
+    const eligibleScenarios = getEligibleScenarioIds(results);
 
     let guidedPassed = 0;
     let guidedTotal = 0;
     let unguidedPassed = 0;
     let unguidedTotal = 0;
     let maxRuns = 1;
+    let totalAllRuns = 0;
+    let guidedTotalRuns = 0;
+    let guidedEarlyFailures = 0;
+    let unguidedTotalRuns = 0;
+    let unguidedEarlyFailures = 0;
 
     // Cross-cutting accessibility counters
     let a11yGuidedPassed = 0;
@@ -221,6 +229,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     scenarioKeys.forEach(key => {
         const parsedKey = parseResultKey(key);
         const runs = results[key] || [];
+        totalAllRuns += runs.length;
         if (runs.length > maxRuns) maxRuns = runs.length;
 
         const isGuided = key.endsWith(' - guided');
@@ -253,56 +262,74 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             }
         }
 
+        const isEligibleScenario = parsedKey ? eligibleScenarios.has(`${parsedKey.task} - ${parsedKey.guide}`) : true;
+
+        if (isGuided) guidedTotalRuns += runs.length;
+        else if (isUnguided) unguidedTotalRuns += runs.length;
+
         runs.forEach(run => {
-            const s = getRunStats(run.results);
-            if (isGuided) {
-                guidedPassed += s.passed;
-                guidedTotal += s.total;
-            } else if (isUnguided) {
-                unguidedPassed += s.passed;
-                unguidedTotal += s.total;
+            if (isEarlyFailureRun(run.results)) {
+                if (isGuided) guidedEarlyFailures++;
+                else if (isUnguided) unguidedEarlyFailures++;
+            }
+
+            if (isEligibleScenario) {
+                const s = getRunStats(run.results);
+
+                if (isGuided) {
+                    guidedPassed += s.passed;
+                    guidedTotal += s.total;
+                } else if (isUnguided) {
+                    unguidedPassed += s.passed;
+                    unguidedTotal += s.total;
+                }
+
+                if (parsedKey && (parsedKey.runType === 'guided' || parsedKey.runType === 'unguided')) {
+                    const runType = /** @type {'guided' | 'unguided'} */ (parsedKey.runType);
+                    const { guide, task } = parsedKey;
+                    suiteGuides[guide][runType].passed += s.passed;
+                    suiteGuides[guide][runType].total += s.total;
+
+                    const taskStats = task && suiteGuideTasks[guide][task];
+                    if (taskStats) {
+                        taskStats[runType].passed += s.passed;
+                        taskStats[runType].total += s.total;
+                    }
+
+                    // Accessibility check classification
+                    (run.results || []).forEach(check => {
+                        const cls = classifyScenarioCheck(check, guide);
+                        if (cls.isAccessibility && cls.subCategory) {
+                            a11yGuides.add(guide);
+                            if (!suiteGuideA11y[guide]) {
+                                suiteGuideA11y[guide] = {
+                                    guided: { passed: 0, total: 0 },
+                                    unguided: { passed: 0, total: 0 }
+                                };
+                            }
+                            suiteGuideA11y[guide][runType].total += 1;
+                            if (check.passed) suiteGuideA11y[guide][runType].passed += 1;
+
+                            if (runType === 'guided') {
+                                a11yGuidedTotal += 1;
+                                if (check.passed) a11yGuidedPassed += 1;
+                            } else {
+                                a11yUnguidedTotal += 1;
+                                if (check.passed) a11yUnguidedPassed += 1;
+                            }
+                            const bucket = subCatTallies[cls.subCategory];
+                            if (bucket) {
+                                bucket[runType].total += 1;
+                                if (check.passed) bucket[runType].passed += 1;
+                            }
+                        }
+                    });
+                }
             }
 
             if (parsedKey && (parsedKey.runType === 'guided' || parsedKey.runType === 'unguided')) {
                 const runType = /** @type {'guided' | 'unguided'} */ (parsedKey.runType);
                 const { guide, task } = parsedKey;
-                suiteGuides[guide][runType].passed += s.passed;
-                suiteGuides[guide][runType].total += s.total;
-
-                const taskStats = task && suiteGuideTasks[guide][task];
-                if (taskStats) {
-                    taskStats[runType].passed += s.passed;
-                    taskStats[runType].total += s.total;
-                }
-
-                // Accessibility check classification
-                (run.results || []).forEach(check => {
-                    const cls = classifyScenarioCheck(check, guide);
-                    if (cls.isAccessibility && cls.subCategory) {
-                        a11yGuides.add(guide);
-                        if (!suiteGuideA11y[guide]) {
-                            suiteGuideA11y[guide] = {
-                                guided: { passed: 0, total: 0 },
-                                unguided: { passed: 0, total: 0 }
-                            };
-                        }
-                        suiteGuideA11y[guide][runType].total += 1;
-                        if (check.passed) suiteGuideA11y[guide][runType].passed += 1;
-
-                        if (runType === 'guided') {
-                            a11yGuidedTotal += 1;
-                            if (check.passed) a11yGuidedPassed += 1;
-                        } else {
-                            a11yUnguidedTotal += 1;
-                            if (check.passed) a11yUnguidedPassed += 1;
-                        }
-                        const bucket = subCatTallies[cls.subCategory];
-                        if (bucket) {
-                            bucket[runType].total += 1;
-                            if (check.passed) bucket[runType].passed += 1;
-                        }
-                    }
-                });
 
                 // Runtime & token tracking (agent time only; the 600s threshold is the harness per-attempt timeout)
                 const pairKey = `${task}|||${guide}`;
@@ -482,12 +509,14 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     };
 
     const taskCount = evalsData.summary && evalsData.summary.taskCount ? evalsData.summary.taskCount : distinctScenarios.size;
-    const totalEarlyFailures = (evalsData.summary?.unguidedEarlyFailures || 0) + (evalsData.summary?.guidedEarlyFailures || 0);
-    let totalAllRuns = 0;
-    scenarioKeys.forEach(k => { totalAllRuns += (results[k] || []).length; });
-    const earlyFailureRate = totalAllRuns > 0 ? Math.round((totalEarlyFailures / totalAllRuns) * 100) : 0;
+    const gFailures = evalsData.summary?.guidedEarlyFailures ?? guidedEarlyFailures;
+    const uFailures = evalsData.summary?.unguidedEarlyFailures ?? unguidedEarlyFailures;
+    const summaryEarlyFailures = gFailures + uFailures;
+    const earlyFailureRate = totalAllRuns > 0 ? Math.round((summaryEarlyFailures / totalAllRuns) * 100) : 0;
+    const guidedErrorRate = guidedTotalRuns > 0 ? Math.round((gFailures / guidedTotalRuns) * 100) : 0;
+    const unguidedErrorRate = unguidedTotalRuns > 0 ? Math.round((uFailures / unguidedTotalRuns) * 100) : 0;
 
-    const chartData = calculateChartData(results);
+    const chartData = calculateChartData(results, eligibleScenarios);
 
     return {
         schemaVersion: SUMMARY_SCHEMA_VERSION,
@@ -503,6 +532,8 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         a11yStats,
         efficiencyStats,
         earlyFailureRate: earlyFailureRate,
+        guidedErrorRate: guidedErrorRate,
+        unguidedErrorRate: unguidedErrorRate,
         guides: guidesFormatted,
         chartData: chartData
     };

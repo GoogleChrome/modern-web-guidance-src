@@ -539,8 +539,9 @@ th[aria-sort="ascending"] .sort-btn::after {
   color: var(--color-accent-failure);
 }
 
-/* Variance bands (one SD across runs) on the per-guide breakdown */
-.insight-dumbbell-track .variance-band {
+/* Variance bands (one SD across runs) and Manski error uncertainty bands */
+.insight-dumbbell-track .variance-band,
+.suite-dumbbell-track .variance-band {
   position: absolute;
   block-size: 10px;
   top: 50%;
@@ -550,14 +551,22 @@ th[aria-sort="ascending"] .sort-btn::after {
   z-index: 0;
 }
 
-.insight-dumbbell-track .variance-band.unguided {
+.insight-dumbbell-track .variance-band.unguided,
+.suite-dumbbell-track .variance-band.unguided {
   background-color: var(--color-outline);
-  opacity: 0.22;
+  opacity: 0.25;
 }
 
-.insight-dumbbell-track .variance-band.guided {
+.insight-dumbbell-track .variance-band.guided,
+.suite-dumbbell-track .variance-band.guided {
   background-color: var(--color-primary);
   opacity: 0.26;
+}
+
+.insight-dumbbell-track .variance-band.guided.has-err,
+.suite-dumbbell-track .variance-band.guided.has-err {
+  background-color: #d29922;
+  opacity: 0.35;
 }
 
 /* ---------- Efficiency cells & delta pills ---------- */

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
-import { rootDir, baseAppsDir, suitesDir } from '../core/paths.ts';
+import { baseAppsDir, suitesDir } from '../core/paths.ts';
 import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
@@ -396,23 +396,6 @@ export function generateTransientPackage(
   const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName);
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
-  // Create npx wrapper to intercept modern-web-guidance calls during evals
-  const templatePath = path.join(import.meta.dirname, 'npx-intercept.template.ts');
-  const localCliPath = path.join(rootDir, 'dist', 'skills-cli', 'skills/modern-web-guidance/modern-web.mjs');
-
-  if (fs.existsSync(templatePath)) {
-    let templateContent = fs.readFileSync(templatePath, 'utf8');
-    templateContent = templateContent.replace('__LOCAL_CLI_PATH__', localCliPath);
-
-    for (const binName of ['npx', 'pnpx', 'pnpm']) {
-      const wrapperPath = path.join(targetDir, binName);
-      fs.writeFileSync(wrapperPath, templateContent);
-      fs.chmodSync(wrapperPath, 0o755); // Make executable
-    }
-  } else {
-    console.warn(`Warning: npx-intercept.template.ts not found at ${templatePath}`);
-  }
-
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
   // we trick pnpm into thinking each test run is a package in a pnpm workspace.
@@ -433,20 +416,24 @@ const args = [
 ])}
 ];
 
-// Intercept npx by prepending targetDir to PATH
 const env = { ...process.env };
-env.PATH = \`${targetDir}:\${env.PATH}\`;
 
 const start = Date.now();
 let result;
 let attempts = 0;
 const maxAttempts = 3; // 1 initial attempt + 2 retries with exponential backoff
 const baseDelay = 15000; // 15 seconds base delay
-const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
+const targetDirPath = ${JSON.stringify(targetDir)};
+const failureFile = path.join(targetDirPath, 'generation_failed.json');
+const initialEntries = new Set(fs.readdirSync(targetDirPath).filter(e => e !== 'generation_failed.json'));
 
 while (attempts < maxAttempts) {
   attempts++;
-  fs.rmSync(failureFile, { force: true });
+  for (const entry of fs.readdirSync(targetDirPath)) {
+    if (!initialEntries.has(entry)) {
+      fs.rmSync(path.join(targetDirPath, entry), { recursive: true, force: true });
+    }
+  }
   // Assign the isolated HOME here so it is removed even if the timeout kills the agent
   // wrapper before its own cleanup runs.
   const isolatedHome = '/tmp/ghh-' + ${JSON.stringify(path.basename(agentScript).replace(/-agent\.ts$/, ''))} + '-' + randomUUID().slice(0, 8);

@@ -85,9 +85,22 @@ export interface GraderPromptOptions {
   cssomnomDtsPath?: string;
   failureContext?: string;
   isDisciplineGuide?: boolean;
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+  };
 }
 
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
+  let prReviewContextBlock = '';
+  if (opts.prContext?.comments) {
+    const parts: string[] = ['### ⚠️ REVIEWER FEEDBACK ON PREVIOUS GRADER & EVALUATIONS'];
+    parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
+    parts.push(`If any reviewer comments above pertain to \`${opts.graderFile}\` (e.g. relaxing overly strict checks, fixing false negatives, or adjusting selector scopes), incorporate them while still adhering to \`${opts.expectationsFile}\` and all rules below.`);
+    prReviewContextBlock = '\n' + parts.join('\n\n') + '\n\n---\n';
+  }
+
   const contextBlock = opts.failureContext
     ? `### ⚠️ PREVIOUS FAILURE CONTEXT
 The previous grader failed calibration with this error:
@@ -120,7 +133,7 @@ Analyze this failure and modify the existing grader file to fix these assertions
     ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to write a test for every expectation. Decide relevance from the base application in your workspace, not from the solution patches: do NOT test an expectation whose pattern only exists because a solution patch added it. Also skip expectations the base application already satisfies. If a relevant pattern is implemented in different files or components across solutions, write a project-wide check instead of skipping it. At the top of \`${opts.graderFile}\`, add a comment listing every expectation number as TESTED or SKIPPED with a one-line reason.`
     : '';
 
-  return `${contextBlock}# GOAL
+  return `${prReviewContextBlock}${contextBlock}# GOAL
 Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${disciplineInstruction}${patchInstruction}
 
 # INPUTS
@@ -160,7 +173,7 @@ Write only one assertion per \`test('...', ...)\` block across both static and b
 - **No Swallowed Errors**: Do not wrap assertions in generic try/catch blocks that swallow exceptions.
 
 ## 5. Dependencies & Sandbox Constraints
-Do not install any npm packages or execute application dev/build commands (like astro build or vite build) in your workspace. However, you MUST verify that your generated grader code compiles cleanly and passes linting. Run these verification commands in your workspace and fix any errors before ending your turn:
+Do not install any npm packages or execute application dev, build, or test commands in your workspace. However, you MUST verify that your generated grader code compiles cleanly and passes linting. Run ONLY these verification commands in your workspace and fix any errors before ending your turn:
 1. \`npx tsc --noEmit --skipLibCheck --target esnext --module nodenext --moduleResolution nodenext --allowImportingTsExtensions --esModuleInterop grader.ts\`
 2. \`npx oxlint grader.ts\`
 
@@ -173,12 +186,25 @@ export interface TaskPromptOptions {
   taskFile: string;
   baseApp: string;
   isDisciplineGuide?: boolean;
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+  };
 }
 
 export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
   const target = opts.isDisciplineGuide ? 'discipline guidance' : 'use case';
 
-  return `# GOAL
+  let prReviewContextBlock = '';
+  if (opts.prContext?.comments) {
+    const parts: string[] = ['### ⚠️ REVIEWER FEEDBACK ON PREVIOUS TASK PROMPT / IMPLEMENTATION'];
+    parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
+    parts.push(`Carefully address any reviewer suggestions regarding the developer prompt in \`${opts.taskFile}\`. If a reviewer requested specific phrasing, wording adjustments, or additions to the test prompt, incorporate their feedback directly while adhering to all rules below.`);
+    prReviewContextBlock = '\n' + parts.join('\n\n') + '\n\n---\n';
+  }
+
+  return `${prReviewContextBlock}# GOAL
 Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the ${target}.
 Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to apply the ${target} inside the application.
 
@@ -200,9 +226,56 @@ Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-leve
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
 }
 
+export interface ReviewFeedbackPromptOptions {
+  guideName: string;
+  comments: string;
+  branchCommits?: string;
+  branchDiff?: string;
+  rerunMode?: string;
+}
+
+export function buildApplyReviewFeedbackPrompt(opts: ReviewFeedbackPromptOptions): string {
+  const parts: string[] = ['# EXISTING PULL REQUEST & REVIEW CONTEXT'];
+  if (opts.branchCommits) {
+    parts.push(`## Branch Commits against main:\n\`\`\`\n${opts.branchCommits.trim()}\n\`\`\``);
+  }
+  if (opts.branchDiff) {
+    parts.push(`## Branch Diff against main:\n\`\`\`diff\n${opts.branchDiff.trim()}\n\`\`\``);
+  }
+  parts.push(`## Reviewer Comments & Feedback to Address:\n${opts.comments.trim()}`);
+
+  const contextBlock = parts.join('\n\n');
+
+  let rerunNote = '';
+  if (opts.rerunMode === 'needs-eval-gen') {
+    rerunNote = `\n> [!NOTE]\n> This rerun is in \`needs-eval-gen\` mode: all target capsules under \`targets/\` will be wiped and regenerated from source guidance after this step. Apply reviewer feedback ONLY to \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\`. Do NOT edit files under \`targets/\`.\n`;
+  }
+
+  return `${contextBlock}
+${rerunNote}
+# GOAL
+You are updating the guidance and evaluation files for \`${opts.guideName}\` based on pull request review feedback.
+Your goal is to address all reviewer comments by directly updating the relevant files on disk (\`guide.md\`, \`expectations.md\`, \`targets/<target>/task.md\`, and \`targets/<target>/grader.ts\`).
+
+# RULES & INSTRUCTIONS
+1. **Direct File Modifications**:
+   - Apply requested changes directly to \`guide.md\`, \`expectations.md\`, \`targets/<target>/task.md\`, or \`targets/<target>/grader.ts\` in your workspace using your structured file editing tools.
+   - If reviewers approved specific recommendations or suggested explicit diffs (e.g. adding preload attributes, modifying selectors, or rewording task prompts), apply them cleanly to the corresponding files.
+2. **Honor Reviewer Intent**:
+   - Defer to reviewer feedback over previous automated output.
+   - Do not overwrite or revert human-authored commits or requested changes.
+3. **No Shell Commands**:
+   - Use built-in structured file editing tools (write_file or replace). Do not use terminal heredocs or cat.`;
+}
+
 export interface DevReportPromptOptions {
   guideName: string;
   targets: TargetEvalSummary[];
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+  };
 }
 
 export function buildDevReportPrompt(opts: DevReportPromptOptions): string {
@@ -212,8 +285,30 @@ export function buildDevReportPrompt(opts: DevReportPromptOptions): string {
 - **Flag Details**: ${t.flagDetails}`;
   }).join('\n\n');
 
-  return `# GOAL
-Analyze the evaluation test results across all target applications for the guide \`${opts.guideName}\`, conduct a thorough root-cause investigation for each target based on its flagged status, and complete the \`### Diagnostic Analysis & Actionable Recommendations\` section under each target in \`${REPORT_FILE}\`.
+  let prContextBlock = '';
+  if (opts.prContext && (opts.prContext.comments || opts.prContext.branchDiff || opts.prContext.branchCommits)) {
+    const parts: string[] = ['# EXISTING PULL REQUEST & REVIEW CONTEXT'];
+    if (opts.prContext.branchCommits) {
+      parts.push(`## Branch Commits against main:\n\`\`\`\n${opts.prContext.branchCommits.trim()}\n\`\`\``);
+    }
+    if (opts.prContext.branchDiff) {
+      parts.push(`## Branch Diff against main:\n\`\`\`diff\n${opts.prContext.branchDiff.trim()}\n\`\`\``);
+    }
+    if (opts.prContext.comments) {
+      parts.push(`## PR Comments & Reviewer Feedback:\n${opts.prContext.comments.trim()}`);
+    }
+    parts.push(`\n> [!IMPORTANT]\n> This is a subsequent pass on an open pull request. You MUST carefully review the PR comments, ATL/reviewer feedback, and existing branch commits/diff above.\n> - Honor reviewer feedback and requested changes directly in your recommendations and file updates.\n> - Address reviewer concerns without blindly overwriting human-authored changes.\n> - If reviewer feedback conflicts with prior automated suggestions, defer to the human reviewer's guidance.\n`);
+    prContextBlock = '\n' + parts.join('\n\n') + '\n';
+  }
+
+  return `${prContextBlock}# GOAL
+Analyze the evaluation test results across all target applications for the guide \`${opts.guideName}\`, conduct a thorough root-cause investigation for each target based on its flagged status, complete the placeholders in \`${REPORT_FILE}\` (\`### Evaluation Results\` is already populated for each target), and directly apply recommended modifications to the relevant files in the workspace (\`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, \`targets/<target>/task.md\`, \`targets/<target>/grader.ts\`).
+
+# DIRECT FILE UPDATES REQUIREMENT
+Whenever you determine that changes are needed in \`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, or any target files (\`targets/<target>/task.md\`, \`targets/<target>/grader.ts\`), you MUST:
+1. Directly modify those files in your workspace using your structured file editing tools.
+2. In addition, document your changes in \`${REPORT_FILE}\` under \`#### Actionable Recommendations:\` with a clear explanation and a unified \`diff\` block illustrating the changes applied.
+Do not leave recommended changes only as diff text in the report; always apply them directly to disk.
 
 # INPUTS
 1. **Guide**: \`${GUIDE_FILE}\`
@@ -226,8 +321,6 @@ Analyze the evaluation test results across all target applications for the guide
 4. **Evaluation Run Artifacts**: For each target, \`results/<target>/\` contains various artifacts, such as \`agent.patch\` (code changes generated by the agent), \`chat_log.txt\` (the agent's conversation log), etc.
 5. **Target Evaluation Reports & Flags**:
 ${targetSections}
-
-Note: \`${REPORT_FILE}\` is already seeded with each target's \`### Evaluation Results\` (copied directly from \`evals.md\`). Your task is to investigate the artifacts and fill in \`### Diagnostic Analysis & Actionable Recommendations\` under each target.
 
 # SYSTEM WORKFLOW CONTEXT
 To accurately diagnose failures, understand how \`gd dev\` generates and executes these components:
@@ -248,26 +341,28 @@ Diagnose each target according to its assigned flag:
 2. **\`MISSING_GUIDANCE_TOOL\`**:
    - The guided agent did not invoke \`modern-web-guidance\`.
    - **Diagnosis**: State that the test prompt in \`task.md\` failed to activate modern web guidance during the agent's run.
-   - **Recommendation**: Recommend that the prompt in \`targets/<target>/task.md\` be revised so that the request more clearly prompts an agent to look up modern web platform guidance.
+   - **Recommendation**: Provide concrete edits for \`targets/<target>/task.md\` so the desired user outcome in the target app more naturally triggers modern web guidance lookup. Always append:
+     \`*(Note: This fix has already been applied directly to targets/<target>/task.md in this PR. After reviewing, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
 
 3. **\`MISSING_EXPECTED_GUIDE\`**:
    - The guided agent invoked guidance tools, but \`${opts.guideName}\` was not among the consumed guides.
    - **Culprit**: \`targets/<target>/task.md\` or the \`description\` in \`${GUIDE_FILE}\`.
    - **Root Cause**: The prompt keywords failed to match the guide's indexing keywords or description frontmatter.
-   - **Recommendation**: Provide concrete edits for \`targets/<target>/task.md\` or the frontmatter \`description\` in \`${GUIDE_FILE}\`.
+   - **Recommendation**: Provide concrete edits for \`targets/<target>/task.md\` or the frontmatter \`description\` in \`${GUIDE_FILE}\`. Always append:
+     \`*(Note: This fix has already been applied directly in this PR. If source guidance was modified, add the needs-eval-gen label; if only targets/<target>/task.md was modified, add the needs-eval-run label)*\`
 
 4. **\`LOW_GUIDED_PASS_RATE\`**:
    - The guided agent pass rate is under 90%.
    - **Root Cause Investigation**: Review the failed assertions in \`${REPORT_FILE}\` and examine \`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, and \`targets/<target>/grader.ts\` to understand why the agent fell short. Consider:
+     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader failing valid implementations due to overly rigid syntax checks, hardcoded selectors/names, or fragile AST queries?
      - **Guidance Quality (\`${GUIDE_FILE}\`)**: Does the guide lack essential modern web practices, clear syntax examples, fallback patterns, or common pitfalls?
      - **Expectations Alignment (\`${EXPECTATIONS_FILE}\`)**: Are the must-pass expectations ambiguous, conflicting, or missing key constraints?
-     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader failing valid implementations due to overly rigid syntax checks, hardcoded selectors/names, or fragile AST queries?
      - **Miscellaneous Issues**: Any other issues discovered.
    - **Recommendation Rules**:
      - **Source-of-Truth Fixes**: If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` needs changes, recommend modifications **ONLY** to those files and **DO NOT** recommend edits to any files in \`targets/\`. Always append:
-       \`*(Note: After modifying source files, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*\`
+       \`*(Note: These source guidance changes have already been applied directly to ${GUIDE_FILE} / ${EXPECTATIONS_FILE} in this PR. After reviewing, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*\`
      - **Grader Fixes**: When grader fixes are necessary, only recommend direct edits to \`targets/<target>/grader.ts\` if \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` require **NO** changes. Always append:
-       \`*(Note: After modifying target files, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
+       \`*(Note: These grader adjustments have already been applied directly to targets/<target>/grader.ts in this PR. After reviewing, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
      - **Miscellaneous Fixes**: Any other recommended fixes (do not have to be file-specific).
 
 5. **\`HEALTHY\`**:
@@ -277,7 +372,13 @@ Diagnose each target according to its assigned flag:
 
 # REPORT OUTPUT REQUIREMENTS
 
-For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching this structure:
+1. **Top-Level Summary (\`## Summary\`)**:
+   Complete the \`## Summary\` section at the top of \`${REPORT_FILE}\` with a concise executive summary aggregating findings across all tested targets:
+   - **Key Findings**: Concisely synthesize the root causes across any flagged targets (highlighting shared issues if multiple targets failed for the same reason), or confirm that all targets consumed the guidance and passed.
+   - **Recommended Actions**: Summarize the high-level fixes needed across \`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, or \`targets/<target>/\` (or state that no changes are needed if all targets are healthy).
+
+2. **Per-Target Diagnostics (\`### Diagnostic Analysis & Actionable Recommendations\`)**:
+   For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching this structure. Whenever recommending a change to a file (\`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, \`targets/<target>/task.md\`, or \`targets/<target>/grader.ts\`), include a fenced \`diff\` block directly beneath that bullet showing the exact lines to remove (\`-\`) and add (\`+\`) so reviewers can see the changes applied directly in this PR:
 
 \`\`\`markdown
 ### Diagnostic Analysis & Actionable Recommendations
@@ -288,8 +389,12 @@ For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching 
 
 #### Actionable Recommendations:
 - \`[relative_path_to_file]\`: [Actionable recommendation]
+  \`\`\`diff
+  - [exact existing line(s) from the file]
+  + [exact proposed replacement line(s)]
+  \`\`\`
 \`\`\`
 
 # INSTRUCTION
-When editing the report, you MUST use your built-in structured file editing tools (e.g., replace or write_file) to update \`${REPORT_FILE}\`.`;
+When editing the report and applying recommendations to code or guidance files, you MUST use your built-in structured file editing tools (e.g., replace or write_file). Do not use shell commands (like cat, echo, or heredocs <<) to create or edit files in the terminal. Remember to apply all recommended file modifications directly to the files in your workspace in addition to updating \`${REPORT_FILE}\`.`;
 }

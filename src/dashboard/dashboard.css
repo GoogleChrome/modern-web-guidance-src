@@ -965,6 +965,52 @@ dialog#modal.diff-modal {
   font-weight: bold;
 }
 
+/* Per-check failure diagnostics in the assertion column */
+.assertion-error,
+.assertion-diagnostic {
+  margin-top: 4px;
+  font-family: monospace;
+  font-size: 0.72rem;
+}
+
+.assertion-error {
+  color: var(--color-accent-failure);
+  white-space: pre-wrap;
+  max-height: 80px;
+  overflow-y: auto;
+  background: rgb(218 54 51 / 0.08);
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.assertion-error-loc {
+  opacity: 0.75;
+  font-size: 0.68rem;
+}
+
+.assertion-diagnostic summary {
+  cursor: pointer;
+  user-select: none;
+  color: var(--color-primary);
+}
+
+.assertion-diagnostic pre {
+  margin: 4px 0 0;
+  padding: 6px;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 0.70rem;
+  background: var(--color-surface-container-low);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 4px;
+}
+
+.assertion-diagnostic.browser-errors summary,
+.assertion-diagnostic.browser-errors pre {
+  color: var(--color-accent-failure);
+}
+
 .summary-subgrid meter {
   -webkit-appearance: none;
   appearance: none;

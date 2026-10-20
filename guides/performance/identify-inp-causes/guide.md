@@ -1,6 +1,6 @@
 ---
 name: identify-inp-causes
-description: Identify slow running JavaScript that is impacting INP metric
+description: Identify slow-running JavaScript and other causes of poor Interaction to Next Paint (INP) responsiveness.
 web-feature-ids:
   - long-animation-frames
   - event-timing
