@@ -8,7 +8,12 @@
 - Native `::scroll-marker` controls navigate to their corresponding slides when activated.
 - The active slide's native scroll marker is visually distinguished using the `:target-current` pseudo-class.
 - The native marker group follows the slides in keyboard focus order using `scroll-marker-group: after`.
-- Boundary previous/next controls at the ends of the carousel are disabled to prevent scrolling past limits.
+- Native previous/next controls stay enabled at the first and last slides, because the carousel loops.
+- Activating Next while the last slide is current brings the first slide into view, and activating Previous while the first slide is current brings the last slide into view.
+- Looping does not duplicate slides: the track contains exactly one slide element per slide, with no `inert` or `aria-hidden` copies.
+- After scrolling settles, the slide the user moved to is back at the middle position of the track's scroll range, so there are slides to scroll to on both sides.
+- Slides in a looping carousel are the same size along the scrolling axis, and their visual order is rotated with CSS `order` (computed `order` values differ between slides) while their DOM order is unchanged.
+- The polite live status reads "Slide N of M" with the correct slide after wrapping from the last slide to the first.
 - Interactive carousel controls, markers, and fallback buttons have a visible `:focus-visible` indicator.
 - A polite live region (`role="status"` or `aria-live="polite"`) announces the current slide position after scrolling settles.
 - The polite live status is announced on initial load to reflect the first visible slide.
