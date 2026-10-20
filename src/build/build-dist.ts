@@ -205,23 +205,10 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       updateVersionsInDir(publishRoot, version);
     }
 
-    const tfjsModelDir = path.join(rootDir, "src/rag/tfjs-model-minilm");
-    const destTfjsModelDir = path.join(DIST_DIR, "tfjs-model-minilm");
-    if (fs.existsSync(tfjsModelDir)) {
-      fs.cpSync(tfjsModelDir, destTfjsModelDir, {
-        recursive: true,
-        filter: (src) => {
-          const stat = fs.statSync(src);
-          if (stat.isDirectory()) return true;
-          const basename = path.basename(src);
-          return (
-            basename === "model.json" ||
-            basename.startsWith("group1-shard") ||
-            basename === "tokenizer.json.gz" ||
-            basename === "tokenizer_config.json"
-          );
-        }
-      });
+    const staticModelDir = path.join(rootDir, "src/rag/static-model");
+    const destStaticModelDir = path.join(DIST_DIR, "static-model");
+    if (fs.existsSync(staticModelDir)) {
+      fs.cpSync(staticModelDir, destStaticModelDir, { recursive: true });
     }
 
     try {
@@ -232,33 +219,12 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         platform: "node",
         format: "esm",
         mainFields: ["module", "main"],
-        alias: {
-          "node-fetch": path.resolve(rootDir, "src/rag/fetch-shim.ts"),
-        },
         outfile: path.join(publishRoot, "skills/modern-web-guidance/search.mjs"),
-        // Required because @tensorflow/tfjs-core's PlatformNode constructor executes this.util = require('util')
-        banner: {
-          js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
-        },
         sourcemap: true,
         sourcesContent: false,
         metafile: true,
         minify: true,
         legalComments: "none",
-        plugins: [{
-          // TFJS deep imports fail in pure Node ESM because they lack extensions.
-          // In raw Node runs, tfjs-kernels.ts uses require() to load the CommonJS version (all kernels).
-          // For the production bundle, we use this plugin to swap it with tfjs-kernels-precise.ts
-          // which only registers the specific kernels we need, keeping the bundle small.
-          // Note: This plugin is also load-bearing for esbuild: without it, esbuild does not follow
-          // the dynamic/require call in tfjs-kernels.ts, resulting in 0 bundled kernels and runtime failures.
-          name: 'use-precise-kernels',
-          setup(build) {
-            build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
-              return { path: path.resolve(rootDir, "src/rag/tfjs-kernels-precise.ts") }
-            })
-          },
-        }],
       });
 
       fs.writeFileSync(

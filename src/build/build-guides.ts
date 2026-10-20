@@ -110,7 +110,10 @@ async function computePipelineHash(
   const deps = [
     import.meta.filename,
     path.join(rootDir, "src/core/macros.ts"),
-    path.join(rootDir, "src/rag/transformers-embedder.ts"),
+    path.join(rootDir, "src/rag/static-embedder.ts"),
+    path.join(rootDir, "src/rag/static-model/words.json"),
+    path.join(rootDir, "src/rag/static-model/words.i8"),
+    path.join(rootDir, "src/rag/static-model/words.scale.f32"),
     path.join(rootDir, "src/core/guide-validation.ts"),
     path.join(rootDir, "src/build/devsite-markdown.ts"),
   ];
@@ -123,11 +126,8 @@ async function computePipelineHash(
   hash.update(noChunking.toString());
 
   if (target !== 'static-site') {
-    const rawModel = modelName || "Xenova/all-MiniLM-L6-v2";
-    const [modelId, dtype = "q8"] = rawModel.split("@");
-    hash.update(getTransformersVersion());
-    hash.update(modelId);
-    hash.update(dtype);
+    const rawModel = modelName || "static-tokenlearn-256d";
+    hash.update(rawModel);
   }
 
   for (const inv of guides) {
@@ -224,11 +224,14 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   if (TARGET !== 'static-site') {
     if (modelName) {
       console.log(`Using custom embedding model: ${modelName}`);
+      const { Embedder } = await import("../rag/transformers-embedder.ts");
+      embedder = Embedder.getInstance(modelName);
+      await embedder.init();
+    } else {
+      const { StaticEmbedder } = await import("../rag/static-embedder.ts");
+      embedder = StaticEmbedder.getInstance();
+      embedder.init();
     }
-
-    const { Embedder } = await import("../rag/transformers-embedder.ts");
-    embedder = Embedder.getInstance(modelName);
-    await embedder.init();
   }
 
   if (targetGuidePath) {
@@ -249,7 +252,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   console.log("Generating embeddings…");
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
-    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder, staticSiteGuides);
+    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder, staticSiteGuides, modelName);
   }
 
   if (TARGET !== 'static-site') {
@@ -322,7 +325,8 @@ async function processSingleGuideFile(
   useCases: UseCase[],
   storeUseCases: StoreUseCase[],
   embedder?: any,
-  staticSiteGuides?: StaticSiteGuideMetadata[]
+  staticSiteGuides?: StaticSiteGuideMetadata[],
+  modelName?: string
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
@@ -393,7 +397,9 @@ web-feature-ids: ${JSON.stringify(featureIds)}
     : [...chunkMarkdown(processedMarkdown), summaryChunk];
 
   for (const chunk of chunks) {
-    const embeddingText = `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`;
+    const embeddingText = modelName
+      ? `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`
+      : `${data.description}\n\n${chunk}`;
     const vector = await embedder.embed(embeddingText);
 
     storeUseCases.push({

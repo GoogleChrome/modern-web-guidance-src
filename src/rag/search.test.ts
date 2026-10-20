@@ -40,7 +40,7 @@ describe("searchUseCases", () => {
 
   it("works with a custom mock EmbedderLike", async () => {
     const mockEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
     const results = await searchUseCases("test query", 5, 0.0, mockEmbedder);
     assert.ok(Array.isArray(results));
@@ -48,9 +48,9 @@ describe("searchUseCases", () => {
 
   it("returns empty array when no chunk meets minSimilarity", async () => {
     const mockEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
-    const results = await searchUseCases("test query", 5, 0.3, mockEmbedder);
+    const results = await searchUseCases("test query", 5, 0.5, mockEmbedder);
     assert.strictEqual(results.length, 0);
   });
 

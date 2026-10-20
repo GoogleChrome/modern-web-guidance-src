@@ -288,14 +288,18 @@ test('packaged dist contains tokenizer files and no .cache', async () => {
   const metaFiles = paths.filter((p: string) => p.endsWith('.meta.json'));
   assert.strictEqual(metaFiles.length, 0, `Expected 0 .meta.json files in pack, found: ${metaFiles.join(', ')}`);
 
-  // Must have tokenizer files
+  // Must have static model files
   assert.ok(
-    paths.some((p: string) => p.endsWith('tfjs-model-minilm/tokenizer.json.gz')),
-    'Pack must contain tokenizer.json.gz'
+    paths.some((p: string) => p.endsWith('static-model/words.json')),
+    'Pack must contain static-model/words.json'
   );
   assert.ok(
-    paths.some((p: string) => p.endsWith('tfjs-model-minilm/tokenizer_config.json')),
-    'Pack must contain tokenizer_config.json'
+    paths.some((p: string) => p.endsWith('static-model/words.i8')),
+    'Pack must contain static-model/words.i8'
+  );
+  assert.ok(
+    paths.some((p: string) => p.endsWith('static-model/words.scale.f32')),
+    'Pack must contain static-model/words.scale.f32'
   );
 });
 

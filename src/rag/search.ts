@@ -2,7 +2,7 @@ import fs, { existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import zlib from "zlib";
-import { TfjsEmbedder } from "./tfjs-embedder.ts";
+import { StaticEmbedder } from "./static-embedder.ts";
 import { logToolResult } from "./logger.ts";
 import { buildBm25Index, rankBm25, reciprocalRankFusion, type Bm25Index } from "./bm25.ts";
 
@@ -32,8 +32,9 @@ export interface EmbedderLike {
   embed(text: string): Promise<number[]>;
 }
 
-/** Query-level cosine floor: if no chunk in the corpus reaches this similarity, `[]` is returned. */
-export const DEFAULT_MIN_SIMILARITY = 0.3;
+/** Query-level cosine floor: if no chunk in the corpus reaches this similarity, `[]` is returned.
+ * Calibrated on OOS vs answerable sets for the 256-d static embedding model (mirroring MiniLM's 0.30 floor). */
+export const DEFAULT_MIN_SIMILARITY = 0.82;
 
 let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
 
@@ -56,8 +57,9 @@ function resolveSkillsCliDataDir(): string {
 }
 
 export function dotProduct(a: number[], b: number[]): number {
+  const len = Math.min(a.length, b.length);
   let sum = 0;
-  for (let i = 0; i < a.length; i++) {
+  for (let i = 0; i < len; i++) {
     sum += a[i] * b[i];
   }
   return sum;
@@ -92,7 +94,7 @@ export async function searchUseCases(
   minSimilarity = DEFAULT_MIN_SIMILARITY,
   embedder?: EmbedderLike
 ): Promise<UseCaseResult[]> {
-  const actualEmbedder = embedder ?? TfjsEmbedder.getInstance();
+  const actualEmbedder = embedder ?? StaticEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
 
   if (!cachedCorpus) {

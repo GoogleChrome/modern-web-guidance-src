@@ -84,6 +84,10 @@ export function computeEmbedderHash(worktreePath = rootDir): string {
   const ragDir = resolveRagDir(worktreePath);
   const hash = crypto.createHash("sha256");
   const candidateFiles = [
+    path.join(ragDir, "static-embedder.ts"),
+    path.join(ragDir, "static-model/words.json"),
+    path.join(ragDir, "static-model/words.i8"),
+    path.join(ragDir, "static-model/words.scale.f32"),
     path.join(ragDir, "tfjs-embedder.ts"),
     path.join(ragDir, "tfjs-kernels.ts"),
     path.join(ragDir, "tfjs-kernels-precise.ts"),
@@ -110,16 +114,19 @@ export function computeEmbedderHash(worktreePath = rootDir): string {
 
 function runEmbeddingWorker(targetDir: string, queries: string[]): Record<string, number[]> {
   const ragDir = resolveRagDir(targetDir);
-  const embedderPath = path.join(ragDir, "tfjs-embedder.ts");
+  const isStatic = fs.existsSync(path.join(ragDir, "static-embedder.ts"));
+  const embedderFile = isStatic ? "static-embedder.ts" : "tfjs-embedder.ts";
+  const embedderExport = isStatic ? "StaticEmbedder" : "TfjsEmbedder";
+  const embedderPath = path.join(ragDir, embedderFile);
   const tmpInput = path.join(os.tmpdir(), `rag-bench-queries-${process.pid}-${Date.now()}.json`);
   const tmpOutput = path.join(os.tmpdir(), `rag-bench-vectors-${process.pid}-${Date.now()}.json`);
   fs.writeFileSync(tmpInput, JSON.stringify(queries), "utf-8");
 
   const workerScript = `
     import fs from "node:fs";
-    import { TfjsEmbedder } from ${JSON.stringify(pathToFileURL(embedderPath).href)};
+    import { ${embedderExport} } from ${JSON.stringify(pathToFileURL(embedderPath).href)};
     const queries = JSON.parse(fs.readFileSync(${JSON.stringify(tmpInput)}, "utf-8"));
-    const embedder = TfjsEmbedder.getInstance();
+    const embedder = ${embedderExport}.getInstance();
     const out = {};
     for (const q of queries) {
       out[q] = await embedder.embed(q);
