@@ -2,7 +2,7 @@
 
 The Modern Web Guidance Analyzer scans brownfield web codebases for legacy idioms, obsolete polyfills, and userland workarounds, mapping every finding directly to a corresponding [Modern Web Guidance](../../guides) standard. It is designed for dual operation: fast, human-readable terminal reports for developers and structured machine-readable JSON for autonomous coding agents.
 
-See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Guide Triage`, `Static Matcher`, `LLM Verifier`, `Eval Judge`, `Fix Smoke Test`, and the `rule-writing`, `grading-only`, and `held-out` splits).
+See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Guide Triage`, `Legacy Pattern Spec`, `Static Matcher`, `LLM Verifier`, `Eval Judge`, `Fix Smoke Test`, and the `rule-writing` and `held-out` splits).
 
 ---
 
@@ -37,14 +37,14 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 Modern Web Guidance Analyzer: /workspace/my-app
 Found 3 modernization opportunities across 2 guides:
 
-* autofill-sign-in-form [tier-1] (2 findings)
+* autofill-sign-in-form [qualified] (2 findings)
   Summary: Use standard autocomplete attributes on username and password inputs instead of custom credentials handling.
   Retrieve: npx -y modern-web-guidance@latest retrieve "autofill-sign-in-form"
   Findings:
     - src/components/Login.tsx:42: Missing autocomplete="username" or autocomplete="current-password" on credential input
     - src/views/Register.vue:18: Input with type="password" lacks autocomplete attribute
 
-* animate-element-entry-exit [tier-1] (1 finding)
+* animate-element-entry-exit [qualified] (1 finding)
   Summary: Modernize imperative animation toggles and display none timing with CSS @starting-style and transition-behavior: allow-discrete.
   Retrieve: npx -y modern-web-guidance@latest retrieve "animate-element-entry-exit"
   Findings:
@@ -62,7 +62,7 @@ Coding agents receive structured JSON containing exact file coordinates, confide
   "guides": [
     {
       "guideId": "autofill-sign-in-form",
-      "tier": "tier-1-proven",
+      "tier": "qualified",
       "summary": "Use standard autocomplete attributes on username and password inputs.",
       "retrieveCommand": "npx -y modern-web-guidance@latest retrieve \"autofill-sign-in-form\"",
       "count": 1,
@@ -253,12 +253,11 @@ To guarantee zero hallucinated false alarms when run in interactive developer te
 
 The analyzer adheres to strict statistical rigor to guarantee production accuracy before any rule is published in `QUALIFIED_RULES`.
 
-### 3-Way Corpus Split Architecture (`R23`, `O32`, `O60`)
+### 2-Split Corpus Architecture (`rule-writing` vs `held-out`)
 
-The evaluation corpus is divided into three strictly isolated splits:
-- **`rule-writing` (115 local repos + GitMirror `rule-writing`):** Used exclusively for authoring Static Matcher AST patterns and LLM Verifier rubrics.
-- **`grading-only` (93 local repos):** Used for iterative precision/recall measurement and sequential sample analysis.
-- **`held-out` (2,336 remote GitMirror repos, 2,713 files):** Untuned, unexamined test split used solely for out-of-sample precision validation.
+The evaluation corpus is divided into two strictly isolated splits:
+- **`rule-writing` (208 local repos in `analyzer-internal/repos.json` + 7,048 GitMirror files across 5,320 repos):** Used freely by engineers and agents to discover legacy patterns, author Static Matcher AST patterns, and tune LLM Verifier rubrics.
+- **`held-out` (7,137 remote GitMirror files across 5,258 repos, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 1`):** Reserved strictly for out-of-sample precision and recall validation (`scorecard.ts`). Never inspected when authoring or debugging rules, guaranteeing zero tuning leakage.
 
 Cross-split boundary isolation is statically verified by [`audit-transcripts.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/audit-transcripts.ts).
 
@@ -307,3 +306,35 @@ node --env-file=.env src/analyzing/fix-harness.ts
 ```
 
 All scorecard results and audit trails are logged to `PROGRESS.md` and serialized in `analyzer-internal/findings/`.
+
+---
+
+## 6. Contributor Playbook: How to Add & Qualify an Analyzer Rule
+
+Follow this 4-step workflow to author, test, and qualify a rule for modern web guidance:
+
+### Step 1: Guide Triage & Legacy Pattern Spec
+1. **Verify Guide Triage status**: Ensure the feature guide is categorized as `detectable` (not `ui-recipe-multi-part` or `skip-no-old-way`).
+2. **Draft the Legacy Pattern Spec**: Identify concrete 1-to-1 legacy APIs, CSS workarounds, or npm packages that the modern platform feature directly replaces (`replaces`), alongside lookalike patterns that are out of scope (`doesNotReplace`).
+3. **Ground in real code**: Inspect only the `rule-writing` corpus (`208` local repos + `7,048` GitMirror files). Never inspect held-out code.
+
+### Step 2: Static Matcher Authoring
+1. **Choose matcher kind**: `JsRuleMatcher` (AST via `ts-morph`), `DomRuleMatcher` (HTML/JSX DOM via `linkedom`), `CssRuleMatcher` (CSS via `cssomnom`), or `DependencyRuleMatcher` (`package.json`).
+2. **Implement in `src/analyzing/rules/<guide-id>.ts`**:
+   - Set `fastTokens` pre-filters to ensure fast string pre-screening.
+   - Target high recall on the structural shape of the legacy idiom.
+   - Return clean finding messages explaining the modern replacement.
+3. **Add unit test suite in `src/analyzing/rules/<guide-id>.test.ts`**: Test positive examples, negative examples, and edge cases.
+
+### Step 3: LLM Verifier Rubric
+1. **Define `phase2Rubric` in the rule definition**:
+   - `keepWhen`: Precise criteria matching genuine legacy workarounds.
+   - `dropWhen`: Immediate exclusions (feature detection guards, shadowed variables, out-of-domain contexts).
+2. **Agentic verification**: Ensure that `--json` output emits the complete rubric so AI coding agents can verify findings before proposing refactors.
+
+### Step 4: Held-Out Qualification
+1. **Run preflight checks**: `pnpm run check:analyze` and `node --test "src/analyzing/**/*.test.ts"`.
+2. **Run held-out evaluation**: `node --env-file=.env src/analyzing/scorecard.ts --mode=gitmirror --split=held-out`.
+3. **Qualification criteria**:
+   - **Experimental Rule**: Active in `ALL_RULES`, available under `--experimental` / `--all-rules`.
+   - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it reaches $n \ge 35$ evaluated findings on the untuned `held-out` split and clears Wilson 95% CI lower bound $\ge 0.90$.

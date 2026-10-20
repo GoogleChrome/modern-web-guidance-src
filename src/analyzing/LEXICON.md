@@ -50,16 +50,16 @@ Offline evaluation harness that asks an LLM to modernize a flagged code window u
 
 ### `rule-writing` split
 
-Repositories (`115` local repositories in `analyzer-internal/repos.json` where `split === "rule-writing"` plus `7,048` files across `5,320` repositories in `~/.cache/analyzer-gitmirror/rule-writing/`, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 0`) that engineers and agents freely inspect to discover legacy patterns, author rules, and debug matchers.
+Repositories (`208` local repositories in `analyzer-internal/repos.json` plus `7,048` files across `5,320` repositories in `~/.cache/analyzer-gitmirror/rule-writing/`, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 0`) that engineers and agents freely inspect to discover legacy patterns, author rules, and debug matchers.
 
 * _Reference_: `analyzer-internal/repos.json`, `analyzer-internal/scripts/sample-gitmirror.ts`
 * _Avoid_: `build` split, `dev` split
 
 ### `held-out` split
 
-Repositories (`93` local repositories in `analyzer-internal/repos.json` where `split === "held-out"` plus `7,137` files across `5,258` repositories in `~/.cache/analyzer-gitmirror/held-out/`, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 1`) reserved for precision and recall evaluation (`scorecard.ts`). Never inspected when authoring or debugging rules.
+Repositories (`7,137` files across `5,258` repositories in `~/.cache/analyzer-gitmirror/held-out/`, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 1`) reserved strictly for precision and recall evaluation (`scorecard.ts`). Never inspected when authoring or debugging rules, ensuring zero tuning leakage.
 
-* _Reference_: `analyzer-internal/repos.json`, `analyzer-internal/scripts/sample-gitmirror.ts`
+* _Reference_: `analyzer-internal/scripts/sample-gitmirror.ts`
 * _Avoid_: `grading-only` split, `tune` split, `final` split, `local-93`, `gitmirror-grading-only`
 
 ## Rule Lifecycle States

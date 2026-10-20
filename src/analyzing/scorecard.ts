@@ -1698,11 +1698,19 @@ export async function runPilotScorecard(
   // 12. Save scorecard JSON to analyzer-internal/findings/ (R24 separate row / file)
   const defaultScorecardPath =
     mode === 'gitmirror'
-      ? (split === 'final' ? GITMIRROR_FINAL_SCORECARD_PATH : GITMIRROR_SCORECARD_PATH)
+      ? (split === 'final' || split === 'held-out' ? GITMIRROR_FINAL_SCORECARD_PATH : GITMIRROR_SCORECARD_PATH)
       : PILOT_SCORECARD_PATH;
   const outPath = options.scorecardPath ?? defaultScorecardPath;
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, JSON.stringify(report, null, 2), 'utf8');
+
+  // Auto-sync PROGRESS.md when scorecard is written to analyzer-internal/findings/ per D-025 / Track 4
+  try {
+    const { runProgressLogCli } = await import('./progress-log.ts');
+    await runProgressLogCli({ renderOnly: true });
+  } catch (syncErr: unknown) {
+    console.warn('[scorecard] Auto-sync to PROGRESS.md failed:', syncErr);
+  }
 
   // Save spot-check deck per G6
   const defaultSpotcheckPath =
