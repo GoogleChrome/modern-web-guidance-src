@@ -87,17 +87,21 @@ const SHORT_TASK_LABELS = {
 const GUIDE_CATEGORY_MAP = {
     'animate-to-from-top-layer': 'ui-behaviors',
     'declarative-dialog-popover-control': 'ui-behaviors',
+    'directional-navigation-transitions': 'ui-behaviors',
     'faster-spa-view-transitions': 'performance',
     'flicker-free-client-side-ab-testing': 'performance',
     'forms': 'forms',
     'highlight-text-ranges': 'ui-behaviors',
+    'html': 'html',
     'interest-triggered-tooltips': 'ui-behaviors',
     'light-dismiss-a-dialog': 'ui-behaviors',
     'move-dom-element-without-losing-state': 'ui-behaviors',
+    'optimize-image-priority': 'performance',
     'optimize-preload-priority': 'performance',
     'position-aware-tooltips': 'ui-atoms',
     'same-document-transitions': 'ui-behaviors',
-    'scrollspy': 'ui-components'
+    'scrollspy': 'ui-components',
+    'search-hidden-content': 'ui-behaviors'
 };
 
 /**
@@ -138,24 +142,17 @@ const TASK_APPROACH_CONTRAST = {
  */
 const TASK_PAIR_OVERRIDES = {
     'animate-to-from-top-layer:codex_cli': {
-        guided: 'Retrieved animate-to-from-top-layer, but non-deterministically fell back to standard CSS transitions without @starting-style or allow-discrete (2/9).'
+        guided: 'Applied @starting-style on <dialog>, transition-behavior: allow-discrete on display/overlay, ::backdrop fade, and prefers-reduced-motion (8/9 — missed only @starting-style on [popover]).'
     },
     'flicker-free-client-side-ab-testing:codex_cli': {
         guided: 'Applied <script async blocking="render"> in <head> with feature detection (8/10), but omitted the fallback safety timeout and missed the variant timing check.'
     },
     'faster-spa-view-transitions:antigravity_cli': {
-        unguided: 'Passed all 6/6 checks without MWG after 19m and 855k uncached tokens of exploration.',
-        guided: 'Passed all 6/6 checks with MWG while cutting runtime by 3× (19m → 6m) and uncached tokens by 69% (855k → 263k).'
-    },
-    'scrollspy:antigravity_cli': {
-        unguided: 'Passed all 11/11 checks without MWG after 16m and 452k uncached tokens of exploration.',
-        guided: 'Passed all 11/11 checks with MWG while cutting runtime by 3.4× (16m → 5m) and uncached tokens by 73% (452k → 122k).'
+        unguided: 'Passed all 6/6 checks without MWG after 8m and 360k uncached tokens of exploration.',
+        guided: 'Passed all 6/6 checks with MWG (content-visibility: hidden, aria-hidden="true", focus management, and display: none fallback).'
     },
     'scrollspy:codex_cli': {
-        guided: 'Applied native scroll-target-group: auto, :target-current, and non-color indicators (9/11), but synced aria-current on scroll instead of scrollend and missed the fallback class.'
-    },
-    'interest-triggered-tooltips:codex_cli': {
-        guided: 'Retrieved both tooltip guides and used <div id> elements (4/16), but fell back to custom JS hover positioning instead of interestfor, popover="hint", and CSS anchor().'
+        guided: 'Applied native scroll-target-group: auto, :target-current, non-color indicators, scrollend ARIA sync, and IntersectionObserver fallback (10/11 — missed only the fallback class selector).'
     }
 };
 

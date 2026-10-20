@@ -485,10 +485,10 @@ test.describe('A/B Task Spotlight & Progressive Disclosure IA', () => {
     await expect(checksToggle).toHaveAttribute('aria-expanded', 'true');
     await expect(spotlight.locator('tr[data-a11y="true"]')).toBeVisible();
 
-    // Switch agent family to Antigravity CLI (2/9 -> 9/9, +7 checks)
+    // Switch agent family to Antigravity CLI (5/9 -> 9/9, +4 checks)
     await agentPills.nth(1).click();
     await expect(agentPills.nth(1)).toHaveAttribute('aria-pressed', 'true');
-    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+7 checks');
+    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+4 checks');
 
     // Verify zero horizontal page overflow across desktop (1440px, 1280px) and mobile (390px)
     for (const vp of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 390, height: 844 }]) {
