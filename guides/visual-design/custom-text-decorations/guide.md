@@ -147,23 +147,16 @@ Use a pseudo-element when the line must be a shape `text-decoration` cannot draw
   content: "";
   position: absolute;
   inset: auto 0 0 0;
+  block-size: 0.4em; /* Height of the squiggle; example value */
   pointer-events: none;
-  /* Straight fallback line where border-shape is unsupported */
-  border-block-end: var(--deco-thickness, max(1px, 0.08em)) solid var(--deco-color, currentColor);
-}
-
-@supports (border-shape: circle(50%)) {
-  .draw::after {
-    block-size: 0.4em; /* Height of the squiggle; example value */
-    border: var(--deco-thickness, max(1px, 0.08em)) solid var(--deco-color, currentColor);
-    /* A single shape strokes along its path, using the border width as the stroke. Example squiggle. */
-    border-shape: shape(from 0% 50%,
-      curve to 20% 50% with 5% 0% / 15% 100%,
-      smooth to 40% 50% with 35% 100%,
-      smooth to 60% 50% with 55% 100%,
-      smooth to 80% 50% with 75% 100%,
-      smooth to 100% 50% with 95% 100%);
-  }
+  border: var(--deco-thickness, max(1px, 0.08em)) solid var(--deco-color, currentColor);
+  /* A single shape strokes along its path, using the border width as the stroke. Example squiggle. */
+  border-shape: shape(from 0% 50%,
+    curve to 20% 50% with 5% 0% / 15% 100%,
+    smooth to 40% 50% with 35% 100%,
+    smooth to 60% 50% with 55% 100%,
+    smooth to 80% 50% with 75% 100%,
+    smooth to 100% 50% with 95% 100%);
 }
 
 /* Only hide and animate the line when the user has not asked for reduced motion;
@@ -183,7 +176,7 @@ Use a pseudo-element when the line must be a shape `text-decoration` cannot draw
 }
 ```
 
-Without `border-shape` the line is straight but still draws on, so the animation does not depend on the shape. For a freeform path or a draw-on that follows the stroke, see {{ GUIDE_REF("line-drawing-animation") }}.
+For a freeform path or a draw-on that follows the stroke, see {{ GUIDE_REF("line-drawing-animation") }}.
 
 ## Outline text with a box instead
 
@@ -351,5 +344,7 @@ Draw the outline with a clipped pseudo-element. Keep a transparent border so the
 ```
 
 For a filled shape rather than an outline, put `clip-path: polygon(...)` with the same points directly on the element.
+
+For the pseudo-element underline, draw a straight line with `border-block-end` on `.draw::after`, and apply the `block-size`, `border`, and `border-shape` squiggle only inside `@supports (border-shape: circle(50%))`. The line is straight but still draws on, because the `clip-path` animation does not depend on the shape.
 
 `clip-path` also clips focus rings and `box-shadow`. Do not rely on an outline on the clipped element to show focus; style `:focus-visible` with a color or background change instead.
