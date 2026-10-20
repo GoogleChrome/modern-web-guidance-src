@@ -160,7 +160,7 @@ With `appearance: base-select` applied to a `<select>` element, users don't have
 
 ### Fallbacks
 
-{# {{ BASELINE_STATUS("tmp-customizable-select-listbox") }} #}
+{{ FEATURE_FALLBACKS("tmp-customizable-select-listbox") }}
 
 For browsers that do not support customizable select, there is not a reasonable fallback with similar styling. If the default system UI is acceptable, only apply the styles in browsers that support `appearance: base-select`.
 
