@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getGuideStatus, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from './macros.ts';
 
@@ -930,18 +930,18 @@ describe('checkOriginTrialGraduations', () => {
   });
 });
 
-describe('classifyGuide and getGuideStatus lifecycle', () => {
+describe('classifyGuide lifecycle', () => {
   test('evaluates lifecycle status from guidance, expectations, and evals', () => {
-    assert.strictEqual(getGuideStatus({ hasGuide: false, hasGrader: true, hasTask: true, hasExpectations: true }), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: false, hasTask: false, draft: 'wip', hasExpectations: true }), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: false }), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: false, hasTask: true, hasExpectations: true }), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: false, hasExpectations: true }), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: false, hasTask: false, hasExpectations: true }), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: true }), null);
+    assert.strictEqual(classifyGuide({ hasGuide: false, hasGrader: true, hasTask: true, hasExpectations: true }), 'incomplete');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: false, hasTask: false, draft: 'wip', hasExpectations: true }), 'incomplete');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: false }), 'needs-expectations');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: false, hasTask: true, hasExpectations: true }), 'needs-calibration');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: false, hasExpectations: true }), 'needs-test');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: false, hasTask: false, hasExpectations: true }), 'needs-calibration');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: true }), 'complete');
   });
 
-  test('getGuideStatus evaluates GuideInventory identically for standard and discipline guides', async t => {
+  test('classifyGuide evaluates GuideInventory identically for standard and discipline guides', async t => {
     for (const isDisciplineGuide of [false, true]) {
       await t.test(`isDisciplineGuide=${isDisciplineGuide}`, () => {
         const baseInv: GuideInventory = {
@@ -962,15 +962,15 @@ describe('classifyGuide and getGuideStatus lifecycle', () => {
           isPublished: true,
         };
 
-        assert.strictEqual(getGuideStatus(baseInv), ProjectStatus.NeedsEvals);
-        assert.strictEqual(getGuideStatus({ ...baseInv, hasGrader: true, hasTask: true }), null);
-        assert.strictEqual(getGuideStatus({ ...baseInv, hasExpectations: false }), ProjectStatus.NeedsGuidance);
-        assert.strictEqual(getGuideStatus({ ...baseInv, draft: 'wip' }), ProjectStatus.NeedsGuidance);
+        assert.strictEqual(classifyGuide(baseInv), 'needs-calibration');
+        assert.strictEqual(classifyGuide({ ...baseInv, hasGrader: true, hasTask: true }), 'complete');
+        assert.strictEqual(classifyGuide({ ...baseInv, hasExpectations: false }), 'needs-expectations');
+        assert.strictEqual(classifyGuide({ ...baseInv, draft: 'wip' }), 'incomplete');
       });
     }
   });
 
-  test('getGuideStatus evaluates in-memory snapshots consistently', () => {
+  test('classifyGuide evaluates in-memory snapshots consistently', () => {
     const meta1 = parseGuideMetadata(`---
 name: old
 draft: true
@@ -978,7 +978,7 @@ draft: true
 # Old
 Body`, undefined, true);
     const evals1 = detectEvals(['guide.md', 'expectations.md', 'grader.ts', 'tasks/task.md']);
-    assert.strictEqual(getGuideStatus({ ...meta1, ...evals1, hasExpectations: true }), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(classifyGuide({ ...meta1, ...evals1, hasExpectations: true }), 'incomplete');
 
     const meta2 = parseGuideMetadata(`---
 name: ready
@@ -986,7 +986,7 @@ name: ready
 # Ready
 Body`, undefined, true);
     const evals2 = detectEvals(['guide.md', 'expectations.md']);
-    assert.strictEqual(getGuideStatus({ ...meta2, ...evals2, hasExpectations: true }), ProjectStatus.NeedsEvals);
+    assert.strictEqual(classifyGuide({ ...meta2, ...evals2, hasExpectations: true }), 'needs-calibration');
 
     const meta3 = parseGuideMetadata(`---
 name: complete
@@ -994,7 +994,7 @@ name: complete
 # Complete
 Body`, undefined, true);
     const evals3 = detectEvals(['guide.md', 'expectations.md', 'targets/daily-grind/grader.ts', 'targets/daily-grind/task.md']);
-    assert.strictEqual(getGuideStatus({ ...meta3, ...evals3, hasExpectations: true }), null);
+    assert.strictEqual(classifyGuide({ ...meta3, ...evals3, hasExpectations: true }), 'complete');
   });
 
   test('getPendingGuideStage compares before/after guide state across Stage 2 and Stage 3', () => {

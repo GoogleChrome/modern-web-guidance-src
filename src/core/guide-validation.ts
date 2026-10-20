@@ -204,19 +204,6 @@ interface ValidationResult {
 }
 
 /**
- * Maps a guide's fine-grained `GuideStatus` from `classifyGuide` onto the 2 active pipeline stages
- * (`Needs guidance` or `Needs evals`), or `null` when `'complete'`.
- */
-export function getGuideStatus(
-  inv: Pick<GuideInventory, 'hasGuide'> & Partial<Omit<GuideInventory, 'hasGuide'>>
-): ProjectStatus | null {
-  const status = classifyGuide(inv);
-  if (status === 'complete') return null;
-  if (status === 'needs-calibration' || status === 'needs-test') return ProjectStatus.NeedsEvals;
-  return ProjectStatus.NeedsGuidance;
-}
-
-/**
  * Evaluates a guide's project status from raw `guide.md` content and the set of relative
  * file paths present in the guide directory (e.g. from a git tree).
  */
@@ -283,10 +270,10 @@ export function getPendingGuideStage(
   touchedRelFiles: readonly string[],
   guideMetaAfter?: Pick<GuideMetadata, 'hasGuide' | 'draft'>
 ): ProjectStatus | null {
-  const currentStatus = inv ? getGuideStatus(inv) : ProjectStatus.NeedsGuidance;
-  if (currentStatus === null) return null;
+  const status = inv ? classifyGuide(inv) : 'stub';
+  if (status === 'complete') return null;
 
-  if (currentStatus === ProjectStatus.NeedsEvals) {
+  if (status === 'needs-calibration' || status === 'needs-test') {
     return touchedRelFiles.some(isEvalFile) ? ProjectStatus.NeedsEvals : null;
   }
 
@@ -476,11 +463,11 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
     const isIncomplete = !hasGuide && !inv.isStub;
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
+    const status = classifyGuide({ ...inv, hasGuide: guideBody.trim().length > 0 && !isDraftStub(inv.draft) });
     const statusName =
       !isIncomplete &&
       guideErrors.length === 0 &&
-      getGuideStatus({ ...inv, hasGuide: guideBody.trim().length > 0 && !isDraftStub(inv.draft) }) ===
-        ProjectStatus.NeedsGuidance
+      (status === 'stub' || status === 'incomplete' || status === 'needs-expectations')
         ? ProjectStatus.NeedsGuidance
         : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;

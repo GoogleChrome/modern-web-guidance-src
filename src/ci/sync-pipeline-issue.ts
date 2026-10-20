@@ -13,9 +13,9 @@ import { fileURLToPath } from 'node:url';
 
 import { parseBooleanEnv } from '../core/env.ts';
 import {
+  classifyGuide,
   detectEvals,
   EXPECTATIONS_FILE,
-  getGuideStatus,
   getPendingGuideStage,
   GUIDE_FILE,
   isEvalFile,
@@ -323,7 +323,7 @@ export function findStaleEvals(
 ): StaleEvalItem[] {
   const items: StaleEvalItem[] = [];
   for (const g of guides) {
-    if (getGuideStatus(g) !== null) continue;
+    if (classifyGuide(g) !== 'complete') continue;
 
     const slug = `${g.category}/${g.name}`;
     const hist = gitHistory.get(slug);
@@ -350,7 +350,7 @@ export function countGen2Evals(guides: GuideInventory[]): {
   gen2CompleteCount: number;
   dualTargetCompleteCount: number;
 } {
-  const gen2 = guides.filter(g => getGuideStatus(g) === null && (g.targets?.length ?? 0) >= 1);
+  const gen2 = guides.filter(g => classifyGuide(g) === 'complete' && (g.targets?.length ?? 0) >= 1);
   return {
     gen2CompleteCount: gen2.length,
     dualTargetCompleteCount: gen2.filter(g => (g.targets?.length ?? 0) >= 2).length,
@@ -429,11 +429,11 @@ function analyzeCommit(commitSha: string): CommitAnalysis {
     const hasExpectations = files.has(EXPECTATIONS_FILE) && expBlobSha !== EMPTY_BLOB_SHA;
     const meta = parseGuideMetadata(guideContent, undefined, true);
     const evals = detectEvals(files.keys());
-    const status = getGuideStatus({ ...meta, ...evals, hasExpectations });
+    const status = classifyGuide({ ...meta, ...evals, hasExpectations });
 
-    if (status === null) {
+    if (status === 'complete') {
       complete++;
-    } else if (status === ProjectStatus.NeedsEvals) {
+    } else if (status === 'needs-calibration' || status === 'needs-test') {
       needsEvals++;
     }
   }
@@ -474,11 +474,11 @@ function findReadySince(slugs: string[]): Map<string, string> {
       if (!blobsByPath.has(guidePath) || !blobsByPath.has(expPath)) break;
       const guideContent = child_process.execFileSync('git', ['show', `${sha}:${guidePath}`], { cwd, encoding: 'utf8' });
       const meta = parseGuideMetadata(guideContent, undefined, true);
-      const status = getGuideStatus({
+      const status = classifyGuide({
         ...meta,
         hasExpectations: blobsByPath.get(expPath) !== EMPTY_BLOB_SHA,
       });
-      if (status === ProjectStatus.NeedsGuidance) break;
+      if (status === 'stub' || status === 'incomplete' || status === 'needs-expectations') break;
       since = date;
     }
     if (!since) throw new Error(`findReadySince: ${slug} is not landed at HEAD`);
@@ -892,7 +892,8 @@ function fetchOpenPrs(guides: GuideInventory[]): PrSummary[] {
       const parsed = parseGuidePath(filePath);
       if (!parsed || parsed.relPath !== GUIDE_FILE) continue;
       const inv = bySlug.get(parsed.slug);
-      if (!inv || getGuideStatus(inv) === ProjectStatus.NeedsGuidance) {
+      const status = inv ? classifyGuide(inv) : 'stub';
+      if (status === 'stub' || status === 'incomplete' || status === 'needs-expectations') {
         blobQueries.push({ pr, slug: parsed.slug, expr: `${pr.headRefOid}:guides/${parsed.slug}/${GUIDE_FILE}` });
       }
     }
@@ -1019,8 +1020,11 @@ export function buildPipelineReportData(params: {
   const guideBySlug = new Map(validGuides.map(g => [`${g.category}/${g.name}`, g]));
   const existingGuideNames = new Set(validGuides.map(g => g.name));
 
-  const completeCount = validGuides.filter(g => getGuideStatus(g) === null).length;
-  const needsEvalsGuides = validGuides.filter(g => getGuideStatus(g) === ProjectStatus.NeedsEvals);
+  const completeCount = validGuides.filter(g => classifyGuide(g) === 'complete').length;
+  const needsEvalsGuides = validGuides.filter(g => {
+    const s = classifyGuide(g);
+    return s === 'needs-calibration' || s === 'needs-test';
+  });
   const contentLandedCount = completeCount + needsEvalsGuides.length;
 
   const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(params.openUseCaseIssues);
@@ -1090,10 +1094,13 @@ export function buildPipelineReportData(params: {
   }
 
   const needsGuidanceIssues = validGuides
-    .filter(
-      g =>
-        getGuideStatus(g) === ProjectStatus.NeedsGuidance && !needsGuidancePrsBySlug.has(`${g.category}/${g.name}`)
-    )
+    .filter(g => {
+      const s = classifyGuide(g);
+      return (
+        (s === 'stub' || s === 'incomplete' || s === 'needs-expectations') &&
+        !needsGuidancePrsBySlug.has(`${g.category}/${g.name}`)
+      );
+    })
     .map(g => {
       const slug = `${g.category}/${g.name}`;
       const matchedIssue = findUseCaseIssue(slug, g.name);

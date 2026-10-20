@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, REQUIRED_FILES_START, buildRequiredFilesChecklist, preserveTemplateUseCases, reconcileNeedsUseCasesProjectStatus, NEEDS_INVESTIGATION_STATUS } from './sync-use-cases.ts';
-import { ProjectStatus, validateGuide, getGuideStatus, processGuideInventory, type GuideInventory } from '../core/guide-validation.ts';
+import { ProjectStatus, validateGuide, classifyGuide, processGuideInventory, type GuideInventory } from '../core/guide-validation.ts';
 import { pendingFeatures } from '../core/baseline.ts';
 
 function createTempDir(): string {
@@ -249,24 +249,24 @@ Body content.
   });
 });
 
-describe('getGuideStatus', () => {
-  test('returns "Needs guidance" when guide body is empty', () => {
-    assert.strictEqual(getGuideStatus({ hasGuide: false, hasGrader: true, hasTask: true, hasExpectations: true }), ProjectStatus.NeedsGuidance);
+describe('classifyGuide', () => {
+  test('returns "incomplete" when guide body is empty', () => {
+    assert.strictEqual(classifyGuide({ hasGuide: false, hasGrader: true, hasTask: true, hasExpectations: true }), 'incomplete');
   });
 
-  test('returns "Needs evals" when grader or task is missing', () => {
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: false, hasTask: true, hasExpectations: true }), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: false, hasExpectations: true }), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: false, hasTask: false, hasExpectations: true }), ProjectStatus.NeedsEvals);
+  test('returns "needs-calibration" or "needs-test" when grader or task is missing', () => {
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: false, hasTask: true, hasExpectations: true }), 'needs-calibration');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: false, hasExpectations: true }), 'needs-test');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: false, hasTask: false, hasExpectations: true }), 'needs-calibration');
   });
 
-  test('returns null when guide is complete', () => {
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: true }), null);
+  test('returns "complete" when guide is complete', () => {
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: true }), 'complete');
   });
 
-  test('returns "Needs guidance" when draft is set or expectations are missing', () => {
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: true, draft: 'wip', hasExpectations: true }), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: false }), ProjectStatus.NeedsGuidance);
+  test('returns "incomplete" or "needs-expectations" when draft is set or expectations are missing', () => {
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: true, draft: 'wip', hasExpectations: true }), 'incomplete');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: false }), 'needs-expectations');
   });
 });
 
