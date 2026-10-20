@@ -20,7 +20,7 @@ import {
   extractGeminiMetadata,
   extractPiMetadata
 } from './trajectory-normalizer.ts';
-import { collectGuidesUsed, collectGuidanceToolsUsed } from './guide-usage.ts';
+import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
 import { extractModelFromResults, extractTokenUsageFromResults } from './collection.ts';
 import { Agents } from '../config.ts';
 
@@ -383,6 +383,9 @@ test('trajectory_summary.json generation and priority read', async () => {
 
     const tokenUsage = extractTokenUsageFromResults(tempDir);
     assert.deepStrictEqual(tokenUsage, { total: 500, cached: 200 });
+
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'summary-guide-1'), true);
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'unrelated-guide'), false);
   } finally {
     removeTempDir(tempDir);
   }

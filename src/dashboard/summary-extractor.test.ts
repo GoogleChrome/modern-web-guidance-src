@@ -112,3 +112,20 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
     assert.deepStrictEqual(summary.chartData.guided_err_rate, [0]);
     assert.deepStrictEqual(summary.chartData.unguided_err_rate, [0]);
 });
+
+test('extractSuiteSummary computes unguidedLeakRate when unguided run accesses expected guide', () => {
+    const summary = extractSuiteSummary('run-leak', {
+        results: {
+            'daily-grind - translator - guided': [mockRun(5, 5)],
+            'daily-grind - translator - unguided': [{ ...mockRun(5, 5), guidesUsed: ['translator'] }],
+            'devtools-times - translator - guided': [mockRun(5, 5)],
+            'devtools-times - translator - unguided': [mockRun(0, 5)],
+        },
+    });
+
+    assert.ok(summary);
+    // 1 out of 2 unguided runs leaked -> 50%, without altering pass rates
+    assert.strictEqual(summary.unguidedLeakRate, 50);
+    assert.strictEqual(summary.unguidedStats.passed, 5);
+    assert.strictEqual(summary.unguidedStats.total, 10);
+});
