@@ -227,9 +227,6 @@ main {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   scroll-margin-top: 64px;
   transition: border-color 0.15s, box-shadow 0.15s, outline 0.15s;
-  /* Skip layout/paint for far-offscreen cards. */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 422px;
 
   &:hover {
     border-color: var(--demos-border-active);

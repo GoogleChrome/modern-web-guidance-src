@@ -179,6 +179,26 @@ main.addEventListener('click', e => {
   clickActions[/** @type {string} */ (actionEl.dataset.action)](actionEl, card);
 });
 
+let hoveredIframe = /** @type {HTMLIFrameElement | null} */ (null);
+for (const { card } of views) {
+  const iframe = /** @type {HTMLIFrameElement} */ ($('iframe', card));
+  iframe.addEventListener('pointerenter', () => { hoveredIframe = iframe; });
+  iframe.addEventListener('pointerleave', () => {
+    if (hoveredIframe === iframe) hoveredIframe = null;
+  });
+}
+window.addEventListener('blur', () => {
+  const y = window.scrollY;
+  requestAnimationFrame(() => {
+    if (document.activeElement instanceof HTMLIFrameElement && document.activeElement !== hoveredIframe) {
+      document.activeElement.blur();
+      if (window.scrollY !== y) {
+        window.scrollTo({ top: y, behavior: 'instant' });
+      }
+    }
+  });
+});
+
 function updateActiveHash() {
   const hash = window.location.hash;
   for (const link of tocGrid.querySelectorAll('.toc-link')) {

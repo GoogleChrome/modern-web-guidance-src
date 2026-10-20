@@ -132,21 +132,24 @@ async function getGcsAccessToken() {
 
 /**
  * Injected into guide demo previews rendered inside iframes (`?preview=1`).
- * Defends the gallery against offscreen demos calling `.focus()` on load (e.g. persistent-app-tours)
+ * Defends the gallery against offscreen demos calling `.focus()` or `.scrollIntoView()` on load
  * which would otherwise cause the browser to scroll the top-level parent window.
  */
-const PREVIEW_SHIM = '<script>(() => { const f = Element.prototype.focus || HTMLElement.prototype.focus; if (f) { const s = function(o) { return f.call(this, Object.assign({}, o, { preventScroll: true })); }; Element.prototype.focus = s; HTMLElement.prototype.focus = s; } })();</script>';
+const PREVIEW_SHIM = '<script>(() => { let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } })();</script>';
 
 /**
  * @param {string} html
  */
 function injectPreviewShim(html) {
-  const m = html.match(/<head[^>]*>/i) || html.match(/<html[^>]*>/i);
+  const cleaned = html
+    .replace(/\bautofocus\b/gi, 'data-autofocus-disabled')
+    .replace(/scroll-initial-target\s*:\s*nearest/gi, '/* scroll-initial-target disabled in preview */');
+  const m = cleaned.match(/<head[^>]*>/i) || cleaned.match(/<html[^>]*>/i);
   if (m && m.index !== undefined) {
     const idx = m.index + m[0].length;
-    return html.slice(0, idx) + PREVIEW_SHIM + html.slice(idx);
+    return cleaned.slice(0, idx) + PREVIEW_SHIM + cleaned.slice(idx);
   }
-  return PREVIEW_SHIM + html;
+  return PREVIEW_SHIM + cleaned;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -155,6 +158,7 @@ const server = http.createServer(async (req, res) => {
   
   // Handle CORS and Private Network Access for Playwright Trace Viewer
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', '*');
