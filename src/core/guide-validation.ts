@@ -783,13 +783,15 @@ export function classifyGuide(
   if (!inv.hasGuide || inv.draft) return 'incomplete';
   if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
 
+  // Gen 2 guides store per-app eval artifacts under targets/<base_app>/; require all targets to be complete.
   if (inv.targets && inv.targets.length > 0) {
     if (!inv.targets.every(t => t.hasSolution)) return 'incomplete';
-    if (!inv.targets.every(t => t.hasZeroPassrate) || !inv.hasGrader) return 'needs-calibration';
-    if (!inv.hasTask) return 'needs-test';
+    if (!inv.targets.every(t => t.hasZeroPassrate && t.hasGrader)) return 'needs-calibration';
+    if (!inv.targets.every(t => t.hasTask)) return 'needs-test';
     return 'complete';
   }
 
+  // Gen 1 guides store root grader.ts and tasks/task.md (or pre-aggregated booleans from detectEvals).
   if (!inv.hasGrader) return 'needs-calibration';
   if (!inv.hasTask) return 'needs-test';
   return 'complete';
