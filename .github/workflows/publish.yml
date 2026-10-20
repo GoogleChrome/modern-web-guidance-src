@@ -2,8 +2,8 @@ name: Publish Skills
 
 on:
   schedule:
-    # 20:00 UTC is 12:00 PM PST / 1:00 PM PDT
-    - cron: '0 20 * * 1'
+    # 14:50 UTC is 6:50 AM PST / 7:50 AM PDT
+    - cron: '50 14 * * 1'
   workflow_dispatch: {}
 
 permissions: {}
