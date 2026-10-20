@@ -1,0 +1,1 @@
+- Animate the UI across the application, keeping motion smooth and performant while respecting reduced-motion preferences.
