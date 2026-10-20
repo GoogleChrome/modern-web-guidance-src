@@ -1,6 +1,6 @@
 ---
 name: agentic-javascript-tools
-description: Programmatically register client-side JavaScript functions as tools for AI agents using the WebMCP Imperative API, including frameworks support.
+description: Programmatically register client-side JavaScript functions as tools for AI agents using the WebMCP Imperative API.
 web-feature-ids:
   - document-modelcontext
 ---
@@ -383,7 +383,7 @@ In TypeScript projects, **DO NOT** hand-write declarations for `document.modelCo
 * With an inline `inputSchema`, the `execute` input type is inferred from the schema.
 * Named types such as `WebMCP.ModelContextTool` are global (no import needed), useful for typing tool factories.
 
-## Frameworks support
+## Framework support
 
 **MANDATORY:** If the app uses React, Angular, or Vue, register tools through that framework's official WebMCP integration, listed below. **DO NOT** call `document.modelContext.registerTool()` from components or write your own lifecycle wrapper. Each integration already handles feature detection, `AbortSignal` cleanup, and scoping tools to the component or injector lifecycle. These APIs are experimental, so before writing code, look up the current signature in the package's types or docs.
 
