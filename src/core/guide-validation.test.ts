@@ -521,7 +521,7 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
     }
   });
 
-  test('classifyGuide returns incomplete, needs-calibration, and needs-test for partial target capsules', () => {
+  test('classifyGuide returns needs-calibration and needs-test for partial target capsules', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-test-target-partial-'));
     const guideDir = path.join(tmpDir, 'guides', 'test-category', 'test-guide-partial');
     const targetsDir = path.join(guideDir, 'targets', 'daily-grind');
@@ -532,10 +532,10 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
     fs.writeFileSync(path.join(guideDir, 'expectations.md'), '- rule');
 
     try {
-      // Case 1: only partial solutions exist across targets -> hasSolution is false
+      // Case 1: only partial solutions exist across targets -> hasSolution is false (still Stage 3 needs-calibration)
       fs.writeFileSync(path.join(patchesDir, 'jetski-solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
       let inv = inventoryGuide(guideDir);
-      assert.strictEqual(classifyGuide(inv), 'incomplete');
+      assert.strictEqual(classifyGuide(inv), 'needs-calibration');
 
       // Case 2: all solution patches and zero-passrate exist, but missing grader
       fs.writeFileSync(path.join(patchesDir, 'claude-solution.patch'), '+++ b/src/app.ts\n+const x = 1;');

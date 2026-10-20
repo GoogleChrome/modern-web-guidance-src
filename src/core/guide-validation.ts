@@ -785,8 +785,7 @@ export function classifyGuide(
 
   // Gen 2 guides store per-app eval artifacts under targets/<base_app>/; require all targets to be complete.
   if (inv.targets && inv.targets.length > 0) {
-    if (!inv.targets.every(t => t.hasSolution)) return 'incomplete';
-    if (!inv.targets.every(t => t.hasZeroPassrate && t.hasGrader)) return 'needs-calibration';
+    if (!inv.targets.every(t => t.hasSolution && t.hasZeroPassrate && t.hasGrader)) return 'needs-calibration';
     if (!inv.targets.every(t => t.hasTask)) return 'needs-test';
     return 'complete';
   }

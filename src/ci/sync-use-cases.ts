@@ -47,6 +47,7 @@ interface ProjectDetails {
 export const NEEDS_INVESTIGATION_STATUS = 'Needs investigation';
 
 interface GitHubData {
+  featureIssues: any[];
   featureToIssueMap: Map<string, FeatureIssueData>;
   allUseCases: any[];
   nameToIssueMap: Map<string, any>;
@@ -356,10 +357,10 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
               endCursor
             }
             nodes {
-              id
               content {
                 ... on Issue {
                   number
+                  state
                 }
               }
               fieldValues(first: 10) {
@@ -402,7 +403,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
 
       for (const item of project.items.nodes) {
         const issueNumber = item.content?.number;
-        if (!issueNumber) continue;
+        if (!issueNumber || item.content?.state === 'CLOSED') continue;
         const statusValue = item.fieldValues.nodes.find((v: any) => v.field?.name === 'Status');
         if (statusValue) {
           issueStatusMap.set(issueNumber, statusValue.name);
@@ -471,6 +472,7 @@ async function updateProjectItemStatus(
 
 async function fetchGitHubData(): Promise<GitHubData> {
   let projectDetails = null;
+  let featureIssues: any[] = [];
   let featureToIssueMap = new Map<string, FeatureIssueData>();
   let allUseCases: any[] = [];
   let nameToIssueMap = new Map<string, any>();
@@ -484,7 +486,7 @@ async function fetchGitHubData(): Promise<GitHubData> {
 
     console.log('Fetching "new-feature" issues...');
     try {
-      const featureIssues = await octokit.paginate(octokit.rest.issues.listForRepo, {
+      featureIssues = await octokit.paginate(octokit.rest.issues.listForRepo, {
         owner: ORG,
         repo: REPO,
         labels: 'new-feature',
@@ -515,7 +517,7 @@ async function fetchGitHubData(): Promise<GitHubData> {
     console.log('ℹ️ Skipping GitHub issue fetches (no GITHUB_TOKEN set).');
   }
 
-  return { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails };
+  return { featureIssues, featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails };
 }
 
 async function syncIssue(
@@ -715,6 +717,7 @@ async function processUseCases(
 }
 
 async function syncFeatureIssues(
+  featureIssues: any[],
   featureToIssueMap: Map<string, FeatureIssueData>,
   featuresWithActiveUseCases: Set<string>,
   featuresWithAnyUseCases: Set<string>,
@@ -763,10 +766,10 @@ async function syncFeatureIssues(
 
   // Reconcile any items on Project #30 that were auto-assigned "Needs use cases" by GitHub's
   // default project workflow (such as issues against existing guides like #2100).
-  if (projectDetails && featureToIssueMap.size > 0) {
+  if (projectDetails && featureIssues.length > 0) {
     for (const [issueNumber, targetStatus] of reconcileNeedsUseCasesProjectStatus(
       projectDetails.issueStatusMap,
-      featureToIssueMap.values(),
+      featureIssues,
       allUseCases,
     )) {
       const option = projectDetails.statusOptions.find((o: any) => o.name.toLowerCase() === targetStatus.toLowerCase());
@@ -847,10 +850,10 @@ async function cleanupOrphanedIssues(allUseCases: any[], activeIssueNumbers: Set
 async function run() {
   console.log('🚀 Starting use case sync...');
 
-  const { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
+  const { featureIssues, featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
   const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors } = await processUseCases(featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails);
   await cleanupOrphanedIssues(allUseCases, activeIssueNumbers);
-  await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails, allUseCases);
+  await syncFeatureIssues(featureIssues, featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails, allUseCases);
 
   if (hasError) {
     console.error('\n🛑 Sync failed due to validation errors:\n');

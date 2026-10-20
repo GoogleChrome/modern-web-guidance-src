@@ -32,6 +32,8 @@ function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
   const category = overrides.category ?? 'ui-components';
   const name = overrides.name ?? 'sample-guide';
   const dir = path.join(rootDir, 'guides', category, name);
+  const hasGrader = overrides.hasGrader ?? true;
+  const hasTask = overrides.hasTask ?? true;
   return {
     name,
     category,
@@ -41,10 +43,10 @@ function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
     isPublished: true,
     hasDemo: true,
     hasNegativeDemo: false,
-    hasTask: true,
+    hasTask,
     hasExpectations: true,
     expectationsEmpty: false,
-    hasGrader: true,
+    hasGrader,
     isDisciplineGuide: false,
     targets: [
       {
@@ -52,16 +54,16 @@ function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
         dir: path.join(dir, 'targets', 'daily-grind'),
         hasSolution: true,
         hasZeroPassrate: true,
-        hasGrader: true,
-        hasTask: true,
+        hasGrader,
+        hasTask,
       },
       {
         name: 'devtools-times',
         dir: path.join(dir, 'targets', 'devtools-times'),
         hasSolution: true,
         hasZeroPassrate: true,
-        hasGrader: true,
-        hasTask: true,
+        hasGrader,
+        hasTask,
       },
     ],
     featureIds: ['popover'],
@@ -473,8 +475,8 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
           dir: '/tmp/guides/forms/incomplete-with-targets/targets/daily-grind',
           hasSolution: true,
           hasZeroPassrate: true,
-          hasGrader: true,
-          hasTask: true,
+          hasGrader: false,
+          hasTask: false,
         },
       ],
     });
