@@ -12,10 +12,6 @@ web-feature-ids:
   - scroll-snap-events
   - scroll-driven-animations
   - sibling-count
-  - carousel-slide-effects
-  - carousel-snap-highlights
-  - scroll-progress-indicator
-  - scroll-snap-state-sync
 ---
 
 # Build a carousel
