@@ -164,10 +164,11 @@
       }
     }
 
-    /* Define the columns once on the focusgroup; each row inherits them with subgrid. */
+    /* Icons are a known size, so a fixed leading slot aligns labels without subgrid. */
     [focusgroup~="menu"] {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
+      --menu-icon-size: 1.2em;
+      display: flex;
+      flex-direction: column;
       row-gap: .1rem;
       min-inline-size: 14rem;
     }
@@ -175,9 +176,7 @@
     /* Scope to items: a closed submenu popover inside the focusgroup must keep display: none. */
     [focusgroup~="menu"]>button,
     [focusgroup~="menu"]>:where([role="group"])>button {
-      display: grid;
-      grid-column: 1 / -1;
-      grid-template-columns: subgrid;
+      display: flex;
       align-items: center;
       inline-size: 100%;
       padding: .55rem .7rem;
@@ -189,21 +188,15 @@
       cursor: pointer;
     }
 
-    /* Column 1 holds the check mark so labels align whether or not an item is checkable. */
+    /* The leading slot holds the check mark so labels align whether or not an item is checkable. */
     [focusgroup~="menu"] button::before {
       content: '';
-      grid-column: 1;
-      inline-size: 1.2em;
+      flex: none;
+      inline-size: var(--menu-icon-size);
     }
 
     [aria-checked="true"]::before {
       content: '✓';
-    }
-
-    /* Separators and groups span the row; a group passes the columns through to its buttons. */
-    [focusgroup~="menu"]>hr,
-    [focusgroup~="menu"]>[role="group"] {
-      grid-column: 1 / -1;
     }
 
     [focusgroup~="menu"]>hr {
@@ -214,13 +207,14 @@
     }
 
     [focusgroup~="menu"]>[role="group"] {
-      display: grid;
-      grid-template-columns: subgrid;
+      display: flex;
+      flex-direction: column;
+      row-gap: .1rem;
     }
 
     .hint {
-      grid-column: 3;
-      margin-inline-start: 1.5rem;
+      margin-inline-start: auto;
+      padding-inline-start: 1.5rem;
       opacity: .75;
     }
   </style>

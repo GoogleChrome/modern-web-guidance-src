@@ -4,7 +4,6 @@ description: Build a menu component that displays a list of options or actions, 
 web-feature-ids:
   - popover
   - invoker-commands
-  - subgrid
   - anchor-positioning
   - focusgroup
 guides:
@@ -14,7 +13,7 @@ guides:
 <!-- Baseline best practices to be referenced by any guide that involves a popup menu (dropdown menus, context menus, overflow menus, etc)
 
 Include:
-- subgrid for icons
+- fixed-size icon slot (no subgrid)
 - proper keyboard nav
 - safe triangles for submenus
 - converting to drawer on small screens?
@@ -278,36 +277,33 @@ Render the check mark from `[aria-checked="true"]::before`, not a separate icon 
 
 ## Align menu item content
 
-When a row has an icon, label, and shortcut or submenu indicator, define the columns on the focusgroup and use `subgrid` on each row. Hide shortcut text from assistive technology when it only repeats a key that already operates the item.
+When a row has an icon, label, and shortcut or submenu indicator, reserve a fixed-size leading slot for the icon or check mark and push the trailing content to the inline end. Icons are a known size, so a fixed slot keeps labels aligned whether or not an item has an icon. Do not use `subgrid` for rows: any extra inline child (a badge, for example) becomes its own grid item and breaks the layout. Hide shortcut text from assistive technology when it only repeats a key that already operates the item.
 
 ```css
 [focusgroup~="menu"] {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  row-gap: .1rem;
+  --menu-icon-size: 1.25rem;
 }
 
 /* Target items only. A closed submenu popover inside the focusgroup must keep display: none. */
 [focusgroup~="menu"] > button,
 [focusgroup~="menu"] > [role="group"] > button {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
+  display: flex;
   align-items: center;
+  gap: .5rem;
 }
 
-/* Separators and groups span the row; a group passes the columns through to its buttons. */
-[focusgroup~="menu"] > hr,
-[focusgroup~="menu"] > [role="group"] {
-  grid-column: 1 / -1;
+/* The leading slot holds the icon or check mark. */
+[focusgroup~="menu"] button::before {
+  content: "";
+  flex: none;
+  inline-size: var(--menu-icon-size);
 }
-[focusgroup~="menu"] > [role="group"] {
-  display: grid;
-  grid-template-columns: subgrid;
+
+/* Shortcut or submenu indicator at the inline end. */
+[focusgroup~="menu"] .hint {
+  margin-inline-start: auto;
 }
 ```
-
-Each button spans all three columns and inherits the parent's grid via `subgrid`. To place a submenu indicator or shortcut in the third column, nest it in a `<span>` with `grid-column: 3`:
 
 ```html
 <div focusgroup="menu nomemory">
@@ -315,7 +311,7 @@ Each button spans all three columns and inherits the parent's grid via `subgrid`
   <button type="button">
     Preferences
     <!-- Decorative: the submenu trigger already announces its popup -->
-    <span aria-hidden="true" style="grid-column: 3;">›</span>
+    <span class="hint" aria-hidden="true">›</span>
   </button>
 </div>
 ```
@@ -404,7 +400,3 @@ if (!('commandForElement' in HTMLButtonElement.prototype)) {
   });
 }
 ```
-
-### Fallbacks & browser support for Subgrid
-
-{{ BASELINE_STATUS("subgrid") }}
