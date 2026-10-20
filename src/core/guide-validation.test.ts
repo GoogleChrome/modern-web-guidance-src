@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, getGuideStatusFromFiles, doesPrSupplyGuideEval, doesPrSupplyGuideContent, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, getGuideStatusFromFiles, getPendingGuideStage, ProjectStatus, type GuideInventory } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from './macros.ts';
 
@@ -992,7 +992,7 @@ describe('getStatusName and getGuideStatus lifecycle', () => {
     assert.strictEqual(completeGen2Status, null);
   });
 
-  test('doesPrSupplyGuideEval and doesPrSupplyGuideContent match stage exit requirements', () => {
+  test('getPendingGuideStage compares before/after guide state across Stage 2 and Stage 3', () => {
     const baseInv: GuideInventory = {
       dir: '/tmp/guides/forms/slider',
       name: 'slider',
@@ -1011,14 +1011,20 @@ describe('getStatusName and getGuideStatus lifecycle', () => {
       isPublished: true,
     };
 
-    // Eval PRs on NeedsEvals guides count even when also touching guide.md
+    // Eval changes on NeedsEvals guides count even when also touching guide.md
     assert.strictEqual(
-      doesPrSupplyGuideEval(baseInv, ['guide.md', 'targets/daily-grind/grader.ts'], true),
-      true
+      getPendingGuideStage(baseInv, {
+        touchedRelFiles: ['guide.md', 'targets/daily-grind/grader.ts'],
+        matchesEvalBranch: true,
+      }),
+      ProjectStatus.NeedsEvals
     );
-    // Pure content PR touching only guide.md on a NeedsEvals guide is not an eval PR
-    assert.strictEqual(doesPrSupplyGuideEval(baseInv, ['guide.md'], false), false);
-    // Stubs require both guide.md and expectations.md/demo.html to count as a Guide PR
+    // Pure content change touching only guide.md on a NeedsEvals guide is not an eval change
+    assert.strictEqual(
+      getPendingGuideStage(baseInv, { touchedRelFiles: ['guide.md'] }),
+      null
+    );
+
     const stubInv: GuideInventory = {
       ...baseInv,
       hasGuide: false,
@@ -1026,15 +1032,46 @@ describe('getStatusName and getGuideStatus lifecycle', () => {
       hasDemo: false,
       hasExpectations: false,
     };
-    assert.strictEqual(doesPrSupplyGuideContent(stubInv, ['guide.md'], false), false);
-    assert.strictEqual(doesPrSupplyGuideContent(stubInv, ['guide.md', 'expectations.md'], false), true);
-    // Blocked guides require both guide.md and expectations.md/demo.html (frontmatter-only edits don't count)
+    // Frontmatter-only edit on a stub stays a stub (null)
+    assert.strictEqual(
+      getPendingGuideStage(stubInv, {
+        touchedRelFiles: ['guide.md'],
+        guideContent: '---\nname: slider\nweb-feature-ids:\n  - tmp-slider\n---\n',
+      }),
+      null
+    );
+    // Writing guide.md body on a stub advances NeedsGuidance even before expectations.md is added
+    assert.strictEqual(
+      getPendingGuideStage(stubInv, {
+        touchedRelFiles: ['guide.md'],
+        guideContent: '---\nname: slider\n---\n# Slider\nProse here.',
+      }),
+      ProjectStatus.NeedsGuidance
+    );
+
     const blockedInv: GuideInventory = { ...baseInv, draft: 'blocked' };
-    assert.strictEqual(doesPrSupplyGuideContent(blockedInv, ['guide.md'], false), false);
-    assert.strictEqual(doesPrSupplyGuideContent(blockedInv, ['guide.md', 'expectations.md'], false), true);
-    // WIP guides count when touching guide.md
+    // Frontmatter retag on a blocked guide that keeps `draft: blocked` is ignored
+    assert.strictEqual(
+      getPendingGuideStage(blockedInv, {
+        touchedRelFiles: ['guide.md'],
+        guideContent: '---\nname: slider\ndraft: blocked\ndraft-reason: still blocked\n---\n# Slider\nProse',
+      }),
+      null
+    );
+    // Removing `draft: blocked` in guide.md unblocks the guide and counts as NeedsGuidance
+    assert.strictEqual(
+      getPendingGuideStage(blockedInv, {
+        touchedRelFiles: ['guide.md'],
+        guideContent: '---\nname: slider\n---\n# Slider\nProse',
+      }),
+      ProjectStatus.NeedsGuidance
+    );
+
     const wipInv: GuideInventory = { ...baseInv, draft: 'wip' };
-    assert.strictEqual(doesPrSupplyGuideContent(wipInv, ['guide.md'], false), true);
+    assert.strictEqual(
+      getPendingGuideStage(wipInv, { touchedRelFiles: ['guide.md'] }),
+      ProjectStatus.NeedsGuidance
+    );
   });
 });
 

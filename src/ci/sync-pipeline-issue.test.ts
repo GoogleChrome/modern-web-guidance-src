@@ -557,6 +557,10 @@ describe('Per-guide PR stage attribution', () => {
           reviewers: [],
           labels: [],
           files: ['guides/forms/button-group/guide.md', 'guides/media/autoplay/guide.md'],
+          guideContents: {
+            'forms/button-group': '---\nname: button-group\ndraft: blocked\ndraft-reason: blocked on #1275\n---\n# Button group\nBody',
+            'media/autoplay': '---\nname: autoplay\nweb-feature-ids:\n  - autoplay\n---\n',
+          },
         },
       ],
       openUseCaseIssues: [],

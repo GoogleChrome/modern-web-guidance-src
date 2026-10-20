@@ -268,40 +268,68 @@ export function isEvalFile(relPath: string): boolean {
   return relPath === GRADER_FILE || relPath.startsWith('tasks/') || relPath.startsWith(`${TARGETS_DIR}/`);
 }
 
-/**
- * Returns true when an open PR supplies Stage 3 (`Needs evals`) artifacts for an inventoried guide.
- */
-export function doesPrSupplyGuideEval(
-  inv: GuideInventory | undefined,
-  touchedRelFiles: readonly string[],
-  matchesEvalBranch = false
-): boolean {
-  if (!inv || getGuideStatus(inv) !== ProjectStatus.NeedsEvals) return false;
-  return touchedRelFiles.some(isEvalFile) || (touchedRelFiles.length === 0 && matchesEvalBranch);
+export interface PendingGuideChange {
+  touchedRelFiles: readonly string[];
+  /** Raw `guide.md` content in the pending branch when `guide.md` is touched. */
+  guideContent?: string;
+  matchesEvalBranch?: boolean;
+  guideNameExistsElsewhere?: boolean;
 }
 
 /**
- * Returns true when an open PR supplies Stage 2 (`Needs guidance`) content for a guide.
- * Mirrors the exact conditions of `getGuideStatus(inv) === ProjectStatus.NeedsGuidance`.
+ * Evaluates whether a pending change to a guide supplies work for its current pipeline stage
+ * (`Needs guidance` or `Needs evals`), comparing the guide's inventory on `main` against its
+ * state after the pending change.
  */
-export function doesPrSupplyGuideContent(
+export function getPendingGuideStage(
   inv: GuideInventory | undefined,
-  touchedRelFiles: readonly string[],
-  guideNameExistsElsewhere = false
-): boolean {
-  if (inv && getGuideStatus(inv) !== ProjectStatus.NeedsGuidance) return false;
-  if (!inv && guideNameExistsElsewhere) return false;
+  change: PendingGuideChange,
+): ProjectStatus | null {
+  const currentStatus = inv
+    ? getGuideStatus(inv)
+    : change.guideNameExistsElsewhere
+      ? null
+      : ProjectStatus.NeedsGuidance;
+  if (currentStatus === null) return null;
 
-  if (!inv || inv.isStub || !inv.hasGuide || inv.draft === 'blocked') {
-    return (
-      touchedRelFiles.includes(GUIDE_FILE) &&
-      (touchedRelFiles.includes(EXPECTATIONS_FILE) || touchedRelFiles.includes(DEMO_FILE))
-    );
+  if (currentStatus === ProjectStatus.NeedsEvals) {
+    return change.touchedRelFiles.some(isEvalFile) ||
+      (change.touchedRelFiles.length === 0 && Boolean(change.matchesEvalBranch))
+      ? ProjectStatus.NeedsEvals
+      : null;
   }
-  if (inv.draft === 'wip') {
-    return touchedRelFiles.includes(GUIDE_FILE);
+
+  const hasGuideBefore = inv?.hasGuide ?? false;
+  const draftBefore = inv?.draft;
+  const hasExpectationsBefore = Boolean(inv?.hasExpectations && !inv?.expectationsEmpty);
+
+  let hasGuideAfter = hasGuideBefore;
+  let draftAfter = draftBefore;
+  if (change.guideContent !== undefined) {
+    const { data = {}, content: body = '' } = change.guideContent ? matter(change.guideContent) : {};
+    const hasContent = stripAllComments(body).trim().length > 0;
+    draftAfter = isDraftStub(data.draft)
+      ? 'stub'
+      : data.draft === 'blocked'
+        ? 'blocked'
+        : data.draft
+          ? 'wip'
+          : undefined;
+    hasGuideAfter = hasContent && !isDraftStub(draftAfter);
+  } else if (change.touchedRelFiles.includes(GUIDE_FILE)) {
+    hasGuideAfter = true;
+    if (draftBefore === 'wip') draftAfter = undefined;
   }
-  return touchedRelFiles.includes(EXPECTATIONS_FILE);
+  const hasExpectationsAfter = hasExpectationsBefore || change.touchedRelFiles.includes(EXPECTATIONS_FILE);
+
+  const writesGuide = !hasGuideBefore && hasGuideAfter;
+  const unblocksGuide = draftBefore === 'blocked' && draftAfter !== 'blocked';
+  const advancesWipGuide = draftBefore === 'wip' && change.touchedRelFiles.includes(GUIDE_FILE) && hasGuideAfter;
+  const addsMissingExpectations = !hasExpectationsBefore && hasExpectationsAfter && hasGuideAfter;
+
+  return writesGuide || unblocksGuide || advancesWipGuide || addsMissingExpectations
+    ? ProjectStatus.NeedsGuidance
+    : null;
 }
 
 /**

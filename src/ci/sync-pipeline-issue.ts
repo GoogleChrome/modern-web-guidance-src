@@ -14,11 +14,10 @@ import { fileURLToPath } from 'node:url';
 import { DEV_PR_BRANCH_PREFIX } from '../authoring/pr.ts';
 import { parseBooleanEnv } from '../core/env.ts';
 import {
-  doesPrSupplyGuideContent,
-  doesPrSupplyGuideEval,
   EXPECTATIONS_FILE,
   getGuideStatus,
   getGuideStatusFromFiles,
+  getPendingGuideStage,
   GUIDE_FILE,
   isEvalFile,
   ProjectStatus,
@@ -49,10 +48,13 @@ export interface PrSummary {
   isDraft: boolean;
   reviewDecision?: string | null;
   headRefName: string;
+  headRefOid?: string;
   author: string;
   reviewers: string[];
   labels: string[];
   files: string[];
+  /** Raw `guide.md` contents keyed by `category/name` slug for touched guides in `Needs guidance`. */
+  guideContents?: Record<string, string>;
 }
 
 export interface IssueSummary {
@@ -214,7 +216,7 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
   const fallbackEval = new Map<string, { evalSha: string; evalTs: number; evalDate: string }>();
   const output = child_process.execFileSync(
     'git',
-    ['log', '-M', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
+    ['log', '-M', '-m', '--first-parent', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
     { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
   );
 
@@ -838,7 +840,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
 const PR_FETCH_LIMIT = 300;
 const ISSUE_FETCH_LIMIT = 500;
 
-function fetchOpenPrs(): PrSummary[] {
+function fetchOpenPrs(guides: GuideInventory[]): PrSummary[] {
   const raw = child_process.execFileSync(
     'gh',
     [
@@ -851,7 +853,7 @@ function fetchOpenPrs(): PrSummary[] {
       '--limit',
       String(PR_FETCH_LIMIT),
       '--json',
-      'number,title,body,isDraft,reviewDecision,headRefName,author,reviewRequests,latestReviews,labels,files',
+      'number,title,body,isDraft,reviewDecision,headRefName,headRefOid,author,reviewRequests,latestReviews,labels,files',
     ],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
   );
@@ -862,6 +864,7 @@ function fetchOpenPrs(): PrSummary[] {
     isDraft?: boolean;
     reviewDecision?: string | null;
     headRefName?: string;
+    headRefOid?: string;
     author?: { login?: string };
     reviewRequests?: Array<{ login?: string; name?: string }>;
     latestReviews?: Array<{ author?: { login?: string } }>;
@@ -875,13 +878,14 @@ function fetchOpenPrs(): PrSummary[] {
     );
   }
 
-  return parsed.map(p => ({
+  const prs: PrSummary[] = parsed.map(p => ({
     number: p.number,
     title: p.title,
     body: p.body ?? '',
     isDraft: Boolean(p.isDraft),
     reviewDecision: p.reviewDecision ?? null,
     headRefName: p.headRefName ?? '',
+    headRefOid: p.headRefOid,
     author: p.author?.login ?? 'unknown',
     reviewers: [
       ...new Set([
@@ -891,7 +895,43 @@ function fetchOpenPrs(): PrSummary[] {
     ].filter(Boolean),
     labels: (p.labels ?? []).map(l => l.name ?? '').filter(Boolean),
     files: (p.files ?? []).map(f => f.path ?? '').filter(Boolean),
+    guideContents: {},
   }));
+
+  const bySlug = new Map(guides.map(g => [`${g.category}/${g.name}`, g]));
+  const blobQueries: Array<{ pr: PrSummary; slug: string; expr: string }> = [];
+  for (const pr of prs) {
+    if (!pr.headRefOid) continue;
+    for (const filePath of pr.files) {
+      const m = /^guides\/([^/]+\/[^/]+)\/guide\.md$/.exec(filePath);
+      if (!m) continue;
+      const slug = m[1];
+      const inv = bySlug.get(slug);
+      if (!inv || getGuideStatus(inv) === ProjectStatus.NeedsGuidance) {
+        blobQueries.push({ pr, slug, expr: `${pr.headRefOid}:guides/${slug}/${GUIDE_FILE}` });
+      }
+    }
+  }
+
+  if (blobQueries.length > 0) {
+    const fields = blobQueries
+      .map((q, i) => `b${i}: object(expression: ${JSON.stringify(q.expr)}) { ... on Blob { text } }`)
+      .join('\n');
+    const gql = `{ repository(owner: ${JSON.stringify(ORG)}, name: ${JSON.stringify(REPO)}) { ${fields} } }`;
+    const gqlRaw = child_process.execFileSync('gh', ['api', 'graphql', '-f', `query=${gql}`], {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    const repoData = (JSON.parse(gqlRaw) as { data?: { repository?: Record<string, { text?: string } | null> } }).data
+      ?.repository;
+    for (let i = 0; i < blobQueries.length; i++) {
+      const { pr, slug } = blobQueries[i];
+      if (!pr.guideContents) pr.guideContents = {};
+      pr.guideContents[slug] = repoData?.[`b${i}`]?.text ?? '';
+    }
+  }
+
+  return prs;
 }
 
 function fetchOpenIssuesByLabel(label: string): IssueSummary[] {
@@ -1030,8 +1070,14 @@ export function buildPipelineReportData(params: {
     for (const [slug, touchedRelFiles] of touchedFilesBySlug) {
       const inv = guideBySlug.get(slug);
       const guideName = slug.split('/')[1];
+      const stage = getPendingGuideStage(inv, {
+        touchedRelFiles,
+        guideContent: pr.guideContents?.[slug],
+        matchesEvalBranch: branchGuideName === inv?.name,
+        guideNameExistsElsewhere: !inv && existingGuideNames.has(guideName),
+      });
 
-      if (inv && doesPrSupplyGuideEval(inv, touchedRelFiles, branchGuideName === inv.name)) {
+      if (stage === ProjectStatus.NeedsEvals) {
         if (!evalPrSlugs.has(slug)) {
           evalPrSlugs.add(slug);
           openEvalPrs.push({
@@ -1042,13 +1088,7 @@ export function buildPipelineReportData(params: {
             reviewers: filterCatchAllReviewers(pr.reviewers, 'evals'),
           });
         }
-        continue;
-      }
-
-      if (
-        !slugsWithContentPr.has(slug) &&
-        doesPrSupplyGuideContent(inv, touchedRelFiles, !inv && existingGuideNames.has(guideName))
-      ) {
+      } else if (stage === ProjectStatus.NeedsGuidance && !slugsWithContentPr.has(slug)) {
         slugsWithContentPr.add(slug);
         const matchedIssue = findUseCaseIssue(slug, guideName);
         const titleIssueNum = Number(/^\[#(\d+)\]/.exec(pr.title)?.[1]) || null;
@@ -1142,7 +1182,7 @@ export function runSyncPipelineIssue(): void {
   const isDryRun = hasWriteFlag ? false : isDryRunEnv;
 
   const guides = scanAllGuides();
-  const openPrs = fetchOpenPrs();
+  const openPrs = fetchOpenPrs(guides);
   const openUseCaseIssues = fetchOpenIssuesByLabel(NEW_USE_CASE_LABEL);
   const openFeatureIssues = fetchOpenIssuesByLabel(NEW_FEATURE_LABEL);
   const gitHistory = collectGitGuideHistory();
