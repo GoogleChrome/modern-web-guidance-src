@@ -90,6 +90,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@11ty/gray-matter": "^3.0.0",
     "@google-cloud/storage": "^7.19.0",
     "@google/gemini-cli": "0.61.0",
     "@huggingface/tokenizers": "^0.2.0",
@@ -105,7 +106,6 @@
     "caniuse-lite": "1.0.30001806",
     "colors": "^1.4.0",
     "glob": "^13.0.6",
-    "gray-matter": "^4.0.3",
     "marked": "^18.0.3",
     "mdn-data": "2.29.0",
     "omelette": "^0.4.17",

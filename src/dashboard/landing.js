@@ -568,6 +568,7 @@ function renderSuites() {
         const taskCount = testInfo.taskCount || 0;
         const maxRuns = testInfo.maxRuns || 1;
         const earlyFailureRate = testInfo.earlyFailureRate || 0;
+        const unguidedLeakRate = testInfo.unguidedLeakRate || 0;
         const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
         const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
         const isFaulty = earlyFailureRate === 100;
@@ -597,6 +598,7 @@ function renderSuites() {
                 <td style="font-weight: 600; line-height: 1.2;">
                     <div>${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</div>
                     ${earlyFailureRate > 0 ? `<div style="font-size: 0.72rem; font-weight: ${errWeight}; color: ${errColor}; opacity: ${errOpacity}; margin-top: 2px;" title="${earlyFailureRate}% of runs encountered infrastructure errors and were excluded">${earlyFailureRate}% err</div>` : ''}
+                    ${unguidedLeakRate > 0 ? `<div style="font-size: 0.72rem; font-weight: 600; color: #8b5cf6; margin-top: 2px;" title="${unguidedLeakRate}% of unguided runs accessed the reference guide">${unguidedLeakRate}% leak</div>` : ''}
                 </td>
                 <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
                     <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
