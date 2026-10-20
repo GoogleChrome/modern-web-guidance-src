@@ -80,11 +80,11 @@ ${markdownContent.substring(0, 3000)}
 async function main() {
   const allQueries: EvalQuery[] = [];
 
-  console.log("Scanning for eval-ready guides...");
-  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
+  console.log("Scanning for complete guides...");
+  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'complete');
 
   if (readyGuides.length === 0) {
-    console.log("No eval-ready guides found.");
+    console.log("No complete guides found.");
     return;
   }
 

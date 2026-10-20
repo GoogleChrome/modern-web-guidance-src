@@ -581,7 +581,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
 // Batch mode: process all incomplete guides
 export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   const incompleteGuides = scanAllGuides().filter(inv =>
-    inv.hasGuide && inv.hasExpectations && !inv.expectationsEmpty && classifyGuide(inv) !== 'eval-ready'
+    inv.hasGuide && inv.hasExpectations && !inv.expectationsEmpty && classifyGuide(inv) !== 'complete'
   );
 
   if (incompleteGuides.length === 0) {
@@ -626,12 +626,12 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
 }
 
 const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-  'incomplete': { label: 'Needs use cases (Stage 1 - incomplete)', color: cRed },
+  'incomplete': { label: 'Needs guidance (Stage 2 - incomplete)', color: cRed },
   'stub': { label: 'Needs guidance (Stage 2 - stub)', color: cYellow },
   'needs-expectations': { label: 'Needs guidance (Stage 2 - missing expectations)', color: cYellow },
   'needs-calibration': { label: 'Needs evals (Stage 3 - needs calibration)', color: cYellow },
   'needs-test': { label: 'Needs evals (Stage 3 - needs agent test)', color: cCyan },
-  'eval-ready': { label: 'Eval-ready (Complete)', color: cGreen },
+  'complete': { label: 'Complete', color: cGreen },
 };
 
 export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
@@ -651,7 +651,7 @@ export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
 
   // Summary counts
   console.log(cBold(`\nGuide Audit: ${allGuides.length} guides\n`));
-  for (const status of ['incomplete', 'stub', 'needs-expectations', 'needs-calibration', 'needs-test', 'eval-ready'] as GuideStatus[]) {
+  for (const status of ['incomplete', 'stub', 'needs-expectations', 'needs-calibration', 'needs-test', 'complete'] as GuideStatus[]) {
     const guides = byStatus.get(status) || [];
     const { label, color } = statusLabel[status];
     console.log(`  ${color(`${String(guides.length).padStart(2)}`)}  ${label}`);
@@ -771,7 +771,7 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
     'needs-expectations': 2,
     'needs-calibration': 3,
     'needs-test': 4,
-    'eval-ready': 5,
+    'complete': 5,
   };
 
   for (const fId of sortedFeatures) {

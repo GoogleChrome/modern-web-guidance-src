@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getGuideStatus, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from './macros.ts';
 
@@ -515,7 +515,7 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       assert.strictEqual(inv.targets?.[0].hasTask, true);
       
       const status = classifyGuide(inv);
-      assert.strictEqual(status, 'eval-ready');
+      assert.strictEqual(status, 'complete');
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -549,10 +549,10 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       inv = inventoryGuide(guideDir);
       assert.strictEqual(classifyGuide(inv), 'needs-test');
 
-      // Case 4: all present -> eval-ready
+      // Case 4: all present -> complete
       fs.writeFileSync(path.join(targetsDir, 'task.md'), '- task');
       inv = inventoryGuide(guideDir);
-      assert.strictEqual(classifyGuide(inv), 'eval-ready');
+      assert.strictEqual(classifyGuide(inv), 'complete');
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -594,7 +594,7 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       assert.strictEqual(inv.hasTask, true);
       
       const status = classifyGuide(inv);
-      assert.strictEqual(status, 'eval-ready');
+      assert.strictEqual(status, 'complete');
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -930,15 +930,15 @@ describe('checkOriginTrialGraduations', () => {
   });
 });
 
-describe('getStatusName and getGuideStatus lifecycle', () => {
+describe('classifyGuide and getGuideStatus lifecycle', () => {
   test('evaluates lifecycle status from guidance, expectations, and evals', () => {
-    assert.strictEqual(getStatusName('', true, true, false, true), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Content', false, false, true, true), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Content', true, true, false, false), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Content', false, true, false, true), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getStatusName('Content', true, false, false, true), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getStatusName('Content', false, false, false, true), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getStatusName('Content', true, true, false, true), null);
+    assert.strictEqual(getGuideStatus({ hasGuide: false, hasGrader: true, hasTask: true, hasExpectations: true }), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: false, hasTask: false, draft: 'wip', hasExpectations: true }), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: false }), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: false, hasTask: true, hasExpectations: true }), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: false, hasExpectations: true }), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: false, hasTask: false, hasExpectations: true }), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: true }), null);
   });
 
   test('getGuideStatus evaluates GuideInventory identically for standard and discipline guides', async t => {
@@ -978,7 +978,7 @@ draft: true
 # Old
 Body`, undefined, true);
     const evals1 = detectEvals(['guide.md', 'expectations.md', 'grader.ts', 'tasks/task.md']);
-    assert.strictEqual(getStatusName(meta1.hasGuide, evals1.hasGrader, evals1.hasTask, Boolean(meta1.draft), true), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getGuideStatus({ ...meta1, ...evals1, hasExpectations: true }), ProjectStatus.NeedsGuidance);
 
     const meta2 = parseGuideMetadata(`---
 name: ready
@@ -986,7 +986,7 @@ name: ready
 # Ready
 Body`, undefined, true);
     const evals2 = detectEvals(['guide.md', 'expectations.md']);
-    assert.strictEqual(getStatusName(meta2.hasGuide, evals2.hasGrader, evals2.hasTask, Boolean(meta2.draft), true), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getGuideStatus({ ...meta2, ...evals2, hasExpectations: true }), ProjectStatus.NeedsEvals);
 
     const meta3 = parseGuideMetadata(`---
 name: complete
@@ -994,7 +994,7 @@ name: complete
 # Complete
 Body`, undefined, true);
     const evals3 = detectEvals(['guide.md', 'expectations.md', 'targets/daily-grind/grader.ts', 'targets/daily-grind/task.md']);
-    assert.strictEqual(getStatusName(meta3.hasGuide, evals3.hasGrader, evals3.hasTask, Boolean(meta3.draft), true), null);
+    assert.strictEqual(getGuideStatus({ ...meta3, ...evals3, hasExpectations: true }), null);
   });
 
   test('getPendingGuideStage compares before/after guide state across Stage 2 and Stage 3', () => {

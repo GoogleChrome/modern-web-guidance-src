@@ -204,36 +204,16 @@ interface ValidationResult {
 }
 
 /**
- * Determines the project status name for a use case based on its completeness.
- * Returns null when the use case is complete.
- * @param guidance The guide body, or a precomputed has-guidance flag.
+ * Maps a guide's fine-grained `GuideStatus` from `classifyGuide` onto the 2 active pipeline stages
+ * (`Needs guidance` or `Needs evals`), or `null` when `'complete'`.
  */
-export function getStatusName(
-  guidance: string | boolean,
-  hasGrader: boolean,
-  hasTask: boolean,
-  isDraft: boolean = false,
-  hasExpectations: boolean = true
+export function getGuideStatus(
+  inv: Pick<GuideInventory, 'hasGuide'> & Partial<Omit<GuideInventory, 'hasGuide'>>
 ): ProjectStatus | null {
-  const hasGuidance = typeof guidance === 'string' ? guidance.trim().length > 0 : guidance;
-  if (!hasGuidance || isDraft || !hasExpectations) {
-    return ProjectStatus.NeedsGuidance;
-  }
-  if (!hasGrader || !hasTask) {
-    return ProjectStatus.NeedsEvals;
-  }
-  return null;
-}
-
-/** The project status of an inventoried guide; see getStatusName. */
-export function getGuideStatus(inv: GuideInventory): ProjectStatus | null {
-  return getStatusName(
-    inv.hasGuide,
-    inv.hasGrader,
-    inv.hasTask,
-    Boolean(inv.draft),
-    inv.hasExpectations && !inv.expectationsEmpty
-  );
+  const status = classifyGuide(inv);
+  if (status === 'complete') return null;
+  if (status === 'needs-calibration' || status === 'needs-test') return ProjectStatus.NeedsEvals;
+  return ProjectStatus.NeedsGuidance;
 }
 
 /**
@@ -807,29 +787,25 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   };
 }
 
-export type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
+export type GuideStatus = 'complete' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
-export function classifyGuide(inv: GuideInventory): GuideStatus {
+export function classifyGuide(
+  inv: Pick<GuideInventory, 'hasGuide'> & Partial<Omit<GuideInventory, 'hasGuide'>>
+): GuideStatus {
   if (inv.isStub) return 'stub';
-  if (!inv.hasGuide) return 'incomplete';
+  if (!inv.hasGuide || inv.draft) return 'incomplete';
   if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
 
   if (inv.targets && inv.targets.length > 0) {
-    const allHaveSolutions = inv.targets.every(t => t.hasSolution);
-    const allHaveZeroPassrate = inv.targets.every(t => t.hasZeroPassrate);
-    const allHaveGraders = inv.targets.every(t => t.hasGrader);
-    const allHaveTasks = inv.targets.every(t => t.hasTask);
-
-    if (!allHaveSolutions) return 'incomplete';
-    if (!allHaveZeroPassrate || !allHaveGraders) return 'needs-calibration';
-    if (!allHaveTasks) return 'needs-test';
-    return 'eval-ready';
-  } else {
-    if (!inv.hasDemo) return 'incomplete';
-    if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
+    if (!inv.targets.every(t => t.hasSolution)) return 'incomplete';
+    if (!inv.targets.every(t => t.hasZeroPassrate) || !inv.hasGrader) return 'needs-calibration';
     if (!inv.hasTask) return 'needs-test';
-    return 'eval-ready';
+    return 'complete';
   }
+
+  if (!inv.hasGrader) return 'needs-calibration';
+  if (!inv.hasTask) return 'needs-test';
+  return 'complete';
 }
 
 export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {

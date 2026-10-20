@@ -17,7 +17,6 @@ import {
   EXPECTATIONS_FILE,
   getGuideStatus,
   getPendingGuideStage,
-  getStatusName,
   GUIDE_FILE,
   isEvalFile,
   parseGuideMetadata,
@@ -430,13 +429,7 @@ function analyzeCommit(commitSha: string): CommitAnalysis {
     const hasExpectations = files.has(EXPECTATIONS_FILE) && expBlobSha !== EMPTY_BLOB_SHA;
     const meta = parseGuideMetadata(guideContent, undefined, true);
     const evals = detectEvals(files.keys());
-    const status = getStatusName(
-      meta.hasGuide,
-      evals.hasGrader,
-      evals.hasTask,
-      Boolean(meta.draft),
-      hasExpectations
-    );
+    const status = getGuideStatus({ ...meta, ...evals, hasExpectations });
 
     if (status === null) {
       complete++;
@@ -481,13 +474,10 @@ function findReadySince(slugs: string[]): Map<string, string> {
       if (!blobsByPath.has(guidePath) || !blobsByPath.has(expPath)) break;
       const guideContent = child_process.execFileSync('git', ['show', `${sha}:${guidePath}`], { cwd, encoding: 'utf8' });
       const meta = parseGuideMetadata(guideContent, undefined, true);
-      const status = getStatusName(
-        meta.hasGuide,
-        false,
-        false,
-        Boolean(meta.draft),
-        blobsByPath.get(expPath) !== EMPTY_BLOB_SHA
-      );
+      const status = getGuideStatus({
+        ...meta,
+        hasExpectations: blobsByPath.get(expPath) !== EMPTY_BLOB_SHA,
+      });
       if (status === ProjectStatus.NeedsGuidance) break;
       since = date;
     }

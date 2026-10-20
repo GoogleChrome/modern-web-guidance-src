@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, REQUIRED_FILES_START, buildRequiredFilesChecklist, preserveTemplateUseCases, reconcileNeedsUseCasesProjectStatus, NEEDS_INVESTIGATION_STATUS } from './sync-use-cases.ts';
-import { ProjectStatus, validateGuide, getStatusName, processGuideInventory, type GuideInventory } from '../core/guide-validation.ts';
+import { ProjectStatus, validateGuide, getGuideStatus, processGuideInventory, type GuideInventory } from '../core/guide-validation.ts';
 import { pendingFeatures } from '../core/baseline.ts';
 
 function createTempDir(): string {
@@ -249,49 +249,24 @@ Body content.
   });
 });
 
-describe('getStatusName', () => {
+describe('getGuideStatus', () => {
   test('returns "Needs guidance" when guide body is empty', () => {
-    assert.strictEqual(getStatusName('', true, true), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getGuideStatus({ hasGuide: false, hasGrader: true, hasTask: true, hasExpectations: true }), ProjectStatus.NeedsGuidance);
   });
 
-  test('returns "Needs guidance" when guide body is only whitespace', () => {
-    assert.strictEqual(getStatusName('   \n\t  ', true, true), ProjectStatus.NeedsGuidance);
-  });
-
-  test('returns "Needs evals" when grader is missing', () => {
-    assert.strictEqual(getStatusName('Some content.', false, true), ProjectStatus.NeedsEvals);
-  });
-
-  test('returns "Needs evals" when prompts are missing', () => {
-    assert.strictEqual(getStatusName('Some content.', true, false), ProjectStatus.NeedsEvals);
-  });
-
-  test('returns "Needs evals" when both grader and prompts are missing', () => {
-    assert.strictEqual(getStatusName('Some content.', false, false), ProjectStatus.NeedsEvals);
+  test('returns "Needs evals" when grader or task is missing', () => {
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: false, hasTask: true, hasExpectations: true }), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: false, hasExpectations: true }), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: false, hasTask: false, hasExpectations: true }), ProjectStatus.NeedsEvals);
   });
 
   test('returns null when guide is complete', () => {
-    assert.strictEqual(getStatusName('Some content.', true, true), null);
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: true }), null);
   });
 
-  test('returns "Needs guidance" before "Needs evals" since guidance must come first', () => {
-    assert.strictEqual(getStatusName('', false, false), ProjectStatus.NeedsGuidance);
-  });
-
-  test('returns "Needs guidance" when isDraft is true even if body and evals are present', () => {
-    assert.strictEqual(getStatusName('Some content.', true, true, true), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Some content.', false, false, true), ProjectStatus.NeedsGuidance);
-  });
-
-  test('returns "Needs guidance" when hasExpectations is false even if body is present', () => {
-    assert.strictEqual(getStatusName('Some content.', false, false, false, false), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Some content.', true, true, false, false), ProjectStatus.NeedsGuidance);
-  });
-
-  test('accepts a precomputed has-guidance flag in place of the body', () => {
-    assert.strictEqual(getStatusName(true, true, true), null);
-    assert.strictEqual(getStatusName(true, false, true), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getStatusName(false, true, true), ProjectStatus.NeedsGuidance);
+  test('returns "Needs guidance" when draft is set or expectations are missing', () => {
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: true, draft: 'wip', hasExpectations: true }), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getGuideStatus({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: false }), ProjectStatus.NeedsGuidance);
   });
 });
 
