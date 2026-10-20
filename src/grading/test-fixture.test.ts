@@ -108,6 +108,58 @@ progress.progress-ring {
     }
   });
 
+  test('getCssStyleSheet extracts <style> inside <script> tags and excludes <style>/[style] inside <template> elements in .html', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-html-template-test-'));
+    try {
+      const htmlFile = path.join(tempDir, 'index.html');
+      fs.writeFileSync(
+        htmlFile,
+        `<html>
+          <head>
+            <style>.global-style { color: red; }</style>
+          </head>
+          <body>
+            <template id="card-template">
+              <style>.template-style { color: blue; }</style>
+              <div style="font-size: 14px;"></div>
+            </template>
+            <div style="margin: 20px;"></div>
+            <script>
+              class MyCard extends HTMLElement {
+                connectedCallback() {
+                  this.shadowRoot.innerHTML = \`<style>.shadow-style { display: block; }</style>\`;
+                }
+              }
+            </script>
+          </body>
+        </html>`,
+        'utf8'
+      );
+
+      const stylesheet = getCssStyleSheet([htmlFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      // Top-level <style> should be found
+      const globalRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.global-style');
+      assert.ok(globalRule, 'Should find top-level .global-style rule');
+
+      // Top-level inline [style] should be found
+      const inlineRules = rules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '[style]');
+      assert.strictEqual(inlineRules.length, 1, 'Should find exactly 1 top-level inline [style] rule');
+      assert.strictEqual(inlineRules[0].style.getPropertyValue('margin'), '20px');
+
+      // <style> inside <script> should be extracted (e.g. shadowRoot.innerHTML)
+      const shadowRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.shadow-style');
+      assert.ok(shadowRule, 'Should extract .shadow-style rule from <script> template literal');
+
+      // <style> and [style] inside <template> MUST NOT be extracted as global page styles
+      const templateRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.template-style');
+      assert.ok(!templateRule, 'Must NOT extract .template-style from inside <template>');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   test('getCssStyleSheet handles empty file lists gracefully', () => {
     const stylesheet = getCssStyleSheet([]);
     assert.ok(stylesheet);

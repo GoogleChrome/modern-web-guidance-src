@@ -242,8 +242,10 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
     if (CSS_EXTS.test(file)) {
       cssBlocks.push(content);
     } else if (HTML_EXTS.test(file)) {
+      // Exclude <template> elements to avoid extracting inert component template styles as global page styles
+      const withoutTemplates = content.replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, '');
       try {
-        const document = parseHtmlDocument(file, content);
+        const document = parseHtmlDocument(file, withoutTemplates);
         document.querySelectorAll('style').forEach((style: any) => {
           if (style.textContent) cssBlocks.push(style.textContent);
         });
@@ -253,8 +255,18 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
             cssBlocks.push(`[style] { ${inlineStyle} }`);
           }
         });
+        // Also extract <style> blocks from <script> tags (e.g. shadowRoot.innerHTML in web components)
+        document.querySelectorAll('script').forEach((script: any) => {
+          const scriptText = script.textContent || '';
+          const styleMatches = scriptText.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+          if (styleMatches) {
+            for (const match of styleMatches) {
+              cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
+            }
+          }
+        });
       } catch {
-        const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+        const styleMatches = withoutTemplates.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
         if (styleMatches) {
           for (const match of styleMatches) {
             cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
