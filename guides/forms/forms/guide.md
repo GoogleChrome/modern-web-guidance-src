@@ -11,7 +11,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 
 - **DO** use the `<form>` element to wrap interactive controls for data collection.
 - **DO** wrap search forms and filtering controls in a `<search>` element.
-- **DO** give `<form>` elements an accessibile name via `aria-labelledby` (pointing to the forms heading) when a page has multiple forms.
+- **DO** give `<form>` elements an accessible name via `aria-labelledby` (pointing to the form's heading) when a page has multiple forms.
 - **DO** use `method="POST"` for sensitive data and mutations; use `method="GET"` for idempotent requests (e.g., search).
 - **DO** specify the `action` attribute for the destination URL.
 - **DO** specify a `name` attribute for every form control to identify data on submission.
