@@ -6,7 +6,7 @@ To release updates for our AI skills (Claude Code, Gemini CLI / Antigravity, VS 
 
 Releases are published automatically via GitHub Actions:
 * **Workflow**: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)
-* **Schedule**: Runs every Monday at 20:00 UTC (12:00 PM PST / 1:00 PM PDT).
+* **Schedule**: Runs every Monday at 14:50 UTC (6:50 AM PST / 7:50 AM PDT).
 * **Manual Trigger**: Can be triggered manually at any time via GitHub Actions **Run workflow** (`workflow_dispatch`).
 
 ## Manual Publishing via CLI

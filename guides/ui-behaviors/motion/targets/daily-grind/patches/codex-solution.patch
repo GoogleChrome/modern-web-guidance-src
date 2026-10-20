@@ -1,0 +1,18 @@
+diff --git a/index.html b/index.html
+index 66c9173..ae6ece3 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,13 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (prefers-reduced-motion: reduce) {
++      nav a,
++      .btn {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
