@@ -130,23 +130,34 @@ new ResizeObserver(() => requestFrameResize()).observe(document.documentElement)
 
 ### Load the embedded document after the host lays out the frame
 
-In Chrome 154, if the embedded document finishes its first layout **before** the embedding page has laid out the `<iframe>`, the frame collapses to 0px height. `requestResize()` doesn't recover it. This happens with `srcdoc` iframes written in the HTML and with `src` documents that load almost instantly (cached, or served by a service worker).
+{# Browser bug: https://issues.chromium.org/issues/575887314 (Chrome 154+, still in 155).
+   Inline srcdoc fails on ~50% of loads (frame ~3x too tall, locked ICB floor). Reassigning
+   srcdoc does not recover it; assigning srcdoc after the host's first layout does (0/16 bad). #}
 
-- For `src` embeds, add `loading="lazy"`. The browser then starts loading only after it has laid out the frame.
-- For `srcdoc` embeds (`loading="lazy"` does not help), or to be safe with any embed, assign `srcdoc`/`src`, or insert the `<iframe>`, from script after the host has rendered:
+In Chrome 154, if the embedded document lays out **before** the embedding page has laid out the `<iframe>`, the frame locks in a wrong height (often several times taller than the content) that `requestResize()` can't fix. It's a race, so it only happens on some loads, with `srcdoc` written in the HTML and with `src` documents that load almost instantly (cached, or from a service worker).
+
+- For `src` embeds, add `loading="lazy"` so loading starts after the frame is laid out.
+- For `srcdoc` embeds (`loading="lazy"` doesn't help), keep the markup in a `data-srcdoc` attribute and assign `srcdoc` from script after the host has rendered:
+
+```html
+<!-- The markup must include the responsive-embedded-sizing <meta> in its <head>. -->
+<iframe class="preview" title="Preview"
+        data-srcdoc="<!doctype html><html><head><meta name=&quot;responsive-embedded-sizing&quot; content=&quot;allow-origins=*&quot;>…"></iframe>
+```
 
 ```js
-// Assign the document after the host's first layout so the frame has a real size
-// when the embedded document first lays out.
+// Assign after the host's first layout so the frame has a real size when the embedded document lays out.
 const frame = document.querySelector('iframe.preview');
 requestAnimationFrame(() => {
-  frame.srcdoc = previewHtml; // previewHtml must include the responsive-embedded-sizing <meta> in its <head>.
+  frame.srcdoc = frame.dataset.srcdoc;
 });
 ```
 
+DO NOT reassign `srcdoc` to recover an affected frame (`frame.srcdoc = frame.srcdoc`, re-adding the attribute, or appending whitespace): the reloaded document inherits the wrong height.
+
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("frame-sizing") }}
+{{ BASELINE_STATUS("frame-sizing") }}
 
 If your Baseline target doesn't include responsive iframes, keep the legacy `postMessage()` resizing as a fallback, and run it **only** when `frame-sizing` isn't supported. Supporting browsers use the native path. Other browsers get the same no-scrollbar result from about 30 lines of script. The fallback needs code in both documents, so it only works for embedded documents you control.
 
