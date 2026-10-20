@@ -299,6 +299,12 @@ When a row has an icon, label, and shortcut or submenu indicator, reserve a fixe
   inline-size: var(--menu-icon-size);
 }
 
+/* Check mark for checked items. This selector must be at least as specific as the base
+   ::before rule above, or the empty content wins and the check mark never shows. */
+[focusgroup~="menu"] button[aria-checked="true"]::before {
+  content: "✓";
+}
+
 /* Shortcut or submenu indicator at the inline end. */
 [focusgroup~="menu"] .hint {
   margin-inline-start: auto;

@@ -195,7 +195,7 @@
       inline-size: var(--menu-icon-size);
     }
 
-    [aria-checked="true"]::before {
+    [focusgroup~="menu"] button[aria-checked="true"]::before {
       content: '✓';
     }
 
