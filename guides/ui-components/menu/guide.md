@@ -95,17 +95,6 @@ Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-po
 [popover] [popover] {
   position-area: inline-end span-block-end;
   position-try-fallbacks: flip-inline, flip-block, --below;
-  overflow: visible;
-}
-
-/* Safe triangle: an invisible bridge over the parent's edge, so a diagonal move toward the submenu
-   stays over it instead of sibling items. */
-[popover] [popover]::before {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: -1.5rem;
-  inline-size: 1.5rem;
 }
 
 /* Every menu list is an anchor, so a submenu can fall back to sit below its whole parent list. */
@@ -191,7 +180,7 @@ Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`,
 6. **Close one level at a time.** Call `stopPropagation()` on `Escape` and `ArrowLeft` in a submenu, or the parent's listener closes it too.
 7. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, call `focus({ focusVisible: false })`; browsers that ignore the option paint no ring for pointer focus anyway.
 8. **Hover switches open menus.** On `pointerenter` of a top-level trigger while another top-level menu is open: hide it, focus the hovered trigger without a ring, and step 2 previews it. Nothing open: do nothing.
-9. **Safe triangle.** No timer. Item hover focus is immediate; give each submenu an invisible `::before` bridge over its parent's edge (set `overflow: visible` on submenus, since popovers default to `auto` and clip it), so a diagonal move toward it stays over the submenu and does not refocus (and close) on sibling items. The bridge sits on the leading side, so flipped or `--below` placements need no bridge or a mirrored one.
+9. **Safe triangle.** A fixed CSS bridge is too narrow: it only works when the pointer starts near the parent's edge. Track the pointer instead. On every `pointermove`, while a submenu is open, test whether the pointer is inside the triangle made of its previous position and the submenu's two near-edge corners. If it is, the pointer is travelling toward the submenu, so do not focus the sibling item underneath (that would close the submenu). Start a short timer (about 300 ms) that focuses the item if no further move arrives, so a stalled pointer does not leave the wrong item active. Clear the timer on every move. Record the previous position in a `document` listener, so it still holds the old value when the menu handlers run. Use the left edge when the pointer is left of the submenu and the right edge when it flipped; a `--below` submenu has no side edge, so skip the triangle.
 
 ```js
 // 2. Preview on focus, anchored to the trigger. Not when focus returns from another window.
@@ -211,10 +200,37 @@ menu.addEventListener('command', event => {
   if (!menu.matches(':popover-open') && !fromPointer) enterOnOpen.add(menu);
 });
 
-// 7. Pointer over an item moves focus to it, so hover and focus are one item.
+// 7 and 9. Pointer over an item moves focus to it, unless the pointer is heading to an open submenu.
+let lastPointer = null;
+document.addEventListener('pointermove', event => {
+  lastPointer = { x: event.clientX, y: event.clientY }; // Runs after the menu handlers.
+});
+
+function headingToward(submenu, event) {
+  if (!lastPointer) return false;
+  const rect = submenu.getBoundingClientRect();
+  const x = event.clientX < rect.left ? rect.left : event.clientX > rect.right ? rect.right : null;
+  if (x === null) return false; // Below the parent: no side edge.
+  const sign = (a, b, c) => (a.x - c.x) * (b.y - c.y) - (b.x - c.x) * (a.y - c.y);
+  const point = { x: event.clientX, y: event.clientY };
+  const [a, b, c] = [lastPointer, { x, y: rect.top }, { x, y: rect.bottom }];
+  const signs = [sign(point, a, b), sign(point, b, c), sign(point, c, a)];
+  return !(signs.some(s => s < 0) && signs.some(s => s > 0));
+}
+
+let triangleTimer;
 menu.addEventListener('pointermove', event => {
+  clearTimeout(triangleTimer);
   const item = event.target.closest('button');
-  if (item && item !== document.activeElement) item.focus({ focusVisible: false });
+  if (!item || item === document.activeElement) return;
+  const focusItem = () => item.focus({ focusVisible: false });
+  // The open submenu whose parent is this menu, if the pointer is not on its own trigger.
+  const submenu = openChildSubmenu(menu);
+  if (submenu && triggerFor.get(submenu) !== item && headingToward(submenu, event)) {
+    triangleTimer = setTimeout(focusItem, 300);
+  } else {
+    focusItem();
+  }
 });
 
 // 8. Hover switches between top-level menus once one is open.
@@ -250,7 +266,7 @@ submenu.addEventListener('keydown', event => {
 
 Also close every open menu when focus lands outside the menu system (a document `focusin` listener), and when a command is activated: announce it, then hide the root menu.
 
-The snippets here and in the fallbacks below assume these helpers, which you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `isPreviewed(menu)` (`:popover-open:not(:focus-within)`), `focusFirst(menu)` (focus the first enabled item), `closeAndRestore(menu)` (focus its trigger before calling `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open), `pointerTrigger` (the trigger last pressed by a pointer) and `topLevelMenus` (the menus whose triggers are in the menubar).
+The snippets here and in the fallbacks below assume these helpers, which you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `isPreviewed(menu)` (`:popover-open:not(:focus-within)`), `focusFirst(menu)` (focus the first enabled item), `closeAndRestore(menu)` (focus its trigger before calling `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open), `pointerTrigger` (the trigger last pressed by a pointer), `topLevelMenus` (the menus whose triggers are in the menubar), `triggerFor` (a `Map` from menu to trigger) and `openChildSubmenu(menu)` (the open submenu whose parent menu is `menu`, if any).
 Set `aria-expanded` only in the `toggle` listener. It covers preview and open states, and the trigger's `aria-expanded` stays `"true"` while its menu is previewed or open.
 
 ### Submenus
