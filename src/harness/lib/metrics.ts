@@ -1,9 +1,14 @@
 export interface ScenarioCheck {
-  id: string;
+  id?: string;
+  testId?: string;
   passed: boolean;
   message: string;
   isEarlyFailure?: boolean;
   failureReason?: string;
+  error?: string;
+  errorLocation?: string;
+  pageSnapshot?: string;
+  browserErrors?: string;
 }
 
 export interface RunResult {

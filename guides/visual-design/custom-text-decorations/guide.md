@@ -1,6 +1,6 @@
 ---
 name: custom-text-decorations
-description: Style and animate text underlines, overlines, and strikethroughs with native text-decoration—including hover-reveal animations, custom offsets and end insets, descender ink skipping, and leading or trailing space skipping—and fall back to clipped pseudo-element lines or gradient and shaped outlines only where text-decoration cannot draw the look.
+description: Add text decorations such as underlines, overlines, strikethroughs, or entirely custom shapes, with reveal animations, custom offsets and end insets, and flexible ink skipping.
 web-feature-ids:
   - text-decoration
   - text-decoration-skip-ink
