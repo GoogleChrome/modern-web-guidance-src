@@ -146,17 +146,10 @@
         position-try-fallbacks: flip-inline, flip-block, --below;
       }
 
-      /* Every menu list is an anchor, so a submenu can fall back to sit below its whole parent list. */
-      [focusgroup~="menu"] {
-        anchor-name: --menu-list;
-      }
-
-      /* Last resort for narrow viewports: below the parent list, indented, so the submenu never covers
-         its items. Anchoring to the trigger instead would cover the items beneath it. */
+      /* Last resort for narrow viewports: directly below the trigger, indented, so the submenu never
+         covers its trigger. It does cover the sibling items beneath the trigger. */
       @position-try --below {
-        position-anchor: --menu-list;
         position-area: block-end span-inline-end;
-        margin-block-start: .75rem;
         margin-inline-start: 1rem;
         /* Fit the area: the submenu's minimum width must not stop this fallback from fitting. */
         min-inline-size: 0;

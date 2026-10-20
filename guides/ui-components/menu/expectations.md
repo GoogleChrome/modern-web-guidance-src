@@ -26,8 +26,8 @@
 - A diagonal move from the middle of a submenu trigger to any item in its submenu keeps the submenu open (a pointer-following safe triangle), while moving to a sibling item outside that path closes it.
 - Activating a command item closes all open menu levels, restores focus to the root menu trigger, and never leaves focus inside hidden content.
 - A submenu trigger only opens its submenu and never also runs a command; a default action is the first submenu item or a separate command item.
-- Menus are anchored to their triggers via CSS Anchor Positioning (using the invoker or `showPopover({ source: trigger })` without per-menu CSS anchor rules), positioning top-level menus below their trigger and submenus beside their trigger on wide viewports, and falling back to below the submenu trigger, indented, when neither side fits so a submenu never covers its parent menu.
+- Menus are anchored to their triggers via CSS Anchor Positioning (using the invoker or `showPopover({ source: trigger })` without per-menu CSS anchor rules), positioning top-level menus below their trigger and submenus beside their trigger on wide viewports, and falling back to directly below the submenu trigger, indented, when neither side fits so a submenu never covers its own trigger.
 - Checked items render a visible check mark in the leading slot (`::before` content is not empty); unchecked items don't.
 - Menu items align their content across rows with a fixed-size leading icon or check slot and trailing content at the inline end, without `subgrid`.
-- At a 375 px viewport, an open submenu's box does not intersect its parent menu's box.
+- At a 375 px viewport, an open submenu sits directly below its trigger item and its box does not intersect the trigger's box.
 - After a pointer activation of a command, focus returns to the root trigger without `:focus-visible`.
