@@ -13,12 +13,12 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing 40 rules across the 29 active feature guides (O69, O38 retired 4)', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 40);
-    assert.strictEqual(ALL_RULES.length, 40);
+  it('exports PILOT_RULES containing 50 rules across the 36 active feature guides (O69, O38 retired 4)', async (t) => {
+    assert.strictEqual(PILOT_RULES.length, 50);
+    assert.strictEqual(ALL_RULES.length, 50);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 29);
+    assert.strictEqual(guideIds.size, 36);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
@@ -26,6 +26,7 @@ describe('rules/index export registry', () => {
         'animate-element-entry-exit',
         'animate-to-intrinsic-sizes',
         'autofill-address-form',
+        'autofill-highlight-inputs',
         'autofill-sign-in-form',
         'brand-consistent-forms',
         'branded-select-styling',
@@ -33,23 +34,29 @@ describe('rules/index export registry', () => {
         'calculate-event-differentials',
         'checkbox',
         'child-state-based-styling',
+        'complex-shapes',
         'coordinate-global-events',
         'customize-scrollbar-color-and-thickness',
         'dark-mode',
         'declarative-dialog-popover-control',
         'defer-work-until-scroll-ends',
+        'deliver-optimized-decorative-images',
         'drag',
+        'equal-width-text-lines',
         'form-fields-automatically-fit-contents',
         'format-human-readable-durations',
         'ime-safe-enter-submit',
         'individual-transform-properties',
+        'light-dismiss-a-dialog',
         'manage-recurring-intervals',
         'prevent-page-scroll-under-modal-dialog',
         'resilient-context-menus-and-nested-dropdowns',
+        'responsive-table',
         'sanitize-untrusted-html',
         'schedule-tasks-by-priority',
         'scroll-position-aware-elements',
         'scrollspy',
+        'shrinking-header-on-scroll',
         'size-aware-styling',
       ].sort(),
     );

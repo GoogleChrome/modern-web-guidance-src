@@ -261,6 +261,13 @@
     "model-partial-time-concepts": "\\bTemporal\\.(PlainDate|PlainTime|PlainMonthDay|PlainYearMonth)\\b",
     "sanitize-untrusted-html": "setHTMLUnsafe\\s*\\(|parseHTMLUnsafe\\s*\\(|Sanitizer\\b",
     "custom-select-picker-layouts": "base-select\\b|::picker\\s*\\(\\s*select\\s*\\)",
-    "scroll-position-aware-elements": "animation-timeline\\s*:|scroll\\s*\\(|view\\s*\\(|ScrollTimeline\\b|ViewTimeline\\b"
+    "scroll-position-aware-elements": "animation-timeline\\s*:|scroll\\s*\\(|view\\s*\\(|ScrollTimeline\\b|ViewTimeline\\b",
+    "autofill-highlight-inputs": ":autofill\\b",
+    "complex-shapes": "mask-image\\s*:|(^|[^-\\w])mask\\s*:|mask-size\\s*:",
+    "deliver-optimized-decorative-images": "(^|[^-\\w])image-set\\s*\\(",
+    "responsive-table": "@container\\b|container-type\\s*:|--label",
+    "shrinking-header-on-scroll": "animation-timeline\\s*:|scroll\\s*\\(|ScrollTimeline\\b",
+    "equal-width-text-lines": "text-fit\\s*:|CSS\\.supports\\s*\\(\\s*['\"]text-fit",
+    "light-dismiss-a-dialog": "closedby\\s*=|['\"]closedBy['\"]\\s+in\\s+HTMLDialogElement"
   }
 }
