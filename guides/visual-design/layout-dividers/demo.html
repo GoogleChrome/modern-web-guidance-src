@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Layout Dividers with Gap Decorations</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --text: light-dark(#1c1917, #f5f5f4);
+      --muted: light-dark(#57534e, #a8a29e);
+      --page: light-dark(#fafaf9, #1c1917);
+      --panel: light-dark(#ffffff, #292524);
+      --rule: light-dark(#78716c, #a8a29e);
+      --accent: light-dark(#b91c1c, #f87171);
+      --accent-2: light-dark(#1d4ed8, #60a5fa);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 2rem 1.5rem 4rem;
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.55;
+      background: var(--page);
+      color: var(--text);
+    }
+
+    main { max-width: 60rem; margin-inline: auto; }
+    h1 { margin-block: 0 0.5rem; }
+    h2 { margin-block: 3rem 0.25rem; font-size: 1.25rem; }
+    p { margin-block: 0 0.75rem; }
+    .note { color: var(--muted); font-size: 0.9rem; max-width: 70ch; }
+    code { font-size: 0.85em; }
+
+    .support-note {
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--accent);
+      border-radius: 0.5rem;
+      margin-block: 1rem;
+    }
+    @supports (row-rule: 1px solid red) { .support-note { display: none; } }
+
+    /* Shared demo styling. Only the rule declarations differ per example. */
+    .demo {
+      background: var(--panel);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      gap: 1.5rem;
+
+      > * { margin: 0; padding: 0; list-style: none; }
+      b { display: block; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+      q { font-style: italic; }
+    }
+
+    /* 1. Multi-column */
+    .multicol {
+      columns: 3 12rem;
+      column-rule: 1px solid var(--rule);
+      column-rule-inset: 0.5rem;
+      p { margin-block-end: 0.75rem; }
+    }
+
+    /* 2. Flex row */
+    .flex-row {
+      display: flex;
+      justify-content: space-between;
+      column-rule: 2px solid var(--rule);
+    }
+
+    /* 3. Flex wrap, rules in both axes */
+    .flex-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      rule: 1px dashed var(--rule);
+      > * { flex: 1 1 8rem; }
+    }
+
+    /* 4. Flex column */
+    .flex-col {
+      display: flex;
+      flex-direction: column;
+      row-rule: 1px solid var(--rule);
+      row-rule-inset: 1rem;
+    }
+
+    /* 5. Grid, default breaking */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+      rule: 1px solid var(--rule);
+    }
+
+    /* 6. Grid, break at intersections with inset / overlap-join */
+    .grid-break {
+      rule: 2px solid var(--rule);
+      rule-break: intersection;
+      rule-inset: 0.5rem;
+    }
+    .grid-join {
+      rule: 2px solid var(--rule);
+      rule-break: intersection;
+      rule-visibility-items: between;
+      rule-inset: overlap-join;
+    }
+
+    /* 7. Spanning item: compare rule-break values */
+    .spans {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      rule: 2px solid var(--rule);
+      > .wide { grid-column: span 2; }
+    }
+    .spans.normal { rule-break: normal; }
+    .spans.intersection { rule-break: intersection; }
+    .spans.none { rule-break: none; }
+
+    /* 8. Value lists and repeat() */
+    .lists {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      column-rule: 3px solid var(--accent), repeat(auto, 1px dashed var(--rule)), 3px solid var(--accent-2);
+      row-rule: 3px double var(--rule), repeat(auto, 1px solid var(--rule));
+    }
+
+    /* 9. Overlap */
+    .overlap {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      column-rule: 8px solid var(--accent-2);
+      row-rule: 8px solid var(--accent);
+      gap: 2rem;
+      &.col-over { rule-overlap: column-over-row; }
+      &.row-over { rule-overlap: row-over-column; }
+    }
+
+    /* 10. Empty cells and visibility */
+    .empty {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      rule: 2px solid var(--rule);
+      > .gap-cell { visibility: hidden; }
+    }
+    .empty.all { rule-visibility-items: all; }
+    .empty.around { rule-visibility-items: around; }
+    .empty.between { rule-visibility-items: between; }
+
+    /* 11. Hover transitions */
+    .hover {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      rule: 1px solid var(--rule);
+      rule-break: intersection;
+      @media (prefers-reduced-motion: no-preference) {
+        transition: rule-color 0.2s, rule-width 0.2s;
+      }
+      &:has(:hover, :focus-visible) {
+        rule-color: var(--accent);
+        rule-width: 3px;
+      }
+      a { color: inherit; }
+    }
+
+    /* 12. Writing modes */
+    .rtl {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      direction: rtl;
+      column-rule: 3px solid var(--accent-2);
+      row-rule: 1px solid var(--accent);
+    }
+    .vertical {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      writing-mode: vertical-rl;
+      column-rule: 3px solid var(--accent-2);
+      row-rule: 1px solid var(--accent);
+      block-size: 14rem;
+    }
+
+    /* 13. Fallback pattern */
+    .fallback {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      @supports (row-rule: 1px solid red) {
+        gap: 1rem;
+        row-rule: 1px solid var(--rule);
+      }
+      @supports not (row-rule: 1px solid red) {
+        > * + * { border-block-start: 1px solid var(--rule); padding-block-start: 1rem; margin-block-start: 1rem; }
+      }
+    }
+
+    .cell-grid { display: contents; }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Layout dividers with gap decorations</h1>
+    <p class="note">
+      Dividers drawn by the container with <code>column-rule</code> / <code>row-rule</code>: no borders, pseudo-elements or spacer
+      elements. All text is from the 1818 first edition of Mary Shelley's <em>Frankenstein</em>.
+    </p>
+    <p class="support-note">Your browser doesn't support <code>row-rule</code> on flex and grid yet, so you'll see plain gaps. Content works without them.</p>
+
+    <h2>1. Multi-column: <code>column-rule</code> + <code>column-rule-inset</code></h2>
+    <p class="note">The long-standing multicol rule, now with inset so lines stop short of the column edges.</p>
+    <div class="demo multicol">
+      <p>It was on a dreary night of November, that I beheld the accomplishment of my toils. With an anxiety that almost amounted to agony, I collected the instruments of life around me, that I might infuse a spark of being into the lifeless thing that lay at my feet.</p>
+      <p>It was already one in the morning; the rain pattered dismally against the panes, and my candle was nearly burnt out, when, by the glimmer of the half-extinguished light, I saw the dull yellow eye of the creature open; it breathed hard, and a convulsive motion agitated its limbs.</p>
+      <p>How can I describe my emotions at this catastrophe, or how delineate the wretch whom with such infinite pains and care I had endeavoured to form? His limbs were in proportion, and I had selected his features as beautiful. Beautiful!—Great God!</p>
+    </div>
+
+    <h2>2. Flex row: <code>column-rule</code></h2>
+    <p class="note">One declaration on the container. No <code>:last-child</code> reset.</p>
+    <ul class="demo flex-row">
+      <li><b>Letter I</b>St. Petersburgh, Dec. 11th</li>
+      <li><b>Letter II</b>Archangel, 28th March</li>
+      <li><b>Letter III</b>July 7th</li>
+      <li><b>Letter IV</b>August 5th</li>
+    </ul>
+
+    <h2>3. Flex wrap: <code>rule</code> in both axes</h2>
+    <p class="note">Resize the window: rules follow the wrapping with no <code>:nth-child</code> maths.</p>
+    <ul class="demo flex-wrap">
+      <li>Chapter I</li><li>Chapter II</li><li>Chapter III</li><li>Chapter IV</li><li>Chapter V</li>
+      <li>Chapter VI</li><li>Chapter VII</li><li>Chapter VIII</li><li>Chapter IX</li>
+    </ul>
+
+    <h2>4. Flex column: <code>row-rule</code> + <code>row-rule-inset</code></h2>
+    <ul class="demo flex-col">
+      <li><b>Letter I</b>You will rejoice to hear that no disaster has accompanied the commencement of an enterprise which you have regarded with such evil forebodings.</li>
+      <li><b>Letter II</b>How slowly the time passes here, encompassed as I am by frost and snow.</li>
+      <li><b>Letter III</b>I write a few lines in haste, to say that I am safe, and well advanced on my voyage.</li>
+      <li><b>Letter IV</b>So strange an accident has happened to us, that I cannot forbear recording it.</li>
+    </ul>
+
+    <h2>5. Grid: <code>rule</code> with default <code>rule-break: normal</code></h2>
+    <p class="note">Rules are continuous through crossings, matching a classic table-like lattice.</p>
+    <ul class="demo grid">
+      <li><b>Victor</b><q>I was the slave, not the master of an impulse, which I detested, yet could not disobey.</q></li>
+      <li><b>The Creature</b><q>I am malicious because I am miserable.</q></li>
+      <li><b>Walton</b><q>What may not be expected in a country of eternal light?</q></li>
+      <li><b>Clerval</b><q>My dear Victor, what, for God’s sake, is the matter?</q></li>
+      <li><b>Justine</b><q>I did confess; but I confessed a lie.</q></li>
+      <li><b>Elizabeth</b><q>I cannot describe to you the uneasiness we have all felt concerning your health.</q></li>
+    </ul>
+
+    <h2>6. Grid: <code>rule-break: intersection</code> with <code>rule-inset</code></h2>
+    <p class="note">First: 0.5rem inset gives separate tick-like segments. Second: <code>overlap-join</code> makes the segments meet neatly at corners.</p>
+    <ul class="demo grid grid-break">
+      <li><b>Victor</b><q>Learn from me, if not by my precepts, at least by my example.</q></li>
+      <li><b>The Creature</b><q>I ought to be thy Adam; but I am rather the fallen angel.</q></li>
+      <li><b>Walton</b><q>Its productions and features may be without example.</q></li>
+      <li><b>Clerval</b><q>Do not laugh in that manner. How ill you are!</q></li>
+      <li><b>Justine</b><q>God knows, how entirely I am innocent.</q></li>
+      <li><b>Elizabeth</b><q>My dear cousin.</q></li>
+    </ul>
+    <ul class="demo grid grid-join" style="margin-block-start: 1rem">
+      <li><b>Victor</b><q>Nothing is so painful to the human mind as a great and sudden change.</q></li>
+      <li><b>The Creature</b><q>Every where I see bliss, from which I alone am irrevocably excluded.</q></li>
+      <li><b>Walton</b><q>I am, however, in good spirits.</q></li>
+      <li><b>Clerval</b><q>Do not ask me.</q></li>
+      <li><b>Justine</b><q>The God of heaven forgive me!</q></li>
+      <li><b>Elizabeth</b><q>Surely, Victor, you must have been exceedingly ill.</q></li>
+    </ul>
+
+    <h2>7. Spanning items: <code>normal</code> vs <code>intersection</code> vs <code>none</code></h2>
+    <p class="note">The Creature's speech spans two columns. Watch where the rules start and stop.</p>
+    <div class="demo-set">
+      <div class="demo spans normal">
+        <p class="wide"><b>normal</b><q>Remember, that I am thy creature.</q></p><p><b>Victor</b>Begone!</p>
+        <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
+      </div>
+      <div class="demo spans intersection" style="margin-block-start: 1rem">
+        <p class="wide"><b>intersection</b><q>Remember, that I am thy creature.</q></p><p><b>Victor</b>Begone!</p>
+        <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
+      </div>
+      <div class="demo spans none" style="margin-block-start: 1rem">
+        <p class="wide"><b>none</b><q>Remember, that I am thy creature.</q></p><p><b>Victor</b>Begone!</p>
+        <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
+      </div>
+    </div>
+
+    <h2>8. Value lists and <code>repeat(auto, …)</code></h2>
+    <p class="note">First and last column gaps are solid and coloured; every gap in between repeats a dashed rule. Row gaps: a double rule first, then solid.</p>
+    <div class="demo lists">
+      <p><b>Letter I</b>St. Petersburgh</p><p><b>Letter II</b>Archangel</p><p><b>Letter III</b>At sea</p><p><b>Letter IV</b>The ice</p>
+      <p><b>Ch. I</b>Geneva</p><p><b>Ch. II</b>Childhood</p><p><b>Ch. III</b>Departure</p><p><b>Ch. IV</b>Ingolstadt</p>
+      <p><b>Ch. V</b>The night of November</p><p><b>Ch. VI</b>Letters</p><p><b>Ch. VII</b>William</p><p><b>Vol. II</b>Justine</p>
+    </div>
+
+    <h2>9. <code>rule-overlap</code></h2>
+    <p class="note">Wide, contrasting rules show which axis paints on top at the crossings.</p>
+    <div class="demo overlap col-over">
+      <p><b>column-over-row</b>Geneva</p><p>Ingolstadt</p><p>The Orkneys</p><p>Archangel</p><p>The ice</p><p>Chamounix</p>
+    </div>
+    <div class="demo overlap row-over" style="margin-block-start: 1rem">
+      <p><b>row-over-column</b>Geneva</p><p>Ingolstadt</p><p>The Orkneys</p><p>Archangel</p><p>The ice</p><p>Chamounix</p>
+    </div>
+
+    <h2>10. Empty cells: <code>rule-visibility-items</code></h2>
+    <p class="note"><code>all</code> paints rules next to empty cells, <code>around</code> if either side has an item, <code>between</code> only when both do.</p>
+    <div class="demo empty all"><p><b>all</b>Victor</p><p>Elizabeth</p><p class="gap-cell">.</p><p class="gap-cell">.</p><p>Clerval</p><p class="gap-cell">.</p><p>Justine</p><p class="gap-cell">.</p><p>Walton</p></div>
+    <div class="demo empty around" style="margin-block-start: 1rem"><p><b>around</b>Victor</p><p>Elizabeth</p><p class="gap-cell">.</p><p class="gap-cell">.</p><p>Clerval</p><p class="gap-cell">.</p><p>Justine</p><p class="gap-cell">.</p><p>Walton</p></div>
+    <div class="demo empty between" style="margin-block-start: 1rem"><p><b>between</b>Victor</p><p>Elizabeth</p><p class="gap-cell">.</p><p class="gap-cell">.</p><p>Clerval</p><p class="gap-cell">.</p><p>Justine</p><p class="gap-cell">.</p><p>Walton</p></div>
+
+    <h2>11. Transitions on hover and focus</h2>
+    <p class="note">Hover or tab to a link: <code>rule-color</code> and <code>rule-width</code> animate, unless the user prefers reduced motion.</p>
+    <nav class="demo hover" aria-label="Chapters">
+      <a href="#c1">Chapter I</a><a href="#c2">Chapter II</a><a href="#c3">Chapter III</a>
+      <a href="#c4">Chapter IV</a><a href="#c5">Chapter V</a><a href="#c6">Chapter VI</a>
+    </nav>
+
+    <h2>12. Writing modes: columns are the inline axis</h2>
+    <p class="note"><code>column-rule</code> (blue) always follows the inline axis; <code>row-rule</code> (red) the block axis.</p>
+    <div class="demo rtl" lang="en">
+      <p>Victor</p><p>Elizabeth</p><p>Clerval</p><p>Justine</p><p>Walton</p><p>Creature</p>
+    </div>
+    <div class="demo vertical" style="margin-block-start: 1rem">
+      <p>Victor</p><p>Elizabeth</p><p>Clerval</p><p>Justine</p><p>Walton</p><p>Creature</p>
+    </div>
+
+    <h2>13. Fallback pattern</h2>
+    <p class="note">Gap decorations when supported; a border on adjacent siblings otherwise (only reliable for a simple single-column stack).</p>
+    <div class="demo fallback">
+      <p>Nothing is so painful to the human mind as a great and sudden change.</p>
+      <p>The sun might shine, or the clouds might lour; but nothing could appear to me as it had done the day before.</p>
+      <p>A fiend had snatched from me every hope of future happiness.</p>
+    </div>
+
+    <details style="margin-block-start: 3rem">
+      <summary>Text source</summary>
+      <p class="note">Excerpts from <em>Frankenstein; or, The Modern Prometheus</em> by Mary Wollstonecraft Shelley, the 1818 first edition (public domain; via Project Gutenberg #41445).</p>
+    </details>
+  </main>
+</body>
+
+</html>

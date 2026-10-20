@@ -1,0 +1,8 @@
+- The divider container uses `display: flex`, `display: grid`, or multicol (`columns`/`column-count`) and has a non-zero computed `column-gap` or `row-gap`.
+- The container's computed `column-rule-style` or `row-rule-style` is not `none`.
+- The container's computed `column-rule-width` or `row-rule-width` is non-zero for the axis whose rule style is not `none`.
+- The rules are declared with `column-rule`, `row-rule`, or `rule` (or their longhands) in the stylesheet on the container, not on its items.
+- No element inside the container exists only as a divider (`<hr>`, an empty element, an `aria-hidden` spacer, or a class name containing "divider" or "separator").
+- No `::before` or `::after` pseudo-element on the container's items draws a line (`content: ""` with `position: absolute` and a few-pixel `inline-size` or `block-size`).
+- The computed border widths of the container's items are `0` on the sides facing a gap.
+- The stylesheet does not contain `-rule-outset`, `gap-rule-paint-order`, or `spanning-item`.
