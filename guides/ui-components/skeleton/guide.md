@@ -64,7 +64,7 @@ Treat each element type differently. Text, links and list items share one rule (
   user-select: none;
   color: transparent;
   text-decoration: none; /* Link underlines would otherwise show through */
-  background: var(--skeleton-tone);
+  background-color: var(--skeleton-tone);
   /* One bar: a closed rounded rectangle, width --line-one */
   border-shape: shape(from var(--bar-radius) 0,
     hline to calc(var(--line-one) - var(--bar-radius)),
@@ -107,11 +107,13 @@ A skeleton is a simplification, not a copy. Keep what defines the silhouette (me
 
 Add a shimmer so users can tell the placeholders are actively loading and not broken.
 
-On each card, add an `::after` overlay (`position: absolute; inset: 0; pointer-events: none`) filled with a 110° `linear-gradient` that is transparent, then `--skeleton-highlight`, then transparent. Use `background-attachment: fixed` so the sweep is one continuous pass across all cards, `mix-blend-mode: screen`, and a keyframe animation of `background-position` over about 1.8s, linear and infinite. The card needs `position: relative`.
+Paint the shimmer on each placeholder shape's own `background`, not on a parent overlay, so every element works alone and you can apply the skeleton to just the part of a card that is updating. Keep the tone as `background-color` and add a 110° `linear-gradient` as `background-image` that is transparent, then `--skeleton-highlight`, then transparent. Use `background-attachment: fixed` so all shapes share one coordinate space and sweep in sync, and a keyframe animation of `background-position` over about 1.8s, linear and infinite. Do not use `mix-blend-mode`: it assumes a light surface, and the themed `--skeleton-tone` and `--skeleton-highlight` already adapt to any surface.
 
-DO NOT animate the `border-shape` path or the bars' visibility: it flashes in Chrome. Animate the overlay.
+With `background-attachment: fixed` the sweep is sized to the viewport, so a small loading area catches the highlight only briefly on each pass. Shorten the duration for small areas.
 
-MANDATORY: Under `@media (prefers-reduced-motion: reduce)`, set `animation: none` on the overlay. The placeholders stay visible.
+DO NOT animate the `border-shape` path or the bars' visibility: it flashes in Chrome. Animate the background.
+
+MANDATORY: Under `@media (prefers-reduced-motion: reduce)`, set `animation: none` on the shapes. The placeholders stay visible.
 
 ## Fallbacks
 

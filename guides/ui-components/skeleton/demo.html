@@ -165,14 +165,6 @@
         --skeleton-highlight: color-mix(in oklch, var(--surface) 70%, white);
       }
 
-      /* One shimmer per card, clipped to the card, so grid gaps and empty cells
-         don't show it. background-attachment: fixed keeps the gradient in one
-         viewport-wide coordinate space, so the sweep reads as a single pass
-         across all cards rather than a separate one per card. */
-      .skeleton[aria-busy="true"] article {
-        position: relative;
-      }
-
       /* Configure the number of visible cards here. JavaScript reads this
          value because CSS cannot use a custom property in :nth-child(). Whole
          cards can be removed; in-card items may need visibility to reserve space. */
@@ -184,17 +176,17 @@
         display: none;
       }
 
-      .skeleton[aria-busy="true"] article::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
+      /* The shimmer is painted on each shape's own background, so any element
+         works alone, even if only part of a card is loading.
+         background-attachment: fixed keeps every shape in one viewport-wide
+         coordinate space, so they sweep in sync. */
+      .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button, time, .media) {
+        background-color: var(--skeleton-tone);
         background-image: linear-gradient(110deg, transparent 40%, var(--skeleton-highlight) 50%, transparent 60%);
         background-repeat: no-repeat;
         background-attachment: fixed;
         background-size: 200% 100%;
         background-position: 200% 0;
-        mix-blend-mode: screen;
         animation: sweep 1.8s linear infinite;
       }
 
@@ -206,7 +198,7 @@
         min-block-size: 1lh;
         overflow: hidden;
         color: transparent;
-        background: var(--skeleton-tone);
+        background-color: var(--skeleton-tone);
         border-radius: .16lh;
         vertical-align: middle;
       }
@@ -227,7 +219,7 @@
         min-block-size: var(--block);
         overflow: hidden;
         user-select: none;
-        background: var(--skeleton-tone);
+        background-color: var(--skeleton-tone);
         border-shape: shape(from var(--bar-radius) 0,
             hline to calc(var(--line-one) - var(--bar-radius)),
             arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
@@ -407,7 +399,7 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .skeleton[aria-busy="true"] article::after {
+        .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button, time, .media) {
           animation: none;
         }
       }

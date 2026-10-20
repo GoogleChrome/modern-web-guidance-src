@@ -7,5 +7,5 @@
 - Buttons and inputs render as a single fixed-height pill with no padding or border.
 - Media and avatar placeholders use a `background-color` fill with `aspect-ratio`, and are not replaced with `content: linear-gradient()`.
 - Skeleton colors are derived from the surface with `color-mix()`.
-- A shimmer gradient animates across each card with `background-attachment: fixed`, so the sweep is one continuous pass across all cards.
+- A shimmer gradient is painted on each placeholder shape's own background with `background-attachment: fixed`, so all shapes sweep in sync without a parent overlay.
 - Only a limited number of cards are visible while loading, even if more are in the markup.
