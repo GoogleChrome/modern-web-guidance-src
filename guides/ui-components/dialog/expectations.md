@@ -1,0 +1,15 @@
+- The overlay is a `<dialog>` with a non-empty accessible name (`aria-labelledby` or `aria-label`).
+- A modal dialog is opened with `showModal()` or `command="show-modal"`, and `:modal` matches while it is open.
+- Focus moves into the dialog when it opens and returns to the invoking element when it closes.
+- Pressing `Esc` closes an open modal dialog, and the page has no `keydown` handler for `Escape` that closes it.
+- A native `<button>` inside the dialog closes it.
+- `closedby="any"` is set on the dialog when light dismiss is requested, and clicking the backdrop then closes it.
+- A dirty-form guard uses `closedby="none"` plus a confirmation path (such as `request-close` with a `cancel` handler), and the dialog stays open until the user confirms.
+- A non-modal panel that needs the top layer uses `<dialog popover>`, and the page behind it stays interactive.
+- While a modal dialog is open, content outside it is not focusable.
+- No `<dialog>` has `role="dialog"` or `aria-modal`.
+- A native modal has no JavaScript focus trap and no manual toggling of `inert` on other content.
+- Nothing described as modal is opened with the `open` attribute or `show()`.
+- No `<div role="dialog">` (or similar custom element) is used in place of `<dialog>`.
+- A backdrop-click fallback, if present, is feature-tested and does not close the dialog when a press starts inside the dialog and ends on the backdrop.
+- Menus and tooltips use `[popover]` on a semantic element, not `<dialog>`.
