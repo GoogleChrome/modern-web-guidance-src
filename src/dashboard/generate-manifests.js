@@ -167,6 +167,25 @@ export function generateDemosManifest(outputDir = defaultOutputDir) {
 }
 
 /**
+ * Injected into guide demo previews rendered inside iframes (`?preview=1`).
+ * Defends the gallery against offscreen demos calling `.focus()` or `.scrollIntoView()` on load
+ * which would otherwise cause the browser to scroll the top-level parent window.
+ */
+const PREVIEW_SHIM = '<script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>';
+
+/**
+ * @param {string} html
+ */
+export function injectPreviewShim(html) {
+    const m = html.match(/<head[^>]*>/i) || html.match(/<html[^>]*>/i);
+    if (m && m.index !== undefined) {
+        const idx = m.index + m[0].length;
+        return html.slice(0, idx) + PREVIEW_SHIM + html.slice(idx);
+    }
+    return PREVIEW_SHIM + html;
+}
+
+/**
  * Filter for fs.cpSync: keep demo pages and their static assets; skip eval targets and dotfiles.
  * Empty dirs may be created, but git (and thus gh-pages) ignores them.
  * @param {string} src
@@ -204,7 +223,14 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
         }
     }
 
-    fs.cpSync(guidesDir, path.join(stageDir, 'guides'), { recursive: true, filter: isDemoAsset });
+    const stagedGuidesDir = path.join(stageDir, 'guides');
+    fs.cpSync(guidesDir, stagedGuidesDir, { recursive: true, filter: isDemoAsset });
+    for (const rel of fs.readdirSync(stagedGuidesDir, { recursive: true, encoding: 'utf8' })) {
+        if (rel.endsWith('.html')) {
+            const htmlPath = path.join(stagedGuidesDir, rel);
+            fs.writeFileSync(htmlPath, injectPreviewShim(fs.readFileSync(htmlPath, 'utf8')));
+        }
+    }
 }
 
 /**

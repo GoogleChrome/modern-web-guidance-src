@@ -227,6 +227,9 @@ main {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   scroll-margin-top: 64px;
   transition: border-color 0.15s, box-shadow 0.15s, outline 0.15s;
+  /* 420px content-box = 110px .card-header + 310px .iframe-container (exact across OS font metrics). */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 420px;
 
   &:hover {
     border-color: var(--demos-border-active);
@@ -249,6 +252,10 @@ main {
   }
 
   &.expanded {
+    .card-header {
+      height: auto;
+    }
+
     .card-desc {
       height: auto;
       display: block;
@@ -273,6 +280,8 @@ main {
 }
 
 .card-header {
+  height: 110px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 6px;

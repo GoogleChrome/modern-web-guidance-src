@@ -421,7 +421,7 @@ const env = { ...process.env };
 const start = Date.now();
 let result;
 let attempts = 0;
-const maxAttempts = 3; // 1 initial attempt + 2 retries with exponential backoff
+const maxAttempts = 2; // 1 initial attempt + 1 retry with exponential backoff
 const baseDelay = 15000; // 15 seconds base delay
 const targetDirPath = ${JSON.stringify(targetDir)};
 const failureFile = path.join(targetDirPath, 'generation_failed.json');
@@ -437,7 +437,7 @@ while (attempts < maxAttempts) {
   // Assign the isolated HOME here so it is removed even if the timeout kills the agent
   // wrapper before its own cleanup runs.
   const isolatedHome = '/tmp/ghh-' + ${JSON.stringify(path.basename(agentScript).replace(/-agent\.ts$/, ''))} + '-' + randomUUID().slice(0, 8);
-  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env: { ...env, ${ISOLATED_HOME_ENV}: isolatedHome } });
+  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 900000, env: { ...env, ${ISOLATED_HOME_ENV}: isolatedHome } });
   try {
     fs.rmSync(isolatedHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   } catch (cleanupErr) {
@@ -478,9 +478,9 @@ if (result.status === 0) {
   const timedOut = result.error?.code === 'ETIMEDOUT';
   fs.writeFileSync(failureFile, JSON.stringify({
     agentName: path.basename(${JSON.stringify(agentScript)}),
-    exitCode: timedOut ? 'TIMEOUT (10m)' : result.status,
+    exitCode: timedOut ? 'TIMEOUT (15m)' : result.status,
     stderr: timedOut
-      ? 'Agent timed out after 10 minutes'
+      ? 'Agent timed out after 15 minutes'
       : 'Agent execution failed unexpectedly during setup or wrapper invocation',
     stdout: ''
   }, null, 2));

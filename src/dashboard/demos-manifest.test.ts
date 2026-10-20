@@ -56,4 +56,7 @@ test('stagePages copies demo assets but not eval sources', () => {
     const forbidden = fs.readdirSync(path.join(stageDir, 'guides'), { recursive: true, encoding: 'utf8' })
         .filter(rel => /\.(ts|md|patch)$/.test(rel) || rel.split(path.sep).includes('targets'));
     assert.deepEqual(forbidden, []);
+
+    const stagedDemo = fs.readFileSync(path.join(stageDir, 'guides/css/animate-to-intrinsic-sizes/demo.html'), 'utf8');
+    assert.ok(stagedDemo.includes('location.search.includes("preview=1")'), 'staged demo HTML should include preview focus/scroll shim');
 });
