@@ -25,15 +25,38 @@ const FITTEXT_PACKAGES = [
   'react-fitty',
 ] as const;
 
-function isFitTextCall(call: CallExpression): boolean {
+function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
   const expr = unwrapExpression(call.getExpression());
   if (Node.isIdentifier(expr)) {
     const name = expr.getText();
-    return name === 'fitty' || name === 'fitText' || name === 'fittext';
+    if (name !== 'fitty' && name !== 'fitText' && name !== 'fittext') {
+      return false;
+    }
+    if (call.getArguments().length === 0) {
+      return false;
+    }
+    return true;
   }
   if (Node.isPropertyAccessExpression(expr)) {
     const name = expr.getName();
-    return name === 'fitty' || name === 'fitText' || name === 'fittext';
+    if (name !== 'fitty' && name !== 'fitText' && name !== 'fittext') {
+      return false;
+    }
+    const target = unwrapExpression(expr.getExpression());
+    // Skip zero-arg wrapper calls like `customScripts.fitText()` when the file defines its own `fitText` method wrapping `$(...).fitText(...)`
+    if (
+      call.getArguments().length === 0 &&
+      Node.isIdentifier(target) &&
+      target.getText() !== '$' &&
+      target.getText() !== 'jQuery' &&
+      /\bfitText\s*[:(]/.test(sourceFile.getFullText())
+    ) {
+      const propAssignments = sourceFile.getFullText().match(/\bfitText\s*:\s*function\b|\bfunction\s+fitText\b/);
+      if (propAssignments) {
+        return false;
+      }
+    }
+    return true;
   }
   return false;
 }
@@ -64,7 +87,7 @@ export const equalWidthTextLinesJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (!isFitTextCall(node)) {
+      if (!isFitTextCall(node, sourceFile)) {
         return;
       }
 
