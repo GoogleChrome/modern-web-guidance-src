@@ -157,10 +157,21 @@
         inline-size: 1.5rem;
       }
 
-      /* Last resort for narrow viewports: below the trigger, indented, so the submenu never covers its parent. */
+      /* Every menu list is an anchor, so a submenu can fall back to sit below its whole parent list. */
+      [focusgroup~="menu"] {
+        anchor-name: --menu-list;
+      }
+
+      /* Last resort for narrow viewports: below the parent list, indented, so the submenu never covers
+         its items. Anchoring to the trigger instead would cover the items beneath it. */
       @position-try --below {
+        position-anchor: --menu-list;
         position-area: block-end span-inline-end;
+        margin-block-start: .75rem;
         margin-inline-start: 1rem;
+        /* Fit the area: the submenu's minimum width must not stop this fallback from fitting. */
+        min-inline-size: 0;
+        max-inline-size: calc(100% - 1rem);
       }
     }
 

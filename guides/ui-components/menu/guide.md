@@ -82,7 +82,7 @@ The rest of this guide describes the menubar form. For separate buttons, keep ev
 
 ### Position the menu with CSS Anchor Positioning
 
-Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-popover"` and `showPopover({ source: trigger })` set an implicit anchor, so do not add per-menu `anchor-name` or `position-anchor` rules. Menu behavior must not depend on anchor positioning.
+Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-popover"` and `showPopover({ source: trigger })` set an implicit anchor, so do not add per-menu `anchor-name` or `position-anchor` rules. The one shared exception is a single `anchor-name` on every menu list, which the `--below` fallback uses. Menu behavior must not depend on anchor positioning.
 
 ```css
 /* Top-level menus sit below their trigger. The implicit anchor comes from the invoker or source. */
@@ -108,14 +108,25 @@ Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-po
   inline-size: 1.5rem;
 }
 
-/* Last resort for narrow viewports: below the trigger, indented, so the submenu never covers its parent. */
+/* Every menu list is an anchor, so a submenu can fall back to sit below its whole parent list. */
+[focusgroup~="menu"] {
+  anchor-name: --menu-list;
+}
+
+/* Last resort for narrow viewports: below the parent list, indented, so the submenu never covers
+   its items. */
 @position-try --below {
+  position-anchor: --menu-list;
   position-area: block-end span-inline-end;
+  margin-block-start: .75rem;
   margin-inline-start: 1rem;
+  /* Fit the area: the submenu's minimum width must not stop this fallback from fitting. */
+  min-inline-size: 0;
+  max-inline-size: calc(100% - 1rem);
 }
 ```
 
-Keep `--below` last so it applies only when neither side fits; without it a narrow-viewport submenu covers its parent.
+Keep `--below` last so it applies only when neither side fits. Anchor it to the parent list, not the trigger: below the trigger still covers the items under it. Also let the submenu shrink to the area (`min-inline-size: 0`, `max-inline-size` minus the indent). A fallback that does not fit is skipped, and if none fit the browser keeps the base placement, so a submenu that is a few pixels too wide silently covers its parent.
 
 ### Animate open and close
 
