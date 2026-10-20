@@ -330,7 +330,7 @@ function toggleWidgetState() {
 ### Focus indicators
 
 - **Use visible focus indicators:** Always style `:focus-visible` state (not :`focus`) explicitly. (Best Practice)
-- **Prefer browser native focus indicators over custom focus indicators:** Ideally, leave focus indication to the browser. (Best Practice)
+- **Prefer browser native focus indicators over custom focus indicators:** Leave focus indication to the browser. (Best Practice)
 - **Mandatory - Don't disable browser native focus indicators without providing a replacement custom focus indicator:** When using `outline: none;` to suppress the browser native focus indicator, provide an equivalent custom focus indicator that has a contrast ratio of at least `3:1` against adjacent content (2.4.7 Focus Visible (Level AA), 1.4.11 Non-text Contrast (Level AA)).
 - **Prefer `outline` over other properties for focus rings:** If `box-shadow` must be relied on for focus rings, provide an `outline`-based fallback for High Contrast Mode using the `forced-colors` media query. (Best Practice)
 - **Pair custom focus outlines with `outline-offset`:** This visually separates the ring from the element. (Best Practice)
