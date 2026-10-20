@@ -2,6 +2,8 @@
 
 The Modern Web Guidance Analyzer scans brownfield web codebases for legacy idioms, obsolete polyfills, and userland workarounds, mapping every finding directly to a corresponding [Modern Web Guidance](../../guides) standard. It is designed for dual operation: fast, human-readable terminal reports for developers and structured machine-readable JSON for autonomous coding agents.
 
+See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Guide Triage`, `Static Matcher`, `LLM Verifier`, `Eval Judge`, `Fix Smoke Test`, and the `rule-writing`, `grading-only`, and `held-out` splits).
+
 ---
 
 ## 1. Quickstart
@@ -100,28 +102,28 @@ flowchart TD
 
 ---
 
-## 3. Two-Phase Architecture
+## 3. Architecture: Static Matcher + LLM Verifier
 
-High-precision static analysis requires balancing high recall against near-zero false positive rates across diverse real-world frameworks. The analyzer achieves this through a two-phase architecture:
+High-precision static analysis requires balancing high recall against near-zero false positive rates across diverse real-world frameworks. The analyzer achieves this through a two-step runtime architecture:
 
 ```mermaid
 flowchart LR
-    Source["Codebase Source Files<br/>(TS/JS, JSX/HTML, CSS, JSON)"] --> P1["Phase 1: Deterministic Scanner<br/>AST & Token Pattern Matching<br/>(High Recall, Fast)"]
+    Source["Codebase Source Files<br/>(TS/JS, JSX/HTML, CSS, JSON)"] --> P1["Static Matcher<br/>AST & Token Pattern Matching<br/>(High Recall, Fast)"]
     P1 --> RawCards["Candidate Findings<br/>(Card ID: SHA-256 slice)"]
-    RawCards --> P2["Phase 2: Semantic Verifier<br/>Rubric Check: keepWhen / dropWhen<br/>(High Precision &gt;=95%)"]
+    RawCards --> P2["LLM Verifier<br/>Rubric Check: keepWhen / dropWhen<br/>(High Precision)"]
     P2 --> Kept["Kept Modernization Findings"]
     P2 -.-> Dropped["Dropped False Positives<br/>(Guarded, Shadowed, Non-DOM)"]
 ```
 
-### Phase 1: High-Recall Deterministic Scanner
+### Static Matcher (High-Recall Deterministic Scanner)
 
 - **Speed & Breadth**: Scans thousands of files in milliseconds using token pre-filters (`fastTokens`) before parsing ASTs.
 - **Multi-Modal Matchers**: Evaluates JavaScript/TypeScript syntax trees via `ts-morph`, DOM elements and JSX props via custom AST visitors, CSS stylesheets via declaration parsing, and package dependencies via `package.json`.
 - **Finding Identity**: Every finding receives a deterministic 12-character hex ID:
   $$\text{CardID} = \text{SHA256}(\text{repo} : \text{commit} : \text{guideId} : \text{file} : \text{line})[0..12]$$
-  This guarantees stable tracking across repeat runs and held-out evaluation datasets.
+  This guarantees stable tracking across repeat runs and evaluation datasets.
 
-### Phase 2: High-Precision Semantic Verifier
+### LLM Verifier (Contextual Rubric Filter)
 
 Candidate matches are validated against rule-specific rubrics defined in [`schema.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/schema.ts):
 - **`keepWhen` Criteria**: Verified when the candidate matches genuine legacy workarounds (e.g., custom event loops, manual clipboard workarounds, DIY popover positioning).
@@ -241,46 +243,46 @@ To guarantee zero hallucinated false alarms when run in interactive developer te
 
 ---
 
-## 5. Evaluation, 3-Gate Fix Harness & Measurement Framework
+## 5. Evaluation, Fix Smoke Test & Measurement Framework
 
 The analyzer adheres to strict statistical rigor to guarantee production accuracy before any rule is published in `QUALIFIED_RULES`.
 
-### 3-Way Split Architecture (`R23`, `O32`, `O60`)
+### 3-Way Corpus Split Architecture (`R23`, `O32`, `O60`)
 
 The evaluation corpus is divided into three strictly isolated splits:
-- **`rule-writing` (115 local repos):** Used exclusively for authoring Phase 1 AST patterns and Phase 2 rubrics.
-- **`tune` (93 local held-out repos):** Used for threshold tuning, sequential sample analysis, and dev-set verification.
-- **`final` (2,336 remote GitMirror repos, 2,713 files):** Untuned, unexamined test split used solely for final held-out validation.
+- **`rule-writing` (115 local repos + GitMirror `rule-writing`):** Used exclusively for authoring Static Matcher AST patterns and LLM Verifier rubrics.
+- **`grading-only` (93 local repos):** Used for iterative precision/recall measurement and sequential sample analysis.
+- **`held-out` (2,336 remote GitMirror repos, 2,713 files):** Untuned, unexamined test split used solely for out-of-sample precision validation.
 
 Cross-split boundary isolation is statically verified by [`audit-transcripts.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/audit-transcripts.ts).
 
-### Independent Judge Protocol & Honest Calibration
+### Eval Judge Protocol & Honest Calibration
 
-Evaluation uses a 3-run majority-vote `gemini-3.8-flash` judge ([`judge.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/judge.ts)) operating under a de-primed prompt (`gemini-3.8-flash:detective-v6-spec22-5af939ff`) with zero technique hints or pre-approvals:
-- **Stability:** **87.7%** unanimous agreement across 3 passes at $T=0.2$.
+Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Eval Judge** ([`judge.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/judge.ts)) operating under a de-primed, explainer-grounded prompt (`gemini-3.8-flash:detective-v6-spec22-c3f54b90`) with zero rule-writer hints:
+- **Stability:** **88.6%** unanimous agreement across 3 passes on the 114-card dev set (`87.1%` across all 147 graded cards).
 - **Canary TNR:** **100.0%** (2/2 negative canary controls correctly rejected).
-- **Admission Status:** In-sample dev evaluation yielded Gwet's $\mathrm{AC}_1 = 0.498$ and Krippendorff's $\alpha = -0.099$. Because $\alpha < 0.667$, the judge is labeled **`not admitted`** pending evaluation against Paul Irish's upcoming unseen admission deck.
+- **Admission Status:** Dev evaluation yielded Gwet's $\mathrm{AC}_1 = 0.557$ and Krippendorff's $\alpha = -0.094$ (`0.492` / `-0.050` across all 147 cards). Because $\alpha < 0.667$, the **Eval Judge** is labeled **`not admitted`**.
 
-### Dual Held-Out Scorecard Results (35 Guides)
+### Dual Scorecard Results (`grading-only` vs. `held-out`)
 
-1. **Local-93 `tune` Split (`845acda987f8`):**
-   - **Pooled Held-Out Precision:** **78.5%** (`278/354`, 95% CI `[74.0% - 82.5%]`).
-   - **Qualified Rule (`animate-element-entry-exit`):** **97.5%** (`77/79`, 95% CI `[91.2% - 99.3%]`).
+1. **`grading-only` Split (93 local repos, `845acda987f8`):**
+   - **Pooled Precision:** **78.5%** (`278/354`, 95% CI `[74.0% - 82.5%]`).
+   - **Clears $\ge 0.90$ LB (`animate-element-entry-exit`):** **97.5%** (`77/79`, 95% CI `[91.2% - 99.3%]`).
    - **Coverage:** 1/35 guides clearing $\ge 0.90$ LB + 13 zero-FP low-$n$ guides.
-   - **Held-Out Recall:** **60.4%** ($n=101$).
-2. **GitMirror `final` Split (`d26557cf4124` across 2,336 repos):**
-   - **Pooled Held-Out Precision:** **72.0%** (`695/966`, 95% CI `[69.0% - 74.7%]`).
-   - **Qualified Rule (`individual-transform-properties`):** **98.9%** (`94/95`, 95% CI `[94.3% - 99.8%]`).
+   - **Recall:** **60.4%** ($n=101$).
+2. **`held-out` Split (2,336 GitMirror repos, `d26557cf4124`):**
+   - **Pooled Precision:** **72.0%** (`695/966`, 95% CI `[69.0% - 74.7%]`); **100% (`9/9`)** on Paul's blind human spot-check deck (`_gitmirror-final-spotcheck-deck`).
+   - **Clears $\ge 0.90$ LB (`individual-transform-properties`):** **98.9%** (`94/95`, 95% CI `[94.3% - 99.8%]`).
    - **Coverage:** 1/35 guides clearing $\ge 0.90$ LB + 5 zero-FP low-$n$ guides.
-   - **Phase 1 Precision:** **53.0%** (`721/1359`). Phase 2 filter retained **966** findings with 26 false drops.
+   - **Static Matcher Precision:** **53.1%** (`721/1359`). The **LLM Verifier** retained **966** findings.
 
-### 3-Gate Fix Validation Harness ([`fix-harness.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/fix-harness.ts))
+### Fix Smoke Test ([`fix-harness.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/fix-harness.ts))
 
-To evaluate end-to-end agentic code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), `fix-harness.ts` enforces three gates on every candidate refactor:
-- **Gate 1 (Legacy Finding Eliminated):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
-- **Gate 2 (Syntax, Anti-Gutting & Comment-Stripped Modern Feature Check):** Verifies clean AST/DOM/CSS parsing (`ts-morph` with JSX support, `linkedom`, `cssomnom`), top-level export retention, and comment-stripped presence of the guide's positive modern web feature.
-- **Gate 3 (Behavioral Invariants):** Runs behavioral/test assertions when available.
-- **Verified Benchmarks:** **100.0% (`75/75`) rejection** on the 3-class seeded bad-patch sensitivity suite (`no-op`, `deletion-gutting`, `broken/evasion`), **100.0% (`25/25`) acceptance** on reference good fixes, and **90.0% (`36/40`, 95% CI `[76.9% – 96.0%]`)** end-to-end resolution across held-out findings from the 25 qualified guides.
+To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), the **Fix Smoke Test** (`fix-harness.ts`) enforces three static checks on every candidate refactor:
+- **Check 1 (Legacy Finding Eliminated):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
+- **Check 2 (Syntax, Anti-Gutting & Comment-Stripped Modern Feature Check):** Verifies clean AST/DOM/CSS parsing (`ts-morph` with JSX support, `linkedom`, `cssomnom`), top-level export retention, and comment-stripped presence of the guide's positive modern web feature.
+- **Check 3 (Behavioral Invariants):** Runs behavioral/test assertions when available.
+- **Verified Benchmarks:** **100.0% (`75/75`) rejection** on the 3-class seeded bad-patch sensitivity suite (`no-op`, `deletion-gutting`, `broken/evasion`), **100.0% (`25/25`) acceptance** on reference good fixes, and **90.0% (`36/40`, 95% CI `[76.9% – 96.0%]`)** static pass rate across findings from 25 guides.
 
 ### Running Evaluation Benchmarks
 

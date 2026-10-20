@@ -199,11 +199,11 @@ describe('formatProgressLogMarkdown and parseProgressLogMarkdown', () => {
   });
 
   it('verifies historical backfill rows and data integrity', () => {
-    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS.length, 3);
+    assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS.length, 4);
     assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[0].runId, 'gate0-v1-full-guide');
     assert.strictEqual(HISTORICAL_GATE0_TRIAGE_ROWS[0].detectable, 49);
 
-    assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS.length, 7);
+    assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS.length, 8);
     assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS[0].judgeVersion, 'gemini-3.8-flash:detective-v2-direct');
     assert.strictEqual(HISTORICAL_JUDGE_CALIBRATION_ROWS[3].judgeVersion, 'gemini-3.8-flash:detective-v4-guide-only');
     // Mislabeled 153dbc5* duplicate row MUST be excluded (R31)
