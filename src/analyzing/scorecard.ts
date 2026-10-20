@@ -1121,18 +1121,32 @@ export async function runPilotScorecard(
   const scoredBlindCards = await prepareBlindCards(scoredCards, summaries, reposPath);
 
   // Combine cards: scored human cards + initial sampled Phase 1 findings + 3 synthetic canaries
+  const allRulesById = buildRulesByIdMap(PILOT_RULES);
   const initialCardsMap = new Map<string, BlindCardPayload>();
   for (const c of scoredBlindCards) {
-    initialCardsMap.set(c.cardId, c);
+    const rule = allRulesById.get(c.ruleId ?? '') ?? allRulesById.get(c.guideId);
+    const rHash = rule ? computeRuleHash(rule) : (c.ruleHash || 'calibration');
+    const gHash = rule ? rule.guideHash : (c.guideHash || 'calibration');
+    initialCardsMap.set(c.cardId, {
+      ...c,
+      ruleId: c.ruleId ?? rule?.id ?? c.guideId,
+      ruleHash: rHash,
+      guideHash: gHash,
+    });
   }
   for (const c of initialBlindCards) {
     initialCardsMap.set(c.cardId, c);
   }
   for (const c of SYNTHETIC_CANARY_CARDS) {
     const diskSummary = summaries.get(c.guideId);
+    const effectiveSummary = diskSummary ?? c.guideSummary;
+    const rule = allRulesById.get(c.guideId);
     initialCardsMap.set(c.cardId, {
       ...c,
-      guideSummary: diskSummary ?? c.guideSummary,
+      ruleId: c.ruleId ?? rule?.id ?? c.guideId,
+      ruleHash: c.ruleHash || (rule ? computeRuleHash(rule) : 'canary'),
+      guideHash: c.guideHash || rule?.guideHash || 'canary',
+      guideSummary: effectiveSummary,
     });
   }
 

@@ -1,4 +1,5 @@
 /* oxlint-disable max-lines-per-function, max-depth */
+import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -1151,8 +1152,19 @@ export async function loadPaulIrishScoredCards(
     if (!card) {
       throw new Error(`Card ${cardId} in ${gradesPath} not found in ${cardsDir}`);
     }
-    // Skip cards whose guide is a stub or non-landed guide (copy-button, dialog, css-layout)
-    if (card.guideId === 'copy-button' || card.guideId === 'dialog' || card.guideId === 'css-layout') {
+    // Skip stub guides, retired guides (except the 2 canonical negative canary cards), and LLM Verifier drop cards
+    const isCanaryCard = cardId === '2547b2ba6d74' || cardId === '7f2a96f62a4c';
+    const isStubOrRetiredGuide =
+      card.guideId === 'copy-button' ||
+      card.guideId === 'dialog' ||
+      card.guideId === 'css-layout' ||
+      card.guideId === 'accessible-error-announcement' ||
+      card.guideId === 'stack-drill-down' ||
+      card.guideId === 'shadow-dom' ||
+      card.guideId === 'detect-initial-visibility-state' ||
+      card.guideId === 'custom-select-picker-layouts' ||
+      card.guideId === 'model-partial-time-concepts';
+    if (!isCanaryCard && (isStubOrRetiredGuide || card.phase2Decision === 'drop')) {
       continue;
     }
     scoredCards.push(card);
@@ -1253,12 +1265,20 @@ export async function prepareBlindCards(
       }
     }
 
+    const computedGuideHash = createHash('sha256')
+      .update(summary.markdownBody)
+      .digest('hex')
+      .slice(0, 12);
     blindCards.push({
       cardId: item.cardId,
       repo: item.repo,
+      commit: item.commit,
       file: item.file,
       line: item.line,
       guideId: item.guideId,
+      ruleId: item.sourceId || item.guideId,
+      ruleHash: computedGuideHash,
+      guideHash: computedGuideHash,
       guideSummary: summary,
       codeSnippet: snippet,
     });
