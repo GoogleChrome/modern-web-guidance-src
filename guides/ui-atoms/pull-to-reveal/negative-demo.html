@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Feed</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #eeeeee;
+    }
+
+    .app-frame {
+      max-width: 400px;
+      margin: 20px auto;
+      border: 1px solid #ccc;
+      height: 600px;
+      display: flex;
+      flex-direction: column;
+      background-color: white;
+    }
+
+    .top-nav {
+      background-color: #333;
+      color: white;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .scroller {
+      flex: 1;
+      overflow-y: scroll;
+    }
+
+    .hidden-header {
+      height: 80px;
+      background-color: #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .search-box {
+      width: 80%;
+      padding: 8px;
+    }
+
+    .main-body {
+      padding: 20px;
+      min-height: 800px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      margin-bottom: 15px;
+      padding: 15px;
+    }
+
+    .item-1 {
+      scroll-initial-target: nearest;
+    }
+
+    .item-2 {
+      scroll-initial-target: nearest;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-frame">
+    <div class="top-nav">News Feed</div>
+    
+    <div class="scroller" id="scrollContainer">
+      <div class="hidden-header">
+        <input type="text" class="search-box" placeholder="Search for news...">
+      </div>
+
+      <div class="main-body">
+        <div class="card item-1" id="firstCard">
+          <h2>Breaking News</h2>
+          <p>This is the first item in your feed. Pull down to search.</p>
+        </div>
+        <div class="card item-2">
+          <h2>Weather Update</h2>
+          <p>It is sunny today with a chance of clouds.</p>
+        </div>
+        <div class="card">
+          <h2>Sports</h2>
+          <p>The local team won their game last night.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      const container = document.getElementById('scrollContainer');
+      const target = document.getElementById('firstCard');
+      
+      target.scrollIntoView({ behavior: 'smooth' });
+    };
+  </script>
+</body>
+</html>

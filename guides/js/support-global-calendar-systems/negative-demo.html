@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Calendar Dashboard</title>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #151d30;
+      --text-color: #f3f4f6;
+      --text-dim: #9ca3af;
+      --primary: #a855f7;
+      --accent: #ec4899;
+      --border: #374151;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      max-width: 600px;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      color: var(--text-dim);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      background-color: var(--card-bg);
+      padding: 1rem 1.5rem;
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      margin-bottom: 2rem;
+      width: 100%;
+      max-width: 400px;
+      justify-content: center;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--text-dim);
+    }
+
+    input[type="date"] {
+      background-color: #0b0f19;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      color: var(--text-color);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="date"]:focus {
+      border-color: var(--primary);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+    }
+
+    .card-title .emoji {
+      font-size: 1.5rem;
+    }
+
+    .date-display {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-color);
+      margin: 0.5rem 0;
+      text-align: center;
+    }
+
+    .stats {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      background-color: #0b0f19;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-dim);
+    }
+
+    .stat-value {
+      color: var(--accent);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Global Calendar Dashboard</h1>
+    <p class="subtitle">
+      Convert dates and calculate year structures using legacy conversion rules.
+    </p>
+  </header>
+
+  <div class="controls">
+    <label for="date-input">Select Date:</label>
+    <input type="date" id="date-input">
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">
+        <span class="emoji">🌙</span> Islamic
+      </div>
+      <div class="date-display" id="islamic-date"></div>
+      <div class="stats">
+        <div class="stat-row"><span>Year:</span> <span class="stat-value" id="islamic-year"></span></div>
+        <div class="stat-row"><span>Month:</span> <span class="stat-value" id="islamic-month"></span></div>
+        <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="islamic-months-in-year"></span></div>
+        <div class="stat-row"><span>Leap Status:</span> <span class="stat-value" id="islamic-leap-status"></span></div>
+        <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="islamic-timeline"></span></div>
+        <div class="stat-row"><span>Month Breakdown:</span> <span class="stat-value" id="islamic-breakdown"></span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="emoji">✡️</span> Hebrew
+      </div>
+      <div class="date-display" id="hebrew-date"></div>
+      <div class="stats">
+        <div class="stat-row"><span>Year:</span> <span class="stat-value" id="hebrew-year"></span></div>
+        <div class="stat-row"><span>Month:</span> <span class="stat-value" id="hebrew-month"></span></div>
+        <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="hebrew-months-in-year"></span></div>
+        <div class="stat-row"><span>Leap Status:</span> <span class="stat-value" id="hebrew-leap-status"></span></div>
+        <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="hebrew-timeline"></span></div>
+        <div class="stat-row"><span>Month Breakdown:</span> <span class="stat-value" id="hebrew-breakdown"></span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="emoji">⛩️</span> Japanese
+      </div>
+      <div class="date-display" id="japanese-date"></div>
+      <div class="stats">
+        <div class="stat-row"><span>Year:</span> <span class="stat-value" id="japanese-year"></span></div>
+        <div class="stat-row"><span>Month:</span> <span class="stat-value" id="japanese-month"></span></div>
+        <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="japanese-months-in-year"></span></div>
+        <div class="stat-row"><span>Leap Status:</span> <span class="stat-value" id="japanese-leap-status"></span></div>
+        <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="japanese-timeline"></span></div>
+        <div class="stat-row"><span>Month Breakdown:</span> <span class="stat-value" id="japanese-breakdown"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dateInput = document.getElementById('date-input');
+    const initialDate = new Date();
+    dateInput.value = initialDate.getFullYear() + '-' + String(initialDate.getMonth() + 1).padStart(2, '0') + '-' + String(initialDate.getDate()).padStart(2, '0');
+
+    dateInput.addEventListener('input', runConverter);
+    runConverter();
+
+    function runConverter() {
+      const selectedStr = dateInput.value;
+      if (!selectedStr) return;
+      const parts = selectedStr.split('-');
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+
+      const isCurrentLeap = year % 4 === 0;
+
+      const islamicYear = Math.floor((year - 622) * 1.0307);
+      const islamicMonth = month;
+      const islamicDay = day;
+
+      document.getElementById('islamic-date').innerText = islamicDay + '/' + islamicMonth + '/' + islamicYear;
+      document.getElementById('islamic-year').innerText = islamicYear;
+      document.getElementById('islamic-month').innerText = islamicMonth;
+      document.getElementById('islamic-months-in-year').innerText = '12';
+      document.getElementById('islamic-leap-status').innerText = isCurrentLeap ? 'Leap Year' : 'Common Year';
+
+      const currentDayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86400000);
+      const selectedDayOfYear = Math.floor((new Date(year, month - 1, day).getTime() - new Date(year, 0, 1).getTime()) / 86400000);
+
+      let islamicTimeline = 'Today';
+      if (year < new Date().getFullYear()) {
+        islamicTimeline = 'Past';
+      } else if (year > new Date().getFullYear()) {
+        islamicTimeline = 'Future';
+      } else {
+        if (selectedDayOfYear < currentDayOfYear) {
+          islamicTimeline = 'Past';
+        } else if (selectedDayOfYear > currentDayOfYear) {
+          islamicTimeline = 'Future';
+        }
+      }
+      document.getElementById('islamic-timeline').innerText = islamicTimeline;
+
+      let islamicBreakdown = '';
+      for (let m = 1; m <= 12; m++) {
+        let days = 30;
+        if (m % 2 === 0) {
+          days = 29;
+        }
+        if (m === 12 && isCurrentLeap) {
+          days = 30;
+        }
+        islamicBreakdown += m + ' (' + days + 'd)';
+        if (m !== 12) {
+          islamicBreakdown += ', ';
+        }
+      }
+      document.getElementById('islamic-breakdown').innerText = islamicBreakdown;
+
+      const hebrewYear = year + 3760;
+      const hebrewMonth = month;
+      const hebrewDay = day;
+
+      document.getElementById('hebrew-date').innerText = hebrewDay + ' ' + hebrewMonth + ' ' + hebrewYear;
+      document.getElementById('hebrew-year').innerText = hebrewYear;
+      document.getElementById('hebrew-month').innerText = hebrewMonth;
+      document.getElementById('hebrew-months-in-year').innerText = '12';
+      document.getElementById('hebrew-leap-status').innerText = isCurrentLeap ? 'Leap Year' : 'Common Year';
+
+      let hebrewTimeline = 'Today';
+      if (year < new Date().getFullYear()) {
+        hebrewTimeline = 'Past';
+      } else if (year > new Date().getFullYear()) {
+        hebrewTimeline = 'Future';
+      } else {
+        if (selectedDayOfYear < currentDayOfYear) {
+          hebrewTimeline = 'Past';
+        } else if (selectedDayOfYear > currentDayOfYear) {
+          hebrewTimeline = 'Future';
+        }
+      }
+      document.getElementById('hebrew-timeline').innerText = hebrewTimeline;
+
+      let hebrewBreakdown = '';
+      for (let m = 1; m <= 12; m++) {
+        let days = 30;
+        if (m === 12) {
+          days = isCurrentLeap ? 30 : 29;
+        }
+        hebrewBreakdown += m + ' (' + days + 'd)';
+        if (m !== 12) {
+          hebrewBreakdown += ', ';
+        }
+      }
+      document.getElementById('hebrew-breakdown').innerText = hebrewBreakdown;
+
+      const jpYear = year - 2018;
+      const jpMonth = month;
+      const jpDay = day;
+
+      document.getElementById('japanese-date').innerText = 'Year ' + jpYear + '/' + jpMonth + '/' + jpDay;
+      document.getElementById('japanese-year').innerText = jpYear;
+      document.getElementById('japanese-month').innerText = jpMonth;
+      document.getElementById('japanese-months-in-year').innerText = '12';
+      document.getElementById('japanese-leap-status').innerText = isCurrentLeap ? 'Leap Year' : 'Common Year';
+
+      let jpTimeline = 'Today';
+      if (year < new Date().getFullYear()) {
+        jpTimeline = 'Past';
+      } else if (year > new Date().getFullYear()) {
+        jpTimeline = 'Future';
+      } else {
+        if (selectedDayOfYear < currentDayOfYear) {
+          jpTimeline = 'Past';
+        } else if (selectedDayOfYear > currentDayOfYear) {
+          jpTimeline = 'Future';
+        }
+      }
+      document.getElementById('japanese-timeline').innerText = jpTimeline;
+
+      let jpBreakdown = '';
+      for (let m = 1; m <= 12; m++) {
+        let days = 31;
+        if (m === 4 || m === 6 || m === 9 || m === 11) {
+          days = 30;
+        } else if (m === 2) {
+          days = isCurrentLeap ? 29 : 28;
+        }
+        jpBreakdown += m + ' (' + days + 'd)';
+        if (m !== 12) {
+          jpBreakdown += ', ';
+        }
+      }
+      document.getElementById('japanese-breakdown').innerText = jpBreakdown;
+    }
+  </script>
+</body>
+</html>

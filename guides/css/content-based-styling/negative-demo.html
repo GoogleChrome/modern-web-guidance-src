@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content-Based Styling Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      background: #f0f0f0;
+    }
+
+    .article-card {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.5rem;
+      background-color: #ffffff;
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+      max-width: 500px;
+      margin-bottom: 2rem;
+    }
+
+    .article-card.has-image {
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .article-card img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .article-card.text-only {
+      background-color: #fdfaf6;
+      border-left: 4px solid #ff9800;
+    }
+
+    h2 { margin: 0 0 0.5rem 0; font-size: 1.25rem; }
+    p { margin: 0; color: #555; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+  <article class="article-card">
+    <img src="data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20fill%3D%22%23ddd%22%20width%3D%22120%22%20height%3D%22120%22%2F%3E%3Ctext%20fill%3D%22%23999%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3EImg%3C%2Ftext%3E%3C%2Fsvg%3E" alt="Placeholder">
+    <div>
+      <h2>Card With Image</h2>
+      <p>Because this card contains an image element, it uses a flex-row layout to display the image beside this text.</p>
+    </div>
+  </article>
+
+  <article class="article-card">
+    <div>
+      <h2>Text-Only Card</h2>
+      <p>Because this card does NOT contain an image, it defaults to a flex-column layout. It also has a distinct background and border color.</p>
+    </div>
+  </article>
+
+  <script>
+    const cards = document.querySelectorAll('.article-card');
+    cards.forEach(card => {
+      if (card.querySelector('img')) {
+        card.classList.add('has-image');
+      } else {
+        card.classList.add('text-only');
+      }
+    });
+  </script>
+</body>
+</html>

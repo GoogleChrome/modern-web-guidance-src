@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Visibility Tracker</title>
+</head>
+<body>
+    <h1>Page Visibility Tracker</h1>
+    <div id="results">Loading...</div>
+
+    <script async>
+        function checkVisibility() {
+            const isHidden = document.hidden;
+            const currentState = document.visibilityState;
+            
+            let loadTime = Date.now();
+
+            return {
+                initialState: currentState,
+                wasLoadedInBackground: isHidden,
+                detectionTime: loadTime
+            };
+        }
+
+        const report = checkVisibility();
+        document.getElementById('results').innerHTML = `
+            <p>Current Visibility State: <strong>${report.initialState}</strong></p>
+            <p>Loaded in Background: <strong>${report.wasLoadedInBackground}</strong></p>
+            <p>Detection Timestamp: ${report.detectionTime}</p>
+        `;
+        console.log('Visibility status detected:', report);
+    </script>
+</body>
+</html>

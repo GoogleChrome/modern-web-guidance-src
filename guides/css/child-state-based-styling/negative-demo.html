@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theme Card Demo</title>
+<style>
+  .theme-card {
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #cccccc;
+    padding: 1.5rem;
+    border-radius: 8px;
+    font-family: sans-serif;
+    max-width: 400px;
+    margin: 2rem;
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+  }
+  .theme-card.dark-mode {
+    background-color: #222222;
+    color: #f0f0f0;
+    border-color: #555555;
+  }
+  .controls {
+    margin: 2rem;
+  }
+</style>
+</head>
+<body>
+<div class="controls">
+  <button id="theme-toggle">Toggle Dark Mode</button>
+</div>
+<div class="theme-card" id="card">
+  <h2>Card Title</h2>
+  <p>This card changes its theme based on the button click.</p>
+</div>
+<script>
+  const toggleBtn = document.getElementById('theme-toggle');
+  const card = document.getElementById('card');
+  toggleBtn.addEventListener('click', () => {
+    card.classList.toggle('dark-mode');
+  });
+</script>
+</body>
+</html>

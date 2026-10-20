@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swipe to remove demo</title>
+
+  <style>
+    @layer base {
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font: 1em/1.5 system-ui, sans-serif;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      header {
+        display: grid;
+        gap: 1.5em;
+        padding: 1.5em;
+        background: #0001;
+        font-size: 1.25em;
+        font-weight: 400;
+      }
+
+      main {
+        min-height: 100vh;
+      }
+    }
+
+    @layer demo {
+      .SwipeableList {
+        list-style: none;
+      }
+
+      .SwipeableList-item {
+        position: relative;
+        background: hsl(0 65% 50%);
+      }
+
+      .SwipeableList-item::before {
+        content: '';
+        position: absolute;
+        z-index: 1;
+        width: 1.5em;
+        aspect-ratio: 1;
+        top: 50%;
+        transform: translateY(-50%);
+        left: 1.5em;
+        background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9zm0 5h2v9H9V8zm4 0h2v9h-2V8z'/></svg>") center / contain no-repeat;
+      }
+
+      .SwipeableList-content {
+        position: relative;
+        z-index: 2;
+        padding: 1.5em;
+        border-bottom: 1px solid #eee;
+        background: transparent;
+        cursor: grab;
+        user-select: none;
+        touch-action: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      Swipe to remove demo
+    </header>
+    <ul class="SwipeableList">
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item One</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Two</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Three</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Four</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Five</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Six</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Seven</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Eight</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Nine</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Ten</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Eleven</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Twelve</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Thirteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Fourteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Fifteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Sixteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Seventeen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Eighteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Nineteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Twenty</div>
+        </div>
+      </li>
+    </ul>
+  </main>
+
+  <script>
+    const items = document.querySelectorAll('.SwipeableList-item');
+    items.forEach(item => {
+      const content = item.querySelector('.SwipeableList-content');
+      let startX = 0;
+      let currentX = 0;
+      let isDragging = false;
+
+      content.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        content.setPointerCapture(e.pointerId);
+      });
+
+      content.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        currentX = e.clientX;
+        const diff = currentX - startX;
+        content.style.transform = `translateX(${diff}px)`;
+      });
+
+      content.addEventListener('pointerup', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        content.releasePointerCapture(e.pointerId);
+        const diff = currentX - startX;
+        if (Math.abs(diff) > 100) {
+          item.remove();
+        } else {
+          content.style.transform = '';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

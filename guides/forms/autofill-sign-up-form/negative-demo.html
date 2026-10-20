@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sign Up</title>
+</head>
+<body>
+  <h1>Sign Up</h1>
+  <div id="sign-up-container">
+    <section>
+      <span>First Name</span>
+      <input id="fname" name="fname" type="text" autocomplete="off" pattern="[a-zA-Z]+">
+    </section>
+
+    <section>
+      <span>Last Name</span>
+      <input id="lname" name="lname" type="text" autocomplete="off" pattern="[a-zA-Z]+">
+    </section>
+
+    <section>
+      <span>Email Address</span>
+      <input id="email-address" name="email-address" type="text" autocomplete="off">
+    </section>
+
+    <section>
+      <span>Confirm Email Address</span>
+      <input id="confirm-email-address" name="confirm-email-address" type="text" autocomplete="off">
+    </section>
+
+    <section>
+      <span>Choose Password</span>
+      <input id="pwd" name="pwd" type="text" autocomplete="off" onpaste="return false;">
+    </section>
+
+    <section>
+      <span>Confirm Password</span>
+      <input id="pwd-confirm" name="pwd-confirm" type="text" autocomplete="off" onpaste="return false;">
+    </section>
+
+    <div onclick="alert('Submitting...')" style="cursor: pointer; background: #ccc; padding: 10px; display: inline-block;">
+      Submit
+    </div>
+  </div>
+</body>
+</html>

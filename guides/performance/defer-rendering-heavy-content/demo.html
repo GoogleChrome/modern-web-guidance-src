@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defer Rendering Heavy Content Demo</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --bg: #f8fafc;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: var(--bg);
+            color: #1e293b;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .feed {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            min-height: 200px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        .card-img {
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            height: 120px;
+            margin-top: 1rem;
+        }
+
+        /* Test Requirement: .off-screen-card set to content-visibility: auto */
+        .off-screen-card {
+            content-visibility: auto;
+            contain-intrinsic-size: auto 260px;
+        }
+
+        /* Test Requirement: .debug-panel hidden using content-visibility: hidden */
+        .debug-panel {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #1e293b;
+            color: white;
+            border-radius: 8px;
+            content-visibility: hidden;
+        }
+
+        .debug-panel.active {
+            content-visibility: visible;
+        }
+
+        /* Test Requirement: CSS feature detection and fallback strategy for unsupported browsers */
+        @supports not (content-visibility: hidden) {
+            .debug-panel {
+                display: none;
+            }
+
+            .debug-panel.active {
+                display: block;
+            }
+
+            .off-screen-card {
+                /* Degrades gracefully for unsupported browsers */
+                min-height: 260px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Deferring Rendering Best Practices</h1>
+        <p>This demo applies <code>content-visibility: auto</code> for off-screen cards,
+            and <code>content-visibility: hidden</code> for the debug panel.</p>
+        <button id="toggle-debugBtn"
+            style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Toggle
+            Debug Panel</button>
+    </header>
+
+    <div class="feed" id="feed">
+        <!-- First cards are in the initial viewport, NO off-screen-card class -->
+        <div class="card" data-id="1">
+            <h2>Card #1 (Initial View)</h2>
+            <p>This card is visible immediately and renders normally without deferred layout logic.</p>
+            <div class="card-img"></div>
+        </div>
+        <div class="card" data-id="2">
+            <h2>Card #2 (Initial View)</h2>
+            <p>Another card perfectly in the initial viewport or immediately following.</p>
+            <div class="card-img"></div>
+        </div>
+
+        <!-- Followed by off-screen cards -->
+        <div class="card off-screen-card" data-id="3">
+            <h2>Card #3 (Deferred)</h2>
+            <p>Scroll down! This card is completely deferred using <code>content-visibility: auto</code>.</p>
+            <div class="card-img"></div>
+        </div>
+    </div>
+
+    <!-- Debug panel -->
+    <div class="debug-panel" id="debug-panel">
+        <h2>Debug Analytics Panel</h2>
+        <p>This massive panel maintains its styles in the browser's cache without computing full layouts, allowing it to
+            pop in instantaneously via <code>content-visibility: hidden</code>.</p>
+        <div style="height: 300px; background: #334155; border-radius: 4px; margin-top: 2rem;"></div>
+    </div>
+
+    <script>
+        // Generate additional offscreen elements dynamically
+        for (let i = 4; i <= 20; i++) {
+            // Generate Feed Card
+            const card = document.createElement('div');
+            card.className = 'card off-screen-card';
+            card.dataset.id = i;
+            card.innerHTML = `
+                <h2>Card #${i} (Deferred)</h2>
+                <p>This heavy content is cleanly deferred dynamically.</p>
+                <div class="card-img"></div>
+            `;
+            document.getElementById('feed').appendChild(card);
+        }
+
+        // Toggle debug panel
+        document.getElementById('toggle-debugBtn').addEventListener('click', () => {
+            document.getElementById('debug-panel').classList.toggle('active');
+        });
+    </script>
+</body>
+
+</html>

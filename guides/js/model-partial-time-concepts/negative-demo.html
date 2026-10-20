@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Credit Card Expiration Tracker</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-color: #f1f5f9;
+      --text-dim: #94a3b8;
+      --primary: #38bdf8;
+      --accent: #818cf8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border: #334155;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    h1 {
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.subtitle {
+      color: var(--text-dim);
+      font-size: 1.1rem;
+    }
+    .container {
+      display: flex;
+      justify-content: center;
+      max-width: 500px;
+      width: 90%;
+    }
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 2rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .description {
+      color: var(--text-dim);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+    label {
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+    input[type="number"] {
+      background-color: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      color: var(--text-color);
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    button {
+      background-color: var(--primary);
+      color: #0f172a;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .result {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      background-color: #0f172a;
+      border: 1px solid var(--border);
+      min-height: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+    }
+    .code-snippet {
+      background-color: #020617;
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.85rem;
+      color: #38bdf8;
+      overflow-x: auto;
+      font-family: monospace;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .status-valid {
+      background-color: #065f46;
+      color: #a7f3d0;
+    }
+    .status-expired {
+      background-color: #9f1239;
+      color: #fecdd3;
+    }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Credit Card Expiration Tracker</h1>
+    <p class="subtitle">Model monthly expiration cycles without full calendar date leakage.</p>
+  </header>
+  <div class="container">
+    <div class="card">
+      <div class="card-title">💳 Expiration Validation</div>
+      <div class="description">
+        Tracks expiration dates for credit cards and recurring billing.
+      </div>
+      <div class="form-group">
+        <label>Expiration Date</label>
+        <div class="input-row">
+          <input type="number" id="year-input" placeholder="Year (YYYY)" value="2027" style="flex: 2;" min="2000" max="2100">
+          <input type="number" id="month-input" placeholder="Month (1-12)" value="12" style="flex: 1;" min="1" max="12">
+        </div>
+      </div>
+      <button id="check-btn">Check Expiry</button>
+      <div class="result" id="expiry-result">Result will appear here...</div>
+      <div class="code-snippet" id="expiry-code"></div>
+    </div>
+  </div>
+  <script type="module">
+    import { Temporal } from 'https://unpkg.com/@js-temporal/polyfill/dist/index.mjs';
+
+    document.getElementById('check-btn').addEventListener('click', () => {
+      const year = document.getElementById('year-input').value;
+      const month = document.getElementById('month-input').value;
+      const resultDiv = document.getElementById('expiry-result');
+      const codeDiv = document.getElementById('expiry-code');
+
+      if (!year || !month) return;
+
+      const expiryDate = new Date(year, month - 1, 1);
+      const currentDate = new Date();
+
+      if (expiryDate < currentDate) {
+        resultDiv.innerHTML = `
+          <span class="status-badge status-expired">Expired</span>
+          <div>Expired on <strong>${expiryDate.toLocaleString('default', { month: 'long' })} ${expiryDate.getFullYear()}</strong></div>
+        `;
+      } else {
+        resultDiv.innerHTML = `
+          <span class="status-badge status-valid">Valid</span>
+          <div>Expires in the future</div>
+        `;
+      }
+
+      codeDiv.innerText = `const expiryDate = new Date(${year}, ${month - 1}, 1);\nconst currentDate = new Date();`;
+
+      const birthday = Temporal.PlainMonthDay.from({ month: 10, day: 31 });
+      const todayDay = Temporal.PlainMonthDay.from({ month: currentDate.getMonth() + 1, day: currentDate.getDate() });
+      
+      try {
+        const timeUntilBday = todayDay.until(birthday);
+      } catch (err) {
+      }
+
+      const alarm = new Date();
+      alarm.setHours(8, 0, 0);
+    });
+  </script>
+</body>
+</html>

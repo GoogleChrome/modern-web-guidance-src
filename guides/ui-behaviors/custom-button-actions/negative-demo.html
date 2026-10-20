@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Action Demo</title>
+  <style>
+    body {
+      padding: 50px;
+      text-align: center;
+    }
+    #box {
+      width: 100px;
+      height: 100px;
+      background: red;
+      margin: 20px auto;
+      transition: 0.5s;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="btn1" onclick="spin()">Spin</button>
+  <button id="btn2" onclick="grow()">Grow</button>
+  <button id="btn3" onclick="round()">Make Round</button>
+  <button id="btn4" onclick="reset()">Reset All</button>
+
+  <div id="box"></div>
+
+  <script>
+    let s = 0;
+    let g = false;
+    let r = false;
+
+    function spin() {
+      s += 180;
+      document.getElementById('box').style.transform = 'rotate(' + s + 'deg)' + (g ? ' scale(1.5)' : '');
+    }
+
+    function grow() {
+      g = !g;
+      document.getElementById('box').style.transform = (g ? 'scale(1.5)' : 'scale(1)') + ' rotate(' + s + 'deg)';
+    }
+
+    function round() {
+      r = !r;
+      document.getElementById('box').style.borderRadius = r ? '50%' : '0px';
+    }
+
+    function reset() {
+      s = 0;
+      g = false;
+      r = false;
+      const b = document.getElementById('box');
+      b.style.transform = 'none';
+      b.style.borderRadius = '0px';
+    }
+  </script>
+
+</body>
+</html>

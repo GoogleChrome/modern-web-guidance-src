@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stable Scroll Dashboard Demo</title>
+  <style>
+    /* Professional typography using Google Sans */
+    @font-face {
+      font-family: 'Google Sans';
+      src: url('https://fonts.gstatic.com/s/googlesans/v35/4UaGrENHsxJlGwyg_OUCIzQyLQ.woff2') format('woff2');
+      font-weight: 400;
+    }
+
+    @font-face {
+      font-family: 'Google Sans Text';
+      src: url('https://fonts.gstatic.com/s/googlesanstext/v17/va9I4ljaH2sA_LzWxOQ_NQAyD_VwAWchj6yJ3yS3.woff2') format('woff2');
+      font-weight: 400;
+    }
+
+    body {
+      font-family: 'Google Sans Text', sans-serif;
+      padding: 2rem;
+      color: #111111;
+      background-color: #FFFFFF;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .description {
+      color: #666666;
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+
+    /* THE SCROLLABLE DATA CONTAINER */
+    .viewport {
+      height: 500px;
+      overflow-y: auto;
+      border: 1px solid #D1D1D1;
+      border-radius: 8px;
+      background: #FFFFFF;
+    }
+
+    /* THE STABILITY IMPLEMENTATION */
+    .data-row {
+      /* Skips rendering for off-screen items to boost performance  */
+      content-visibility: auto;
+
+      /* CORE LOGIC: Statefully reserves space to prevent CLS and jitter
+         'auto' enables the browser to remember the actual size once rendered.
+         '72px' serves as the initial placeholder estimate. */
+      contain-intrinsic-size: auto 72px;
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid #EEEEEE;
+    }
+
+    /* Neutral Palette Styling */
+    .data-row:hover {
+      background-color: #F8F9FA;
+    }
+
+    .label {
+      font-weight: 500;
+      color: #111111;
+    }
+
+    .status {
+      color: #666666;
+      font-size: 0.85rem;
+    }
+
+    .value {
+      font-family: monospace;
+      color: #1967D2;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Stateful Feed Stability</h1>
+  <p class="description">
+    This demo populates 1,000 dynamic rows. Notice how the <strong>scroll position and scrollbar size</strong> remain
+    steady. The browser reserves accurate space for off-screen items without needing to render their complex internals.
+  </p>
+
+  <div class="viewport" id="dashboard-feed">
+  </div>
+
+  <script>
+    const feed = document.getElementById('dashboard-feed');
+    const rowCount = 1000;
+
+    // Simulate high-frequency dashboard data
+    for (let i = 1; i <= rowCount; i++) {
+      const row = document.createElement('div');
+      row.className = 'data-row';
+      row.innerHTML = `
+        <div>
+          <div class="label">Cluster Node ${i.toString().padStart(4, '0')}</div>
+          <div class="status">System Latency: ${Math.floor(Math.random() * 50)}ms</div>
+        </div>
+        <div class="value">0x${Math.random().toString(16).slice(2, 10).toUpperCase()}</div>
+      `;
+      feed.appendChild(row);
+    }
+  </script>
+
+  <footer
+    style="margin-top: 2rem; font-size: 0.8rem; color: #888888; border-top: 1px solid #D1D1D1; padding-top: 1rem;">
+    <strong>Architecture Note:</strong> By combining <code>content-visibility: auto</code> with stateful
+    <code>contain-intrinsic-size</code>, the browser treats each row as an independent rendering fragment while
+    preserving its footprint in the document flow.
+  </footer>
+
+</body>
+
+</html>

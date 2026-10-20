@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Meeting Coordinator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0a0512;
+      --bg-surface: #140d24;
+      --bg-element: #22163b;
+      --border-base: #34235c;
+      --text-main: #f3e8ff;
+      --text-muted: #c084fc;
+      --accent: #a855f7;
+      --accent-glow: rgba(168, 85, 247, 0.4);
+    }
+
+    body {
+      margin: 0;
+      padding: 2.5rem;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .wrapper {
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      border-bottom: 2px solid var(--border-base);
+      padding-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      margin: 0 0 0.75rem 0;
+      background: linear-gradient(135deg, #e9d5ff 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      margin: 0 auto;
+      max-width: 750px;
+      line-height: 1.7;
+    }
+
+    .form-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-base);
+      padding: 1.75rem;
+      border-radius: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+      flex-wrap: wrap;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    label {
+      font-weight: 700;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    input,
+    select {
+      background: var(--bg-element);
+      border: 1px solid var(--border-base);
+      color: var(--text-main);
+      padding: 0.85rem;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .preset-group {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .preset-control {
+      background: var(--bg-element);
+      border: 1px solid var(--border-base);
+      color: var(--text-main);
+      padding: 0.7rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .preset-control:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg-base);
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .display-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.75rem;
+      width: 100%;
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-base);
+      border-radius: 16px;
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .card.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .location-title {
+      font-weight: 800;
+      font-size: 1.15rem;
+    }
+
+    .indicator {
+      font-size: 0.7rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 20px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(168, 85, 247, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    .time-display {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin: 1rem 0;
+      letter-spacing: -0.02em;
+    }
+
+    .card-footer {
+      margin-top: auto;
+      border-top: 1px solid var(--border-base);
+      padding-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .footer-val {
+      font-family: monospace;
+      color: var(--text-main);
+    }
+
+    code {
+      font-family: monospace;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.15rem 0.35rem;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="wrapper">
+    <header>
+      <h1>Global Meeting Coordinator</h1>
+      <p class="subtitle">
+        Simplify global collaboration by planning events across major timezones instantly. Choose a host timezone and coordinate the perfect meeting window.
+      </p>
+    </header>
+
+    <div class="form-section">
+      <div class="field-group">
+        <label for="dateInput">Date</label>
+        <input type="date" id="dateInput" value="2025-03-09">
+      </div>
+      <div class="field-group">
+        <label for="timeInput">Time</label>
+        <input type="time" id="timeInput" value="14:00">
+      </div>
+      <div class="field-group">
+        <label for="hostTzSelect">Host Zone</label>
+        <select id="hostTzSelect">
+          <option value="America/New_York">New York (EST/EDT)</option>
+          <option value="Europe/London">London (GMT/BST)</option>
+          <option value="Asia/Tokyo">Tokyo (JST)</option>
+          <option value="UTC">UTC</option>
+        </select>
+      </div>
+      <div style="flex: 2;">
+        <label style="margin-bottom: 0.6rem; display: block;">Quick Presets:</label>
+        <div class="preset-group">
+          <button class="preset-control" onclick="loadPreset('2025-03-09', '02:30', 'America/New_York')">Spring Shift (NY)</button>
+          <button class="preset-control" onclick="loadPreset('2025-11-02', '01:30', 'America/New_York')">Autumn Shift (NY)</button>
+          <button class="preset-control" onclick="loadPreset('2025-03-30', '01:30', 'Europe/London')">Spring Shift (London)</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="grid" class="display-grid"></div>
+  </div>
+
+  <script type="module">
+    import { Temporal } from "https://esm.sh/@js-temporal/polyfill";
+    globalThis.Temporal = Temporal;
+
+    const dateInput = document.getElementById('dateInput');
+    const timeInput = document.getElementById('timeInput');
+    const hostTzSelect = document.getElementById('hostTzSelect');
+    const grid = document.getElementById('grid');
+
+    const destinations = [
+      { zone: 'America/New_York', name: 'New York', flag: '🇺🇸' },
+      { zone: 'Europe/London', name: 'London', flag: '🇬🇧' },
+      { zone: 'Asia/Tokyo', name: 'Tokyo', flag: '🇯🇵' },
+      { zone: 'UTC', name: 'UTC', flag: '🌐' }
+    ];
+
+    const offsets = {
+      'America/New_York': -5,
+      'Europe/London': 0,
+      'Asia/Tokyo': 9,
+      'UTC': 0
+    };
+
+    dateInput.addEventListener('input', updateSchedule);
+    timeInput.addEventListener('input', updateSchedule);
+    hostTzSelect.addEventListener('input', updateSchedule);
+
+    function loadPreset(date, time, tz) {
+      dateInput.value = date;
+      timeInput.value = time;
+      hostTzSelect.value = tz;
+      updateSchedule();
+    }
+
+    window.loadPreset = loadPreset;
+
+    function updateSchedule() {
+      const date = dateInput.value;
+      const time = timeInput.value;
+      const hostTz = hostTzSelect.value;
+
+      if (!date || !time) return;
+
+      grid.innerHTML = '';
+
+      const dateTimeStr = `${date}T${time}`;
+      const plainDateTime = Temporal.PlainDateTime.from(dateTimeStr);
+
+      destinations.forEach(dest => {
+        const isHost = dest.zone === hostTz;
+        const targetOffset = offsets[dest.zone] - offsets[hostTz];
+        let converted = plainDateTime;
+
+        try {
+          converted.hour = plainDateTime.hour + targetOffset;
+        } catch (e) {
+          converted = plainDateTime.add({ hours: targetOffset });
+        }
+
+        const card = document.createElement('div');
+        card.className = `card ${isHost ? 'active' : ''}`;
+
+        let hour = converted.hour % 24;
+        if (hour < 0) hour += 24;
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        const displayMinute = String(converted.minute).padStart(2, '0');
+
+        card.innerHTML = `
+          <div class="card-top">
+            <span class="location-title">${dest.flag} ${dest.name}</span>
+            ${isHost ? '<span class="indicator">Host</span>' : ''}
+          </div>
+          <div class="time-display">${displayHour}:${displayMinute} ${ampm}</div>
+          <div class="card-footer">
+            <div class="footer-row"><span>Raw Output:</span> <span class="footer-val"><code>${converted.toString()}</code></span></div>
+            <div class="footer-row"><span>Default Offset:</span> <span class="footer-val"><code>${offsets[dest.zone]}</code></span></div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    updateSchedule();
+  </script>
+
+</body>
+
+</html>

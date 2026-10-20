@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Overflow Clipping Control Demo</title>
+  <style>
+    body {
+      font: 1em/1.5 system-ui, sans-serif;
+    }
+
+    img {
+      background: #fff;
+    }
+
+    .intro {
+      max-width: 80ch;
+      margin-bottom: 2rem;
+      color: #555;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 2.5rem;
+      margin-top: 2rem;
+      align-items: start;
+    }
+
+    .demo-item {
+      padding: 1.5rem;
+    }
+
+    h3 {
+      background: #eee;
+      padding: 0.2rem 0.5rem;
+      display: inline-block;
+    }
+
+    .description {
+      font-size: 0.9rem;
+    }
+
+    .nested-curve-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem 0;
+    }
+
+    .nested-curve-parent {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      padding: 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 32px;
+      background: #737373;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      overflow: scroll;
+    }
+
+    .nested-curve-footer {
+      background: #111;
+      color: #fff;
+      padding: 8px 12px;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
+    .safety-zone-parent {
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 16px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+      overflow: auto;
+    }
+
+    .demo-glowing-btn {
+      display: block;
+      width: 100%;
+      padding: 10px 16px;
+      background: #e52e71;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 8px 13px rgba(229, 46, 113, 0.65);
+    }
+  </style>
+</head>
+<body>
+  <h1>Overflow Clipping Control</h1>
+
+  <p class="intro">This demo showcases dynamic container layout controls using <code>overflow: clip</code> combined with
+    <code>overflow-clip-margin</code>. Setting inner clip margins enables mathematically perfect nested border radii
+    without writing custom child subtraction calculations, while extended length offsets establish a visible safety zone
+    allowing prominent child element drop-shadows to render beautifully unclipped past container boundaries.
+  </p>
+
+  <div class="grid">
+    <div class="demo-item">
+      <h3>Nested Rounded Curves</h3>
+      <p class="description">Applies <code>overflow-clip-margin: content-box</code> to a parent container with rounded corners
+        and custom padding. Automatically applies similar rounded corners on inner child media and footer components along the
+        concentric inner content box boundary, solving awkward nesting curves without custom <code>calc()</code> logic.
+      </p>
+    
+      <div class="nested-curve-wrapper">
+        <div class="nested-curve-parent">
+          <img src="test_pattern.svg" alt="Nested Curve Demo">
+          <div class="nested-curve-footer">Card Footer</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-item">
+      <h3>Child Element Shadow Bleed</h3>
+      <p class="description">Applying prominent box-shadows to inner child elements (like buttons or sub-cards) within a clipped parent container normally results in sharp boundary cutoff under <code>overflow: hidden</code>. Replacing it with <code>overflow: clip</code> and setting an <code>overflow-clip-margin</code> creates a visible safety zone permitting the child's shadow to render beautifully unclipped.</p>
+
+      <div class="safety-zone-wrapper">
+        <div class="safety-zone-parent">
+          <h4>Clipped Container</h4>
+          <p>Inner boundaries securely contained.</p>
+          <button class="demo-glowing-btn">Submit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

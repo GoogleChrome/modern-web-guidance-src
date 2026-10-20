@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legacy Testing Implementation</title>
+  <style>
+    body {
+      opacity: 0 !important;
+    }
+  </style>
+  <script blocking="render" src="https://example.com/analytics.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: "Times New Roman", serif;
+      display: block;
+      padding: 20px;
+      background: #fff;
+    }
+    .hero {
+      border: 1px solid black;
+      padding: 20px;
+    }
+    .cta-button {
+      background-color: #0000ff;
+      color: #ffffff;
+      padding: 10px;
+    }
+    .variant-active .cta-button {
+      background-color: #ff0000;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>Old Version</h1>
+    <p>This is the original content of the page.</p>
+    <button class="cta-button">Submit</button>
+  </div>
+  <script>
+    (function() {
+      setTimeout(function() {
+        var isVariant = true;
+        if (isVariant) {
+          document.body.classList.add('variant-active');
+          document.querySelector('h1').innerText = 'New Version';
+        }
+        document.body.style.opacity = '1';
+      }, 3000);
+    })();
+  </script>
+</body>
+</html>

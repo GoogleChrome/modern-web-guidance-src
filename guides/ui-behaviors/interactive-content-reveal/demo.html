@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive content reveal</title>
+    <style>
+      @property --inner-size {
+        syntax: "<length-percentage>";
+        inherits: true;
+        initial-value: 0px;
+      }
+      @property --outer-size {
+        syntax: "<length-percentage>";
+        inherits: true;
+        initial-value: 0px;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background: #111;
+      }
+
+      .product-card {
+        position: relative;
+        width: clamp(200px, 50%, 1000px);
+        height: 500px;
+        background: #222;
+        border-radius: 20px;
+        overflow: hidden;
+        cursor: crosshair;
+      }
+
+      .product-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.3;
+        filter: grayscale(1) blur(2px);
+        background: linear-gradient(135deg, #444, #111);
+        /* Placeholder for an image */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 80px;
+      }
+
+      .reveal-layer {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 80px;
+        mask-image: radial-gradient(
+          circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+          black var(--inner-size, 0%),
+          transparent var(--outer-size, 0%)
+        );
+        transition:
+          --inner-size 0.1s ease-in-out,
+          --outer-size 0.1s ease-in-out;
+        pointer-events: none;
+        mask-repeat: no-repeat;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .reveal-layer {
+          transition-duration: 0;
+        }
+      }
+
+      .product-card:hover {
+        --inner-size: 100px;
+        --outer-size: 120px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="product-card" id="card">
+      <div class="product-image">📦</div>
+      <div class="reveal-layer">✨</div>
+    </div>
+
+    <script>
+      const card = document.getElementById("card");
+      let rect = card.getBoundingClientRect();
+      const resizeObserver = new ResizeObserver(()=>{
+        rect = card.getBoundingClientRect();
+      })
+      resizeObserver.observe(card);
+      card.addEventListener("pointermove", (e) => {
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        card.style.setProperty("--mouse-x", `${x}%`);
+        card.style.setProperty("--mouse-y", `${y}%`);
+      });
+    </script>
+  </body>
+</html>

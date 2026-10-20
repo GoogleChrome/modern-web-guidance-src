@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direct State Mutation Controls</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-primary: #3b82f6;
+      --accent-success: #10b981;
+      --accent-error: #ef4444;
+      --border-color: #334155;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 800px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .panel-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+
+    .badge.mutable {
+      background-color: #ef444420;
+      color: #ef4444;
+      border: 1px solid #ef444440;
+    }
+
+    .badge.direct {
+      background-color: #f59e0b20;
+      color: #f59e0b;
+      border: 1px solid #f59e0b40;
+    }
+
+    .state-display {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 1.5rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .label {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .value {
+      font-family: monospace;
+      font-size: 1.25rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .pointer-id {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    button {
+      background-color: var(--accent-primary);
+      color: white;
+      border: none;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    button:hover {
+      background-color: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .metrics {
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .metric-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .metric-value {
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    .metric-value.success {
+      color: var(--accent-success);
+    }
+
+    .metric-value.error {
+      color: var(--accent-error);
+    }
+
+    #log-panel {
+      margin-top: 2rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    #log-panel h2 {
+      font-size: 1.1rem;
+      margin-top: 0;
+      margin-bottom: 1rem;
+      color: var(--text-secondary);
+    }
+
+    #log-content {
+      font-family: monospace;
+      font-size: 0.85rem;
+      max-height: 150px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .log-entry {
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .log-entry.mutation {
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    .log-entry.error {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Direct State Mutation Controls</h1>
+      <p class="description">
+        Demonstrating properties of in-place legacy date modifications alongside direct properties assignment on temporal values.
+      </p>
+    </header>
+
+    <div class="dashboard">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            In-Place Date Mutation
+            <span class="badge mutable">Legacy Mutable</span>
+          </div>
+        </div>
+
+        <div class="state-display">
+          <div class="label">State Value (Deadline)</div>
+          <div id="date-value" class="value">-</div>
+          <div id="date-pointer" class="pointer-id">-</div>
+        </div>
+
+        <div class="controls">
+          <button id="extend-date-btn">Add Hours directly</button>
+        </div>
+
+        <div class="metrics">
+          <div class="metric-item">
+            <span>Previous Reference ID</span>
+            <span id="date-prev-ref" class="metric-value">-</span>
+          </div>
+          <div class="metric-item">
+            <span>Current Reference ID</span>
+            <span id="date-curr-ref" class="metric-value">-</span>
+          </div>
+          <div class="metric-item">
+            <span>Memory Reference Changed?</span>
+            <span id="date-ref-changed" class="metric-value error">No</span>
+          </div>
+          <div class="metric-item">
+            <span>UI Re-renders Triggered</span>
+            <span id="date-render-count" class="metric-value">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Temporal Object Mutation
+            <span class="badge direct">Direct Modification</span>
+          </div>
+        </div>
+
+        <div class="state-display">
+          <div class="label">State Value (Deadline)</div>
+          <div id="temporal-value" class="value">-</div>
+          <div id="temporal-pointer" class="pointer-id">-</div>
+        </div>
+
+        <div class="controls">
+          <button id="extend-temporal-btn">Modify Property Directly</button>
+        </div>
+
+        <div class="metrics">
+          <div class="metric-item">
+            <span>Previous Reference ID</span>
+            <span id="temporal-prev-ref" class="metric-value">-</span>
+          </div>
+          <div class="metric-item">
+            <span>Current Reference ID</span>
+            <span id="temporal-curr-ref" class="metric-value">-</span>
+          </div>
+          <div class="metric-item">
+            <span>Memory Reference Changed?</span>
+            <span id="temporal-ref-changed" class="metric-value error">No</span>
+          </div>
+          <div class="metric-item">
+            <span>UI Re-renders Triggered</span>
+            <span id="temporal-render-count" class="metric-value">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="log-panel">
+      <h2>Under the Hood: Mutation Comparison</h2>
+      <div id="log-content"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    const module = await import('https://esm.sh/@js-temporal/polyfill');
+    globalThis.Temporal = module.Temporal;
+
+    const dateValue = document.getElementById('date-value');
+    const datePointer = document.getElementById('date-pointer');
+    const extendDateBtn = document.getElementById('extend-date-btn');
+    const dateRefChanged = document.getElementById('date-ref-changed');
+    const dateRenderCount = document.getElementById('date-render-count');
+    const datePrevRef = document.getElementById('date-prev-ref');
+    const dateCurrRef = document.getElementById('date-curr-ref');
+
+    const temporalValue = document.getElementById('temporal-value');
+    const temporalPointer = document.getElementById('temporal-pointer');
+    const extendTemporalBtn = document.getElementById('extend-temporal-btn');
+    const temporalRefChanged = document.getElementById('temporal-ref-changed');
+    const temporalRenderCount = document.getElementById('temporal-render-count');
+    const temporalPrevRef = document.getElementById('temporal-prev-ref');
+    const temporalCurrRef = document.getElementById('temporal-curr-ref');
+
+    const logContent = document.getElementById('log-content');
+
+    const pointerMap = new WeakMap();
+    let currentId = 1;
+    function getPointerId(obj) {
+      if (!pointerMap.has(obj)) {
+        pointerMap.set(obj, `0x${currentId.toString(16).padStart(4, '0')}`);
+        currentId++;
+      }
+      return pointerMap.get(obj);
+    }
+
+    function logEntry(message, type) {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logContent.prepend(entry);
+    }
+
+    let dateState = { deadline: new Date() };
+    let prevDateStateValue = dateState.deadline;
+    let dateRenders = 0;
+
+    function renderDateView() {
+      dateValue.textContent = dateState.deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      datePointer.textContent = `Ref ID: ${getPointerId(dateState.deadline)}`;
+      datePrevRef.textContent = prevDateStateValue ? getPointerId(prevDateStateValue) : 'null';
+      dateCurrRef.textContent = getPointerId(dateState.deadline);
+
+      const referenceChanged = prevDateStateValue !== dateState.deadline;
+      if (referenceChanged) {
+        dateRenders++;
+        dateRenderCount.textContent = dateRenders;
+        dateRefChanged.textContent = "Yes";
+        dateRefChanged.className = "metric-value success";
+        logEntry("Date Updated: Reference Changed", "mutation");
+      } else {
+        dateRefChanged.textContent = "No";
+        dateRefChanged.className = "metric-value error";
+        logEntry("Date Mutated In-Place: Reference Unchanged", "mutation");
+      }
+      prevDateStateValue = dateState.deadline;
+    }
+
+    extendDateBtn.addEventListener('click', () => {
+      dateState.deadline.setHours(dateState.deadline.getHours() + 1);
+      renderDateView();
+    });
+
+    let temporalState = { deadline: Temporal.Now.plainDateTimeISO() };
+    let prevTemporalStateValue = temporalState.deadline;
+    let temporalRenders = 0;
+
+    function renderTemporalView() {
+      temporalValue.textContent = temporalState.deadline.toPlainTime().toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
+      temporalPointer.textContent = `Ref ID: ${getPointerId(temporalState.deadline)}`;
+      temporalPrevRef.textContent = prevTemporalStateValue ? getPointerId(prevTemporalStateValue) : 'null';
+      temporalCurrRef.textContent = getPointerId(temporalState.deadline);
+
+      const referenceChanged = prevTemporalStateValue !== temporalState.deadline;
+      if (referenceChanged) {
+        temporalRenders++;
+        temporalRenderCount.textContent = temporalRenders;
+        temporalRefChanged.textContent = "Yes";
+        temporalRefChanged.className = "metric-value success";
+        logEntry("Temporal Reference Changed", "mutation");
+      } else {
+        temporalRefChanged.textContent = "No";
+        temporalRefChanged.className = "metric-value error";
+        logEntry("Temporal Reference Unchanged", "error");
+      }
+      prevTemporalStateValue = temporalState.deadline;
+    }
+
+    extendTemporalBtn.addEventListener('click', () => {
+      try {
+        temporalState.deadline.hour = temporalState.deadline.hour + 1;
+        logEntry(`Assigned hour directly: ${temporalState.deadline.hour}`, "mutation");
+      } catch (err) {
+        logEntry(`Mutation Failed: ${err.message}`, "error");
+      }
+      renderTemporalView();
+    });
+
+    prevDateStateValue = null;
+    prevTemporalStateValue = null;
+    renderDateView();
+    renderTemporalView();
+  </script>
+</body>
+</html>

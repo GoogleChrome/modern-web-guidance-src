@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Scheduling</title>
+  <script src="https://unpkg.com/scheduler-polyfill"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f0f0f0;
+      color: #333;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .btn {
+      padding: 10px 15px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+    }
+    .btn-blocking {
+      background-color: #dc3545;
+    }
+    .btn-visible {
+      background-color: #ffc107;
+      color: black;
+    }
+    .btn-background {
+      background-color: #28a745;
+    }
+    #log {
+      margin-top: 20px;
+      height: 300px;
+      overflow-y: scroll;
+      background: #222;
+      color: #0f0;
+      padding: 10px;
+      font-family: monospace;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Task Priority Manager</h1>
+    <p>Run your tasks with various priority settings.</p>
+    
+    <div>
+      <button class="btn btn-blocking" onclick="addTask('user-blocking')">Schedule User-Blocking</button>
+      <button class="btn btn-visible" onclick="addTask('user-visible')">Schedule User-Visible</button>
+      <button class="btn btn-background" onclick="addTask('background')">Schedule Background</button>
+      <button class="btn" onclick="addBatch()">Schedule Batch (Mixed)</button>
+      <button class="btn" style="background-color: #6c757d;" onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <script>
+    const logDiv = document.getElementById('log');
+    const taskQueue = [];
+
+    function log(msg) {
+      const p = document.createElement('p');
+      p.style.margin = '2px 0';
+      p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logDiv.appendChild(p);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function clearLog() {
+      logDiv.innerHTML = '';
+    }
+
+    function doHeavyWork() {
+      const end = Date.now() + 100;
+      while (Date.now() < end) {}
+    }
+
+    function addTask(priority) {
+      log(`Enqueuing task with priority: ${priority}`);
+      taskQueue.push(priority);
+      processQueue();
+    }
+
+    function addBatch() {
+      log('Enqueuing batch tasks...');
+      taskQueue.push('user-blocking');
+      taskQueue.push('user-visible');
+      taskQueue.push('background');
+      taskQueue.push('user-blocking');
+      taskQueue.push('user-visible');
+      taskQueue.push('background');
+      processQueue();
+    }
+
+    function processQueue() {
+      while (taskQueue.length > 0) {
+        const nextTask = taskQueue.pop();
+        log(`Executing task: ${nextTask}`);
+        doHeavyWork();
+        log(`Finished task: ${nextTask}`);
+      }
+    }
+  </script>
+</body>
+</html>

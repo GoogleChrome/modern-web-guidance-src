@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Child State-Based Styling Demo</title>
+  <style>
+    /* Default (Light) Theme for the component */
+    .theme-card {
+      --bg-color: #ffffff;
+      --text-color: #333333;
+      --border-color: #cccccc;
+
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+      border-radius: 8px;
+      font-family: sans-serif;
+      max-width: 400px;
+      margin: 2rem;
+      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    }
+
+    /* Dark Theme applied when the checkbox child is checked */
+    .theme-card:has(.theme-toggle:checked) {
+      --bg-color: #222222;
+      --text-color: #f0f0f0;
+      --border-color: #555555;
+    }
+
+    /* Fallback for browsers that do not support :has() */
+    @supports not selector(:has(*)) {
+      .theme-card.is-active {
+        --bg-color: #222222;
+        --text-color: #f0f0f0;
+        --border-color: #555555;
+      }
+    }
+
+    .theme-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      margin-bottom: 1rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="theme-card">
+    <label class="theme-label">
+      <input type="checkbox" class="theme-toggle">
+      Enable Dark Mode
+    </label>
+    <h2>Card Title</h2>
+    <p>This card changes its theme based on the state of the toggle inside it. No JavaScript required for modern browsers!</p>
+  </div>
+
+  <script>
+    // Fallback script for browsers that don't support :has()
+    if (!CSS.supports('selector(:has(*))')) {
+      const toggle = document.querySelector('.theme-toggle');
+      const card = document.querySelector('.theme-card');
+
+      if (toggle && card) {
+        toggle.addEventListener('change', (e) => {
+          card.classList.toggle('is-dark', e.target.checked);
+        });
+      }
+    }
+  </script>
+</body>
+</html>

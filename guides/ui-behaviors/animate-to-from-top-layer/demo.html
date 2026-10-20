@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A demo showing how to animate elements to and from the top layer using modern CSS features like @starting-style, transition-behavior, and overlay."
+    />
+    <title>Top Layer Animation Demo</title>
+    <style>
+      :root {
+        --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --card-bg: #1e293b;
+        --card-border: rgba(255, 255, 255, 0.1);
+        --accent: #8b5cf6;
+        --accent-hover: #7c3aed;
+        --btn-bg: rgba(255, 255, 255, 0.05);
+        --btn-hover: rgba(255, 255, 255, 0.1);
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: var(--bg-gradient);
+        color: var(--text-primary);
+        gap: 2rem;
+      }
+
+      .container {
+        text-align: center;
+        z-index: 10;
+      }
+
+      h1 {
+        font-weight: 600;
+        font-size: 3rem;
+        margin: 0 0 1rem 0;
+        background: linear-gradient(to right, #a78bfa, #38bdf8);
+        background-clip: text;
+        color: transparent;
+      }
+
+      p.subtitle {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        margin-bottom: 2.5rem;
+        font-weight: 300;
+      }
+
+      .actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+      }
+
+      button {
+        background: var(--btn-bg);
+        color: var(--text-primary);
+        border: 1px solid var(--card-border);
+        padding: 0.75rem 1.5rem;
+        font-size: 1.1rem;
+        border-radius: 9999px;
+        cursor: pointer;
+        font-family: inherit;
+        font-weight: 400;
+        transition-property: background, border-color, transform, box-shadow;
+        transition-duration: 0.3s;
+        transition-timing-function: ease;
+      }
+
+      button:hover {
+        background: var(--btn-hover);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: transparent;
+        box-shadow: 0 10px 20px -5px rgba(139, 92, 246, 0.4);
+      }
+
+      button.primary:hover {
+        background: var(--accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 15px 25px -5px rgba(139, 92, 246, 0.5);
+      }
+
+      /* Common Card / Modal Styles */
+      .card {
+        background: var(--card-bg);
+        color: var(--text-primary);
+        border: 1px solid var(--card-border);
+        border-radius: 20px;
+        padding: 2.5rem;
+        margin: auto;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        max-width: 450px;
+      }
+
+      .card h2 {
+        margin-top: 0;
+        font-size: 1.8rem;
+        font-weight: 600;
+        background: linear-gradient(to right, #f8fafc, #94a3b8);
+        background-clip: text;
+        color: transparent;
+      }
+
+      .card p {
+        line-height: 1.7;
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        font-weight: 300;
+        font-size: 1.1rem;
+      }
+
+      /* ========================================= */
+      /* DIALOG ANIMATION (with ::backdrop)        */
+      /* ========================================= */
+
+      dialog {
+        /* Base state (when closed) */
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+
+        /* Transition for closing */
+        transition-property: opacity, transform, overlay, display;
+        transition-duration: 0.5s;
+        transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+        transition-behavior: allow-discrete;
+      }
+
+      dialog[open]:not([data-closing]) {
+        /* Open state */
+        opacity: 1;
+        transform: scale(1) translateY(0);
+
+        @starting-style {
+          /* Open starting state */
+          opacity: 0;
+          transform: scale(1.05) translateY(-20px);
+        }
+      }
+
+      /* Dialog Backdrop */
+      dialog::backdrop {
+        background-color: rgb(0 0 0 / 0%);
+        transition-property: background-color, display, overlay;
+        transition-duration: 0.5s;
+        transition-timing-function: ease;
+        transition-behavior: allow-discrete;
+      }
+
+      dialog[open]:not([data-closing])::backdrop {
+        background-color: rgb(0 0 0 / 50%);
+
+        @starting-style {
+          background-color: rgb(0 0 0 / 0%);
+        }
+      }
+
+      /* ========================================= */
+      /* POPOVER ANIMATION (with ::backdrop)       */
+      /* ========================================= */
+
+      [popover] {
+        /* Base state for popover */
+        opacity: 0;
+        transform: scale(0.95);
+        transition-property: opacity, transform, overlay, display;
+        transition-duration: 0.4s;
+        transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+        transition-behavior: allow-discrete;
+      }
+
+      [popover]:popover-open:not([data-closing]) {
+        opacity: 1;
+        transform: scale(1);
+
+        @starting-style {
+          opacity: 0;
+          transform: scale(0.8);
+        }
+      }
+
+      [popover]::backdrop {
+        background-color: rgb(0 0 0 / 0%);
+        transition-property: background-color, display, overlay;
+        transition-duration: 0.4s;
+        transition-timing-function: ease;
+        transition-behavior: allow-discrete;
+      }
+
+      [popover]:popover-open:not([data-closing])::backdrop {
+        background-color: rgb(15 23 42 / 70%);
+
+        @starting-style {
+          background-color: rgb(0 0 0 / 0%);
+        }
+      }
+
+      /* ========================================= */
+      /* RESPECT USER PREFERENCE FOR REDUCED MOTION */
+      /* ========================================= */
+
+      @media (prefers-reduced-motion: reduce) {
+        dialog,
+        [popover] {
+          /* Disable movement and shorten duration for a simple fade */
+          transform: none;
+          transition-duration: 0.1s;
+        }
+
+        @starting-style {
+          dialog[open],
+          [popover]:popover-open {
+            transform: none;
+          }
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Top Layer Transitions</h1>
+      <p class="subtitle">
+        Smoothly animate elements into and out of the top layer.
+      </p>
+
+      <div class="actions">
+        <button id="open-dialog-btn">Open Dialog</button>
+        <button popovertarget="my-popover">Open Popover</button>
+      </div>
+    </div>
+
+    <!-- Dialog Element -->
+    <dialog id="my-dialog" class="card">
+      <h2>Native Dialog</h2>
+      <p>
+        Notice the smooth entry and exit animations. By combining
+        <code>@starting-style</code>, <code>display: none</code> transitions,
+        and the <code>overlay</code> property, we achieve fluid top-layer
+        animations.
+      </p>
+      <div style="text-align: right; margin-top: 2rem">
+        <button id="close-dialog-btn" class="primary">Close Dialog</button>
+      </div>
+    </dialog>
+
+    <!-- Popover Element -->
+    <div id="my-popover" popover class="card">
+      <h2>HTML Popover API</h2>
+      <p>
+        Opening is pure CSS via <code>@starting-style</code>. In browsers that
+        support <code>overlay</code> and discrete <code>display</code>
+        transitions, light dismiss animates too; elsewhere, only the close
+        button below runs the animated exit fallback.
+      </p>
+      <div style="text-align: right">
+        <button id="close-popover-btn" class="primary">Close Popover</button>
+      </div>
+    </div>
+
+    <script>
+      let supportsDisplayTransition;
+      function canTransitionDisplay() {
+        if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
+        if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
+          return false;
+        }
+        const probe = document.createElement('div');
+        // Shorthand is intentional: unsupported browsers drop the whole declaration.
+        // !important guards against global `* { transition: none !important }` resets.
+        probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
+        document.body.appendChild(probe);
+        getComputedStyle(probe).display;
+        probe.style.display = 'none';
+        supportsDisplayTransition = getComputedStyle(probe).display === 'block';
+        probe.remove();
+        return supportsDisplayTransition;
+      }
+
+      // Evaluate lazily so this works even if the script runs before <body> exists.
+      function supportsTopLayerExit() {
+        return window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
+      }
+
+      async function closeTopLayer(element) {
+        if (!supportsTopLayerExit()) {
+          element.setAttribute('data-closing', '');
+          const animations = element.getAnimations({ subtree: true });
+          if (animations.length > 0) {
+            await Promise.race([
+              Promise.allSettled(animations.map((a) => a.finished)),
+              new Promise((r) => setTimeout(r, 2000)),
+            ]);
+          }
+          if (!element.hasAttribute('data-closing')) return;
+          element.removeAttribute('data-closing');
+        }
+
+        if (element.hasAttribute('popover')) {
+          element.hidePopover();
+        } else {
+          element.close();
+        }
+      }
+
+      const dialog = document.getElementById('my-dialog');
+      const openBtn = document.getElementById('open-dialog-btn');
+      const closeBtn = document.getElementById('close-dialog-btn');
+      const popover = document.getElementById('my-popover');
+      const closePopoverBtn = document.getElementById('close-popover-btn');
+
+      openBtn.addEventListener('click', () => {
+        dialog.showModal();
+      });
+
+      closeBtn.addEventListener('click', () => {
+        closeTopLayer(dialog);
+      });
+
+      // Route Esc (and closedby light dismiss) through the animated helper.
+      dialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        closeTopLayer(dialog);
+      });
+
+      closePopoverBtn.addEventListener('click', () => {
+        closeTopLayer(popover);
+      });
+    </script>
+  </body>
+</html>

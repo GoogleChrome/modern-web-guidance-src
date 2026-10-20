@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Individual Transform Properties Demo</title>
+  <style>
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background-color: #f4f4f9;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+
+    .target {
+      width: 100px;
+      height: 100px;
+      background-color: #007bff;
+      margin: 2rem auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+      /* Initialize properties to identity values to maintain a stable stacking context */
+      translate: 0 0;
+      rotate: 0deg;
+      scale: 1;
+
+      /* Transition only the scale property */
+      transition: scale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Fallback for browsers without individual transform support */
+    @supports not (translate: 0 0) {
+      .target {
+        transform: translate(0, 0) rotate(0deg) scale(1);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .target:hover {
+        transform: translate(0, 0) rotate(0deg) scale(1.2);
+      }
+    }
+
+    /* Modern implementation */
+    @supports (translate: 0 0) {
+      .target:hover {
+        scale: 1.2;
+      }
+    }
+
+      .target {
+        animation: 
+          slide 3s infinite alternate ease-in-out,
+          spin 8s infinite linear;
+      }
+    
+
+    @keyframes slide {
+      from { translate: -50px 0; }
+      to { translate: 50px 0; }
+    }
+
+    @keyframes spin {
+      from { rotate: 0deg; }
+      to { rotate: 360deg; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Individual Transforms</h1>
+    <p>Hover over the box to see it scale without interrupting the translation or rotation animations.</p>
+    <div class="target"></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scroll Position Component Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      background: #fafafa;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    .scroller {
+      width: 100%;
+      max-width: 400px;
+      height: 500px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .content {
+      padding: 30px;
+      height: 150vh;
+    }
+
+    .sticky-wrapper {
+      position: sticky;
+      bottom: 20px;
+      display: flex;
+      justify-content: flex-end;
+      padding-right: 20px;
+    }
+
+    .back-to-top {
+      background: #1976d2;
+      color: white;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      opacity: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="scroller" id="scroller">
+    <div class="content">
+      <h2 id="title">Scroll down 👇</h2>
+      <p>
+        Use this scrollable container to view the back to top functionality.
+      </p>
+    </div>
+
+    <div class="sticky-wrapper">
+      <a href="#title" class="back-to-top" id="backToTop">↑ Top</a>
+    </div>
+  </div>
+
+  <script>
+    const scroller = document.getElementById('scroller');
+    const backToTop = document.getElementById('backToTop');
+
+    scroller.addEventListener('scroll', () => {
+      const scrollOffset = scroller.getBoundingClientRect().top - scroller.querySelector('.content').getBoundingClientRect().top;
+      if (scrollOffset > 100) {
+        backToTop.style.opacity = '1';
+      } else {
+        backToTop.style.opacity = '0';
+      }
+    });
+  </script>
+</body>
+</html>

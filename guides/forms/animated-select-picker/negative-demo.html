@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom Select</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 2rem;
+}
+.label-fake {
+  font-size: 14px;
+  margin-bottom: 8px;
+  display: block;
+}
+.select-wrapper {
+  position: relative;
+  width: 250px;
+}
+.select-hidden {
+  display: none;
+}
+.select-button {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-top: none;
+  background: #fff;
+  display: none;
+  opacity: 0;
+}
+.dropdown.show {
+  display: block;
+}
+.option {
+  padding: 10px;
+  cursor: pointer;
+}
+.option:hover {
+  background: #eee;
+}
+</style>
+</head>
+<body>
+
+<span class="label-fake">Visual Theme</span>
+<div class="select-wrapper">
+  <select class="select-hidden">
+    <option value="system">System Default</option>
+    <option value="light">Light UI</option>
+    <option value="dark">Dark UI</option>
+  </select>
+  <button class="select-button">
+    <selectedoption class="selected-text">System Default</selectedoption>
+    <span class="arrow">▼</span>
+  </button>
+  <div class="dropdown">
+    <div class="option" data-value="system">System Default</div>
+    <div class="option" data-value="light">Light UI</div>
+    <div class="option" data-value="dark">Dark UI</div>
+  </div>
+</div>
+
+<script>
+  const button = document.querySelector('.select-button');
+  const dropdown = document.querySelector('.dropdown');
+  const arrow = document.querySelector('.arrow');
+  const options = document.querySelectorAll('.option');
+  const text = document.querySelector('.selected-text');
+  const hiddenSelect = document.querySelector('.select-hidden');
+
+  button.addEventListener('click', () => {
+    if (dropdown.classList.contains('show')) {
+      dropdown.style.opacity = '0';
+      setTimeout(() => dropdown.classList.remove('show'), 200);
+      arrow.style.transform = 'rotate(0deg)';
+    } else {
+      dropdown.classList.add('show');
+      setTimeout(() => dropdown.style.opacity = '1', 10);
+      arrow.style.transform = 'rotate(180deg)';
+      arrow.style.transition = 'transform 0.2s';
+    }
+  });
+
+  options.forEach(opt => {
+    opt.addEventListener('click', (e) => {
+      text.textContent = e.target.textContent;
+      hiddenSelect.value = e.target.getAttribute('data-value');
+      dropdown.style.opacity = '0';
+      setTimeout(() => dropdown.classList.remove('show'), 200);
+      arrow.style.transform = 'rotate(0deg)';
+    });
+  });
+</script>
+</body>
+</html>

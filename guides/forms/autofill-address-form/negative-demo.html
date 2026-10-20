@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Checkout</title>
+</head>
+<body>
+  <h1>Checkout</h1>
+  <div id="checkout-container">
+    <span>First Name</span>
+    <input id="fname" name="first_name" type="text" pattern="[a-zA-Z]+">
+
+    <span>Last Name</span>
+    <input id="lname" name="last_name" type="text" pattern="[a-zA-Z]+">
+
+    <label for="addr1">Address Line 1</label>
+    <input id="address_line_1" name="address1" type="text">
+
+    <label>Address Line 2</label>
+    <input id="address_line_2" name="address2" type="text">
+
+    <span>ZIP Code</span>
+    <input id="zip_code" name="zip" type="number">
+
+    <br><br>
+    <div onclick="submit()">Save</div>
+  </div>
+</body>
+</html>

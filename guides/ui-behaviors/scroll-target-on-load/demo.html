@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll Target on Load Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      margin: 0;
+      gap: 30px;
+    }
+
+    header {
+      text-align: center;
+      max-width: 600px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    p.desc {
+      color: #475569;
+      font-size: 1.1rem;
+      line-height: 1.5;
+    }
+
+    .feed-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .feed-mockup {
+      width: 100%;
+      max-width: 400px;
+      height: 600px;
+      background: white;
+      border-radius: 20px;
+      border: 4px solid #cbd5e1;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .feed-header {
+      background: #0f172a;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .feed-container {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      background: #f8fafc;
+    }
+
+    .item {
+      padding: 12px 16px;
+      border-radius: 12px;
+      max-width: 85%;
+      font-size: 15px;
+      line-height: 1.4;
+      position: relative;
+    }
+
+    .item.received {
+      background: #e2e8f0;
+      color: #1e293b;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    .item.sent {
+      background: #3b82f6;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    /* Media inside items */
+    .media-card {
+      margin-top: 8px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #cbd5e1;
+    }
+    
+    .media-card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .media-card.large img {
+      height: 280px;
+    }
+
+    /* Target Item Styles */
+    .item.target {
+      scroll-initial-target: nearest;
+      background: #fdf6e3;
+      border: 2px solid #fbbf24;
+      color: #b45309;
+    }
+
+    .target-indicator {
+      font-size: 12px;
+      font-weight: bold;
+      color: #b45309;
+      margin-bottom: 5px;
+    }
+
+    .target-indicator::before {
+      content: '📌 ';
+    }
+
+    /* Timestamp */
+    .msg-time {
+      display: block;
+      font-size: 11px;
+      opacity: 0.6;
+      margin-top: 4px;
+      text-align: right;
+    }
+    
+    .received .msg-time {
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Scroll Target on Load</h1>
+    <p class="desc">Using <code>scroll-initial-target: nearest</code> to automatically scroll a specific element into view on initial render.</p>
+  </header>
+
+  <main class="feed-wrapper">
+    <div class="feed-mockup">
+      <div class="feed-header">Creative Workspace</div>
+      <div class="feed-container" id="feed">
+        
+        <div class="item received">
+          <p>Hey team, I put together some moodboards for the new marketing campaign.</p>
+          <span class="msg-time">10:00 AM</span>
+        </div>
+        
+        <div class="item received">
+          <p>Here is option A: "Neon Dreams"</p>
+          <div class="media-card">
+            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop"
+              alt="Neon abstract art" width="400" height="200">
+          </div>
+          <span class="msg-time">10:02 AM</span>
+        </div>
+        
+        <div class="item sent">
+          <p>I really like the vibrant colors in Option A. Do we have something a bit more moody?</p>
+          <span class="msg-time">10:05 AM</span>
+        </div>
+        
+        <div class="item received">
+          <p>Yes, Option B is a bit darker and more mysterious. "Midnight Noir".</p>
+          <div class="media-card">
+            <img src="https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=400&auto=format&fit=crop"
+              alt="Dark moody art" width="400" height="200">
+          </div>
+          <span class="msg-time">10:08 AM</span>
+        </div>
+        
+        <div class="item sent">
+          <p>They both look great, but I think the third one you showed me yesterday was the winner.</p>
+          <span class="msg-time">10:15 AM</span>
+        </div>
+
+        <!-- Target Media Item -->
+        <div class="item received target">
+          <div class="target-indicator">Initial Target</div>
+          <p>This is Option C. I think this perfectly captures the "Cybernetic" theme we are going for.</p>
+          <div class="media-card large">
+            <img src="https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=400&auto=format&fit=crop"
+              alt="Cybernetic art featuring vivid neon lines" width="400" height="280">
+          </div>
+          <span class="msg-time">10:20 AM</span>
+        </div>
+        
+        <div class="item sent">
+          <p>Yes! That's exactly it. Let's move forward with Option C.</p>
+          <span class="msg-time">10:22 AM</span>
+        </div>
+
+        <div class="item received">
+          <p>Great! I'll prepare the final assets and send them over by EOD.</p>
+          <span class="msg-time">10:25 AM</span>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Fallback strategy for browsers that don't support scroll-initial-target
+    document.addEventListener("DOMContentLoaded", () => {
+      if (!CSS.supports('scroll-initial-target', 'nearest')) {
+        const feedTarget = document.querySelector('.feed-container .item.target');
+        if (feedTarget) {
+          feedTarget.scrollIntoView({ behavior: 'instant', block: 'center' });
+        }
+      }
+    });
+  </script>
+</body>
+</html>

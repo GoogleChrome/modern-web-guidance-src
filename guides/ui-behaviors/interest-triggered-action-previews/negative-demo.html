@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Action Previews</title>
+    <style>
+      .color-grid {
+        display: flex;
+        gap: 8px;
+      }
+
+      .color-grid button {
+        width: 3rem;
+        height: 3rem;
+        border: 2px solid #ccc;
+        border-radius: 6px;
+      }
+
+      .color-grid button:hover,
+      .color-grid button:focus {
+        border-color: #000;
+      }
+
+      .preview-box {
+        background-clip: padding-box;
+        width: 100%;
+        height: 8rem;
+        border: 2px solid #ccc;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        transition: background-color 0.2s, border-style 0.2s;
+      }
+
+      .preview-box.active-preview {
+        border-style: dashed;
+        border-color: #666;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Action Previews</h1>
+      <p>Hover over or focus on a color swatch to preview how the box would look. Click to permanently apply the color.</p>
+
+      <p class="color-grid">
+        <button
+          style="background: #ef4444"
+          data-color="#ef4444"
+          data-label="Red"
+        ></button>
+        <button
+          style="background: #3b82f6"
+          data-color="#3b82f6"
+          data-label="Blue"
+        ></button>
+        <button
+          style="background: #22c55e"
+          data-color="#22c55e"
+          data-label="Green"
+        ></button>
+      </p>
+
+      <div id="preview-box" class="preview-box">Preview Area</div>
+
+      <div id="announcement-region" class="sr-only" role="status" aria-live="polite"></div>
+    </main>
+    <script type="module">
+      import "https://unpkg.com/interestfor@latest";
+
+      const previewBox = document.getElementById('preview-box');
+      const announcer = document.getElementById('announcement-region');
+      let appliedColor = '';
+
+      document.querySelectorAll('.color-grid button').forEach((btn) => {
+        btn.addEventListener('mouseenter', () => {
+          previewBox.style.backgroundColor = btn.dataset.color;
+          previewBox.textContent = `Previewing ${btn.dataset.label}`;
+          previewBox.classList.add('active-preview');
+          announcer.textContent = `Previewing ${btn.dataset.label}`;
+        });
+
+        btn.addEventListener('mouseleave', () => {
+          previewBox.style.backgroundColor = appliedColor;
+          previewBox.textContent = appliedColor ? 'Color Applied' : 'Preview Area';
+          previewBox.classList.remove('active-preview');
+          announcer.textContent = appliedColor ? 'Color Applied' : 'Preview Area';
+        });
+
+        btn.addEventListener('focus', () => {
+          previewBox.style.backgroundColor = btn.dataset.color;
+          previewBox.textContent = `Previewing ${btn.dataset.label}`;
+          previewBox.classList.add('active-preview');
+          announcer.textContent = `Previewing ${btn.dataset.label}`;
+        });
+
+        btn.addEventListener('blur', () => {
+          previewBox.style.backgroundColor = appliedColor;
+          previewBox.textContent = appliedColor ? 'Color Applied' : 'Preview Area';
+          previewBox.classList.remove('active-preview');
+          announcer.textContent = appliedColor ? 'Color Applied' : 'Preview Area';
+        });
+
+        btn.addEventListener('click', () => {
+          appliedColor = btn.dataset.color;
+          previewBox.style.backgroundColor = appliedColor;
+          previewBox.textContent = 'Color Applied';
+          announcer.textContent = 'Color Applied';
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session Analytics</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      color: #333;
+    }
+    h1 { color: #1a1a1a; }
+    .status-container {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-top: 1.5rem;
+    }
+    #logOutput {
+      font-family: monospace;
+      white-space: pre-wrap;
+      font-size: 0.9rem;
+      color: #495057;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25em 0.4em;
+      font-size: 75%;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: baseline;
+      border-radius: 0.25rem;
+      background-color: #28a745;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Session Analytics</h1>
+  <p>This page demonstrates session tracking.</p>
+  <p><span class="badge">Session ID:</span> <span id="sessionIdDisplay"></span></p>
+
+  <div class="status-container">
+    <strong>Activity Log:</strong>
+    <div id="logOutput"></div>
+  </div>
+
+  <script>
+    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
+    const logElement = document.getElementById('logOutput');
+
+    const sessionData = {
+      duration: 0,
+      id: crypto.randomUUID(),
+      dataPayload: ""
+    };
+
+    document.getElementById('sessionIdDisplay').textContent = sessionData.id;
+
+    function logMessage(msg) {
+      const time = new Date().toLocaleTimeString();
+      logElement.textContent = `[${time}] ${msg}
+` + logElement.textContent;
+    }
+
+    function trackSession() {
+      sessionData.duration = Math.round(performance.now() / 1000);
+      sessionData.dataPayload += "a".repeat(100000);
+
+      fetch(ANALYTICS_ENDPOINT, {
+        method: 'POST',
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(JSON.stringify(sessionData)));
+            controller.close();
+          }
+        })
+      });
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", ANALYTICS_ENDPOINT, true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(JSON.stringify(sessionData));
+
+      navigator.sendBeacon(ANALYTICS_ENDPOINT, JSON.stringify(sessionData));
+
+      logMessage(`Sent beacons. Session duration: ${sessionData.duration}s`);
+    }
+
+    trackSession();
+
+    setInterval(trackSession, 10000);
+
+    window.addEventListener('unload', function() {
+      sessionData.duration = Math.round(performance.now() / 1000);
+      const img = new Image();
+      img.src = ANALYTICS_ENDPOINT + '?data=' + encodeURIComponent(JSON.stringify(sessionData));
+    });
+  </script>
+</body>
+</html>

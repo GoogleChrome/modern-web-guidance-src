@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Content Injection</title>
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --primary-hover: #1557b0;
+      --bg: #f8f9fa;
+      --surface: #ffffff;
+      --text: #202124;
+      --text-secondary: #5f6368;
+      --border: #dadce0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+    }
+
+    .description {
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+      font-size: 1.1rem;
+    }
+
+    .demo-section {
+      background: var(--surface);
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+      margin-bottom: 2rem;
+    }
+
+    h2 {
+      margin-top: 0;
+      color: var(--text);
+    }
+
+    p {
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    button:hover {
+      background: var(--primary-hover);
+    }
+
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      min-height: 120px;
+      padding: 1.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .card {
+      width: 100px;
+      height: 100px;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-weight: 600;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .card:where([hidden], .hidden) {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Transitioning Elements</h1>
+  <p class="description">
+    Smoothly hide and show elements as they are added or removed from the DOM, or as their <code>display</code> values are toggled.
+  </p>
+
+  <div class="demo-section">
+    <h2>Example 1: Display Toggling</h2>
+    <p>Toggling the <code>hidden</code> attribute which sets <code>display: none</code>.</p>
+    <div class="controls">
+      <button id="toggleBtn">Toggle Display</button>
+    </div>
+    <div class="container">
+      <div id="toggleCard" class="card">Item 1</div>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Example 2: Adding / Removing DOM Nodes</h2>
+    <p>Dynamically injecting new elements and removing existing ones from the DOM.</p>
+    <div class="controls">
+      <button id="addBtn">Add Element</button>
+      <button id="removeBtn">Remove Element</button>
+    </div>
+    <div class="container" id="domContainer">
+      <div class="card">Item 1</div>
+    </div>
+  </div>
+
+  <script>
+    const toggleBtn = document.getElementById('toggleBtn');
+    const toggleCard = document.getElementById('toggleCard');
+
+    toggleBtn.addEventListener('click', () => {
+      toggleCard.toggleAttribute('hidden');
+    });
+
+    const addBtn = document.getElementById('addBtn');
+    const removeBtn = document.getElementById('removeBtn');
+    const domContainer = document.getElementById('domContainer');
+    let totalAdded = 1;
+
+    addBtn.addEventListener('click', () => {
+      totalAdded++;
+      const newCard = document.createElement('div');
+      newCard.className = 'card';
+      newCard.textContent = `Item ${totalAdded}`;
+      domContainer.appendChild(newCard);
+    });
+
+    removeBtn.addEventListener('click', () => {
+      const cards = Array.from(domContainer.querySelectorAll('.card:not([hidden])'));
+      const lastCard = cards[cards.length - 1];
+
+      if (lastCard) {
+        lastCard.remove();
+      }
+    });
+  </script>
+</body>
+</html>

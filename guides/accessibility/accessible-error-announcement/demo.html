@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessible Error Announcement Demo (Fallbacked)</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      line-height: 1.5;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .form-group {
+      margin-bottom: 2rem;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .hint {
+      display: block;
+      font-size: 0.875rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+    }
+
+    /* 
+      Visual State - Native Browser Logic 
+      We duplicate styles for the fallback class to ensure consistency
+    */
+    input:user-invalid,
+    input.user-invalid-fallback {
+      border-color: #d93025;
+      background-color: #fce8e6;
+    }
+
+    input:user-valid {
+      border-color: #188038;
+    }
+
+    /* Error Message Visibility */
+    .error-message {
+      display: none;
+      color: #d93025;
+      margin-top: 0.5rem;
+      font-weight: bold;
+    }
+
+    /* Show error if native selector matches OR fallback class is present */
+    input:user-invalid+.error-message,
+    input.user-invalid-fallback+.error-message {
+      display: block;
+    }
+
+    /* Debug info to visualize ARIA state */
+    .debug-info {
+      margin-top: 0.5rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #0056b3;
+      background: #e8f0fe;
+      padding: 4px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Accessible Error Announcement</h1>
+  <p>This demo synchronizes the visual <code>:user-invalid</code> state with the semantic <code>aria-invalid</code>
+    attribute. It includes a robust fallback for older browsers.</p>
+
+  <div style="margin-bottom: 1rem;">
+    <label
+      style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #f0f0f0; padding: 0.5rem 1rem; border-radius: 4px;">
+      <input type="checkbox" id="force-fallback">
+      <strong>Force Fallback Mode</strong> (Simulate older browser)
+    </label>
+  </div>
+
+  <div id="fallback-status" style="padding: 1rem; background: #eee; margin-bottom: 1rem; border-radius: 4px;">
+    Checking support...
+  </div>
+
+  <form id="demo-form" action="#" onsubmit="event.preventDefault();" novalidate>
+
+    <div class="form-group">
+      <label for="username">Username (Required, min 3 chars)</label>
+      <span class="hint" id="username-hint">Type 1-2 chars and tab away to see error.</span>
+      <input type="text" id="username" name="username" required minlength="3" aria-describedby="username-hint"
+        aria-errormessage="username-error">
+      <div id="username-error" class="error-message">
+        Username must be at least 3 characters long.
+      </div>
+      <div class="debug-info" id="username-debug">aria-invalid: null</div>
+    </div>
+
+    <div class="form-group">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" name="email" required aria-errormessage="email-error">
+      <div id="email-error" class="error-message">
+        Please enter a valid email address.
+      </div>
+      <div class="debug-info" id="email-debug">aria-invalid: null</div>
+    </div>
+
+    <div style="display: flex; gap: 1rem;">
+      <button type="submit">Submit</button>
+      <button type="reset">Reset</button>
+      </div>
+  </form>
+
+  <script>
+    const form = document.getElementById('demo-form');
+    const statusDiv = document.getElementById('fallback-status');
+    const forceFallbackCheckbox = document.getElementById('force-fallback');
+
+    // State to track if we are using native or fallback logic
+    let useNativeLogic = false;
+
+                // 1. Feature Detection & Mode Switching
+                const updateFeatureState = () => {
+      const nativelySupported = CSS.supports('selector(:user-invalid)');
+      const forced = forceFallbackCheckbox.checked;
+
+      useNativeLogic = nativelySupported && !forced;
+
+      if (useNativeLogic) {
+        statusDiv.textContent = "✅ Native :user-invalid supported. Using browser logic.";
+        statusDiv.style.background = "#e6f4ea";
+        statusDiv.style.color = "#137333";
+      } else {
+        const reason = forced ? "(Forced)" : "(Not supported)";
+        statusDiv.textContent = `⚠️ Using JS fallback logic ${reason}.`;
+        statusDiv.style.background = "#fff8e1";
+        statusDiv.style.color = "#b06000";
+      }
+
+                // Reset when switching modes
+                form.querySelectorAll('input').forEach(input => {
+          input.classList.remove('user-invalid-fallback');
+                input.classList.remove('user-valid-fallback');
+                input.removeAttribute('aria-invalid');
+                updateDebugInfo(input);
+      });
+
+                // Initialize fallback if needed
+                if (!useNativeLogic) {
+                  UserInvalidFallback.init(form);
+                }
+    };
+
+                const updateDebugInfo = (input) => {
+                  const debugEl = document.getElementById(`${input.id}-debug`);
+                  if (debugEl) {
+                    debugEl.textContent = `aria-invalid: ${input.getAttribute('aria-invalid') || 'null'}`;
+                  }
+                };
+
+                forceFallbackCheckbox.addEventListener('change', () => {
+                  updateFeatureState();
+                });
+
+                // 2. The Fallback (Synced from guide.md)
+                const UserInvalidFallback = (() => {
+                  const dirtyState = new WeakMap();
+                  let initialized = false;
+
+                const updateState = (input) => {
+                  const isValid = input.checkValidity();
+
+                // Update both visual and ARIA state
+                input.classList.toggle('user-invalid-fallback', !isValid);
+                input.classList.toggle('user-valid-fallback', isValid);
+
+                if (!isValid) {
+                  input.setAttribute('aria-invalid', 'true');
+                } else {
+                  input.removeAttribute('aria-invalid');
+                }
+
+                  if (!useNativeLogic) {
+                    updateDebugInfo(input);
+                  }
+              };
+
+                const handleEvent = (event) => {
+                  if (useNativeLogic) return; // Don't run fallback logic if native is active
+
+                  const input = event.target;
+
+                  if (event.type === 'reset' && input.matches?.('form')) {
+                    const controls = input.elements || [];
+                    for (const control of controls) {
+                      dirtyState.delete(control);
+                      control.classList.remove('user-invalid-fallback');
+                      control.classList.remove('user-valid-fallback');
+                      control.removeAttribute('aria-invalid');
+                      updateDebugInfo(control);
+                    }
+                    return;
+                  }
+
+                  if (!input.matches?.('input, textarea, select')) return;
+
+                // Track if user has interacted with the field at all.
+                const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
+
+                if (event.type === 'input' || event.type === 'change') {
+                  state.hasInteracted = true;
+                  dirtyState.set(input, state);
+                
+                  // Only update live if they've already blurred once (mimicking native behavior)
+                  if (state.hasBlurred) {
+                    updateState(input);
+                  }
+                } else if (event.type === 'blur') {
+                  state.hasBlurred = true;
+                  dirtyState.set(input, state);
+
+                  // Validate on blur only if they meaningfully interacted
+                  if (state.hasInteracted) {
+                    updateState(input);
+                  }
+                }
+                };
+
+                  const init = () => {
+                    if (initialized) return;
+                    initialized = true;
+
+                  document.addEventListener('blur', handleEvent, true); // Capture phase
+                  document.addEventListener('input', handleEvent, true); // Capture phase since input doesn't always bubble reliably for all field types when testing
+                  document.addEventListener('change', handleEvent, true);
+                  document.addEventListener('reset', handleEvent, true); // Capture resets
+                };
+
+                return { init };
+              })();
+
+                // 3. For native support, we still need to sync ARIA state
+                // because :user-invalid exists but aria-invalid doesn't auto-sync.
+                  document.addEventListener('blur', (e) => {
+                    if (!e.target.matches?.('input, textarea, select')) return;
+                    if (useNativeLogic && e.target.checkValidity) {
+                      const isInvalid = e.target.matches(':user-invalid');
+                      if (isInvalid) {
+                        e.target.setAttribute('aria-invalid', 'true');
+                      } else {
+                        e.target.removeAttribute('aria-invalid');
+                      }
+                    }
+                    // Update debug info for the demo
+                    updateDebugInfo(e.target);
+                  }, true);
+
+                  document.addEventListener('focus', (e) => {
+                    if (!e.target.matches?.('input, textarea, select')) return;
+                  if (useNativeLogic && e.target.checkValidity) {
+                    const isInvalid = e.target.matches(':user-invalid');
+                    if (isInvalid) {
+                      e.target.setAttribute('aria-invalid', 'true');
+                    } else {
+                      e.target.removeAttribute('aria-invalid');
+                    }
+                  }
+                  // Update debug info for the demo
+                  updateDebugInfo(e.target);
+                }, true);
+
+                  document.addEventListener('input', (e) => {
+                    if (!e.target.matches?.('input, textarea, select')) return;
+                  if (useNativeLogic && e.target.checkValidity) {
+                    if (e.target.hasAttribute('aria-invalid')) {
+                      const isInvalid = e.target.matches(':user-invalid');
+                      if (!isInvalid) e.target.removeAttribute('aria-invalid');
+                    }
+                  }
+                  // Update debug info for the demo
+                  updateDebugInfo(e.target);
+                });
+
+                  document.addEventListener('reset', (e) => {
+                    if (!e.target.matches?.('form')) return;
+                  setTimeout(() => {
+                    Array.from(e.target.elements).forEach(el => {
+                      if (useNativeLogic) el.removeAttribute('aria-invalid');
+                      updateDebugInfo(el);
+                    });
+                  }, 0);
+                });
+
+                // Init
+    updateFeatureState();
+  </script>
+</body>
+
+</html>

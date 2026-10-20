@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll Affordance Demo</title>
+  <style>
+    .scroller {
+      width: 300px;
+      height: 250px;
+      overflow-y: scroll;
+      border: 1px solid #999;
+      background: #fff;
+      font-family: system-ui, sans-serif;
+      position: relative;
+    }
+
+    .shadow-top, .shadow-bottom {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 20px;
+      background: rgba(0,0,0,0.5);
+      pointer-events: auto;
+    }
+
+    .shadow-top {
+      top: 0;
+    }
+
+    .shadow-bottom {
+      bottom: 0;
+    }
+
+    .content {
+      padding: 20px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scroller" id="scrollContainer">
+    <div class="shadow-top" id="topShadow"></div>
+    <div class="content">
+      <p>Scroll content to trigger manual updates.</p>
+      <p>Lorem ipsum dolor sit amet.</p>
+      <p>Consectetur adipiscing elit.</p>
+      <p>Sed do eiusmod tempor incididunt.</p>
+      <p>Ut labore et dolore magna aliqua.</p>
+      <p>Ut enim ad minim veniam.</p>
+      <p>Quis nostrud exercitation ullamco.</p>
+      <p>Laboris nisi ex ea commodo.</p>
+      <p>At the bottom of the container.</p>
+    </div>
+    <div class="shadow-bottom" id="bottomShadow"></div>
+  </div>
+
+  <script>
+    const container = document.getElementById('scrollContainer');
+    const topShadow = document.getElementById('topShadow');
+    const bottomShadow = document.getElementById('bottomShadow');
+
+    function updateShadows() {
+      const rect = container.getBoundingClientRect();
+      const scrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight;
+      const clientHeight = container.clientHeight;
+
+      if (scrollTop > 0) {
+        topShadow.style.display = 'block';
+      } else {
+        topShadow.style.display = 'none';
+      }
+
+      if (scrollTop + clientHeight < scrollHeight) {
+        bottomShadow.style.display = 'block';
+      } else {
+        bottomShadow.style.display = 'none';
+      }
+    }
+
+    container.addEventListener('scroll', function() {
+      updateShadows();
+    });
+
+    setInterval(function() {
+      updateShadows();
+    }, 100);
+
+    updateShadows();
+  </script>
+</body>
+</html>

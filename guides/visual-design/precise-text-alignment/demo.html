@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Precise Text Alignment</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=arrow_forward_ios"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        padding: 4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 4rem;
+        background: #f8fafc;
+      }
+
+      /* 1. Accurate Visual Padding */
+      /* Container padding matches the visible gap to the letters */
+      .badge {
+        background: hotpink;
+        color: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px;
+        display: inline-block;
+        margin: 0;
+        font-size: 1.25rem;
+        align-self: start;
+        text-box: trim-both cap alphabetic;
+      }
+
+      /* 2. Centered Icon Button */
+      /* text-box-trim ensures the flex container centers the actual letters, not the font box */
+      .button {
+        display: inline-flex;
+        align-items: center;
+        padding: 20px 40px;
+        background: #0f172a;
+        color: white;
+        font-size: 1.5rem;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+      }
+
+      .button-text {
+        text-box: trim-both cap alphabetic;
+      }
+
+      /* 3. Flush Alignment with UI Elements */
+      /* Aligning the top of the text exactly with an adjacent image */
+      .hero-title {
+        display: flex;
+        align-items: flex-start;
+        gap: 1.5rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 5rem;
+        line-height: 1.1;
+
+        text-box: trim-start cap alphabetic;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Use case 1: Badge Padding -->
+    <div class="badge">
+      Trimmed content box
+    </div>
+
+    <!-- Use case 2: Centered Button -->
+    <div>
+      <button class="button">
+        <span class="material-symbols-outlined"> arrow_forward_ios </span>
+        <span class="button-text">Precise button</span>
+      </button>
+    </div>
+
+    <!-- Use case 3: Flush Alignment -->
+    <div class="hero-title">
+      <img
+        src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop"
+        alt="Neon abstract art"
+        width="400"
+        height="200"
+      />
+      <h1>FLUSH TITLE</h1>
+    </div>
+  </body>
+</html>

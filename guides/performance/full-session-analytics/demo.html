@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>fetchLater() Analytics Implementation</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      color: #333;
+    }
+    h1 { color: #1a1a1a; }
+    .status-container {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-top: 1.5rem;
+    }
+    #logOutput {
+      font-family: monospace;
+      white-space: pre-wrap;
+      font-size: 0.9rem;
+      color: #495057;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25em 0.4em;
+      font-size: 75%;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: baseline;
+      border-radius: 0.25rem;
+      background-color: #28a745;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Reliable Session Analytics</h1>
+  <p>This page demonstrates the <code>fetchLater()</code> API. A new beacon is queued with an updated session duration every 10 seconds.</p>
+  <p>When you close this tab or navigate away, the browser will reliably send the most recent payload.</p>
+  <p><span class="badge">Session ID:</span> <span id="sessionIdDisplay"></span></p>
+
+  <div class="status-container">
+    <strong>Activity Log:</strong>
+    <div id="logOutput"></div>
+  </div>
+
+  <script>
+    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
+      let timeoutHandle;
+      let activated = false;
+
+      function sendNow() {
+        if (!(init.signal && init.signal.aborted)) {
+          // Use fetch keepalive if supported, else fallback to sendBeacon
+          if (
+            'keepalive' in Request.prototype ||
+            init.method !== 'POST' ||
+            init.headers
+          ) {
+            fetch(url, Object.assign({}, init, {keepalive: true}));
+            activated = true;
+          } else {
+            activated = navigator.sendBeacon(url, init.body);
+          }
+        }
+        destroy();
+      }
+
+      function destroy() {
+        document.removeEventListener('visibilitychange', sendNow);
+        clearTimeout(timeoutHandle);
+      }
+
+      if (document.visibilityState === 'hidden') {
+        queueMicrotask(sendNow);
+      } else {
+        document.addEventListener('visibilitychange', sendNow);
+        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
+          timeoutHandle = setTimeout(sendNow, init.activateAfter);
+        }
+      }
+
+      if (init.signal) {
+        init.signal.addEventListener('abort', destroy);
+      }
+
+      return {
+        get activated() {
+          return activated;
+        },
+      };
+    };
+  </script>
+
+  <script>
+    // Configuration
+    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
+    const logElement = document.getElementById('logOutput');
+
+    // Initialize session data
+    const sessionData = {
+      duration: 0,
+      id: crypto.randomUUID(),
+    };
+
+    // Display the session ID in the UI
+    document.getElementById('sessionIdDisplay').textContent = sessionData.id;
+
+    let fetchLaterController = null;
+
+    // Helper to print logs to the screen
+    function logMessage(msg) {
+      const time = new Date().toLocaleTimeString();
+      logElement.textContent = `[${time}] ${msg}\n` + logElement.textContent;
+    }
+
+    function queueBeacon() {
+      // Abort any pending beacons before creating a new one.
+      if (fetchLaterController) {
+        fetchLaterController.abort();
+        logMessage('Aborted previous pending beacon.');
+      }
+
+      fetchLaterController = new AbortController();
+
+      // Update session duration to the current page time (converted to seconds for readability).
+      sessionData.duration = Math.round(performance.now() / 1000);
+
+      try {
+        // Schedule a fetch for the data payload to be sent later.
+        fetchLater(ANALYTICS_ENDPOINT, {
+          method: 'POST',
+          headers: {'content-type': 'application/json'},
+          body: JSON.stringify(sessionData),
+          signal: fetchLaterController.signal,
+        });
+
+        logMessage(`Queued new beacon. Session duration: ${sessionData.duration}s`);
+      } catch (error) {
+        logMessage(`Quota error or failure queuing beacon: ${error.message}`);
+      }
+    }
+
+    // Queue the initial beacon right away
+    queueBeacon();
+
+    // Update the session data and queue a new beacon every 10 seconds.
+    setInterval(queueBeacon, 10000);
+  </script>
+</body>
+</html>

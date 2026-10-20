@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incorrect Foreground Time Calculation (Negative Demo)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; }
+    .error { color: #991b1b; background: #fee2e2; padding: 1rem; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="error">
+    <h1>Total Foreground Time (Incorrect)</h1>
+    <p>This demo incorrectly calculates foreground time by just using <code>performance.now()</code>, failing to exclude time spent in the background.</p>
+    <div id="time">0ms</div>
+  </div>
+
+  <script>
+    // INCORRECT: This function just returns total elapsed time,
+    // ignoring whether the tab was actually in the foreground.
+    function getTotalForegroundTime() {
+      return performance.now();
+    }
+
+    function updateUI() {
+      document.getElementById('time').textContent = `${Math.round(getTotalForegroundTime())}ms`;
+    }
+
+    setInterval(updateUI, 100);
+  </script>
+</body>
+</html>

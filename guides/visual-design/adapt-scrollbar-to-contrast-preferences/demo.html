@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>High Contrast Scrollbar Demo</title>
+  <style>
+    /* ---------------------------------------------------- */
+    /* Base Reset and Layout */
+    /* ---------------------------------------------------- */
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #f9f9f9;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      margin-bottom: 2rem;
+      color: #666;
+      text-align: center;
+    }
+
+    .container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ---------------------------------------------------- */
+    /* The Scrollable Element Container */
+    /* ---------------------------------------------------- */
+    .scroller {
+      width: 300px;
+      height: 250px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      padding-right: 25px; /* Leave room for the scrollbar */
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .scroller p {
+      text-align: left;
+      margin-bottom: 1rem;
+      line-height: 1.6;
+    }
+
+    /* ---------------------------------------------------- */
+    /* Explicit Custom Color Definitions with Variables */
+    /* ---------------------------------------------------- */
+    
+    .scroller.adaptive-contrast {
+      /* Define default colors as CSS variables (subtle grey theme) */
+      --scrollbar-thumb: #bbb;
+      --scrollbar-thumb-hover: #999;
+      --scrollbar-track: #f1f1f1;
+      
+      /* Apply standard property natively */
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+      scrollbar-width: thin;
+      
+      /* Force track background to be visible on macOS */
+      scrollbar-gutter: stable;
+    }
+
+    /* ---------------------------------------------------- */
+    /* High Contrast Adaptation */
+    /* ---------------------------------------------------- */
+
+    @media (prefers-contrast: more) {
+      .scroller.adaptive-contrast {
+        /* Override variables for high legibility */
+        --scrollbar-thumb: #000000;
+        --scrollbar-thumb-hover: #333333;
+        --scrollbar-track: #ffffff;
+        
+        /* Apply a thicker border to the container itself for high-contrast visibility */
+        border: 3px solid #000;
+      }
+    }
+
+    /* Legacy WebKit/Blink styling hidden from modern browsers */
+    @supports not (scrollbar-color: auto) {
+      .scroller.adaptive-contrast::-webkit-scrollbar {
+        /* Must be sized for the custom colors to show up in Webkit */
+        width: 14px;
+      }
+
+      .scroller.adaptive-contrast::-webkit-scrollbar-track {
+        background: var(--scrollbar-track);
+        border-radius: 7px;
+        border: 1px solid #ddd; /* subtle border for track */
+      }
+
+      .scroller.adaptive-contrast::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 7px;
+        border: 3px solid var(--scrollbar-track);
+      }
+
+      .scroller.adaptive-contrast::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>High Contrast Scrollbar Adaptation</h1>
+  <p>Scroll down inside the box. Use Chrome DevTools (Rendering tab) to emulate the <strong>prefers-contrast: more</strong> media feature and watch the scrollbar switch to a highly legible black-and-white theme.</p>
+
+  <div class="container">
+    <div class="scroller adaptive-contrast" tabindex="0" aria-label="Sample scrollable content region">
+      <h2>Scroll me</h2>
+      <p>This container features a scrollbar that is intentionally subtle by default, utilizing light gray tones for the track and thumb.</p>
+      <p>However, accessibility is crucial. Users with visual impairments may enable high contrast modes in their operating system to improve legibility.</p>
+      <p>When high contrast is detected via <code>@media (prefers-contrast: more)</code>, the CSS custom properties defining this scrollbar will automatically swap.</p>
+      <p>The subtle gray tones are instantly replaced with stark black and white, guaranteeing the scrollbar thumb is clearly demarcated against the track and page background.</p>
+      <p>This demonstrates progressive enhancement for accessibility without sacrificing default aesthetics.</p>
+    </div>
+  </div>
+
+</body>
+</html>

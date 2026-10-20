@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validation Form</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      max-width: 400px;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+    }
+
+    input:invalid {
+      border-color: red;
+      background-color: #ffe6e6;
+    }
+
+    input:valid {
+      border-color: green;
+    }
+
+    .error-message {
+      display: none;
+      color: red;
+      font-size: 0.8rem;
+      margin-top: 0.25rem;
+    }
+
+    input:invalid + .error-message {
+      display: block;
+    }
+
+    .password-rules {
+      display: none;
+      color: red;
+      font-size: 0.8rem;
+      margin: 0.25rem 0 0 1rem;
+    }
+
+    input:focus + .password-rules,
+    input:invalid + .password-rules {
+      display: block;
+    }
+
+    input.dirty-invalid {
+      border-width: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <form id="signup-form">
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" required>
+      <div class="error-message">Please provide a valid email.</div>
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" required pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}">
+      <ul class="password-rules">
+        <li>At least 8 characters</li>
+        <li>One uppercase letter</li>
+        <li>One number</li>
+        <li>One special character</li>
+      </ul>
+    </div>
+
+    <button type="submit">Submit</button>
+    <button type="reset">Clear</button>
+  </form>
+
+  <script>
+    const form = document.getElementById('signup-form');
+    const inputs = form.querySelectorAll('input');
+
+    inputs.forEach(input => {
+      input.addEventListener('input', function() {
+        if (!this.checkValidity()) {
+          this.classList.add('dirty-invalid');
+          this.setAttribute('data-error', 'true');
+        } else {
+          this.classList.remove('dirty-invalid');
+          this.removeAttribute('data-error');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Topic Browser</title>
+    <style>
+      :root {
+        --bg: #f5f5f5;
+        --sidebar-bg: #e2e2e2;
+        --text: #333333;
+      }
+
+      body {
+        font-family: sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .sidebar {
+        width: 250px;
+        background: var(--sidebar-bg);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar-title {
+        font-weight: bold;
+        margin-bottom: 20px;
+      }
+
+      .menu-item {
+        padding: 10px;
+        margin-bottom: 5px;
+        border-radius: 4px;
+        cursor: pointer;
+        background: #ffffff;
+      }
+
+      .menu-item:hover {
+        background: #dddddd;
+      }
+
+      .content-area {
+        flex: 1;
+        overflow-y: scroll;
+        padding: 40px;
+      }
+
+      .section {
+        margin-bottom: 100px;
+      }
+
+      .section-title {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin-bottom: 15px;
+      }
+
+      .text {
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <div class="sidebar-title">Sections</div>
+      <div class="menu-item">Sunset Peaks</div>
+      <div class="menu-item">Ocean Tide</div>
+      <div class="menu-item">Forest Path</div>
+      <div class="menu-item">City Lights</div>
+    </div>
+    <div class="content-area">
+      <div class="section">
+        <div class="section-title">Sunset Peaks</div>
+        <div class="text">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua. Proin
+          tortor purus platea sit eu id nisi litora libero. Neque vulputate
+          consequat ac amet augue blandit maximus aliquet congue. Pharetra
+          vestibulum posuere ornare faucibus fusce dictumst orci aenean eu
+          facilisis ut volutpat commodo senectus purus himenaeos fames primis
+          convallis nisi.
+        </div>
+        <div class="text">
+          Phasellus fermentum malesuada phasellus netus dictum aenean placerat
+          egestas amet. Ornare taciti semper dolor tristique morbi. Sem leo
+          tincidunt aliquet semper eu lectus scelerisque quis. Sagittis vivamus
+          mollis nisi mollis enim fermentum laoreet.
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Ocean Tide</div>
+        <div class="text">
+          Curabitur semper venenatis lectus viverra ex dictumst nulla maximus.
+          Primis iaculis elementum conubia feugiat venenatis dolor augue ac
+          blandit nullam ac phasellus turpis feugiat mollis. Duis lectus porta
+          mattis imperdiet vivamus augue litora lectus arcu. Justo torquent
+          pharetra volutpat ad blandit bibendum accumsan nec elit cras luctus
+          primis ipsum gravida class congue.
+        </div>
+        <div class="text">
+          Phasellus fermentum malesuada phasellus netus dictum aenean placerat
+          egestas amet. Ornare taciti semper dolor tristique morbi. Sem leo
+          tincidunt aliquet semper eu lectus scelerisque quis. Sagittis vivamus
+          mollis nisi mollis enim fermentum laoreet.
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Forest Path</div>
+        <div class="text">
+          Vehicula etiam elementum finibus enim duis feugiat commodo adipiscing
+          tortor tempor elit. Et mollis consectetur habitant turpis tortor
+          consectetur adipiscing vulputate dolor lectus iaculis convallis
+          adipiscing. Nam hendrerit dignissim condimentum ullamcorper diam morbi
+          eget consectetur odio in sagittis.
+        </div>
+        <div class="text">
+          Curabitur semper venenatis lectus viverra ex dictumst nulla maximus.
+          Primis iaculis elementum conubia feugiat venenatis dolor augue ac
+          blandit nullam ac phasellus turpis feugiat mollis. Duis lectus porta
+          mattis imperdiet vivamus augue litora lectus arcu. Justo torquent
+          pharetra volutpat ad blandit bibendum accumsan nec elit cras luctus
+          primis ipsum gravida class congue.
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">City Lights</div>
+        <div class="text">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua. Proin
+          tortor purus platea sit eu id nisi litora libero. Neque vulputate
+          consequat ac amet augue blandit maximus aliquet congue. Pharetra
+          vestibulum posuere ornare faucibus fusce dictumst orci aenean eu
+          facilisis ut volutpat commodo senectus purus himenaeos fames primis
+          convallis nisi.
+        </div>
+        <div class="text">
+          Vehicula etiam elementum finibus enim duis feugiat commodo adipiscing
+          tortor tempor elit. Et mollis consectetur habitant turpis tortor
+          consectetur adipiscing vulputate dolor lectus iaculis convallis
+          adipiscing. Nam hendrerit dignissim condimentum ullamcorper diam morbi
+          eget consectetur odio in sagittis.
+        </div>
+      </div>
+    </div>
+    <script>
+      const menuItems = document.querySelectorAll(".menu-item");
+      menuItems.forEach((item) => {
+        item.addEventListener("click", () => {
+          console.log("Menu item clicked");
+        });
+      });
+    </script>
+  </body>
+</html>

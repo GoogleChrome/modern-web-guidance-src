@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scheduling Tasks by Priority</title>
+  <style>
+    :root {
+      --bg-color: #121212;
+      --card-bg: #1e1e1e;
+      --text-color: #e0e0e0;
+      --urgent-color: #ff5252;
+      --visible-color: #2196f3;
+      --bg-priority-color: #4caf50;
+      --system-color: #9c27b0;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-sizing: border-box;
+    }
+    h1 { color: var(--visible-color); }
+    .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+    button {
+      background-color: #333; color: white; border: 1px solid #444;
+      padding: 10px 15px; border-radius: 4px; cursor: pointer;
+      font-weight: bold; transition: background-color 0.2s;
+    }
+    button:hover { background-color: #444; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #btn-blocking { border-color: var(--urgent-color); }
+    #btn-blocking:hover { background-color: rgba(255, 82, 82, 0.1); }
+    #btn-visible { border-color: var(--visible-color); }
+    #btn-visible:hover { background-color: rgba(33, 150, 243, 0.1); }
+    #btn-background { border-color: var(--bg-priority-color); }
+    #btn-background:hover { background-color: rgba(76, 175, 80, 0.1); }
+    .log-container {
+      width: 100%; max-width: 800px; min-height: 400px;
+      background-color: #1e1e1e; border: 1px solid #333;
+      border-radius: 4px; padding: 10px; overflow-y: auto;
+      font-family: monospace; box-sizing: border-box;
+    }
+    .log-entry { margin: 4px 0; padding: 2px 5px; border-left: 3px solid #666; }
+    .log-entry.user-blocking { border-color: var(--urgent-color); color: var(--urgent-color); }
+    .log-entry.user-visible { border-color: var(--visible-color); color: var(--visible-color); }
+    .log-entry.background { border-color: var(--bg-priority-color); color: var(--bg-priority-color); }
+    .log-entry.system { border-color: var(--system-color); color: #e1bee7; }
+    .instructions {
+      background: var(--card-bg); padding: 15px 20px; border-radius: 8px;
+      max-width: 600px; margin: 10px auto 20px auto;
+      border-left: 4px solid var(--visible-color); text-align: left;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    .instructions h3 { margin-top: 0; color: var(--visible-color); }
+    .instructions ol { padding-left: 20px; }
+    .instructions li { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+  <h1>Scheduling Tasks by Priority</h1>
+  <p>Juggling work at different priorities using <code>scheduler.postTask()</code>.</p>
+
+  <div class="instructions">
+    <h3>How to test:</h3>
+    <ol>
+      <li>Click <strong>Schedule Batch (Mixed)</strong> to add tasks of different priorities to the queue.</li>
+      <li>Observe the log: Tasks should execute in order of priority (Blocking > Visible > Background), regardless of the order they were added.</li>
+      <li>Try clicking individual buttons to see how they behave.</li>
+    </ol>
+  </div>
+
+  <div class="controls">
+    <button id="btn-blocking" onclick="scheduleTask('user-blocking')">Schedule User-Blocking</button>
+    <button id="btn-visible" onclick="scheduleTask('user-visible')">Schedule User-Visible</button>
+    <button id="btn-background" onclick="scheduleTask('background')">Schedule Background</button>
+    <button onclick="scheduleBatch()">Schedule Batch (Mixed)</button>
+    <button onclick="clearLog()">Clear Log</button>
+  </div>
+
+  <div class="log-container" id="log"></div>
+
+  <script>
+    const logContainer = document.getElementById('log');
+    const buttons = document.querySelectorAll('.controls button');
+
+    function setButtonsEnabled(enabled) {
+      buttons.forEach(b => {
+        if (b.textContent !== 'Clear Log') {
+          b.disabled = !enabled;
+        }
+      });
+    }
+
+    function log(message, type = 'system') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 }).split(' ')[0];
+      entry.textContent = `[${time}] ${message}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function clearLog() {
+      logContainer.innerHTML = '';
+      log('Log cleared');
+    }
+
+    function heavyWork(ms) {
+      const start = performance.now();
+      while (performance.now() - start < ms) {
+        Math.sqrt(Math.random());
+      }
+    }
+
+    function scheduleTask(priority) {
+      log(`Enqueuing ${priority} task`, priority);
+      scheduler.postTask(() => {
+        log(`-> Running ${priority} task`, priority);
+        heavyWork(50); // Simulate work to make order visible
+        log(`<- Finished ${priority} task`, priority);
+      }, { priority });
+    }
+
+    function scheduleBatch() {
+      log('Enqueuing batch of tasks with mixed priorities...', 'system');
+      
+      // Schedule in mixed order to see reordering
+      scheduleTask('background');
+      scheduleTask('user-visible');
+      scheduleTask('user-blocking');
+      scheduleTask('background');
+      scheduleTask('user-visible');
+      scheduleTask('user-blocking');
+    }
+
+    // Disable buttons until scheduler is ready
+    setButtonsEnabled(false);
+
+    // Polyfill loading
+    if (!('scheduler' in window && 'postTask' in window.scheduler)) {
+      log('Scheduler API not supported. Loading polyfill...', 'system');
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/scheduler-polyfill';
+      script.onload = () => {
+        log('Polyfill loaded and ready.', 'system');
+        setButtonsEnabled(true);
+      };
+      document.head.appendChild(script);
+    } else {
+      log('Native Scheduler API supported.', 'system');
+      setButtonsEnabled(true);
+    }
+
+    log('Demo ready.', 'system');
+  </script>
+</body>
+</html>

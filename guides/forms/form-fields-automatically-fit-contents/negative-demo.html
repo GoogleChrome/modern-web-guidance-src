@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Example</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      max-width: 600px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-weight: 500;
+      align-items: stretch;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.5rem;
+      border: 1px solid #999;
+      border-radius: 4px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      align-self: stretch;
+    }
+
+    select {
+      width: 100%;
+      align-self: stretch;
+    }
+
+    textarea {
+      height: 100px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Form Example</h1>
+  <form>
+    <label>
+      Name (Input):
+      <input type="text" placeholder="Your full name">
+    </label>
+
+    <label>
+      Message (Textarea):
+      <textarea placeholder="Write a long message here."></textarea>
+    </label>
+
+    <label>
+      Favorite Color (Select):
+      <select>
+        <option value="red">Red</option>
+        <option value="blue">Blue</option>
+        <option value="super-long-color">A ridiculously long color name just to test sizing</option>
+      </select>
+    </label>
+  </form>
+</body>
+</html>

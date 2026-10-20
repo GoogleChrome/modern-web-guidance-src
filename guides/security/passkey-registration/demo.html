@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Passkey Registration Demo</title>
+</head>
+<body>
+  <div class="card">
+    <h2>Register a Passkey</h2>
+    <p>Promote passkey adoption for a secure, passwordless login experience.</p>
+    <button id="register-btn" data-testid="register-button">Create Passkey</button>
+    <div id="status" class="status" data-testid="registration-status">Idle</div>
+  </div>
+
+  <script type="module">
+      const rpId = 'example.com';
+
+    async function init() {
+      if (window.PublicKeyCredential) {
+        const capabilities = await PublicKeyCredential.getClientCapabilities();
+        if (!capabilities.passkeyPlatformAuthenticator) {
+          document.getElementById('register-btn').style.display = 'none';
+        }
+      }
+    }
+    init();
+
+    async function registerPasskey() {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Registering...';
+
+      try {
+        // 1. Fetch Options Generation options from backend endpoint
+        const responseOptions = await fetch('/api/register/options', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ promotion: true }) // Post-password login Promotion Flow flag
+        });
+        
+        if (!responseOptions.ok) {
+          throw new Error('Failed to generate creation options from server');
+        }
+        const creationOptionsJSON = await responseOptions.json();
+
+        // 2. Decode and Invoke the WebAuthn API
+        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
+        const credential = await navigator.credentials.create({ publicKey });
+        
+        // 3. Verify Attestation Response on the backend
+        if (credential) {
+          const encodedResponse = credential.toJSON();
+          let verifyResponse;
+          
+          try {
+            verifyResponse = await fetch('/api/register/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(encodedResponse)
+            });
+            
+            if (verifyResponse.ok) {
+              statusEl.textContent = 'Passkey Registered Successfully!';
+              statusEl.style.color = '#228b22';
+            } else {
+              throw new Error('Server failed to verify passkey attestation');
+            }
+          } catch (verifyErr) {
+            // Segregated Try/Catch to sync manager credentials list if server verification fails
+            console.error('Verification endpoint failed:', verifyErr);
+            if (PublicKeyCredential.signalUnknownCredential) {
+              await PublicKeyCredential.signalUnknownCredential({
+                rpId,
+                credentialId: encodedResponse.id
+              });
+            }
+            throw verifyErr;
+          }
+        } else {
+          throw new Error('Failed to create local passkey credential');
+        }
+      } catch (e) {
+        console.error(e);
+        if (e.name === 'InvalidStateError') {
+          statusEl.textContent = 'A passkey already exists for this account.';
+        } else if (e.name === 'NotAllowedError') {
+          statusEl.textContent = 'User declined biometric registration prompt.';
+        } else {
+          statusEl.textContent = `Error: ${e.message}`;
+        }
+        statusEl.style.color = '#cc0000';
+      }
+    }
+
+    document.getElementById('register-btn').addEventListener('click', registerPasskey);
+  </script>
+</body>
+</html>

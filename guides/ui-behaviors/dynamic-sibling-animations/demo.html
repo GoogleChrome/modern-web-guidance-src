@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Sibling Animations Demo</title>
+  <style>
+    #stagger-list {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    #stagger-list > .item {
+      --stagger-time: 100ms;
+      width: 60px;
+      height: 60px;
+      background: steelblue;
+      border-radius: 4px;
+      animation: fade-in 0.4s both;
+      animation-delay: calc(var(--sibling-index) * var(--stagger-time));
+      animation-delay: calc(sibling-index() * var(--stagger-time));
+      @media (prefers-reduced-motion: reduce){
+        animation: none;
+      }
+    }
+
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+    }
+  </style>
+  <script type="module">
+    if(!CSS.supports('animation-delay: calc(sibling-index() * 0.1s)')){
+      const staggerList = document.getElementById('stagger-list');
+      [...staggerList.children].forEach((el, index)=>el.style.setProperty('--sibling-index', index + 1));
+    }
+  </script>
+</head>
+
+<body>
+  <h1>Dynamic Sibling Animations</h1>
+  <p>Each item's <code>animation-delay</code> is computed from its
+    <code>sibling-index()</code>, creating a sequential stagger.</p>
+
+  <div id="stagger-list">
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+  </div>
+</body>
+
+</html>

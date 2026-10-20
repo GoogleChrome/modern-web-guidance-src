@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Feed</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: sans-serif;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      border: 1px solid #ccc;
+      height: 400px;
+      overflow-y: scroll;
+    }
+
+    .post {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .post img {
+      max-width: 100%;
+      display: block;
+    }
+
+    .highlight {
+      background-color: #ffffd0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Social Feed</h1>
+
+  <div class="container" id="scroll-box">
+    <div class="post">
+      <h3>Intro Post</h3>
+      <p>Welcome to the feed. Scroll down to see more content from your friends and family.</p>
+    </div>
+
+    <div class="post">
+      <h3>Morning Coffee</h3>
+      <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=400&auto=format&fit=crop" alt="Coffee">
+      <p>Starting the day right with a fresh brew.</p>
+    </div>
+
+    <div class="post">
+      <h3>Cityscape</h3>
+      <img src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=400&auto=format&fit=crop" alt="City">
+      <p>The city lights are amazing tonight.</p>
+    </div>
+
+    <div class="post highlight" id="featured-post">
+      <h3>FEATURED: Tropical Paradise</h3>
+      <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400&auto=format&fit=crop" alt="Beach">
+      <p>Wish I was back here right now. The water was so clear!</p>
+    </div>
+
+    <div class="post">
+      <h3>Mountain Hike</h3>
+      <img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=400&auto=format&fit=crop" alt="Mountains">
+      <p>Hard climb but the view was worth it.</p>
+    </div>
+
+    <div class="post">
+      <h3>Dinner Time</h3>
+      <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=400&auto=format&fit=crop" alt="Food">
+      <p>Homemade pasta for dinner!</p>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        var target = document.getElementById('featured-post');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
+    };
+  </script>
+
+</body>
+</html>

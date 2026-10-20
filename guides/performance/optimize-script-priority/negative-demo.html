@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Optimize Script Priority</title>
+</head>
+
+<body>
+  <h1>Optimize Script Priority</h1>
+
+  <script src="/js/app.js" fetchpriority="low" importance="low"></script>
+
+  <script src="/js/tracker.js" fetchpriority="high" importance="high"></script>
+
+  <img src="https://picsum.photos/id/10/600/400" alt="LCP Image" width="600" height="400">
+
+  <script src="/js/legacy-widgets.js" fetchpriority="high" importance="high"></script>
+
+  <script src="/js/extra1.js" fetchpriority="high"></script>
+  <script src="/js/extra2.js" fetchpriority="high"></script>
+  <script src="/js/extra3.js" fetchpriority="high"></script>
+</body>
+
+</html>

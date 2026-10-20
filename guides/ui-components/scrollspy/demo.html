@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scrollspy Demo</title>
+    <style>
+      :root {
+        --accent: #007bff;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        html {
+          scroll-behavior: smooth;
+        }
+      }
+
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding-top: 60px; /* Space for fixed nav */
+      }
+
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid #ddd;
+        z-index: 100;
+
+        /* Modern Scrollspy property */
+        scroll-target-group: auto;
+      }
+
+      nav a {
+        text-decoration: none;
+        color: #555;
+        font-weight: 500;
+        padding: 0.5rem 0;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+      }
+
+      /* Style for the active link */
+      nav a:is(:target-current, .\:target-current) {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+
+      section {
+        height: 100vh;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        border-bottom: 1px dashed #ccc;
+      }
+
+      section:nth-child(even) {
+        background: #f9f9f9;
+      }
+
+      h2 {
+        font-size: 3rem;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="#section-1">Section 1</a>
+      <a href="#section-2">Section 2</a>
+      <a href="#section-3">Section 3</a>
+      <a href="#section-4">Section 4</a>
+    </nav>
+
+    <main>
+      <section id="section-1">
+        <h2>Section 1</h2>
+        <p>Scroll down to see the navigation update.</p>
+      </section>
+      <section id="section-2">
+        <h2>Section 2</h2>
+        <p>Now Section 2 should be highlighted.</p>
+      </section>
+      <section id="section-3">
+        <h2>Section 3</h2>
+        <p>Almost there...</p>
+      </section>
+      <section id="section-4">
+        <h2>Section 4</h2>
+        <p>You reached the end!</p>
+      </section>
+    </main>
+
+    <script type="module">
+      const navLinks = document.querySelectorAll("nav a");
+      const sections = document.querySelectorAll("section");
+      const supportsScrollTargetGroup = CSS.supports(
+        "scroll-target-group: auto",
+      );
+
+      // We query the native :target-current state to ensure the A11y tree
+      // matches the visual CSS state exactly.
+      const syncAriaCurrent = () => {
+        const currentLink = document.querySelector("nav a:target-current");
+        navLinks.forEach((link) => {
+          const isActive = link === currentLink;
+          link.setAttribute("aria-current", isActive ? "true" : "false");
+        });
+      };
+
+      if (supportsScrollTargetGroup) {
+        // Sync on initial load, but wait for :target-current to be applied.
+        // setTimeout(syncAriaCurrent, 10);
+        syncAriaCurrent();
+        // ALWAYS sync aria-current when scroll stops
+        document.addEventListener("scrollend", syncAriaCurrent);
+      }
+
+      // 2. Fallback visual state for older browsers
+      if (!supportsScrollTargetGroup) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                const id = entry.target.getAttribute("id");
+                navLinks.forEach((link) => {
+                  const isActive = link.getAttribute("href") === `#${id}`;
+                  link.classList.toggle("\:target-current", isActive);
+                  // In fallback mode, we update ARIA immediately since we're already observing
+                  link.setAttribute("aria-current", isActive);
+                });
+              }
+            });
+          },
+          {
+            rootMargin: "-50% 0px -50% 0px",
+            threshold: 0,
+          },
+        );
+
+        sections.forEach((section) => observer.observe(section));
+      }
+    </script>
+  </body>
+</html>

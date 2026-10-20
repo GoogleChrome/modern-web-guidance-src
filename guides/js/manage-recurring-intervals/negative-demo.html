@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recurring Interval Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-primary: #38bdf8;
+      --accent-secondary: #34d399;
+      --border-color: #334155;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin: 0 auto;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .controls-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .output-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .card-title {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+
+    .huge-value {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: var(--accent-secondary);
+    }
+
+    .code-block {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Recurring Interval Calculator</h1>
+      <p class="description">
+        Calculate recurring intervals for subscription billings or payroll cycles.
+      </p>
+    </header>
+
+    <div class="controls-bar">
+      <div class="input-row">
+        <div class="control-group">
+          <label for="startDateInput">Start Date</label>
+          <input type="date" id="startDateInput" value="2024-01-31">
+        </div>
+        <div class="control-group">
+          <label for="yearsInput">Years to Add</label>
+          <input type="number" id="yearsInput" value="0" min="-100" max="100">
+        </div>
+        <div class="control-group">
+          <label for="monthsInput">Months to Add</label>
+          <input type="number" id="monthsInput" value="1" min="-100" max="100">
+        </div>
+      </div>
+    </div>
+
+    <div class="output-grid">
+      <div class="card">
+        <div class="card-title">Calculated Date</div>
+        <div id="resultDate" class="huge-value">-</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Code Snippet</div>
+        <div id="codeSnippet" class="code-block"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const startDateInput = document.getElementById('startDateInput');
+    const yearsInput = document.getElementById('yearsInput');
+    const monthsInput = document.getElementById('monthsInput');
+    const resultDate = document.getElementById('resultDate');
+    const codeSnippet = document.getElementById('codeSnippet');
+
+    const inputs = [startDateInput, yearsInput, monthsInput];
+
+    function initializeApp() {
+      inputs.forEach(el => el.addEventListener('input', updateCalculation));
+      inputs.forEach(el => el.addEventListener('change', updateCalculation));
+      updateCalculation();
+    }
+
+    window.onload = initializeApp;
+
+    function updateCalculation() {
+      const startDateStr = startDateInput.value;
+      const years = parseInt(yearsInput.value) || 0;
+      const months = parseInt(monthsInput.value) || 0;
+
+      if (!startDateStr) {
+        resultDate.textContent = "Select a start date";
+        return;
+      }
+
+      const parts = startDateStr.split('-');
+      const date = new Date(parts[0], parts[1] - 1, parts[2]);
+
+      date.setFullYear(date.getFullYear() + years);
+      date.setMonth(date.getMonth() + months);
+
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      const resultStr = `${yyyy}-${mm}-${dd}`;
+
+      resultDate.textContent = resultStr;
+
+      let code = `const date = new Date('${startDateStr}');
+`;
+      code += `date.setFullYear(date.getFullYear() + ${years});
+`;
+      code += `date.setMonth(date.getMonth() + ${months});
+`;
+      code += `const result = date.toISOString().split('T')[0];`;
+
+      codeSnippet.textContent = code;
+    }
+  </script>
+</body>
+
+</html>

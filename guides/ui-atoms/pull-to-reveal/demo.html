@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pull-to-Reveal Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #f1f5f9;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .device-mockup {
+      width: 375px;
+      height: 667px;
+      background: white;
+      border-radius: 40px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      border: 8px solid #cbd5e1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    h1 {
+      background: #0f172a;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1rem;
+      margin: 0;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .scroll-container {
+      flex: 1;
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+    }
+
+    .search-bar {
+      background-color: #e2e8f0;
+      padding: 15px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-bottom: 1px solid #cbd5e1;
+      scroll-snap-align: start;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 15px;
+      border: 1px solid #cbd5e1;
+      border-radius: 20px;
+      outline: none;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .main-content {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      scroll-snap-align: start;
+    }
+
+    .content-box {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border: 1px solid #f1f5f9;
+    }
+
+    .content-box h3 {
+      margin-top: 0;
+      color: #334155;
+    }
+
+    /* 
+     * The target element we want to scroll to on initial render.
+     */
+    .main-content.target {
+      scroll-initial-target: nearest;
+      position: relative;
+    }
+
+    .main-content.target::before {
+      content: '📌 Start Here (Pull down to search)';
+      display: block;
+      margin-bottom: 20px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #3b82f6;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="device-mockup">
+    <h1>App Title</h1>
+
+    <div class="scroll-container">
+
+      <!-- The element hidden initially through scrolling -->
+      <div class="search-bar">
+        <label for="search-input" class="visually-hidden">Search content</label>
+        <input type="text" id="search-input" class="search-input" placeholder="Search for anything...">
+      </div>
+
+      <!-- The specific target element capturing the initial scroll -->
+      <div class="main-content target">
+        <div class="content-box">
+          <h3>Welcome Back!</h3>
+          <p>This is your main dashboard. Your search bar is hidden at the top. Scroll up (pull down) to access it!</p>
+        </div>
+        <div class="content-box">
+          <h3>Recent Activity</h3>
+          <p>Reviewed pull-to-reveal documentation.</p>
+        </div>
+        <div class="content-box">
+          <h3>Suggestions</h3>
+          <p>Check out the CSS scroll-initial-target specification.</p>
+        </div>
+        <div class="content-box">
+          <h3>More Content</h3>
+          <p>Keeping the container scrollable so it works on small screens.</p>
+        </div>
+        <div class="content-box">
+          <h3>Footer Note</h3>
+          <p>End of your feed.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Fallback strategy for browsers that don't support scroll-initial-target
+    document.addEventListener("DOMContentLoaded", () => {
+      if (!CSS.supports("scroll-initial-target", "nearest")) {
+        const targetContent = document.querySelector('.main-content.target');
+        if (targetContent) {
+          targetContent.scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Summarizer Demo</title>
+</head>
+
+<body>
+  <h1>Summarizer</h1>
+  <article id="article">
+    <p>The James Webb Space Telescope (JWST) has revolutionized our understanding of the early universe since its
+      launch in December 2021. Orbiting at the second Lagrange point, 1.5 million kilometers from Earth, it captures
+      infrared light with unprecedented clarity. Its first deep field image, released in July 2022, showed thousands
+      of galaxies as they appeared over 13 billion years ago. Scientists have used Webb to study the atmospheres of
+      exoplanets, detect water vapor on distant worlds, and observe the formation of stars within nebulae in stunning
+      detail. The telescope's 6.5-meter primary mirror and advanced instruments have enabled discoveries that would
+      have been impossible with previous generations of space observatories. Researchers around the world continue to
+      analyze its data, expecting many more groundbreaking revelations in the years to come.</p>
+  </article>
+  <form id="summarize-form">
+    <button type="submit">Summarize</button>
+  </form>
+  <div id="summary"></div>
+
+  <script type="module">
+    const options = {
+      type: 'tldr',
+      format: 'plain-text',
+      length: 'short',
+      expectedInputLanguages: ['en'],
+      outputLanguage: 'en',
+    };
+
+    let summarizer;
+
+    const summarizeForm = document.getElementById('summarize-form');
+    const submitBtn = summarizeForm.querySelector('button');
+    const div = document.getElementById('summary');
+
+    if (!('Summarizer' in window)) {
+      div.textContent = 'Local summarization is currently unsupported in this browser.';
+      submitBtn.disabled = true;
+    }
+
+    summarizeForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const availability = await Summarizer.availability(options);
+        if (availability === 'unavailable') {
+          div.textContent = 'The summarization model is unavailable on this device.';
+          return;
+        }
+
+        if (!summarizer) {
+          submitBtn.textContent = 'Initializing model...';
+          submitBtn.disabled = true;
+          summarizer = await Summarizer.create({
+            ...options,
+            monitor(m) {
+              m.addEventListener('downloadprogress', (progressEvent) => {
+                const total = progressEvent.total || 1;
+                const pct = Math.round((progressEvent.loaded / total) * 100);
+                submitBtn.textContent = `Downloading model... ${pct}%`;
+              });
+            },
+          });
+          submitBtn.textContent = 'Summarize';
+          submitBtn.disabled = false;
+        }
+
+        const text = document.getElementById('article').textContent.trim();
+        const stream = summarizer.summarizeStreaming(text);
+        div.textContent = '';
+        for await (const chunk of stream) {
+          div.append(chunk);
+        }
+      } catch (err) {
+        console.error(err);
+        div.textContent = `Error: ${err.message}`;
+        submitBtn.textContent = 'Summarize';
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+
+</html>

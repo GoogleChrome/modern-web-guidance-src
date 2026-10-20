@@ -16,7 +16,7 @@
     "node_modules",
     "test-results",
     "mock-results",
-    "features_mapping.gen.js",
+    "features-mapping.gen.js",
     "**/grade-report"
   ]
 }

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Position-Aware Tooltips</title>
+    <style>
+      #anchor {
+        background: #e0e0e0;
+        padding: 0.1em 0.3em;
+        border-radius: 0.25em;
+        border: 1px solid #ccc;
+        cursor: pointer;
+      }
+
+      #tooltip {
+        position: absolute;
+        z-index: 1000;
+        background: black;
+        color: white;
+        padding: 0.5rem;
+        border: 1px solid black;
+        box-sizing: border-box;
+      }
+
+      .tooltip-arrow {
+        position: absolute;
+        color: black;
+        font-size: 10px;
+      }
+
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 0 1rem;
+      }
+
+      .spacer {
+        block-size: 100vb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #777;
+      }
+
+      p {
+        text-align: center;
+        font-size: 1.25rem;
+        line-height: 1.5;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="spacer">↓ Scroll down ↓</div>
+    <p>
+      Here is an inline
+      <button id="anchor">anchor</button> within some
+      text.
+    </p>
+    <div id="tooltip" style="display: none;">
+      <div id="tooltip-text">Tooltip</div>
+      <div id="arrow" class="tooltip-arrow">▼</div>
+    </div>
+    <div class="spacer">↑ Scroll up ↑</div>
+
+    <script>
+      const anchor = document.getElementById("anchor");
+      const tooltip = document.getElementById("tooltip");
+      const arrow = document.getElementById("arrow");
+      let isOpen = false;
+
+      function updatePosition() {
+        if (!isOpen) return;
+
+        const anchorRect = anchor.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+
+        let top = window.scrollY + anchorRect.top - tooltipRect.height - 8;
+        let left = window.scrollX + anchorRect.left + (anchorRect.width / 2) - (tooltipRect.width / 2);
+        let isFallback = false;
+
+        if (anchorRect.top - tooltipRect.height - 8 < 0) {
+          top = window.scrollY + anchorRect.bottom + 8;
+          isFallback = true;
+        }
+
+        tooltip.style.top = top + "px";
+        tooltip.style.left = left + "px";
+
+        if (isFallback) {
+          arrow.innerText = "▲";
+          arrow.style.top = "-7px";
+          arrow.style.bottom = "auto";
+          arrow.style.left = "16px";
+          tooltip.style.borderRadius = "0 0 0.5rem 0.5rem";
+        } else {
+          arrow.innerText = "▼";
+          arrow.style.bottom = "-7px";
+          arrow.style.top = "auto";
+          arrow.style.left = "16px";
+          tooltip.style.borderRadius = "0.5rem 0.5rem 0 0";
+        }
+      }
+
+      anchor.addEventListener("click", () => {
+        isOpen = !isOpen;
+        if (isOpen) {
+          tooltip.style.display = "block";
+          updatePosition();
+        } else {
+          tooltip.style.display = "none";
+        }
+      });
+
+      window.addEventListener("scroll", updatePosition);
+      window.addEventListener("resize", updatePosition);
+
+      anchor.click();
+    </script>
+  </body>
+</html>

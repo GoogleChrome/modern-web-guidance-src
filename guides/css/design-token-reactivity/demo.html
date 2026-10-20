@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+    :root {
+      --style-queries-supported: check;
+    }
+
+    .container {
+      --density: compact;
+    }
+
+    .item {
+      padding: 1rem;
+      border: 1px solid #ccc;
+    }
+
+    @container style(--density: compact) {
+      .item {
+        padding: 0.5rem;
+      }
+    }
+
+    @container style(--density: spacious) {
+      .item {
+        padding: 2.5rem;
+      }
+    }
+
+    #toggle-spacious {
+      display: none;
+    }
+
+    @container style(--style-queries-supported) {
+      #toggle-spacious {
+        display: revert;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="target-container">
+    <div class="item" id="target-item">I react to density</div>
+  </div>
+
+  <button id="toggle-spacious">Toggle Spacious</button>
+
+  <script>
+      document.getElementById('toggle-spacious').addEventListener('click', () => {
+        const c = document.getElementById('target-container');
+        const current = getComputedStyle(c).getPropertyValue('--density').trim();
+        c.style.setProperty('--density', current === 'spacious' ? 'compact' : 'spacious');
+    });
+  </script>
+</body>
+</html>

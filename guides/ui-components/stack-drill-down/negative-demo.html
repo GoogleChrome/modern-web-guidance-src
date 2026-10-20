@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drilldown</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: sans-serif;
+    }
+
+    .Stack {
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .Stack-view {
+      position: absolute;
+      top: 0;
+      left: 100%;
+      width: 100vw;
+      height: 100%;
+      background-color: #fff;
+      transition: left 0.5s ease-in-out, transform 0.5s ease-in-out;
+    }
+
+    .Stack-view:first-child {
+      left: 0;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    header {
+      padding: 1.25rem 1.5rem;
+      font-size: 1.3em;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: #f8f8f8;
+      cursor: pointer;
+    }
+
+    .icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      width: 1.5rem;
+      height: 1.5rem;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: contain;
+    }
+
+    .icon-back {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>');
+    }
+
+    .item {
+      display: block;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      color: #0066cc;
+    }
+
+    .item:hover {
+      background: #f0f0f0;
+    }
+
+    h2 {
+      font-weight: normal;
+      padding: 1.5rem;
+      font-size: 1.25rem;
+    }
+
+    main {
+      height: calc(100% - 4.5rem);
+      overflow-y: scroll;
+    }
+  </style>
+</head>
+<body>
+  <div class="Stack">
+    <div class="Stack-view">
+      <header>
+        <button class="icon icon-back" onclick="alert('Already at root!')"></button>
+        Feed
+      </header>
+      <main>
+        <div class="item" onclick="drillDown(1)">Link to post #1</div>
+        <div class="item" onclick="drillDown(2)">Link to post #2</div>
+        <div class="item" onclick="drillDown(3)">Link to post #3</div>
+        <div class="item" onclick="drillDown(4)">Link to post #4</div>
+        <div class="item" onclick="drillDown(5)">Link to post #5</div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const stack = document.querySelector('.Stack');
+
+    function drillDown(id) {
+      const view = document.createElement('div');
+      view.className = 'Stack-view';
+      
+      let linksHtml = '';
+      for (let i = 1; i <= 5; i++) {
+        const nextId = id * 10 + i;
+        linksHtml += `<div class="item" onclick="drillDown(${nextId})">Link to post #${nextId}</div>`;
+      }
+
+      view.innerHTML = `
+        <header onclick="goBack(this)">
+          Post #${id}
+        </header>
+        <main>
+          <h2>Post #${id}</h2>
+          ${linksHtml}
+        </main>
+      `;
+
+      stack.appendChild(view);
+
+      setTimeout(() => {
+        view.style.left = '0';
+      }, 50);
+    }
+
+    function goBack(headerElement) {
+      const view = headerElement.closest('.Stack-view');
+      if (view) {
+        view.style.left = '100%';
+      }
+    }
+  </script>
+</body>
+</html>

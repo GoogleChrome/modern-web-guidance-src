@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temporal API: Location-Agnostic Data (Plain Types)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #10b981;
+      --warning-bg: #7f1d1d;
+      --warning-border: #dc2626;
+      --warning-text: #fecaca;
+      --success-bg: #064e3b;
+      --success-border: #059669;
+      --success-text: #ecfdf5;
+      --border-color: #334155;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .banner {
+      background-color: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .banner-icon {
+      font-size: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 600px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    input,
+    select {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .results-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: border-color 0.3s;
+    }
+
+    .result-label {
+      color: var(--text-secondary);
+      font-weight: 500;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .result-sublabel {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .result-value {
+      font-family: monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .badge.safe {
+      background-color: var(--success-bg);
+      color: var(--success-text);
+      border: 1px solid var(--success-border);
+    }
+
+    .badge.buggy {
+      background-color: var(--warning-bg);
+      color: var(--warning-text);
+      border: 1px solid var(--warning-border);
+    }
+
+    .explanation {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+      border-left: 4px solid var(--accent-primary);
+    }
+
+    .separator {
+      height: 1px;
+      background: var(--border-color);
+      margin: 2rem 0;
+    }
+
+    code {
+      font-family: monospace;
+      background: #0f172a;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Location-Agnostic Data</h1>
+      <p class="description">
+        Demonstrate how <code>Temporal.PlainDate</code> and <code>Temporal.PlainTime</code> prevent "timezone drift"
+        bugs
+        by recording chronological data that remains identical regardless of the viewer's location.
+      </p>
+    </header>
+
+    <div id="unsupportedBanner" class="banner">
+      <div class="banner-icon">🚫</div>
+      <div>This demo requires a browser with native Temporal support</div>
+    </div>
+
+    <!-- Section 1: PlainDate (Birthdate) -->
+    <div class="card">
+      <div class="section-title">📅 Birthdate Simulation</div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label for="birthdateInput">Enter Birthdate</label>
+          <input type="date" id="birthdateInput" value="1990-01-01">
+        </div>
+        <div class="control-group">
+          <label for="timezoneSelect">Simulate Viewer Timezone</label>
+          <select id="timezoneSelect">
+            <!-- Identify zones by IANA name only. Offsets change with DST and legislation, so labels like "UTC-5" go stale. -->
+            <option value="UTC">UTC</option>
+            <option value="America/New_York">New York</option>
+            <option value="America/Los_Angeles">Los Angeles</option>
+            <option value="Europe/Paris">Paris</option>
+            <option value="Asia/Tokyo">Tokyo</option>
+            <option value="Pacific/Honolulu">Honolulu</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="results-section">
+        <!-- Temporal.PlainDate -->
+        <div class="result-item" id="plainDateItem">
+          <div class="result-label">
+            <span>Temporal.PlainDate</span>
+            <span class="result-sublabel">Format: DD/MM/YYYY (Immutable)</span>
+          </div>
+          <div class="result-value">
+            <span id="plainDateValue">-</span>
+            <span id="plainBadge" class="badge">Checking...</span>
+          </div>
+        </div>
+
+        <!-- Standard Date -->
+        <div class="result-item" id="standardDateItem">
+          <div class="result-label">
+            <span>Standard Date Object</span>
+            <span class="result-sublabel">Format: DD/MM/YYYY (Simulated Load)</span>
+          </div>
+          <div class="result-value">
+            <span id="standardDateValue">-</span>
+            <span id="standardBadge" class="badge">Checking...</span>
+          </div>
+        </div>
+
+        <div class="explanation">
+          <strong>Discrepancy:</strong> A <code>Date</code> is a timestamp, not a calendar date. Saving "1990-01-01" as a
+          <code>Date</code> forces the app to pick an instant (midnight UTC here), so viewers west of UTC (e.g., New York)
+          read it back as <strong>Dec 31, 1989</strong>. <code>Temporal.PlainDate</code> has no concept of time or zone,
+          staying exact.
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: PlainTime (Daily Reminder) -->
+    <div class="card">
+      <div class="section-title">⏰ Daily Reminder Simulation</div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label for="reminderInput">Daily Reminder Time</label>
+          <input type="time" id="reminderInput" value="09:00">
+        </div>
+      </div>
+
+      <div class="results-section">
+        <!-- Temporal.PlainTime -->
+        <div class="result-item" id="plainTimeItem">
+          <div class="result-label">
+            <span>Temporal.PlainTime</span>
+            <span class="result-sublabel">Wall-clock time (Immutable)</span>
+          </div>
+          <div class="result-value">
+            <span id="plainTimeValue">-</span>
+            <span id="plainTimeBadge" class="badge">Checking...</span>
+          </div>
+        </div>
+
+        <!-- Standard Date -->
+        <div class="result-item" id="standardTimeItem">
+          <div class="result-label">
+            <span>Standard Date Object</span>
+            <span class="result-sublabel">Viewed in the simulated time zone</span>
+          </div>
+          <div class="result-value">
+            <span id="standardTimeValue">-</span>
+            <span id="standardTimeBadge" class="badge">Checking...</span>
+          </div>
+        </div>
+
+        <div class="explanation">
+          <strong>Discrepancy:</strong> A reminder stored as a <code>Date</code> is pinned to one instant, so a traveller
+          who set "9:00 AM" at home sees a different hour abroad. <code>Temporal.PlainTime</code> stays 9:00 AM in
+          whatever time zone the user happens to be in.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const birthdateInput = document.getElementById('birthdateInput');
+    const timezoneSelect = document.getElementById('timezoneSelect');
+    const reminderInput = document.getElementById('reminderInput');
+    const plainDateValue = document.getElementById('plainDateValue');
+    const plainBadge = document.getElementById('plainBadge');
+    const plainDateItem = document.getElementById('plainDateItem');
+    const standardDateValue = document.getElementById('standardDateValue');
+    const standardBadge = document.getElementById('standardBadge');
+    const standardDateItem = document.getElementById('standardDateItem');
+    const plainTimeValue = document.getElementById('plainTimeValue');
+    const plainTimeBadge = document.getElementById('plainTimeBadge');
+    const plainTimeItem = document.getElementById('plainTimeItem');
+    const standardTimeValue = document.getElementById('standardTimeValue');
+    const standardTimeBadge = document.getElementById('standardTimeBadge');
+    const standardTimeItem = document.getElementById('standardTimeItem');
+    const unsupportedBanner = document.getElementById('unsupportedBanner');
+
+    // Check Support
+    (async () => {
+      if (typeof Temporal === 'undefined') {
+        try {
+          const module = await import('https://esm.sh/@js-temporal/polyfill');
+          // Manually assign to global scope if needed
+          globalThis.Temporal = module.Temporal;
+          // The polyfill doesn't patch Date.prototype itself; install toTemporalInstant()
+          // because the demo relies on it for Date -> Temporal conversion below.
+          Date.prototype.toTemporalInstant = module.toTemporalInstant;
+          initializeDemo();
+        } catch (err) {
+          console.error("Failed to load polyfill:", err);
+          unsupportedBanner.style.display = 'flex';
+          birthdateInput.disabled = true;
+          timezoneSelect.disabled = true;
+          reminderInput.disabled = true;
+        }
+      } else {
+        initializeDemo();
+      }
+    })();
+
+    function initializeDemo() {
+      // Event Listeners
+      birthdateInput.addEventListener('input', updateAll);
+      reminderInput.addEventListener('input', updateAll);
+      timezoneSelect.addEventListener('change', updateAll);
+
+      // Initial Run
+      updateAll();
+    }
+
+    function updateAll() {
+      updateBirthdate();
+      updateReminder();
+    }
+
+    function setBadge(badge, item, drifted) {
+      badge.textContent = drifted ? "Drifted!" : "Matches Original";
+      badge.className = drifted ? "badge buggy" : "badge safe";
+      item.style.borderColor = drifted ? "var(--warning-border)" : "transparent";
+    }
+
+    function updateBirthdate() {
+      const selectedDate = birthdateInput.value; // YYYY-MM-DD
+      const selectedTz = timezoneSelect.value;
+
+      if (!selectedDate) return;
+
+      try {
+        // 1. Temporal.PlainDate: a calendar date with no time zone attached.
+        const plainDate = Temporal.PlainDate.from(selectedDate);
+        plainDateValue.textContent = plainDate.toLocaleString('en-GB');
+
+        // 1b. A PlainDate round-trips exactly, so this never drifts.
+        setBadge(plainBadge, plainDateItem, !plainDate.equals(selectedDate));
+
+        // 2. Simulate the legacy Date pitfall.
+        // A Date is an instant (a timestamp), not a calendar date. To store the birthdate
+        // as a Date, the app has to pick *some* instant; midnight UTC is the usual choice.
+        // Follow the Temporal cookbook: PlainDate -> ZonedDateTime -> Instant -> epochMilliseconds -> Date.
+        const storedInstant = plainDate.toZonedDateTime('UTC').toInstant();
+        const legacyDate = new Date(storedInstant.epochMilliseconds);
+
+        // 3. The viewer's browser later reads that instant back in *their* time zone.
+        // Convert Date -> Instant (cookbook: Date#toTemporalInstant, or
+        // Temporal.Instant.fromEpochMilliseconds(date.getTime())) and project it into the
+        // simulated zone to get the calendar date the viewer actually sees.
+        // No formatToParts() string surgery needed.
+        const viewedDate = legacyDate.toTemporalInstant()
+          .toZonedDateTimeISO(selectedTz)
+          .toPlainDate();
+
+        standardDateValue.textContent = viewedDate.toLocaleString('en-GB');
+
+        // 4. Compare calendar dates with .equals(), not reassembled strings.
+        setBadge(standardBadge, standardDateItem, !viewedDate.equals(plainDate));
+
+      } catch (error) {
+        console.error(error);
+        plainDateValue.textContent = "Error";
+        standardDateValue.textContent = "Error";
+      }
+    }
+
+    function updateReminder() {
+      const selectedTime = reminderInput.value; // HH:MM
+      const selectedTz = timezoneSelect.value;
+
+      if (!selectedTime) return;
+
+      try {
+        // 1. Temporal.PlainTime: a wall-clock time with no date or time zone attached.
+        const plainTime = Temporal.PlainTime.from(selectedTime);
+        plainTimeValue.textContent = plainTime.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+        // 1b. A PlainTime round-trips exactly, so this never drifts.
+        setBadge(plainTimeBadge, plainTimeItem, !plainTime.equals(selectedTime));
+
+        // 2. Simulate the legacy Date pitfall.
+        // Pinning "9:00 AM" to a date in the user's *current* zone produces one fixed instant.
+        // A fixed mid-January reference date is used (rather than today) so a DST transition
+        // day can't shift the wall-clock time and muddy the "drift only when travelling" point.
+        const homeZone = Temporal.Now.timeZoneId();
+        const referenceDate = Temporal.PlainDate.from('2000-01-15');
+        const storedInstant = referenceDate.toZonedDateTime({ timeZone: homeZone, plainTime }).toInstant();
+        const legacyDate = new Date(storedInstant.epochMilliseconds);
+
+        // 3. When the user travels, that same instant falls at a different wall-clock time.
+        const viewedTime = legacyDate.toTemporalInstant()
+          .toZonedDateTimeISO(selectedTz)
+          .toPlainTime();
+
+        standardTimeValue.textContent = viewedTime.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+        // 4. Compare wall-clock times with .equals().
+        setBadge(standardTimeBadge, standardTimeItem, !viewedTime.equals(plainTime));
+
+      } catch (error) {
+        console.error(error);
+        plainTimeValue.textContent = "Error";
+        standardTimeValue.textContent = "Error";
+      }
+    }
+
+  </script>
+
+</body>
+
+</html>

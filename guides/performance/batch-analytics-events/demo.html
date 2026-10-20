@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FetchLater Analytics Debounce & Batch Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    .log-panel {
+      background: #f4f4f5;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 2rem;
+      font-family: monospace;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Analytics Batching Demo</h1>
+  <p>Open your browser's <strong>Developer Tools (Console and Network tabs)</strong>. Click the buttons below quickly, then stop and wait 10 seconds to watch the events batch and send.</p>
+
+  <button id="btn-purchase">Simulate Purchase</button>
+  <button id="btn-signup">Simulate Sign Up</button>
+  <button id="btn-random">Click Random Element</button>
+
+  <div class="log-panel">
+    <p><strong>Note:</strong> Network requests will be sent to <code>/path/to/analytics/endpoint</code> (which will 404 in this demo, but proves the batching works).</p>
+  </div>
+
+  <script>
+    // =======================================================================
+    // 1. fetchLater() Polyfill
+    // =======================================================================
+    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
+      let timeoutHandle;
+      let activated = false;
+
+      function sendNow() {
+        if (!(init.signal && init.signal.aborted)) {
+          console.log(`[Polyfill] Sending batched payload of ${JSON.parse(init.body).length} events to ${url}...`);
+          // Use fetch keepalive if the browser supports it or if custom fetch
+          // parameters are specified (e.g. custom headers or methods).
+          // Otherwise fall back to `navigator.sendBeacon()`.
+          if (
+            'keepalive' in Request.prototype ||
+            init.method !== 'POST' ||
+            init.headers
+          ) {
+            fetch(url, Object.assign({}, init, {keepalive: true}));
+            activated = true;
+          } else {
+            activated = navigator.sendBeacon(url, init.body);
+          }
+        }
+        destroy();
+      }
+
+      function destroy() {
+        document.removeEventListener('visibilitychange', sendNow);
+        clearTimeout(timeoutHandle);
+      }
+
+      if (document.visibilityState === 'hidden') {
+        // If the beacon was created while the page is already hidden, send data
+        // ASAP but wait until the next microtask to allow all sync code to run.
+        queueMicrotask(sendNow);
+      } else {
+        document.addEventListener('visibilitychange', sendNow);
+
+        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
+          timeoutHandle = setTimeout(sendNow, init.activateAfter);
+        }
+      }
+
+      if (init.signal) {
+        init.signal.addEventListener('abort', destroy);
+      }
+
+      return {
+        get activated() {
+          return activated;
+        },
+      };
+    };
+
+    // =======================================================================
+    // 2. Helper Functions
+    // =======================================================================
+    // Simple helper to identify the clicked element
+    function serializeElement(el) {
+      if (!el) return 'unknown';
+      let tag = el.tagName.toLowerCase();
+      let id = el.id ? `#${el.id}` : '';
+      let className = el.className ? `.${el.className.split(' ').join('.')}` : '';
+      return `${tag}${id}${className}`;
+    }
+
+    // =======================================================================
+    // 3. Analytics Implementation
+    // =======================================================================
+    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
+    const BATCH_WINDOW = 10 * 1000; // 10 seconds
+    const MAX_QUEUE_SIZE = 100;
+
+    const eventQueue = [];
+    let fetchLaterResult;
+    let fetchLaterController;
+
+    function trackEvent(eventData) {
+      // Add a timestamp for better analytics tracking
+      eventData.timestamp = Date.now();
+
+      // If the previously queued beacon has already been sent, or if the
+      // max queue size has been met, reset the queue.
+      if (fetchLaterResult?.activated || eventQueue.length >= MAX_QUEUE_SIZE) {
+        fetchLaterController = null;
+        fetchLaterResult = null;
+        eventQueue.length = 0;
+        console.log("Queue reset.");
+      }
+
+      eventQueue.push(eventData);
+      console.log(`Event queued (Total: ${eventQueue.length}). Next dispatch in <=10s.`);
+
+      // Abort any pending beacons before creating a new one.
+      if (fetchLaterController) {
+        fetchLaterController.abort();
+      }
+      fetchLaterController = new AbortController();
+
+      // Schedule a fetch for the events to be sent when the batch window expires.
+      // IMPORTANT: wrap the call in a try/catch to handle quota errors.
+      try {
+        fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
+          method: 'POST',
+          headers: {'content-type': 'application/json'},
+          body: JSON.stringify(eventQueue),
+          signal: fetchLaterController.signal,
+          activateAfter: BATCH_WINDOW,
+        });
+      } catch (error) {
+        console.error("fetchLater error:", error);
+      }
+    }
+
+    // Track page loads.
+    window.addEventListener('load', () => {
+      trackEvent({type: 'page_load'});
+    });
+
+    // Track click events.
+    window.addEventListener('click', (event) => {
+      trackEvent({type: 'click', target: serializeElement(event.target)});
+    });
+  </script>
+</body>
+</html>
