@@ -782,7 +782,7 @@ window.__featuresMapping = {
   "card": [
     "has",
     "container-queries",
-    "container-style-queries"
+    "subgrid"
   ],
   "carousel": [
     "scroll-snap",
