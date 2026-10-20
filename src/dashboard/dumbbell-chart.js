@@ -1,3 +1,5 @@
+import { escapeHtml } from './utils.js';
+
 /**
  * @typedef {Object} DumbbellChartOptions
  * @property {number} [size]
@@ -90,7 +92,15 @@ export class DumbbellChart {
       this.tooltip = document.createElement('div');
       this.tooltip.id = 'dumbbell-tooltip';
       this.tooltip.className = 'chart-tooltip';
+      this.tooltip.setAttribute('role', 'tooltip');
       document.body.appendChild(this.tooltip);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.tooltip) {
+          this.tooltip.style.display = 'none';
+        }
+      });
+    } else if (this.tooltip) {
+      this.tooltip.setAttribute('role', 'tooltip');
     }
   }
 
@@ -242,7 +252,7 @@ export class DumbbellChart {
       const uText = document.createElementNS("http://www.w3.org/2000/svg", "text");
       uText.setAttribute("x", "15");
       uText.setAttribute("fill", "var(--color-on-surface)");
-      uText.setAttribute("font-size", "12");
+      uText.setAttribute("font-size", "0.75rem");
       uText.textContent = "Unguided";
       
       const guidedCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -254,7 +264,7 @@ export class DumbbellChart {
       const gText = document.createElementNS("http://www.w3.org/2000/svg", "text");
       gText.setAttribute("x", "90");
       gText.setAttribute("fill", "var(--color-on-surface)");
-      gText.setAttribute("font-size", "12");
+      gText.setAttribute("font-size", "0.75rem");
       gText.textContent = "Guided";
 
       legendG.appendChild(unguidedCircle);
@@ -285,7 +295,7 @@ export class DumbbellChart {
         tickText.setAttribute("x", x.toString());
         tickText.setAttribute("y", (bottomAxisY + 20).toString());
         tickText.setAttribute("fill", "var(--color-on-surface-variant)");
-        tickText.setAttribute("font-size", "12");
+        tickText.setAttribute("font-size", "0.75rem");
         tickText.setAttribute("text-anchor", "middle");
         tickText.textContent = val + "%";
         svg.appendChild(tickText);
@@ -329,8 +339,8 @@ export class DumbbellChart {
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
         text.setAttribute("x", (scale(100) + 15).toString());
         text.setAttribute("y", rowY.toString());
-        text.setAttribute("fill", hasFailure ? "#d29922" : "var(--color-on-surface-variant)");
-        text.setAttribute("font-size", "12");
+        text.setAttribute("fill", hasFailure ? "var(--color-accent-warning)" : "var(--color-on-surface-variant)");
+        text.setAttribute("font-size", "0.75rem");
         text.setAttribute("font-family", "var(--font-sans)");
         text.setAttribute("font-weight", hasFailure ? "bold" : "600");
         text.setAttribute("text-anchor", "start");
@@ -346,7 +356,7 @@ export class DumbbellChart {
         
         // Add hover effects to highlight the row
         text.style.cursor = "pointer";
-        text.onmouseenter = () => rowBg.setAttribute("fill", "rgba(0, 0, 0, 0.05)");
+        text.onmouseenter = () => rowBg.setAttribute("fill", "var(--hover-bg)");
         text.onmouseleave = () => rowBg.setAttribute("fill", "transparent");
         
         svg.appendChild(text);
@@ -366,8 +376,8 @@ export class DumbbellChart {
 
           // Manski Error Uncertainty Pills ([R * (1 - e), R * (1 - e) + e])
           const bands = [
-              { val: uVal, err: item.uErr, fill: "#8b949e", opacity: "0.25" },
-              { val: gVal, err: item.gErr, fill: "#d29922", opacity: "0.35" }
+              { val: uVal, err: item.uErr, fill: "var(--color-outline)", opacity: "0.25" },
+              { val: gVal, err: item.gErr, fill: "var(--color-accent-warning)", opacity: "0.35" }
           ];
           for (const b of bands) {
               if (b.err <= 0) continue;
@@ -401,7 +411,7 @@ export class DumbbellChart {
           uDot.setAttribute("cy", y.toString());
           uDot.setAttribute("r", "3");
           uDot.setAttribute("fill", "var(--color-surface-container-lowest)");
-          uDot.setAttribute("stroke", item.uFailed ? "#d29922" : "var(--color-outline)");
+          uDot.setAttribute("stroke", item.uFailed ? "var(--color-accent-warning)" : "var(--color-outline)");
           uDot.setAttribute("stroke-width", "1.5");
           svg.appendChild(uDot);
 
@@ -410,10 +420,10 @@ export class DumbbellChart {
           gDot.setAttribute("cx", gX.toString());
           gDot.setAttribute("cy", y.toString());
           gDot.setAttribute("r", "3");
-          gDot.setAttribute("fill", item.gFailed ? "#d29922" : "var(--color-primary)");
+          gDot.setAttribute("fill", item.gFailed ? "var(--color-accent-warning)" : "var(--color-primary)");
           svg.appendChild(gDot);
 
-          // Hit area for tooltip (covers the specific sub-line)
+          // Hit area for tooltip & keyboard focus (covers the specific sub-line)
           const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
           hitArea.setAttribute("x", leftAxis.toString()); // only over the chart area
           hitArea.setAttribute("y", (y - (offsetStep / 2)).toString());
@@ -421,11 +431,21 @@ export class DumbbellChart {
           hitArea.setAttribute("height", offsetStep.toString());
           hitArea.setAttribute("fill", "transparent");
           hitArea.style.cursor = "pointer";
-          
-          hitArea.onmousemove = (e) => {
+          if (!this.options.hideLabels) {
+              const delta = Math.round(gVal - uVal);
+              const deltaSign = delta > 0 ? "+" : "";
+              hitArea.setAttribute("tabindex", "0");
+              hitArea.setAttribute("role", "button");
+              hitArea.setAttribute("aria-label", `${item.useCaseId || featureName} (${item.taskName}): unguided ${Math.round(uVal)}%, guided ${Math.round(gVal)}%, uplift ${deltaSign}${delta} percentage points`);
+          }
+
+          /**
+           * @param {number} clientX
+           * @param {number} clientY
+           */
+          const showTooltipAt = (clientX, clientY) => {
             if (!this.tooltip) return;
             const delta = Math.round(gVal - uVal);
-            const deltaColor = delta >= 0 ? "var(--color-accent-success)" : "var(--color-accent-failure)";
             const deltaSign = delta > 0 ? "+" : "";
             
             const uTokens = item.uTokens || 0;
@@ -438,11 +458,11 @@ export class DumbbellChart {
 
             const uncachedDeltaPct = uUncached > 0 ? Math.round(((gUncached - uUncached) / uUncached) * 100) : 0;
             const uncachedDeltaSign = uncachedDeltaPct > 0 ? "+" : "";
-            const uncachedDeltaColor = uncachedDeltaPct <= 0 ? "var(--color-accent-success, #22c55e)" : "var(--color-on-surface-variant)";
+            const uncachedDeltaCls = uncachedDeltaPct <= 0 ? "text-success" : "";
 
             const runtimeDeltaPct = uRuntimeMs > 0 ? Math.round(((gRuntimeMs - uRuntimeMs) / uRuntimeMs) * 100) : 0;
             const runtimeDeltaSign = runtimeDeltaPct > 0 ? "+" : "";
-            const runtimeDeltaColor = runtimeDeltaPct <= 0 ? "var(--color-accent-success, #22c55e)" : "var(--color-on-surface-variant)";
+            const runtimeDeltaCls = runtimeDeltaPct <= 0 ? "text-success" : "";
 
             const fmtTime = (/** @type {number} */ ms) => {
               if (!ms || ms <= 0) return '-';
@@ -452,40 +472,54 @@ export class DumbbellChart {
 
             this.tooltip.style.display = 'block';
             const maxLeft = Math.max(8, window.innerWidth - 330);
-            this.tooltip.style.left = Math.max(8, Math.min(e.clientX + 15, maxLeft)) + 'px';
-            this.tooltip.style.top = (e.clientY + 15) + 'px';
+            this.tooltip.style.left = Math.max(8, Math.min(clientX + 15, maxLeft)) + 'px';
+            this.tooltip.style.top = Math.max(8, clientY + 15) + 'px';
 
             this.tooltip.innerHTML = `
-                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: min(310px, calc(100dvw - 32px)); color: var(--color-on-surface);">
-                    <!-- Left Column -->
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                         <div style="font-weight: bold; font-size: 0.875rem; white-space: nowrap; color: ${item.uFailed || item.gFailed ? '#d29922' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
-                          <div style="font-size: 0.7rem; color: var(--color-on-surface-variant);">feature: ${featureName}</div>
+                <div class="dumbbell-tooltip">
+                    <div class="dumbbell-tooltip-left">
+                         <div class="dumbbell-tooltip-title${item.uFailed || item.gFailed ? ' text-warning' : ''}">${escapeHtml(item.useCaseId)} (${escapeHtml(item.taskName)})</div>
+                         <div class="dumbbell-tooltip-feature">feature: ${escapeHtml(featureName)}</div>
                          ${(uRuntimeMs > 0 || gRuntimeMs > 0 || uTokens > 0 || gTokens > 0) ? `
-                         <div style="font-size: 0.7rem; color: var(--color-on-surface-variant); margin-top: 6px; display: flex; flex-direction: column; gap: 3px;">
+                         <div class="dumbbell-tooltip-metrics">
                             ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `
-                            <div>Time (U → G): <strong>${fmtTime(uRuntimeMs)} → ${fmtTime(gRuntimeMs)}</strong> <span style="color: ${runtimeDeltaColor}; font-weight: 600;">(${runtimeDeltaSign}${runtimeDeltaPct}%)</span></div>
+                            <div>Time (U → G): <strong>${fmtTime(uRuntimeMs)} → ${fmtTime(gRuntimeMs)}</strong> <span class="${runtimeDeltaCls}">(${runtimeDeltaSign}${runtimeDeltaPct}%)</span></div>
                             ` : ''}
                             ${(uUncached > 0 || gUncached > 0) ? `
-                            <div>Uncached Tokens: <strong>${uUncached.toLocaleString()} → ${gUncached.toLocaleString()}</strong> <span style="color: ${uncachedDeltaColor}; font-weight: 600;">(${uncachedDeltaSign}${uncachedDeltaPct}%)</span></div>
+                            <div>Uncached Tokens: <strong>${uUncached.toLocaleString()} → ${gUncached.toLocaleString()}</strong> <span class="${uncachedDeltaCls}">(${uncachedDeltaSign}${uncachedDeltaPct}%)</span></div>
                             ` : ''}
                             ${(uTokens > 0 || gTokens > 0) ? `
-                            <div>Total Tokens: <strong>${uTokens.toLocaleString()} → ${gTokens.toLocaleString()}</strong>${gCachedPct > 0 ? ` <span style="opacity: 0.85;">(${gCachedPct}% cached)</span>` : ''}</div>
+                            <div>Total Tokens: <strong>${uTokens.toLocaleString()} → ${gTokens.toLocaleString()}</strong>${gCachedPct > 0 ? ` <span>(${gCachedPct}% cached)</span>` : ''}</div>
                             ` : ''}
                          </div>
                          ` : ''}
                     </div>
-                    <!-- Right Column -->
-                    <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 0.75rem;">
-                         <div style="font-weight: bold; color: ${deltaColor}; font-size: 0.875rem;">Uplift: ${deltaSign}${delta}%</div>
-                         <div style="white-space: nowrap; color: ${item.gFailed ? '#d29922' : 'inherit'};">Guided: ${Math.round(gVal)}% ${item.gErr > 0 ? `(${Math.round(gVal * (1 - item.gErr / 100))}%–${Math.round(gVal * (1 - item.gErr / 100) + item.gErr)}%, ${item.gErr}% err)` : (item.gFailed ? '(Infra Error excluded)' : '')}</div>
-                         <div style="white-space: nowrap; color: ${item.uFailed ? '#d29922' : 'inherit'};">Unguided: ${Math.round(uVal)}% ${item.uErr > 0 ? `(${Math.round(uVal * (1 - item.uErr / 100))}%–${Math.round(uVal * (1 - item.uErr / 100) + item.uErr)}%, ${item.uErr}% err)` : (item.uFailed ? '(Infra Error excluded)' : '')}</div>
+                    <div class="dumbbell-tooltip-right">
+                         <div class="dumbbell-tooltip-uplift ${delta >= 0 ? 'positive' : 'negative'}">Uplift: ${deltaSign}${delta}%</div>
+                         <div class="dumbbell-tooltip-rate${item.gFailed ? ' text-warning' : ''}">Guided: ${Math.round(gVal)}% ${item.gErr > 0 ? `(${Math.round(gVal * (1 - item.gErr / 100))}%–${Math.round(gVal * (1 - item.gErr / 100) + item.gErr)}%, ${item.gErr}% err)` : (item.gFailed ? '(Infra Error excluded)' : '')}</div>
+                         <div class="dumbbell-tooltip-rate${item.uFailed ? ' text-warning' : ''}">Unguided: ${Math.round(uVal)}% ${item.uErr > 0 ? `(${Math.round(uVal * (1 - item.uErr / 100))}%–${Math.round(uVal * (1 - item.uErr / 100) + item.uErr)}%, ${item.uErr}% err)` : (item.uFailed ? '(Infra Error excluded)' : '')}</div>
                      </div>
                 </div>
             `;
           };
-          
+
+          hitArea.onmousemove = (e) => showTooltipAt(e.clientX, e.clientY);
           hitArea.onmouseleave = () => { if (this.tooltip) this.tooltip.style.display = 'none'; };
+          hitArea.addEventListener('focus', () => {
+              const r = hitArea.getBoundingClientRect();
+              showTooltipAt(r.left + r.width / 2, r.bottom);
+          });
+          hitArea.addEventListener('blur', () => {
+              if (this.tooltip) this.tooltip.style.display = 'none';
+          });
+          hitArea.addEventListener('keydown', (e) => {
+              if (e.key === 'Escape' && this.tooltip) {
+                  this.tooltip.style.display = 'none';
+              } else if ((e.key === 'Enter' || e.key === ' ') && guidedSet.onClick) {
+                  e.preventDefault();
+                  guidedSet.onClick(item.originalIndex, 'Guided');
+              }
+          });
           if (guidedSet.onClick) {
               hitArea.onclick = () => guidedSet.onClick ? guidedSet.onClick(item.originalIndex, 'Guided') : null;
           }

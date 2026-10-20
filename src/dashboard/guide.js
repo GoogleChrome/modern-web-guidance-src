@@ -1,4 +1,4 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, isLocalDashboardHost, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, isLocalDashboardHost, $, getScrollBehavior } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
@@ -462,26 +462,21 @@ function renderGraphs(guideName) {
         const runs = combinations[combKey];
 
         const card = document.createElement('div');
-        card.className = 'stat-card';
-        card.style.display = 'flex';
-        card.style.flexDirection = 'column';
-        card.style.gap = '15px';
-        card.style.padding = '20px';
+        card.className = 'stat-card guide-stat-card';
         
         const header = document.createElement('div');
         header.innerHTML = `
-            <div style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">
-                ${escapeHtml(agent)} <span style="font-weight: normal; color: var(--text-secondary);">on</span> ${escapeHtml(model)}
+            <div class="guide-card-title">
+                ${escapeHtml(agent)} <span class="guide-card-title-on">on</span> ${escapeHtml(model)}
             </div>
-            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
+            <div class="guide-card-subtitle">
                 ${runs.length} chronological trials
             </div>
         `;
         card.appendChild(header);
 
         const chartWrapper = document.createElement('div');
-        chartWrapper.style.overflowX = 'auto';
-        chartWrapper.style.width = '100%';
+        chartWrapper.className = 'guide-chart-wrapper';
 
         const height = 230;
         const paddingX = 46;
@@ -540,22 +535,23 @@ function renderGraphs(guideName) {
 
                     elementHtml = `
                         ${lineHtml}
-                        <circle cx="${x}" cy="${yU}" r="4" stroke="#8b949e" stroke-width="1.5" fill="var(--color-surface-container-lowest)" />
+                        <circle cx="${x}" cy="${yU}" r="4" stroke="var(--color-outline)" stroke-width="1.5" fill="var(--color-surface-container-lowest)" />
                         <polygon points="${arrowPoints}" fill="${lineColor}" />
                     `;
                 }
 
+                const pointLabel = `${suite.shortDate} (${run.testId}): unguided ${stats.unguidedRate}%, guided ${stats.guidedRate}%, uplift ${stats.uplift >= 0 ? '+' : ''}${stats.uplift} percentage points`;
                 svgContent += `
-                    <g class="timeline-point" data-testid="${run.testId}" data-comb="${combKey}" style="cursor: pointer;">
+                    <g class="timeline-point" tabindex="0" role="button" aria-label="${escapeHtml(pointLabel)}" data-testid="${escapeHtml(run.testId)}" data-comb="${escapeHtml(combKey)}">
                         ${elementHtml}
-                        <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${suite.shortDate}</text>
+                        <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${escapeHtml(suite.shortDate)}</text>
                         <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
                     </g>
                 `;
             } else {
                 // Draw faded date label for missing runs to preserve axis alignment
                 svgContent += `
-                    <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle" style="opacity: 0.3;">${suite.shortDate}</text>
+                    <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle" opacity="0.3">${escapeHtml(suite.shortDate)}</text>
                 `;
             }
         });
@@ -584,7 +580,7 @@ function renderGraphs(guideName) {
                     const wrapperRect = chartWrapper.getBoundingClientRect();
                     const elRect = highlightedEl.getBoundingClientRect();
                     const targetScroll = chartWrapper.scrollLeft + (elRect.left - wrapperRect.left) - (wrapperRect.width / 2) + (elRect.width / 2);
-                    chartWrapper.scrollTo({ left: targetScroll, behavior: 'smooth' });
+                    chartWrapper.scrollTo({ left: targetScroll, behavior: getScrollBehavior() });
                 }, 200);
             }
         } else if (chartWrapper.scrollWidth > chartWrapper.clientWidth) {
@@ -593,7 +589,11 @@ function renderGraphs(guideName) {
 
         svg.querySelectorAll('.timeline-point').forEach(el => {
             const group = /** @type {SVGElement} */ (el);
-            group.addEventListener('mouseenter', () => {
+            /**
+             * @param {number} [anchorX]
+             * @param {number} [anchorY]
+             */
+            const showPointTooltip = (anchorX, anchorY) => {
                 const combKey = group.getAttribute('data-comb');
                 const testId = group.getAttribute('data-testid');
                 if (!combKey || !testId) return;
@@ -609,7 +609,7 @@ function renderGraphs(guideName) {
                 const content = $('#tooltip-content');
 
                 header.innerHTML = `
-                    <div style="font-weight: bold; font-size: 0.9rem; color: var(--text-primary); word-break: break-all;">
+                    <div class="guide-tooltip-title">
                         ${escapeHtml(runData.testId)}
                     </div>
                 `;
@@ -620,19 +620,19 @@ function renderGraphs(guideName) {
                 const uTotal = stats.unguidedTotal || 0;
 
                 content.innerHTML = `
-                    <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.75rem;">${formattedDate}</div>
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <div style="display: flex; justify-content: space-between;">
+                    <div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div>
+                    <div class="guide-tooltip-rows">
+                        <div class="guide-tooltip-row">
                             <span>Guided Pass Rate:</span>
-                            <span style="font-weight: 600; color: var(--color-primary);">${stats.guidedRate}% (${gPassed}/${gTotal})</span>
+                            <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between;">
+                        <div class="guide-tooltip-row">
                             <span>Unguided Pass Rate:</span>
-                            <span style="font-weight: 600; color: var(--text-secondary);">${stats.unguidedRate}% (${uPassed}/${uTotal})</span>
+                            <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 4px; margin-top: 4px;">
-                            <span style="font-weight: bold;">Uplift:</span>
-                            <span style="font-weight: bold; color: ${stats.uplift >= 0 ? 'var(--color-accent-success)' : 'var(--color-accent-failure)'};">
+                        <div class="guide-tooltip-uplift-row">
+                            <span>Uplift:</span>
+                            <span class="guide-tooltip-uplift ${stats.uplift >= 0 ? 'positive' : 'negative'}">
                                 ${stats.uplift >= 0 ? '+' : ''}${stats.uplift}%
                             </span>
                         </div>
@@ -640,6 +640,36 @@ function renderGraphs(guideName) {
                 `;
 
                 tooltip.classList.remove('hidden');
+                if (typeof anchorX === 'number' && typeof anchorY === 'number') {
+                    const offset = 15;
+                    let finalX = anchorX + offset;
+                    let finalY = anchorY + offset;
+                    const tooltipWidth = tooltip.clientWidth || 300;
+                    const tooltipHeight = tooltip.clientHeight || 150;
+                    if (finalX + tooltipWidth > window.innerWidth) {
+                        finalX = anchorX - tooltipWidth - offset;
+                    }
+                    if (finalY + tooltipHeight > window.innerHeight) {
+                        finalY = anchorY - tooltipHeight - offset;
+                    }
+                    tooltip.style.left = `${Math.max(8, finalX)}px`;
+                    tooltip.style.top = `${Math.max(8, finalY)}px`;
+                }
+            };
+
+            const navigateToRun = () => {
+                const combKey = group.getAttribute('data-comb');
+                const testId = group.getAttribute('data-testid');
+                if (!combKey || !testId) return;
+                const runData = combinations[combKey].find(r => r.testId === testId);
+                if (runData) {
+                    window.location.href = `dashboard.html?testId=${encodeURIComponent(runData.testId)}&source=${encodeURIComponent(runData.source)}#guide-${encodeURIComponent(guideName)}`;
+                }
+            };
+
+            group.addEventListener('mouseenter', (e) => {
+                if (e instanceof MouseEvent) showPointTooltip(e.clientX, e.clientY);
+                else showPointTooltip();
             });
 
             group.addEventListener('mousemove', (e) => {
@@ -658,23 +688,40 @@ function renderGraphs(guideName) {
                     finalY = e.clientY - tooltipHeight - offset;
                 }
 
-                tooltip.style.left = `${finalX}px`;
-                tooltip.style.top = `${finalY}px`;
+                tooltip.style.left = `${Math.max(8, finalX)}px`;
+                tooltip.style.top = `${Math.max(8, finalY)}px`;
             });
 
             group.addEventListener('mouseleave', () => {
                 $('#tooltip-container').classList.add('hidden');
             });
 
-            group.addEventListener('click', () => {
-                const combKey = group.getAttribute('data-comb');
-                const testId = group.getAttribute('data-testid');
-                if (!combKey || !testId) return;
-                const runData = combinations[combKey].find(r => r.testId === testId);
-                if (runData) {
-                    window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}#guide-${guideName}`;
+            group.addEventListener('focus', () => {
+                const r = group.getBoundingClientRect();
+                showPointTooltip(r.left + r.width / 2, r.top);
+            });
+
+            group.addEventListener('blur', () => {
+                $('#tooltip-container').classList.add('hidden');
+            });
+
+            group.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    $('#tooltip-container').classList.add('hidden');
+                } else if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigateToRun();
                 }
             });
+
+            group.addEventListener('click', navigateToRun);
         });
     });
 }
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const tooltip = document.getElementById('tooltip-container');
+        if (tooltip) tooltip.classList.add('hidden');
+    }
+});

@@ -10,7 +10,7 @@
   <meta name="description" content="Evaluation Suite Results for Modern Web Guidance: Inspect per-task guided vs. unguided uplift, accessibility subscores, completion time, and token usage.">
   <title>Suite Results</title>
   <link rel="stylesheet" href="dashboard.css">
-  <script src="diff.min.js"></script>
+  <script src="diff.min.js" defer fetchpriority="low"></script>
 </head>
 
 <body>
@@ -26,7 +26,7 @@
         </div>
         <div class="suite-header-actions">
           <a href="./" class="secondary-btn">← Back to results</a>
-          <button id="auth-btn" class="secondary-btn" style="display: none;">
+          <button id="auth-btn" class="secondary-btn" type="button" hidden>
             Sign in with Google
           </button>
         </div>

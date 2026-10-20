@@ -1,5 +1,5 @@
 import { ApiClient } from './api.js';
-import { getRunStats, isEarlyFailureRun, getColor } from './utils.js';
+import { getRunStats, isEarlyFailureRun, getColor, escapeHtml } from './utils.js';
 
 const api = new ApiClient();
 
@@ -207,9 +207,9 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                 <svg width="${width}" height="${totalHeight}" viewBox="0 0 ${width} ${totalHeight}" style="display: block;">
                     
                     <!-- Top Subplot (Unguided) -->
-                    <line x1="${paddingX}" y1="${paddingY}" x2="${width - paddingX}" y2="${paddingY}" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4" />
-                    <line x1="${paddingX}" y1="${paddingY + graphHeight / 2}" x2="${width - paddingX}" y2="${paddingY + graphHeight / 2}" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4" />
-                    <line x1="${paddingX}" y1="${paddingY + graphHeight}" x2="${width - paddingX}" y2="${paddingY + graphHeight}" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
+                    <line x1="${paddingX}" y1="${paddingY}" x2="${width - paddingX}" y2="${paddingY}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4" />
+                    <line x1="${paddingX}" y1="${paddingY + graphHeight / 2}" x2="${width - paddingX}" y2="${paddingY + graphHeight / 2}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4" />
+                    <line x1="${paddingX}" y1="${paddingY + graphHeight}" x2="${width - paddingX}" y2="${paddingY + graphHeight}" stroke="var(--color-outline)" stroke-width="1" />
                     
                     <text x="${paddingX - 10}" y="${paddingY + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">100%</text>
                     <text x="${paddingX - 10}" y="${paddingY + graphHeight / 2 + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">50%</text>
@@ -218,9 +218,9 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                     ${uPoints ? `<polyline points="${uPoints}" fill="none" stroke="oklch(65% 0.1 200)" stroke-width="1.5" stroke-dasharray="3" stroke-linecap="round" stroke-linejoin="round" />` : ''}
 
                     <!-- Bottom Subplot (Guided) -->
-                    <line x1="${paddingX}" y1="${gOffset + paddingY}" x2="${width - paddingX}" y2="${gOffset + paddingY}" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4" />
-                    <line x1="${paddingX}" y1="${gOffset + paddingY + graphHeight / 2}" x2="${width - paddingX}" y2="${gOffset + paddingY + graphHeight / 2}" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4" />
-                    <line x1="${paddingX}" y1="${gOffset + paddingY + graphHeight}" x2="${width - paddingX}" y2="${gOffset + paddingY + graphHeight}" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
+                    <line x1="${paddingX}" y1="${gOffset + paddingY}" x2="${width - paddingX}" y2="${gOffset + paddingY}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4" />
+                    <line x1="${paddingX}" y1="${gOffset + paddingY + graphHeight / 2}" x2="${width - paddingX}" y2="${gOffset + paddingY + graphHeight / 2}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4" />
+                    <line x1="${paddingX}" y1="${gOffset + paddingY + graphHeight}" x2="${width - paddingX}" y2="${gOffset + paddingY + graphHeight}" stroke="var(--color-outline)" stroke-width="1" />
                     
                     <text x="${paddingX - 10}" y="${gOffset + paddingY + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">100%</text>
                     <text x="${paddingX - 10}" y="${gOffset + paddingY + graphHeight / 2 + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">50%</text>
@@ -232,16 +232,17 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                     ${history.map((h, i) => {
                         const x = paddingX + i * stepX;
                         const displayId = formatShortTime(h.timestamp);
-                        const strokeColor = h.isCurrent ? '#fff' : 'var(--bg-primary)';
+                        const strokeColor = h.isCurrent ? 'var(--text-primary)' : 'var(--bg-primary)';
                         const strokeWidth = h.isCurrent ? 3 : 2;
+                        const safeTestId = escapeHtml(h.testId) || '';
 
                         let uTrialPoints = '';
                         if (h.unguidedTrials) {
                             h.unguidedTrials.forEach((/** @type {number} */ trialRate) => {
                                 const yU = paddingY + graphHeight - (trialRate / 100 * graphHeight);
                                 uTrialPoints += `
-                                    <circle cx="${x}" cy="${yU}" r="4" fill="rgba(255,255,255,0.3)" stroke="${strokeColor}" stroke-width="${strokeWidth}">
-                                        <title>Suite: ${h.testId}\nUnguided Trial: ${trialRate}%</title>
+                                    <circle cx="${x}" cy="${yU}" r="4" fill="var(--color-outline)" stroke="${strokeColor}" stroke-width="${strokeWidth}">
+                                        <title>Suite: ${safeTestId}\nUnguided Trial: ${trialRate}%</title>
                                     </circle>
                                 `;
                             });
@@ -253,7 +254,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                                 const yG = gOffset + paddingY + graphHeight - (trialRate / 100 * graphHeight);
                                 gTrialPoints += `
                                     <circle cx="${x}" cy="${yG}" r="5" fill="${getColor(trialRate)}" stroke="${strokeColor}" stroke-width="${strokeWidth}">
-                                        <title>Suite: ${h.testId}\nGuided Trial: ${trialRate}%</title>
+                                        <title>Suite: ${safeTestId}\nGuided Trial: ${trialRate}%</title>
                                     </circle>
                                 `;
                             });
@@ -262,11 +263,11 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                         // SVG <a> is focusable, so each run is reachable by keyboard (was a click-only <g onclick>).
                         const pointHref = `dashboard.html?testId=${encodeURIComponent(h.testId)}&source=${encodeURIComponent(sourceParam)}`;
                         return `
-                            <a class="stability-point-group" href="${pointHref}" aria-label="Open suite ${h.testId}">
-                                <line x1="${x}" y1="${paddingY}" x2="${x}" y2="${gOffset + paddingY + graphHeight}" stroke="${h.isCurrent ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}" stroke-width="${h.isCurrent ? 1.5 : 1}" />
+                            <a class="stability-point-group" href="${pointHref}" aria-label="Open suite ${safeTestId}">
+                                <line x1="${x}" y1="${paddingY}" x2="${x}" y2="${gOffset + paddingY + graphHeight}" stroke="${h.isCurrent ? 'var(--color-outline)' : 'var(--border-color)'}" stroke-width="${h.isCurrent ? 1.5 : 1}" />
                                 ${uTrialPoints}
                                 ${gTrialPoints}
-                                <text x="${x}" y="${gOffset + paddingY + graphHeight + 20}" fill="${h.isCurrent ? '#fff' : 'var(--text-secondary)'}" font-size="0.7rem" font-weight="${h.isCurrent ? 'bold' : 'normal'}" text-anchor="middle">${displayId}</text>
+                                <text x="${x}" y="${gOffset + paddingY + graphHeight + 20}" fill="${h.isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)'}" font-size="0.7rem" font-weight="${h.isCurrent ? 'bold' : 'normal'}" text-anchor="middle">${escapeHtml(displayId)}</text>
                             </a>
                         `;
                     }).join('')}
@@ -277,6 +278,6 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
 
     } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
-        container.innerHTML = `<div class="stability-error">Error querying trend: ${message}</div>`;
+        container.innerHTML = `<div class="stability-error">Error querying trend: ${escapeHtml(message)}</div>`;
     }
 };

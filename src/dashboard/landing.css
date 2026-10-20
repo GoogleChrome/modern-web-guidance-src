@@ -565,7 +565,7 @@ th[aria-sort="ascending"] .sort-btn::after {
 
 .insight-dumbbell-track .variance-band.guided.has-err,
 .suite-dumbbell-track .variance-band.guided.has-err {
-  background-color: #d29922;
+  background-color: var(--color-accent-warning);
   opacity: 0.35;
 }
 
@@ -727,6 +727,7 @@ th[aria-sort="ascending"] .sort-btn::after {
 }
 
 .filter-runs-trigger {
+  anchor-name: --anchor-filter-btn;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
@@ -765,19 +766,35 @@ th[aria-sort="ascending"] .sort-btn::after {
 }
 
 .filter-menu {
-  position: absolute;
-  top: 100%;
-  inset-inline: auto 0;
-  margin-top: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  position: fixed;
+  position-anchor: --anchor-filter-btn;
+  inset: auto;
+  top: calc(anchor(bottom) + 8px);
+  right: anchor(right);
+  position-try-fallbacks: flip-block, flip-inline;
   background: var(--color-surface-container-lowest);
   outline: 1px solid var(--border-color);
   border-radius: 6px;
-  width: 450px;
-  max-width: calc(100dvw - 40px);
+  width: min(450px, calc(100dvw - 24px));
+  max-width: calc(100dvw - 24px);
   box-shadow: 0 8px 24px var(--color-shadow);
   z-index: 1000;
+}
+
+.filter-menu:popover-open {
   display: flex;
   flex-direction: column;
+}
+
+@media (width < 44rem) {
+  .filter-menu {
+    left: 12px;
+    right: auto;
+    width: calc(100dvw - 24px);
+  }
 }
 
 .filter-menu.hidden {
@@ -909,6 +926,7 @@ th[aria-sort="ascending"] .sort-btn::after {
   opacity: 1;
   translate: 0 0;
   display: block;
+  pointer-events: auto;
 }
 
 #tooltip-chart {
@@ -1583,12 +1601,6 @@ th[aria-sort="ascending"] .sort-btn::after {
 @container (width < 640px) {
   .browse-controls {
     inline-size: 100%;
-  }
-
-  .filter-menu {
-    inset-inline: 0 auto;
-    width: min(450px, 100cqi);
-    max-width: 100cqi;
   }
 
   .suites-table,

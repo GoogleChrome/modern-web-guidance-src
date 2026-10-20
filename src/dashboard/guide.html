@@ -120,6 +120,81 @@
       padding: 8px 12px;
       font-size: var(--font-md);
     }
+    .guide-stat-card {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding: 20px;
+    }
+    .guide-card-title {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-primary);
+    }
+    .guide-card-title-on {
+      font-weight: normal;
+      color: var(--text-secondary);
+    }
+    .guide-card-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .guide-chart-wrapper {
+      overflow-x: auto;
+      width: 100%;
+    }
+    .timeline-point {
+      cursor: pointer;
+    }
+    .timeline-point:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+    .guide-tooltip-title {
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      word-break: break-all;
+    }
+    .guide-tooltip-date {
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-size: 0.75rem;
+    }
+    .guide-tooltip-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .guide-tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .guide-tooltip-uplift-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 4px;
+      margin-top: 4px;
+      font-weight: bold;
+    }
+    .guide-tooltip-guided {
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+    .guide-tooltip-unguided {
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .guide-tooltip-uplift.positive {
+      color: var(--color-accent-success);
+    }
+    .guide-tooltip-uplift.negative {
+      color: var(--color-accent-failure);
+    }
     @media (pointer: coarse) {
       .guide-search,
       .timeline-filter-controls input[type="number"] {
@@ -163,7 +238,7 @@
       </div>
       <div class="guide-header-actions">
         <a href="./" class="secondary-btn">← Back to results</a>
-        <button id="auth-btn" class="secondary-btn" type="button" style="display: none;">
+        <button id="auth-btn" class="secondary-btn" type="button" hidden>
           Sign in with Google
         </button>
       </div>
@@ -180,7 +255,7 @@
     </main>
   </div>
 
-  <div id="tooltip-container" class="tooltip-container hidden">
+  <div id="tooltip-container" class="tooltip-container hidden" role="tooltip">
     <div id="tooltip-header"></div>
     <div id="tooltip-content"></div>
   </div>

@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, isLocalDashboardHost } from './utils.js';
+import { getRunStats, isEarlyFailureRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, isLocalDashboardHost, getScrollBehavior } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
@@ -140,7 +140,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (initialTestID) {
         await loadDashboardData(initialTestID);
     } else {
-        document.body.innerHTML = `<div class="error-message">Error: No testId provided in query string.</div>`;
+        const main = document.getElementById('main-content');
+        if (main) {
+            main.innerHTML = `<div class="error-message">Error: No testId provided in query string.</div>`;
+        }
     }
 });
 
@@ -155,7 +158,10 @@ async function loadDashboardData(testId) {
     try {
         const data = await api.getEvals(testId);
         if (!data) {
-            document.body.innerHTML = `<div class="error-message">Error: Failed to load evaluation data for ${testId}.</div>`;
+            const main = document.getElementById('main-content');
+            if (main) {
+                main.innerHTML = `<div class="error-message">Error: Failed to load evaluation data for ${escapeHtml(testId)}.</div>`;
+            }
             return;
         }
 
@@ -230,7 +236,7 @@ async function loadDashboardData(testId) {
                         for (const item of checkItems) {
                             if (item.textContent.includes(checkId)) {
                                 if (item instanceof HTMLElement) {
-                                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    item.scrollIntoView({ behavior: getScrollBehavior(), block: 'center' });
                                     item.style.backgroundColor = 'rgba(255, 255, 0, 0.2)'; // Highlight
                                     item.style.transition = 'background-color 0.5s';
                                 }
@@ -248,7 +254,7 @@ async function loadDashboardData(testId) {
             setTimeout(() => {
                 const accordionEl = document.querySelector(`.task-accordion[data-guide="${targetGuide}"]`);
                 if (accordionEl) {
-                    accordionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                     if (!accordionEl.classList.contains('open')) {
                         const header = $('.task-accordion-header', accordionEl);
                         if (header) header.click();
@@ -262,13 +268,13 @@ async function loadDashboardData(testId) {
 
         const message = (error instanceof Error) ? error.message : String(error);
 
-        let errorHtml = `<div style="text-align:center; padding: 50px; color: red;">
+        let errorHtml = `<div class="error-banner">
             <h3>Error loading dashboard data</h3>
             <p>${escapeHtml(message)}</p>
         </div>`;
 
         if (api && api.source === 'remote') {
-            errorHtml += `<div style="text-align:center; color: var(--text-secondary); margin-top: -20px;">
+            errorHtml += `<div class="error-subtext">
                 <p>If your session has expired, please use the <strong>Sign in with Google</strong> button above to re-authenticate.</p>
             </div>`;
         }
@@ -293,8 +299,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     closeBtn.onclick = closeModal;
 
-    // Close on backdrop click
-    modal.addEventListener('click', (event) => event.target === modal && closeModal());
+    // Fallback backdrop click dismissal for browsers without native closedby="any"
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+        /** @type {EventTarget | null} */
+        let pointerDownTarget = null;
+        modal.addEventListener('pointerdown', (event) => {
+            pointerDownTarget = event.target;
+        });
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal && pointerDownTarget === modal) {
+                closeModal();
+            }
+        });
+    }
+
+    // Delegated click handler for action buttons in the assertion matrix footer
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        const btn = target.closest('.tfoot-action-btn[data-action]');
+        if (!(btn instanceof HTMLButtonElement)) return;
+        const action = btn.dataset.action;
+        if (action === 'trajectory' && btn.dataset.basePath && btn.dataset.sessionFile) {
+            openTrajectory(btn.dataset.basePath, btn.dataset.sessionFile);
+        } else if (action === 'content' && btn.dataset.fileName && btn.dataset.filePath) {
+            viewContent(btn.dataset.fileName, btn.dataset.filePath);
+        } else if (action === 'diff' && btn.dataset.setupPath !== undefined && btn.dataset.resultPath && btn.dataset.scenarioName && btn.dataset.runNumber) {
+            viewDiff(btn.dataset.setupPath, btn.dataset.resultPath, btn.dataset.scenarioName, Number(btn.dataset.runNumber));
+        } else if (action === 'app' && btn.dataset.appUrl) {
+            window.open(btn.dataset.appUrl, '_blank', 'noopener');
+        }
+    });
 
     // Handle Esc key or dialog close API
     modal.addEventListener('close', () => {
@@ -335,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const hasLog = await api.checkLogExists(testId);
                     if (!hasLog) {
-                        viewLogBtn.style.display = 'none';
+                        viewLogBtn.hidden = true;
                     } else {
                         viewLogBtn.onclick = async () => {
                             const modal = $('dialog#modal');
@@ -343,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const body = $('#modal-body');
 
                             title.textContent = 'Test Suite Run Log';
-                            body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading log...</div>';
+                            body.innerHTML = '<div class="modal-status-msg">Loading log...</div>';
                             modal.dataset.view = 'log';
                             modal.showModal();
 
@@ -352,16 +387,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                 body.innerHTML = `<div class="log-content" tabindex="0">${escapeHtml(text)}</div>`;
                             } catch (e) {
                                 const msg = (e instanceof Error) ? e.message : String(e);
-                                body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading log: ${escapeHtml(msg)}</div>`;
+                                body.innerHTML = `<div class="modal-error-msg">Error loading log: ${escapeHtml(msg)}</div>`;
                             }
                         };
                     }
                 } catch (e) {
                     console.log('Error checking log existence:', e);
-                    viewLogBtn.style.display = 'none'; // Hide button on error
+                    viewLogBtn.hidden = true; // Hide button on error
                 }
             } else {
-                viewLogBtn.style.display = 'none'; // Hide button if no testId
+                viewLogBtn.hidden = true; // Hide button if no testId
             }
         }
     })();
@@ -700,7 +735,7 @@ function renderSummary(data) {
                 ${validPairsCount < tasksCount ? `
                 <div class="narrative-metric-row">
                     <span>Valid task pairs</span>
-                    <strong style="color: #d29922;">${validPairsCount} / ${tasksCount}</strong>
+                    <strong class="text-warning">${validPairsCount} / ${tasksCount}</strong>
                 </div>
                 ` : ''}
                 <div class="narrative-metric-row narrative-note">
@@ -715,7 +750,7 @@ function renderSummary(data) {
                 ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalEarlyFailures > 0) ? `
                 <div class="narrative-metric-row">
                     <span>Infra errors (excluded)</span>
-                    <strong style="color: ${totalEarlyFailures > 0 ? '#d29922' : 'var(--color-accent-success, #3fb950)'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid run${totalEarlyFailures === 1 ? '' : 's'})</strong>
+                    <strong class="${totalEarlyFailures > 0 ? 'text-warning' : 'text-success'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid run${totalEarlyFailures === 1 ? '' : 's'})</strong>
                 </div>
                 ` : ''}
             </div>
@@ -804,7 +839,7 @@ function renderSummary(data) {
             sortSelect.dispatchEvent(new Event('change'));
         }
         const guideSection = document.getElementById('guide-section');
-        guideSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        guideSection?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
     });
 }
 
@@ -1083,7 +1118,7 @@ function renderGrid(data, testId) {
                     </button>
                     ${trendLinkHtml}
                     ${a11yPillHtml}
-                    ${hasInfraError ? `<span class="generation-failed-badge" style="color: #d29922; border-color: #d29922; background: rgba(210, 153, 34, 0.1);" title="Infrastructure / CLI errors are excluded from pass rates">${infraErrorCount} Infra Error${infraErrorCount === 1 ? '' : 's'}</span>` : ''}
+                    ${hasInfraError ? `<span class="generation-failed-badge infra-error-badge" title="Infrastructure / CLI errors are excluded from pass rates">${infraErrorCount} Infra Error${infraErrorCount === 1 ? '' : 's'}</span>` : ''}
                     ${hasBuildFailure ? `<span class="generation-failed-badge" title="Agent produced a broken app or build that failed grading">Build Failed</span>` : ''}
                 </div>
                 <div class="right-section">
@@ -1098,13 +1133,13 @@ function renderGrid(data, testId) {
                         <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp
                     </div>
                     ` : `
-                    <div class="uplift-score" style="color: #d29922; font-size: 0.75rem; letter-spacing: 0.04em;" title="Excluded from rollup because one or both sides have 0 valid runs">
+                    <div class="uplift-score invalid" title="Excluded from rollup because one or both sides have 0 valid runs">
                         INVALID
                     </div>
                     `}
                 </div>
             </div>
-            <div class="task-accordion-content" id="${contentId}">
+            <div class="task-accordion-content" id="${contentId}" hidden="until-found">
                 <div class="expansion-loading">Loading details...</div>
             </div>
         `;
@@ -1116,11 +1151,22 @@ function renderGrid(data, testId) {
         const toggleAccordion = async () => {
             const isOpen = accordion.classList.toggle('open');
             toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            if (isOpen) {
+                content.removeAttribute('hidden');
+            } else {
+                content.setAttribute('hidden', 'until-found');
+            }
 
             if (isOpen && content.querySelector('.expansion-loading')) {
                 await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
             }
         };
+
+        content.addEventListener('beforematch', () => {
+            if (!accordion.classList.contains('open')) {
+                toggleAccordion();
+            }
+        });
 
         // Clicking anywhere on the header row toggles (mouse convenience); the button
         // is the keyboard/AT control and its click bubbles here. Links/pills opt out.
@@ -1253,26 +1299,26 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         const uFailed = isRunEarlyFailure(unguidedRuns);
         const gFailed = isRunEarlyFailure(guidedRuns);
 
-        let truthMatrixHtml = `<div class="truth-matrix-wrap"><table class="truth-matrix"><thead>`;
+        let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Assertion results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader assertion results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
 
         if (maxRuns > 1) {
             truthMatrixHtml += `
                 <tr>
-                    <th class="center" style="${uFailed ? 'color: #d29922; font-weight: bold;' : ''}" colspan="${maxRuns}">Unguided</th>
-                    <th class="center" style="${gFailed ? 'color: #d29922; font-weight: bold;' : ''}" colspan="${maxRuns}">Guided</th>
-                    <th rowspan="2">Assertion Requirement</th>
+                    <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Unguided</th>
+                    <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Guided</th>
+                    <th scope="col" rowspan="2">Assertion Requirement</th>
                 </tr>
                 <tr>
             `;
-            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th class="center">#${i+1}</th>`;
-            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th class="center">#${i+1}</th>`;
+            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
+            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
             truthMatrixHtml += `</tr>`;
         } else {
             truthMatrixHtml += `
                 <tr>
-                    <th class="center" style="${uFailed ? 'color: #d29922; font-weight: bold;' : ''}">Unguided</th>
-                    <th class="center" style="${gFailed ? 'color: #d29922; font-weight: bold;' : ''}">Guided</th>
-                    <th>Assertion Requirement</th>
+                    <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th>
+                    <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th>
+                    <th scope="col">Assertion Requirement</th>
                 </tr>
             `;
         }
@@ -1281,7 +1327,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         const guideName = scenarioName.split(' - ')[1] || '';
         if (assertionMap.size === 0) {
             const totalCols = maxRuns > 1 ? (maxRuns * 2 + 1) : 3;
-            truthMatrixHtml += `<tr><td colspan="${totalCols}" style="text-align: center; color: #d29922; padding: 12px;">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
+            truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
         }
 
         assertionMap.forEach((status, message) => {
@@ -1384,22 +1430,22 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const tb = getTokenBreakdown(run.tokenUsage);
 
                  chips.push(`
-                     <div style="display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 4px;">
+                     <div class="tfoot-chip">
                          ${isEarlyFailure
-                             ? `<span style="font-weight: bold; font-size: 0.75rem; color: #d29922; border: 1px solid #d29922; padding: 1px 5px; border-radius: 4px; cursor: help;" title="${escapeHtml(earlyFailureMsg)}">ERROR</span>`
-                             : `<span style="font-weight: bold; font-size: 0.85rem; color: ${getColor(s.rate)};">${s.rate}%</span>`
+                             ? `<span class="tfoot-chip-error" title="${escapeHtml(earlyFailureMsg)}">ERROR</span>`
+                             : `<span class="tfoot-chip-rate" style="--rate-color: ${getColor(s.rate)};">${s.rate}%</span>`
                          }
-                         ${buildFailureReason ? `<span style="font-size: 0.7rem; color: var(--color-accent-failure, #da3633); cursor: help;" title="${escapeHtml(buildFailureReason)}">Build Failed</span>` : ''}
+                         ${buildFailureReason ? `<span class="tfoot-chip-build-failed" title="${escapeHtml(buildFailureReason)}">Build Failed</span>` : ''}
                          ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent time: </span>${formatRuntime(taskRuntime)}</span>` : ''}
                          ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)} uncached<span class="visually-hidden">, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
-                         <div style="display: flex; flex-direction: column; gap: 2px; width: 100%;">
-                             ${sessionFile ? `<button class="tfoot-action-btn" onclick="openTrajectory('${escapeHtml(usedBasePath)}', '${escapeHtml(sessionFile)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
-                             ${patchFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${patchFile}`)}', '${escapeHtml(`${usedBasePath}/${patchFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : `<button class="tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
-                             <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(appUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
-                             ${jsonFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${jsonFile}`)}', '${escapeHtml(`${usedBasePath}/${jsonFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
-                             ${runtimeFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${runtimeFile}`)}', '${escapeHtml(`${usedBasePath}/${runtimeFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
-                             ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
-                             ${failureFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${failureFile}`)}', '${escapeHtml(`${usedBasePath}/${failureFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Failure Log</button>` : ''}
+                         <div class="tfoot-chip-actions">
+                             ${sessionFile ? `<button type="button" class="tfoot-action-btn" data-action="trajectory" data-base-path="${escapeHtml(usedBasePath)}" data-session-file="${escapeHtml(sessionFile)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
+                             ${patchFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${patchFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${patchFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : `<button type="button" class="tfoot-action-btn" data-action="diff" data-setup-path="${escapeHtml(setupPath)}" data-result-path="${escapeHtml(resultPath)}" data-scenario-name="${escapeHtml(scenarioName)}" data-run-number="${run.runNumber}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
+                             <button type="button" class="tfoot-action-btn" data-action="app" data-app-url="${escapeHtml(appUrl)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
+                             ${jsonFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${jsonFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${jsonFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
+                             ${runtimeFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${runtimeFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${runtimeFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
+                             ${logFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${logFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${logFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
+                             ${failureFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${failureFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${failureFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Failure Log</button>` : ''}
                          </div>
                      </div>
                  `);
@@ -1595,12 +1641,13 @@ async function showDetails(testName, runs, stats, testId) {
     // Store for back navigation
     currentDetails = { testName, runs, stats, testId };
 
-    const matchName = testName.split(' - ')[0];
-    const accordionId = `item-${matchName.replace(/\s+/g, '-').toLowerCase()}`;
+    const parsed = parseResultKey(testName);
+    const scenarioName = parsed ? `${parsed.task} - ${parsed.guide}` : testName.replace(/ - (guided|unguided)$/, '');
+    const accordionId = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
     const accordionEl = document.getElementById(accordionId);
 
     if (accordionEl) {
-        accordionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
         if (!accordionEl.classList.contains('open')) {
             const header = $('.task-accordion-header', accordionEl);
             header.click();
@@ -1610,9 +1657,9 @@ async function showDetails(testName, runs, stats, testId) {
 
 function renderBackButton() {
     const btn = document.createElement('button');
-    btn.innerHTML = '← Back';
-    btn.className = 'secondary-btn';
-    btn.style.cssText = 'margin-bottom: 20px; padding: 5px 15px; font-size: 0.9em;';
+    btn.type = 'button';
+    btn.textContent = '← Back';
+    btn.className = 'secondary-btn modal-back-btn';
     btn.onclick = () => {
         const modal = $('dialog#modal');
         if (modal && modal.open) {
@@ -1768,10 +1815,10 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
         let diffHtml = '<div class="diff-container" tabindex="0">';
 
         if (setupText === null) {
-            diffHtml += `<div style="background-color: rgba(218, 165, 32, 0.2); border-left: 4px solid #daa520; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-                <span style="font-weight: bold; color: #daa520;">Original file not found.</span> Displaying current file content below.
+            diffHtml += `<div class="diff-missing-banner">
+                <strong>Original file not found.</strong> Displaying current file content below.
             </div>`;
-            diffHtml += `<pre style="white-space: pre-wrap; margin: 0; color: var(--text-primary); font-family: monospace;">${escapeHtml(resultText)}</pre>`;
+            diffHtml += `<pre class="diff-fallback-pre">${escapeHtml(resultText)}</pre>`;
         } else {
             // @ts-expect-error global library
             const diff = Diff.diffLines(setupText, resultText);
@@ -1950,7 +1997,7 @@ function renderDashboardDumbbellChart(data) {
                     const guide = parsed.guide;
                     const accordionEl = document.querySelector(`.task-accordion[data-guide="${guide}"]`);
                     if (accordionEl) {
-                        accordionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                         if (!accordionEl.classList.contains('open')) {
                             const header = $('.task-accordion-header', accordionEl);
                             if (header) header.click();

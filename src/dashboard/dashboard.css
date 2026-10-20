@@ -1,16 +1,20 @@
 /* this file is shared by both landing and dashboard */
 /* its also the only styles loaded for dashboard */
 
-*, *::before, *::after {
-  box-sizing: border-box;
+@layer reset, base, theme, components, utilities;
+
+@layer reset {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
 }
 
 :root {
   /*
    * Design tokens (light values first, dark second). The page follows the OS
    * color scheme (MWG `dark-mode` / `color` guides): `color-scheme: light dark`
-   * also switches native form controls and scrollbars. Success/failure text
-   * tokens are chosen for >= 4.5:1 against their surfaces.
+   * also switches native form controls and scrollbars. Success/failure/warning
+   * text tokens are chosen for >= 4.5:1 against their surfaces.
    */
   color-scheme: light dark;
 
@@ -29,6 +33,8 @@
   --color-accent-success-bg: light-dark(rgba(22, 163, 74, 0.14), rgba(95, 211, 138, 0.16));
   --color-accent-failure: light-dark(#ba1a1a, #ff8a80);
   --color-accent-failure-bg: light-dark(rgba(186, 26, 26, 0.12), rgba(255, 138, 128, 0.16));
+  --color-accent-warning: light-dark(#9a6700, #d29922);
+  --color-accent-warning-bg: light-dark(rgba(154, 103, 0, 0.12), rgba(210, 153, 34, 0.16));
   --color-shadow: light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.55));
   --color-grid-dot: light-dark(rgba(196, 197, 215, 0.3), rgba(196, 197, 215, 0.08));
 
@@ -47,6 +53,7 @@
   --accent-primary: var(--color-primary);
   --accent-success: var(--color-accent-success);
   --accent-failure: var(--color-accent-failure);
+  --accent-warning: var(--color-accent-warning);
   --border-color: var(--color-outline-variant);
   --hover-bg: var(--color-surface-container-low);
   --glass-bg: light-dark(rgba(255, 255, 255, 0.7), rgba(27, 31, 37, 0.7));
@@ -105,6 +112,8 @@
     --color-accent-success-bg: rgba(22, 163, 74, 0.14);
     --color-accent-failure: #ba1a1a;
     --color-accent-failure-bg: rgba(186, 26, 26, 0.12);
+    --color-accent-warning: #9a6700;
+    --color-accent-warning-bg: rgba(154, 103, 0, 0.12);
     --color-shadow: rgba(0, 0, 0, 0.15);
     --color-grid-dot: rgba(196, 197, 215, 0.3);
     --glass-bg: rgba(255, 255, 255, 0.7);
@@ -127,6 +136,8 @@
       --color-accent-success-bg: rgba(95, 211, 138, 0.16);
       --color-accent-failure: #ff8a80;
       --color-accent-failure-bg: rgba(255, 138, 128, 0.16);
+      --color-accent-warning: #d29922;
+      --color-accent-warning-bg: rgba(210, 153, 34, 0.16);
       --color-shadow: rgba(0, 0, 0, 0.55);
       --color-grid-dot: rgba(196, 197, 215, 0.08);
       --glass-bg: rgba(27, 31, 37, 0.7);
@@ -146,6 +157,8 @@
 @media (prefers-reduced-motion: reduce) {
   .secondary-btn,
   .stat-card,
+  .test-card,
+  .pass-rate-fill,
   .task-accordion,
   .task-accordion-header,
   .dog-ear-card,
@@ -170,7 +183,7 @@ body {
   font-family: var(--font-sans);
   color: var(--color-on-surface);
   background-color: var(--color-surface);
-  min-height: 100vh;
+  min-block-size: 100dvh;
   margin: 0;
   padding: 20px;
   background-image: radial-gradient(var(--color-grid-dot) 1px, transparent 1px);
@@ -329,66 +342,76 @@ h1 {
   font-size: 0.9rem;
 }
 
-/* Modern Dialog */
+/*
+ * Modern Dialog (MWG `animate-to-from-top-layer` & `prevent-page-scroll-under-modal-dialog` guides):
+ * - Transition `display` and `overlay` with `transition-behavior: allow-discrete` plus `@starting-style`
+ *   so both entry and exit animate smoothly without `display: none !important`.
+ * - Set `overscroll-behavior: contain` on `dialog:modal` and `overflow: hidden; overscroll-behavior: contain`
+ *   on `dialog::backdrop` so scroll gestures inside or outside the modal never chain to the page underneath.
+ */
 dialog#modal {
   background: transparent;
   border: none;
   padding: 0;
-  max-width: 900px;
-  width: 90%;
-  max-height: 90vh;
+  max-inline-size: 900px;
+  inline-size: 90%;
+  max-block-size: 90dvh;
   border-radius: 12px;
   color: var(--text-primary);
-  overflow: visible;
-}
-
-dialog#modal:focus-visible {
-  outline: none;
-}
-
-dialog#modal::-moz-focus-inner {
-  border: 0;
-}
-
-.modal-content:focus {
-  outline: none !important;
-}
-
-dialog#modal:not([open]) {
-  display: none !important;
-}
-
-dialog#modal::backdrop {
-  background-color: rgba(0, 0, 0, 0.8);
+  overflow: auto;
+  overscroll-behavior: contain;
   opacity: 0;
-  animation: fade-in 0.3s ease-out forwards;
-  will-change: opacity;
+  transform: translateY(12px) scale(0.98);
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+
+dialog#modal:modal {
+  overscroll-behavior: contain;
 }
 
 dialog#modal[open] {
-  animation: slide-up 0.3s ease-out;
-  display: block;
-}
+  opacity: 1;
+  transform: translateY(0) scale(1);
 
-@keyframes fade-in {
-  from {
+  @starting-style {
     opacity: 0;
-  }
-
-  to {
-    opacity: 1;
+    transform: translateY(12px) scale(0.98);
   }
 }
 
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+dialog#modal::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(2px);
+  transition-property: background-color, display, overlay;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+
+dialog#modal[open]::backdrop {
+  background-color: rgba(0, 0, 0, 0.75);
+
+  @starting-style {
+    background-color: rgba(0, 0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog#modal,
+  dialog#modal::backdrop {
+    transform: none;
+    transition-duration: 0.05s;
   }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  @starting-style {
+    dialog#modal[open] {
+      transform: none;
+    }
   }
 }
 
@@ -398,10 +421,11 @@ dialog#modal[open] {
   border-radius: 12px;
   padding: 32px;
   position: relative;
-  max-height: 90vh;
+  max-block-size: 90dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   box-sizing: border-box;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 50px var(--color-shadow);
 }
 
 .close-modal {
@@ -409,20 +433,20 @@ dialog#modal[open] {
   border: none;
   color: var(--text-secondary);
   position: absolute;
-  top: 20px;
-  right: 20px;
+  inset-block-start: 20px;
+  inset-inline-end: 20px;
   font-size: 1.75rem;
   font-weight: bold;
   cursor: pointer;
   line-height: 1;
   padding: 4px;
   border-radius: 50%;
-  transition: background 0.2s, color 0.2s;
+  transition: background-color 0.2s, color 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  inline-size: 44px;
+  block-size: 44px;
 }
 
 .close-modal:hover {
@@ -430,13 +454,11 @@ dialog#modal[open] {
   background: var(--hover-bg);
 }
 
-.close-modal:focus {
-  outline: none !important;
-}
-
 .close-modal:focus-visible {
   background: var(--hover-bg);
   color: var(--text-primary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 /* Run Details in Modal */
@@ -508,7 +530,7 @@ dialog#modal[open] {
 }
 
 .default-guide {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--color-surface-container-low);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
 }
@@ -555,8 +577,8 @@ dialog#modal[open] {
 
 /* Log Modal Content */
 .log-content {
-  background: #0d1117;
-  color: #c9d1d9;
+  background: var(--color-surface-container-low);
+  color: var(--color-on-surface);
   padding: 16px;
   border-radius: 6px;
   font-family: monospace;
@@ -573,8 +595,8 @@ dialog#modal[open] {
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: anywhere;
-  background: #0d1117;
-  color: #c9d1d9;
+  background: var(--color-surface-container-low);
+  color: var(--color-on-surface);
   padding: 16px;
   border-radius: 6px;
   overflow-x: auto;
@@ -593,18 +615,18 @@ dialog#modal[open] {
   color: var(--color-accent-failure);
   display: block;
   text-decoration: line-through;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .diff-unchanged {
-  color: var(--color-outline);
+  color: var(--color-on-surface-variant);
   display: block;
 }
 
 /* Widening the dialog for diff view */
 dialog#modal.diff-modal {
-  max-width: 1200px;
-  width: 95vw;
+  max-inline-size: 1200px;
+  inline-size: 95dvw;
 }
 
 .modal-content.diff-modal {
@@ -675,12 +697,12 @@ dialog#modal.diff-modal {
   font-size: 0.75rem;
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-container-low);
   padding: 2px 8px;
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
-  margin-right: 12px;
+  margin-inline-end: 12px;
   font-weight: normal;
   text-transform: none;
 }
@@ -754,11 +776,20 @@ dialog#modal.diff-modal {
   }
 }
 
+/*
+ * Accordion content supports `hidden="until-found"` (MWG `search-hidden-content` guide):
+ * When closed with `hidden="until-found"`, the UA hides it with `content-visibility: hidden`
+ * so Find-in-Page can still search inside collapsed task panels. Never set `display: none`
+ * directly on `[hidden="until-found"]`.
+ */
 .task-accordion-content {
   padding: 16px;
   border-top: 1px solid var(--border-color);
-  display: none;
   background: var(--color-surface-container-lowest);
+}
+
+.task-accordion:not(.open) .task-accordion-content:not([hidden="until-found"]) {
+  display: none;
 }
 
 .task-accordion.open .task-accordion-content {
@@ -929,10 +960,6 @@ dialog#modal.diff-modal {
 }
 
 @media (width < 40rem) {
-  .truth-matrix {
-    table-layout: fixed;
-  }
-
   .truth-matrix th,
   .truth-matrix td {
     padding: 6px;
@@ -940,7 +967,6 @@ dialog#modal.diff-modal {
 
   .truth-matrix th.center,
   .truth-matrix td.center {
-    width: 5rem;
     padding-inline: 4px;
     font-size: 0.75rem;
     letter-spacing: 0;
@@ -952,7 +978,7 @@ dialog#modal.diff-modal {
 }
 
 .truth-matrix tr:hover td {
-  background: rgba(255, 255, 255, 0.01);
+  background: var(--hover-bg);
 }
 
 .truth-matrix td.pass {
@@ -1130,7 +1156,7 @@ dialog#modal.diff-modal {
   gap: 32px;
   width: 100%;
   margin-top: 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-surface-container-low);
   padding: 12px 16px;
   border-radius: 12px;
   border: 1px solid var(--border-color);
@@ -1178,16 +1204,16 @@ dialog#modal.diff-modal {
 
 .tfoot-action-btn:hover {
   color: var(--text-primary);
-  border: 1px solid #333;
+  border: 1px solid var(--color-outline);
 }
 
 .tfoot-action-btn svg {
-  color: grey;
+  color: var(--text-secondary);
 }
 
 
 .run-card {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-surface-container-low);
   padding: 12px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
@@ -1219,28 +1245,9 @@ dialog#modal.diff-modal {
 }
 
 /* Responsive styles for chart-section */
-#dumbbell-chart {
-  width: 700px;
-  max-width: 100%;
-}
-
 #dumbbell-chart svg {
   width: 100%;
   height: auto;
-}
-
-@media (max-width: 800px) {
-  #chart-section {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 32px !important;
-  }
-
-  #dumbbell-chart {
-    flex: 1 !important;
-    width: 100% !important;
-    max-width: 700px !important;
-  }
 }
 
 /* Stability Trend Component Styles */
@@ -1294,7 +1301,7 @@ dialog#modal.diff-modal {
 
 .stability-graph-container {
   overflow-x: auto;
-  background: rgba(0,0,0,0.3);
+  background: var(--color-surface-container-low);
   border-radius: 6px;
   padding: 16px;
   border: 1px solid var(--border-color);
@@ -1536,10 +1543,146 @@ dialog#modal.diff-modal {
   width: 1px;
 }
 
-/* Focus-visible indicator */
-:is(a, button, select, input, summary, [tabindex="0"]):focus-visible {
+/* Focus-visible indicator (includes SVG keyboard-focusable chart hit areas & points) */
+:is(a, button, select, input, summary, [tabindex="0"], [role="button"]):focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* Utility classes for suite & chart templates (replacing static inline styles) */
+.hidden,
+[hidden]:not([hidden="until-found"]) {
+  display: none !important;
+}
+
+.text-warning {
+  color: var(--color-accent-warning);
+}
+
+.text-success {
+  color: var(--color-accent-success);
+}
+
+.text-failure {
+  color: var(--color-accent-failure);
+}
+
+.infra-error-badge {
+  color: var(--color-accent-warning);
+  border-color: var(--color-accent-warning);
+  background: var(--color-accent-warning-bg);
+}
+
+.uplift-score.invalid {
+  color: var(--color-accent-warning);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.tfoot-chip-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  padding: 4px;
+}
+
+.tfoot-chip-error {
+  font-weight: bold;
+  font-size: 0.75rem;
+  color: var(--color-accent-warning);
+  border: 1px solid var(--color-accent-warning);
+  padding: 1px 5px;
+  border-radius: 4px;
+  cursor: help;
+}
+
+.tfoot-chip-rate {
+  font-weight: bold;
+  font-size: 0.85rem;
+  color: var(--rate-color, var(--text-primary));
+}
+
+.tfoot-chip-build-failed {
+  font-size: 0.7rem;
+  color: var(--color-accent-failure);
+  cursor: help;
+}
+
+.tfoot-chip-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  inline-size: 100%;
+}
+
+.guide-chip-link {
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+  text-decoration: none;
+}
+
+.tfoot-run-cards-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.modal-back-btn {
+  margin-block-end: 20px;
+  padding: 5px 15px;
+  font-size: 0.9em;
+}
+
+.modal-loading-state {
+  text-align: center;
+  padding: 20px;
+}
+
+.modal-error-state {
+  color: var(--color-accent-failure);
+  padding: 20px;
+}
+
+.diff-missing-banner {
+  background-color: var(--color-accent-warning-bg);
+  border-inline-start: 4px solid var(--color-accent-warning);
+  padding: 15px;
+  margin-block-end: 20px;
+  border-radius: 4px;
+}
+
+.diff-missing-title {
+  font-weight: bold;
+  color: var(--color-accent-warning);
+}
+
+.diff-raw-pre {
+  white-space: pre-wrap;
+  margin: 0;
+  color: var(--text-primary);
+  font-family: monospace;
+}
+
+.dumbbell-tooltip {
+  position: fixed;
+  background: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
+  border: 1px solid var(--color-outline-variant);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: var(--font-sm);
+  line-height: 1.4;
+  pointer-events: auto;
+  display: none;
+  z-index: 2000;
+  box-shadow: 0 8px 24px var(--color-shadow);
+}
+
+.dumbbell-tooltip.is-open {
+  display: block;
 }
 
 /* Narrative Summary Grid (4 cards) */

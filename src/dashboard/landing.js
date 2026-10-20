@@ -1,4 +1,4 @@
-import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, formatDuration, formatTokens, isLocalDashboardHost, $, getAgentBadge } from './utils.js';
+import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, formatDuration, formatTokens, isLocalDashboardHost, $, getAgentBadge, getScrollBehavior } from './utils.js';
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { ApiClient } from './api.js';
@@ -229,32 +229,49 @@ function setupTestFilters() {
     const searchInput = document.getElementById('filter-search');
     if (!filterBtn || !filterMenu || !list) return;
 
-    /** @param {boolean} open */
-    const setOpen = (open) => {
-        filterMenu.classList.toggle('hidden', !open);
-        filterBtn.setAttribute('aria-expanded', String(open));
-        if (open && searchInput instanceof HTMLInputElement) {
-            searchInput.focus();
-        }
-    };
+    const supportsPopover = typeof HTMLElement !== 'undefined' && 'showPopover' in HTMLElement.prototype;
 
-    filterBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        setOpen(filterMenu.classList.contains('hidden'));
-    });
+    if (supportsPopover) {
+        filterMenu.addEventListener('toggle', (e) => {
+            const isOpen = /** @type {ToggleEvent} */ (e).newState === 'open';
+            filterBtn.setAttribute('aria-expanded', String(isOpen));
+            if (isOpen && searchInput instanceof HTMLInputElement) {
+                searchInput.focus();
+            }
+        });
+    } else {
+        /** @param {boolean} open */
+        const setOpen = (open) => {
+            filterMenu.classList.toggle('hidden', !open);
+            filterBtn.setAttribute('aria-expanded', String(open));
+            if (open && searchInput instanceof HTMLInputElement) {
+                searchInput.focus();
+            }
+        };
+        filterMenu.classList.add('hidden');
 
-    // Close when clicking outside
-    document.addEventListener('click', (e) => {
-        const target = e.target;
-        if (target instanceof Node && !filterMenu.contains(target) && !filterBtn.contains(target)) {
-            if (!filterMenu.classList.contains('hidden')) setOpen(false);
-        }
-    });
+        filterBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setOpen(filterMenu.classList.contains('hidden'));
+        });
+
+        document.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target instanceof Node && !filterMenu.contains(target) && !filterBtn.contains(target)) {
+                if (!filterMenu.classList.contains('hidden')) setOpen(false);
+            }
+        });
+    }
 
     // Escape closes the menu and returns focus to the trigger (disclosure pattern)
     filterMenu.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            setOpen(false);
+            if (supportsPopover && filterMenu.matches(':popover-open')) {
+                filterMenu.hidePopover();
+            } else {
+                filterMenu.classList.add('hidden');
+                filterBtn.setAttribute('aria-expanded', 'false');
+            }
             filterBtn.focus();
         }
     });
@@ -414,7 +431,7 @@ function openGuidesBreakdown(mode, scrollAndFocus = true) {
 
     if (scrollAndFocus && drawer instanceof HTMLElement) {
         const guideDrawer = drawer.querySelector('.insights-guide-drawer') || drawer;
-        guideDrawer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        guideDrawer.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
         const summary = drawer.querySelector('.insights-guide-summary') || drawer.querySelector('.insights-summary');
         if (summary instanceof HTMLElement) {
             summary.focus({ preventScroll: true });
@@ -1133,31 +1150,23 @@ function setupRateCellHovers() {
         const compoundKey = cell.dataset.compoundKey;
         if (!compoundKey) return;
 
-        /** @param {number} x @param {number} y */
-        const show = (x, y) => {
+        const show = () => {
             const testInfo = allTestData[compoundKey];
             if (!testInfo) return;
             if (hideTimeout) {
                 clearTimeout(hideTimeout);
                 hideTimeout = null;
             }
-            showTooltipChart(testInfo, x, y, compoundKey);
+            const r = cell.getBoundingClientRect();
+            showTooltipChart(testInfo, r.right, r.top, compoundKey);
         };
 
-        cell.addEventListener('mouseenter', (e) => {
-            if (e instanceof MouseEvent) show(e.clientX, e.clientY);
-        });
-        cell.addEventListener('mousemove', (e) => {
-            if (e instanceof MouseEvent) updateTooltipPosition(e.clientX, e.clientY);
-        });
+        cell.addEventListener('mouseenter', () => show());
         cell.addEventListener('mouseleave', () => hideTooltipChart());
 
         // Keyboard parity: the same preview opens while the cell's link has focus.
         const link = cell.querySelector('a');
-        link?.addEventListener('focus', () => {
-            const r = cell.getBoundingClientRect();
-            show(r.right, r.top);
-        });
+        link?.addEventListener('focus', () => show());
         link?.addEventListener('blur', () => hideTooltipChart());
         // WCAG 1.4.13: the preview must be dismissible without moving focus.
         link?.addEventListener('keydown', (e) => {
@@ -1165,6 +1174,15 @@ function setupRateCellHovers() {
         });
     });
 }
+
+// WCAG 1.4.13 Hoverable: keep the tooltip open while the pointer is over it.
+tooltipContainer?.addEventListener('mouseenter', () => {
+    if (hideTimeout) {
+        clearTimeout(hideTimeout);
+        hideTimeout = null;
+    }
+});
+tooltipContainer?.addEventListener('mouseleave', () => hideTooltipChart());
 
 /**
  * @param {LandingSuiteSummary} testInfo

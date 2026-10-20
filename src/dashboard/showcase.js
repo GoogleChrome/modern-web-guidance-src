@@ -6,7 +6,7 @@
  * and Codex CLI. Highlights the task prompt, side-by-side pass rates, approach
  * summary, and the deterministic grader assertions for each use case.
  */
-import { escapeHtml, formatDuration, formatTokens, getAgentBadge } from './utils.js';
+import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior } from './utils.js';
 
 /**
  * @typedef {Object} ShowcaseModeRun
@@ -379,7 +379,7 @@ function expandAndFocusA11yChecks(task, pair) {
     }
     const firstA11yRow = document.querySelector('#ab-checks-content tr[data-a11y="true"]');
     if (firstA11yRow instanceof HTMLElement) {
-        firstA11yRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        firstA11yRow.scrollIntoView({ behavior: getScrollBehavior(), block: 'nearest' });
     }
     const wrap = document.querySelector('#ab-checks-content .ab-checks-table-wrap');
     if (wrap instanceof HTMLElement) {

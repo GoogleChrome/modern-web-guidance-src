@@ -15,6 +15,17 @@ export function isLocalDashboardHost(hostname = (typeof window !== 'undefined' ?
 }
 
 /**
+ * Returns `'auto'` when the user prefers reduced motion, otherwise `'smooth'`.
+ * @returns {ScrollBehavior}
+ */
+export function getScrollBehavior() {
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return 'auto';
+    }
+    return 'smooth';
+}
+
+/**
  * Computes the median of a numeric array.
  * @param {number[]} values
  * @returns {number}
@@ -488,7 +499,6 @@ export function initGoogleAuth(onAuthSuccess) {
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
             authBtn.hidden = Boolean(accessToken);
-            authBtn.style.display = accessToken ? 'none' : 'block';
         }
 
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -504,7 +514,6 @@ export function initGoogleAuth(onAuthSuccess) {
                 console.log('Successfully authenticated with Google.');
                 if (authBtn) {
                     authBtn.hidden = true;
-                    authBtn.style.display = 'none';
                 }
                 if (onAuthSuccess) onAuthSuccess();
             },
@@ -539,12 +548,8 @@ export async function authenticatedFetch(url, options = {}) {
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
             authBtn.hidden = false;
-            authBtn.style.display = 'block';
             authBtn.textContent = 'Sign in with Google';
             authBtn.disabled = false;
-            authBtn.style.backgroundColor = '';
-            authBtn.style.color = '';
-            authBtn.style.borderColor = '';
         }
     }
     return res;
