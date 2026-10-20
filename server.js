@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
-import { runAllManifests } from './generate-manifests.js';
+import { runAllManifests, injectPreviewShim } from './generate-manifests.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { parseBooleanEnv } from '../core/env.ts';
 import {
@@ -128,28 +128,6 @@ async function getGcsAccessToken() {
       }
     });
   });
-}
-
-/**
- * Injected into guide demo previews rendered inside iframes (`?preview=1`).
- * Defends the gallery against offscreen demos calling `.focus()` or `.scrollIntoView()` on load
- * which would otherwise cause the browser to scroll the top-level parent window.
- */
-const PREVIEW_SHIM = '<script>(() => { let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } })();</script>';
-
-/**
- * @param {string} html
- */
-function injectPreviewShim(html) {
-  const cleaned = html
-    .replace(/\bautofocus\b/gi, 'data-autofocus-disabled')
-    .replace(/scroll-initial-target\s*:\s*nearest/gi, '/* scroll-initial-target disabled in preview */');
-  const m = cleaned.match(/<head[^>]*>/i) || cleaned.match(/<html[^>]*>/i);
-  if (m && m.index !== undefined) {
-    const idx = m.index + m[0].length;
-    return cleaned.slice(0, idx) + PREVIEW_SHIM + cleaned.slice(idx);
-  }
-  return PREVIEW_SHIM + cleaned;
 }
 
 const server = http.createServer(async (req, res) => {

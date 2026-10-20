@@ -16,7 +16,10 @@ import { $ } from '../utils.js';
  */
 
 /** Unload iframes once they're this far outside the viewport, to cap memory with ~180 demos. */
-const UNLOAD_MARGIN = '200% 0px';
+const UNLOAD_MARGIN = matchMedia('(pointer: coarse)').matches ? '75% 0px' : '150% 0px';
+
+/** Dwell delay before mounting an iframe so fast touch flick-scrolls don't instantiate intermediate frames. */
+const DWELL_MS = 120;
 
 /** Demos run with an opaque origin (no allow-same-origin) so they can't reach dashboard storage. */
 const SANDBOX = 'allow-scripts allow-forms allow-popups allow-modals';
@@ -87,9 +90,7 @@ function renderCard(guide) {
         guide.features.map(f => h('button', { type: 'button', class: 'feature-tag', 'data-action': 'feature', title: `Filter by ${f}` }, f)),
       ),
     ),
-    h('div', { class: 'iframe-container' },
-      h('iframe', { loading: 'lazy', sandbox: SANDBOX, title: `${guide.id} demo`, src: iframeSrc }),
-    ),
+    h('div', { class: 'iframe-container' }),
   );
 }
 
@@ -121,16 +122,52 @@ $('#features-datalist').append(...features.map(feat => {
   return h('option', { value: feat, label: `${count} ${count === 1 ? 'guide' : 'guides'}` });
 }));
 
-// Loading is native (`loading="lazy"`); the observer only unloads far-offscreen frames and restores them on return.
+let hoveredIframe = /** @type {HTMLIFrameElement | null} */ (null);
+/** @type {WeakMap<HTMLElement, ReturnType<typeof setTimeout>>} */
+const loadTimers = new WeakMap();
+
+/** @param {HTMLElement} card */
+function mountIframe(card) {
+  const container = $('.iframe-container', card);
+  const wanted = /** @type {string} */ (card.dataset.src);
+  let iframe = container.querySelector('iframe');
+  if (!iframe) {
+    iframe = h('iframe', { sandbox: SANDBOX, title: `${card.id} demo`, src: wanted });
+    container.append(iframe);
+  } else if (iframe.getAttribute('src') !== wanted) {
+    iframe.src = wanted;
+  }
+}
+
+/** @param {HTMLElement} card */
+function unmountIframe(card) {
+  const timer = loadTimers.get(card);
+  if (timer !== undefined) {
+    clearTimeout(timer);
+    loadTimers.delete(card);
+  }
+  const iframe = card.querySelector('iframe');
+  if (iframe) {
+    if (hoveredIframe === iframe) hoveredIframe = null;
+    iframe.src = 'about:blank';
+    iframe.remove();
+  }
+}
+
+// Mounts iframes only after a card dwells near the viewport, and removes the <iframe> DOM node once offscreen so
+// WebKit/iOS Safari tears down both the browsing context and the scaled CoreAnimation compositing layer.
 const unloader = new IntersectionObserver(entries => {
   for (const { target, isIntersecting } of entries) {
     const card = /** @type {HTMLElement} */ (target);
-    const iframe = $('iframe', card);
-    const wanted = /** @type {string} */ (card.dataset.src);
-    if (isIntersecting && iframe.getAttribute('src') !== wanted) {
-      iframe.src = wanted;
-    } else if (!isIntersecting && iframe.getAttribute('src') !== 'about:blank') {
-      iframe.src = 'about:blank';
+    if (isIntersecting) {
+      if (!loadTimers.has(card) && !card.querySelector('iframe')) {
+        loadTimers.set(card, setTimeout(() => {
+          loadTimers.delete(card);
+          mountIframe(card);
+        }, DWELL_MS));
+      }
+    } else {
+      unmountIframe(card);
     }
   }
 }, { rootMargin: UNLOAD_MARGIN });
@@ -158,7 +195,7 @@ const clickActions = {
     }
     card.classList.toggle('showing-unset', btn.classList.contains('unset'));
     card.dataset.src = src;
-    $('iframe', card).src = src;
+    mountIframe(card);
     $('a.open-link', card).href = rawSrc;
   },
   feature: btn => {
@@ -179,14 +216,15 @@ main.addEventListener('click', e => {
   clickActions[/** @type {string} */ (actionEl.dataset.action)](actionEl, card);
 });
 
-let hoveredIframe = /** @type {HTMLIFrameElement | null} */ (null);
-for (const { card } of views) {
-  const iframe = /** @type {HTMLIFrameElement} */ ($('iframe', card));
-  iframe.addEventListener('pointerenter', () => { hoveredIframe = iframe; });
-  iframe.addEventListener('pointerleave', () => {
-    if (hoveredIframe === iframe) hoveredIframe = null;
-  });
-}
+main.addEventListener('pointerover', e => {
+  const target = /** @type {Element} */ (e.target);
+  hoveredIframe = target.closest('.iframe-container')?.querySelector('iframe') ?? null;
+});
+main.addEventListener('pointerout', e => {
+  if (hoveredIframe && !hoveredIframe.contains(/** @type {Node | null} */ (e.relatedTarget))) {
+    hoveredIframe = null;
+  }
+});
 window.addEventListener('blur', () => {
   const y = window.scrollY;
   requestAnimationFrame(() => {
@@ -227,6 +265,7 @@ function applyFilters() {
       const match = (!textQuery || searchText.includes(textQuery)) &&
                     (!featQuery || guide.features.some(f => f.toLowerCase().includes(featQuery)));
       card.hidden = !match;
+      if (!match) unmountIframe(card);
       tocItem.hidden = !match;
       categoryVisible ||= match;
 
