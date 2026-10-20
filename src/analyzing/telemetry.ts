@@ -40,10 +40,19 @@ export interface CardTelemetryRecord {
   };
 }
 
-export function isCardTelemetryRecord(obj: unknown): obj is CardTelemetryRecord {
-  if (typeof obj !== 'object' || obj === null) {
-    return false;
-  }
+function hasTelemetryCoreFields(obj: object): obj is {
+  readonly cardId: string;
+  readonly repo: string;
+  readonly commit: string;
+  readonly file: string;
+  readonly line: number;
+  readonly guideId: string;
+  readonly ruleId: string;
+  readonly ruleHash: string;
+  readonly guideHash: string;
+  readonly promptVersion: string;
+  readonly timestamp: string;
+} {
   return (
     'cardId' in obj &&
     typeof obj.cardId === 'string' &&
@@ -66,13 +75,34 @@ export function isCardTelemetryRecord(obj: unknown): obj is CardTelemetryRecord 
     'promptVersion' in obj &&
     typeof obj.promptVersion === 'string' &&
     'timestamp' in obj &&
-    typeof obj.timestamp === 'string' &&
+    typeof obj.timestamp === 'string'
+  );
+}
+
+export function isCardTelemetryRecord(obj: unknown): obj is CardTelemetryRecord {
+  if (typeof obj !== 'object' || obj === null || !hasTelemetryCoreFields(obj)) {
+    return false;
+  }
+  return (
     'runId' in obj &&
     typeof obj.runId === 'string' &&
     obj.runId.length > 0 &&
     'source' in obj &&
     obj.source === 'live'
   );
+}
+
+function isPreProvenanceTelemetryRecord(obj: unknown): boolean {
+  if (typeof obj !== 'object' || obj === null || !hasTelemetryCoreFields(obj)) {
+    return false;
+  }
+  const validRunId = !('runId' in obj) || obj.runId === undefined || typeof obj.runId === 'string';
+  const validSource =
+    !('source' in obj) ||
+    obj.source === undefined ||
+    obj.source === 'live' ||
+    obj.source === 'synthetic';
+  return validRunId && validSource;
 }
 
 export function computeRuleHash(rule: AnalyzerRule): string {
@@ -123,6 +153,10 @@ export async function loadCardTelemetryMap(
       throw new Error(`Invalid JSON in ${filePath}:${i + 1}: ${String(err)}`);
     }
     if (!isCardTelemetryRecord(record)) {
+      if (isPreProvenanceTelemetryRecord(record)) {
+        // Ignore historical pre-provenance records lacking runId / source: 'live' (O56, O71)
+        continue;
+      }
       throw new Error(
         `Record in ${filePath}:${i + 1} does not match CardTelemetryRecord schema: ${trimmed}`,
       );

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -77,6 +77,27 @@ describe('telemetry ledger (P2)', () => {
       // Verify file contents
       const raw = await readFile(testFile, 'utf8');
       assert.match(raw, /"cardId":"card-1"/);
+
+      // 4. Pre-provenance records lacking runId/source are skipped without poisoning cache, while malformed schema throws
+      const preProvenanceLine = JSON.stringify({
+        cardId: 'legacy-card',
+        repo: 'repo-1',
+        commit: 'head',
+        file: 'src/index.js',
+        line: 5,
+        guideId: 'guide-1',
+        ruleId: 'rule-1',
+        ruleHash: 'rule-hash-1',
+        guideHash: 'guide-hash-1',
+        promptVersion: 'v1',
+        timestamp: '2026-10-15T00:00:00Z',
+      });
+      await writeFile(testFile, `${preProvenanceLine}\n${raw}`, 'utf8');
+      const reloadedMap = await loadCardTelemetryMap(testFile);
+      assert.equal(reloadedMap.size, 1);
+
+      await writeFile(testFile, `{"cardId":123}\n`, 'utf8');
+      await assert.rejects(() => loadCardTelemetryMap(testFile), /does not match CardTelemetryRecord schema/);
     } finally {
       await rm(testDir, { recursive: true, force: true });
     }
