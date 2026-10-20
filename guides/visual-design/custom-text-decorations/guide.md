@@ -75,7 +75,7 @@ By default, underlines and overlines break around glyph parts that cross them, s
 * Use `none` for a very thick line, or a deliberately decorative one, where gaps would look like breaks.
 
 
-### Skip spaces
+#### Skip spaces
 
 `text-decoration-skip-spaces` decides whether the line is drawn under spaces. The default, `start end`, leaves leading and trailing spaces undecorated.
 
