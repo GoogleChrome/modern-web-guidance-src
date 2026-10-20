@@ -710,11 +710,11 @@ export async function runCliAgentCommand(
     }
 
     if (timedOut || exitCode !== 0) {
-      throw new Error(`${agentName} exited with code ${timedOut ? 'TIMEOUT (10m)' : exitCode}`);
+      throw new Error(`${agentName} exited with code ${timedOut ? 'TIMEOUT (15m)' : exitCode}`);
     }
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
-    const finalExitCode = timedOut ? 'TIMEOUT (10m)' : recordedExit;
+    const finalExitCode = timedOut ? 'TIMEOUT (15m)' : recordedExit;
     
     // Save generation failure info so results collector registers early failure
     try {
@@ -723,7 +723,7 @@ export async function runCliAgentCommand(
         agentName,
         exitCode: finalExitCode,
         stderr: (timedOut && !stderrData)
-          ? 'Agent timed out after 10 minutes'
+          ? 'Agent timed out after 15 minutes'
           : (stderrData || err.message || String(err)),
         stdout: stdoutData
       }, null, 2));
