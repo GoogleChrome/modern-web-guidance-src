@@ -159,7 +159,7 @@
 
     /* Icons are a known size, so a fixed leading slot aligns labels without subgrid. */
     [focusgroup~="menu"] {
-      --menu-icon-size: 1.2em;
+      --menu-icon-size: 1.25rem;
       display: flex;
       flex-direction: column;
       row-gap: .1rem;
@@ -171,6 +171,7 @@
     [focusgroup~="menu"]>:where([role="group"])>button {
       display: flex;
       align-items: center;
+      gap: .5rem;
       inline-size: 100%;
       padding: .55rem .7rem;
       border: 0;
