@@ -79,7 +79,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** use `aria-live` for dynamic error announcements.
   
 - **DON'T** use `placeholder` as a replacement for labels or for critical format instructions that disappear when typing.
-- **DON'T** use `aria-label` when a visible `<label>` can be used or override visible text with a mismatched `aria-label'.
+- **DON'T** use `aria-label` when a visible `<label>` can be used or override visible text with a mismatched `aria-label`.
 
 ### Code Example
 
