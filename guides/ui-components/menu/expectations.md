@@ -30,3 +30,4 @@
 - Checked items render a visible check mark in the leading slot (`::before` content is not empty); unchecked items don't.
 - Menu items align their content across rows with a fixed-size leading icon or check slot and trailing content at the inline end, without `subgrid`.
 - At a 375 px viewport, an open submenu's box does not intersect its parent menu's box.
+- After a pointer activation of a command, focus returns to the root trigger without `:focus-visible`.

@@ -388,9 +388,10 @@
 
     // Close a menu level and put focus back on its trigger. HTML only restores focus for the
     // first popover in a light-dismiss stack, so nested submenus need this explicitly. Focus
-    // moves first: focus arriving from inside the menu does not start a new preview.
-    function closeAndRestore(menu) {
-      triggerFor(menu)?.focus({ preventScroll: true });
+    // moves first: focus arriving from inside the menu does not start a new preview. A pointer
+    // activation restores focus without a ring; keyboard activations keep the browser's ring.
+    function closeAndRestore(menu, { fromPointer = false } = {}) {
+      triggerFor(menu)?.focus(fromPointer ? { preventScroll: true, focusVisible: false } : { preventScroll: true });
       menu.hidePopover();
     }
 
@@ -650,7 +651,8 @@
           status.textContent = `${item.textContent.trim()} selected`;
         }
         lastKey = null;
-        closeAndRestore(rootMenuOf(menu));
+        // A keyboard-initiated click has detail 0.
+        closeAndRestore(rootMenuOf(menu), { fromPointer: event.detail > 0 });
       });
     });
 

@@ -176,7 +176,7 @@ Implement the keyboard behaviors above for your own markup. Arrow, `Home`/`End`,
 2. **Preview on focus.** Focusing a trigger calls `showPopover({ source: trigger })` so the menu anchors to it. Ignore focus returning from inside the trigger's own menu, or from another window (flag on window `blur`, cleared a tick after window `focus`, or app-switching reopens the last menu). Hide a previewed menu on `blur` unless focus moved into it.
 3. **Pointer click toggles.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus and start a preview mid-click. Remember which trigger was pressed. Clicking a closed or previewed trigger opens or closes it natively and never enters the menu; only keyboard opens enter it. Do not intercept the click.
 4. **Move focus in `toggle`, not `command`.** `command` fires before the menu opens.
-5. **Restore focus to the trigger yourself.** Focus the trigger before `hidePopover()`.
+5. **Restore focus to the trigger yourself.** Focus the trigger before `hidePopover()`. After a pointer activation, restore focus without a ring (`focus({ focusVisible: false })`), or the trigger shows the keyboard focus outline after a mouse click; keyboard activations keep the ring. A click with `event.detail === 0` came from the keyboard.
 6. **Close one level at a time.** Call `stopPropagation()` on `Escape` and `ArrowLeft` in a submenu, or the parent's listener closes it too.
 7. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, call `focus({ focusVisible: false })`; browsers that ignore the option paint no ring for pointer focus anyway.
 8. **Hover switches open menus.** On `pointerenter` of a top-level trigger while another top-level menu is open: hide it, focus the hovered trigger without a ring, and step 2 previews it. Nothing open: do nothing.
@@ -264,9 +264,9 @@ submenu.addEventListener('keydown', event => {
 });
 ```
 
-Also close every open menu when focus lands outside the menu system (a document `focusin` listener), and when a command is activated: announce it, then hide the root menu.
+Also close every open menu when focus lands outside the menu system (a document `focusin` listener), and when a command is activated: announce it, then hide the root menu and restore focus to its trigger, without a ring if the activation came from a pointer.
 
-The snippets here and in the fallbacks below assume these helpers, which you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `isPreviewed(menu)` (`:popover-open:not(:focus-within)`), `focusFirst(menu)` (focus the first enabled item), `closeAndRestore(menu)` (focus its trigger before calling `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open), `pointerTrigger` (the trigger last pressed by a pointer), `topLevelMenus` (the menus whose triggers are in the menubar), `triggerFor` (a `Map` from menu to trigger) and `openChildSubmenu(menu)` (the open submenu whose parent menu is `menu`, if any).
+The snippets here and in the fallbacks below assume these helpers, which you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `isPreviewed(menu)` (`:popover-open:not(:focus-within)`), `focusFirst(menu)` (focus the first enabled item), `closeAndRestore(menu, { fromPointer })` (focus its trigger, without a ring when `fromPointer`, before calling `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open), `pointerTrigger` (the trigger last pressed by a pointer), `topLevelMenus` (the menus whose triggers are in the menubar), `triggerFor` (a `Map` from menu to trigger) and `openChildSubmenu(menu)` (the open submenu whose parent menu is `menu`, if any).
 Set `aria-expanded` only in the `toggle` listener. It covers preview and open states, and the trigger's `aria-expanded` stays `"true"` while its menu is previewed or open.
 
 ### Submenus
