@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import matter from "gray-matter";
+import matter from "@11ty/gray-matter";
 import { fileURLToPath } from "url";
 import { classifyGuide, scanAllGuides } from "../../core/guide-validation.ts";
 

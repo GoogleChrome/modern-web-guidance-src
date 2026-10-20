@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 
 import { outDir, suitesDir, guidesDir, dashboardDir } from '../core/paths.ts';
 
