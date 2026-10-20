@@ -79,9 +79,8 @@ Contents:
 - **Mandatory - Don't use "fake" headings:** Never use `<div>` or `<span>` elements to look like headings without standard `<h1>`–`<h6>` elements. (1.3.1 Info and Relationships (Level A))
 - **Avoid nesting headings incorrectly:** Make sure that, if a sub-heading is visually less important than its parent heading, its heading level is lower in the heading hierarchy. (1.3.1 Info and Relationships (Level A))
 - **Use one `<h1>` element per page:** Use the `<h1>` element for the page's main heading. Having more than one `<h1>` element on a page makes it difficult for screen reader users to identify the actual main heading. (Best Practice)
-- **Avoid "skipped" heading levels:** Avoid jumping directly from (for example) `<h1>` → `<h4>`, as this breaks the logical hierarchy. (Best Practice)
-- **Avoid placing headings inside the `<summary>` element:** Some browsers still expose this element as a button, which removes all roles from its children including headings. If a heading must act as a disclosure trigger, use an accordion or a disclosure implemented with ARIA where the heading element wraps the button, rather than use the `<details>` and `<summary>` elements.
-
+- **Avoid "skipped" heading levels:** Avoid jumping directly from (for example) `<h1>` → `<h4>` to avoid breaking the logical hierarchy. (Best Practice)
+- **Avoid placing headings inside the `<summary>` element:** Some browsers still expose this element as a button, which removes all roles from its children including headings. If a heading must act as a disclosure trigger, use an accordion or a disclosure implemented with ARIA where the heading element wraps the button, rather than use the `<details>` and `<summary>` elements. (Best Practice)
 
 ### Lists
 
@@ -100,7 +99,7 @@ Contents:
 ### Skip links
 
 - **Provide skip links** prior to repeated content like site headers with navigation or long/infinite lists, so that keyboard users can easily bypass them. (2.4.1 Bypass Blocks (Level A))
-  - **Caveat**: Sometimes screen magnifiers do not follow the focus when a skip link’s target is not normally focusable.
+  - **Caveat:** Sometimes screen magnifiers do not follow the focus when a skip link’s target is not normally focusable.
     The recommended workaround is to make the target programmatically focusable, but not a part of the tab order, using `tabindex="-1"`.
     If the target contains focusable elements, this creates another usability issue as clicking within the target will always set the **sequential focus navigation start point** to the target rather than at a point between focusable elements.
     A solution that satisfied both user expectations is to make the first meaningful element within the intended target, the actual target of the skip link, for example a heading.
@@ -160,9 +159,9 @@ Contents:
 
 - **Prefer HTML elements and attributes to ARIA:** Avoid `<div role="button">` or `<a role="button">` and use `<button>` instead. Native HTML elements and attributes already have the correct role and behavior, including keyboard support, built-in by default. `<button>` already implies `role="button"`, `required` already implies `aria-required`, and no additional JavaScript is required to ensure the correct role and behavior is supported. (Best Practice)
   - **Caveat:** ARIA is required when the related feature is not available in HTML, for example there are no HTML elements explicitly intended for building a tabbed navigation widget, but ARIA includes appropriate role and state properties for this purpose.
-- **Don't add redundant ARIA roles or properties**: Avoid `<ul role="list">`, `<nav role="navigation">`, and `<input required aria-required="true">`. (Best Practice)
+- **Don't add redundant ARIA roles or properties:** Avoid `<ul role="list">`, `<nav role="navigation">`, and `<input required aria-required="true">`. (Best Practice)
   - **Caveat:** Safari removes list semantics from `<ul>`/`<ol>` outside `<nav>` when `list-style: none` or `display: flex`/`grid` is applied. In that case `role="list"` is required to restore them.
-- **Don't apply interactive ARIA roles to structural HTML elements:** Use `<li><span role="button">Button in a list</span></li>` not `<li role="button">Button in a list</li>`, as this will suppress the container list semantics. (4.1.2 Name, Role, Value (Level A))
+- **Don't apply interactive ARIA roles to structural HTML elements:** Use `<li><span role="button">Button in a list</span></li>`, not `<li role="button">Button in a list</li>`, to avoid breaking the container list semantics. (4.1.2 Name, Role, Value (Level A))
   - **Caveat:** It is acceptable to apply ARIA roles to structural HTML elements that have similar semantics, for example a tree view: `<ul role="tree"><li role="treeitem">…</li>…</ul>`.
 
 ### ARIA roles and states
@@ -181,7 +180,7 @@ Every interactive element and some landmarks need an accessible name, and many b
 ### Naming mechanisms
 
 - **Prefer native naming mechanisms:** `<label>` for form controls, `<caption>` for `<table>`, `<legend>` for `<fieldset>`, `<figcaption>` for `<figure>`. (Best Practice)
-- **Explicitly associate `<label>` with its control via `for`/`id`:** As well as ensuring the control is appropriately labelled by the contents of the `<label>` element, it results in a larger target area for people to activate the label <em>or</em> its related control to move focus to the control, which isn't globally supported with other forms of labelling (such as using the `aria-labelledby` attribute). Additionally, some assistive technologies, particular voice recognition software, requires the `for`/`id` relationship to be explicitly set, even if an equivalent accessibility-supported approach (such as nesting an `<input>` inside a `<label>`) is taken. (4.1.2 Name, Role, Value (Level A))
+- **Explicitly associate `<label>` with its control via `for`/`id`:** As well as ensuring the control is appropriately labelled by the contents of the `<label>` element, this results in a larger target area for people to activate the label <em>or</em> its related control to move focus to the control, which isn't globally supported with other forms of labelling (such as using the `aria-labelledby` attribute). Additionally, some assistive technologies, particular voice recognition software, requires the `for`/`id` relationship to be explicitly set, even if an equivalent accessibility-supported approach (such as nesting an `<input>` inside a `<label>`) is taken. (4.1.2 Name, Role, Value (Level A))
 - **Prefer `aria-labelledby` over `aria-label` when a visible label exists:** This avoids duplication, improves maintainability, and translates better. (Best Practice)
 - **Don't use `title` as a naming mechanism:** The value of this attribute is only displayed on mouse hover, and cannot be displayed or otherwise accessed using the keyboard in any browser. (Best Practice)
   - **Caveat:** `<iframe>` is an exception, as the `title` attribute is the standard way of providing an accessible name for this element.
@@ -193,16 +192,16 @@ Every interactive element and some landmarks need an accessible name, and many b
 
 - **Avoid inconsistent link text:** If multiple hyperlinks direct users to the same target page, make sure each link has the same accessible name, which should typically be the same as its visible link text. For example, if the target page for a link is `profile.html`, make sure that all links have an accessible name of "My Profile" **or** "Profile"; do not use "My Profile" in one instance, and "Profile" in the other. (Best Practice)
 - **Disambiguate controls that look visually identical but which perform different actions by their accessible name:** For example, a page may include multiple "Edit" buttons, each of which triggers functionality to perform a different action, such as edit the user's name, edit the user's password, and edit the user's address. While it may be visually obvious from the surrounding content what the purpose of these buttons might be, screen reader users may only hear "Edit, button". Techniques to resolve this include the following: (4.1.2 Name, Role, Value (Level A))
-  - **Use visually hidden text:** The text is included in the DOM but is visually hidden using CSS. For example `<button>Edit <span class="visually-hidden">first name</span></button>`. Refer to the below [code example: visually hidden utility](#code-example-visually-hidden-utility) for the full CSS.
+  - **Use visually hidden text:** The text is included in the DOM but is visually hidden using CSS. For example `<button>Edit <span class="visually-hidden">first name</span></button>`. Refer to the [code example: visually hidden utility](#code-example-visually-hidden-utility) for the full CSS.
   - **Apply the `aria-label` attribute to the control:** The value of this attribute should then include the visible text as well as important contextual information, for example `<button aria-label="Edit name">Edit</button>`, `<button aria-label="Edit address">Edit</button>`, and so on.
   - **Use the `aria-describedby` attribute to indicate the relationship between the control and the content it relates to:** For example, `<p id="firstName">First name</p> <button aria-describedby="firstName">Edit</button>`.
 - **Do include a control's visible text in its accessible name:** Any visible text used to label a control must be included exactly as written in the control's accessible name. The accessible name can include additional information before or after the visible text, but the visible text itself must not differ. For example, the accessible name for a link containing the link phrase "Read more" can be "Read more about [subject]", because the visible text is included without modification. However, the accessible name cannot be "Read some more about [subject]", because the term "some" appears between the words "Read" and "more", which is not reflected in the visible text. (2.5.3 Label in Name (Level A))
-- **Don't reuse an accessible name across controls with different effects in the same view:** Make sure that each accessible name is disambiguated in some way using one of the techniques described above. (4.1.2 Name, Role, Value (Level A))
+- **Don't reuse an accessible name across controls with different effects in the same view:** Make sure that each accessible name is disambiguated. (4.1.2 Name, Role, Value (Level A))
   - **Caveat:** Having two separate buttons with the accessible name of "Close" in two separate dialog boxes is fine, because only one dialog box is reachable at a time; however, multiple "Edit" buttons for different effects in the same dialog box is not.
-- **Don't reuse an accessible name across hyperlinks that point to different `href` targets:** For example, avoid `<a href="annualreport2025.html">Annual Report</a>` and `<a href="annualreport2026.html">Annual Report</a>`. Use `<a href="annualreport2025.html">Annual Report 2025</a>` and `<a href="annualreport2026.html">Annual Report 2026</a>` (or an equivalent technique for disambiguating controls described above) instead.
+- **Don't reuse an accessible name across hyperlinks that point to different `href` targets:** For example, avoid `<a href="annualreport2025.html">Annual Report</a>` and `<a href="annualreport2026.html">Annual Report</a>`. Use `<a href="annualreport2025.html">Annual Report 2025</a>` and `<a href="annualreport2026.html">Annual Report 2026</a>` (or an equivalent technique for disambiguating controls) instead.
 - **Don't pack descriptions, error messages, or instructions into the label:** Verbose labels confuse and frustrate people who use screen readers. Instead, use the `aria-describedby` attribute to programmatically associate any additional content with the field. For example: `<label for="yourComments">Your comments</label><p id="yourCommentsWarning">Please do not include any personal information in this field.</p><textarea id="yourComments" aria-describedby="yourCommentsWarning"></textarea>`. Screen readers will then announce the label first, followed by the control type, and only then announce additional information that a user can skip if they are already aware of it. (Best Practice)
 - **Don't repeat state information already exposed by ARIA inside the label:** Examples include information exposed via the `aria-expanded`, `aria-checked`, `aria-selected`, `aria-pressed`, and similar attributes. This creates duplication, redundancy, and ambiguity. (Best Practice)
-- **Don't include the role name in the label**: This will lead to duplication. For example, `<nav aria-label="Primary navigation">` will be read by screen readers as "Primary navigation, navigation". (Best Practice)
+- **Don't include the role name in the label:** This will lead to duplication. For example, `<nav aria-label="Primary navigation">` will be read by screen readers as "Primary navigation, navigation". (Best Practice)
 
 ### Descriptions
 
@@ -213,9 +212,9 @@ Every interactive element and some landmarks need an accessible name, and many b
 - **Make sure the description is available to assistive technologies when the related element receives focus:** Take one of the following approaches (1.3.1 Info and Relationships (Level A)):
   - If the description is already visible on the page, programmatically associate it with the element using the `aria-describedby` attribute.
   - If the description is not visible on the page and is explicitly for screen reader users (in other words, when providing a visible description is not appropriate or useful), apply the `aria-description` attribute to the element and use it to provide an appropriate description.
-- **Avoid including a description for every element**: if the primary label already provides sufficient information (such as "First name"), any additional description is likely to be redundant. (Best Practice)
-  - **Caveat:** Inline error messages associated with controls, such as error messages below / above text fields, are an exception.
-- **Avoid including information in the description that is already provided by attributes applied to the element**: For example, including "This is a required field" as a description for an `<input>` element that already includes the `required` attribute will lead to duplicate announcements. (Best Practice)
+- **Avoid including a description for every element:** if the primary label already provides sufficient information (such as "First name"), any additional description is likely to be redundant. (Best Practice)
+  - **Caveat:** Inline error messages associated with controls, such as error messages below / above text fields, as well as secondary labels that should be announced when the element receives focus, are exceptions.
+- **Avoid including information in the description that is already provided by attributes applied to the element:** For example, including "This is a required field" as a description for an `<input>` element that already includes the `required` attribute will lead to duplicate announcements. (Best Practice)
   - **Caveat:** `aria-invalid="true"` is an exception; many screen readers announce "invalid" when they reach an `<input>` that includes this attribute set to `true`, which indicates that the field is in error. However, it does not indicate what the error is. In such cases, a description (the actual human readable error message) is required. This attribute should only be applied and set to true when the error message is present.
 - **Avoid including interactive elements in an `aria-describedby` target** unless the content of the element reads sensibly as a description on its own. For example: (Best Practice)
   - This is acceptable, as the entire text string makes sense when announced: `<p id="description">I understand the <a href="tandc.html">terms and conditions</a>.`
@@ -255,15 +254,15 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 ### Titles
 
 - **Do include the `<title>` element in the `<head>` section for all pages:** This includes pages embedded into a document using an `<iframe>`. (2.4.2 Page Titled (Level A))
-- **Provide unique page titles:**: Every page should have its own title that unambiguously reflects the page's purpose or content. (2.4.2 Page Titled (Level A))
-- **Front-load the page's `<title>` with unique content that clearly reflects that page's purpose or content, such as `<title>Page Topic | Site Name</title>`. (Best Practice)
+- **Provide unique page titles::** Every page should have its own title that unambiguously reflects the page's purpose or content. (2.4.2 Page Titled (Level A))
+- **Front-load the page's `<title>` with unique content:** For example, `<title>Page Topic | Site Name</title>`. (Best Practice)
 - **Update single-page application (SPA) titles during page transitions:** For example, if the page title is `<title>Contact Us</title>` when a contact form is displayed, update the title to `<title>Thank you for contacting us!</title>` when the form is successfully submitted. (2.4.2 Page Titled (Level A))
-- **Don't include an empty `<title>` element in the `<head>` section of a page**: No matter how short inconsequential a page appears, do not use `<title></title>`. Page titles appear in the browser tab, so pages are distinguishable when users have multiple tabs open, and are typically announced by screen readers when the page is opened. (2.4.2 Page Titled (Level A))
+- **Don't include an empty `<title>` element in the `<head>` section of a page:** No matter how short inconsequential a page appears, do not use `<title></title>`. Page titles appear in the browser tab, so pages are distinguishable when users have multiple tabs open, and are typically announced by screen readers when the page is opened. (2.4.2 Page Titled (Level A))
 - **Avoid using the same title for multiple pages, or using ambiguous page titles:** In such cases, pages are indistinguishable without reviewing the actual page content itself. (2.4.2 Page Titled (Level A))
 
 ### Iframes
 
-- **Do provide a descriptive `title` for `<iframe>` elements**: All `<iframe>` elements should include a `title` attribute set to a value that unambiguously describes the contents of the `<iframe>`. (4.1.2 Name, Role, Value (Level A))
+- **Do provide a descriptive `title` for `<iframe>` elements:** All `<iframe>` elements should include a `title` attribute set to a value that unambiguously describes the contents of the `<iframe>`. (4.1.2 Name, Role, Value (Level A))
 - **Don't disable iframe scrolling** using `scrolling="no"` (deprecated) or `overflow: hidden` on iframes. Users who zoom in or enlarge text need to scroll to reach content that overflows. (1.4.4 Resize Text (Level AA), 1.4.10 Reflow (Level AA))
 
 ### Code Example: using the `<title>` and `<iframe>` elements
@@ -357,7 +356,7 @@ function toggleWidgetState() {
 
 ### Images
 
-- **Mandatory - Apply the `alt` attribute to all `<img>` elements**: browsers replace the image with the value of this attribute for people who use screen readers. (1.1.1 Non-text Content (Level A))
+- **Mandatory - Apply the `alt` attribute to all `<img>` elements:** browsers replace the image with the value of this attribute for people who use screen readers. (1.1.1 Non-text Content (Level A))
 - **Do provide informative visual descriptions:** Describe the purpose of the image (for example, "Search", not "Magnifying glass"). (1.1.1 Non-text Content (Level A))
 - **Do apply `alt=""` to decorative visuals:** This prevents screen readers from announcing them. (1.1.1 Non-text Content (Level A))
 - **Don't use clichéd prefixes:** Avoid terms like "Image of…" and "Picture of…". (Best Practice)
@@ -455,7 +454,7 @@ function toggleWidgetState() {
 
 ### CSS generated content
 
-- **Alt text for CSS generated content**: Use the alternative text argument of `content` (e.g. `content: url(icon.svg) / "Save";`) and keep meaningful text in the DOM. See {{ GUIDE_REF('accessible-generated-content') }} for more details. (1.1.1 Non-text Content (Level A))
+- **Alt text for CSS generated content:** Use the alternative text argument of `content` (e.g. `content: url(icon.svg) / "Save";`) and keep meaningful text in the DOM. See {{ GUIDE_REF('accessible-generated-content') }} for more details. (1.1.1 Non-text Content (Level A))
 
 ### Content Visibility Decision Matrix
 
@@ -475,9 +474,9 @@ function toggleWidgetState() {
 ### Labels and hints
 
 - **Mandatory - Provide a label for all form controls:** do not rely on the currently selected input or value as a way of labelling the control. (3.3.2 Labels or Instructions (Level A))
-- **Connect Labels Programmatically**: Use `<label for="id">` linked to `<input id="id">`. (1.3.1 Info and Relationships (Level A))
-- **Don't use placeholders as primary labels**: Placeholders are not persistent labels. Only use placeholders to provide  brief hints, such as an example of an appropriate input. (3.3.2 Labels or Instructions (Level A))
-- **Link hints to inputs via `aria-describedby`**: Associate help text with inputs, and place the hint above the input so autocomplete popovers don't cover it during editing. (1.3.1 Info and Relationships (Level A))
+- **Connect Labels Programmatically:** Use `<label for="id">` linked to `<input id="id">`. (1.3.1 Info and Relationships (Level A))
+- **Don't use placeholders as primary labels:** Placeholders are not persistent labels. Only use placeholders to provide  brief hints, such as an example of an appropriate input. (3.3.2 Labels or Instructions (Level A))
+- **Link hints to inputs via `aria-describedby`:** Associate help text with inputs, and place the hint above the input so autocomplete popovers don't cover it during editing. (1.3.1 Info and Relationships (Level A))
 
 #### Code Example: A labelled form control with a hint for passwords
 
@@ -492,9 +491,9 @@ function toggleWidgetState() {
 
 ### Input assistance and validation
 
-- **Mandatory - Use the `autocomplete` attribute**: Apply the `autocomplete` attribute to `<input>`, `<textarea>`, and `<select>` elements that explicitly collect personal information about the user, and set it to the correct value (for example `"email"` or `"given-name"`). (1.3.5 Identify Input Purpose (Level AA))
-- **Provide form validation constraints**: Use `required` (or `aria-required="true"` only when `required` isn't applicable) to signal mandatory inputs. (4.1.2 Name, Role, Value (Level A))
-- **Don't trigger context shifts on focus changes**: Avoid auto-submitting forms or jumping pages on focus change events alone. (3.2.1 On Focus (Level A), 3.2.2 On Input (Level A))
+- **Mandatory - Use the `autocomplete` attribute:** Apply the `autocomplete` attribute to `<input>`, `<textarea>`, and `<select>` elements that explicitly collect personal information about the user, and set it to the correct value (for example `"email"` or `"given-name"`). (1.3.5 Identify Input Purpose (Level AA))
+- **Provide form validation constraints:** Use `required` (or `aria-required="true"` only when `required` isn't applicable) to signal mandatory inputs. (4.1.2 Name, Role, Value (Level A))
+- **Don't trigger context shifts on focus changes:** Avoid auto-submitting forms or jumping pages on focus change events alone. (3.2.1 On Focus (Level A), 3.2.2 On Input (Level A))
 
 ## 8. Live Regions
 
@@ -508,11 +507,11 @@ Live regions let assistive tech announce content updates that aren't tied to nav
 | **Standard**| Toast / Banner | `polite` | Announces at next graceful break | Search results, "Saved" status |
 | **Passive**  | Silent text | `off` | Only if user navigates to it | Live character count |
 
-**Heuristic Rule**: Use `assertive` only for critical, time-sensitive updates that require immediate attention or prevent safe continuation (e.g., data loss, session timeouts, or network drops).
+**Heuristic Rule:** Use `assertive` only for critical, time-sensitive updates that require immediate attention or prevent safe continuation (e.g., data loss, session timeouts, or network drops).
 
 ### When to announce live regions
 
-- **Announce dynamic errors via live regions**: Use `aria-live` or shift focus to error lists (4.1.3 Status Messages (Level AA)).
+- **Announce dynamic errors via live regions:** Use `aria-live` or shift focus to error lists (4.1.3 Status Messages (Level AA)).
 - **Don't use live regions for interstitial states** like "Loading…" or "Updating…" unless they're meaningfully informative — they usually just create noise. Use the HTML `<progress>` element or the ARIA `progressbar` role for this purpose instead. (Best Practice)
 
 ```html
@@ -525,10 +524,10 @@ Live regions let assistive tech announce content updates that aren't tied to nav
 
 ### Managing announcements
 
-- **Centralize live regions for non-visible announcements**: A single `polite` region and a single `assertive` region per page (with whatever `aria-atomic` configuration you need) keeps announcements consistent and easier to maintain. Many frameworks ship their own announcer abstraction — use it. (Best Practice)
-- **Debounce frequently-changing regions**: If a region can update many times per second (e.g. a combobox's result count as the user types), debounce so users aren't spammed. (Best Practice)
-- **Delay slightly when other announcements may collide**: When the user is typing or focus is being managed, a small delay before announcing keeps live-region updates from overlapping other speech. (Best Practice)
-- **Don't add live-region updates to inert DOM**: When dialogs open or sections become `inert`, queued or debounced messages will be unannounced — or announced from DOM the user can't reach. Coordinate live-region updates with dialog/inert state changes. (4.1.3 Status Messages (Level AA))
+- **Centralize live regions for non-visible announcements:** A single `polite` region and a single `assertive` region per page (with whatever `aria-atomic` configuration you need) keeps announcements consistent and easier to maintain. Many frameworks ship their own announcer abstraction — use it. (Best Practice)
+- **Debounce frequently-changing regions:** If a region can update many times per second (e.g. a combobox's result count as the user types), debounce so users aren't spammed. (Best Practice)
+- **Delay slightly when other announcements may collide:** When the user is typing or focus is being managed, a small delay before announcing keeps live-region updates from overlapping other speech. (Best Practice)
+- **Don't add live-region updates to inert DOM:** When dialogs open or sections become `inert`, queued or debounced messages will be unannounced — or announced from DOM the user can't reach. Coordinate live-region updates with dialog/inert state changes. (4.1.3 Status Messages (Level AA))
 
 ## 9. Color
 
@@ -548,9 +547,9 @@ Modern browsers provide native solutions for creating modal dialogs which avoid 
 
 ### Native `<dialog>`
 
-- **Use the native `<dialog>` element**: Invoke the dialog using the `.showModal()` method to open it in a modal state. When in a modal state, the browser sets outside content as inert (i.e. the outside content is hidden from the accessibility tree and cannot be interacted with nor be focused). (1.3.2 Meaningful Sequence (Level A), 2.4.3 Focus Order (Level A), 4.1.2 Name, Role, Value (Level A))
+- **Use the native `<dialog>` element:** Invoke the dialog using the `.showModal()` method to open it in a modal state. When in a modal state, the browser sets outside content as inert (i.e. the outside content is hidden from the accessibility tree and cannot be interacted with nor be focused). (1.3.2 Meaningful Sequence (Level A), 2.4.3 Focus Order (Level A), 4.1.2 Name, Role, Value (Level A))
   - **Note:** it is still possible to navigate to the browser chrome when using the `<dialog>` element.
-- **Don't implement focus traps for native modal dialogs**: When a `<dialog>` element is opened in a modal state, browsers set outside content as inert which is sufficient for ensuring only the dialog’s content can be focused. (Best Practice)
+- **Don't implement focus traps for native modal dialogs:** When a `<dialog>` element is opened in a modal state, browsers set outside content as inert which is sufficient for ensuring only the dialog’s content can be focused. (Best Practice)
 
 #### Code Example: HTML & JavaScript: Native `<dialog>` with standard close events
 
@@ -573,18 +572,18 @@ Modern browsers provide native solutions for creating modal dialogs which avoid 
 
 ### Custom overlays
 
-- **Use the `inert` attribute for custom overlays**: When `<dialog>` cannot be used (e.g., some non-modal overlays, framework constraints, or layouts where `<dialog>`'s top-layer/positioning behavior conflicts with the design), apply `inert` to outside content to ensure it cannot be interacted with by keyboard, pointer, or assistive technology. This requires structuring elements in such a way that the custom overlay is not a descendant of the element with `inert` set on it. (1.3.2 Meaningful Sequence (Level A), 2.4.3 Focus Order (Level A))
-- **Apply `role="dialog"` to the custom overlay**: When applied to the element used as the container for the custom overlay, it ensures that the it is exposed as a dialog box to assistive technologies (4.1.2 Name, Role, Value (Level A))
+- **Use the `inert` attribute for custom overlays:** When `<dialog>` cannot be used (e.g., some non-modal overlays, framework constraints, or layouts where `<dialog>`'s top-layer/positioning behavior conflicts with the design), apply `inert` to outside content to ensure it cannot be interacted with by keyboard, pointer, or assistive technology. This requires structuring elements in such a way that the custom overlay is not a descendant of the element with `inert` set on it. (1.3.2 Meaningful Sequence (Level A), 2.4.3 Focus Order (Level A))
+- **Apply `role="dialog"` to the custom overlay:** When applied to the element used as the container for the custom overlay, it ensures that the it is exposed as a dialog box to assistive technologies (4.1.2 Name, Role, Value (Level A))
 - **Move focus to the overlay:** Ensure keyboard and screen reader focus moves to the container for the overlay so that people using a screen reader and people using the keyboard alone can start navigating its contents. Don't leave focus in outside content. (1.3.2 Meaningful Sequence (Level A), 2.4.3 Focus Order (Level A))
 
 ## 13. Testing Validations
 
 ### Automated checks
 
-- **Run Automated checks via axe-core or Lighthouse audits**: Catch missing alt texts or low contrasts (e.g., via Lighthouse in Chrome DevTools MCP).
-- **Don't rely purely on scores**: A 100% score does not guarantee real usability.
+- **Run Automated checks via axe-core or Lighthouse audits:** Catch missing alt texts or low contrasts (e.g., via Lighthouse in Chrome DevTools MCP).
+- **Don't rely purely on scores:** A 100% score does not guarantee real usability.
 
 ### Manual testing
 
-- **Validate Sequential Navigations using keyboards alone**: Using only keyboard shortcuts, such as <kbd>Tab</kbd> / <kbd>Shift</kbd> + <kbd>Tab</kbd>, arrow keys, <kbd>Enter</kbd>, <kbd>Space</kbd>, and <kbd>Esc</kbd>, confirm every interactive element is reachable and operable, and that focus never gets stuck.
-- **Test on Screen Readers with calibrated browsers**: Rely on standard bindings (e.g., JAWS with Chrome, NVDA with Firefox, Narrator with Edge, VoiceOver with Safari on macOS and iOS, TalkBack with Chrome for Android).
+- **Validate Sequential Navigations using keyboards alone:** Using only keyboard shortcuts, such as <kbd>Tab</kbd> / <kbd>Shift</kbd> + <kbd>Tab</kbd>, arrow keys, <kbd>Enter</kbd>, <kbd>Space</kbd>, and <kbd>Esc</kbd>, confirm every interactive element is reachable and operable, and that focus never gets stuck.
+- **Test on Screen Readers with calibrated browsers:** Rely on standard bindings (e.g., JAWS with Chrome, NVDA with Firefox, Narrator with Edge, VoiceOver with Safari on macOS and iOS, TalkBack with Chrome for Android).
