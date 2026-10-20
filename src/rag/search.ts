@@ -33,8 +33,10 @@ export interface EmbedderLike {
 }
 
 /** Query-level cosine floor: if no chunk in the corpus reaches this similarity, `[]` is returned.
- * Calibrated on OOS vs answerable sets for the 256-d static embedding model (mirroring MiniLM's 0.30 floor). */
-export const DEFAULT_MIN_SIMILARITY = 0.82;
+ * Calibrated for the 256-d static model on real answerable queries (wild-v1, post-#1850 telemetry) vs OOS:
+ * 0.78 keeps answerable-empty at ~0.6% (MiniLM's 0.30 was ~0.9%). An empty result on an answerable query costs
+ * the agent its guidance, while an off-topic result list costs a few hundred tokens it filters by description. */
+export const DEFAULT_MIN_SIMILARITY = 0.78;
 
 let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
 
