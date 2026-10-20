@@ -118,7 +118,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** use a single `<input type="text" inputmode="numeric" autocomplete="one-time-code">` and the WebOTP API for SMS one-time passcode verification. See guide {{ GUIDE_REF("sms-otp-form") }}.
 
 - **DON'T** use `type="number"` for credit cards, ZIP codes, or one-time passcodes (causes UI scroll issues and removes leading zeros).
-- **DON'T** split a single value (such as a 6-digit OTP, phone number, or credit card across multiple `<input>` boxes that auto-advance focus on keypress.
+- **DON'T** split a single value (such as a 6-digit OTP, phone number, or credit card) across multiple `<input>` boxes that auto-advance focus on keypress.
 - **DON'T** block copy-and-paste (`paste` events) or disable `autocomplete` on passwords, verification codes, or other authentication fields.
 
 ### Code Example
