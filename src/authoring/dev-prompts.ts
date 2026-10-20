@@ -66,9 +66,9 @@ If the codebase already contains partial, complete, or conflicting implementatio
 2. **Requirements**: \`${opts.expectationsFile}\`
 
 # RULES
-1. **No-Op by Default**: If the clean codebase does not have the feature implemented, do NOT modify any files.
-2. **Realistic Baseline**: If you make modifications, make sure they resemble a realistic baseline state of the application where the feature is absent. Do NOT write buggy or obviously broken code, and do NOT add any comments, messages, or placeholders indicating that this is a simulated, test, or baseline state.
-3. **Genuinely Violate Each Expectation**: When disabling, unsetting, or removing implementations, ensure you genuinely violate each relevant requirement in \`${opts.expectationsFile}\`. Do NOT rely on compound boolean guards or missing prerequisite elements to cause tests to fail; ensure that if a test inspects a specific behavior, attribute, or fallback, the codebase realistically fails that inspection.
+1. **No-Op by Default**: If the clean codebase does not already implement the feature, do NOT modify any files (leave the workspace completely unchanged so the resulting patch is empty). Do NOT add new HTML elements, images, components, or styles just to have something to fail.
+2. **Realistic Baseline**: If the codebase already contains partial or complete implementations of the feature that would cause expectations in \`${opts.expectationsFile}\` to pass, strip or revert only those specific implementations back to a natural, unoptimized baseline state. Do NOT write buggy or obviously broken code, and do NOT add any comments, messages, or placeholders indicating that this is a simulated, test, or baseline state.
+3. **Never Copy Guide Examples or Plant Anti-Patterns**: Because this patch is applied to the base application before evaluation runs, NEVER copy example markup, dummy filenames, class names, or code snippets from \`${opts.guideFile}\` or \`${opts.expectationsFile}\`, and NEVER plant synthetic or inverted anti-pattern attributes (such as deprecated attributes or backwards priority values) that would tip off an evaluated agent.
 4. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
 5. Ensure your modifications are robust, complete, and type-safe.
 6. Your changes MUST compile cleanly. You can run \`npm run build\` inside your workspace to verify.
@@ -204,7 +204,7 @@ Write only one assertion per \`test('...', ...)\` block across both static and b
   - **Flexible Error Handling**: Accept both \`try / catch\` (\`TryStatement\`) and Promise \`.catch(...)\` chains.
 - **Utility CSS Flexibility**: In apps using utility-first CSS frameworks (e.g., Tailwind), accept either standard CSS declarations (\`getCssStyleSheet\`) or equivalent utility classes on elements in template markup (\`getHtmlDocuments\`).
 - **Flexible Pattern Matching**: Avoid exact-string equality for dynamic names or classes. Use loose matches, inclusion checks, and word boundaries (e.g., \`/\\bname\\b/\`) to avoid substring false positives.
-- **No Vacuous Guards or \`test.skip()\`**: Never use \`test.skip()\`. Never wrap \`expect(...)\` inside \`if (items.length > 0)\` without first asserting \`expect(items.length).toBeGreaterThan(0)\`. Every \`test()\` block must execute a real, non-trivial assertion that fails when the requirement is absent.
+- **No Vacuous Guards or \`test.skip()\`**: Never use \`test.skip()\`. Never wrap \`expect(...)\` inside \`if (items.length > 0)\` without first asserting \`expect(items.length).toBeGreaterThan(0)\`. Every \`test()\` block must execute a real, non-trivial assertion that fails when the requirement is absent. For negative expectations (e.g., "Do not use deprecated attribute X", "Do not add attribute Y to below-the-fold elements"), always pair the negative check with an assertion that the target elements and primary feature setup exist (e.g., \`expect(imgs.length).toBeGreaterThan(0)\` and that priority optimization is present), so that an unoptimized baseline or empty \`${opts.zeroPassratePatchFile}\` fails 100% of tests without needing synthetic anti-patterns planted in \`${opts.zeroPassratePatchFile}\`.
 - **No Swallowed Errors**: Do not wrap assertions in generic try/catch blocks that swallow exceptions.
 
 ## 5. Dependencies & Sandbox Constraints

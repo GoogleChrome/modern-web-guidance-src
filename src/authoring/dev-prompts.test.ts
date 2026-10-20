@@ -37,7 +37,7 @@ test('buildZeroPassratePrompt includes anti-pattern constraints and genuine expe
   });
   assert.ok(prompt.includes('No-Op by Default'));
   assert.ok(prompt.includes('Realistic Baseline'));
-  assert.ok(prompt.includes('Genuinely Violate Each Expectation'));
+  assert.ok(prompt.includes('Never Copy Guide Examples or Plant Anti-Patterns'));
   assert.ok(prompt.includes('Inspect the clean codebase'));
 });
 
