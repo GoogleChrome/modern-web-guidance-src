@@ -9,7 +9,7 @@
 import child_process from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 
 import { parseBooleanEnv } from '../core/env.ts';
 import { stripTmpPrefix } from '../core/feature-parser.ts';
