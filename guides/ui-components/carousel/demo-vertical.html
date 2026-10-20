@@ -60,6 +60,22 @@
       border: 1px solid var(--line);
     }
 
+    /*
+     * Looping without clones: rotate the ring so the current slide always sits in the middle
+     * position. There are always slides on both sides, so scrolling never reaches a limit and
+     * native scroll buttons never disable. Requires equal-size slides. Without support the
+     * carousel stays a finite list.
+     */
+    @supports (order: mod(sibling-index(), 2)) {
+      .carousel-track {
+        --current: 0;
+      }
+
+      .carousel-item {
+        order: mod(sibling-index() - 1 - var(--current) + round(down, sibling-count() / 2), sibling-count());
+      }
+    }
+
     @media (prefers-reduced-motion: no-preference) {
       .carousel-track {
         scroll-behavior: smooth;
@@ -146,10 +162,6 @@
       .carousel-item::scroll-marker:target-current {
         background: var(--accent);
       }
-    }
-
-    .carousel-item[data-clone]::scroll-marker {
-      content: none;
     }
 
     .fallback-controls {
@@ -253,6 +265,12 @@
       CSS.supports("anchor-name: --carousel-track");
     const hasMarkers = CSS.supports("selector(::scroll-marker)");
     let markers = [];
+    const loops = CSS.supports("order: mod(sibling-index(), 2)");
+    const middle = Math.floor(slides.length / 2);
+
+    // Slides in visual order. `order` is 0 for every slide without looping support, so DOM order applies.
+    const visual = () => [...slides].sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order);
+    const neighbor = (item, step) => visual()[visual().indexOf(item) + step];
 
     const show = (item, behavior = "auto") =>
       item?.scrollIntoView({ behavior, block: "center", inline: "nearest" });
@@ -279,8 +297,8 @@
 
     controls.hidden = hasButtons;
     if (!hasButtons) {
-      prevBtn.addEventListener("click", () => show(nearest().previousElementSibling));
-      nextBtn.addEventListener("click", () => show(nearest().nextElementSibling));
+      prevBtn.addEventListener("click", () => show(neighbor(nearest(), -1)));
+      nextBtn.addEventListener("click", () => show(neighbor(nearest(), 1)));
     }
     markerNav.hidden = hasMarkers;
     if (!hasMarkers) {
@@ -295,45 +313,31 @@
 
     function sync() {
       const item = nearest();
-      if (item.dataset.clone) return; // looping clones are resolved by the looping script
       const i = slides.indexOf(item);
       status.textContent = `Slide ${i + 1} of ${slides.length}`;
       markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
-      prevBtn.disabled = !item.previousElementSibling;
-      nextBtn.disabled = !item.nextElementSibling;
+      prevBtn.disabled = !neighbor(item, -1);
+      nextBtn.disabled = !neighbor(item, 1);
     }
 
-    onSettled(sync);
-    sync();
+    // Slides are equal size, so one slide plus the gap is the distance between snap positions.
+    const stepSize = () => slides[0].offsetHeight + parseFloat(getComputedStyle(track).rowGap);
+    const park = () => track.scrollTo({ top: middle * stepSize(), behavior: "instant" });
 
-    // Two inert, hidden clones on each side keep the track away from its scroll limits, so
-    // native scroll buttons never disable and keyboard focus stays on them.
-    const offset = 2;
-    const clone = (slide) => {
-      const copy = Object.assign(slide.cloneNode(true), { inert: true });
-      copy.dataset.clone = copy.ariaHidden = "true";
-      return copy;
-    };
-    track.prepend(...slides.slice(-offset).map(clone));
-    track.append(...slides.slice(0, offset).map(clone));
+    // Rotate the ring so the slide the user landed on becomes the middle one again.
+    function rotate() {
+      const shift = visual().indexOf(nearest()) - middle;
+      if (!shift) return;
+      const current = Number(track.style.getPropertyValue("--current") || 0);
+      track.style.setProperty("--current", (current + shift + slides.length) % slides.length);
+      park(); // the reorder moved the content, so put the new current slide back in the middle
+    }
 
-    const items = [...track.children];
-
-    // Reposition without scrollIntoView(), which would move the sequential focus starting point
-    // into an inert clone and make Tab skip the carousel controls.
-    const jump = (item) => {
-      const t = track.getBoundingClientRect();
-      const r = item.getBoundingClientRect();
-      track.scrollBy({ top: r.top + r.height / 2 - (t.top + track.clientHeight / 2), behavior: "instant" });
-    };
-    jump(items[offset]);
-
-    // Landed on a clone: jump invisibly to the identical real slide, `slides.length` positions away.
     onSettled(() => {
-      const item = nearest();
-      const k = items.indexOf(item);
-      if (item.dataset.clone) jump(items[k < offset ? k + slides.length : k - slides.length]);
+      if (loops) rotate();
+      sync();
     });
+    if (loops) park();
     sync();
   </script>
 </body>
