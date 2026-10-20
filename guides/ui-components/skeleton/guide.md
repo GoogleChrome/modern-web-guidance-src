@@ -4,7 +4,6 @@ description: Build skeleton placeholders from existing semantic content using on
 web-feature-ids:
   - border-shape
   - color-mix
-  - registered-custom-properties
   - prefers-reduced-motion
   - inert
   - lh
@@ -45,7 +44,7 @@ MANDATORY: Put `aria-busy="true"` on the container and scope every skeleton styl
 
 ## 2. Colors
 
-Skeleton colors belong to the surface. Register `--skeleton-tone` with `@property` (`<color>`, inherits) and derive it from the surface with `color-mix()`, mixing a little of the text color into the surface color, so a darker surface gets a darker skeleton. Derive a lighter `--skeleton-highlight` the same way for the shimmer. Use the container's real background and text tokens.
+Skeleton colors belong to the surface. Define `--skeleton-tone` on the container and derive it from the surface with `color-mix()`, mixing a little of the text color into the surface color, so a darker surface gets a darker skeleton. Derive a lighter `--skeleton-highlight` the same way for the shimmer. Use the container's real background and text tokens.
 
 ## 3. Elements
 
@@ -127,8 +126,3 @@ If your Baseline target does not support `border-shape`, use `@supports (border-
 
 {{ BASELINE_STATUS("color-mix") }}
 
-### Registered custom properties
-
-{{ BASELINE_STATUS("registered-custom-properties") }}
-
-Without `@property`, the tone still resolves as a normal custom property. Only animated interpolation of the tone is lost.

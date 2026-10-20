@@ -153,12 +153,6 @@
     }
 
     @layer prototype {
-      @property --skeleton-tone {
-        syntax: '<color>';
-        inherits: true;
-        initial-value: #c7cbd2;
-      }
-
       .skeleton[aria-busy="true"] {
         --skeleton-tone: color-mix(in oklch, var(--surface) 88%, var(--ink));
         /* not currentColor: bars set color: transparent */
