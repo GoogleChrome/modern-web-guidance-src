@@ -11,14 +11,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { DEV_PR_BRANCH_PREFIX } from '../authoring/pr.ts';
 import { parseBooleanEnv } from '../core/env.ts';
 import {
+  detectEvals,
   EXPECTATIONS_FILE,
   getGuideStatus,
-  getPendingGuideStage, detectEvals, parseGuideMetadata, getStatusName,
+  getPendingGuideStage,
+  getStatusName,
   GUIDE_FILE,
   isEvalFile,
+  parseGuideMetadata,
   ProjectStatus,
   scanAllGuides,
   type DraftState,
@@ -39,6 +41,12 @@ export const PIPELINE_SCALE_MAX = 200;
 const RULER_MID_TICK = 150;
 const CHART_Y_MIN = 100;
 const DAY_MS = 86_400_000;
+const BULK_EVAL_SWEEP_MIN_SLUGS = 5;
+
+function parseGuidePath(filePath: string): { slug: string; guideName: string; relPath: string } | null {
+  const match = /^guides\/([^/]+\/([^/]+))\/(.+)$/.exec(filePath);
+  return match ? { slug: match[1], guideName: match[2], relPath: match[3] } : null;
+}
 
 export interface PrSummary {
   number: number;
@@ -215,7 +223,7 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
   const fallbackEval = new Map<string, { evalSha: string; evalTs: number; evalDate: string }>();
   const output = child_process.execFileSync(
     'git',
-    ['log', '-M', '-m', '--first-parent', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
+    ['log', '--find-renames', '-m', '--first-parent', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
     { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
   );
 
@@ -236,20 +244,15 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
     const evalSlugs = new Set<string>();
 
     for (const rawLine of lines.slice(1)) {
-      const line = rawLine.trim();
-      if (!line) continue;
-      const match = /^guides\/([^/]+\/[^/]+)\/(.+)$/.exec(line);
-      if (!match) continue;
-      const slug = match[1];
-      const relFile = match[2];
-
-      if (relFile === EXPECTATIONS_FILE) expSlugs.add(slug);
-      if (isEvalFile(relFile)) evalSlugs.add(slug);
+      const parsed = parseGuidePath(rawLine.trim());
+      if (!parsed) continue;
+      if (parsed.relPath === EXPECTATIONS_FILE) expSlugs.add(parsed.slug);
+      if (isEvalFile(parsed.relPath)) evalSlugs.add(parsed.slug);
     }
 
     // Repo-wide grader formatting/lint sweeps touch many evals with zero expectations updates;
     // ignore them unless a guide has no other eval commit in history.
-    const isBulkEvalSweep = evalSlugs.size > 4 && expSlugs.size === 0;
+    const isBulkEvalSweep = evalSlugs.size >= BULK_EVAL_SWEEP_MIN_SLUGS && expSlugs.size === 0;
 
     for (const slug of new Set([...expSlugs, ...evalSlugs])) {
       let entry = history.get(slug);
@@ -286,30 +289,29 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
   }
 
   for (const [slug, entry] of history.entries()) {
-    if (entry.expTs > entry.evalTs && entry.evalSha && entry.expSha) {
-      try {
-        child_process.execFileSync(
-          'git',
-          [
-            'diff',
-            '--quiet',
-            '--unified=0',
-            '--find-renames',
-            '--ignore-blank-lines',
-            '--ignore-matching-lines=Basic presence:',
-            entry.evalSha,
-            entry.expSha,
-            '--',
-            `guides/${slug}/${EXPECTATIONS_FILE}`,
-          ],
-          { cwd, encoding: 'utf8', stdio: 'ignore' }
-        );
-        entry.isSubstantiveDiff = false;
-      } catch (error) {
-        // `git diff --quiet` exits 1 when the files differ; any other status is a real failure.
-        if (!(error instanceof Error && 'status' in error && error.status === 1)) throw error;
-        entry.isSubstantiveDiff = true;
-      }
+    if (entry.expTs <= entry.evalTs || !entry.evalSha || !entry.expSha) continue;
+    try {
+      child_process.execFileSync(
+        'git',
+        [
+          'diff',
+          '--quiet',
+          '--unified=0',
+          '--find-renames',
+          '--ignore-blank-lines',
+          '--ignore-matching-lines=Basic presence:',
+          entry.evalSha,
+          entry.expSha,
+          '--',
+          `guides/${slug}/${EXPECTATIONS_FILE}`,
+        ],
+        { cwd, encoding: 'utf8', stdio: 'ignore' }
+      );
+      entry.isSubstantiveDiff = false;
+    } catch (error) {
+      // `git diff --quiet` exits 1 when the files differ; any other status is a real failure.
+      if (!(error instanceof Error && 'status' in error && error.status === 1)) throw error;
+      entry.isSubstantiveDiff = true;
     }
   }
 
@@ -326,20 +328,18 @@ export function findStaleEvals(
 
     const slug = `${g.category}/${g.name}`;
     const hist = gitHistory.get(slug);
-    const isGitStale = Boolean(
+    if (
       hist &&
-        hist.expTs > 0 &&
-        hist.evalTs > 0 &&
-        hist.expTs > hist.evalTs &&
-        (hist.isSubstantiveDiff ?? true)
-    );
-
-    if (isGitStale && hist) {
+      hist.expTs > 0 &&
+      hist.evalTs > 0 &&
+      hist.expTs > hist.evalTs &&
+      (hist.isSubstantiveDiff ?? true)
+    ) {
       items.push({
         slug,
-        expDate: hist.expDate ? formatShortDate(hist.expDate) : 'recently',
+        expDate: formatShortDate(hist.expDate),
         expPr: hist.expPr ?? null,
-        evalDate: hist.evalDate ? formatShortDate(hist.evalDate) : 'earlier',
+        evalDate: formatShortDate(hist.evalDate),
       });
     }
   }
@@ -376,23 +376,15 @@ function analyzeCommit(commitSha: string): CommitAnalysis {
     const parts = line.split(/\s+/);
     if (parts.length < 4) continue;
     const blobSha = parts[2];
-    const fullPath = parts[3];
-    if (!fullPath.startsWith('guides/')) continue;
-    const rel = fullPath.slice('guides/'.length);
-    const subparts = rel.split('/');
-    if (subparts.length < 2) continue;
-    const category = subparts[0];
-    const name = subparts[1];
-    if (category === 'test-results') continue;
-    const slug = `${category}/${name}`;
-    const subpath = subparts.slice(2).join('/');
+    const parsed = parseGuidePath(parts[3]);
+    if (!parsed || parsed.slug.startsWith('test-results/')) continue;
 
-    let files = guideFiles.get(slug);
+    let files = guideFiles.get(parsed.slug);
     if (!files) {
       files = new Map();
-      guideFiles.set(slug, files);
+      guideFiles.set(parsed.slug, files);
     }
-    files.set(subpath, blobSha);
+    files.set(parsed.relPath, blobSha);
   }
 
   const guideBlobsToFetch: { slug: string; blobSha: string }[] = [];
@@ -489,11 +481,10 @@ function findReadySince(slugs: string[]): Map<string, string> {
       if (!blobsByPath.has(guidePath) || !blobsByPath.has(expPath)) break;
       const guideContent = child_process.execFileSync('git', ['show', `${sha}:${guidePath}`], { cwd, encoding: 'utf8' });
       const meta = parseGuideMetadata(guideContent, undefined, true);
-      const evals = detectEvals([GUIDE_FILE, EXPECTATIONS_FILE]);
       const status = getStatusName(
         meta.hasGuide,
-        evals.hasGrader,
-        evals.hasTask,
+        false,
+        false,
         Boolean(meta.draft),
         blobsByPath.get(expPath) !== EMPTY_BLOB_SHA
       );
@@ -584,7 +575,7 @@ export function fetchWeeklyProgressHistory(): WeeklyProgressPoint[] {
   for (const d of dates) {
     const ts = `${d}T23:59:59Z`;
     const sha = child_process
-      .execFileSync('git', ['rev-list', '-1', `--before=${ts}`, 'origin/main'], { cwd: rootDir, encoding: 'utf8' })
+      .execFileSync('git', ['rev-list', '--max-count=1', `--before=${ts}`, 'origin/main'], { cwd: rootDir, encoding: 'utf8' })
       .trim();
     const analysis = analyzeCommit(sha);
     points.push({
@@ -908,12 +899,11 @@ function fetchOpenPrs(guides: GuideInventory[]): PrSummary[] {
   for (const pr of prs) {
     if (!pr.headRefOid) continue;
     for (const filePath of pr.files) {
-      const m = /^guides\/([^/]+\/[^/]+)\/guide\.md$/.exec(filePath);
-      if (!m) continue;
-      const slug = m[1];
-      const inv = bySlug.get(slug);
+      const parsed = parseGuidePath(filePath);
+      if (!parsed || parsed.relPath !== GUIDE_FILE) continue;
+      const inv = bySlug.get(parsed.slug);
       if (!inv || getGuideStatus(inv) === ProjectStatus.NeedsGuidance) {
-        blobQueries.push({ pr, slug, expr: `${pr.headRefOid}:guides/${slug}/${GUIDE_FILE}` });
+        blobQueries.push({ pr, slug: parsed.slug, expr: `${pr.headRefOid}:guides/${parsed.slug}/${GUIDE_FILE}` });
       }
     }
   }
@@ -923,7 +913,7 @@ function fetchOpenPrs(guides: GuideInventory[]): PrSummary[] {
       .map((q, i) => `b${i}: object(expression: ${JSON.stringify(q.expr)}) { ... on Blob { text } }`)
       .join('\n');
     const gql = `{ repository(owner: ${JSON.stringify(ORG)}, name: ${JSON.stringify(REPO)}) { ${fields} } }`;
-    const gqlRaw = child_process.execFileSync('gh', ['api', 'graphql', '-f', `query=${gql}`], {
+    const gqlRaw = child_process.execFileSync('gh', ['api', 'graphql', '--field', `query=${gql}`], {
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
     });
@@ -1048,59 +1038,40 @@ export function buildPipelineReportData(params: {
   const findUseCaseIssue = (slug: string, guideName: string) =>
     subdirToIssueMap.get(`guides/${slug}`) ?? nameToIssueMap.get(guideName) ?? null;
 
-  const openEvalPrs: OpenEvalPrItem[] = [];
-  const evalPrSlugs = new Set<string>();
-  const needsGuidancePrs: NeedsGuidancePrItem[] = [];
-  const slugsWithContentPr = new Set<string>();
+  const openEvalPrsBySlug = new Map<string, OpenEvalPrItem>();
+  const needsGuidancePrsBySlug = new Map<string, NeedsGuidancePrItem>();
 
   for (const pr of params.openPrs) {
     const touchedFilesBySlug = new Map<string, string[]>();
     for (const file of pr.files) {
-      const m = /^guides\/([^/]+\/[^/]+)\/(.+)$/.exec(file);
-      if (m) {
-        const list = touchedFilesBySlug.get(m[1]) ?? [];
-        list.push(m[2]);
-        touchedFilesBySlug.set(m[1], list);
-      }
-    }
-    const branchGuideName = pr.headRefName.startsWith(DEV_PR_BRANCH_PREFIX)
-      ? pr.headRefName.slice(DEV_PR_BRANCH_PREFIX.length)
-      : null;
-    if (touchedFilesBySlug.size === 0 && branchGuideName) {
-      for (const [slug, g] of guideBySlug) {
-        if (g.name === branchGuideName) touchedFilesBySlug.set(slug, []);
-      }
+      const parsed = parseGuidePath(file);
+      if (!parsed) continue;
+      const list = touchedFilesBySlug.get(parsed.slug) ?? [];
+      list.push(parsed.relPath);
+      touchedFilesBySlug.set(parsed.slug, list);
     }
 
     for (const [slug, touchedRelFiles] of touchedFilesBySlug) {
       const inv = guideBySlug.get(slug);
       const guideName = slug.split('/')[1];
+      if (!inv && existingGuideNames.has(guideName)) continue;
+
       const guideContent = pr.guideContents?.[slug];
       const guideMetaAfter = guideContent !== undefined ? parseGuideMetadata(guideContent, undefined, true) : undefined;
-      const stage = getPendingGuideStage(
-        inv,
-        touchedRelFiles,
-        guideMetaAfter,
-        branchGuideName === inv?.name,
-        !inv && existingGuideNames.has(guideName)
-      );
+      const stage = getPendingGuideStage(inv, touchedRelFiles, guideMetaAfter);
 
-      if (stage === ProjectStatus.NeedsEvals) {
-        if (!evalPrSlugs.has(slug)) {
-          evalPrSlugs.add(slug);
-          openEvalPrs.push({
-            slug,
-            prNumber: pr.number,
-            metrics: parseEvalReportFromPrBody(pr.body),
-            reviewDecision: pr.reviewDecision,
-            reviewers: filterCatchAllReviewers(pr.reviewers, 'evals'),
-          });
-        }
-      } else if (stage === ProjectStatus.NeedsGuidance && !slugsWithContentPr.has(slug)) {
-        slugsWithContentPr.add(slug);
+      if (stage === ProjectStatus.NeedsEvals && !openEvalPrsBySlug.has(slug)) {
+        openEvalPrsBySlug.set(slug, {
+          slug,
+          prNumber: pr.number,
+          metrics: parseEvalReportFromPrBody(pr.body),
+          reviewDecision: pr.reviewDecision,
+          reviewers: filterCatchAllReviewers(pr.reviewers, 'evals'),
+        });
+      } else if (stage === ProjectStatus.NeedsGuidance && !needsGuidancePrsBySlug.has(slug)) {
         const matchedIssue = findUseCaseIssue(slug, guideName);
         const titleIssueNum = Number(/^\[#(\d+)\]/.exec(pr.title)?.[1]) || null;
-        needsGuidancePrs.push({
+        needsGuidancePrsBySlug.set(slug, {
           slug,
           hasDirOnMain: Boolean(inv),
           prNumber: pr.number,
@@ -1114,11 +1085,11 @@ export function buildPipelineReportData(params: {
       }
     }
   }
-  openEvalPrs.sort((a, b) => a.slug.localeCompare(b.slug));
-  needsGuidancePrs.sort((a, b) => a.slug.localeCompare(b.slug));
+  const openEvalPrs = Array.from(openEvalPrsBySlug.values()).sort((a, b) => a.slug.localeCompare(b.slug));
+  const needsGuidancePrs = Array.from(needsGuidancePrsBySlug.values()).sort((a, b) => a.slug.localeCompare(b.slug));
 
   const readyForEvalSlugs = needsEvalsGuides
-    .filter(g => !evalPrSlugs.has(`${g.category}/${g.name}`))
+    .filter(g => !openEvalPrsBySlug.has(`${g.category}/${g.name}`))
     .map(g => `${g.category}/${g.name}`);
 
   const needsEvalsTotal = contentLandedCount - completeCount;
@@ -1129,7 +1100,10 @@ export function buildPipelineReportData(params: {
   }
 
   const needsGuidanceIssues = validGuides
-    .filter(g => getGuideStatus(g) === ProjectStatus.NeedsGuidance && !slugsWithContentPr.has(`${g.category}/${g.name}`))
+    .filter(
+      g =>
+        getGuideStatus(g) === ProjectStatus.NeedsGuidance && !needsGuidancePrsBySlug.has(`${g.category}/${g.name}`)
+    )
     .map(g => {
       const slug = `${g.category}/${g.name}`;
       const matchedIssue = findUseCaseIssue(slug, g.name);

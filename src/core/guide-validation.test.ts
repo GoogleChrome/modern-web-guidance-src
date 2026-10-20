@@ -941,30 +941,32 @@ describe('getStatusName and getGuideStatus lifecycle', () => {
     assert.strictEqual(getStatusName('Content', true, true, false, true), null);
   });
 
-  test('getGuideStatus evaluates GuideInventory identically for standard and discipline guides', () => {
+  test('getGuideStatus evaluates GuideInventory identically for standard and discipline guides', async t => {
     for (const isDisciplineGuide of [false, true]) {
-      const baseInv: GuideInventory = {
-        dir: '/tmp/guides/accessibility/accessibility',
-        name: 'accessibility',
-        category: 'accessibility',
-        hasGuide: true,
-        isStub: false,
-        hasDemo: false,
-        hasExpectations: true,
-        expectationsEmpty: false,
-        hasNegativeDemo: false,
-        hasGrader: false,
-        hasTask: false,
-        featureIds: [],
-        isDisciplineGuide,
-        draft: undefined,
-        isPublished: true,
-      };
+      await t.test(`isDisciplineGuide=${isDisciplineGuide}`, () => {
+        const baseInv: GuideInventory = {
+          dir: '/tmp/guides/accessibility/accessibility',
+          name: 'accessibility',
+          category: 'accessibility',
+          hasGuide: true,
+          isStub: false,
+          hasDemo: false,
+          hasExpectations: true,
+          expectationsEmpty: false,
+          hasNegativeDemo: false,
+          hasGrader: false,
+          hasTask: false,
+          featureIds: [],
+          isDisciplineGuide,
+          draft: undefined,
+          isPublished: true,
+        };
 
-      assert.strictEqual(getGuideStatus(baseInv), ProjectStatus.NeedsEvals);
-      assert.strictEqual(getGuideStatus({ ...baseInv, hasGrader: true, hasTask: true }), null);
-      assert.strictEqual(getGuideStatus({ ...baseInv, hasExpectations: false }), ProjectStatus.NeedsGuidance);
-      assert.strictEqual(getGuideStatus({ ...baseInv, draft: 'wip' }), ProjectStatus.NeedsGuidance);
+        assert.strictEqual(getGuideStatus(baseInv), ProjectStatus.NeedsEvals);
+        assert.strictEqual(getGuideStatus({ ...baseInv, hasGrader: true, hasTask: true }), null);
+        assert.strictEqual(getGuideStatus({ ...baseInv, hasExpectations: false }), ProjectStatus.NeedsGuidance);
+        assert.strictEqual(getGuideStatus({ ...baseInv, draft: 'wip' }), ProjectStatus.NeedsGuidance);
+      });
     }
   });
 
@@ -1016,12 +1018,12 @@ Body`, undefined, true);
 
     // Eval changes on NeedsEvals guides count even when also touching guide.md
     assert.strictEqual(
-      getPendingGuideStage(baseInv, ['guide.md', 'targets/daily-grind/grader.ts'], undefined, true, false),
+      getPendingGuideStage(baseInv, ['guide.md', 'targets/daily-grind/grader.ts']),
       ProjectStatus.NeedsEvals
     );
     // Pure content change touching only guide.md on a NeedsEvals guide is not an eval change
     assert.strictEqual(
-      getPendingGuideStage(baseInv, ['guide.md'], undefined, false, false),
+      getPendingGuideStage(baseInv, ['guide.md']),
       null
     );
 
@@ -1034,30 +1036,30 @@ Body`, undefined, true);
     };
     // Frontmatter-only edit on a stub stays a stub (null)
     assert.strictEqual(
-      getPendingGuideStage(stubInv, ['guide.md'], parseGuideMetadata('---\nname: slider\nweb-feature-ids:\n  - tmp-slider\n---\n', undefined, true), false, false),
+      getPendingGuideStage(stubInv, ['guide.md'], parseGuideMetadata('---\nname: slider\nweb-feature-ids:\n  - tmp-slider\n---\n', undefined, true)),
       null
     );
     // Writing guide.md body on a stub advances NeedsGuidance even before expectations.md is added
     assert.strictEqual(
-      getPendingGuideStage(stubInv, ['guide.md'], parseGuideMetadata('---\nname: slider\n---\n# Slider\nProse here.', undefined, true), false, false),
+      getPendingGuideStage(stubInv, ['guide.md'], parseGuideMetadata('---\nname: slider\n---\n# Slider\nProse here.', undefined, true)),
       ProjectStatus.NeedsGuidance
     );
 
     const blockedInv: GuideInventory = { ...baseInv, draft: 'blocked' };
     // Frontmatter retag on a blocked guide that keeps `draft: blocked` is ignored
     assert.strictEqual(
-      getPendingGuideStage(blockedInv, ['guide.md'], parseGuideMetadata(`---\nname: slider\ndraft: blocked\ndraft-reason: still blocked\n---\n# Slider\nProse`, undefined, true), false, false),
+      getPendingGuideStage(blockedInv, ['guide.md'], parseGuideMetadata(`---\nname: slider\ndraft: blocked\ndraft-reason: still blocked\n---\n# Slider\nProse`, undefined, true)),
       null
     );
     // Removing `draft: blocked` in guide.md unblocks the guide and counts as NeedsGuidance
     assert.strictEqual(
-      getPendingGuideStage(blockedInv, ['guide.md'], parseGuideMetadata(`---\nname: slider\n---\n# Slider\nProse`, undefined, true), false, false),
+      getPendingGuideStage(blockedInv, ['guide.md'], parseGuideMetadata(`---\nname: slider\n---\n# Slider\nProse`, undefined, true)),
       ProjectStatus.NeedsGuidance
     );
 
     const wipInv: GuideInventory = { ...baseInv, draft: 'wip' };
     assert.strictEqual(
-      getPendingGuideStage(wipInv, ['guide.md'], undefined, false, false),
+      getPendingGuideStage(wipInv, ['guide.md']),
       ProjectStatus.NeedsGuidance
     );
   });

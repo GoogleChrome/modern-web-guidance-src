@@ -268,29 +268,30 @@ export function parseGuideMetadata(
 
 export function detectEvals(filePaths: Iterable<string>): { hasGrader: boolean; hasTask: boolean } {
   const relativeFiles = new Set(filePaths);
-  const hasTasksDir = Array.from(relativeFiles).some(k => k.startsWith('tasks/'));
-  const supportedApps = new Set(getSupportedBaseApps());
-  const targetApps = Array.from(
-    new Set(
-      Array.from(relativeFiles)
-        .map(k => /^targets\/([^/]+)\//.exec(k)?.[1])
-        .filter((app): app is string => Boolean(app && supportedApps.has(app)))
-    )
-  );
-  const useTargets = targetApps.length > 0 && !hasTasksDir;
-  const hasGrader = useTargets
-    ? targetApps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${GRADER_FILE}`))
-    : relativeFiles.has(GRADER_FILE);
-  const hasTask = useTargets
-    ? targetApps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${TASK_FILE}`))
-    : relativeFiles.has(`tasks/${TASK_FILE}`);
-  return { hasGrader, hasTask };
+  const supportedApps = new Set<string>(SUPPORTED_BASE_APPS);
+  const targetApps = new Set<string>();
+  let hasTasksDir = false;
+  for (const file of relativeFiles) {
+    if (file.startsWith('tasks/')) hasTasksDir = true;
+    const app = /^targets\/([^/]+)\//.exec(file)?.[1];
+    if (app && supportedApps.has(app)) targetApps.add(app);
+  }
+  if (targetApps.size > 0 && !hasTasksDir) {
+    const apps = Array.from(targetApps);
+    return {
+      hasGrader: apps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${GRADER_FILE}`)),
+      hasTask: apps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${TASK_FILE}`)),
+    };
+  }
+  return {
+    hasGrader: relativeFiles.has(GRADER_FILE),
+    hasTask: relativeFiles.has(`tasks/${TASK_FILE}`),
+  };
 }
 
 export function isEvalFile(relPath: string): boolean {
   return relPath === GRADER_FILE || relPath.startsWith('tasks/') || relPath.startsWith(`${TARGETS_DIR}/`);
 }
-
 
 /**
  * Evaluates whether a pending change to a guide supplies work for its current pipeline stage
@@ -300,22 +301,13 @@ export function isEvalFile(relPath: string): boolean {
 export function getPendingGuideStage(
   inv: GuideInventory | undefined,
   touchedRelFiles: readonly string[],
-  guideMetaAfter: Pick<GuideMetadata, 'hasGuide' | 'draft'> | undefined,
-  matchesEvalBranch: boolean,
-  guideNameExistsElsewhere: boolean
+  guideMetaAfter?: Pick<GuideMetadata, 'hasGuide' | 'draft'>
 ): ProjectStatus | null {
-  const currentStatus = inv
-    ? getGuideStatus(inv)
-    : guideNameExistsElsewhere
-      ? null
-      : ProjectStatus.NeedsGuidance;
+  const currentStatus = inv ? getGuideStatus(inv) : ProjectStatus.NeedsGuidance;
   if (currentStatus === null) return null;
 
   if (currentStatus === ProjectStatus.NeedsEvals) {
-    return touchedRelFiles.some(isEvalFile) ||
-      (touchedRelFiles.length === 0 && Boolean(matchesEvalBranch))
-      ? ProjectStatus.NeedsEvals
-      : null;
+    return touchedRelFiles.some(isEvalFile) ? ProjectStatus.NeedsEvals : null;
   }
 
   const hasGuideBefore = inv?.hasGuide ?? false;
