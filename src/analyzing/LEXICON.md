@@ -11,6 +11,13 @@ Single-shot LLM classification of a published feature guide (`guide.md` plus ups
 * _Reference_: `src/analyzing/gate0.ts#classifyGuideGate0`
 * _Avoid_: `Gate 0`, `Stage 0`
 
+### Legacy Pattern Spec
+
+Explicit specification per detectable guide defining **`replaces`** (the concrete 1-to-1 legacy APIs, CSS workarounds, or npm packages the guide's modern feature replaces) and **`doesNotReplace`** (lookalike patterns that are out of scope for the modern feature). Verified before authoring a **Static Matcher** so that rule authors, the **LLM Verifier**, and the **Eval Judge** share a single ground-truth scope boundary.
+
+* _Reference_: `analyzer-internal/findings/2026-10-19-legacy-pattern-specs.md`
+* _Avoid_: `Brownfield Rubric`, `Candidate Techniques`
+
 ### Static Matcher
 
 Fast, deterministic CPU scan (JavaScript/TypeScript AST via `ts-morph`, HTML/JSX DOM via `linkedom`, CSS via `cssomnom`, or `package.json` dependencies) that emits candidate findings with an enclosing code slice. Never calls an LLM.
@@ -80,7 +87,7 @@ A rule in `QUALIFIED_GUIDE_IDS` shipped by default in `npx modern-web-guidance a
 
 ### Retired Guide
 
-A guide for which a rule was prototyped and subsequently removed from `ALL_RULES` (`shadow-dom`, `accessible-error-announcement`, `stack-drill-down`, `model-partial-time-concepts`, `custom-select-picker-layouts`) because **Guide Triage** / human review determined it is a multi-part UI recipe, has no legacy equivalent, or has zero wild prevalence. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding.
+A guide for which a rule was prototyped and subsequently removed from `ALL_RULES` (`shadow-dom`, `accessible-error-announcement`, `stack-drill-down`, `detect-initial-visibility-state`, `model-partial-time-concepts`, `custom-select-picker-layouts`) because **Guide Triage**, **Legacy Pattern Spec**, or human review determined it is a multi-part UI recipe, has no 1-to-1 legacy equivalent, or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding.
 
 * _Reference_: `src/analyzing/README.md`
 * _Avoid_: `Dropped Rule`

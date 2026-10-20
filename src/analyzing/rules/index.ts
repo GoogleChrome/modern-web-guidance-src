@@ -22,7 +22,6 @@ import {
   declarativeDialogPopoverControlClickListenerRule,
 } from './declarative-dialog-popover-control.ts';
 import { deferWorkUntilScrollEndsRule } from './defer-work-until-scroll-ends.ts';
-import { detectInitialVisibilityStateRule } from './detect-initial-visibility-state.ts';
 import { dragRules } from './drag.ts';
 import { formFieldsAutomaticallyFitContentsRule } from './form-fields-automatically-fit-contents.ts';
 import { formatHumanReadableDurationsRules } from './format-human-readable-durations.ts';
@@ -58,7 +57,6 @@ export * from './customize-scrollbar-color-and-thickness.ts';
 export * from './dark-mode.ts';
 export * from './declarative-dialog-popover-control.ts';
 export * from './defer-work-until-scroll-ends.ts';
-export * from './detect-initial-visibility-state.ts';
 export * from './drag.ts';
 export * from './form-fields-automatically-fit-contents.ts';
 export * from './format-human-readable-durations.ts';
@@ -94,7 +92,7 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   formFieldsAutomaticallyFitContentsRule,
   brandConsistentFormsRule,
 
-  // Batch 2 & Reserve (12 guides, 17 rules -> 34 rules across 26 landed feature guides; shadow-dom retired per Gate 0 / O38):
+  // Batch 2 & Reserve (11 guides, 16 rules -> 33 rules across 25 landed feature guides; shadow-dom and detect-initial-visibility-state retired):
   ...scrollspyRules,
   ...autofillAddressFormRules,
   ...brandedSelectStylingRules,
@@ -102,13 +100,12 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...checkboxRules,
   ...sizeAwareStylingRules,
   deferWorkUntilScrollEndsRule,
-  detectInitialVisibilityStateRule,
   scheduleTasksByPriorityRule,
   ...preventPageScrollUnderModalDialogRules,
   ...darkModeRules,
   ...manageRecurringIntervalsRules,
 
-  // Batch 3 Wild-Verified Guides (4 active guides, 7 rules -> 41 rules across 30 feature guides total;
+  // Batch 3 Wild-Verified Guides (4 active guides, 7 rules -> 40 rules across 29 feature guides total;
   // model-partial-time-concepts and custom-select-picker-layouts removed per O69 guide mismatch):
   ...dragRules,
   ...formatHumanReadableDurationsRules,

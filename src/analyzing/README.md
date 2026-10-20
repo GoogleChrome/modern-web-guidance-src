@@ -202,11 +202,11 @@ export const autofillSignInFormRule: AnalyzerRule = {
 To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
 - **`TERMINAL_QUALIFIED_RULES`:** In standard terminal CLI mode, the analyzer runs **deterministic Phase 1 only** for guides that clear the statistical held-out qualification bar (`TERMINAL_QUALIFIED_GUIDE_IDS`). Currently, all default shipping lists (`TERMINAL_QUALIFIED_GUIDE_IDS`, `JSON_QUALIFIED_GUIDE_IDS`, `QUALIFIED_GUIDE_IDS`) default to empty `[]` until the judge is admitted on unseen human labels.
 - **`JSON_QUALIFIED_RULES`:** In `--json` mode for AI coding agents, the analyzer runs `JSON_QUALIFIED_GUIDE_IDS` and emits complete `phase2Rubric` definitions (`keepWhen` and `dropWhen`) so autonomous agents can verify candidate findings before proposing edits.
-- **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 30 landed feature guides across 41 rules, enabling research and broader scanning.
+- **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 29 landed feature guides across 40 rules, enabling research and broader scanning.
 
-### Registered Feature Guides (30 Guides, 41 Rules in `ALL_RULES`)
+### Registered Feature Guides (29 Guides, 40 Rules in `ALL_RULES`)
 
-> **Note:** `accessible-error-announcement`, `stack-drill-down`, and `shadow-dom` were retired per Paul's Gate 0 / O38 review.
+> **Note:** `accessible-error-announcement`, `stack-drill-down`, `shadow-dom`, and `detect-initial-visibility-state` were retired per Gate 0 / Legacy Pattern Spec review.
 
 | # | Guide ID | Tier | Held-Out Tune Prec (`local-93`) | Untuned Final Prec (`gitmirror`) | Modern Platform Target |
 | :- | :--- | :--- | :--- | :--- | :--- |
@@ -231,15 +231,14 @@ To guarantee zero hallucinated false alarms when run in interactive developer te
 | 19 | `checkbox` | Unmeasured Low-$n$ (Tuned) | `5/5 = 100.0%` | `32/35 = 91.4%` | CSS `accent-color` for styled checkboxes |
 | 20 | `size-aware-styling` | Experimental | `0/0 = N/A` | `0/0 = N/A` | Native CSS Container Queries (`@container`) |
 | 21 | `defer-work-until-scroll-ends` | Experimental | `0/0 = N/A` | `9/11 = 81.8%` | Native `scrollend` event listener |
-| 22 | `detect-initial-visibility-state` | Experimental | `0/6 = 0.0%` | `0/6 = 0.0%` | `PerformanceNavigationTiming` / `visibility-state` entries |
-| 23 | `schedule-tasks-by-priority` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `2/2 = 100.0%` | Prioritized task scheduling via `scheduler.postTask()` |
-| 24 | `prevent-page-scroll-under-modal-dialog` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `5/8 = 62.5%` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
-| 25 | `dark-mode` | Experimental | `2/3 = 66.7%` | `35/54 = 64.8%` | CSS `color-scheme: light dark` and `light-dark()` color functions |
-| 26 | `manage-recurring-intervals` | Experimental (Tuned) | `3/4 = 75.0%` | `5/12 = 41.7%` | Temporal API (`Temporal.PlainDate.add` / `Temporal.Duration`) |
-| 27 | `drag` | Experimental / Low-$n$ | `0/0 = N/A` | `1/1 = 100.0%` | Native HTML Drag and Drop standards |
-| 28 | `format-human-readable-durations` | Unmeasured Low-$n$ | `7/7 = 100.0%` | `17/19 = 89.5%` | `Intl.DurationFormat` |
-| 29 | `sanitize-untrusted-html` | Unmeasured Low-$n$ | `2/2 = 100.0%` | `9/16 = 56.3%` | Native `Sanitizer` API and `setHTML()` |
-| 30 | `scroll-position-aware-elements` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `9/16 = 56.3%` | CSS Scroll-Driven Animations (`animation-timeline: scroll()`) |
+| 22 | `schedule-tasks-by-priority` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `2/2 = 100.0%` | Prioritized task scheduling via `scheduler.postTask()` |
+| 23 | `prevent-page-scroll-under-modal-dialog` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `5/8 = 62.5%` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
+| 24 | `dark-mode` | Experimental | `2/3 = 66.7%` | `35/54 = 64.8%` | CSS `color-scheme: light dark` and `light-dark()` color functions |
+| 25 | `manage-recurring-intervals` | Experimental (Tuned) | `3/4 = 75.0%` | `5/12 = 41.7%` | Temporal API (`Temporal.PlainDate.add` / `Temporal.Duration`) |
+| 26 | `drag` | Experimental / Low-$n$ | `0/0 = N/A` | `1/1 = 100.0%` | Native HTML Drag and Drop standards |
+| 27 | `format-human-readable-durations` | Unmeasured Low-$n$ | `7/7 = 100.0%` | `17/19 = 89.5%` | `Intl.DurationFormat` |
+| 28 | `sanitize-untrusted-html` | Unmeasured Low-$n$ | `2/2 = 100.0%` | `9/16 = 56.3%` | Native `Sanitizer` API and `setHTML()` |
+| 29 | `scroll-position-aware-elements` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `9/16 = 56.3%` | CSS Scroll-Driven Animations (`animation-timeline: scroll()`) |
 
 ---
 
