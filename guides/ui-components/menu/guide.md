@@ -110,6 +110,8 @@ Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-po
 
 Keep `--below` last so it applies only when neither side fits. It opens directly under the trigger, so on a narrow screen it covers the sibling items beneath the trigger; that is the accepted trade-off for staying next to the trigger. Also let the submenu shrink to the area (`min-inline-size: 0`, `max-inline-size` minus the indent). A fallback that does not fit is skipped, and if none fit the browser keeps the base placement, so a submenu that is a few pixels too wide silently covers its trigger.
 
+For how the flip fallbacks work on a plain popover, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. That guide positions a button group, not a menu; for menus, the submenu placement and `--below` fallback above take precedence.
+
 ### Animate open and close
 
 Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenus, inside `@media (prefers-reduced-motion: no-preference)`. Focus moves on `toggle`, so the transition never delays keyboard users.
@@ -400,6 +402,8 @@ if (!('ToggleEvent' in window && Object.hasOwn(ToggleEvent.prototype, 'source'))
   });
 }
 ```
+
+For browsers without anchor positioning at all, see {{ GUIDE_REF("viewport-aware-dropdowns") }} for the polyfill route.
 
 ### Fallbacks & browser support for Invoker commands
 
