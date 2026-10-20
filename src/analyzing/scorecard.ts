@@ -420,7 +420,7 @@ export interface PilotScorecardSummary {
   readonly phase2DroppedRightTotal?: number;
 }
 
-export type ScorecardSplit = 'tune' | 'final' | 'grading-only';
+export type ScorecardSplit = 'held-out' | 'grading-only' | 'tune' | 'final';
 
 export interface PilotScorecardReport {
   readonly timestamp: string;
@@ -970,24 +970,21 @@ export async function runPilotScorecard(
   const customFetch = options.fetchFn;
   const apiKey = options.apiKey;
   const mode = options.mode ?? 'local';
-  const split: ScorecardSplit = options.split ?? 'tune';
+  const split: ScorecardSplit = options.split ?? 'held-out';
 
-  // 1. Load repos.json and select split (R23, O32, O60)
+  // 1. Load repos.json and select split
   const reposRaw = await readFile(reposPath, 'utf8');
   const allRepos = JSON.parse(reposRaw) as RepoConfigEntry[];
   const gradingRepos = allRepos.filter((r) => {
-    if (split === 'tune') {
-      return r.split === 'tune' || r.split === 'grading-only';
-    }
-    if (split === 'grading-only') {
-      return r.split === 'grading-only' || r.split === 'tune';
+    if (split === 'held-out' || split === 'tune' || split === 'grading-only') {
+      return r.split === 'held-out' || r.split === 'tune' || r.split === 'grading-only';
     }
     return r.split === split;
   });
 
   const phase1Findings: AnalyzerFinding[] = [];
 
-  // 2. Scan grading split based on mode (R24: report local repos and GitMirror separately)
+  // 2. Scan held-out split based on mode (R24: report local repos and GitMirror separately)
   if (mode === 'local' || mode === 'all') {
     const localFindings = await scanGradingRepos(gradingRepos, rules);
     phase1Findings.push(...localFindings);
@@ -1013,10 +1010,13 @@ export async function runPilotScorecard(
     }
     const manifestEntries = JSON.parse(gitMirrorManifestRaw) as GitMirrorManifestEntry[];
     const splitEntries = manifestEntries.filter((e) => {
-      if (split === 'final') {
-        return e.split === 'final';
+      if (split === 'held-out') {
+        return e.split === 'held-out' || e.split === 'final' || e.split === 'tune' || e.split === 'grading-only';
       }
-      return e.split === 'tune' || e.split === 'grading-only';
+      if (split === 'final') {
+        return e.split === 'final' || e.split === 'held-out';
+      }
+      return e.split === 'tune' || e.split === 'grading-only' || e.split === 'held-out';
     });
 
     // Group files by repository
@@ -1036,18 +1036,26 @@ export async function runPilotScorecard(
       repoGroup.files.push(entry.filepath);
     }
 
-    let splitDirName = 'grading-only';
-    if (split === 'final') {
-      splitDirName = 'final';
-    } else {
-      try {
-        await readdir(join(gitMirrorDir, 'tune'));
-        splitDirName = 'tune';
-      } catch (err: unknown) {
-        if (!isEnoent(err)) {
-          throw err;
+    let splitDirName = 'held-out';
+    try {
+      await readdir(join(gitMirrorDir, 'held-out'));
+      splitDirName = 'held-out';
+    } catch (err: unknown) {
+      if (!isEnoent(err)) {
+        throw err;
+      }
+      if (split === 'final') {
+        splitDirName = 'final';
+      } else {
+        try {
+          await readdir(join(gitMirrorDir, 'tune'));
+          splitDirName = 'tune';
+        } catch (innerErr: unknown) {
+          if (!isEnoent(innerErr)) {
+            throw innerErr;
+          }
+          splitDirName = 'grading-only';
         }
-        splitDirName = 'grading-only';
       }
     }
     const targetSplitDir = join(gitMirrorDir, splitDirName);
@@ -1868,7 +1876,7 @@ export async function runPilotScorecardCli(): Promise<void> {
 
 Options:
   --mode=<local|gitmirror|all>        Scan mode (default: local)
-  --split=<tune|final|grading-only>   Corpus split (default: tune)
+  --split=<held-out>                  Corpus split (default: held-out)
   --guides=<g1,g2,...>                Filter scorecard to specific guide IDs
   --out=<path>                        Output path for scorecard report JSON
   --no-write-progress                 Disable writing progress row to PROGRESS.md
@@ -1886,17 +1894,17 @@ Options:
   const splitArg = process.argv.find((a) => a.startsWith('--split='));
   const splitVal = splitArg ? splitArg.split('=')[1] : undefined;
   const split: ScorecardSplit | undefined =
-    splitVal === 'tune' || splitVal === 'final' || splitVal === 'grading-only'
+    splitVal === 'held-out' || splitVal === 'tune' || splitVal === 'final' || splitVal === 'grading-only'
       ? splitVal
       : undefined;
   const guidesArg = process.argv.find((a) => a.startsWith('--guides='));
   const guideIds = guidesArg
     ? guidesArg.split('=')[1].split(',').map((s) => s.trim()).filter(Boolean)
     : undefined;
-  const effectiveSplit: ScorecardSplit = split ?? 'tune';
+  const effectiveSplit: ScorecardSplit = split ?? 'held-out';
   const defaultScorecardPath =
     mode === 'gitmirror'
-      ? (effectiveSplit === 'final' ? GITMIRROR_FINAL_SCORECARD_PATH : GITMIRROR_SCORECARD_PATH)
+      ? (effectiveSplit === 'final' || effectiveSplit === 'held-out' ? GITMIRROR_FINAL_SCORECARD_PATH : GITMIRROR_SCORECARD_PATH)
       : PILOT_SCORECARD_PATH;
   const scorecardPath = scorecardArg
     ? scorecardArg.split('=')[1]

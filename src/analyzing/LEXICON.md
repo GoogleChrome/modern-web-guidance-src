@@ -50,30 +50,23 @@ Offline evaluation harness that asks an LLM to modernize a flagged code window u
 
 ### `rule-writing` split
 
-Repositories (`115` local repositories in `analyzer-internal/repos.json` where `split === "rule-writing"` plus the `rule-writing` half of GitMirror) that engineers and agents may freely inspect to discover legacy patterns, author rules, and debug matchers.
+Repositories (`115` local repositories in `analyzer-internal/repos.json` where `split === "rule-writing"` plus `7,048` files across `5,320` repositories in `~/.cache/analyzer-gitmirror/rule-writing/`, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 0`) that engineers and agents freely inspect to discover legacy patterns, author rules, and debug matchers.
 
-* _Reference_: `analyzer-internal/repos.json`
+* _Reference_: `analyzer-internal/repos.json`, `analyzer-internal/scripts/sample-gitmirror.ts`
 * _Avoid_: `build` split, `dev` split
-
-### `grading-only` split
-
-The `93` local repositories (`analyzer-internal/repos.json` where `split === "grading-only"`) used for iterative precision and recall measurement. Never inspected when authoring or debugging rules, but evaluated across iterations.
-
-* _Reference_: `analyzer-internal/repos.json`
-* _Avoid_: `tune` split, `local-93`
 
 ### `held-out` split
 
-The `2,336` GitMirror repositories (`2,713` files in `~/.cache/analyzer-gitmirror/grading-only`) reserved for untuned out-of-sample precision measurement.
+Repositories (`93` local repositories in `analyzer-internal/repos.json` where `split === "held-out"` plus `7,137` files across `5,258` repositories in `~/.cache/analyzer-gitmirror/held-out/`, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 1`) reserved for precision and recall evaluation (`scorecard.ts`). Never inspected when authoring or debugging rules.
 
-* _Reference_: `analyzer-internal/scripts/sample-gitmirror.ts`
-* _Avoid_: `final` split, `gitmirror-grading-only`
+* _Reference_: `analyzer-internal/repos.json`, `analyzer-internal/scripts/sample-gitmirror.ts`
+* _Avoid_: `grading-only` split, `tune` split, `final` split, `local-93`, `gitmirror-grading-only`
 
 ## Rule Lifecycle States
 
 ### Experimental Rule
 
-An active rule in `ALL_RULES` (`30` guides / `41` rules) available behind `--experimental` (`--all-rules`) that has not yet cleared the default shipping precision bar (`wilson95.lower >= 0.90` at $n \ge 35$).
+An active rule in `ALL_RULES` (`36` guides / `50` rules) available behind `--experimental` (`--all-rules`) that has not yet cleared the default shipping precision bar (`wilson95.lower >= 0.90` at $n \ge 35$).
 
 * _Reference_: `src/analyzing/rules/index.ts#ALL_RULES`
 * _Avoid_: `Active Rule`, `Unqualified Rule`, `Stage 1`

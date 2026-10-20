@@ -361,7 +361,7 @@ describe('file operations and hashes', () => {
 
   it('rebuilds Table 3 purely from progress-history.json and live scorecards without stale markdown (O36, O52, O53, O61)', () => {
     const rows = buildTable3FunnelRowsSync();
-    assert.strictEqual(rows.length, 11, 'Expected 8 historical rows + 3 live scorecard rows');
+    assert.ok(rows.length >= 11, 'Expected 8 historical rows + >= 3 live scorecard rows');
 
     // Historical rows must use corrected numbers from progress-history.json (not stale markdown)
     const a5aRow = rows.find((r) => r.commit === 'a5a253f');

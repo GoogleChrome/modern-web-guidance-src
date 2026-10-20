@@ -4,7 +4,7 @@ import { parseArgs } from 'node:util';
 import { LABELS_DIR, REPOS_CONFIG_PATH } from './paths.ts';
 import { isEnoent } from './progress-log.ts';
 
-export type RepoSplit = 'rule-writing' | 'grading-only' | 'tune' | 'final';
+export type RepoSplit = 'rule-writing' | 'held-out' | 'grading-only' | 'tune' | 'final';
 
 export interface RepoEntry {
   repo: string;
@@ -159,12 +159,13 @@ export async function loadRepos(
     }
     if (
       rec.split !== 'rule-writing' &&
+      rec.split !== 'held-out' &&
       rec.split !== 'grading-only' &&
       rec.split !== 'tune' &&
       rec.split !== 'final'
     ) {
       throw new Error(
-        `${reposPath}[${index}] (${rec.repo}): split must be 'rule-writing', 'grading-only', 'tune', or 'final', got ${JSON.stringify(rec.split)}`,
+        `${reposPath}[${index}] (${rec.repo}): split must be 'rule-writing', 'held-out', 'grading-only', 'tune', or 'final', got ${JSON.stringify(rec.split)}`,
       );
     }
     return {
@@ -252,6 +253,7 @@ export function isGradingRepoMatch(
   }
 
   if (
+    normalized.includes('analyzer-gitmirror/held-out') ||
     normalized.includes('analyzer-gitmirror/grading-only') ||
     normalized.includes('analyzer-gitmirror/tune') ||
     normalized.includes('analyzer-gitmirror/final')
