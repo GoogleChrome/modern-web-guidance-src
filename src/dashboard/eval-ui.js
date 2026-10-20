@@ -370,13 +370,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const numRunsEl = document.getElementById('numRuns');
     const workerCountEl = document.getElementById('workerCount');
     const agentEl = document.getElementById('agent');
-    const traceEl = document.getElementById('includeTrace');
 
     const payload = {
       name: (nameEl instanceof HTMLInputElement) ? nameEl.value || null : null,
       numRuns: (numRunsEl instanceof HTMLInputElement) ? parseInt(numRunsEl.value) : 0,
       workerCount: (workerCountEl instanceof HTMLInputElement && workerCountEl.value) ? parseInt(workerCountEl.value) : null,
-      includeTrace: (traceEl instanceof HTMLInputElement) ? traceEl.checked : false,
       agent: (agentEl instanceof HTMLInputElement) ? agentEl.value : '',
       tasks: selectedTasks,
       skillsToEnable: Array.from(selectedSkills)

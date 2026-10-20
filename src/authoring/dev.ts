@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
@@ -38,7 +39,7 @@ import {
   scanAllGuides,
   isDisciplineGuide,
 } from '../core/guide-validation.ts';
-import { runDevReport } from './dev-report.ts';
+import { runDevReport, applyPrReviewFeedback } from './dev-report.ts';
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
@@ -47,7 +48,37 @@ export interface DevGuideOptions {
   verbose?: boolean;
   suiteConfig?: SuiteConfig;
   targets?: readonly string[];
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+    rerunMode?: string;
+  };
 }
+
+export const devCli = {
+  commitStepArtifacts(guideDir: string, commitMessage: string): boolean {
+    try {
+      const branch = execSync('git branch --show-current', {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      }).trim();
+      if (!branch.startsWith('gd-dev/')) return false;
+
+      const status = execSync(`git status --porcelain "${guideDir}"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      }).trim();
+      if (!status) return false;
+
+      execSync(`git add "${guideDir}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
+      execSync(`git commit -m "${commitMessage}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+};
 
 function printInventory(inv: GuideInventory, targets: readonly string[] = SUPPORTED_BASE_APPS): void {
   const icon = (exists: boolean, willGenerate = false, warn = false) => {
@@ -108,7 +139,22 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-  // Step 0: Excise old eval artifacts if they exist
+  // Step 0: If rerun has reviewer comments, apply feedback to guide/expectations/targets first
+  if (options.prContext?.comments) {
+    await applyPrReviewFeedback(targetDir, options.prContext);
+  }
+
+  // Under needs-eval-gen, wipe targets after Step 0 so Step 2 regenerates all target artifacts from source guidance
+  if (options.prContext?.rerunMode === 'needs-eval-gen') {
+    for (const t of targets) {
+      const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, t);
+      if (fs.existsSync(targetCapsuleDir)) {
+        fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
+      }
+    }
+  }
+
+  // Step 0.5: Excise old eval artifacts if they exist
   exciseOldEvalArtifacts(targetDir);
 
   // Step 1: Validate guide inventory
@@ -156,7 +202,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         const taskFile = path.join(targetCapsuleDir, TASK_FILE);
         if (!fs.existsSync(taskFile)) {
           console.log(cCyan(`\n--- Generating ${TASK_FILE} for ${baseApp} ---`));
-          await generateTargetTask(targetDir, baseApp);
+          await generateTargetTask(targetDir, baseApp, options.prContext);
         }
       })();
 
@@ -167,7 +213,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
       const graderFile = path.join(targetCapsuleDir, GRADER_FILE);
       if (!fs.existsSync(graderFile)) {
         console.log(cCyan(`\n--- Generating ${GRADER_FILE} for ${baseApp} ---`));
-        await generateTargetGrader(targetDir, baseApp);
+        await generateTargetGrader(targetDir, baseApp, undefined, options.prContext);
       }
     })
   );
@@ -185,7 +231,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
         if (attempt <= maxRetries) {
           console.log(cYellow(`Attempt ${attempt} calibration failed for ${baseApp}. Regenerating ${GRADER_FILE}...`));
-          await generateTargetGrader(targetDir, baseApp, res.errorDetails);
+          await generateTargetGrader(targetDir, baseApp, res.errorDetails, options.prContext);
         } else {
           console.error(cRed(`❌ ${baseApp} failed calibration after ${attempt} attempt(s): ${res.errorDetails || 'Unknown error'}`));
           return false;
@@ -205,10 +251,16 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   const defaultAgent = getDefaultSolutionAgent();
   printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CODEX_CLI]: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1, targets);
 
+  // Commit generated evals and artifacts before Step 5 report modifications
+  devCli.commitStepArtifacts(targetDir, `feat(guide): generate ${currentInv.name} evaluations and artifacts`);
+
   // Step 5: Run evaluation report (printed last)
   if (options.test !== false && overallSuccess) {
-    await runDevReport(targetDir, currentInv, targets);
+    await runDevReport(targetDir, currentInv, targets, options.prContext);
   }
+
+  // Commit post-report modifications if any files were updated by the report agent
+  devCli.commitStepArtifacts(targetDir, `fix(guide): apply post-evaluation report recommendations for ${currentInv.name}`);
 
   return overallSuccess;
 }
@@ -253,7 +305,11 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
   }
 }
 
-async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
+async function generateTargetTask(
+  guideDirAbs: string,
+  baseApp: string,
+  prContext?: DevGuideOptions['prContext']
+): Promise<void> {
   const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-task`);
   try {
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
@@ -265,6 +321,7 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       taskFile: TASK_FILE,
       baseApp,
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
+      prContext,
     });
 
     await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
@@ -345,9 +402,9 @@ async function runAgentTest(
       const guideResultsDir = getGuideResultsDir({ category, name: name || guideName });
       const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
       const preResults = await gradeOutput(
+        baseApp,
         targetsDir,
         targetGraderPath,
-        path.join(guideResultsDir, baseApp, 'pre-grade-report'),
         zeroPassratePatch
       );
       if (preResults) results['pre'] = preResults;
@@ -375,9 +432,9 @@ async function runAgentTest(
         if (!fs.existsSync(resultDir)) continue;
         const patchFile = path.join(resultDir, 'agent.patch');
         const gradeResults = await gradeOutput(
+          runType,
           resultDir,
           targetGraderPath,
-          path.join(resultDir, 'grade-report'),
           patchFile,
           zeroPassratePatch
         );
@@ -397,17 +454,16 @@ async function runAgentTest(
 }
 
 async function gradeOutput(
+  label: string,
   appDir: string,
   graderPath: string,
-  outputDir: string,
   patchFile?: string,
   zeroPassrateFile?: string
 ): Promise<{ passed: number; total: number } | null> {
-  const label = path.basename(path.dirname(outputDir));
   console.log(cYellow(`\nGrading ${label}...`));
 
   try {
-    const gradeResults = await runPlaywright(appDir, graderPath, outputDir, 'pipe', patchFile, zeroPassrateFile);
+    const gradeResults = await runPlaywright(appDir, graderPath, 'pipe', patchFile, zeroPassrateFile);
     const passed = gradeResults.stats?.expected || 0;
     const failed = gradeResults.stats?.unexpected || 0;
     const total = passed + failed;

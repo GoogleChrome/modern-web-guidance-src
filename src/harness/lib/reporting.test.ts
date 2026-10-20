@@ -49,6 +49,46 @@ test('generateMarkdownReport renders summary table, tools used, guides consumed,
   assert.ok(md.includes('&lt;with angle brackets&gt;'));
 });
 
+test('generateMarkdownReport renders N/A when runPassRates is empty due to infra errors', () => {
+  const metricsWithEmptyRuns: Metrics = {
+    summary: {
+      unguidedMedian: 0,
+      guidedMedian: 0,
+      unguidedPassRate: 0,
+      guidedPassRate: 0,
+      unguidedPassed: 0,
+      unguidedTotal: 0,
+      guidedPassed: 0,
+      guidedTotal: 0,
+      runsPerTest: 1,
+    },
+    testStats: {
+      'daily-grind - size-aware-styling - guided': {
+        medianPassRate: 0,
+        runPassRates: [],
+        passedChecks: 0,
+        totalChecks: 0,
+      },
+    },
+    sortedKeys: ['daily-grind - size-aware-styling - guided'],
+  };
+
+  const allResults: Record<string, RunResult[]> = {
+    'daily-grind - size-aware-styling - guided': [
+      {
+        runNumber: 1,
+        results: [
+          { id: 'early-failure-1', passed: false, message: 'Grader not found', isEarlyFailure: true },
+        ],
+      },
+    ],
+  };
+
+  const md = generateMarkdownReport(metricsWithEmptyRuns, allResults);
+  assert.ok(md.includes('**Pass rates across runs:** N/A'));
+  assert.ok(!md.includes('**Pass rates across runs:** %'));
+});
+
 test('generateJsonReport includes skillVersion and cliVersion when provided', () => {
   const report = generateJsonReport(
     dummyMetrics,

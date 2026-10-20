@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens } from './utils.js';
+import { getRunStats, isEarlyFailureRun, getEligibleScenarioIds, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { loadStabilityTrend } from './stability-trend.js';
@@ -517,12 +517,13 @@ function renderSummary(data) {
     }
 
     const results = data.results;
+    const eligibleScenarios = getEligibleScenarioIds(results);
     let totalUnguidedPassed = 0;
     let totalUnguidedChecks = 0;
     let totalGuidedPassed = 0;
     let totalGuidedChecks = 0;
-    let guidedRunsCount = 0;
-
+    let totalAllRunsCount = 0;
+    let computedEarlyFailures = 0;
 
     const baseKeys = new Set();
     const tasksWithTools = new Set();
@@ -531,23 +532,28 @@ function renderSummary(data) {
     Object.keys(results).forEach(key => {
         const base = key.replace(' - guided', '').replace(' - unguided', '');
         baseKeys.add(base);
+        const parsed = parseResultKey(key);
+        const isEligibleScenario = parsed ? eligibleScenarios.has(`${parsed.task} - ${parsed.guide}`) : true;
 
-        const runs = results[key];
+        const runs = results[key] || [];
+        totalAllRunsCount += runs.length;
         const isGuided = key.endsWith(' - guided');
-        if (isGuided) guidedRunsCount += runs.length;
 
         runs.forEach((/** @type {DashboardRunResult} */ run) => {
+            if (isEarlyFailureRun(run.results)) {
+                computedEarlyFailures++;
+            }
             const hasTools = run.guidanceToolsUsed && run.guidanceToolsUsed.length > 0;
             const hasGuides = (run.guidesUsed && run.guidesUsed.length > 0) || (run.guideUsed && typeof run.guideUsed === 'object' && run.guideUsed.guidesUsed && run.guideUsed.guidesUsed.length > 0);
 
             if (isGuided && hasTools) tasksWithTools.add(base);
             if (isGuided && hasGuides) tasksWithGuides.add(base);
 
+            if (!isEligibleScenario) return;
             const stats = getRunStats(run.results);
             if (isGuided) {
                 totalGuidedPassed += stats.passed;
                 totalGuidedChecks += stats.total;
-
             } else {
                 totalUnguidedPassed += stats.passed;
                 totalUnguidedChecks += stats.total;
@@ -556,6 +562,7 @@ function renderSummary(data) {
     });
 
     const tasksCount = baseKeys.size;
+    const validPairsCount = eligibleScenarios.size;
     const unguidedPassRate = totalUnguidedChecks > 0 ? Math.round((totalUnguidedPassed / totalUnguidedChecks) * 100) : 0;
     const guidedPassRate = totalGuidedChecks > 0 ? Math.round((totalGuidedPassed / totalGuidedChecks) * 100) : 0;
     const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
@@ -563,12 +570,9 @@ function renderSummary(data) {
 
     const upliftDelta = guidedPassRate - unguidedPassRate;
 
-    const totalEarlyFailures = (summary.unguidedEarlyFailures || 0) + (summary.guidedEarlyFailures || 0);
-
-    let totalAllRunsCount = 0;
-    Object.keys(data.results || {}).forEach(key => {
-        totalAllRunsCount += (data.results[key] || []).length;
-    });
+    const totalEarlyFailures = (summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined)
+        ? (summary.unguidedEarlyFailures || 0) + (summary.guidedEarlyFailures || 0)
+        : computedEarlyFailures;
 
     const rawRate = totalAllRunsCount > 0 ? (totalEarlyFailures / totalAllRunsCount) * 100 : 0;
     const totalEarlyFailureRate = rawRate > 0 && rawRate < 1 ? Number(rawRate.toFixed(1)) : Math.round(rawRate);
@@ -588,10 +592,15 @@ function renderSummary(data) {
                 Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
             </div>
             ` : ''}
-            ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined) ? `
+            ${validPairsCount < tasksCount ? `
+            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
+                Valid Task Pairs: <span style="font-weight: bold; color: #d29922;">${validPairsCount} / ${tasksCount}</span>
+            </div>
+            ` : ''}
+            ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalEarlyFailures > 0) ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
-                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - totalEarlyFailureRate)}">${totalEarlyFailureRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(100 - totalEarlyFailureRate)}">(${totalEarlyFailures} run${totalEarlyFailures === 1 ? '' : 's'})</span>
+                Infra Errors (Excluded): <span style="font-weight: bold; color: ${totalEarlyFailures > 0 ? '#d29922' : 'var(--color-accent-success, #3fb950)'}">${totalEarlyFailureRate}%</span>
+                <span style="opacity: 0.85; color: ${totalEarlyFailures > 0 ? '#d29922' : 'var(--text-secondary)'}">(${totalEarlyFailures} invalid run${totalEarlyFailures === 1 ? '' : 's'})</span>
             </div>
             ` : ''}
 
@@ -710,38 +719,38 @@ function renderGrid(data, testId) {
 
             sortedScenarios.push(scenarioName);
 
-            // Calculate averages
             /**
              * @param {DashboardRunResult[] | undefined} runs
-             * @returns {number}
+             * @returns {number | null}
              */
             const getAvg = (runs) => {
-                if (!runs || runs.length === 0) return 0;
+                if (!runs || runs.length === 0) return null;
                 const totalPassed = runs.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
-                const totalChecks = runs.reduce((acc, run) => acc + run.results.length, 0);
-                return totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
+                const totalChecks = runs.reduce((acc, run) => acc + getRunStats(run.results).total, 0);
+                return totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : null;
             };
 
             const unguidedAvg = getAvg(unguidedRuns);
             const guidedAvg = getAvg(guidedRuns);
-            const uplift = guidedAvg - unguidedAvg;
+            const isValidPair = unguidedAvg !== null && guidedAvg !== null;
+            const uplift = isValidPair ? guidedAvg - unguidedAvg : null;
 
             /**
              * @param {DashboardRunResult[] | undefined} runs
-             * @returns {boolean}
+             * @returns {number}
              */
-            const isRunEarlyFailure = (runs) => !!(runs && runs.some(r => r.results?.some(c => c.isEarlyFailure)));
-            const unguidedFailed = isRunEarlyFailure(unguidedRuns);
-            const guidedFailed = isRunEarlyFailure(guidedRuns);
-            const hasFailure = unguidedFailed || guidedFailed;
+            const countInfraErrors = (runs) => (runs || []).filter(r => isEarlyFailureRun(r.results)).length;
+            const infraErrorCount = countInfraErrors(unguidedRuns) + countInfraErrors(guidedRuns);
+            const hasInfraError = infraErrorCount > 0;
+            const hasBuildFailure = [...(unguidedRuns || []), ...(guidedRuns || [])].some(r => r.results?.some(c => c.failureReason));
 
             const accordion = document.createElement('div');
             accordion.className = 'task-accordion';
             accordion.id = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
             accordion.setAttribute('data-guide', guide);
 
-            const minVal = Math.min(unguidedAvg, guidedAvg);
-            const maxVal = Math.max(unguidedAvg, guidedAvg);
+            const minVal = Math.min(unguidedAvg ?? 0, guidedAvg ?? 0);
+            const maxVal = Math.max(unguidedAvg ?? 0, guidedAvg ?? 0);
             const trackWidth = 250; // matches css
             const scale = (/** @type {number} */ val) => (val / 100) * trackWidth;
 
@@ -760,19 +769,26 @@ function renderGrid(data, testId) {
                     <div class="left-section">
                         <span class="chevron" style="display: inline-block; transition: transform 0.2s; margin-right: 10px;">▶</span>
                         <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
-                        <span class="task-title" style="${hasFailure ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
+                        <span class="task-title" style="${!isValidPair ? 'color: #d29922; font-weight: bold;' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
                         ${trendLinkHtml}
-                        ${hasFailure ? `<span style="font-size: 0.8rem; color: var(--color-accent-failure, #da3633); margin-left: 8px; border: 1px solid currentColor; padding: 2px 6px; border-radius: 4px;">Generation Failed</span>` : ''}
+                        ${hasInfraError ? `<span style="font-size: 0.75rem; color: #d29922; margin-left: 8px; border: 1px solid #d29922; padding: 2px 6px; border-radius: 4px;" title="Infrastructure / CLI errors are excluded from pass rates">${infraErrorCount} Infra Error${infraErrorCount === 1 ? '' : 's'}</span>` : ''}
+                        ${hasBuildFailure ? `<span style="font-size: 0.75rem; color: var(--color-accent-failure, #da3633); margin-left: 8px; border: 1px solid currentColor; padding: 2px 6px; border-radius: 4px;" title="Agent produced a broken app or build that failed grading">Build Failed</span>` : ''}
                     </div>
                     <div class="right-section">
                         <div class="mini-dumbbell-track">
-                            <div class="connector" style="left: ${scale(minVal)}px; width: ${scale(maxVal - minVal)}px;"></div>
-                            <div class="dot unguided" style="left: ${scale(unguidedAvg)}px;"></div>
-                            <div class="dot guided" style="left: ${scale(guidedAvg)}px;"></div>
+                            ${isValidPair ? `<div class="connector" style="left: ${scale(minVal)}px; width: ${scale(maxVal - minVal)}px;"></div>` : ''}
+                            ${unguidedAvg !== null ? `<div class="dot unguided" style="left: ${scale(unguidedAvg)}px;"></div>` : ''}
+                            ${guidedAvg !== null ? `<div class="dot guided" style="left: ${scale(guidedAvg)}px;"></div>` : ''}
                         </div>
+                        ${uplift !== null ? `
                         <div class="uplift-score ${uplift < 0 ? 'negative' : ''}" style="${uplift === 0 ? 'color: var(--text-secondary);' : ''}">
                             ${uplift >= 0 ? '+' : ''}${uplift}%
                         </div>
+                        ` : `
+                        <div class="uplift-score" style="color: #d29922; font-size: 0.75rem; letter-spacing: 0.04em;" title="Excluded from rollup because one or both sides have 0 valid runs">
+                            INVALID
+                        </div>
+                        `}
                     </div>
                 </div>
                 <div class="task-accordion-content">
@@ -877,7 +893,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         const maxGuided = guidedRuns ? guidedRuns.length : 0;
         const maxRuns = Math.max(maxUnguided, maxGuided);
 
-        const assertionMap = new Map(); // message -> { unguided: [], guided: [] }
+        const assertionMap = new Map(); // message -> { unguided: [], guided: [], error?: string, errorLocation?: string, pageSnapshot?: string, browserErrors?: string }
         /**
          * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
          * @param {'unguided' | 'guided'} type
@@ -887,8 +903,23 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             runs.forEach((run, runIndex) => {
                 if (run && run.results) {
                     run.results.forEach(check => {
-                        const existing = assertionMap.get(check.message) || { unguided: [], guided: [] };
+                        if (check.isEarlyFailure) return;
+                        const existing = assertionMap.get(check.message) || {
+                            unguided: [],
+                            guided: [],
+                            error: null,
+                            errorLocation: null,
+                            pageSnapshot: null,
+                            browserErrors: null,
+                        };
                         existing[type][runIndex] = check.passed;
+                        // Guided runs are processed last, so when both fail, guided diagnostics win.
+                        if (!check.passed) {
+                            if (check.error) existing.error = check.error;
+                            if (check.errorLocation) existing.errorLocation = check.errorLocation;
+                            if (check.pageSnapshot) existing.pageSnapshot = check.pageSnapshot;
+                            if (check.browserErrors) existing.browserErrors = check.browserErrors;
+                        }
                         assertionMap.set(check.message, existing);
                     });
                 }
@@ -900,7 +931,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         /**
          * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
          */
-        const isRunEarlyFailure = (runs) => runs && runs.some(r => r.results?.some(c => c.isEarlyFailure));
+        const isRunEarlyFailure = (runs) => runs && runs.some(r => isEarlyFailureRun(r.results));
         const uFailed = isRunEarlyFailure(unguidedRuns);
         const gFailed = isRunEarlyFailure(guidedRuns);
 
@@ -909,8 +940,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         if (maxRuns > 1) {
             truthMatrixHtml += `
                 <tr>
-                    <th class="center" style="${uFailed ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}" colspan="${maxRuns}">Unguided</th>
-                    <th class="center" style="${gFailed ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}" colspan="${maxRuns}">Guided</th>
+                    <th class="center" style="${uFailed ? 'color: #d29922; font-weight: bold;' : ''}" colspan="${maxRuns}">Unguided</th>
+                    <th class="center" style="${gFailed ? 'color: #d29922; font-weight: bold;' : ''}" colspan="${maxRuns}">Guided</th>
                     <th rowspan="2">Assertion Requirement</th>
                 </tr>
                 <tr>
@@ -921,13 +952,18 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         } else {
             truthMatrixHtml += `
                 <tr>
-                    <th class="center" style="${uFailed ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">Unguided</th>
-                    <th class="center" style="${gFailed ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">Guided</th>
+                    <th class="center" style="${uFailed ? 'color: #d29922; font-weight: bold;' : ''}">Unguided</th>
+                    <th class="center" style="${gFailed ? 'color: #d29922; font-weight: bold;' : ''}">Guided</th>
                     <th>Assertion Requirement</th>
                 </tr>
             `;
         }
         truthMatrixHtml += `</thead><tbody>`;
+
+        if (assertionMap.size === 0) {
+            const totalCols = maxRuns > 1 ? (maxRuns * 2 + 1) : 3;
+            truthMatrixHtml += `<tr><td colspan="${totalCols}" style="text-align: center; color: #d29922; padding: 12px;">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
+        }
 
         assertionMap.forEach((status, message) => {
             truthMatrixHtml += `<tr>`;
@@ -946,7 +982,21 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                 truthMatrixHtml += `<td class="center ${uPass !== undefined ? (uPass ? 'pass' : 'fail') : ''}">${uPass !== undefined ? (uPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
                 truthMatrixHtml += `<td class="center ${gPass !== undefined ? (gPass ? 'pass' : 'fail') : ''}">${gPass !== undefined ? (gPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
             }
-            truthMatrixHtml += `<td>${escapeHtml(message)}</td></tr>`;
+            let diagnosticsHtml = '';
+            if (status.error) {
+                const loc = status.errorLocation ? ` <span class="assertion-error-loc">(${escapeHtml(status.errorLocation)})</span>` : '';
+                diagnosticsHtml += `<div class="assertion-error">${escapeHtml(status.error.length > 300 ? status.error.substring(0, 300) + '...' : status.error)}${loc}</div>`;
+            }
+            if (status.pageSnapshot) {
+                diagnosticsHtml += `<details class="assertion-diagnostic"><summary>Page Snapshot</summary><pre>${escapeHtml(status.pageSnapshot)}</pre></details>`;
+            }
+            if (status.browserErrors) {
+                diagnosticsHtml += `<details class="assertion-diagnostic browser-errors"><summary>Browser Errors</summary><pre>${escapeHtml(status.browserErrors)}</pre></details>`;
+            }
+            truthMatrixHtml += `<td>
+                ${escapeHtml(message)}
+                ${diagnosticsHtml}
+            </td></tr>`;
         });
         truthMatrixHtml += '</tbody></table></div>';
 
@@ -996,22 +1046,24 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : (files.includes('modern-web.log') ? 'modern-web.log' : null);
                  const jsonFile = files.find(f => f.endsWith('_results.json'));
                  const runtimeFile = files.includes('runtime.json') ? 'runtime.json' : null;
-                 const isEarlyFailure = run.results && run.results.some(c => c.isEarlyFailure);
+                 const isEarlyFailure = isEarlyFailureRun(run.results);
+                 const earlyFailureMsg = isEarlyFailure ? (run.results?.find(c => c.isEarlyFailure)?.message || 'Infrastructure Error') : '';
+                 const buildFailureReason = !isEarlyFailure ? (run.results?.find(c => c.failureReason)?.failureReason || '') : '';
                  const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
                  const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                  const appUrl = (api.source === 'remote' && !isLocalServer)
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
                       : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;
 
-                 const playWUrl = (api.source === 'remote' && !isLocalServer)
-                     ? `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}/grade-report/index.html`
-                     : api.getAbsoluteUrl ? api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`) : `${usedBasePath}/grade-report/index.html`;
-
                  const taskRuntime = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : null;
 
                  chips.push(`
                      <div style="display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 4px;">
-                         <span style="font-weight: bold; font-size: 0.85rem; color: ${getColor(s.rate)};">${s.rate}%</span>
+                         ${isEarlyFailure
+                             ? `<span style="font-weight: bold; font-size: 0.75rem; color: #d29922; border: 1px solid #d29922; padding: 1px 5px; border-radius: 4px; cursor: help;" title="${escapeHtml(earlyFailureMsg)}">ERROR</span>`
+                             : `<span style="font-weight: bold; font-size: 0.85rem; color: ${getColor(s.rate)};">${s.rate}%</span>`
+                         }
+                         ${buildFailureReason ? `<span style="font-size: 0.7rem; color: var(--color-accent-failure, #da3633); cursor: help;" title="${escapeHtml(buildFailureReason)}">Build Failed</span>` : ''}
                          ${taskRuntime ? `<span style="font-size: 0.75rem; color: var(--text-secondary);">${formatRuntime(taskRuntime)}</span>` : ''}
                          ${run.tokenUsage ? `<span style="font-size: 0.75rem; color: var(--text-secondary);">${formatTokens(run.tokenUsage.total)}</span>` : ''}
                          <div style="display: flex; flex-direction: column; gap: 2px; width: 100%;">
@@ -1022,7 +1074,6 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              ${runtimeFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${runtimeFile}`)}', '${escapeHtml(`${usedBasePath}/${runtimeFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
                              ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
                              ${failureFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${failureFile}`)}', '${escapeHtml(`${usedBasePath}/${failureFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Failure Log</button>` : ''}
-                             <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>
                          </div>
                      </div>
                  `);
@@ -1521,7 +1572,7 @@ function renderDashboardDumbbellChart(data) {
 
     disciplines.forEach(discipline => {
         const disciplineResults = groupedByDiscipline[discipline];
-        const { labels, guided, unguided, guided_tokens, unguided_tokens, guided_failed, unguided_failed } = calculateChartData(disciplineResults);
+        const { labels, guided, unguided, guided_tokens, unguided_tokens, guided_failed, unguided_failed, guided_err_rate, unguided_err_rate } = calculateChartData(disciplineResults);
 
         if (labels.length === 0) return;
 
@@ -1566,8 +1617,8 @@ function renderDashboardDumbbellChart(data) {
         };
 
         const datasets = [
-            { label: 'Unguided', data: unguided, tokens: unguided_tokens, failed: unguided_failed, onClick: handlePointClick },
-            { label: 'Guided', data: guided, tokens: guided_tokens, failed: guided_failed, onClick: handlePointClick }
+            { label: 'Unguided', data: unguided, tokens: unguided_tokens, failed: unguided_failed, errRate: unguided_err_rate, onClick: handlePointClick },
+            { label: 'Guided', data: guided, tokens: guided_tokens, failed: guided_failed, errRate: guided_err_rate, onClick: handlePointClick }
         ];
 
         const chart = new DumbbellChart(svgContainer, {

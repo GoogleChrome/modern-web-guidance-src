@@ -4,7 +4,9 @@
 - The implementation MUST use `Temporal.ZonedDateTime` as the primary type for calculating differences between real-world events that occur in specific time zones.
 - The implementation MUST calculate the time elapsed since a start event using the `.since()` method on a `Temporal.ZonedDateTime` instance.
 - The implementation MUST calculate the time remaining until an end event using the `.until()` method on a `Temporal.ZonedDateTime` instance.
-- The implementation MUST specify a `largestUnit` (such as `'year'`, `'month'`, or `'day'`) in the options object passed to `.since()` or `.until()` to ensure balanced, human-readable durations.
-- The implementation MUST use `Temporal.ZonedDateTime.compare` to compare two date-time points (e.g., determining if a current time is past an expiration time).
+- The implementation MUST use the native `.sign` property of the computed `Temporal.Duration` (or use `Temporal.ZonedDateTime.compare`) to check if a duration represents a past/expired time point (negative sign) or future pending start.
 - The implementation MUST NOT attempt to modify `Temporal` instances directly, as they are immutable. It MUST use the new instances returned by operations like `add()` or `subtract()`.
 - The implementation MUST NOT use the legacy `Date` object for the core event differential calculations.
+- If a `PlainTime` must be rendered as `HH:MM` (e.g., for `<input type="time">`), the implementation MUST use `toPlainTime().toString({ smallestUnit: 'minute' })` rather than brittle string slicing such as `.slice(0, 5)`.
+- The implementation MUST NOT perform manual string formatting (such as manually joining unit numbers with custom suffixes) for user-facing duration display; instead, it MUST format durations with `Temporal.Duration.prototype.toLocaleString()` (e.g., `.toLocaleString(undefined, { style: 'narrow' })` or `{ style: 'digital' }`).
+- The implementation MUST NOT combine separate date and time inputs by interpolating an ISO string (such as `` `${date}T${time}` ``); instead, it MUST combine them with Temporal methods, e.g. `Temporal.PlainDate.from(dateStr).toPlainDateTime(timeStr).toZonedDateTime(tz)` or `Temporal.PlainDate.from(dateStr).toZonedDateTime({ timeZone: tz, plainTime: timeStr })`.
