@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { runAnalyzeCli, type AnalyzeJsonOutput } from './cli.ts';
+import { formatHumanReadable, runAnalyzeCli, type AnalyzeJsonOutput } from './cli.ts';
 
 describe('runAnalyzeCli', () => {
   it('handles help flags (-h, --help)', async () => {
@@ -30,24 +30,84 @@ describe('runAnalyzeCli', () => {
     assert.match(parsed.error ?? '', /Target directory not found/);
   });
 
-  it('handles empty directory cleanly with 0 findings and exit code 0', async () => {
+  it('reports suspended default guides honestly instead of "No modernization opportunities found" when qualified set is empty (O6, D-042)', async () => {
     const emptyDir = await mkdtemp(join(tmpdir(), 'analyzer-empty-test-'));
     try {
-      const resHuman = await runAnalyzeCli([emptyDir]);
-      assert.equal(resHuman.exitCode, 0);
-      assert.match(resHuman.output, /No modernization opportunities found/);
-      // Provisional notice should not be printed when 0 findings
-      assert.doesNotMatch(resHuman.output, /provisional and need verification/);
+      // Default mode with empty qualified set explains that guides are suspended and points to --all-rules
+      const resDefault = await runAnalyzeCli([emptyDir]);
+      assert.equal(resDefault.exitCode, 0);
+      assert.match(resDefault.output, /suspended pending re-validation/);
+      assert.match(resDefault.output, /--all-rules/);
+      assert.doesNotMatch(resDefault.output, /No modernization opportunities found/);
 
-      const resJson = await runAnalyzeCli([emptyDir, '--json']);
-      assert.equal(resJson.exitCode, 0);
-      const parsed = JSON.parse(resJson.output) as AnalyzeJsonOutput;
-      assert.equal(parsed.totalFindings, 0);
-      assert.deepEqual(parsed.guides, []);
-      assert.equal(parsed.targetDir, emptyDir);
+      const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
+      assert.equal(resDefaultJson.exitCode, 0);
+      const parsedDefault = JSON.parse(resDefaultJson.output) as AnalyzeJsonOutput;
+      assert.equal(parsedDefault.totalFindings, 0);
+      assert.deepEqual(parsedDefault.guides, []);
+      assert.equal(parsedDefault.targetDir, emptyDir);
+      assert.equal(parsedDefault.activeRuleCount, 0);
+      assert.equal(parsedDefault.activeGuideCount, 0);
+      assert.ok(Array.isArray(parsedDefault.suspendedGuides));
+      assert.equal(parsedDefault.suspendedGuides.length, 4);
+      assert.match(parsedDefault.statusNotice ?? '', /suspended pending re-validation/);
+      assert.match(parsedDefault.statusNotice ?? '', /--all-rules/);
+
+      // With --all-rules on an actually empty directory, reports no modernization opportunities found
+      const resAllEmpty = await runAnalyzeCli([emptyDir, '--all-rules']);
+      assert.equal(resAllEmpty.exitCode, 0);
+      assert.match(resAllEmpty.output, /No modernization opportunities found/);
+      assert.doesNotMatch(resAllEmpty.output, /provisional and need verification/);
     } finally {
       await rm(emptyDir, { recursive: true, force: true });
     }
+  });
+
+  it('reports suspended guides in human-readable output when default qualified set is reduced', () => {
+    const reducedZeroOutput = formatHumanReadable('/tmp/project', 0, [], undefined, {
+      activeRuleCount: 1,
+      activeGuideCount: 1,
+      suspendedGuides: ['complex-shapes', 'individual-transform-properties'],
+      isDefaultQualifiedMode: true,
+    });
+    assert.match(reducedZeroOutput, /0 findings from 1 active qualified guide/);
+    assert.match(reducedZeroOutput, /2 guides are suspended pending re-validation/);
+    assert.match(reducedZeroOutput, /--all-rules/);
+    assert.doesNotMatch(reducedZeroOutput, /No modernization opportunities found/);
+
+    const reducedFindingsOutput = formatHumanReadable(
+      '/tmp/project',
+      1,
+      [
+        {
+          guideId: 'autofill-highlight-inputs',
+          tier: 'qualified',
+          summary: 'Use standard :autofill.',
+          retrieveCommand: 'npx modern-web-guidance retrieve autofill-highlight-inputs',
+          count: 1,
+          findings: [
+            {
+              ruleId: 'autofill-highlight-inputs',
+              file: 'form.css',
+              line: 3,
+              message: 'Use :autofill',
+              codeSnippet: 'input:-webkit-autofill {}',
+            },
+          ],
+        },
+      ],
+      undefined,
+      {
+        activeRuleCount: 1,
+        activeGuideCount: 1,
+        suspendedGuides: ['individual-transform-properties'],
+        isDefaultQualifiedMode: true,
+      },
+    );
+    assert.match(
+      reducedFindingsOutput,
+      /1 guide is currently suspended pending re-validation \(individual-transform-properties\); pass --all-rules for experimental findings/,
+    );
   });
 
   it('outputs human-readable grouped summary with retrieveCommand and file:line', async () => {
@@ -204,10 +264,10 @@ describe('runAnalyzeCli', () => {
     }
   });
 
-  it('gates CLI to QUALIFIED_RULES by default and includes experimental rules with --all-rules', async () => {
+  it('gates CLI to QUALIFIED_RULES by default (suspended under D-042) and includes experimental rules with --all-rules', async () => {
     const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
     try {
-      // 1. Create a qualified pattern: autofill-highlight-inputs
+      // 1. Create a pattern from a suspended guide: autofill-highlight-inputs
       const autofillCss = `input:-webkit-autofill {
   box-shadow: 0 0 0 1000px white inset;
 }`;
@@ -224,15 +284,20 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'task.js'), idleJs, 'utf8');
 
-      // Default run (QUALIFIED_RULES only - runs qualified autofill-highlight-inputs, skips experimental)
+      // Default run (QUALIFIED_RULES only - currently empty while all 4 guides are suspended under D-042)
       const resDefault = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resDefault.exitCode, 0);
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
-      assert.equal(parsedDefault.totalFindings, 1);
-      assert.deepEqual(
-        parsedDefault.guides.map((g) => g.guideId),
-        ['autofill-highlight-inputs'],
-      );
+      assert.equal(parsedDefault.totalFindings, 0);
+      assert.deepEqual(parsedDefault.guides, []);
+      assert.equal(parsedDefault.activeRuleCount, 0);
+      assert.deepEqual(parsedDefault.suspendedGuides, [
+        'autofill-highlight-inputs',
+        'complex-shapes',
+        'deliver-optimized-decorative-images',
+        'individual-transform-properties',
+      ]);
+      assert.match(parsedDefault.statusNotice ?? '', /--all-rules/);
 
       // Opt-in run with --all-rules (or --experimental)
       const resAll = await runAnalyzeCli([testDir, '--all-rules', '--json']);
@@ -240,7 +305,10 @@ describe('runAnalyzeCli', () => {
       const parsedAll = JSON.parse(resAll.output) as AnalyzeJsonOutput;
       const allGuideIds = parsedAll.guides.map((g) => g.guideId);
 
-      assert.ok(allGuideIds.includes('autofill-highlight-inputs'), 'All-rules includes qualified rule');
+      assert.ok(
+        allGuideIds.includes('autofill-highlight-inputs'),
+        'All-rules includes autofill-highlight-inputs',
+      );
       assert.ok(
         allGuideIds.includes('animate-element-entry-exit'),
         'All-rules includes experimental rule animate-element-entry-exit',

@@ -11,20 +11,34 @@ import {
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_JUDGE_METADATA,
   QUALIFIED_RULE_MANIFEST,
+  SUSPENDED_QUALIFIED_GUIDE_IDS,
+  SUSPENDED_QUALIFIED_RULE_HISTORY,
   TERMINAL_QUALIFIED_GUIDE_IDS,
 } from './qualification.ts';
 
-describe('qualification shipping lists (O40, O42, O64, O65)', () => {
-  it('ships admitted qualified guide lists on held-out evaluation (D-031, D-036)', () => {
-    const expected = [
+describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042)', () => {
+  it('suspends all default shipping guide lists while judge is de-admitted and rules await D-041/D-042 re-validation', () => {
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, false);
+    assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, []);
+    assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, []);
+    assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, []);
+    assert.deepStrictEqual(QUALIFIED_RULE_MANIFEST, []);
+  });
+
+  it('records per-guide suspension provenance for all 4 previously qualified guides (D-042)', () => {
+    assert.deepStrictEqual(SUSPENDED_QUALIFIED_GUIDE_IDS, [
       'autofill-highlight-inputs',
       'complex-shapes',
       'deliver-optimized-decorative-images',
       'individual-transform-properties',
-    ];
-    assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, expected);
-    assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, expected);
-    assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, expected);
+    ]);
+    assert.strictEqual(SUSPENDED_QUALIFIED_RULE_HISTORY.length, 4);
+    for (const entry of SUSPENDED_QUALIFIED_RULE_HISTORY) {
+      assert.strictEqual(entry.split, 'held-out');
+      assert.ok(entry.suspendedAt.length > 0);
+      assert.match(entry.suspensionReason, /D-041/);
+      assert.match(entry.suspensionReason, /D-042/);
+    }
   });
 
   it('guarantees shipping lists cannot contradict final scorecard (O64)', async () => {
@@ -120,7 +134,7 @@ describe('qualification shipping lists (O40, O42, O64, O65)', () => {
   });
 });
 
-describe('Judge Admission (D-031, D-036)', () => {
+describe('Judge Admission (D-031, D-036, D-041, D-042)', () => {
   it('admits judge when AC1 >= 0.70, stability >= 0.95, and canary TNR >= 1.0', () => {
     const result = evaluateJudgeAdmission({
       gwetsAC1: 0.703,
@@ -204,8 +218,8 @@ describe('Judge Admission (D-031, D-036)', () => {
     assert.strictEqual(accepted100.admitted, true);
   });
 
-  it('QUALIFIED_JUDGE_METADATA reflects D-031 and D-036 calibration and admission', () => {
-    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, true);
+  it('QUALIFIED_JUDGE_METADATA reflects D-041/D-042 de-admission while preserving D-031/D-036 historical metrics', () => {
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, false);
     assert.strictEqual(
       QUALIFIED_JUDGE_METADATA.judgeVersion,
       'gemini-3.8-flash:detective-v6-spec22-c3f54b90',
@@ -215,16 +229,14 @@ describe('Judge Admission (D-031, D-036)', () => {
     assert.strictEqual(QUALIFIED_JUDGE_METADATA.threePassStability, 0.965);
     assert.strictEqual(QUALIFIED_JUDGE_METADATA.canaryTnr, 1.0);
     assert.strictEqual(QUALIFIED_JUDGE_METADATA.calibrationCount, 115);
-    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-031/);
-    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-036/);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-041/);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-042/);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /R48/);
     assert.match(QUALIFIED_JUDGE_METADATA.notes, /\(2\/2\)/);
-
-    const evaluated = evaluateJudgeAdmission(QUALIFIED_JUDGE_METADATA);
-    assert.strictEqual(evaluated.admitted, true);
   });
 });
 
-describe('Rule Qualification and Manifest (D-031, D-036)', () => {
+describe('Rule Qualification and Manifest (D-031, D-036, D-041, D-042)', () => {
   it('evaluateRuleQualification enforces n >= 35 and wilsonLower >= 0.90', () => {
     assert.strictEqual(
       evaluateRuleQualification({ sampleSize: 35, wilsonLower: 0.90 }).qualified,
@@ -240,20 +252,14 @@ describe('Rule Qualification and Manifest (D-031, D-036)', () => {
     );
   });
 
-  it('QUALIFIED_RULE_MANIFEST contains rules clearing wilsonLower >= 0.90 at n >= 35 on held-out', () => {
-    assert.ok(QUALIFIED_RULE_MANIFEST.length >= 3);
-    for (const rule of QUALIFIED_RULE_MANIFEST) {
-      assert.ok(rule.sampleSize >= 35);
-      assert.ok(rule.wilsonLower >= 0.90);
-      assert.strictEqual(rule.split, 'held-out');
-      const evalResult = evaluateRuleQualification(rule);
-      assert.strictEqual(evalResult.qualified, true);
-    }
-
-    const guideIds = QUALIFIED_RULE_MANIFEST.map((r) => r.guideId);
-    assert.ok(guideIds.includes('autofill-highlight-inputs'));
-    assert.ok(guideIds.includes('complex-shapes'));
-    assert.ok(guideIds.includes('deliver-optimized-decorative-images'));
-    assert.ok(guideIds.includes('individual-transform-properties'));
+  it('QUALIFIED_RULE_MANIFEST is empty while rules are suspended in SUSPENDED_QUALIFIED_RULE_HISTORY', () => {
+    assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 0);
+    const suspendedIds = SUSPENDED_QUALIFIED_RULE_HISTORY.map((r) => r.guideId);
+    assert.deepStrictEqual(suspendedIds, [
+      'autofill-highlight-inputs',
+      'complex-shapes',
+      'deliver-optimized-decorative-images',
+      'individual-transform-properties',
+    ]);
   });
 });

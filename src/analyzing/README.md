@@ -197,21 +197,21 @@ export const autofillSignInFormRule: AnalyzerRule = {
 };
 ```
 
-### Qualified Rules & Gated Execution (`R33`)
+### Qualified Rules & Gated Execution (`R33`, `D-041`, `D-042`)
 
 To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
-- **`TERMINAL_QUALIFIED_RULES`:** In standard terminal CLI mode, the analyzer runs **deterministic Phase 1 only** for guides that clear the statistical held-out qualification bar (`TERMINAL_QUALIFIED_GUIDE_IDS`: `autofill-highlight-inputs`, `complex-shapes`, `deliver-optimized-decorative-images`, `individual-transform-properties`).
-- **`JSON_QUALIFIED_RULES`:** In `--json` mode for AI coding agents, the analyzer runs `JSON_QUALIFIED_GUIDE_IDS` and emits complete `phase2Rubric` definitions (`keepWhen` and `dropWhen`) so autonomous agents can verify candidate findings before proposing edits.
+- **`TERMINAL_QUALIFIED_RULES`:** In standard terminal CLI mode, the analyzer runs **deterministic Phase 1 only** for guides that clear the statistical held-out qualification bar (`TERMINAL_QUALIFIED_GUIDE_IDS`, currently `[]` — all 4 previously qualified guides (`autofill-highlight-inputs`, `complex-shapes`, `deliver-optimized-decorative-images`, `individual-transform-properties`) are suspended pending `D-041`/`D-042` re-validation and `R35` 20-card blind human spot-checks). While the default qualified set is empty, the CLI reports plainly that default guides are suspended pending re-validation and points to `--all-rules`.
+- **`JSON_QUALIFIED_RULES`:** In `--json` mode for AI coding agents, the analyzer runs `JSON_QUALIFIED_GUIDE_IDS` (currently `[]` pending `D-041`/`D-042` re-validation) and emits complete `phase2Rubric` definitions (`keepWhen` and `dropWhen`) so autonomous agents can verify candidate findings before proposing edits.
 - **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 44 landed feature guides across 61 rules, enabling research and broader scanning.
 
 ### Registered Feature Guides (44 Guides, 61 Rules in `ALL_RULES`)
 
-> **Note:** `accessible-error-announcement`, `stack-drill-down`, and `shadow-dom` were retired per Gate 0 / Legacy Pattern Spec review.
+> **Note:** `accessible-error-announcement`, `stack-drill-down`, `shadow-dom`, and `shrinking-header-on-scroll` were retired per Gate 0 / Legacy Pattern Spec review (`D-027`). All pre-`R39`–`R53` held-out precision numbers below are historical (`D-041`) and suspended pending `O7`–`O9` re-validation (`D-042`).
 
 | # | Guide ID | Tier | Held-Out Tune Prec (`local-93`) | Untuned Final Prec (`gitmirror`) | Modern Platform Target |
 | :- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `animate-element-entry-exit` | **Qualified (`proven-high-n`)** | `77/79 = 97.5%` (95% CI `[91.2% - 99.3%]`) | `46/58 = 79.3%` | `@starting-style` and `transition-behavior: allow-discrete` |
-| 2 | `individual-transform-properties` | Proven High-$n$ (Final) | `58/68 = 85.3%` | `94/95 = 98.9%` (95% CI `[94.3% - 99.8%]`) | Individual transform properties (`rotate`, `scale`, `translate`) |
+| 1 | `animate-element-entry-exit` | Experimental (Failed Held-Out) | `77/79 = 97.5%` (95% CI `[91.2% - 99.3%]`) | `46/58 = 79.3%` | `@starting-style` and `transition-behavior: allow-discrete` |
+| 2 | `individual-transform-properties` | Suspended (`D-042` / `R39` / `R50.2`) | `58/68 = 85.3%` | `94/95 = 98.9%` (pre-`R39` / pre-`R48`) | Individual transform properties (`rotate`, `scale`, `translate`) |
 | 3 | `autofill-sign-in-form` | Unmeasured Low-$n$ | `23/23 = 100.0%` | `68/75 = 90.7%` | Standard `autocomplete="username"` and `autocomplete="current-password"` |
 | 4 | `animate-to-intrinsic-sizes` | Unmeasured Low-$n$ | `4/4 = 100.0%` | `12/13 = 92.3%` | `calc-size()` and `interpolate-size: allow-keywords` |
 | 5 | `declarative-dialog-popover-control` | Experimental (Tuned) | `27/33 = 81.8%` | `57/73 = 78.1%` | Declarative `commandfor` / `command` and `popovertarget` |
@@ -239,9 +239,9 @@ To guarantee zero hallucinated false alarms when run in interactive developer te
 | 27 | `format-human-readable-durations` | Unmeasured Low-$n$ | `7/7 = 100.0%` | `17/19 = 89.5%` | `Intl.DurationFormat` |
 | 28 | `sanitize-untrusted-html` | Unmeasured Low-$n$ | `2/2 = 100.0%` | `9/16 = 56.3%` | Native `Sanitizer` API and `setHTML()` |
 | 29 | `scroll-position-aware-elements` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `9/16 = 56.3%` | CSS Scroll-Driven Animations (`animation-timeline: scroll()`) |
-| 30 | `autofill-highlight-inputs` | Batch 4 Clean 1-to-1 | `N/A` | `494 repos / 635 files` | Standard CSS `:autofill` pseudo-class |
-| 31 | `complex-shapes` | Batch 4 Clean 1-to-1 | `N/A` | `373 repos / 464 files` | CSS Masking Module Level 1 (`mask-image`, `mask-*`) |
-| 32 | `deliver-optimized-decorative-images` | Batch 4 Clean 1-to-1 | `N/A` | `96 repos / 155 files` | CSS `image-set()` resolution and format negotiation |
+| 30 | `autofill-highlight-inputs` | Suspended (`D-042` Batch 4 Clean 1-to-1) | `N/A` | `60/60` (pre-`R48`; `0` `R35` human spot-checks) | Standard CSS `:autofill` pseudo-class |
+| 31 | `complex-shapes` | Suspended (`D-042` Batch 4 Clean 1-to-1) | `N/A` | `89/91` post-P2; `94/100` P1 (`0.875` LB `< 0.90`) | CSS Masking Module Level 1 (`mask-image`, `mask-*`) |
+| 32 | `deliver-optimized-decorative-images` | Suspended (`D-042` Batch 4 Clean 1-to-1) | `N/A` | `60/60` (pre-`R48`; `0` `R35` human spot-checks) | CSS `image-set()` resolution and format negotiation |
 | 33 | `responsive-table` | Batch 4 Clean 1-to-1 | `N/A` | `316 repos / 376 files` | CSS Container Queries (`@container`) and sticky headers |
 | 34 | `equal-width-text-lines` | Batch 4 Needs Care | `N/A` | `38 repos / 46 files` | CSS `text-fit: grow per-line-all` and balance |
 | 35 | `light-dismiss-a-dialog` | Batch 4 Needs Care | `N/A` | `19 repos / 22 files` | Native `<dialog closedby="any">` |
@@ -269,24 +269,24 @@ The evaluation corpus is divided into two strictly isolated splits:
 
 Cross-split boundary isolation is statically verified by [`audit-transcripts.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/audit-transcripts.ts).
 
-### Eval Judge Protocol & Honest Calibration
+### Eval Judge Protocol & Honest Calibration (`D-031`, `D-041`, `D-042`)
 
-Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Eval Judge** ([`judge.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/judge.ts)) operating under a de-primed, explainer-grounded prompt (`gemini-3.8-flash:detective-v6-spec22-c3f54b90`) with zero rule-writer hints:
-- **Stability:** **88.6%** unanimous agreement across 3 passes on the 114-card dev set (`87.1%` across all 147 graded cards).
-- **Canary TNR:** **100.0%** (2/2 negative canary controls correctly rejected).
-- **Admission Status:** Dev evaluation yielded Gwet's $\mathrm{AC}_1 = 0.557$ and Krippendorff's $\alpha = -0.094$ (`0.492` / `-0.050` across all 147 cards). Because $\alpha < 0.667$, the **Eval Judge** is labeled **`not admitted`**.
+Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Eval Judge** ([`judge.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/judge.ts)) operating under a de-primed, explainer-grounded prompt:
+- **Current Admission Status:** **`not admitted` (`QUALIFIED_JUDGE_METADATA.admitted = false` in [`qualification.ts`](./qualification.ts) per `D-041` & `D-042`).**
+- **Why De-Admitted (`R34`, `R48`, `O6`):** Although `gemini-3.8-flash:detective-v6-spec22-c3f54b90` cleared in-sample calibration on Paul's 95 active kept cards ($\mathrm{AC}_1 = 0.703$, 3-pass stability $96.5\%$, Canary TNR $100.0\%$ [`2/2`]), it failed the pre-registered `R34` out-of-sample blind specificity check (`_false-positives-check-deck`: $\mathrm{AC}_1 = 0.258 < 0.70$, stability $85.0\% < 95.0\%$), contained a bug in `deriveJudgeVerdictFromFacts` (`R48`) that overwrote `leave-it` and `guide-wrong` to `right`, and was superseded by prompt/code changes in `29b403d05` and `7c6f1a18b`.
 
-### Dual Scorecard Results (`grading-only` vs. `held-out`)
+### Historical Pre-`D-041` Scorecard Results (`grading-only` vs. `held-out` — Invalidated Pending Re-Run)
 
-1. **`grading-only` Split (93 local repos, `845acda987f8`):**
+> **Invalidation Notice (`D-041`, `D-042`):** The historical scorecard runs below executed before `R42`/`R51` vendor/docs file filtering, `R46` `package.json` dependency guards, `R47` SFC/scope context slicing, and `R48` Judge `leave-it` preservation. No guide is currently promoted from these runs.
+
+1. **Historical `grading-only` Split (93 local repos, `845acda987f8` — now in `rule-writing` per `D-036`):**
    - **Pooled Precision:** **78.5%** (`278/354`, 95% CI `[74.0% - 82.5%]`).
    - **Clears $\ge 0.90$ LB (`animate-element-entry-exit`):** **97.5%** (`77/79`, 95% CI `[91.2% - 99.3%]`).
    - **Coverage:** 1/35 guides clearing $\ge 0.90$ LB + 13 zero-FP low-$n$ guides.
    - **Recall:** **60.4%** ($n=101$).
-2. **`held-out` Split (2,336 GitMirror repos, `d26557cf4124`):**
+2. **Historical `held-out` Split (2,336 GitMirror repos, `d26557cf4124` — invalidated per `D-041`):**
    - **Pooled Precision:** **72.0%** (`695/966`, 95% CI `[69.0% - 74.7%]`); **100% (`9/9`)** on Paul's blind human spot-check deck (`_gitmirror-final-spotcheck-deck`).
-   - **Clears $\ge 0.90$ LB (`individual-transform-properties`):** **98.9%** (`94/95`, 95% CI `[94.3% - 99.8%]`).
-   - **Coverage:** 1/35 guides clearing $\ge 0.90$ LB + 5 zero-FP low-$n$ guides.
+   - **Historical `individual-transform-properties` (Suspended per `R39`/`D-042`):** **98.9%** (`94/95`, 95% CI `[94.3% - 99.8%]`).
    - **Static Matcher Precision:** **53.1%** (`721/1359`). The **LLM Verifier** retained **966** findings.
 
 ### Fix Smoke Test ([`fix-harness.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/fix-harness.ts))

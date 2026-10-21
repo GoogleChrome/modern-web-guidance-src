@@ -90,16 +90,23 @@ export interface QualifiedJudgeMetadata {
   readonly notes: string;
 }
 
+/**
+ * Metadata for the previously calibrated Eval Judge (`detective-v6-spec22-c3f54b90`).
+ * De-admitted (`admitted: false`) under D-041 and D-042 (O6) because:
+ * 1. Judge code and prompts changed in 29b403d05 and 7c6f1a18b (`detective-v7-r45`).
+ * 2. Out-of-sample R34 blind check (`_false-positives-check-deck`) failed (AC1 = 0.258 < 0.70, 3-pass stability = 85.0% < 95.0%).
+ * 3. R48 showed `deriveJudgeVerdictFromFacts` in v6 forcibly overwrote `leave-it` and `guide-wrong` to `right`, inflating precision.
+ */
 export const QUALIFIED_JUDGE_METADATA: QualifiedJudgeMetadata = {
   judgeVersion: 'gemini-3.8-flash:detective-v6-spec22-c3f54b90',
-  admitted: true,
+  admitted: false,
   gwetsAC1: 0.703,
   krippendorffAlpha: 0.163,
   threePassStability: 0.965,
   canaryTnr: 1.0,
   calibrationCount: 115,
   notes:
-    "Admitted under D-031 & D-036 (Gwet's AC1 = 0.703 >= 0.70, 3-Pass Stability = 96.5%, Canary TNR = 100.0% (2/2)).",
+    'De-admitted under D-041 & D-042 (O6): superseded by 29b403d05 / 7c6f1a18b, failed R34 blind specificity check (AC1 = 0.258 < 0.70, stability = 85.0% < 95.0%), and contained the R48 deriveJudgeVerdictFromFacts bug that overwrote leave-it/guide-wrong to right. Historical in-sample D-031/D-036 metrics retained for provenance (Canary TNR = 100.0% (2/2)).',
 };
 
 export interface QualifiedRuleEntry {
@@ -111,6 +118,11 @@ export interface QualifiedRuleEntry {
   readonly wilsonUpper: number;
   readonly split: 'held-out';
   readonly qualifiedAt?: string;
+}
+
+export interface SuspendedRuleQualificationRecord extends QualifiedRuleEntry {
+  readonly suspendedAt: string;
+  readonly suspensionReason: string;
 }
 
 export interface RuleQualificationEvaluation {
@@ -142,35 +154,46 @@ export function evaluateRuleQualification(entry: {
 }
 
 /**
- * Manifest of rules qualified on held-out split with wilsonLower >= 0.90 at n >= 35.
+ * Audit record of the 4 guides previously in TERMINAL_QUALIFIED_GUIDE_IDS that are
+ * now suspended under D-041 and D-042 (O6) pending O7/O8 remediation, O9 Judge
+ * re-calibration, fresh held-out scorecard evaluation, and R35 20-card blind spot-checks.
  */
-export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
+export const SUSPENDED_QUALIFIED_RULE_HISTORY: readonly SuspendedRuleQualificationRecord[] = [
   {
     guideId: 'autofill-highlight-inputs',
-    sampleSize: 115,
-    successes: 115,
+    sampleSize: 60,
+    successes: 60,
     precision: 1.0,
-    wilsonLower: 0.968,
+    wilsonLower: 0.94,
     wilsonUpper: 1.0,
     split: 'held-out',
+    suspendedAt: '2026-10-21',
+    suspensionReason:
+      'D-041 / D-042: Scored in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (n=60, whereas 774fc3256 manifest hardcoded n=115) under de-admitted detective-v6-spec22-c3f54b90 Judge (R48 leave-it -> right overwrite bug) and pre-R51 file filters; 0 human blind spot-check cards (R35); rule module in O8 Batch 1-4 audit (2758f36c).',
   },
   {
     guideId: 'complex-shapes',
-    sampleSize: 79,
-    successes: 79,
-    precision: 1.0,
-    wilsonLower: 0.954,
-    wilsonUpper: 1.0,
+    sampleSize: 91,
+    successes: 89,
+    precision: 0.978,
+    wilsonLower: 0.923,
+    wilsonUpper: 0.994,
     split: 'held-out',
+    suspendedAt: '2026-10-21',
+    suspensionReason:
+      'D-041 / D-042: Failed the R37/R50 Phase 1 terminal bar even in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (Phase 1 94/100 = 0.940, phase1Wilson95.lower = 0.8752 < 0.90, clearsPhase1Bar90: false; 774fc3256 manifest hardcoded 79/79 = 1.0); scored under de-admitted v6 Judge (R48 bug); 0 human blind spot-check cards (R35); rule module in O8 audit (4d3aeb03).',
   },
   {
     guideId: 'deliver-optimized-decorative-images',
-    sampleSize: 38,
-    successes: 38,
+    sampleSize: 60,
+    successes: 60,
     precision: 1.0,
-    wilsonLower: 0.908,
+    wilsonLower: 0.94,
     wilsonUpper: 1.0,
     split: 'held-out',
+    suspendedAt: '2026-10-21',
+    suspensionReason:
+      'D-041 / D-042: Scored in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (n=60, whereas 774fc3256 manifest hardcoded n=38) under de-admitted detective-v6-spec22-c3f54b90 Judge (R48 leave-it -> right overwrite bug) and pre-R51 file filters; 0 human blind spot-check cards (R35); matcher targets CSS content property overlapping R49.4 content: image-set(...) sizing defect; rule module in O8 audit (772dbbf2).',
   },
   {
     guideId: 'individual-transform-properties',
@@ -181,8 +204,21 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
     wilsonUpper: 0.998,
     split: 'held-out',
     qualifiedAt: '2026-10-20',
+    suspendedAt: '2026-10-21',
+    suspensionReason:
+      'D-041 / D-042 / R39 / R50.2: Independent replication (R39) showed 13/20 (65%) of _itp-held-out-spotcheck-deck cards were isolated single-function state transforms (:hover { transform: scale(1.1) }) graded before R45 promoted leave-it to a top-level button; matcher was rewritten in 4acd735d6 and has not been re-evaluated on held-out.',
   },
 ];
+
+export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] =
+  SUSPENDED_QUALIFIED_RULE_HISTORY.map((entry) => entry.guideId);
+
+/**
+ * Active manifest of rules currently qualified for default shipping on held-out.
+ * Empty (`[]`) while `QUALIFIED_JUDGE_METADATA.admitted === false` and all 4 prior
+ * guides are suspended pending D-041 / D-042 re-validation.
+ */
+export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [];
 
 /**
  * Derives qualified guide IDs from a scorecard report.
@@ -227,15 +263,11 @@ export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
 }
 
 /**
- * Production shipping qualified guide lists (D-031, D-036, R35, R37).
- * Terminal defaults require held-out Phase 1 Wilson 95% lower bound >= 0.90 at n >= 35 (R37)
- * and human spot-check confirmation on ~20 blind held-out cards per candidate rule (R35).
+ * Production shipping qualified guide lists (D-031, D-036, D-041, D-042, R35, R37, R50).
+ * Empty (`[]`) while the Eval Judge is de-admitted and all 4 previously qualified guides
+ * are suspended pending O7/O8 remediation, O9 Judge re-calibration, held-out Phase 1
+ * Wilson 95% lower bound >= 0.90 at n >= 35 (R37/R50), and 20-card blind human spot-checks (R35).
  */
-export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [
-  'autofill-highlight-inputs',
-  'complex-shapes',
-  'deliver-optimized-decorative-images',
-  'individual-transform-properties',
-];
+export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [];
 export const JSON_QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;
 export const QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;

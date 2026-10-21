@@ -3,11 +3,11 @@ import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { SUSPENDED_QUALIFIED_GUIDE_IDS } from './qualification.ts';
 import {
   ALL_RULES,
   JSON_QUALIFIED_RULES,
   QUALIFIED_GUIDE_IDS,
-  QUALIFIED_RULES,
   TERMINAL_QUALIFIED_RULES,
 } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
@@ -42,6 +42,10 @@ export interface AnalyzeJsonOutput {
   readonly targetDir: string;
   readonly totalFindings: number;
   readonly guides: readonly AnalyzeCliGuideGroup[];
+  readonly activeRuleCount?: number;
+  readonly activeGuideCount?: number;
+  readonly suspendedGuides?: readonly string[];
+  readonly statusNotice?: string;
   readonly error?: string;
 }
 
@@ -55,6 +59,13 @@ export interface AnalyzeCliResult {
   readonly exitCode: number;
   readonly output: string;
   readonly data?: AnalyzeJsonOutput;
+}
+
+export interface FormatHumanReadableOptions {
+  readonly activeRuleCount?: number;
+  readonly activeGuideCount?: number;
+  readonly suspendedGuides?: readonly string[];
+  readonly isDefaultQualifiedMode?: boolean;
 }
 
 export const ANALYZE_CLI_HELP = `
@@ -73,29 +84,78 @@ Options:
   -h, --help         Show this help message
 `.trim();
 
+export function buildQualificationStatusNotice(
+  activeRuleCount: number,
+  activeGuideCount: number,
+  suspendedGuides: readonly string[],
+): string | undefined {
+  if (activeRuleCount === 0) {
+    const suspendedCount = suspendedGuides.length;
+    const countPhrase =
+      suspendedCount > 0 ? ` (${suspendedCount} previously qualified guides)` : '';
+    return `Default qualified guides${countPhrase} are currently suspended pending re-validation (D-041 / D-042). 0 rules were run; pass --all-rules (or --experimental) for experimental findings.`;
+  }
+  if (suspendedGuides.length > 0) {
+    return `${suspendedGuides.length} previously qualified ${suspendedGuides.length === 1 ? 'guide is' : 'guides are'} currently suspended pending re-validation (D-041 / D-042); only ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide was' : 'guides were'} scanned. Pass --all-rules (or --experimental) for experimental findings.`;
+  }
+  return undefined;
+}
+
 /**
  * Formats findings into human-readable terminal output.
  * Renders provisional verification notice, visible keepWhen / dropWhen rubric lines,
  * and caps displayed findings at 5 per guide with an overflow summary line (D-032, D-033).
+ * When the default qualified set is empty or reduced, states plainly that guides are
+ * suspended pending re-validation and points to --all-rules rather than claiming no
+ * legacy patterns were found (O6, D-042).
  */
 export function formatHumanReadable(
   targetDir: string,
   totalFindings: number,
   guides: readonly AnalyzeCliGuideGroup[],
   guideFilter?: string,
+  formatOptions?: FormatHumanReadableOptions,
 ): string {
+  const isDefaultMode = formatOptions?.isDefaultQualifiedMode ?? false;
+  const activeRuleCount = formatOptions?.activeRuleCount;
+  const activeGuideCount = formatOptions?.activeGuideCount ?? 0;
+  const suspendedGuides = formatOptions?.suspendedGuides ?? [];
+
   if (totalFindings === 0) {
+    if (isDefaultMode && activeRuleCount === 0) {
+      return [
+        `Modern Web Guidance Analyzer: ${targetDir}`,
+        `Default qualified guides are currently suspended pending re-validation (D-041 / D-042); 0 rules were run.`,
+        `Pass --all-rules (or --experimental) for experimental findings across ${ALL_RULES.length} rules.`,
+        '',
+      ].join('\n');
+    }
+    if (isDefaultMode && suspendedGuides.length > 0) {
+      return [
+        `Modern Web Guidance Analyzer: ${targetDir}`,
+        `0 findings from ${activeGuideCount} active qualified ${activeGuideCount === 1 ? 'guide' : 'guides'}.`,
+        `Note: ${suspendedGuides.length} ${suspendedGuides.length === 1 ? 'guide is' : 'guides are'} suspended pending re-validation (${suspendedGuides.join(', ')}); pass --all-rules (or --experimental) for experimental findings.`,
+        '',
+      ].join('\n');
+    }
     const filterNote = guideFilter ? ` for guide "${guideFilter}"` : '';
     return `No modernization opportunities found in ${targetDir}${filterNote}.\n`;
   }
 
   const lines: string[] = [
     'Note: Static analysis results are provisional and need verification with an agent.',
+  ];
+  if (isDefaultMode && suspendedGuides.length > 0) {
+    lines.push(
+      `Note: ${suspendedGuides.length} ${suspendedGuides.length === 1 ? 'guide is' : 'guides are'} currently suspended pending re-validation (${suspendedGuides.join(', ')}); pass --all-rules for experimental findings.`,
+    );
+  }
+  lines.push(
     '',
     `Modern Web Guidance Analyzer: ${targetDir}`,
     `Found ${totalFindings} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}:`,
     '',
-  ];
+  );
 
   for (const g of guides) {
     const badge = g.tier === 'qualified' ? '[qualified]' : '[experimental]';
@@ -191,6 +251,8 @@ export async function runAnalyzeCli(
     return { exitCode: 1, output: `Error: ${err}\n` };
   }
 
+  const isDefaultQualifiedMode =
+    !useAllRules && !guideFilter && options?.rules === undefined;
   const defaultRules =
     useAllRules || Boolean(guideFilter)
       ? ALL_RULES
@@ -202,9 +264,22 @@ export async function runAnalyzeCli(
     ? activeRulesList.filter((r) => r.guideId === guideFilter)
     : activeRulesList;
 
-  const findings = await scanRepoFiles(resolvedDir, activeRules, {
-    maxFiles: options?.maxFiles,
-  });
+  const activeRuleCount = activeRules.length;
+  const activeGuideIds = new Set(activeRules.map((r) => r.guideId));
+  const activeGuideCount = activeGuideIds.size;
+  const suspendedGuides = isDefaultQualifiedMode
+    ? SUSPENDED_QUALIFIED_GUIDE_IDS.filter((gid) => !activeGuideIds.has(gid))
+    : [];
+  const statusNotice = isDefaultQualifiedMode
+    ? buildQualificationStatusNotice(activeRuleCount, activeGuideCount, suspendedGuides)
+    : undefined;
+
+  const findings =
+    activeRuleCount > 0
+      ? await scanRepoFiles(resolvedDir, activeRules, {
+          maxFiles: options?.maxFiles,
+        })
+      : [];
 
   const findingsByGuide = new Map<string, AnalyzerFinding[]>();
   for (const f of findings) {
@@ -260,6 +335,10 @@ export async function runAnalyzeCli(
     targetDir,
     totalFindings,
     guides,
+    activeRuleCount,
+    activeGuideCount,
+    ...(suspendedGuides.length > 0 ? { suspendedGuides } : {}),
+    ...(statusNotice ? { statusNotice } : {}),
   };
 
   if (isJson) {
@@ -270,7 +349,12 @@ export async function runAnalyzeCli(
     };
   }
 
-  const output = formatHumanReadable(targetDir, totalFindings, guides, guideFilter);
+  const output = formatHumanReadable(targetDir, totalFindings, guides, guideFilter, {
+    activeRuleCount,
+    activeGuideCount,
+    suspendedGuides,
+    isDefaultQualifiedMode,
+  });
   return { exitCode: 0, output, data };
 }
 
