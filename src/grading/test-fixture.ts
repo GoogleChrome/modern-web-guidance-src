@@ -95,6 +95,12 @@ export const test = base.extend<{ page: Page; context: BrowserContext }, ServerW
 
     const pkgJsonPath = path.join(targetDir, 'package.json');
     if (!fs.existsSync(pkgJsonPath)) {
+      if (process.env.TARGET_FILE) {
+        const fallbackUrl = `http://localhost/${path.basename(process.env.TARGET_FILE)}`;
+        process.env.TARGET_URL = fallbackUrl;
+        await use(fallbackUrl);
+        return;
+      }
       throw new Error(`package.json not found in target directory: ${targetDir}`);
     }
 
@@ -210,7 +216,8 @@ export function getTargetFiles(testFileUrl: string): string[] {
 
 const HTML_EXTS = /\.(html|htm|astro)$/i;
 const CSS_EXTS = /\.css$/i;
-const JS_EXTS = /\.(js|ts|tsx|jsx)$/i;
+const JS_EXTS = /\.(m?js|cjs|ts|tsx|jsx)$/i;
+const TEST_FILE_EXTS = /\.(test|spec)\.(m?js|cjs|ts|tsx|jsx)$/i;
 
 function parseHtmlDocument(file: string, content: string): any {
   const normalized = file.endsWith('.astro')
@@ -276,6 +283,7 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
 export function populateJsProject(project: Project, files: string[]): void {
   for (const file of files) {
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
+    if (TEST_FILE_EXTS.test(file)) continue;
     const content = fs.readFileSync(file, 'utf8');
 
     if (JS_EXTS.test(file) && !HTML_EXTS.test(file)) {

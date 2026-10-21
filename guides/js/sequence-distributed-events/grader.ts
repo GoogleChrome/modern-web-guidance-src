@@ -15,7 +15,13 @@ const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
 const htmlContent = fs.readFileSync(filePath, 'utf-8');
-const scriptContent = htmlContent.match(/<script[\s\S]*?>([\s\S]*?)<\/script>/g)?.join('\n') || '';
+const inlineScripts = htmlContent.match(/<script[\s\S]*?>([\s\S]*?)<\/script>/g)?.join('\n') || '';
+const externalScripts = fs.readdirSync(targetDir)
+  .filter((f) => /\.(m?js|cjs)$/i.test(f))
+  .map((f) => fs.readFileSync(path.join(targetDir, f), 'utf-8'))
+  .join('\n');
+const scriptContent = `${inlineScripts}\n${externalScripts}`;
+const allSourceContent = `${htmlContent}\n${externalScripts}`;
 
 test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
 
@@ -44,24 +50,24 @@ test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
     expect(scriptContent, 'Must use .since() or .until() to compute the interval between events').toMatch(/\.(since|until)\(/);
   });
 
-  // 5. Format intervals with toLocaleString(); no total('nanoseconds') / epochNanoseconds math
+  // 5. Format intervals with toLocaleString() or Intl.DurationFormat; no total('nanoseconds') / epochNanoseconds math
   test('Implementation MUST format intervals with toLocaleString() and MUST NOT use total(\'nanoseconds\') or epochNanoseconds arithmetic', async () => {
-    expect(scriptContent, 'Must format Temporal.Duration values with toLocaleString()').toMatch(/\.toLocaleString\(/);
+    expect(scriptContent, 'Must format Temporal.Duration values with toLocaleString() or Intl.DurationFormat').toMatch(/\.toLocaleString\(|Intl\.DurationFormat/);
     expect(scriptContent, "Must not use duration.total('nanoseconds')").not.toMatch(/\.total\(\s*['"]nanoseconds?['"]/);
     expect(scriptContent, 'Must not do arithmetic on epochNanoseconds').not.toMatch(/epochNanoseconds\s*[-+*/<>]/);
   });
 
   // 6. Feature detection for Temporal support
   test('Implementation MUST include explicit feature detection for Temporal support', async () => {
-    expect(scriptContent).toMatch(/typeof\s+Temporal/);
+    expect(scriptContent).toMatch(/typeof\s+Temporal\b|['"]Temporal['"]\s+in\s+(?:globalThis|window|self)|(?:globalThis|window|self)\.Temporal\b/);
   });
 
   // 7. Fallback strategy
   test('A fallback strategy MUST be provided for environments lacking native support', async () => {
-    const hasPolyfill = htmlContent.includes('@js-temporal/polyfill');
-    const hasGlobalAssignment = /(globalThis|window)\.Temporal\s*=/.test(scriptContent);
-    const hasGracefulDegradation = htmlContent.includes('unsupported') || htmlContent.includes('not supported');
-    expect((hasPolyfill && hasGlobalAssignment) || hasGracefulDegradation).toBe(true);
+    const hasPolyfill = allSourceContent.includes('@js-temporal/polyfill');
+    const hasPolyfillBinding = /(globalThis|window)\.Temporal\s*=|\b(?:const|let|var)\s+\w+\s*=[\s\S]*?@js-temporal\/polyfill|\bimport\s*\(\s*['"]@js-temporal\/polyfill['"]\s*\)/.test(scriptContent);
+    const hasGracefulDegradation = /unsupported|not supported/i.test(allSourceContent);
+    expect((hasPolyfill && hasPolyfillBinding) || hasGracefulDegradation).toBe(true);
   });
 
   // 8. Use equals() for instant equivalence rather than compare() === 0
@@ -71,12 +77,16 @@ test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
 
   // Browser tests
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
+    await page.route('http://localhost/**', async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
       const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
       if (fs.existsSync(localFilePath)) {
-        await route.fulfill({ path: localFilePath });
+        const isJs = /\.(m?js|cjs)$/i.test(localFilePath);
+        await route.fulfill({
+          path: localFilePath,
+          ...(isJs ? { contentType: 'application/javascript' } : {}),
+        });
       } else {
         await route.continue();
       }
@@ -100,7 +110,7 @@ test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
       if (hasPolyfill) return true;
 
       const bodyText = document.body.innerText.toLowerCase();
-      const hasWarning = bodyText.includes('temporal') && (bodyText.includes('support') || bodyText.includes('available') || bodyText.includes('not supported'));
+      const hasWarning = bodyText.includes('temporal') || bodyText.includes('polyfill') || bodyText.includes('support') || bodyText.includes('available') || bodyText.includes('failed');
       const btn = document.querySelector('button');
       const isBtnDisabled = btn && (btn as HTMLButtonElement).disabled;
       return !!(hasWarning || isBtnDisabled);

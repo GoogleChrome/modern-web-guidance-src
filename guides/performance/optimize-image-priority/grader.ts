@@ -34,11 +34,11 @@ test.describe(`Optimize image priority Expectations: ${demoName}`, () => {
   // Browser assertions
 
   test(`The <img> element for 'hero-lcp.jpg' has the fetchpriority="high" attribute`, async ({ page }) => {
-    await expect(page.locator('img[src*="hero-lcp.jpg"]')).toHaveAttribute('fetchpriority', 'high');
+    await expect(page.locator('img[src*="hero-lcp.jpg"]').first()).toHaveAttribute('fetchpriority', 'high');
   });
 
   test(`The <img> element for 'hero-lcp.jpg' does NOT have the loading="lazy" attribute`, async ({ page }) => {
-    await expect(page.locator('img[src*="hero-lcp.jpg"]')).not.toHaveAttribute('loading', 'lazy');
+    await expect(page.locator('img[src*="hero-lcp.jpg"]').first()).not.toHaveAttribute('loading', 'lazy');
   });
 
   test(`No more than two <img> elements on the page have the fetchpriority="high" attribute`, async ({ page }) => {

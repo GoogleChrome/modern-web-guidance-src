@@ -167,23 +167,31 @@ const isComplete = value < 100;
     }
   });
 
-  test('getJsProject populates ts-morph Project from .ts and <script> tags', () => {
+  test('getJsProject populates ts-morph Project from .ts, .mjs, and <script> tags', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-js-test-'));
     try {
       const tsFile = path.join(tempDir, 'logic.ts');
       fs.writeFileSync(tsFile, 'export function calculateTotal(a: number, b: number): number { return a + b; }', 'utf8');
 
+      const mjsFile = path.join(tempDir, 'server.mjs');
+      fs.writeFileSync(mjsFile, 'export function setSecurityHeaders(res) { res.setHeader("Permissions-Policy", "camera=()"); }', 'utf8');
+
+      const testMjsFile = path.join(tempDir, 'hydration.test.mjs');
+      fs.writeFileSync(testMjsFile, 'function testHarnessOnly() { return false; }', 'utf8');
+
       const htmlFile = path.join(tempDir, 'index.html');
       fs.writeFileSync(htmlFile, '<script>function inlineHelper() { return 42; }</script>', 'utf8');
 
-      const project = getJsProject([tsFile, htmlFile]);
+      const project = getJsProject([tsFile, mjsFile, testMjsFile, htmlFile]);
       const sourceFiles = project.getSourceFiles();
-      assert.ok(sourceFiles.length >= 2);
+      assert.strictEqual(sourceFiles.length, 3);
 
       const functionDecls = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration));
       const funcNames = functionDecls.map(fn => fn.getName());
       assert.ok(funcNames.includes('calculateTotal'));
+      assert.ok(funcNames.includes('setSecurityHeaders'));
       assert.ok(funcNames.includes('inlineHelper'));
+      assert.ok(!funcNames.includes('testHarnessOnly'));
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }

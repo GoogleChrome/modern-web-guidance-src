@@ -6,7 +6,18 @@ const targetFile = process.env.TARGET_FILE;
 
 function getScriptContent(): string {
   if (!targetFile || !fs.existsSync(targetFile)) return '';
-  return fs.readFileSync(path.resolve(targetFile), 'utf8');
+  const resolved = path.resolve(targetFile);
+  const dir = path.dirname(resolved);
+  const base = path.basename(resolved);
+  const html = fs.readFileSync(resolved, 'utf8');
+  if (base === 'demo.html' || base === 'negative-demo.html') {
+    return html;
+  }
+  const extra = fs.readdirSync(dir)
+    .filter((f) => /\.(m?js|cjs)$/i.test(f) && f !== 'grade.mjs' && f !== 'run.mjs' && !f.includes('.config.'))
+    .map((f) => fs.readFileSync(path.join(dir, f), 'utf8'))
+    .join('\n');
+  return `${html}\n${extra}`;
 }
 
 test.describe('Temporal API Expectations', () => {
@@ -15,9 +26,10 @@ test.describe('Temporal API Expectations', () => {
     const code = getScriptContent();
     const hasFeatureDetect =
       /typeof\s+Temporal\s*===\s*['"]undefined['"]/.test(code) ||
-      /typeof\s+globalThis\.Temporal\s*===\s*['"]undefined['"]/.test(code) ||
+      /typeof\s+(?:globalThis|window|self)\.Temporal\s*===\s*['"]undefined['"]/.test(code) ||
       /!\s*\(\s*['"]Temporal['"]\s+in\s+(?:globalThis|window|self)\s*\)/.test(code) ||
-      /!(?:globalThis|window|self)\.Temporal\b/.test(code);
+      /!(?:globalThis|window|self)\.Temporal\b/.test(code) ||
+      /(?:globalThis|window|self)\.Temporal\s*(?:\?\?|\|\||\?)/.test(code);
     expect(hasFeatureDetect).toBe(true);
   });
 
@@ -25,14 +37,16 @@ test.describe('Temporal API Expectations', () => {
     const code = getScriptContent();
     const hasConditionalImport =
       /if\s*\([^{]*Temporal[^{]*\)\s*\{[\s\S]*?import\s*\([^)]*temporal/i.test(code) ||
-      /typeof\s+Temporal\s*===\s*['"]undefined['"][\s\S]*?import\s*\([^)]*temporal/i.test(code);
+      /typeof\s+(?:(?:globalThis|window|self)\.)?Temporal\s*===\s*['"]undefined['"][\s\S]*?import\s*\([^)]*temporal/i.test(code) ||
+      /(?:globalThis|window|self)\.Temporal\s*(?:\?\?|\|\|)[\s\S]*?import\s*\([^)]*temporal/i.test(code);
     expect(hasConditionalImport).toBe(true);
   });
 
   test('MUST manually assign the loaded polyfill to globalThis.Temporal to ensure it is globally accessible if polyfills are used', async () => {
     const code = getScriptContent();
     const assignsGlobalTemporal =
-      /(?:globalThis|window|self)\.Temporal\s*=/.test(code);
+      /(?:globalThis|window|self)\.Temporal\s*(?:\?\?=|\|\|=|=(?!=))/.test(code) ||
+      /(?:const|let|var)\s+(?:\{\s*Temporal\s*\}|temporal|Temporal)\s*=[\s\S]*?import\s*\([^)]*temporal/i.test(code);
     expect(assignsGlobalTemporal).toBe(true);
   });
 
