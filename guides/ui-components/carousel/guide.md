@@ -37,8 +37,10 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 
 ## Related patterns
 
-- For styling the active slide itself, see {{ GUIDE_REF("carousel-snap-highlights") }}. For a continuous progress indicator instead of discrete markers, see {{ GUIDE_REF("scroll-progress-indicator") }}.
-- For scroll-driven slide effects, see {{ GUIDE_REF("carousel-slide-effects") }}. For synchronizing other UI with snap events, see {{ GUIDE_REF("scroll-snap-state-sync") }}.
+- For styling the active slide itself, see {{ GUIDE_REF("carousel-snap-highlights") }}.
+- For a continuous progress indicator instead of discrete markers, see {{ GUIDE_REF("scroll-progress-indicator") }}.
+- For scroll-driven slide effects, see {{ GUIDE_REF("carousel-slide-effects") }}.
+- For synchronizing other UI with snap events, see {{ GUIDE_REF("scroll-snap-state-sync") }}.
 
 ## Example: horizontal carousel
 
