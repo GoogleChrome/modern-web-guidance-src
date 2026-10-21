@@ -23,7 +23,7 @@ Users come for the content. Keep the page frame small, move it out of the way wh
 
 ### Keep persistent bars compact
 
-Keep every fixed or sticky bar under 12% of the viewport height. Use a single row, and don't stack several sticky bars (announcement, header, and sub-navigation). Move extra items into a popover menu or drawer instead (see below). Optional: blend the browser toolbar with your page; see {{ GUIDE_REF("browser-ui-theming") }}.
+Keep every fixed or sticky bar under 12% of the viewport height. Use a single row, and don't stack several sticky bars (announcement, header, and sub-navigation). Move extra items into a popover menu or drawer instead (see below).
 
 ### Hide persistent bars while the user scrolls down
 
@@ -108,8 +108,9 @@ if (!CSS.supports('container-type', 'scroll-state')) {
   const bar = document.querySelector('.top-bar');
   let lastY = scrollY;
   addEventListener('scroll', () => {
-    // Clamp so the iOS bounce at the bottom of the page doesn't count as scrolling up.
-    const y = Math.min(scrollY, document.documentElement.scrollHeight - innerHeight);
+    // Clamp so rubber-band overscroll at the top or bottom doesn't flip the scroll direction.
+    const y = Math.max(0, Math.min(scrollY, document.documentElement.scrollHeight - innerHeight));
+    if (y === lastY) return;
     // Hide only after scrolling down past the bar's own height, so it doesn't flicker near the top.
     bar?.classList.toggle('is-hidden', y > lastY && y > bar.offsetHeight);
     lastY = y;
