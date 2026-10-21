@@ -131,7 +131,6 @@ pnpm link --global && gd setup-completion
 
 | Command | What it does |
 |---|---|
-| `gd audit` | Prints a matrix of all guides across maturity stages. |
 | `gd dev <dir>` | The main pipeline command. Takes a guide from "has guide.md + expectations.md" through target generation, calibration, agent tests, and report creation (`--targets <apps>`). |
 | `gd dev <dir> --test-grader` | Run calibration check across target apps (golden patches should pass 100%, zero-passrate should fail 100%). |
 | `gd pr <dir>` | Opens a GitHub Pull Request with auto-labeled classification and `report.md` body. |
@@ -251,8 +250,6 @@ An evolving list of guides organized across multiple categories.
 | **Stage 2** | Needs guidance (stub) | 4 | YAML frontmatter only, no guide content yet |
 | **Stage 1** | Needs use cases (incomplete) | 0 | Missing guide.md or demo.html |
 
-See `gd audit` for the full list of eval-ready guides covering performance, css-layout, overlays, accessibility, and security features.
-
 ### Open PRs (representative)
 
 - **#217** (bramus): Scroll-driven animations use cases — SME contribution, multiple use cases
@@ -275,7 +272,6 @@ To prevent SMEs from investing time writing full guides for use cases that might
 - Writes `guide.md` with **only YAML frontmatter** (name, description, web-feature-ids) — this is a stub
 - Creates a basic `demo.html` showing the concept
 - Opens a PR for review — the team validates that the use cases are well-chosen, distinct, and don't overlap with existing guides
-- `gd audit` shows these as "stub" status
 
 **Checkpoint 2 — Implementation and evaluation:**
 - After use cases are approved, SME fleshes out `guide.md` with full content (DO/DO NOT directives, code snippets, fallback strategies)
@@ -283,7 +279,6 @@ To prevent SMEs from investing time writing full guides for use cases that might
 - Completes `demo.html` as a gold-standard implementation
 - Runs `gd dev <dir>` to auto-generate negative-demo, grader, calibrate, and run agent tests
 - Opens a follow-up PR with all artifacts
-- `gd audit` should show these as "eval-ready" after the pipeline succeeds
 
 ### Writing guide.md
 
