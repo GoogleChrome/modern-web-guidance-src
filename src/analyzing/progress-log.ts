@@ -396,7 +396,7 @@ export function buildTable2CalibrationRowsSync(
           judgeAc1: 0.932,
           canaryTnr: 1.0,
           notes:
-            '[ADMITTED per D-045] O9 7-verdict taxonomy (legit-modernize-target, not-old-pattern, fallback-or-guard, loses-behavior, no-payoff, guide-wrong, unsure) + aligned legacy-pattern-specs.json across all 37 active guides: Cohort B scored agreement 31/33 (93.9%), binary agreement 33/35 (94.3%), nominal α=0.727 (binary α=0.802), nominal AC₁=0.932 (total AC₁=0.873), stability=97.1% (34/35), canaryTNR=100.0% (2/2 human + 3/3 synthetic); 151 decontaminated cards after D-043 quarantine',
+            '[not admitted per D-046: in-sample dev set tuned against its 18 disagreements; 0 human negatives on Cohort B; D-039 pre-registered test not passed] O9 7-verdict taxonomy (legit-modernize-target, not-old-pattern, fallback-or-guard, loses-behavior, no-payoff, guide-wrong, unsure) + aligned legacy-pattern-specs.json across all 37 active guides: Cohort B in-sample dev set scored agreement 31/33 (0 human negatives), binary agreement 33/35 (94.3%), nominal α=0.727 (binary α=0.802), nominal AC₁=0.932 (total AC₁=0.873), stability=97.1% (34/35), canaryTNR=100.0% (2/2 human + 3/3 synthetic); 151 decontaminated cards after D-043 quarantine',
         });
       }
     }
@@ -841,7 +841,7 @@ export function formatProgressLogMarkdown(
     } else if (isBatch4Suspended) {
       lines.push('');
       lines.push(
-        '> **Notice (2026-10-21 / D-042 / D-045):** Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`) (`TERMINAL_QUALIFIED_GUIDE_IDS = []`). `Wave 3C` `held-out` scorecard evaluation across all `37` active guides (`49` rules) with the admitted 7-verdict Judge (`gemini-3.8-flash:detective-v6-spec22-dab7de7f`, `D-045`) is launching next.',
+        '> **Notice (2026-10-21 / D-042 / D-046):** Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`) (`TERMINAL_QUALIFIED_GUIDE_IDS = []`). Under `D-046`, the Eval Judge (`admitted: false`) ranks and triages candidate rules but does not gate qualification. Rules qualify for default shipping directly from human blind spot-checks (35 cards per rule on unseen `held-out`, Wilson 95% lower bound >= 0.90). New rule authoring is paused until 3 rules qualify via 35-card human spot-checks.',
       );
       lines.push('');
     }

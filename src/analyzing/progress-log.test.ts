@@ -473,7 +473,7 @@ describe('file operations and hashes', () => {
       );
     });
 
-    it('buildTable2CalibrationRowsSync includes admitted 7-verdict judge row for b23a00ed9 (D-045)', () => {
+    it('buildTable2CalibrationRowsSync includes 7-verdict judge row for b23a00ed9 marked not admitted per D-046', () => {
       const rows = buildTable2CalibrationRowsSync();
       const o9Row = rows.find((row) => row.commit === 'b23a00ed9');
       assert.ok(o9Row, 'b23a00ed9 row must be present in Table 2');
@@ -483,7 +483,11 @@ describe('file operations and hashes', () => {
       assert.strictEqual(o9Row.judgeAlpha, 0.727);
       assert.strictEqual(o9Row.judgeAc1, 0.932);
       assert.strictEqual(o9Row.canaryTnr, 1.0);
-      assert.ok(o9Row.notes?.includes('[ADMITTED per D-045]'));
+      assert.ok(
+        o9Row.notes?.includes(
+          '[not admitted per D-046: in-sample dev set tuned against its 18 disagreements; 0 human negatives on Cohort B; D-039 pre-registered test not passed]',
+        ),
+      );
     });
 
     it('renders Table 1 full 171-guide O7 catalog screening summary', () => {
@@ -495,13 +499,13 @@ describe('file operations and hashes', () => {
       assert.ok(markdown.includes('37 active guides (49 rules, including 10 single-purpose `package.json` + whole-file `vendored-library` rules) wired in `ALL_RULES`'));
     });
 
-    it('annotates Current Verified Benchmark when 5653484 is current benchmark (D-042 / D-045)', () => {
+    it('annotates Current Verified Benchmark when 5653484 is current benchmark (D-042 / D-046)', () => {
       const funnelRows = buildTable3FunnelRowsSync();
       const markdown = formatProgressLogMarkdown(funnelRows);
-      assert.ok(markdown.includes('> **Notice (2026-10-21 / D-042 / D-045):**'));
+      assert.ok(markdown.includes('> **Notice (2026-10-21 / D-042 / D-046):**'));
       assert.ok(markdown.includes('Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`)'));
       assert.ok(markdown.includes('TERMINAL_QUALIFIED_GUIDE_IDS = []'));
-      assert.ok(markdown.includes('Wave 3C'));
+      assert.ok(markdown.includes('35-card human spot-checks'));
     });
 
     it('appends and updates judge calibration row via appendJudgeCalibrationToProgressLog', async () => {

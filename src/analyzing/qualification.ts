@@ -31,6 +31,7 @@ export interface JudgeMetricsInput {
   readonly threePassStability: number;
   readonly canaryTnr: number;
   readonly calibrationCount?: number;
+  readonly isOutOfSampleBlindTestPassed?: boolean;
 }
 
 export interface JudgeAdmissionEvaluation {
@@ -39,12 +40,13 @@ export interface JudgeAdmissionEvaluation {
 }
 
 /**
- * Evaluates whether an Eval Judge meets admission criteria per D-031 and D-036.
+ * Evaluates whether an Eval Judge meets admission criteria per D-031, D-036, D-039, and D-046.
  *
  * Admission criteria:
  * - Gwet's AC1 >= 0.70 OR Krippendorff's alpha >= 0.70 (accounting for prevalence paradox)
  * - 3-Pass Stability >= 0.95 (95.0%)
  * - Canary TNR >= 1.0 (100.0%).
+ * - Pre-registered out-of-sample blind specificity test with >= 15 human negatives (D-039, D-046).
  *
  * Note: Canary TNR = 100.0% (2/2) is always reported with its exact sample size (2/2) per D-036.
  */
@@ -74,6 +76,11 @@ export function evaluateJudgeAdmission(
       `Canary TNR (${(metrics.canaryTnr * 100).toFixed(1)}%) below 100.0% bar`,
     );
   }
+  if (metrics.isOutOfSampleBlindTestPassed === false) {
+    reasons.push(
+      'Out-of-sample blind specificity test with >= 15 human negatives (D-039) has not passed (0 human negatives on Cohort B; in-sample dev set per D-046)',
+    );
+  }
   return {
     admitted: reasons.length === 0,
     reasons,
@@ -88,31 +95,38 @@ export interface QualifiedJudgeMetadata {
   readonly threePassStability: number;
   readonly canaryTnr: number;
   readonly calibrationCount: number;
+  readonly isOutOfSampleBlindTestPassed?: boolean;
   readonly notes: string;
 }
 
 /**
- * Metadata for the admitted 7-verdict Eval Judge (`gemini-3.8-flash:detective-v6-spec22-dab7de7f`).
- * Admitted (`admitted: true`) under D-045 (O9) following re-calibration on decontaminated Cohort B
- * (`analyzer-internal/findings/2026-10-21-o9-judge-calibration-7verdict.json`):
+ * Metadata for the 7-verdict Eval Judge (`gemini-3.8-flash:detective-v6-spec22-dab7de7f`).
+ * Not admitted (`admitted: false`) under D-046 because Cohort B (35 cards) was an in-sample dev set
+ * tuned against its 18 disagreements (studied disagreements, rewrote taxonomy and specs, re-ran on same cards)
+ * and D-039's pre-registered blind specificity test has not passed (0 human negatives on Cohort B).
+ * Per D-046, rules qualify for default shipping directly from human blind spot-checks (35 cards per rule,
+ * Wilson 95% LB >= 0.90); the Eval Judge ranks and triages candidate rules but does not gate qualification.
+ *
+ * Re-calibration metrics on Cohort B (findings/2026-10-21-o9-judge-calibration-7verdict.json):
  * - Scored nominal Gwet's AC1 = 0.932 >= 0.70 (total Cohort B AC1 = 0.873)
  * - Scored nominal Krippendorff's alpha = 0.727 >= 0.70 (binary alpha = 0.802)
  * - 3-Pass Stability = 0.971 (34/35) >= 0.95
  * - Canary TNR = 1.0 (2/2 human + 3/3 synthetic = 100.0%)
  * - Calibration count = 35 active-rule Cohort B cards (out of 151 decontaminated cards after D-043 quarantine)
  *
- * TERMINAL_QUALIFIED_GUIDE_IDS remains empty ([]) pending post-O9 held-out scorecard run and R35 20-card blind spot-checks complete.
+ * TERMINAL_QUALIFIED_GUIDE_IDS remains empty ([]) pending 35-card human blind spot-checks per D-046.
  */
 export const QUALIFIED_JUDGE_METADATA: QualifiedJudgeMetadata = {
   judgeVersion: 'gemini-3.8-flash:detective-v6-spec22-dab7de7f',
-  admitted: true,
+  admitted: false,
   gwetsAC1: 0.932,
   krippendorffAlpha: 0.727,
   threePassStability: 0.971,
   canaryTnr: 1.0,
   calibrationCount: 35,
+  isOutOfSampleBlindTestPassed: false,
   notes:
-    'Admitted under D-045 (O9): 7-verdict Eval Judge re-calibration (findings/2026-10-21-o9-judge-calibration-7verdict.json) cleared all admission bars on decontaminated Cohort B (scored nominal AC1 = 0.932 >= 0.70, total nominal AC1 = 0.873, scored nominal alpha = 0.727 >= 0.70, binary alpha = 0.802, 3-pass stability = 97.1% [34/35] >= 95.0%, Canary TNR = 100.0% [2/2 human + 3/3 synthetic]). TERMINAL_QUALIFIED_GUIDE_IDS remains empty ([]) pending post-O9 held-out scorecard run and R35 20-card blind spot-checks complete.',
+    '[in-sample dev set: not admitted per D-046] Cohort B (35 cards) was tuned against (studied its 18 disagreements, rewrote taxonomy and specs, re-ran on the same cards), and D-039\'s pre-registered blind specificity test has not passed (0 human negatives on Cohort B). Per D-046, rules qualify for default shipping from human blind spot-checks (35 cards per rule, Wilson 95% LB >= 0.90); the Eval Judge ranks and triages candidate rules but does not gate qualification.',
 };
 
 export interface QualifiedRuleEntry {

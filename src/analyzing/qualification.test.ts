@@ -16,10 +16,10 @@ import {
   TERMINAL_QUALIFIED_GUIDE_IDS,
 } from './qualification.ts';
 
-describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045)', () => {
-  it('maintains empty default shipping guide lists while rules await post-O9 held-out scorecard and R35 validation', () => {
-    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, true);
-    assert.strictEqual(evaluateJudgeAdmission(QUALIFIED_JUDGE_METADATA).admitted, true);
+describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045, D-046)', () => {
+  it('maintains empty default shipping guide lists while rules await human blind spot-checks per D-046', () => {
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, false);
+    assert.strictEqual(evaluateJudgeAdmission(QUALIFIED_JUDGE_METADATA).admitted, false);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, []);
     assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, []);
     assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, []);
@@ -219,8 +219,8 @@ describe('Judge Admission (D-031, D-036, D-041, D-042)', () => {
     assert.strictEqual(accepted100.admitted, true);
   });
 
-  it('QUALIFIED_JUDGE_METADATA reflects D-045 admission under O9 7-verdict calibration metrics', () => {
-    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, true);
+  it('QUALIFIED_JUDGE_METADATA reflects D-046 de-admission under O9 7-verdict calibration metrics', () => {
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, false);
     assert.strictEqual(
       QUALIFIED_JUDGE_METADATA.judgeVersion,
       'gemini-3.8-flash:detective-v6-spec22-dab7de7f',
@@ -230,12 +230,23 @@ describe('Judge Admission (D-031, D-036, D-041, D-042)', () => {
     assert.strictEqual(QUALIFIED_JUDGE_METADATA.threePassStability, 0.971);
     assert.strictEqual(QUALIFIED_JUDGE_METADATA.canaryTnr, 1.0);
     assert.strictEqual(QUALIFIED_JUDGE_METADATA.calibrationCount, 35);
-    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-045/);
-    assert.match(QUALIFIED_JUDGE_METADATA.notes, /O9/);
-    assert.match(QUALIFIED_JUDGE_METADATA.notes, /0\.932/);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-046/);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /in-sample dev set/);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-039/);
     const evalResult = evaluateJudgeAdmission(QUALIFIED_JUDGE_METADATA);
-    assert.strictEqual(evalResult.admitted, true);
-    assert.deepStrictEqual(evalResult.reasons, []);
+    assert.strictEqual(evalResult.admitted, false);
+    assert.ok(
+      evalResult.reasons.some((r) => r.includes('Out-of-sample blind specificity test')),
+    );
+  });
+
+  it('admits judge when metrics pass and out-of-sample blind test passes (D-039, D-046)', () => {
+    const passed = evaluateJudgeAdmission({
+      ...QUALIFIED_JUDGE_METADATA,
+      isOutOfSampleBlindTestPassed: true,
+    });
+    assert.strictEqual(passed.admitted, true);
+    assert.deepStrictEqual(passed.reasons, []);
   });
 });
 

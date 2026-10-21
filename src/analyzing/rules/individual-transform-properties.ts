@@ -433,17 +433,9 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
       }
     }
 
-    // e) Independent composition check on normal style rules:
-    // 1. Combines >= 2 distinct transform groups in valid translate -> rotate -> scale order.
-    const distinctGroups = new Set(parsedCalls.map((c) => c.group));
-    if (distinctGroups.size >= 2) {
-      return {
-        message: `CSS rule \`${styleRule.selectorText}\` combines multiple transform functions (\`transform: ${transformVal}\`) in canonical order; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
-      };
-    }
-
-    // 2. Single-group transform paired with another rule sharing the same base selector
-    // that also sets transform, translate, rotate, scale, or animates a transform @keyframes.
+    // e) State and keyframe composition check on normal style rules:
+    // Only match when composed across paired rules sharing the same base selector
+    // or when paired with an own transform keyframe animation.
     for (const other of analysis.normalRules) {
       if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
         continue;
@@ -471,6 +463,175 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
     }
 
     return null;
+  },
+};
+
+const STATE_PSEUDO_TEST_RE =
+  /:(?:hover|focus-visible|focus-within|focus|active|visited|checked|disabled|target|open|popover-open|modal)\b/i;
+
+export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher = {
+  kind: 'css',
+  fastTokens: ['transform'],
+  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
+    if (
+      ctx.stylesheetHasProperty('scale') ||
+      ctx.stylesheetHasProperty('rotate') ||
+      ctx.stylesheetHasProperty('translate')
+    ) {
+      return null;
+    }
+
+    const transformVal = styleRule.getPropertyValue('transform');
+    if (!transformVal) return null;
+
+    const parsedCalls = parseValidTransformSequence(transformVal);
+    if (!parsedCalls) return null;
+
+    if (isKeyframeAtRule(styleRule.parentAtRule) || isKeyframeStepSelector(styleRule.selectorText)) {
+      return null;
+    }
+
+    const transVal =
+      styleRule.getPropertyValue('transition') ?? styleRule.getPropertyValue('transition-property');
+    if (transVal && /\btransform\b/i.test(transVal)) {
+      return null;
+    }
+
+    const distinctGroups = new Set(parsedCalls.map((c) => c.group));
+    if (distinctGroups.size < 2) {
+      return null;
+    }
+
+    const analysis = analyzeStylesheet(ctx);
+    const currentBaseSelectors = extractBaseSelectors(styleRule.selectorText);
+
+    for (const other of analysis.normalRules) {
+      if (
+        other.transitionsTransform &&
+        sharesBaseSelector(currentBaseSelectors, other.baseSelectors)
+      ) {
+        return null;
+      }
+      if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
+        continue;
+      }
+      if (sharesBaseSelector(currentBaseSelectors, other.baseSelectors)) {
+        return null;
+      }
+    }
+
+    const ownAnimation =
+      styleRule.getPropertyValue('animation') ?? styleRule.getPropertyValue('animation-name');
+    if (referencesTransformKeyframes(ownAnimation, analysis.keyframeNamesWithTransform)) {
+      return null;
+    }
+
+    return {
+      message: `CSS rule \`${styleRule.selectorText}\` combines multiple transform functions (\`transform: ${transformVal}\`) in canonical order without paired state selectors; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
+    };
+  },
+};
+
+export const individualTransformPropertiesStandaloneChainRule: AnalyzerRule = {
+  id: 'individual-transform-properties/standalone-chain',
+  guideId: 'individual-transform-properties',
+  guideHash: '42af807594e8',
+  summary:
+    'Detect standalone CSS rules combining >= 2 transform functions in canonical order when no paired state selectors or keyframes exist.',
+  matcher: individualTransformPropertiesStandaloneChainMatcher,
+  phase2Rubric: {
+    keepWhen: [
+      'A standalone CSS rule combines multiple `translate*()`, `rotate*()`, and/or `scale*()` functions in canonical `translate -> rotate -> scale` order with no paired state selectors or keyframes.',
+    ],
+    dropWhen: [
+      'The rule or a paired base selector declares `transition: transform`.',
+      'The rule shares a base selector with a `:hover`/`:focus` or other state rule that also sets transforms.',
+    ],
+  },
+};
+
+export const individualTransformPropertiesSingleFunctionStateMatcher: CssRuleMatcher = {
+  kind: 'css',
+  fastTokens: ['transform'],
+  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
+    if (
+      ctx.stylesheetHasProperty('scale') ||
+      ctx.stylesheetHasProperty('rotate') ||
+      ctx.stylesheetHasProperty('translate')
+    ) {
+      return null;
+    }
+
+    const transformVal = styleRule.getPropertyValue('transform');
+    if (!transformVal) return null;
+
+    const parsedCalls = parseValidTransformSequence(transformVal);
+    if (!parsedCalls) return null;
+
+    if (isKeyframeAtRule(styleRule.parentAtRule) || isKeyframeStepSelector(styleRule.selectorText)) {
+      return null;
+    }
+
+    const transVal =
+      styleRule.getPropertyValue('transition') ?? styleRule.getPropertyValue('transition-property');
+    if (transVal && /\btransform\b/i.test(transVal)) {
+      return null;
+    }
+
+    if (!STATE_PSEUDO_TEST_RE.test(styleRule.selectorText)) {
+      return null;
+    }
+
+    const distinctGroups = new Set(parsedCalls.map((c) => c.group));
+    if (distinctGroups.size !== 1) {
+      return null;
+    }
+
+    const analysis = analyzeStylesheet(ctx);
+    const currentBaseSelectors = extractBaseSelectors(styleRule.selectorText);
+
+    for (const other of analysis.normalRules) {
+      if (
+        other.transitionsTransform &&
+        sharesBaseSelector(currentBaseSelectors, other.baseSelectors)
+      ) {
+        return null;
+      }
+      if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
+        continue;
+      }
+      if (sharesBaseSelector(currentBaseSelectors, other.baseSelectors)) {
+        return null;
+      }
+    }
+
+    const ownAnimation =
+      styleRule.getPropertyValue('animation') ?? styleRule.getPropertyValue('animation-name');
+    if (referencesTransformKeyframes(ownAnimation, analysis.keyframeNamesWithTransform)) {
+      return null;
+    }
+
+    return {
+      message: `CSS rule \`${styleRule.selectorText}\` sets an isolated single-function \`transform: ${transformVal}\` on a state selector; consider using the individual property directly.`,
+    };
+  },
+};
+
+export const individualTransformPropertiesSingleFunctionStateRule: AnalyzerRule = {
+  id: 'individual-transform-properties/single-function-state',
+  guideId: 'individual-transform-properties',
+  guideHash: '42af807594e8',
+  summary:
+    'Detect isolated single-function :hover/:focus/:active transform state rules when no paired rule shares the base selector.',
+  matcher: individualTransformPropertiesSingleFunctionStateMatcher,
+  phase2Rubric: {
+    keepWhen: [
+      'A CSS state rule (:hover, :focus, :active) sets a single-function transform when no base rule or keyframe shares the base selector.',
+    ],
+    dropWhen: [
+      'A paired base rule or keyframe also sets transforms on the same base selector.',
+      'The rule or a paired base selector declares `transition: transform`.',
+    ],
   },
 };
 

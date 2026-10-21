@@ -5,9 +5,19 @@ import type { CssRuleMatcher } from '../schema.ts';
 import {
   individualTransformPropertiesMatcher,
   individualTransformPropertiesRule,
+  individualTransformPropertiesSingleFunctionStateMatcher,
+  individualTransformPropertiesSingleFunctionStateRule,
+  individualTransformPropertiesStandaloneChainMatcher,
+  individualTransformPropertiesStandaloneChainRule,
 } from './individual-transform-properties.ts';
 
 const rules: readonly CssRuleMatcher[] = [individualTransformPropertiesMatcher];
+const standaloneChainRules: readonly CssRuleMatcher[] = [
+  individualTransformPropertiesStandaloneChainMatcher,
+];
+const singleFunctionStateRules: readonly CssRuleMatcher[] = [
+  individualTransformPropertiesSingleFunctionStateMatcher,
+];
 
 describe('individualTransformPropertiesRule', () => {
   it('has valid rule metadata and non-empty phase2Rubric', () => {
@@ -15,50 +25,57 @@ describe('individualTransformPropertiesRule', () => {
     assert.equal(individualTransformPropertiesRule.guideId, 'individual-transform-properties');
     assert.ok(individualTransformPropertiesRule.phase2Rubric.keepWhen.length > 0);
     assert.ok(individualTransformPropertiesRule.phase2Rubric.dropWhen.length > 0);
+
+    assert.equal(
+      individualTransformPropertiesStandaloneChainRule.id,
+      'individual-transform-properties/standalone-chain',
+    );
+    assert.equal(
+      individualTransformPropertiesSingleFunctionStateRule.id,
+      'individual-transform-properties/single-function-state',
+    );
   });
 
-  it('flags multi-function transform with translateY and scale', () => {
-    const css = `
-      .card:hover {
-        transform: translateY(-4px) scale(1.02);
-      }
-    `;
-    const matches = scanCss('src/card.css', css, rules);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
-  });
-
-  it('flags multi-function transform with translate, rotate, and scale', () => {
+  it('ignores standalone multi-function transform in default rule (Pattern C), flagged by opt-in standalone rule', () => {
     const css = `
       .icon {
         transform: translate(10px, 20px) rotate(45deg) scale(0.9);
       }
     `;
-    const matches = scanCss('src/icon.css', css, rules);
-    assert.equal(matches.length, 1);
+    const defaultMatches = scanCss('src/icon.css', css, rules);
+    assert.equal(defaultMatches.length, 0);
+
+    const optInMatches = scanCss('src/icon.css', css, standaloneChainRules);
+    assert.equal(optInMatches.length, 1);
+    assert.equal(optInMatches[0]?.line, 2);
   });
 
-  it('ignores single-function transform (noisy trivial swap)', () => {
+  it('ignores isolated :hover multi-function transform in default rule (Pattern C), flagged by opt-in standalone rule', () => {
     const css = `
-      .box {
-        transform: translateX(10px);
-      }
-      .spinner {
-        transform: rotate(180deg);
+      .card:hover {
+        transform: translateY(-4px) scale(1.02);
       }
     `;
-    const matches = scanCss('src/box.css', css, rules);
-    assert.equal(matches.length, 0);
+    const defaultMatches = scanCss('src/card.css', css, rules);
+    assert.equal(defaultMatches.length, 0);
+
+    const optInMatches = scanCss('src/card.css', css, standaloneChainRules);
+    assert.equal(optInMatches.length, 1);
+    assert.equal(optInMatches[0]?.line, 2);
   });
 
-  it('ignores isolated :hover single-function transform', () => {
+  it('ignores isolated :hover single-function transform in default rule (Pattern D), flagged by opt-in state rule', () => {
     const css = `
       .btn:hover {
         transform: scale(1.05);
       }
     `;
-    const matches = scanCss('src/btn.css', css, rules);
-    assert.equal(matches.length, 0);
+    const defaultMatches = scanCss('src/btn.css', css, rules);
+    assert.equal(defaultMatches.length, 0);
+
+    const optInMatches = scanCss('src/btn.css', css, singleFunctionStateRules);
+    assert.equal(optInMatches.length, 1);
+    assert.equal(optInMatches[0]?.line, 2);
   });
 
   it('ignores transform with unsupported skew function', () => {
