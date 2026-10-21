@@ -44,7 +44,7 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 
 ## Example: horizontal carousel
 
-This example uses full-width horizontal slides. Adapt the slide sizing for a peek layout or use the block axis for a vertical carousel. Give each marker a name that identifies its destination. The `fallback-*` elements stay hidden unless the browser lacks the native feature; see Fallback strategies. The dimensions, spacing, colors, and debounce interval are examples; adapt them to the design and interaction.
+This example uses full-width horizontal slides. Adapt the slide sizing for a peek layout or use the block axis for a vertical carousel. Give each marker a name that identifies its destination. The `fallback-*` elements stay hidden unless the browser lacks the native feature; see Fallback strategies. The CSS below is split by concern, and only the parts that are easy to get wrong are shown; everything else is described in prose. Adapt dimensions, spacing, and colors to the design.
 
 ```html
 <section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
@@ -74,24 +74,30 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
 </section>
 ```
 
-```css
-.carousel {
-  position: relative;
-}
+### Track and snapping
 
+The track is a flex row that scrolls on the inline axis and snaps to slides. Each slide fills the track and snaps to center.
+
+```css
 .carousel-track {
   anchor-name: --carousel-track;
   display: flex;
   gap: 1rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scrollbar-width: none;
 }
 
 .carousel-slide {
   flex: 0 0 100%;
   scroll-snap-align: center;
 }
+```
+
+### Native scroll buttons
+
+Gate the buttons on support for both `::scroll-button()` and anchor positioning. Set each button's `content` to a glyph with alternative text, anchor the buttons to the track, and pin them to its start and end edges. Style them as you like (size, shape, colors) and dim them with `:disabled`.
+
+```css
 @supports selector(::scroll-button(*)) and (anchor-name: --carousel-track) {
   .carousel-track::scroll-button(inline-start) {
     content: "‹" / "Previous slide";
@@ -108,70 +114,38 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
     position-anchor: --carousel-track;
     inset-block-start: anchor(center);
     translate: 0 -50%;
-    inline-size: 2.5rem;
-    block-size: 2.5rem;
-    border-radius: 50%;
-    border: 1px solid #888;
-    background: Canvas;
-    color: CanvasText;
-    cursor: pointer;
-  }
-
-  .carousel-track::scroll-button(*):disabled {
-    opacity: 0.3;
-    cursor: default;
   }
 }
+```
+
+### Native scroll markers
+
+Place the marker group after the track, give each marker an accessible name from the slide's `data-marker-name`, and highlight the current marker with `:target-current`.
+
+```css
 @supports selector(::scroll-marker) {
   .carousel-track {
     scroll-marker-group: after;
   }
 
-  .carousel-track::scroll-marker-group {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-block-start: 0.75rem;
-  }
-
   .carousel-slide::scroll-marker {
     content: "" / attr(data-marker-name);
-    inline-size: 1rem;
-    block-size: 1rem;
-    border-radius: 50%;
-    background: #888;
-    cursor: pointer;
   }
+
   .carousel-slide::scroll-marker:target-current {
     background: #0a5;
   }
 }
-.carousel-track::scroll-button(*):focus-visible,
-.carousel-slide::scroll-marker:focus-visible,
-button:focus-visible {
-  outline: 0.2rem solid #f90;
-  outline-offset: 0.15rem;
-}
-.fallback-controls[hidden],
-.fallback-markers[hidden] {
-  display: none;
-}
-.visually-hidden {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .carousel-track {
-    scroll-behavior: smooth;
-  }
-}
 ```
+
+### Supporting styles
+
+Write these to fit the design:
+
+- Style the markers as dots in a centered flex row with a gap, using the pointer cursor.
+- Show a clear `:focus-visible` outline on scroll buttons, markers, and buttons.
+- Hide `.fallback-controls` and `.fallback-markers` while their `hidden` attribute is set, and keep the status region visually hidden without removing it from the accessibility tree.
+- Enable `scroll-behavior: smooth` on the track only inside `@media (prefers-reduced-motion: no-preference)`.
 
 ## Fallback strategies
 
