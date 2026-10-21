@@ -216,22 +216,25 @@ Write a small script that adapts to your markup and covers these requirements:
 
 ## Looping (continuous navigation)
 
-For previous/next that wrap from the last slide to the first and back, keep the track endless instead of disabling controls at the ends. Do not clone or move slides in the DOM, which conflicts with frameworks and duplicates content for assistive technology. Instead, treat the slides as a ring and rotate it with CSS `order` so the current slide always sits in the middle position. The track then always has a neighbor on both sides, so native scroll buttons never disable, and keyboard scrolling, touch, and snapping all keep working.
+For previous/next that wrap from the last slide to the first and back, keep the track endless instead of disabling controls at the ends. Do not clone slides or move them in the DOM, which conflicts with frameworks and duplicates content for assistive technology. Instead, park one slide beside the current one with CSS `order`, and only when the carousel is at an end. The track then always has a neighbor on both sides, so native scroll buttons never disable, and keyboard scrolling, touch, and snapping all keep working. Slides in the middle never get `order`.
 
 {{ BASELINE_STATUS("sibling-count") }}
 
-- Drive `order` from `sibling-index()`, `sibling-count()`, and a `--current` custom property on the track (the zero-based index of the current slide), wrapped in `@supports` for `sibling-index()`. The formula below is the part that is easy to get wrong.
-- Start with `--current: 0` and park the track on the middle position with an instant scroll. When scrolling settles, work out how many positions the user moved from the middle, add that to `--current` (wrapping at the slide count), then park on the middle again in the same task. The reorder and the instant scroll must happen together so the change is invisible.
-- Looping needs at least three slides of equal size along the scrolling axis: the parking offset is the middle position times one slide plus the gap. Do not use it for peek layouts or slides of differing sizes.
-- Fallback previous/next controls and the status calculation must work from visual order, not DOM sibling order. Keep counting real slides, so "Slide N of M" announces after the rotation settles.
-- Per-slide labels ("2 of 4") and the status region use each slide's original index, which does not change as the ring rotates. Do not renumber slides when `--current` changes; announce the newly centered slide by its original index.
-- Keep `scroll-behavior: smooth` inside `prefers-reduced-motion: no-preference` for user navigation; only the re-centering is instant.
-- Without `sibling-index()` support, leave the carousel as a finite list: skip the rotation and keep disabling controls at the ends.
+- Keep a `--current` custom property on the track: the zero-based index of the current slide. Park the last slide before the first (`order: -1`) when `--current` is `0`, and park the first slide after the last (`order: 1`) when `--current` is the last index. Identify the first and last slides with `sibling-index()` and `sibling-count()`, wrapped in `@supports` for `sibling-index()`. The formula below is the part that is easy to get wrong.
+- When scrolling settles, update `--current` from the scroll position. If the parking changes, measure the current slide's offset along the scrolling axis before and after, then instantly scroll by the difference in the same task so the change is invisible. This also applies when a parked slide is released after the user leaves an end slide.
+- Set `inert` on the parked slide while it is parked, and clear it when it becomes the current slide. It is a visual-only neighbor, so its content must not be reachable by keyboard or assistive technology out of sequence.
+- Looping needs at least three slides. Because the compensation is measured, slides may differ in size.
+- Fallback previous/next controls and the status calculation must work from visual order, not DOM sibling order. Per-slide labels ("2 of 4") and the status region use each slide's original index, which does not change when slides are parked. Do not renumber slides when `--current` changes.
+- Keep `scroll-behavior: smooth` inside `prefers-reduced-motion: no-preference` for user navigation; only the compensating scroll is instant.
+- Without `sibling-index()` support, leave the carousel as a finite list: skip the parking and keep disabling controls at the ends.
 
 ```css
 .carousel-slide {
-  order: mod(sibling-index() - 1 - var(--current) + round(down, sibling-count() / 2), sibling-count());
+  order: calc(
+    max(0, 1 - abs(sibling-index() - 1)) * max(0, 1 - abs(var(--current) - (sibling-count() - 1)))
+    - max(0, 1 - abs(sibling-index() - sibling-count())) * max(0, 1 - abs(var(--current)))
+  );
 }
 ```
 
-Accessibility trade-offs: `order` changes visual order but not DOM or Tab order, so focusable content inside slides can be reached in a different sequence from what is shown. Prefer slides without focusable content, or accept the mismatch knowingly. Native `::scroll-marker` markers follow DOM order, so they do not rotate with the slides; the current marker still highlights correctly.
+Accessibility trade-offs: only one slide is parked at a time and it is inert, so Tab order and the accessibility tree match what the user can interact with. Native `::scroll-marker` markers follow DOM order, so they do not move with the parked slide; the current marker still highlights correctly. Where supported, `reading-flow: flow-visual` on the track is an optional extra, but it changes focus order only, not screen reader reading order, so do not rely on it instead of `inert`.
