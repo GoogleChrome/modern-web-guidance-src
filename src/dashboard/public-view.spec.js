@@ -148,10 +148,28 @@ test.describe('Public view', () => {
     await page.locator('.tfoot-action-btn', { hasText: 'Log' }).first().click();
     await expect(page.locator('#modal')).toContainText('GET /guides/security');
 
+    // Only the artifacts the builder publishes get a button; nothing that would 404 or need the bucket.
+    const buttonLabels = await page.locator('.tfoot-action-btn').allInnerTexts();
+    const labelSet = new Set(buttonLabels.map(label => label.trim()));
+    expect(labelSet).toEqual(new Set(['Diff', 'Log']));
+    await expect(page.locator('#view-gcs-artifacts-btn')).toBeHidden();
+    await expect(page.locator('#view-log-btn')).toBeHidden();
+
     expect(googleRequests).toEqual([]);
     for (const origin of popupOrigins) {
       expect(origin).toBe(new URL(page.url()).origin);
     }
+  });
+
+  test('uplift comparisons omit the By Serving panel in public mode', async ({ page }) => {
+    await servePublicCopy(page);
+    await page.goto('/?source=public');
+    await expect(page.locator('.suite-table-row', { hasText: 'codex' }).first()).toBeVisible();
+
+    await page.getByText('Uplift Comparisons').click();
+    await expect(page.locator('.insights-panel-title', { hasText: 'By Guide' })).toBeVisible();
+    await expect(page.locator('.insights-panel-title', { hasText: 'By Agent' })).toBeVisible();
+    await expect(page.locator('.insights-panel-title', { hasText: 'By Serving' })).toHaveCount(0);
   });
 
   test('a 404 from public-evals shows an error that names no bucket', async ({ page }) => {

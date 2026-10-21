@@ -1082,10 +1082,11 @@ function renderPivotInsights() {
                     <div class="insights-panel-title">By Agent</div>
                     ${renderPivotTable(grouped.agent, 'agent')}
                 </div>
+                ${isPublicView(resolveDataSource()) ? '' : `
                 <div class="insights-panel">
                     <div class="insights-panel-title">By Serving</div>
                     ${renderPivotTable(grouped.serving, 'serving')}
-                </div>
+                </div>`}
                 <div class="insights-panel">
                     <div class="insights-panel-title">By Model</div>
                     ${renderPivotTable(grouped.model, 'model')}
