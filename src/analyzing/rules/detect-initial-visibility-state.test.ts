@@ -1,0 +1,151 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createInMemoryProject, scanJsSource } from '../scanners/index.ts';
+import {
+  DETECT_INITIAL_VISIBILITY_STATE_GUIDE_HASH,
+  detectInitialVisibilityStateMatcher,
+  detectInitialVisibilityStateRule,
+  detectInitialVisibilityStateRules,
+} from './detect-initial-visibility-state.ts';
+
+void test('detect-initial-visibility-state: rule metadata', () => {
+  assert.equal(detectInitialVisibilityStateRule.id, 'detect-initial-visibility-state');
+  assert.equal(detectInitialVisibilityStateRule.guideId, 'detect-initial-visibility-state');
+  assert.equal(
+    detectInitialVisibilityStateRule.guideHash,
+    DETECT_INITIAL_VISIBILITY_STATE_GUIDE_HASH,
+  );
+  assert.equal(DETECT_INITIAL_VISIBILITY_STATE_GUIDE_HASH.length, 12);
+  assert.equal(detectInitialVisibilityStateRules.length, 1);
+  assert.ok(detectInitialVisibilityStateRule.phase2Rubric.keepWhen.length >= 2);
+  assert.ok(detectInitialVisibilityStateRule.phase2Rubric.dropWhen.length >= 2);
+});
+
+void test('detect-initial-visibility-state: positive matches', async (t) => {
+  const project = createInMemoryProject();
+
+  await t.test('flags vendor-prefixed webkitHidden, mozHidden, msHidden, webkitVisibilityState', () => {
+    const code = `
+      const isHidden = document.webkitHidden || document.mozHidden || document.msHidden;
+      const visState = document.webkitVisibilityState;
+    `;
+    const { matches } = scanJsSource(
+      'compat/webkit.js',
+      code,
+      [detectInitialVisibilityStateMatcher],
+      project,
+    );
+    assert.equal(matches.length, 4);
+    assert.match(matches[0]?.message ?? '', /webkitHidden/);
+  });
+
+  await t.test('flags vendor-prefixed visibilitychange event listeners', () => {
+    const code = `
+      document.addEventListener('webkitvisibilitychange', onVisChange);
+      document.addEventListener('mozvisibilitychange', onVisChange);
+      document.addEventListener('msvisibilitychange', onVisChange);
+    `;
+    const { matches } = scanJsSource(
+      'compat/events.js',
+      code,
+      [detectInitialVisibilityStateMatcher],
+      project,
+    );
+    assert.equal(matches.length, 3);
+    assert.match(matches[0]?.message ?? '', /webkitvisibilitychange/);
+  });
+
+  await t.test('flags standalone vendor-prefixed in-document check', () => {
+    const code = `
+      if ('webkitHidden' in document) {
+        pauseVideo();
+      }
+    `;
+    const { matches } = scanJsSource(
+      'compat/check.js',
+      code,
+      [detectInitialVisibilityStateMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /webkitHidden/);
+  });
+
+  await t.test('flags wasHidden variable declaration alongside visibilitychange listener', () => {
+    const code = `
+      let wasHidden = document.visibilityState === 'hidden';
+      document.addEventListener('visibilitychange', () => {
+        if (wasHidden && document.visibilityState === 'visible') {
+          sendMetric('page_became_visible');
+          wasHidden = false;
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'analytics/visibility.js',
+      code,
+      [detectInitialVisibilityStateMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /wasHidden/);
+  });
+});
+
+void test('detect-initial-visibility-state: negative / exempt cases', async (t) => {
+  const project = createInMemoryProject();
+
+  await t.test('exempts vendor-prefixed properties used as fallback behind document.visibilityState or document.hidden', () => {
+    const code = `
+      const state = document.visibilityState ?? document.webkitVisibilityState;
+      const hidden = document.hidden ?? document.webkitHidden;
+      let propName = 'hidden';
+      if ('hidden' in document) {
+        propName = 'hidden';
+      } else if ('webkitHidden' in document) {
+        propName = 'webkitHidden';
+      }
+    `;
+    const { matches } = scanJsSource(
+      'compat/fallback.js',
+      code,
+      [detectInitialVisibilityStateMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts runtime visibilitychange listener without initial state variable', () => {
+    const code = `
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          videoPlayer.pause();
+        } else {
+          videoPlayer.play();
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'media/video.js',
+      code,
+      [detectInitialVisibilityStateMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts code already using VisibilityStateEntry or visibility-state performance entries', () => {
+    const code = `
+      const entries = performance.getEntriesByType('visibility-state');
+      let wasHidden = document.visibilityState === 'hidden';
+      document.addEventListener('visibilitychange', () => {});
+    `;
+    const { matches } = scanJsSource(
+      'perf/modern.js',
+      code,
+      [detectInitialVisibilityStateMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+});
