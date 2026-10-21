@@ -344,7 +344,11 @@ if (!('focusGroup' in HTMLElement.prototype)) {
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 
-In browsers without CSS Anchor Positioning, guard `inset: auto` (and any `margin: 0` reset on `[popover]`) inside `@supports (position-area: block-end)` so popovers fall back to centered viewport placement instead of stacking at the top-left corner, or position the menu from `getBoundingClientRect()`.
+Without CSS Anchor Positioning, a popover falls back to the UA's centered viewport placement. Never ship that for a menu: it detaches the menu from its trigger, and a centered submenu covers its parent. Gate the anchored rules behind `@supports (position-area: block-end)` and position the menu from script when it fails:
+
+* Use a positioning library such as `@floating-ui/dom` (`computePosition` with `offset`, `flip`, and `shift` middleware; `placement: 'bottom-start'` for top-level menus, `'right-start'` for submenus). Hand-rolled placement that handles flipping and viewport edges correctly is hard.
+* Run it in the `toggle` handler when the menu opens, and apply the result as `left` and `top` on the menu. Use `position: fixed` with `inset: auto` and `margin: 0` so the coordinates are viewport-relative.
+* Keep these overrides inside `@supports not (position-area: block-end)`, so browsers with anchor positioning are unaffected.
 
 {{ BASELINE_STATUS("anchor-positioning", "api.HTMLElement.showPopover.options_source_parameter.implicit_anchor_reference") }}
 
