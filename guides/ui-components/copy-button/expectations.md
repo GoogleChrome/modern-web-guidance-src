@@ -1,0 +1,10 @@
+- Each copy button is a `<button>` with `type="button"`, a `command` attribute whose value starts with `--`, and a `commandfor` attribute that references the id of an existing element.
+- Clicking a copy button writes the text content of its `commandfor` target to the clipboard (`navigator.clipboard.writeText`).
+- When the `commandfor` target is a text `<input>` or `<textarea>`, clicking the button copies its current `value`.
+- When the `commandfor` target is a multi-line code block, the copied text preserves its line breaks.
+- Every copy button has a non-empty accessible name that is exposed in the accessibility tree even when the button shows only an icon.
+- The icon element inside each copy button has `aria-hidden="true"`.
+- A live region (`role="status"` or `aria-live`) exists on the page, and its text becomes non-empty after a successful copy.
+- After a successful copy the clicked button gains a visual copied state (such as a `data-copied` attribute or class) that is removed again after a timeout.
+- A `command` event listener is registered with `capture: true` on `document` or an ancestor of the copy buttons.
+- Each copy button renders as a square whose icon is centered within it (equal `inline-size` and `block-size`, with the icon's center matching the button's center).

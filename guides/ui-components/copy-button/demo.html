@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Copy button · Invoker Commands + Async Clipboard</title>
+
+  <style>
+    :root {
+      color-scheme: light dark;
+
+      --surface: light-dark(oklch(98% 0.005 260), oklch(20% 0.02 260));
+      --surface-2: light-dark(oklch(94% 0.01 260), oklch(26% 0.025 260));
+      --border: light-dark(oklch(84% 0.02 260), oklch(38% 0.03 260));
+      --text: light-dark(oklch(25% 0.03 260), oklch(93% 0.01 260));
+      --muted: light-dark(oklch(48% 0.03 260), oklch(75% 0.02 260));
+      --accent: light-dark(oklch(52% 0.2 265), oklch(75% 0.14 265));
+      --success: light-dark(oklch(48% 0.14 150), oklch(78% 0.17 150));
+      --on-accent: light-dark(white, oklch(20% 0.02 260));
+
+      /* Data URI SVG icons, used as masks so they take currentColor */
+      --icon-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='13' height='13' rx='2'/%3E%3Cpath d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/%3E%3C/svg%3E");
+      --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 2rem 1rem 6rem;
+      font: 1rem/1.6 system-ui, sans-serif;
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    main {
+      max-inline-size: 44rem;
+      margin-inline: auto;
+      display: grid;
+      gap: 2.5rem;
+    }
+
+    h1 { font-size: 1.75rem; line-height: 1.2; margin: 0; }
+    h2 { font-size: 1.125rem; margin: 0 0 .75rem; }
+    p  { margin: 0; text-wrap: pretty; }
+
+    code, pre, kbd { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+    .visually-hidden {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    /* ---------- Copy button ---------- */
+
+    .copy-button {
+      --size: 2.25rem;
+
+      position: relative;
+      display: inline-grid;
+      place-items: center;
+      flex: none;
+      inline-size: var(--size);
+      block-size: var(--size);
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: .5rem;
+      color: var(--muted);
+      background: var(--surface);
+      cursor: pointer;
+      transition: color .15s, background-color .15s, border-color .15s;
+
+      &:hover {
+        color: var(--text);
+        background: var(--surface-2);
+      }
+
+      &:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      &:active { scale: .94; }
+
+      /* Icon */
+      .icon {
+        inline-size: 1.125rem;
+        block-size: 1.125rem;
+        background-color: currentColor;
+        mask: var(--icon-copy) center / contain no-repeat;
+      }
+
+      /* "Copied" bubble (purely visual; the live region announces) */
+      .tip {
+        position: absolute;
+        inset-block-end: calc(100% + .5rem);
+        inset-inline-start: 50%;
+        translate: -50% 0;
+        padding: .25rem .625rem;
+        border-radius: .375rem;
+        font: 600 .8125rem/1.4 system-ui, sans-serif;
+        white-space: nowrap;
+        color: var(--on-accent);
+        background: var(--success);
+        opacity: 0;
+        pointer-events: none;
+
+        /* little arrow */
+        &::after {
+          content: "";
+          position: absolute;
+          inset-block-start: 100%;
+          inset-inline-start: 50%;
+          translate: -50% 0;
+          border: .3125rem solid transparent;
+          border-block-start-color: var(--success);
+        }
+      }
+
+      /* Success state */
+      &[data-copied] {
+        color: var(--success);
+        border-color: currentColor;
+
+        .icon {
+          mask-image: var(--icon-check);
+          animation: icon-pop .35s cubic-bezier(.3, 1.6, .5, 1);
+        }
+
+        .tip { animation: tip 1.8s ease both; }
+      }
+    }
+
+    @keyframes icon-pop {
+      from { scale: .4; rotate: -20deg; }
+      to   { scale: 1;  rotate: 0deg; }
+    }
+
+    @keyframes tip {
+      0%   { opacity: 0; translate: -50% .5rem; scale: .85; }
+      12%  { opacity: 1; translate: -50% 0;     scale: 1; }
+      80%  { opacity: 1; translate: -50% 0; }
+      100% { opacity: 0; translate: -50% -.25rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .copy-button[data-copied] .icon { animation: none; }
+      .copy-button[data-copied] .tip  { animation-name: tip-reduced; }
+      @keyframes tip-reduced {
+        0%, 80% { opacity: 1; }
+        100%    { opacity: 0; }
+      }
+    }
+
+    @media (forced-colors: active) {
+      .copy-button .icon { background-color: ButtonText; }
+      .copy-button .tip  { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+    }
+
+    /* ---------- Example 1: code block ---------- */
+
+    .code-block {
+      border: 1px solid var(--border);
+      border-radius: .75rem;
+      background: var(--surface-2);
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: .5rem .5rem .5rem 1rem;
+        border-block-end: 1px solid var(--border);
+        font-size: .8125rem;
+        color: var(--muted);
+      }
+
+      pre {
+        margin: 0;
+        padding: 1rem;
+        overflow-x: auto;
+        font-size: .875rem;
+        line-height: 1.6;
+      }
+    }
+
+    /* ---------- Example 2: inline ---------- */
+
+    .inline-copy {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .25rem .25rem .25rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: .625rem;
+      background: var(--surface-2);
+
+      code { font-size: .9375rem; }
+      .copy-button { --size: 2rem; }
+    }
+
+    /* ---------- Example 3: form field ---------- */
+
+    .field {
+      display: grid;
+      gap: .375rem;
+
+      label { font-weight: 600; font-size: .9375rem; }
+
+      .row { display: flex; gap: .5rem; }
+
+      input {
+        flex: 1;
+        min-inline-size: 0;
+        padding: .5rem .75rem;
+        font: inherit;
+        font-family: ui-monospace, monospace;
+        color: inherit;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: .5rem;
+      }
+
+      .copy-button { --size: 2.5rem; }
+    }
+
+    /* ---------- Example 4: selection popover ---------- */
+
+    [data-selectable] {
+      padding: 1rem 1.25rem;
+      border-inline-start: 4px solid var(--accent);
+      background: var(--surface-2);
+      border-radius: 0 .5rem .5rem 0;
+
+      ::selection {
+        background: color-mix(in oklab, var(--accent) 35%, transparent);
+      }
+    }
+
+    #selection-popover {
+      /* reset UA popover styles */
+      margin: 0;
+      padding: .25rem;
+      inset: auto;
+      border: 1px solid var(--border);
+      border-radius: .625rem;
+      background: var(--surface);
+      color: var(--text);
+      overflow: visible;
+      box-shadow: 0 .5rem 1.5rem oklch(0% 0 0 / .25);
+
+      /* positioned by JS from the selection rectangle */
+      position: fixed;
+      left: var(--x, 0);
+      top: var(--y, 0);
+      translate: -50% calc(-100% - .625rem);
+
+      /* entry/exit animation */
+      opacity: 0;
+      scale: .9;
+      transition:
+        opacity .15s, scale .15s,
+        overlay .15s allow-discrete, display .15s allow-discrete;
+
+      &:popover-open { opacity: 1; scale: 1; }
+
+      @starting-style {
+        &:popover-open { opacity: 0; scale: .9; }
+      }
+
+      .copy-button { --size: 2rem; border-color: transparent; }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <header>
+      <h1>Copy button</h1>
+      <p>
+        Uses <code>command="--copy"</code> / <code>commandfor</code> (Invoker Commands)
+        and <code>navigator.clipboard</code> (Async Clipboard).
+      </p>
+    </header>
+
+    <!-- 1. Code block -->
+    <section aria-labelledby="h-code">
+      <h2 id="h-code">1. Code block</h2>
+
+      <div class="code-block">
+        <header>
+          <span>CSS</span>
+          <button type="button" class="copy-button"
+                  command="--copy" commandfor="snippet-css">
+            <span class="icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Copy CSS code</span>
+            <span class="tip" aria-hidden="true">Copied</span>
+          </button>
+        </header>
+        <pre><code id="snippet-css">.card {
+  container-type: inline-size;
+  display: grid;
+  gap: 1rem;
+
+  @container (width &gt; 40rem) {
+    grid-template-columns: 1fr 2fr;
+  }
+}</code></pre>
+      </div>
+    </section>
+
+    <!-- 2. Inline value -->
+    <section aria-labelledby="h-inline">
+      <h2 id="h-inline">2. Inline value</h2>
+      <p style="margin-block-end: .75rem">Install with:</p>
+
+      <div class="inline-copy">
+        <code id="install-cmd">npm install @acme/design-tokens</code>
+        <button type="button" class="copy-button"
+                command="--copy" commandfor="install-cmd">
+          <span class="icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Copy install command</span>
+          <span class="tip" aria-hidden="true">Copied</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. Form field -->
+    <section aria-labelledby="h-field">
+      <h2 id="h-field">3. Read-only field</h2>
+
+      <div class="field">
+        <label for="share-url">Share link</label>
+        <div class="row">
+          <input id="share-url" type="text" readonly
+                 value="https://example.com/share/8f3k2j9d">
+          <button type="button" class="copy-button"
+                  command="--copy" commandfor="share-url">
+            <span class="icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Copy share link</span>
+            <span class="tip" aria-hidden="true">Copied</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Selection popover -->
+    <section aria-labelledby="h-select">
+      <h2 id="h-select">4. Copy on selection</h2>
+      <p style="margin-block-end: .75rem">
+        Select any text below with a pointer and a copy button appears.
+        <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>C</kbd> still works as normal.
+      </p>
+
+      <blockquote id="selectable" data-selectable style="margin: 0">
+        <p>
+          Progressive enhancement means starting with HTML that works everywhere,
+          then layering on richer behaviour where the platform supports it.
+          Native features like popovers, invoker commands and the async clipboard
+          let us do far more without reaching for a framework.
+        </p>
+      </blockquote>
+
+      <div id="selection-popover" popover="manual">
+        <button type="button" class="copy-button"
+                command="--copy-selection" commandfor="selectable">
+          <span class="icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Copy selected text</span>
+          <span class="tip" aria-hidden="true">Copied</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Announces success/failure to assistive tech -->
+  <div id="copy-status" class="visually-hidden" role="status" aria-live="polite"></div>
+
+  <script>
+    const status = document.getElementById('copy-status');
+    const popover = document.getElementById('selection-popover');
+    const selectable = document.querySelector('[data-selectable]');
+    const FEEDBACK_MS = 1800;
+
+    let selectedText = '';
+    const timers = new WeakMap();
+
+    /* ---------- Helpers ---------- */
+
+    function getText(el) {
+      if (el.matches('input, textarea, select')) return el.value;
+      // optional override: <div data-copy-value="...">
+      if (el.dataset.copyValue) return el.dataset.copyValue;
+      // innerText preserves line breaks as rendered
+      return el.innerText.trim();
+    }
+
+    async function writeToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function announce(message) {
+      status.textContent = '';
+      // Next frame so repeat messages are re-announced
+      requestAnimationFrame(() => (status.textContent = message));
+    }
+
+    function showFeedback(button) {
+      clearTimeout(timers.get(button));
+      button.removeAttribute('data-copied');
+      void button.offsetWidth; // restart animation
+      button.setAttribute('data-copied', '');
+
+      timers.set(button, setTimeout(() => {
+        button.removeAttribute('data-copied');
+        if (popover.contains(button)) popover.hidePopover();
+      }, FEEDBACK_MS));
+    }
+
+    /* ---------- The command handler ---------- */
+
+    async function handleCopy(command, button, target) {
+      const text = command === '--copy-selection' ? selectedText : getText(target);
+      if (!text) return;
+
+      const ok = await writeToClipboard(text);
+      if (ok) {
+        showFeedback(button);
+        announce('Copied to clipboard');
+      } else {
+        announce('Copy failed. Please select the text and copy it manually.');
+      }
+    }
+
+    if ('CommandEvent' in window) {
+      // `command` events don't bubble, so listen in the capture phase.
+      document.addEventListener('command', (event) => {
+        if (!event.command.startsWith('--copy')) return;
+        handleCopy(event.command, event.source, event.target);
+      }, true);
+    } else {
+      // Fallback for browsers without Invoker Commands
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('button[command^="--copy"]');
+        if (!button) return;
+        const target = document.getElementById(button.getAttribute('commandfor'));
+        if (target) handleCopy(button.getAttribute('command'), button, target);
+      });
+    }
+
+    /* ---------- Selection popover ---------- */
+
+    let pointerDown = false;
+
+    function selectionInsideRegion(sel) {
+      return sel.rangeCount > 0 &&
+        selectable.contains(sel.anchorNode) &&
+        selectable.contains(sel.focusNode);
+    }
+
+    function updatePopover() {
+      const sel = getSelection();
+      const text = sel.toString().trim();
+
+      if (sel.isCollapsed || !text || !selectionInsideRegion(sel)) {
+        // Don't dismiss while the user is interacting with the popover itself
+        if (!popover.matches(':focus-within, [data-copied]') && popover.matches(':popover-open')) {
+          popover.hidePopover();
+        }
+        return;
+      }
+
+      selectedText = text;
+
+      const rect = sel.getRangeAt(0).getBoundingClientRect();
+      const x = Math.min(Math.max(rect.left + rect.width / 2, 32), innerWidth - 32);
+      popover.style.setProperty('--x', `${x}px`);
+      popover.style.setProperty('--y', `${Math.max(rect.top, 48)}px`);
+
+      if (!popover.matches(':popover-open')) popover.showPopover();
+    }
+
+    // Keep selection when pressing the button
+    popover.addEventListener('pointerdown', (e) => e.preventDefault());
+
+    document.addEventListener('pointerdown', (e) => {
+      if (!popover.contains(e.target)) pointerDown = true;
+    });
+    document.addEventListener('pointerup', () => {
+      pointerDown = false;
+      setTimeout(updatePopover, 0);
+    });
+
+    let selectionTimer;
+    document.addEventListener('selectionchange', () => {
+      clearTimeout(selectionTimer);
+      if (getSelection().isCollapsed) return updatePopover();
+      if (pointerDown) return; // wait for pointerup
+      selectionTimer = setTimeout(updatePopover, 200);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && popover.matches(':popover-open')) popover.hidePopover();
+    });
+
+    addEventListener('scroll', () => {
+      if (popover.matches(':popover-open')) updatePopover();
+    }, { passive: true });
+  </script>
+</body>
+</html>
