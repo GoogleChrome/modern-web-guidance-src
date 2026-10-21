@@ -194,16 +194,16 @@ test.describe('Eval View Dashboard', () => {
  * a11yStats + efficiencyStats already present so no hydration is needed).
  */
 test.describe('Hero headline takeaways', () => {
-  const METRICS = ['overall', 'a11y', 'tokens', 'time'];
+  const METRICS = ['overall', 'a11y'];
 
   test('renders a graceful empty state when no nightly suites exist', async ({ page }) => {
     await page.goto('/');
     const hero = page.locator('#hero');
     await expect(hero).toHaveAttribute('aria-busy', 'false');
 
-    // Four takeaway items render, with placeholders instead of numbers.
+    // Two takeaway items render, with placeholders instead of numbers.
     const cards = hero.locator('#hero-takeaways .takeaway');
-    await expect(cards).toHaveCount(4);
+    await expect(cards).toHaveCount(2);
     for (const metric of METRICS) {
       await expect(hero.locator(`.takeaway[data-metric="${metric}"]`)).toBeVisible();
     }
@@ -217,7 +217,7 @@ test.describe('Hero headline takeaways', () => {
     await expect(page.locator('#agent-table-body')).toContainText('No data loaded');
   });
 
-  test('renders primary pass-rate takeaway, three supporting stats, and a 4-column per-agent table', async ({ page }) => {
+  test('renders primary pass-rate takeaway, accessibility subscore, and a 4-column per-agent table', async ({ page }) => {
     await page.route('**/api/suites*', route => route.fulfill({ path: new URL('./fixtures/hero-suites.fixture.json', import.meta.url).pathname, contentType: 'application/json' }));
     await page.goto('/');
     const hero = page.locator('#hero');
@@ -235,11 +235,9 @@ test.describe('Hero headline takeaways', () => {
         expect(text).not.toMatch(/loading|appear once/i);
       }
     }
-    // Primary pass-rate uplift is in percentage points; supporting stats carry pp or %.
+    // Both quality takeaways report uplift in percentage points.
     await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-figure')).toContainText('pp');
     await expect(hero.locator('.takeaway-secondary[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
-    await expect(hero.locator('.takeaway-secondary[data-metric="tokens"] .takeaway-figure')).toContainText('%');
-    await expect(hero.locator('.takeaway-secondary[data-metric="time"] .takeaway-figure')).toContainText('%');
 
     // Eyebrow states the sample and the latest date so the claim is attributable,
     // and sits below h2#hero-heading (no uppercase kicker above the heading).
@@ -300,7 +298,7 @@ test.describe('Hero headline takeaways', () => {
     await expect(page.locator('#ab-spotlight h2#ab-spotlight-heading')).toHaveCount(1);
     await expect(page.locator('#agents-section h2#agents-heading')).toHaveCount(1);
     await expect(page.locator('#browse-section h2#browse-heading')).toHaveCount(1);
-    await expect(page.locator('#hero-takeaways h3')).toHaveCount(4);
+    await expect(page.locator('#hero-takeaways h3')).toHaveCount(2);
   });
 });
 

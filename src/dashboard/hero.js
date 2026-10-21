@@ -4,19 +4,17 @@
  * Loads the suites manifest (same sources as landing.js: local dev server,
  * static suites.gen.json, or the private GCS bucket after Google sign-in),
  * reduces it to headline insights via `computeHeadlineInsights()` from
- * ./insights.js, and renders the four takeaway cards, the per-agent
+ * ./insights.js, and renders the two quality takeaway cards, the per-agent
  * comparison table, and the numbers inside the "How we measure" disclosure.
  *
  * The hero never touches the browse UI below it (landing.js owns that).
  */
-import { getAccessToken, escapeHtml, formatDuration, getAgentBadge } from './utils.js';
+import { getAccessToken, escapeHtml, getAgentBadge } from './utils.js';
 import { ApiClient } from './api.js';
 
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
 /** @typedef {import('./insights.js').FamilyInsight} FamilyInsight */
 /** @typedef {import('./insights.js').RateComparison} RateComparison */
-/** @typedef {import('./insights.js').RuntimeInsight} RuntimeInsight */
-/** @typedef {import('./insights.js').TokenInsight} TokenInsight */
 
 /** Short parenthetical shown once in the lede for family names that are not self-explanatory. @type {Record<string, string>} */
 const FAMILY_HINT = { antigravity_cli: 'Gemini' };
@@ -188,9 +186,7 @@ function renderPending() {
     if (list) {
         list.innerHTML = [
             pendingCard('overall', 'Web best practices pass rate', 'pass-rate lift across all tasks', true),
-            pendingCard('a11y', 'Accessibility', '', false),
-            pendingCard('time', 'Completion time', '', false),
-            pendingCard('tokens', 'Uncached tokens', '', false)
+            pendingCard('a11y', 'Accessibility', '', false)
         ].join('');
     }
     const body = document.getElementById('agent-table-body');
@@ -288,80 +284,6 @@ function renderTakeaways(insights) {
             qualifier: `<span class="range">${pct(a.unguidedRate)} → ${pct(a.guidedRate)}</span> across ~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} accessibility checks${a.guideCount ? ` in ${a.guideCount} guides` : ''}.`,
             short: `<a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">${a11yShortText} <span aria-hidden="true">→</span></a>`
         }));
-    }
-
-    // 3. Quiet secondary stat: Completion time (per family only, honest summary of both sides)
-    const timeFams = fams.filter(f => f.runtime);
-    if (!timeFams.length) {
-        cards.push(pendingCard('time', 'Completion time', '', false));
-    } else {
-        const winners = timeFams.filter(f => rtDelta(f) < 0).sort((x, y) => rtDelta(x) - rtDelta(y));
-        const others = timeFams.filter(f => rtDelta(f) >= 0);
-        if (winners.length) {
-            const bestPct = roundAbs(rtDelta(winners[0]));
-            const winnerNames = joinNames(winners.map(f => f.label));
-            const otherSummary = others.length ? othersTimeRange(others) : '';
-            cards.push(takeawayCard({
-                metric: 'time',
-                primary: false,
-                label: 'Completion time',
-                figure: `<span class="figure-val">${bestPct}%</span><span class="unit"> faster on ${escapeHtml(winnerNames)}</span>`,
-                figureText: `${bestPct} percent faster on ${winnerNames}`,
-                qualifier: `${winnersDetail(winners, 'runtime')}. ${others.length ? `${othersDetail(others, 'runtime')}.` : ''}`,
-                short: otherSummary ? `Faster on ${Math.round(winners[0].runtime?.fasterTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks · ${escapeHtml(otherSummary)}` : `Faster on ${Math.round(winners[0].runtime?.fasterTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks`
-            }));
-        } else {
-            const pcts = others.map(f => roundAbs(rtDelta(f)));
-            const lo = Math.min(...pcts);
-            const hi = Math.max(...pcts);
-            const range = lo === hi ? `+${hi}%` : `+${lo}–${hi}%`;
-            cards.push(takeawayCard({
-                metric: 'time',
-                primary: false,
-                label: 'Completion time',
-                figure: `<span class="figure-val">${range}</span><span class="unit"> median time</span>`,
-                figureText: `${range} median completion time`,
-                qualifier: `${othersDetail(others, 'runtime')}.`,
-                short: `${escapeHtml(othersDetail(others, 'runtime'))}`
-            }));
-        }
-    }
-
-    // 4. Quiet secondary stat: Uncached tokens (per family only, honest summary of both sides)
-    const tokenFams = fams.filter(f => f.tokens);
-    if (!tokenFams.length) {
-        cards.push(pendingCard('tokens', 'Uncached tokens', '', false));
-    } else {
-        const winners = tokenFams.filter(f => tokDelta(f) < 0).sort((x, y) => tokDelta(x) - tokDelta(y));
-        const others = tokenFams.filter(f => tokDelta(f) >= 0);
-        if (winners.length) {
-            const bestPct = roundAbs(tokDelta(winners[0]));
-            const winnerNames = joinNames(winners.map(f => f.label));
-            const otherSummary = others.length ? othersTokenRange(others) : '';
-            cards.push(takeawayCard({
-                metric: 'tokens',
-                primary: false,
-                label: 'Uncached tokens',
-                figure: `<span class="figure-val">${bestPct}%</span><span class="unit"> fewer on ${escapeHtml(winnerNames)}</span>`,
-                figureText: `${bestPct} percent fewer on ${winnerNames}`,
-                qualifier: `Median per task: ${winnersDetail(winners, 'tokens')}. ${others.length ? `${othersDetail(others, 'tokens')}.` : ''}`,
-                short: otherSummary ? `Fewer on ${Math.round(winners[0].tokens?.fewerTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks · ${escapeHtml(otherSummary)}` : `Fewer on ${Math.round(winners[0].tokens?.fewerTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks`
-            }));
-        } else {
-            const pcts = others.map(f => roundAbs(tokDelta(f)));
-            const lo = Math.min(...pcts);
-            const hi = Math.max(...pcts);
-            const range = lo === hi ? `+${hi}%` : `+${lo}–${hi}%`;
-            cards.push(takeawayCard({
-                metric: 'tokens',
-                primary: false,
-                label: 'Uncached tokens',
-                figure: `<span class="figure-val">${range}</span><span class="unit"> median overhead</span>`,
-                figureText: `${range} median uncached token overhead`,
-                qualifier: `Median per task: ${othersDetail(others, 'tokens')}.`,
-                short: `${escapeHtml(othersDetail(others, 'tokens'))}`
-            }));
-        }
     }
 
     list.innerHTML = cards.join('');
@@ -492,70 +414,11 @@ function describeRuns(insights) {
 }
 
 /**
- * @param {FamilyInsight[]} fams
- * @param {'tokens' | 'runtime'} key
- */
-function winnersDetail(fams, key) {
-    return fams.map(f => {
-        if (key === 'tokens' && f.tokens) {
-            return `${f.label} ${signed(tokDelta(f), 0)}% (${Math.round(f.tokens.fewerTaskPct)}% of tasks)`;
-        }
-        if (key === 'runtime' && f.runtime) {
-            return `${f.label} ${formatDuration(f.runtime.unguidedMedianMs)} → ${formatDuration(f.runtime.guidedMedianMs)} median (${Math.round(f.runtime.fasterTaskPct)}% of tasks faster)`;
-        }
-        return '';
-    }).filter(Boolean).join('; ');
-}
-
-/**
- * @param {FamilyInsight[]} fams
- * @param {'tokens' | 'runtime'} key
- */
-function othersDetail(fams, key) {
-    return fams.map(f => {
-        if (key === 'tokens' && f.tokens) {
-            return `${f.label} ${signed(tokDelta(f), 0)}%`;
-        }
-        if (key === 'runtime' && f.runtime) {
-            const deltaS = Math.round((f.runtime.guidedMedianMs - f.runtime.unguidedMedianMs) / 1000);
-            return `${f.label} ${deltaS >= 0 ? '+' : '−'}${Math.abs(deltaS)}s at the median`;
-        }
-        return '';
-    }).filter(Boolean).join(', ');
-}
-
-/**
  * Shortens model identifiers when displayed inside a family row where the vendor is already known.
  * @param {string} model
  */
 function shortModelName(model) {
     return (model || '').replace(/^(claude-|gemini-)/i, '');
-}
-
-/**
- * Concise summary of non-winning families' time cost, e.g. "+5–17s on Claude Code & Codex CLI".
- * @param {FamilyInsight[]} others
- */
-function othersTimeRange(others) {
-    const secs = others.map(f => Math.round(((f.runtime?.guidedMedianMs ?? 0) - (f.runtime?.unguidedMedianMs ?? 0)) / 1000));
-    if (!secs.length) return '';
-    const lo = Math.min(...secs);
-    const hi = Math.max(...secs);
-    const range = lo === hi ? `+${hi}s` : `+${lo}–${hi}s`;
-    return `${range} median on ${others.map(f => f.label).join(' & ')}`;
-}
-
-/**
- * Concise summary of non-winning families' token delta, e.g. "+10–28% on Claude Code & Codex CLI".
- * @param {FamilyInsight[]} others
- */
-function othersTokenRange(others) {
-    const pcts = others.map(f => Math.round(tokDelta(f)));
-    if (!pcts.length) return '';
-    const lo = Math.min(...pcts);
-    const hi = Math.max(...pcts);
-    const range = lo === hi ? `+${hi}%` : `+${lo}–${hi}%`;
-    return `${range} on ${others.map(f => f.label).join(' & ')}`;
 }
 
 /**
@@ -592,27 +455,7 @@ function signed(v, digits) {
 }
 
 /**
- * Percent change computed from the raw medians (never from a pre-rounded 1-dp field, which
- * would double-round: 4,972/5,616 is −11.47%, stored as −11.5, and must display as 11 not 12).
- * @param {number} guided
- * @param {number} unguided
- */
-function pctChange(guided, unguided) {
-    return unguided > 0 ? ((guided - unguided) / unguided) * 100 : 0;
-}
-
-/** @param {FamilyInsight} f */
-function tokDelta(f) {
-    return f.tokens ? pctChange(f.tokens.guidedUncachedMedian, f.tokens.unguidedUncachedMedian) : 0;
-}
-
-/** @param {FamilyInsight} f */
-function rtDelta(f) {
-    return f.runtime ? pctChange(f.runtime.guidedMedianMs, f.runtime.unguidedMedianMs) : 0;
-}
-
-/**
- * Rounds the magnitude (half away from zero) so a −13.5% delta and an "up to 14%" headline never disagree.
+ * Rounds the magnitude (half away from zero).
  * @param {number} v
  */
 function roundAbs(v) {
