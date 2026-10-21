@@ -16,9 +16,11 @@ guides:
   - navbar
 ---
 
+# Build breadcrumbs
+
 Breadcrumbs show where the user is in a site hierarchy and link to each ancestor page. Optionally, each ancestor can expose a dropdown of sibling pages, and long trails can collapse on narrow containers.
 
-Breadcrumbs show a location in a hierarchy. To switch between views of the same page use the `tabs` guide ({{ GUIDE_REF("tabs") }}); for site-wide navigation use {{ GUIDE_REF("navbar") }}.
+To switch between views of the same page use the `tabs` guide ({{ GUIDE_REF("tabs") }}); for site-wide navigation use {{ GUIDE_REF("navbar") }}.
 
 For the dropdown menu mechanics, see {{ GUIDE_REF("menu") }}. For custom segment shapes beyond the snippets below, see {{ GUIDE_REF("element-shape") }}. For the collapsed "…" overflow list, see {{ GUIDE_REF("overflow-popup") }} and {{ GUIDE_REF("responsive-disclosure") }}.
 
