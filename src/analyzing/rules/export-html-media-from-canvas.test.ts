@@ -116,10 +116,12 @@ void test('export-html-media-from-canvas JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts single screenshot canvas.toDataURL()', () => {
+  await t.test('exempts single screenshot canvas.toDataURL() and local shadowed CCapture', () => {
     const project = createInMemoryProject();
     const code = `
       const pngUrl = canvas.toDataURL('image/png');
+      const { CCapture } = localMocks;
+      new CCapture({ format: 'webm' });
     `;
     const sourceFile = project.createSourceFile('screenshot.js', code);
     const matches = exportHtmlMediaFromCanvasJsMatcher.matchFile(sourceFile, {

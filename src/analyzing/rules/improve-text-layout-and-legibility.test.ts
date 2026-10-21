@@ -111,18 +111,20 @@ void test('improve-text-layout-and-legibility JS matcher', async (t) => {
     assert.equal(matches.length, 3);
   });
 
-  await t.test('exempts when guarded by CSS.supports("text-wrap", "balance")', () => {
+  await t.test('exempts when guarded by CSS.supports("text-wrap", "balance") or local Balancer component', () => {
     const project = createInMemoryProject();
     const code = `
       if (!CSS.supports('text-wrap', 'balance')) {
         balanceText('.headline');
       }
+      function Balancer({ children }) { return <div>{children}</div>; }
+      export const Local = () => <Balancer>Not react-wrap-balancer</Balancer>;
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
+    const sourceFile = project.createSourceFile('guarded.tsx', code);
     const matches = improveTextLayoutAndLegibilityJsMatcher.matchFile(
       sourceFile,
       {
-        filePath: 'guarded.js',
+        filePath: 'guarded.tsx',
         fileContent: code,
       },
     );

@@ -109,11 +109,17 @@ void test('physics-based-easing JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts unrelated functions named spring without physics config', () => {
+  await t.test('exempts unrelated functions named spring without physics config or local spring functions', () => {
     const project = createInMemoryProject();
     const code = `
       spring('season');
       calendar.spring({ month: 'April' });
+      function localSim() {
+        function spring(opts) { return opts; }
+        spring({ stiffness: 100, damping: 10 });
+      }
+      const { spring: customSpring } = customEngine;
+      customSpring({ stiffness: 100, damping: 10 });
     `;
     const sourceFile = project.createSourceFile('season.js', code);
     const matches = physicsBasedEasingJsMatcher.matchFile(sourceFile, {

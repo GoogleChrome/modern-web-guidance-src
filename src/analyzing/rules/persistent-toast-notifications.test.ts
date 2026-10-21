@@ -137,11 +137,15 @@ void test('persistent-toast-notifications JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts unrelated logger.info or console.error calls', () => {
+  await t.test('exempts unrelated logger.info or console.error calls and local shadowed symbols', () => {
     const project = createInMemoryProject();
     const code = `
       logger.info('Server started');
       apiResult.success('ok');
+      function Toastify() { return { showToast() {} }; }
+      Toastify().showToast();
+      const { toastr } = customLogger;
+      toastr.info('Custom log');
     `;
     const sourceFile = project.createSourceFile('unrelated.js', code);
     const matches = persistentToastNotificationsJsMatcher.matchFile(sourceFile, {

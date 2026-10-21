@@ -70,10 +70,19 @@ void test('select-menu-interaction CSS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts input:invalid not targeting <select>', () => {
+  await t.test('exempts input:invalid not targeting <select> and :not(:invalid)', () => {
     const css = `
       input:invalid {
         border-color: red;
+      }
+      select:not(:invalid) {
+        border-color: green;
+      }
+      select.form-control:not(:invalid) {
+        border-color: green;
+      }
+      :not(select:invalid) {
+        color: inherit;
       }
     `;
     const matches = scanCss('input.css', css, [selectMenuInteractionCssMatcher]);
@@ -102,7 +111,7 @@ void test('select-menu-interaction JS matcher', async (t) => {
     assert.equal(matches.length, 1);
   });
 
-  await t.test('exempts when guarded by CSS.supports("selector(:user-invalid)")', () => {
+  await t.test('exempts when guarded by CSS.supports("selector(:user-invalid)") or targeting input via querySelector', () => {
     const project = createInMemoryProject();
     const code = `
       if (!CSS.supports('selector(:user-invalid)')) {
@@ -113,6 +122,12 @@ void test('select-menu-interaction JS matcher', async (t) => {
           }
         });
       }
+      const emailInput = document.querySelector('input#email');
+      emailInput.addEventListener('blur', () => {
+        if (emailInput.value === '') {
+          emailInput.classList.add('is-invalid');
+        }
+      });
     `;
     const sourceFile = project.createSourceFile('guarded.js', code);
     const matches = selectMenuInteractionJsMatcher.matchFile(sourceFile, {

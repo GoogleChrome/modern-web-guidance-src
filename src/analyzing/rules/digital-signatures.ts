@@ -1,5 +1,6 @@
 import {
   Node,
+  SyntaxKind,
   type CallExpression,
   type NewExpression,
   type SourceFile,
@@ -39,51 +40,189 @@ const NACL_SIGN_METHODS: ReadonlySet<string> = new Set([
   'keyPair',
 ]);
 
+function matchesPackageSpec(
+  spec: string | null,
+  packages: readonly string[],
+): boolean {
+  return (
+    spec !== null &&
+    packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
+  );
+}
+
+function isRequireOfPackage(
+  node: Node,
+  packages: readonly string[],
+): boolean {
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isCallExpression(unwrapped)) {
+    return false;
+  }
+  const callee = unwrapExpression(unwrapped.getExpression());
+  const firstArg = unwrapped.getArguments()[0];
+  if (
+    Node.isIdentifier(callee) &&
+    callee.getText() === 'require' &&
+    firstArg &&
+    Node.isStringLiteral(firstArg)
+  ) {
+    return matchesPackageSpec(firstArg.getLiteralText(), packages);
+  }
+  return false;
+}
+
+function checkEnclosingBindings(
+  identNode: Node,
+  localName: string,
+  identName: string,
+  packages: readonly string[],
+  allowDefaultImport: boolean,
+): 'matched' | 'shadowed' | 'none' {
+  let current: Node | undefined = identNode.getParent();
+  while (current) {
+    if (
+      Node.isFunctionDeclaration(current) ||
+      Node.isFunctionExpression(current) ||
+      Node.isArrowFunction(current) ||
+      Node.isMethodDeclaration(current)
+    ) {
+      if (
+        (Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) &&
+        current.getName() === localName
+      ) {
+        return 'shadowed';
+      }
+      for (const param of current.getParameters()) {
+        for (const el of param.getDescendantsOfKind(identNode.getKind())) {
+          if (el.getText() === localName && el.getParent() !== current) {
+            return 'shadowed';
+          }
+        }
+      }
+    }
+
+    if (Node.isBlock(current) || Node.isSourceFile(current)) {
+      for (const stmt of current.getStatements()) {
+        if (!Node.isVariableStatement(stmt)) {
+          continue;
+        }
+        for (const decl of stmt.getDeclarationList().getDeclarations()) {
+          const nameNode = decl.getNameNode();
+          if (Node.isObjectBindingPattern(nameNode)) {
+            for (const el of nameNode.getElements()) {
+              if (el.getName() === localName) {
+                const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
+                const init = decl.getInitializer();
+                if (
+                  init &&
+                  (propName === identName || (allowDefaultImport && propName === 'default')) &&
+                  isRequireOfPackage(resolveLocalExpression(init, 2), packages)
+                ) {
+                  return 'matched';
+                }
+                return 'shadowed';
+              }
+            }
+          } else if (Node.isArrayBindingPattern(nameNode)) {
+            for (const el of nameNode.getElements()) {
+              if (Node.isBindingElement(el) && el.getName() === localName) {
+                return 'shadowed';
+              }
+            }
+          }
+        }
+      }
+    }
+
+    current = current.getParent();
+  }
+  return 'none';
+}
+
 function isLibraryReference(
   node: Node,
   identName: string,
   packages: readonly string[],
+  allowDefaultImport: boolean = true,
+  allowGlobal: boolean = true,
 ): boolean {
-  if (isGlobalReference(node, identName)) {
+  const unwrapped = unwrapExpression(node);
+
+  if (allowDefaultImport && isRequireOfPackage(unwrapped, packages)) {
     return true;
   }
-  const unwrapped = unwrapExpression(node);
-  if (!Node.isIdentifier(unwrapped) || unwrapped.getText() !== identName) {
-    return false;
-  }
-  const sourceFile = unwrapped.getSourceFile();
-  for (const imp of sourceFile.getImportDeclarations()) {
-    const spec = getSafeModuleSpecifier(imp);
-    if (!spec || !packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))) {
-      continue;
-    }
-    if (
-      imp.getDefaultImport()?.getText() === identName ||
-      imp.getNamespaceImport()?.getText() === identName
-    ) {
-      return true;
-    }
-    for (const named of imp.getNamedImports()) {
-      const local = named.getAliasNode()?.getText() ?? named.getName();
-      if (local === identName) {
+
+  if (Node.isPropertyAccessExpression(unwrapped)) {
+    const propName = unwrapped.getName();
+    if (propName === identName || (allowDefaultImport && propName === 'default')) {
+      const receiver = unwrapped.getExpression();
+      if (isRequireOfPackage(resolveLocalExpression(receiver, 2), packages)) {
         return true;
       }
     }
   }
-  const resolved = resolveLocalExpression(unwrapped, 2);
-  if (Node.isCallExpression(resolved)) {
-    const callee = unwrapExpression(resolved.getExpression());
-    const firstArg = resolved.getArguments()[0];
-    if (
-      Node.isIdentifier(callee) &&
-      callee.getText() === 'require' &&
-      firstArg &&
-      Node.isStringLiteral(firstArg)
-    ) {
-      const spec = firstArg.getLiteralText();
-      return packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
+
+  if (Node.isIdentifier(unwrapped)) {
+    const localName = unwrapped.getText();
+    const sourceFile = unwrapped.getSourceFile();
+
+    for (const imp of sourceFile.getImportDeclarations()) {
+      const matchesPkg = matchesPackageSpec(getSafeModuleSpecifier(imp), packages);
+      if (
+        imp.getDefaultImport()?.getText() === localName ||
+        imp.getNamespaceImport()?.getText() === localName
+      ) {
+        return allowDefaultImport && matchesPkg;
+      }
+      for (const named of imp.getNamedImports()) {
+        const importedName = named.getName();
+        const boundName = named.getAliasNode()?.getText() ?? importedName;
+        if (boundName === localName) {
+          return (
+            matchesPkg &&
+            (importedName === identName ||
+              (allowDefaultImport && importedName === 'default'))
+          );
+        }
+      }
+    }
+
+    const bindingStatus = checkEnclosingBindings(
+      unwrapped,
+      localName,
+      identName,
+      packages,
+      allowDefaultImport,
+    );
+    if (bindingStatus === 'matched') {
+      return true;
+    }
+    if (bindingStatus === 'shadowed') {
+      return false;
+    }
+
+    const resolved = resolveLocalExpression(unwrapped, 2);
+    if (resolved !== unwrapped) {
+      if (allowDefaultImport && isRequireOfPackage(resolved, packages)) {
+        return true;
+      }
+      if (Node.isPropertyAccessExpression(resolved)) {
+        const propName = resolved.getName();
+        if (
+          (propName === identName || (allowDefaultImport && propName === 'default')) &&
+          isRequireOfPackage(resolveLocalExpression(resolved.getExpression(), 2), packages)
+        ) {
+          return true;
+        }
+      }
+      return false;
     }
   }
+
+  if (allowGlobal && isGlobalReference(unwrapped, identName)) {
+    return true;
+  }
+
   return false;
 }
 
@@ -100,12 +239,16 @@ function matchSignatureNewExpression(newExpr: NewExpression): string | null {
 
   if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'Signature') {
     const cryptoObj = unwrapExpression(callee.getExpression());
-    if (
-      Node.isPropertyAccessExpression(cryptoObj) &&
-      cryptoObj.getName() === 'crypto' &&
-      isLibraryReference(cryptoObj.getExpression(), 'KJUR', ['jsrsasign'])
-    ) {
-      return 'new KJUR.crypto.Signature() digital signature can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).';
+    if (Node.isPropertyAccessExpression(cryptoObj) && cryptoObj.getName() === 'crypto') {
+      const kjurNode = unwrapExpression(cryptoObj.getExpression());
+      const isKjurRef =
+        isLibraryReference(kjurNode, 'KJUR', ['jsrsasign']) ||
+        (Node.isPropertyAccessExpression(kjurNode) &&
+          kjurNode.getName() === 'KJUR' &&
+          isLibraryReference(kjurNode.getExpression(), 'jsrsasign', ['jsrsasign'], true, false));
+      if (isKjurRef) {
+        return 'new KJUR.crypto.Signature() digital signature can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).';
+      }
     }
   }
 
@@ -117,19 +260,40 @@ function matchSignatureNewExpression(newExpr: NewExpression): string | null {
     return `new elliptic.${callee.getName()}() signature instance can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).`;
   }
 
-  if (
-    Node.isIdentifier(callee) &&
-    (callee.getText() === 'ec' ||
-      callee.getText() === 'EC' ||
-      callee.getText() === 'eddsa' ||
-      callee.getText() === 'EdDSA') &&
-    !isGlobalReference(callee, callee.getText()) &&
-    isLibraryReference(callee, callee.getText(), ['elliptic'])
-  ) {
-    return `new ${callee.getText()}() from elliptic can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).`;
+  if (Node.isIdentifier(callee)) {
+    const isEllipticCtor =
+      isLibraryReference(callee, 'ec', ['elliptic'], false, false) ||
+      isLibraryReference(callee, 'EC', ['elliptic'], false, false) ||
+      isLibraryReference(callee, 'eddsa', ['elliptic'], false, false) ||
+      isLibraryReference(callee, 'EdDSA', ['elliptic'], false, false);
+    if (isEllipticCtor) {
+      return `new ${callee.getText()}() from elliptic can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).`;
+    }
   }
 
   return null;
+}
+
+function isGuardedByWebCryptoCheck(node: Node): boolean {
+  if (isProtectedByFeatureGuard(node, WEBCRYPTO_GUARD_TOKENS)) {
+    return true;
+  }
+  let current: Node | undefined = node.getParent();
+  while (current) {
+    if (Node.isIfStatement(current)) {
+      const condText = current.getExpression().getText();
+      if (
+        WEBCRYPTO_GUARD_TOKENS.some((tok) => condText.includes(tok)) &&
+        current.getExpression().getDescendantsOfKind(SyntaxKind.ExclamationToken).length > 0 &&
+        node.getStart() >= current.getThenStatement().getStart() &&
+        node.getEnd() <= current.getThenStatement().getEnd()
+      ) {
+        return true;
+      }
+    }
+    current = current.getParent();
+  }
+  return false;
 }
 
 function matchSignatureCallExpression(callExpr: CallExpression): string | null {
@@ -186,7 +350,7 @@ export const digitalSignaturesJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, WEBCRYPTO_GUARD_TOKENS)) {
+      if (isGuardedByWebCryptoCheck(node)) {
         return;
       }
 

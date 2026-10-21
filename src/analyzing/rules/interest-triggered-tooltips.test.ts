@@ -117,11 +117,15 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts when guarded by interestfor feature detection', () => {
+  await t.test('exempts when guarded by interestfor feature detection or local tippy function', () => {
     const project = createInMemoryProject();
     const code = `
       if (!('interestForElement' in HTMLButtonElement.prototype) && !('interestfor' in HTMLElement.prototype)) {
         tippy('#btn', { content: 'Fallback' });
+      }
+      function localScope() {
+        function tippy(el, opts) { return [el, opts]; }
+        tippy('#other', { content: 'Local' });
       }
     `;
     const sourceFile = project.createSourceFile('guarded.js', code);

@@ -57,10 +57,16 @@ void test('soft-edge-content-fade: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts non-gradient url() masks', () => {
+  await t.test('exempts non-gradient url(), radial-gradient, and repeating-linear-gradient masks', () => {
     const css = `
       .icon {
         -webkit-mask-image: url("icon.svg");
+      }
+      .circle-vignette {
+        -webkit-mask-image: radial-gradient(circle, black 50%, transparent 100%);
+      }
+      .stripes {
+        -webkit-mask-image: repeating-linear-gradient(45deg, black 0 10px, transparent 10px 20px);
       }
     `;
     const matches = scanCss('icon.css', css, [softEdgeContentFadeCssMatcher]);

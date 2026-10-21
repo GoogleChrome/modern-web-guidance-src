@@ -100,11 +100,13 @@ void test('slider JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts unrelated .create() calls', () => {
+  await t.test('exempts unrelated .create() calls and local shadowed noUiSlider', () => {
     const project = createInMemoryProject();
     const code = `
       Object.create(null);
       widget.create(el, { start: 10 });
+      const { noUiSlider } = localMock;
+      noUiSlider.create(el, { start: 50 });
     `;
     const sourceFile = project.createSourceFile('unrelated.js', code);
     const matches = sliderJsMatcher.matchFile(sourceFile, {

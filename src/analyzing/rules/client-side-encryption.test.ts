@@ -103,12 +103,14 @@ void test('client-side-encryption JS matcher', async (t) => {
     assert.equal(matches.length, 5);
   });
 
-  await t.test('exempts MD5 and SHA1 non-encryption hashing checksums', () => {
+  await t.test('exempts MD5 and SHA1 non-encryption hashing checksums and local shadowed symbols', () => {
     const project = createInMemoryProject();
     const code = `
       import CryptoJS from 'crypto-js';
       const checksum = CryptoJS.MD5('file-contents').toString();
       const sha1 = CryptoJS.SHA1('avatar-email').toString();
+      const { sjcl } = customHelper;
+      sjcl.encrypt('k', 'v');
     `;
     const sourceFile = project.createSourceFile('checksum.js', code);
     const matches = clientSideEncryptionJsMatcher.matchFile(sourceFile, {

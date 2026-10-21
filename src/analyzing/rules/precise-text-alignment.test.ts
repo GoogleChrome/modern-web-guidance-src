@@ -112,7 +112,7 @@ void test('precise-text-alignment JS and CSS matchers', async (t) => {
     assert.equal(matches.length, 1);
   });
 
-  await t.test('exempts CSS rules that already declare standard text-box or text-box-trim', () => {
+  await t.test('exempts CSS rules that already declare standard text-box or text-box-trim and local capsize functions', () => {
     const css = `
       .badge {
         leading-trim: both;
@@ -123,5 +123,19 @@ void test('precise-text-alignment JS and CSS matchers', async (t) => {
       preciseTextAlignmentCssMatcher,
     ]);
     assert.equal(matches.length, 0);
+
+    const project = createInMemoryProject();
+    const code = `
+      function capsize(opts: { capHeight: number }) { return opts; }
+      capsize({ capHeight: 16 });
+      const { createStyleObject } = customTheme;
+      createStyleObject({ capHeight: 20, lineGap: 4 });
+    `;
+    const sourceFile = project.createSourceFile('local-capsize.ts', code);
+    const jsMatches = preciseTextAlignmentJsMatcher.matchFile(sourceFile, {
+      filePath: 'local-capsize.ts',
+      fileContent: code,
+    });
+    assert.equal(jsMatches.length, 0);
   });
 });

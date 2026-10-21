@@ -8,7 +8,7 @@ import type {
 export const SOFT_EDGE_CONTENT_FADE_GUIDE_HASH = '2f9aef74b480';
 
 const LINEAR_GRADIENT_MASK_REGEX =
-  /(?:-webkit-|-moz-|-o-)?linear-gradient\s*\(|-webkit-gradient\s*\(\s*linear\b/i;
+  /(?:^|[^a-zA-Z0-9_-])(?:-webkit-|-moz-|-o-)?linear-gradient\s*\(|-webkit-gradient\s*\(\s*linear\b/i;
 
 export const softEdgeContentFadeCssMatcher: CssRuleMatcher = {
   kind: 'css',
@@ -18,11 +18,15 @@ export const softEdgeContentFadeCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    const webkitMaskValue =
-      styleRule.getPropertyValue('-webkit-mask-image') ??
-      styleRule.getPropertyValue('-webkit-mask');
+    const webkitMaskImage = styleRule.getPropertyValue('-webkit-mask-image');
+    const webkitMask = styleRule.getPropertyValue('-webkit-mask');
 
-    if (!webkitMaskValue || !LINEAR_GRADIENT_MASK_REGEX.test(webkitMaskValue)) {
+    const hasLinearGradientMask =
+      (webkitMaskImage !== null &&
+        LINEAR_GRADIENT_MASK_REGEX.test(webkitMaskImage)) ||
+      (webkitMask !== null && LINEAR_GRADIENT_MASK_REGEX.test(webkitMask));
+
+    if (!hasLinearGradientMask) {
       return null;
     }
 

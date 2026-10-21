@@ -22,23 +22,44 @@ import type {
 export const SELECT_MENU_INTERACTION_GUIDE_HASH = '3d0aae1e8d74';
 
 const SELECT_INVALID_SELECTOR_REGEX =
-  /(?:^|[\s>+~,])select(?:[.#\[][^\s>+~,]*)*:invalid\b/i;
+  /(?:^|[\s>+~,])select(?:[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*:invalid\b/i;
 
 const USER_INVALID_GUARD_TOKENS = [
   ':user-invalid',
   'user-invalid',
 ] as const;
 
+const SELECT_IDENTIFIER_REGEX =
+  /(?:^|[^a-zA-Z])select(?:El|Element|Menu|Box|Input|Field|Dropdown|s)?(?![a-zA-Z])/i;
+
+function isSelectTargetText(text: string): boolean {
+  if (/\[[^\]]*\bmultiple\b[^\]]*\]/i.test(text)) {
+    return false;
+  }
+  const stripped = text.replace(/\bquerySelector(?:All)?\b/g, '');
+  return (
+    /\bselect\b/i.test(stripped) ||
+    SELECT_IDENTIFIER_REGEX.test(stripped)
+  );
+}
+
 function isSelectTargetNode(targetNode: Node | undefined): boolean {
   if (!targetNode) {
     return false;
   }
   const directText = targetNode.getText();
-  if (/select/i.test(directText)) {
+  const resolved = resolveLocalExpression(targetNode, 2);
+  const resolvedText = resolved.getText();
+  if (
+    /\[[^\]]*\bmultiple\b[^\]]*\]/i.test(directText) ||
+    /\[[^\]]*\bmultiple\b[^\]]*\]/i.test(resolvedText)
+  ) {
+    return false;
+  }
+  if (isSelectTargetText(directText)) {
     return true;
   }
-  const resolved = resolveLocalExpression(targetNode, 2);
-  return /select/i.test(resolved.getText());
+  return isSelectTargetText(resolvedText);
 }
 
 function matchSelectValidationListener(callExpr: CallExpression): string | null {
@@ -89,7 +110,8 @@ export const selectMenuInteractionCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    if (!SELECT_INVALID_SELECTOR_REGEX.test(selector)) {
+    const selectorWithoutNot = selector.replace(/:not\([^)]*\)/gi, '');
+    if (!SELECT_INVALID_SELECTOR_REGEX.test(selectorWithoutNot)) {
       return null;
     }
 

@@ -35,7 +35,10 @@ const DATA_SRC_SWAPPING_REGEX =
   /dataset\.(?:src|poster)|getAttribute\s*\(\s*['"]data-(?:src|poster)['"]\s*\)/;
 
 const MEDIA_ELEMENT_CONTEXT_REGEX =
-  /\b(?:video|audio)\b|\.load\s*\(\s*\)/i;
+  /\b(?:video|audio|source|poster|media)\b|\.load\s*\(\s*\)/i;
+
+const IMAGE_ONLY_CALLBACK_REGEX =
+  /\b(?:img|image|iframe)\b/i;
 
 function isGuardedByLazyMediaSupport(node: Node): boolean {
   if (isProtectedByFeatureGuard(node, LAZY_MEDIA_GUARD_TOKENS)) {
@@ -95,8 +98,14 @@ function matchMediaLazyObserver(
   }
 
   const fileText = sourceFile.getFullText();
-  if (!MEDIA_ELEMENT_CONTEXT_REGEX.test(callbackText) && !/\b(?:video|audio)\b/i.test(fileText)) {
-    return null;
+  const hasCallbackMediaContext = MEDIA_ELEMENT_CONTEXT_REGEX.test(callbackText);
+  if (!hasCallbackMediaContext) {
+    if (IMAGE_ONLY_CALLBACK_REGEX.test(callbackText)) {
+      return null;
+    }
+    if (!/\b(?:video|audio)\b/i.test(fileText) || !callbackText.includes('.load()')) {
+      return null;
+    }
   }
 
   if (!/\b(?:video|audio|source)\b/i.test(fileText) && !callbackText.includes('.load()')) {
