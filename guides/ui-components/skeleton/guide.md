@@ -100,22 +100,13 @@ For more than one bar, append a `move to` and another closed rounded rectangle t
 
 ## 4. Media and avatars
 
-Style the real `<img>`, `<video>` or `<canvas>` in place. Do not swap in a placeholder `<div>`. Remove the picture so the tone shows through, and reserve space with `aspect-ratio`. This needs definite dimensions, so set `inline-size` (or `block-size`) as well.
+Style the real `<img>`, `<video>` or `<canvas>` in place. Do not swap in a placeholder `<div>`. Push the picture out of the box so the tone shows through, and reserve space with `aspect-ratio`. This needs definite dimensions, so set `inline-size` (or `block-size`) as well.
 
 ```css
 .skeleton[aria-busy="true"] :is(img, video, canvas) {
   background-color: var(--skeleton-tone);
   aspect-ratio: 16 / 10;
-}
-
-/* Images: a transparent generated image replaces the picture */
-.skeleton[aria-busy="true"] img {
-  content: linear-gradient(transparent, transparent);
-}
-
-/* Video and canvas ignore `content`; push the frame out of the box with a length */
-.skeleton[aria-busy="true"] :is(video, canvas) {
-  object-position: -9999px 0;
+  object-position: -9999px 0; /* A length, not a percentage, moves the picture outside the box so it is clipped */
 }
 
 .skeleton[aria-busy="true"] .avatar {
@@ -124,8 +115,9 @@ Style the real `<img>`, `<video>` or `<canvas>` in place. Do not swap in a place
 }
 ```
 
-- Use a transparent gradient, not a colored one, so the tone and the shimmer from section 7 stay visible.
-- Tested in Chromium and WebKit: `content` works on `<img>` and `<picture>`'s `<img>`, but not on `<video>` or `<canvas>`. `object-position` with a large length works on `<video>` and `<canvas>`, but a percentage does not. Neither works on an inline `<svg>`. Firefox is untested.
+- Use a length for `object-position`. A percentage does not move the picture out of the box.
+- DO NOT use `content: linear-gradient()` to remove the picture: it does not work in Safari, or on `<video>` and `<canvas>`.
+- Neither technique works on an inline `<svg>`.
 - Remove the `controls` attribute from a skeleton `<video>`, since the browser's controls still draw over the placeholder.
 
 ## 5. Other surfaces

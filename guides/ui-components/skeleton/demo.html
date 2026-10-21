@@ -205,10 +205,11 @@
         vertical-align: middle;
       }
 
-      /* Real media: a transparent generated image replaces the picture so the
-         tone and shimmer background show through. Needs definite dimensions. */
+      /* Real media: a length object-position pushes the picture out of the box
+         so the tone and shimmer background show through. Needs definite
+         dimensions. */
       .skeleton[aria-busy="true"] .media {
-        content: linear-gradient(transparent, transparent);
+        object-position: -9999px 0;
         background-color: var(--skeleton-tone);
       }
 
