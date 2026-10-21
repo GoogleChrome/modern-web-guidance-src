@@ -28,7 +28,7 @@ void test('required-field-feedback: rule metadata', () => {
 
   assert.equal(
     requiredFieldFeedbackJsRule.id,
-    'required-field-feedback/js-Blur-dirty-class',
+    'required-field-feedback/js-blur-dirty-class',
   );
   assert.equal(
     requiredFieldFeedbackJsRule.guideId,

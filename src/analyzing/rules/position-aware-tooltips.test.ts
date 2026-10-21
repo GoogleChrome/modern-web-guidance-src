@@ -144,6 +144,11 @@ void test('position-aware-tooltips JS matcher', async (t) => {
         const tooltip = document.querySelector('#tooltip');
         computePosition(trigger, tooltip);
       }
+
+      function setupWidgets() {
+        const tooltipEl = document.querySelector('#other-tooltip');
+        createPopper(trigger, dropdownMenu, { placement: 'bottom' });
+      }
     `;
     const sourceFile = project.createSourceFile('menu.js', code);
     const matches = positionAwareTooltipsJsMatcher.matchFile(sourceFile, {

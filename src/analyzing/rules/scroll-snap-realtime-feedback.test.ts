@@ -65,6 +65,12 @@ void test('scroll-snap-realtime-feedback JS matcher', async (t) => {
           setActiveDot(index);
         }, 150);
       });
+
+      window.addEventListener('scroll', () => {
+        if (Math.abs(document.documentElement.scrollTop - lastScrollTop) > 20) {
+          hideFloatingButton();
+        }
+      });
     `;
     const sourceFile = project.createSourceFile('guarded.js', code);
     const matches = scrollSnapRealtimeFeedbackMatcher.matchFile(sourceFile, {

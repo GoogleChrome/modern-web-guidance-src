@@ -23,7 +23,7 @@ import type {
 export const REQUIRED_FIELD_FEEDBACK_GUIDE_HASH = '7772788421b6';
 
 const REQUIRED_INVALID_SELECTOR_REGEX =
-  /(?:^|[\s>+~,])(?:input|textarea|[.#][a-zA-Z0-9_-]+)*(?::required|\[required(?:=[^\]]*)?\])(?:[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*:invalid\b|(?:^|[\s>+~,])(?:input|textarea|[.#][a-zA-Z0-9_-]+)*:invalid(?:[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*(?::required|\[required(?:=[^\]]*)?\])/i;
+  /(?:^|[\s>+~,])(?:input|textarea|[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*(?::required|\[required(?:=[^\]]*)?\])(?:[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*:invalid\b|(?:^|[\s>+~,])(?:input|textarea|[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*:invalid(?:[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*(?::required|\[required(?:=[^\]]*)?\])/i;
 
 const USER_INVALID_GUARD_TOKENS = [
   ':user-invalid',
@@ -161,7 +161,7 @@ export const requiredFieldFeedbackCssRule: AnalyzerRule = {
 };
 
 export const requiredFieldFeedbackJsRule: AnalyzerRule = {
-  id: 'required-field-feedback/js-Blur-dirty-class',
+  id: 'required-field-feedback/js-blur-dirty-class',
   guideId: 'required-field-feedback',
   guideHash: REQUIRED_FIELD_FEEDBACK_GUIDE_HASH,
   summary:

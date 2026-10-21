@@ -8,6 +8,7 @@ import {
   isProtectedByFeatureGuard,
   matchEventListenerCall,
   resolveCallableNode,
+  resolveLocalExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
   AnalyzerMatch,
@@ -24,7 +25,10 @@ const SNAP_CHANGING_GUARD_TOKENS = [
 ] as const;
 
 const SNAP_ROUND_MATH_REGEX =
-  /Math\.round\s*\(\s*[^)]*\b(?:scrollLeft|scrollTop)\b[^)]*\/|Math\.abs\s*\(\s*[^)]*\b(?:scrollLeft|scrollTop)\b/;
+  /Math\.round\s*\(\s*[^)]*\b(?:scrollLeft|scrollTop)\b[^)]*\/|Math\.abs\s*\(\s*[^)]*\b(?:offsetLeft|offsetTop)\b[^)]*-\s*[^)]*\b(?:scrollLeft|scrollTop)\b|Math\.abs\s*\(\s*[^)]*\b(?:scrollLeft|scrollTop)\b[^)]*-\s*[^)]*\b(?:offsetLeft|offsetTop)\b/;
+
+const SNAP_CONTEXT_REGEX =
+  /\b(?:snap|carousel|slider|slide|slides|gallery|pager|pagination|dot|dots|indicator|indicators|card|cards|panel|panels|index|idx|active|current|pending|selected)\b/i;
 
 function isGuardedBySnapChanging(node: Node, sourceFile: SourceFile): boolean {
   if (isProtectedByFeatureGuard(node, SNAP_CHANGING_GUARD_TOKENS)) {
@@ -57,14 +61,28 @@ function matchRealtimeSnapScrollListener(callExpr: CallExpression): string | nul
     return null;
   }
 
+  const rawHandlerText = listener.handlerNode.getText();
   const handlerNode = resolveCallableNode(listener.handlerNode);
   const handlerText = handlerNode.getText();
 
-  if (/\b(?:setTimeout|clearTimeout|debounce)\b/.test(handlerText)) {
+  if (
+    /\b(?:setTimeout|clearTimeout|debounce)\b/i.test(rawHandlerText) ||
+    /\b(?:setTimeout|clearTimeout|debounce)\b/i.test(handlerText)
+  ) {
     return null;
   }
 
   if (!SNAP_ROUND_MATH_REGEX.test(handlerText)) {
+    return null;
+  }
+
+  const targetText = listener.targetNode
+    ? `${listener.targetNode.getText()} ${resolveLocalExpression(listener.targetNode, 2).getText()}`
+    : '';
+  if (
+    !SNAP_CONTEXT_REGEX.test(handlerText) &&
+    !SNAP_CONTEXT_REGEX.test(targetText)
+  ) {
     return null;
   }
 

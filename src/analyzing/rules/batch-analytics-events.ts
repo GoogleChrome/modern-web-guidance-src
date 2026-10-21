@@ -77,10 +77,35 @@ function matchOnUnloadAssignment(binaryExpr: BinaryExpression): string | null {
   return `Dispatches telemetry inside '${propName}' handler; modernize with fetchLater() or visibilitychange / pagehide listeners.`;
 }
 
+function fileAlreadyUsesModernLifecycleBeacon(sourceFile: SourceFile): boolean {
+  const fileText = sourceFile.getText();
+  if (/\bfetchLater\s*\(/.test(fileText)) {
+    return true;
+  }
+  let hasModernListener = false;
+  sourceFile.forEachDescendant((node) => {
+    if (hasModernListener || !Node.isCallExpression(node)) {
+      return;
+    }
+    const listener = matchEventListenerCall(node, [
+      'visibilitychange',
+      'pagehide',
+    ]);
+    if (listener && hasUnloadTelemetryDispatch(listener.handlerNode)) {
+      hasModernListener = true;
+    }
+  });
+  return hasModernListener;
+}
+
 export const batchAnalyticsEventsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['unload', 'beforeunload', 'onbeforeunload', 'onunload'],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
+    if (fileAlreadyUsesModernLifecycleBeacon(sourceFile)) {
+      return [];
+    }
+
     const matches: AnalyzerMatch[] = [];
 
     sourceFile.forEachDescendant((node) => {

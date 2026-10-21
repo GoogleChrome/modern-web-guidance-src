@@ -38,7 +38,10 @@ const ANCHOR_GUARD_TOKENS = [
   'container-type',
 ] as const;
 
-const TOOLTIP_CONTEXT_REGEX = /\btooltip\b|role\s*=\s*['"]tooltip['"]/i;
+const TOOLTIP_CONTEXT_REGEX = /tooltip|role\s*=\s*['"]tooltip['"]/i;
+
+const NON_TOOLTIP_WIDGET_REGEX =
+  /\b(?:dropdown|combobox|listbox|menu|menubar|menuitem|contextmenu|modal|dialog|select|datepicker|autocomplete)\b/i;
 
 function matchesPackageSpec(
   spec: string | null,
@@ -103,12 +106,43 @@ function checkEnclosingBindings(
 
     if (Node.isBlock(current) || Node.isSourceFile(current)) {
       for (const stmt of current.getStatements()) {
+        if (
+          (Node.isFunctionDeclaration(stmt) || Node.isClassDeclaration(stmt)) &&
+          stmt.getName() === localName
+        ) {
+          return 'shadowed';
+        }
         if (!Node.isVariableStatement(stmt)) {
           continue;
         }
         for (const decl of stmt.getDeclarationList().getDeclarations()) {
           const nameNode = decl.getNameNode();
-          if (Node.isObjectBindingPattern(nameNode)) {
+          if (Node.isIdentifier(nameNode) && nameNode.getText() === localName) {
+            const init = decl.getInitializer();
+            if (init) {
+              const resolvedInit = resolveLocalExpression(init, 2);
+              if (
+                allowDefaultImport &&
+                isRequireOfPackage(resolvedInit, packages)
+              ) {
+                return 'matched';
+              }
+              if (Node.isPropertyAccessExpression(resolvedInit)) {
+                const propName = resolvedInit.getName();
+                if (
+                  (propName === identName ||
+                    (allowDefaultImport && propName === 'default')) &&
+                  isRequireOfPackage(
+                    resolveLocalExpression(resolvedInit.getExpression(), 2),
+                    packages,
+                  )
+                ) {
+                  return 'matched';
+                }
+              }
+            }
+            return 'shadowed';
+          } else if (Node.isObjectBindingPattern(nameNode)) {
             for (const el of nameNode.getElements()) {
               if (el.getName() === localName) {
                 const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
@@ -172,6 +206,20 @@ function isLibraryReference(
     const localName = unwrapped.getText();
     const sourceFile = unwrapped.getSourceFile();
 
+    const bindingStatus = checkEnclosingBindings(
+      unwrapped,
+      localName,
+      identName,
+      packages,
+      allowDefaultImport,
+    );
+    if (bindingStatus === 'matched') {
+      return true;
+    }
+    if (bindingStatus === 'shadowed') {
+      return false;
+    }
+
     for (const imp of sourceFile.getImportDeclarations()) {
       const matchesPkg = matchesPackageSpec(getSafeModuleSpecifier(imp), packages);
       if (
@@ -192,37 +240,6 @@ function isLibraryReference(
         }
       }
     }
-
-    const bindingStatus = checkEnclosingBindings(
-      unwrapped,
-      localName,
-      identName,
-      packages,
-      allowDefaultImport,
-    );
-    if (bindingStatus === 'matched') {
-      return true;
-    }
-    if (bindingStatus === 'shadowed') {
-      return false;
-    }
-
-    const resolved = resolveLocalExpression(unwrapped, 2);
-    if (resolved !== unwrapped) {
-      if (allowDefaultImport && isRequireOfPackage(resolved, packages)) {
-        return true;
-      }
-      if (Node.isPropertyAccessExpression(resolved)) {
-        const propName = resolved.getName();
-        if (
-          (propName === identName || (allowDefaultImport && propName === 'default')) &&
-          isRequireOfPackage(resolveLocalExpression(resolved.getExpression(), 2), packages)
-        ) {
-          return true;
-        }
-      }
-      return false;
-    }
   }
 
   if (allowGlobal && isGlobalReference(unwrapped, identName)) {
@@ -233,14 +250,26 @@ function isLibraryReference(
 }
 
 function hasTooltipContext(callExpr: CallExpression): boolean {
+  let hasNonTooltipWidgetArg = false;
   for (const arg of callExpr.getArguments()) {
-    if (TOOLTIP_CONTEXT_REGEX.test(arg.getText())) {
+    const argText = arg.getText();
+    const resolvedText = resolveLocalExpression(arg, 2).getText();
+    if (
+      TOOLTIP_CONTEXT_REGEX.test(argText) ||
+      TOOLTIP_CONTEXT_REGEX.test(resolvedText)
+    ) {
       return true;
     }
-    const resolved = resolveLocalExpression(arg, 2);
-    if (TOOLTIP_CONTEXT_REGEX.test(resolved.getText())) {
-      return true;
+    if (
+      NON_TOOLTIP_WIDGET_REGEX.test(argText) ||
+      NON_TOOLTIP_WIDGET_REGEX.test(resolvedText)
+    ) {
+      hasNonTooltipWidgetArg = true;
     }
+  }
+
+  if (hasNonTooltipWidgetArg) {
+    return false;
   }
 
   let current: Node | undefined = callExpr.getParent();
@@ -253,6 +282,9 @@ function hasTooltipContext(callExpr: CallExpression): boolean {
       const nameText = current.getName() ?? '';
       if (TOOLTIP_CONTEXT_REGEX.test(nameText)) {
         return true;
+      }
+      if (NON_TOOLTIP_WIDGET_REGEX.test(nameText)) {
+        return false;
       }
     }
     if (Node.isBlock(current)) {

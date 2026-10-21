@@ -15,9 +15,12 @@ export const optimizeImagePriorityMatcher: DomRuleMatcher = {
   selector: 'link[rel="preload"][as="image"], img',
   fastTokens: ['preload', 'loading', 'importance', 'hero', 'lcp'],
   skipIfHasSpread: true,
-  skipIfDynamicAttributes: ['fetchpriority'],
+  skipIfDynamicAttributes: ['fetchpriority', 'fetchPriority'],
   matchElement: (element: DomElementView, _ctx: DomMatcherContext) => {
-    if (element.hasDynamicAttribute?.('fetchpriority')) {
+    if (
+      element.hasDynamicAttribute?.('fetchpriority') ||
+      element.hasDynamicAttribute?.('fetchPriority')
+    ) {
       return null;
     }
 
@@ -29,7 +32,9 @@ export const optimizeImagePriorityMatcher: DomRuleMatcher = {
       }
       if (
         element.hasAttribute('fetchpriority') ||
-        element.hasAttribute('imagesrcset')
+        element.hasAttribute('fetchPriority') ||
+        element.hasAttribute('imagesrcset') ||
+        element.hasAttribute('imageSrcSet')
       ) {
         return null;
       }
@@ -40,7 +45,10 @@ export const optimizeImagePriorityMatcher: DomRuleMatcher = {
     }
 
     if (element.tagName === 'img') {
-      if (element.hasAttribute('fetchpriority')) {
+      if (
+        element.hasAttribute('fetchpriority') ||
+        element.hasAttribute('fetchPriority')
+      ) {
         return null;
       }
 

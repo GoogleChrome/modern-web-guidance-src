@@ -8,6 +8,7 @@ import {
   isProtectedByFeatureGuard,
   matchEventListenerCall,
   resolveCallableNode,
+  resolveLocalExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
   AnalyzerMatch,
@@ -25,6 +26,9 @@ const SNAP_CHANGE_GUARD_TOKENS = [
 
 const SNAP_ROUND_MATH_REGEX =
   /Math\.round\s*\(\s*[^)]*\b(?:scrollLeft|scrollTop)\b[^)]*\//;
+
+const SNAP_CONTEXT_REGEX =
+  /\b(?:snap|carousel|slider|slide|slides|gallery|pager|pagination|dot|dots|indicator|indicators|card|cards|panel|panels|index|idx|active|current|pending|selected)\b/i;
 
 function isGuardedBySnapChange(node: Node, sourceFile: SourceFile): boolean {
   if (isProtectedByFeatureGuard(node, SNAP_CHANGE_GUARD_TOKENS)) {
@@ -57,6 +61,7 @@ function matchSnapStateSyncListener(callExpr: CallExpression): string | null {
     return null;
   }
 
+  const rawHandlerText = listener.handlerNode.getText();
   const handlerNode = resolveCallableNode(listener.handlerNode);
   const handlerText = handlerNode.getText();
 
@@ -64,9 +69,22 @@ function matchSnapStateSyncListener(callExpr: CallExpression): string | null {
     return null;
   }
 
+  const targetText = listener.targetNode
+    ? `${listener.targetNode.getText()} ${resolveLocalExpression(listener.targetNode, 2).getText()}`
+    : '';
+  if (
+    !SNAP_CONTEXT_REGEX.test(handlerText) &&
+    !SNAP_CONTEXT_REGEX.test(targetText)
+  ) {
+    return null;
+  }
+
   if (listener.eventName === 'scroll') {
     const hasDebounce =
-      /\bsetTimeout\b/.test(handlerText) && /\bclearTimeout\b/.test(handlerText);
+      (/\bsetTimeout\b/.test(handlerText) &&
+        /\bclearTimeout\b/.test(handlerText)) ||
+      /\bdebounce\b/i.test(rawHandlerText) ||
+      /\bdebounce\b/i.test(handlerText);
     if (!hasDebounce) {
       return null;
     }

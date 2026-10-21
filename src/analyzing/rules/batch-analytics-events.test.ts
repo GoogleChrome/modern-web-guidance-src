@@ -62,6 +62,10 @@ void test('batch-analytics-events JS matcher', async (t) => {
           e.returnValue = '';
         }
       });
+
+      window.addEventListener('pagehide', () => {
+        navigator.sendBeacon('/analytics', data);
+      });
     `;
     const sourceFile = project.createSourceFile('safe.js', code);
     const matches = batchAnalyticsEventsMatcher.matchFile(sourceFile, {
