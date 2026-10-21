@@ -129,9 +129,9 @@ printf '{"include":["nightly-*"],"exclude":[],"overrides":[],"releasedModels":["
 pnpm build:public --all --source /tmp/store --allowlist /tmp/allowlist.json --out /tmp/pe
 ls /tmp/pe/public-evals
 
-# Preview allowlist edits without writing anything (gd is bin/gd.ts, run through pnpm)
-pnpm exec gd promote nightly-2026-10-20_20-43-48-codex_cli --dry-run
-pnpm exec gd unpublish nightly-2026-10-20_20-43-48-codex_cli --guide security --dry-run
+# Preview allowlist edits without writing anything (or plain `gd` after `pnpm link --global`)
+node bin/gd.ts promote nightly-2026-10-20_20-43-48-codex_cli --dry-run
+node bin/gd.ts unpublish nightly-2026-10-20_20-43-48-codex_cli --guide security --dry-run
 ```
 
 The fixture store above has only `evals.json`, so the build writes one file per
