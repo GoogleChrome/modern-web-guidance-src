@@ -41,6 +41,7 @@ export const DISCIPLINE_GUIDES = new Set([
   'cpp-on-the-web',
   'css-conditionals',
   'css-layout',
+  'form-factor-adaptation',
   'motion',
   'passkeys',
   'responsive-design',
