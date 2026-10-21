@@ -25,7 +25,7 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 
 ## Structure and accessibility
 
-- Use a named `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Give each slide `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (for example, "2 of 4"). Keep slide content available to assistive technology.
+- Use a named `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Give each slide `role="group"`, `aria-roledescription="slide"`, and an `aria-label` that includes its position (for example, `aria-label="2 of 4"`). Write the labels in the markup, localized with the rest of the page; if slides change at runtime, regenerate them from the same localized strings. The position is the slide's place in the original sequence, not its current visual position. Keep slide content available to assistive technology.
 - Give every control a clear accessible name. Native scroll buttons need alternative text in `content`; fallback controls should be native buttons, not chevrons without labels.
 - Announce the current slide in a visually hidden polite status region after scrolling settles. Update it for native controls, fallback controls, and direct scrolling so assistive technology receives feedback when the visible slide changes.
 
@@ -246,6 +246,7 @@ For previous/next that wrap from the last slide to the first and back, keep the 
 - Start with `--current: 0` and park the track on the middle position with an instant scroll. When scrolling settles, work out how many positions the user moved from the middle, add that to `--current` (wrapping at the slide count), then park on the middle again in the same task. The reorder and the instant scroll must happen together so the change is invisible.
 - Looping needs at least three slides of equal size along the scrolling axis: the parking offset is the middle position times one slide plus the gap. Do not use it for peek layouts or slides of differing sizes.
 - Fallback previous/next controls and the status calculation must work from visual order, not DOM sibling order. Keep counting real slides, so "Slide N of M" announces after the rotation settles.
+- Per-slide labels ("2 of 4") and the status region use each slide's original index, which does not change as the ring rotates. Do not renumber slides when `--current` changes; announce the newly centered slide by its original index.
 - Keep `scroll-behavior: smooth` inside `prefers-reduced-motion: no-preference` for user navigation; only the re-centering is instant.
 - Without `sibling-index()` support, leave the carousel as a finite list: skip the rotation and keep disabling controls at the ends.
 
