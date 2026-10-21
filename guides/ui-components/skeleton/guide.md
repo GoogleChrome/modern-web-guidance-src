@@ -47,9 +47,9 @@ MANDATORY: Put `aria-busy="true"` on the container and scope every skeleton styl
 
 Skeleton colors belong to the surface. Define `--skeleton-tone` on the container and derive it from the surface with `color-mix()`, mixing a little of the text color into the surface color, so a darker surface gets a darker skeleton. Derive a lighter `--skeleton-highlight` the same way for the shimmer. Use the container's real background and text tokens.
 
-## 3. Elements
+## 3. Text
 
-Treat each element type differently. Text, links and list items share one rule (hide content, fill with the tone, shape with `border-shape`). Buttons and inputs reuse the same shape with fixed sizing. Media and avatars use a plain fill.
+Text, links and list items share one rule: hide the content, fill with the tone, and shape with `border-shape`.
 
 ```css
 .skeleton[aria-busy="true"] :is(p, h2, li, a) {
@@ -97,14 +97,39 @@ For more than one bar, append a `move to` and another closed rounded rectangle t
 | `p` | 3 bars (2 in compact cards), last one shorter like a real paragraph |
 | `li` | 1 bar each, with a small circle subpath for the bullet; vary widths |
 | `a` | 1 short bar (`--line-one: 42%`) |
+
+## 4. Media and avatars
+
+Style the real `<img>` or `<video>` in place. Do not swap in a placeholder `<div>`. Replace the picture with a transparent generated image so the tone shows through, and reserve space with `aspect-ratio`. This needs definite dimensions, so set `inline-size` (or `block-size`) as well.
+
+```css
+.skeleton[aria-busy="true"] :is(img, video) {
+  content: linear-gradient(transparent, transparent); /* Removes the picture; the background shows */
+  background-color: var(--skeleton-tone);
+  aspect-ratio: 16 / 10;
+}
+
+.skeleton[aria-busy="true"] .avatar {
+  border-radius: 50%;
+  aspect-ratio: 1;
+}
+```
+
+- Use a transparent gradient, not a colored one, so the tone and the shimmer from section 7 stay visible.
+- Verified in Chromium for `<img>`. Check other browsers and elements such as `<video>` before relying on it.
+- DO NOT use `object-position` to push the picture out of the box. Percentage values do not move it out, and the picture can still show.
+
+## 5. Other surfaces
+
+Anything else that defines the layout but is not text or media (buttons, inputs, badges, chips and similar) becomes a single fixed-height shape with no visible content. Reuse the text `border-shape` with one bar, or use a plain fill with `border-radius`.
+
+| Element | Treatment |
+|---|---|
 | `button` | One fully rounded pill, fixed block size (for example `2.4em`) and inline size, no padding or border, no text |
 | `input` | One pill with a small radius, full width, fixed block size, no padding or border |
-| Media | `background-color: var(--skeleton-tone)` plus `aspect-ratio` to reserve space |
-| Avatar | Same as media with `border-radius: 50%` |
+| Badge, chip | One small pill or rectangle with a fixed block size and no text |
 
-DO NOT replace media with `content: linear-gradient()`: it is inconsistent across browsers, and the media can disappear or reflow the text.
-
-## 4. Simplify
+## 6. Simplify
 
 A skeleton is a simplification, not a copy. Keep what defines the silhouette (media, title, a few lines of body, the primary action) and hide the rest.
 
@@ -113,7 +138,7 @@ A skeleton is a simplification, not a copy. Keep what defines the silhouette (me
 - Remove whole cards or rows with `display: none`. For items inside a card, use `visibility: hidden` so the card height does not change when the real content arrives.
 - Decide what to hide by asking whether removing it changes the container's height. If it does, keep or reserve it.
 
-## 5. Shimmer
+## 7. Shimmer
 
 Add a shimmer so users can tell the placeholders are actively loading and not broken.
 

@@ -83,7 +83,10 @@
       }
 
       .media {
+        display: block;
+        inline-size: 100%;
         aspect-ratio: 16 / 10;
+        object-fit: cover;
       }
 
       .content {
@@ -202,7 +205,10 @@
         vertical-align: middle;
       }
 
+      /* Real media: a transparent generated image replaces the picture so the
+         tone and shimmer background show through. Needs definite dimensions. */
       .skeleton[aria-busy="true"] .media {
+        content: linear-gradient(transparent, transparent);
         background-color: var(--skeleton-tone);
       }
 
@@ -418,7 +424,7 @@
     <p class="loading-status" role="status">Loading cards…</p>
     <section class="cards skeleton" aria-busy="true" inert aria-hidden="true">
       <article>
-        <div class="media" aria-hidden="true"></div>
+        <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
         <div class="content" aria-hidden="true">
           <p><time datetime="2026-10-14">Updated yesterday</time> · 4 min read</p>
           <h2></h2>
@@ -428,7 +434,7 @@
 
       <article>
         <div class="content">
-          <div class="media"></div>
+          <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
           <div>
             <h2>A heading with its real text still present while loading</h2>
             <p>This deliberately longer paragraph tests that the fixed skeleton
@@ -450,7 +456,7 @@
       </article>
 
       <article aria-hidden="true">
-        <div class="media" aria-hidden="true"></div>
+        <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
         <div class="content" aria-hidden="true">
           <p><time datetime="2026-10-14">Updated yesterday</time> · 4 min read</p>
           <h2></h2>
@@ -460,7 +466,7 @@
 
       <article aria-hidden="true">
         <div class="content">
-          <div class="media"></div>
+          <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
           <div>
             <h2>A heading with its real text still present while loading</h2>
             <p>This deliberately longer paragraph tests that the fixed skeleton
@@ -483,7 +489,7 @@
 
       <article aria-hidden="true">
         <div class="content">
-          <div class="media"></div>
+          <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
           <div>
             <h2></h2>
             <p></p>

@@ -4,8 +4,8 @@
 - Text bars are drawn with `border-shape: shape(...)` using rounded-end bar subpaths, with a filled `background`.
 - Paragraphs render 3-4 bars with the last one shorter than the rest, via multiple closed subpaths in one `shape()`. Headings render one bar.
 - Skeleton text elements clip real text with `line-clamp` set to the bar count (inside `@supports`), with `overflow: hidden` and `lh`-unit height reservation as the baseline, so long content does not add lines.
-- Buttons, inputs, and other small rectangular surfaces (e.g. badges) render as a single fixed-height rectangle with no visible text.
-- Media and avatar placeholders use a `background-color` fill with `aspect-ratio`, and are not replaced with `content: linear-gradient()`.
+- Buttons, inputs, and other small surfaces that define the layout (e.g. badges) render as a single fixed-height rectangle with no visible text.
+- Media and avatar placeholders are real `<img>`/`<video>` elements whose picture is removed with `content: linear-gradient(transparent, transparent)`, with a `background-color` fill and `aspect-ratio`, not placeholder `<div>`s.
 - Skeleton colors are derived from the surface with `color-mix()`.
 - A shimmer gradient is painted on each placeholder shape's own background with `background-attachment: fixed`, so all shapes sweep in sync without a parent overlay. The shimmer gradient and animation are only applied under `prefers-reduced-motion: no-preference`.
 - Only a limited number of cards are visible while loading, even if more are in the markup.
