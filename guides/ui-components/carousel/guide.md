@@ -183,7 +183,7 @@ The fallback is robust: scrolling and snap behavior remain native, while small a
 
 {{ BASELINE_STATUS("scroll-buttons") }}
 
-When `::scroll-button()` is unavailable, reveal the HTML Previous and Next buttons and wire them to scroll to the adjacent slide in visual order (which differs from DOM order when looping), and disable each when no adjacent slide exists. Give them text or `aria-label` names, not unlabeled chevrons. Keep them before the track in DOM order so they precede any native marker group in mixed-support browsers.
+When `::scroll-button()` is unavailable, reveal the HTML Previous and Next buttons. On click, find the current slide from the track's scroll position along its scrolling axis, then scroll the track to the adjacent slide's snap position in visual order (which differs from DOM order when looping), for example with `track.scrollTo()` using that slide's offset. Do not scroll by a fixed viewport width, keep a separate index that can drift from the real scroll position, or use `scrollIntoView()` without limiting it to the track, which can scroll the page. Disable each button when no adjacent slide exists. Give them text or `aria-label` names, not unlabeled chevrons. Keep them before the track in DOM order so they precede any native marker group in mixed-support browsers.
 
 ### Scroll markers
 
