@@ -4,7 +4,7 @@
 - Text bars are drawn with `border-shape: shape(...)` using rounded-end bar subpaths, with a filled `background`.
 - Paragraphs render 3-4 bars with the last one shorter than the rest, via multiple closed subpaths in one `shape()`. Headings render one bar.
 - Skeleton text elements clip real text (`overflow: hidden`) and reserve height with `lh` units, so long content does not add lines.
-- Buttons and inputs render as a single fixed-height pill with no padding or border.
+- Buttons, inputs, and other small rectangular surfaces (e.g. badges) render as a single fixed-height rectangle with no visible text.
 - Media and avatar placeholders use a `background-color` fill with `aspect-ratio`, and are not replaced with `content: linear-gradient()`.
 - Skeleton colors are derived from the surface with `color-mix()`.
 - A shimmer gradient is painted on each placeholder shape's own background with `background-attachment: fixed`, so all shapes sweep in sync without a parent overlay.
