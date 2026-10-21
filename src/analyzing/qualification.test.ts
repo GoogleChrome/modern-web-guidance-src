@@ -121,7 +121,7 @@ describe('qualification shipping lists (O40, O42, O64, O65)', () => {
 });
 
 describe('Judge Admission (D-031, D-036)', () => {
-  it('admits judge when AC1 >= 0.70, stability >= 0.90, and canary TNR >= 0.95', () => {
+  it('admits judge when AC1 >= 0.70, stability >= 0.95, and canary TNR >= 1.0', () => {
     const result = evaluateJudgeAdmission({
       gwetsAC1: 0.703,
       krippendorffAlpha: 0.163,
@@ -137,7 +137,7 @@ describe('Judge Admission (D-031, D-036)', () => {
     const result = evaluateJudgeAdmission({
       gwetsAC1: 0.65,
       krippendorffAlpha: 0.72,
-      threePassStability: 0.92,
+      threePassStability: 0.95,
       canaryTnr: 1.0,
     });
     assert.strictEqual(result.admitted, true);
@@ -155,24 +155,53 @@ describe('Judge Admission (D-031, D-036)', () => {
     assert.ok(result.reasons.some((r) => r.includes('Inter-rater agreement below bar')));
   });
 
-  it('rejects judge when 3-pass stability < 0.90', () => {
-    const result = evaluateJudgeAdmission({
+  it('rejects judge when 3-pass stability < 0.95 and accepts >= 0.95', () => {
+    const rejected = evaluateJudgeAdmission({
       gwetsAC1: 0.75,
-      threePassStability: 0.88,
+      threePassStability: 0.94,
       canaryTnr: 1.0,
     });
-    assert.strictEqual(result.admitted, false);
-    assert.ok(result.reasons.some((r) => r.includes('3-pass stability')));
-  });
+    assert.strictEqual(rejected.admitted, false);
+    assert.ok(rejected.reasons.some((r) => r.includes('below 95.0% bar')));
 
-  it('rejects judge when canary TNR < 0.95', () => {
-    const result = evaluateJudgeAdmission({
+    const acceptedBoundary = evaluateJudgeAdmission({
       gwetsAC1: 0.75,
       threePassStability: 0.95,
-      canaryTnr: 0.90,
+      canaryTnr: 1.0,
     });
-    assert.strictEqual(result.admitted, false);
-    assert.ok(result.reasons.some((r) => r.includes('Canary TNR')));
+    assert.strictEqual(acceptedBoundary.admitted, true);
+
+    const acceptedObserved = evaluateJudgeAdmission({
+      gwetsAC1: 0.75,
+      threePassStability: 0.965,
+      canaryTnr: 1.0,
+    });
+    assert.strictEqual(acceptedObserved.admitted, true);
+  });
+
+  it('rejects judge when canary TNR < 1.0 and accepts 1.0', () => {
+    const rejected99 = evaluateJudgeAdmission({
+      gwetsAC1: 0.75,
+      threePassStability: 0.95,
+      canaryTnr: 0.99,
+    });
+    assert.strictEqual(rejected99.admitted, false);
+    assert.ok(rejected99.reasons.some((r) => r.includes('below 100.0% bar')));
+
+    const rejected95 = evaluateJudgeAdmission({
+      gwetsAC1: 0.75,
+      threePassStability: 0.95,
+      canaryTnr: 0.95,
+    });
+    assert.strictEqual(rejected95.admitted, false);
+    assert.ok(rejected95.reasons.some((r) => r.includes('below 100.0% bar')));
+
+    const accepted100 = evaluateJudgeAdmission({
+      gwetsAC1: 0.75,
+      threePassStability: 0.95,
+      canaryTnr: 1.0,
+    });
+    assert.strictEqual(accepted100.admitted, true);
   });
 
   it('QUALIFIED_JUDGE_METADATA reflects D-031 and D-036 calibration and admission', () => {

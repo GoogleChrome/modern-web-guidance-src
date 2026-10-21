@@ -42,8 +42,8 @@ export interface JudgeAdmissionEvaluation {
  *
  * Admission criteria:
  * - Gwet's AC1 >= 0.70 OR Krippendorff's alpha >= 0.70 (accounting for prevalence paradox)
- * - 3-Pass Stability >= 0.90 (90.0%)
- * - Canary TNR >= 0.95 (95.0%).
+ * - 3-Pass Stability >= 0.95 (95.0%)
+ * - Canary TNR >= 1.0 (100.0%).
  *
  * Note: Canary TNR = 100.0% (2/2) is always reported with its exact sample size (2/2) per D-036.
  */
@@ -63,14 +63,14 @@ export function evaluateJudgeAdmission(
       `Inter-rater agreement below bar: Gwet's AC1 (${metrics.gwetsAC1.toFixed(3)}) < 0.70 and Krippendorff's alpha (${alphaStr}) < 0.70`,
     );
   }
-  if (metrics.threePassStability < 0.90) {
+  if (metrics.threePassStability < 0.95) {
     reasons.push(
-      `3-pass stability (${(metrics.threePassStability * 100).toFixed(1)}%) below 90.0% bar`,
+      `3-pass stability (${(metrics.threePassStability * 100).toFixed(1)}%) below 95.0% bar`,
     );
   }
-  if (metrics.canaryTnr < 0.95) {
+  if (metrics.canaryTnr < 1.0) {
     reasons.push(
-      `Canary TNR (${(metrics.canaryTnr * 100).toFixed(1)}%) below 95.0% bar`,
+      `Canary TNR (${(metrics.canaryTnr * 100).toFixed(1)}%) below 100.0% bar`,
     );
   }
   return {
@@ -186,10 +186,10 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
 
 /**
  * Derives qualified guide IDs from a scorecard report.
- * Strictly gates qualification on judge admission (O40, O42, O64, O65):
- * if judge is unadmitted (alpha < 0.667 or judgeAdmitted !== true), no guides qualify.
+ * Strictly gates qualification on judge admission (O40, O42, O64, O65, D-031):
+ * if judge is unadmitted (AC1 < 0.70 and alpha < 0.70, or judgeAdmitted !== true), no guides qualify.
  * When admitted:
- * - Terminal qualification requires phase-1-only lower bound >= 0.90 at n >= 35.
+ * - Terminal qualification requires phase-1-only lower bound >= 0.90 at n >= 35 (R37).
  * - JSON qualification requires phase-1+2 lower bound >= 0.90 at n >= 35.
  */
 export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
@@ -200,7 +200,7 @@ export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
     !scorecard ||
     scorecard.judgeAdmitted !== true ||
     (scorecard.judgeAlpha !== undefined &&
-      scorecard.judgeAlpha < 0.667 &&
+      scorecard.judgeAlpha < 0.70 &&
       (scorecard.judgeAc1 === undefined || scorecard.judgeAc1 < 0.70))
   ) {
     return { terminalQualified: [], jsonQualified: [] };
@@ -227,9 +227,9 @@ export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
 }
 
 /**
- * Production shipping qualified guide lists.
- * Until a judge is admitted on unseen labels (alpha >= 0.667, AC1 >= 0.80),
- * shipping defaults are empty ([]) per O40, O42, O64, O65.
+ * Production shipping qualified guide lists (D-031, D-036, R35, R37).
+ * Terminal defaults require held-out Phase 1 Wilson 95% lower bound >= 0.90 at n >= 35 (R37)
+ * and human spot-check confirmation on ~20 blind held-out cards per candidate rule (R35).
  */
 export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [
   'autofill-highlight-inputs',
