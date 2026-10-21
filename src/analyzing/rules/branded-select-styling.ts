@@ -75,6 +75,19 @@ const brandedSelectStylingJsMatcher: JsRuleMatcher = {
         return;
       }
 
+      // Exclude multi-select, remote ajax search, or tag-creation options in AST
+      const args = node.getArguments();
+      if (args.length > 0) {
+        const argText = args[0]?.getText() ?? '';
+        if (
+          /\bmultiple\s*:\s*true\b/i.test(argText) ||
+          /\bajax\s*:/i.test(argText) ||
+          /\btags\s*:\s*true\b/i.test(argText)
+        ) {
+          return;
+        }
+      }
+
       if (isProtectedByFeatureGuard(node, SELECT_FEATURE_TOKENS)) {
         return;
       }

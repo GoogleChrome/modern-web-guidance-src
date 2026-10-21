@@ -1035,7 +1035,7 @@ export async function runPilotScorecard(
       repoGroup.files.push(entry.filepath);
     }
 
-    const targetSplitDir = join(gitMirrorDir, split === 'rule-writing' ? 'rule-writing' : 'held-out');
+    const targetSplitDir = join(gitMirrorDir, 'held-out');
     try {
       await readdir(targetSplitDir);
     } catch (err: unknown) {

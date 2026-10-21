@@ -185,13 +185,9 @@ function isCustomDurationFormatterFunction(fnNode: Node): boolean {
     }
   });
 
-  // If function explicitly named formatDuration, secondsToHms, humanize, etc. with division and time constants
+  // Strictly require explicit duration function naming (formatDuration, humanizeDuration, secondsToHms, etc.)
+  // and division/modulo with unit labels, removing noisy heuristics for arbitrary division helpers
   if (hasNameMatch && hasDivisionOrModulo && (hasTimeConstants || unitLabelsFound.size >= 1)) {
-    return true;
-  }
-
-  // If function does division/modulo with time constants AND combines >= 2 distinct duration units
-  if (hasDivisionOrModulo && hasTimeConstants && unitLabelsFound.size >= 2) {
     return true;
   }
 

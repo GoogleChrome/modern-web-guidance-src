@@ -201,4 +201,27 @@ void test('child-state-based-styling/js-parent-class: JS negative / exempt cases
     const { matches } = scanJsSource('guarded.js', code, [jsMatcher], project);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts event delegation handlers checking e.target.matches', () => {
+    const code = `
+      document.addEventListener('focusin', (e) => {
+        if (e.target.matches('.form-input')) {
+          e.target.parentElement.classList.add('is-focused');
+        }
+      });
+    `;
+    const { matches } = scanJsSource('delegation.js', code, [jsMatcher], project);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts state management dispatch inside focus handler', () => {
+    const code = `
+      input.addEventListener('focus', () => {
+        dispatch({ type: 'INPUT_FOCUSED' });
+        input.parentElement.classList.add('is-focused');
+      });
+    `;
+    const { matches } = scanJsSource('redux-focus.js', code, [jsMatcher], project);
+    assert.equal(matches.length, 0);
+  });
 });

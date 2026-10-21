@@ -216,6 +216,19 @@ const resilientContextMenusJsMatcher: JsRuleMatcher = {
         }
 
         if (isPopperCallOrInstantiation(node)) {
+          // Popper/Floating-UI matches only fire when the file/scope references dropdown, menu, contextmenu, or submenu
+          const scopeOrFile = (node.getParent()?.getText() ?? '') + ' ' + sourceFile.getFilePath();
+          const hasMenuContext =
+            /\b(?:dropdown|menu|contextmenu|context-menu|submenu)\b/i.test(
+              scopeOrFile,
+            ) ||
+            /\b(?:dropdown|menu|contextmenu|context-menu|submenu)\b/i.test(
+              sourceFile.getText(),
+            );
+          if (!hasMenuContext) {
+            return;
+          }
+
           const line = node.getStartLineNumber();
           if (visitedLines.has(line)) return;
           if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) return;
@@ -242,6 +255,19 @@ const resilientContextMenusJsMatcher: JsRuleMatcher = {
         }
       } else if (Node.isNewExpression(node)) {
         if (isPopperCallOrInstantiation(node)) {
+          // Popper/Floating-UI matches only fire when the file/scope references dropdown, menu, contextmenu, or submenu
+          const scopeOrFile = (node.getParent()?.getText() ?? '') + ' ' + sourceFile.getFilePath();
+          const hasMenuContext =
+            /\b(?:dropdown|menu|contextmenu|context-menu|submenu)\b/i.test(
+              scopeOrFile,
+            ) ||
+            /\b(?:dropdown|menu|contextmenu|context-menu|submenu)\b/i.test(
+              sourceFile.getText(),
+            );
+          if (!hasMenuContext) {
+            return;
+          }
+
           const line = node.getStartLineNumber();
           if (visitedLines.has(line)) return;
           if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) return;

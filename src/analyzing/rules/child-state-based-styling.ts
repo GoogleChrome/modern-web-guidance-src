@@ -30,8 +30,36 @@ const FORM_EVENT_NAMES = new Set([
   'input',
 ]);
 
-const STATE_CLASS_KEYWORD_REGEX =
-  /focus|active|checked|valid|invalid|empty|filled|has-value/i;
+const PURE_STYLING_STATE_CLASS_REGEX =
+  /^(?:is-|has-)?(?:focus|focused|active|checked|valid|invalid|empty|filled|value)$/i;
+
+function hasDelegationOrStateManagement(node: Node): boolean {
+  let current: Node | undefined = node.getParent();
+  while (current && !Node.isSourceFile(current)) {
+    if (
+      Node.isFunctionDeclaration(current) ||
+      Node.isFunctionExpression(current) ||
+      Node.isArrowFunction(current) ||
+      Node.isMethodDeclaration(current)
+    ) {
+      const text = current.getText();
+      // Skip general event delegation or app state management
+      if (
+        text.includes('.matches(') ||
+        text.includes('e.target.matches') ||
+        text.includes('setState(') ||
+        text.includes('dispatch(') ||
+        text.includes('router.') ||
+        text.includes('history.push')
+      ) {
+        return true;
+      }
+      break;
+    }
+    current = current.getParent();
+  }
+  return false;
+}
 
 const childStateBasedStylingCssMatcher: CssRuleMatcher = {
   kind: 'css',
@@ -175,7 +203,7 @@ const childStateBasedStylingJsMatcher: JsRuleMatcher = {
       const hasStateClass = args.some((arg) => {
         const unwrappedArg = unwrapExpression(arg);
         if (Node.isStringLiteral(unwrappedArg)) {
-          return STATE_CLASS_KEYWORD_REGEX.test(unwrappedArg.getLiteralText());
+          return PURE_STYLING_STATE_CLASS_REGEX.test(unwrappedArg.getLiteralText());
         }
         return false;
       });
@@ -185,6 +213,10 @@ const childStateBasedStylingJsMatcher: JsRuleMatcher = {
       }
 
       if (!isEnclosedInFormEventHandler(node)) {
+        return;
+      }
+
+      if (hasDelegationOrStateManagement(node)) {
         return;
       }
 

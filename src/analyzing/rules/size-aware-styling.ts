@@ -26,7 +26,7 @@ const STYLING_MUTATION_REGEX =
   /(?:classList\.(?:add|remove|toggle)|\b(?:addClass|removeClass|toggleClass)\b|\bclassName\s*=|style\.(?:setProperty|[a-zA-Z]+)|\bset[A-Z][a-zA-Z]*(?:Width|Size|Narrow|Small|Compact|Layout|Breakpoint))\b/;
 
 const NON_CONTAINER_EXCLUSIONS_REGEX =
-  /(?:canvas|webgl|\bgl\b|getContext|chart|echarts|highcharts|monaco|editor\.layout|virtual|virtualizer|scrollbar)\b/i;
+  /(?:canvas|webgl|\bgl\b|getContext|chart|echarts|highcharts|monaco|editor\.layout|\.layout\b|relayout|virtual|virtualizer|scrollbar|style\.(?:width|height|minWidth|minHeight|maxWidth|maxHeight))\b/i;
 
 function isResizeObserverInstantiation(
   node: Node,

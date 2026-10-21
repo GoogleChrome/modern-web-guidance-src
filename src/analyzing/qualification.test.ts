@@ -15,10 +15,15 @@ import {
 } from './qualification.ts';
 
 describe('qualification shipping lists (O40, O42, O64, O65)', () => {
-  it('ships empty default qualification lists while judge is not admitted on unseen labels', () => {
-    assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, []);
-    assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, []);
-    assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, []);
+  it('ships admitted qualified guide lists on held-out evaluation (D-031, D-036)', () => {
+    const expected = [
+      'autofill-highlight-inputs',
+      'complex-shapes',
+      'deliver-optimized-decorative-images',
+    ];
+    assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, expected);
+    assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, expected);
+    assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, expected);
   });
 
   it('guarantees shipping lists cannot contradict final scorecard (O64)', async () => {

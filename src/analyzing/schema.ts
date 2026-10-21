@@ -24,6 +24,8 @@ export interface Gate0Entry {
   readonly classification: Gate0Classification;
   readonly brownfieldTarget: string;
   readonly candidateTechniques?: readonly string[];
+  readonly replaces?: readonly string[];
+  readonly doesNotReplace?: readonly string[];
   readonly borderline?: boolean;
   readonly evidenceFromGuide?: string;
   readonly reason: string;

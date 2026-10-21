@@ -108,4 +108,31 @@ void test('checkbox: negative / exempt cases', async (t) => {
     const matches = scanCss('text.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts custom toggle-switch components (.switch, .toggle)', () => {
+    const css = `
+      .switch input[type="checkbox"] {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .switch + span.slider {
+        position: relative;
+      }
+    `;
+    const matches = scanCss('switch.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts design system form resets stripping appearance without visual replacement', () => {
+    const css = `
+      input[type="checkbox"], input[type="radio"] {
+        appearance: none;
+        -webkit-appearance: none;
+        margin: 0;
+      }
+    `;
+    const matches = scanCss('reset.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
 });

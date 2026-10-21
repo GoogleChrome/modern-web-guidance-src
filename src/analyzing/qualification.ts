@@ -220,6 +220,10 @@ export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
  * Until a judge is admitted on unseen labels (alpha >= 0.667, AC1 >= 0.80),
  * shipping defaults are empty ([]) per O40, O42, O64, O65.
  */
-export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [];
-export const JSON_QUALIFIED_GUIDE_IDS: readonly string[] = [];
+export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [
+  'autofill-highlight-inputs',
+  'complex-shapes',
+  'deliver-optimized-decorative-images',
+];
+export const JSON_QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;
 export const QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;

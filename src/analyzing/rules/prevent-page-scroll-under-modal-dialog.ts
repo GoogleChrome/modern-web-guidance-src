@@ -22,6 +22,47 @@ export const PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH = '7d10dd62dcbc';
 
 const FULLSCREEN_ONLY_REGEX = /fullscreen/i;
 
+const MODAL_OR_OVERLAY_REGEX =
+  /\b(?:dialog|modal|drawer|lightbox|popup|overlay|showmodal|lockscroll|scrolllock)\b/i;
+
+const FULLSCREEN_CANVAS_GAME_REGEX =
+  /\b(?:fullscreen|canvas|game|slide|deck|threejs|pixi)\b/i;
+
+function hasModalOrOverlayContext(node: Node, ctx: JsMatcherContext): boolean {
+  let enclosingFn: Node | undefined;
+  let current: Node | undefined = node.getParent();
+  while (current && !Node.isSourceFile(current)) {
+    if (
+      Node.isFunctionDeclaration(current) ||
+      Node.isMethodDeclaration(current) ||
+      Node.isClassDeclaration(current) ||
+      Node.isFunctionExpression(current) ||
+      Node.isArrowFunction(current)
+    ) {
+      enclosingFn = current;
+      break;
+    }
+    current = current.getParent();
+  }
+
+  // If outside any function (e.g. top-level app initialization), only flag if file is specifically modal/overlay
+  if (!enclosingFn) {
+    return MODAL_OR_OVERLAY_REGEX.test(ctx.filePath);
+  }
+
+  const fnText = enclosingFn.getText();
+  if (FULLSCREEN_CANVAS_GAME_REGEX.test(fnText) && !MODAL_OR_OVERLAY_REGEX.test(fnText)) {
+    return false;
+  }
+
+  // Must reference modal/dialog/drawer/overlay/popup/lightbox/showModal in function or file
+  return (
+    MODAL_OR_OVERLAY_REGEX.test(fnText) ||
+    MODAL_OR_OVERLAY_REGEX.test(ctx.filePath) ||
+    MODAL_OR_OVERLAY_REGEX.test(ctx.fileContent)
+  );
+}
+
 const MODAL_SCROLL_LOCK_CLASSES = new Set([
   'modal-open',
   'dialog-open',
@@ -96,7 +137,10 @@ function isInsideFullscreenToggle(node: Node): boolean {
 /**
  * Checks whether a binary expression is an assignment setting overflow = 'hidden' on body/documentElement.
  */
-function matchOverflowAssignment(binaryExpr: BinaryExpression): AnalyzerMatch | null {
+function matchOverflowAssignment(
+  binaryExpr: BinaryExpression,
+  ctx: JsMatcherContext,
+): AnalyzerMatch | null {
   if (binaryExpr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
     return null;
   }
@@ -135,6 +179,10 @@ function matchOverflowAssignment(binaryExpr: BinaryExpression): AnalyzerMatch | 
     return null;
   }
 
+  if (!hasModalOrOverlayContext(binaryExpr, ctx)) {
+    return null;
+  }
+
   return {
     line: binaryExpr.getStartLineNumber(),
     message:
@@ -145,7 +193,10 @@ function matchOverflowAssignment(binaryExpr: BinaryExpression): AnalyzerMatch | 
 /**
  * Checks whether a call expression is target.style.setProperty('overflow', 'hidden') on body/documentElement.
  */
-function matchSetPropertyCall(callExpr: CallExpression): AnalyzerMatch | null {
+function matchSetPropertyCall(
+  callExpr: CallExpression,
+  ctx: JsMatcherContext,
+): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(expr) || expr.getName() !== 'setProperty') {
     return null;
@@ -189,6 +240,10 @@ function matchSetPropertyCall(callExpr: CallExpression): AnalyzerMatch | null {
     return null;
   }
 
+  if (!hasModalOrOverlayContext(callExpr, ctx)) {
+    return null;
+  }
+
   return {
     line: callExpr.getStartLineNumber(),
     message:
@@ -200,7 +255,7 @@ function matchSetPropertyCall(callExpr: CallExpression): AnalyzerMatch | null {
  * Checks whether a call expression adds a scroll-locking class to body/documentElement:
  * document.body.classList.add('modal-open' | 'no-scroll' | 'scroll-lock' | 'overflow-hidden')
  */
-function matchClassListAdd(callExpr: CallExpression): AnalyzerMatch | null {
+function matchClassListAdd(callExpr: CallExpression, ctx: JsMatcherContext): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(expr) || expr.getName() !== 'add') {
     return null;
@@ -234,6 +289,10 @@ function matchClassListAdd(callExpr: CallExpression): AnalyzerMatch | null {
   }
 
   if (isInsideFullscreenToggle(callExpr)) {
+    return null;
+  }
+
+  if (!hasModalOrOverlayContext(callExpr, ctx)) {
     return null;
   }
 
@@ -281,12 +340,12 @@ export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {
     'disableBodyScroll',
     'enableBodyScroll',
   ],
-  matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
+  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
 
     const binaryExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
     for (const binExpr of binaryExpressions) {
-      const match = matchOverflowAssignment(binExpr);
+      const match = matchOverflowAssignment(binExpr, ctx);
       if (match) {
         matches.push(match);
       }
@@ -300,13 +359,13 @@ export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {
         continue;
       }
 
-      const setPropMatch = matchSetPropertyCall(callExpr);
+      const setPropMatch = matchSetPropertyCall(callExpr, ctx);
       if (setPropMatch) {
         matches.push(setPropMatch);
         continue;
       }
 
-      const classListMatch = matchClassListAdd(callExpr);
+      const classListMatch = matchClassListAdd(callExpr, ctx);
       if (classListMatch) {
         matches.push(classListMatch);
       }

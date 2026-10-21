@@ -240,7 +240,8 @@ export const sanitizeUntrustedHtmlPackageRule: AnalyzerRule = {
     dropWhen: [
       'Code already utilizing native Element.prototype.setHTML() or Document.parseHTML() with Sanitizer configurations.',
       'Guarded by feature detection checks verifying "setHTML" in Element.prototype or typeof Sanitizer !== "undefined".',
-      'Server-side HTML sanitization pipelines in Node.js or SSR backend middleware where browser DOM Sanitizer API is not available.',
+      'React or JSX components using dangerouslySetInnerHTML={{ __html: ... }}, where React virtual DOM does not support native setHTML() without ref-based DOM manipulation.',
+      'Server-side HTML sanitization pipelines in Node.js, CLI scripts, backend build tools, or SSR middleware where browser DOM Sanitizer API is not available.',
     ],
   },
 };

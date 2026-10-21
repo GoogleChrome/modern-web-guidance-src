@@ -13,12 +13,12 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing 50 rules across the 36 active feature guides (O69, O38 retired 4)', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 50);
-    assert.strictEqual(ALL_RULES.length, 50);
+  it('exports PILOT_RULES containing 48 rules across the 35 active feature guides (O69, O38 retired 4, D-035 retired shrinking-header-on-scroll)', async (t) => {
+    assert.strictEqual(PILOT_RULES.length, 48);
+    assert.strictEqual(ALL_RULES.length, 48);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 36);
+    assert.strictEqual(guideIds.size, 35);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
@@ -56,7 +56,6 @@ describe('rules/index export registry', () => {
         'schedule-tasks-by-priority',
         'scroll-position-aware-elements',
         'scrollspy',
-        'shrinking-header-on-scroll',
         'size-aware-styling',
       ].sort(),
     );
@@ -75,16 +74,21 @@ describe('rules/index export registry', () => {
     }
   });
 
-  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES empty while judge is unadmitted (R32.5, R33, O40, O60, O64)', async () => {
-    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 0);
+  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES reflecting admitted held-out guides (R32.5, R33, D-031, D-036)', async () => {
+    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 3);
+    assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, [
+      'autofill-highlight-inputs',
+      'complex-shapes',
+      'deliver-optimized-decorative-images',
+    ]);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
     assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_RULES, QUALIFIED_RULES);
     assert.deepStrictEqual(JSON_QUALIFIED_RULES, QUALIFIED_RULES);
-    assert.strictEqual(QUALIFIED_RULES.length, 0);
+    assert.strictEqual(QUALIFIED_RULES.length, 3);
 
     const qualifiedGuideSet = new Set(QUALIFIED_GUIDE_IDS);
-    assert.strictEqual(qualifiedGuideSet.size, 0);
+    assert.strictEqual(qualifiedGuideSet.size, 3);
   });
 
   it('exports POST_SELECTION_TUNED_GUIDE_IDS', () => {

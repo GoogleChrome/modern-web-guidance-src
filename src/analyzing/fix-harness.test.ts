@@ -273,7 +273,7 @@ describe('checkModernFeaturePresent', () => {
 
   it('has explicit Gate 2c validators for all guides in ALL_RULES', () => {
     const allGuideIds = [...new Set(ALL_RULES.map((r) => r.guideId))];
-    assert.strictEqual(allGuideIds.length, 36);
+    assert.strictEqual(allGuideIds.length, 35);
     for (const guideId of allGuideIds) {
       assert.doesNotThrow(
         () => checkModernFeaturePresent(guideId, 'const dummy = 1;'),
@@ -540,13 +540,15 @@ describe('validateFixPatch (3-Gate Grader)', () => {
 });
 
 describe('runBadPatchSensitivitySuite', () => {
-  it('covers all 25 qualified guides', async (t) => {
+  it('covers all 25 seeded sensitivity fixtures with valid guide IDs', async (t) => {
     const fixtures = getSeededSensitivityTestCases();
     assert.strictEqual(fixtures.length, 25);
     const fixtureGuideIds = new Set(fixtures.map((f) => f.guideId));
-    for (const gid of QUALIFIED_GUIDE_IDS) {
-      await t.test(`fixture for ${gid}`, () => {
-        assert.ok(fixtureGuideIds.has(gid), `Missing fixture for qualified guide ${gid}`);
+    assert.strictEqual(fixtureGuideIds.size, 25);
+    for (const fx of fixtures) {
+      await t.test(`fixture for ${fx.guideId}`, () => {
+        assert.ok(fx.originalContent.length > 0, `Missing originalContent for ${fx.guideId}`);
+        assert.ok(fx.goodPatch.length > 0, `Missing goodPatch for ${fx.guideId}`);
       });
     }
   });

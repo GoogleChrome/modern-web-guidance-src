@@ -173,6 +173,8 @@ export function parseGate0Response(
 ): {
   classification: Gate0Classification;
   candidateTechniques: string[];
+  replaces?: string[];
+  doesNotReplace?: string[];
   borderline: boolean;
   brownfieldTarget: string;
   evidenceFromGuide: string;
@@ -212,6 +214,26 @@ export function parseGate0Response(
     return t.trim();
   });
 
+  let replaces: string[] | undefined;
+  if (Array.isArray(rec.replaces)) {
+    replaces = rec.replaces.map((t) => {
+      if (typeof t !== 'string') {
+        throw new Error(`Gate 0 replaces must be string for guide ${guideId}`);
+      }
+      return t.trim();
+    });
+  }
+
+  let doesNotReplace: string[] | undefined;
+  if (Array.isArray(rec.doesNotReplace)) {
+    doesNotReplace = rec.doesNotReplace.map((t) => {
+      if (typeof t !== 'string') {
+        throw new Error(`Gate 0 doesNotReplace must be string for guide ${guideId}`);
+      }
+      return t.trim();
+    });
+  }
+
   if (typeof rec.borderline !== 'boolean') {
     throw new Error(`Gate 0 response missing boolean 'borderline' for guide ${guideId}`);
   }
@@ -241,6 +263,8 @@ export function parseGate0Response(
   return {
     classification,
     candidateTechniques,
+    ...(replaces ? { replaces } : {}),
+    ...(doesNotReplace ? { doesNotReplace } : {}),
     borderline,
     brownfieldTarget,
     evidenceFromGuide: rec.evidenceFromGuide.trim(),
@@ -370,6 +394,8 @@ export async function classifyGuideGate0(
     guideHash: guide.guideHash,
     classification: parsed.classification,
     candidateTechniques: parsed.candidateTechniques,
+    ...(parsed.replaces ? { replaces: parsed.replaces } : {}),
+    ...(parsed.doesNotReplace ? { doesNotReplace: parsed.doesNotReplace } : {}),
     borderline: parsed.borderline,
     brownfieldTarget: parsed.brownfieldTarget,
     evidenceFromGuide: parsed.evidenceFromGuide,

@@ -18,9 +18,6 @@ const CHECKBOX_TARGET_PATTERNS = [
 const CHECKED_PSEUDO_ICON_REGEX =
   /:checked\s*[+~]\s*(?:label|span)::(?:before|after)\b/i;
 
-const SIBLING_CUSTOM_BOX_REGEX =
-  /(?:[+~]\s*(?:label|span)|::?(?:before|after)|\.custom-checkbox|\.custom-control)/i;
-
 const SR_ONLY_REGEX = /\.(?:sr-only|visually-hidden)\b/i;
 
 function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
@@ -40,9 +37,14 @@ function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
   return false;
 }
 
+const TOGGLE_SWITCH_REGEX = /\b(?:switch|toggle)\b/i;
+
+const SIBLING_CUSTOM_BOX_REGEX =
+  /(?:[+~]\s*(?:label|span)|::?(?:before|after)|\.custom-checkbox|\.custom-control|:indeterminate)/i;
+
 export const checkboxCssMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['checkbox', ':checked'],
+  fastTokens: ['checkbox', ':checked', ':indeterminate'],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     // 1. If stylesheet already defines accent-color, skip
     if (ctx.stylesheetHasProperty('accent-color')) {
@@ -54,7 +56,12 @@ export const checkboxCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // 3. Case A: Custom checkmark icon on sibling pseudo-elements
+    // 3. Skip custom toggle-switch components (.switch, .toggle, role="switch")
+    if (TOGGLE_SWITCH_REGEX.test(styleRule.selectorText)) {
+      return null;
+    }
+
+    // 4. Case A: Custom checkmark icon on sibling pseudo-elements
     if (CHECKED_PSEUDO_ICON_REGEX.test(styleRule.selectorText)) {
       return {
         message:
@@ -62,7 +69,7 @@ export const checkboxCssMatcher: CssRuleMatcher = {
       };
     }
 
-    // 4. Case B: Hiding or stripping native checkbox controls (R32.4)
+    // 5. Case B: Hiding or stripping native checkbox controls (R32.4)
     const matchesTarget = CHECKBOX_TARGET_PATTERNS.some((pattern) =>
       pattern.test(styleRule.selectorText),
     );
@@ -74,7 +81,7 @@ export const checkboxCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // Require sibling/custom-box selector or custom checkbox styling in stylesheet
+    // Require sibling/custom-box selector, custom checkmark pseudo-element, or :indeterminate styling in stylesheet
     const hasVisualReplacement =
       SIBLING_CUSTOM_BOX_REGEX.test(styleRule.selectorText) ||
       SIBLING_CUSTOM_BOX_REGEX.test(ctx.stylesheetText);
@@ -103,6 +110,8 @@ export const checkboxRule: AnalyzerRule = {
     ],
     dropWhen: [
       'Bare utility rules setting display: none or opacity: 0 on inputs with no sibling/custom-box visual replacement.',
+      'Custom toggle-switch components (role="switch", .switch, .toggle) designed as sliding toggles rather than standard checkboxes.',
+      'Full design-system form resets that strip appearance across inputs without custom checkmark pseudo-elements or indeterminate styling.',
       'The stylesheet already defines standard accent-color property declarations.',
       'The selector is an accessible screen-reader utility class (.sr-only or .visually-hidden) that preserves keyboard accessibility and element geometry.',
       'The rule is within a fallback stylesheet guarded by @supports (accent-color: red).',

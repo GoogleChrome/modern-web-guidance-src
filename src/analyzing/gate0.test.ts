@@ -83,6 +83,8 @@ void test('gate0: parseGate0Response validation', async (t) => {
     const raw = JSON.stringify({
       classification: 'detectable',
       candidateTechniques: ['moment-timezone', 'date-fns-tz'],
+      replaces: ['moment-timezone', 'date-fns-tz'],
+      doesNotReplace: ['luxon datetime formatting'],
       borderline: false,
       brownfieldTarget: 'moment-timezone / date-fns-tz library usage',
       evidenceFromGuide: 'Before: const date = moment.tz(str, "America/New_York");',
@@ -92,6 +94,8 @@ void test('gate0: parseGate0Response validation', async (t) => {
     const parsed = parseGate0Response(raw, 'temporal-now');
     assert.equal(parsed.classification, 'detectable');
     assert.deepEqual(parsed.candidateTechniques, ['moment-timezone', 'date-fns-tz']);
+    assert.deepEqual(parsed.replaces, ['moment-timezone', 'date-fns-tz']);
+    assert.deepEqual(parsed.doesNotReplace, ['luxon datetime formatting']);
     assert.equal(parsed.borderline, false);
     assert.equal(parsed.brownfieldTarget, 'moment-timezone / date-fns-tz library usage');
     assert.equal(

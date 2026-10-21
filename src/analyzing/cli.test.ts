@@ -207,24 +207,32 @@ describe('runAnalyzeCli', () => {
   it('gates CLI to QUALIFIED_RULES by default and includes experimental rules with --all-rules', async () => {
     const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
     try {
-      // 1. Create a qualified pattern: jQuery fadeIn -> animate-element-entry-exit
+      // 1. Create a qualified pattern: autofill-highlight-inputs
+      const autofillCss = `input:-webkit-autofill {
+  box-shadow: 0 0 0 1000px white inset;
+}`;
+      await writeFile(join(testDir, 'autofill.css'), autofillCss, 'utf8');
+
+      // 2. Create experimental patterns: jQuery fadeIn -> animate-element-entry-exit, requestIdleCallback -> schedule-tasks-by-priority
       const animateJs = `function showModal() {
   $('#modal').fadeIn(300);
 }`;
       await writeFile(join(testDir, 'animate.js'), animateJs, 'utf8');
 
-      // 2. Create an experimental pattern: requestIdleCallback -> schedule-tasks-by-priority
       const idleJs = `function runIdleTask() {
   requestIdleCallback(() => console.log('idle work'));
 }`;
       await writeFile(join(testDir, 'task.js'), idleJs, 'utf8');
 
-      // Default run (QUALIFIED_RULES only - currently empty while judge is unadmitted)
+      // Default run (QUALIFIED_RULES only - runs qualified autofill-highlight-inputs, skips experimental)
       const resDefault = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resDefault.exitCode, 0);
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
-      assert.equal(parsedDefault.totalFindings, 0);
-      assert.deepEqual(parsedDefault.guides, []);
+      assert.equal(parsedDefault.totalFindings, 1);
+      assert.deepEqual(
+        parsedDefault.guides.map((g) => g.guideId),
+        ['autofill-highlight-inputs'],
+      );
 
       // Opt-in run with --all-rules (or --experimental)
       const resAll = await runAnalyzeCli([testDir, '--all-rules', '--json']);
@@ -232,7 +240,11 @@ describe('runAnalyzeCli', () => {
       const parsedAll = JSON.parse(resAll.output) as AnalyzeJsonOutput;
       const allGuideIds = parsedAll.guides.map((g) => g.guideId);
 
-      assert.ok(allGuideIds.includes('animate-element-entry-exit'), 'All-rules includes experimental rule');
+      assert.ok(allGuideIds.includes('autofill-highlight-inputs'), 'All-rules includes qualified rule');
+      assert.ok(
+        allGuideIds.includes('animate-element-entry-exit'),
+        'All-rules includes experimental rule animate-element-entry-exit',
+      );
       assert.ok(
         allGuideIds.includes('schedule-tasks-by-priority'),
         'All-rules includes experimental rule schedule-tasks-by-priority',

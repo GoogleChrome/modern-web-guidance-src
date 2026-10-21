@@ -266,7 +266,6 @@
     "complex-shapes": "mask-image\\s*:|(^|[^-\\w])mask\\s*:|mask-size\\s*:",
     "deliver-optimized-decorative-images": "(^|[^-\\w])image-set\\s*\\(",
     "responsive-table": "@container\\b|container-type\\s*:|--label",
-    "shrinking-header-on-scroll": "animation-timeline\\s*:|scroll\\s*\\(|ScrollTimeline\\b",
     "equal-width-text-lines": "text-fit\\s*:|CSS\\.supports\\s*\\(\\s*['\"]text-fit",
     "light-dismiss-a-dialog": "closedby\\s*=|['\"]closedBy['\"]\\s+in\\s+HTMLDialogElement"
   }

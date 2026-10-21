@@ -68,7 +68,10 @@ Guidelines for classification:
 - Read the entire guide markdown carefully, paying attention to the problem statement, code examples, and the underlying modern API.
 - Also inspect the Upstream Explainer & Motivation Context if provided.
 - Do NOT require quoting a "Before" section from guide.md to classify a guide as 'detectable'. Guides frequently focus only on the modern solution. Use ecosystem knowledge and explainer context to determine if common legacy workarounds, npm libraries, or idioms exist.
-- Do NOT pre-judge whether downstream static rules will have false positives; that is evaluated during detection rule development and held-out scoring. Gate 0 only asks whether concrete legacy techniques exist.
+- 1-to-1 Viability Check and Scope Boundaries for 'detectable':
+  1. True 1-to-1 Functional Replacement (replaces vs. doesNotReplace): The guide's modern feature must directly replace the legacy pattern 1-to-1. Both single-purpose npm micro-libraries (e.g. 'autosize', 'fitty', 'humanize-duration') and broader libraries whose common/basic use case is replaced by the modern feature (e.g. 'select2' / 'choices.js' for custom-styled selects, '@floating-ui/dom' / '@popperjs/core' for dropdown/menu positioning) belong in 'replaces' and 'candidateTechniques'. Any unsupported advanced library capabilities that the modern feature does NOT replace (such as remote 'ajax:' search, multi-select tag comboboxes, canvas zoom/pan transforms, or DOM-to-PDF screenshot rendering) must be listed in 'doesNotReplace', NEVER in 'replaces' or 'candidateTechniques'.
+  2. Idiomatic Pattern Isolation vs. Bare General-Purpose APIs: Do NOT discard valid legacy idioms that utilize general-purpose APIs. Specific legacy idioms like ResizeObserver callbacks toggling responsive breakpoint classes (before @container), IntersectionObserver callbacks toggling active nav/marker classes, scroll event listeners reading scrollY for progress indicators, or mutable Date math (before Temporal) ARE valid legacy targets: specify the exact idiom in 'replaces' and list non-legacy uses of that API (e.g. resizing a <canvas> pixel buffer, virtual scrolling, lazy-loading images, or epoch timestamp math) in 'doesNotReplace'.
+  3. Comprehensive Pattern Listing: List all concrete legacy techniques in 'replaces' and 'candidateTechniques'. Empirical wild prevalence is evaluated downstream via GitMirror queries rather than pre-judged at triage.
 - Identify all concrete legacy techniques in 'candidateTechniques' (array of strings, e.g. ["legacy-library-name", "custom wrapper"]).
 - Set 'borderline' to true if the classification is ambiguous or on the boundary between buckets, false otherwise.
 - Set 'brownfieldTarget' to a concise summary of candidateTechniques (e.g. candidateTechniques joined by "; "), or "none (multi-part UI recipe)" / "none (greenfield capability)".
@@ -87,6 +90,16 @@ export const GATE0_RESPONSE_SCHEMA = {
       type: 'ARRAY',
       items: { type: 'STRING' },
       description: 'List of specific legacy techniques, npm libraries, JS idioms, CSS properties/selectors, or DOM patterns replaced by the guide. Empty array if none.',
+    },
+    replaces: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'Specific 1-to-1 legacy techniques, libraries, or workarounds directly replaced by the modern feature.',
+    },
+    doesNotReplace: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'Adjacent or non-1-to-1 techniques, libraries, or capabilities that the modern feature does NOT replace.',
     },
     borderline: {
       type: 'BOOLEAN',

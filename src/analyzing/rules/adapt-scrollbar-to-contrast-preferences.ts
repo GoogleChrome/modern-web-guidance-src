@@ -28,11 +28,22 @@ const adaptScrollbarToContrastPreferencesCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // 2. Check if rule declares any proprietary Microsoft scrollbar properties
+    // 2. Check if rule declares proprietary Microsoft scrollbar properties
+    // OR ::-webkit-scrollbar inside a contrast / theme media query
     const hasMsProp = MS_SCROLLBAR_PROPERTIES.some((prop) =>
       styleRule.hasProperty(prop),
     );
-    if (!hasMsProp) {
+
+    const isContrastWebkitScrollbar =
+      styleRule.selectorText.includes('::-webkit-scrollbar') &&
+      Boolean(
+        styleRule.parentAtRule &&
+          /(?:prefers-contrast|forced-colors|-ms-high-contrast)/i.test(
+            styleRule.parentAtRule,
+          ),
+      );
+
+    if (!hasMsProp && !isContrastWebkitScrollbar) {
       return null;
     }
 

@@ -42,7 +42,6 @@ import { sanitizeUntrustedHtmlRules } from './sanitize-untrusted-html.ts';
 import { scheduleTasksByPriorityRule } from './schedule-tasks-by-priority.ts';
 import { scrollPositionAwareElementsRules } from './scroll-position-aware-elements.ts';
 import { scrollspyRules } from './scrollspy.ts';
-import { shrinkingHeaderOnScrollRules } from './shrinking-header-on-scroll.ts';
 import { sizeAwareStylingRules } from './size-aware-styling.ts';
 
 export * from './adapt-scrollbar-to-contrast-preferences.ts';
@@ -79,7 +78,6 @@ export * from './sanitize-untrusted-html.ts';
 export * from './schedule-tasks-by-priority.ts';
 export * from './scroll-position-aware-elements.ts';
 export * from './scrollspy.ts';
-export * from './shrinking-header-on-scroll.ts';
 export * from './size-aware-styling.ts';
 
 export const PILOT_RULES: readonly AnalyzerRule[] = [
@@ -122,12 +120,11 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...sanitizeUntrustedHtmlRules,
   ...scrollPositionAwareElementsRules,
 
-  // Batch 4 Empirical GitMirror Guides (7 guides, 10 rules -> 50 rules across 36 feature guides total):
+  // Batch 4 Empirical GitMirror Guides (6 guides, 8 rules -> 48 rules across 35 feature guides total):
   ...autofillHighlightInputsRules,
   ...complexShapesRules,
   ...deliverOptimizedDecorativeImagesRules,
   ...responsiveTableRules,
-  ...shrinkingHeaderOnScrollRules,
   ...equalWidthTextLinesRules,
   ...lightDismissADialogRules,
 ];
