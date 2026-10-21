@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import matter from "gray-matter";
+import matter from "@11ty/gray-matter";
 import { marked, type Token, type Tokens } from "marked";
 import { rootDir } from "./paths.ts";
 
