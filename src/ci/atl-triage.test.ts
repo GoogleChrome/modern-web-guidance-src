@@ -11,6 +11,7 @@ import {
   KNOWN_CATEGORIES,
   extractFeatureIdsFromContent,
   hasNoAtlTriageDirective,
+  upsertDemoPreviewInBody,
   featureGroups,
   githubApi
 } from './atl-triage.ts';
@@ -1401,6 +1402,28 @@ description: Some description
   it('returns empty array when frontmatter or web-feature-ids are missing', () => {
     assert.deepStrictEqual(extractFeatureIdsFromContent('# Just Markdown'), []);
     assert.deepStrictEqual(extractFeatureIdsFromContent('---\nname: foo\n---\n'), []);
+  });
+});
+
+describe('upsertDemoPreviewInBody', () => {
+  it('formats single and multiple demo links cleanly and updates idempotently', () => {
+    const body = '## Summary\n\nImproves dialog demo.';
+
+    const single = upsertDemoPreviewInBody('guides/ui-components/dialog', body, ['guides/ui-components/dialog/demo.html']);
+    assert.ok(single.includes('🎨 **Demo preview:** [`ui-components/dialog`](https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob/guides/ui-components/dialog/guides/ui-components/dialog/demo.html)'));
+
+    // Idempotent on second run
+    assert.strictEqual(upsertDemoPreviewInBody('guides/ui-components/dialog', single, ['guides/ui-components/dialog/demo.html']), single);
+
+    // Multiple demos / variants
+    const multi = upsertDemoPreviewInBody('1687-css-grid-lanes', body, [
+      'guides/css/grid-lanes/demo.html',
+      'guides/css/grid-lanes/demo-vertical.html'
+    ]);
+    assert.ok(multi.includes('🎨 **Demo preview:** \n- [`css/grid-lanes/demo-vertical.html`](https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob/1687-css-grid-lanes/guides/css/grid-lanes/demo-vertical.html)\n- [`css/grid-lanes`](https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob/1687-css-grid-lanes/guides/css/grid-lanes/demo.html)'));
+
+    // Removes block if subsequent commit drops demo changes
+    assert.strictEqual(upsertDemoPreviewInBody('guides/ui-components/dialog', single, ['README.md']), body);
   });
 });
 
