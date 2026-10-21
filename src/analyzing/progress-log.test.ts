@@ -5,10 +5,13 @@ import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   GRADES_PATH,
+  PROGRESS_LOG_PATH,
   REPOS_CONFIG_PATH,
   WORKTREE_ROOT,
 } from './paths.ts';
 import {
+  appendJudgeCalibrationToProgressLog,
+  buildTable2CalibrationRowsSync,
   buildTable3FunnelRowsSync,
   computeFileHash,
   formatMetricCell,
@@ -26,10 +29,12 @@ import {
   parsePipelineScoreboardMarkdown,
   parseProgressLogMarkdown,
   PROGRESS_HISTORY_PATH,
+  type JudgeCalibrationRow,
   type ProgressLogRow,
   recordProgressLogEntry,
   updateProgressLogEntries,
 } from './progress-log.ts';
+import { QUALIFIED_JUDGE_METADATA } from './qualification.ts';
 
 describe('progress-log metric formatting and parsing', () => {
   it('formats and parses metric with confidence interval', () => {
@@ -457,5 +462,95 @@ describe('file operations and hashes', () => {
         }
       }
     }
+  });
+
+  describe('Table 2 calibration and Table 1 summary updates (O6-O9, D-042-D-045)', () => {
+    it('drift-check: verifies that QUALIFIED_JUDGE_METADATA.judgeVersion appears in PROGRESS.md (D-045)', async () => {
+      const progressContent = await readFile(PROGRESS_LOG_PATH, 'utf8');
+      assert.ok(
+        progressContent.includes(QUALIFIED_JUDGE_METADATA.judgeVersion),
+        `PROGRESS.md must include QUALIFIED_JUDGE_METADATA.judgeVersion (${QUALIFIED_JUDGE_METADATA.judgeVersion})`,
+      );
+    });
+
+    it('buildTable2CalibrationRowsSync includes admitted 7-verdict judge row for b23a00ed9 (D-045)', () => {
+      const rows = buildTable2CalibrationRowsSync();
+      const o9Row = rows.find((row) => row.commit === 'b23a00ed9');
+      assert.ok(o9Row, 'b23a00ed9 row must be present in Table 2');
+      assert.strictEqual(o9Row.judgeVersion, 'gemini-3.8-flash:detective-v6-spec22-dab7de7f');
+      assert.strictEqual(o9Row.sampleSize, 35);
+      assert.strictEqual(o9Row.stabilityRate, 0.971);
+      assert.strictEqual(o9Row.judgeAlpha, 0.727);
+      assert.strictEqual(o9Row.judgeAc1, 0.932);
+      assert.strictEqual(o9Row.canaryTnr, 1.0);
+      assert.ok(o9Row.notes?.includes('[ADMITTED per D-045]'));
+    });
+
+    it('renders Table 1 full 171-guide O7 catalog screening summary', () => {
+      const markdown = formatProgressLogMarkdown(HISTORICAL_DETECTION_FUNNEL_ROWS);
+      assert.ok(markdown.includes('### Legacy Pattern Spec & Catalog Screening Summary'));
+      assert.ok(markdown.includes('171 published guides audited -> 45 statically detectable'));
+      assert.ok(markdown.includes('13 `clean-1-to-1` + 32 `needs-care`'));
+      assert.ok(markdown.includes('126 `do-not-write-a-rule`'));
+      assert.ok(markdown.includes('37 active guides (49 rules, including 10 single-purpose `package.json` + whole-file `vendored-library` rules) wired in `ALL_RULES`'));
+    });
+
+    it('annotates Current Verified Benchmark when 5653484 is current benchmark (D-042 / D-045)', () => {
+      const funnelRows = buildTable3FunnelRowsSync();
+      const markdown = formatProgressLogMarkdown(funnelRows);
+      assert.ok(markdown.includes('> **Notice (2026-10-21 / D-042 / D-045):**'));
+      assert.ok(markdown.includes('Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`)'));
+      assert.ok(markdown.includes('TERMINAL_QUALIFIED_GUIDE_IDS = []'));
+      assert.ok(markdown.includes('Wave 3C'));
+    });
+
+    it('appends and updates judge calibration row via appendJudgeCalibrationToProgressLog', async () => {
+      const tempDir = await mkdtemp(join(tmpdir(), 'judge-calib-test-'));
+      const testLogPath = join(tempDir, 'PROGRESS.md');
+      try {
+        const initialEntry: ProgressLogRow = {
+          commit: '1234567',
+          date: '2026-10-15',
+          ruleSetHash: 'hash1',
+          splitHash: 'hash2',
+          gradesHash: 'hash3',
+          judgeVersion: 'v1',
+          coverage: { value: 0.1, n: 10, split: 'grading-only' },
+          precision: { value: 0.9, lower: 0.8, upper: 0.95, n: 10, split: 'grading-only' },
+          recall: { value: 0.8, n: 10, split: 'grading-only' },
+          judgeAlpha: 0.7,
+          judgeAc1: 0.9,
+          canaryTnr: 1.0,
+          notes: 'initial',
+        };
+        await recordProgressLogEntry(initialEntry, testLogPath);
+
+        const testCalibRow: JudgeCalibrationRow = {
+          commit: 'calib123',
+          date: '2026-10-21',
+          judgeVersion: 'gemini-3.8-flash:detective-v6-spec22-dab7de7f',
+          sampleSize: 35,
+          stabilityRate: 0.971,
+          judgeAlpha: 0.727,
+          judgeAc1: 0.932,
+          canaryTnr: 1.0,
+          notes: 'test calibration',
+        };
+
+        await appendJudgeCalibrationToProgressLog(testCalibRow, testLogPath);
+        const content = await readFile(testLogPath, 'utf8');
+        assert.ok(content.includes('`calib123`'));
+        assert.ok(content.includes('gemini-3.8-flash:detective-v6-spec22-dab7de7f'));
+
+        const scoreboard = parsePipelineScoreboardMarkdown(content);
+        const foundRow = scoreboard.judgeCalibration.find((entry) => entry.commit === 'calib123');
+        assert.ok(foundRow, 'Appended judge calibration row must be parsed back from scoreboard');
+        assert.strictEqual(foundRow.judgeVersion, 'gemini-3.8-flash:detective-v6-spec22-dab7de7f');
+        assert.strictEqual(foundRow.judgeAlpha, 0.727);
+        assert.strictEqual(foundRow.judgeAc1, 0.932);
+      } finally {
+        await rm(tempDir, { recursive: true, force: true });
+      }
+    });
   });
 });

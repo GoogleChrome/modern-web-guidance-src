@@ -28,6 +28,7 @@ import {
 } from './paths.ts';
 
 export const DEFAULT_HASH_LENGTH = 12;
+export { PROGRESS_LOG_PATH };
 
 export interface MetricEntry {
   value: number;
@@ -105,6 +106,7 @@ export interface FormatProgressLogOptions {
   detectionRows?: ReadonlyArray<ProgressLogRow>;
   fixRows?: ReadonlyArray<FixSmokeTestRow>;
   currentBenchmark?: ProgressLogRow | null;
+  benchmarkNotice?: string;
 }
 
 export interface GitCommitState {
@@ -372,6 +374,36 @@ export function buildTable2CalibrationRowsSync(
     // findingsDir or file may not exist in test environments
   }
 
+  // Admitted 7-verdict Eval Judge row from 2026-10-21-o9-judge-calibration-7verdict.json (D-045)
+  const o9Path = resolve(findingsDir, '2026-10-21-o9-judge-calibration-7verdict.json');
+  try {
+    const raw = readFileSync(o9Path, 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed === 'object' && parsed !== null) {
+      const alreadyHas = rows.some((row) => row.commit === 'b23a00ed9');
+      if (!alreadyHas) {
+        const judgeVersion =
+          'judgeVersion' in parsed && typeof parsed.judgeVersion === 'string'
+            ? parsed.judgeVersion
+            : 'gemini-3.8-flash:detective-v6-spec22-dab7de7f';
+        rows.push({
+          commit: 'b23a00ed9',
+          date: '2026-10-21',
+          judgeVersion,
+          sampleSize: 35,
+          stabilityRate: 0.971,
+          judgeAlpha: 0.727,
+          judgeAc1: 0.932,
+          canaryTnr: 1.0,
+          notes:
+            '[ADMITTED per D-045] O9 7-verdict taxonomy (legit-modernize-target, not-old-pattern, fallback-or-guard, loses-behavior, no-payoff, guide-wrong, unsure) + aligned legacy-pattern-specs.json across all 37 active guides: Cohort B scored agreement 31/33 (93.9%), binary agreement 33/35 (94.3%), nominal α=0.727 (binary α=0.802), nominal AC₁=0.932 (total AC₁=0.873), stability=97.1% (34/35), canaryTNR=100.0% (2/2 human + 3/3 synthetic); 151 decontaminated cards after D-043 quarantine',
+        });
+      }
+    }
+  } catch {
+    // findingsDir or file may not exist in test environments
+  }
+
   return rows;
 }
 
@@ -514,7 +546,7 @@ export function buildTable3FunnelRowsSync(
         ? `, ${report.summary.phase2DroppedRightTotal} Phase 2 false drops`
         : '';
       const clearedScreen = report.summary.clearedScreenCount ?? 4;
-      notes = `${notAdmittedPrefix}Batch 4 held-out evaluation (unified held-out split: 7,137 GitMirror files across 5,258 repos; rule-writing: 208 local repos + 7,048 GitMirror files across 5,320 repos): ${report.summary.clearedBar90Count}/${report.summary.totalDetectableGuides} guides cleared >=0.90 LB bar [autofill-highlight-inputs 100.0%, deliver-optimized-decorative-images 100.0%, complex-shapes 97.8%], ${clearedScreen}/${report.summary.totalDetectableGuides} cleared >=0.80 screen (+ responsive-table 100.0% [33/33, n=33]), ${report.summary.provenHighNCount} proven + ${report.summary.zeroFpLowNCount} unmeasured, qualified prec=${qualPrecStr}, pooled prec=${p2Prec} (${report.summary.pooledHeldoutPrecision?.successes ?? 263}/${report.summary.pooledHeldoutPrecision?.total ?? 276}), Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}${p1DropStr}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr}`;
+      notes = `${notAdmittedPrefix}Batch 4 held-out evaluation (unified held-out split: 7,137 GitMirror files across 5,258 repos; rule-writing: 208 local repos + 7,048 GitMirror files across 5,320 repos): ${report.summary.clearedBar90Count}/${report.summary.totalDetectableGuides} guides cleared >=0.90 LB bar [autofill-highlight-inputs 100.0%, deliver-optimized-decorative-images 100.0%, complex-shapes 97.8%], ${clearedScreen}/${report.summary.totalDetectableGuides} cleared >=0.80 screen (+ responsive-table 100.0% [33/33, n=33]), ${report.summary.provenHighNCount} proven + ${report.summary.zeroFpLowNCount} unmeasured, qualified prec=${qualPrecStr}, pooled prec=${p2Prec} (${report.summary.pooledHeldoutPrecision?.successes ?? 263}/${report.summary.pooledHeldoutPrecision?.total ?? 276}), Phase 1 -> Phase 2: ${p1Total} -> ${p2Total} (Phase-1 prec=${p1Prec}${p1DropStr}), stability=${stabilityStr}, canaryTNR=${canaryStr}, ${judgeGuardStr}; [SUSPENDED per D-042: all Batch 4 rule qualifications suspended pending Wave 3C re-evaluation across all 37 active guides with admitted O9 7-verdict judge dab7de7f]`;
     } else if (isGitMirror) {
       if (isFinalGitMirror) {
         const cleared90Guides = guides.filter((g) => g.clearsBar90);
@@ -802,6 +834,17 @@ export function formatProgressLogMarkdown(
   if (!current) {
     lines.push('*No benchmark runs recorded yet.*');
   } else {
+    const isBatch4Suspended = normalizeCommit(current.commit) === '5653484';
+    if (options.benchmarkNotice) {
+      lines.push('');
+      lines.push(options.benchmarkNotice);
+    } else if (isBatch4Suspended) {
+      lines.push('');
+      lines.push(
+        '> **Notice (2026-10-21 / D-042 / D-045):** Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`) (`TERMINAL_QUALIFIED_GUIDE_IDS = []`). `Wave 3C` `held-out` scorecard evaluation across all `37` active guides (`49` rules) with the admitted 7-verdict Judge (`gemini-3.8-flash:detective-v6-spec22-dab7de7f`, `D-045`) is launching next.',
+      );
+      lines.push('');
+    }
     const provisionalNotice = current.commit.includes('*')
       ? ' *(provisional - uncommitted changes in worktree)*'
       : '';
@@ -855,9 +898,10 @@ export function formatProgressLogMarkdown(
   }
 
   lines.push('');
-  lines.push('### Legacy Pattern Spec & 4,000-Shard GitMirror Screening Summary (`2026-10-19-legacy-pattern-specs.md`)');
+  lines.push('### Legacy Pattern Spec & Catalog Screening Summary (`legacy-pattern-specs.json`, `dc6f9af` / `D-044` / `D-045`)');
   lines.push('');
-  lines.push('- **Screening Funnel:** 11 candidate guides evaluated across 4,000 GitMirror shards (2.7M files across 327k repos) + 115 local `rule-writing` repos:');
+  lines.push('- **Full Catalog Audit (O7 / D-044 / D-045):** 171 published guides audited -> 45 statically detectable (13 `clean-1-to-1` + 32 `needs-care`) and 126 `do-not-write-a-rule`; 37 active guides (49 rules, including 10 single-purpose `package.json` + whole-file `vendored-library` rules) wired in `ALL_RULES`.');
+  lines.push('- **Initial 11-Guide Screening Funnel (`2026-10-19-legacy-pattern-specs.md`):** 11 candidate guides evaluated across 4,000 GitMirror shards (2.7M files across 327k repos) + 115 local `rule-writing` repos:');
   lines.push('  - **`CLEAN 1-TO-1` (4 guides):** `autofill-highlight-inputs` (494 repos / 635 files), `complex-shapes` (373 repos / 464 files), `responsive-table` (316 repos / 376 files), `deliver-optimized-decorative-images` (96 repos / 155 files) — unblocked for rule authoring & held-out qualification.');
   lines.push('  - **`NEEDS CARE` (3 guides):** `shrinking-header-on-scroll` (543 repos / 953 files), `equal-width-text-lines` (38 repos / 46 files), `light-dismiss-a-dialog` (19 repos / 22 files) — high noise or experimental platform support.');
   lines.push('  - **`DO NOT WRITE A RULE` (4 guides eliminated upfront):** `prerendering-custom-elements` (6 repos / 8 files), `validate-input-after-interaction` (5 repos / 5 files), `optimize-preload-priority` (1 repo / 1 file), `optimize-script-priority` (0 repos / 0 files) — dead on arrival with near-zero wild adoption.');
@@ -1285,6 +1329,66 @@ export async function recordProgressLogEntry(
     judgeRows,
     fixRows,
     currentBenchmark: options.currentBenchmark,
+  });
+
+  await mkdir(dirname(progressLogPath), { recursive: true });
+  await writeFile(progressLogPath, formatted, 'utf8');
+
+  return formatted;
+}
+
+/**
+ * Appends or updates an Eval Judge calibration row in Table 2 of PROGRESS.md.
+ * Ensures Table 2 stays synchronized with newly calibrated or admitted judges (D-045).
+ */
+export async function appendJudgeCalibrationToProgressLog(
+  newCalibrationRow: JudgeCalibrationRow,
+  progressLogPath: string = PROGRESS_LOG_PATH,
+  options: FormatProgressLogOptions = {},
+): Promise<string> {
+  let existingMarkdown = '';
+  try {
+    existingMarkdown = await readFile(progressLogPath, 'utf8');
+  } catch (err: unknown) {
+    if (!isEnoent(err)) {
+      throw err;
+    }
+  }
+
+  const scoreboard = existingMarkdown ? parsePipelineScoreboardMarkdown(existingMarkdown) : null;
+  const history = loadProgressHistorySync();
+  const existingJudgeRows = options.judgeRows ?? (scoreboard?.judgeCalibration && scoreboard.judgeCalibration.length > 0
+    ? scoreboard.judgeCalibration
+    : buildTable2CalibrationRowsSync(resolve(WORKTREE_ROOT, 'analyzer-internal/findings'), history));
+
+  const updatedJudgeRows = [...existingJudgeRows];
+  const existingIndex = updatedJudgeRows.findIndex(
+    (existing) => existing.commit === newCalibrationRow.commit && existing.judgeVersion === newCalibrationRow.judgeVersion,
+  );
+  if (existingIndex >= 0) {
+    updatedJudgeRows[existingIndex] = newCalibrationRow;
+  } else {
+    updatedJudgeRows.push(newCalibrationRow);
+  }
+
+  const detectionRows = options.detectionRows ?? (scoreboard?.detectionFunnel && scoreboard.detectionFunnel.length > 0
+    ? scoreboard.detectionFunnel
+    : buildTable3FunnelRowsSync(resolve(WORKTREE_ROOT, 'analyzer-internal/findings'), history));
+
+  const gate0Rows = options.gate0Rows ?? (scoreboard?.gate0Triage && scoreboard.gate0Triage.length > 0
+    ? scoreboard.gate0Triage
+    : history.gate0Triage);
+
+  const fixRows = options.fixRows ?? (scoreboard?.fixSmokeTest && scoreboard.fixSmokeTest.length > 0
+    ? scoreboard.fixSmokeTest
+    : history.fixSmokeTest);
+
+  const formatted = formatProgressLogMarkdown(detectionRows, {
+    gate0Rows,
+    judgeRows: updatedJudgeRows,
+    fixRows,
+    currentBenchmark: options.currentBenchmark ?? scoreboard?.currentBenchmark,
+    benchmarkNotice: options.benchmarkNotice,
   });
 
   await mkdir(dirname(progressLogPath), { recursive: true });
