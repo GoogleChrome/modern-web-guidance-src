@@ -770,64 +770,94 @@ async function runPhase2ForBatch(
 ): Promise<Phase2BatchResult> {
   const verdictsMap = new Map<string, Phase2Verdict>();
   const telemetryRecords: CardTelemetryRecord[] = [];
-  const uncached: AnalyzerFinding[] = [];
+  const phase2StartMs = Date.now();
 
+  const findingsByGuideOrder = new Map<string, AnalyzerFinding[]>();
   for (const f of findings) {
-    const rule = rulesById.get(f.ruleId) ?? rulesById.get(f.guideId);
-    const rHash = rule ? computeRuleHash(rule) : '';
-    const key = computeTelemetryCacheKey(f.cardId, rHash, f.guideHash, PHASE2_PROMPT_VERSION);
-    const cached = telemetryMap.get(key);
-    if (cached?.phase2) {
-      if (!cached.phase2.confidence) {
-        throw new Error(
-          `Phase 2 cached record for card ${f.cardId} missing required field 'confidence' per R28`,
-        );
-      }
-      verdictsMap.set(f.cardId, {
-        cardId: f.cardId,
-        keep: cached.phase2.keep,
-        reason: cached.phase2.reason ?? '',
-        confidence: cached.phase2.confidence,
-      });
-    } else {
-      uncached.push(f);
+    let group = findingsByGuideOrder.get(f.guideId);
+    if (!group) {
+      group = [];
+      findingsByGuideOrder.set(f.guideId, group);
     }
+    group.push(f);
   }
+  const orderedGuideIds = Array.from(findingsByGuideOrder.keys());
+  const totalGuides = orderedGuideIds.length;
 
-  if (uncached.length > 0) {
-    const phase2Opts: Phase2Options = {
-      apiKey: options.apiKey,
-      fetchFn: options.fetchFn,
-      concurrency: options.concurrency,
-    };
-    const phase2Live = await runPhase2Filter(uncached, rulesById, phase2Opts);
-    for (const v of phase2Live.verdicts) {
-      verdictsMap.set(v.cardId, v);
-      const finding = uncached.find((f) => f.cardId === v.cardId);
-      if (finding) {
-        const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
-        telemetryRecords.push({
-          cardId: finding.cardId,
-          repo: finding.repo,
-          commit: finding.commit,
-          file: finding.file,
-          line: finding.line,
-          guideId: finding.guideId,
-          ruleId: finding.ruleId,
-          ruleHash: rule ? computeRuleHash(rule) : '',
-          guideHash: finding.guideHash,
-          promptVersion: PHASE2_PROMPT_VERSION,
-          timestamp: new Date().toISOString(),
-          runId: options.runId ?? 'phase2-run',
-          source: 'live',
-          phase2: {
-            keep: v.keep,
-            confidence: v.confidence,
-            reason: v.reason,
-          },
-        });
+  for (let startIdx = 0; startIdx < totalGuides; startIdx += 5) {
+    const chunkGuideIds = orderedGuideIds.slice(startIdx, startIdx + 5);
+    const chunkFindings: AnalyzerFinding[] = [];
+    for (const gid of chunkGuideIds) {
+      const group = findingsByGuideOrder.get(gid);
+      if (group) {
+        chunkFindings.push(...group);
       }
     }
+
+    const uncached: AnalyzerFinding[] = [];
+    for (const f of chunkFindings) {
+      const rule = rulesById.get(f.ruleId) ?? rulesById.get(f.guideId);
+      const rHash = rule ? computeRuleHash(rule) : '';
+      const key = computeTelemetryCacheKey(f.cardId, rHash, f.guideHash, PHASE2_PROMPT_VERSION);
+      const cached = telemetryMap.get(key);
+      if (cached?.phase2) {
+        if (!cached.phase2.confidence) {
+          throw new Error(
+            `Phase 2 cached record for card ${f.cardId} missing required field 'confidence' per R28`,
+          );
+        }
+        verdictsMap.set(f.cardId, {
+          cardId: f.cardId,
+          keep: cached.phase2.keep,
+          reason: cached.phase2.reason ?? '',
+          confidence: cached.phase2.confidence,
+        });
+      } else {
+        uncached.push(f);
+      }
+    }
+
+    if (uncached.length > 0) {
+      const phase2Opts: Phase2Options = {
+        apiKey: options.apiKey,
+        fetchFn: options.fetchFn,
+        concurrency: options.concurrency,
+      };
+      const phase2Live = await runPhase2Filter(uncached, rulesById, phase2Opts);
+      for (const v of phase2Live.verdicts) {
+        verdictsMap.set(v.cardId, v);
+        const finding = uncached.find((f) => f.cardId === v.cardId);
+        if (finding) {
+          const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
+          telemetryRecords.push({
+            cardId: finding.cardId,
+            repo: finding.repo,
+            commit: finding.commit,
+            file: finding.file,
+            line: finding.line,
+            guideId: finding.guideId,
+            ruleId: finding.ruleId,
+            ruleHash: rule ? computeRuleHash(rule) : '',
+            guideHash: finding.guideHash,
+            promptVersion: PHASE2_PROMPT_VERSION,
+            timestamp: new Date().toISOString(),
+            runId: options.runId ?? 'phase2-run',
+            source: 'live',
+            phase2: {
+              keep: v.keep,
+              confidence: v.confidence,
+              reason: v.reason,
+            },
+          });
+        }
+      }
+    }
+
+    const completedGuides = Math.min(startIdx + 5, totalGuides);
+    const elapsedSec = ((Date.now() - phase2StartMs) / 1000).toFixed(1);
+    console.error(
+      `[scorecard] Phase 2 (verifyFindingsWithLlm) progress: ${completedGuides}/${totalGuides} guides (${verdictsMap.size}/${findings.length} findings, ${elapsedSec}s elapsed)`,
+    );
   }
 
   return { verdictsMap, telemetryRecords };
@@ -854,96 +884,126 @@ async function runJudgeForBatch(
   const consensusVerdicts = new Map<string, JudgeResult>();
   const cardVotesMap = new Map<string, [JudgeVerdict, JudgeVerdict, JudgeVerdict]>();
   const telemetryRecords: CardTelemetryRecord[] = [];
-  const uncachedCards: BlindCardPayload[] = [];
+  const judgeStartMs = Date.now();
 
+  const cardsByGuideOrder = new Map<string, BlindCardPayload[]>();
   for (const card of cards) {
-    if (!card.ruleHash || !card.guideHash) {
-      throw new Error(`BlindCardPayload missing ruleHash or guideHash for card ${card.cardId} (O71)`);
+    let group = cardsByGuideOrder.get(card.guideId);
+    if (!group) {
+      group = [];
+      cardsByGuideOrder.set(card.guideId, group);
     }
-    const key = computeTelemetryCacheKey(card.cardId, card.ruleHash, card.guideHash, JUDGE_VERSION);
-    const cached = telemetryMap.get(key);
-    if (cached?.judge) {
-      if (!cached.judge.facts) {
-        throw new Error(
-          `Cached judge telemetry for card ${card.cardId} missing required facts per R29/O30`,
-        );
-      }
-      consensusVerdicts.set(card.cardId, {
-        cardId: card.cardId,
-        verdict: cached.judge.majorityVerdict,
-        facts: cached.judge.facts,
-        rawResponse: '',
-      });
-      if (
-        Array.isArray(cached.judge.runVotes) &&
-        cached.judge.runVotes.length === 3 &&
-        cached.judge.runVotes.every(isJudgeVerdict)
-      ) {
-        cardVotesMap.set(card.cardId, [
-          cached.judge.runVotes[0],
-          cached.judge.runVotes[1],
-          cached.judge.runVotes[2],
-        ]);
-      }
-    } else {
-      uncachedCards.push(card);
-    }
+    group.push(card);
   }
+  const orderedGuideIds = Array.from(cardsByGuideOrder.keys());
+  const totalGuides = orderedGuideIds.length;
 
-  if (uncachedCards.length > 0) {
-    const judgeOpts: JudgeRunOptions = {
-      apiKey: options.apiKey,
-      fetchFn: options.fetchFn,
-      mode: 'direct',
-      concurrency: options.concurrency,
-      temperature: options.temperature,
-    };
-
-    const run0 = await runJudgeDirect(uncachedCards, judgeOpts);
-    const run1 = await runJudgeDirect(uncachedCards, judgeOpts);
-    const run2 = await runJudgeDirect(uncachedCards, judgeOpts);
-
-    const liveStability: StabilityEvaluationResult = evaluateJudgeStability([run0, run1, run2]);
-
-    for (const res of liveStability.consensusResults) {
-      consensusVerdicts.set(res.cardId, res);
-      const card = uncachedCards.find((c) => c.cardId === res.cardId);
-      if (card) {
-        const v0 = run0.find((r) => r.cardId === res.cardId);
-        const v1 = run1.find((r) => r.cardId === res.cardId);
-        const v2 = run2.find((r) => r.cardId === res.cardId);
-        if (!v0 || !v1 || !v2) {
-          throw new Error(`Missing run vote for card ${res.cardId} in judge consensus (O71)`);
-        }
-        const votes: [JudgeVerdict, JudgeVerdict, JudgeVerdict] = [
-          v0.verdict,
-          v1.verdict,
-          v2.verdict,
-        ];
-        cardVotesMap.set(card.cardId, votes);
-        telemetryRecords.push({
-          cardId: card.cardId,
-          repo: card.repo,
-          commit: card.commit ?? 'uncommitted',
-          file: card.file,
-          line: card.line,
-          guideId: card.guideId,
-          ruleId: card.ruleId ?? card.guideId,
-          ruleHash: card.ruleHash ?? '',
-          guideHash: card.guideHash ?? '',
-          promptVersion: JUDGE_VERSION,
-          timestamp: new Date().toISOString(),
-          runId: options.runId ?? 'judge-consensus-run',
-          source: 'live',
-          judge: {
-            runVotes: votes,
-            majorityVerdict: res.verdict,
-            rationale: res.facts.reasoning,
-            facts: res.facts,
-          },
-        });
+  for (let startIdx = 0; startIdx < totalGuides; startIdx += 5) {
+    const chunkGuideIds = orderedGuideIds.slice(startIdx, startIdx + 5);
+    const chunkCards: BlindCardPayload[] = [];
+    for (const gid of chunkGuideIds) {
+      const group = cardsByGuideOrder.get(gid);
+      if (group) {
+        chunkCards.push(...group);
       }
     }
+
+    const uncachedCards: BlindCardPayload[] = [];
+    for (const card of chunkCards) {
+      if (!card.ruleHash || !card.guideHash) {
+        throw new Error(`BlindCardPayload missing ruleHash or guideHash for card ${card.cardId} (O71)`);
+      }
+      const key = computeTelemetryCacheKey(card.cardId, card.ruleHash, card.guideHash, JUDGE_VERSION);
+      const cached = telemetryMap.get(key);
+      if (cached?.judge) {
+        if (!cached.judge.facts) {
+          throw new Error(
+            `Cached judge telemetry for card ${card.cardId} missing required facts per R29/O30`,
+          );
+        }
+        consensusVerdicts.set(card.cardId, {
+          cardId: card.cardId,
+          verdict: cached.judge.majorityVerdict,
+          facts: cached.judge.facts,
+          rawResponse: '',
+        });
+        if (
+          Array.isArray(cached.judge.runVotes) &&
+          cached.judge.runVotes.length === 3 &&
+          cached.judge.runVotes.every(isJudgeVerdict)
+        ) {
+          cardVotesMap.set(card.cardId, [
+            cached.judge.runVotes[0],
+            cached.judge.runVotes[1],
+            cached.judge.runVotes[2],
+          ]);
+        }
+      } else {
+        uncachedCards.push(card);
+      }
+    }
+
+    if (uncachedCards.length > 0) {
+      const judgeOpts: JudgeRunOptions = {
+        apiKey: options.apiKey,
+        fetchFn: options.fetchFn,
+        mode: 'direct',
+        concurrency: options.concurrency,
+        temperature: options.temperature,
+      };
+
+      const run0 = await runJudgeDirect(uncachedCards, judgeOpts);
+      const run1 = await runJudgeDirect(uncachedCards, judgeOpts);
+      const run2 = await runJudgeDirect(uncachedCards, judgeOpts);
+
+      const liveStability: StabilityEvaluationResult = evaluateJudgeStability([run0, run1, run2]);
+
+      for (const res of liveStability.consensusResults) {
+        consensusVerdicts.set(res.cardId, res);
+        const card = uncachedCards.find((c) => c.cardId === res.cardId);
+        if (card) {
+          const v0 = run0.find((r) => r.cardId === res.cardId);
+          const v1 = run1.find((r) => r.cardId === res.cardId);
+          const v2 = run2.find((r) => r.cardId === res.cardId);
+          if (!v0 || !v1 || !v2) {
+            throw new Error(`Missing run vote for card ${res.cardId} in judge consensus (O71)`);
+          }
+          const votes: [JudgeVerdict, JudgeVerdict, JudgeVerdict] = [
+            v0.verdict,
+            v1.verdict,
+            v2.verdict,
+          ];
+          cardVotesMap.set(card.cardId, votes);
+          telemetryRecords.push({
+            cardId: card.cardId,
+            repo: card.repo,
+            commit: card.commit ?? 'uncommitted',
+            file: card.file,
+            line: card.line,
+            guideId: card.guideId,
+            ruleId: card.ruleId ?? card.guideId,
+            ruleHash: card.ruleHash ?? '',
+            guideHash: card.guideHash ?? '',
+            promptVersion: JUDGE_VERSION,
+            timestamp: new Date().toISOString(),
+            runId: options.runId ?? 'judge-consensus-run',
+            source: 'live',
+            judge: {
+              runVotes: votes,
+              majorityVerdict: res.verdict,
+              rationale: res.facts.reasoning,
+              facts: res.facts,
+            },
+          });
+        }
+      }
+    }
+
+    const completedGuides = Math.min(startIdx + 5, totalGuides);
+    const elapsedSec = ((Date.now() - judgeStartMs) / 1000).toFixed(1);
+    console.error(
+      `[scorecard] Judge (evaluateCard3Pass) progress: ${completedGuides}/${totalGuides} guides (${consensusVerdicts.size}/${cards.length} cards, ${elapsedSec}s elapsed)`,
+    );
   }
 
   return { consensusVerdicts, cardVotesMap, telemetryRecords };
@@ -1046,7 +1106,10 @@ export async function runPilotScorecard(
     }
 
     const sharedProject = createInMemoryProject();
+    const phase1StartMs = Date.now();
+    let repoIndex = 0;
     for (const [repo, group] of byRepo.entries()) {
+      repoIndex++;
       const sanitizedRepo = repo.replace('/', '__');
       const repoDir = join(targetSplitDir, sanitizedRepo);
       const fileMap = new Map<string, string>();
@@ -1069,6 +1132,12 @@ export async function runPilotScorecard(
           project: sharedProject,
         });
         phase1Findings.push(...findings);
+      }
+      if (repoIndex % 500 === 0 || repoIndex === byRepo.size) {
+        const elapsedSec = ((Date.now() - phase1StartMs) / 1000).toFixed(1);
+        console.error(
+          `[scorecard] Phase 1 progress: ${repoIndex}/${byRepo.size} repos (${elapsedSec}s elapsed, ${phase1Findings.length} findings)`,
+        );
       }
     }
   }
@@ -1249,12 +1318,12 @@ export async function runPilotScorecard(
     let defaultDropsDeckName: string;
     if (mode === 'gitmirror') {
       defaultDropsDeckName =
-        split === 'final'
+        split === 'held-out'
           ? 'phase2-drops-gitmirror-final-deck.json'
           : 'phase2-drops-gitmirror-deck.json';
     } else {
       defaultDropsDeckName =
-        split === 'final'
+        split === 'held-out'
           ? 'phase2-drops-local-final-deck.json'
           : 'phase2-drops-local-deck.json';
     }
@@ -1704,7 +1773,7 @@ export async function runPilotScorecard(
   // Save spot-check deck per G6
   const defaultSpotcheckPath =
     mode === 'gitmirror'
-      ? (split === 'final'
+      ? (split === 'held-out'
           ? join(ANALYZER_INTERNAL_DIR, 'labels', 'gitmirror-final-spotcheck-deck.json')
           : join(ANALYZER_INTERNAL_DIR, 'labels', 'gitmirror-spotcheck-deck.json'))
       : M3_SPOTCHECK_DECK_PATH;

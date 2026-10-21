@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import type { Project, SourceFile } from 'ts-morph';
+import type { Node, Project, SourceFile, SyntaxKind } from 'ts-morph';
 import type {
   AnalyzerFinding,
   AnalyzerRule,
@@ -25,7 +25,6 @@ import {
 import {
   createInMemoryProject,
   matchesFastTokens,
-  scanJsSource,
 } from './js-scanner.ts';
 import {
   extractScriptBlocks,
@@ -224,6 +223,56 @@ function processJsxFile(
   return findings;
 }
 
+/**
+ * Memoizes AST descendant queries and full-text slices on a SourceFile instance (O2)
+ * so that 40+ active JS rules scanning the same file do not re-walk the TypeScript AST
+ * or re-slice full source strings on every rule invocation.
+ */
+export function memoizeSourceFileQueries(sourceFile: SourceFile): void {
+  const origGetDescendantsOfKind = sourceFile.getDescendantsOfKind.bind(sourceFile);
+  const descendantsCache = new Map<SyntaxKind, Node[]>();
+
+  sourceFile.getDescendantsOfKind = (<TKind extends SyntaxKind>(kind: TKind) => {
+    const cached = descendantsCache.get(kind);
+    if (cached !== undefined) {
+      return cached.slice();
+    }
+    const nodes = origGetDescendantsOfKind(kind);
+    descendantsCache.set(kind, nodes);
+    return nodes.slice();
+  }) as SourceFile['getDescendantsOfKind'];
+
+  const origGetFullText = sourceFile.getFullText.bind(sourceFile);
+  let cachedFullText: string | undefined;
+  sourceFile.getFullText = (): string => {
+    if (cachedFullText === undefined) {
+      cachedFullText = origGetFullText();
+    }
+    return cachedFullText;
+  };
+
+  const origGetText = sourceFile.getText.bind(sourceFile);
+  let cachedTextDefault: string | undefined;
+  let cachedTextWithJsDoc: string | undefined;
+  sourceFile.getText = ((
+    arg?: boolean | { trimLeadingIndentation?: boolean; includeJsDocComments?: boolean },
+  ): string => {
+    if (typeof arg === 'object' && arg !== null) {
+      return origGetText(arg);
+    }
+    if (arg) {
+      if (cachedTextWithJsDoc === undefined) {
+        cachedTextWithJsDoc = origGetText(true);
+      }
+      return cachedTextWithJsDoc;
+    }
+    if (cachedTextDefault === undefined) {
+      cachedTextDefault = origGetText(false);
+    }
+    return cachedTextDefault;
+  }) as SourceFile['getText'];
+}
+
 function processJsFile(
   ctx: FileContext,
   rules: readonly (AnalyzerRule & { matcher: JsRuleMatcher })[],
@@ -239,6 +288,7 @@ function processJsFile(
   const sourceFile = project.createSourceFile(ctx.relPath, ctx.content, {
     overwrite: true,
   });
+  memoizeSourceFileQueries(sourceFile);
 
   const matcherCtx: JsMatcherContext = {
     filePath: ctx.relPath,
@@ -293,6 +343,7 @@ function processScriptBlock(
   const sourceFile = project.createSourceFile(block.virtualPath, block.blankedContent, {
     overwrite: true,
   });
+  memoizeSourceFileQueries(sourceFile);
 
   const matcherCtx: JsMatcherContext = {
     filePath: block.virtualPath,
