@@ -1753,6 +1753,25 @@
       ]
     },
     {
+      "id": "secure-external-subresources",
+      "category": "security",
+      "title": "Secure external subresources with Subresource Integrity, CORS, and Referrer Policy",
+      "description": "Verify the cryptographic integrity of external scripts, stylesheets, fonts, and images loaded from third-party origins, and control whether those requests send credentials or referrer URLs.",
+      "features": [
+        "url-cross-origin",
+        "url-referrer-policy",
+        "url-integrity",
+        "subresource-integrity",
+        "referrer-policy"
+      ],
+      "demos": [
+        {
+          "id": "demo",
+          "path": "guides/security/secure-external-subresources/demo.html"
+        }
+      ]
+    },
+    {
       "id": "trusted-types",
       "category": "security",
       "title": "Prevent DOM-based XSS attacks with Trusted Types",
@@ -3492,6 +3511,7 @@
     "prefers-reduced-motion",
     "progress",
     "progress-function",
+    "referrer-policy",
     "registered-custom-properties",
     "resize",
     "resize-observer",
@@ -3545,6 +3565,9 @@
     "translator",
     "trig-functions",
     "trusted-types",
+    "url-cross-origin",
+    "url-integrity",
+    "url-referrer-policy",
     "user-pseudos",
     "user-select",
     "video",
