@@ -125,7 +125,6 @@ Style the real `<img>`, `<video>` or `<canvas>` in place. Do not swap in a place
 ```
 
 - Use a transparent gradient, not a colored one, so the tone and the shimmer from section 7 stay visible.
-- Tested in Chromium and WebKit: `content` works on `<img>` and `<picture>`'s `<img>`, but not on `<video>` or `<canvas>`. `object-position` with a large length works on `<video>` and `<canvas>`, but a percentage does not. Neither works on an inline `<svg>`. Firefox is untested.
 - Remove the `controls` attribute from a skeleton `<video>`, since the browser's controls still draw over the placeholder.
 
 ## 5. Other surfaces
