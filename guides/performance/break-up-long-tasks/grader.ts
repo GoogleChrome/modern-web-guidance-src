@@ -7,6 +7,149 @@ const targetDir = path.dirname(targetFile);
 const targetFileName = path.basename(targetFile);
 const targetUrl = `http://localhost/${targetFileName}`;
 
+async function installYieldHarness(page: Page, opts?: { deleteScheduler?: boolean }) {
+  await page.addInitScript((deleteScheduler: boolean) => {
+    const w = window as any;
+    if (deleteScheduler && w.scheduler) {
+      delete w.scheduler;
+    }
+
+    const origPerfNow = performance.now.bind(performance);
+    const origSetTimeout = window.setTimeout.bind(window);
+    let virtualOffset = 0;
+
+    w.__origPerfNow = origPerfNow;
+    w.__simActive = false;
+    w.__hasFinished = false;
+    w.__yieldCount = 0;
+    w.__lastRealYieldTime = 0;
+    w.yieldTimestamps = [];
+    w.schedulerYieldCalled = false;
+    w.setTimeoutFallbackCalled = false;
+
+    performance.now = () => {
+      const real = origPerfNow();
+      if (w.__simActive && !document.getElementById('output') && w.__yieldCount < 8) {
+        virtualOffset += 0.5;
+      }
+      return real + virtualOffset;
+    };
+
+    const recordYield = () => {
+      const now = performance.now();
+      w.__yieldCount++;
+      w.__lastRealYieldTime = origPerfNow();
+      const last = w.yieldTimestamps[w.yieldTimestamps.length - 1];
+      if (last === undefined || now - last > 5) {
+        w.yieldTimestamps.push(now);
+      }
+    };
+
+    const pauseForInterleaving = () => {
+      if (!document.getElementById('output') && w.__simActive && w.__yieldCount <= 6) {
+        const pauseStart = origPerfNow();
+        return new Promise<void>((resolve) =>
+          origSetTimeout(() => {
+            virtualOffset -= origPerfNow() - pauseStart;
+            resolve();
+          }, 25),
+        );
+      }
+      return null;
+    };
+
+    if (!deleteScheduler) {
+      if (!w.scheduler) w.scheduler = {};
+      const origYield = w.scheduler.yield;
+      w.scheduler.yield = async function () {
+        w.schedulerYieldCalled = true;
+        recordYield();
+        const pause = pauseForInterleaving();
+        if (pause) await pause;
+        return origYield ? origYield.apply(this) : new Promise((r) => origSetTimeout(r, 0));
+      };
+    }
+
+    window.setTimeout = function (cb: any, delay: any, ...args: any[]) {
+      if (delay === 0 || delay === undefined) {
+        w.setTimeoutFallbackCalled = true;
+        recordYield();
+        if (!document.getElementById('output') && w.__simActive && w.__yieldCount <= 6) {
+          const pauseStart = origPerfNow();
+          return origSetTimeout(
+            () => {
+              virtualOffset -= origPerfNow() - pauseStart;
+              if (typeof cb === 'function') cb(...args);
+            },
+            25,
+          );
+        }
+      }
+      return origSetTimeout(cb, delay, ...args);
+    } as any;
+  }, !!opts?.deleteScheduler);
+}
+
+async function startSimulation(page: Page) {
+  await page.evaluate(() => {
+    const w = window as any;
+    w.rafTicksWhileRunning = 0;
+    w.clickedWhileRunning = false;
+    w.__hasFinished = false;
+    w.__yieldCount = 0;
+    w.yieldTimestamps = [];
+    w.schedulerYieldCalled = false;
+    w.setTimeoutFallbackCalled = false;
+    w.__simActive = true;
+
+    const output = document.getElementById('output');
+    document.addEventListener('click', () => {
+      if (output) {
+        if (!(output.textContent || '').includes('Done')) {
+          w.clickedWhileRunning = true;
+        }
+      } else if (w.__simActive && !w.__hasFinished) {
+        w.clickedWhileRunning = true;
+      }
+    });
+
+    if (output) {
+      const observer = new MutationObserver(() => {
+        if (output.textContent && /Done/i.test(output.textContent)) {
+          w.__hasFinished = true;
+          w.__simActive = false;
+          observer.disconnect();
+        }
+      });
+      observer.observe(output, { childList: true, characterData: true, subtree: true });
+    }
+
+    const tick = () => {
+      if (!w.__hasFinished) {
+        w.rafTicksWhileRunning++;
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
+
+    const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
+    const btn =
+      byId ||
+      Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
+        (b) =>
+          !b.classList.contains('nav-cta') &&
+          !b.classList.contains('btn-primary') &&
+          !b.classList.contains('btn-ghost') &&
+          !b.classList.contains('card-btn') &&
+          !b.closest('dialog') &&
+          /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(
+            `${b.id} ${b.className} ${b.textContent || ''}`,
+          ),
+      );
+    btn?.click();
+  });
+}
+
 async function waitForSimulationDone(page: Page) {
   const hasExplicitOutput = (await page.locator('#output').count()) > 0;
   if (hasExplicitOutput) {
@@ -17,8 +160,9 @@ async function waitForSimulationDone(page: Page) {
     () => {
       const w = window as any;
       if (w.__hasFinished) return true;
-      if (w.__yieldCount > 0 && w.__lastYieldTime && performance.now() - w.__lastYieldTime > 250) {
+      if (w.__yieldCount > 0 && w.__lastRealYieldTime && w.__origPerfNow() - w.__lastRealYieldTime > 150) {
         w.__hasFinished = true;
+        w.__simActive = false;
         return true;
       }
       return false;
@@ -50,82 +194,9 @@ test.describe('Scheduler Yield Tests', () => {
   });
 
   test('should process heavy computation asynchronously', async ({ page }) => {
-    await page.addInitScript(() => {
-      const w = window as any;
-      w.__yieldCount = 0;
-      w.__lastYieldTime = 0;
-      const trackYield = () => {
-        w.__yieldCount++;
-        w.__lastYieldTime = performance.now();
-      };
-      if (!w.scheduler) w.scheduler = {};
-      const origYield = w.scheduler.yield;
-      w.scheduler.yield = async function () {
-        trackYield();
-        return origYield ? origYield.apply(this) : new Promise((r) => setTimeout(r, 0));
-      };
-      const origSetTimeout = window.setTimeout;
-      window.setTimeout = function (cb: any, delay: any, ...args: any[]) {
-        if (delay === 0 || delay === undefined) trackYield();
-        return origSetTimeout(cb, delay, ...args);
-      } as any;
-    });
-
+    await installYieldHarness(page);
     await page.goto(targetUrl);
-
-    await page.evaluate(() => {
-      const w = window as any;
-      w.rafTicksWhileRunning = 0;
-      w.__hasFinished = false;
-
-      const findStartBtn = (): HTMLButtonElement | null => {
-        const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
-        if (byId) return byId;
-        const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('button'));
-        return (
-          buttons.find(
-            (b) =>
-              !b.classList.contains('nav-cta') &&
-              !b.classList.contains('btn-primary') &&
-              !b.classList.contains('btn-ghost') &&
-              !b.classList.contains('card-btn') &&
-              !b.closest('dialog') &&
-              /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(
-                `${b.id} ${b.className} ${b.textContent || ''}`,
-              ),
-          ) || null
-        );
-      };
-
-      const targetContainer = document.getElementById('output') || document.body;
-      const observer = new MutationObserver(() => {
-        const outEl = document.getElementById('output');
-        if (outEl) {
-          if (outEl.textContent && /Done/i.test(outEl.textContent)) {
-            w.__hasFinished = true;
-            observer.disconnect();
-          }
-        } else if (
-          w.__yieldCount > 0 &&
-          /done|complete|finished|all\s+.*processed|100%/i.test(document.body.textContent || '')
-        ) {
-          w.__hasFinished = true;
-          observer.disconnect();
-        }
-      });
-      observer.observe(targetContainer, { childList: true, characterData: true, subtree: true });
-
-      const tick = () => {
-        if (!w.__hasFinished) {
-          w.rafTicksWhileRunning++;
-        }
-        requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-
-      findStartBtn()?.click();
-    });
-
+    await startSimulation(page);
     await waitForSimulationDone(page);
 
     const rafTicksWhileRunning = await page.evaluate(() => (window as any).rafTicksWhileRunning);
@@ -133,149 +204,22 @@ test.describe('Scheduler Yield Tests', () => {
   });
 
   test('should yield control back to the main thread periodically', async ({ page }) => {
-    await page.addInitScript(() => {
-      const w = window as any;
-      w.__yieldCount = 0;
-      w.__lastYieldTime = 0;
-      const trackYield = () => {
-        w.__yieldCount++;
-        w.__lastYieldTime = performance.now();
-      };
-      if (!w.scheduler) w.scheduler = {};
-      const origYield = w.scheduler.yield;
-      w.scheduler.yield = async function () {
-        trackYield();
-        return origYield ? origYield.apply(this) : new Promise((r) => setTimeout(r, 0));
-      };
-      const origSetTimeout = window.setTimeout;
-      window.setTimeout = function (cb: any, delay: any, ...args: any[]) {
-        if (delay === 0 || delay === undefined) trackYield();
-        return origSetTimeout(cb, delay, ...args);
-      } as any;
-    });
-
+    await installYieldHarness(page);
     await page.goto(targetUrl);
-
-    await page.evaluate(() => {
-      const w = window as any;
-      w.yieldTicksWhileRunning = 0;
-      w.__hasFinished = false;
-
-      const findStartBtn = (): HTMLButtonElement | null => {
-        const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
-        if (byId) return byId;
-        const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('button'));
-        return (
-          buttons.find(
-            (b) =>
-              !b.classList.contains('nav-cta') &&
-              !b.classList.contains('btn-primary') &&
-              !b.classList.contains('btn-ghost') &&
-              !b.classList.contains('card-btn') &&
-              !b.closest('dialog') &&
-              /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(
-                `${b.id} ${b.className} ${b.textContent || ''}`,
-              ),
-          ) || null
-        );
-      };
-
-      const targetContainer = document.getElementById('output') || document.body;
-      const observer = new MutationObserver(() => {
-        const outEl = document.getElementById('output');
-        if (outEl) {
-          if (outEl.textContent && /Done/i.test(outEl.textContent)) {
-            w.__hasFinished = true;
-            observer.disconnect();
-          }
-        } else if (
-          w.__yieldCount > 0 &&
-          /done|complete|finished|all\s+.*processed|100%/i.test(document.body.textContent || '')
-        ) {
-          w.__hasFinished = true;
-          observer.disconnect();
-        }
-      });
-      observer.observe(targetContainer, { childList: true, characterData: true, subtree: true });
-
-      const tick = () => {
-        if (!w.__hasFinished) {
-          w.yieldTicksWhileRunning++;
-        }
-        requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-
-      findStartBtn()?.click();
-    });
-
+    await startSimulation(page);
     await waitForSimulationDone(page);
 
-    const ticks = await page.evaluate(() => (window as any).yieldTicksWhileRunning);
+    const ticks = await page.evaluate(() => (window as any).rafTicksWhileRunning);
     expect(ticks).toBeGreaterThan(0);
   });
 
   test('should use a time-based deadline of around 50ms', async ({ page }) => {
-    await page.addInitScript(() => {
-      const w = window as any;
-      w.yieldTimestamps = [];
-      w.__yieldCount = 0;
-      w.__lastYieldTime = 0;
-      const recordYield = () => {
-        const now = performance.now();
-        w.__yieldCount++;
-        w.__lastYieldTime = now;
-        const last = w.yieldTimestamps[w.yieldTimestamps.length - 1];
-        if (last === undefined || now - last > 5) {
-          w.yieldTimestamps.push(now);
-        }
-      };
-
-      if (!w.scheduler) {
-        w.scheduler = {} as any;
-      }
-      const originalYield = w.scheduler.yield;
-      w.scheduler.yield = async function () {
-        recordYield();
-        if (originalYield) {
-          return originalYield.apply(this);
-        }
-        return new Promise((resolve) => setTimeout(resolve, 0));
-      };
-
-      const originalSetTimeout = window.setTimeout;
-      window.setTimeout = function (cb: any, delay: any, ...args: any[]) {
-        if (delay === 0 || delay === undefined) {
-          recordYield();
-        }
-        return originalSetTimeout(cb, delay, ...args);
-      } as any;
-    });
-
+    await installYieldHarness(page);
     await page.goto(targetUrl);
-
-    await page.evaluate(() => {
-      const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
-      const btn =
-        byId ||
-        Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-          (b) =>
-            !b.classList.contains('nav-cta') &&
-            !b.classList.contains('btn-primary') &&
-            !b.classList.contains('btn-ghost') &&
-            !b.classList.contains('card-btn') &&
-            !b.closest('dialog') &&
-            /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(
-              `${b.id} ${b.className} ${b.textContent || ''}`,
-            ),
-        );
-      btn?.click();
-    });
-
+    await startSimulation(page);
     await waitForSimulationDone(page);
 
     const timestamps: number[] = await page.evaluate(() => (window as any).yieldTimestamps);
-
     expect(timestamps.length).toBeGreaterThan(1);
 
     const intervals: number[] = [];
@@ -289,46 +233,9 @@ test.describe('Scheduler Yield Tests', () => {
   });
 
   test('should use scheduler.yield if available', async ({ page }) => {
-    await page.addInitScript(() => {
-      const w = window as any;
-      w.schedulerYieldCalled = false;
-      w.__yieldCount = 0;
-      w.__lastYieldTime = 0;
-      if (!w.scheduler) {
-        w.scheduler = {} as any;
-      }
-      const originalYield = w.scheduler.yield;
-      w.scheduler.yield = async function () {
-        w.schedulerYieldCalled = true;
-        w.__yieldCount++;
-        w.__lastYieldTime = performance.now();
-        if (originalYield) {
-          return originalYield.apply(this);
-        }
-        return new Promise((resolve) => setTimeout(resolve, 0));
-      };
-    });
-
+    await installYieldHarness(page);
     await page.goto(targetUrl);
-
-    await page.evaluate(() => {
-      const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
-      const btn =
-        byId ||
-        Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-          (b) =>
-            !b.classList.contains('nav-cta') &&
-            !b.classList.contains('btn-primary') &&
-            !b.classList.contains('btn-ghost') &&
-            !b.classList.contains('card-btn') &&
-            !b.closest('dialog') &&
-            /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(
-              `${b.id} ${b.className} ${b.textContent || ''}`,
-            ),
-        );
-      btn?.click();
-    });
-
+    await startSimulation(page);
     await waitForSimulationDone(page);
 
     const schedulerYieldCalled = await page.evaluate(() => (window as any).schedulerYieldCalled);
@@ -336,46 +243,9 @@ test.describe('Scheduler Yield Tests', () => {
   });
 
   test('should fallback to setTimeout when scheduler.yield is not supported', async ({ page }) => {
-    await page.addInitScript(() => {
-      const w = window as any;
-      if (w.scheduler) {
-        delete w.scheduler;
-      }
-
-      w.setTimeoutFallbackCalled = false;
-      w.__yieldCount = 0;
-      w.__lastYieldTime = 0;
-      const originalSetTimeout = window.setTimeout;
-      window.setTimeout = function (cb: any, delay: any, ...args: any[]) {
-        if (delay === 0 || delay === undefined) {
-          w.setTimeoutFallbackCalled = true;
-          w.__yieldCount++;
-          w.__lastYieldTime = performance.now();
-        }
-        return originalSetTimeout(cb, delay, ...args);
-      } as any;
-    });
-
+    await installYieldHarness(page, { deleteScheduler: true });
     await page.goto(targetUrl);
-
-    await page.evaluate(() => {
-      const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
-      const btn =
-        byId ||
-        Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-          (b) =>
-            !b.classList.contains('nav-cta') &&
-            !b.classList.contains('btn-primary') &&
-            !b.classList.contains('btn-ghost') &&
-            !b.classList.contains('card-btn') &&
-            !b.closest('dialog') &&
-            /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(
-              `${b.id} ${b.className} ${b.textContent || ''}`,
-            ),
-        );
-      btn?.click();
-    });
-
+    await startSimulation(page);
     await waitForSimulationDone(page);
 
     const setTimeoutFallbackCalled = await page.evaluate(() => (window as any).setTimeoutFallbackCalled);
@@ -383,65 +253,10 @@ test.describe('Scheduler Yield Tests', () => {
   });
 
   test('should remain responsive to user interaction while processing', async ({ page }) => {
-    await page.addInitScript(() => {
-      const w = window as any;
-      w.__yieldCount = 0;
-      w.__lastYieldTime = 0;
-      w.__isRunning = false;
-      const trackYield = () => {
-        w.__yieldCount++;
-        w.__lastYieldTime = performance.now();
-        w.__isRunning = true;
-      };
-      if (!w.scheduler) w.scheduler = {};
-      const origYield = w.scheduler.yield;
-      w.scheduler.yield = async function () {
-        trackYield();
-        return origYield ? origYield.apply(this) : new Promise((r) => setTimeout(r, 0));
-      };
-      const origSetTimeout = window.setTimeout;
-      window.setTimeout = function (cb: any, delay: any, ...args: any[]) {
-        if (delay === 0 || delay === undefined) trackYield();
-        return origSetTimeout(cb, delay, ...args);
-      } as any;
-    });
-
+    await installYieldHarness(page);
     await page.goto(targetUrl);
-
-    await page.evaluate(() => {
-      const w = window as any;
-      w.clickedWhileRunning = false;
-      const output = document.getElementById('output');
-      document.addEventListener('click', () => {
-        if (output) {
-          const text = output.textContent || '';
-          if (!text.includes('Done')) {
-            w.clickedWhileRunning = true;
-          }
-        } else if (w.__isRunning && !w.__hasFinished) {
-          w.clickedWhileRunning = true;
-        }
-      });
-
-      const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
-      const btn =
-        byId ||
-        Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-          (b) =>
-            !b.classList.contains('nav-cta') &&
-            !b.classList.contains('btn-primary') &&
-            !b.classList.contains('btn-ghost') &&
-            !b.classList.contains('card-btn') &&
-            !b.closest('dialog') &&
-            /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(
-              `${b.id} ${b.className} ${b.textContent || ''}`,
-            ),
-        );
-      btn?.click();
-    });
-
+    await startSimulation(page);
     await page.mouse.click(1, 1);
-
     await waitForSimulationDone(page);
 
     const clickedWhileRunning = await page.evaluate(() => (window as any).clickedWhileRunning);

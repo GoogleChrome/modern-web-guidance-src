@@ -48,24 +48,27 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+const ITEM_LINK_SEL =
+  '.Stack-view:not([inert]) a.item, .Stack-view:not([inert]) .item, .stack-view:not([inert]) a.item, .stack-view:not([inert]) .item';
+const MAIN_DRILL_LINK_SEL =
+  '.Stack-view:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"]), .stack-view:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])';
+const FALLBACK_DRILL_LINK_SEL =
+  '.Stack-view:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"]), .stack-view:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])';
+
+const getActiveDrillLink = async (page: any) => {
+  for (const sel of [ITEM_LINK_SEL, MAIN_DRILL_LINK_SEL, FALLBACK_DRILL_LINK_SEL]) {
+    const loc = page.locator(sel).first();
+    if ((await loc.count()) > 0 && (await loc.isVisible())) {
+      return loc;
+    }
+  }
+  return page.locator('a.item, .item, main a[href], .Stack-view a[href], .stack-view a[href]').first();
+};
+
 // Helper to click a link inside the currently active (non-inert) view
 const clickActiveLink = async (page: any) => {
-  const activeItem = page.locator(
-    '.Stack-view:not([inert]) a.item, .Stack-view:not([inert]) .item, .stack-view:not([inert]) a.item, .stack-view:not([inert]) .item'
-  ).first();
-  if ((await activeItem.count()) > 0 && (await activeItem.isVisible())) {
-    await activeItem.click({ force: true });
-    return;
-  }
-  const activeAnchor = page.locator(
-    '.Stack-view:not([inert]) a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]), .stack-view:not([inert]) a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"])'
-  ).first();
-  if ((await activeAnchor.count()) > 0 && (await activeAnchor.isVisible())) {
-    await activeAnchor.click({ force: true });
-    return;
-  }
-  const fallbackLink = page.locator('a.item, .item, .Stack-view a[href], .stack-view a[href]').first();
-  await fallbackLink.click({ force: true });
+  const link = await getActiveDrillLink(page);
+  await link.click({ force: true });
 };
 
 // Helper to click the Back trigger on active view
@@ -85,12 +88,8 @@ const clickBackButton = async (page: any) => {
 // Helper to discover a valid deep-link URL from the root view
 const getDeepLinkUrl = async (page: any): Promise<string> => {
   await page.goto(targetUrl);
-  const href = await page.evaluate(() => {
-    const link = document.querySelector(
-      '.Stack-view a.item[href], .stack-view a.item[href], .Stack-view a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]), .stack-view a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"])'
-    );
-    return link ? link.getAttribute('href') : null;
-  });
+  const link = await getActiveDrillLink(page);
+  const href = (await link.count()) > 0 ? await link.getAttribute('href') : null;
   await page.goto('about:blank');
   if (href) {
     if (href.startsWith('#')) return `${targetUrl}${href}`;
@@ -560,12 +559,8 @@ test.describe('Stack Drill Down', () => {
     await page.goto(targetUrl);
     
     // Click first link to drill down
-    const firstLinkText = await page.evaluate(() => {
-      const firstLink = document.querySelector(
-        '.Stack-view a.item, .Stack-view .item, .stack-view a.item, .stack-view .item, .Stack-view a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]), .stack-view a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"])'
-      );
-      return firstLink ? firstLink.textContent : '';
-    });
+    const firstLink = await getActiveDrillLink(page);
+    const firstLinkText = ((await firstLink.textContent()) || '').trim();
     
     await clickActiveLink(page);
     // Wait for layout and transition to settle
@@ -589,7 +584,7 @@ test.describe('Stack Drill Down', () => {
     
     const focusOnOriginalLink = await page.evaluate((expectedText) => {
       const active = document.activeElement;
-      return active ? active.textContent === expectedText : false;
+      return active ? (active.textContent || '').trim() === expectedText : false;
     }, firstLinkText);
     
     expect(focusOnOriginalLink).toBe(true);
@@ -809,9 +804,7 @@ test.describe('Stack Drill Down', () => {
     
     await page.goto(targetUrl);
     
-    const link = page.locator(
-      '.Stack-view:not([inert]) a.item, .Stack-view:not([inert]) .item, .stack-view:not([inert]) a.item, .stack-view:not([inert]) .item, .Stack-view:not([inert]) a[href], .stack-view:not([inert]) a[href], a.item, .item'
-    ).first();
+    const link = await getActiveDrillLink(page);
     if (await link.isVisible()) {
       await link.click({ modifiers: ['Shift'], force: true });
       await page.waitForTimeout(100);
