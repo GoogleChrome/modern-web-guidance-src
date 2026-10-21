@@ -180,5 +180,6 @@ export const equalWidthTextLinesJsRule: AnalyzerRule = {
 };
 
 export const equalWidthTextLinesRules: readonly AnalyzerRule[] = [
+  equalWidthTextLinesPackageRule,
   equalWidthTextLinesJsRule,
 ];

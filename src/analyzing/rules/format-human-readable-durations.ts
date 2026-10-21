@@ -323,8 +323,9 @@ export const formatHumanReadableDurationsJsRule: AnalyzerRule = {
 };
 
 /**
- * Package rule is opt-in only per R46; JS rule is kept after fixes.
+ * Single-purpose package rule kept alongside JS call-site rule.
  */
 export const formatHumanReadableDurationsRules: readonly AnalyzerRule[] = [
+  formatHumanReadableDurationsPackageRule,
   formatHumanReadableDurationsJsRule,
 ];

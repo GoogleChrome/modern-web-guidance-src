@@ -12,8 +12,9 @@ const depMatcher = durationDependencyMatcher;
 const jsMatcher = durationJsMatcher;
 
 void test('format-human-readable-durations rules array metadata', () => {
-  assert.equal(formatHumanReadableDurationsRules.length, 1);
-  assert.equal(formatHumanReadableDurationsRules[0].id, 'format-human-readable-durations/js-duration-formatter');
+  assert.equal(formatHumanReadableDurationsRules.length, 2);
+  assert.equal(formatHumanReadableDurationsRules[0].id, 'format-human-readable-durations/package-duration-formatter');
+  assert.equal(formatHumanReadableDurationsRules[1].id, 'format-human-readable-durations/js-duration-formatter');
 });
 
 void test('format-human-readable-durations dependency matcher', async (t) => {

@@ -14,11 +14,18 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
+  DependencyMatcherContext,
+  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH = 'c50b0797091a';
+
+const LAZY_MEDIA_PACKAGES = [
+  'vanilla-lazyload',
+  'lozad',
+] as const;
 
 const LAZY_MEDIA_GUARD_TOKENS = [
   'HTMLMediaElement',
@@ -108,6 +115,20 @@ function matchMediaLazyObserver(
   return 'IntersectionObserver swapping data-src / data-poster onto <video> or <audio> elements can be modernized with native loading="lazy" on <video> and <audio>.';
 }
 
+export const lazyLoadVideoAndAudioPackageMatcher: DependencyRuleMatcher = {
+  kind: 'dependency',
+  packages: LAZY_MEDIA_PACKAGES,
+  matchPackage: (
+    pkgName: string,
+    versionRange: string,
+    _ctx: DependencyMatcherContext,
+  ) => {
+    return {
+      message: `Legacy lazy-loading library "${pkgName}" (${versionRange}) can be modernized with native loading="lazy" on <video> and <audio> elements.`,
+    };
+  },
+};
+
 export const lazyLoadVideoAndAudioJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['IntersectionObserver'],
@@ -136,6 +157,24 @@ export const lazyLoadVideoAndAudioJsMatcher: JsRuleMatcher = {
   },
 };
 
+export const lazyLoadVideoAndAudioPackageRule: AnalyzerRule = {
+  id: 'lazy-load-video-and-audio/package-lazyload',
+  guideId: 'lazy-load-video-and-audio',
+  guideHash: LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH,
+  summary:
+    'Legacy lazy-loading packages (vanilla-lazyload, lozad) used for media elements should be modernized with HTMLMediaElement loading="lazy".',
+  matcher: lazyLoadVideoAndAudioPackageMatcher,
+  phase2Rubric: {
+    keepWhen: [
+      'A project declares vanilla-lazyload or lozad in package.json dependencies to lazy-load <video> or <audio> media elements.',
+    ],
+    dropWhen: [
+      'The code only lazy-loads <img> or <iframe> elements rather than <video> or <audio>.',
+      'The code manages HLS/DASH streaming video player buffer controllers (e.g. hls.js, dashjs).',
+    ],
+  },
+};
+
 export const lazyLoadVideoAndAudioJsRule: AnalyzerRule = {
   id: 'lazy-load-video-and-audio/js-media-observer',
   guideId: 'lazy-load-video-and-audio',
@@ -155,5 +194,6 @@ export const lazyLoadVideoAndAudioJsRule: AnalyzerRule = {
 };
 
 export const lazyLoadVideoAndAudioRules: readonly AnalyzerRule[] = [
+  lazyLoadVideoAndAudioPackageRule,
   lazyLoadVideoAndAudioJsRule,
 ];

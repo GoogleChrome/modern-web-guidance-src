@@ -14,6 +14,8 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
+  DependencyMatcherContext,
+  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -365,6 +367,39 @@ export const captureLocationAgnosticDataJsMatcher: JsRuleMatcher = {
   },
 };
 
+export const captureLocationAgnosticDataPackageMatcher: DependencyRuleMatcher = {
+  kind: 'dependency',
+  packages: ISO_LOOKUP_PACKAGES,
+  matchPackage: (
+    pkgName: string,
+    versionRange: string,
+    _ctx: DependencyMatcherContext,
+  ) => {
+    return {
+      message: `Legacy ISO dictionary package "${pkgName}" (${versionRange}) can be modernized with native Intl.DisplayNames and location-agnostic Temporal/Intl primitives.`,
+    };
+  },
+};
+
+export const captureLocationAgnosticDataPackageRule: AnalyzerRule = {
+  id: 'capture-location-agnostic-data/package-iso-lookup',
+  guideId: 'capture-location-agnostic-data',
+  guideHash: CAPTURE_LOCATION_AGNOSTIC_DATA_GUIDE_HASH,
+  summary:
+    'Legacy ISO region/language dictionary packages (i18n-iso-countries, country-list, iso-639-1) used for display-name translation can be modernized with Intl.DisplayNames and location-agnostic Temporal types.',
+  matcher: captureLocationAgnosticDataPackageMatcher,
+  phase2Rubric: {
+    keepWhen: [
+      'A project declares i18n-iso-countries, country-list, or iso-639-1 in package.json dependencies solely to translate ISO country or language codes into localized display names.',
+    ],
+    dropWhen: [
+      'The library is used for reverse code lookups, alpha-2/alpha-3/numeric code conversion, or code validation (such as getAlpha2Code, getAlpha3Code, alpha2ToAlpha3, alpha3ToAlpha2, alpha2ToNumeric, isValid, validate, or getCode) not supported by Intl.DisplayNames.',
+      'The package.json snippet alone does not show whether the library is used solely for display-name translation versus alpha-2/alpha-3/numeric code conversion or validation.',
+      'The lookup maps international telephone dialing codes (+1, +44) or currency exchange rates rather than localized region/language display names or location-agnostic calendar data.',
+    ],
+  },
+};
+
 export const captureLocationAgnosticDataJsRule: AnalyzerRule = {
   id: 'capture-location-agnostic-data/js-iso-lookup',
   guideId: 'capture-location-agnostic-data',
@@ -385,5 +420,6 @@ export const captureLocationAgnosticDataJsRule: AnalyzerRule = {
 };
 
 export const captureLocationAgnosticDataRules: readonly AnalyzerRule[] = [
+  captureLocationAgnosticDataPackageRule,
   captureLocationAgnosticDataJsRule,
 ];

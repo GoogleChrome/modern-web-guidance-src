@@ -449,7 +449,7 @@ export const preventPageScrollUnderModalDialogDependencyRule: AnalyzerRule = {
   },
 };
 
-// JS rule opt-in only, CSS and package rules retired per O8 slice 3 audit
 export const preventPageScrollUnderModalDialogRules: readonly AnalyzerRule[] = [
+  preventPageScrollUnderModalDialogDependencyRule,
   preventPageScrollUnderModalDialogRule,
 ];
