@@ -20,21 +20,26 @@ export class ApiClient {
      * @returns {string}
      */
     _formatUrl(path, isMetadataOnly = false) {
+        if (!path) {
+            throw new Error('Empty path');
+        }
         if (this.source === 'remote') {
             if (path.startsWith('http')) return path;
 
-            // Clean local prefixes from logical GCS path
-            let fixedPath = path.split('?')[0];
+            // Clean local prefixes from logical GCS path, keeping only the cache-buster
+            const [fixedPath, query = ''] = path.split('?');
+            const cacheBuster = new URLSearchParams(query).get('t');
 
             // Build the GCS JSON API endpoint
             let url = `${this.gcsPrefix}${encodeURIComponent(fixedPath)}`;
             if (!isMetadataOnly) {
                 url += '?alt=media';
+                if (cacheBuster) url += `&t=${encodeURIComponent(cacheBuster)}`;
             }
             return url;
         } else if (this.source === 'public') {
             // Same-origin static files published by the builder; no server to pass ?source= to.
-            return `${PUBLIC_EVALS_BASE}/${path}`;
+            return `${PUBLIC_EVALS_BASE}/${path.replace(/^\/+/, '')}`;
         } else {
             let fullPath = path;
             // Prepend results/ for local results in static mode
@@ -314,8 +319,8 @@ export class ApiClient {
     async getRunFiles(basePath) {
         let files = [];
         try {
-            if (this.source === 'public') {
-                return []; // Callers fall back to run.files, which the builder fills in.
+            if (this.source === 'public' || this.source === 'static') {
+                return []; // Callers fall back to run.files (the builder fills it in for public).
             }
             if (this.source === 'local') {
                 const res = await fetch(`/api/run-files?dir=${encodeURIComponent(basePath)}&source=local`);

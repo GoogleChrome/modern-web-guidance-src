@@ -388,8 +388,10 @@ export async function authenticatedFetch(url, options = {}) {
         options.headers = headers;
     }
     const res = await fetch(url, options);
-    if (res.status === 401) {
-        console.warn('Google Access Token expired or invalid. Clearing token.');
+    // 401: token expired. 403: a valid Google account without bucket access (e.g. a non-Googler who
+    // clicked Sign in). Either way the token is useless; clear it so the page can fall back to public.
+    if (res.status === 401 || res.status === 403) {
+        console.warn('Google Access Token expired or not authorized for this bucket. Clearing token.');
         localStorage.removeItem('gcs_access_token');
         accessToken = null;
         

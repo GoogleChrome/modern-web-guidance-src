@@ -1,6 +1,6 @@
 import { initGoogleAuth, getAccessToken, escapeHtml, $ } from './utils.js';
 import { ApiClient } from './api.js';
-import { resolveDataSource } from './data-source.js';
+import { isLocalServer, resolveDataSource } from './data-source.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
@@ -20,16 +20,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         initGoogleAuth(async () => {
+            forgetSuitesFrom('public');
             await loadManifestTests('remote');
             setupNavigationControls(guideName);
             renderGraphs(guideName);
         });
 
         await loadLocalTests();
-        if (getAccessToken()) {
-            await loadManifestTests('remote');
-        } else if (resolveDataSource() === 'public') {
+        const source = resolveDataSource();
+        if (source === 'public') {
             await loadManifestTests('public');
+        } else if (getAccessToken()) {
+            await loadManifestTests('remote');
         }
         setupNavigationControls(guideName);
         renderGraphs(guideName);
@@ -145,6 +147,22 @@ async function loadManifestTests(source) {
         }
     } catch (error) {
         console.error(`Error loading ${source} suites:`, error);
+        // A rejected token has been cleared by authenticatedFetch; show the public copy instead of nothing.
+        if (source === 'remote' && !getAccessToken() && !isLocalServer()) {
+            await loadManifestTests('public');
+        }
+    }
+}
+
+/**
+ * Drops suites registered from one source so a suite is not listed twice after sign-in.
+ * @param {string} source
+ */
+function forgetSuitesFrom(source) {
+    for (const key of Object.keys(allTestData)) {
+        if (key.endsWith(`|||${source}`)) {
+            delete allTestData[key];
+        }
     }
 }
 

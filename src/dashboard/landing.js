@@ -56,14 +56,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd,
         // and the public copy when there is no sign-in at all.
         initGoogleAuth(async () => {
+             forgetSuitesFrom('public');
              await loadManifestTests('remote');
         });
 
         await loadLocalTests();
-        if (getAccessToken()) {
-             await loadManifestTests('remote');
-        } else if (resolveDataSource(params) === 'public') {
+        const source = resolveDataSource(params);
+        if (source === 'public') {
              await loadManifestTests('public');
+        } else if (getAccessToken()) {
+             await loadManifestTests('remote');
         }
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
@@ -403,6 +405,24 @@ async function loadManifestTests(source) {
 
     } catch (error) {
         console.error(`Error loading ${source} suites:`, error);
+        // A rejected token has been cleared by authenticatedFetch; show the public copy instead of nothing.
+        if (source === 'remote' && !getAccessToken() && !isLocalServer()) {
+            await loadManifestTests('public');
+        }
+    }
+}
+
+/**
+ * Drops suites registered from one source, e.g. the public copy once a Googler signs in,
+ * so the same suite is not listed twice.
+ * @param {import('./api.js').DataSource} source
+ */
+function forgetSuitesFrom(source) {
+    for (const key of Object.keys(allTestData)) {
+        if (key.endsWith(`|||${source}`)) {
+            delete allTestData[key];
+            selectedTestIds.delete(key);
+        }
     }
 }
 
