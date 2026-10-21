@@ -121,8 +121,3 @@ MANDATORY: Under `@media (prefers-reduced-motion: reduce)`, set `animation: none
 {{ BASELINE_STATUS("border-shape") }}
 
 If your Baseline target does not support `border-shape`, use `@supports (border-shape: shape(from 0 0, close))` to scope the bar shapes, and let other browsers show a solid `--skeleton-tone` fill with `border-radius` on the same elements, sized by `min-block-size` in `lh` units. Multi-line bars and variable lengths are the progressive enhancement. The layout reservation still prevents shift.
-
-### color-mix()
-
-{{ BASELINE_STATUS("color-mix") }}
-
