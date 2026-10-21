@@ -123,7 +123,7 @@ With `background-attachment: fixed` the sweep is sized to the viewport, so a sma
 
 DO NOT animate the `border-shape` path or the bars' visibility: it flashes in Chrome. Animate the background.
 
-MANDATORY: Under `@media (prefers-reduced-motion: reduce)`, set `animation: none` on the shapes. The placeholders stay visible.
+MANDATORY: Apply the shimmer (gradient and animation) only under `@media (prefers-reduced-motion: no-preference)`. Without it, the placeholders stay visible as a flat `--skeleton-tone` fill.
 
 ## Fallbacks
 

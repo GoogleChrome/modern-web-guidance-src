@@ -176,12 +176,17 @@
          coordinate space, so they sweep in sync. */
       .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button, time, .media) {
         background-color: var(--skeleton-tone);
-        background-image: linear-gradient(110deg, transparent 40%, var(--skeleton-highlight) 50%, transparent 60%);
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-        background-size: 200% 100%;
-        background-position: 200% 0;
-        animation: sweep 1.8s linear infinite;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button, time, .media) {
+          background-image: linear-gradient(110deg, transparent 40%, var(--skeleton-highlight) 50%, transparent 60%);
+          background-repeat: no-repeat;
+          background-attachment: fixed;
+          background-size: 200% 100%;
+          background-position: 200% 0;
+          animation: sweep 1.8s linear infinite;
+        }
       }
 
       /* Metadata still contributes to the card silhouette, so give its real
@@ -400,12 +405,6 @@
 
         to {
           background-position: -100% 0;
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button, time, .media) {
-          animation: none;
         }
       }
     }

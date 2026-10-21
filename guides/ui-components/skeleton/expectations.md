@@ -7,5 +7,5 @@
 - Buttons, inputs, and other small rectangular surfaces (e.g. badges) render as a single fixed-height rectangle with no visible text.
 - Media and avatar placeholders use a `background-color` fill with `aspect-ratio`, and are not replaced with `content: linear-gradient()`.
 - Skeleton colors are derived from the surface with `color-mix()`.
-- A shimmer gradient is painted on each placeholder shape's own background with `background-attachment: fixed`, so all shapes sweep in sync without a parent overlay.
+- A shimmer gradient is painted on each placeholder shape's own background with `background-attachment: fixed`, so all shapes sweep in sync without a parent overlay. The shimmer gradient and animation are only applied under `prefers-reduced-motion: no-preference`.
 - Only a limited number of cards are visible while loading, even if more are in the markup.
