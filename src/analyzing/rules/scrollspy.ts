@@ -27,6 +27,27 @@ const SCROLLSPY_FEATURE_TOKENS = [
   ':target-current',
 ] as const;
 
+function isGuardedByScrollTargetGroup(node: Node): boolean {
+  if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
+    return true;
+  }
+
+  // Check if enclosing scope or if statement checks CSS.supports for scroll-target-group
+  let curr: Node | undefined = node;
+  while (curr && !Node.isSourceFile(curr)) {
+    if (Node.isIfStatement(curr)) {
+      const expr = unwrapExpression(curr.getExpression());
+      const resolved = resolveLocalExpression(expr);
+      const text = resolved.getText();
+      if (text.includes('scroll-target-group') || text.includes('scrollTargetGroup')) {
+        return true;
+      }
+    }
+    curr = curr.getParent();
+  }
+  return false;
+}
+
 const scrollspyDomMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector:
@@ -91,8 +112,34 @@ function isScrollSpyPluginInvocation(node: Node): boolean {
   if (Node.isCallExpression(node)) {
     const expr = unwrapExpression(node.getExpression());
     if (Node.isPropertyAccessExpression(expr)) {
+      const callerText = unwrapExpression(expr.getExpression()).getText();
+      // Exclude UIkit.scrollspy
+      if (callerText.includes('UIkit')) {
+        return false;
+      }
+
       const name = expr.getName().toLowerCase();
       if (name === 'scrollspy') {
+        const args = node.getArguments();
+        if (args.length > 0) {
+          const firstArg = unwrapExpression(args[0]);
+          // Reject string commands like 'refresh' or 'dispose'
+          if (Node.isStringLiteral(firstArg)) {
+            return false;
+          }
+          if (Node.isObjectLiteralExpression(firstArg)) {
+            const text = firstArg.getText();
+            // Reject non-nav plugins like thesmart jquery-scrollspy with min/max/onEnter/onLeave
+            if (
+              text.includes('onEnter') ||
+              text.includes('onLeave') ||
+              (text.includes('min:') && text.includes('max:')) ||
+              text.includes('cls:')
+            ) {
+              return false;
+            }
+          }
+        }
         return true;
       }
     }
@@ -204,6 +251,12 @@ function isIntersectionObserverScrollSpy(node: Node): boolean {
   }
   const cb = args[0] as Node;
   const cbText = getHandlerText(cb);
+
+  // Reject simple image lazy loaders
+  if (cbText.includes('lazy') || cbText.includes('.src =') || cbText.includes('dataset.src')) {
+    return false;
+  }
+
   const togglesActive =
     cbText.includes('active') ||
     cbText.includes('aria-current') ||
@@ -219,7 +272,7 @@ function isIntersectionObserverScrollSpy(node: Node): boolean {
   return togglesActive && targetsNavigation;
 }
 
-const scrollspyJsMatcher: JsRuleMatcher = {
+export const scrollspyJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
     'scrollspy',
@@ -246,7 +299,7 @@ const scrollspyJsMatcher: JsRuleMatcher = {
         if (visitedLines.has(line)) {
           return;
         }
-        if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
+        if (isGuardedByScrollTargetGroup(node)) {
           return;
         }
         visitedLines.add(line);
@@ -263,7 +316,7 @@ const scrollspyJsMatcher: JsRuleMatcher = {
         if (visitedLines.has(line)) {
           return;
         }
-        if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
+        if (isGuardedByScrollTargetGroup(node)) {
           return;
         }
         visitedLines.add(line);
@@ -280,7 +333,7 @@ const scrollspyJsMatcher: JsRuleMatcher = {
         if (visitedLines.has(line)) {
           return;
         }
-        if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
+        if (isGuardedByScrollTargetGroup(node)) {
           return;
         }
         visitedLines.add(line);
@@ -306,7 +359,7 @@ const scrollspyJsMatcher: JsRuleMatcher = {
               if (visitedLines.has(line)) {
                 return;
               }
-              if (isProtectedByFeatureGuard(node, SCROLLSPY_FEATURE_TOKENS)) {
+              if (isGuardedByScrollTargetGroup(node)) {
                 return;
               }
               visitedLines.add(line);
@@ -358,7 +411,7 @@ export const scrollspyJsRule: AnalyzerRule = {
   phase2Rubric: scrollspyRule.phase2Rubric,
 };
 
-export const scrollspyRules: readonly AnalyzerRule[] = [
-  scrollspyRule,
-  scrollspyJsRule,
-];
+/**
+ * Opt-in only until scroll-target-group is Baseline: retired from default production scan per Slice 6 audit.
+ */
+export const scrollspyRules: readonly AnalyzerRule[] = [];

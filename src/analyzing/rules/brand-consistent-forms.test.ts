@@ -2,9 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
 import type { CssRuleMatcher } from '../schema.ts';
-import { brandConsistentFormsRule } from './brand-consistent-forms.ts';
+import {
+  brandConsistentFormsRule,
+  brandConsistentFormsRules,
+} from './brand-consistent-forms.ts';
 
 const matcher = brandConsistentFormsRule.matcher as CssRuleMatcher;
+
+void test('brand-consistent-forms: rule metadata', () => {
+  assert.equal(brandConsistentFormsRule.id, 'brand-consistent-forms');
+  assert.equal(brandConsistentFormsRules.length, 0);
+});
 
 void test('brand-consistent-forms: positive cases', async (t) => {
   await t.test('flags input[type="checkbox"] with appearance: none', () => {

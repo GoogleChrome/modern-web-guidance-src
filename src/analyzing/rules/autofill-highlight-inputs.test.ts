@@ -15,7 +15,7 @@ void test('autofill-highlight-inputs: rule metadata', () => {
   assert.equal(autofillHighlightInputsRule.guideId, 'autofill-highlight-inputs');
   assert.equal(autofillHighlightInputsRule.guideHash, AUTOFILL_HIGHLIGHT_INPUTS_GUIDE_HASH);
   assert.equal(AUTOFILL_HIGHLIGHT_INPUTS_GUIDE_HASH.length, 12);
-  assert.equal(autofillHighlightInputsRules.length, 1);
+  assert.equal(autofillHighlightInputsRules.length, 0);
   assert.ok(autofillHighlightInputsRule.phase2Rubric.keepWhen.length > 0);
   assert.ok(autofillHighlightInputsRule.phase2Rubric.dropWhen.length >= 2);
 });
@@ -92,6 +92,16 @@ void test('autofill-highlight-inputs: negative / exempt cases', async (t) => {
       }
     `;
     const matches = scanCss('base.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts Safari :-webkit-autofill-strong-password pseudo-element', () => {
+    const css = `
+      input::-webkit-autofill-strong-password {
+        display: none;
+      }
+    `;
+    const matches = scanCss('safari.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
 });

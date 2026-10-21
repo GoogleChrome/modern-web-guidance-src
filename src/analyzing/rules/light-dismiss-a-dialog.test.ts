@@ -157,4 +157,20 @@ void test('light-dismiss-a-dialog: negative / exempt cases', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts non-dialog closest("dialog") close button loops', () => {
+    const project = createInMemoryProject();
+    const code = `
+      btn.addEventListener('click', (e) => {
+        const dialog = e.target.closest('dialog');
+        if (dialog) dialog.close();
+      });
+    `;
+    const sourceFile = project.createSourceFile('close-btn.js', code);
+    const matches = lightDismissADialogJsMatcher.matchFile(sourceFile, {
+      filePath: 'close-btn.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
 });

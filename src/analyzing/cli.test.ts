@@ -306,10 +306,6 @@ describe('runAnalyzeCli', () => {
       const allGuideIds = parsedAll.guides.map((g) => g.guideId);
 
       assert.ok(
-        allGuideIds.includes('autofill-highlight-inputs'),
-        'All-rules includes autofill-highlight-inputs',
-      );
-      assert.ok(
         allGuideIds.includes('animate-element-entry-exit'),
         'All-rules includes experimental rule animate-element-entry-exit',
       );

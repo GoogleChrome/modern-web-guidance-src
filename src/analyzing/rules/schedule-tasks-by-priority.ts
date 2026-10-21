@@ -11,6 +11,20 @@ export const SCHEDULE_TASKS_BY_PRIORITY_GUIDE_HASH = '69f3bb531093';
 const SCHEDULER_POST_TASK_GUARD_TOKENS = ['scheduler', 'postTask'] as const;
 
 /**
+ * Checks whether an AST node is inside a class method or declaration.
+ */
+function isInsideClassMethod(node: Node): boolean {
+  let curr: Node | undefined = node.getParent();
+  while (curr && !Node.isSourceFile(curr)) {
+    if (Node.isClassDeclaration(curr) || Node.isClassExpression(curr)) {
+      return true;
+    }
+    curr = curr.getParent();
+  }
+  return false;
+}
+
+/**
  * Checks whether a call expression is requestIdleCallback(...) or window.requestIdleCallback(...).
  */
 function matchRequestIdleCallback(callExpr: CallExpression): AnalyzerMatch | null {
@@ -28,9 +42,10 @@ function matchRequestIdleCallback(callExpr: CallExpression): AnalyzerMatch | nul
       if (
         callerText === 'window' ||
         callerText === 'globalThis' ||
-        callerText === 'self' ||
-        callerText === 'this'
+        callerText === 'self'
       ) {
+        isIdleCallback = true;
+      } else if (callerText === 'this' && !isInsideClassMethod(callExpr)) {
         isIdleCallback = true;
       }
     }
@@ -88,3 +103,8 @@ export const scheduleTasksByPriorityRule: AnalyzerRule = {
     ],
   },
 };
+
+/**
+ * Whole module retired per O8b audit (rIC has deadline/timeout semantics, not 1:1 with postTask).
+ */
+export const scheduleTasksByPriorityRules: readonly AnalyzerRule[] = [];

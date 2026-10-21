@@ -43,7 +43,6 @@ const FORM_FIELD_KEYWORDS = [
   'adjustheight',
   'resizetextarea',
   'field',
-  'editor',
 ] as const;
 
 const NON_FORM_CONTAINER_KEYWORDS = [
@@ -56,6 +55,11 @@ const NON_FORM_CONTAINER_KEYWORDS = [
   'chart',
   'thumb',
   'scrollbar',
+  'iframe',
+  'accordion',
+  'slidedown',
+  'readmore',
+  'progress',
 ] as const;
 
 function isAutosizeCall(call: CallExpression): boolean {
@@ -64,7 +68,19 @@ function isAutosizeCall(call: CallExpression): boolean {
     return expr.getText() === 'autosize';
   }
   if (Node.isPropertyAccessExpression(expr)) {
-    return expr.getName() === 'autosize';
+    if (expr.getName() !== 'autosize') {
+      return false;
+    }
+    const receiver = unwrapExpression(expr.getExpression());
+    const receiverText = receiver.getText().toLowerCase();
+    // Must be jQuery-like receiver or reference a form field
+    return (
+      receiverText.startsWith('$') ||
+      receiverText.includes('textarea') ||
+      receiverText.includes('input') ||
+      receiverText.includes('tarea') ||
+      receiverText.includes('field')
+    );
   }
   return false;
 }
@@ -135,7 +151,9 @@ function isInputEventCall(call: CallExpression): boolean {
     return false;
   }
   const eventName = firstArg.getLiteralText().toLowerCase();
-  return Array.from(INPUT_EVENTS).some((ev) => eventName.includes(ev));
+  // Support space-separated multiple events like "keyup text" in jQuery .on() while avoiding substring overmatching
+  const events = eventName.split(/\s+/);
+  return events.some((ev) => INPUT_EVENTS.has(ev));
 }
 
 function isEnclosedInInputHandlerOrHelper(node: Node): boolean {
@@ -221,7 +239,8 @@ function isAutoSizingFormField(node: BinaryExpression): boolean {
     nodeText.includes(kw),
   );
 
-  return inInputHandler || hasReset || mentionsFormField;
+  // Require concrete evidence that this element is a form field (not generic accordion or slideDown)
+  return (inInputHandler || mentionsFormField) && (hasReset || mentionsFormField);
 }
 
 const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {

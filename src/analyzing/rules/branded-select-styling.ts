@@ -36,7 +36,11 @@ const TARGET_JS_METHODS: ReadonlySet<string> = new Set([
   'chosen',
   'selectpicker',
   'niceselect',
+  'selectric',
 ]);
+
+const SEARCH_OR_COMPLEX_OPTIONS_REGEX =
+  /\b(?:multiple\s*:\s*true|ajax\s*:|tags\s*:|query\s*:|matcher\s*:|minimumInputLength\s*:|liveSearch\s*:|search_contains\s*:)/i;
 
 const brandedSelectStylingDependencyMatcher: DependencyRuleMatcher = {
   kind: 'dependency',
@@ -55,7 +59,7 @@ const brandedSelectStylingDependencyMatcher: DependencyRuleMatcher = {
 
 const brandedSelectStylingJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['select2', 'chosen', 'selectpicker', 'niceSelect', 'niceselect'],
+  fastTokens: ['select2', 'chosen', 'selectpicker', 'niceSelect', 'niceselect', 'selectric'],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();
@@ -75,15 +79,24 @@ const brandedSelectStylingJsMatcher: JsRuleMatcher = {
         return;
       }
 
+      // Check receiver: for chosen, require jQuery-like receiver (reject this.chosen())
+      if (methodName === 'chosen') {
+        const receiver = unwrapExpression(expr.getExpression());
+        const receiverText = receiver.getText();
+        if (
+          !receiverText.startsWith('$') &&
+          !receiverText.startsWith('jQuery') &&
+          !receiverText.startsWith('mQuery')
+        ) {
+          return;
+        }
+      }
+
       // Exclude multi-select, remote ajax search, or tag-creation options in AST
       const args = node.getArguments();
       if (args.length > 0) {
         const argText = args[0]?.getText() ?? '';
-        if (
-          /\bmultiple\s*:\s*true\b/i.test(argText) ||
-          /\bajax\s*:/i.test(argText) ||
-          /\btags\s*:\s*true\b/i.test(argText)
-        ) {
+        if (SEARCH_OR_COMPLEX_OPTIONS_REGEX.test(argText)) {
           return;
         }
       }
@@ -141,7 +154,5 @@ export const brandedSelectStylingJsRule: AnalyzerRule = {
 
 export const brandedSelectStylingDependencyRule = brandedSelectStylingRule;
 
-export const brandedSelectStylingRules: readonly AnalyzerRule[] = [
-  brandedSelectStylingRule,
-  brandedSelectStylingJsRule,
-];
+// Dependency rule retired (R46), JS rule made opt-in only per O8 slice 2 audit
+export const brandedSelectStylingRules: readonly AnalyzerRule[] = [];

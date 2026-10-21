@@ -80,6 +80,12 @@ void test('autofill-sign-in-form: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 6);
   });
+
+  await t.test('flags same-line <form><input type="password"></form> markup', () => {
+    const html = `<form action="/auth"><input type="password" name="pass"></form>`;
+    const matches = scanHtml('quick-auth.html', html, [matcher]);
+    assert.equal(matches.length, 1);
+  });
 });
 
 void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
@@ -164,6 +170,30 @@ void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
     `;
     const sourceFile = project.createSourceFile('DynamicInput.tsx', code);
     const matches = scanJsx('DynamicInput.tsx', sourceFile, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts non-credential secrets (ssh_password, smtp, api_key, cvv)', () => {
+    const html = `
+      <form>
+        <input type="password" name="ssh_password">
+        <input type="password" name="smtp_secret">
+        <input type="password" id="cvv">
+        <input type="password" name="api_token">
+      </form>
+    `;
+    const matches = scanHtml('system-config.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts Vue and Angular dynamic template bindings', () => {
+    const html = `
+      <form>
+        <input type="password" :autocomplete="autoField">
+        <input type="password" [autocomplete]="dynamicAttr">
+      </form>
+    `;
+    const matches = scanHtml('template.html', html, [matcher]);
     assert.equal(matches.length, 0);
   });
 });

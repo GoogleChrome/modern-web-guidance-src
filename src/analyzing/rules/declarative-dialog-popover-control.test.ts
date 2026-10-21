@@ -134,6 +134,17 @@ describe('declarativeDialogPopoverControlRule (DOM)', () => {
     const matches = runJsxScan('Trigger.tsx', jsx);
     assert.equal(matches.length, 0);
   });
+
+  it('does not falsely attribute sibling onclick to a button without an onclick handler', () => {
+    const html = `
+      <button type="submit">Save</button>
+      <button onclick="document.getElementById('dlg').showModal()">Open</button>
+      <dialog id="dlg">Content</dialog>
+    `;
+    const matches = scanHtml('sibling.html', html, domRules);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 3);
+  });
 });
 
 describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
@@ -222,6 +233,16 @@ describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
       });
     `;
     const { matches } = scanJsSource('log.js', js, jsRules);
+    assert.equal(matches.length, 0);
+  });
+
+  it('ignores click listeners on document, window, overlay, or the dialog itself', () => {
+    const js = `
+      overlay.addEventListener('click', () => dialog.close());
+      document.addEventListener('click', () => dialog.close());
+      dialog.addEventListener('click', () => dialog.close());
+    `;
+    const { matches } = scanJsSource('backdrop.js', js, jsRules);
     assert.equal(matches.length, 0);
   });
 });

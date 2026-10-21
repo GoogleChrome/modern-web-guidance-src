@@ -137,6 +137,5 @@ export const brandConsistentFormsRule: AnalyzerRule = {
   },
 };
 
-export const brandConsistentFormsRules: readonly AnalyzerRule[] = [
-  brandConsistentFormsRule,
-];
+// Both sub-rules retired per O8 slice 2 audit (contradicts checkbox guide, 0/111 genuine like-for-like)
+export const brandConsistentFormsRules: readonly AnalyzerRule[] = [];

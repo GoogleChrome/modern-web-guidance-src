@@ -5,6 +5,7 @@ import {
   type CallExpression,
   type FunctionExpression,
   type ArrowFunction,
+  type FunctionDeclaration,
   type MethodDeclaration,
   type SourceFile,
 } from 'ts-morph';
@@ -47,6 +48,7 @@ function isGuardedByScrollendFeatureCheck(node: Node): boolean {
 /**
  * Checks whether a node is a call to a debounce helper:
  * debounce(...), _.debounce(...), $.debounce(...), throttleDebounce.debounce(...)
+ * Rejects leading-edge, immediate-only, or maxWait debounce calls.
  */
 function isDebounceCall(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
@@ -57,50 +59,52 @@ function isDebounceCall(node: Node): boolean {
 
   const callee = unwrapExpression(resolved.getExpression());
   const calleeText = callee.getText();
-  return DEBOUNCE_FN_REGEX.test(calleeText);
-}
+  if (!DEBOUNCE_FN_REGEX.test(calleeText)) {
+    return false;
+  }
 
-/**
- * Checks whether the enclosing class, function, or source file contains any clearTimeout call.
- */
-function enclosingScopeHasClearTimeout(node: Node): boolean {
-  let scope: Node | undefined = node.getParent();
-  while (scope) {
-    if (
-      Node.isClassDeclaration(scope) ||
-      Node.isFunctionDeclaration(scope) ||
-      Node.isSourceFile(scope)
-    ) {
-      const calls = scope.getDescendantsOfKind(SyntaxKind.CallExpression);
-      for (const call of calls) {
-        const callee = unwrapExpression(call.getExpression());
-        const name = Node.isIdentifier(callee)
-          ? callee.getText()
-          : Node.isPropertyAccessExpression(callee)
-            ? callee.getName()
-            : '';
-        if (name === 'clearTimeout') {
-          return true;
-        }
+  // Check options (leading, immediate, maxWait)
+  const args = resolved.getArguments();
+  for (let idx = 1; idx < args.length; idx++) {
+    const arg = unwrapExpression(args[idx]);
+    if (arg.getKind() === SyntaxKind.TrueKeyword) {
+      // e.g. debounce(fn, 100, true) -> immediate leading edge
+      return false;
+    }
+    if (Node.isObjectLiteralExpression(arg)) {
+      const text = arg.getText();
+      if (text.includes('maxWait')) {
+        return false;
       }
-      if (Node.isClassDeclaration(scope)) {
-        break;
+      if (text.includes('leading: true') && text.includes('trailing: false')) {
+        return false;
+      }
+      if (text.includes('leading:\s*true') && !text.includes('trailing:\s*true')) {
+        return false;
       }
     }
-    scope = scope.getParent();
   }
-  return false;
+
+  return true;
 }
 
 /**
- * Determines whether a function body sets a setTimeout timer or performs a clearTimeout + setTimeout debounce.
+ * Normalizes timer expression text (e.g. this.timer -> timer, scrollTimer -> scrollTimer)
+ */
+function normalizeTimerName(exprText: string): string {
+  return exprText.trim().replace(/^(?:window\.|globalThis\.|this\.)/, '');
+}
+
+/**
+ * Determines whether a function body sets a setTimeout timer or performs a clearTimeout + setTimeout debounce
+ * operating on the SAME timer variable/property.
  */
 function hasScrollEndDebouncePattern(
-  fn: FunctionExpression | ArrowFunction | MethodDeclaration,
+  fn: FunctionExpression | ArrowFunction | MethodDeclaration | FunctionDeclaration,
 ): boolean {
   const calls = fn.getDescendantsOfKind(SyntaxKind.CallExpression);
-  let hasClearTimeout = false;
-  let hasSetTimeout = false;
+  const clearedTimers = new Set<string>();
+  const setTimerTargets = new Set<string>();
 
   for (const call of calls) {
     const expr = unwrapExpression(call.getExpression());
@@ -121,30 +125,70 @@ function hasScrollEndDebouncePattern(
     }
 
     if (callName === 'clearTimeout') {
-      hasClearTimeout = true;
+      const args = call.getArguments();
+      if (args.length > 0) {
+        clearedTimers.add(normalizeTimerName(args[0].getText()));
+      }
     } else if (callName === 'setTimeout') {
-      hasSetTimeout = true;
+      // Find what receives this setTimeout result
+      let parent: Node | undefined = call.getParent();
+      while (parent && parent !== fn) {
+        if (Node.isBinaryExpression(parent) && parent.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
+          setTimerTargets.add(normalizeTimerName(parent.getLeft().getText()));
+          break;
+        }
+        if (Node.isVariableDeclaration(parent)) {
+          setTimerTargets.add(normalizeTimerName(parent.getName()));
+          break;
+        }
+        parent = parent.getParent();
+      }
     }
   }
 
-  if (hasClearTimeout && hasSetTimeout) {
-    return true;
+  // 1. Direct match on same timer in the function
+  for (const t of setTimerTargets) {
+    if (clearedTimers.has(t)) {
+      return true;
+    }
   }
 
-  // If handler sets a setTimeout and clearTimeout exists in the enclosing scope
-  if (hasSetTimeout && enclosingScopeHasClearTimeout(fn)) {
-    return true;
+  // 2. Class scope: if handler sets this.timer, check if class has clearTimeout(this.timer)
+  let scope: Node | undefined = fn.getParent();
+  while (scope && !Node.isSourceFile(scope)) {
+    if (Node.isClassDeclaration(scope)) {
+      const classCalls = scope.getDescendantsOfKind(SyntaxKind.CallExpression);
+      for (const call of classCalls) {
+        const callee = unwrapExpression(call.getExpression());
+        const name = Node.isIdentifier(callee)
+          ? callee.getText()
+          : Node.isPropertyAccessExpression(callee)
+            ? callee.getName()
+            : '';
+        if (name === 'clearTimeout') {
+          const args = call.getArguments();
+          if (args.length > 0) {
+            const clearedName = normalizeTimerName(args[0].getText());
+            if (setTimerTargets.has(clearedName)) {
+              return true;
+            }
+          }
+        }
+      }
+      break;
+    }
+    scope = scope.getParent();
   }
 
   return false;
 }
 
 /**
- * Resolves a handler node to an ArrowFunction, FunctionExpression, or MethodDeclaration.
+ * Resolves a handler node to an ArrowFunction, FunctionExpression, MethodDeclaration, or FunctionDeclaration.
  */
 function resolveHandlerFunction(
   node: Node,
-): FunctionExpression | ArrowFunction | MethodDeclaration | null {
+): FunctionExpression | ArrowFunction | MethodDeclaration | FunctionDeclaration | null {
   let unwrapped = unwrapExpression(node);
 
   // If node is fn.bind(...)
@@ -155,8 +199,22 @@ function resolveHandlerFunction(
     }
   }
 
-  if (Node.isArrowFunction(unwrapped) || Node.isFunctionExpression(unwrapped)) {
+  if (
+    Node.isArrowFunction(unwrapped) ||
+    Node.isFunctionExpression(unwrapped) ||
+    Node.isFunctionDeclaration(unwrapped)
+  ) {
     return unwrapped;
+  }
+
+  // If node is an identifier referring to a function declaration in scope
+  if (Node.isIdentifier(unwrapped)) {
+    const name = unwrapped.getText();
+    const sourceFile = unwrapped.getSourceFile();
+    const fnDecl = sourceFile.getFunction(name);
+    if (fnDecl) {
+      return fnDecl;
+    }
   }
 
   // If node is this.methodName, find methodName on enclosing class
@@ -175,7 +233,11 @@ function resolveHandlerFunction(
   }
 
   const resolved = resolveLocalExpression(unwrapped, 2);
-  if (Node.isArrowFunction(resolved) || Node.isFunctionExpression(resolved)) {
+  if (
+    Node.isArrowFunction(resolved) ||
+    Node.isFunctionExpression(resolved) ||
+    Node.isFunctionDeclaration(resolved)
+  ) {
     return resolved;
   }
 
@@ -217,7 +279,9 @@ function matchScrollEventListenerCall(callExpr: CallExpression): AnalyzerMatch |
     if (!Node.isStringLiteral(eventNameArg) && !Node.isNoSubstitutionTemplateLiteral(eventNameArg)) {
       return null;
     }
-    if (eventNameArg.getLiteralText() !== 'scroll') {
+    const eventText = eventNameArg.getLiteralText();
+    const isScrollEvent = eventText.split(/\s+/).some((e) => e === 'scroll' || e.startsWith('scroll.'));
+    if (!isScrollEvent) {
       return null;
     }
     handlerNode = args.length >= 3 ? args[2] : args[1];
@@ -359,6 +423,11 @@ export const deferWorkUntilScrollEndsRule: AnalyzerRule = {
       'Continuous scroll throttling using requestAnimationFrame or leading-edge execution that runs work while the user is actively scrolling.',
       'Scroll listeners already guarded by feature detection for "onscrollend" in window or "scrollend" event support.',
       'Non-scroll event debouncers (e.g. input, keyup, resize, mousemove, or search queries).',
+      'Debounce callers with leading-edge execution or maxWait options.',
     ],
   },
 };
+
+export const deferWorkUntilScrollEndsRules: readonly AnalyzerRule[] = [
+  deferWorkUntilScrollEndsRule,
+];

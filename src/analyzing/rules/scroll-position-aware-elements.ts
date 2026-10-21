@@ -87,7 +87,16 @@ function handlerHasScrollComparison(handlerNode: Node): boolean {
     if (Node.isBinaryExpression(node)) {
       const op = node.getOperatorToken().getKind();
       if (COMPARISON_OPERATORS.has(op)) {
-        found = true;
+        const leftText = node.getLeft().getText();
+        const rightText = node.getRight().getText();
+        const mentionsScroll =
+          leftText.includes('scroll') ||
+          leftText.includes('pageYOffset') ||
+          rightText.includes('scroll') ||
+          rightText.includes('pageYOffset');
+        if (mentionsScroll) {
+          found = true;
+        }
       }
     }
   });
@@ -121,6 +130,19 @@ function resolveHandlerNode(handlerNode: Node): Node {
 }
 
 function handlerMutatesScrollStateClass(handlerNode: Node): boolean {
+  // Reject lazy-loading, parallax, infinite scroll, or nav link href handlers
+  const handlerText = handlerNode.getText();
+  if (
+    handlerText.includes('setAttribute(\'src\'') ||
+    handlerText.includes('setAttribute("src"') ||
+    handlerText.includes('data-parallax') ||
+    handlerText.includes('fetchMore') ||
+    handlerText.includes('loadMore') ||
+    handlerText.includes('href')
+  ) {
+    return false;
+  }
+
   let found = false;
   handlerNode.forEachDescendant((node) => {
     if (found) return;
@@ -142,7 +164,6 @@ function handlerMutatesScrollStateClass(handlerNode: Node): boolean {
           }
         }
       }
-      found = true;
       return;
     }
 
@@ -243,6 +264,7 @@ export const scrollPositionAwareElementsRule: AnalyzerRule = {
   },
 };
 
-export const scrollPositionAwareElementsRules: readonly AnalyzerRule[] = [
-  scrollPositionAwareElementsRule,
-];
+/**
+ * Opt-in only until re-measured: retired from default production scan per Slice 6 audit.
+ */
+export const scrollPositionAwareElementsRules: readonly AnalyzerRule[] = [];

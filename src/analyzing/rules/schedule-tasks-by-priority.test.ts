@@ -5,6 +5,7 @@ import {
   SCHEDULE_TASKS_BY_PRIORITY_GUIDE_HASH,
   scheduleTasksByPriorityMatcher,
   scheduleTasksByPriorityRule,
+  scheduleTasksByPriorityRules,
 } from './schedule-tasks-by-priority.ts';
 
 describe('schedule-tasks-by-priority rule', () => {
@@ -17,6 +18,7 @@ describe('schedule-tasks-by-priority rule', () => {
     assert.equal(scheduleTasksByPriorityRule.guideHash.length, 12);
     assert.ok(scheduleTasksByPriorityRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(scheduleTasksByPriorityRule.phase2Rubric.dropWhen.length >= 2);
+    assert.equal(scheduleTasksByPriorityRules.length, 0);
   });
 
   test('flags global requestIdleCallback call', () => {
@@ -135,6 +137,26 @@ describe('schedule-tasks-by-priority rule', () => {
     `;
     const { matches } = scanJsSource(
       'queue/custom.js',
+      code,
+      [scheduleTasksByPriorityMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores this.requestIdleCallback inside custom class method', () => {
+    const code = `
+      class CustomScheduler {
+        requestIdleCallback(fn) {
+          setTimeout(fn, 16);
+        }
+        schedule(task) {
+          this.requestIdleCallback(task);
+        }
+      }
+    `;
+    const { matches } = scanJsSource(
+      'queue/class.js',
       code,
       [scheduleTasksByPriorityMatcher],
       project,

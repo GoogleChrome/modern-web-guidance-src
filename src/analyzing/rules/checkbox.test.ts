@@ -71,6 +71,7 @@ void test('checkbox: negative / exempt cases', async (t) => {
     const matches = scanCss('hidden.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
+
   await t.test('exempts stylesheets already using accent-color', () => {
     const css = `
       :root {
@@ -133,6 +134,34 @@ void test('checkbox: negative / exempt cases', async (t) => {
       }
     `;
     const matches = scanCss('reset.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts modern appearance: none directly on input[type="checkbox"] (recommended technique)', () => {
+    const css = `
+      input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        border: 2px solid #555;
+      }
+    `;
+    const matches = scanCss('modern-checkbox.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts radio and star rating pseudo elements', () => {
+    const css = `
+      input[type="radio"]:checked + label::before {
+        content: "";
+        border-radius: 50%;
+      }
+      .star-rating input:checked + label::before {
+        content: "★";
+      }
+    `;
+    const matches = scanCss('radio-star.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
 });

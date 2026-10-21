@@ -26,7 +26,13 @@ const TARGET_DRAG_PACKAGES = [
   'dragula',
 ] as const;
 
-const POINTER_GUARD_TOKENS = ['setPointerCapture', 'pointerId', 'pointerdown'] as const;
+const POINTER_GUARD_TOKENS = [
+  'setPointerCapture',
+  'pointerId',
+  'pointerdown',
+  'PointerEvent',
+  'onpointerdown',
+] as const;
 
 const DRAG_START_EVENTS = ['mousedown', 'touchstart'] as const;
 const DRAG_MOVE_EVENTS = ['mousemove', 'touchmove', 'mouseup', 'touchend'] as const;
@@ -184,7 +190,7 @@ export const dragJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      // Find enclosing functional scope or class or sourceFile
+      // Find enclosing functional scope or class
       let scope: Node = node;
       let parent: Node | undefined = node.getParent();
       while (parent && !Node.isSourceFile(parent)) {
@@ -201,7 +207,6 @@ export const dragJsMatcher: JsRuleMatcher = {
         parent = parent.getParent();
       }
 
-      // If scope didn't catch an outer function, look in enclosing sourceFile
       if (scope === node) {
         scope = sourceFile;
       }
@@ -278,7 +283,7 @@ export const dragJsRule: AnalyzerRule = {
   },
 };
 
+// Retired dragPackageRule from default array (R46); JS rule retained
 export const dragRules: readonly AnalyzerRule[] = [
-  dragPackageRule,
   dragJsRule,
 ];

@@ -16,9 +16,8 @@ const cssRules: readonly CssRuleMatcher[] = [aspectRatioCssMatcher];
 const domRules: readonly DomRuleMatcher[] = [aspectRatioDomMatcher];
 
 describe('aspectRatioCssRule (aspect-ratio/css-padding-hack)', () => {
-  it('exports only aspectRatioCssRule in default aspectRatioRules', () => {
-    assert.equal(aspectRatioRules.length, 1);
-    assert.equal(aspectRatioRules[0], aspectRatioCssRule);
+  it('exports empty aspectRatioRules after retirement while preserving named rules', () => {
+    assert.equal(aspectRatioRules.length, 0);
     assert.equal(aspectRatioRule, aspectRatioCssRule);
     assert.equal(aspectRatioCssRule.id, 'aspect-ratio/css-padding-hack');
     assert.equal(aspectRatioDomRule.id, 'aspect-ratio/dom-intrinsic-dimensions');

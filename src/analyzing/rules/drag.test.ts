@@ -27,7 +27,7 @@ describe('drag rules', () => {
     assert.ok(dragJsRule.phase2Rubric.keepWhen.length >= 1);
     assert.ok(dragJsRule.phase2Rubric.dropWhen.length >= 2);
 
-    assert.equal(dragRules.length, 2);
+    assert.equal(dragRules.length, 1);
   });
 
   test('flags legacy mousedown / mousemove coordinate drag loop', () => {

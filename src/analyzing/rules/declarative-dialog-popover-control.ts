@@ -30,9 +30,11 @@ const FEATURE_GUARD_TOKENS: readonly string[] = [
   'CommandEvent',
 ];
 
-const DIALOG_RECEIVER_HINT_RE = /\b(?:dialog|modal|popover|drawer|sheet|lightbox|dlg)\b/i;
+const DIALOG_RECEIVER_HINT_RE = /\b(?:dialog|dlg|popover)\b/i;
 const NON_DIALOG_CLOSE_RECEIVER_RE =
-  /\b(?:window|self|document|ws|socket|stream|conn|connection|db|file|reader|writer|port|channel|context|audioCtx|peer)\s*$/i;
+  /\b(?:window|self|document|ws|socket|stream|conn|connection|db|file|reader|writer|port|channel|context|audioCtx|peer|lightbox|drawer|sheet)\s*$/i;
+
+const INVALID_RECEIVERS = new Set(['this', 'self', 'app', 'picker', 'interaction', 'window', 'document']);
 
 const EVENT_PURE_CALL_RE =
   /^(?:e|evt|event)\s*\.\s*(?:preventDefault|stopPropagation|stopImmediatePropagation)\s*\(\s*\)$/;
@@ -43,14 +45,13 @@ const LOCAL_LOOKUP_DECL_RE =
 const PURE_METHOD_CALL_RE =
   /^(.+?)\s*(?:\?\.|\.)\s*(showModal|showPopover|hidePopover|togglePopover|close)\s*\(\s*([^)]*)\)$/;
 
-const INLINE_CLICK_ATTRS = ['onclick', '@click', 'v-on:click', 'on:click', '(click)'] as const;
+const INLINE_CLICK_ATTRS = ['onclick', '@click', 'v-on:click', 'on:click', '(click)', 'onClick'] as const;
 
 /**
- * Extract the inline click handler expression from an HTML or JSX button/input element.
+ * Extract the inline click handler expression from the element itself (no multi-line window scan).
  */
 function extractInlineClickHandler(
   element: DomElementView,
-  documentText: string,
 ): string | null {
   for (const attrName of INLINE_CLICK_ATTRS) {
     const val = element.getAttribute(attrName);
@@ -58,26 +59,6 @@ function extractInlineClickHandler(
       return val.trim();
     }
   }
-
-  // Fallback for framework attributes (`@click`, `(click)`) or JSX `onClick={...}`
-  // where linkedom or static attribute extraction omits the expression body.
-  const lines = documentText.split('\n');
-  const startIdx = Math.max(0, element.line - 1);
-  const snippet = lines.slice(startIdx, Math.min(lines.length, startIdx + 12)).join('\n');
-
-  const quotedAttrMatch = snippet.match(
-    /(?:onclick|onClick|@click|v-on:click|on:click|\(click\))\s*=\s*(?:"([^"]*)"|'([^']*)')/,
-  );
-  if (quotedAttrMatch) {
-    const val = quotedAttrMatch[1] ?? quotedAttrMatch[2] ?? '';
-    return val.trim() || null;
-  }
-
-  const jsxBraceMatch = snippet.match(/\bonClick\s*=\s*\{([\s\S]*?)\}/);
-  if (jsxBraceMatch?.[1]) {
-    return jsxBraceMatch[1].trim();
-  }
-
   return null;
 }
 
@@ -153,6 +134,10 @@ function parsePureInlineDialogPopoverMethod(rawHandler: string): string | null {
     const argsText = (callMatch[3] ?? '').trim();
 
     if (argsText.length > 0) {
+      return null;
+    }
+
+    if (INVALID_RECEIVERS.has(receiver)) {
       return null;
     }
 
@@ -242,7 +227,7 @@ export const declarativeDialogPopoverControlMatcher: DomRuleMatcher = {
       return null;
     }
 
-    const inlineHandler = extractInlineClickHandler(element, ctx.documentText);
+    const inlineHandler = extractInlineClickHandler(element);
     if (inlineHandler !== null) {
       const matchedMethod = parsePureInlineDialogPopoverMethod(inlineHandler);
       if (matchedMethod !== null) {
@@ -352,9 +337,14 @@ function matchPureDialogPopoverCallNode(
     return null;
   }
 
+  const receiverExpr = unwrapExpression(callee.getExpression());
+  const receiverText = receiverExpr.getText().trim();
+
+  if (INVALID_RECEIVERS.has(receiverText)) {
+    return null;
+  }
+
   if (methodName === 'close') {
-    const receiverExpr = unwrapExpression(callee.getExpression());
-    const receiverText = receiverExpr.getText().trim();
     if (NON_DIALOG_CLOSE_RECEIVER_RE.test(receiverText)) {
       return null;
     }
@@ -453,6 +443,9 @@ function extractPureDialogPopoverCallFromHandler(
   return matchPureDialogPopoverCallNode(body, new Set());
 }
 
+const NON_BUTTON_LISTENER_TARGET_RE =
+  /\b(?:window|document|document\.body|body|overlay|backdrop|mask|scrim)\b/i;
+
 export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['showModal', 'showPopover', 'hidePopover', 'togglePopover', 'close('],
@@ -463,12 +456,14 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
     sourceFile.forEachDescendant((node) => {
       let handlerNode: Node | null = null;
       let listenerAnchorNode: Node = node;
+      let targetNode: Node | undefined;
 
       if (Node.isCallExpression(node)) {
         const matched = matchEventListenerCall(node, ['click']);
         if (matched) {
           handlerNode = matched.handlerNode;
           listenerAnchorNode = node;
+          targetNode = matched.targetNode;
         } else {
           // Also support `.click(handler)` with 1 argument
           const expr = unwrapExpression(node.getExpression());
@@ -482,6 +477,7 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
           ) {
             handlerNode = unwrapExpression(firstArg);
             listenerAnchorNode = node;
+            targetNode = expr.getExpression();
           }
         }
       } else if (Node.isBinaryExpression(node)) {
@@ -493,11 +489,20 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
         ) {
           handlerNode = unwrapExpression(node.getRight());
           listenerAnchorNode = node;
+          targetNode = left.getExpression();
         }
       }
 
       if (!handlerNode) {
         return;
+      }
+
+      // Check target node: reject window, document, body, overlay, backdrop, scrim
+      if (targetNode) {
+        const targetText = targetNode.getText().trim();
+        if (NON_BUTTON_LISTENER_TARGET_RE.test(targetText)) {
+          return;
+        }
       }
 
       if (isProtectedByFeatureGuard(listenerAnchorNode, FEATURE_GUARD_TOKENS)) {
@@ -507,6 +512,17 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
       const pureCall = extractPureDialogPopoverCallFromHandler(handlerNode);
       if (!pureCall) {
         return;
+      }
+
+      // Reject if target is the same dialog element being closed (backdrop listener, not button)
+      if (targetNode && pureCall.methodName === 'close') {
+        const callee = unwrapExpression(pureCall.callNode.getExpression());
+        if (Node.isPropertyAccessExpression(callee)) {
+          const closeReceiverText = unwrapExpression(callee.getExpression()).getText().trim();
+          if (closeReceiverText === targetNode.getText().trim()) {
+            return;
+          }
+        }
       }
 
       const callPos = pureCall.callNode.getStart();

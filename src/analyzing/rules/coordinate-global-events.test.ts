@@ -5,6 +5,7 @@ import {
   COORDINATE_GLOBAL_EVENTS_GUIDE_HASH,
   coordinateGlobalEventsMatcher,
   coordinateGlobalEventsRule,
+  coordinateGlobalEventsRules,
 } from './coordinate-global-events.ts';
 
 describe('coordinate-global-events rule', () => {
@@ -17,6 +18,7 @@ describe('coordinate-global-events rule', () => {
     assert.equal(coordinateGlobalEventsRule.guideHash.length, 12);
     assert.ok(coordinateGlobalEventsRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(coordinateGlobalEventsRule.phase2Rubric.dropWhen.length >= 2);
+    assert.equal(coordinateGlobalEventsRules.length, 0);
   });
 
   test('flags legacy getTimezoneOffset() calls', () => {
@@ -176,6 +178,22 @@ describe('coordinate-global-events rule', () => {
     `;
     const { matches } = scanJsSource(
       'time/standard.js',
+      code,
+      [coordinateGlobalEventsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores unverified receiver for .tz() and getter without args', () => {
+    const code = `
+      function checkUser() {
+        const zone = user.profile.tz();
+        const curZone = moment().tz();
+      }
+    `;
+    const { matches } = scanJsSource(
+      'user/profile.js',
       code,
       [coordinateGlobalEventsMatcher],
       project,

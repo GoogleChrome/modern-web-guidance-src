@@ -23,6 +23,21 @@ export const responsiveTableCssMatcher: CssRuleMatcher = {
       return null;
     }
 
+    // Skip print stylesheets / media queries
+    if (styleRule.parentAtRule?.toLowerCase().includes('print')) {
+      return null;
+    }
+
+    // Skip hover or focus tooltips (e.g. td:hover::before)
+    if (styleRule.selectorText.includes(':hover') || styleRule.selectorText.includes(':focus')) {
+      return null;
+    }
+
+    // Skip calendar date labels
+    if (styleRule.selectorText.includes('.calendar')) {
+      return null;
+    }
+
     // 2. Check if selector targets td::before or td:before
     if (!TD_BEFORE_REGEX.test(styleRule.selectorText)) {
       return null;
@@ -60,10 +75,12 @@ export const responsiveTableCssRule: AnalyzerRule = {
       'The content: attr(...) is used on anchor tags for print styles (e.g. a::after { content: " (" attr(href) ")" }).',
       'The table uses horizontal scrolling wrapper containers (overflow-x: auto) without pseudo-element cell transformation.',
       'The table is a virtualized data grid (AG Grid, TanStack Table) managing dynamic cell recycling.',
+      'Hover tooltips or calendar date headers utilizing attr(data-*).',
     ],
   },
 };
 
-export const responsiveTableRules: readonly AnalyzerRule[] = [
-  responsiveTableCssRule,
-];
+/**
+ * Opt-in only until layout context is verifiable: retired from default production scan per Slice 6 audit.
+ */
+export const responsiveTableRules: readonly AnalyzerRule[] = [];

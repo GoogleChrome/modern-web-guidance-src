@@ -15,10 +15,14 @@ const TRANSPARENT_VALUES = new Set([
 
 function hasNonZeroDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
   const val = styleRule.getPropertyValue(prop)?.trim().toLowerCase();
-  if (!val) {
+  if (!val || ZERO_DIMENSIONS.has(val)) {
     return false;
   }
-  return !ZERO_DIMENSIONS.has(val);
+  const pxMatch = val.match(/^(\d+(?:\.\d+)?)px$/);
+  if (pxMatch && Number(pxMatch[1]) > 15) {
+    return false;
+  }
+  return true;
 }
 
 function hasValidColor(
@@ -44,12 +48,15 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // 2. Skip rules inside CSS reset stylesheets
+    // 2. Skip rules inside CSS reset stylesheets or Chromium-only host paths (C-2, C-8)
     const lowerFilePath = ctx.filePath.toLowerCase();
     if (
-      lowerFilePath.includes('reset') ||
-      lowerFilePath.includes('normalize') ||
-      lowerFilePath.includes('reboot')
+      /(?:^|[\\/._-])(?:reset|normalize|reboot)(?:[\\/._-]|$)/.test(lowerFilePath) ||
+      lowerFilePath.includes('.obsidian') ||
+      lowerFilePath.includes('betterdiscord') ||
+      lowerFilePath.endsWith('userchrome.css') ||
+      lowerFilePath.endsWith('usercontent.css') ||
+      lowerFilePath.includes('steam')
     ) {
       return null;
     }
@@ -98,7 +105,7 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
 
     return {
       message:
-        'CSS rule uses vendor ::-webkit-scrollbar pseudo-elements to customize scrollbar appearance; modernize with standard scrollbar-color and scrollbar-width.',
+        'CSS rule uses vendor ::-webkit-scrollbar pseudo-elements to customize scrollbar appearance; add standard scrollbar-color and scrollbar-width (and wrap ::-webkit-scrollbar in @supports not (scrollbar-color: auto)).',
     };
   },
 };
@@ -124,6 +131,4 @@ export const customizeScrollbarColorAndThicknessRule: AnalyzerRule = {
   },
 };
 
-export const customizeScrollbarColorAndThicknessRules: readonly AnalyzerRule[] = [
-  customizeScrollbarColorAndThicknessRule,
-];
+export const customizeScrollbarColorAndThicknessRules: readonly AnalyzerRule[] = [];

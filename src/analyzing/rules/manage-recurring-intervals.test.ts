@@ -18,7 +18,7 @@ describe('manage-recurring-intervals rule', () => {
     assert.equal(manageRecurringIntervalsRule.guideHash.length, 12);
     assert.ok(manageRecurringIntervalsRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(manageRecurringIntervalsRule.phase2Rubric.dropWhen.length >= 2);
-    assert.equal(manageRecurringIntervalsRules.length, 1);
+    assert.equal(manageRecurringIntervalsRules.length, 0);
   });
 
   test('flags d.setMonth(d.getMonth() + 1) recurring month advance', () => {
@@ -148,6 +148,23 @@ describe('manage-recurring-intervals rule', () => {
     `;
     const { matches } = scanJsSource(
       'compat/month.js',
+      code,
+      [manageRecurringIntervalsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores 1-based month conversion, explicit day arg, and Temporal native add', () => {
+    const code = `
+      function testConversions(d, m) {
+        d.setMonth(m - 1);
+        d.setMonth(m + 1, 0);
+        const nextDate = startDate.add({ months: 1 });
+      }
+    `;
+    const { matches } = scanJsSource(
+      'compat/temporal-native.js',
       code,
       [manageRecurringIntervalsMatcher],
       project,

@@ -27,7 +27,7 @@ describe('scroll-position-aware-elements rule', () => {
     assert.equal(scrollPositionAwareElementsRule.guideHash.length, 12);
     assert.ok(scrollPositionAwareElementsRule.phase2Rubric.keepWhen.length >= 1);
     assert.ok(scrollPositionAwareElementsRule.phase2Rubric.dropWhen.length >= 2);
-    assert.equal(scrollPositionAwareElementsRules.length, 1);
+    assert.equal(scrollPositionAwareElementsRules.length, 0);
   });
 
   test('flags window scroll listener toggling back-to-top button visibility', () => {
@@ -97,6 +97,26 @@ describe('scroll-position-aware-elements rule', () => {
     `;
     const { matches } = scanJsSource(
       'src/analytics.js',
+      code,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('exempts lazy-loading, parallax, or infinite scroll handlers', () => {
+    const code = `
+      window.addEventListener('scroll', () => {
+        const images = document.querySelectorAll('img[data-src]');
+        images.forEach(img => {
+          if (img.getBoundingClientRect().top < window.innerHeight) {
+            img.setAttribute('src', img.dataset.src);
+          }
+        });
+      });
+    `;
+    const { matches } = scanJsSource(
+      'src/lazy.js',
       code,
       [scrollPositionAwareElementsJsMatcher],
       project,

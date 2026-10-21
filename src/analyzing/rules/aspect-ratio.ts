@@ -209,4 +209,4 @@ export const aspectRatioDomRule: AnalyzerRule = {
 
 export const aspectRatioRule: AnalyzerRule = aspectRatioCssRule;
 
-export const aspectRatioRules: AnyRule[] = [aspectRatioCssRule];
+export const aspectRatioRules: AnyRule[] = [];

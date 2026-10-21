@@ -20,26 +20,48 @@ const DATE_CALENDAR_SETTERS = new Set([
 
 const MOMENT_INTERVAL_METHODS = new Set(['add', 'subtract']);
 
-const CALENDAR_INTERVAL_UNITS = /^['"](years?|months?|y|M)['"]$/i;
+// Case-sensitive calendar units: years, months, y, M. Excludes 'm' (minutes).
+const CALENDAR_INTERVAL_UNITS = /^['"](years?|months?|y|M)['"]$/;
 
 /**
  * Checks whether an argument expression contains binary addition (+) or subtraction (-),
- * e.g., d.getMonth() + 1, d.getFullYear() + 1.
+ * e.g., d.getMonth() + 1, d.getFullYear() + 1 on the SAME receiver.
  */
-function hasArithmeticOperation(node: Node): boolean {
-  const unwrapped = unwrapExpression(node);
-  if (Node.isBinaryExpression(unwrapped)) {
-    const op = unwrapped.getOperatorToken().getKind();
-    if (op === SyntaxKind.PlusToken || op === SyntaxKind.MinusToken) {
-      return true;
-    }
+function hasArithmeticOperationOnSameReceiver(argNode: Node, expectedReceiverText: string): boolean {
+  const unwrapped = unwrapExpression(argNode);
+
+  const checkBinary = (b: Node): boolean => {
+    if (!Node.isBinaryExpression(b)) return false;
+    const op = b.getOperatorToken().getKind();
+    if (op !== SyntaxKind.PlusToken && op !== SyntaxKind.MinusToken) return false;
+
+    // One of the operands must be a getMonth/getFullYear call on the same receiver
+    const left = unwrapExpression(b.getLeft());
+    const right = unwrapExpression(b.getRight());
+
+    const isMatchingGetter = (n: Node): boolean => {
+      if (Node.isCallExpression(n)) {
+        const expr = unwrapExpression(n.getExpression());
+        if (Node.isPropertyAccessExpression(expr)) {
+          const name = expr.getName();
+          if (name === 'getMonth' || name === 'getUTCMonth' || name === 'getFullYear' || name === 'getUTCFullYear') {
+            const caller = unwrapExpression(expr.getExpression()).getText();
+            return caller === expectedReceiverText;
+          }
+        }
+      }
+      return false;
+    };
+
+    return isMatchingGetter(left) || isMatchingGetter(right);
+  };
+
+  if (checkBinary(unwrapped)) {
+    return true;
   }
 
   const binaryDescs = unwrapped.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-  return binaryDescs.some((b) => {
-    const op = b.getOperatorToken().getKind();
-    return op === SyntaxKind.PlusToken || op === SyntaxKind.MinusToken;
-  });
+  return binaryDescs.some((b) => checkBinary(b));
 }
 
 /**
@@ -62,8 +84,15 @@ function matchDateCalendarSetter(callExpr: CallExpression): AnalyzerMatch | null
     return null;
   }
 
-  // The first argument must involve addition or subtraction (+ or -)
-  if (!hasArithmeticOperation(args[0])) {
+  // Skip setters that pass an explicit day parameter (e.g. setMonth(m + 1, 0) or (m + 1, 1))
+  if (args.length > 1) {
+    return null;
+  }
+
+  const receiverText = unwrapExpression(expr.getExpression()).getText();
+
+  // The first argument must involve addition or subtraction (+ or -) with getter on the SAME receiver
+  if (!hasArithmeticOperationOnSameReceiver(args[0], receiverText)) {
     return null;
   }
 
@@ -91,12 +120,17 @@ function matchMomentDayjsAdd(callExpr: CallExpression): AnalyzerMatch | null {
     return null;
   }
 
-  const callerText = expr.getExpression().getText();
+  const callerExpr = unwrapExpression(expr.getExpression());
+  const callerText = callerExpr.getText();
+
+  // Must explicitly be moment or dayjs, NEVER a Temporal or plain object
   const isMomentOrDayjsCaller =
     callerText.includes('moment') ||
-    callerText.includes('dayjs') ||
-    callerText.includes('date') ||
-    callerText.includes('Date');
+    callerText.includes('dayjs');
+
+  if (!isMomentOrDayjsCaller) {
+    return null;
+  }
 
   const args = callExpr.getArguments();
   let hasCalendarUnit = false;
@@ -116,15 +150,11 @@ function matchMomentDayjsAdd(callExpr: CallExpression): AnalyzerMatch | null {
         }
         return '';
       });
-      hasCalendarUnit = propNames.some((p) => /^(years?|months?|y|M)$/i.test(p));
+      hasCalendarUnit = propNames.some((p) => /^(years?|months?|y|M)$/.test(p));
     }
   }
 
   if (!hasCalendarUnit) {
-    return null;
-  }
-
-  if (!isMomentOrDayjsCaller && args.length < 2) {
     return null;
   }
 
@@ -186,10 +216,13 @@ export const manageRecurringIntervalsRule: AnalyzerRule = {
       'Simple day or week offsets (such as d.setDate(d.getDate() + 7) or dayjs().add(7, "days")) that do not involve month-end calendar clamping.',
       'Code already protected by feature detection for native Temporal or polyfill loading (@js-temporal/polyfill).',
       'Direct timestamp setters with fixed scalar values (such as d.setHours(0, 0, 0, 0) or d.setMonth(0)) without plus/minus duration arithmetic.',
+      'Setters passing an explicit day argument (e.g. setMonth(m + 1, 0) or setMonth(m + 1, 1)) or 1-based index conversion (setMonth(m - 1)).',
+      'Native Temporal arithmetic (e.g. plainDate.add({ months: 1 })).',
     ],
   },
 };
 
-export const manageRecurringIntervalsRules: readonly AnalyzerRule[] = [
-  manageRecurringIntervalsRule,
-];
+/**
+ * Opt-in only until re-measured: retired from default production scan per Slice 5 audit.
+ */
+export const manageRecurringIntervalsRules: readonly AnalyzerRule[] = [];

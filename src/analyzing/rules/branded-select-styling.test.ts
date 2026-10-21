@@ -6,10 +6,17 @@ import type { DependencyRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
   brandedSelectStylingJsRule,
   brandedSelectStylingRule,
+  brandedSelectStylingRules,
 } from './branded-select-styling.ts';
 
 const depMatcher = brandedSelectStylingRule.matcher as DependencyRuleMatcher;
 const jsMatcher = brandedSelectStylingJsRule.matcher as JsRuleMatcher;
+
+void test('branded-select-styling: rule metadata', () => {
+  assert.equal(brandedSelectStylingRule.id, 'branded-select-styling');
+  assert.equal(brandedSelectStylingJsRule.id, 'branded-select-styling/js');
+  assert.equal(brandedSelectStylingRules.length, 0);
+});
 
 void test('branded-select-styling dependency: positive brownfield matches', async (t) => {
   await t.test('flags select2 in dependencies', () => {
@@ -165,6 +172,22 @@ void test('branded-select-styling JS: negative / exempt cases', async (t) => {
     const sourceFile = project.createSourceFile('native.js', code);
     const matches = jsMatcher.matchFile(sourceFile, {
       filePath: 'native.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts select2 with liveSearch, tags, or ajax search options', () => {
+    const project = createInMemoryProject();
+    const code = `
+      $('#select-search').select2({
+        ajax: { url: '/api/tags' },
+        tags: true,
+      });
+    `;
+    const sourceFile = project.createSourceFile('searchable.js', code);
+    const matches = jsMatcher.matchFile(sourceFile, {
+      filePath: 'searchable.js',
       fileContent: code,
     });
     assert.equal(matches.length, 0);

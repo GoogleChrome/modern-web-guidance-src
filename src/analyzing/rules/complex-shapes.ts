@@ -81,6 +81,4 @@ export const complexShapesRule: AnalyzerRule = {
   },
 };
 
-export const complexShapesRules: readonly AnalyzerRule[] = [
-  complexShapesRule,
-];
+export const complexShapesRules: readonly AnalyzerRule[] = [];

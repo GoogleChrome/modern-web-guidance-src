@@ -108,14 +108,19 @@ function hasMultiTimezoneContext(callExpr: CallExpression): boolean {
     }
 
     // Check for explicit multi-timezone tokens in the function/statement
-    if (MULTI_TIMEZONE_REGEX.test(fnText)) {
+    // Strip getTimezoneOffset itself to prevent tautological self-match
+    const sanitizedFn = fnText.replace(/getTimezoneOffset/g, '');
+    if (MULTI_TIMEZONE_REGEX.test(sanitizedFn)) {
       return true;
     }
   }
 
-  // At statement level (e.g. const TIMEZONE_OFFSET = new Date().getTimezoneOffset() * 60 * 1000)
-  if (stmt && MULTI_TIMEZONE_REGEX.test(stmtText)) {
-    return true;
+  // At statement level
+  if (stmt) {
+    const sanitizedStmt = stmtText.replace(/getTimezoneOffset/g, '');
+    if (MULTI_TIMEZONE_REGEX.test(sanitizedStmt)) {
+      return true;
+    }
   }
 
   return false;
@@ -151,6 +156,28 @@ function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
     if (isProtectedByFeatureGuard(callExpr, TEMPORAL_GUARD_TOKENS)) {
       return null;
     }
+
+    const args = callExpr.getArguments();
+    // Exclude getter with 0 args like m.tz()
+    if (args.length === 0) {
+      return null;
+    }
+
+    // Exclude unverified receivers like user.profile.tz()
+    const lowerCaller = callerText.toLowerCase();
+    const isLikelyDateReceiver =
+      lowerCaller.includes('moment') ||
+      lowerCaller.includes('dayjs') ||
+      lowerCaller.includes('date') ||
+      lowerCaller.includes('stamp') ||
+      lowerCaller.includes('time') ||
+      lowerCaller.includes('row.') ||
+      Node.isCallExpression(callerExpr);
+
+    if (!isLikelyDateReceiver) {
+      return null;
+    }
+
     return {
       line: callExpr.getStartLineNumber(),
       message:
@@ -167,18 +194,6 @@ function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
       line: callExpr.getStartLineNumber(),
       message:
         'Legacy UTC/local conversion used instead of Temporal.ZonedDateTime or Intl.DateTimeFormat with timeZone',
-    };
-  }
-
-  // 4. Direct moment.tz static call: moment.tz(...) where caller is moment
-  if (callerText === 'moment' && methodName === 'tz') {
-    if (isProtectedByFeatureGuard(callExpr, TEMPORAL_GUARD_TOKENS)) {
-      return null;
-    }
-    return {
-      line: callExpr.getStartLineNumber(),
-      message:
-        'Legacy moment.tz() timezone conversion used instead of Temporal.ZonedDateTime or Intl.DateTimeFormat with timeZone',
     };
   }
 
@@ -223,6 +238,12 @@ export const coordinateGlobalEventsRule: AnalyzerRule = {
       'Single-timezone local UI display, local clock display, or cookie expiration calculation.',
       'Code already protected by a feature guard checking for native Temporal support.',
       'Internal polyfills or ponyfills implementing Temporal itself.',
+      'Unverified receiver calls or getter calls without arguments (e.g. user.profile.tz() or moment().tz()).',
     ],
   },
 };
+
+/**
+ * Opt-in only until re-measured: retired from default production scan.
+ */
+export const coordinateGlobalEventsRules: readonly AnalyzerRule[] = [];

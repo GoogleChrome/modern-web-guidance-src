@@ -203,4 +203,23 @@ describe('ime-safe-enter-submit rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('flags canonical if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) bug with negated modifiers', () => {
+    const code = `
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'chat/negated-modifiers.js',
+      code,
+      [imeSafeEnterSubmitMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /isComposing|IME/);
+  });
 });

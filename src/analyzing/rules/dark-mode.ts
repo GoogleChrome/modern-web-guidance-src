@@ -19,23 +19,48 @@ import type {
 
 export const DARK_MODE_GUIDE_HASH = '796876897c2c';
 
+const matchedCssContexts = new WeakSet<CssMatcherContext>();
+
 const darkModeCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: ['prefers-color-scheme'],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
-    // 1. If stylesheet defines standard color-scheme property or light-dark() function, skip
+    // 1. Skip if stylesheet defines standard dark color-scheme or light-dark() function (D-3)
     if (
-      ctx.stylesheetHasProperty('color-scheme') ||
+      /(?:^|[^\w-])color-scheme\s*:[^;}]*\bdark\b/i.test(ctx.stylesheetText) ||
       ctx.stylesheetHasValue('light-dark(')
     ) {
       return null;
     }
 
-    // 2. Check if rule is enclosed in @media (prefers-color-scheme: dark)
+    // 2. Skip email or newsletter templates (D-6)
+    const lowerFilePath = ctx.filePath.toLowerCase();
+    if (
+      /(?:^|[\\/._-])(?:e-?mails?|newsletters?)(?:[\\/._-]|$)/.test(lowerFilePath) ||
+      ctx.stylesheetText.includes('supported-color-schemes')
+    ) {
+      return null;
+    }
+
+    // 3. Check if rule is enclosed in @media (prefers-color-scheme: dark)
     const atRule = styleRule.parentAtRule?.toLowerCase();
     if (!atRule || !atRule.includes('prefers-color-scheme') || !atRule.includes('dark')) {
       return null;
     }
+
+    // 4. Require at least one color-valued declaration (D-4)
+    const hasColorDeclaration = styleRule.declarations.some((decl) =>
+      /(?:color|background|border|fill|stroke)/i.test(decl.property),
+    );
+    if (!hasColorDeclaration) {
+      return null;
+    }
+
+    // 5. Emit at most 1 finding per file at the first matching rule (D-1)
+    if (matchedCssContexts.has(ctx)) {
+      return null;
+    }
+    matchedCssContexts.add(ctx);
 
     return {
       message:
@@ -80,8 +105,18 @@ const darkModeJsMatcher: JsRuleMatcher = {
       content.includes('addEventListener("change"') ||
       content.includes('.addListener(');
 
+    // Check actual color-scheme property or property access, avoiding query literal (J-1)
     const hasColorScheme =
-      content.includes('color-scheme') || content.includes('colorScheme');
+      /(?:\.style\.colorScheme|\bcolor-scheme\s*:)/i.test(content);
+
+    // Skip user-override toggles like localStorage/sessionStorage/cookies (J-2)
+    const hasStorageOverride =
+      content.includes('localStorage') ||
+      content.includes('sessionStorage') ||
+      content.includes('document.cookie');
+    if (hasStorageOverride) {
+      return matches;
+    }
 
     const togglesDarkTheme =
       content.includes('dark') &&
@@ -164,7 +199,4 @@ export const darkModeJsMatchMediaRule: AnalyzerRule = {
   },
 };
 
-export const darkModeRules: readonly AnalyzerRule[] = [
-  darkModeCssRule,
-  darkModeJsMatchMediaRule,
-];
+export const darkModeRules: readonly AnalyzerRule[] = [];

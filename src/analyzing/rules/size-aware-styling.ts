@@ -17,16 +17,16 @@ import type {
 } from '../schema.ts';
 
 const DIMENSION_READ_REGEX =
-  /(?:contentRect(?:\.width|\.inlineSize)?|borderBoxSize|contentBoxSize|offsetWidth|clientWidth|getBoundingClientRect)\b/;
+  /(?:contentRect(?:\.width|\.inlineSize)|borderBoxSize(?:\.width|\.inlineSize)?|offsetWidth|clientWidth|getBoundingClientRect\(\)\.width)\b/;
 
 const ELEMENT_DIMENSION_READ_REGEX =
-  /(?:(?<!window\.)(?<!document\.)(?<!documentElement\.)(?:offsetWidth|clientWidth)|getBoundingClientRect\(\)(?:\.width)?)\b/;
+  /(?:(?<!window\.)(?<!document\.)(?<!documentElement\.)(?<!body\.)(?:offsetWidth|clientWidth)|getBoundingClientRect\(\)\.width)\b/;
 
 const STYLING_MUTATION_REGEX =
-  /(?:classList\.(?:add|remove|toggle)|\b(?:addClass|removeClass|toggleClass)\b|\bclassName\s*=|style\.(?:setProperty|[a-zA-Z]+)|\bset[A-Z][a-zA-Z]*(?:Width|Size|Narrow|Small|Compact|Layout|Breakpoint))\b/;
+  /(?:classList\.(?:add|remove|toggle)|\b(?:addClass|removeClass|toggleClass)\b|\bclassName\s*=)\b/;
 
 const NON_CONTAINER_EXCLUSIONS_REGEX =
-  /(?:canvas|webgl|\bgl\b|getContext|chart|echarts|highcharts|monaco|editor\.layout|\.layout\b|relayout|virtual|virtualizer|scrollbar|style\.(?:width|height|minWidth|minHeight|maxWidth|maxHeight))\b/i;
+  /(?:canvas|webgl|\bgl\b|getContext|chart|echarts|highcharts|monaco|editor\.layout|\.layout\b|relayout|virtual|virtualizer|scrollbar|style\.(?:width|height|minWidth|minHeight|maxWidth|maxHeight|transform))\b/i;
 
 function isResizeObserverInstantiation(
   node: Node,
@@ -96,6 +96,11 @@ const sizeAwareStylingJsMatcher: JsRuleMatcher = {
         const callback = resolveLocalExpression(rawCallback);
         const callbackText = callback.getText();
 
+        // Drop overflow / scrollWidth / scrollHeight detection
+        if (callbackText.includes('scrollWidth') || callbackText.includes('scrollHeight')) {
+          return;
+        }
+
         if (!DIMENSION_READ_REGEX.test(callbackText)) {
           return;
         }
@@ -133,6 +138,10 @@ const sizeAwareStylingJsMatcher: JsRuleMatcher = {
         const rawCallback = unwrapExpression(args[callbackIndex] as Node);
         const callback = resolveLocalExpression(rawCallback);
         const callbackText = callback.getText();
+
+        if (callbackText.includes('scrollWidth') || callbackText.includes('scrollHeight')) {
+          return;
+        }
 
         if (!ELEMENT_DIMENSION_READ_REGEX.test(callbackText)) {
           return;
@@ -182,4 +191,7 @@ export const sizeAwareStylingRule: AnalyzerRule = {
   },
 };
 
-export const sizeAwareStylingRules: readonly AnalyzerRule[] = [sizeAwareStylingRule];
+/**
+ * Opt-in only until re-measured: retired from default production scan per Slice 6 audit.
+ */
+export const sizeAwareStylingRules: readonly AnalyzerRule[] = [];

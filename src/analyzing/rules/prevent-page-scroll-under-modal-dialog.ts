@@ -28,7 +28,7 @@ const MODAL_OR_OVERLAY_REGEX =
 const FULLSCREEN_CANVAS_GAME_REGEX =
   /\b(?:fullscreen|canvas|game|slide|deck|threejs|pixi)\b/i;
 
-function hasModalOrOverlayContext(node: Node, ctx: JsMatcherContext): boolean {
+function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
   let enclosingFn: Node | undefined;
   let current: Node | undefined = node.getParent();
   while (current && !Node.isSourceFile(current)) {
@@ -45,21 +45,17 @@ function hasModalOrOverlayContext(node: Node, ctx: JsMatcherContext): boolean {
     current = current.getParent();
   }
 
-  // If outside any function (e.g. top-level app initialization), only flag if file is specifically modal/overlay
-  if (!enclosingFn) {
-    return MODAL_OR_OVERLAY_REGEX.test(ctx.filePath);
-  }
-
-  const fnText = enclosingFn.getText();
+  const fnText = enclosingFn ? enclosingFn.getText() : '';
   if (FULLSCREEN_CANVAS_GAME_REGEX.test(fnText) && !MODAL_OR_OVERLAY_REGEX.test(fnText)) {
     return false;
   }
 
-  // Must reference modal/dialog/drawer/overlay/popup/lightbox/showModal in function or file
+  // Must have modal/dialog context and native dialog evidence
   return (
     MODAL_OR_OVERLAY_REGEX.test(fnText) ||
     MODAL_OR_OVERLAY_REGEX.test(ctx.filePath) ||
-    MODAL_OR_OVERLAY_REGEX.test(ctx.fileContent)
+    ctx.fileContent.includes('showModal') ||
+    ctx.fileContent.includes('<dialog')
   );
 }
 
@@ -74,9 +70,6 @@ const MODAL_SCROLL_LOCK_CLASSES = new Set([
 const CSS_SCROLL_LOCK_SELECTOR_REGEX =
   /(?:body|html)?\.(?:modal-open|dialog-open|no-scroll|scroll-lock|overflow-hidden)\b/i;
 
-/**
- * Checks whether an expression references document.body or document.documentElement or root body.
- */
 function isDocumentRootElement(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
   const text = unwrapped.getText();
@@ -108,9 +101,6 @@ function isDocumentRootElement(node: Node): boolean {
   return false;
 }
 
-/**
- * Checks whether the node is inside an explicit fullscreen toggle function without modal/dialog context.
- */
 function isInsideFullscreenToggle(node: Node): boolean {
   let current: Node | undefined = node.getParent();
   while (current && !Node.isSourceFile(current)) {
@@ -134,9 +124,6 @@ function isInsideFullscreenToggle(node: Node): boolean {
   return false;
 }
 
-/**
- * Checks whether a binary expression is an assignment setting overflow = 'hidden' on body/documentElement.
- */
 function matchOverflowAssignment(
   binaryExpr: BinaryExpression,
   ctx: JsMatcherContext,
@@ -179,7 +166,7 @@ function matchOverflowAssignment(
     return null;
   }
 
-  if (!hasModalOrOverlayContext(binaryExpr, ctx)) {
+  if (!hasNativeDialogContext(binaryExpr, ctx)) {
     return null;
   }
 
@@ -190,9 +177,6 @@ function matchOverflowAssignment(
   };
 }
 
-/**
- * Checks whether a call expression is target.style.setProperty('overflow', 'hidden') on body/documentElement.
- */
 function matchSetPropertyCall(
   callExpr: CallExpression,
   ctx: JsMatcherContext,
@@ -240,7 +224,7 @@ function matchSetPropertyCall(
     return null;
   }
 
-  if (!hasModalOrOverlayContext(callExpr, ctx)) {
+  if (!hasNativeDialogContext(callExpr, ctx)) {
     return null;
   }
 
@@ -251,10 +235,6 @@ function matchSetPropertyCall(
   };
 }
 
-/**
- * Checks whether a call expression adds a scroll-locking class to body/documentElement:
- * document.body.classList.add('modal-open' | 'no-scroll' | 'scroll-lock' | 'overflow-hidden')
- */
 function matchClassListAdd(callExpr: CallExpression, ctx: JsMatcherContext): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(expr) || expr.getName() !== 'add') {
@@ -292,7 +272,7 @@ function matchClassListAdd(callExpr: CallExpression, ctx: JsMatcherContext): Ana
     return null;
   }
 
-  if (!hasModalOrOverlayContext(callExpr, ctx)) {
+  if (!hasNativeDialogContext(callExpr, ctx)) {
     return null;
   }
 
@@ -303,9 +283,6 @@ function matchClassListAdd(callExpr: CallExpression, ctx: JsMatcherContext): Ana
   };
 }
 
-/**
- * Checks whether a call expression is disableBodyScroll(...) or enableBodyScroll(...).
- */
 function matchScrollLockCall(callExpr: CallExpression): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   let fnName = '';
@@ -472,8 +449,5 @@ export const preventPageScrollUnderModalDialogDependencyRule: AnalyzerRule = {
   },
 };
 
-export const preventPageScrollUnderModalDialogRules: readonly AnalyzerRule[] = [
-  preventPageScrollUnderModalDialogRule,
-  preventPageScrollUnderModalDialogCssRule,
-  preventPageScrollUnderModalDialogDependencyRule,
-];
+// JS rule opt-in only, CSS and package rules retired per O8 slice 3 audit
+export const preventPageScrollUnderModalDialogRules: readonly AnalyzerRule[] = [];

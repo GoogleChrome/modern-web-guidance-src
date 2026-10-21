@@ -26,6 +26,90 @@ function isZeroOrOmittedDelay(args: readonly Node[]): boolean {
 }
 
 /**
+ * Checks whether a node is in a file with test or Node/Electron specific markers.
+ */
+function isTestOrNodeFile(sourceFile: SourceFile, ctx?: JsMatcherContext): boolean {
+  if (ctx?.filePath) {
+    const filePath = ctx.filePath.toLowerCase();
+    if (
+      filePath.includes('.test.') ||
+      filePath.includes('.spec.') ||
+      filePath.includes('__tests__') ||
+      filePath.startsWith('test/') ||
+      filePath.startsWith('tests/') ||
+      filePath.includes('/test/') ||
+      filePath.includes('/tests/')
+    ) {
+      return true;
+    }
+  }
+
+  const text = ctx?.fileContent ?? sourceFile.getFullText();
+  if (
+    text.startsWith('#!') ||
+    text.includes("require('fs')") ||
+    text.includes('require("fs")') ||
+    text.includes("require('electron')") ||
+    text.includes('require("electron")') ||
+    text.includes("require('child_process')") ||
+    text.includes('require("child_process")') ||
+    text.includes('process.argv')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether node is guarded by scheduler.yield feature detection or fallback (?? or ||).
+ */
+function isSchedulerYieldGuarded(node: Node): boolean {
+  if (isProtectedByFeatureGuard(node, SCHEDULER_YIELD_GUARD_TOKENS)) {
+    return true;
+  }
+
+  let curr: Node | undefined = node;
+  while (curr && !Node.isSourceFile(curr)) {
+    const parent = curr.getParent();
+    if (parent && Node.isBinaryExpression(parent)) {
+      const op = parent.getOperatorToken().getKind();
+      if (op === SyntaxKind.QuestionQuestionToken || op === SyntaxKind.BarBarToken) {
+        if (parent.getRight() === curr) {
+          const leftText = parent.getLeft().getText();
+          if (leftText.includes('scheduler') && leftText.includes('yield')) {
+            return true;
+          }
+        }
+      }
+    }
+    curr = parent;
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether an argument to setTimeout is the executor's resolve function.
+ */
+function isResolveCallback(arg: Node, resolveName: string): boolean {
+  const unwrapped = unwrapExpression(arg);
+  if (Node.isIdentifier(unwrapped) && unwrapped.getText() === resolveName) {
+    return true;
+  }
+  if (Node.isArrowFunction(unwrapped) || Node.isFunctionExpression(unwrapped)) {
+    const body = unwrapped.getBody();
+    if (Node.isCallExpression(body)) {
+      const callee = unwrapExpression(body.getExpression());
+      if (Node.isIdentifier(callee) && callee.getText() === resolveName) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * Checks whether a new Promise(...) wraps setTimeout(resolve, 0) or setImmediate(resolve)
  * as an explicit main-thread yielding mechanism.
  */
@@ -46,9 +130,12 @@ function matchPromiseYield(newExpr: NewExpression): AnalyzerMatch | null {
     return null;
   }
 
-  if (isProtectedByFeatureGuard(newExpr, SCHEDULER_YIELD_GUARD_TOKENS)) {
+  if (isSchedulerYieldGuarded(newExpr)) {
     return null;
   }
+
+  const executorParams = executor.getParameters();
+  const resolveParamName = executorParams.length > 0 ? executorParams[0].getName() : '';
 
   const calls = executor.getDescendantsOfKind(SyntaxKind.CallExpression);
   for (const call of calls) {
@@ -78,6 +165,9 @@ function matchPromiseYield(newExpr: NewExpression): AnalyzerMatch | null {
 
     if (calleeName === 'setTimeout') {
       const callArgs = call.getArguments();
+      if (callArgs.length > 0 && resolveParamName && !isResolveCallback(callArgs[0], resolveParamName)) {
+        continue;
+      }
       if (isZeroOrOmittedDelay(callArgs)) {
         return {
           line: newExpr.getStartLineNumber(),
@@ -156,7 +246,7 @@ function matchSetImmediateYield(callExpr: CallExpression): AnalyzerMatch | null 
     return null;
   }
 
-  if (isProtectedByFeatureGuard(callExpr, SCHEDULER_YIELD_GUARD_TOKENS)) {
+  if (isSchedulerYieldGuarded(callExpr)) {
     return null;
   }
 
@@ -185,7 +275,7 @@ function matchMessageChannelYield(newExpr: NewExpression): AnalyzerMatch | null 
     return null;
   }
 
-  if (isProtectedByFeatureGuard(newExpr, SCHEDULER_YIELD_GUARD_TOKENS)) {
+  if (isSchedulerYieldGuarded(newExpr)) {
     return null;
   }
 
@@ -224,7 +314,11 @@ function matchMessageChannelYield(newExpr: NewExpression): AnalyzerMatch | null 
 export const breakUpLongTasksMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['Promise', 'setTimeout', 'setImmediate', 'MessageChannel'],
-  matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
+  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
+    if (isTestOrNodeFile(sourceFile, ctx)) {
+      return [];
+    }
+
     const matches: AnalyzerMatch[] = [];
 
     const newExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.NewExpression);
@@ -288,6 +382,12 @@ export const breakUpLongTasksRule: AnalyzerRule = {
       'DOM layout flush hacks or one-off deferred callbacks (e.g. setTimeout(() => input.focus(), 0)).',
       'Code already protected by feature detection for scheduler.yield (e.g. if ("scheduler" in window && "yield" in window.scheduler)).',
       'Node.js-specific server-side batching scripts where scheduler is not available or polyfilled.',
+      'Unit test files, fixtures, or server-side CLI scripts.',
     ],
   },
 };
+
+/**
+ * Opt-in only until re-measured: retired from default production scan.
+ */
+export const breakUpLongTasksRules: readonly AnalyzerRule[] = [];

@@ -1,8 +1,6 @@
 import {
   Node,
   SyntaxKind,
-  type BinaryExpression,
-  type CallExpression,
   type SourceFile,
   type StringLiteral,
 } from 'ts-morph';
@@ -21,9 +19,9 @@ import type {
 
 export const LIGHT_DISMISS_A_DIALOG_GUIDE_HASH = '81b6cf86f574';
 
-const CLOSEDBY_FEATURE_TOKENS = ['closedBy', 'closedby'] as const;
+const CLOSEDBY_FEATURE_TOKENS = ['closedBy', 'closedby', 'closedBy' as string] as const;
 
-function handlerCallsClose(handlerNode: Node): boolean {
+function handlerCallsCloseOnDialog(handlerNode: Node, targetNode?: Node): boolean {
   let callsClose = false;
   handlerNode.forEachDescendant((child) => {
     if (callsClose) return;
@@ -31,7 +29,18 @@ function handlerCallsClose(handlerNode: Node): boolean {
       const expr = unwrapExpression(child.getExpression());
       if (Node.isPropertyAccessExpression(expr)) {
         if (expr.getName() === 'close') {
-          callsClose = true;
+          const receiver = unwrapExpression(expr.getExpression());
+          const receiverText = receiver.getText().trim();
+          // Receiver must be a dialog reference, e.target, this, or targetNode
+          if (
+            receiverText === 'this' ||
+            receiverText.endsWith('.target') ||
+            /\bdialog\b/i.test(receiverText) ||
+            /\bdlg\b/i.test(receiverText) ||
+            (targetNode && receiverText === targetNode.getText().trim())
+          ) {
+            callsClose = true;
+          }
         }
       } else if (Node.isIdentifier(expr) && expr.getText() === 'close') {
         callsClose = true;
@@ -58,7 +67,8 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
       const expr = unwrapExpression(child.getExpression());
       if (Node.isPropertyAccessExpression(expr)) {
         const methodName = expr.getName();
-        if (methodName === 'matches' || methodName === 'closest') {
+        // matches('dialog') is valid backdrop check; closest('dialog') is inside check (opposite!)
+        if (methodName === 'matches') {
           const args = child.getArguments();
           if (args.length > 0) {
             const firstArg = unwrapExpression(args[0]);
@@ -101,8 +111,8 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
       if (
         otherText === 'this' ||
         otherText.endsWith('.currentTarget') ||
-        /dialog/i.test(otherText) ||
-        /modal/i.test(otherText) ||
+        /\bdialog\b/i.test(otherText) ||
+        /\bdlg\b/i.test(otherText) ||
         (targetNode && otherText === targetNode.getText())
       ) {
         found = true;
@@ -130,7 +140,7 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
   return found;
 }
 
-function hasBoundingRectCoordinateCheck(handlerNode: Node): boolean {
+function hasBoundingRectCoordinateCheck(handlerNode: Node, targetNode?: Node): boolean {
   let hasGetBoundingClientRect = false;
   let hasClientCoords = false;
 
@@ -141,7 +151,15 @@ function hasBoundingRectCoordinateCheck(handlerNode: Node): boolean {
         Node.isPropertyAccessExpression(expr) &&
         expr.getName() === 'getBoundingClientRect'
       ) {
-        hasGetBoundingClientRect = true;
+        const callerText = unwrapExpression(expr.getExpression()).getText();
+        if (
+          /\bdialog\b/i.test(callerText) ||
+          /\bdlg\b/i.test(callerText) ||
+          callerText === 'this' ||
+          (targetNode && callerText === targetNode.getText())
+        ) {
+          hasGetBoundingClientRect = true;
+        }
       }
     }
 
@@ -207,7 +225,20 @@ function findClickListeners(sourceFile: SourceFile): ClickCandidate[] {
 export const lightDismissADialogJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['click', 'onclick'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
+  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
+    // If guarded by closedBy in file or feature check, skip
+    if (
+      ctx.fileContent.includes('closedBy') ||
+      ctx.fileContent.includes('closedby')
+    ) {
+      const hasGuardedPattern =
+        /('closedBy'|"closedBy"|'closedby'|"closedby")\s+in\b/i.test(ctx.fileContent);
+      if (hasGuardedPattern) {
+        // Only skip if the whole listener block or file is guarded
+        return [];
+      }
+    }
+
     const matches: AnalyzerMatch[] = [];
     const candidates = findClickListeners(sourceFile);
 
@@ -216,12 +247,12 @@ export const lightDismissADialogJsMatcher: JsRuleMatcher = {
         continue;
       }
 
-      if (!handlerCallsClose(handlerNode)) {
+      if (!handlerCallsCloseOnDialog(handlerNode, targetNode)) {
         continue;
       }
 
       const hasTargetCheck = isDialogOrTargetComparison(handlerNode, targetNode);
-      const hasCoordCheck = hasBoundingRectCoordinateCheck(handlerNode);
+      const hasCoordCheck = hasBoundingRectCoordinateCheck(handlerNode, targetNode);
 
       if (!hasTargetCheck && !hasCoordCheck) {
         continue;

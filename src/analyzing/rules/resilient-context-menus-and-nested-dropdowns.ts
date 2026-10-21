@@ -216,7 +216,6 @@ const resilientContextMenusJsMatcher: JsRuleMatcher = {
         }
 
         if (isPopperCallOrInstantiation(node)) {
-          // Popper/Floating-UI matches only fire when the file/scope references dropdown, menu, contextmenu, or submenu
           const scopeOrFile = (node.getParent()?.getText() ?? '') + ' ' + sourceFile.getFilePath();
           const hasMenuContext =
             /\b(?:dropdown|menu|contextmenu|context-menu|submenu)\b/i.test(
@@ -255,7 +254,6 @@ const resilientContextMenusJsMatcher: JsRuleMatcher = {
         }
       } else if (Node.isNewExpression(node)) {
         if (isPopperCallOrInstantiation(node)) {
-          // Popper/Floating-UI matches only fire when the file/scope references dropdown, menu, contextmenu, or submenu
           const scopeOrFile = (node.getParent()?.getText() ?? '') + ' ' + sourceFile.getFilePath();
           const hasMenuContext =
             /\b(?:dropdown|menu|contextmenu|context-menu|submenu)\b/i.test(
@@ -316,7 +314,5 @@ export const resilientContextMenusAndNestedDropdownsPositioningRule: AnalyzerRul
   phase2Rubric: resilientContextMenusAndNestedDropdownsRule.phase2Rubric,
 };
 
-export const resilientContextMenusAndNestedDropdownsRules: readonly AnalyzerRule[] = [
-  resilientContextMenusAndNestedDropdownsRule,
-  resilientContextMenusAndNestedDropdownsPositioningRule,
-];
+// Retired default array per O8 slice 3 audit and critical rules
+export const resilientContextMenusAndNestedDropdownsRules: readonly AnalyzerRule[] = [];

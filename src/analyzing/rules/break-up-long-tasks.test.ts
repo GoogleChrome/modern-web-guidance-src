@@ -5,6 +5,7 @@ import {
   BREAK_UP_LONG_TASKS_GUIDE_HASH,
   breakUpLongTasksMatcher,
   breakUpLongTasksRule,
+  breakUpLongTasksRules,
 } from './break-up-long-tasks.ts';
 
 describe('break-up-long-tasks rule', () => {
@@ -17,6 +18,7 @@ describe('break-up-long-tasks rule', () => {
     assert.equal(breakUpLongTasksRule.guideHash.length, 12);
     assert.ok(breakUpLongTasksRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(breakUpLongTasksRule.phase2Rubric.dropWhen.length >= 2);
+    assert.equal(breakUpLongTasksRules.length, 0);
   });
 
   test('flags new Promise(resolve => setTimeout(resolve, 0)) yielding', () => {
@@ -154,6 +156,36 @@ describe('break-up-long-tasks rule', () => {
     `;
     const { matches } = scanJsSource(
       'perf/guarded.js',
+      code,
+      [breakUpLongTasksMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores code guarded by optional chaining scheduler.yield fallback', () => {
+    const code = `
+      async function yieldNext() {
+        await (globalThis.scheduler?.yield?.() ?? new Promise(r => setTimeout(r, 0)));
+      }
+    `;
+    const { matches } = scanJsSource(
+      'perf/optional-yield.js',
+      code,
+      [breakUpLongTasksMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores test files and node files', () => {
+    const code = `
+      async function flushQueue() {
+        await new Promise(r => setTimeout(r, 0));
+      }
+    `;
+    const { matches } = scanJsSource(
+      'test/helpers.test.js',
       code,
       [breakUpLongTasksMatcher],
       project,

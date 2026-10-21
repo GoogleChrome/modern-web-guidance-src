@@ -18,6 +18,9 @@ const CHECKBOX_TARGET_PATTERNS = [
 const CHECKED_PSEUDO_ICON_REGEX =
   /:checked\s*[+~]\s*(?:label|span)::(?:before|after)\b/i;
 
+const NON_CHECKBOX_SELECTOR_REGEX =
+  /\b(?:radio|rating|star|slider|switch|toggle|onoff|nav|menu|panel|accordion)\b/i;
+
 const SR_ONLY_REGEX = /\.(?:sr-only|visually-hidden)\b/i;
 
 function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
@@ -26,12 +29,17 @@ function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
     return true;
   }
 
-  const appearanceVal = (styleRule.getPropertyValue('appearance') ?? '').trim().toLowerCase();
-  const webkitAppearanceVal = (
-    styleRule.getPropertyValue('-webkit-appearance') ?? ''
-  ).trim().toLowerCase();
-  if (appearanceVal === 'none' || webkitAppearanceVal === 'none') {
-    return true;
+  // appearance: none directly on an input is the modern technique recommended by the checkbox guide!
+  // Only flag appearance: none on custom checkbox replacement class selectors (e.g. .custom-checkbox)
+  const isInputSelector = /\binput\b/i.test(styleRule.selectorText);
+  if (!isInputSelector) {
+    const appearanceVal = (styleRule.getPropertyValue('appearance') ?? '').trim().toLowerCase();
+    const webkitAppearanceVal = (
+      styleRule.getPropertyValue('-webkit-appearance') ?? ''
+    ).trim().toLowerCase();
+    if (appearanceVal === 'none' || webkitAppearanceVal === 'none') {
+      return true;
+    }
   }
 
   return false;
@@ -63,6 +71,9 @@ export const checkboxCssMatcher: CssRuleMatcher = {
 
     // 4. Case A: Custom checkmark icon on sibling pseudo-elements
     if (CHECKED_PSEUDO_ICON_REGEX.test(styleRule.selectorText)) {
+      if (NON_CHECKBOX_SELECTOR_REGEX.test(styleRule.selectorText)) {
+        return null;
+      }
       return {
         message:
           'CSS rule styles custom checkmark icons on sibling pseudo-elements; modernize using accent-color or appearance: none.',
@@ -74,6 +85,10 @@ export const checkboxCssMatcher: CssRuleMatcher = {
       pattern.test(styleRule.selectorText),
     );
     if (!matchesTarget) {
+      return null;
+    }
+
+    if (NON_CHECKBOX_SELECTOR_REGEX.test(styleRule.selectorText)) {
       return null;
     }
 

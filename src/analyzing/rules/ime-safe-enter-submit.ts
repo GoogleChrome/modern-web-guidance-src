@@ -6,24 +6,19 @@ import { unwrapExpression } from '../scanners/ast-helpers.ts';
 export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = 'bd5e1488af32';
 
 const ENTER_CHECK_REGEX =
-  /(keyCode\s*===?\s*13|13\s*===?\s*keyCode|which\s*===?\s*13|13\s*===?\s*which|key\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*key|case\s+(13|['"]Enter['"]))/;
+  /(?:keyCode\s*===?\s*13|13\s*===?\s*keyCode|which\s*===?\s*13|13\s*===?\s*which|key\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*key|code\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*code|case\s+(?:13|['"]Enter['"]))/;
 
 const ACTION_OR_PREVENT_REGEX =
-  /(preventDefault|submit|requestSubmit|click\(|\.click|send|search|save|handleEnter|onEnter)/i;
+  /(?:preventDefault|submit|requestSubmit|click\(|\.click|send|search|save|handleEnter|onEnter)/i;
 
 /**
  * Checks if a condition strictly requires Ctrl or Cmd (Meta) modifier key,
- * which does not conflict with IME character confirmation.
+ * properly distinguishing positive requirements from negated guards (e.g. !e.ctrlKey).
  */
 function requiresCtrlOrMetaModifier(condText: string): boolean {
-  // If the condition checks ctrlKey or metaKey without negating them (!ctrlKey)
-  // e.g. `e.ctrlKey && ...` or `(e.ctrlKey || e.metaKey) && ...`
-  if (condText.includes('ctrlKey') || condText.includes('metaKey')) {
-    if (!condText.includes('!ctrlKey') && !condText.includes('!metaKey')) {
-      return true;
-    }
-  }
-  return false;
+  const hasPositiveCtrl = /(?:^|[^!.\w])(?:e|event|evt)?\.?ctrlKey\b(?!\s*===?\s*false)/.test(condText);
+  const hasPositiveMeta = /(?:^|[^!.\w])(?:e|event|evt)?\.?metaKey\b(?!\s*===?\s*false)/.test(condText);
+  return hasPositiveCtrl || hasPositiveMeta;
 }
 
 /**
@@ -35,8 +30,13 @@ function checkHandlerForUnsafeEnter(
 ): AnalyzerMatch | null {
   const handlerText = handler.getText();
 
-  // If the handler already checks isComposing or keyCode 229, skip!
-  if (handlerText.includes('isComposing') || handlerText.includes('229')) {
+  // If the handler already checks isComposing, keyCode 229, or key === 'Process', skip!
+  if (
+    handlerText.includes('isComposing') ||
+    handlerText.includes('229') ||
+    handlerText.includes("'Process'") ||
+    handlerText.includes('"Process"')
+  ) {
     return null;
   }
 
@@ -58,7 +58,7 @@ function checkHandlerForUnsafeEnter(
       }
 
       const branchText = ifStmt.getThenStatement().getText();
-      if (ACTION_OR_PREVENT_REGEX.test(branchText) || ACTION_OR_PREVENT_REGEX.test(handlerText)) {
+      if (ACTION_OR_PREVENT_REGEX.test(branchText)) {
         return {
           line: ifStmt.getStartLineNumber(),
           message:
@@ -79,7 +79,7 @@ function checkHandlerForUnsafeEnter(
           const caseExprText = clause.getExpression().getText();
           if (caseExprText === '13' || caseExprText === "'Enter'" || caseExprText === '"Enter"') {
             const clauseText = clause.getText();
-            if (ACTION_OR_PREVENT_REGEX.test(clauseText) || ACTION_OR_PREVENT_REGEX.test(handlerText)) {
+            if (ACTION_OR_PREVENT_REGEX.test(clauseText)) {
               return {
                 line: clause.getStartLineNumber(),
                 message:
@@ -95,15 +95,6 @@ function checkHandlerForUnsafeEnter(
   // If all found Enter checks were guarded by Ctrl/Meta modifiers, do not flag!
   if (foundModifierGuardedEnter) {
     return null;
-  }
-
-  // Fallback: handler contains Enter check and action
-  if (ACTION_OR_PREVENT_REGEX.test(handlerText)) {
-    return {
-      line: fallbackLine,
-      message:
-        'Keydown Enter listener triggers submission/action without checking event.isComposing or event.keyCode === 229 for IME composition safety',
-    };
   }
 
   return null;
@@ -260,11 +251,13 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
   fastTokens: ['keydown', 'onkeydown', 'onKeyDown'],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
+    const reportedLines = new Set<number>();
 
     const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
     for (const callExpr of callExpressions) {
       const match = matchKeydownCall(callExpr);
-      if (match) {
+      if (match && !reportedLines.has(match.line)) {
+        reportedLines.add(match.line);
         matches.push(match);
       }
     }
@@ -272,13 +265,19 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
     const jsxAttributes = sourceFile.getDescendantsOfKind(SyntaxKind.JsxAttribute);
     for (const jsxAttr of jsxAttributes) {
       const match = matchJsxKeydown(jsxAttr);
-      if (match) {
+      if (match && !reportedLines.has(match.line)) {
+        reportedLines.add(match.line);
         matches.push(match);
       }
     }
 
     const assignMatches = matchOnKeydownAssignment(sourceFile);
-    matches.push(...assignMatches);
+    for (const match of assignMatches) {
+      if (!reportedLines.has(match.line)) {
+        reportedLines.add(match.line);
+        matches.push(match);
+      }
+    }
 
     return matches;
   },
@@ -304,3 +303,7 @@ export const imeSafeEnterSubmitRule: AnalyzerRule = {
     ],
   },
 };
+
+export const imeSafeEnterSubmitRules: readonly AnalyzerRule[] = [
+  imeSafeEnterSubmitRule,
+];

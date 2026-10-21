@@ -5,10 +5,16 @@ import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   durationDependencyMatcher,
   durationJsMatcher,
+  formatHumanReadableDurationsRules,
 } from './format-human-readable-durations.ts';
 
 const depMatcher = durationDependencyMatcher;
 const jsMatcher = durationJsMatcher;
+
+void test('format-human-readable-durations rules array metadata', () => {
+  assert.equal(formatHumanReadableDurationsRules.length, 1);
+  assert.equal(formatHumanReadableDurationsRules[0].id, 'format-human-readable-durations/js-duration-formatter');
+});
 
 void test('format-human-readable-durations dependency matcher', async (t) => {
   await t.test('flags humanize-duration in dependencies', () => {
@@ -158,6 +164,19 @@ void test('format-human-readable-durations JS matcher', async (t) => {
     const sourceFile = project.createSourceFile('date.js', code);
     const matches = jsMatcher.matchFile(sourceFile, {
       filePath: 'date.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts non-moment duration numeral formatting', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const text = numeral(this.point.duration).format();
+    `;
+    const sourceFile = project.createSourceFile('numeral.js', code);
+    const matches = jsMatcher.matchFile(sourceFile, {
+      filePath: 'numeral.js',
       fileContent: code,
     });
     assert.equal(matches.length, 0);

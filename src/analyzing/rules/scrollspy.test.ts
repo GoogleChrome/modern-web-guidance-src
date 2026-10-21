@@ -6,10 +6,15 @@ import type { DomRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
   scrollspyJsRule,
   scrollspyRule,
+  scrollspyRules,
 } from './scrollspy.ts';
 
 const domMatcher = scrollspyRule.matcher as DomRuleMatcher;
 const jsMatcher = scrollspyJsRule.matcher as JsRuleMatcher;
+
+void test('scrollspy rules array metadata', () => {
+  assert.equal(scrollspyRules.length, 0);
+});
 
 void test('scrollspy DOM: positive brownfield matches', async (t) => {
   await t.test('flags body element with data-spy="scroll"', () => {
@@ -256,6 +261,20 @@ void test('scrollspy JS: negative / exempt cases', async (t) => {
     const sourceFile = project.createSourceFile('lazy-load.js', code);
     const matches = jsMatcher.matchFile(sourceFile, {
       filePath: 'lazy-load.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts UIkit.scrollspy or non-nav min/max scrollspy plugins', () => {
+    const project = createInMemoryProject();
+    const code = `
+      UIkit.scrollspy('#target', { cls: 'uk-animation-fade' });
+      $('#nav').scrollspy({ min: 100, max: 500, onEnter: function() {} });
+    `;
+    const sourceFile = project.createSourceFile('uikit.js', code);
+    const matches = jsMatcher.matchFile(sourceFile, {
+      filePath: 'uikit.js',
       fileContent: code,
     });
     assert.equal(matches.length, 0);

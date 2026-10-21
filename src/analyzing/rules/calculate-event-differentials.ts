@@ -12,7 +12,8 @@ export const CALCULATE_EVENT_DIFFERENTIALS_GUIDE_HASH = 'ee7112b330c4';
 
 const TEMPORAL_GUARD_TOKENS = ['Temporal', '@js-temporal/polyfill'] as const;
 
-const CALENDAR_DIFF_UNIT_REGEX = /^(days?|months?|years?|weeks?|d|M|y|w)$/i;
+// Case-sensitive allowlist: days, weeks, months, years, quarters. Rejects 'm' (minutes) and 'D' (milliseconds).
+const CALENDAR_DIFF_UNIT_REGEX = /^(day|days|d|week|weeks|w|month|months|M|year|years|y|quarter|quarters)$/;
 
 /**
  * Evaluates the divisor of a division to check if it equals 86400000:
@@ -39,27 +40,73 @@ function evaluateDivisor(node: Node): number | null {
 }
 
 /**
- * Checks whether an operand explicitly calls .getTime() or new Date(...)
- * without using Date.now().
+ * Checks whether an operand represents "now" (e.g. Date.now() or zero-argument new Date()).
+ */
+function isDateNow(node: Node): boolean {
+  const unwrapped = unwrapExpression(node);
+  const text = unwrapped.getText();
+  if (text.includes('Date.now()')) {
+    return true;
+  }
+  if (Node.isNewExpression(unwrapped)) {
+    const expr = unwrapExpression(unwrapped.getExpression());
+    if (expr.getText() === 'Date' && unwrapped.getArguments().length === 0) {
+      return true;
+    }
+  }
+  if (Node.isCallExpression(unwrapped)) {
+    const expr = unwrapExpression(unwrapped.getExpression());
+    if (Node.isPropertyAccessExpression(expr)) {
+      const name = expr.getName();
+      if (name === 'getTime' || name === 'valueOf') {
+        const caller = unwrapExpression(expr.getExpression());
+        if (Node.isNewExpression(caller) && caller.getArguments().length === 0) {
+          return true;
+        }
+      }
+    }
+  }
+  if (
+    Node.isPrefixUnaryExpression(unwrapped) &&
+    unwrapped.getOperatorToken() === SyntaxKind.PlusToken
+  ) {
+    return isDateNow(unwrapped.getOperand());
+  }
+  return false;
+}
+
+/**
+ * Checks whether an operand explicitly calls .getTime() or new Date(...) on a known Date instance,
+ * excluding Date.UTC, Date.now(), or custom classes (like LocalDate).
  */
 function isGetTimeOrNewDate(node: Node): boolean {
+  if (isDateNow(node)) {
+    return false;
+  }
+
   const unwrapped = unwrapExpression(node);
   const text = unwrapped.getText();
 
-  if (text.includes('Date.now()')) {
+  if (text.includes('Date.UTC')) {
     return false;
   }
 
   if (Node.isCallExpression(unwrapped)) {
     const expr = unwrapExpression(unwrapped.getExpression());
-    if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'getTime') {
-      return true;
+    if (Node.isPropertyAccessExpression(expr) && (expr.getName() === 'getTime' || expr.getName() === 'valueOf')) {
+      const caller = unwrapExpression(expr.getExpression());
+      const callerText = caller.getText();
+      // Ensure not Date.now() or non-date
+      if (!callerText.includes('now') && !callerText.includes('UTC')) {
+        return true;
+      }
     }
   }
 
   if (Node.isNewExpression(unwrapped)) {
     const expr = unwrapExpression(unwrapped.getExpression());
-    if (expr.getText().includes('Date')) {
+    // Only standard global Date, not LocalDate or DateRange
+    if (expr.getText() === 'Date' || expr.getText() === 'window.Date' || expr.getText() === 'globalThis.Date') {
       return true;
     }
   }
@@ -71,6 +118,49 @@ function isGetTimeOrNewDate(node: Node): boolean {
     return isGetTimeOrNewDate(unwrapped.getOperand());
   }
 
+  return false;
+}
+
+/**
+ * Unwraps Math.abs(...) around a subtraction expression.
+ */
+function unwrapSubtraction(node: Node): BinaryExpression | null {
+  const unwrapped = unwrapExpression(node);
+  if (Node.isBinaryExpression(unwrapped) && unwrapped.getOperatorToken().getKind() === SyntaxKind.MinusToken) {
+    return unwrapped;
+  }
+  if (Node.isCallExpression(unwrapped)) {
+    const expr = unwrapExpression(unwrapped.getExpression());
+    if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'abs') {
+      const caller = unwrapExpression(expr.getExpression());
+      if (caller.getText() === 'Math') {
+        const args = unwrapped.getArguments();
+        if (args.length > 0) {
+          return unwrapSubtraction(args[0]);
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Checks whether the division result is rounded with Math.round (which is already DST-correct).
+ */
+function isEnclosingMathRound(binExpr: BinaryExpression): boolean {
+  let parent: Node | undefined = binExpr.getParent();
+  while (parent && Node.isParenthesizedExpression(parent)) {
+    parent = parent.getParent();
+  }
+  if (parent && Node.isCallExpression(parent)) {
+    const expr = unwrapExpression(parent.getExpression());
+    if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'round') {
+      const caller = unwrapExpression(expr.getExpression());
+      if (caller.getText() === 'Math') {
+        return true;
+      }
+    }
+  }
   return false;
 }
 
@@ -88,21 +178,22 @@ function matchDayDivisionDifferential(binExpr: BinaryExpression): AnalyzerMatch 
     return null;
   }
 
+  if (isEnclosingMathRound(binExpr)) {
+    return null;
+  }
+
   const divisorVal = evaluateDivisor(binExpr.getRight());
   if (divisorVal !== 86400000 && divisorVal !== 864e5) {
     return null;
   }
 
-  const leftOperand = unwrapExpression(binExpr.getLeft());
-  if (
-    !Node.isBinaryExpression(leftOperand) ||
-    leftOperand.getOperatorToken().getKind() !== SyntaxKind.MinusToken
-  ) {
+  const subExpr = unwrapSubtraction(binExpr.getLeft());
+  if (!subExpr) {
     return null;
   }
 
-  const subLeft = leftOperand.getLeft();
-  const subRight = leftOperand.getRight();
+  const subLeft = subExpr.getLeft();
+  const subRight = subExpr.getRight();
 
   if (isGetTimeOrNewDate(subLeft) && isGetTimeOrNewDate(subRight)) {
     return {
@@ -197,6 +288,12 @@ export const calculateEventDifferentialsRule: AnalyzerRule = {
       'Runtime elapsed-time or cache TTL timers measuring Date.now() - timestamp.',
       'Intra-day millisecond or second divisions (such as / 1000, / 60, / 3600000 for seconds, minutes, or hours).',
       'Code already protected by feature detection for native Temporal support.',
+      'Calculations using Math.round() or Date.UTC timestamps where DST day length variation does not cause off-by-one errors.',
     ],
   },
 };
+
+/**
+ * Opt-in only until re-measured: retired from default production scan per Slice 5 audit.
+ */
+export const calculateEventDifferentialsRules: readonly AnalyzerRule[] = [];

@@ -174,7 +174,7 @@ describe('blind card formatting & request construction', () => {
     assert.ok(itpSummary);
     assert.equal(
       itpSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
-      false,
+      true,
     );
   });
 

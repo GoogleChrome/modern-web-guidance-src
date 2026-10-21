@@ -57,7 +57,7 @@ const animateToIntrinsicSizesCssMatcher: CssRuleMatcher = {
 
     return {
       message:
-        'CSS rule transitions max-height to animate dimensions; use interpolate-size: allow-keywords and animate height or block-size directly.',
+        'CSS rule transitions max-height to animate dimensions; use interpolate-size: allow-keywords and animate height or block-size directly (keeping max-height fallback for cross-browser support).',
     };
   },
 };
@@ -83,6 +83,4 @@ export const animateToIntrinsicSizesRule: AnalyzerRule = {
   },
 };
 
-export const animateToIntrinsicSizesRules: readonly AnalyzerRule[] = [
-  animateToIntrinsicSizesRule,
-];
+export const animateToIntrinsicSizesRules: readonly AnalyzerRule[] = [];

@@ -28,7 +28,7 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
 | `--tier <tier>` | String | Restrict analysis to a confidence tier (`qualified` or `experimental`). |
-| `--all-rules`, `--experimental` | Flag | Run all 44 landed feature guides (61 rules total in `ALL_RULES`), including experimental and unmeasured rules. |
+| `--all-rules`, `--experimental` | Flag | Run all 31 landed feature guides (39 rules total in `ALL_RULES`), including experimental and unmeasured rules. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
@@ -202,9 +202,9 @@ export const autofillSignInFormRule: AnalyzerRule = {
 To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
 - **`TERMINAL_QUALIFIED_RULES`:** In standard terminal CLI mode, the analyzer runs **deterministic Phase 1 only** for guides that clear the statistical held-out qualification bar (`TERMINAL_QUALIFIED_GUIDE_IDS`, currently `[]` — all 4 previously qualified guides (`autofill-highlight-inputs`, `complex-shapes`, `deliver-optimized-decorative-images`, `individual-transform-properties`) are suspended pending `D-041`/`D-042` re-validation and `R35` 20-card blind human spot-checks). While the default qualified set is empty, the CLI reports plainly that default guides are suspended pending re-validation and points to `--all-rules`.
 - **`JSON_QUALIFIED_RULES`:** In `--json` mode for AI coding agents, the analyzer runs `JSON_QUALIFIED_GUIDE_IDS` (currently `[]` pending `D-041`/`D-042` re-validation) and emits complete `phase2Rubric` definitions (`keepWhen` and `dropWhen`) so autonomous agents can verify candidate findings before proposing edits.
-- **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 44 landed feature guides across 61 rules, enabling research and broader scanning.
+- **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 31 landed feature guides across 39 rules, enabling research and broader scanning.
 
-### Registered Feature Guides (44 Guides, 61 Rules in `ALL_RULES`)
+### Registered Feature Guides (31 Guides, 39 Rules in `ALL_RULES`)
 
 > **Note:** `accessible-error-announcement`, `stack-drill-down`, `shadow-dom`, and `shrinking-header-on-scroll` were retired per Gate 0 / Legacy Pattern Spec review (`D-027`). All pre-`R39`–`R53` held-out precision numbers below are historical (`D-041`) and suspended pending `O7`–`O9` re-validation (`D-042`).
 

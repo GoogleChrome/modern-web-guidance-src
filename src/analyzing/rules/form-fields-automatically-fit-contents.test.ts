@@ -122,4 +122,25 @@ void test('form-fields-automatically-fit-contents: negative cases', async (t) =>
     const { matches } = scanJsSource('progress.js', code, [matcher], project);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('skips orientationchange and hashchange event listeners', () => {
+    const code = `
+      window.addEventListener('orientationchange', function() {
+        container.style.height = container.scrollHeight + 'px';
+      });
+    `;
+    const { matches } = scanJsSource('orientation.js', code, [matcher], project);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('skips chart.autosize() or grid.autosize() calls', () => {
+    const code = `
+      function resizeDashboard(chart, grid) {
+        chart.autosize();
+        grid.autosize();
+      }
+    `;
+    const { matches } = scanJsSource('dashboard.js', code, [matcher], project);
+    assert.equal(matches.length, 0);
+  });
 });

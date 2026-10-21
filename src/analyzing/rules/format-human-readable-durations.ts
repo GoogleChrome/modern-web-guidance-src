@@ -33,7 +33,7 @@ const DURATION_FEATURE_TOKENS = [
 ] as const;
 
 const DURATION_FUNCTION_NAME_REGEX =
-  /^(?:format|humanize|pretty|get)Duration\b|^secondsTo(?:Hms|Time|Duration)|^msTo(?:Time|Duration)/i;
+  /^(?:format|pretty)Duration\b|^secondsTo(?:Hms|Time|Duration)|^msTo(?:Time|Duration)/i;
 
 const DURATION_UNIT_LABELS = new Set([
   'h',
@@ -90,10 +90,10 @@ function isKnownDurationCall(callExpr: CallExpression): string | null {
     if (methodName === 'humanize' || methodName === 'format') {
       const caller = unwrapExpression(expr.getExpression());
       const callerText = caller.getText();
+      // Must be explicitly chained from moment.duration or dayjs.duration
       if (
         callerText.includes('moment.duration') ||
-        callerText.includes('dayjs.duration') ||
-        /\bduration\b/i.test(callerText)
+        callerText.includes('dayjs.duration')
       ) {
         return `Method call .${methodName}() on duration object can be modernized with native Temporal.Duration and Intl.DurationFormat.`;
       }
@@ -125,12 +125,18 @@ function forEachDescendantInScope(node: Node, callback: (child: Node) => void): 
 
 /**
  * Checks whether a function node is a custom duration formatting function
- * computing multiple time units (hours, minutes, seconds) via division/modulo.
+ * computing multiple time units (hours, minutes, seconds) via division/modulo
+ * and returning a formatted string.
  */
 function isCustomDurationFormatterFunction(fnNode: Node): boolean {
   // Duration formatting functions are focused small helpers (< 60 lines)
   const lineCount = fnNode.getEndLineNumber() - fnNode.getStartLineNumber();
   if (lineCount > 60) {
+    return false;
+  }
+
+  const fnText = fnNode.getText();
+  if (fnText.includes('DurationFormat') || fnText.includes('Intl.DurationFormat')) {
     return false;
   }
 
@@ -147,7 +153,10 @@ function isCustomDurationFormatterFunction(fnNode: Node): boolean {
     }
   }
 
-  const hasNameMatch = DURATION_FUNCTION_NAME_REGEX.test(name) || name === 'humanize';
+  const hasNameMatch = DURATION_FUNCTION_NAME_REGEX.test(name);
+  if (!hasNameMatch) {
+    return false;
+  }
 
   // Collect string literals and binary operations in this function body
   const unitLabelsFound = new Set<string>();
@@ -185,12 +194,37 @@ function isCustomDurationFormatterFunction(fnNode: Node): boolean {
     }
   });
 
-  // Strictly require explicit duration function naming (formatDuration, humanizeDuration, secondsToHms, etc.)
-  // and division/modulo with unit labels, removing noisy heuristics for arbitrary division helpers
-  if (hasNameMatch && hasDivisionOrModulo && (hasTimeConstants || unitLabelsFound.size >= 1)) {
+  // Strictly require explicit duration function naming and division/modulo with unit labels
+  if (hasDivisionOrModulo && hasTimeConstants && unitLabelsFound.size >= 1) {
     return true;
   }
 
+  return false;
+}
+
+/**
+ * Checks whether a file is test, benchmark, or CLI script.
+ */
+function isTestBenchOrCliFile(ctx?: JsMatcherContext, text?: string): boolean {
+  if (ctx?.filePath) {
+    const fp = ctx.filePath.toLowerCase();
+    if (
+      fp.includes('.test.') ||
+      fp.includes('.spec.') ||
+      fp.includes('__tests__') ||
+      fp.includes('/test/') ||
+      fp.includes('/tests/') ||
+      fp.includes('/bench/') ||
+      fp.includes('/benchmark/')
+    ) {
+      return true;
+    }
+  }
+  if (text) {
+    if (text.startsWith('#!') || text.includes("from 'chalk'") || text.includes('require("chalk")')) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -207,7 +241,12 @@ export const durationJsMatcher: JsRuleMatcher = {
     'secondsToHms',
     'msToTime',
   ],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
+  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
+    const fullText = sourceFile.getFullText();
+    if (isTestBenchOrCliFile(ctx, fullText)) {
+      return [];
+    }
+
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();
 
@@ -283,7 +322,9 @@ export const formatHumanReadableDurationsJsRule: AnalyzerRule = {
   phase2Rubric: formatHumanReadableDurationsPackageRule.phase2Rubric,
 };
 
+/**
+ * Package rule is opt-in only per R46; JS rule is kept after fixes.
+ */
 export const formatHumanReadableDurationsRules: readonly AnalyzerRule[] = [
-  formatHumanReadableDurationsPackageRule,
   formatHumanReadableDurationsJsRule,
 ];

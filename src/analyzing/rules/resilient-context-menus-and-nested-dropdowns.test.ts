@@ -6,12 +6,25 @@ import type { DomRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
   resilientContextMenusAndNestedDropdownsRule,
   resilientContextMenusAndNestedDropdownsPositioningRule,
+  resilientContextMenusAndNestedDropdownsRules,
 } from './resilient-context-menus-and-nested-dropdowns.ts';
 
 const domMatcher =
   resilientContextMenusAndNestedDropdownsRule.matcher as DomRuleMatcher;
 const jsMatcher =
   resilientContextMenusAndNestedDropdownsPositioningRule.matcher as JsRuleMatcher;
+
+void test('resilient-context-menus-and-nested-dropdowns: rule metadata', () => {
+  assert.equal(
+    resilientContextMenusAndNestedDropdownsRule.id,
+    'resilient-context-menus-and-nested-dropdowns',
+  );
+  assert.equal(
+    resilientContextMenusAndNestedDropdownsPositioningRule.id,
+    'resilient-context-menus-and-nested-dropdowns/positioning',
+  );
+  assert.equal(resilientContextMenusAndNestedDropdownsRules.length, 0);
+});
 
 void test('resilient-context-menus-and-nested-dropdowns: DOM matcher positive cases', async (t) => {
   await t.test('flags legacy Bootstrap 3/4 data-toggle="dropdown" on button', () => {

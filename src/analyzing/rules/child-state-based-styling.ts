@@ -125,8 +125,8 @@ function isFormEventCall(call: CallExpression): boolean {
   if (!Node.isStringLiteral(firstArg)) {
     return false;
   }
-  const ev = firstArg.getLiteralText().toLowerCase();
-  return Array.from(FORM_EVENT_NAMES).some((name) => ev.includes(name));
+  const eventName = firstArg.getLiteralText().toLowerCase().trim();
+  return FORM_EVENT_NAMES.has(eventName);
 }
 
 function isEnclosedInFormEventHandler(node: Node): boolean {
@@ -279,7 +279,4 @@ export const childStateBasedStylingJsParentClassRule: AnalyzerRule = {
   },
 };
 
-export const childStateBasedStylingRules: readonly AnalyzerRule[] = [
-  childStateBasedStylingRule,
-  childStateBasedStylingJsParentClassRule,
-];
+export const childStateBasedStylingRules: readonly AnalyzerRule[] = [];

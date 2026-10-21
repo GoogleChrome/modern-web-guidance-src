@@ -19,6 +19,7 @@ void test('autofill-address-form: positive brownfield matches', async (t) => {
     const matches = scanHtml('checkout.html', html, [matcher]);
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /street-address/);
+    assert.match(matches[0]?.message ?? '', /address-line1/);
   });
 
   await t.test('flags textarea[id="address_line_1"] inside form', () => {
@@ -58,6 +59,12 @@ void test('autofill-address-form: positive brownfield matches', async (t) => {
     const matches = scanJsx('AddressForm.tsx', sourceFile, [matcher]);
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /postal-code/);
+  });
+
+  await t.test('flags same-line <form><input ...></form> markup', () => {
+    const html = `<form action="/quick"><input type="text" name="address1"></form>`;
+    const matches = scanHtml('quick.html', html, [matcher]);
+    assert.equal(matches.length, 1);
   });
 });
 
@@ -111,6 +118,28 @@ void test('autofill-address-form: negative / exempt cases', async (t) => {
       </form>
     `;
     const matches = scanHtml('xfa_parser_spec.js', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts non-postal address qualifiers (email_address1, ip_address, wallet_address)', () => {
+    const html = `
+      <form>
+        <input type="email" name="email_address1">
+        <input type="text" name="ip_address1">
+        <input type="text" name="wallet_address1">
+      </form>
+    `;
+    const matches = scanHtml('accounts.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts test directory fixtures', () => {
+    const html = `
+      <form>
+        <input type="text" name="street_address">
+      </form>
+    `;
+    const matches = scanHtml('src/components/test/data/autofill/form.html', html, [matcher]);
     assert.equal(matches.length, 0);
   });
 });

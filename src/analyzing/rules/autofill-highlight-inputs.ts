@@ -8,7 +8,7 @@ import type {
 export const AUTOFILL_HIGHLIGHT_INPUTS_GUIDE_HASH = 'd419b7428879';
 
 const STANDARD_AUTOFILL_REGEX = /:autofill\b/;
-const WEBKIT_AUTOFILL_REGEX = /(^|[^\w-])-webkit-autofill\b/;
+const WEBKIT_AUTOFILL_REGEX = /(?:^|[^\w-])-webkit-autofill(?![\w-])/;
 
 function getRawSelectorText(styleRule: CssRuleView): string {
   if (
@@ -33,7 +33,7 @@ const autofillHighlightInputsCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: ['-webkit-autofill'],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
-    // 1. Selector must target vendor-prefixed :-webkit-autofill
+    // 1. Selector must target vendor-prefixed :-webkit-autofill (excluding Safari -strong-password states)
     const selector = getRawSelectorText(styleRule);
     if (!WEBKIT_AUTOFILL_REGEX.test(selector)) {
       return null;
@@ -76,6 +76,5 @@ export const autofillHighlightInputsRule: AnalyzerRule = {
   },
 };
 
-export const autofillHighlightInputsRules: readonly AnalyzerRule[] = [
-  autofillHighlightInputsRule,
-];
+// Retired per O8 audit (no-op swap in all current browser engines)
+export const autofillHighlightInputsRules: readonly AnalyzerRule[] = [];

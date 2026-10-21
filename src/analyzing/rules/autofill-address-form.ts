@@ -13,7 +13,11 @@ const FORM_TAG_REGEX = /<\/?(form|Form)\b([^>]*)>/gi;
  * Checks whether an element line position is enclosed within an open `<form>` or `<Form>` tag.
  */
 function isEnclosedInForm(documentText: string, targetLine: number): boolean {
-  const lines = documentText.split('\n');
+  // Preserve line numbers when masking comments and script blocks
+  const maskedText = documentText
+    .replace(/<!--[\s\S]*?-->/g, (match) => ' '.repeat(match.length))
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (match) => ' '.repeat(match.length));
+  const lines = maskedText.split('\n');
   const textBefore = lines.slice(0, targetLine).join('\n');
 
   let depth = 0;
@@ -32,7 +36,21 @@ function isEnclosedInForm(documentText: string, targetLine: number): boolean {
     }
   }
 
-  return depth > 0;
+  if (depth > 0) {
+    return true;
+  }
+
+  // Same-line form check: line contains <form or <Form before element
+  const currentLine = lines[targetLine - 1] ?? '';
+  if (/<(form|Form)\b/i.test(currentLine)) {
+    const formIndex = currentLine.search(/<(form|Form)\b/i);
+    const inputIndex = currentLine.search(/<(input|textarea)\b/i);
+    if (formIndex !== -1 && (inputIndex === -1 || formIndex < inputIndex)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 const ADDRESS_FIELD_TOKENS: ReadonlySet<string> = new Set([
@@ -56,25 +74,41 @@ const ADDRESS_FIELD_TOKENS: ReadonlySet<string> = new Set([
 const ADDRESS_FIELD_REGEX =
   /(?:^|[_-])(street[-_]?address|address[-_]?line[-_]?1|address1|postal[-_]?code|zip[-_]?code|zipcode)(?:$|[_-])/i;
 
+const NON_POSTAL_QUALIFIER_REGEX =
+  /(?:^|[_-])(?:email|ip|mac|wallet|url|server)(?:$|[_-])/i;
+
 function isPostalAddressIdentifier(identifier: string): boolean {
   if (!identifier) {
     return false;
   }
   const lower = identifier.toLowerCase().trim();
+  if (NON_POSTAL_QUALIFIER_REGEX.test(lower)) {
+    return false;
+  }
   if (ADDRESS_FIELD_TOKENS.has(lower)) {
     return true;
   }
   return ADDRESS_FIELD_REGEX.test(lower);
 }
 
+const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
+  ':autocomplete',
+  'v-bind:autocomplete',
+  '[autocomplete]',
+  '[attr.autocomplete]',
+  'bind:autocomplete',
+  ':autoComplete',
+  '[autoComplete]',
+];
+
 const autofillAddressFormMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input, textarea',
   fastTokens: ['address', 'postal', 'zip'],
   skipIfHasSpread: true,
-  skipIfDynamicAttributes: ['autocomplete'],
+  skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
-    // 1. High-precision file type constraint: skip XML/XFA specs or non-web templates
+    // 1. High-precision file type constraint: skip XML/XFA specs, test fixtures, or non-web templates
     const lowerPath = ctx.filePath.toLowerCase();
     const isSupportedFile =
       lowerPath.endsWith('.html') ||
@@ -86,7 +120,18 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
       return null;
     }
 
-    // 2. Skip non-address or search inputs
+    if (
+      lowerPath.includes('/test/') ||
+      lowerPath.includes('/tests/') ||
+      lowerPath.includes('/test/data/') ||
+      lowerPath.includes('/fixtures/') ||
+      lowerPath.includes('/fixture/') ||
+      lowerPath.includes('__tests__')
+    ) {
+      return null;
+    }
+
+    // 2. Skip non-address, non-text, or search inputs
     const type = element.getAttribute('type')?.toLowerCase().trim() ?? 'text';
     if (
       type === 'search' ||
@@ -95,7 +140,11 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
       type === 'radio' ||
       type === 'submit' ||
       type === 'button' ||
-      type === 'reset'
+      type === 'reset' ||
+      type === 'email' ||
+      type === 'url' ||
+      type === 'tel' ||
+      type === 'password'
     ) {
       return null;
     }
@@ -109,9 +158,19 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
       return null;
     }
 
-    // 4. Skip dynamic attributes or spread attributes in JSX
-    if (element.hasDynamicAttribute?.('autocomplete') || element.hasSpreadAttribute) {
+    // 4. Skip dynamic attributes or spread attributes in JSX and framework templates
+    if (
+      element.hasDynamicAttribute?.('autocomplete') ||
+      element.hasDynamicAttribute?.('autoComplete') ||
+      element.hasSpreadAttribute
+    ) {
       return null;
+    }
+
+    for (const attr of DYNAMIC_AUTOCOMPLETE_ATTRS) {
+      if (element.hasAttribute(attr)) {
+        return null;
+      }
     }
 
     // 5. Must explicitly denote a postal address field by name or id
@@ -130,8 +189,11 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
       return null;
     }
 
-    // 6. Check autocomplete attribute
-    const autocomplete = element.getAttribute('autocomplete')?.trim().toLowerCase();
+    // 6. Check autocomplete attribute (accept valid non-off values)
+    const autocomplete = (
+      element.getAttribute('autocomplete') ??
+      element.getAttribute('autoComplete')
+    )?.trim().toLowerCase();
     if (autocomplete && autocomplete !== 'off') {
       return null;
     }
@@ -144,15 +206,19 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
     }
 
     const matchedField = name || id;
-    const targetToken =
+    const isTextarea = element.tagName.toLowerCase() === 'textarea';
+    const isPostal =
       matchedField.toLowerCase().includes('zip') ||
-      matchedField.toLowerCase().includes('postal')
-        ? 'postal-code'
-        : 'street-address';
+      matchedField.toLowerCase().includes('postal');
+    const targetToken = isPostal
+      ? 'postal-code'
+      : isTextarea
+        ? 'street-address'
+        : 'address-line1';
 
     return {
       message:
-        `Address form field ("${matchedField}") inside form lacks autocomplete="${targetToken}"; add standard autocomplete to enable browser autofill.`,
+        `Address form field ("${matchedField}") inside form lacks autocomplete="${targetToken}"; add standard autocomplete (${isTextarea ? 'street-address' : 'address-line1'}${isPostal ? '' : ' / street-address'}) to enable browser autofill.`,
     };
   },
 };

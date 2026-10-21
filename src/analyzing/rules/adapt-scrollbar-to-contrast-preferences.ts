@@ -74,6 +74,4 @@ export const adaptScrollbarToContrastPreferencesRule: AnalyzerRule = {
   },
 };
 
-export const adaptScrollbarToContrastPreferencesRules: readonly AnalyzerRule[] = [
-  adaptScrollbarToContrastPreferencesRule,
-];
+export const adaptScrollbarToContrastPreferencesRules: readonly AnalyzerRule[] = [];

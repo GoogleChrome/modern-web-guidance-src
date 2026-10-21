@@ -15,7 +15,7 @@ void test('responsive-table: rule metadata', () => {
   assert.equal(responsiveTableCssRule.guideId, 'responsive-table');
   assert.equal(responsiveTableCssRule.guideHash, RESPONSIVE_TABLE_GUIDE_HASH);
 
-  assert.equal(responsiveTableRules.length, 1);
+  assert.equal(responsiveTableRules.length, 0);
   assert.ok(responsiveTableCssRule.phase2Rubric.keepWhen.length > 0);
   assert.ok(responsiveTableCssRule.phase2Rubric.dropWhen.length >= 2);
 });
@@ -93,6 +93,20 @@ void test('responsive-table CSS matcher: negative / exempt cases', async (t) => 
       }
     `;
     const matches = scanCss('standard-table.css', css, [responsiveTableCssMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts hover tooltips and calendar day labels', () => {
+    const css = `
+      td:hover::before {
+        content: attr(data-title);
+        opacity: 1;
+      }
+      .calendar td::before {
+        content: attr(data-title);
+      }
+    `;
+    const matches = scanCss('tooltip.css', css, [responsiveTableCssMatcher]);
     assert.equal(matches.length, 0);
   });
 });

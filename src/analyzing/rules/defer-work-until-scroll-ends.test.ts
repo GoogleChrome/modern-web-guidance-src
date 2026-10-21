@@ -5,6 +5,7 @@ import {
   DEFER_WORK_UNTIL_SCROLL_ENDS_GUIDE_HASH,
   deferWorkUntilScrollEndsMatcher,
   deferWorkUntilScrollEndsRule,
+  deferWorkUntilScrollEndsRules,
 } from './defer-work-until-scroll-ends.ts';
 
 describe('defer-work-until-scroll-ends rule', () => {
@@ -17,6 +18,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     assert.equal(deferWorkUntilScrollEndsRule.guideHash.length, 12);
     assert.ok(deferWorkUntilScrollEndsRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(deferWorkUntilScrollEndsRule.phase2Rubric.dropWhen.length >= 2);
+    assert.equal(deferWorkUntilScrollEndsRules.length, 1);
   });
 
   test('flags addEventListener("scroll") with clearTimeout and setTimeout debounce', () => {
@@ -134,6 +136,62 @@ describe('defer-work-until-scroll-ends rule', () => {
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /scrollend/);
+  });
+
+  test('flags function declaration handler passed by reference to addEventListener', () => {
+    const code = `
+      let t;
+      function onScroll() {
+        clearTimeout(t);
+        t = setTimeout(save, 150);
+      }
+      window.addEventListener('scroll', onScroll);
+    `;
+    const { matches } = scanJsSource(
+      'nav/func-decl.js',
+      code,
+      [deferWorkUntilScrollEndsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /scrollend/);
+  });
+
+  test('ignores leading edge or maxWait debounce', () => {
+    const code = `
+      window.addEventListener('scroll', debounce(() => {
+        trackScroll();
+      }, 200, { leading: true, trailing: false }));
+
+      window.addEventListener('scroll', _.debounce(() => {
+        trackMore();
+      }, 200, { maxWait: 1000 }));
+    `;
+    const { matches } = scanJsSource(
+      'nav/leading.js',
+      code,
+      [deferWorkUntilScrollEndsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores handler clearing and setting different timers', () => {
+    const code = `
+      let hideTimer;
+      let showTimer;
+      window.addEventListener('scroll', () => {
+        clearTimeout(hideTimer);
+        showTimer = setTimeout(showNext, 0);
+      });
+    `;
+    const { matches } = scanJsSource(
+      'nav/different-timers.js',
+      code,
+      [deferWorkUntilScrollEndsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
   });
 
   test('ignores scroll listener inside onscrollend feature detection fallback block', () => {

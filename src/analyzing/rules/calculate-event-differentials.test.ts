@@ -5,6 +5,7 @@ import {
   CALCULATE_EVENT_DIFFERENTIALS_GUIDE_HASH,
   calculateEventDifferentialsMatcher,
   calculateEventDifferentialsRule,
+  calculateEventDifferentialsRules,
 } from './calculate-event-differentials.ts';
 
 describe('calculate-event-differentials rule', () => {
@@ -17,6 +18,7 @@ describe('calculate-event-differentials rule', () => {
     assert.equal(calculateEventDifferentialsRule.guideHash.length, 12);
     assert.ok(calculateEventDifferentialsRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(calculateEventDifferentialsRule.phase2Rubric.dropWhen.length >= 2);
+    assert.equal(calculateEventDifferentialsRules.length, 0);
   });
 
   test('flags Date difference divided by 86400000 (days) with .getTime() on both sides', () => {
@@ -149,10 +151,12 @@ describe('calculate-event-differentials rule', () => {
     assert.equal(matches.length, 0);
   });
 
-  test('ignores .diff() with intra-day hours unit', () => {
+  test('ignores .diff() with intra-day hours unit or minute m unit', () => {
     const code = `
       function durationHours(dateEnd, dateStart) {
-        return dateEnd.diff(dateStart, 'hours');
+        const h = dateEnd.diff(dateStart, 'hours');
+        const m = dateEnd.diff(dateStart, 'm');
+        return { h, m };
       }
     `;
     const { matches } = scanJsSource(
@@ -175,6 +179,24 @@ describe('calculate-event-differentials rule', () => {
     `;
     const { matches } = scanJsSource(
       'time/guarded.js',
+      code,
+      [calculateEventDifferentialsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores Math.round or Date.UTC or new Date() with 0 args subtraction', () => {
+    const code = `
+      function calc(a, b) {
+        const roundVal = Math.round((a.getTime() - b.getTime()) / 86400000);
+        const utcVal = (new Date(Date.UTC(2024, 0, 1)) - new Date(Date.UTC(2023, 0, 1))) / 86400000;
+        const nowVal = (new Date() - new Date(a)) / 86400000;
+        return { roundVal, utcVal, nowVal };
+      }
+    `;
+    const { matches } = scanJsSource(
+      'time/now-round.js',
       code,
       [calculateEventDifferentialsMatcher],
       project,

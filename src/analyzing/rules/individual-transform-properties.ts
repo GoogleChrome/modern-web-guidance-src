@@ -499,6 +499,4 @@ export const individualTransformPropertiesRule: AnalyzerRule = {
 export const individualTransformPropertiesCssRule: AnalyzerRule =
   individualTransformPropertiesRule;
 
-export const individualTransformPropertiesRules: readonly AnalyzerRule[] = [
-  individualTransformPropertiesRule,
-];
+export const individualTransformPropertiesRules: readonly AnalyzerRule[] = [];
