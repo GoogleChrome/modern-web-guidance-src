@@ -41,7 +41,7 @@ test('buildZeroPassratePrompt includes anti-pattern constraints and genuine expe
   assert.ok(prompt.includes('Inspect the clean codebase'));
 });
 
-test('buildTargetGraderPrompt includes Option B scoping rules, locked solution patches, and unwrapExpr', () => {
+test('buildTargetGraderPrompt includes Option B scoping rules and locked solution patches', () => {
   const prompt = buildTargetGraderPrompt({
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
@@ -66,7 +66,6 @@ test('buildTargetGraderPrompt includes Option B scoping rules, locked solution p
   assert.ok(prompt.includes('Codex CLI Solution'));
   assert.ok(prompt.includes('Utility CSS Flexibility'));
   assert.ok(prompt.includes('LOCKED'));
-  assert.ok(prompt.includes('unwrapExpr'));
   assert.ok(prompt.includes('No Patch-Specific Identifier Overfitting'));
   assert.ok(prompt.includes('No Vacuous Guards or `test.skip()`'));
   assert.ok(prompt.includes('npx oxlint'));

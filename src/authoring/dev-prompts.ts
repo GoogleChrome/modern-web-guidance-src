@@ -185,26 +185,9 @@ Write only one assertion per \`test('...', ...)\` block across both static and b
 ## 4. Precision & Matching Rules
 - **Outcome-Based Assertions**: Verify structural and functional requirements in static checks rather than forcing a single narrow implementation when valid alternatives exist.
 - **No Patch-Specific Identifier Overfitting**: The golden solution patches are examples of valid implementations, not an exhaustive specification. Never hardcode helper function names, local variable/state names, custom class names, or newly created filenames that happen to appear in the solution patches. Match conceptual roles, standard web platform APIs, and DOM/CSS semantics instead.
-- **AST Indirection & Wrapper Resilience**:
-  - **Unwrap TypeScript Expressions**: Always unwrap \`AsExpression\`, \`TypeAssertion\`, \`SatisfiesExpression\`, and \`ParenthesizedExpression\` before inspecting a node's kind or properties:
-    \`\`\`ts
-    function unwrapExpr(node: any): any {
-      while (node && (
-        node.isKind(SyntaxKind.AsExpression) ||
-        node.isKind(SyntaxKind.SatisfiesExpression) ||
-        node.isKind(SyntaxKind.ParenthesizedExpression) ||
-        node.isKind(SyntaxKind.TypeAssertion)
-      )) {
-        node = node.getExpression();
-      }
-      return node;
-    }
-    \`\`\`
-  - **Follow Variable Indirection & Helper Calls**: When a platform API call passes an identifier or invokes a helper function, resolve the referenced \`VariableDeclaration\`, \`BindingElement\`, parameter, or helper function declaration across modules rather than requiring inline literals.
-  - **Flexible Error Handling**: Accept both \`try / catch\` (\`TryStatement\`) and Promise \`.catch(...)\` chains.
 - **Utility CSS Flexibility**: In apps using utility-first CSS frameworks (e.g., Tailwind), accept either standard CSS declarations (\`getCssStyleSheet\`) or equivalent utility classes on elements in template markup (\`getHtmlDocuments\`).
 - **Flexible Pattern Matching**: Avoid exact-string equality for dynamic names or classes. Use loose matches, inclusion checks, and word boundaries (e.g., \`/\\bname\\b/\`) to avoid substring false positives.
-- **No Vacuous Guards or \`test.skip()\`**: Never use \`test.skip()\`. Never wrap \`expect(...)\` inside \`if (items.length > 0)\` without first asserting \`expect(items.length).toBeGreaterThan(0)\`. Every \`test()\` block must execute a real, non-trivial assertion that fails when the requirement is absent. For negative expectations (e.g., "Do not use deprecated attribute X", "Do not add attribute Y to below-the-fold elements"), always pair the negative check with an assertion that the target elements and primary feature setup exist (e.g., \`expect(imgs.length).toBeGreaterThan(0)\` and that priority optimization is present), so that an unoptimized baseline or empty \`${opts.zeroPassratePatchFile}\` fails 100% of tests without needing synthetic anti-patterns planted in \`${opts.zeroPassratePatchFile}\`.
+- **No Vacuous Guards or \`test.skip()\`**: Never use \`test.skip()\`. Never wrap \`expect(...)\` inside \`if (items.length > 0)\` without first asserting \`expect(items.length).toBeGreaterThan(0)\`. Every \`test()\` block must execute a real, non-trivial assertion that fails when the requirement is absent.
 - **No Swallowed Errors**: Do not wrap assertions in generic try/catch blocks that swallow exceptions.
 
 ## 5. Dependencies & Sandbox Constraints

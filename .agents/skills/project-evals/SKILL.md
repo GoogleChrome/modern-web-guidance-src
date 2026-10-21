@@ -23,7 +23,7 @@ None of the following are ever seen by real-world coding agents:
 |---|---|
 | `expectations.md` | Natural-language spec of assertions that must hold when `guide.md` is followed |
 | `demo.html` | Standalone reference implementation authored by the SME |
-| `targets/<base_app>/task.md` | Simulated developer prompt and `base_app` frontmatter fed to the eval agent |
+| `targets/<base_app>/task.md` | A concrete, single-bullet user prompt tailored to `<base_app>`, formatted as a single `- ` line with no YAML frontmatter |
 | `targets/<base_app>/patches/*-solution.patch` | Multi-agent golden solution diffs (`claude`, `codex`, `jetski`) that must score **100%** on `grader.ts` |
 | `targets/<base_app>/patches/zero-passrate.patch` | Baseline anti-pattern diff that must score **0%** on `grader.ts` |
 | `targets/<base_app>/grader.ts` | Playwright + static AST test suite run against the eval agent's output |
@@ -44,12 +44,9 @@ Write a natural-language, bulleted list of assertions that must be true if an ag
 
 ## Writing & Reviewing `targets/<base_app>/task.md`
 
-`targets/<base_app>/task.md` contains a single realistic developer prompt prefixed by YAML frontmatter specifying the target base application:
+`targets/<base_app>/task.md` contains a single realistic developer prompt formatted as a single `- ` line with no YAML frontmatter:
 
 ```md
----
-base_app: devtools-times
----
 - Add a passkey management section to the account settings where signed-in readers can view their registered passkeys, rename them, or remove keys they no longer use, keeping their authenticator in sync.
 ```
 
@@ -59,7 +56,7 @@ base_app: devtools-times
 3. **Derived Strictly from `guide.md` Frontmatter Description**: `task.md` is generated with structural context isolation: only the frontmatter `description` string and the base app codebase are provided. Neither `guide.md` nor `expectations.md` are present, physically preventing spoiler leakage.
 4. **Preserve High-Level Capability Boundary**: Keep the execution context and functional boundary from the frontmatter `description` clear (e.g., distinguishing on-device / built-in browser capabilities from external cloud APIs) so the implementing agent knows what problem domain it is solving.
 5. **No Technical or API Dictation**: NEVER name specific web platform APIs, CSS properties/at-rules, or method names (e.g., do not say `"use @view-transition"`, `"use window.Translator"`, or `"call signalAllAcceptedCredentials"`). Describe the desired user outcome instead.
-6. **Single-line bullet format**: Must be formatted strictly as a single line prefixed with `- ` beneath the YAML frontmatter, with no internal line breaks.
+6. **Single-line bullet format**: Must be formatted strictly as a single line prefixed with `- `, with no YAML frontmatter and no internal line breaks.
 7. **Imperative Action Request & Natural Tone**: Phrase as a direct developer request to an AI coding assistant (`"Add..."`, `"Update..."`, `"Implement..."`), casual and natural, never as an advisory question (`"How can I...?"`).
 8. **No Internal References**: Never mention `guide.md`, guidance skills, or the guidance project.
 
@@ -81,7 +78,7 @@ Unlike single-file `demo.html` checks, target app tasks (`daily-grind`, `devtool
 ### 2. Anti-Overfitting to Golden Solution Patches
 The 3 golden solution patches (`claude`, `codex`, `jetski`) are generated from `task.md` + `guide.md` (without seeing `expectations.md`) and are **locked** during calibration. They represent valid implementations, **not** an exhaustive specification.
 - **Never hardcode golden-patch identifiers**: Do not match allowlists of helper function names (e.g., `syncAcceptedCredentials`, `loadCredentials`), React state variable names, or newly created filenames from the calibration patches. Match conceptual roles (e.g., any function calling a WebAuthn method or registered in an event listener).
-- **Unwrap TypeScript expressions**: Always unwrap `AsExpression`, `TypeAssertion`, `SatisfiesExpression`, and `ParenthesizedExpression` before inspecting call arguments or object literals.
+- **Unwrap TypeScript expressions**: Always unwrap `AsExpression`, `TypeAssertionExpression`, `SatisfiesExpression`, and `ParenthesizedExpression` before inspecting call arguments or object literals.
 - **Follow variable indirection**: Resolve local `VariableDeclaration`, `BindingElement`, or parameter references when an identifier is passed as an argument instead of assuming inline object literals.
 - **Trace helper & wrapper functions**: Do not assume a platform API is called directly inside a component or event handler. Trace calls and forwarded arguments through helper/wrapper functions across modules.
 - **Flexible error handling**: Accept both `try/catch` (`TryStatement`) and promise `.catch()` handlers.
