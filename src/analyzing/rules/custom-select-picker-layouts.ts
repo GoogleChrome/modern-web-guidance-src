@@ -98,8 +98,12 @@ function checkEnclosingBindings(
         return 'shadowed';
       }
       for (const param of current.getParameters()) {
-        for (const el of param.getDescendantsOfKind(identNode.getKind())) {
-          if (el.getText() === localName && el.getParent() !== current) {
+        const paramNameNode = param.getNameNode();
+        if (Node.isIdentifier(paramNameNode) && paramNameNode.getText() === localName) {
+          return 'shadowed';
+        }
+        for (const el of paramNameNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
+          if (el.getText() === localName) {
             return 'shadowed';
           }
         }
@@ -268,13 +272,35 @@ function isGuardedByCustomizableSelect(node: Node): boolean {
 }
 
 function isMultiOrAsyncConfig(configObj: ObjectLiteralExpression): boolean {
-  for (const key of ['multiple', 'tags', 'create'] as const) {
+  for (const key of ['multiple', 'tags', 'create', 'removeItemButton'] as const) {
     const prop = configObj.getProperty(key);
-    if (prop && Node.isPropertyAssignment(prop)) {
+    if (!prop) {
+      continue;
+    }
+    if (Node.isShorthandPropertyAssignment(prop) || Node.isMethodDeclaration(prop)) {
+      return true;
+    }
+    if (Node.isPropertyAssignment(prop)) {
       const init = prop.getInitializer();
-      if (init && unwrapExpression(init).getKind() === SyntaxKind.TrueKeyword) {
+      if (init && unwrapExpression(init).getKind() !== SyntaxKind.FalseKeyword) {
         return true;
       }
+    }
+  }
+
+  const modeProp = configObj.getProperty('mode');
+  if (modeProp && Node.isPropertyAssignment(modeProp)) {
+    const init = modeProp.getInitializer();
+    if (init && /\bmulti\b/i.test(init.getText())) {
+      return true;
+    }
+  }
+
+  const selectProp = configObj.getProperty('select');
+  if (selectProp && Node.isPropertyAssignment(selectProp)) {
+    const init = selectProp.getInitializer();
+    if (init && /\bmultiple\b/i.test(init.getText())) {
+      return true;
     }
   }
 
@@ -282,16 +308,18 @@ function isMultiOrAsyncConfig(configObj: ObjectLiteralExpression): boolean {
     return true;
   }
 
-  const maxItemsProp = configObj.getProperty('maxItems');
-  if (maxItemsProp && Node.isPropertyAssignment(maxItemsProp)) {
-    const init = maxItemsProp.getInitializer();
-    if (init) {
-      const unwrapped = unwrapExpression(init);
-      if (unwrapped.getKind() === SyntaxKind.NullKeyword) {
-        return true;
-      }
-      if (Node.isNumericLiteral(unwrapped) && Number(unwrapped.getLiteralText()) > 1) {
-        return true;
+  for (const maxKey of ['maxItems', 'maxItemCount'] as const) {
+    const maxProp = configObj.getProperty(maxKey);
+    if (maxProp && Node.isPropertyAssignment(maxProp)) {
+      const init = maxProp.getInitializer();
+      if (init) {
+        const unwrapped = unwrapExpression(init);
+        if (
+          !Node.isNumericLiteral(unwrapped) ||
+          Number(unwrapped.getLiteralText()) !== 1
+        ) {
+          return true;
+        }
       }
     }
   }
@@ -337,13 +365,19 @@ function hasCustomOptionTemplate(configObj: ObjectLiteralExpression): boolean {
 
 function isValidCustomTemplateConfig(
   configArg: Node | undefined,
-  targetText: string,
+  targetArg: Node | undefined,
 ): boolean {
   if (!configArg) {
     return false;
   }
-  if (/\bmultiple\b/i.test(targetText)) {
-    return false;
+  if (targetArg) {
+    const resolvedTarget = resolveLocalExpression(targetArg, 2);
+    if (
+      /\bmultiple\b/i.test(targetArg.getText()) ||
+      /\bmultiple\b/i.test(resolvedTarget.getText())
+    ) {
+      return false;
+    }
   }
   const resolved = resolveLocalExpression(configArg, 2);
   if (!Node.isObjectLiteralExpression(resolved)) {
@@ -364,23 +398,21 @@ function matchNewCustomSelect(newExpr: NewExpression): string | null {
   const callee = unwrapExpression(newExpr.getExpression());
 
   if (isLibraryReference(callee, 'Choices', ['choices.js'])) {
-    const targetText = args[0]?.getText() ?? '';
-    if (isValidCustomTemplateConfig(args[1], targetText)) {
+    if (isValidCustomTemplateConfig(args[1], args[0])) {
       return 'new Choices() custom option template layout can be modernized with CSS appearance: base-select, ::picker(select), and <selectedcontent>.';
     }
   }
 
   if (isLibraryReference(callee, 'TomSelect', ['tom-select'])) {
-    const targetText = args[0]?.getText() ?? '';
-    if (isValidCustomTemplateConfig(args[1], targetText)) {
+    if (isValidCustomTemplateConfig(args[1], args[0])) {
       return 'new TomSelect() custom option render layout can be modernized with CSS appearance: base-select, ::picker(select), and <selectedcontent>.';
     }
   }
 
   if (isLibraryReference(callee, 'SlimSelect', ['slim-select'])) {
     const configArg = args.length >= 2 ? args[1] : args[0];
-    const targetText = args.length >= 2 ? (args[0]?.getText() ?? '') : '';
-    if (isValidCustomTemplateConfig(configArg, targetText)) {
+    const targetArg = args.length >= 2 ? args[0] : undefined;
+    if (isValidCustomTemplateConfig(configArg, targetArg)) {
       return 'new SlimSelect() custom option template layout can be modernized with CSS appearance: base-select, ::picker(select), and <selectedcontent>.';
     }
   }
@@ -399,8 +431,7 @@ function matchSelect2Call(callExpr: CallExpression): string | null {
     return null;
   }
 
-  const receiverText = callee.getExpression().getText();
-  if (isValidCustomTemplateConfig(args[0], receiverText)) {
+  if (isValidCustomTemplateConfig(args[0], callee.getExpression())) {
     return '$(...).select2() with templateResult / templateSelection can be modernized with CSS appearance: base-select, ::picker(select), and <selectedcontent>.';
   }
 

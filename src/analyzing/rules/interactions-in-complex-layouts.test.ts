@@ -127,6 +127,9 @@ void test('interactions-in-complex-layouts JS matcher', async (t) => {
 
       performance.measure('render-board');
 
+      const customMetrics = { measure: (name) => name };
+      customMetrics.measure('layout-step');
+
       function localScope() {
         const fastdom = { measure: (fn) => fn(), mutate: (fn) => fn() };
         fastdom.measure(() => {});

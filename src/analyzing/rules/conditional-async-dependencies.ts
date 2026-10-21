@@ -27,10 +27,18 @@ const SCRIPT_LOADER_PACKAGES = [
 ] as const;
 
 const THIRD_PARTY_SCRIPT_REGEX =
-  /google-analytics|googletagmanager|gtag|gtm\.js|analytics\.js|fbevents|connect\.facebook|doubleclick|googlesyndication|adsbygoogle|stripe\.com|js\.stripe|paypal\.com|sentry\.io|hotjar|intercom|segment\.com|mixpanel|amplitude|clarity\.ms|hs-scripts|hubspot|zdassets|disqus|platform\.twitter|maps\.googleapis|recaptcha|hcaptcha|turnstile/i;
+  /google-analytics|googletagmanager|gtag|gtm\.js|analytics\.js|fbevents|connect\.facebook|doubleclick|googlesyndication|adsbygoogle|stripe\.com|js\.stripe|paypal\.com|braintree|adyen|klarna|plaid|razorpay|sentry\.io|datadoghq|newrelic|bugsnag|logrocket|fullstory|hotjar|intercom|segment\.com|mixpanel|amplitude|clarity\.ms|optimizely|hs-scripts|hubspot|zdassets|disqus|platform\.twitter|platform\.linkedin|youtube\.com\/iframe_api|player\.vimeo\.com|maps\.googleapis|recaptcha|hcaptcha|turnstile/i;
+
+const JSONP_SCRIPT_REGEX = /[?&](?:callback|jsonp|cb)=|\bjsonp\b/i;
 
 const NON_JS_SCRIPT_TYPE_REGEX =
-  /application\/(?:ld\+json|json)|importmap|speculationrules/i;
+  /application\/(?:ld\+json|json|xml)|text\/(?:template|html|plain|x-template|ng-template)|x-shader\/|importmap|speculationrules/i;
+
+const NOMODULE_SCRIPT_REGEX =
+  /\.noModule\s*=|\bsetAttribute\s*\(\s*['"]nomodule['"]/i;
+
+const FEATURE_DETECTION_CONDITION_REGEX =
+  /\bpolyfill\b|\bin\s+(?:window|document|navigator|HTMLElement|Element|globalThis|self)\b|typeof\s+[A-Za-z0-9_$]+\s*===?\s*['"]undefined['"]|!\s*(?:window|document|navigator|HTMLElement|Element|CSS)\.[A-Za-z0-9_$]+/;
 
 function matchesPackageSpec(
   spec: string | null,
@@ -85,8 +93,12 @@ function checkEnclosingBindings(
         return 'shadowed';
       }
       for (const param of current.getParameters()) {
-        for (const el of param.getDescendantsOfKind(identNode.getKind())) {
-          if (el.getText() === localName && el.getParent() !== current) {
+        const paramNameNode = param.getNameNode();
+        if (Node.isIdentifier(paramNameNode) && paramNameNode.getText() === localName) {
+          return 'shadowed';
+        }
+        for (const el of paramNameNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
+          if (el.getText() === localName) {
             return 'shadowed';
           }
         }
@@ -272,14 +284,22 @@ function getEnclosingScopeNode(node: Node): Node {
 function isInsideConditionalFeatureCheck(node: Node): boolean {
   let current: Node | undefined = node.getParent();
   while (current && !Node.isSourceFile(current)) {
-    if (
-      Node.isIfStatement(current) ||
-      Node.isConditionalExpression(current) ||
-      (Node.isBinaryExpression(current) &&
-        (current.getOperatorToken().getKind() === SyntaxKind.BarBarToken ||
-          current.getOperatorToken().getKind() === SyntaxKind.AmpersandAmpersandToken))
+    if (Node.isIfStatement(current)) {
+      if (FEATURE_DETECTION_CONDITION_REGEX.test(current.getExpression().getText())) {
+        return true;
+      }
+    } else if (Node.isConditionalExpression(current)) {
+      if (FEATURE_DETECTION_CONDITION_REGEX.test(current.getCondition().getText())) {
+        return true;
+      }
+    } else if (
+      Node.isBinaryExpression(current) &&
+      (current.getOperatorToken().getKind() === SyntaxKind.BarBarToken ||
+        current.getOperatorToken().getKind() === SyntaxKind.AmpersandAmpersandToken)
     ) {
-      return true;
+      if (FEATURE_DETECTION_CONDITION_REGEX.test(current.getLeft().getText())) {
+        return true;
+      }
     }
     current = current.getParent();
   }
@@ -296,7 +316,9 @@ function matchCreateScriptInjection(callExpr: CallExpression): string | null {
 
   if (
     THIRD_PARTY_SCRIPT_REGEX.test(scopeText) ||
-    NON_JS_SCRIPT_TYPE_REGEX.test(scopeText)
+    JSONP_SCRIPT_REGEX.test(scopeText) ||
+    NON_JS_SCRIPT_TYPE_REGEX.test(scopeText) ||
+    NOMODULE_SCRIPT_REGEX.test(scopeText)
   ) {
     return null;
   }
@@ -327,7 +349,10 @@ function matchScriptLoaderCall(callExpr: CallExpression): string | null {
   }
 
   const callText = callExpr.getText();
-  if (THIRD_PARTY_SCRIPT_REGEX.test(callText)) {
+  if (
+    THIRD_PARTY_SCRIPT_REGEX.test(callText) ||
+    JSONP_SCRIPT_REGEX.test(callText)
+  ) {
     return null;
   }
 

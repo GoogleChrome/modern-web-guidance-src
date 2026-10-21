@@ -131,6 +131,20 @@ void test('conditional-async-dependencies JS matcher', async (t) => {
         ld.textContent = JSON.stringify(data);
         document.head.appendChild(ld);
       }
+
+      function fetchJsonp(endpoint) {
+        const s = document.createElement('script');
+        s.src = endpoint + '?callback=handleResponse';
+        s.onload = () => s.remove();
+        document.body.appendChild(s);
+      }
+
+      function injectStripe() {
+        const s = document.createElement('script');
+        s.src = 'https://js.stripe.com/v3/';
+        s.onload = () => {};
+        document.head.appendChild(s);
+      }
     `;
     const sourceFile = project.createSourceFile('analytics.js', code);
     const matches = conditionalAsyncDependenciesJsMatcher.matchFile(sourceFile, {

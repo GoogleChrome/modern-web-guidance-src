@@ -87,8 +87,12 @@ function checkEnclosingBindings(
         return 'shadowed';
       }
       for (const param of current.getParameters()) {
-        for (const el of param.getDescendantsOfKind(identNode.getKind())) {
-          if (el.getText() === localName && el.getParent() !== current) {
+        const paramNameNode = param.getNameNode();
+        if (Node.isIdentifier(paramNameNode) && paramNameNode.getText() === localName) {
+          return 'shadowed';
+        }
+        for (const el of paramNameNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
+          if (el.getText() === localName) {
             return 'shadowed';
           }
         }
@@ -264,6 +268,13 @@ function isFastdomReceiver(node: Node): boolean {
     return true;
   }
   const resolved = resolveLocalExpression(node, 2);
+  if (
+    resolved !== unwrapExpression(node) &&
+    (isLibraryReference(resolved, 'fastdom', FASTDOM_PACKAGES) ||
+      isLibraryReference(resolved, 'FastDom', FASTDOM_PACKAGES))
+  ) {
+    return true;
+  }
   if (Node.isCallExpression(resolved)) {
     const callee = unwrapExpression(resolved.getExpression());
     if (

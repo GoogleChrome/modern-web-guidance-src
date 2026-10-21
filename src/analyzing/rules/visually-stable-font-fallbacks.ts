@@ -8,6 +8,7 @@ import {
   getSafeModuleSpecifier,
   isGlobalReference,
   isProtectedByFeatureGuard,
+  resolveCallableNode,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
@@ -91,8 +92,12 @@ function checkEnclosingBindings(
         return 'shadowed';
       }
       for (const param of current.getParameters()) {
-        for (const el of param.getDescendantsOfKind(identNode.getKind())) {
-          if (el.getText() === localName && el.getParent() !== current) {
+        const paramNameNode = param.getNameNode();
+        if (Node.isIdentifier(paramNameNode) && paramNameNode.getText() === localName) {
+          return 'shadowed';
+        }
+        for (const el of paramNameNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
+          if (el.getText() === localName) {
             return 'shadowed';
           }
         }
@@ -279,12 +284,31 @@ function isGuardedByFontAdjust(node: Node, fileContent: string): boolean {
 }
 
 function isCanvasFontLoadContext(node: Node): boolean {
+  for (const arg of Node.isCallExpression(node) ? node.getArguments() : []) {
+    const resolvedArg = resolveCallableNode(arg, 2);
+    if (CANVAS_CONTEXT_REGEX.test(resolvedArg.getText())) {
+      return true;
+    }
+  }
+
   let current: Node | undefined = node.getParent();
   while (current && !Node.isSourceFile(current)) {
+    if (Node.isCallExpression(current)) {
+      for (const arg of current.getArguments()) {
+        const resolvedArg = resolveCallableNode(arg, 2);
+        if (CANVAS_CONTEXT_REGEX.test(resolvedArg.getText())) {
+          return true;
+        }
+      }
+    }
     if (
       Node.isCallExpression(current) ||
       Node.isBlock(current) ||
-      Node.isExpressionStatement(current)
+      Node.isExpressionStatement(current) ||
+      Node.isFunctionDeclaration(current) ||
+      Node.isFunctionExpression(current) ||
+      Node.isArrowFunction(current) ||
+      Node.isMethodDeclaration(current)
     ) {
       if (CANVAS_CONTEXT_REGEX.test(current.getText())) {
         return true;

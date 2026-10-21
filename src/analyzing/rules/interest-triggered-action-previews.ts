@@ -9,6 +9,7 @@ import {
   isGlobalReference,
   isProtectedByFeatureGuard,
   matchEventListenerCall,
+  resolveCallableNode,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
@@ -98,8 +99,12 @@ function checkEnclosingBindings(
         return 'shadowed';
       }
       for (const param of current.getParameters()) {
-        for (const el of param.getDescendantsOfKind(identNode.getKind())) {
-          if (el.getText() === localName && el.getParent() !== current) {
+        const paramNameNode = param.getNameNode();
+        if (Node.isIdentifier(paramNameNode) && paramNameNode.getText() === localName) {
+          return 'shadowed';
+        }
+        for (const el of paramNameNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
+          if (el.getText() === localName) {
             return 'shadowed';
           }
         }
@@ -247,13 +252,10 @@ function isLibraryReference(
 
 function isGuardedByInterestInvoker(node: Node, fileContent: string): boolean {
   if (
-    fileContent.includes('interestForElement') ||
     /\binterestfor\s*=/i.test(fileContent) ||
     /\binteresttarget\s*=/i.test(fileContent)
   ) {
-    if (isProtectedByFeatureGuard(node, INTEREST_PREVIEW_GUARD_TOKENS)) {
-      return true;
-    }
+    return true;
   }
   if (isProtectedByFeatureGuard(node, INTEREST_PREVIEW_GUARD_TOKENS)) {
     return true;
@@ -292,7 +294,7 @@ function hasSetTimeoutWithPreviewContext(handlerNode: Node): boolean {
     if (!callbackArg) {
       continue;
     }
-    const resolvedCallback = resolveLocalExpression(callbackArg, 2);
+    const resolvedCallback = resolveCallableNode(callbackArg, 2);
     if (
       PREVIEW_ACTION_REGEX.test(resolvedCallback.getText()) ||
       PREVIEW_ACTION_REGEX.test(handlerNode.getText())

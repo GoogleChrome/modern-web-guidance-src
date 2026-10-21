@@ -123,6 +123,7 @@ void test('visually-stable-font-fallbacks JS matcher', async (t) => {
         const ctx = canvas.getContext('2d');
         new FontFaceObserver('Arcade').load().then(() => {
           ctx.fillText('Score: 100', 10, 20);
+          ctx.measureText('Score: 100');
         });
       }
     `;
@@ -132,6 +133,23 @@ void test('visually-stable-font-fallbacks JS matcher', async (t) => {
       fileContent: code,
     });
     assert.equal(matches.length, 0);
+
+    const cssGuardedCode = `
+      import FontFaceObserver from 'fontfaceobserver';
+      const style = "@font-face { font-family: 'Fallback'; size-adjust: 105%; ascent-override: 90%; }";
+      new FontFaceObserver('Inter').load().then(() => {
+        document.documentElement.classList.add('fonts-loaded');
+      });
+    `;
+    const cssGuardedFile = project.createSourceFile('css-guarded.js', cssGuardedCode);
+    const cssGuardedMatches = visuallyStableFontFallbacksJsMatcher.matchFile(
+      cssGuardedFile,
+      {
+        filePath: 'css-guarded.js',
+        fileContent: cssGuardedCode,
+      },
+    );
+    assert.equal(cssGuardedMatches.length, 0);
   });
 
   await t.test('exempts shadowed local FontFaceObserver or WebFont classes', () => {

@@ -150,6 +150,13 @@ void test('interest-triggered-action-previews JS matcher', async (t) => {
       document.body.addEventListener('mouseenter', () => {
         console.log('hovered');
       });
+
+      const navMenu = document.querySelector('#main-nav');
+      navMenu.addEventListener('mouseenter', () => {
+        setTimeout(() => {
+          navMenu.classList.add('menu-expanded');
+        }, 150);
+      });
     `;
     const sourceFile = project.createSourceFile('shadowed.js', code);
     const matches = interestTriggeredActionPreviewsJsMatcher.matchFile(sourceFile, {

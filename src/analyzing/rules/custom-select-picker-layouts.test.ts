@@ -151,6 +151,22 @@ void test('custom-select-picker-layouts JS matcher', async (t) => {
         templateResult: (item) => item.text,
       });
 
+      new TomSelect('#create-picker', {
+        create: true,
+        render: {
+          option: (data) => \`<div>\${data.text}</div>\`,
+        },
+      });
+
+      const multiEl = document.querySelector('select[multiple]');
+      new Choices(multiEl, {
+        callbackOnCreateTemplates: (t) => ({}),
+      });
+
+      new Choices('#plain-single-select', {
+        searchEnabled: false,
+      });
+
       if (!CSS.supports('appearance', 'base-select')) {
         new Choices('#fallback-picker', {
           callbackOnCreateTemplates: (t) => ({}),
