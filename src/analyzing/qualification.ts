@@ -169,7 +169,7 @@ export const SUSPENDED_QUALIFIED_RULE_HISTORY: readonly SuspendedRuleQualificati
     split: 'held-out',
     suspendedAt: '2026-10-21',
     suspensionReason:
-      'D-041 / D-042: Scored in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (n=60, whereas 774fc3256 manifest hardcoded n=115) under de-admitted detective-v6-spec22-c3f54b90 Judge (R48 leave-it -> right overwrite bug) and pre-R51 file filters; 0 human blind spot-check cards (R35); rule module in O8 Batch 1-4 audit (2758f36c).',
+      'D-041 / D-042: Scored in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (n=60, whereas 774fc3256 manifest hardcoded n=115) under de-admitted detective-v6-spec22-c3f54b90 Judge (R48 leave-it -> right overwrite bug) and pre-R51 file filters; 0 human blind spot-check cards (R35); rule module in O8 Batch 1-4 audit (c4030db9).',
   },
   {
     guideId: 'complex-shapes',
@@ -181,7 +181,7 @@ export const SUSPENDED_QUALIFIED_RULE_HISTORY: readonly SuspendedRuleQualificati
     split: 'held-out',
     suspendedAt: '2026-10-21',
     suspensionReason:
-      'D-041 / D-042: Failed the R37/R50 Phase 1 terminal bar even in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (Phase 1 94/100 = 0.940, phase1Wilson95.lower = 0.8752 < 0.90, clearsPhase1Bar90: false; 774fc3256 manifest hardcoded 79/79 = 1.0); scored under de-admitted v6 Judge (R48 bug); 0 human blind spot-check cards (R35); rule module in O8 audit (4d3aeb03).',
+      'D-041 / D-042: Failed the R37/R50 Phase 1 terminal bar even in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (Phase 1 94/100 = 0.940, phase1Wilson95.lower = 0.8752 < 0.90, clearsPhase1Bar90: false; 774fc3256 manifest hardcoded 79/79 = 1.0); scored under de-admitted v6 Judge (R48 bug); 0 human blind spot-check cards (R35); rule module in O8 audit (2758f36c).',
   },
   {
     guideId: 'deliver-optimized-decorative-images',
@@ -193,7 +193,7 @@ export const SUSPENDED_QUALIFIED_RULE_HISTORY: readonly SuspendedRuleQualificati
     split: 'held-out',
     suspendedAt: '2026-10-21',
     suspensionReason:
-      'D-041 / D-042: Scored in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (n=60, whereas 774fc3256 manifest hardcoded n=38) under de-admitted detective-v6-spec22-c3f54b90 Judge (R48 leave-it -> right overwrite bug) and pre-R51 file filters; 0 human blind spot-check cards (R35); matcher targets CSS content property overlapping R49.4 content: image-set(...) sizing defect; rule module in O8 audit (772dbbf2).',
+      'D-041 / D-042: Scored in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (n=60, whereas 774fc3256 manifest hardcoded n=38) under de-admitted detective-v6-spec22-c3f54b90 Judge (R48 leave-it -> right overwrite bug) and pre-R51 file filters; 0 human blind spot-check cards (R35); matcher targets CSS content property overlapping R49.4 content: image-set(...) sizing defect; rule module in O8 audit (2758f36c).',
   },
   {
     guideId: 'individual-transform-properties',
