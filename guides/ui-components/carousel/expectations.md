@@ -10,9 +10,9 @@
 - The native marker group follows the slides in keyboard focus order using `scroll-marker-group: after`.
 - Native previous/next controls stay enabled at the first and last slides, because the carousel loops.
 - Activating Next while the last slide is current brings the first slide into view, and activating Previous while the first slide is current brings the last slide into view.
-- Looping does not duplicate slides: the track contains exactly one slide element per slide, with no `inert` or `aria-hidden` copies.
-- After scrolling settles, the slide the user moved to is back at the middle position of the track's scroll range, so there are slides to scroll to on both sides.
-- Slides in a looping carousel are the same size along the scrolling axis, and their visual order is rotated with CSS `order` (computed `order` values differ between slides) while their DOM order is unchanged.
+- Looping does not duplicate slides: the track contains exactly one slide element per slide, with no cloned or `aria-hidden` copies.
+- When the current slide is the first or last, a slide is parked beside it with CSS `order` (computed `order` of -1 on the last slide at the first, or 1 on the first slide at the last), so there is a slide to scroll to on both sides. Slides in the middle have computed `order` 0.
+- The parked slide is `inert` while it is parked, and DOM order is unchanged.
 - The polite live status reads "Slide N of M" with the correct slide after wrapping from the last slide to the first.
 - Interactive carousel controls, markers, and fallback buttons have a visible `:focus-visible` indicator.
 - A polite live region (`role="status"` or `aria-live="polite"`) announces the current slide position after scrolling settles.
@@ -26,6 +26,7 @@
 - Activating fallback previous/next buttons moves the carousel to the adjacent slide.
 - Activating a fallback marker button navigates to its corresponding slide.
 - Every fallback marker button has an accessible name identifying its destination slide.
-- Fallback markers update `aria-current="true"` to reflect the currently active slide.
+- Fallback markers update `aria-current="true"` to reflect the currently active slide, driven by settled scroll position rather than by the marker click.
+- When `:target-current` is unsupported, the active native marker is still visually distinguished from script state.
 - Smooth scrolling (`scroll-behavior: smooth`) and any optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.
 - The carousel does not autoplay slides or continuously poll scroll positions on every animation frame.

@@ -61,10 +61,10 @@
     }
 
     /*
-     * Looping without clones: rotate the ring so the current slide always sits in the middle
-     * position. There are always slides on both sides, so scrolling never reaches a limit and
-     * native scroll buttons never disable. Requires equal-size slides. Without support the
-     * carousel stays a finite list.
+     * Looping without clones: at the first slide, park the last slide before it (order: -1); at the
+     * last slide, park the first slide after it (order: 1). Middle slides never get `order`, so
+     * scrolling never reaches a limit at the ends and native scroll buttons never disable.
+     * Without support the carousel stays a finite list.
      */
     @supports (order: mod(sibling-index(), 2)) {
       .carousel-track {
@@ -72,7 +72,10 @@
       }
 
       .carousel-item {
-        order: mod(sibling-index() - 1 - var(--current) + round(down, sibling-count() / 2), sibling-count());
+        order: calc(
+          max(0, 1 - abs(sibling-index() - 1)) * max(0, 1 - abs(var(--current) - (sibling-count() - 1)))
+          - max(0, 1 - abs(sibling-index() - sibling-count())) * max(0, 1 - abs(var(--current)))
+        );
       }
     }
 
@@ -161,6 +164,13 @@
 
       .carousel-item::scroll-marker:target-current {
         background: var(--accent);
+      }
+
+      /* Without :target-current, the settled-scroll handler marks the current slide */
+      @supports not selector(:target-current) {
+        .carousel-item[data-current]::scroll-marker {
+          background: var(--accent);
+        }
       }
     }
 
@@ -266,24 +276,25 @@
     const hasMarkers = CSS.supports("selector(::scroll-marker)");
     let markers = [];
     const loops = CSS.supports("order: mod(sibling-index(), 2)");
-    const middle = Math.floor(slides.length / 2);
+    let parkedFor = -1;
 
     // Slides in visual order. `order` is 0 for every slide without looping support, so DOM order applies.
     const visual = () => [...slides].sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order);
     const neighbor = (item, step) => visual()[visual().indexOf(item) + step];
 
-    const show = (item, behavior = "auto") =>
-      item?.scrollIntoView({ behavior, block: "center", inline: "nearest" });
+    // Block (y) axis only: distance from the track's center to the slide's center.
+    const offsetToCenter = (s) => {
+      const r = s.getBoundingClientRect();
+      const t = track.getBoundingClientRect();
+      return r.top + r.height / 2 - (t.top + t.height / 2);
+    };
 
-    // Block (y) axis only.
-    function nearest() {
-      const center = track.getBoundingClientRect().top + track.clientHeight / 2;
-      const distance = (s) => {
-        const r = s.getBoundingClientRect();
-        return Math.abs(r.top + r.height / 2 - center);
-      };
-      return [...track.children].reduce((a, b) => (distance(b) < distance(a) ? b : a));
-    }
+    // Scrolls the track to the slide's snap position without touching ancestor scrollers.
+    const show = (item, behavior = "auto") => {
+      if (item) track.scrollBy({ top: offsetToCenter(item), behavior });
+    };
+
+    const nearest = () => slides.reduce((a, b) => (Math.abs(offsetToCenter(b)) < Math.abs(offsetToCenter(a)) ? b : a));
 
     // Run a callback once scrolling settles, with a debounced fallback when scrollend is unsupported.
     function onSettled(fn) {
@@ -311,33 +322,33 @@
       });
     }
 
+    // Park an end slide beside the current one, then cancel the layout shift with an instant scroll.
+    function park(item) {
+      const before = offsetToCenter(item);
+      track.style.setProperty("--current", slides.indexOf(item));
+      track.scrollBy({ top: offsetToCenter(item) - before, behavior: "instant" });
+      // The parked slide is a visual-only neighbor, so keep it out of keyboard and AT reach.
+      slides.forEach((s) => { s.inert = getComputedStyle(s).order !== "0"; });
+    }
+
+    // The single code path for state: controls only scroll; this reflects where scrolling ended.
     function sync() {
       const item = nearest();
       const i = slides.indexOf(item);
+      if (loops && i !== parkedFor) {
+        parkedFor = i;
+        park(item);
+      }
       status.textContent = `Slide ${i + 1} of ${slides.length}`;
+      slides.forEach((s, j) => s.toggleAttribute("data-current", j === i));
       markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
       prevBtn.disabled = !neighbor(item, -1);
       nextBtn.disabled = !neighbor(item, 1);
     }
 
-    // Slides are equal size, so one slide plus the gap is the distance between snap positions.
-    const stepSize = () => slides[0].offsetHeight + parseFloat(getComputedStyle(track).rowGap);
-    const park = () => track.scrollTo({ top: middle * stepSize(), behavior: "instant" });
-
-    // Rotate the ring so the slide the user landed on becomes the middle one again.
-    function rotate() {
-      const shift = visual().indexOf(nearest()) - middle;
-      if (!shift) return;
-      const current = Number(track.style.getPropertyValue("--current") || 0);
-      track.style.setProperty("--current", (current + shift + slides.length) % slides.length);
-      park(); // the reorder moved the content, so put the new current slide back in the middle
-    }
-
-    onSettled(() => {
-      if (loops) rotate();
-      sync();
-    });
-    if (loops) park();
+    onSettled(sync);
+    // Start on the first slide: with the last slide parked before it, the track must not start on that one.
+    if (loops) show(slides[0], "instant");
     sync();
   </script>
 </body>
