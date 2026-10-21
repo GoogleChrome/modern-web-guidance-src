@@ -11,8 +11,11 @@
 - Native previous/next controls stay enabled at the first and last slides, because the carousel loops.
 - Activating Next while the last slide is current brings the first slide into view, and activating Previous while the first slide is current brings the last slide into view.
 - Looping does not duplicate slides: the track contains exactly one slide element per slide, with no cloned or `aria-hidden` copies.
-- When the current slide is the first or last, a slide is parked beside it with CSS `order` (computed `order` of -1 on the last slide at the first, or 1 on the first slide at the last), so there is a slide to scroll to on both sides. Slides in the middle have computed `order` 0.
-- The parked slide is `inert` while it is parked, and DOM order is unchanged.
+- While the first slide is current, the last slide has a computed `order` of -1.
+- While the last slide is current, the first slide has a computed `order` of 1.
+- Slides other than a parked end slide have a computed `order` of 0.
+- A parked slide is `inert` while it is parked.
+- Looping does not change the DOM order of the slides.
 - The polite live status reads "Slide N of M" with the correct slide after wrapping from the last slide to the first.
 - Interactive carousel controls, markers, and fallback buttons have a visible `:focus-visible` indicator.
 - A polite live region (`role="status"` or `aria-live="polite"`) announces the current slide position after scrolling settles.
