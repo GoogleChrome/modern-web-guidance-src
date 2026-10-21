@@ -75,20 +75,21 @@ describe('rules/index export registry', () => {
   });
 
   it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES reflecting admitted held-out guides (R32.5, R33, D-031, D-036)', async () => {
-    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 3);
+    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 4);
     assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, [
       'autofill-highlight-inputs',
       'complex-shapes',
       'deliver-optimized-decorative-images',
+      'individual-transform-properties',
     ]);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
     assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_RULES, QUALIFIED_RULES);
     assert.deepStrictEqual(JSON_QUALIFIED_RULES, QUALIFIED_RULES);
-    assert.strictEqual(QUALIFIED_RULES.length, 3);
+    assert.strictEqual(QUALIFIED_RULES.length, 4);
 
     const qualifiedGuideSet = new Set(QUALIFIED_GUIDE_IDS);
-    assert.strictEqual(qualifiedGuideSet.size, 3);
+    assert.strictEqual(qualifiedGuideSet.size, 4);
   });
 
   it('exports POST_SELECTION_TUNED_GUIDE_IDS', () => {

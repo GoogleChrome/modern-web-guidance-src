@@ -110,6 +110,7 @@ export interface QualifiedRuleEntry {
   readonly wilsonLower: number;
   readonly wilsonUpper: number;
   readonly split: 'held-out';
+  readonly qualifiedAt?: string;
 }
 
 export interface RuleQualificationEvaluation {
@@ -171,6 +172,16 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
     wilsonUpper: 1.0,
     split: 'held-out',
   },
+  {
+    guideId: 'individual-transform-properties',
+    sampleSize: 95,
+    successes: 94,
+    precision: 0.9895,
+    wilsonLower: 0.943,
+    wilsonUpper: 0.998,
+    split: 'held-out',
+    qualifiedAt: '2026-10-20',
+  },
 ];
 
 /**
@@ -224,6 +235,7 @@ export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [
   'autofill-highlight-inputs',
   'complex-shapes',
   'deliver-optimized-decorative-images',
+  'individual-transform-properties',
 ];
 export const JSON_QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;
 export const QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;

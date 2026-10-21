@@ -20,6 +20,7 @@ describe('qualification shipping lists (O40, O42, O64, O65)', () => {
       'autofill-highlight-inputs',
       'complex-shapes',
       'deliver-optimized-decorative-images',
+      'individual-transform-properties',
     ];
     assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, expected);
     assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, expected);
@@ -224,5 +225,6 @@ describe('Rule Qualification and Manifest (D-031, D-036)', () => {
     assert.ok(guideIds.includes('autofill-highlight-inputs'));
     assert.ok(guideIds.includes('complex-shapes'));
     assert.ok(guideIds.includes('deliver-optimized-decorative-images'));
+    assert.ok(guideIds.includes('individual-transform-properties'));
   });
 });
