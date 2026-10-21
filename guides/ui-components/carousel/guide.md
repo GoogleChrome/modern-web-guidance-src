@@ -26,8 +26,8 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 ## Structure and accessibility
 
 - Use a named `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Give each slide `role="group"`, `aria-roledescription="slide"`, and an `aria-label` that includes its position (for example, `aria-label="2 of 4"`). Write the labels in the markup, localized with the rest of the page; if slides change at runtime, regenerate them from the same localized strings. The position is the slide's place in the original sequence, not its current visual position. Keep slide content available to assistive technology.
-- Give every control a clear accessible name. Native scroll buttons need alternative text in `content`; fallback controls should be native buttons, not chevrons without labels.
-- Announce the current slide in a visually hidden polite status region after scrolling settles. Update it for native controls, fallback controls, and direct scrolling so assistive technology receives feedback when the visible slide changes.
+- Give every control a clear accessible name. Native scroll buttons need alternative text in `content`; any HTML button must be a native `<button>` with a text or `aria-label` name, not an unlabeled chevron.
+- Announce the current slide in a visually hidden polite status region after scrolling settles. Update it whenever the visible slide changes, whether through scroll buttons, markers, or direct scrolling, so assistive technology receives feedback.
 
 ## Scrolling and controls
 
@@ -42,7 +42,7 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 
 ## Example: horizontal carousel
 
-This example uses full-width horizontal slides. Adapt the slide sizing for a peek layout or use the block axis for a vertical carousel. Give each marker a name that identifies its destination. The dimensions, spacing, colors, and debounce interval are examples; adapt them to the design and interaction.
+This example uses full-width horizontal slides. Adapt the slide sizing for a peek layout or use the block axis for a vertical carousel. Give each marker a name that identifies its destination. The `fallback-*` elements stay hidden unless the browser lacks the native feature; see Fallback strategies. The dimensions, spacing, colors, and debounce interval are examples; adapt them to the design and interaction.
 
 ```html
 <section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
@@ -173,19 +173,21 @@ button:focus-visible {
 
 ## Fallback strategies
 
+Fallback controls are HTML buttons and marker navigation that replace `::scroll-button()` and `::scroll-marker` when a browser lacks them. They must meet the same accessibility requirements: native `<button>` elements with accessible names, and the same status announcements.
+
 The fallback is robust: scrolling and snap behavior remain native, while small amounts of script add only controls or status updates that the browser does not provide. Detect each control feature separately, and expose HTML controls only for missing features so partial support never creates duplicates.
 
 ### Scroll buttons
 
 {{ BASELINE_STATUS("scroll-buttons") }}
 
-When `::scroll-button()` is unavailable, reveal the HTML Previous and Next buttons and wire them to scroll to the adjacent slide in visual order (which differs from DOM order when looping), and disable each when no adjacent slide exists. Keep them before the track in DOM order so they precede any native marker group in mixed-support browsers.
+When `::scroll-button()` is unavailable, reveal the HTML Previous and Next buttons and wire them to scroll to the adjacent slide in visual order (which differs from DOM order when looping), and disable each when no adjacent slide exists. Give them text or `aria-label` names, not unlabeled chevrons. Keep them before the track in DOM order so they precede any native marker group in mixed-support browsers.
 
 ### Scroll markers
 
 {{ BASELINE_STATUS("scroll-markers") }}
 
-When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named button per slide that scrolls to that slide. Update `aria-current="true"` on the active button.
+When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named native `<button>` per slide that scrolls to that slide. Update `aria-current="true"` on the active button.
 
 ### Marker state
 
