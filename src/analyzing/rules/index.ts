@@ -2,6 +2,7 @@ import type { AnalyzerRule } from '../schema.ts';
 import { adaptScrollbarToContrastPreferencesRules } from './adapt-scrollbar-to-contrast-preferences.ts';
 import { animateElementEntryExitRule } from './animate-element-entry-exit.ts';
 import { animateToIntrinsicSizesRule } from './animate-to-intrinsic-sizes.ts';
+import { atruleSupportConditionalsRules } from './atrule-support-conditionals.ts';
 import { autofillAddressFormRules } from './autofill-address-form.ts';
 import { autofillHighlightInputsRules } from './autofill-highlight-inputs.ts';
 import { autofillSignInFormRule } from './autofill-sign-in-form.ts';
@@ -9,6 +10,7 @@ import { brandConsistentFormsRule } from './brand-consistent-forms.ts';
 import { brandedSelectStylingRules } from './branded-select-styling.ts';
 import { breakUpLongTasksRule } from './break-up-long-tasks.ts';
 import { calculateEventDifferentialsRule } from './calculate-event-differentials.ts';
+import { captureLocationAgnosticDataRules } from './capture-location-agnostic-data.ts';
 import { checkboxRules } from './checkbox.ts';
 import {
   childStateBasedStylingRule,
@@ -24,12 +26,16 @@ import {
 } from './declarative-dialog-popover-control.ts';
 import { deferWorkUntilScrollEndsRule } from './defer-work-until-scroll-ends.ts';
 import { deliverOptimizedDecorativeImagesRules } from './deliver-optimized-decorative-images.ts';
+import { detectInitialVisibilityStateRules } from './detect-initial-visibility-state.ts';
 import { dragRules } from './drag.ts';
 import { equalWidthTextLinesRules } from './equal-width-text-lines.ts';
 import { formFieldsAutomaticallyFitContentsRule } from './form-fields-automatically-fit-contents.ts';
 import { formatHumanReadableDurationsRules } from './format-human-readable-durations.ts';
+import { highlightTextRangesRules } from './highlight-text-ranges.ts';
 import { imeSafeEnterSubmitRule } from './ime-safe-enter-submit.ts';
+import { improveNextPageLoadPerformanceRules } from './improve-next-page-load-performance.ts';
 import { individualTransformPropertiesRule } from './individual-transform-properties.ts';
+import { languageDetectionRules } from './language-detection.ts';
 import { lightDismissADialogRules } from './light-dismiss-a-dialog.ts';
 import { manageRecurringIntervalsRules } from './manage-recurring-intervals.ts';
 import { preventPageScrollUnderModalDialogRules } from './prevent-page-scroll-under-modal-dialog.ts';
@@ -37,16 +43,20 @@ import {
   resilientContextMenusAndNestedDropdownsRule,
   resilientContextMenusAndNestedDropdownsPositioningRule,
 } from './resilient-context-menus-and-nested-dropdowns.ts';
+import { resolutionOptimizedPseudoElementsRules } from './resolution-optimized-pseudo-elements.ts';
 import { responsiveTableRules } from './responsive-table.ts';
 import { sanitizeUntrustedHtmlRules } from './sanitize-untrusted-html.ts';
 import { scheduleTasksByPriorityRule } from './schedule-tasks-by-priority.ts';
+import { scrollEntryExitEffectsRules } from './scroll-entry-exit-effects.ts';
 import { scrollPositionAwareElementsRules } from './scroll-position-aware-elements.ts';
 import { scrollspyRules } from './scrollspy.ts';
 import { sizeAwareStylingRules } from './size-aware-styling.ts';
+import { supportGlobalCalendarSystemsRules } from './support-global-calendar-systems.ts';
 
 export * from './adapt-scrollbar-to-contrast-preferences.ts';
 export * from './animate-element-entry-exit.ts';
 export * from './animate-to-intrinsic-sizes.ts';
+export * from './atrule-support-conditionals.ts';
 export * from './autofill-address-form.ts';
 export * from './autofill-highlight-inputs.ts';
 export * from './autofill-sign-in-form.ts';
@@ -54,6 +64,7 @@ export * from './brand-consistent-forms.ts';
 export * from './branded-select-styling.ts';
 export * from './break-up-long-tasks.ts';
 export * from './calculate-event-differentials.ts';
+export * from './capture-location-agnostic-data.ts';
 export * from './checkbox.ts';
 export * from './child-state-based-styling.ts';
 export * from './complex-shapes.ts';
@@ -63,22 +74,29 @@ export * from './dark-mode.ts';
 export * from './declarative-dialog-popover-control.ts';
 export * from './defer-work-until-scroll-ends.ts';
 export * from './deliver-optimized-decorative-images.ts';
+export * from './detect-initial-visibility-state.ts';
 export * from './drag.ts';
 export * from './equal-width-text-lines.ts';
 export * from './form-fields-automatically-fit-contents.ts';
 export * from './format-human-readable-durations.ts';
+export * from './highlight-text-ranges.ts';
 export * from './ime-safe-enter-submit.ts';
+export * from './improve-next-page-load-performance.ts';
 export * from './individual-transform-properties.ts';
+export * from './language-detection.ts';
 export * from './light-dismiss-a-dialog.ts';
 export * from './manage-recurring-intervals.ts';
 export * from './prevent-page-scroll-under-modal-dialog.ts';
 export * from './resilient-context-menus-and-nested-dropdowns.ts';
+export * from './resolution-optimized-pseudo-elements.ts';
 export * from './responsive-table.ts';
 export * from './sanitize-untrusted-html.ts';
 export * from './schedule-tasks-by-priority.ts';
+export * from './scroll-entry-exit-effects.ts';
 export * from './scroll-position-aware-elements.ts';
 export * from './scrollspy.ts';
 export * from './size-aware-styling.ts';
+export * from './support-global-calendar-systems.ts';
 
 export const PILOT_RULES: readonly AnalyzerRule[] = [
   // Pilot Batch 1 & Earlier (14 guides, 17 rules; accessible-error-announcement and stack-drill-down retired per Gate 0 / O38):
@@ -100,7 +118,7 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   formFieldsAutomaticallyFitContentsRule,
   brandConsistentFormsRule,
 
-  // Batch 2 & Reserve (11 guides, 16 rules -> 33 rules across 25 landed feature guides; shadow-dom and detect-initial-visibility-state retired):
+  // Batch 2 & Reserve (11 guides, 16 rules -> 33 rules across 25 landed feature guides; shadow-dom retired):
   ...scrollspyRules,
   ...autofillAddressFormRules,
   ...brandedSelectStylingRules,
@@ -127,6 +145,17 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...responsiveTableRules,
   ...equalWidthTextLinesRules,
   ...lightDismissADialogRules,
+
+  // Wave 3A Guides (9 guides, 16 rules -> 64 rules across 44 feature guides total):
+  ...detectInitialVisibilityStateRules,
+  ...resolutionOptimizedPseudoElementsRules,
+  ...atruleSupportConditionalsRules,
+  ...scrollEntryExitEffectsRules,
+  ...languageDetectionRules,
+  ...improveNextPageLoadPerformanceRules,
+  ...highlightTextRangesRules,
+  ...supportGlobalCalendarSystemsRules,
+  ...captureLocationAgnosticDataRules,
 ];
 
 export const ALL_RULES: readonly AnalyzerRule[] = PILOT_RULES;

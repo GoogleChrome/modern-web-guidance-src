@@ -13,18 +13,19 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing 48 rules across the 35 active feature guides (O69, O38 retired 4, D-035 retired shrinking-header-on-scroll)', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 48);
-    assert.strictEqual(ALL_RULES.length, 48);
+  it('exports PILOT_RULES containing 64 rules across the 44 active feature guides (O69, O38 retired 3, D-035 retired shrinking-header-on-scroll)', async (t) => {
+    assert.strictEqual(PILOT_RULES.length, 64);
+    assert.strictEqual(ALL_RULES.length, 64);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 35);
+    assert.strictEqual(guideIds.size, 44);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
         'adapt-scrollbar-to-contrast-preferences',
         'animate-element-entry-exit',
         'animate-to-intrinsic-sizes',
+        'atrule-support-conditionals',
         'autofill-address-form',
         'autofill-highlight-inputs',
         'autofill-sign-in-form',
@@ -32,6 +33,7 @@ describe('rules/index export registry', () => {
         'branded-select-styling',
         'break-up-long-tasks',
         'calculate-event-differentials',
+        'capture-location-agnostic-data',
         'checkbox',
         'child-state-based-styling',
         'complex-shapes',
@@ -41,22 +43,29 @@ describe('rules/index export registry', () => {
         'declarative-dialog-popover-control',
         'defer-work-until-scroll-ends',
         'deliver-optimized-decorative-images',
+        'detect-initial-visibility-state',
         'drag',
         'equal-width-text-lines',
         'form-fields-automatically-fit-contents',
         'format-human-readable-durations',
+        'highlight-text-ranges',
         'ime-safe-enter-submit',
+        'improve-next-page-load-performance',
         'individual-transform-properties',
+        'language-detection',
         'light-dismiss-a-dialog',
         'manage-recurring-intervals',
         'prevent-page-scroll-under-modal-dialog',
         'resilient-context-menus-and-nested-dropdowns',
+        'resolution-optimized-pseudo-elements',
         'responsive-table',
         'sanitize-untrusted-html',
         'schedule-tasks-by-priority',
+        'scroll-entry-exit-effects',
         'scroll-position-aware-elements',
         'scrollspy',
         'size-aware-styling',
+        'support-global-calendar-systems',
       ].sort(),
     );
 

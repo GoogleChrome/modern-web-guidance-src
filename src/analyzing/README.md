@@ -28,7 +28,7 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
 | `--tier <tier>` | String | Restrict analysis to a confidence tier (`qualified` or `experimental`). |
-| `--all-rules`, `--experimental` | Flag | Run all 35 landed feature guides (48 rules total in `ALL_RULES`), including experimental and unmeasured rules. |
+| `--all-rules`, `--experimental` | Flag | Run all 44 landed feature guides (64 rules total in `ALL_RULES`), including experimental and unmeasured rules. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
@@ -202,11 +202,11 @@ export const autofillSignInFormRule: AnalyzerRule = {
 To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
 - **`TERMINAL_QUALIFIED_RULES`:** In standard terminal CLI mode, the analyzer runs **deterministic Phase 1 only** for guides that clear the statistical held-out qualification bar (`TERMINAL_QUALIFIED_GUIDE_IDS`: `autofill-highlight-inputs`, `complex-shapes`, `deliver-optimized-decorative-images`).
 - **`JSON_QUALIFIED_RULES`:** In `--json` mode for AI coding agents, the analyzer runs `JSON_QUALIFIED_GUIDE_IDS` and emits complete `phase2Rubric` definitions (`keepWhen` and `dropWhen`) so autonomous agents can verify candidate findings before proposing edits.
-- **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 35 landed feature guides across 48 rules, enabling research and broader scanning.
+- **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 44 landed feature guides across 64 rules, enabling research and broader scanning.
 
-### Registered Feature Guides (35 Guides, 48 Rules in `ALL_RULES`)
+### Registered Feature Guides (44 Guides, 64 Rules in `ALL_RULES`)
 
-> **Note:** `accessible-error-announcement`, `stack-drill-down`, `shadow-dom`, and `detect-initial-visibility-state` were retired per Gate 0 / Legacy Pattern Spec review.
+> **Note:** `accessible-error-announcement`, `stack-drill-down`, and `shadow-dom` were retired per Gate 0 / Legacy Pattern Spec review.
 
 | # | Guide ID | Tier | Held-Out Tune Prec (`local-93`) | Untuned Final Prec (`gitmirror`) | Modern Platform Target |
 | :- | :--- | :--- | :--- | :--- | :--- |
@@ -245,6 +245,15 @@ To guarantee zero hallucinated false alarms when run in interactive developer te
 | 33 | `responsive-table` | Batch 4 Clean 1-to-1 | `N/A` | `316 repos / 376 files` | CSS Container Queries (`@container`) and sticky headers |
 | 34 | `equal-width-text-lines` | Batch 4 Needs Care | `N/A` | `38 repos / 46 files` | CSS `text-fit: grow per-line-all` and balance |
 | 35 | `light-dismiss-a-dialog` | Batch 4 Needs Care | `N/A` | `19 repos / 22 files` | Native `<dialog closedby="any">` |
+| 36 | `detect-initial-visibility-state` | Wave 3A Experimental | `N/A` | `N/A` | `performance.getEntriesByType('visibility-state')` (`VisibilityStateEntry`) |
+| 37 | `resolution-optimized-pseudo-elements` | Wave 3A Experimental | `N/A` | `N/A` | Standard CSS `image-set()` on `::before` / `::after` pseudo-elements |
+| 38 | `atrule-support-conditionals` | Wave 3A Experimental | `N/A` | `N/A` | Native CSS `@supports` and `@supports at-rule(@...)` |
+| 39 | `scroll-entry-exit-effects` | Wave 3A Experimental | `N/A` | `N/A` | CSS Scroll-Driven Animations (`animation-timeline: view()`, `animation-range`) |
+| 40 | `language-detection` | Wave 3A Experimental | `N/A` | `N/A` | Built-in browser `LanguageDetector` API |
+| 41 | `improve-next-page-load-performance` | Wave 3A Experimental | `N/A` | `N/A` | Declarative Speculation Rules API (`<script type="speculationrules">`) |
+| 42 | `highlight-text-ranges` | Wave 3A Experimental | `N/A` | `N/A` | CSS Custom Highlight API (`CSS.highlights` and `::highlight()`) |
+| 43 | `support-global-calendar-systems` | Wave 3A Experimental | `N/A` | `N/A` | Native `Temporal.PlainDate.prototype.withCalendar()` and `Intl.DateTimeFormat` |
+| 44 | `capture-location-agnostic-data` | Wave 3A Experimental | `N/A` | `N/A` | Native `Intl.DisplayNames` and location-agnostic `Temporal` types |
 
 ---
 

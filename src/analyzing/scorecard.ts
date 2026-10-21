@@ -49,6 +49,7 @@ import {
   POST_SELECTION_TUNED_GUIDE_IDS,
 } from './rules/index.ts';
 import { scanFiles, scanRepoFiles } from './scanners/index.ts';
+import { createInMemoryProject } from './scanners/js-scanner.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import {
   checkSequentialStop,
@@ -631,6 +632,7 @@ export async function scanGradingRepos(
   rules: readonly AnalyzerRule[] = PILOT_RULES,
 ): Promise<AnalyzerFinding[]> {
   const allFindings: AnalyzerFinding[] = [];
+  const sharedProject = createInMemoryProject();
 
   for (const entry of gradingRepos) {
     const dir = repoDir(entry);
@@ -638,6 +640,7 @@ export async function scanGradingRepos(
       repo: entry.repo,
       commit: entry.commit,
       excludeCorpusNonAppDirs: true,
+      project: sharedProject,
     });
     allFindings.push(...findings);
   }
@@ -1042,6 +1045,7 @@ export async function runPilotScorecard(
       throw new Error(`GitMirror held-out directory missing at ${targetSplitDir} (D-036)`);
     }
 
+    const sharedProject = createInMemoryProject();
     for (const [repo, group] of byRepo.entries()) {
       const sanitizedRepo = repo.replace('/', '__');
       const repoDir = join(targetSplitDir, sanitizedRepo);
@@ -1062,6 +1066,7 @@ export async function runPilotScorecard(
           repo,
           commit: group.commit,
           excludeCorpusNonAppDirs: true,
+          project: sharedProject,
         });
         phase1Findings.push(...findings);
       }

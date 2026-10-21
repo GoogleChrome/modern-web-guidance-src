@@ -267,6 +267,14 @@
     "deliver-optimized-decorative-images": "(^|[^-\\w])image-set\\s*\\(",
     "responsive-table": "@container\\b|container-type\\s*:|--label",
     "equal-width-text-lines": "text-fit\\s*:|CSS\\.supports\\s*\\(\\s*['\"]text-fit",
-    "light-dismiss-a-dialog": "closedby\\s*=|['\"]closedBy['\"]\\s+in\\s+HTMLDialogElement"
+    "light-dismiss-a-dialog": "closedby\\s*=|['\"]closedBy['\"]\\s+in\\s+HTMLDialogElement",
+    "resolution-optimized-pseudo-elements": "(^|[^-\\w])image-set\\s*\\(",
+    "atrule-support-conditionals": "@supports\\b|CSS\\.supports\\s*\\(",
+    "scroll-entry-exit-effects": "animation-timeline\\s*:|view\\s*\\(|animation-range\\s*:|ViewTimeline\\b",
+    "language-detection": "\\bLanguageDetector\\b",
+    "improve-next-page-load-performance": "speculationrules\\b",
+    "highlight-text-ranges": "CSS\\.highlights\\b|new\\s+Highlight\\b|::highlight\\s*\\(",
+    "support-global-calendar-systems": "\\.withCalendar\\s*\\(|Intl\\.DateTimeFormat\\s*\\([^)]*calendar|Intl\\.supportedValuesOf\\s*\\(\\s*['\"]calendar['\"]\\s*\\)",
+    "capture-location-agnostic-data": "Intl\\.DisplayNames\\b|\\bTemporal\\.(PlainDate|PlainTime|PlainMonthDay|PlainYearMonth)\\b"
   }
 }
