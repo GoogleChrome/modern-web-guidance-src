@@ -121,6 +121,26 @@ describe('blind card formatting & request construction', () => {
     assert.equal(hasValidSpecProvenance(unverifiedSpec), false);
     assert.equal(formatLegacyPatternSpecDossier(unverifiedSpec), '');
 
+    // Circular templated text must be rejected even when provenance object is present
+    const templatedWithProvenance = {
+      guideId: 'persistent-toast-notifications',
+      changesSomethingForDeveloper:
+        'Yes: replaces Toast notification libraries with native HTML popover="manual", removing third-party library weight, manual event/DOM synchronization, or vendor-prefixed duplication while excluding Persistent system modal alerts (<dialog>).',
+      isLikeForLikeSwapAtSite:
+        'Yes: HTML popover="manual" directly replaces the matched call site or declaration (Toast notification libraries) without migrating unrelated components; cases requiring broader architectural changes (Persistent system modal alerts (<dialog>)) are excluded in doesNotReplace.',
+      replaces: ['Toast libraries'],
+      doesNotReplace: ['Dialogs'],
+      rationale: 'Toast replace',
+      provenance: {
+        methodVersion: 'r41-blind-two-stage-v1',
+        model: 'gemini-2.5-pro',
+        evaluatedAt: '2026-10-20T20:00:00.000Z',
+        sources: ['guides/ui-components/persistent-toast-notifications/guide.md'],
+      },
+    };
+    assert.equal(hasValidSpecProvenance(templatedWithProvenance), false);
+    assert.equal(formatLegacyPatternSpecDossier(templatedWithProvenance), '');
+
     const dossier = formatLegacyPatternSpecDossier({
       ...unverifiedSpec,
       provenance: {

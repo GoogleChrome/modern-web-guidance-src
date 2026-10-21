@@ -968,10 +968,24 @@ export async function loadGuideSummaryFromMarkdown(
   return parseGuideSummaryMarkdown(content, guideId);
 }
 
+export const CIRCULAR_R41_TEMPLATE_PATTERNS: readonly RegExp[] = [
+  /^Yes: replaces .+ with native .+, removing third-party library weight, manual event\/DOM synchronization, or vendor-prefixed duplication while excluding .+\.$/,
+  /^Yes: .+ directly replaces the matched call site or declaration \(.+\) without migrating unrelated components; cases requiring broader architectural changes \(.+\) are excluded in doesNotReplace\.$/,
+  /^Yes when scoped to .+: adopting .+ eliminates manual workaround state or library overhead, whereas lookalikes such as .+ gain nothing and must be left alone\.$/,
+  /^Conditional \(needs-care\): only a like-for-like swap when the matched code is an isolated instance of .+; requires LLM Verifier \/ AST context to exclude .+ where migrating would alter surrounding component contracts\.$/,
+  /^No reliable static win across general matches: while .+ addresses .+ in greenfield designs, wild matches overlap heavily with .+ where rewriting is either a no-op or alters intended behavior\.$/,
+  /^No \(do-not-write-a-rule\): replacing .+ with .+ requires broader component, markup, or server\/runtime restructuring rather than a localized call-site swap\.$/,
+];
+
+export function hasCircularTemplatedR41Text(value: string): boolean {
+  const trimmed = value.trim();
+  return CIRCULAR_R41_TEMPLATE_PATTERNS.some((re) => re.test(trimmed));
+}
+
 /**
  * Returns true only when a `legacy-pattern-specs.json` entry carries valid,
  * non-empty provenance metadata (`methodVersion`, `model`, `evaluatedAt`, `sources`)
- * alongside non-empty R41 answers (`changesSomethingForDeveloper`, `isLikeForLikeSwapAtSite`).
+ * alongside non-empty, non-circular R41 answers (`changesSomethingForDeveloper`, `isLikeForLikeSwapAtSite`).
  * Unverified or circular template entries without provenance must never be injected into the Judge.
  */
 export function hasValidSpecProvenance(spec: Record<string, unknown>): boolean {
@@ -984,6 +998,9 @@ export function hasValidSpecProvenance(spec: Record<string, unknown>): boolean {
       ? spec.isLikeForLikeSwapAtSite.trim()
       : '';
   if (!changesForDev || !likeForLike) {
+    return false;
+  }
+  if (hasCircularTemplatedR41Text(changesForDev) || hasCircularTemplatedR41Text(likeForLike)) {
     return false;
   }
 
@@ -1171,6 +1188,7 @@ export async function loadGuideSummariesMap(
           const existing = map.get(guideId);
           if (!existing) continue;
           const dossier = formatLegacyPatternSpecDossier(rec);
+          if (!dossier) continue;
           const mergedContext = existing.explainerContext
             ? `${existing.explainerContext}\n\n${dossier}`
             : dossier;
