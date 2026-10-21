@@ -189,7 +189,7 @@ When `::scroll-button()` is unavailable, reveal the HTML Previous and Next butto
 
 {{ BASELINE_STATUS("scroll-markers") }}
 
-When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named native `<button>` per slide that scrolls to that slide. Update `aria-current="true"` on the active button.
+When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named native `<button>` per slide that scrolls the track to that slide. Do not set `aria-current` here; the single settled-scroll handler described in Status updates and fallback controls does that.
 
 ### Marker state
 
@@ -237,7 +237,7 @@ Write a small script that adapts to your markup and covers these requirements:
 
 - **Detect each feature separately.** Feature-detect native scroll buttons (including the anchor positioning they depend on) and native scroll markers with `CSS.supports`. Hide the fallback controls only for features that exist natively, and wire up only the missing ones.
 - **Track the current slide** along the carousel's scrolling axis, for horizontal or vertical layouts.
-- **Update state after scrolling settles**, not on every frame: announce "Slide N of M" in the status region and mark the active fallback marker with `aria-current`.
+- **Update state after scrolling settles**, not on every frame, from a single handler driven by the settled scroll position: announce "Slide N of M" in the status region, mark the active fallback marker with `aria-current="true"`, and update the fallback buttons' disabled state. Controls only initiate scrolling; they never update state directly.
 - **Respect reduced motion** for any smooth scrolling.
 
 ## Looping (continuous navigation)
