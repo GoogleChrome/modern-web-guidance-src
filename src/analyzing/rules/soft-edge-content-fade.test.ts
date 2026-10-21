@@ -1,0 +1,69 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { scanCss } from '../scanners/css-scanner.ts';
+import {
+  SOFT_EDGE_CONTENT_FADE_GUIDE_HASH,
+  softEdgeContentFadeCssMatcher,
+  softEdgeContentFadeRule,
+  softEdgeContentFadeRules,
+} from './soft-edge-content-fade.ts';
+
+void test('soft-edge-content-fade: rule metadata', () => {
+  assert.equal(softEdgeContentFadeRule.id, 'soft-edge-content-fade');
+  assert.equal(softEdgeContentFadeRule.guideId, 'soft-edge-content-fade');
+  assert.equal(
+    softEdgeContentFadeRule.guideHash,
+    SOFT_EDGE_CONTENT_FADE_GUIDE_HASH,
+  );
+  assert.equal(SOFT_EDGE_CONTENT_FADE_GUIDE_HASH.length, 12);
+  assert.equal(softEdgeContentFadeRules.length, 1);
+  assert.ok(softEdgeContentFadeRule.phase2Rubric.keepWhen.length >= 2);
+  assert.ok(softEdgeContentFadeRule.phase2Rubric.dropWhen.length >= 2);
+});
+
+void test('soft-edge-content-fade: positive matches', async (t) => {
+  await t.test('flags -webkit-mask-image: linear-gradient(...) without standard mask-image', () => {
+    const css = `
+      .scroll-fade {
+        overflow-y: auto;
+        -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+      }
+    `;
+    const matches = scanCss('fade.css', css, [softEdgeContentFadeCssMatcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+  });
+
+  await t.test('flags legacy -webkit-gradient(linear, ...) without standard mask-image', () => {
+    const css = `
+      .legacy-fade {
+        -webkit-mask-image: -webkit-gradient(linear, left top, left bottom, from(rgba(0,0,0,1)), to(rgba(0,0,0,0)));
+      }
+    `;
+    const matches = scanCss('legacy-fade.css', css, [softEdgeContentFadeCssMatcher]);
+    assert.equal(matches.length, 1);
+  });
+});
+
+void test('soft-edge-content-fade: negative / exempt cases', async (t) => {
+  await t.test('exempts rules that also declare standard mask-image', () => {
+    const css = `
+      .modern-fade {
+        -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+        mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+      }
+    `;
+    const matches = scanCss('modern.css', css, [softEdgeContentFadeCssMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts non-gradient url() masks', () => {
+    const css = `
+      .icon {
+        -webkit-mask-image: url("icon.svg");
+      }
+    `;
+    const matches = scanCss('icon.css', css, [softEdgeContentFadeCssMatcher]);
+    assert.equal(matches.length, 0);
+  });
+});
