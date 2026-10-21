@@ -11,15 +11,15 @@ This skill provides access to modern web best practices guides and static analys
 
 ## Instructions for the Agent
 
-### 1. Codebase Modernization Analysis (`analyze`)
+### 1. Modernize Existing Code (`analyze`)
 To discover legacy patterns in an existing codebase and identify modernization opportunities:
 - **Scan directory**: Execute `npx -y modern-web-guidance@latest analyze [dir] --json` (or `node bin/gd.ts analyze [dir] --json` within this repository).
-- **Plan refactoring (Verification Rubric)**:
+- **Plan the modernization (Verification Rubric)**:
   - Evaluate each finding against the guide's `Keep when` (`phase2Rubric.keepWhen`) and `Drop when` (`phase2Rubric.dropWhen`) verification criteria.
   - Silently discard any finding that matches a `Drop when` condition (such as intentional feature-detect fallbacks, third-party vendor code, or out-of-scope lookalikes) before presenting a modernization plan to the user.
   - Group verified issues by `guideId`, review affected files, and report a clear migration plan to the user before editing.
 - **Retrieve relevant guides**: For each approved modernization, retrieve the guide (`npx -y modern-web-guidance@latest retrieve "<guideId>"`).
-- **Refactor and verify**: Apply standard modern replacements and re-run `analyze` to verify findings are cleanly resolved.
+- **Apply modernization and verify**: Apply standard modern replacements and re-run `analyze` to verify findings are cleanly resolved.
 - **Report**: Provide a concise summary of changes and browser compatibility notes.
 
 ### 2. Search & Retrieve Guides
