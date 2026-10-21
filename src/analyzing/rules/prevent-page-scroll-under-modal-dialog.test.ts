@@ -185,7 +185,7 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
         'body-scroll-lock': '^4.0.0-beta.0',
         'scroll-lock': '^2.1.5',
       },
-      devDependencies: {
+      peerDependencies: {
         'no-scroll': '^2.1.1',
       },
     });

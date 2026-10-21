@@ -26,10 +26,10 @@ void test('format-human-readable-durations dependency matcher', async (t) => {
     assert.match(matches[0]?.message ?? '', /humanize-duration/);
   });
 
-  await t.test('flags pretty-ms in devDependencies', () => {
+  await t.test('flags pretty-ms in peerDependencies', () => {
     const pkg = JSON.stringify(
       {
-        devDependencies: {
+        peerDependencies: {
           'pretty-ms': '^7.0.0',
         },
       },

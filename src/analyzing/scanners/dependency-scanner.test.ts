@@ -133,4 +133,44 @@ describe('dependency-scanner R46 runtime & client-side filtering', () => {
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 6);
   });
+
+  it('does not skip packages with a browser field even if bin or express is present, and handles single-line empty dependencies: {}', () => {
+    const browserFieldPkg = [
+      '{',
+      '  "name": "isomorphic-browser-bundle",',
+      '  "bin": "./bin/cli.js",',
+      '  "browser": "./dist/browser.js",',
+      '  "dependencies": {',
+      '    "express": "^4.18.2",',
+      '    "moment": "^2.29.4"',
+      '  }',
+      '}',
+    ].join('\n');
+
+    assert.equal(isPureNodeBackendOrCliPackage(JSON.parse(browserFieldPkg)), false);
+    const matches = scanPackageJson('package.json', browserFieldPkg, [
+      SAMPLE_SANITIZER_RULE,
+    ]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 7);
+
+    const emptyDepsSingleLinePkg = [
+      '{',
+      '  "name": "empty-runtime-deps",',
+      '  "dependencies": {},',
+      '  "devDependencies": {',
+      '    "moment": "^2.29.4"',
+      '  },',
+      '  "peerDependencies": {',
+      '    "moment": "^2.29.4"',
+      '  }',
+      '}',
+    ].join('\n');
+
+    const peerMatches = scanPackageJson('package.json', emptyDepsSingleLinePkg, [
+      SAMPLE_SANITIZER_RULE,
+    ]);
+    assert.equal(peerMatches.length, 1);
+    assert.equal(peerMatches[0]?.line, 8);
+  });
 });

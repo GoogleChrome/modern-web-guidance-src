@@ -141,5 +141,16 @@ describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
     const semiMinifiedLine = `var DateJs=${'a'.repeat(2280)};`;
     assert.equal(isMinifiedContent(semiMinifiedLine), true);
     assert.equal(shouldScanFile('public/js/date.js', semiMinifiedLine), false);
+
+    // 2-part version with @copyright or Apache license
+    const apacheTwoPartHeader = [
+      '/*',
+      ' * WidgetLib v2.4',
+      ' * @copyright 2020 Widget Corp',
+      ' * Licensed under the Apache License, Version 2.0',
+      ' */',
+      'window.WidgetLib = {};',
+    ].join('\n');
+    assert.equal(hasVendoredLicenseHeader(apacheTwoPartHeader), true);
   });
 });

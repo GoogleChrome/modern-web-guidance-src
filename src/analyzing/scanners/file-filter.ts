@@ -118,7 +118,7 @@ export const MAX_UNMINIFIED_LINE_LENGTH = 1200;
 const LICENSE_HEADER_SCAN_BYTES = 1500;
 const VENDOR_VERSION_REGEX = /(?:\bv?\d+\.\d+(?:\.\d+)?\b|@version\s*:?\s*\d+\.\d+)/i;
 const VENDOR_LICENSE_REGEX =
-  /(?:\/\*!|@license|@preserve|all rights reserved|licensed under the (?:mit|bsd|gpl|mpl))/i;
+  /(?:\/\*!|@license|@preserve|@copyright|all rights reserved|licensed under (?:the )?(?:mit|bsd|apache|gpl|mpl|isc))/i;
 
 export interface FileFilterOptions {
   readonly ownNames?: readonly string[];

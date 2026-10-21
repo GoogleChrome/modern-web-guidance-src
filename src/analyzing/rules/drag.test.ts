@@ -77,7 +77,7 @@ describe('drag rules', () => {
         interactjs: '^1.10.17',
         'react-draggable': '^4.4.6',
       },
-      devDependencies: {
+      peerDependencies: {
         draggabilly: '^3.0.0',
         dragula: '^3.7.3',
       },

@@ -28,11 +28,11 @@ void test('branded-select-styling dependency: positive brownfield matches', asyn
     assert.match(matches[0]?.message ?? '', /select2/);
   });
 
-  await t.test('flags bootstrap-select in devDependencies', () => {
+  await t.test('flags bootstrap-select in peerDependencies', () => {
     const pkg = JSON.stringify(
       {
         name: 'grocy',
-        devDependencies: {
+        peerDependencies: {
           'bootstrap-select': '^1.13.18',
         },
       },

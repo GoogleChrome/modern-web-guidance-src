@@ -104,6 +104,9 @@ function findEnclosingScopeNode(
     if (
       Node.isFunctionDeclaration(current) ||
       Node.isMethodDeclaration(current) ||
+      Node.isConstructorDeclaration(current) ||
+      Node.isGetAccessorDeclaration(current) ||
+      Node.isSetAccessorDeclaration(current) ||
       Node.isClassDeclaration(current)
     ) {
       return current;
@@ -167,6 +170,44 @@ function extractSfcTemplateAndStyleLines(
   ];
 }
 
+function isFunctionOrClassScopeNode(node: Node): boolean {
+  if (
+    Node.isFunctionDeclaration(node) ||
+    Node.isMethodDeclaration(node) ||
+    Node.isConstructorDeclaration(node) ||
+    Node.isGetAccessorDeclaration(node) ||
+    Node.isSetAccessorDeclaration(node) ||
+    Node.isClassDeclaration(node) ||
+    Node.isArrowFunction(node) ||
+    Node.isFunctionExpression(node)
+  ) {
+    return true;
+  }
+  if (Node.isVariableStatement(node)) {
+    for (const decl of node.getDeclarations()) {
+      const init = decl.getInitializer();
+      if (init && (Node.isArrowFunction(init) || Node.isFunctionExpression(init))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function isTopLevelImportOrRequireStatement(stmt: Node): boolean {
+  if (Node.isImportDeclaration(stmt) || Node.isImportEqualsDeclaration(stmt)) {
+    return true;
+  }
+  if (
+    Node.isVariableStatement(stmt) &&
+    stmt.getEndLineNumber() - stmt.getStartLineNumber() <= 10 &&
+    /\brequire\s*\(/.test(stmt.getText())
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * AST-aware context slicer for JS/TS: extracts enclosing function/method/class + top-level imports
  * (both ESM `import` and CommonJS `require()`), plus unblanked SFC `<template>`/`<style>` context,
@@ -182,19 +223,37 @@ export function sliceJsAstContext(
   const allLines = effectiveText.split('\n');
 
   const enclosingNode = findEnclosingScopeNode(sourceFile, targetLine);
-  const nodeStartLine = enclosingNode.getStartLineNumber();
-  const nodeEndLine = enclosingNode.getEndLineNumber();
+  let nodeStartLine = enclosingNode.getStartLineNumber();
+  let nodeEndLine = enclosingNode.getEndLineNumber();
+
+  const statements = sourceFile.getStatements();
+  let lastImportEndLine = 0;
+  for (const stmt of statements) {
+    if (isTopLevelImportOrRequireStatement(stmt) && stmt.getEndLineNumber() < nodeStartLine) {
+      lastImportEndLine = Math.max(lastImportEndLine, stmt.getEndLineNumber());
+    }
+  }
+
+  // Expand short non-function top-level statements by +-15 lines within the script body (R47)
+  if (!isFunctionOrClassScopeNode(enclosingNode) && nodeEndLine - nodeStartLine + 1 < 25) {
+    const firstStmtStart = statements[0]?.getStartLineNumber() ?? 1;
+    const lastStmtEnd = statements[statements.length - 1]?.getEndLineNumber() ?? allLines.length;
+    const minScriptLine = Math.max(firstStmtStart, lastImportEndLine + 1);
+    const maxScriptLine = Math.min(allLines.length, lastStmtEnd);
+    nodeStartLine = Math.min(
+      nodeStartLine,
+      Math.max(minScriptLine, targetLine - CODE_SNIPPET_RADIUS),
+    );
+    nodeEndLine = Math.max(
+      nodeEndLine,
+      Math.min(maxScriptLine, targetLine + CODE_SNIPPET_RADIUS),
+    );
+  }
 
   // 1. Top-level ESM imports and CommonJS require() statements (if not already part of enclosing node)
   const importLines: string[] = [];
-  for (const stmt of sourceFile.getStatements()) {
-    const isEsmImport = Node.isImportDeclaration(stmt);
-    const isCjsRequire =
-      Node.isVariableStatement(stmt) &&
-      stmt.getStartLineNumber() <= MAX_COMMONJS_REQUIRE_LINE &&
-      stmt.getText().includes('require(');
-
-    if (!isEsmImport && !isCjsRequire) {
+  for (const stmt of statements) {
+    if (!isTopLevelImportOrRequireStatement(stmt)) {
       continue;
     }
 

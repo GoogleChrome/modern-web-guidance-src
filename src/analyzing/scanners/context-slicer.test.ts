@@ -136,6 +136,28 @@ describe('context-slicer R47 fixes', () => {
     assert.match(slice, />    6 \|   return sanitizeHtml\(html\);/);
   });
 
+  it('Bug 2c: expands short top-level statements by +-15 lines so adjacent variable declarations are preserved', () => {
+    const topLevelScript = [
+      'import DOMPurify from "dompurify";',
+      '',
+      'const container = document.getElementById("comment-box");',
+      'const cleanHtml = DOMPurify.sanitize(untrustedMarkup);',
+      'container.innerHTML = cleanHtml;',
+    ].join('\n');
+
+    const project = createInMemoryProject();
+    const sourceFile = project.createSourceFile('src/render.js', topLevelScript, {
+      overwrite: true,
+    });
+
+    const slice = sliceJsAstContext(sourceFile, 5, topLevelScript);
+    assert.match(slice, /\/\/ --- Imports ---/);
+    assert.match(slice, /import DOMPurify from "dompurify";/);
+    assert.match(slice, /const container = document\.getElementById\("comment-box"\);/);
+    assert.match(slice, /const cleanHtml = DOMPurify\.sanitize\(untrustedMarkup\);/);
+    assert.match(slice, />    5 \| container\.innerHTML = cleanHtml;/);
+  });
+
   it('Bug 4: returns entire package.json when <= 200 lines, and header + window when > 200 lines', () => {
     const smallPkgLines = [
       '{',

@@ -21,6 +21,7 @@ export const FRONTEND_FRAMEWORK_PACKAGES: ReadonlySet<string> = new Set([
   'react-dom',
   'vue',
   'svelte',
+  '@sveltejs/kit',
   'next',
   'nuxt',
   'astro',
@@ -28,6 +29,10 @@ export const FRONTEND_FRAMEWORK_PACKAGES: ReadonlySet<string> = new Set([
   'lit',
   'preact',
   'solid-js',
+  '@remix-run/react',
+  '@builder.io/qwik',
+  'qwik',
+  'alpinejs',
 ]);
 
 export const BACKEND_SERVER_PACKAGES: ReadonlySet<string> = new Set([
@@ -103,7 +108,11 @@ export function isPureNodeBackendOrCliPackage(
 
   const hasBin = hasNonEmptyField(pkgRecord.bin);
   const hasBrowser = hasNonEmptyField(pkgRecord.browser);
-  if (hasBin && !hasBrowser) {
+  if (hasBrowser) {
+    return false;
+  }
+
+  if (hasBin) {
     return true;
   }
 
@@ -130,11 +139,18 @@ function findPackageLineInFields(
       for (const field of fields) {
         const fieldIdx = line.indexOf(`"${field}"`);
         if (fieldIdx !== -1) {
+          const rest = line.slice(fieldIdx + field.length + 2).trimStart();
+          if (!rest.startsWith(':')) {
+            continue;
+          }
           insideDepsSection = true;
           sectionBraceDepth = 0;
-          for (const char of line.slice(fieldIdx)) {
+          for (const char of rest) {
             if (char === '{') sectionBraceDepth++;
             if (char === '}') sectionBraceDepth--;
+          }
+          if (sectionBraceDepth <= 0) {
+            insideDepsSection = false;
           }
           break;
         }

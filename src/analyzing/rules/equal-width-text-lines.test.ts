@@ -40,9 +40,9 @@ void test('equal-width-text-lines dependency matcher', async (t) => {
     assert.match(matches[0]?.message ?? '', /fitty/);
   });
 
-  await t.test('flags fittext in devDependencies', () => {
+  await t.test('flags fittext in peerDependencies', () => {
     const pkg = JSON.stringify({
-      devDependencies: {
+      peerDependencies: {
         fittext: '^0.0.4',
       },
     }, null, 2);
