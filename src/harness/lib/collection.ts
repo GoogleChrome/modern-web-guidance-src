@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { stripVTControlCharacters } from 'util';
-import { collectGuidesUsed, collectGuidanceToolsUsed } from './guide-usage.ts';
+import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
 import { type SuiteConfig } from '../config.ts';
 import { getTaskMap } from '../../core/guide-validation.ts';
 import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
@@ -304,7 +304,7 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   console.log(`✅ Completed parallel grading pass\n`);
 }
 
-async function collectGuideUsage(dir: string, runType: string) {
+async function collectGuideUsage(dir: string, runType: string, guideName: string) {
   let guidesUsedResult: string[] = [];
   let retrievedGuides: string[] = [];
   let fileReadGuides: string[] = [];
@@ -316,6 +316,13 @@ async function collectGuideUsage(dir: string, runType: string) {
     fileReadGuides = usage.fileReadGuides;
     guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides])];
     guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir);
+  } else if (runType === 'unguided' && hasTrajectoryGuideLeak(dir, guideName)) {
+    const usage = await collectGuidesUsed(dir);
+    retrievedGuides = usage.retrievedGuides;
+    fileReadGuides = usage.fileReadGuides;
+    guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides, guideName])];
+    const tools = await collectGuidanceToolsUsed(dir);
+    guidanceToolsUsedResult = [...new Set([...tools, 'modern-web-guidance'])];
   }
 
   return { guidesUsedResult, retrievedGuides, fileReadGuides, guidanceToolsUsedResult };
@@ -503,7 +510,7 @@ async function collectTaskRunEntry(
   const ctx = getTaskRunContext(dir, runPath, taskMap, true);
   if (!ctx) return null;
 
-  const usage = await collectGuideUsage(dir, ctx.runType);
+  const usage = await collectGuideUsage(dir, ctx.runType, ctx.guide);
 
   const taskCategory = path.basename(path.dirname(ctx.taskInfo.guideDir));
   const expectedToolPrefixes = ['modern-web'];
