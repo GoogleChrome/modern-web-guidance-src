@@ -11,7 +11,12 @@ web-feature-ids:
   - scrollend
   - scroll-snap-events
   - scroll-driven-animations
-  - sibling-count
+  - sibling-count 
+guides:
+  - carousel-slide-effects
+  - carousel-snap-highlights
+  - scroll-progress-indicator
+  - scroll-snap-state-sync
 ---
 
 # Build a carousel
@@ -166,7 +171,7 @@ button:focus-visible {
 }
 ```
 
-## Fallbacks
+## Fallback strategies
 
 The fallback is robust: scrolling and snap behavior remain native, while small amounts of script add only controls or status updates that the browser does not provide. Detect each control feature separately, and expose HTML controls only for missing features so partial support never creates duplicates.
 
@@ -174,13 +179,13 @@ The fallback is robust: scrolling and snap behavior remain native, while small a
 
 {{ BASELINE_STATUS("scroll-buttons") }}
 
-When `::scroll-button()` is unavailable, reveal the HTML Previous and Next buttons and wire them to scroll to adjacent slides. Keep them before the track in DOM order so they precede any native marker group in mixed-support browsers.
+When `::scroll-button()` is unavailable, reveal the HTML Previous and Next buttons and wire them to scroll to the adjacent slide in visual order (which differs from DOM order when looping), and disable each when no adjacent slide exists. Keep them before the track in DOM order so they precede any native marker group in mixed-support browsers.
 
 ### Scroll markers
 
 {{ BASELINE_STATUS("scroll-markers") }}
 
-When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named button per slide. Update `aria-current="true"` on the active button.
+When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named button per slide that scrolls to that slide. Update `aria-current="true"` on the active button.
 
 ### Marker state
 
@@ -202,7 +207,7 @@ Smooth scrolling is optional. The example enables it only when reduced motion is
 
 {{ BASELINE_STATUS("scrollend") }}
 
-If `scrollend` is unavailable, use the debounced `scroll` listener in the example to update status after scrolling settles.
+If `scrollend` is unavailable, use the debounced `scroll` listener to update status after scrolling settles, and run the update once on load so the initial state is correct.
 
 {{ BASELINE_STATUS("scroll-snap-events") }}
 
@@ -228,9 +233,7 @@ Write a small script that adapts to your markup and covers these requirements:
 
 - **Detect each feature separately.** Feature-detect native scroll buttons (including the anchor positioning they depend on) and native scroll markers with `CSS.supports`. Hide the fallback controls only for features that exist natively, and wire up only the missing ones.
 - **Track the current slide** along the carousel's scrolling axis, for horizontal or vertical layouts.
-- **Fallback buttons** move to the adjacent slide in visual order (which differs from DOM order when looping) and are disabled when none exists.
-- **Fallback markers** are one named button per slide that scrolls to that slide.
-- **Update state after scrolling settles**, not on every frame: announce "Slide N of M" in the status region and mark the active fallback marker with `aria-current`. Support browsers without `scrollend`, and run the update once on load.
+- **Update state after scrolling settles**, not on every frame: announce "Slide N of M" in the status region and mark the active fallback marker with `aria-current`.
 - **Respect reduced motion** for any smooth scrolling.
 
 ## Looping (continuous navigation)
