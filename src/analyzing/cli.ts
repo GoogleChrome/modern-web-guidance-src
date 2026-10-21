@@ -71,7 +71,7 @@ export interface FormatHumanReadableOptions {
 export const ANALYZE_CLI_HELP = `
 Usage: modern-web-guidance analyze <dir> [options]
 
-Analyze a codebase for legacy web platform patterns and suggest modern web standard replacements.
+Analyze a codebase for legacy web platform patterns to detect modernization opportunities.
 
 Arguments:
   <dir>              Directory to analyze (defaults to current directory)

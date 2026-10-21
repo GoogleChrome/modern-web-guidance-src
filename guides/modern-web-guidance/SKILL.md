@@ -19,14 +19,12 @@ description: |
 
 # Modern Web Guidance
 
-A skill to search for specific web development use cases and retrieve their corresponding best practice guides.
+A skill to search and retrieve modern web platform best practice guides when building new features, and to discover legacy patterns and modernize existing codebases.
 
 ## When to use
 
-Must use this skill:
-- At the **start** of implementing any web feature.
-- Before creating a new component, to check if a standardized pattern already exists.
-- To avoid implementing ad-hoc solutions or loading large dependencies unnecessarily.
+- **Building new features or components**: Search and retrieve modern web best practice guides (`search`, `retrieve`) before implementing, to check if a standardized pattern already exists and avoid ad-hoc solutions or heavy dependencies.
+- **Modernizing existing code**: Run the **Modernize** workflow using `analyze` to detect legacy web platform patterns across a codebase, review findings against verification rubrics, retrieve guidance, apply modern standards, and verify the changes.
 
 ## Usage Instructions
 
@@ -82,11 +80,11 @@ If the output is truncated, you must repeat the command but redirect to a file a
 
 ---
 
-### Step 3. Analyze Codebase for Modernization (`analyze`)
+### Step 3. Modernize Existing Code (`analyze`)
 
-To proactively discover opportunities to replace legacy patterns with modern web platform standards across a project:
+Building something new uses `search` and `retrieve` (Steps 1 & 2). Modernizing existing code uses `analyze` plus the **Modernize** workflow below. The `analyze` subcommand detects legacy web platform patterns and stops there; the agent executes the rest of the workflow:
 
-1. **Run Analysis**: Execute `analyze` with `--json` for machine-readable output:
+1. **Detect Legacy Patterns (`analyze`)**: Execute `analyze` with `--json` for machine-readable output:
    ```sh
    npx -y modern-web-guidance@latest analyze [dir] --json
    ```
@@ -98,7 +96,7 @@ To proactively discover opportunities to replace legacy patterns with modern web
    ```sh
    npx -y modern-web-guidance@latest retrieve "<guideId>"
    ```
-4. **Refactor & Verify**: Apply modern web standard replacements, then re-run `analyze` to verify findings are cleanly resolved.
+4. **Apply Modernization & Verify**: Apply modern web standard replacements, then re-run `analyze` to verify findings are cleanly resolved.
 5. **Summarize**: Conclude with a concise summary of modernized patterns and browser support considerations.
 
 ---

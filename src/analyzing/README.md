@@ -2,7 +2,7 @@
 
 The Modern Web Guidance Analyzer scans brownfield web codebases for legacy idioms, obsolete polyfills, and userland workarounds, mapping every finding directly to a corresponding [Modern Web Guidance](../../guides) standard. It is designed for dual operation: fast, human-readable terminal reports for developers and structured machine-readable JSON for autonomous coding agents.
 
-See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Guide Triage`, `Legacy Pattern Spec`, `Static Matcher`, `LLM Verifier`, `Eval Judge`, `Fix Smoke Test`, and the `rule-writing` and `held-out` splits).
+See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Modernize`, `analyze`, `Guide Triage`, `Legacy Pattern Spec`, `Static Matcher`, `LLM Verifier`, `Eval Judge`, `Fix Smoke Test`, and the `rule-writing` and `held-out` splits).
 
 ---
 
@@ -82,22 +82,22 @@ Coding agents receive structured JSON containing exact file coordinates, confide
 
 ---
 
-## 2. Agentic Workflow Loop (`D-013`)
+## 2. Modernize Workflow (`D-013`)
 
-For autonomous AI coding agents (Claude Code, Jetski, Codex), the analyzer operates in a tightly scoped 5-phase loop:
+For autonomous AI coding agents (Claude Code, Jetski, Codex), modernizing existing code follows the **Modernize** workflow. The `analyze` subcommand serves as the detection step—finding legacy patterns and stopping there—while the agent carries out the planning, guidance retrieval, modern standard application, and verification:
 
 ```mermaid
 flowchart TD
-    Scan["1. Scan Codebase<br/><code>analyze [dir] --json</code>"] --> Plan["2. Plan & Report<br/>Present modernization diff to user"]
+    Scan["1. Detect Legacy Patterns<br/><code>analyze [dir] --json</code>"] --> Plan["2. Plan & Report<br/>Present modernization diff to user"]
     Plan --> Retrieve["3. Retrieve Guidance<br/><code>retrieve &lt;guideId&gt;</code>"]
-    Retrieve --> Refactor["4. Refactor & Verify<br/>Apply modern platform standard<br/>Re-run <code>analyze</code> to verify"]
-    Refactor --> Disclose["5. Disclose & Summarize<br/>Report modernizations & Baseline targets"]
+    Retrieve --> Modernize["4. Modernize & Verify<br/>Apply modern platform standard<br/>Re-run <code>analyze</code> to verify"]
+    Modernize --> Disclose["5. Disclose & Summarize<br/>Report modernizations & Baseline targets"]
 ```
 
-1. **Scan Codebase**: Execute `npx modern-web-guidance analyze <dir> --json` to detect candidate modernization targets across the project.
-2. **Plan & Confirm**: Group detected findings by `guideId`, inspect source contexts, and report a clear migration proposal to the developer before editing code.
+1. **Detect Legacy Patterns (`analyze`)**: Execute `npx modern-web-guidance analyze <dir> --json` to detect candidate modernization targets across the project. `analyze` finds legacy patterns and stops there.
+2. **Plan & Confirm**: Group detected findings by `guideId`, inspect source contexts against the verification rubric (`keepWhen`/`dropWhen`), and report a clear modernization proposal to the developer before editing code.
 3. **Retrieve Guidance**: For each approved guide ID, run `npx modern-web-guidance retrieve "<guideId>"` to fetch the complete canonical guidance, including edge cases, accessibility invariants, and fallback strategies.
-4. **Refactor & Re-verify**: Update legacy code to standard web platform features (e.g. native `<dialog>`, `content-visibility`, `autocomplete`). Re-run `analyze <dir> --json` to verify that findings are eliminated without regressions.
+4. **Modernize & Verify**: Update legacy code to standard web platform features (e.g. native `<dialog>`, `content-visibility`, `autocomplete`). Re-run `analyze <dir> --json` to verify that findings are eliminated without regressions.
 5. **Disclose & Summarize**: End the turn with a concise summary describing the modernized APIs and any browser Baseline implications.
 
 ---
@@ -291,7 +291,7 @@ Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Eval Judge** ([`judge
 
 ### Fix Smoke Test ([`fix-harness.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/fix-harness.ts))
 
-To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), the **Fix Smoke Test** (`fix-harness.ts`) enforces three static checks on every candidate refactor:
+To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), the **Fix Smoke Test** (`fix-harness.ts`) enforces three static checks on every candidate modernization fix:
 - **Check 1 (Legacy Finding Eliminated):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
 - **Check 2 (Syntax, Anti-Gutting & Comment-Stripped Modern Feature Check):** Verifies clean AST/DOM/CSS parsing (`ts-morph` with JSX support, `linkedom`, `cssomnom`), top-level export retention, and comment-stripped presence of the guide's positive modern web feature.
 - **Check 3 (Behavioral Invariants):** Runs behavioral/test assertions when available.
@@ -338,7 +338,7 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 1. **Define `phase2Rubric` in the rule definition**:
    - `keepWhen`: Precise criteria matching genuine legacy workarounds.
    - `dropWhen`: Immediate exclusions (feature detection guards, shadowed variables, out-of-domain contexts).
-2. **Agentic verification**: Ensure that `--json` output emits the complete rubric so AI coding agents can verify findings before proposing refactors.
+2. **Agentic verification**: Ensure that `--json` output emits the complete rubric so AI coding agents can verify findings before proposing modernizations.
 
 ### Step 4: Held-Out Qualification
 1. **Run preflight checks**: `pnpm run check:analyze` and `node --test "src/analyzing/**/*.test.ts"`.

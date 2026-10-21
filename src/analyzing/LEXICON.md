@@ -2,6 +2,22 @@
 
 The canonical domain language for the Modern Web Guidance Analyzer (`src/analyzing`) and the conceptual boundaries those terms represent.
 
+## Workflows & CLI Commands
+
+### Modernize
+
+The people-facing name for the end-to-end workflow of finding legacy web platform code in an existing project and changing it to modern platform standards (detecting legacy patterns via `analyze`, reviewing against verification rubrics, retrieving guidance, applying modern standards, and verifying the result). Distinct from **`analyze`**, which is the detection step only.
+
+* _Reference_: `guides/modern-web-guidance/SKILL.md#step-3-modernize-existing-code-analyze`, `src/analyzing/README.md#2-modernize-workflow-d-013`
+* _Avoid_: `Modern Web Refactor`, `Refactor` (as a feature or workflow name), `Uplift`, `Modern Web Uplift`
+
+### `analyze`
+
+The CLI subcommand (`modern-web-guidance analyze`) that scans a codebase for legacy web platform patterns matching qualified or experimental rules. It performs the detection step only and stops there; the AI coding agent and developer carry out the remainder of the **Modernize** workflow.
+
+* _Reference_: `src/analyzing/cli.ts#runAnalyzeCli`, `guides/modern-web-guidance/SKILL.md#step-3-modernize-existing-code-analyze`
+* _Avoid_: `modern-web-guidance refactor`, `modern-web-guidance uplift`, `scan` (as a CLI command name)
+
 ## Pipeline Steps
 
 ### Guide Triage
