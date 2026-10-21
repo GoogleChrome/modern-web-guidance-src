@@ -23,8 +23,11 @@ A skill to search and retrieve modern web platform best practice guides when bui
 
 ## When to use
 
-- **Building new features or components**: Search and retrieve modern web best practice guides (`search`, `retrieve`) before implementing, to check if a standardized pattern already exists and avoid ad-hoc solutions or heavy dependencies.
-- **Modernizing existing code**: Run the **Modernize** workflow using `analyze` to detect legacy web platform patterns across a codebase, review findings against verification rubrics, retrieve guidance, apply modern standards, and verify the changes.
+Must use this skill:
+- At the **start** of implementing any web feature.
+- Before creating a new component, to check if a standardized pattern already exists.
+- To avoid implementing ad-hoc solutions or loading large dependencies unnecessarily.
+- To modernize existing code: run the **Modernize** workflow, starting with `analyze` (Step 3).
 
 ## Usage Instructions
 
