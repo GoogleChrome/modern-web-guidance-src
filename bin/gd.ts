@@ -377,8 +377,10 @@ async function main() {
 
     case 'promote':
     case 'unpublish': {
-      const args = positionals.slice(1);
-      const code = await runNpm([command, ...args]);
+      // Forward everything after the command verbatim; these scripts parse their own flags
+      // (--guide, --now, --no-pr, --dry-run), which gd's parser would otherwise swallow.
+      const args = process.argv.slice(process.argv.indexOf(command) + 1);
+      const code = await runNpm([`public:${command}`, ...args]);
       process.exit(code);
     }
 
