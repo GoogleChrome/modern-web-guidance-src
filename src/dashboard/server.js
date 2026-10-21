@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
-import { runAllManifests } from './generate-manifests.js';
+import { runAllManifests, injectPreviewShim } from './generate-manifests.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { parseBooleanEnv } from '../core/env.ts';
 import {
@@ -132,9 +132,11 @@ async function getGcsAccessToken() {
 
 const server = http.createServer(async (req, res) => {
   const reqUrl = req.url || '';
+  const parsedUrl = new URL(reqUrl, 'http://localhost');
   
   // Handle CORS and Private Network Access for Playwright Trace Viewer
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', '*');
@@ -402,12 +404,6 @@ const server = http.createServer(async (req, res) => {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
             .filter(d => !d.isDirectory())
             .map(d => d.name);
-          const gradeReportDataDir = path.join(targetDir, 'grade-report', 'data');
-          if (fs.existsSync(gradeReportDataDir)) {
-            const dataFiles = fs.readdirSync(gradeReportDataDir)
-              .map(f => `grade-report/data/${f}`);
-            files.push(...dataFiles);
-          }
         }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
@@ -464,7 +460,7 @@ const server = http.createServer(async (req, res) => {
 
   let filePath;
   // Serve generated manifests from out/dashboard
-  if (decodedPath === '/features-mapping.gen.js' || decodedPath === '/features_mapping.gen.js' || decodedPath === '/grouped-tasks.gen.json' || decodedPath === '/suites.gen.json') {
+  if (path.dirname(decodedPath) === '/' && (decodedPath.endsWith('.gen.json') || decodedPath.endsWith('.gen.js'))) {
     const canonicalName = decodedPath === '/features_mapping.gen.js' ? 'features-mapping.gen.js' : decodedPath.substring(1);
     filePath = path.join(outDir, 'dashboard', canonicalName);
   } else if (decodedPath.startsWith('/base_apps/')) {
@@ -585,6 +581,15 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
+      if (isInsideGuides && extname === '.html' && parsedUrl.searchParams.has('preview')) {
+        const injected = injectPreviewShim(content.toString('utf-8'));
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Length': Buffer.byteLength(injected),
+        });
+        res.end(injected, 'utf-8');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(content, 'utf-8');
     }

@@ -57,13 +57,26 @@ test('computeDevReportFlag enforces strict priority ordering', () => {
   assert.strictEqual(lowPassRateResult.flag, 'LOW_GUIDED_PASS_RATE');
   assert.ok(lowPassRateResult.flagDetails.includes('75%'));
 
-  // 5. Healthy (>= 90% and all tools/guides present)
+  // 5. High unguided pass rate (=== 100%)
+  const highUnguidedResult = computeDevReportFlag({
+    guideName: 'size-aware-styling',
+    hasEarlyFailure: false,
+    toolsUsed: ['modern-web-guidance'],
+    guidesConsumed: ['size-aware-styling'],
+    guidedPassRate: 100,
+    unguidedPassRate: 100,
+  });
+  assert.strictEqual(highUnguidedResult.flag, 'HIGH_UNGUIDED_PASS_RATE');
+  assert.ok(highUnguidedResult.flagDetails.includes('Unguided pass rate is 100%'));
+
+  // 6. Healthy (>= 90%, unguided < 100%, and all tools/guides present)
   const healthyResult = computeDevReportFlag({
     guideName: 'size-aware-styling',
     hasEarlyFailure: false,
     toolsUsed: ['modern-web-guidance'],
     guidesConsumed: ['size-aware-styling'],
     guidedPassRate: 100,
+    unguidedPassRate: 75,
   });
   assert.strictEqual(healthyResult.flag, 'HEALTHY');
   assert.ok(healthyResult.flagDetails.includes('≥ 90%'));
@@ -167,6 +180,9 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
   assert.ok(report.includes('> [!NOTE]'));
   assert.ok(report.includes('needs-eval-gen'));
   assert.ok(report.includes('needs-eval-run'));
+  assert.ok(report.includes('## Summary'));
+  assert.ok(report.includes('<!-- TODO: Complete overall summary across all targets -->'));
+  assert.ok(report.indexOf('## Summary') < report.indexOf('## Target: `daily-grind`'));
   assert.ok(report.includes('## Target: `daily-grind` (Status: `HEALTHY`)'));
   assert.ok(report.includes('### Evaluation Results'));
   assert.ok(report.includes('#### DAILY-GRIND - GUIDED'));

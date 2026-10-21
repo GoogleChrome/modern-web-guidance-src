@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 import { minimatch } from 'minimatch';
 import { features } from 'web-features';
 import { rootDir } from '../core/paths.ts';

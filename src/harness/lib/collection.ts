@@ -1,10 +1,13 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import { collectGuidesUsed, collectGuidanceToolsUsed } from './guide-usage.ts';
+import os from 'os';
+import { stripVTControlCharacters } from 'util';
+import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
 import { type SuiteConfig } from '../config.ts';
 import { getTaskMap } from '../../core/guide-validation.ts';
 import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
+import { rootDir } from '../../core/paths.ts';
 import { extractTestTitles } from '../../core/grader-coverage.ts';
 import { type ScenarioCheck } from './metrics.ts';
 
@@ -65,6 +68,7 @@ function getAppFiles(currentDir: string, base = ''): string[] {
       entry.name === 'dist' ||
       entry.name === 'test-results' ||
       entry.name === 'grade-report' ||
+      entry.name === 'traces' ||
       entry.name.startsWith('.')
     ) {
       continue;
@@ -279,7 +283,9 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   }
 
   const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
-  fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
+  // List only the tasks prepared above. A '**' glob would also re-run every task that was graded before
+  // (their run-grader scripts linger), using whatever checkout their grade.mjs points at.
+  fs.writeFileSync(pnpmWorkspacePath, ['packages:', ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)].join('\n') + '\n');
 
   try {
     console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
@@ -298,7 +304,7 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   console.log(`✅ Completed parallel grading pass\n`);
 }
 
-async function collectGuideUsage(dir: string, runType: string) {
+async function collectGuideUsage(dir: string, runType: string, guideName: string) {
   let guidesUsedResult: string[] = [];
   let retrievedGuides: string[] = [];
   let fileReadGuides: string[] = [];
@@ -310,6 +316,13 @@ async function collectGuideUsage(dir: string, runType: string) {
     fileReadGuides = usage.fileReadGuides;
     guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides])];
     guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir);
+  } else if (runType === 'unguided' && hasTrajectoryGuideLeak(dir, guideName)) {
+    const usage = await collectGuidesUsed(dir);
+    retrievedGuides = usage.retrievedGuides;
+    fileReadGuides = usage.fileReadGuides;
+    guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides, guideName])];
+    const tools = await collectGuidanceToolsUsed(dir);
+    guidanceToolsUsedResult = [...new Set([...tools, 'modern-web-guidance'])];
   }
 
   return { guidesUsedResult, retrievedGuides, fileReadGuides, guidanceToolsUsedResult };
@@ -379,10 +392,38 @@ export function evaluateScenarioResults(
       if (specs.length > 0) {
         return specs.map((spec: any) => {
           const lastResult = spec.tests?.[0]?.results?.at(-1);
+          if (lastResult?.status === 'passed') {
+            return { id: spec.id, passed: true, message: spec.title };
+          }
+
+          // Strip ANSI colors and local paths (repo root, temp grading dir, home) so diagnostics are portable and shareable.
+          const clean = (text: string) => stripVTControlCharacters(text)
+            .replaceAll(rootDir + path.sep, '')
+            .replace(/\/tmp\/grade-run-[^/]+\//g, '')
+            .replaceAll(os.homedir(), '~')
+            .trim();
+          // A timeout reports "Test timeout exceeded" first (no location) and the action that was cut off second.
+          const errors: { message?: string; location?: { file: string; line: number } }[] = lastResult?.errors ?? [];
+          const rawError = errors.map(e => e.message).filter(Boolean).join('\n\n');
+          const errorMsg = rawError ? clean(rawError) : undefined;
+
+          const loc = lastResult?.errorLocation ?? errors.find(e => e.location)?.location;
+          const errorLocation = loc ? `${path.relative(rootDir, loc.file)}:${loc.line}` : undefined;
+
+          const snapshotAtt = lastResult?.attachments?.find((a: any) => a.name === 'page-snapshot');
+          const pageSnapshot = snapshotAtt?.body ? Buffer.from(snapshotAtt.body, 'base64').toString('utf8') : undefined;
+
+          const browserErrorsAtt = lastResult?.attachments?.find((a: any) => a.name === 'browser-errors');
+          const browserErrors = browserErrorsAtt?.body ? clean(Buffer.from(browserErrorsAtt.body, 'base64').toString('utf8')) : undefined;
+
           return {
             id: spec.id,
-            passed: lastResult?.status === 'passed',
+            passed: false,
             message: spec.title,
+            ...(errorMsg ? { error: errorMsg } : {}),
+            ...(errorLocation ? { errorLocation } : {}),
+            ...(pageSnapshot ? { pageSnapshot } : {}),
+            ...(browserErrors ? { browserErrors } : {}),
           };
         });
       }
@@ -469,7 +510,7 @@ async function collectTaskRunEntry(
   const ctx = getTaskRunContext(dir, runPath, taskMap, true);
   if (!ctx) return null;
 
-  const usage = await collectGuideUsage(dir, ctx.runType);
+  const usage = await collectGuideUsage(dir, ctx.runType, ctx.guide);
 
   const taskCategory = path.basename(path.dirname(ctx.taskInfo.guideDir));
   const expectedToolPrefixes = ['modern-web'];

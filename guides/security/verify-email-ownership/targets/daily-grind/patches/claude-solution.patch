@@ -1,0 +1,297 @@
+diff --git a/index.html b/index.html
+index 66c9173..c49a4e9 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,12 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .signup { max-width: 480px; margin: 0 auto; text-align: center; }
++    .signup input[type="email"] { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid var(--secondary); border-radius: 5px; }
++    .signup button.btn { border: 0; cursor: pointer; }
+   </style>
++  <!--ORIGIN_TRIAL-->
+ </head>
+ 
+ <body>
+@@ -195,6 +200,16 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="signup">
++      <h2>Join Daily Grind Rewards</h2>
++      <form method="POST" action="/api/verify-email">
++        <label for="email">Email address:</label>
++        <input type="email" id="email" name="email" autocomplete="email" required>
++        <input type="hidden" name="token" nonce="__NONCE__" autocomplete="email-verification-token">
++        <button type="submit" class="btn">Continue</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/package.json b/package.json
+index 2bd4d77..fdf55b6 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,14 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "build": "node --check server.mjs && node --check verify.mjs"
++  },
++  "dependencies": {
++    "@sd-jwt/core": "^0.10.0",
++    "jose": "^5.9.6"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..6705eaa
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,124 @@
++import http from 'node:http';
++import { randomBytes } from 'node:crypto';
++import { readFile } from 'node:fs/promises';
++import { verifyEmailVerificationToken } from './verify.mjs';
++
++// Replace with your public relying-party origin
++const RP_ORIGIN = process.env.RP_ORIGIN || 'https://rp.example.com';
++const ORIGIN_TRIAL_TOKEN = process.env.ORIGIN_TRIAL_TOKEN || '';
++const PORT = Number(process.env.PORT) || 11222;
++const SECURE = RP_ORIGIN.startsWith('https:');
++
++// Server-side session state: sessionId -> { nonce }
++const sessions = new Map();
++
++const escapeHtml = (s) =>
++  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
++
++function getSessionId(req) {
++  const m = /(?:^|;\s*)sid=([\w-]+)/.exec(req.headers.cookie || '');
++  return m ? m[1] : null;
++}
++
++function ensureSession(req, res) {
++  let sid = getSessionId(req);
++  if (!sid || !sessions.has(sid)) {
++    sid = randomBytes(32).toString('base64url');
++    sessions.set(sid, {});
++    const attrs = ['HttpOnly', 'SameSite=Lax', 'Path=/'];
++    if (SECURE) attrs.push('Secure');
++    res.setHeader('Set-Cookie', `sid=${sid}; ${attrs.join('; ')}`);
++  }
++  return sid;
++}
++
++// Atomically read and delete the single-use nonce.
++function consumeSessionNonce(req) {
++  const session = sessions.get(getSessionId(req));
++  if (!session) return undefined;
++  const { nonce } = session;
++  delete session.nonce;
++  return nonce;
++}
++
++async function readForm(req) {
++  const chunks = [];
++  let size = 0;
++  for await (const chunk of req) {
++    size += chunk.length;
++    if (size > 64 * 1024) throw new Error('Body too large');
++    chunks.push(chunk);
++  }
++  return new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
++}
++
++async function sendTraditionalVerificationEmail(email) {
++  // Fallback: send a standard OTP code or magic link email here.
++  console.log(`Sending OTP/magic link email to ${email}`);
++}
++
++async function handleSignupSubmission(req) {
++  const formData = await readForm(req);
++  const submittedEmail = String(formData.get('email') || '').trim();
++  const rawToken = String(formData.get('token') || '').trim();
++  const expectedNonce = consumeSessionNonce(req);
++
++  if (rawToken && expectedNonce) {
++    try {
++      await verifyEmailVerificationToken({
++        rawToken,
++        submittedEmail,
++        expectedNonce,
++        expectedAudience: RP_ORIGIN,
++      });
++      return { verified: true, email: submittedEmail };
++    } catch (err) {
++      console.error('Email verification token check failed:', err);
++    }
++  }
++  await sendTraditionalVerificationEmail(submittedEmail);
++  return { verified: false, email: submittedEmail };
++}
++
++const server = http.createServer(async (req, res) => {
++  try {
++    const { pathname } = new URL(req.url, 'http://localhost');
++    if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
++      const sid = ensureSession(req, res);
++      const nonce = randomBytes(32).toString('base64url');
++      sessions.get(sid).nonce = nonce;
++      let html = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++      html = html
++        .replace('__NONCE__', nonce)
++        .replace(
++          '<!--ORIGIN_TRIAL-->',
++          ORIGIN_TRIAL_TOKEN
++            ? `<meta http-equiv="origin-trial" content="${escapeHtml(ORIGIN_TRIAL_TOKEN)}">`
++            : ''
++        );
++      res.writeHead(200, {
++        'Content-Type': 'text/html; charset=utf-8',
++        'Cache-Control': 'no-store',
++        ...(ORIGIN_TRIAL_TOKEN && { 'Origin-Trial': ORIGIN_TRIAL_TOKEN }),
++        ...(res.getHeader('Set-Cookie') && { 'Set-Cookie': res.getHeader('Set-Cookie') }),
++      });
++      res.end(html);
++    } else if (req.method === 'POST' && pathname === '/api/verify-email') {
++      const result = await handleSignupSubmission(req);
++      const msg = result.verified
++        ? `Your email ${escapeHtml(result.email)} is verified. Welcome!`
++        : `We sent a verification email to ${escapeHtml(result.email)}.`;
++      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
++      res.end(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>The Daily Grind</title></head><body><p>${msg}</p><a href="/">Back</a></body></html>`);
++    } else {
++      res.writeHead(404, { 'Content-Type': 'text/plain' });
++      res.end('Not found');
++    }
++  } catch (err) {
++    console.error(err);
++    res.writeHead(500, { 'Content-Type': 'text/plain' });
++    res.end('Internal error');
++  }
++});
++
++server.listen(PORT, () => console.log(`Listening on http://localhost:${PORT}`));
+diff --git a/verify.mjs b/verify.mjs
+new file mode 100644
+index 0000000..c6ddcb0
+--- /dev/null
++++ b/verify.mjs
+@@ -0,0 +1,107 @@
++import { createHash } from 'node:crypto';
++import dns from 'node:dns/promises';
++import { SDJwtInstance, decodeSdJwtSync } from '@sd-jwt/core';
++import { createRemoteJWKSet, importJWK, jwtVerify } from 'jose';
++
++// IETF draft-hardt-email-verification-02 specifies RFC 9864 'Ed25519' and 'ES256'.
++// TODO: Remove 'EdDSA' once live issuers and Chrome Origin Trial builds finish transitioning.
++const ALLOWED_ALGS = ['Ed25519', 'EdDSA', 'ES256'];
++const normalizeAlg = (alg) => (alg === 'Ed25519' ? 'EdDSA' : alg);
++
++const hasher = (data, alg) =>
++  createHash(alg === 'sha-256' ? 'sha256' : alg).update(data).digest();
++
++export async function verifyEmailVerificationToken({
++  rawToken,
++  submittedEmail,
++  expectedNonce,
++  expectedAudience,
++}) {
++  const decoded = decodeSdJwtSync(rawToken, hasher);
++  const evtPayload = decoded.jwt.payload;
++  const iss = evtPayload.iss;
++
++  if (!expectedNonce || !decoded.kbJwt || !iss || evtPayload.email_verified !== true) {
++    throw new Error('Missing nonce, KB-JWT, issuer, or email_verified !== true.');
++  }
++  if (evtPayload.email?.toLowerCase() !== submittedEmail.toLowerCase()) {
++    throw new Error('Submitted email does not match the EVT email claim.');
++  }
++
++  const domain = submittedEmail.split('@')[1];
++  if (!domain) throw new Error('Submitted email has no domain.');
++  const txtRecords = (await dns.resolveTxt(`_email-verification.${domain}`)).map((r) => r.join(''));
++  if (!txtRecords.some((txt) => txt.startsWith('iss=') && `https://${txt.slice(4).trim()}` === iss)) {
++    throw new Error(`Issuer "${iss}" is not delegated via DNS for "${domain}".`);
++  }
++
++  const discoveryUrl = new URL('/.well-known/email-verification', iss);
++  if (discoveryUrl.protocol !== 'https:') throw new Error('Issuer must use HTTPS.');
++  const metadata = await (await fetch(discoveryUrl)).json();
++  if (metadata.issuer !== iss || !metadata.jwks_uri?.startsWith('https://')) {
++    throw new Error('Invalid issuer metadata or non-HTTPS jwks_uri.');
++  }
++  const issuerJwks = createRemoteJWKSet(new URL(metadata.jwks_uri));
++
++  const evtOptions = {
++    typ: 'ev+sd-jwt',
++    issuer: iss,
++    algorithms: ALLOWED_ALGS,
++    maxTokenAge: '5m',
++    clockTolerance: '1m',
++  };
++
++  const sdJwt = new SDJwtInstance({
++    hasher,
++    verifier: async (data, sig) => {
++      const compactEvt = `${data}.${sig}`;
++      try {
++        await jwtVerify(compactEvt, issuerJwks, evtOptions);
++      } catch (err) {
++        // `kid` omitted (e.g. Gmail) with multiple JWKS keys: trial-verify each.
++        if (err?.code !== 'ERR_JWKS_MULTIPLE_MATCHING_KEYS') throw err;
++        let matched = false;
++        for await (const publicKey of err) {
++          try {
++            await jwtVerify(compactEvt, publicKey, evtOptions);
++            matched = true;
++            break;
++          } catch {}
++        }
++        if (!matched) throw err;
++      }
++      return true;
++    },
++    kbVerifier: async (data, sig) => {
++      const holderJwk = evtPayload.cnf?.jwk;
++      const holderAlg = holderJwk?.alg;
++      const kbAlg = decoded.kbJwt.header.alg;
++      if (
++        !holderAlg ||
++        !kbAlg ||
++        !ALLOWED_ALGS.includes(holderAlg) ||
++        !ALLOWED_ALGS.includes(kbAlg) ||
++        normalizeAlg(kbAlg) !== normalizeAlg(holderAlg)
++      ) {
++        throw new Error('Missing, disallowed, or mismatched KB-JWT algorithm.');
++      }
++      const holderKey = await importJWK(holderJwk, kbAlg);
++      await jwtVerify(`${data}.${sig}`, holderKey, {
++        typ: 'kb+jwt',
++        audience: expectedAudience,
++        algorithms: [kbAlg],
++        maxTokenAge: '5m',
++        clockTolerance: '1m',
++      });
++      return true;
++    },
++  });
++
++  return sdJwt.verify(rawToken, {
++    requiredClaimKeys: ['email', 'email_verified'],
++    keyBindingNonce: expectedNonce,
++    expectedKeyBindingAudience: expectedAudience,
++    keyBindingMaxAgeSeconds: 300,
++    skewSeconds: 60,
++  });
++}

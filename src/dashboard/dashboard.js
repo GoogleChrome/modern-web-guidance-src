@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, getEligibleScenarioIds, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { loadStabilityTrend } from './stability-trend.js';
@@ -523,7 +523,9 @@ function renderSummary(data) {
     let totalGuidedPassed = 0;
     let totalGuidedChecks = 0;
     let totalAllRunsCount = 0;
+    let totalUnguidedRunsCount = 0;
     let computedEarlyFailures = 0;
+    let unguidedLeaksCount = 0;
 
     const baseKeys = new Set();
     const tasksWithTools = new Set();
@@ -538,10 +540,14 @@ function renderSummary(data) {
         const runs = results[key] || [];
         totalAllRunsCount += runs.length;
         const isGuided = key.endsWith(' - guided');
+        if (!isGuided) totalUnguidedRunsCount += runs.length;
 
         runs.forEach((/** @type {DashboardRunResult} */ run) => {
             if (isEarlyFailureRun(run.results)) {
                 computedEarlyFailures++;
+            }
+            if (!isGuided && isUnguidedLeakRun(run, parsed?.guide)) {
+                unguidedLeaksCount++;
             }
             const hasTools = run.guidanceToolsUsed && run.guidanceToolsUsed.length > 0;
             const hasGuides = (run.guidesUsed && run.guidesUsed.length > 0) || (run.guideUsed && typeof run.guideUsed === 'object' && run.guideUsed.guidesUsed && run.guideUsed.guidesUsed.length > 0);
@@ -576,6 +582,8 @@ function renderSummary(data) {
 
     const rawRate = totalAllRunsCount > 0 ? (totalEarlyFailures / totalAllRunsCount) * 100 : 0;
     const totalEarlyFailureRate = rawRate > 0 && rawRate < 1 ? Number(rawRate.toFixed(1)) : Math.round(rawRate);
+    const rawLeakRate = totalUnguidedRunsCount > 0 ? (unguidedLeaksCount / totalUnguidedRunsCount) * 100 : 0;
+    const unguidedLeakRate = rawLeakRate > 0 && rawLeakRate < 1 ? Number(rawLeakRate.toFixed(1)) : Math.round(rawLeakRate);
 
     container.innerHTML = `
         <div class="header-meta-item dog-ear-card">
@@ -601,6 +609,12 @@ function renderSummary(data) {
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Infra Errors (Excluded): <span style="font-weight: bold; color: ${totalEarlyFailures > 0 ? '#d29922' : 'var(--color-accent-success, #3fb950)'}">${totalEarlyFailureRate}%</span>
                 <span style="opacity: 0.85; color: ${totalEarlyFailures > 0 ? '#d29922' : 'var(--text-secondary)'}">(${totalEarlyFailures} invalid run${totalEarlyFailures === 1 ? '' : 's'})</span>
+            </div>
+            ` : ''}
+            ${unguidedLeaksCount > 0 ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                Unguided Leaks: <span style="font-weight: bold; color: #8b5cf6;">${unguidedLeakRate}%</span>
+                <span style="opacity: 0.85; color: #8b5cf6;">(${unguidedLeaksCount} run${unguidedLeaksCount === 1 ? '' : 's'})</span>
             </div>
             ` : ''}
 
@@ -743,6 +757,7 @@ function renderGrid(data, testId) {
             const infraErrorCount = countInfraErrors(unguidedRuns) + countInfraErrors(guidedRuns);
             const hasInfraError = infraErrorCount > 0;
             const hasBuildFailure = [...(unguidedRuns || []), ...(guidedRuns || [])].some(r => r.results?.some(c => c.failureReason));
+            const leakCount = (unguidedRuns || []).filter(r => isUnguidedLeakRun(r, guide)).length;
 
             const accordion = document.createElement('div');
             accordion.className = 'task-accordion';
@@ -773,6 +788,7 @@ function renderGrid(data, testId) {
                         ${trendLinkHtml}
                         ${hasInfraError ? `<span style="font-size: 0.75rem; color: #d29922; margin-left: 8px; border: 1px solid #d29922; padding: 2px 6px; border-radius: 4px;" title="Infrastructure / CLI errors are excluded from pass rates">${infraErrorCount} Infra Error${infraErrorCount === 1 ? '' : 's'}</span>` : ''}
                         ${hasBuildFailure ? `<span style="font-size: 0.75rem; color: var(--color-accent-failure, #da3633); margin-left: 8px; border: 1px solid currentColor; padding: 2px 6px; border-radius: 4px;" title="Agent produced a broken app or build that failed grading">Build Failed</span>` : ''}
+                        ${leakCount > 0 ? `<span style="font-size: 0.75rem; color: #8b5cf6; margin-left: 8px; border: 1px solid #8b5cf6; padding: 2px 6px; border-radius: 4px;" title="Unguided agent accessed modern-web-guidance and ${escapeHtml(guide)}">${leakCount > 1 ? `${leakCount} Unguided Leaks` : 'Unguided Leak'}</span>` : ''}
                     </div>
                     <div class="right-section">
                         <div class="mini-dumbbell-track">
@@ -893,7 +909,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         const maxGuided = guidedRuns ? guidedRuns.length : 0;
         const maxRuns = Math.max(maxUnguided, maxGuided);
 
-        const assertionMap = new Map(); // message -> { unguided: [], guided: [] }
+        const assertionMap = new Map(); // message -> { unguided: [], guided: [], error?: string, errorLocation?: string, pageSnapshot?: string, browserErrors?: string }
         /**
          * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
          * @param {'unguided' | 'guided'} type
@@ -904,8 +920,22 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                 if (run && run.results) {
                     run.results.forEach(check => {
                         if (check.isEarlyFailure) return;
-                        const existing = assertionMap.get(check.message) || { unguided: [], guided: [] };
+                        const existing = assertionMap.get(check.message) || {
+                            unguided: [],
+                            guided: [],
+                            error: null,
+                            errorLocation: null,
+                            pageSnapshot: null,
+                            browserErrors: null,
+                        };
                         existing[type][runIndex] = check.passed;
+                        // Guided runs are processed last, so when both fail, guided diagnostics win.
+                        if (!check.passed) {
+                            if (check.error) existing.error = check.error;
+                            if (check.errorLocation) existing.errorLocation = check.errorLocation;
+                            if (check.pageSnapshot) existing.pageSnapshot = check.pageSnapshot;
+                            if (check.browserErrors) existing.browserErrors = check.browserErrors;
+                        }
                         assertionMap.set(check.message, existing);
                     });
                 }
@@ -920,6 +950,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         const isRunEarlyFailure = (runs) => runs && runs.some(r => isEarlyFailureRun(r.results));
         const uFailed = isRunEarlyFailure(unguidedRuns);
         const gFailed = isRunEarlyFailure(guidedRuns);
+        const scenarioGuide = parseResultKey(`${scenarioName} - unguided`)?.guide || '';
 
         let truthMatrixHtml = `<div style="margin-bottom: 16px;"><table class="truth-matrix"><thead>`;
 
@@ -968,7 +999,21 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                 truthMatrixHtml += `<td class="center ${uPass !== undefined ? (uPass ? 'pass' : 'fail') : ''}">${uPass !== undefined ? (uPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
                 truthMatrixHtml += `<td class="center ${gPass !== undefined ? (gPass ? 'pass' : 'fail') : ''}">${gPass !== undefined ? (gPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
             }
-            truthMatrixHtml += `<td>${escapeHtml(message)}</td></tr>`;
+            let diagnosticsHtml = '';
+            if (status.error) {
+                const loc = status.errorLocation ? ` <span class="assertion-error-loc">(${escapeHtml(status.errorLocation)})</span>` : '';
+                diagnosticsHtml += `<div class="assertion-error">${escapeHtml(status.error.length > 300 ? status.error.substring(0, 300) + '...' : status.error)}${loc}</div>`;
+            }
+            if (status.pageSnapshot) {
+                diagnosticsHtml += `<details class="assertion-diagnostic"><summary>Page Snapshot</summary><pre>${escapeHtml(status.pageSnapshot)}</pre></details>`;
+            }
+            if (status.browserErrors) {
+                diagnosticsHtml += `<details class="assertion-diagnostic browser-errors"><summary>Browser Errors</summary><pre>${escapeHtml(status.browserErrors)}</pre></details>`;
+            }
+            truthMatrixHtml += `<td>
+                ${escapeHtml(message)}
+                ${diagnosticsHtml}
+            </td></tr>`;
         });
         truthMatrixHtml += '</tbody></table></div>';
 
@@ -1019,6 +1064,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const jsonFile = files.find(f => f.endsWith('_results.json'));
                  const runtimeFile = files.includes('runtime.json') ? 'runtime.json' : null;
                  const isEarlyFailure = isEarlyFailureRun(run.results);
+                 const isLeak = typeLabel === 'Unguided' && isUnguidedLeakRun(run, scenarioGuide);
                  const earlyFailureMsg = isEarlyFailure ? (run.results?.find(c => c.isEarlyFailure)?.message || 'Infrastructure Error') : '';
                  const buildFailureReason = !isEarlyFailure ? (run.results?.find(c => c.failureReason)?.failureReason || '') : '';
                  const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
@@ -1026,10 +1072,6 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const appUrl = (api.source === 'remote' && !isLocalServer)
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
                       : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;
-
-                 const playWUrl = (api.source === 'remote' && !isLocalServer)
-                     ? `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}/grade-report/index.html`
-                     : api.getAbsoluteUrl ? api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`) : `${usedBasePath}/grade-report/index.html`;
 
                  const taskRuntime = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : null;
 
@@ -1039,6 +1081,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              ? `<span style="font-weight: bold; font-size: 0.75rem; color: #d29922; border: 1px solid #d29922; padding: 1px 5px; border-radius: 4px; cursor: help;" title="${escapeHtml(earlyFailureMsg)}">ERROR</span>`
                              : `<span style="font-weight: bold; font-size: 0.85rem; color: ${getColor(s.rate)};">${s.rate}%</span>`
                          }
+                         ${isLeak ? `<span style="font-size: 0.7rem; color: #8b5cf6; border: 1px solid #8b5cf6; padding: 1px 4px; border-radius: 4px;" title="Unguided agent accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}">Unguided Leak</span>` : ''}
                          ${buildFailureReason ? `<span style="font-size: 0.7rem; color: var(--color-accent-failure, #da3633); cursor: help;" title="${escapeHtml(buildFailureReason)}">Build Failed</span>` : ''}
                          ${taskRuntime ? `<span style="font-size: 0.75rem; color: var(--text-secondary);">${formatRuntime(taskRuntime)}</span>` : ''}
                          ${run.tokenUsage ? `<span style="font-size: 0.75rem; color: var(--text-secondary);">${formatTokens(run.tokenUsage.total)}</span>` : ''}
@@ -1050,7 +1093,6 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              ${runtimeFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${runtimeFile}`)}', '${escapeHtml(`${usedBasePath}/${runtimeFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
                              ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
                              ${failureFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${failureFile}`)}', '${escapeHtml(`${usedBasePath}/${failureFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Failure Log</button>` : ''}
-                             <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>
                          </div>
                      </div>
                  `);
@@ -1131,9 +1173,10 @@ ${toolsUsed.map((/** @type {string} */ t) => {
         } else {
             tfootHtml += `<td class="center" style="vertical-align: top;">${unguidedChips[0]}</td><td class="center" style="vertical-align: top;">${guidedChips[0]}</td>`;
         }
-const guidedCards = await getRunCards(guidedRuns, 'Guided');
+        const unguidedCards = await getRunCards(unguidedRuns, 'Unguided');
+        const guidedCards = await getRunCards(guidedRuns, 'Guided');
         tfootHtml += `<td>
-<div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px;">${guidedCards}</div>
+<div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px;">${unguidedCards}${guidedCards}</div>
 </td></tr></tfoot>`;
 
         truthMatrixHtml = truthMatrixHtml.replace('</tbody></table></div>', `</tbody>${tfootHtml}</table></div>`);
