@@ -1,4 +1,4 @@
-- Following an internal link and then pressing Back restores the previous view's vertical scroll position to where it was before navigating.
+- After scrolling down, following an internal page or view link and then pressing Back restores the previous view's vertical scroll position to where it was before navigating.
 - If the page has form controls (text inputs, textareas, selects, checkboxes, or radio buttons), the values typed or selected in them are unchanged after following an internal link and pressing Back.
 - No `alert`, `confirm`, or `beforeunload` dialog opens when following an internal link or pressing Back.
 - Following an internal link triggers a view transition in which the outgoing or incoming view moves: its `transform` or `translate` has different start and end values.
@@ -7,6 +7,6 @@
 - With `prefers-reduced-motion: reduce` emulated, following an internal link runs no view transition animation that changes `transform` or `translate`.
 - If the app uses client-side routing, following an internal link updates the view and URL without reloading the document, preserving properties stored on `window`.
 - If the app uses client-side routing, keyboard focus is inside the new view after following an internal link.
-- If the app uses client-side routing and responses are delayed by 2 seconds, an element with `aria-busy="true"`, a visible `progress` element, or an element with `role="progressbar"` is present while the new view loads.
+- If the app uses client-side routing that loads view data or markup over the network and those responses are delayed by 2 seconds, an element with `aria-busy="true"`, a visible `progress` element, or an element with `role="progressbar"` is present while the new view loads.
 - If the app uses client-side routing, with `window.navigation` and `Document.prototype.startViewTransition` deleted before page scripts run, following an internal link still shows the new view at the link's URL without uncaught errors (a full page load is fine).
 - If the site uses multi-page navigation, the page contains a `script` element with `type="speculationrules"` whose JSON parses and includes a `prerender` rule.

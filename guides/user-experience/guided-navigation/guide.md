@@ -25,7 +25,7 @@ Choose the approach by architecture:
 
 ### Slide views in the direction of travel
 
-Animate `transform` so incoming views enter from the direction of travel and Back mirrors the motion, using the forward and backward types from {{ GUIDE_REF("directional-navigation-transitions") }}. Fades alone don't show direction.
+Animate `transform` so incoming views enter from the direction of travel and Back mirrors the motion, using `forward` and `backward` transition types. Fades alone don't show direction.
 
 ```css
 @media (prefers-reduced-motion: no-preference) {
@@ -62,14 +62,23 @@ window.navigation?.addEventListener('navigate', (event) => {
     scroll: 'manual',
     focusReset: 'manual',
     async handler() {
-      const data = await loadData(url, event.signal); // your app's data loading; pass the signal to fetch() to cancel stale loads
-      await go(async () => {
-        await renderView(url, data); // your app's renderer; resolve once the DOM is updated
-        event.scroll(); // Back and Forward restore the old position; other navigations go to the top
-        const heading = document.querySelector('main h1');
-        heading?.setAttribute('tabindex', '-1');
-        heading?.focus({ preventScroll: true }); // don't undo the restored scroll position
-      }, back ? 'backward' : 'forward');
+      const main = document.querySelector('main');
+      main?.setAttribute('aria-busy', 'true');
+      try {
+        const data = await loadData(url, event.signal); // your app's data loading; pass the signal to fetch() to cancel stale loads
+        await go(async () => {
+          await renderView(url, data); // your app's renderer; update document.title and resolve once the DOM is updated
+          event.scroll(); // restores scroll on Back/Forward and scrolls to #hash targets
+          if (!url.hash && (event.navigationType === 'push' || event.navigationType === 'replace')) {
+            window.scrollTo(0, 0);
+          }
+          const heading = document.querySelector('main h1');
+          heading?.setAttribute('tabindex', '-1');
+          heading?.focus({ preventScroll: true }); // don't undo the restored scroll position
+        }, back ? 'backward' : 'forward');
+      } finally {
+        if (!event.signal.aborted) main?.removeAttribute('aria-busy');
+      }
     },
   });
 });
@@ -107,8 +116,24 @@ Prerender same-origin pages on link hover:
 ```
 
 - Exclude links with side effects (sign out, cart) using `data-no-prerender`. For rule sets, see {{ GUIDE_REF("improve-next-page-load-performance") }}.
-- Opt in to cross-document transitions in CSS with `@view-transition { navigation: auto; }`.
-- For direction, use a `pagereveal` listener in a classic `<script>` in `<head>`: if `e.viewTransition` and `window.navigation?.activation` exist, add `'backward'` to `e.viewTransition.types` when the activation's `entry.index` is lower than its `from?.index`, and `'forward'` otherwise; see {{ GUIDE_REF("cross-document-transitions") }}.
+- Opt in to cross-document transitions in CSS and set the travel direction in a blocking `<script>` in `<head>` before first paint:
+
+```css
+@view-transition {
+  navigation: auto;
+}
+```
+
+```html
+<script>
+  window.addEventListener('pagereveal', (event) => {
+    const activation = window.navigation?.activation;
+    if (!event.viewTransition || !activation?.from) return;
+    const back = activation.entry.index < activation.from.index;
+    event.viewTransition.types.add(back ? 'backward' : 'forward');
+  });
+</script>
+```
 
 ### Preserve state across Back and Forward
 
@@ -119,8 +144,9 @@ Prerender same-origin pages on link hover:
 - Single-page apps re-render on Back, so save in-progress inputs in `sessionStorage` and restore them on mount:
 
 ```js
-form.addEventListener('input', () => sessionStorage.setItem('draft:search', form.q.value)); // for checkboxes and radios, save .checked
+form.addEventListener('input', () => sessionStorage.setItem('draft:search', form.q.value));
 form.q.value = sessionStorage.getItem('draft:search') ?? form.q.value;
+// For checkboxes/radios, sessionStorage returns strings ("false" is truthy), so restore with: el.checked = saved === 'true'
 ```
 
 - DO NOT block navigation with `alert()`, `confirm()`, or `beforeunload` dialogs. Save drafts instead.
