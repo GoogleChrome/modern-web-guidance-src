@@ -3,7 +3,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { cBold, cCyan, cGreen, cRed, cYellow } from '../../core/colors.ts';
 import { dashboardDir, outDir as defaultOutRoot } from '../../core/paths.ts';
-import { loadAllowlist } from './allowlist.ts';
+import { loadAllowlist, validateAllowlistPolicy } from './allowlist.ts';
 import { buildSelectedSuites, buildSuite, PUBLIC_EVALS_DIR, writeManifest } from './builder.ts';
 import type { BuildOptions, SuiteBuildResult } from './builder.ts';
 import { GcsSuiteStore, LocalSuiteStore } from './suite-store.ts';
@@ -44,10 +44,20 @@ async function main(): Promise<number> {
     return values.help ? 0 : 1;
   }
 
+  const allowlist = loadAllowlist(values.allowlist);
+  const problems = validateAllowlistPolicy(allowlist);
+  if (problems.length > 0) {
+    console.error(cRed(`Refusing to build: ${values.allowlist} violates allowlist policy`));
+    for (const problem of problems) {
+      console.error(`  - ${problem}`);
+    }
+    return 1;
+  }
+
   const options: BuildOptions = {
     store: values.source === 'gcs' ? new GcsSuiteStore() : new LocalSuiteStore(values.source),
     outDir: path.resolve(values.out),
-    allowlist: loadAllowlist(values.allowlist),
+    allowlist,
     forbiddenTokens: forbiddenTokens(values['forbidden-tokens']),
   };
 

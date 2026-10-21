@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "public-suites-allowlist.schema.json",
+  "title": "Public eval suites allowlist",
+  "description": "Decides which raw eval suites in gs://guidance-evals are rebuilt into the public dashboard. Changed by pull request only. Policy rules beyond this shape (e.g. wildcard patterns must start with nightly-) are enforced by src/harness/public/allowlist.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["include", "exclude", "overrides", "releasedModels"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "include": {
+      "description": "Suite IDs or glob patterns (* and ? only) that are eligible for publishing, e.g. nightly-*-codex_cli.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "exclude": {
+      "description": "Exact suite IDs that must not be published even if they match include.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "pattern": "^[^*?]+$" },
+      "uniqueItems": true
+    },
+    "overrides": {
+      "description": "Per-suite guide-level exclusions.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "excludeGuides"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "pattern": "^[^*?]+$" },
+          "excludeGuides": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "releasedModels": {
+      "description": "Model identifiers (as recorded in evals.json#model) that may appear publicly. Empty means nothing publishes.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  }
+}

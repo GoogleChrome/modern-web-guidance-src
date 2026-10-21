@@ -20,3 +20,7 @@ src/grading/ @TravenReese @micahjo7
 **/targets/ @TravenReese @micahjo7
 **/grader.ts @TravenReese @micahjo7
 **/tasks/task.md @TravenReese @micahjo7
+
+# Public eval dashboard: controls what leaves the private bucket
+src/dashboard/public-suites-allowlist.json @paulirish @micahjo7 @TravenReese
+src/harness/public/ @paulirish @micahjo7 @TravenReese

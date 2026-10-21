@@ -1,4 +1,5 @@
 {
+  "$schema": "./public-suites-allowlist.schema.json",
   "include": [
     "nightly-*-claude_code",
     "nightly-*-codex_cli",
