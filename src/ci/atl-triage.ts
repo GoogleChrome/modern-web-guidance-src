@@ -7,7 +7,7 @@ import { getTranscludedFeatureIds } from '../core/macro-parsing.ts';
 import { guidesDir, rootDir } from '../core/paths.ts';
 
 // Define content file name constants inline to avoid importing from 'src/core/guide-validation.ts'
-// which would transitively require external packages (like 'gray-matter' and 'marked')
+// which would transitively require external packages (like '@11ty/gray-matter' and 'marked')
 // in the GitHub Actions runner, slowing down the triage job.
 export const GUIDE_FILE = 'guide.md';
 export const SKILL_FILE = 'SKILL.md';

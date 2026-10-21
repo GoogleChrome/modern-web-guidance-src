@@ -1,4 +1,4 @@
-import { validateFeature, getStatusMessage, getFeatureName } from "./baseline.ts";
+import { validateFeature, getStatusMessage, getFeatureName, pendingFeatures } from "./baseline.ts";
 import { getGuidesMap } from "./guide-validation.ts";
 import { resolveInclude } from "./include.ts";
 import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, stripComments, maskComments } from "./macro-parsing.ts";
@@ -105,7 +105,8 @@ defineFeatureMacro("FEATURE_FALLBACKS", {
         throw e;
       }
     }
-    const baselineStatus = MACRO_HANDLERS.BASELINE_STATUS([featureId], filePath, options);
+    // Pending `tmp-*` features have no upstream status yet (#2004), so only their fallbacks are emitted.
+    const baselineStatus = featureId in pendingFeatures ? "" : MACRO_HANDLERS.BASELINE_STATUS([featureId], filePath, options);
     if (!fallbacks) {
       return baselineStatus;
     }
@@ -114,7 +115,7 @@ defineFeatureMacro("FEATURE_FALLBACKS", {
       `### Fallbacks & browser support for ${getFeatureName(featureId)}`,
       baselineStatus,
       fallbacks
-    ].join("\n\n");
+    ].filter(Boolean).join("\n\n");
   }
 });
 

@@ -76,5 +76,13 @@
       "html.elements.camera",
       "html.elements.microphone"
     ]
+  },
+  "tmp-customizable-select-listbox": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4551",
+    "group": [
+      "forms",
+      "html-elements"
+    ],
+    "compat_features": "css.properties.appearance.base-select.listbox"
   }
 }
