@@ -46,6 +46,8 @@ const COMMAND_METADATA = {
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
   deploy: { desc: 'Deploy the dashboard to GitHub Pages', flags: [] },
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
+  promote: { desc: 'Make a suite eligible for the public dashboard (edits the allowlist, opens a PR)', flags: [] },
+  unpublish: { desc: 'Hide a suite, or --guide <g> within it, from the public dashboard', flags: [] },
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
   pr: { desc: 'Push branch and create or update GitHub PR from dev report', flags: [] },
@@ -199,7 +201,7 @@ function showHelp() {
 
     {
       title: 'Evaluation & Dashboard',
-      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill', 'compare'],
+      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'promote', 'unpublish', 'backfill', 'compare'],
     },
     {
       title: 'Utilities & Setup',
@@ -370,6 +372,13 @@ async function main() {
     case 'upload': {
       const args = positionals.slice(1);
       const code = await runNpm(['upload', ...args]);
+      process.exit(code);
+    }
+
+    case 'promote':
+    case 'unpublish': {
+      const args = positionals.slice(1);
+      const code = await runNpm([command, ...args]);
       process.exit(code);
     }
 
