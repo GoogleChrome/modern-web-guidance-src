@@ -1,20 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   SLIDER_GUIDE_HASH,
   sliderJsMatcher,
   sliderJsRule,
-  sliderPackageMatcher,
-  sliderPackageRule,
   sliderRules,
 } from './slider.ts';
 
 void test('slider: rule metadata', () => {
-  assert.equal(sliderPackageRule.id, 'slider/package-slider');
-  assert.equal(sliderPackageRule.guideId, 'slider');
-  assert.equal(sliderPackageRule.guideHash, SLIDER_GUIDE_HASH);
   assert.equal(SLIDER_GUIDE_HASH.length, 12);
 
   assert.equal(sliderJsRule.id, 'slider/js-slider');
@@ -22,42 +16,8 @@ void test('slider: rule metadata', () => {
   assert.equal(sliderJsRule.guideHash, SLIDER_GUIDE_HASH);
 
   assert.equal(sliderRules.length, 1);
-  assert.ok(sliderPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(sliderPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(sliderJsRule.phase2Rubric.keepWhen.length >= 2);
   assert.ok(sliderJsRule.phase2Rubric.dropWhen.length >= 2);
-});
-
-void test('slider dependency matcher', async (t) => {
-  await t.test('flags nouislider, rc-slider, and ion-rangeslider', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          nouislider: '^15.7.1',
-          'rc-slider': '^10.5.0',
-          'ion-rangeslider': '^2.3.1',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [sliderPackageMatcher]);
-    assert.equal(matches.length, 3);
-  });
-
-  await t.test('exempts unrelated packages', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          lodash: '^4.17.21',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [sliderPackageMatcher]);
-    assert.equal(matches.length, 0);
-  });
 });
 
 void test('slider JS matcher', async (t) => {

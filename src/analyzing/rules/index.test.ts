@@ -13,9 +13,9 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing 61 rules across the 44 active feature guides (O69, O38 retired 3, D-035 retired shrinking-header-on-scroll)', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 61);
-    assert.strictEqual(ALL_RULES.length, 61);
+  it('exports PILOT_RULES containing 60 rules across the 44 active feature guides (O69, O38 retired 3, D-035 retired shrinking-header-on-scroll)', async (t) => {
+    assert.strictEqual(PILOT_RULES.length, 60);
+    assert.strictEqual(ALL_RULES.length, 60);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
     assert.strictEqual(guideIds.size, 44);

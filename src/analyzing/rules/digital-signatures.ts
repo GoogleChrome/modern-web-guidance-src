@@ -15,19 +15,11 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const DIGITAL_SIGNATURES_GUIDE_HASH = 'bdc97c626bd6';
-
-const SIGNATURE_PACKAGES = [
-  'jsrsasign',
-  'tweetnacl',
-  'elliptic',
-] as const;
 
 const WEBCRYPTO_GUARD_TOKENS = [
   'subtle',
@@ -341,20 +333,6 @@ function matchSignatureCallExpression(callExpr: CallExpression): string | null {
   return null;
 }
 
-export const digitalSignaturesPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: SIGNATURE_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy digital signature package "${pkgName}" (${versionRange}) can be modernized with the native Web Cryptography API (crypto.subtle.sign and crypto.subtle.verify).`,
-    };
-  },
-};
-
 export const digitalSignaturesJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['KJUR', 'nacl', 'elliptic', 'ec', 'EC', 'eddsa', 'EdDSA'],
@@ -383,24 +361,6 @@ export const digitalSignaturesJsMatcher: JsRuleMatcher = {
     });
 
     return matches;
-  },
-};
-
-export const digitalSignaturesPackageRule: AnalyzerRule = {
-  id: 'digital-signatures/package-signature',
-  guideId: 'digital-signatures',
-  guideHash: DIGITAL_SIGNATURES_GUIDE_HASH,
-  summary:
-    'Legacy pure-JS digital signature packages (jsrsasign, tweetnacl, elliptic) should be modernized with Web Cryptography API (crypto.subtle.sign / verify).',
-  matcher: digitalSignaturesPackageMatcher,
-  phase2Rubric: {
-    keepWhen: [
-      'A project declares jsrsasign, tweetnacl, or elliptic in package.json dependencies for digital signature creation or verification in browser code.',
-    ],
-    dropWhen: [
-      'The code already uses the Web Cryptography API (crypto.subtle.sign / verify).',
-      'The package is used only in server-side Node.js JWT signing build pipelines or for non-cryptographic hashing (MurmurHash, CRC32).',
-    ],
   },
 };
 

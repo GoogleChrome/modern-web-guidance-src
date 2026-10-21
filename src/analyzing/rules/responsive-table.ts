@@ -3,36 +3,12 @@ import type {
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
 } from '../schema.ts';
 
 export const RESPONSIVE_TABLE_GUIDE_HASH = 'a39b08ad4b97';
 
-const RESPONSIVE_TABLE_PACKAGES = [
-  'tablesaw',
-  'footable',
-  'basictable',
-  'jquery-basictable',
-] as const;
-
 const TD_BEFORE_REGEX = /(?:^|[,\s>+~])td::?before\b/i;
 const ATTR_DATA_REGEX = /attr\s*\(\s*(?:data-label|data-th|data-title)\s*\)/i;
-
-export const responsiveTablePackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: RESPONSIVE_TABLE_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message:
-        `Legacy responsive table package "${pkgName}" (${versionRange}) can be modernized with native CSS Container Queries and sticky headers.`,
-    };
-  },
-};
 
 export const responsiveTableCssMatcher: CssRuleMatcher = {
   kind: 'css',
@@ -67,24 +43,6 @@ export const responsiveTableCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const responsiveTablePackageRule: AnalyzerRule = {
-  id: 'responsive-table/package-responsive-table',
-  guideId: 'responsive-table',
-  guideHash: RESPONSIVE_TABLE_GUIDE_HASH,
-  summary:
-    'Legacy responsive table packages (tablesaw, footable, basictable) should be modernized with native CSS Container Queries and sticky headers.',
-  matcher: responsiveTablePackageMatcher,
-  phase2Rubric: {
-    keepWhen: [
-      'A project declares tablesaw, footable, basictable, or jquery-basictable in package.json dependencies to implement responsive stacked tables.',
-    ],
-    dropWhen: [
-      'The package is unreferenced or unused in the build output.',
-      'The application uses standard modern container queries for responsive layout.',
-    ],
-  },
-};
-
 export const responsiveTableCssRule: AnalyzerRule = {
   id: 'responsive-table/css-data-label-table',
   guideId: 'responsive-table',
@@ -107,6 +65,5 @@ export const responsiveTableCssRule: AnalyzerRule = {
 };
 
 export const responsiveTableRules: readonly AnalyzerRule[] = [
-  responsiveTablePackageRule,
   responsiveTableCssRule,
 ];

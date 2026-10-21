@@ -14,19 +14,11 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const POSITION_AWARE_TOOLTIPS_GUIDE_HASH = '4ba438faeb7a';
-
-const POPPER_PACKAGES = [
-  '@popperjs/core',
-  'popper.js',
-  '@floating-ui/dom',
-] as const;
 
 const ANCHOR_GUARD_TOKENS = [
   'anchor-name',
@@ -277,7 +269,9 @@ function hasTooltipContext(callExpr: CallExpression): boolean {
     if (
       Node.isVariableDeclaration(current) ||
       Node.isFunctionDeclaration(current) ||
-      Node.isMethodDeclaration(current)
+      Node.isMethodDeclaration(current) ||
+      Node.isPropertyAssignment(current) ||
+      Node.isClassDeclaration(current)
     ) {
       const nameText = current.getName() ?? '';
       if (TOOLTIP_CONTEXT_REGEX.test(nameText)) {
@@ -285,11 +279,6 @@ function hasTooltipContext(callExpr: CallExpression): boolean {
       }
       if (NON_TOOLTIP_WIDGET_REGEX.test(nameText)) {
         return false;
-      }
-    }
-    if (Node.isBlock(current)) {
-      if (TOOLTIP_CONTEXT_REGEX.test(current.getText())) {
-        return true;
       }
     }
     current = current.getParent();
@@ -348,20 +337,6 @@ function matchPopperTooltipCall(callExpr: CallExpression): string | null {
   return `JavaScript ${apiName} tooltip positioning can be modernized with CSS Anchor Positioning, position-try-fallbacks, and @container anchored(fallback: ...).`;
 }
 
-export const positionAwareTooltipsPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: POPPER_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Tooltip positioning dependency "${pkgName}" (${versionRange}) can be modernized with CSS Anchor Positioning, position-try-fallbacks, and @container anchored(fallback: ...).`,
-    };
-  },
-};
-
 export const positionAwareTooltipsJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['createPopper', 'computePosition'],
@@ -387,24 +362,6 @@ export const positionAwareTooltipsJsMatcher: JsRuleMatcher = {
     });
 
     return matches;
-  },
-};
-
-export const positionAwareTooltipsPackageRule: AnalyzerRule = {
-  id: 'position-aware-tooltips/package-popper',
-  guideId: 'position-aware-tooltips',
-  guideHash: POSITION_AWARE_TOOLTIPS_GUIDE_HASH,
-  summary:
-    'Popper.js and Floating UI dependencies (@popperjs/core, popper.js, @floating-ui/dom) for tooltip flip positioning can be modernized with CSS Anchor Positioning and @container anchored(fallback: ...).',
-  matcher: positionAwareTooltipsPackageMatcher,
-  phase2Rubric: {
-    keepWhen: [
-      'A project declares @popperjs/core, popper.js, or @floating-ui/dom in package.json dependencies to position tooltips with viewport collision flipping.',
-    ],
-    dropWhen: [
-      'Pure CSS static margin tooltips or fixed screen-center modal positioning.',
-      'The dependency is used exclusively for complex interactive dropdown menus or comboboxes rather than position-aware tooltips.',
-    ],
   },
 };
 

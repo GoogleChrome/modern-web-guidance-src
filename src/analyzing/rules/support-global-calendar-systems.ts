@@ -1,10 +1,12 @@
 import {
   Node,
+  SyntaxKind,
   type CallExpression,
   type NewExpression,
   type SourceFile,
 } from 'ts-morph';
 import {
+  getSafeModuleSpecifier,
   isGlobalReference,
   isProtectedByFeatureGuard,
   resolveLocalExpression,
@@ -35,55 +37,214 @@ const CALENDAR_GUARD_TOKENS = [
   'supportedValuesOf',
 ] as const;
 
-function isCalendarLibraryRef(
-  node: Node,
-  identName: string,
+function matchesPackageSpec(
+  spec: string | null,
   packages: readonly string[],
 ): boolean {
-  if (isGlobalReference(node, identName)) {
-    return true;
-  }
+  return (
+    spec !== null &&
+    packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
+  );
+}
+
+function isRequireOfPackage(
+  node: Node,
+  packages: readonly string[],
+): boolean {
   const unwrapped = unwrapExpression(node);
-  if (!Node.isIdentifier(unwrapped) || unwrapped.getText() !== identName) {
+  if (!Node.isCallExpression(unwrapped)) {
     return false;
   }
-  const sourceFile = unwrapped.getSourceFile();
-  for (const imp of sourceFile.getImportDeclarations()) {
-    const spec = imp.getModuleSpecifierValue();
-    if (!packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))) {
-      continue;
-    }
-    if (
-      imp.getDefaultImport()?.getText() === identName ||
-      imp.getNamespaceImport()?.getText() === identName
-    ) {
-      return true;
-    }
-    for (const named of imp.getNamedImports()) {
-      const local = named.getAliasNode()?.getText() ?? named.getName();
-      if (local === identName) {
-        return true;
-      }
-    }
-  }
-  const resolved = resolveLocalExpression(unwrapped, 2);
-  if (Node.isCallExpression(resolved)) {
-    const callee = unwrapExpression(resolved.getExpression());
-    const firstArg = resolved.getArguments()[0];
-    if (
-      Node.isIdentifier(callee) &&
-      callee.getText() === 'require' &&
-      firstArg &&
-      Node.isStringLiteral(firstArg)
-    ) {
-      const spec = firstArg.getLiteralText();
-      return packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
-    }
+  const callee = unwrapExpression(unwrapped.getExpression());
+  const firstArg = unwrapped.getArguments()[0];
+  if (
+    Node.isIdentifier(callee) &&
+    callee.getText() === 'require' &&
+    firstArg &&
+    Node.isStringLiteral(firstArg)
+  ) {
+    return matchesPackageSpec(firstArg.getLiteralText(), packages);
   }
   return false;
 }
 
+function checkEnclosingBindings(
+  identNode: Node,
+  localName: string,
+  identName: string,
+  packages: readonly string[],
+  allowDefaultImport: boolean,
+): 'matched' | 'shadowed' | 'none' {
+  let current: Node | undefined = identNode.getParent();
+  while (current) {
+    if (
+      Node.isFunctionDeclaration(current) ||
+      Node.isFunctionExpression(current) ||
+      Node.isArrowFunction(current) ||
+      Node.isMethodDeclaration(current)
+    ) {
+      if (
+        (Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) &&
+        current.getName() === localName
+      ) {
+        return 'shadowed';
+      }
+      for (const param of current.getParameters()) {
+        const paramNameNode = param.getNameNode();
+        if (Node.isIdentifier(paramNameNode) && paramNameNode.getText() === localName) {
+          return 'shadowed';
+        }
+        for (const el of paramNameNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
+          if (el.getText() === localName) {
+            return 'shadowed';
+          }
+        }
+      }
+    }
+
+    if (Node.isBlock(current) || Node.isSourceFile(current)) {
+      for (const stmt of current.getStatements()) {
+        if (
+          (Node.isFunctionDeclaration(stmt) || Node.isClassDeclaration(stmt)) &&
+          stmt.getName() === localName
+        ) {
+          return 'shadowed';
+        }
+        if (!Node.isVariableStatement(stmt)) {
+          continue;
+        }
+        for (const decl of stmt.getDeclarationList().getDeclarations()) {
+          const nameNode = decl.getNameNode();
+          if (Node.isIdentifier(nameNode) && nameNode.getText() === localName) {
+            const init = decl.getInitializer();
+            if (init) {
+              const resolvedInit = resolveLocalExpression(init, 2);
+              if (
+                allowDefaultImport &&
+                isRequireOfPackage(resolvedInit, packages)
+              ) {
+                return 'matched';
+              }
+              if (Node.isPropertyAccessExpression(resolvedInit)) {
+                const propName = resolvedInit.getName();
+                if (
+                  (propName === identName ||
+                    (allowDefaultImport && propName === 'default')) &&
+                  isRequireOfPackage(
+                    resolveLocalExpression(resolvedInit.getExpression(), 2),
+                    packages,
+                  )
+                ) {
+                  return 'matched';
+                }
+              }
+            }
+            return 'shadowed';
+          } else if (Node.isObjectBindingPattern(nameNode)) {
+            for (const el of nameNode.getElements()) {
+              if (el.getName() === localName) {
+                const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
+                const init = decl.getInitializer();
+                if (
+                  init &&
+                  (propName === identName || (allowDefaultImport && propName === 'default')) &&
+                  isRequireOfPackage(resolveLocalExpression(init, 2), packages)
+                ) {
+                  return 'matched';
+                }
+                return 'shadowed';
+              }
+            }
+          } else if (Node.isArrayBindingPattern(nameNode)) {
+            for (const el of nameNode.getElements()) {
+              if (Node.isBindingElement(el) && el.getName() === localName) {
+                return 'shadowed';
+              }
+            }
+          }
+        }
+      }
+    }
+
+    current = current.getParent();
+  }
+  return 'none';
+}
+
+function isCalendarLibraryRef(
+  node: Node,
+  identName: string,
+  packages: readonly string[],
+  allowDefaultImport: boolean = true,
+  allowGlobal: boolean = true,
+): boolean {
+  const unwrapped = unwrapExpression(node);
+
+  if (allowDefaultImport && isRequireOfPackage(unwrapped, packages)) {
+    return true;
+  }
+
+  if (Node.isPropertyAccessExpression(unwrapped)) {
+    const propName = unwrapped.getName();
+    if (propName === identName || (allowDefaultImport && propName === 'default')) {
+      const receiver = unwrapped.getExpression();
+      if (isRequireOfPackage(resolveLocalExpression(receiver, 2), packages)) {
+        return true;
+      }
+    }
+  }
+
+  if (Node.isIdentifier(unwrapped)) {
+    const localName = unwrapped.getText();
+    const sourceFile = unwrapped.getSourceFile();
+
+    const bindingStatus = checkEnclosingBindings(
+      unwrapped,
+      localName,
+      identName,
+      packages,
+      allowDefaultImport,
+    );
+    if (bindingStatus === 'matched') {
+      return true;
+    }
+    if (bindingStatus === 'shadowed') {
+      return false;
+    }
+
+    for (const imp of sourceFile.getImportDeclarations()) {
+      const matchesPkg = matchesPackageSpec(getSafeModuleSpecifier(imp), packages);
+      if (
+        imp.getDefaultImport()?.getText() === localName ||
+        imp.getNamespaceImport()?.getText() === localName
+      ) {
+        return allowDefaultImport && matchesPkg;
+      }
+      for (const named of imp.getNamedImports()) {
+        const importedName = named.getName();
+        const boundName = named.getAliasNode()?.getText() ?? importedName;
+        if (boundName === localName) {
+          return (
+            matchesPkg &&
+            (importedName === identName ||
+              (allowDefaultImport && importedName === 'default'))
+          );
+        }
+      }
+    }
+  }
+
+  if (allowGlobal && isGlobalReference(unwrapped, identName)) {
+    return true;
+  }
+
+  return false;
+}
+
 function matchJalaaliCall(callExpr: CallExpression): string | null {
+  if (callExpr.getArguments().length === 0) {
+    return null;
+  }
   const callee = unwrapExpression(callExpr.getExpression());
   if (Node.isPropertyAccessExpression(callee)) {
     const methodName = callee.getName();
@@ -92,7 +253,7 @@ function matchJalaaliCall(callExpr: CallExpression): string | null {
     }
     const receiver = unwrapExpression(callee.getExpression());
     if (isCalendarLibraryRef(receiver, 'jalaali', ['jalaali-js'])) {
-      return `jalaali.${methodName}() calendar conversion can be modernized with native Temporal calendar systems (Temporal.PlainDate.prototype.withCalendar() and Intl.DateTimeFormat).`;
+      return `jalaali.${methodName}() calendar conversion can be modernized with native Temporal calendar systems (Temporal.PlainDate.prototype.withCalendar()).`;
     }
   }
   return null;

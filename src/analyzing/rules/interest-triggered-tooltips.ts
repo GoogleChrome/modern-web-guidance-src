@@ -15,20 +15,11 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH = '7285e209e32e';
-
-const TOOLTIP_PACKAGES = [
-  'tippy.js',
-  '@tippyjs/react',
-  'floating-vue',
-  'v-tooltip',
-] as const;
 
 const INTEREST_GUARD_TOKENS = [
   'interestfor',
@@ -222,12 +213,71 @@ function isLibraryReference(
   return false;
 }
 
+const NON_SIMPLE_TIPPY_OPTION_KEYS: ReadonlySet<string> = new Set([
+  'followCursor',
+  'allowHTML',
+  'onShow',
+  'onShown',
+  'onTrigger',
+  'onUntrigger',
+  'onCreate',
+  'onMount',
+  'onHide',
+  'onHidden',
+  'onClickOutside',
+  'popperOptions',
+  'plugins',
+  'sticky',
+  'inlinePositioning',
+  'appendTo',
+  'render',
+]);
+
 function isInteractiveOrClickPopoverConfig(optionsObj: ObjectLiteralExpression): boolean {
-  const interactiveProp = optionsObj.getProperty('interactive');
-  if (interactiveProp && Node.isPropertyAssignment(interactiveProp)) {
-    const init = interactiveProp.getInitializer();
-    if (init && unwrapExpression(init).getKind() === SyntaxKind.TrueKeyword) {
-      return true;
+  for (const prop of optionsObj.getProperties()) {
+    if (
+      Node.isPropertyAssignment(prop) ||
+      Node.isShorthandPropertyAssignment(prop) ||
+      Node.isMethodDeclaration(prop)
+    ) {
+      const name = prop.getName();
+      if (NON_SIMPLE_TIPPY_OPTION_KEYS.has(name)) {
+        if (Node.isPropertyAssignment(prop)) {
+          const init = prop.getInitializer();
+          if (init && unwrapExpression(init).getKind() === SyntaxKind.FalseKeyword) {
+            continue;
+          }
+        }
+        return true;
+      }
+      if (name === 'interactive') {
+        if (Node.isShorthandPropertyAssignment(prop)) {
+          return true;
+        }
+        if (Node.isPropertyAssignment(prop)) {
+          const init = prop.getInitializer();
+          if (init && unwrapExpression(init).getKind() !== SyntaxKind.FalseKeyword) {
+            return true;
+          }
+        }
+      }
+      if (name === 'content') {
+        if (Node.isMethodDeclaration(prop)) {
+          return true;
+        }
+        if (Node.isPropertyAssignment(prop)) {
+          const init = prop.getInitializer();
+          if (init) {
+            const resolvedContent = resolveLocalExpression(init, 2);
+            if (
+              Node.isArrowFunction(resolvedContent) ||
+              Node.isFunctionExpression(resolvedContent)
+            ) {
+              return true;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -250,12 +300,17 @@ function isInteractiveOrClickPopoverConfig(optionsObj: ObjectLiteralExpression):
 
 function matchTippyCall(callExpr: CallExpression): string | null {
   const args = callExpr.getArguments();
-  if (args.length === 0) {
+  if (args.length === 0 || !args[0]) {
     return null;
   }
 
   const callee = unwrapExpression(callExpr.getExpression());
   if (!isLibraryReference(callee, 'tippy', ['tippy.js', '@tippyjs/react'])) {
+    return null;
+  }
+
+  const targetNode = resolveLocalExpression(args[0], 2);
+  if (Node.isObjectLiteralExpression(targetNode)) {
     return null;
   }
 
@@ -294,20 +349,6 @@ function isGuardedByInterestCheck(node: Node): boolean {
   return false;
 }
 
-export const interestTriggeredTooltipsPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: TOOLTIP_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy tooltip library "${pkgName}" (${versionRange}) can be modernized with declarative HTML interestfor, popover="hint", and CSS Anchor Positioning.`,
-    };
-  },
-};
-
 export const interestTriggeredTooltipsJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['tippy'],
@@ -333,24 +374,6 @@ export const interestTriggeredTooltipsJsMatcher: JsRuleMatcher = {
     });
 
     return matches;
-  },
-};
-
-export const interestTriggeredTooltipsPackageRule: AnalyzerRule = {
-  id: 'interest-triggered-tooltips/package-tooltip',
-  guideId: 'interest-triggered-tooltips',
-  guideHash: INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH,
-  summary:
-    'Tooltip libraries (tippy.js, @tippyjs/react, floating-vue, v-tooltip) should be modernized with HTML interestfor, popover="hint", and CSS Anchor Positioning.',
-  matcher: interestTriggeredTooltipsPackageMatcher,
-  phase2Rubric: {
-    keepWhen: [
-      'A project declares tippy.js, @tippyjs/react, floating-vue, or v-tooltip in package.json dependencies for hover/focus tooltips.',
-    ],
-    dropWhen: [
-      'The code uses native HTML title attributes or static pure-CSS [data-tooltip]::after tooltips.',
-      'The library is used exclusively for click-triggered interactive dropdown menus or forms rather than interest-triggered tooltips.',
-    ],
   },
 };
 

@@ -15,8 +15,6 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -218,20 +216,6 @@ function matchCssRuleInOperator(binaryExpr: BinaryExpression): string | null {
   return null;
 }
 
-export const atruleSupportConditionalsPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: MODERNIZR_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy feature-detection package "${pkgName}" (${versionRange}) can be modernized with native CSS @supports and @supports at-rule(@...).`,
-    };
-  },
-};
-
 export const atruleSupportConditionalsJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['Modernizr', 'atRule', 'insertRule', 'CSSRule'],
@@ -280,24 +264,6 @@ export const atruleSupportConditionalsJsMatcher: JsRuleMatcher = {
     });
 
     return matches;
-  },
-};
-
-export const atruleSupportConditionalsPackageRule: AnalyzerRule = {
-  id: 'atrule-support-conditionals/package-modernizr',
-  guideId: 'atrule-support-conditionals',
-  guideHash: ATRULE_SUPPORT_CONDITIONALS_GUIDE_HASH,
-  summary:
-    'Legacy Modernizr dependency in package.json used for CSS at-rule conditionals should be modernized with native CSS @supports at-rule(@...).',
-  matcher: atruleSupportConditionalsPackageMatcher,
-  phase2Rubric: {
-    keepWhen: [
-      'A project declares modernizr in package.json dependencies to detect CSS at-rule support.',
-    ],
-    dropWhen: [
-      'Modernizr is used to detect non-CSS browser APIs (WebGL, Canvas, IndexedDB, LocalStorage) or standard CSS properties rather than CSS at-rules.',
-      'The codebase already uses native CSS @supports at-rule(@...) for at-rule conditionals.',
-    ],
   },
 };
 

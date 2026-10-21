@@ -138,7 +138,7 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...sanitizeUntrustedHtmlRules,
   ...scrollPositionAwareElementsRules,
 
-  // Batch 4 Empirical GitMirror Guides (6 guides, 8 rules -> 47 rules across 35 feature guides total):
+  // Batch 4 Empirical GitMirror Guides (6 guides, 7 rules -> 46 rules across 35 feature guides total):
   ...autofillHighlightInputsRules,
   ...complexShapesRules,
   ...deliverOptimizedDecorativeImagesRules,
@@ -146,7 +146,7 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...equalWidthTextLinesRules,
   ...lightDismissADialogRules,
 
-  // Wave 3A Guides (9 guides, 14 rules -> 61 rules across 44 feature guides total):
+  // Wave 3A Guides (9 guides, 14 rules -> 60 rules across 44 feature guides total):
   ...detectInitialVisibilityStateRules,
   ...resolutionOptimizedPseudoElementsRules,
   ...atruleSupportConditionalsRules,

@@ -1,6 +1,8 @@
 import {
   Node,
+  SyntaxKind,
   type CallExpression,
+  type ObjectLiteralExpression,
   type SourceFile,
 } from 'ts-morph';
 import {
@@ -13,20 +15,11 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const PERSISTENT_TOAST_NOTIFICATIONS_GUIDE_HASH = '900026d2769b';
-
-const TOAST_PACKAGES = [
-  'toastify-js',
-  'notyf',
-  'react-toastify',
-  'toastr',
-] as const;
 
 const TOAST_GUARD_TOKENS = [
   'popover',
@@ -236,11 +229,74 @@ function isLibraryReference(
   return false;
 }
 
+const NON_PERSISTENT_TOAST_OPTION_KEYS: ReadonlySet<string> = new Set([
+  'onClick',
+  'callback',
+  'destination',
+  'newWindow',
+  'oldestFirst',
+  'ripple',
+  'types',
+  'dismissible',
+  'progressBar',
+  'timeOut',
+  'extendedTimeOut',
+  'preventDuplicates',
+  'onclick',
+]);
+
+function hasAutoDismissOrQueueOptions(obj: ObjectLiteralExpression): boolean {
+  for (const prop of obj.getProperties()) {
+    if (
+      Node.isPropertyAssignment(prop) ||
+      Node.isShorthandPropertyAssignment(prop) ||
+      Node.isMethodDeclaration(prop)
+    ) {
+      const name = prop.getName();
+      if (NON_PERSISTENT_TOAST_OPTION_KEYS.has(name)) {
+        return true;
+      }
+      if (name === 'duration' && Node.isPropertyAssignment(prop)) {
+        const init = prop.getInitializer();
+        if (init) {
+          const unwrapped = unwrapExpression(init);
+          if (
+            Node.isNumericLiteral(unwrapped) &&
+            Number(unwrapped.getLiteralText()) > 0
+          ) {
+            return true;
+          }
+          if (
+            !Node.isNumericLiteral(unwrapped) &&
+            !(
+              Node.isPrefixUnaryExpression(unwrapped) &&
+              unwrapped.getOperatorToken() === SyntaxKind.MinusToken
+            )
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
 function isToastifyInstance(node: Node): boolean {
   const resolved = resolveLocalExpression(node, 2);
   if (Node.isCallExpression(resolved) || Node.isNewExpression(resolved)) {
     const callee = unwrapExpression(resolved.getExpression());
     if (isLibraryReference(callee, 'Toastify', ['toastify-js'])) {
+      const firstArg = resolved.getArguments()[0];
+      if (firstArg) {
+        const resolvedArg = resolveLocalExpression(firstArg, 2);
+        if (
+          Node.isObjectLiteralExpression(resolvedArg) &&
+          hasAutoDismissOrQueueOptions(resolvedArg)
+        ) {
+          return false;
+        }
+      }
       return true;
     }
   }
@@ -252,6 +308,16 @@ function isNotyfInstance(node: Node): boolean {
   if (Node.isNewExpression(resolved) || Node.isCallExpression(resolved)) {
     const callee = unwrapExpression(resolved.getExpression());
     if (isLibraryReference(callee, 'Notyf', ['notyf'])) {
+      const firstArg = resolved.getArguments()[0];
+      if (firstArg) {
+        const resolvedArg = resolveLocalExpression(firstArg, 2);
+        if (
+          Node.isObjectLiteralExpression(resolvedArg) &&
+          hasAutoDismissOrQueueOptions(resolvedArg)
+        ) {
+          return false;
+        }
+      }
       return true;
     }
   }
@@ -271,51 +337,58 @@ function matchToastCall(callExpr: CallExpression): string | null {
     return 'Toastify(...).showToast() notification can be modernized with native HTML popover="manual", CSS Anchor Positioning, and transition-behavior: allow-discrete.';
   }
 
+  const args = callExpr.getArguments();
+
   if (
     NOTYF_METHODS.has(methodName) &&
-    callExpr.getArguments().length > 0 &&
+    args.length > 0 &&
     isNotyfInstance(receiver)
   ) {
+    const firstArg = args[0];
+    if (firstArg) {
+      const resolvedFirst = resolveLocalExpression(firstArg, 2);
+      if (
+        Node.isObjectLiteralExpression(resolvedFirst) &&
+        hasAutoDismissOrQueueOptions(resolvedFirst)
+      ) {
+        return null;
+      }
+    }
     return `new Notyf().${methodName}() notification can be modernized with native HTML popover="manual", CSS Anchor Positioning, and transition-behavior: allow-discrete.`;
   }
 
   if (
     TOASTR_METHODS.has(methodName) &&
-    callExpr.getArguments().length > 0 &&
+    args.length > 0 &&
+    args.length <= 2 &&
     isLibraryReference(receiver, 'toastr', ['toastr'])
   ) {
+    for (const arg of args) {
+      const resolvedArg = resolveLocalExpression(arg, 2);
+      if (Node.isObjectLiteralExpression(resolvedArg)) {
+        return null;
+      }
+    }
     return `toastr.${methodName}() notification can be modernized with native HTML popover="manual", CSS Anchor Positioning, and transition-behavior: allow-discrete.`;
   }
 
   return null;
 }
 
-function fileUsesManualPopover(fileContent: string): boolean {
+function fileUsesManualPopoverOrQueueManager(fileContent: string): boolean {
   return (
     /popover\s*=\s*["']manual["']/i.test(fileContent) ||
-    fileContent.includes('showPopover')
+    fileContent.includes('showPopover') ||
+    /\btoastr\.(?:options|clear|remove)\b/.test(fileContent) ||
+    /\bdismissAll\s*\(/.test(fileContent)
   );
 }
-
-export const persistentToastNotificationsPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: TOAST_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy toast notification library "${pkgName}" (${versionRange}) can be modernized with native HTML popover="manual", CSS Anchor Positioning, and transition-behavior.`,
-    };
-  },
-};
 
 export const persistentToastNotificationsJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['Toastify', 'Notyf', 'toastr'],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
-    if (fileUsesManualPopover(ctx.fileContent)) {
+    if (fileUsesManualPopoverOrQueueManager(ctx.fileContent)) {
       return [];
     }
 
@@ -343,24 +416,6 @@ export const persistentToastNotificationsJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const persistentToastNotificationsPackageRule: AnalyzerRule = {
-  id: 'persistent-toast-notifications/package-toast',
-  guideId: 'persistent-toast-notifications',
-  guideHash: PERSISTENT_TOAST_NOTIFICATIONS_GUIDE_HASH,
-  summary:
-    'Toast notification libraries (toastify-js, notyf, react-toastify, toastr) should be modernized with HTML popover="manual", CSS Anchor Positioning, and transition-behavior.',
-  matcher: persistentToastNotificationsPackageMatcher,
-  phase2Rubric: {
-    keepWhen: [
-      'A project declares toastify-js, notyf, react-toastify, or toastr in package.json dependencies to render non-modal toast notifications.',
-    ],
-    dropWhen: [
-      'The code renders persistent system modal alerts that require blocking user confirmation via <dialog>.',
-      'The code displays inline form validation error banners rather than floating toast notifications.',
-    ],
-  },
-};
-
 export const persistentToastNotificationsJsRule: AnalyzerRule = {
   id: 'persistent-toast-notifications/js-toast',
   guideId: 'persistent-toast-notifications',
@@ -370,11 +425,12 @@ export const persistentToastNotificationsJsRule: AnalyzerRule = {
   matcher: persistentToastNotificationsJsMatcher,
   phase2Rubric: {
     keepWhen: [
-      'JavaScript invokes Toastify(...).showToast(), new Notyf().success/error(...), or toastr.info/success/warning/error(...) to display floating toast notifications without native popover="manual".',
-      'Custom notification container managers create fixed z-index: 99999 overlays for transient toast messages.',
+      'JavaScript invokes Toastify(...).showToast(), new Notyf().success/error(...), or toastr.info/success/warning/error(...) to display persistent floating toast notifications without native popover="manual".',
+      'Custom notification container managers create fixed z-index: 99999 overlays for persistent toast messages.',
     ],
     dropWhen: [
       'The component already uses native <div popover="manual"> with showPopover() and hidePopover() or is guarded by a popover feature check.',
+      'The toast relies on multi-toast queue stacking, auto-dismiss timers (duration / timeOut), progress bars, or imperative queue clearing (toastr.clear / dismissAll) that native popover="manual" does not provide.',
       'The code renders blocking modal dialogs (<dialog>) or inline form validation error banners.',
     ],
   },

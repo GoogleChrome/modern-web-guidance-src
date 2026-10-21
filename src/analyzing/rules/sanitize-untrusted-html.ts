@@ -13,19 +13,11 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const SANITIZE_UNTRUSTED_HTML_GUIDE_HASH = '5ce9f1fd24c2';
-
-const SANITIZER_PACKAGES = [
-  'sanitize-html',
-  'xss',
-  'insane',
-] as const;
 
 const SANITIZER_FEATURE_TOKENS = [
   'setHTML',
@@ -34,21 +26,6 @@ const SANITIZER_FEATURE_TOKENS = [
   'parseHTML',
   'parseHTMLUnsafe',
 ] as const;
-
-export const sanitizerDependencyMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: SANITIZER_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message:
-        `Legacy HTML sanitization package "${pkgName}" (${versionRange}) can be modernized with native browser Sanitizer API and Element.prototype.setHTML().`,
-    };
-  },
-};
 
 /**
  * Checks whether an expression is a call to a third-party sanitizer like
@@ -198,16 +175,15 @@ export const sanitizerJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const sanitizeUntrustedHtmlPackageRule: AnalyzerRule = {
-  id: 'sanitize-untrusted-html/package-sanitizer',
+export const sanitizeUntrustedHtmlJsRule: AnalyzerRule = {
+  id: 'sanitize-untrusted-html/js-dompurify-innerhtml',
   guideId: 'sanitize-untrusted-html',
   guideHash: SANITIZE_UNTRUSTED_HTML_GUIDE_HASH,
   summary:
-    'Legacy HTML sanitization libraries (sanitize-html, xss, insane) can be modernized with native browser Sanitizer API and setHTML().',
-  matcher: sanitizerDependencyMatcher,
+    'Sanitized untrusted markup assigned to DOM insertion sinks (.innerHTML = DOMPurify.sanitize(...)) can be modernized with native setHTML().',
+  matcher: sanitizerJsMatcher,
   phase2Rubric: {
     keepWhen: [
-      'Using third-party HTML sanitization packages (sanitize-html, xss, insane) in dependencies to prevent XSS.',
       'Assigning sanitized untrusted markup to DOM insertion sinks via element.innerHTML = DOMPurify.sanitize(...) or insertAdjacentHTML.',
     ],
     dropWhen: [
@@ -217,16 +193,6 @@ export const sanitizeUntrustedHtmlPackageRule: AnalyzerRule = {
       'Server-side HTML sanitization pipelines in Node.js, CLI scripts, backend build tools, or SSR middleware where browser DOM Sanitizer API is not available.',
     ],
   },
-};
-
-export const sanitizeUntrustedHtmlJsRule: AnalyzerRule = {
-  id: 'sanitize-untrusted-html/js-dompurify-innerhtml',
-  guideId: 'sanitize-untrusted-html',
-  guideHash: SANITIZE_UNTRUSTED_HTML_GUIDE_HASH,
-  summary:
-    'Sanitized untrusted markup assigned to DOM insertion sinks (.innerHTML = DOMPurify.sanitize(...)) can be modernized with native setHTML().',
-  matcher: sanitizerJsMatcher,
-  phase2Rubric: sanitizeUntrustedHtmlPackageRule.phase2Rubric,
 };
 
 export const sanitizeUntrustedHtmlRules: readonly AnalyzerRule[] = [

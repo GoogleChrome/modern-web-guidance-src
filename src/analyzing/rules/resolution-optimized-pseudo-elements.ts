@@ -51,25 +51,32 @@ export const resolutionOptimizedPseudoElementsCssMatcher: CssRuleMatcher = {
       }
     }
 
-    let hasWebkitImageSet = false;
+    let matchedProp: string | null = null;
     for (const decl of styleRule.declarations) {
       const prop = decl.property.toLowerCase();
       if (
         TARGET_PROPERTIES.has(prop) &&
         decl.value.toLowerCase().includes(WEBKIT_IMAGE_SET_TOKEN)
       ) {
-        hasWebkitImageSet = true;
+        matchedProp = prop;
         break;
       }
     }
 
-    if (!hasWebkitImageSet) {
+    if (!matchedProp) {
       return null;
+    }
+
+    if (matchedProp === 'background-image' || matchedProp === 'background') {
+      return {
+        message:
+          `Pseudo-element CSS rule uses vendor-prefixed -webkit-image-set() in ${matchedProp} without standard image-set(); modernize using ${matchedProp}: image-set() rather than content: image-set() so pseudo-element box dimensions and background sizing are preserved.`,
+      };
     }
 
     return {
       message:
-        'Pseudo-element CSS rule uses vendor-prefixed -webkit-image-set() without standard image-set(); modernize using standard CSS image-set() with format and resolution options.',
+        'Pseudo-element CSS rule uses vendor-prefixed -webkit-image-set() without standard image-set(); modernize using standard CSS content: image-set() with format and resolution options.',
     };
   },
 };

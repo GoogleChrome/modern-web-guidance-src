@@ -97,6 +97,14 @@ void test('resolution-optimized-pseudo-elements: negative / exempt cases', async
       .icon-button::before {
         content: url("icon.svg");
       }
+      @media (min-resolution: 2dppx) {
+        .icon-button::before {
+          width: 16px;
+          height: 16px;
+          background-image: url("icon@2x.png");
+          background-size: contain;
+        }
+      }
     `;
     const matches = scanCss('svg.css', css, [
       resolutionOptimizedPseudoElementsCssMatcher,

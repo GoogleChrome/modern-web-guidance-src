@@ -1,29 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH,
   interestTriggeredTooltipsJsMatcher,
   interestTriggeredTooltipsJsRule,
-  interestTriggeredTooltipsPackageMatcher,
-  interestTriggeredTooltipsPackageRule,
   interestTriggeredTooltipsRules,
 } from './interest-triggered-tooltips.ts';
 
 void test('interest-triggered-tooltips: rule metadata', () => {
-  assert.equal(
-    interestTriggeredTooltipsPackageRule.id,
-    'interest-triggered-tooltips/package-tooltip',
-  );
-  assert.equal(
-    interestTriggeredTooltipsPackageRule.guideId,
-    'interest-triggered-tooltips',
-  );
-  assert.equal(
-    interestTriggeredTooltipsPackageRule.guideHash,
-    INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH,
-  );
   assert.equal(INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH.length, 12);
 
   assert.equal(
@@ -40,47 +25,8 @@ void test('interest-triggered-tooltips: rule metadata', () => {
   );
 
   assert.equal(interestTriggeredTooltipsRules.length, 1);
-  assert.ok(interestTriggeredTooltipsPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(interestTriggeredTooltipsPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(interestTriggeredTooltipsJsRule.phase2Rubric.keepWhen.length >= 2);
   assert.ok(interestTriggeredTooltipsJsRule.phase2Rubric.dropWhen.length >= 2);
-});
-
-void test('interest-triggered-tooltips dependency matcher', async (t) => {
-  await t.test('flags tippy.js, @tippyjs/react, floating-vue, and v-tooltip', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          'tippy.js': '^6.3.7',
-          '@tippyjs/react': '^4.2.6',
-          'floating-vue': '^2.0.0',
-          'v-tooltip': '^2.1.3',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      interestTriggeredTooltipsPackageMatcher,
-    ]);
-    assert.equal(matches.length, 4);
-  });
-
-  await t.test('exempts unrelated packages', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          vue: '^3.4.0',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      interestTriggeredTooltipsPackageMatcher,
-    ]);
-    assert.equal(matches.length, 0);
-  });
 });
 
 void test('interest-triggered-tooltips JS matcher', async (t) => {
@@ -112,6 +58,27 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
     const sourceFile = project.createSourceFile('menu.js', code);
     const matches = interestTriggeredTooltipsJsMatcher.matchFile(sourceFile, {
       filePath: 'menu.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts tippy calls with followCursor, allowHTML, lifecycle hooks, or dynamic content callbacks (Area 2.3)', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import tippy from 'tippy.js';
+      tippy('#chart-canvas', { content: 'Coords', followCursor: true });
+      tippy('#async-card', {
+        content: 'Loading...',
+        onShow(instance) { fetchDetails(instance); },
+      });
+      tippy('#dynamic', {
+        content: (ref) => ref.getAttribute('data-label'),
+      });
+    `;
+    const sourceFile = project.createSourceFile('advanced-tippy.js', code);
+    const matches = interestTriggeredTooltipsJsMatcher.matchFile(sourceFile, {
+      filePath: 'advanced-tippy.js',
       fileContent: code,
     });
     assert.equal(matches.length, 0);

@@ -1,66 +1,23 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import {
   RESPONSIVE_TABLE_GUIDE_HASH,
   responsiveTableCssMatcher,
   responsiveTableCssRule,
-  responsiveTablePackageMatcher,
-  responsiveTablePackageRule,
   responsiveTableRules,
 } from './responsive-table.ts';
 
 void test('responsive-table: rule metadata', () => {
-  assert.equal(responsiveTablePackageRule.id, 'responsive-table/package-responsive-table');
-  assert.equal(responsiveTablePackageRule.guideId, 'responsive-table');
-  assert.equal(responsiveTablePackageRule.guideHash, RESPONSIVE_TABLE_GUIDE_HASH);
   assert.equal(RESPONSIVE_TABLE_GUIDE_HASH.length, 12);
 
   assert.equal(responsiveTableCssRule.id, 'responsive-table/css-data-label-table');
   assert.equal(responsiveTableCssRule.guideId, 'responsive-table');
   assert.equal(responsiveTableCssRule.guideHash, RESPONSIVE_TABLE_GUIDE_HASH);
 
-  assert.equal(responsiveTableRules.length, 2);
-  assert.ok(responsiveTablePackageRule.phase2Rubric.keepWhen.length > 0);
-  assert.ok(responsiveTablePackageRule.phase2Rubric.dropWhen.length >= 2);
+  assert.equal(responsiveTableRules.length, 1);
   assert.ok(responsiveTableCssRule.phase2Rubric.keepWhen.length > 0);
   assert.ok(responsiveTableCssRule.phase2Rubric.dropWhen.length >= 2);
-});
-
-void test('responsive-table dependency matcher', async (t) => {
-  await t.test('flags tablesaw in dependencies', () => {
-    const pkg = JSON.stringify({
-      dependencies: {
-        tablesaw: '^3.1.2',
-      },
-    }, null, 2);
-    const matches = scanPackageJson('package.json', pkg, [responsiveTablePackageMatcher]);
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /tablesaw/);
-  });
-
-  await t.test('flags footable, basictable, and jquery-basictable', () => {
-    const pkg = JSON.stringify({
-      dependencies: {
-        footable: '^3.1.6',
-        basictable: '^1.0.0',
-        'jquery-basictable': '^1.0.2',
-      },
-    }, null, 2);
-    const matches = scanPackageJson('package.json', pkg, [responsiveTablePackageMatcher]);
-    assert.equal(matches.length, 3);
-  });
-
-  await t.test('exempts unrelated dependencies', () => {
-    const pkg = JSON.stringify({
-      dependencies: {
-        lodash: '^4.17.21',
-      },
-    }, null, 2);
-    const matches = scanPackageJson('package.json', pkg, [responsiveTablePackageMatcher]);
-    assert.equal(matches.length, 0);
-  });
 });
 
 void test('responsive-table CSS matcher: positive brownfield matches', async (t) => {

@@ -62,6 +62,18 @@ void test('scroll-target-on-load JS matcher', async (t) => {
       button.addEventListener('click', () => {
         section.scrollIntoView({ behavior: 'smooth' });
       });
+
+      window.addEventListener('load', () => {
+        const el = document.querySelector(location.hash);
+        if (el) {
+          window.scrollTo({ top: el.offsetTop - 80, behavior: 'smooth' });
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const el = document.querySelector('#initial');
+        el?.scrollIntoView({ behavior: 'smooth' });
+      });
     `;
     const sourceFile = project.createSourceFile('guarded.js', code);
     const matches = scrollTargetOnLoadMatcher.matchFile(sourceFile, {

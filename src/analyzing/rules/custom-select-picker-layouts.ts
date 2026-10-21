@@ -16,20 +16,11 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const CUSTOM_SELECT_PICKER_LAYOUTS_GUIDE_HASH = '806663852c25';
-
-const CUSTOM_SELECT_PACKAGES = [
-  'choices.js',
-  'tom-select',
-  'select2',
-  'slim-select',
-] as const;
 
 const CUSTOM_SELECT_GUARD_TOKENS = [
   'base-select',
@@ -304,8 +295,56 @@ function isMultiOrAsyncConfig(configObj: ObjectLiteralExpression): boolean {
     }
   }
 
-  if (configObj.getProperty('ajax') || configObj.getProperty('load')) {
+  if (
+    configObj.getProperty('ajax') ||
+    configObj.getProperty('load') ||
+    configObj.getProperty('matcher') ||
+    configObj.getProperty('query') ||
+    configObj.getProperty('tokenizer') ||
+    configObj.getProperty('tokenSeparators') ||
+    configObj.getProperty('minimumInputLength') ||
+    configObj.getProperty('maximumInputLength') ||
+    configObj.getProperty('maximumSelectionLength') ||
+    configObj.getProperty('allowClear') ||
+    configObj.getProperty('plugins') ||
+    configObj.getProperty('searchField') ||
+    configObj.getProperty('searchFields') ||
+    configObj.getProperty('fuseOptions') ||
+    configObj.getProperty('addable')
+  ) {
     return true;
+  }
+
+  for (const searchKey of ['searchEnabled', 'searchChoices', 'showSearch'] as const) {
+    const searchProp = configObj.getProperty(searchKey);
+    if (searchProp && Node.isPropertyAssignment(searchProp)) {
+      const init = searchProp.getInitializer();
+      if (init && unwrapExpression(init).getKind() === SyntaxKind.TrueKeyword) {
+        return true;
+      }
+    }
+  }
+
+  const closeProp = configObj.getProperty('closeOnSelect');
+  if (closeProp && Node.isPropertyAssignment(closeProp)) {
+    const init = closeProp.getInitializer();
+    if (init && unwrapExpression(init).getKind() === SyntaxKind.FalseKeyword) {
+      return true;
+    }
+  }
+
+  const minSearchProp = configObj.getProperty('minimumResultsForSearch');
+  if (minSearchProp && Node.isPropertyAssignment(minSearchProp)) {
+    const init = minSearchProp.getInitializer();
+    if (init) {
+      const unwrapped = unwrapExpression(init);
+      if (
+        Node.isNumericLiteral(unwrapped) &&
+        Number(unwrapped.getLiteralText()) >= 0
+      ) {
+        return true;
+      }
+    }
   }
 
   for (const maxKey of ['maxItems', 'maxItemCount'] as const) {
@@ -373,8 +412,8 @@ function isValidCustomTemplateConfig(
   if (targetArg) {
     const resolvedTarget = resolveLocalExpression(targetArg, 2);
     if (
-      /\bmultiple\b/i.test(targetArg.getText()) ||
-      /\bmultiple\b/i.test(resolvedTarget.getText())
+      /\b(?:multiple|input)\b/i.test(targetArg.getText()) ||
+      /\b(?:multiple|input)\b/i.test(resolvedTarget.getText())
     ) {
       return false;
     }
@@ -438,20 +477,6 @@ function matchSelect2Call(callExpr: CallExpression): string | null {
   return null;
 }
 
-export const customSelectPickerLayoutsPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: CUSTOM_SELECT_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Custom select layout dependency "${pkgName}" (${versionRange}) can be modernized with CSS appearance: base-select, ::picker(select), and <selectedcontent>.`,
-    };
-  },
-};
-
 export const customSelectPickerLayoutsJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
@@ -493,24 +518,6 @@ export const customSelectPickerLayoutsJsMatcher: JsRuleMatcher = {
     });
 
     return matches;
-  },
-};
-
-export const customSelectPickerLayoutsPackageRule: AnalyzerRule = {
-  id: 'custom-select-picker-layouts/package-custom-select',
-  guideId: 'custom-select-picker-layouts',
-  guideHash: CUSTOM_SELECT_PICKER_LAYOUTS_GUIDE_HASH,
-  summary:
-    'Custom select dropdown libraries (choices.js, tom-select, select2, slim-select) used for rich option layouts can be modernized with CSS appearance: base-select and ::picker(select).',
-  matcher: customSelectPickerLayoutsPackageMatcher,
-  phase2Rubric: {
-    keepWhen: [
-      'A project declares choices.js, tom-select, select2, or slim-select in package.json dependencies to build custom single-select option layouts.',
-    ],
-    dropWhen: [
-      'Multi-select tag/token inputs with chip removal.',
-      'Asynchronous remote typeahead search comboboxes or hierarchical treeview comboboxes.',
-    ],
   },
 };
 

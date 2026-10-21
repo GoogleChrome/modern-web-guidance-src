@@ -1,26 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   DIGITAL_SIGNATURES_GUIDE_HASH,
   digitalSignaturesJsMatcher,
   digitalSignaturesJsRule,
-  digitalSignaturesPackageMatcher,
-  digitalSignaturesPackageRule,
   digitalSignaturesRules,
 } from './digital-signatures.ts';
 
 void test('digital-signatures: rule metadata', () => {
-  assert.equal(
-    digitalSignaturesPackageRule.id,
-    'digital-signatures/package-signature',
-  );
-  assert.equal(digitalSignaturesPackageRule.guideId, 'digital-signatures');
-  assert.equal(
-    digitalSignaturesPackageRule.guideHash,
-    DIGITAL_SIGNATURES_GUIDE_HASH,
-  );
   assert.equal(DIGITAL_SIGNATURES_GUIDE_HASH.length, 12);
 
   assert.equal(digitalSignaturesJsRule.id, 'digital-signatures/js-signature');
@@ -31,46 +19,8 @@ void test('digital-signatures: rule metadata', () => {
   );
 
   assert.equal(digitalSignaturesRules.length, 1);
-  assert.ok(digitalSignaturesPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(digitalSignaturesPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(digitalSignaturesJsRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(digitalSignaturesJsRule.phase2Rubric.dropWhen.length >= 2);
-});
-
-void test('digital-signatures dependency matcher', async (t) => {
-  await t.test('flags jsrsasign, tweetnacl, and elliptic', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          jsrsasign: '^11.1.0',
-          tweetnacl: '^1.0.3',
-          elliptic: '^6.5.5',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      digitalSignaturesPackageMatcher,
-    ]);
-    assert.equal(matches.length, 3);
-  });
-
-  await t.test('exempts unrelated packages', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          express: '^4.18.2',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      digitalSignaturesPackageMatcher,
-    ]);
-    assert.equal(matches.length, 0);
-  });
 });
 
 void test('digital-signatures JS matcher', async (t) => {

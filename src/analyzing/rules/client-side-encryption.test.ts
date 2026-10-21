@@ -1,29 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   CLIENT_SIDE_ENCRYPTION_GUIDE_HASH,
   clientSideEncryptionJsMatcher,
   clientSideEncryptionJsRule,
-  clientSideEncryptionPackageMatcher,
-  clientSideEncryptionPackageRule,
   clientSideEncryptionRules,
 } from './client-side-encryption.ts';
 
 void test('client-side-encryption: rule metadata', () => {
-  assert.equal(
-    clientSideEncryptionPackageRule.id,
-    'client-side-encryption/package-crypto',
-  );
-  assert.equal(
-    clientSideEncryptionPackageRule.guideId,
-    'client-side-encryption',
-  );
-  assert.equal(
-    clientSideEncryptionPackageRule.guideHash,
-    CLIENT_SIDE_ENCRYPTION_GUIDE_HASH,
-  );
   assert.equal(CLIENT_SIDE_ENCRYPTION_GUIDE_HASH.length, 12);
 
   assert.equal(
@@ -40,45 +25,8 @@ void test('client-side-encryption: rule metadata', () => {
   );
 
   assert.equal(clientSideEncryptionRules.length, 1);
-  assert.ok(clientSideEncryptionPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(clientSideEncryptionPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(clientSideEncryptionJsRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(clientSideEncryptionJsRule.phase2Rubric.dropWhen.length >= 2);
-});
-
-void test('client-side-encryption dependency matcher', async (t) => {
-  await t.test('flags crypto-js and sjcl', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          'crypto-js': '^4.2.0',
-          sjcl: '^1.0.8',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      clientSideEncryptionPackageMatcher,
-    ]);
-    assert.equal(matches.length, 2);
-  });
-
-  await t.test('exempts unrelated packages', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          uuid: '^9.0.0',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      clientSideEncryptionPackageMatcher,
-    ]);
-    assert.equal(matches.length, 0);
-  });
 });
 
 void test('client-side-encryption JS matcher', async (t) => {

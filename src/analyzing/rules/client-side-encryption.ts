@@ -14,18 +14,11 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const CLIENT_SIDE_ENCRYPTION_GUIDE_HASH = '29bfbdecb207';
-
-const ENCRYPTION_PACKAGES = [
-  'crypto-js',
-  'sjcl',
-] as const;
 
 const WEBCRYPTO_GUARD_TOKENS = [
   'subtle',
@@ -299,20 +292,6 @@ function isGuardedByWebCryptoCheck(node: Node): boolean {
   return false;
 }
 
-export const clientSideEncryptionPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: ENCRYPTION_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy pure-JS cryptography library "${pkgName}" (${versionRange}) can be modernized with the native Web Cryptography API (crypto.subtle).`,
-    };
-  },
-};
-
 export const clientSideEncryptionJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['CryptoJS', 'AES', 'sjcl'],
@@ -338,24 +317,6 @@ export const clientSideEncryptionJsMatcher: JsRuleMatcher = {
     });
 
     return matches;
-  },
-};
-
-export const clientSideEncryptionPackageRule: AnalyzerRule = {
-  id: 'client-side-encryption/package-crypto',
-  guideId: 'client-side-encryption',
-  guideHash: CLIENT_SIDE_ENCRYPTION_GUIDE_HASH,
-  summary:
-    'Legacy pure-JS encryption packages (crypto-js, sjcl) should be modernized with the Web Cryptography API (crypto.subtle).',
-  matcher: clientSideEncryptionPackageMatcher,
-  phase2Rubric: {
-    keepWhen: [
-      'A project declares crypto-js or sjcl in package.json dependencies for client-side payload encryption or decryption.',
-    ],
-    dropWhen: [
-      'The code runs exclusively in a server-side Node.js build script or uses Node built-in node:crypto.',
-      'The library is used only for legacy MD5 or SHA-1 non-encryption checksums or legacy IE11 polyfills.',
-    ],
   },
 };
 

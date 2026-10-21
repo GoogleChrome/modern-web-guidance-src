@@ -1,29 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   CAPTURE_LOCATION_AGNOSTIC_DATA_GUIDE_HASH,
   captureLocationAgnosticDataJsMatcher,
   captureLocationAgnosticDataJsRule,
-  captureLocationAgnosticDataPackageMatcher,
-  captureLocationAgnosticDataPackageRule,
   captureLocationAgnosticDataRules,
 } from './capture-location-agnostic-data.ts';
 
 void test('capture-location-agnostic-data: rule metadata', () => {
-  assert.equal(
-    captureLocationAgnosticDataPackageRule.id,
-    'capture-location-agnostic-data/package-iso-lookup',
-  );
-  assert.equal(
-    captureLocationAgnosticDataPackageRule.guideId,
-    'capture-location-agnostic-data',
-  );
-  assert.equal(
-    captureLocationAgnosticDataPackageRule.guideHash,
-    CAPTURE_LOCATION_AGNOSTIC_DATA_GUIDE_HASH,
-  );
   assert.equal(CAPTURE_LOCATION_AGNOSTIC_DATA_GUIDE_HASH.length, 12);
 
   assert.equal(
@@ -41,53 +26,11 @@ void test('capture-location-agnostic-data: rule metadata', () => {
 
   assert.equal(captureLocationAgnosticDataRules.length, 1);
   assert.ok(
-    captureLocationAgnosticDataPackageRule.phase2Rubric.keepWhen.length >= 1,
-  );
-  assert.ok(
-    captureLocationAgnosticDataPackageRule.phase2Rubric.dropWhen.length >= 2,
-  );
-  assert.ok(
     captureLocationAgnosticDataJsRule.phase2Rubric.keepWhen.length >= 1,
   );
   assert.ok(
     captureLocationAgnosticDataJsRule.phase2Rubric.dropWhen.length >= 2,
   );
-});
-
-void test('capture-location-agnostic-data dependency matcher', async (t) => {
-  await t.test('flags i18n-iso-countries, country-list, and iso-639-1', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          'i18n-iso-countries': '^7.11.0',
-          'country-list': '^2.3.0',
-          'iso-639-1': '^3.1.0',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      captureLocationAgnosticDataPackageMatcher,
-    ]);
-    assert.equal(matches.length, 3);
-  });
-
-  await t.test('exempts unrelated dependencies', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          'libphonenumber-js': '^1.10.0',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      captureLocationAgnosticDataPackageMatcher,
-    ]);
-    assert.equal(matches.length, 0);
-  });
 });
 
 void test('capture-location-agnostic-data JS matcher', async (t) => {

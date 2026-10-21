@@ -1,29 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   PERSISTENT_TOAST_NOTIFICATIONS_GUIDE_HASH,
   persistentToastNotificationsJsMatcher,
   persistentToastNotificationsJsRule,
-  persistentToastNotificationsPackageMatcher,
-  persistentToastNotificationsPackageRule,
   persistentToastNotificationsRules,
 } from './persistent-toast-notifications.ts';
 
 void test('persistent-toast-notifications: rule metadata', () => {
-  assert.equal(
-    persistentToastNotificationsPackageRule.id,
-    'persistent-toast-notifications/package-toast',
-  );
-  assert.equal(
-    persistentToastNotificationsPackageRule.guideId,
-    'persistent-toast-notifications',
-  );
-  assert.equal(
-    persistentToastNotificationsPackageRule.guideHash,
-    PERSISTENT_TOAST_NOTIFICATIONS_GUIDE_HASH,
-  );
   assert.equal(PERSISTENT_TOAST_NOTIFICATIONS_GUIDE_HASH.length, 12);
 
   assert.equal(
@@ -40,47 +25,8 @@ void test('persistent-toast-notifications: rule metadata', () => {
   );
 
   assert.equal(persistentToastNotificationsRules.length, 1);
-  assert.ok(persistentToastNotificationsPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(persistentToastNotificationsPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(persistentToastNotificationsJsRule.phase2Rubric.keepWhen.length >= 2);
   assert.ok(persistentToastNotificationsJsRule.phase2Rubric.dropWhen.length >= 2);
-});
-
-void test('persistent-toast-notifications dependency matcher', async (t) => {
-  await t.test('flags toastify-js, notyf, react-toastify, and toastr', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          'toastify-js': '^1.12.0',
-          notyf: '^3.10.0',
-          'react-toastify': '^9.1.3',
-          toastr: '^2.1.4',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      persistentToastNotificationsPackageMatcher,
-    ]);
-    assert.equal(matches.length, 4);
-  });
-
-  await t.test('exempts unrelated packages', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          react: '^18.2.0',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      persistentToastNotificationsPackageMatcher,
-    ]);
-    assert.equal(matches.length, 0);
-  });
 });
 
 void test('persistent-toast-notifications JS matcher', async (t) => {
@@ -150,6 +96,25 @@ void test('persistent-toast-notifications JS matcher', async (t) => {
     const sourceFile = project.createSourceFile('unrelated.js', code);
     const matches = persistentToastNotificationsJsMatcher.matchFile(sourceFile, {
       filePath: 'unrelated.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts auto-dismiss timed toasts, progress bars, and toast queue managers (Area 2.3)', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import Toastify from 'toastify-js';
+      import { Notyf } from 'notyf';
+      import toastr from 'toastr';
+
+      Toastify({ text: 'Auto dismiss', duration: 3000 }).showToast();
+      new Notyf({ duration: 4000, ripple: true }).success('Timed');
+      toastr.success('Saved', 'Title', { timeOut: 5000, progressBar: true });
+    `;
+    const sourceFile = project.createSourceFile('timed-queue.js', code);
+    const matches = persistentToastNotificationsJsMatcher.matchFile(sourceFile, {
+      filePath: 'timed-queue.js',
       fileContent: code,
     });
     assert.equal(matches.length, 0);

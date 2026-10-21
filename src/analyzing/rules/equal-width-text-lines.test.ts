@@ -124,6 +124,11 @@ void test('equal-width-text-lines JS matcher', async (t) => {
     const code = `
       const bounds = map.fitBounds(coords);
       const formatted = formatText(title);
+      fitty('.single-line-badge', { multiLine: false });
+      function localHelper() {
+        function fitText(str) { return str.trim(); }
+        fitText('hello');
+      }
     `;
     const sourceFile = project.createSourceFile('unrelated.js', code);
     const matches = equalWidthTextLinesJsMatcher.matchFile(sourceFile, {

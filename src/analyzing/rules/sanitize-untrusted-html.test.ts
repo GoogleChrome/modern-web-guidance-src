@@ -1,14 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   sanitizeUntrustedHtmlRules,
-  sanitizerDependencyMatcher,
   sanitizerJsMatcher,
 } from './sanitize-untrusted-html.ts';
 
-const depMatcher = sanitizerDependencyMatcher;
 const jsMatcher = sanitizerJsMatcher;
 
 void test('sanitize-untrusted-html default rules array excludes package-sanitizer (R46, R49)', () => {
@@ -17,84 +14,6 @@ void test('sanitize-untrusted-html default rules array excludes package-sanitize
     sanitizeUntrustedHtmlRules[0]?.id,
     'sanitize-untrusted-html/js-dompurify-innerhtml',
   );
-});
-
-void test('sanitize-untrusted-html dependency matcher', async (t) => {
-  await t.test('exempts dompurify and isomorphic-dompurify as recommended fallbacks (O69)', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          dompurify: '^3.0.0',
-        },
-        devDependencies: {
-          'isomorphic-dompurify': '^2.0.0',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [depMatcher]);
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('flags sanitize-html in dependencies', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          'sanitize-html': '^2.11.0',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [depMatcher]);
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /sanitize-html/);
-  });
-
-  await t.test('flags xss in dependencies', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          xss: '^1.0.14',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [depMatcher]);
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /xss/);
-  });
-
-  await t.test('flags insane in dependencies', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          insane: '^2.6.2',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [depMatcher]);
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /insane/);
-  });
-
-  await t.test('exempts unrelated dependencies', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          express: '^4.18.2',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [depMatcher]);
-    assert.equal(matches.length, 0);
-  });
 });
 
 void test('sanitize-untrusted-html JS matcher', async (t) => {

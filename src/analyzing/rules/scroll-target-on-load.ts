@@ -66,6 +66,20 @@ function matchScrollTargetOnLoadListener(callExpr: CallExpression): string | nul
     return null;
   }
 
+  if (/behavior\s*:\s*['"`]smooth['"`]/i.test(handlerText)) {
+    return null;
+  }
+
+  if (
+    callsWindowScrollTo &&
+    (/(?:offsetTop|getBoundingClientRect\s*\(\s*\)\s*\.\s*top|scrollY|pageYOffset)\s*[-+]/.test(
+      handlerText,
+    ) ||
+      /[-+]\s*(?:header|nav|offset)/i.test(handlerText))
+  ) {
+    return null;
+  }
+
   const readsLocationHash = /\blocation\.hash\b/.test(handlerText);
   const queriesTargetForScrollIntoView =
     callsScrollIntoView &&
@@ -75,7 +89,7 @@ function matchScrollTargetOnLoadListener(callExpr: CallExpression): string | nul
     return null;
   }
 
-  return `Imperative '${listener.eventName}' listener scrolling to an initial target element can be modernized with CSS scroll-initial-target: nearest or native fragment navigation.`;
+  return `Imperative '${listener.eventName}' listener performing instant initial target scrolling can be modernized with CSS scroll-initial-target: nearest (with @supports guard) or native fragment navigation.`;
 }
 
 export const scrollTargetOnLoadMatcher: JsRuleMatcher = {
@@ -120,6 +134,7 @@ export const scrollTargetOnLoadRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The listener is guarded by CSS.supports("scroll-initial-target", "nearest").',
+      'The listener performs animated smooth scrolling (behavior: "smooth") or custom pixel header-offset arithmetic (e.g. el.offsetTop - 80) not supported by CSS scroll-initial-target: nearest.',
       'User click scroll transitions or runtime interactive navigation handlers.',
     ],
   },

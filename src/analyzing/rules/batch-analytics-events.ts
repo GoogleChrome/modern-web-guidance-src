@@ -51,7 +51,7 @@ function matchUnloadBeaconListener(callExpr: CallExpression): string | null {
     return null;
   }
 
-  return `Dispatches telemetry inside '${listener.eventName}' listener; modernize with fetchLater() or visibilitychange / pagehide listeners so bfcache and reliability are preserved.`;
+  return `Dispatches telemetry inside '${listener.eventName}' listener; modernize with visibilitychange or pagehide listeners and navigator.sendBeacon() or fetch({ keepalive: true }) so bfcache and reliability are preserved.`;
 }
 
 function matchOnUnloadAssignment(binaryExpr: BinaryExpression): string | null {
@@ -74,7 +74,7 @@ function matchOnUnloadAssignment(binaryExpr: BinaryExpression): string | null {
     return null;
   }
 
-  return `Dispatches telemetry inside '${propName}' handler; modernize with fetchLater() or visibilitychange / pagehide listeners.`;
+  return `Dispatches telemetry inside '${propName}' handler; modernize with visibilitychange or pagehide listeners and navigator.sendBeacon() or fetch({ keepalive: true }).`;
 }
 
 function fileAlreadyUsesModernLifecycleBeacon(sourceFile: SourceFile): boolean {
@@ -146,14 +146,14 @@ export const batchAnalyticsEventsRule: AnalyzerRule = {
   guideId: 'batch-analytics-events',
   guideHash: BATCH_ANALYTICS_EVENTS_GUIDE_HASH,
   summary:
-    'unload and beforeunload event listeners dispatching analytics via navigator.sendBeacon(), fetch(), or synchronous XMLHttpRequest should be modernized with fetchLater() or visibilitychange / pagehide.',
+    'unload and beforeunload event listeners dispatching analytics via navigator.sendBeacon(), fetch(), or synchronous XMLHttpRequest should be modernized with visibilitychange or pagehide listeners and navigator.sendBeacon() or fetch({ keepalive: true }).',
   matcher: batchAnalyticsEventsMatcher,
   phase2Rubric: {
     keepWhen: [
       'An unload or beforeunload event listener dispatches analytics or telemetry via navigator.sendBeacon(), fetch(), or synchronous XMLHttpRequest (xhr.open("POST", url, false)).',
     ],
     dropWhen: [
-      'The code already uses fetchLater() or listens to visibilitychange / pagehide for end-of-session telemetry.',
+      'The code already listens to visibilitychange or pagehide (or uses fetchLater()) for end-of-session telemetry.',
       'A beforeunload listener only prompts the user about unsaved changes (event.preventDefault() / event.returnValue) without dispatching network beacons.',
       'Standard asynchronous fetch() during active user interaction or WebSocket connections.',
     ],

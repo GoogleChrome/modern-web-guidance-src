@@ -1,29 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH,
   lazyLoadVideoAndAudioJsMatcher,
   lazyLoadVideoAndAudioJsRule,
-  lazyLoadVideoAndAudioPackageMatcher,
-  lazyLoadVideoAndAudioPackageRule,
   lazyLoadVideoAndAudioRules,
 } from './lazy-load-video-and-audio.ts';
 
 void test('lazy-load-video-and-audio: rule metadata', () => {
-  assert.equal(
-    lazyLoadVideoAndAudioPackageRule.id,
-    'lazy-load-video-and-audio/package-lazyload',
-  );
-  assert.equal(
-    lazyLoadVideoAndAudioPackageRule.guideId,
-    'lazy-load-video-and-audio',
-  );
-  assert.equal(
-    lazyLoadVideoAndAudioPackageRule.guideHash,
-    LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH,
-  );
   assert.equal(LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH.length, 12);
 
   assert.equal(
@@ -40,45 +25,8 @@ void test('lazy-load-video-and-audio: rule metadata', () => {
   );
 
   assert.equal(lazyLoadVideoAndAudioRules.length, 1);
-  assert.ok(lazyLoadVideoAndAudioPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(lazyLoadVideoAndAudioPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(lazyLoadVideoAndAudioJsRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(lazyLoadVideoAndAudioJsRule.phase2Rubric.dropWhen.length >= 2);
-});
-
-void test('lazy-load-video-and-audio dependency matcher', async (t) => {
-  await t.test('flags vanilla-lazyload and lozad', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          'vanilla-lazyload': '^17.8.4',
-          lozad: '^1.16.0',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      lazyLoadVideoAndAudioPackageMatcher,
-    ]);
-    assert.equal(matches.length, 2);
-  });
-
-  await t.test('exempts unrelated packages', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          'hls.js': '^1.4.0',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      lazyLoadVideoAndAudioPackageMatcher,
-    ]);
-    assert.equal(matches.length, 0);
-  });
 });
 
 void test('lazy-load-video-and-audio JS matcher', async (t) => {

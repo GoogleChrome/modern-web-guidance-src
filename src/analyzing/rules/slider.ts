@@ -15,19 +15,11 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const SLIDER_GUIDE_HASH = '70aeff8bae4d';
-
-const SLIDER_PACKAGES = [
-  'nouislider',
-  'rc-slider',
-  'ion-rangeslider',
-] as const;
 
 const SLIDER_GUARD_TOKENS = [
   'accent-color',
@@ -289,20 +281,6 @@ function matchNoUiSliderCreate(callExpr: CallExpression): string | null {
   return 'Single-handle noUiSlider.create() instance can be modernized with a native <input type="range"> styled with CSS accent-color and slider pseudo-elements.';
 }
 
-export const sliderPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: SLIDER_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy range slider package "${pkgName}" (${versionRange}) can be modernized with native <input type="range"> and CSS accent-color.`,
-    };
-  },
-};
-
 export const sliderJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['noUiSlider', 'nouislider'],
@@ -328,24 +306,6 @@ export const sliderJsMatcher: JsRuleMatcher = {
     });
 
     return matches;
-  },
-};
-
-export const sliderPackageRule: AnalyzerRule = {
-  id: 'slider/package-slider',
-  guideId: 'slider',
-  guideHash: SLIDER_GUIDE_HASH,
-  summary:
-    'Legacy slider packages (nouislider, rc-slider, ion-rangeslider) for single-value sliders should be modernized with native <input type="range"> and CSS accent-color.',
-  matcher: sliderPackageMatcher,
-  phase2Rubric: {
-    keepWhen: [
-      'A project declares nouislider, rc-slider, or ion-rangeslider in package.json dependencies for basic single-value range sliders.',
-    ],
-    dropWhen: [
-      'The slider is a dual-handle or multi-thumb range slider (min and max thumbs) or multi-thumb timeline video scrubbing bar.',
-      'The code already uses standard <input type="range"> elements styled with CSS accent-color.',
-    ],
   },
 };
 

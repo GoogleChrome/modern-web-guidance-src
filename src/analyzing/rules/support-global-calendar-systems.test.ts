@@ -165,4 +165,25 @@ void test('support-global-calendar-systems JS matcher', async (t) => {
     );
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts existing Intl.DateTimeFormat calendar usage and shadowed or unimported helpers (Area 2.3)', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const fmt = new Intl.DateTimeFormat('en-u-ca-islamic');
+      const localConverter = { toHijri(d) { return d; }, toGregorian(d) { return d; } };
+      localConverter.toGregorian('1446-01-01');
+      function convert(jalaali) {
+        return jalaali.toGregorian(1404, 1, 1);
+      }
+    `;
+    const sourceFile = project.createSourceFile('intl-calendar.js', code);
+    const matches = supportGlobalCalendarSystemsJsMatcher.matchFile(
+      sourceFile,
+      {
+        filePath: 'intl-calendar.js',
+        fileContent: code,
+      },
+    );
+    assert.equal(matches.length, 0);
+  });
 });

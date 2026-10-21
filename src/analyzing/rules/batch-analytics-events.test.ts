@@ -45,6 +45,8 @@ void test('batch-analytics-events JS matcher', async (t) => {
       fileContent: code,
     });
     assert.equal(matches.length, 3);
+    assert.match(matches[0]?.message ?? '', /visibilitychange/);
+    assert.doesNotMatch(matches[0]?.message ?? '', /fetchLater/);
   });
 
   await t.test('exempts visibilitychange / pagehide listeners and unsaved-changes beforeunload prompts', () => {

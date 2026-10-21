@@ -1,29 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   CUSTOM_SELECT_PICKER_LAYOUTS_GUIDE_HASH,
   customSelectPickerLayoutsJsMatcher,
   customSelectPickerLayoutsJsRule,
-  customSelectPickerLayoutsPackageMatcher,
-  customSelectPickerLayoutsPackageRule,
   customSelectPickerLayoutsRules,
 } from './custom-select-picker-layouts.ts';
 
 void test('custom-select-picker-layouts: rule metadata', () => {
-  assert.equal(
-    customSelectPickerLayoutsPackageRule.id,
-    'custom-select-picker-layouts/package-custom-select',
-  );
-  assert.equal(
-    customSelectPickerLayoutsPackageRule.guideId,
-    'custom-select-picker-layouts',
-  );
-  assert.equal(
-    customSelectPickerLayoutsPackageRule.guideHash,
-    CUSTOM_SELECT_PICKER_LAYOUTS_GUIDE_HASH,
-  );
   assert.equal(CUSTOM_SELECT_PICKER_LAYOUTS_GUIDE_HASH.length, 12);
 
   assert.equal(
@@ -40,47 +25,8 @@ void test('custom-select-picker-layouts: rule metadata', () => {
   );
 
   assert.equal(customSelectPickerLayoutsRules.length, 1);
-  assert.ok(customSelectPickerLayoutsPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(customSelectPickerLayoutsPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(customSelectPickerLayoutsJsRule.phase2Rubric.keepWhen.length >= 2);
   assert.ok(customSelectPickerLayoutsJsRule.phase2Rubric.dropWhen.length >= 2);
-});
-
-void test('custom-select-picker-layouts dependency matcher', async (t) => {
-  await t.test('flags choices.js, tom-select, select2, and slim-select', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          'choices.js': '^10.2.0',
-          'tom-select': '^2.3.1',
-          select2: '^4.1.0-rc.0',
-          'slim-select': '^2.8.2',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      customSelectPickerLayoutsPackageMatcher,
-    ]);
-    assert.equal(matches.length, 4);
-  });
-
-  await t.test('exempts unrelated packages', () => {
-    const pkg = JSON.stringify(
-      {
-        dependencies: {
-          react: '^18.2.0',
-        },
-      },
-      null,
-      2,
-    );
-    const matches = scanPackageJson('package.json', pkg, [
-      customSelectPickerLayoutsPackageMatcher,
-    ]);
-    assert.equal(matches.length, 0);
-  });
 });
 
 void test('custom-select-picker-layouts JS matcher', async (t) => {
@@ -172,6 +118,18 @@ void test('custom-select-picker-layouts JS matcher', async (t) => {
           callbackOnCreateTemplates: (t) => ({}),
         });
       }
+
+      $('#searchable-select2').select2({
+        minimumInputLength: 2,
+        allowClear: true,
+        templateResult: (item) => item.text,
+      });
+
+      $('#matcher-select2').select2({
+        matcher: (params, data) => data,
+        minimumResultsForSearch: 10,
+        templateResult: (item) => item.text,
+      });
     `;
     const sourceFile = project.createSourceFile('excluded.js', code);
     const matches = customSelectPickerLayoutsJsMatcher.matchFile(sourceFile, {

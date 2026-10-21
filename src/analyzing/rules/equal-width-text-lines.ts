@@ -1,10 +1,13 @@
 import {
   Node,
+  SyntaxKind,
   type CallExpression,
   type SourceFile,
 } from 'ts-morph';
 import {
+  isGlobalReference,
   isProtectedByFeatureGuard,
+  resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
@@ -25,7 +28,29 @@ const FITTEXT_PACKAGES = [
   'react-fitty',
 ] as const;
 
+function isSingleLineOption(call: CallExpression): boolean {
+  const optionsArg = call.getArguments()[1];
+  if (!optionsArg) {
+    return false;
+  }
+  const resolved = resolveLocalExpression(optionsArg, 2);
+  if (!Node.isObjectLiteralExpression(resolved)) {
+    return false;
+  }
+  const multiLineProp = resolved.getProperty('multiLine');
+  if (multiLineProp && Node.isPropertyAssignment(multiLineProp)) {
+    const init = multiLineProp.getInitializer();
+    if (init && unwrapExpression(init).getKind() === SyntaxKind.FalseKeyword) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
+  if (isSingleLineOption(call)) {
+    return false;
+  }
   const expr = unwrapExpression(call.getExpression());
   if (Node.isIdentifier(expr)) {
     const name = expr.getText();
@@ -34,6 +59,15 @@ function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
     }
     if (call.getArguments().length === 0) {
       return false;
+    }
+    if (!isGlobalReference(expr, name)) {
+      const hasPkgImport = sourceFile.getImportDeclarations().some((imp) => {
+        const spec = imp.getModuleSpecifierValue();
+        return FITTEXT_PACKAGES.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
+      });
+      if (!hasPkgImport) {
+        return false;
+      }
     }
     return true;
   }

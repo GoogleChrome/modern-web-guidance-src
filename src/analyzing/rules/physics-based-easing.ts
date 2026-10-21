@@ -15,19 +15,11 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const PHYSICS_BASED_EASING_GUIDE_HASH = 'c2dcec13782f';
-
-const SPRING_PACKAGES = [
-  'popmotion',
-  're-spring',
-  'react-motion',
-] as const;
 
 const LINEAR_EASING_GUARD_TOKENS = [
   'linear(',
@@ -299,20 +291,6 @@ function matchSpringCall(callExpr: CallExpression): string | null {
   return 'JavaScript spring({ stiffness, damping }) physics animation can be modernized with the native CSS linear() easing function.';
 }
 
-export const physicsBasedEasingPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: SPRING_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy spring physics animation package "${pkgName}" (${versionRange}) can be modernized with the native CSS linear() easing function.`,
-    };
-  },
-};
-
 export const physicsBasedEasingJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['spring', 'popmotion'],
@@ -338,24 +316,6 @@ export const physicsBasedEasingJsMatcher: JsRuleMatcher = {
     });
 
     return matches;
-  },
-};
-
-export const physicsBasedEasingPackageRule: AnalyzerRule = {
-  id: 'physics-based-easing/package-spring',
-  guideId: 'physics-based-easing',
-  guideHash: PHYSICS_BASED_EASING_GUIDE_HASH,
-  summary:
-    'JavaScript spring physics animation packages (popmotion, re-spring, react-motion) should be modernized with the CSS linear() easing function.',
-  matcher: physicsBasedEasingPackageMatcher,
-  phase2Rubric: {
-    keepWhen: [
-      'A project declares popmotion, re-spring, or react-motion in package.json dependencies for UI spring/bounce transition animations.',
-    ],
-    dropWhen: [
-      'The stylesheet already uses the CSS linear() easing function.',
-      'The code drives interactive 2D/3D canvas/WebGL game physics simulations rather than UI transitions.',
-    ],
   },
 };
 
