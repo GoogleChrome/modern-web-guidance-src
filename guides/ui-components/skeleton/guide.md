@@ -134,7 +134,7 @@ Anything else that defines the layout but is not text or media (buttons, inputs,
 
 A skeleton is a simplification, not a copy. Keep what defines the silhouette (media, title, a few lines of body, the primary action) and hide the rest.
 
-- Cap long text at 2–4 bars and collections at a few items, however much content exists.
+- Cap long text at 2–4 bars by defining that many subpaths in the `shape()`. `overflow: hidden` and the `lh` height keep surplus text from adding lines. Cap collections at a few items as described below.
 - To cap items, use a fixed `:nth-child(n + N)` selector with `display: none`. If the count must come from a custom property, read it in a small script, because CSS cannot use a custom property inside `:nth-child()`.
 - Remove whole cards or rows with `display: none`. For items inside a card, use `visibility: hidden` so the card height does not change when the real content arrives.
 - Decide what to hide by asking whether removing it changes the container's height. If it does, keep or reserve it.
