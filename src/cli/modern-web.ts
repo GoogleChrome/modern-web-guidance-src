@@ -54,6 +54,7 @@ async function main() {
   const command = positionals[0];
 
   if (command === "analyze") {
+    // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
     const { runAnalyzeCli } = await import("../analyzing/cli.ts");
     const result = await runAnalyzeCli(process.argv.slice(3));
     if (result.exitCode === 0) {

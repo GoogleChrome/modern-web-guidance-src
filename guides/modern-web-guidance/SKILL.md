@@ -90,7 +90,10 @@ To proactively discover opportunities to replace legacy patterns with modern web
    ```sh
    npx -y modern-web-guidance@latest analyze [dir] --json
    ```
-2. **Review & Plan**: Inspect findings grouped by `guideId`. Present a clear modernization plan to the user before making edits.
+2. **Review & Plan (Verification Rubric)**:
+   - Evaluate each finding against the guide's `Keep when` (`phase2Rubric.keepWhen`) and `Drop when` (`phase2Rubric.dropWhen`) verification criteria.
+   - Silently discard any finding that matches a `Drop when` condition (such as intentional feature-detect fallbacks, third-party vendor code, or out-of-scope lookalikes) before presenting a modernization plan to the user.
+   - Group verified issues by `guideId` and present a clear modernization plan to the user before making edits.
 3. **Retrieve Guidance**: For each approved item, retrieve the relevant guide:
    ```sh
    npx -y modern-web-guidance@latest retrieve "<guideId>"

@@ -36,6 +36,8 @@ describe('runAnalyzeCli', () => {
       const resHuman = await runAnalyzeCli([emptyDir]);
       assert.equal(resHuman.exitCode, 0);
       assert.match(resHuman.output, /No modernization opportunities found/);
+      // Provisional notice should not be printed when 0 findings
+      assert.doesNotMatch(resHuman.output, /provisional and need verification/);
 
       const resJson = await runAnalyzeCli([emptyDir, '--json']);
       assert.equal(resJson.exitCode, 0);
@@ -75,14 +77,22 @@ describe('runAnalyzeCli', () => {
       const res = await runAnalyzeCli(['analyze', testDir, '--all-rules']);
       assert.equal(res.exitCode, 0);
 
+      // Check provisional notice (D-032, D-033)
+      assert.match(
+        res.output,
+        /^Note: Static analysis results are provisional and need verification with an agent\./,
+      );
+
       // Check header
       assert.match(res.output, /Modern Web Guidance Analyzer:/);
       assert.match(res.output, /Found \d+ modernization opportunities across \d+ guides:/);
 
-      // Check guide grouping & retrieve command
+      // Check guide grouping, retrieve command, and keepWhen/dropWhen (D-032)
       assert.match(res.output, /\* \[experimental\] autofill-sign-in-form \(\d+ finding[s]?\)/);
       assert.match(res.output, /Retrieve: npx modern-web-guidance retrieve autofill-sign-in-form/);
       assert.match(res.output, /Summary:/);
+      assert.match(res.output, /Keep when:/);
+      assert.match(res.output, /Drop when:/);
       assert.match(res.output, /- login\.html:\d+:/);
 
       assert.match(
@@ -236,6 +246,34 @@ describe('runAnalyzeCli', () => {
         parsedExp.guides.some((g) => g.guideId === 'schedule-tasks-by-priority'),
         '--experimental alias enables experimental rules',
       );
+    } finally {
+      await rm(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it('caps terminal findings at 5 per guide and renders overflow summary line (D-033)', async () => {
+    const testDir = await mkdtemp(join(tmpdir(), 'analyzer-overflow-test-'));
+    try {
+      // Create 8 files each with an autofill pattern to exceed 5 findings
+      for (let i = 1; i <= 8; i++) {
+        const html = `<form action="/login${i}" method="POST">
+  <input type="password" name="password">
+</form>`;
+        await writeFile(join(testDir, `form${i}.html`), html, 'utf8');
+      }
+
+      const res = await runAnalyzeCli([testDir, '--all-rules']);
+      assert.equal(res.exitCode, 0);
+
+      // Terminal output should cap findings at 5 and print overflow line
+      assert.match(res.output, /\.\.\.and 3 more in 3 files/);
+
+      // Verify JSON output still has all 8 findings un-truncated
+      const resJson = await runAnalyzeCli([testDir, '--all-rules', '--json']);
+      assert.equal(resJson.exitCode, 0);
+      const parsedJson = JSON.parse(resJson.output) as AnalyzeJsonOutput;
+      assert.equal(parsedJson.totalFindings, 8);
+      assert.equal(parsedJson.guides[0].findings.length, 8);
     } finally {
       await rm(testDir, { recursive: true, force: true });
     }

@@ -5,8 +5,12 @@ import { describe, it } from 'node:test';
 import { WORKTREE_ROOT } from './paths.ts';
 import {
   deriveQualifiedGuideIds,
+  evaluateJudgeAdmission,
+  evaluateRuleQualification,
   JSON_QUALIFIED_GUIDE_IDS,
   QUALIFIED_GUIDE_IDS,
+  QUALIFIED_JUDGE_METADATA,
+  QUALIFIED_RULE_MANIFEST,
   TERMINAL_QUALIFIED_GUIDE_IDS,
 } from './qualification.ts';
 
@@ -107,5 +111,113 @@ describe('qualification shipping lists (O40, O42, O64, O65)', () => {
     });
     assert.deepStrictEqual(derived.terminalQualified, ['individual-transform-properties']);
     assert.deepStrictEqual(derived.jsonQualified, ['individual-transform-properties']);
+  });
+});
+
+describe('Judge Admission (D-031, D-036)', () => {
+  it('admits judge when AC1 >= 0.70, stability >= 0.90, and canary TNR >= 0.95', () => {
+    const result = evaluateJudgeAdmission({
+      gwetsAC1: 0.703,
+      krippendorffAlpha: 0.163,
+      threePassStability: 0.965,
+      canaryTnr: 1.0,
+      calibrationCount: 115,
+    });
+    assert.strictEqual(result.admitted, true);
+    assert.deepStrictEqual(result.reasons, []);
+  });
+
+  it('admits judge when Krippendorff alpha >= 0.70 even if AC1 is lower', () => {
+    const result = evaluateJudgeAdmission({
+      gwetsAC1: 0.65,
+      krippendorffAlpha: 0.72,
+      threePassStability: 0.92,
+      canaryTnr: 1.0,
+    });
+    assert.strictEqual(result.admitted, true);
+    assert.deepStrictEqual(result.reasons, []);
+  });
+
+  it('rejects judge when both AC1 and alpha are below 0.70', () => {
+    const result = evaluateJudgeAdmission({
+      gwetsAC1: 0.62,
+      krippendorffAlpha: 0.55,
+      threePassStability: 0.95,
+      canaryTnr: 1.0,
+    });
+    assert.strictEqual(result.admitted, false);
+    assert.ok(result.reasons.some((r) => r.includes('Inter-rater agreement below bar')));
+  });
+
+  it('rejects judge when 3-pass stability < 0.90', () => {
+    const result = evaluateJudgeAdmission({
+      gwetsAC1: 0.75,
+      threePassStability: 0.88,
+      canaryTnr: 1.0,
+    });
+    assert.strictEqual(result.admitted, false);
+    assert.ok(result.reasons.some((r) => r.includes('3-pass stability')));
+  });
+
+  it('rejects judge when canary TNR < 0.95', () => {
+    const result = evaluateJudgeAdmission({
+      gwetsAC1: 0.75,
+      threePassStability: 0.95,
+      canaryTnr: 0.90,
+    });
+    assert.strictEqual(result.admitted, false);
+    assert.ok(result.reasons.some((r) => r.includes('Canary TNR')));
+  });
+
+  it('QUALIFIED_JUDGE_METADATA reflects D-031 and D-036 calibration and admission', () => {
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, true);
+    assert.strictEqual(
+      QUALIFIED_JUDGE_METADATA.judgeVersion,
+      'gemini-3.8-flash:detective-v6-spec22-c3f54b90',
+    );
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.gwetsAC1, 0.703);
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.krippendorffAlpha, 0.163);
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.threePassStability, 0.965);
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.canaryTnr, 1.0);
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.calibrationCount, 115);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-031/);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-036/);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /\(2\/2\)/);
+
+    const evaluated = evaluateJudgeAdmission(QUALIFIED_JUDGE_METADATA);
+    assert.strictEqual(evaluated.admitted, true);
+  });
+});
+
+describe('Rule Qualification and Manifest (D-031, D-036)', () => {
+  it('evaluateRuleQualification enforces n >= 35 and wilsonLower >= 0.90', () => {
+    assert.strictEqual(
+      evaluateRuleQualification({ sampleSize: 35, wilsonLower: 0.90 }).qualified,
+      true,
+    );
+    assert.strictEqual(
+      evaluateRuleQualification({ sampleSize: 34, wilsonLower: 0.95 }).qualified,
+      false,
+    );
+    assert.strictEqual(
+      evaluateRuleQualification({ sampleSize: 50, wilsonLower: 0.899 }).qualified,
+      false,
+    );
+  });
+
+  it('QUALIFIED_RULE_MANIFEST contains rules clearing wilsonLower >= 0.90 at n >= 35 on held-out', () => {
+    assert.ok(QUALIFIED_RULE_MANIFEST.length >= 3);
+    for (const rule of QUALIFIED_RULE_MANIFEST) {
+      assert.ok(rule.sampleSize >= 35);
+      assert.ok(rule.wilsonLower >= 0.90);
+      assert.strictEqual(rule.split, 'held-out');
+      const evalResult = evaluateRuleQualification(rule);
+      assert.strictEqual(evalResult.qualified, true);
+    }
+
+    const guideIds = QUALIFIED_RULE_MANIFEST.map((r) => r.guideId);
+    assert.ok(guideIds.includes('autofill-highlight-inputs'));
+    assert.ok(guideIds.includes('complex-shapes'));
+    assert.ok(guideIds.includes('deliver-optimized-decorative-images'));
   });
 });

@@ -153,11 +153,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
 
-  // TODO(paulirish): Refactor this build script to be less convoluted:
-  // 1. Separate cache checking from execution in processGuides.
-  // 2. Use better function names (e.g. prepareGuidesAndEmbeddings, isCacheValid).
-  // 3. Avoid the double-call pattern to processGuides.
-
   // Wipe publishRoot completely to ensure a clean build.
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, { recursive: true });
@@ -260,6 +255,35 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         JSON.stringify(resultSearch.metafile)
       );
 
+      console.log("Bundling analyze.mjs...");
+      const resultAnalyze = await esbuild.build({
+        entryPoints: [path.join(rootDir, "src/analyzing/cli.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/analyze.mjs"),
+        banner: {
+          js: `// @ts-nocheck
+import { createRequire } from 'module';
+import { fileURLToPath as __fileURLToPath } from 'url';
+import { dirname as __dirnameFunction } from 'path';
+const require = createRequire(import.meta.url);
+const __filename = __fileURLToPath(import.meta.url);
+const __dirname = __dirnameFunction(__filename);
+`,
+        },
+        sourcemap: true,
+        sourcesContent: false,
+        metafile: true,
+        minify: true,
+        legalComments: "none",
+      });
+
+      fs.writeFileSync(
+        path.join(ROOT_DIST_DIR, "analyze.meta.json"),
+        JSON.stringify(resultAnalyze.metafile)
+      );
+
       console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({
         entryPoints: [path.join(rootDir, "src/cli/modern-web.ts")],
@@ -268,11 +292,14 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         format: "esm",
         outfile: path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
         plugins: [{
-          name: 'rewrite-search',
+          name: 'external-cli-modules',
           setup(build) {
             build.onResolve({ filter: /search\.ts$/ }, _args => {
               return { path: './search.mjs', external: true }
-            })
+            });
+            build.onResolve({ filter: /(?:analyzing\/cli|cli)\.ts$/ }, _args => {
+              return { path: './analyze.mjs', external: true }
+            });
           },
         }],
         metafile: true,
@@ -294,7 +321,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
 
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
+        [resultSearch.metafile, resultAnalyze.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 

@@ -1,6 +1,7 @@
 /* oxlint-disable max-lines-per-function */
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import {
   ALL_RULES,
@@ -71,6 +72,66 @@ Options:
   --experimental     Alias for --all-rules
   -h, --help         Show this help message
 `.trim();
+
+/**
+ * Formats findings into human-readable terminal output.
+ * Renders provisional verification notice, visible keepWhen / dropWhen rubric lines,
+ * and caps displayed findings at 5 per guide with an overflow summary line (D-032, D-033).
+ */
+export function formatHumanReadable(
+  targetDir: string,
+  totalFindings: number,
+  guides: readonly AnalyzeCliGuideGroup[],
+  guideFilter?: string,
+): string {
+  if (totalFindings === 0) {
+    const filterNote = guideFilter ? ` for guide "${guideFilter}"` : '';
+    return `No modernization opportunities found in ${targetDir}${filterNote}.\n`;
+  }
+
+  const lines: string[] = [
+    'Note: Static analysis results are provisional and need verification with an agent.',
+    '',
+    `Modern Web Guidance Analyzer: ${targetDir}`,
+    `Found ${totalFindings} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}:`,
+    '',
+  ];
+
+  for (const g of guides) {
+    const badge = g.tier === 'qualified' ? '[qualified]' : '[experimental]';
+    lines.push(`* ${badge} ${g.guideId} (${g.count} ${g.count === 1 ? 'finding' : 'findings'})`);
+    lines.push(`  Summary: ${g.summary}`);
+    if (g.phase2Rubric) {
+      const keepText = Array.isArray(g.phase2Rubric.keepWhen)
+        ? g.phase2Rubric.keepWhen.join('; ')
+        : String(g.phase2Rubric.keepWhen);
+      const dropText = Array.isArray(g.phase2Rubric.dropWhen)
+        ? g.phase2Rubric.dropWhen.join('; ')
+        : String(g.phase2Rubric.dropWhen);
+      lines.push(`  Keep when: ${keepText}`);
+      lines.push(`  Drop when: ${dropText}`);
+    }
+    lines.push(`  Retrieve: ${g.retrieveCommand}`);
+    lines.push('  Findings:');
+
+    const displayedFindings = g.findings.slice(0, 5);
+    for (const f of displayedFindings) {
+      lines.push(`    - ${f.file}:${f.line}: ${f.message}`);
+    }
+
+    if (g.findings.length > 5) {
+      const remainingFindings = g.findings.slice(5);
+      const remainingCount = remainingFindings.length;
+      const remainingFilesCount = new Set(remainingFindings.map((f) => f.file)).size;
+      const fileWord = remainingFilesCount === 1 ? 'file' : 'files';
+      lines.push(`  ...and ${remainingCount} more in ${remainingFilesCount} ${fileWord}`);
+    }
+
+    lines.push('');
+  }
+
+  return lines.join('\n').trimEnd() + '\n';
+}
 
 /**
  * Deterministic CLI runner for modern-web-guidance analyze.
@@ -209,35 +270,19 @@ export async function runAnalyzeCli(
     };
   }
 
-  if (totalFindings === 0) {
-    const filterNote = guideFilter ? ` for guide "${guideFilter}"` : '';
-    const output = `No modernization opportunities found in ${targetDir}${filterNote}.\n`;
-    return { exitCode: 0, output, data };
-  }
-
-  const lines: string[] = [
-    `Modern Web Guidance Analyzer: ${targetDir}`,
-    `Found ${totalFindings} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}:`,
-    '',
-  ];
-
-  for (const g of guides) {
-    const badge = g.tier === 'qualified' ? '[qualified]' : '[experimental]';
-    lines.push(`* ${badge} ${g.guideId} (${g.count} ${g.count === 1 ? 'finding' : 'findings'})`);
-    lines.push(`  Summary: ${g.summary}`);
-    lines.push(`  Retrieve: ${g.retrieveCommand}`);
-    lines.push('  Findings:');
-    for (const f of g.findings) {
-      lines.push(`    - ${f.file}:${f.line}: ${f.message}`);
-    }
-    lines.push('');
-  }
-
-  const output = lines.join('\n').trimEnd() + '\n';
+  const output = formatHumanReadable(targetDir, totalFindings, guides, guideFilter);
   return { exitCode: 0, output, data };
 }
 
-if (import.meta.main || (process.argv[1] && process.argv[1].endsWith('cli.ts'))) {
+const isMainModule =
+  Boolean(import.meta.main) ||
+  (Boolean(process.argv[1]) &&
+    (process.argv[1].endsWith('cli.ts') ||
+      process.argv[1].endsWith('analyze.mjs') ||
+      (typeof import.meta.url === 'string' &&
+        process.argv[1] === fileURLToPath(import.meta.url))));
+
+if (isMainModule) {
   runAnalyzeCli(process.argv.slice(2))
     .then((result) => {
       if (result.exitCode === 0) {
