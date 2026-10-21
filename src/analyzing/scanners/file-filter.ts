@@ -62,6 +62,56 @@ export const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
   '.css',
 ]);
 
+/**
+ * Well-known vendored third-party library filenames (unminified copies checked into repos, R42).
+ */
+export const VENDORED_LIBRARY_FILENAMES: ReadonlySet<string> = new Set([
+  'bootstrap.js',
+  'bootstrap.bundle.js',
+  'bootstrap-sprockets.js',
+  'jquery.js',
+  'jquery-ui.js',
+  'moment.js',
+  'moment-with-locales.js',
+  'moment-with-cn.js',
+  'dayjs.js',
+  'codemirror.js',
+  'popper.js',
+  'zepto.js',
+  'underscore.js',
+  'lodash.js',
+  'modernizr.js',
+  'prism.js',
+  'highlight.js',
+  'chosen.jquery.js',
+  'select2.js',
+  'select2.full.js',
+]);
+
+const VENDORED_MOMENT_FILENAME_RE =
+  /^(?:moment(?:-with-[a-z0-9_-]+|-timezone(?:-with-data.*)?)?)\.js$/i;
+
+const VENDORED_MODERNIZR_FILENAME_RE = /^modernizr(?:[.-].*)?\.js$/i;
+
+/**
+ * Vendored library directory segments that frequently appear in source trees (R42).
+ */
+export const VENDORED_DIRECTORY_SUBPATHS: readonly string[] = [
+  '/dayjs/esm/',
+  '/dayjs/plugin/',
+  '/codemirror/',
+  '/jquery-ui/',
+  '/tinymce/',
+  '/ckeditor/',
+  '/mathjax/',
+  '/dokka/',
+];
+
+/**
+ * Framework-published hashed asset directories (e.g. Yii/Rails `/assets/a09b59a8/`, R42).
+ */
+const HASHED_ASSET_DIR_RE = /\/assets\/[0-9a-f]{7,16}\//i;
+
 const MAX_UNMINIFIED_LINE_LENGTH = 5000;
 const LICENSE_HEADER_SCAN_BYTES = 1500;
 const THREE_PART_SEMVER_REGEX = /\bv?\d+\.\d+\.\d+\b/;
@@ -77,6 +127,37 @@ export interface FileFilterOptions {
 
 function isStringSet(value: unknown): value is ReadonlySet<string> {
   return value instanceof Set;
+}
+
+/**
+ * Returns `true` if `relPath` is a known vendored third-party library file,
+ * vendored library directory subpath, or framework-published hashed asset bundle (R42).
+ */
+export function isExcludedCorpusNonAppPath(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
+  const withLeadingSlash = normalized.startsWith('/') ? normalized : `/${normalized}`;
+  const lastSlash = normalized.lastIndexOf('/');
+  const base = lastSlash >= 0 ? normalized.slice(lastSlash + 1) : normalized;
+
+  if (
+    VENDORED_LIBRARY_FILENAMES.has(base) ||
+    VENDORED_MOMENT_FILENAME_RE.test(base) ||
+    VENDORED_MODERNIZR_FILENAME_RE.test(base)
+  ) {
+    return true;
+  }
+
+  for (const subpath of VENDORED_DIRECTORY_SUBPATHS) {
+    if (withLeadingSlash.includes(subpath)) {
+      return true;
+    }
+  }
+
+  if (HASHED_ASSET_DIR_RE.test(withLeadingSlash)) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -98,6 +179,10 @@ export function isVendoredOrGeneratedPath(
   } else {
     ignoredDirs = optionsOrCustomDirs?.customIgnoredDirs ?? VENDORED_DIR_SEGMENTS;
     excludeCorpus = optionsOrCustomDirs?.excludeCorpusNonAppDirs === true;
+  }
+
+  if (isExcludedCorpusNonAppPath(normalized)) {
+    return true;
   }
 
   for (const segment of segments.slice(0, -1)) {
@@ -126,6 +211,16 @@ export function isVendoredOrGeneratedPath(
   }
 
   return false;
+}
+
+/**
+ * Alias for `isVendoredOrGeneratedPath` (R42).
+ */
+export function isIgnoredPath(
+  relPath: string,
+  optionsOrCustomDirs?: FileFilterOptions | ReadonlySet<string>,
+): boolean {
+  return isVendoredOrGeneratedPath(relPath, optionsOrCustomDirs);
 }
 
 /**

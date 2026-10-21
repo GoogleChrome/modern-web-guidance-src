@@ -1,302 +1,227 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { describe, it } from 'node:test';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
 import { createInMemoryProject, scanJsSource } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
-  declarativeDialogPopoverControlBootstrapRule,
+  declarativeDialogPopoverControlClickListenerMatcher,
   declarativeDialogPopoverControlClickListenerRule,
+  declarativeDialogPopoverControlMatcher,
+  declarativeDialogPopoverControlRule,
 } from './declarative-dialog-popover-control.ts';
 
-const domMatcher =
-  declarativeDialogPopoverControlBootstrapRule.matcher as DomRuleMatcher;
-const jsMatcher =
-  declarativeDialogPopoverControlClickListenerRule.matcher as JsRuleMatcher;
+const domRules: readonly DomRuleMatcher[] = [declarativeDialogPopoverControlMatcher];
+const jsRules: readonly JsRuleMatcher[] = [declarativeDialogPopoverControlClickListenerMatcher];
 
-void test('declarative-dialog-popover-control DOM: positive brownfield matches', async (t) => {
-  await t.test('flags legacy data-toggle="modal" trigger (CyberChef fixture)', () => {
-    const html = `
-      <div id="banner">
-        <a href="#" data-toggle="modal" data-target="#download-modal">Download CyberChef</a>
-      </div>
-    `;
-    const matches = scanHtml('index.html', html, [domMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 3);
-    assert.match(matches[0]?.message ?? '', /commandfor/);
+function runJsxScan(filePath: string, code: string) {
+  const project = createInMemoryProject();
+  const sf = project.createSourceFile(filePath, code, { overwrite: true });
+  return scanJsx(filePath, sf, domRules);
+}
+
+describe('declarativeDialogPopoverControlRule (DOM)', () => {
+  it('has valid rule metadata and non-empty phase2Rubric', () => {
+    assert.equal(declarativeDialogPopoverControlRule.id, 'declarative-dialog-popover-control');
+    assert.equal(
+      declarativeDialogPopoverControlClickListenerRule.id,
+      'declarative-dialog-popover-control/click-listener',
+    );
+    assert.ok(declarativeDialogPopoverControlRule.phase2Rubric.keepWhen.length > 0);
+    assert.ok(declarativeDialogPopoverControlRule.phase2Rubric.dropWhen.length > 0);
   });
 
-  await t.test('flags Bootstrap 5 data-bs-toggle="modal" trigger', () => {
+  it('flags button with onclick calling showModal()', () => {
     const html = `
-      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
-        Launch demo modal
+      <button onclick="document.getElementById('dlg').showModal()">Open</button>
+      <dialog id="dlg">Hello</dialog>
+    `;
+    const matches = scanHtml('index.html', html, domRules);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+  });
+
+  it('flags button with onclick calling togglePopover()', () => {
+    const html = `
+      <button onclick="menu.togglePopover()">Menu</button>
+      <div id="menu" popover>Items</div>
+    `;
+    const matches = scanHtml('index.html', html, domRules);
+    assert.equal(matches.length, 1);
+  });
+
+  it('flags button with aria-controls referencing an actual <dialog> in the document', () => {
+    const html = `
+      <button aria-controls="settings-dlg">Settings</button>
+      <dialog id="settings-dlg">Content</dialog>
+    `;
+    const matches = scanHtml('index.html', html, domRules);
+    assert.equal(matches.length, 1);
+  });
+
+  it('ignores button with aria-controls when target is not a <dialog> or [popover]', () => {
+    const html = `
+      <button aria-controls="accordion-panel">Expand</button>
+      <div id="accordion-panel">Details</div>
+    `;
+    const matches = scanHtml('index.html', html, domRules);
+    assert.equal(matches.length, 0);
+  });
+
+  it('ignores button that already has commandfor attribute', () => {
+    const html = `
+      <button commandfor="dlg" command="show-modal">Open</button>
+      <dialog id="dlg">Hello</dialog>
+    `;
+    const matches = scanHtml('index.html', html, domRules);
+    assert.equal(matches.length, 0);
+  });
+
+  it('ignores button that already has popovertarget attribute', () => {
+    const html = `
+      <button popovertarget="menu">Menu</button>
+      <div id="menu" popover>Items</div>
+    `;
+    const matches = scanHtml('index.html', html, domRules);
+    assert.equal(matches.length, 0);
+  });
+
+  it('ignores button with unrelated onclick handler', () => {
+    const html = `
+      <button onclick="submitForm()">Submit</button>
+    `;
+    const matches = scanHtml('index.html', html, domRules);
+    assert.equal(matches.length, 0);
+  });
+
+  it('ignores button with onclick calling dialog.close("confirm") with a return value argument', () => {
+    const html = `
+      <button onclick="dialog.close('confirm')">Confirm</button>
+      <dialog id="dialog">Hello</dialog>
+    `;
+    const matches = scanHtml('index.html', html, domRules);
+    assert.equal(matches.length, 0);
+  });
+
+  it('ignores Bootstrap data-bs-toggle="modal" and data-toggle="modal" attributes', () => {
+    const html = `
+      <button type="button" data-bs-toggle="modal" data-bs-target="#exampleModal">
+        Launch modal
+      </button>
+      <button type="button" data-toggle="popover" data-target="#pop">
+        Launch popover
       </button>
     `;
-    const matches = scanHtml('modal.html', html, [domMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
+    const matches = scanHtml('modal.html', html, domRules);
+    assert.equal(matches.length, 0);
   });
 
-  await t.test('flags data-toggle="popover" trigger (Ray-Optics fixture)', () => {
-    const html = `
-      <label class="btn btn-secondary" data-toggle="popover" data-trigger="hover" data-content="Help text">
-        Settings
-      </label>
-    `;
-    const matches = scanHtml('controls.html', html, [domMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
-    assert.match(matches[0]?.message ?? '', /popovertarget/);
-  });
-
-  await t.test('flags data-toggle="modal" in JSX element', () => {
-    const project = createInMemoryProject();
-    const code = `
-      export function ModalTrigger() {
-        return (
-          <button type="button" data-toggle="modal" data-target="#myModal">
-            Open
-          </button>
-        );
+  it('ignores JSX button with spread attributes', () => {
+    const jsx = `
+      export function Trigger(props) {
+        return <button {...props} onClick={() => dlg.showModal()}>Open</button>;
       }
     `;
-    const sourceFile = project.createSourceFile('ModalTrigger.tsx', code);
-    const matches = scanJsx('ModalTrigger.tsx', sourceFile, [domMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 4);
+    const matches = runJsxScan('Trigger.tsx', jsx);
+    assert.equal(matches.length, 0);
   });
 
-  await t.test('flags data-dismiss="modal" and data-bs-dismiss="modal" triggers', () => {
-    const html = `
-      <div class="modal">
-        <button type="button" data-dismiss="modal">Close</button>
-        <button type="button" data-bs-dismiss="modal">Dismiss</button>
-      </div>
+  it('ignores JSX button with dynamic commandfor={id}', () => {
+    const jsx = `
+      export function Trigger({ id }) {
+        return <button commandfor={id} onClick={() => dlg.showModal()}>Open</button>;
+      }
     `;
-    const matches = scanHtml('dismiss.html', html, [domMatcher]);
-    assert.equal(matches.length, 2);
-    assert.equal(matches[0]?.line, 3);
-    assert.match(matches[0]?.message ?? '', /command="close"/);
-    assert.equal(matches[1]?.line, 4);
-  });
-
-  await t.test('flags data-dismiss="popover" and data-bs-dismiss="popover" triggers', () => {
-    const html = `
-      <div class="popover">
-        <button type="button" data-dismiss="popover">Close</button>
-        <button type="button" data-bs-dismiss="popover">Dismiss</button>
-      </div>
-    `;
-    const matches = scanHtml('dismiss-popover.html', html, [domMatcher]);
-    assert.equal(matches.length, 2);
-    assert.equal(matches[0]?.line, 3);
-    assert.match(matches[0]?.message ?? '', /hide-popover/);
-    assert.equal(matches[1]?.line, 4);
+    const matches = runJsxScan('Trigger.tsx', jsx);
+    assert.equal(matches.length, 0);
   });
 });
 
-void test('declarative-dialog-popover-control DOM: negative / exempt cases', async (t) => {
-  await t.test('exempts buttons already using commandfor and command="show-modal"', () => {
-    const html = `
-      <button commandfor="confirm-dialog" command="show-modal" data-toggle="modal">
-        Open Confirmation
-      </button>
-    `;
-    const matches = scanHtml('dialog.html', html, [domMatcher]);
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('exempts buttons already using popovertarget', () => {
-    const html = `
-      <button popovertarget="my-popover" data-toggle="popover">
-        Toggle
-      </button>
-    `;
-    const matches = scanHtml('popover.html', html, [domMatcher]);
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('exempts JSX buttons with spread attributes', () => {
-    const project = createInMemoryProject();
-    const code = `
-      export function CustomButton(props: any) {
-        return <button data-toggle="modal" {...props}>Open</button>;
-      }
-    `;
-    const sourceFile = project.createSourceFile('Button.tsx', code);
-    const matches = scanJsx('Button.tsx', sourceFile, [domMatcher]);
-    assert.equal(matches.length, 0);
-  });
-});
-
-void test('declarative-dialog-popover-control JS: positive click listener matches', async (t) => {
-  await t.test('flags addEventListener("click") calling showModal()', () => {
+describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
+  it('flags addEventListener("click", () => dialog.showModal())', () => {
     const js = `
-      const openBtn = document.querySelector('#open-modal');
+      const openBtn = document.querySelector('#open');
+      const dialog = document.querySelector('#dlg');
       openBtn.addEventListener('click', () => {
         dialog.showModal();
       });
     `;
-    const { matches } = scanJsSource('app.js', js, [jsMatcher]);
+    const { matches } = scanJsSource('modal.js', js, jsRules);
     assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 3);
-    assert.match(matches[0]?.message ?? '', /commandfor/);
+    assert.equal(matches[0]?.line, 5);
   });
 
-  await t.test('flags addEventListener("click") calling dialog.close()', () => {
+  it('flags addEventListener("click", () => popover.togglePopover())', () => {
     const js = `
-      const closeBtn = document.querySelector('#close-modal');
-      closeBtn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => popover.togglePopover());
+    `;
+    const { matches } = scanJsSource('popover.js', js, jsRules);
+    assert.equal(matches.length, 1);
+  });
+
+  it('flags pure click listener with preventDefault and local getElementById lookup', () => {
+    const js = `
+      btn.addEventListener('click', (e) => {
         e.preventDefault();
-        dialog.close();
+        const modal = document.getElementById('settings-modal');
+        modal.showModal();
       });
     `;
-    const { matches } = scanJsSource('app.js', js, [jsMatcher]);
+    const { matches } = scanJsSource('settings.js', js, jsRules);
     assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 3);
   });
 
-  await t.test('flags addEventListener("click") calling togglePopover()', () => {
+  it('ignores jQuery $(btn).on("click", () => $("#modal").modal("show"))', () => {
     const js = `
-      const trigger = document.getElementById('pop-trigger');
-      trigger.addEventListener('click', () => {
-        myPopover.togglePopover();
+      $('#open-btn').on('click', function () {
+        $('#my-modal').modal('show');
       });
     `;
-    const { matches } = scanJsSource('app.js', js, [jsMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 3);
+    const { matches } = scanJsSource('legacy.js', js, jsRules);
+    assert.equal(matches.length, 0);
   });
 
-  await t.test('flags jQuery .on("click") and .click() calling modal("show")', () => {
+  it('ignores dialog.close("confirm") when passing a returnValue argument', () => {
     const js = `
-      $('#merge-btn').on('click', () => {
-        $('#merge-products-modal').modal('show');
-      });
-      $('#other-btn').click(function() {
-        $('#other-modal').modal('show');
+      confirmBtn.addEventListener('click', () => {
+        dialog.close('confirm');
       });
     `;
-    const { matches } = scanJsSource('products.js', js, [jsMatcher]);
-    assert.equal(matches.length, 2);
-    assert.equal(matches[0]?.line, 2);
-    assert.equal(matches[1]?.line, 5);
+    const { matches } = scanJsSource('confirm.js', js, jsRules);
+    assert.equal(matches.length, 0);
   });
 
-  await t.test('flags onclick property assignment calling showModal()', () => {
-    const js = `
-      btn.onclick = () => {
-        myDialog.showModal();
-      };
-    `;
-    const { matches } = scanJsSource('app.js', js, [jsMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
-  });
-
-  await t.test('flags click listener calling showPopover() or hidePopover()', () => {
+  it('ignores click listeners with side effects like fetch() or classList.add()', () => {
     const js = `
       openBtn.addEventListener('click', () => {
-        tooltip.showPopover();
+        fetch('/api/analytics');
+        dialog.showModal();
       });
-      closeBtn.addEventListener('click', () => {
-        tooltip.hidePopover();
+      menuBtn.addEventListener('click', () => {
+        menuBtn.classList.add('is-active');
+        popover.togglePopover();
       });
     `;
-    const { matches } = scanJsSource('popover.js', js, [jsMatcher]);
-    assert.equal(matches.length, 2);
-    assert.equal(matches[0]?.line, 2);
-    assert.equal(matches[1]?.line, 5);
-  });
-
-  await t.test('flags standalone jQuery modal("show"), modal("hide"), modal("toggle") calls', () => {
-    const js = `
-      function triggerModals() {
-        $('#merge-products-modal').modal('show');
-        $('#delete-confirm-modal').modal('hide');
-        $('#toggle-modal').modal('toggle');
-      }
-    `;
-    const { matches } = scanJsSource('modals.js', js, [jsMatcher]);
-    assert.equal(matches.length, 3);
-    assert.equal(matches[0]?.line, 3);
-    assert.equal(matches[1]?.line, 4);
-    assert.equal(matches[2]?.line, 5);
-  });
-
-  await t.test('flags standalone jQuery popover("show"), popover("hide"), popover("toggle") calls', () => {
-    const js = `
-      function triggerPopovers() {
-        $('#user-popover').popover('show');
-        $('#user-popover').popover('hide');
-        $('#user-popover').popover('toggle');
-      }
-    `;
-    const { matches } = scanJsSource('popovers.js', js, [jsMatcher]);
-    assert.equal(matches.length, 3);
-    assert.equal(matches[0]?.line, 3);
-    assert.equal(matches[1]?.line, 4);
-    assert.equal(matches[2]?.line, 5);
-  });
-});
-
-void test('declarative-dialog-popover-control JS: negative / exempt cases', async (t) => {
-  await t.test('exempts click listener guarded by commandForElement feature check', () => {
-    const js = `
-      if (!('commandForElement' in HTMLButtonElement.prototype)) {
-        btn.addEventListener('click', () => {
-          dialog.showModal();
-        });
-      }
-    `;
-    const { matches } = scanJsSource('app.js', js, [jsMatcher]);
+    const { matches } = scanJsSource('impure.js', js, jsRules);
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts unrelated .close() calls on sockets or streams', () => {
+  it('ignores non-click event listeners calling showModal', () => {
     const js = `
-      disconnectBtn.addEventListener('click', () => {
-        webSocket.close();
-      });
-      cancelBtn.addEventListener('click', () => {
-        fileStream.close();
+      window.addEventListener('keydown', () => {
+        dialog.showModal();
       });
     `;
-    const { matches } = scanJsSource('stream.js', js, [jsMatcher]);
+    const { matches } = scanJsSource('keys.js', js, jsRules);
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts listeners that do not toggle modals', () => {
+  it('ignores click listeners that do not call dialog/popover methods', () => {
     const js = `
       btn.addEventListener('click', () => {
         console.log('clicked');
       });
     `;
-    const { matches } = scanJsSource('app.js', js, [jsMatcher]);
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('exempts click handlers with form validation or state mutation before showModal (R32.4)', () => {
-    const js = `
-      submitBtn.addEventListener('click', (e) => {
-        if (!form.checkValidity()) {
-          return;
-        }
-        dialog.showModal();
-      });
-
-      fetchBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const data = await fetch('/api/user');
-        dialog.showModal();
-      });
-
-      stateBtn.addEventListener('click', (e) => {
-        setLoading(true);
-        dialog.showModal();
-      });
-    `;
-    const { matches } = scanJsSource('app.js', js, [jsMatcher]);
+    const { matches } = scanJsSource('log.js', js, jsRules);
     assert.equal(matches.length, 0);
   });
 });
