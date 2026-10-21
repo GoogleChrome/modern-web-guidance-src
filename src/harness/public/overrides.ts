@@ -12,6 +12,14 @@ export interface SuiteOverride {
   excludeGuides?: string[];
 }
 
+/** Thrown when the suite's result keys or an `excludeGuides` entry cannot be applied safely. */
+export class OverrideError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'OverrideError';
+  }
+}
+
 /** Results keyed by `"<task> - <guide> - <guided|unguided>"`, as in `evals.json#results`. */
 export type ResultsByKey = Record<string, RunResult[]>;
 
@@ -24,7 +32,7 @@ export type ResultsByKey = Record<string, RunResult[]>;
 export function guideOfResultKey(key: string): string {
   const parts = key.split(' - ');
   if (parts.length !== 3) {
-    throw new Error(`Malformed result key (expected "<task> - <guide> - <runType>"): ${JSON.stringify(key)}`);
+    throw new OverrideError(`Malformed result key (expected "<task> - <guide> - <runType>"): ${JSON.stringify(key)}`);
   }
   return parts[1];
 }
@@ -50,7 +58,7 @@ export function withoutGuides(results: ResultsByKey, guides: readonly string[]):
 
   const unmatched = guides.filter(guide => !matched.has(guide));
   if (unmatched.length > 0) {
-    throw new Error(`excludeGuides lists guides not present in this suite: ${unmatched.join(', ')}`);
+    throw new OverrideError(`excludeGuides lists guides not present in this suite: ${unmatched.join(', ')}`);
   }
   return kept;
 }

@@ -1,0 +1,10 @@
+{
+  "include": [
+    "nightly-*-claude_code",
+    "nightly-*-codex_cli",
+    "nightly-*-antigravity_cli"
+  ],
+  "exclude": [],
+  "overrides": [],
+  "releasedModels": []
+}

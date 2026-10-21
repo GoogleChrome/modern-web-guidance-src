@@ -47,6 +47,8 @@ export type PublicRun = Pick<RunResult, RunField> & {
   results: PublicCheck[];
   runtime?: { agentRuntime?: number; graderRuntime?: number };
   tokenUsage?: { total: number; cached: number };
+  /** Public artifact names written next to this run (set by the builder, never copied from the raw run). */
+  files?: string[];
 };
 
 export type PublicCheck = Pick<ScenarioCheck, AssertionField>;
