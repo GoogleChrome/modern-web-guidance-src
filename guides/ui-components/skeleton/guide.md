@@ -7,6 +7,7 @@ web-feature-ids:
   - prefers-reduced-motion
   - inert
   - lh
+  - line-clamp
   - user-select
 ---
 
@@ -78,6 +79,16 @@ Treat each element type differently. Text, links and list items share one rule (
 }
 ```
 
+Optionally clamp the real text to the bar count as an enhancement, with a `--lines` custom property (default `1`). `overflow: hidden` and the `lh`-based `min-block-size` stay as the baseline, because `line-clamp` alone does not reserve height.
+
+```css
+@supports (line-clamp: 1) {
+  .skeleton[aria-busy="true"] :is(p, h2, li, a) {
+    line-clamp: var(--lines, 1);
+  }
+}
+```
+
 For more than one bar, append a `move to` and another closed rounded rectangle to the same `shape()` for each extra bar, offset vertically by `n × (--bar-height + --bar-gap)` and sized by its own `--line-two`, `--line-three` and so on. `shape()` cannot repeat a path from a count, so each bar is written out. Set `min-block-size` to the total height of all bars.
 
 | Element | Treatment |
@@ -121,3 +132,9 @@ MANDATORY: Under `@media (prefers-reduced-motion: reduce)`, set `animation: none
 {{ BASELINE_STATUS("border-shape") }}
 
 If your Baseline target does not support `border-shape`, use `@supports (border-shape: shape(from 0 0, close))` to scope the bar shapes, and let other browsers show a solid `--skeleton-tone` fill with `border-radius` on the same elements, sized by `min-block-size` in `lh` units. Multi-line bars and variable lengths are the progressive enhancement. The layout reservation still prevents shift.
+
+### line-clamp
+
+{{ BASELINE_STATUS("line-clamp") }}
+
+If your Baseline target does not support `line-clamp`, omit the `@supports` block. `overflow: hidden` and the `lh`-based `min-block-size` already clip surplus text and reserve the height, so layout is unchanged.

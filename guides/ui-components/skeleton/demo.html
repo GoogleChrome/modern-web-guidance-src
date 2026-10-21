@@ -229,6 +229,14 @@
         text-decoration: none;
       }
 
+      /* Enhancement: clamp real text to the bar count. overflow: hidden and the
+         lh-based min-block-size above remain the baseline. */
+      @supports (line-clamp: 1) {
+        .skeleton[aria-busy="true"] :is(p, h2, li, a) {
+          line-clamp: var(--lines, 1);
+        }
+      }
+
       /* Links are a short single bar */
       .skeleton[aria-busy="true"] a {
         --line-one: 42%;
@@ -294,6 +302,7 @@
         --bar-radius: .18lh;
         --line-one: 88%;
         --line-two: 64%;
+        --lines: 2;
         --block: calc(2 * var(--bar-height) + var(--bar-gap));
         border-shape: shape(from var(--bar-radius) 0,
             hline to calc(var(--line-one) - var(--bar-radius)),
@@ -323,6 +332,7 @@
         --line-one: 100%;
         --line-two: 92%;
         --line-three: 68%;
+        --lines: 3;
         --block: calc(3 * var(--bar-height) + 2 * var(--bar-gap));
         border-shape: shape(from var(--bar-radius) 0,
             hline to calc(var(--line-one) - var(--bar-radius)),
@@ -359,6 +369,7 @@
       .skeleton[aria-busy="true"] article:where(:not(:has(> .media)), :has(.content > .media)) p {
         --line-one: 92%;
         --line-two: 62%;
+        --lines: 2;
         --block: calc(2 * var(--bar-height) + var(--bar-gap));
         border-shape: shape(from var(--bar-radius) 0,
             hline to calc(var(--line-one) - var(--bar-radius)),
