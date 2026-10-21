@@ -153,7 +153,8 @@
       }
     }
 
-    /* Guard the anchor layout so browsers without anchor positioning keep centered popover placement. */
+    /* Anchored layout. Browsers without anchor positioning would center popovers, so they are placed
+       from script instead (see placeFallback). */
     @supports (position-area: block-end) {
       /* Top-level menus sit below their trigger. The implicit anchor comes from the invoker or source. */
       [popover] {
@@ -176,6 +177,14 @@
         /* Fit the area: the submenu's minimum width must not stop this fallback from fitting. */
         min-inline-size: 0;
         max-inline-size: calc(100% - 1rem);
+      }
+    }
+
+    @supports not (position-area: block-end) {
+      [popover] {
+        position: fixed;
+        inset: auto;
+        margin: 0;
       }
     }
 
@@ -442,6 +451,22 @@
       submenu.addEventListener('toggle', stop, { once: true });
     }
 
+    // Without anchor positioning, place the menu from the trigger: below it (top level) or beside it
+    // (submenu), flipping to the other side and clamping to the viewport.
+    const supportsAnchors = CSS.supports('position-area: block-end');
+    function placeFallback(menu, trigger) {
+      const t = trigger.getBoundingClientRect();
+      const m = menu.getBoundingClientRect();
+      const { clientWidth: vw, clientHeight: vh } = document.documentElement;
+      const isSubmenu = !!trigger.closest('[popover]');
+      let left = isSubmenu ? t.right : t.left;
+      let top = isSubmenu ? t.top : t.bottom;
+      if (isSubmenu && left + m.width > vw) left = t.left - m.width;
+      if (!isSubmenu && top + m.height > vh) top = t.top - m.height;
+      menu.style.left = `${Math.max(0, Math.min(left, vw - m.width))}px`;
+      menu.style.top = `${Math.max(0, Math.min(top, vh - m.height))}px`;
+    }
+
     function closeAllMenus() {
       rootTriggers.map(menuFor).filter(isOpen).forEach(menu => menu.hidePopover());
     }
@@ -586,6 +611,7 @@
         const trigger = triggerFor(menu);
         trigger?.setAttribute('aria-expanded', String(event.newState === 'open'));
         if (event.newState !== 'open') return;
+        if (!supportsAnchors && trigger) placeFallback(menu, trigger);
         if (enterOnOpen.delete(menu)) focusFirst(menu);
         // Pointer open: keep focus on the trigger (no ring) so arrow keys work. The menu is already
         // open, so the trigger's focus listener does not start a second preview.
