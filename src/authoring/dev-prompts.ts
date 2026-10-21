@@ -365,7 +365,17 @@ Diagnose each target according to its assigned flag:
        \`*(Note: These grader adjustments have already been applied directly to targets/<target>/grader.ts in this PR. After reviewing, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
      - **Miscellaneous Fixes**: Any other recommended fixes (do not have to be file-specific).
 
-5. **\`HEALTHY\`**:
+5. **\`HIGH_UNGUIDED_PASS_RATE\`**:
+   - The unguided agent achieved a 100% pass rate without consuming any guidance.
+   - **Root Cause Investigation**: Inspect \`targets/<target>/task.md\`, \`targets/<target>/grader.ts\`, and \`${EXPECTATIONS_FILE}\` to determine why the unguided agent passed every check:
+     - **Prompt Leakage (\`targets/<target>/task.md\`)**: Does \`task.md\` spell out the exact APIs, attributes, CSS properties, or implementation recipe from \`${GUIDE_FILE}\` instead of describing only the user-facing outcome?
+     - **Overly Lenient Grader (\`targets/<target>/grader.ts\`)**: Are the assertions in \`grader.ts\` too loose or incomplete relative to the requirements in \`${EXPECTATIONS_FILE}\` (allowing a naive or partial unguided implementation to pass 100%)?
+   - **Recommendation Rules (\`targets/\` Only — Do NOT Edit \`${GUIDE_FILE}\`)**:
+     - Do **NOT** modify \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\`.
+     - If \`targets/<target>/task.md\` leaks implementation details or \`targets/<target>/grader.ts\` has overly loose checks that fail to enforce \`${EXPECTATIONS_FILE}\`, tighten \`targets/<target>/task.md\` and/or \`targets/<target>/grader.ts\` directly. Always append:
+       \`*(Note: These target adjustments have already been applied directly in this PR. After reviewing, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
+
+6. **\`HEALTHY\`**:
    - The target achieved ≥ 90% guided pass rate with all guidance tools and guides correctly consumed.
    - **No investigation or fixes needed**: State that the target is healthy, guidance was consumed as expected, and all assertions passed.
    - **Actionable Recommendations**: Output \`- None (target is healthy and verified).\`

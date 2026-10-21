@@ -12,6 +12,7 @@ export type DevReportFlag =
   | 'MISSING_GUIDANCE_TOOL'
   | 'MISSING_EXPECTED_GUIDE'
   | 'LOW_GUIDED_PASS_RATE'
+  | 'HIGH_UNGUIDED_PASS_RATE'
   | 'HEALTHY';
 
 export interface TargetEvalSummary {
@@ -92,6 +93,7 @@ export function computeDevReportFlag(input: {
   toolsUsed: string[];
   guidesConsumed: string[];
   guidedPassRate: number;
+  unguidedPassRate?: number | null;
 }): { flag: DevReportFlag; flagDetails: string } {
   // Priority 1: Infrastructure / Transient Errors
   if (input.hasEarlyFailure) {
@@ -125,7 +127,15 @@ export function computeDevReportFlag(input: {
     };
   }
 
-  // Priority 5: Healthy
+  // Priority 5: Unguided Pass Rate === 100%
+  if (input.unguidedPassRate === 100) {
+    return {
+      flag: 'HIGH_UNGUIDED_PASS_RATE',
+      flagDetails: `Unguided pass rate is 100% (unguided agent passed all checks without guidance).`,
+    };
+  }
+
+  // Priority 6: Healthy
   return {
     flag: 'HEALTHY',
     flagDetails: `Guided pass rate is ${input.guidedPassRate}% (≥ 90%) and expected guide was consumed.`,
@@ -153,6 +163,7 @@ export function computeTargetSummary(targetDir: string, baseApp: string, guideIn
   }
 
   const guidedPassRate = json.summary?.guidedPassRate ?? 0;
+  const unguidedPassRate = json.summary?.unguidedPassRate ?? null;
   const { flag, flagDetails } = computeDevReportFlag({
     guideName,
     hasEarlyFailure: !!json.summary?.guidedEarlyFailures,
@@ -160,6 +171,7 @@ export function computeTargetSummary(targetDir: string, baseApp: string, guideIn
     toolsUsed: guidedRun.guidanceToolsUsed || [],
     guidesConsumed: guidedRun.guidesUsed || [],
     guidedPassRate,
+    unguidedPassRate,
   });
 
   return {
@@ -167,7 +179,7 @@ export function computeTargetSummary(targetDir: string, baseApp: string, guideIn
     flag,
     flagDetails,
     guidedPassRate,
-    unguidedPassRate: json.summary?.unguidedPassRate ?? null,
+    unguidedPassRate,
   };
 }
 
