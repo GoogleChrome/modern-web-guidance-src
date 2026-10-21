@@ -176,6 +176,22 @@ describe('blind card formatting & request construction', () => {
       itpSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
       true,
     );
+
+    // Negative assertion: unverified spec entries without provenance do not inject a Technical Reference Dossier
+    assert.equal(
+      formatLegacyPatternSpecDossier(unverifiedSpec).includes('### Technical Reference Dossier'),
+      false,
+    );
+    assert.equal(
+      formatLegacyPatternSpecDossier(templatedWithProvenance).includes('### Technical Reference Dossier'),
+      false,
+    );
+    const unverifiedSummary = map.get('masonry-layout');
+    assert.ok(unverifiedSummary);
+    assert.equal(
+      unverifiedSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
+      false,
+    );
   });
 
   it('builds Gemini request body with JSON schema and temperature 0.2', () => {
