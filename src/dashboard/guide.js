@@ -1,4 +1,6 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $ } from './utils.js';
+import { initGoogleAuth, getAccessToken, escapeHtml, $ } from './utils.js';
+import { ApiClient } from './api.js';
+import { resolveDataSource } from './data-source.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
@@ -18,14 +20,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         initGoogleAuth(async () => {
-            await loadRemoteTests();
+            await loadManifestTests('remote');
             setupNavigationControls(guideName);
             renderGraphs(guideName);
         });
 
         await loadLocalTests();
         if (getAccessToken()) {
-            await loadRemoteTests();
+            await loadManifestTests('remote');
+        } else if (resolveDataSource() === 'public') {
+            await loadManifestTests('public');
         }
         setupNavigationControls(guideName);
         renderGraphs(guideName);
@@ -127,22 +131,20 @@ async function loadLocalTests() {
     }
 }
 
-async function loadRemoteTests() {
+/**
+ * Loads the precomputed suites manifest from the bucket (signed in) or the public copy.
+ * @param {'remote' | 'public'} source
+ */
+async function loadManifestTests(source) {
     try {
-        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
-        const response = await authenticatedFetch(fileUrl);
-        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
-
-        const manifest = await response.json();
-        if (Array.isArray(manifest) && manifest.length > 0) {
-            for (const item of manifest) {
-                if (item && item.testId) {
-                    registerSuiteSummary(item, 'remote');
-                }
+        const manifest = await new ApiClient(source).getSuitesManifest();
+        for (const item of manifest) {
+            if (item && item.testId) {
+                registerSuiteSummary(item, source);
             }
         }
     } catch (error) {
-        console.error('Error loading remote suites:', error);
+        console.error(`Error loading ${source} suites:`, error);
     }
 }
 

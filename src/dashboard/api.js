@@ -1,22 +1,14 @@
 import { authenticatedFetch, parseResultKey } from './utils.js';
+import { PUBLIC_EVALS_BASE, isLocalServer, resolveDataSource } from './data-source.js';
 
-/**
- * @typedef {'local' | 'remote' | 'static'} DataSource
- */
+/** @typedef {import('./data-source.js').DataSource} DataSource */
 
 export class ApiClient {
-    constructor() {
-        const params = new URLSearchParams(window.location.search);
-        const sourceParam = params.get('source');
+    /**
+     * @param {DataSource} [source] Defaults to `resolveDataSource()` for this page.
+     */
+    constructor(source = resolveDataSource()) {
         /** @type {DataSource} */
-        let source;
-        if (sourceParam === 'remote' || sourceParam === 'local' || sourceParam === 'static') {
-            source = sourceParam;
-        } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            source = 'remote';
-        } else {
-            source = 'local';
-        }
         this.source = source;
         this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
     }
@@ -40,6 +32,9 @@ export class ApiClient {
                 url += '?alt=media';
             }
             return url;
+        } else if (this.source === 'public') {
+            // Same-origin static files published by the builder; no server to pass ?source= to.
+            return `${PUBLIC_EVALS_BASE}/${path}`;
         } else {
             let fullPath = path;
             // Prepend results/ for local results in static mode
@@ -104,6 +99,20 @@ export class ApiClient {
         return false;
     }
 
+    /**
+     * Whether an optional file exists for the current source. The public copy
+     * has no listing API and every optional file it carries is named in
+     * `run.files`, so nothing is probed there.
+     * @private
+     * @param {string} path
+     * @returns {Promise<boolean>}
+     */
+    async _fileExists(path) {
+        if (this.source === 'remote') return this._checkRemoteFileExists(path);
+        if (this.source === 'public') return false;
+        return this._checkLocalFileExists(path);
+    }
+
     // --- High-level API Methods ---
 
     /** 
@@ -124,12 +133,30 @@ export class ApiClient {
                 .filter(name => name !== 'single_task')
                 .map(id => ({ id, source: 'remote' }));
             return { suites };
+        } else if (this.source === 'public') {
+            const manifest = await this.getSuitesManifest();
+            return { suites: manifest.map(entry => ({ id: entry.testId, source: 'public' })) };
         } else {
             // Fetch directly from server.js /api/suites endpoint
             const res = await fetch('/api/suites');
             if (!res.ok) throw new Error('Failed to load local suites');
             return await res.json();
         }
+    }
+
+    /**
+     * Fetches the precomputed `suites.gen.json` manifest (one summary per suite).
+     * Only the bucket and the public copy have one; the dev server builds it on the fly.
+     * @returns {Promise<import('./summary-extractor.js').SuiteSummary[]>}
+     */
+    async getSuitesManifest() {
+        if (this.source !== 'remote' && this.source !== 'public') {
+            throw new Error(`No suites manifest for source "${this.source}"`);
+        }
+        const res = await this._fetch(`suites.gen.json?t=${Date.now()}`);
+        if (!res.ok) throw new Error(`Failed to fetch ${this.source} suites manifest (${res.status})`);
+        const manifest = await res.json();
+        return Array.isArray(manifest) ? manifest : [];
     }
 
     /** 
@@ -152,15 +179,7 @@ export class ApiClient {
      */
     async getJetskiInfo(testId) {
         const path = `${testId}/jetski_info.json`;
-        let exists = false;
-        
-        if (this.source === 'remote') {
-            exists = await this._checkRemoteFileExists(path);
-        } else {
-            exists = await this._checkLocalFileExists(path);
-        }
-
-        if (!exists) return null;
+        if (!(await this._fileExists(path))) return null;
 
         try {
             const res = await this._fetch(path);
@@ -181,13 +200,7 @@ export class ApiClient {
      */
     async checkLogExists(testId) {
         try {
-            const path = `${testId}/test_suite.log`;
-            
-            if (this.source === 'remote') {
-                return await this._checkRemoteFileExists(path);
-            } else {
-                return await this._checkLocalFileExists(path);
-            }
+            return await this._fileExists(`${testId}/test_suite.log`);
         } catch {
             return false;
         }
@@ -206,6 +219,12 @@ export class ApiClient {
         const { task: taskName, guide: guideName, runType } = parsed;
         const actualBaseApp = run.baseApp;
         let logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
+
+        // The public copy carries a pre-built agent.patch and nothing to diff against, so there is nothing to probe.
+        if (this.source === 'public') {
+            return { setupPath: '', resultPath: `${logicalBasePath}/agent.patch`, usedBasePath: logicalBasePath };
+        }
+
         let entryPointPath = run.targetFile ? `${logicalBasePath}/${run.targetFile}` : await this._findBestEntryPoint(logicalBasePath);
 
         // Fallback for older results stored in a depth-2 folder structure (runDir/taskName/runType)
@@ -225,13 +244,7 @@ export class ApiClient {
 
         // Try run-local base_app first (at the appName level, not inside guided/unguided), fallback to centralized base_apps for older runs
         const localBaseAppPath = `${testId}/${run.runNumber}/${guideName}/${taskName}/base_app/${relativePath}`;
-        let exists = false;
-
-        if (this.source === 'remote') {
-            exists = await this._checkRemoteFileExists(localBaseAppPath);
-        } else {
-            exists = await this._checkLocalFileExists(localBaseAppPath);
-        }
+        const exists = await this._fileExists(localBaseAppPath);
 
         const setupPath = exists ? localBaseAppPath : `base_apps/${actualBaseApp}/${relativePath}`;
 
@@ -301,6 +314,9 @@ export class ApiClient {
     async getRunFiles(basePath) {
         let files = [];
         try {
+            if (this.source === 'public') {
+                return []; // Callers fall back to run.files, which the builder fills in.
+            }
             if (this.source === 'local') {
                 const res = await fetch(`/api/run-files?dir=${encodeURIComponent(basePath)}&source=local`);
                 if (res.ok) {
@@ -385,8 +401,7 @@ export class ApiClient {
     getAbsoluteUrl(path) {
         if (this.source === 'remote') {
             let fixedPath = path.split('?')[0];
-            const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            if (isLocalServer) {
+            if (isLocalServer()) {
                 return `/gcs-proxy/${fixedPath}`;
             }
             return `${this.gcsPrefix}${encodeURIComponent(fixedPath)}?alt=media`;

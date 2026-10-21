@@ -1,4 +1,6 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { ApiClient } from './api.js';
+import { isLocalServer, isPublicView, resolveDataSource } from './data-source.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
@@ -33,7 +35,7 @@ let currentGuideSort = 'alphabetic';
 let currentGuideSortDir = 'asc';
 
 function isRemoteDashboard() {
-    return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    return !isLocalServer();
 }
 
 /** @type {Record<string, string>} */
@@ -51,14 +53,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const params = new URLSearchParams(window.location.search);
         
-        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
+        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd,
+        // and the public copy when there is no sign-in at all.
         initGoogleAuth(async () => {
-             await loadRemoteTests();
+             await loadManifestTests('remote');
         });
 
         await loadLocalTests();
         if (getAccessToken()) {
-             await loadRemoteTests();
+             await loadManifestTests('remote');
+        } else if (resolveDataSource(params) === 'public') {
+             await loadManifestTests('public');
         }
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
@@ -370,24 +375,24 @@ async function loadLocalTests() {
     }
 }
 
-async function loadRemoteTests() {
+/**
+ * Loads the precomputed suites manifest from the bucket (signed in) or the public copy.
+ * @param {'remote' | 'public'} source
+ */
+async function loadManifestTests(source) {
     try {
-        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
-        const response = await authenticatedFetch(fileUrl);
-        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
-
-        const manifest = await response.json();
-        if (Array.isArray(manifest) && manifest.length > 0) {
+        const manifest = await new ApiClient(source).getSuitesManifest();
+        if (manifest.length > 0) {
             const emptyState = document.getElementById('empty-state');
             if (emptyState) emptyState.style.display = 'none';
             for (const item of manifest) {
                 if (item && item.testId) {
-                    registerSuiteSummary(item, 'remote');
+                    registerSuiteSummary(item, source);
                 }
             }
         }
 
-        // Re-render UI now that we have remote data
+        // Re-render UI now that we have manifest data
         const params = new URLSearchParams(window.location.search);
         let initialTests = params.get('tests');
         if (!initialTests || initialTests.trim() === '') {
@@ -397,7 +402,7 @@ async function loadRemoteTests() {
         renderAll();
 
     } catch (error) {
-        console.error('Error loading remote suites:', error);
+        console.error(`Error loading ${source} suites:`, error);
     }
 }
 
@@ -582,7 +587,8 @@ function renderSuites() {
         const uErrBand = uErr > 0 ? `<div class="variance-band unguided" style="left: ${(uRate * (1 - uErr / 100)).toFixed(1)}%; width: ${uErr}%;"></div>` : '';
         const gErrBand = gErr > 0 ? `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - gErr / 100)).toFixed(1)}%; width: ${gErr}%;"></div>` : '';
 
-        const { label, ldap } = formatSuiteLabel(testInfo);
+        const { label, ldap: runnerLdap } = formatSuiteLabel(testInfo);
+        const ldap = isPublicView(testInfo.source) ? '' : runnerLdap;
 
         html += `
             <tr class="suite-table-row ${isFaulty ? 'faulty' : ''}">
