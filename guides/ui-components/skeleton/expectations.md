@@ -2,7 +2,7 @@
 
 - Skeleton styles apply to the semantic elements (`h2`, `p`, `li`, `a`, `button`, `input`) while the container has `aria-busy="true"`, without wrapper `<span>`s or per-element data attributes.
 - Text bars are drawn with `border-shape: shape(...)` using rounded-end bar subpaths, with a filled `background`.
-- Paragraphs render three bars of decreasing width, and headings render fewer bars than paragraphs, via multiple closed subpaths in one `shape()`.
+- Paragraphs render 3-4 bars with the last one shorter than the rest, via multiple closed subpaths in one `shape()`. Headings render one bar.
 - Skeleton text elements clip real text (`overflow: hidden`) and reserve height with `lh` units, so long content does not add lines.
 - Buttons and inputs render as a single fixed-height pill with no padding or border.
 - Media and avatar placeholders use a `background-color` fill with `aspect-ratio`, and are not replaced with `content: linear-gradient()`.
