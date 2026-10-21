@@ -182,54 +182,71 @@ Implement the behaviors above for your own markup. Arrow, `Home`/`End`, wrap-aro
 1. **Pointer click toggles.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus and start a preview mid-click. Remember which trigger was pressed. Clicking a closed or previewed trigger opens or closes it natively and never enters the menu; only keyboard opens enter it. Do not intercept the click.
 2. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, call `focus({ focusVisible: false })`; browsers that ignore the option paint no ring for pointer focus anyway.
 3. **Hover switches open menus.** On `pointerenter` of a top-level trigger while another top-level menu is open: hide it, focus the hovered trigger without a ring, and preview on focus (see above) previews it. Nothing open: do nothing.
-4. **Safe triangle.** A fixed CSS bridge is too narrow: it only works when the pointer starts near the parent's edge. Track the pointer instead:
-   * On every `pointermove` while a submenu is open, test whether the pointer is inside the triangle of its previous position and the submenu's two near-edge corners.
-   * If it is, the pointer is heading to the submenu: do not focus the sibling item underneath, because that closes the submenu.
-   * Start a timer (about 300 ms) that focuses the item if no further move arrives, so a stalled pointer does not leave the wrong item active. Clear it on every move.
-   * Record the previous position in a `document` listener, so it still holds the old value when the menu handlers run.
-   * Use the submenu's left edge when the pointer is left of it and the right edge when it flipped. A `--below` submenu has no side edge, so skip the triangle.
+4. **Safe triangle.** A fixed CSS bridge is too narrow: it only works when the pointer starts near the parent's edge. Let CSS draw the bridge and use script only to report the pointer:
+   * Run this only when `matchMedia('(hover: hover)').matches`; it is irrelevant to touch and keyboard.
+   * Start when the pointer leaves a submenu trigger whose submenu is open. Skip a `--below` submenu, which has no side edge.
+   * Set `--bridge-x` and `--bridge-y` (the pointer, in px relative to the submenu), `--bridge-edge` (the submenu's near-edge x: `0` when the pointer is to its left, its width when it flipped) and `--bridge-height` on the submenu, and `data-bridge` to switch the bridge on.
+   * Stop after about 300 ms, when the pointer reaches an item in the submenu, or when the submenu closes. Remove the listener and the attribute. Nothing runs after that.
+   * CSS gives the submenu a `::before` clipped to a triangle from the pointer to the near-edge corners. It sits over the sibling items on the pointer's path, so they never receive the hover that would close the submenu. `clip-path` also limits hit testing, so the rest of the parent menu stays interactive.
+   * The submenu needs `overflow: visible` (a popover clips by default), and the pseudo-element extends past it, so offset the shape's points by that extent.
+   * Follow-up: a curved path (`shape()` curve commands) follows real pointer arcs better than a straight triangle. Pointer-driven animations ([CSS Pointer Animations](https://drafts.csswg.org/pointer-animations-1/)) may later remove the script.
+
+```css
+[popover] [popover] {
+  overflow: visible;
+
+  &[data-bridge]::before {
+    content: "";
+    position: absolute;
+    inset: -100vh -100vw; /* Room for the triangle, which can extend far outside the submenu. */
+    clip-path: shape(
+      from calc(100vw + var(--bridge-x)) calc(100vh + var(--bridge-y)),
+      line to calc(100vw + var(--bridge-edge)) 100vh,
+      line to calc(100vw + var(--bridge-edge)) calc(100vh + var(--bridge-height)),
+      close
+    );
+  }
+}
+```
 
 ```js
-// Pointer over an item moves focus to it, unless the pointer is heading to an open submenu.
-let lastPointer = null;
-document.addEventListener('pointermove', event => {
-  lastPointer = { x: event.clientX, y: event.clientY }; // Runs after the menu handlers.
-});
+const canHover = matchMedia('(hover: hover)');
 
-function headingToward(submenu, event) {
-  if (!lastPointer) return false;
+// Call on pointerleave of a submenu trigger, with that trigger's submenu.
+function startBridge(submenu, event) {
+  if (!canHover.matches || !submenu.matches(':popover-open')) return;
   const rect = submenu.getBoundingClientRect();
-  const x = event.clientX < rect.left ? rect.left : event.clientX > rect.right ? rect.right : null;
-  if (x === null) return false; // Below the parent: no side edge.
-  const sign = (a, b, c) => (a.x - c.x) * (b.y - c.y) - (b.x - c.x) * (a.y - c.y);
-  const point = { x: event.clientX, y: event.clientY };
-  const [a, b, c] = [lastPointer, { x, y: rect.top }, { x, y: rect.bottom }];
-  const signs = [sign(point, a, b), sign(point, b, c), sign(point, c, a)];
-  return !(signs.some(s => s < 0) && signs.some(s => s > 0));
+  if (event.clientX >= rect.left && event.clientX <= rect.right) return; // --below: no side edge.
+  const style = submenu.style;
+  style.setProperty('--bridge-edge', `${event.clientX < rect.left ? 0 : rect.width}px`);
+  style.setProperty('--bridge-height', `${rect.height}px`);
+  const update = ({ clientX, clientY, target }) => {
+    if (target !== submenu && submenu.contains(target)) return stop(); // Reached an item.
+    style.setProperty('--bridge-x', `${clientX - rect.left}px`);
+    style.setProperty('--bridge-y', `${clientY - rect.top}px`);
+  };
+  const timer = setTimeout(() => stop(), 300);
+  const stop = () => {
+    clearTimeout(timer);
+    document.removeEventListener('pointermove', update);
+    submenu.removeEventListener('toggle', stop);
+    submenu.removeAttribute('data-bridge');
+  };
+  update(event);
+  submenu.dataset.bridge = '';
+  document.addEventListener('pointermove', update);
+  submenu.addEventListener('toggle', stop, { once: true });
 }
-
-let triangleTimer;
-menu.addEventListener('pointermove', event => {
-  clearTimeout(triangleTimer);
-  const item = event.target.closest('button');
-  if (!item || item === document.activeElement) return;
-  const focusItem = () => item.focus({ focusVisible: false });
-  // The open submenu whose parent is this menu, if the pointer is not on its own trigger.
-  const submenu = openChildSubmenu(menu);
-  if (submenu && triggerFor.get(submenu) !== item && headingToward(submenu, event)) {
-    triangleTimer = setTimeout(focusItem, 300);
-  } else {
-    focusItem();
-  }
-});
 ```
+
+Hover follows focus (item 2) stays a plain `pointermove` handler: it needs no triangle logic.
 
 Also:
 
 * **Outside focus.** Close every open menu when focus lands outside the menu system (a `document` `focusin` listener).
-* **Command activation.** Announce it, then hide the root menu and restore focus to its trigger, without a ring if the activation came from a pointer.
+* **Command activation.** Announce it, then hide the root menu and restore focus to its trigger, without a ring if the activation came from a pointer. For checkable items (`menuitemcheckbox`, `menuitemradio`), wait about 300 ms before closing so the changed check mark is visible. Style a closed trigger as active only on `:focus-visible`; otherwise the restored (ringless) focus leaves it highlighted after a pointer selection.
 * **`aria-expanded`.** Set it only in the `toggle` listener. It covers preview and open states, and the trigger's `aria-expanded` stays `"true"` while its menu is previewed or open.
-* **Helpers.** The snippet assumes `triggerFor` (a `Map` from menu to trigger) and `openChildSubmenu(menu)` (the open submenu whose parent menu is `menu`, if any); define them for your markup. The fallbacks below also use `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `closeAndRestore(menu, { fromPointer })` (focus the trigger, without a ring when `fromPointer`, then `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open) and `pointerTrigger` (the trigger last pressed by a pointer).
+* **Helpers.** The fallbacks below assume helpers you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `closeAndRestore(menu, { fromPointer })` (focus the trigger, without a ring when `fromPointer`, then `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open) and `pointerTrigger` (the trigger last pressed by a pointer).
 
 ### Submenus
 

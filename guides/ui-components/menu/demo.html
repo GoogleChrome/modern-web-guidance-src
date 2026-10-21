@@ -80,7 +80,8 @@
        triggers keep :hover: with nothing open it is plain button feedback, with a menu open hover
        switches menus and focus follows. */
     .trigger:hover,
-    .trigger:focus,
+    .trigger:focus-visible,
+    .trigger[aria-expanded="true"]:focus,
     [focusgroup~="menu"] button:focus {
       background: var(--accent);
       color: white;
@@ -100,6 +101,27 @@
       background: var(--surface);
       color: var(--ink);
       box-shadow: 0 .7rem 1.8rem #0004;
+    }
+
+    /* Safe triangle for submenus: an invisible triangle from the pointer to the submenu's near edge
+       catches the pointer, so sibling items under its path do not take hover and close the submenu.
+       Script sets the --bridge-* values (px, relative to the submenu) for a moment after the
+       pointer leaves the trigger. A popover clips overflow by default, so it must be visible. */
+    [popover] [popover] {
+      overflow: visible;
+
+      &[data-bridge]::before {
+        content: "";
+        position: absolute;
+        inset: -100vh -100vw;
+        /* The pseudo-element extends 100vw/100vh past the submenu, so shift every point by that. */
+        clip-path: shape(
+          from calc(100vw + var(--bridge-x)) calc(100vh + var(--bridge-y)),
+          line to calc(100vw + var(--bridge-edge)) 100vh,
+          line to calc(100vw + var(--bridge-edge)) calc(100vh + var(--bridge-height)),
+          close
+        );
+      }
     }
 
     /* Open and close: short, opacity plus a small slide, no submenu-specific variant. Keyboard users
@@ -389,26 +411,35 @@
       menu.hidePopover();
     }
 
-    // Last pointer position, updated after the menu handlers have compared against it.
-    let lastPointer = null;
-    document.addEventListener('pointermove', event => {
-      lastPointer = { x: event.clientX, y: event.clientY };
-    });
-
-    // Safe triangle: the pointer is inside the triangle made of its previous position and the
-    // submenu's near-edge corners, so it is travelling toward the submenu.
-    function headingToward(submenu, event) {
-      if (!lastPointer) return false;
+    // Safe triangle: while the pointer leaves a submenu trigger, CSS draws an invisible bridge from
+    // the pointer to the submenu's near edge. Script only reports the pointer, and only for 300 ms
+    // after leaving the trigger, on hover-capable devices.
+    const canHover = matchMedia('(hover: hover)');
+    function startBridge(submenu, event) {
+      if (!canHover.matches || !isOpen(submenu)) return;
       const rect = submenu.getBoundingClientRect();
-      // Near edge: left when the pointer is to the left, right when the submenu flipped.
-      // A submenu placed below the pointer's menu has no side edge, so there is no triangle.
-      const x = event.clientX < rect.left ? rect.left : event.clientX > rect.right ? rect.right : null;
-      if (x === null) return false;
-      const sign = (a, b, c) => (a.x - c.x) * (b.y - c.y) - (b.x - c.x) * (a.y - c.y);
-      const point = { x: event.clientX, y: event.clientY };
-      const [a, b, c] = [lastPointer, { x, y: rect.top }, { x, y: rect.bottom }];
-      const signs = [sign(point, a, b), sign(point, b, c), sign(point, c, a)];
-      return !(signs.some(s => s < 0) && signs.some(s => s > 0));
+      // A submenu that fell back below its trigger has no side edge, so there is no bridge.
+      if (event.clientX >= rect.left && event.clientX <= rect.right) return;
+      const style = submenu.style;
+      style.setProperty('--bridge-edge', `${event.clientX < rect.left ? 0 : rect.width}px`);
+      style.setProperty('--bridge-height', `${rect.height}px`);
+      const update = ({ clientX, clientY, target }) => {
+        // Reaching an item in the submenu ends the bridge.
+        if (target !== submenu && submenu.contains(target)) return stop();
+        style.setProperty('--bridge-x', `${clientX - rect.left}px`);
+        style.setProperty('--bridge-y', `${clientY - rect.top}px`);
+      };
+      const timer = setTimeout(() => stop(), 300);
+      const stop = () => {
+        clearTimeout(timer);
+        document.removeEventListener('pointermove', update);
+        submenu.removeEventListener('toggle', stop);
+        submenu.removeAttribute('data-bridge');
+      };
+      update(event);
+      submenu.dataset.bridge = '';
+      document.addEventListener('pointermove', update);
+      submenu.addEventListener('toggle', stop, { once: true });
     }
 
     function closeAllMenus() {
@@ -492,6 +523,10 @@
         pointerTrigger = trigger;
       });
 
+      trigger.addEventListener('pointerleave', event => {
+        if (trigger.closest('[popover]')) startBridge(menu, event);
+      });
+
       // Tab leaves the menu system rather than moving into the previewed menu that follows the trigger.
       trigger.addEventListener('keydown', event => {
         if (event.key === 'Tab') closeAllMenus();
@@ -558,22 +593,12 @@
       });
 
       // Hover follows focus: the pointed-at item takes focus without a ring, so hover and focus
-      // are one item. While the pointer travels toward an open submenu (safe triangle), sibling
-      // items do not take focus, because that would close the submenu.
-      let triangleTimer;
+      // are one item. The safe-triangle bridge (CSS) keeps sibling items from receiving the
+      // pointer while it travels toward an open submenu.
       menu.addEventListener('pointermove', event => {
-        clearTimeout(triangleTimer);
         const item = event.target.closest('button');
         if (!item || item.closest('[popover]') !== menu || item === document.activeElement) return;
-        const focusItem = () => item.focus({ preventScroll: true, focusVisible: false });
-        const submenu = [...menu.querySelectorAll('[popover]:popover-open')]
-          .find(open => open.parentElement.closest('[popover]') === menu);
-        if (submenu && triggerFor(submenu) !== item && headingToward(submenu, event)) {
-          // A stalled pointer must not leave the submenu open on the wrong item: focus after a pause.
-          triangleTimer = setTimeout(focusItem, 300);
-          return;
-        }
-        focusItem();
+        item.focus({ preventScroll: true, focusVisible: false });
       });
 
       // Focus landing on any other item in this menu closes its open submenus, including ones that
@@ -646,7 +671,14 @@
         }
         lastKey = null;
         // A keyboard-initiated click has detail 0.
-        closeAndRestore(rootMenuOf(menu), { fromPointer: event.detail > 0 });
+        const root = rootMenuOf(menu);
+        const fromPointer = event.detail > 0;
+        // Selecting a checkable item changes its check mark: hold the menu open briefly so it is seen.
+        if (role === 'menuitemcheckbox' || role === 'menuitemradio') {
+          setTimeout(() => { if (isOpen(root)) closeAndRestore(root, { fromPointer }); }, 300);
+        } else {
+          closeAndRestore(root, { fromPointer });
+        }
       });
     });
 
