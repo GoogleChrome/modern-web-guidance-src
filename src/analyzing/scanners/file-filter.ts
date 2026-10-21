@@ -114,9 +114,9 @@ export const VENDORED_DIRECTORY_SUBPATHS: readonly string[] = [
  */
 const HASHED_ASSET_DIR_RE = /\/assets\/[0-9a-f]{7,16}\//i;
 
-const MAX_UNMINIFIED_LINE_LENGTH = 5000;
+export const MAX_UNMINIFIED_LINE_LENGTH = 1200;
 const LICENSE_HEADER_SCAN_BYTES = 1500;
-const THREE_PART_SEMVER_REGEX = /\bv?\d+\.\d+\.\d+\b/;
+const VENDOR_VERSION_REGEX = /(?:\bv?\d+\.\d+(?:\.\d+)?\b|@version\s*:?\s*\d+\.\d+)/i;
 const VENDOR_LICENSE_REGEX =
   /(?:\/\*!|@license|@preserve|all rights reserved|licensed under the (?:mit|bsd|gpl|mpl))/i;
 
@@ -267,8 +267,8 @@ export function hasVendoredLicenseHeader(
     return false;
   }
 
-  const hasThreePartSemver = THREE_PART_SEMVER_REGEX.test(headerSlice);
-  if (!hasThreePartSemver) {
+  const hasVersion = VENDOR_VERSION_REGEX.test(headerSlice);
+  if (!hasVersion) {
     return false;
   }
 

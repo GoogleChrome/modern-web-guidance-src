@@ -4,22 +4,121 @@ import type {
   DependencyRuleMatcher,
 } from '../schema.ts';
 
-const DEPENDENCY_FIELDS = [
+const RUNTIME_DEPENDENCY_FIELDS = [
+  'dependencies',
+  'peerDependencies',
+] as const;
+
+const ALL_DEPENDENCY_FIELDS = [
   'dependencies',
   'devDependencies',
   'peerDependencies',
   'optionalDependencies',
 ] as const;
 
+export const FRONTEND_FRAMEWORK_PACKAGES: ReadonlySet<string> = new Set([
+  'react',
+  'react-dom',
+  'vue',
+  'svelte',
+  'next',
+  'nuxt',
+  'astro',
+  '@angular/core',
+  'lit',
+  'preact',
+  'solid-js',
+]);
+
+export const BACKEND_SERVER_PACKAGES: ReadonlySet<string> = new Set([
+  'express',
+  'fastify',
+  'koa',
+  '@nestjs/core',
+  '@hapi/hapi',
+  'hapi',
+  'restify',
+]);
+
+function getDependencyObject(
+  pkgRecord: Readonly<Record<string, unknown>>,
+  field: string,
+): Readonly<Record<string, unknown>> | null {
+  const section = pkgRecord[field];
+  if (typeof section === 'object' && section !== null && !Array.isArray(section)) {
+    return section as Readonly<Record<string, unknown>>;
+  }
+  return null;
+}
+
+function hasAnyPackage(
+  deps: Readonly<Record<string, unknown>> | null,
+  targetPackages: ReadonlySet<string>,
+): boolean {
+  if (!deps) {
+    return false;
+  }
+  for (const pkgName of Object.keys(deps)) {
+    if (targetPackages.has(pkgName)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasNonEmptyField(value: unknown): boolean {
+  if (typeof value === 'string') {
+    return value.trim().length > 0;
+  }
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    return Object.keys(value).length > 0;
+  }
+  return false;
+}
+
 /**
- * Finds the 1-based line number where a package name is defined in package.json text.
- * Strictly scopes the search inside dependency blocks (dependencies, devDependencies,
- * peerDependencies, optionalDependencies) to avoid false line matches in keywords,
- * descriptions, or script commands (O69).
+ * Returns true if the parsed package.json represents a pure Node.js backend server
+ * or CLI tool where browser modernization rules do not apply (R46):
+ * 1. `parsed.bin` is present without a `"browser"` field or frontend framework in
+ *    `dependencies`/`devDependencies`/`peerDependencies`, OR
+ * 2. `dependencies` contains a backend server framework (`express`, `fastify`, `koa`,
+ *    `@nestjs/core`, `@hapi/hapi`, `hapi`, `restify`) without any frontend/DOM framework
+ *    in `dependencies`/`devDependencies`/`peerDependencies`.
  */
-function findPackageLine(packageJsonContent: string, pkgName: string): number {
-  const lines = packageJsonContent.split('\n');
-  const targetKey = `"${pkgName}"`;
+export function isPureNodeBackendOrCliPackage(
+  pkgRecord: Readonly<Record<string, unknown>>,
+): boolean {
+  const deps = getDependencyObject(pkgRecord, 'dependencies');
+  const devDeps = getDependencyObject(pkgRecord, 'devDependencies');
+  const peerDeps = getDependencyObject(pkgRecord, 'peerDependencies');
+
+  const hasFrontendFramework =
+    hasAnyPackage(deps, FRONTEND_FRAMEWORK_PACKAGES) ||
+    hasAnyPackage(devDeps, FRONTEND_FRAMEWORK_PACKAGES) ||
+    hasAnyPackage(peerDeps, FRONTEND_FRAMEWORK_PACKAGES);
+
+  if (hasFrontendFramework) {
+    return false;
+  }
+
+  const hasBin = hasNonEmptyField(pkgRecord.bin);
+  const hasBrowser = hasNonEmptyField(pkgRecord.browser);
+  if (hasBin && !hasBrowser) {
+    return true;
+  }
+
+  if (hasAnyPackage(deps, BACKEND_SERVER_PACKAGES)) {
+    return true;
+  }
+
+  return false;
+}
+
+function findPackageLineInFields(
+  lines: readonly string[],
+  targetKey: string,
+  fields: readonly string[],
+): number | null {
   let insideDepsSection = false;
   let sectionBraceDepth = 0;
 
@@ -28,7 +127,7 @@ function findPackageLine(packageJsonContent: string, pkgName: string): number {
     if (!line) continue;
 
     if (!insideDepsSection) {
-      for (const field of DEPENDENCY_FIELDS) {
+      for (const field of fields) {
         const fieldIdx = line.indexOf(`"${field}"`);
         if (fieldIdx !== -1) {
           insideDepsSection = true;
@@ -58,6 +157,36 @@ function findPackageLine(packageJsonContent: string, pkgName: string): number {
         insideDepsSection = false;
       }
     }
+  }
+
+  return null;
+}
+
+/**
+ * Finds the 1-based line number where a package name is defined in package.json text.
+ * Strictly scopes the search inside dependency blocks to avoid false line matches in keywords,
+ * descriptions, or script commands (O69).
+ */
+function findPackageLine(packageJsonContent: string, pkgName: string): number {
+  const lines = packageJsonContent.split('\n');
+  const targetKey = `"${pkgName}"`;
+
+  const runtimeLine = findPackageLineInFields(
+    lines,
+    targetKey,
+    RUNTIME_DEPENDENCY_FIELDS,
+  );
+  if (runtimeLine !== null) {
+    return runtimeLine;
+  }
+
+  const anyDepLine = findPackageLineInFields(
+    lines,
+    targetKey,
+    ALL_DEPENDENCY_FIELDS,
+  );
+  if (anyDepLine !== null) {
+    return anyDepLine;
   }
 
   // Fallback: search anywhere if structure is non-standard
@@ -107,8 +236,17 @@ function matchPackageAgainstRules(params: MatchPackageParams): AnalyzerMatch[] {
   return matches;
 }
 
+function ruleIncludesDevDependencies(rule: DependencyRuleMatcher): boolean {
+  return (
+    'includeDevDependencies' in rule &&
+    (rule as { readonly includeDevDependencies?: unknown }).includeDevDependencies === true
+  );
+}
+
 /**
- * Scans package.json content against a list of DependencyRuleMatchers.
+ * Scans package.json content against a list of DependencyRuleMatchers (R46).
+ * Scans only runtime `dependencies` and `peerDependencies` by default, and skips
+ * pure Node.js backend server / CLI `package.json` files.
  */
 export function scanPackageJson(
   filePath: string,
@@ -126,25 +264,29 @@ export function scanPackageJson(
     return [];
   }
 
-  if (typeof pkgData !== 'object' || pkgData === null) {
+  if (typeof pkgData !== 'object' || pkgData === null || Array.isArray(pkgData)) {
     return [];
   }
 
   const pkgRecord = pkgData as Record<string, unknown>;
+  if (isPureNodeBackendOrCliPackage(pkgRecord)) {
+    return [];
+  }
+
   const ctx: DependencyMatcherContext = {
     filePath,
     packageJson: pkgRecord,
   };
 
   const matches: AnalyzerMatch[] = [];
+  const optInDevRules = rules.filter(ruleIncludesDevDependencies);
 
-  for (const field of DEPENDENCY_FIELDS) {
-    const section = pkgRecord[field];
-    if (typeof section !== 'object' || section === null) {
+  for (const field of RUNTIME_DEPENDENCY_FIELDS) {
+    const deps = getDependencyObject(pkgRecord, field);
+    if (!deps) {
       continue;
     }
 
-    const deps = section as Record<string, unknown>;
     for (const [pkgName, versionVal] of Object.entries(deps)) {
       const versionRange = typeof versionVal === 'string' ? versionVal : '*';
       const pkgMatches = matchPackageAgainstRules({
@@ -156,6 +298,25 @@ export function scanPackageJson(
       });
       for (const m of pkgMatches) {
         matches.push(m);
+      }
+    }
+  }
+
+  if (optInDevRules.length > 0) {
+    const devDeps = getDependencyObject(pkgRecord, 'devDependencies');
+    if (devDeps) {
+      for (const [pkgName, versionVal] of Object.entries(devDeps)) {
+        const versionRange = typeof versionVal === 'string' ? versionVal : '*';
+        const pkgMatches = matchPackageAgainstRules({
+          pkgName,
+          versionRange,
+          packageJsonContent,
+          rules: optInDevRules,
+          ctx,
+        });
+        for (const m of pkgMatches) {
+          matches.push(m);
+        }
       }
     }
   }

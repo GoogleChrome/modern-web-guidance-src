@@ -486,6 +486,18 @@ function processJavaScriptFile(
   return findings;
 }
 
+function resolveFileFilterOptions(options?: ScanOptions): FileFilterOptions | undefined {
+  if (!options?.fileFilterOptions && options?.excludeCorpusNonAppDirs === undefined) {
+    return undefined;
+  }
+  return {
+    ...options.fileFilterOptions,
+    ...(options.excludeCorpusNonAppDirs !== undefined
+      ? { excludeCorpusNonAppDirs: options.excludeCorpusNonAppDirs }
+      : {}),
+  };
+}
+
 /**
  * Scans an in-memory map of files (relPath -> content) against a suite of AnalyzerRules.
  */
@@ -518,11 +530,7 @@ export function scanFiles(
   const findings: AnalyzerFinding[] = [];
   const project = options?.project ?? createInMemoryProject();
 
-  const filterOpts: FileFilterOptions | undefined =
-    options?.fileFilterOptions ??
-    (options?.excludeCorpusNonAppDirs !== undefined
-      ? { excludeCorpusNonAppDirs: options.excludeCorpusNonAppDirs }
-      : undefined);
+  const filterOpts = resolveFileFilterOptions(options);
 
   for (const [relPath, content] of files) {
     if (!shouldScanFile(relPath, content, filterOpts)) {
@@ -634,11 +642,7 @@ export async function scanRepoFiles(
   const fileMap = new Map<string, string>();
   const maxFiles = options?.maxFiles ?? 5000;
 
-  const fileFilterOptions: FileFilterOptions | undefined =
-    options?.fileFilterOptions ??
-    (options?.excludeCorpusNonAppDirs !== undefined
-      ? { excludeCorpusNonAppDirs: options.excludeCorpusNonAppDirs }
-      : undefined);
+  const fileFilterOptions = resolveFileFilterOptions(options);
 
   await walkDirectory(repoDirPath, {
     repoDirPath,
@@ -647,5 +651,8 @@ export async function scanRepoFiles(
     fileFilterOptions,
   });
 
-  return scanFiles(fileMap, rules, options);
+  return scanFiles(fileMap, rules, {
+    ...options,
+    fileFilterOptions,
+  });
 }

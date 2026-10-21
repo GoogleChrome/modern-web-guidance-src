@@ -201,8 +201,8 @@ export function deriveJudgeVerdictFromFacts(
   if (!facts.modern_feature_applies_here) {
     return 'leave-it';
   }
-  if (llmVerdict === 'unsure') {
-    return 'unsure';
+  if (llmVerdict === 'leave-it' || llmVerdict === 'unsure') {
+    return llmVerdict;
   }
   return 'right';
 }

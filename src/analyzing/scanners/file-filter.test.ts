@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  hasVendoredLicenseHeader,
   isExcludedCorpusNonAppPath,
   isIgnoredPath,
+  isMinifiedContent,
   isVendoredOrGeneratedPath,
   shouldScanFile,
 } from './file-filter.ts';
 
-describe('file-filter vendored and hashed asset exclusions (R42)', () => {
+describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
   it('excludes unminified vendored library filenames regardless of directory', () => {
     const vendoredFiles = [
       'public/js/bootstrap.js',
@@ -118,5 +120,26 @@ describe('file-filter vendored and hashed asset exclusions (R42)', () => {
 
     assert.equal(isExcludedCorpusNonAppPath('src/styles/aspect-ratio.css'), false);
     assert.equal(shouldScanFile('src/styles/aspect-ratio.css'), true);
+  });
+
+  it('excludes Coolite Datejs and 2-part versioned license headers (Card 004ac0a9d6f8, R51)', () => {
+    const cooliteDateJsHeader = [
+      '/**',
+      ' * @version: 1.0 Alpha-1',
+      ' * @author: Coolite Inc. http://www.coolite.com/',
+      ' * @date: 2007-12-13',
+      ' * @copyright: Copyright (c) 2006-2008, Coolite Inc. (http://www.coolite.com/). All rights reserved.',
+      ' * @license: Licensed under The MIT License. See license.txt and http://www.datejs.com/license/.',
+      ' */',
+      'Date.CultureInfo = { name: "en-US" };',
+    ].join('\n');
+
+    assert.equal(hasVendoredLicenseHeader(cooliteDateJsHeader), true);
+    assert.equal(shouldScanFile('public/js/date.js', cooliteDateJsHeader), false);
+
+    // Semi-minified Coolite date.js line (2,280 chars/line > 1,200 threshold)
+    const semiMinifiedLine = `var DateJs=${'a'.repeat(2280)};`;
+    assert.equal(isMinifiedContent(semiMinifiedLine), true);
+    assert.equal(shouldScanFile('public/js/date.js', semiMinifiedLine), false);
   });
 });

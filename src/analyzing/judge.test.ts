@@ -278,9 +278,21 @@ describe('parseJudgeJsonContent', () => {
     const res5 = parseJudgeJsonContent(rawUnsure, 'c5');
     assert.equal(res5.verdict, 'unsure');
     assert.equal(res5.facts.rawVerdict, 'unsure');
+
+    // 6. rawVerdict === 'leave-it' (e.g. R45 no-op syntax swap where modern_feature_applies_here: true) is preserved (R48)
+    const rawNoOpLeaveIt = JSON.stringify({
+      matches_before_syntax: true,
+      has_fallback_or_feature_guard: false,
+      modern_feature_applies_here: true,
+      reasoning: 'Single-function :hover transform is a no-op syntax swap under R45.',
+      verdict: 'leave-it',
+    });
+    const res6 = parseJudgeJsonContent(rawNoOpLeaveIt, 'c6');
+    assert.equal(res6.verdict, 'leave-it');
+    assert.equal(res6.facts.rawVerdict, 'leave-it');
   });
 
-  it('deriveJudgeVerdictFromFacts covers all truth table branches strictly (O55f)', () => {
+  it('deriveJudgeVerdictFromFacts covers all truth table branches strictly (O55f, R48)', () => {
     // rawVerdict === 'guide-wrong' always returns 'guide-wrong'
     assert.equal(
       deriveJudgeVerdictFromFacts(
@@ -312,6 +324,15 @@ describe('parseJudgeJsonContent', () => {
     assert.equal(
       deriveJudgeVerdictFromFacts(
         { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: false },
+        'leave-it',
+      ),
+      'leave-it',
+    );
+
+    // rawVerdict === 'leave-it' with modern_feature_applies_here: true -> preserves 'leave-it' (R48)
+    assert.equal(
+      deriveJudgeVerdictFromFacts(
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true },
         'leave-it',
       ),
       'leave-it',
