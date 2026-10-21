@@ -195,7 +195,7 @@ When `::scroll-marker` is unavailable, reveal the fallback marker navigation and
 
 {{ BASELINE_STATUS("scroll-marker-targets") }}
 
-If `:target-current` is unavailable, omit native marker highlighting or style the active fallback marker using the script's current-slide calculation.
+If `:target-current` is unavailable, highlight the active marker from script state: the settled-scroll handler marks the current slide (for example with `data-current`), and CSS targets that slide's `::scroll-marker` and the fallback marker's `aria-current` state. Never leave the active marker unstyled.
 
 ### Anchor positioning
 
