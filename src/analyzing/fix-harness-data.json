@@ -247,7 +247,7 @@
     "stack-drill-down": "\\binert\\b",
     "calculate-event-differentials": "\\bTemporal\\b.*(\\.until|\\.since)|(\\.until|\\.since)\\s*\\(\\s*(Temporal|\\w+)|\\bTemporal\\.(Duration|PlainDate|Instant|ZonedDateTime)\\b",
     "autofill-address-form": "autocomplete\\s*=\\s*[\"'][^\"']*\\b(street-address|address-line1|address-line2|postal-code|country|address-level1|address-level2)\\b",
-    "detect-initial-visibility-state": "performance\\.getEntriesByType\\s*\\(\\s*['\"]visibility-state['\"]\\s*\\)|VisibilityStateEntry",
+    "detect-initial-visibility-state": "performance\\.getEntriesByType\\s*\\(\\s*['\"]visibility-state['\"]\\s*\\)|\\bVisibilityStateEntry\\b",
     "adapt-scrollbar-to-contrast-preferences": "scrollbar-color\\s*:|scrollbar-width\\s*:",
     "checkbox": "accent-color\\s*:|appearance\\s*:\\s*none",
     "prevent-page-scroll-under-modal-dialog": "overscroll-behavior(-y)?\\s*:\\s*contain|<\\s*dialog\\b",
@@ -261,7 +261,7 @@
     "model-partial-time-concepts": "\\bTemporal\\.(PlainDate|PlainTime|PlainMonthDay|PlainYearMonth)\\b",
     "sanitize-untrusted-html": "setHTMLUnsafe\\s*\\(|parseHTMLUnsafe\\s*\\(|Sanitizer\\b",
     "custom-select-picker-layouts": "base-select\\b|::picker\\s*\\(\\s*select\\s*\\)",
-    "scroll-position-aware-elements": "animation-timeline\\s*:|scroll\\s*\\(|view\\s*\\(|ScrollTimeline\\b|ViewTimeline\\b",
+    "scroll-position-aware-elements": "(^|[^-\\w])animation-timeline\\s*:|(^|[^-\\w])(scroll|view)-timeline(-name|-axis|-inset)?\\s*:|(^|[^-\\w])animation-range(-start|-end)?\\s*:|\\b(ScrollTimeline|ViewTimeline)\\b",
     "autofill-highlight-inputs": ":autofill\\b",
     "complex-shapes": "mask-image\\s*:|(^|[^-\\w])mask\\s*:|mask-size\\s*:",
     "deliver-optimized-decorative-images": "(^|[^-\\w])image-set\\s*\\(",
@@ -269,12 +269,12 @@
     "equal-width-text-lines": "text-fit\\s*:|CSS\\.supports\\s*\\(\\s*['\"]text-fit",
     "light-dismiss-a-dialog": "closedby\\s*=|['\"]closedBy['\"]\\s+in\\s+HTMLDialogElement",
     "resolution-optimized-pseudo-elements": "(^|[^-\\w])image-set\\s*\\(",
-    "atrule-support-conditionals": "@supports\\b|CSS\\.supports\\s*\\(",
-    "scroll-entry-exit-effects": "animation-timeline\\s*:|view\\s*\\(|animation-range\\s*:|ViewTimeline\\b",
+    "atrule-support-conditionals": "@supports\\b|\\bCSS\\.supports\\s*\\(",
+    "scroll-entry-exit-effects": "(^|[^-\\w])animation-timeline\\s*:|(^|[^-\\w])view-timeline(-name|-axis|-inset)?\\s*:|(^|[^-\\w])animation-range(-start|-end)?\\s*:|\\bViewTimeline\\b",
     "language-detection": "\\bLanguageDetector\\b",
-    "improve-next-page-load-performance": "speculationrules\\b",
-    "highlight-text-ranges": "CSS\\.highlights\\b|new\\s+Highlight\\b|::highlight\\s*\\(",
-    "support-global-calendar-systems": "\\.withCalendar\\s*\\(|Intl\\.DateTimeFormat\\s*\\([^)]*calendar|Intl\\.supportedValuesOf\\s*\\(\\s*['\"]calendar['\"]\\s*\\)",
-    "capture-location-agnostic-data": "Intl\\.DisplayNames\\b|\\bTemporal\\.(PlainDate|PlainTime|PlainMonthDay|PlainYearMonth)\\b"
+    "improve-next-page-load-performance": "\\bspeculationrules\\b",
+    "highlight-text-ranges": "\\bCSS\\.highlights\\b|\\bnew\\s+Highlight\\s*\\(|::highlight\\s*\\(",
+    "support-global-calendar-systems": "\\.withCalendar\\s*\\(|\\bIntl\\.DateTimeFormat\\s*\\([^)]*(\\bcalendar\\s*:|-u-ca-[a-z0-9]+)|\\bIntl\\.supportedValuesOf\\s*\\(\\s*['\"]calendar['\"]\\s*\\)",
+    "capture-location-agnostic-data": "\\bIntl\\.DisplayNames\\b|\\bTemporal\\.(PlainDate|PlainTime|PlainMonthDay|PlainYearMonth)\\b"
   }
 }

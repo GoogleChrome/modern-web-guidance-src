@@ -281,6 +281,143 @@ describe('checkModernFeaturePresent', () => {
       );
     }
   });
+
+  it('validates Wave 3A modern features and rejects false-positive substrings', () => {
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'detect-initial-visibility-state',
+        "const entries = performance.getEntriesByType('visibility-state');",
+      ),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'detect-initial-visibility-state',
+        'const customVisibilityStateEntryMock = true;',
+      ),
+      false,
+    );
+
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'resolution-optimized-pseudo-elements',
+        ".icon::before { content: image-set(url('a.png') 1x, url('b.png') 2x); }",
+      ),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'resolution-optimized-pseudo-elements',
+        ".icon::before { content: -webkit-image-set(url('a.png') 1x); }",
+      ),
+      false,
+    );
+
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'atrule-support-conditionals',
+        '@supports (display: grid) { .grid { display: grid; } }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'atrule-support-conditionals',
+        'if (myCSS.supports("display: grid")) {}',
+      ),
+      false,
+    );
+
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'scroll-entry-exit-effects',
+        '.card { animation-timeline: view(); animation-range: entry 0% cover 40%; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'scroll-entry-exit-effects',
+        'element.scrollIntoView(); preview(); router.view();',
+      ),
+      false,
+    );
+
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'language-detection',
+        'const detector = await LanguageDetector.create();',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'language-detection',
+        'const myLanguageDetectorHelper = 1;',
+      ),
+      false,
+    );
+
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'improve-next-page-load-performance',
+        '<script type="speculationrules">{"prefetch":[{"where":{"href_matches":"/*"}}]}</script>',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'improve-next-page-load-performance',
+        'const myspeculationrules = {};',
+      ),
+      false,
+    );
+
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'highlight-text-ranges',
+        'const hl = new Highlight(range); CSS.highlights.set("search", hl);',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'highlight-text-ranges',
+        'const msg = "renew highlight settings"; myCSS.highlights = null;',
+      ),
+      false,
+    );
+
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'support-global-calendar-systems',
+        "const fmt = new Intl.DateTimeFormat('fa-IR', { calendar: 'persian' });",
+      ),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'support-global-calendar-systems',
+        'const fmt = new Intl.DateTimeFormat(calendarLocale);',
+      ),
+      false,
+    );
+
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'capture-location-agnostic-data',
+        "const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });",
+      ),
+      true,
+    );
+    assert.strictEqual(
+      checkModernFeaturePresent(
+        'capture-location-agnostic-data',
+        'const customIntl = { DisplayNames: null };',
+      ),
+      false,
+    );
+  });
 });
 
 describe('checkSyntaxCleanliness', () => {
