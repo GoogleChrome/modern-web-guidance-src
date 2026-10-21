@@ -3,6 +3,282 @@ import type {
   DependencyMatcherContext,
   DependencyRuleMatcher,
 } from '../schema.ts';
+import {
+  hasVendoredLicenseHeader,
+  isBuildOrInstallPath,
+  isCandidateVendoredFile,
+  isCheckedInVendorPath,
+  isExcludedCorpusNonAppPath,
+  isMinifiedContent,
+} from './file-filter.ts';
+
+const EXTENSIONS_TO_STRIP: readonly string[] = [
+  '.min.js',
+  '.bundle.js',
+  '.pack.js',
+  '-opt.js',
+  '.opt.js',
+  '.min.css',
+  '.bundle.css',
+  '.js',
+  '.mjs',
+  '.cjs',
+  '.css',
+];
+
+const VERSION_SUFFIX_REGEX = /[-._]v?\d+(?:\.\d+)*(?:[-._][a-z0-9.]+)?$/i;
+
+function extractBasename(relPath: string): string {
+  const normalized = relPath.replace(/\\/g, '/');
+  const lastSlashIndex = normalized.lastIndexOf('/');
+  return lastSlashIndex >= 0 ? normalized.slice(lastSlashIndex + 1) : normalized;
+}
+
+function stripKnownExtension(filename: string): string {
+  const lower = filename.toLowerCase();
+  for (const extension of EXTENSIONS_TO_STRIP) {
+    if (lower.endsWith(extension)) {
+      return filename.slice(0, filename.length - extension.length);
+    }
+  }
+  return filename;
+}
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+interface NormalizedPackage {
+  readonly raw: string;
+  readonly unscoped: string;
+  readonly base: string;
+  readonly core: string;
+}
+
+function normalizePackageName(pkgName: string): NormalizedPackage {
+  const raw = pkgName.toLowerCase();
+  const unscoped =
+    raw.startsWith('@') && raw.includes('/')
+      ? raw.slice(raw.indexOf('/') + 1)
+      : raw;
+  const base = unscoped.endsWith('.js') ? unscoped.slice(0, -3) : unscoped;
+  let core = base;
+  if (core.startsWith('jquery-') || core.startsWith('jquery.')) {
+    core = core.slice(7);
+  } else if (core.startsWith('vanilla-') || core.startsWith('vanilla.')) {
+    core = core.slice(8);
+  }
+  return { raw, unscoped, base, core };
+}
+
+function buildFilenameCandidates(baseName: string): ReadonlySet<string> {
+  const candidates = new Set<string>();
+  const stem = stripKnownExtension(baseName);
+  const stemNoVersion = stem.replace(VERSION_SUFFIX_REGEX, '');
+
+  const rawLower = stemNoVersion.toLowerCase();
+  candidates.add(rawLower);
+
+  const kebabStem = stemNoVersion
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .toLowerCase();
+  candidates.add(kebabStem);
+
+  let withoutJquerySuffix = rawLower;
+  if (withoutJquerySuffix.endsWith('.jquery')) {
+    withoutJquerySuffix = withoutJquerySuffix.slice(0, -'.jquery'.length);
+    candidates.add(withoutJquerySuffix);
+  } else if (withoutJquerySuffix.endsWith('-jquery')) {
+    withoutJquerySuffix = withoutJquerySuffix.slice(0, -'-jquery'.length);
+    candidates.add(withoutJquerySuffix);
+  }
+
+  let withoutJqueryPrefix = withoutJquerySuffix;
+  if (withoutJqueryPrefix.startsWith('jquery.')) {
+    withoutJqueryPrefix = withoutJqueryPrefix.slice('jquery.'.length);
+    candidates.add(withoutJqueryPrefix);
+  } else if (withoutJqueryPrefix.startsWith('jquery-')) {
+    withoutJqueryPrefix = withoutJqueryPrefix.slice('jquery-'.length);
+    candidates.add(withoutJqueryPrefix);
+  }
+
+  const dotToHyphen = rawLower.replace(/\./g, '-');
+  candidates.add(dotToHyphen);
+
+  return candidates;
+}
+
+function bannerIdentifiesPackage(bannerSlice: string, pkgName: string): boolean {
+  if (bannerSlice.length === 0) {
+    return false;
+  }
+  const lowerBanner = bannerSlice.toLowerCase();
+  const hasBannerMarker =
+    lowerBanner.includes('/*!') ||
+    lowerBanner.includes('@license') ||
+    lowerBanner.includes('@preserve') ||
+    lowerBanner.includes('@author') ||
+    lowerBanner.includes('@version') ||
+    lowerBanner.includes('copyright') ||
+    lowerBanner.includes('license');
+
+  if (!hasBannerMarker) {
+    return false;
+  }
+
+  const pkgNorm = normalizePackageName(pkgName);
+  const wordsToMatch = new Set<string>([
+    pkgNorm.raw,
+    pkgNorm.unscoped,
+    pkgNorm.base,
+    pkgNorm.core,
+  ]);
+
+  if (pkgNorm.base.includes('-')) {
+    wordsToTryAddNoHyphen(wordsToMatch, pkgNorm.base);
+  }
+
+  for (const word of wordsToMatch) {
+    if (word.length < 3) {
+      const shortPattern = new RegExp(`\\b${escapeRegExp(word)}\\.js\\b`, 'i');
+      if (shortPattern.test(lowerBanner)) {
+        return true;
+      }
+      continue;
+    }
+
+    const wordPattern = new RegExp(`\\b${escapeRegExp(word)}(?:\\.js)?\\b`, 'i');
+    if (wordPattern.test(lowerBanner)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function wordsToTryAddNoHyphen(targetSet: Set<string>, hyphenatedWord: string): void {
+  targetSet.add(hyphenatedWord.replace(/-/g, ''));
+}
+
+function matchesVendoredPackage(
+  baseName: string,
+  content: string,
+  pkgName: string,
+): boolean {
+  const candidates = buildFilenameCandidates(baseName);
+  const pkgNorm = normalizePackageName(pkgName);
+
+  if (
+    candidates.has(pkgNorm.raw) ||
+    candidates.has(pkgNorm.unscoped) ||
+    candidates.has(pkgNorm.base) ||
+    candidates.has(pkgNorm.core)
+  ) {
+    return true;
+  }
+
+  const lowerBase = baseName.toLowerCase();
+  if (pkgNorm.core === 'moment') {
+    if (
+      lowerBase.startsWith('moment-with-') ||
+      lowerBase.startsWith('moment.') ||
+      lowerBase.startsWith('moment-timezone')
+    ) {
+      return true;
+    }
+  }
+
+  if (pkgNorm.raw === 'dompurify' && candidates.has('purify')) {
+    return true;
+  }
+
+  const bannerSlice = content.slice(0, 1500);
+  return bannerIdentifiesPackage(bannerSlice, pkgName);
+}
+
+/**
+ * Scans a vendored or minified library file against dependency matchers (Slice C).
+ * Emits at most 1 AnalyzerMatch at line 1 per matching rule when the file's name
+ * or opening license header identifies one of the target packages.
+ */
+export function scanVendoredLibraryFile(
+  relPath: string,
+  content: string,
+  matchers: readonly DependencyRuleMatcher[],
+): AnalyzerMatch[] {
+  if (matchers.length === 0) {
+    return [];
+  }
+
+  if (isBuildOrInstallPath(relPath)) {
+    return [];
+  }
+
+  const lowerPath = relPath.toLowerCase();
+  const dotIndex = lowerPath.lastIndexOf('.');
+  if (dotIndex === -1) {
+    return [];
+  }
+  const extension = lowerPath.slice(dotIndex);
+  if (
+    extension !== '.js' &&
+    extension !== '.mjs' &&
+    extension !== '.cjs' &&
+    extension !== '.css'
+  ) {
+    return [];
+  }
+
+  const isVendoredOrMinified =
+    isCheckedInVendorPath(relPath) ||
+    isCandidateVendoredFile(relPath) ||
+    isExcludedCorpusNonAppPath(relPath) ||
+    isMinifiedContent(content) ||
+    hasVendoredLicenseHeader(content);
+
+  if (!isVendoredOrMinified) {
+    return [];
+  }
+
+  const baseName = extractBasename(relPath);
+  const matches: AnalyzerMatch[] = [];
+
+  for (const matcher of matchers) {
+    let matchedPackageName: string | null = null;
+    for (const targetPkg of matcher.packages) {
+      if (matchesVendoredPackage(baseName, content, targetPkg)) {
+        matchedPackageName = targetPkg;
+        break;
+      }
+    }
+
+    if (!matchedPackageName) {
+      continue;
+    }
+
+    let messageText: string;
+    if (matcher.matchPackage) {
+      const dummyCtx: DependencyMatcherContext = {
+        filePath: relPath,
+        packageJson: {},
+      };
+      const pkgResult = matcher.matchPackage(matchedPackageName, '*', dummyCtx);
+      messageText = pkgResult
+        ? `Vendored legacy library "${baseName}" (${matchedPackageName}): ${pkgResult.message}`
+        : `Vendored legacy library "${baseName}" (${matchedPackageName}) targeted for modernization.`;
+    } else {
+      messageText = `Vendored legacy library "${baseName}" (${matchedPackageName}) targeted for modernization.`;
+    }
+
+    matches.push({
+      line: 1,
+      message: messageText,
+      kind: 'vendored-library',
+    });
+  }
+
+  return matches;
+}
 
 const RUNTIME_DEPENDENCY_FIELDS = [
   'dependencies',

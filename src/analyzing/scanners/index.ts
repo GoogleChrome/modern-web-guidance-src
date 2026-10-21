@@ -14,11 +14,19 @@ import type {
 import { computeCardId } from '../stats.ts';
 import { sliceStructuredContext } from './context-slicer.ts';
 import { scanCss } from './css-scanner.ts';
-import { scanPackageJson } from './dependency-scanner.ts';
+import {
+  scanPackageJson,
+  scanVendoredLibraryFile,
+} from './dependency-scanner.ts';
 import { scanHtml, scanJsx } from './dom-scanner.ts';
 import {
+  BUILD_OR_INSTALL_DIR_SEGMENTS,
+  CORPUS_NON_APP_DIR_SEGMENTS,
+  isBuildOrInstallPath,
+  isCandidateVendoredFile,
+  isCorpusNonAppPath,
   isMinifiedContent,
-  isVendoredOrGeneratedPath,
+  MAX_SOURCE_FILE_BYTES,
   shouldScanFile,
   type FileFilterOptions,
 } from './file-filter.ts';
@@ -80,10 +88,11 @@ interface FindingParams {
   readonly message: string;
   readonly codeSnippet: string;
   readonly astSlice: string;
+  readonly kind?: 'vendored-library';
 }
 
 function createFinding(params: FindingParams): AnalyzerFinding {
-  const { rule, ctx, line, message, codeSnippet, astSlice } = params;
+  const { rule, ctx, line, message, codeSnippet, astSlice, kind } = params;
   const cardId = computeCardId(ctx.repo, ctx.commit, rule.guideId, ctx.relPath, line);
   return {
     cardId,
@@ -97,7 +106,37 @@ function createFinding(params: FindingParams): AnalyzerFinding {
     message,
     codeSnippet,
     astSlice,
+    ...(kind ? { kind } : {}),
   };
+}
+
+function processVendoredLibraryFile(
+  ctx: FileContext,
+  rules: readonly (AnalyzerRule & { matcher: DependencyRuleMatcher })[],
+): AnalyzerFinding[] {
+  const findings: AnalyzerFinding[] = [];
+  for (const rule of rules) {
+    const matches = scanVendoredLibraryFile(ctx.relPath, ctx.content, [rule.matcher]);
+    for (const match of matches) {
+      const { codeSnippet, astSlice } = sliceStructuredContext(
+        ctx.relPath,
+        ctx.content,
+        match.line,
+      );
+      findings.push(
+        createFinding({
+          rule,
+          ctx,
+          line: match.line,
+          message: match.message,
+          codeSnippet,
+          astSlice,
+          kind: 'vendored-library',
+        }),
+      );
+    }
+  }
+  return findings;
 }
 
 function processPackageJsonFile(
@@ -486,6 +525,15 @@ function processJavaScriptFile(
   return findings;
 }
 
+function ctxForVendored(
+  relPath: string,
+  content: string,
+  repo: string,
+  commit: string,
+): FileContext {
+  return { relPath, content, repo, commit };
+}
+
 function resolveFileFilterOptions(options?: ScanOptions): FileFilterOptions | undefined {
   if (!options?.fileFilterOptions && options?.excludeCorpusNonAppDirs === undefined) {
     return undefined;
@@ -534,6 +582,13 @@ export function scanFiles(
 
   for (const [relPath, content] of files) {
     if (!shouldScanFile(relPath, content, filterOpts)) {
+      if (
+        depRules.length > 0 &&
+        !isBuildOrInstallPath(relPath) &&
+        !(filterOpts?.excludeCorpusNonAppDirs && isCorpusNonAppPath(relPath))
+      ) {
+        findings.push(...processVendoredLibraryFile(ctxForVendored(relPath, content, repo, commit), depRules));
+      }
       continue;
     }
 
@@ -601,7 +656,7 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
   }
 
   // Sort entries alphabetically for deterministic traversal across environments (S5)
-  entries.sort((a, b) => a.name.localeCompare(b.name));
+  entries.sort((entryA, entryB) => entryA.name.localeCompare(entryB.name));
 
   for (const entry of entries) {
     if (state.fileMap.size >= state.maxFiles) {
@@ -612,20 +667,37 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
     const relPath = relative(state.repoDirPath, fullPath);
 
     if (entry.isDirectory()) {
-      if (!isVendoredOrGeneratedPath(relPath, state.fileFilterOptions)) {
-        await walkDirectory(fullPath, state);
+      const dirLower = entry.name.toLowerCase();
+      if (
+        BUILD_OR_INSTALL_DIR_SEGMENTS.has(dirLower) ||
+        state.fileFilterOptions?.customIgnoredDirs?.has(dirLower) ||
+        (state.fileFilterOptions?.excludeCorpusNonAppDirs &&
+          CORPUS_NON_APP_DIR_SEGMENTS.has(dirLower))
+      ) {
+        continue;
       }
+      await walkDirectory(fullPath, state);
       continue;
     }
 
-    if (entry.isFile() && shouldScanFile(relPath, undefined, state.fileFilterOptions)) {
-      try {
-        const content = await readFile(fullPath, 'utf8');
-        if (shouldScanFile(relPath, content, state.fileFilterOptions)) {
-          state.fileMap.set(relPath, content);
+    if (entry.isFile()) {
+      const isScannableSource = shouldScanFile(relPath, undefined, state.fileFilterOptions);
+      const isVendoredCandidate = isCandidateVendoredFile(relPath);
+
+      if (isScannableSource || isVendoredCandidate) {
+        try {
+          const content = await readFile(fullPath, 'utf8');
+          if (Buffer.byteLength(content, 'utf8') <= MAX_SOURCE_FILE_BYTES) {
+            if (
+              shouldScanFile(relPath, content, state.fileFilterOptions) ||
+              isCandidateVendoredFile(relPath, content)
+            ) {
+              state.fileMap.set(relPath, content);
+            }
+          }
+        } catch {
+          // Unreadable or binary file
         }
-      } catch {
-        // Unreadable or binary file
       }
     }
   }

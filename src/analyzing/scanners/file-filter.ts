@@ -1,25 +1,35 @@
-export const VENDORED_DIR_SEGMENTS: ReadonlySet<string> = new Set([
+export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'node_modules',
   'dist',
   'build',
   'out',
   '_generated',
-  'vendor',
-  'third_party',
-  'external',
   '.git',
   '.cache',
   '.next',
   '.nuxt',
   '.output',
-  'bower_components',
-  'jspm_packages',
-  'bundle',
   'coverage',
   'tmp',
   'temp',
+  'gen',
+  'generated',
+]);
+
+export const CHECKED_IN_VENDOR_DIR_SEGMENTS: ReadonlySet<string> = new Set([
+  'vendor',
+  'third_party',
+  'external',
+  'bower_components',
+  'jspm_packages',
+  'bundle',
   'libs',
   'non-npm',
+]);
+
+export const VENDORED_DIR_SEGMENTS: ReadonlySet<string> = new Set([
+  ...BUILD_OR_INSTALL_DIR_SEGMENTS,
+  ...CHECKED_IN_VENDOR_DIR_SEGMENTS,
 ]);
 
 export const CORPUS_NON_APP_DIR_SEGMENTS: ReadonlySet<string> = new Set([
@@ -86,6 +96,9 @@ export const VENDORED_LIBRARY_FILENAMES: ReadonlySet<string> = new Set([
   'chosen.jquery.js',
   'select2.js',
   'select2.full.js',
+  'tablesaw.js',
+  'tablesaw.jquery.js',
+  'humanize-duration.js',
 ]);
 
 const VENDORED_MOMENT_FILENAME_RE =
@@ -321,4 +334,106 @@ export function shouldScanFile(
   }
 
   return true;
+}
+
+/**
+ * Returns true if the path is inside a build or package manager install directory
+ * (e.g. node_modules, dist, build, out, .cache) that should never be scanned.
+ */
+export function isBuildOrInstallPath(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
+  const segments = normalized.split('/').filter(Boolean);
+  for (const segment of segments.slice(0, -1)) {
+    if (BUILD_OR_INSTALL_DIR_SEGMENTS.has(segment)) {
+      return true;
+    }
+  }
+  if (segments.length === 1 && BUILD_OR_INSTALL_DIR_SEGMENTS.has(segments[0] ?? '')) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Returns true if the path is inside a checked-in vendor directory (e.g. vendor, third_party, libs).
+ */
+export function isCheckedInVendorPath(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
+  const segments = normalized.split('/').filter(Boolean);
+  for (const segment of segments.slice(0, -1)) {
+    if (CHECKED_IN_VENDOR_DIR_SEGMENTS.has(segment)) {
+      return true;
+    }
+  }
+  if (segments.length === 1 && CHECKED_IN_VENDOR_DIR_SEGMENTS.has(segments[0] ?? '')) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Returns true if the path represents non-app documentation or corpus content.
+ */
+export function isCorpusNonAppPath(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
+  const segments = normalized.split('/').filter(Boolean);
+  for (const segment of segments.slice(0, -1)) {
+    if (CORPUS_NON_APP_DIR_SEGMENTS.has(segment)) {
+      return true;
+    }
+  }
+  if (segments.length === 1 && CORPUS_NON_APP_DIR_SEGMENTS.has(segments[0] ?? '')) {
+    return true;
+  }
+  return (
+    /(?:^|\/)(?:docs|doc|site|website|gh-pages)\//i.test(normalized) ||
+    /(?:^|\/)content\/.*\/docs\//i.test(normalized)
+  );
+}
+
+/**
+ * Returns true if the given relative path and optional content represent a candidate vendored
+ * or minified library file that may be checked for whole-file library detection.
+ */
+export function isCandidateVendoredFile(
+  relPath: string,
+  content?: string,
+): boolean {
+  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
+  if (isBuildOrInstallPath(normalized)) {
+    return false;
+  }
+  const dotIndex = normalized.lastIndexOf('.');
+  if (dotIndex === -1) {
+    return false;
+  }
+  const extension = normalized.slice(dotIndex);
+  if (
+    extension !== '.js' &&
+    extension !== '.mjs' &&
+    extension !== '.cjs' &&
+    extension !== '.css'
+  ) {
+    return false;
+  }
+  if (isCheckedInVendorPath(normalized)) {
+    return true;
+  }
+  for (const ignoredExtension of DEFAULT_IGNORED_EXTENSIONS) {
+    if (normalized.endsWith(ignoredExtension)) {
+      return true;
+    }
+  }
+  if (isExcludedCorpusNonAppPath(normalized)) {
+    return true;
+  }
+  if (content !== undefined) {
+    if (isMinifiedContent(content)) {
+      return true;
+    }
+    if (hasVendoredLicenseHeader(content)) {
+      return true;
+    }
+  }
+  return false;
 }

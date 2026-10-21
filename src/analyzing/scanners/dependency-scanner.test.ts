@@ -4,6 +4,7 @@ import type { DependencyRuleMatcher } from '../schema.ts';
 import {
   isPureNodeBackendOrCliPackage,
   scanPackageJson,
+  scanVendoredLibraryFile,
 } from './dependency-scanner.ts';
 
 const SAMPLE_SANITIZER_RULE: DependencyRuleMatcher = {
@@ -172,5 +173,191 @@ describe('dependency-scanner R46 runtime & client-side filtering', () => {
     ]);
     assert.equal(peerMatches.length, 1);
     assert.equal(peerMatches[0]?.line, 8);
+  });
+
+  it('scans checked-in vendored library files and identifies packages at line 1 (Slice C)', () => {
+    const fittextRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['jquery-fittext', 'fittext'],
+    };
+
+    const fittextMatches = scanVendoredLibraryFile(
+      'vendor/jquery.fittext.js',
+      '/*! jQuery FitText.js 1.2 */\n(function($){})(jQuery);',
+      [fittextRule],
+    );
+    assert.equal(fittextMatches.length, 1);
+    assert.equal(fittextMatches[0]?.line, 1);
+    assert.equal(fittextMatches[0]?.kind, 'vendored-library');
+    assert.match(fittextMatches[0]?.message ?? '', /jquery\.fittext\.js/);
+
+    const bodyScrollRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['body-scroll-lock'],
+      matchPackage: (pkgName) => ({
+        message: `Package ${pkgName} replaces manual scroll locking.`,
+      }),
+    };
+
+    const bslMatches = scanVendoredLibraryFile(
+      'libs/body-scroll-lock.min.js',
+      'var bodyScrollLock=function(){};',
+      [bodyScrollRule],
+    );
+    assert.equal(bslMatches.length, 1);
+    assert.equal(bslMatches[0]?.line, 1);
+    assert.match(bslMatches[0]?.message ?? '', /body-scroll-lock/);
+    assert.match(bslMatches[0]?.message ?? '', /replaces manual scroll locking/);
+
+    const tablesawRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['tablesaw'],
+    };
+    const tablesawMatches = scanVendoredLibraryFile(
+      'js/tablesaw.jquery.js',
+      '/*! Tablesaw - v3.1.2 */',
+      [tablesawRule],
+    );
+    assert.equal(tablesawMatches.length, 1);
+    assert.equal(tablesawMatches[0]?.line, 1);
+
+    const humanizeRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['humanize-duration'],
+    };
+    const humanizeMatches = scanVendoredLibraryFile(
+      'vendor/humanize-duration.js',
+      '// HumanizeDuration.js\nfunction humanizeDuration(){}',
+      [humanizeRule],
+    );
+    assert.equal(humanizeMatches.length, 1);
+    assert.equal(humanizeMatches[0]?.line, 1);
+
+    const markRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['mark.js'],
+    };
+    const markMatches = scanVendoredLibraryFile(
+      'js/jquery.mark.min.js',
+      'var Mark=function(){};',
+      [markRule],
+    );
+    assert.equal(markMatches.length, 1);
+    assert.equal(markMatches[0]?.line, 1);
+
+    const lozadRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['lozad'],
+    };
+    const lozadMatches = scanVendoredLibraryFile(
+      'vendor/lozad.min.js',
+      '/*! lozad.js - v1.16.0 */',
+      [lozadRule],
+    );
+    assert.equal(lozadMatches.length, 1);
+    assert.equal(lozadMatches[0]?.line, 1);
+
+    const lazyloadRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['vanilla-lazyload'],
+    };
+    const lazyloadMatches = scanVendoredLibraryFile(
+      'vendor/lazyload.min.js',
+      '/*! Vanilla LazyLoad */',
+      [lazyloadRule],
+    );
+    assert.equal(lazyloadMatches.length, 1);
+    assert.equal(lazyloadMatches[0]?.line, 1);
+
+    const aosRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['aos'],
+    };
+    const aosMatches = scanVendoredLibraryFile(
+      'vendor/aos.js',
+      'window.AOS = {};',
+      [aosRule],
+    );
+    assert.equal(aosMatches.length, 1);
+    assert.equal(aosMatches[0]?.line, 1);
+
+    const momentRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['moment'],
+    };
+    const momentHijriMatches = scanVendoredLibraryFile(
+      'vendor/moment-hijri.js',
+      '// moment-hijri.js\nmoment.fn.hijri = function(){};',
+      [{ kind: 'dependency', packages: ['moment-hijri'] }],
+    );
+    assert.equal(momentHijriMatches.length, 1);
+    assert.equal(momentHijriMatches[0]?.line, 1);
+
+    const momentWithCnMatches = scanVendoredLibraryFile(
+      'vendor/moment-with-cn.js',
+      '//! moment.js\n//! locale : chinese (zh-cn)',
+      [momentRule],
+    );
+    assert.equal(momentWithCnMatches.length, 1);
+    assert.equal(momentWithCnMatches[0]?.line, 1);
+  });
+
+  it('skips vendored detection for files in node_modules, dist, or build directories', () => {
+    const fittextRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['jquery-fittext', 'fittext'],
+    };
+
+    assert.equal(
+      scanVendoredLibraryFile(
+        'node_modules/fittext/jquery.fittext.js',
+        '/*! FitText.js */',
+        [fittextRule],
+      ).length,
+      0,
+    );
+
+    assert.equal(
+      scanVendoredLibraryFile(
+        'dist/fittext.min.js',
+        '/*! FitText.js */',
+        [fittextRule],
+      ).length,
+      0,
+    );
+
+    assert.equal(
+      scanVendoredLibraryFile(
+        'build/jquery.fittext.js',
+        '/*! FitText.js */',
+        [fittextRule],
+      ).length,
+      0,
+    );
+  });
+
+  it('skips first-party application files that do not match vendored or minified criteria', () => {
+    const fittextRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['fittext'],
+    };
+
+    assert.equal(
+      scanVendoredLibraryFile(
+        'src/components/FitTextBanner.tsx',
+        'export function FitTextBanner() { return null; }',
+        [fittextRule],
+      ).length,
+      0,
+    );
+
+    assert.equal(
+      scanVendoredLibraryFile(
+        'src/utils/text.js',
+        'export function fitText() {}',
+        [fittextRule],
+      ).length,
+      0,
+    );
   });
 });

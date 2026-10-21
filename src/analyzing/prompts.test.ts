@@ -203,7 +203,7 @@ describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
     assert.match(formatted, /jquery-ui dialog or bootstrap modal/);
   });
 
-  it('JUDGE_SYSTEM_PROMPT includes R45 leave-it and not-old-pattern criteria', () => {
+  it('JUDGE_SYSTEM_PROMPT includes 7-verdict criteria and core grading rules', () => {
     assert.ok(
       JUDGE_SYSTEM_PROMPT.includes('Genuine legacy pattern where applying the guide is a clean win'),
     );
@@ -212,11 +212,20 @@ describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
         "Matcher misfired — this code isn't even doing the legacy pattern the guide replaces",
       ),
     );
-    assert.ok(JUDGE_SYSTEM_PROMPT.includes('no-op syntax swap'));
-    assert.ok(JUDGE_SYSTEM_PROMPT.includes('non-1:1 library component migration'));
-    assert.ok(JUDGE_SYSTEM_PROMPT.includes('custom side effects'));
-    assert.ok(JUDGE_SYSTEM_PROMPT.includes('order-dependent geometry'));
-    assert.ok(JUDGE_SYSTEM_PROMPT.includes('incompatible API contract'));
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes('zero-payoff syntax swap'));
+    assert.ok(
+      JUDGE_SYSTEM_PROMPT.includes('INCREMENTAL DEPENDENCY REDUCTION IS A LEGIT MODERNIZE TARGET'),
+    );
+    assert.ok(
+      JUDGE_SYSTEM_PROMPT.includes('CROSS-LAYER (JS -> CSS/HTML) REPLACEMENTS TAUGHT BY THE GUIDE'),
+    );
+    assert.ok(
+      JUDGE_SYSTEM_PROMPT.includes('STANDARDIZED NATIVE UI EQUIVALENTS ARE LEGIT MODERNIZE TARGETS'),
+    );
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes("'fallback-or-guard'"));
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes("'loses-behavior'"));
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes("'no-payoff'"));
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes("'legit-modernize-target'"));
     assert.ok(
       JUDGE_SYSTEM_PROMPT.includes(
         "The guide's advice is bad or overstates what the feature does for this case",

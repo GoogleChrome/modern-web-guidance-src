@@ -34,7 +34,14 @@ Runtime LLM filter (`gemini-3.8-flash`) that reads a **Static Matcher** candidat
 
 ### Eval Judge
 
-Offline evaluation LLM (`3`-pass majority vote) that grades blind finding cards (`right`, `not-old-pattern`, `leave-it`, `guide-wrong`, `unsure`) using only `guide.md` and upstream explainer context (never the rule's rubric) to estimate precision at scale. Never invoked during user-facing CLI runs.
+Offline evaluation LLM (`3`-pass majority vote) that grades blind finding cards into the 7 canonical verdicts using only `guide.md` and upstream explainer context (never the rule's rubric) to estimate precision at scale. Never invoked during user-facing CLI runs.
+1. `legit-modernize-target`: Genuine legacy pattern where applying the guide is a clean win (the code matches the legacy/"Before" pattern or library workaround replaced by this guide, is not an intentional fallback, covers needed capabilities, and has meaningful payoff).
+2. `not-old-pattern`: Matcher misfired — this code isn't even doing the legacy pattern the guide replaces (detector mistake / token collision).
+3. `fallback-or-guard`: Intentional progressive-enhancement fallback (`@supports not (...)`), feature-detection guard, ponyfill, or polyfill.
+4. `loses-behavior`: Old pattern, but modern feature lacks capabilities used here (custom side effects, order-dependent geometry, incompatible API contract, or unsupported library feature).
+5. `no-payoff`: Matches old syntax and modern feature applies, but rewriting here changes nothing meaningful (zero-payoff syntax swap).
+6. `guide-wrong`: The guide's advice is bad or overstates what the feature does for this case (the guide itself is wrong to call this pattern a problem).
+7. `unsure`: Insufficient context in snippet/file to tell.
 
 * _Reference_: `src/analyzing/judge.ts#judgeBlindCardsDirect`
 * _Avoid_: `Detective`, `Phase 2 Judge`

@@ -35,6 +35,9 @@ import {
   isVendoredOrGeneratedPath,
   shouldScanFile,
 } from './file-filter.ts';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   blankOutsideRange,
   blankRanges,
@@ -45,6 +48,7 @@ import {
   prepareHtmlForDomScan,
   scanFiles,
   scanJsSource,
+  scanRepoFiles,
 } from './index.ts';
 
 void test('file-filter: path and content classification', async (t) => {
@@ -1320,5 +1324,190 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     assert.equal(litCss.file, 'src/components/my-element.ts');
     assert.equal(litCss.line, 8);
     assert.ok(litCss.codeSnippet.includes('>    8 |     .tooltip {'));
+  });
+});
+
+void test('slice-c: vendored library whole-file detection & AST matcher suppression', async (testingContext) => {
+  const fittextRule: AnalyzerRule = {
+    id: 'dependency-jquery-fittext',
+    guideId: 'fittext-modernization',
+    guideHash: 'abcdef123456',
+    summary: 'Replace jQuery FitText with CSS clamp()',
+    phase2Rubric: { keepWhen: ['FitText usage'], dropWhen: [] },
+    matcher: {
+      kind: 'dependency',
+      packages: ['jquery-fittext', 'fittext'],
+      matchPackage: (pkgName) => ({
+        message: `Package "${pkgName}" is targeted for CSS clamp() migration.`,
+      }),
+    },
+  };
+
+  const bslRule: AnalyzerRule = {
+    id: 'dependency-body-scroll-lock',
+    guideId: 'body-scroll-lock-modernization',
+    guideHash: 'abcdef123456',
+    summary: 'Replace body-scroll-lock with CSS overscroll-behavior',
+    phase2Rubric: { keepWhen: ['body-scroll-lock usage'], dropWhen: [] },
+    matcher: {
+      kind: 'dependency',
+      packages: ['body-scroll-lock'],
+    },
+  };
+
+  const jsAstRule: AnalyzerRule = {
+    id: 'js-legacy-measurements',
+    guideId: 'measurement-guide',
+    guideHash: 'abcdef123456',
+    summary: 'Flag getBoundingClientRect calls',
+    phase2Rubric: { keepWhen: ['measurement calls'], dropWhen: [] },
+    matcher: {
+      kind: 'js',
+      fastTokens: ['getBoundingClientRect'],
+      matchFile: (sourceFile) => {
+        const matches = [];
+        for (const descendant of sourceFile.getDescendants()) {
+          if (
+            descendant.getKind() === SyntaxKind.Identifier &&
+            descendant.getText() === 'getBoundingClientRect'
+          ) {
+            matches.push({
+              line: descendant.getStartLineNumber(),
+              message: 'Flagged legacy measurement',
+            });
+          }
+        }
+        return matches;
+      },
+    },
+  };
+
+  await testingContext.test('produces exactly 1 file-level finding at line 1 for vendored library files', () => {
+    const files = new Map<string, string>([
+      [
+        'vendor/jquery.fittext.js',
+        '/*! jQuery FitText.js 1.2 */\n(function($){\n  var el = document.getElementById("box");\n  el.getBoundingClientRect();\n})(jQuery);',
+      ],
+      [
+        'libs/body-scroll-lock.min.js',
+        'var bodyScrollLock=function(){ document.body.getBoundingClientRect(); };',
+      ],
+    ]);
+
+    const findings = scanFiles(files, [fittextRule, bslRule, jsAstRule], {
+      repo: 'test-org/test-app',
+      commit: '1234567890ab',
+    });
+
+    // Exactly 1 finding for fittext and 1 finding for body-scroll-lock
+    assert.equal(findings.length, 2);
+
+    const fittextFinding = findings.find((finding) => finding.file === 'vendor/jquery.fittext.js');
+    assert.ok(fittextFinding);
+    assert.equal(fittextFinding.line, 1);
+    assert.equal(fittextFinding.ruleId, 'dependency-jquery-fittext');
+    assert.equal(fittextFinding.kind, 'vendored-library');
+    assert.match(fittextFinding.message, /jquery\.fittext\.js/);
+    assert.match(fittextFinding.message, /targeted for CSS clamp\(\) migration/);
+
+    const bslFinding = findings.find((finding) => finding.file === 'libs/body-scroll-lock.min.js');
+    assert.ok(bslFinding);
+    assert.equal(bslFinding.line, 1);
+    assert.equal(bslFinding.ruleId, 'dependency-body-scroll-lock');
+    assert.equal(bslFinding.kind, 'vendored-library');
+    assert.match(bslFinding.message, /body-scroll-lock/);
+  });
+
+  await testingContext.test('produces 0 line-by-line JS AST findings inside vendored library files', () => {
+    const files = new Map<string, string>([
+      [
+        'vendor/jquery.fittext.js',
+        '/*! jQuery FitText.js 1.2 */\n' +
+          'function compute() {\n' +
+          '  element.getBoundingClientRect();\n' +
+          '  element.getBoundingClientRect();\n' +
+          '  element.getBoundingClientRect();\n' +
+          '}\n',
+      ],
+      [
+        'vendor/moment-with-cn.js',
+        '//! moment.js\n//! locale : chinese (zh-cn)\n' +
+          'function run() {\n' +
+          '  element.getBoundingClientRect();\n' +
+          '}\n',
+      ],
+    ]);
+
+    const findings = scanFiles(files, [jsAstRule]);
+    assert.equal(findings.length, 0, 'vendored files must produce 0 line-by-line JS AST findings');
+  });
+
+  await testingContext.test('files inside node_modules, dist, and build produce 0 findings of any kind', () => {
+    const files = new Map<string, string>([
+      [
+        'node_modules/jquery-fittext/jquery.fittext.js',
+        '/*! jQuery FitText.js 1.2 */\n(function($){})(jQuery);',
+      ],
+      [
+        'dist/body-scroll-lock.min.js',
+        'var bodyScrollLock=function(){};',
+      ],
+      [
+        'build/tablesaw.js',
+        '/*! Tablesaw - v3.1.2 */',
+      ],
+    ]);
+
+    const findings = scanFiles(files, [fittextRule, bslRule, jsAstRule]);
+    assert.equal(findings.length, 0, 'node_modules, dist, and build must produce 0 findings');
+  });
+
+  await testingContext.test('scanRepoFiles walks disk and collects vendored files while skipping build output', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'slice-c-repo-'));
+    try {
+      await mkdir(join(tempDir, 'vendor'), { recursive: true });
+      await mkdir(join(tempDir, 'node_modules', 'pkg'), { recursive: true });
+      await mkdir(join(tempDir, 'dist'), { recursive: true });
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+
+      await writeFile(
+        join(tempDir, 'vendor', 'jquery.fittext.js'),
+        '/*! jQuery FitText.js 1.2 */\n(function($){\n  document.body.getBoundingClientRect();\n})(jQuery);',
+      );
+      await writeFile(
+        join(tempDir, 'node_modules', 'pkg', 'jquery.fittext.js'),
+        '/*! jQuery FitText.js 1.2 */',
+      );
+      await writeFile(
+        join(tempDir, 'dist', 'bundle.js'),
+        '/*! FitText */',
+      );
+      await writeFile(
+        join(tempDir, 'src', 'app.js'),
+        'const rect = document.body.getBoundingClientRect();',
+      );
+
+      const findings = await scanRepoFiles(tempDir, [fittextRule, jsAstRule], {
+        repo: 'test-org/repo-scan',
+        commit: 'feedbeef1234',
+      });
+
+      // Exactly 2 findings: 1 whole-file vendored finding at line 1 for vendor/jquery.fittext.js,
+      // and 1 AST finding for src/app.js. 0 findings for node_modules/dist, and 0 AST findings inside vendored file.
+      assert.equal(findings.length, 2);
+
+      const vendoredFinding = findings.find((finding) => finding.file === 'vendor/jquery.fittext.js');
+      assert.ok(vendoredFinding);
+      assert.equal(vendoredFinding.line, 1);
+      assert.equal(vendoredFinding.kind, 'vendored-library');
+      assert.equal(vendoredFinding.ruleId, 'dependency-jquery-fittext');
+
+      const appFinding = findings.find((finding) => finding.file === 'src/app.js');
+      assert.ok(appFinding);
+      assert.equal(appFinding.line, 1);
+      assert.equal(appFinding.ruleId, 'js-legacy-measurements');
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 });

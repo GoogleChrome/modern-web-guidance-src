@@ -153,4 +153,18 @@ describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
     ].join('\n');
     assert.equal(hasVendoredLicenseHeader(apacheTwoPartHeader), true);
   });
+
+  it('correctly classifies build/install vs checked-in vendor directories (Slice C)', () => {
+    assert.equal(isVendoredOrGeneratedPath('node_modules/react/index.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('dist/bundle.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('build/main.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('vendor/jquery.fittext.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('libs/body-scroll-lock.min.js'), true);
+
+    // shouldScanFile continues to return false for all vendored / minified files
+    assert.equal(shouldScanFile('vendor/jquery.fittext.js'), false);
+    assert.equal(shouldScanFile('libs/body-scroll-lock.min.js'), false);
+    assert.equal(shouldScanFile('node_modules/react/index.js'), false);
+    assert.equal(shouldScanFile('dist/bundle.js'), false);
+  });
 });

@@ -30,24 +30,114 @@ import {
 export const JUDGE_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-export type JudgeVerdict = 'right' | 'not-old-pattern' | 'leave-it' | 'guide-wrong' | 'unsure';
+export type CanonicalJudgeVerdict =
+  | 'legit-modernize-target'
+  | 'not-old-pattern'
+  | 'fallback-or-guard'
+  | 'loses-behavior'
+  | 'no-payoff'
+  | 'guide-wrong'
+  | 'unsure';
 
-export const VALID_VERDICTS: ReadonlySet<string> = new Set([
-  'right',
+export type JudgeVerdict =
+  | CanonicalJudgeVerdict
+  | 'right'
+  | 'leave-it';
+
+export const CANONICAL_VERDICTS: ReadonlySet<string> = new Set([
+  'legit-modernize-target',
   'not-old-pattern',
-  'leave-it',
+  'fallback-or-guard',
+  'loses-behavior',
+  'no-payoff',
   'guide-wrong',
   'unsure',
+]);
+
+export const VALID_VERDICTS: ReadonlySet<string> = new Set([
+  'legit-modernize-target',
+  'not-old-pattern',
+  'fallback-or-guard',
+  'loses-behavior',
+  'no-payoff',
+  'guide-wrong',
+  'unsure',
+  'right',
+  'leave-it',
 ]);
 
 export function isJudgeVerdict(value: unknown): value is JudgeVerdict {
   return typeof value === 'string' && VALID_VERDICTS.has(value);
 }
 
+export function isPositiveVerdict(value: unknown): boolean {
+  return value === 'legit-modernize-target' || value === 'right' || value === 'legit';
+}
+
+export function normalizeJudgeVerdict(raw: unknown): JudgeVerdict | null {
+  if (typeof raw === 'object' && raw !== null) {
+    const rec = raw as Record<string, unknown>;
+    const sub = typeof rec.subVerdict === 'string' ? rec.subVerdict : undefined;
+    const ver = typeof rec.verdict === 'string' ? rec.verdict : undefined;
+    return normalizeJudgeVerdict(sub ?? ver);
+  }
+  if (typeof raw !== 'string' || raw.length === 0) {
+    return null;
+  }
+  if (raw === 'right' || raw === 'legit') {
+    return 'legit-modernize-target';
+  }
+  if (raw === 'false_positive') {
+    return 'not-old-pattern';
+  }
+  if (raw === 'leave-it' || raw === 'leave-it-be') {
+    return 'leave-it';
+  }
+  if (VALID_VERDICTS.has(raw)) {
+    return raw as JudgeVerdict;
+  }
+  return null;
+}
+
+export function isLeaveItFamily(v: string): boolean {
+  return (
+    v === 'leave-it' ||
+    v === 'leave-it-be' ||
+    v === 'fallback-or-guard' ||
+    v === 'loses-behavior' ||
+    v === 'no-payoff'
+  );
+}
+
+export function verdictsAgree(humanVerdict: string, judgeVerdict: string): boolean {
+  if (humanVerdict === judgeVerdict) {
+    return true;
+  }
+  const normH = normalizeJudgeVerdict(humanVerdict);
+  const normJ = normalizeJudgeVerdict(judgeVerdict);
+  if (normH && normJ && normH === normJ) {
+    return true;
+  }
+  if (
+    (humanVerdict === 'leave-it' || humanVerdict === 'leave-it-be' || normH === 'leave-it') &&
+    isLeaveItFamily(judgeVerdict)
+  ) {
+    return true;
+  }
+  if (
+    (judgeVerdict === 'leave-it' || judgeVerdict === 'leave-it-be' || normJ === 'leave-it') &&
+    isLeaveItFamily(humanVerdict)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export interface DetectiveFactCheck {
   matches_before_syntax: boolean;
   has_fallback_or_feature_guard: boolean;
   modern_feature_applies_here: boolean;
+  has_meaningful_payoff?: boolean;
   reasoning: string;
   verdict: JudgeVerdict;
   rawVerdict?: JudgeVerdict;
@@ -64,6 +154,7 @@ export function isDetectiveFactCheck(obj: unknown): obj is DetectiveFactCheck {
     typeof obj.has_fallback_or_feature_guard === 'boolean' &&
     'modern_feature_applies_here' in obj &&
     typeof obj.modern_feature_applies_here === 'boolean' &&
+    (!('has_meaningful_payoff' in obj) || typeof (obj as { has_meaningful_payoff: unknown }).has_meaningful_payoff === 'boolean') &&
     'reasoning' in obj &&
     typeof obj.reasoning === 'string' &&
     'verdict' in obj &&
@@ -173,19 +264,23 @@ export function buildGeminiRequestBody(card: BlindCardPayload, temperature = 0.2
 }
 
 /**
- * Cross-checks and computes unambiguous judge verdict from the 3 boolean facts per R29 and Spec §2.2:
+ * Cross-checks and computes unambiguous judge verdict from the 4 boolean facts per R29:
+ * - llmVerdict === 'guide-wrong' -> 'guide-wrong'
  * - !matches_before_syntax -> 'not-old-pattern'
- * - matches_before_syntax && has_fallback_or_feature_guard -> 'leave-it'
- * - matches_before_syntax && !has_fallback_or_feature_guard && !modern_feature_applies_here -> 'leave-it'
- * - raw llmVerdict === 'guide-wrong' -> 'guide-wrong'
- * - raw llmVerdict === 'unsure' -> 'unsure'
- * - matches_before_syntax && !has_fallback_or_feature_guard && modern_feature_applies_here -> 'right'
+ * - has_fallback_or_feature_guard -> 'fallback-or-guard'
+ * - !modern_feature_applies_here -> 'loses-behavior'
+ * - has_meaningful_payoff === false or llmVerdict === 'no-payoff' -> 'no-payoff'
+ * - llmVerdict === 'loses-behavior' -> 'loses-behavior'
+ * - llmVerdict === 'fallback-or-guard' -> 'fallback-or-guard'
+ * - llmVerdict === 'unsure' -> 'unsure'
+ * - Otherwise -> 'legit-modernize-target'
  */
 export function deriveJudgeVerdictFromFacts(
   facts: {
     matches_before_syntax: boolean;
     has_fallback_or_feature_guard: boolean;
     modern_feature_applies_here: boolean;
+    has_meaningful_payoff?: boolean;
   },
   llmVerdict?: JudgeVerdict,
 ): JudgeVerdict {
@@ -196,15 +291,27 @@ export function deriveJudgeVerdictFromFacts(
     return 'not-old-pattern';
   }
   if (facts.has_fallback_or_feature_guard) {
-    return 'leave-it';
+    return 'fallback-or-guard';
   }
   if (!facts.modern_feature_applies_here) {
-    return 'leave-it';
+    return 'loses-behavior';
   }
-  if (llmVerdict === 'leave-it' || llmVerdict === 'unsure') {
-    return llmVerdict;
+  if (facts.has_meaningful_payoff === false || llmVerdict === 'no-payoff') {
+    return 'no-payoff';
   }
-  return 'right';
+  if (llmVerdict === 'loses-behavior') {
+    return 'loses-behavior';
+  }
+  if (llmVerdict === 'fallback-or-guard') {
+    return 'fallback-or-guard';
+  }
+  if (llmVerdict === 'unsure') {
+    return 'unsure';
+  }
+  if (llmVerdict === 'leave-it') {
+    return 'no-payoff';
+  }
+  return 'legit-modernize-target';
 }
 
 /**
@@ -229,13 +336,23 @@ export function parseJudgeJsonContent(rawText: string, cardId: string): JudgeRes
     );
   }
 
-  const finalVerdict = deriveJudgeVerdictFromFacts(parsed, parsed.verdict);
+  const effectiveMeaningfulPayoff =
+    parsed.has_meaningful_payoff ??
+    (parsed.modern_feature_applies_here &&
+      (parsed.verdict === 'legit-modernize-target' || parsed.verdict === 'right'));
+
+  const factsWithDefault = {
+    ...parsed,
+    has_meaningful_payoff: effectiveMeaningfulPayoff,
+  };
+
+  const finalVerdict = deriveJudgeVerdictFromFacts(factsWithDefault, parsed.verdict);
 
   return {
     cardId,
     verdict: finalVerdict,
     facts: {
-      ...parsed,
+      ...factsWithDefault,
       verdict: finalVerdict,
       rawVerdict: parsed.verdict,
     },
@@ -589,11 +706,11 @@ export function checkCanaries(
     if (!actual) {
       continue;
     }
-    const isHumanRight = canary.expectedVerdict === 'right';
-    const isJudgeRight = actual === 'right';
+    const isHumanRight = isPositiveVerdict(canary.expectedVerdict);
+    const isJudgeRight = isPositiveVerdict(actual);
     pairs.push({ humanRight: isHumanRight, judgeRight: isJudgeRight });
 
-    if (actual !== canary.expectedVerdict) {
+    if (!verdictsAgree(canary.expectedVerdict, actual)) {
       violations.push({
         cardId: canary.cardId,
         expected: canary.expectedVerdict,
@@ -604,7 +721,7 @@ export function checkCanaries(
 
   const { tpr, tnr, positives, negatives } = sensitivitySpecificity(pairs);
   // Canary pass rule: all negative controls (false positives) must be rejected (TNR = 1.0)
-  const passed = tnr >= 1.0 && violations.filter((v) => v.expected !== 'right').length === 0;
+  const passed = tnr >= 1.0 && violations.filter((v) => !isPositiveVerdict(v.expected)).length === 0;
 
   return {
     passed,
@@ -703,7 +820,7 @@ export function evaluateJudgeMetrics(
 ): JudgeEvaluationMetrics {
   const nominalPairs: Array<readonly [string, string]> = [];
   const binaryPairs: Array<{ humanRight: boolean; judgeRight: boolean }> = [];
-  const judgeAllBools: boolean[] = judgeResults.map((j) => j.verdict === 'right');
+  const judgeAllBools: boolean[] = judgeResults.map((j) => isPositiveVerdict(j.verdict));
 
   let retainedDroppedCount = 0;
   let totalDroppedEvaluated = 0;
@@ -717,15 +834,15 @@ export function evaluateJudgeMetrics(
         unsureCount++;
       } else {
         binaryPairs.push({
-          humanRight: humanLabel === 'right',
-          judgeRight: j.verdict === 'right',
+          humanRight: isPositiveVerdict(humanLabel),
+          judgeRight: isPositiveVerdict(j.verdict),
         });
       }
     }
 
     if (droppedCardIds.has(j.cardId)) {
       totalDroppedEvaluated++;
-      if (j.verdict !== 'right') {
+      if (!isPositiveVerdict(j.verdict)) {
         retainedDroppedCount++;
       }
     }

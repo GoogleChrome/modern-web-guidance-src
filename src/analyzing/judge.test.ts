@@ -12,6 +12,9 @@ import {
   hasValidSpecProvenance,
   isDetectiveFactCheck,
   isJudgeVerdict,
+  isPositiveVerdict,
+  normalizeJudgeVerdict,
+  verdictsAgree,
   JUDGE_SYSTEM_PROMPT,
   loadGuideSummariesMap,
   loadGuideSummaryFromMarkdown,
@@ -50,29 +53,43 @@ const SAMPLE_BLIND_CARD: BlindCardPayload = {
 
 describe('judge type guards', () => {
   it('identifies valid judge verdicts', () => {
-    assert.equal(isJudgeVerdict('right'), true);
+    assert.equal(isJudgeVerdict('legit-modernize-target'), true);
     assert.equal(isJudgeVerdict('not-old-pattern'), true);
-    assert.equal(isJudgeVerdict('leave-it'), true);
+    assert.equal(isJudgeVerdict('fallback-or-guard'), true);
+    assert.equal(isJudgeVerdict('loses-behavior'), true);
+    assert.equal(isJudgeVerdict('no-payoff'), true);
     assert.equal(isJudgeVerdict('guide-wrong'), true);
     assert.equal(isJudgeVerdict('unsure'), true);
+    assert.equal(isJudgeVerdict('right'), true);
+    assert.equal(isJudgeVerdict('leave-it'), true);
     assert.equal(isJudgeVerdict('wrong'), false);
     assert.equal(isJudgeVerdict(123), false);
     assert.equal(isJudgeVerdict(null), false);
   });
 
-  it('validates DetectiveFactCheck shape', () => {
-    const valid: DetectiveFactCheck = {
-      matches_before_syntax: true,
-      has_fallback_or_feature_guard: false,
-      modern_feature_applies_here: true,
-      reasoning: 'Matches old Date millisecond subtraction pattern directly.',
-      verdict: 'right',
-    };
-    assert.equal(isDetectiveFactCheck(valid), true);
+  it('validates isPositiveVerdict, normalizeJudgeVerdict, and verdictsAgree', () => {
+    assert.equal(isPositiveVerdict('legit-modernize-target'), true);
+    assert.equal(isPositiveVerdict('right'), true);
+    assert.equal(isPositiveVerdict('legit'), true);
+    assert.equal(isPositiveVerdict('not-old-pattern'), false);
+    assert.equal(isPositiveVerdict('fallback-or-guard'), false);
+    assert.equal(isPositiveVerdict('loses-behavior'), false);
+    assert.equal(isPositiveVerdict('no-payoff'), false);
+    assert.equal(isPositiveVerdict('guide-wrong'), false);
+    assert.equal(isPositiveVerdict('unsure'), false);
 
-    assert.equal(isDetectiveFactCheck({ ...valid, verdict: 'invalid' }), false);
-    assert.equal(isDetectiveFactCheck({ ...valid, matches_before_syntax: 'yes' }), false);
-    assert.equal(isDetectiveFactCheck(null), false);
+    assert.equal(normalizeJudgeVerdict('right'), 'legit-modernize-target');
+    assert.equal(normalizeJudgeVerdict('legit'), 'legit-modernize-target');
+    assert.equal(normalizeJudgeVerdict('false_positive'), 'not-old-pattern');
+    assert.equal(normalizeJudgeVerdict('leave-it'), 'leave-it');
+    assert.equal(normalizeJudgeVerdict('legit-modernize-target'), 'legit-modernize-target');
+
+    assert.equal(verdictsAgree('legit-modernize-target', 'right'), true);
+    assert.equal(verdictsAgree('leave-it', 'fallback-or-guard'), true);
+    assert.equal(verdictsAgree('leave-it', 'loses-behavior'), true);
+    assert.equal(verdictsAgree('leave-it', 'no-payoff'), true);
+    assert.equal(verdictsAgree('fallback-or-guard', 'leave-it'), true);
+    assert.equal(verdictsAgree('not-old-pattern', 'leave-it'), false);
   });
 });
 
@@ -259,24 +276,27 @@ describe('parseJudgeJsonContent', () => {
       matches_before_syntax: true,
       has_fallback_or_feature_guard: false,
       modern_feature_applies_here: true,
+      has_meaningful_payoff: true,
       reasoning: 'Legacy millisecond subtraction with no guard.',
-      verdict: 'right',
+      verdict: 'legit-modernize-target',
     });
 
     const result = parseJudgeJsonContent(raw, 'card-001');
     assert.equal(result.cardId, 'card-001');
-    assert.equal(result.verdict, 'right');
+    assert.equal(result.verdict, 'legit-modernize-target');
     assert.equal(result.facts.matches_before_syntax, true);
     assert.equal(result.facts.has_fallback_or_feature_guard, false);
     assert.equal(result.facts.modern_feature_applies_here, true);
+    assert.equal(result.facts.has_meaningful_payoff, true);
   });
 
-  it('cross-checks and computes unambiguous verdicts from 3 boolean facts (R29 and Spec §2.2)', () => {
+  it('cross-checks and computes unambiguous verdicts from 4 boolean facts per 7-verdict taxonomy', () => {
     // 1. !matches_before_syntax -> 'not-old-pattern' regardless of model verdict
     const rawNotOld = JSON.stringify({
       matches_before_syntax: false,
       has_fallback_or_feature_guard: false,
       modern_feature_applies_here: false,
+      has_meaningful_payoff: false,
       reasoning: 'Not the old pattern.',
       verdict: 'unsure',
     });
@@ -284,72 +304,90 @@ describe('parseJudgeJsonContent', () => {
     assert.equal(res1.verdict, 'not-old-pattern');
     assert.equal(res1.facts.rawVerdict, 'unsure');
 
-    // 2. matches_before_syntax && has_fallback_or_feature_guard -> 'leave-it'
-    const rawLeaveIt = JSON.stringify({
+    // 2. matches_before_syntax && has_fallback_or_feature_guard -> 'fallback-or-guard'
+    const rawFallback = JSON.stringify({
       matches_before_syntax: true,
       has_fallback_or_feature_guard: true,
       modern_feature_applies_here: true,
+      has_meaningful_payoff: true,
       reasoning: 'Protected by feature guard.',
-      verdict: 'right',
+      verdict: 'legit-modernize-target',
     });
-    const res2 = parseJudgeJsonContent(rawLeaveIt, 'c2');
-    assert.equal(res2.verdict, 'leave-it');
-    assert.equal(res2.facts.rawVerdict, 'right');
+    const res2 = parseJudgeJsonContent(rawFallback, 'c2');
+    assert.equal(res2.verdict, 'fallback-or-guard');
+    assert.equal(res2.facts.rawVerdict, 'legit-modernize-target');
 
-    // 3. matches_before_syntax && !has_fallback_or_feature_guard && modern_feature_applies_here -> 'right'
-    const rawRight = JSON.stringify({
+    // 3. matches_before_syntax && !has_fallback && modern_feature_applies_here && has_meaningful_payoff -> 'legit-modernize-target'
+    const rawLegit = JSON.stringify({
       matches_before_syntax: true,
       has_fallback_or_feature_guard: false,
       modern_feature_applies_here: true,
+      has_meaningful_payoff: true,
       reasoning: 'Clean legacy match.',
-      verdict: 'right',
+      verdict: 'legit-modernize-target',
     });
-    const res3 = parseJudgeJsonContent(rawRight, 'c3');
-    assert.equal(res3.verdict, 'right');
-    assert.equal(res3.facts.rawVerdict, 'right');
+    const res3 = parseJudgeJsonContent(rawLegit, 'c3');
+    assert.equal(res3.verdict, 'legit-modernize-target');
+    assert.equal(res3.facts.rawVerdict, 'legit-modernize-target');
 
-    // 4. matches_before_syntax && !has_fallback_or_feature_guard && !modern_feature_applies_here -> 'leave-it' (Spec §2.2)
-    const rawNoModern = JSON.stringify({
+    // 4. matches_before_syntax && !has_fallback && !modern_feature_applies_here -> 'loses-behavior'
+    const rawLoses = JSON.stringify({
       matches_before_syntax: true,
       has_fallback_or_feature_guard: false,
       modern_feature_applies_here: false,
-      reasoning: 'Modern replacement would not work for this case.',
-      verdict: 'leave-it',
+      has_meaningful_payoff: false,
+      reasoning: 'Modern replacement lacks required capabilities.',
+      verdict: 'loses-behavior',
     });
-    const res4 = parseJudgeJsonContent(rawNoModern, 'c4');
-    assert.equal(res4.verdict, 'leave-it');
-    assert.equal(res4.facts.rawVerdict, 'leave-it');
+    const res4 = parseJudgeJsonContent(rawLoses, 'c4');
+    assert.equal(res4.verdict, 'loses-behavior');
+    assert.equal(res4.facts.rawVerdict, 'loses-behavior');
 
-    // 5. rawVerdict === 'unsure' is preserved and NOT overwritten to 'right' (O55f)
+    // 5. matches_before_syntax && modern_applies but has_meaningful_payoff: false -> 'no-payoff'
+    const rawNoPayoff = JSON.stringify({
+      matches_before_syntax: true,
+      has_fallback_or_feature_guard: false,
+      modern_feature_applies_here: true,
+      has_meaningful_payoff: false,
+      reasoning: 'Single-function :hover transform is a zero-payoff syntax swap.',
+      verdict: 'no-payoff',
+    });
+    const res5 = parseJudgeJsonContent(rawNoPayoff, 'c5');
+    assert.equal(res5.verdict, 'no-payoff');
+    assert.equal(res5.facts.rawVerdict, 'no-payoff');
+
+    // 6. rawVerdict === 'unsure' is preserved
     const rawUnsure = JSON.stringify({
       matches_before_syntax: true,
       has_fallback_or_feature_guard: false,
       modern_feature_applies_here: true,
+      has_meaningful_payoff: true,
       reasoning: 'Unsure about surrounding context.',
       verdict: 'unsure',
     });
-    const res5 = parseJudgeJsonContent(rawUnsure, 'c5');
-    assert.equal(res5.verdict, 'unsure');
-    assert.equal(res5.facts.rawVerdict, 'unsure');
+    const res6 = parseJudgeJsonContent(rawUnsure, 'c6');
+    assert.equal(res6.verdict, 'unsure');
+    assert.equal(res6.facts.rawVerdict, 'unsure');
 
-    // 6. rawVerdict === 'leave-it' (e.g. R45 no-op syntax swap where modern_feature_applies_here: true) is preserved (R48)
-    const rawNoOpLeaveIt = JSON.stringify({
+    // 7. rawVerdict === 'guide-wrong' is preserved
+    const rawGuideWrong = JSON.stringify({
       matches_before_syntax: true,
       has_fallback_or_feature_guard: false,
       modern_feature_applies_here: true,
-      reasoning: 'Single-function :hover transform is a no-op syntax swap under R45.',
-      verdict: 'leave-it',
+      has_meaningful_payoff: true,
+      reasoning: 'Guide gives bad advice for this case.',
+      verdict: 'guide-wrong',
     });
-    const res6 = parseJudgeJsonContent(rawNoOpLeaveIt, 'c6');
-    assert.equal(res6.verdict, 'leave-it');
-    assert.equal(res6.facts.rawVerdict, 'leave-it');
+    const res7 = parseJudgeJsonContent(rawGuideWrong, 'c7');
+    assert.equal(res7.verdict, 'guide-wrong');
+    assert.equal(res7.facts.rawVerdict, 'guide-wrong');
   });
 
-  it('deriveJudgeVerdictFromFacts covers all truth table branches strictly (O55f, R48)', () => {
+  it('deriveJudgeVerdictFromFacts covers all truth table branches strictly', () => {
     // rawVerdict === 'guide-wrong' always returns 'guide-wrong'
     assert.equal(
       deriveJudgeVerdictFromFacts(
-        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true },
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: true },
         'guide-wrong',
       ),
       'guide-wrong',
@@ -358,55 +396,82 @@ describe('parseJudgeJsonContent', () => {
     // !matches_before_syntax -> 'not-old-pattern'
     assert.equal(
       deriveJudgeVerdictFromFacts(
-        { matches_before_syntax: false, has_fallback_or_feature_guard: false, modern_feature_applies_here: true },
-        'right',
+        { matches_before_syntax: false, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: true },
+        'legit-modernize-target',
       ),
       'not-old-pattern',
     );
 
-    // has_fallback_or_feature_guard -> 'leave-it'
+    // has_fallback_or_feature_guard -> 'fallback-or-guard'
     assert.equal(
       deriveJudgeVerdictFromFacts(
-        { matches_before_syntax: true, has_fallback_or_feature_guard: true, modern_feature_applies_here: true },
-        'right',
+        { matches_before_syntax: true, has_fallback_or_feature_guard: true, modern_feature_applies_here: true, has_meaningful_payoff: true },
+        'legit-modernize-target',
       ),
-      'leave-it',
+      'fallback-or-guard',
     );
 
-    // !modern_feature_applies_here -> 'leave-it' (Spec §2.2)
+    // !modern_feature_applies_here -> 'loses-behavior'
     assert.equal(
       deriveJudgeVerdictFromFacts(
-        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: false },
-        'leave-it',
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: false, has_meaningful_payoff: true },
+        'loses-behavior',
       ),
-      'leave-it',
+      'loses-behavior',
     );
 
-    // rawVerdict === 'leave-it' with modern_feature_applies_here: true -> preserves 'leave-it' (R48)
+    // has_meaningful_payoff: false -> 'no-payoff'
     assert.equal(
       deriveJudgeVerdictFromFacts(
-        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true },
-        'leave-it',
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: false },
+        'legit-modernize-target',
       ),
-      'leave-it',
+      'no-payoff',
+    );
+
+    // rawVerdict === 'no-payoff' -> 'no-payoff'
+    assert.equal(
+      deriveJudgeVerdictFromFacts(
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: true },
+        'no-payoff',
+      ),
+      'no-payoff',
+    );
+
+    // rawVerdict === 'loses-behavior' -> 'loses-behavior'
+    assert.equal(
+      deriveJudgeVerdictFromFacts(
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: true },
+        'loses-behavior',
+      ),
+      'loses-behavior',
+    );
+
+    // rawVerdict === 'fallback-or-guard' -> 'fallback-or-guard'
+    assert.equal(
+      deriveJudgeVerdictFromFacts(
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: true },
+        'fallback-or-guard',
+      ),
+      'fallback-or-guard',
     );
 
     // rawVerdict === 'unsure' -> 'unsure'
     assert.equal(
       deriveJudgeVerdictFromFacts(
-        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true },
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: true },
         'unsure',
       ),
       'unsure',
     );
 
-    // clean right match
+    // clean legit modernize target match
     assert.equal(
       deriveJudgeVerdictFromFacts(
-        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true },
-        'right',
+        { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: true },
+        'legit-modernize-target',
       ),
-      'right',
+      'legit-modernize-target',
     );
   });
 
@@ -427,34 +492,36 @@ describe('parseJudgeJsonContent', () => {
 
 describe('canary checking', () => {
   const canaries: CanaryCard[] = [
-    { cardId: 'canary-pos-1', expectedVerdict: 'right' },
-    { cardId: 'canary-pos-2', expectedVerdict: 'right' },
+    { cardId: 'canary-pos-1', expectedVerdict: 'legit-modernize-target' },
+    { cardId: 'canary-pos-2', expectedVerdict: 'legit-modernize-target' },
     { cardId: 'canary-neg-1', expectedVerdict: 'not-old-pattern' },
-    { cardId: 'canary-neg-2', expectedVerdict: 'leave-it' },
+    { cardId: 'canary-neg-2', expectedVerdict: 'fallback-or-guard' },
   ];
 
   it('passes when all negative controls are rejected and positives pass', () => {
     const results: JudgeResult[] = [
       {
         cardId: 'canary-pos-1',
-        verdict: 'right',
+        verdict: 'legit-modernize-target',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
           reasoning: 'ok',
-          verdict: 'right',
+          verdict: 'legit-modernize-target',
         },
       },
       {
         cardId: 'canary-pos-2',
-        verdict: 'right',
+        verdict: 'legit-modernize-target',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
           reasoning: 'ok',
-          verdict: 'right',
+          verdict: 'legit-modernize-target',
         },
       },
       {
@@ -464,19 +531,21 @@ describe('canary checking', () => {
           matches_before_syntax: false,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: false,
+          has_meaningful_payoff: false,
           reasoning: 'ok',
           verdict: 'not-old-pattern',
         },
       },
       {
         cardId: 'canary-neg-2',
-        verdict: 'leave-it',
+        verdict: 'fallback-or-guard',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: true,
           modern_feature_applies_here: false,
+          has_meaningful_payoff: false,
           reasoning: 'ok',
-          verdict: 'leave-it',
+          verdict: 'fallback-or-guard',
         },
       },
     ];
@@ -492,47 +561,51 @@ describe('canary checking', () => {
     const lenientResults: JudgeResult[] = [
       {
         cardId: 'canary-pos-1',
-        verdict: 'right',
+        verdict: 'legit-modernize-target',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
           reasoning: 'ok',
-          verdict: 'right',
+          verdict: 'legit-modernize-target',
         },
       },
       {
         cardId: 'canary-pos-2',
-        verdict: 'right',
+        verdict: 'legit-modernize-target',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
           reasoning: 'ok',
-          verdict: 'right',
+          verdict: 'legit-modernize-target',
         },
       },
-      // Leaked false positive: marked right instead of not-old-pattern!
+      // Leaked false positive: marked legit-modernize-target instead of not-old-pattern!
       {
         cardId: 'canary-neg-1',
-        verdict: 'right',
+        verdict: 'legit-modernize-target',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
           reasoning: 'ok',
-          verdict: 'right',
+          verdict: 'legit-modernize-target',
         },
       },
       {
         cardId: 'canary-neg-2',
-        verdict: 'leave-it',
+        verdict: 'fallback-or-guard',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: true,
           modern_feature_applies_here: false,
+          has_meaningful_payoff: false,
           reasoning: 'ok',
-          verdict: 'leave-it',
+          verdict: 'fallback-or-guard',
         },
       },
     ];
@@ -550,13 +623,14 @@ describe('evaluateJudgeStability', () => {
     const makeRun = (): JudgeResult[] => [
       {
         cardId: 'c1',
-        verdict: 'right',
+        verdict: 'legit-modernize-target',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
           reasoning: 'r',
-          verdict: 'right',
+          verdict: 'legit-modernize-target',
         },
       },
       {
@@ -566,19 +640,21 @@ describe('evaluateJudgeStability', () => {
           matches_before_syntax: false,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: false,
+          has_meaningful_payoff: false,
           reasoning: 'r',
           verdict: 'not-old-pattern',
         },
       },
       {
         cardId: 'c3',
-        verdict: 'leave-it',
+        verdict: 'fallback-or-guard',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: true,
           modern_feature_applies_here: false,
+          has_meaningful_payoff: false,
           reasoning: 'r',
-          verdict: 'leave-it',
+          verdict: 'fallback-or-guard',
         },
       },
     ];
@@ -587,55 +663,58 @@ describe('evaluateJudgeStability', () => {
     assert.equal(stability.stabilityRate, 1.0);
     assert.equal(stability.krippendorffAlpha, 1.0);
     assert.equal(stability.gwetAc1, 1.0);
-    assert.equal(stability.consensusResults[0].verdict, 'right');
+    assert.equal(stability.consensusResults[0].verdict, 'legit-modernize-target');
     assert.equal(stability.consensusResults[1].verdict, 'not-old-pattern');
-    assert.equal(stability.consensusResults[2].verdict, 'leave-it');
+    assert.equal(stability.consensusResults[2].verdict, 'fallback-or-guard');
   });
 
   it('determines consensus majority vote when one run differs', () => {
     const run0: JudgeResult[] = [
       {
         cardId: 'c1',
-        verdict: 'right',
+        verdict: 'legit-modernize-target',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
           reasoning: 'r',
-          verdict: 'right',
+          verdict: 'legit-modernize-target',
         },
       },
     ];
     const run1: JudgeResult[] = [
       {
         cardId: 'c1',
-        verdict: 'right',
+        verdict: 'legit-modernize-target',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
           reasoning: 'r',
-          verdict: 'right',
+          verdict: 'legit-modernize-target',
         },
       },
     ];
     const run2: JudgeResult[] = [
       {
         cardId: 'c1',
-        verdict: 'leave-it',
+        verdict: 'no-payoff',
         facts: {
           matches_before_syntax: true,
-          has_fallback_or_feature_guard: true,
-          modern_feature_applies_here: false,
+          has_fallback_or_feature_guard: false,
+          modern_feature_applies_here: true,
+          has_meaningful_payoff: false,
           reasoning: 'r',
-          verdict: 'leave-it',
+          verdict: 'no-payoff',
         },
       },
     ];
 
     const stability = evaluateJudgeStability([run0, run1, run2]);
     assert.equal(stability.stabilityRate, 0.0); // 0 out of 1 had all 3 identical
-    assert.equal(stability.consensusResults[0].verdict, 'right'); // majority 2/3 voted right
+    assert.equal(stability.consensusResults[0].verdict, 'legit-modernize-target'); // majority 2/3 voted legit
   });
 });
 
@@ -644,24 +723,26 @@ describe('evaluateJudgeMetrics', () => {
     const judgeResults: JudgeResult[] = [
       {
         cardId: 'c1',
-        verdict: 'right',
+        verdict: 'legit-modernize-target',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
           reasoning: '',
-          verdict: 'right',
+          verdict: 'legit-modernize-target',
         },
       },
       {
         cardId: 'c2',
-        verdict: 'right',
+        verdict: 'legit-modernize-target',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
           reasoning: '',
-          verdict: 'right',
+          verdict: 'legit-modernize-target',
         },
       },
       {
@@ -671,28 +752,30 @@ describe('evaluateJudgeMetrics', () => {
           matches_before_syntax: false,
           has_fallback_or_feature_guard: false,
           modern_feature_applies_here: false,
+          has_meaningful_payoff: false,
           reasoning: '',
           verdict: 'not-old-pattern',
         },
       },
       {
         cardId: 'c4',
-        verdict: 'leave-it',
+        verdict: 'fallback-or-guard',
         facts: {
           matches_before_syntax: true,
           has_fallback_or_feature_guard: true,
           modern_feature_applies_here: false,
+          has_meaningful_payoff: false,
           reasoning: '',
-          verdict: 'leave-it',
+          verdict: 'fallback-or-guard',
         },
       },
     ];
 
     const humanGrades = new Map<string, string>([
-      ['c1', 'right'],
-      ['c2', 'right'],
+      ['c1', 'legit-modernize-target'],
+      ['c2', 'legit-modernize-target'],
       ['c3', 'not-old-pattern'],
-      ['c4', 'leave-it'],
+      ['c4', 'fallback-or-guard'],
     ]);
 
     const droppedCardIds = new Set(['c3', 'c4']);
@@ -763,8 +846,9 @@ describe('mocked direct and batch judge runners', () => {
                       matches_before_syntax: true,
                       has_fallback_or_feature_guard: false,
                       modern_feature_applies_here: true,
+                      has_meaningful_payoff: true,
                       reasoning: 'Matches old Date subtraction.',
-                      verdict: 'right',
+                      verdict: 'legit-modernize-target',
                     }),
                   },
                 ],
@@ -783,7 +867,7 @@ describe('mocked direct and batch judge runners', () => {
 
     assert.equal(results.length, 1);
     assert.equal(results[0].cardId, SAMPLE_BLIND_CARD.cardId);
-    assert.equal(results[0].verdict, 'right');
+    assert.equal(results[0].verdict, 'legit-modernize-target');
     assert.equal(results[0].facts.matches_before_syntax, true);
   });
 
@@ -815,8 +899,9 @@ describe('mocked direct and batch judge runners', () => {
                       matches_before_syntax: true,
                       has_fallback_or_feature_guard: false,
                       modern_feature_applies_here: true,
+                      has_meaningful_payoff: true,
                       reasoning: 'Matches directly.',
-                      verdict: 'right',
+                      verdict: 'legit-modernize-target',
                     }),
                   },
                 ],
@@ -835,7 +920,7 @@ describe('mocked direct and batch judge runners', () => {
     });
 
     assert.equal(results.length, 1);
-    assert.equal(results[0].verdict, 'right');
+    assert.equal(results[0].verdict, 'legit-modernize-target');
   });
 });
 

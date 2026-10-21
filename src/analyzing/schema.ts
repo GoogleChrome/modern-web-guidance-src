@@ -45,6 +45,7 @@ export interface AnalyzerMatch {
   readonly line: number;
   readonly column?: number;
   readonly message: string;
+  readonly kind?: 'vendored-library';
 }
 
 export interface DomElementView {
@@ -154,4 +155,5 @@ export interface AnalyzerFinding {
   readonly message: string;
   readonly codeSnippet: string;
   readonly astSlice: string;
+  readonly kind?: 'vendored-library';
 }
