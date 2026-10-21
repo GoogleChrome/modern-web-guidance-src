@@ -969,10 +969,50 @@ export async function loadGuideSummaryFromMarkdown(
 }
 
 /**
+ * Returns true only when a `legacy-pattern-specs.json` entry carries valid,
+ * non-empty provenance metadata (`methodVersion`, `model`, `evaluatedAt`, `sources`)
+ * alongside non-empty R41 answers (`changesSomethingForDeveloper`, `isLikeForLikeSwapAtSite`).
+ * Unverified or circular template entries without provenance must never be injected into the Judge.
+ */
+export function hasValidSpecProvenance(spec: Record<string, unknown>): boolean {
+  const changesForDev =
+    typeof spec.changesSomethingForDeveloper === 'string'
+      ? spec.changesSomethingForDeveloper.trim()
+      : '';
+  const likeForLike =
+    typeof spec.isLikeForLikeSwapAtSite === 'string'
+      ? spec.isLikeForLikeSwapAtSite.trim()
+      : '';
+  if (!changesForDev || !likeForLike) {
+    return false;
+  }
+
+  if (typeof spec.provenance !== 'object' || spec.provenance === null || Array.isArray(spec.provenance)) {
+    return false;
+  }
+  const prov = spec.provenance as Record<string, unknown>;
+  const methodVersion = typeof prov.methodVersion === 'string' ? prov.methodVersion.trim() : '';
+  const model = typeof prov.model === 'string' ? prov.model.trim() : '';
+  const evaluatedAt = typeof prov.evaluatedAt === 'string' ? prov.evaluatedAt.trim() : '';
+  if (!methodVersion || !model || !evaluatedAt) {
+    return false;
+  }
+  if (!Array.isArray(prov.sources) || prov.sources.length === 0) {
+    return false;
+  }
+  return prov.sources.every((s) => typeof s === 'string' && s.trim().length > 0);
+}
+
+/**
  * Formats a `legacy-pattern-specs.json` entry into a Technical Reference Dossier block
  * for the Judge prompt (R45).
+ * Returns `''` when the entry does not carry valid provenance, preventing unverified
+ * or circular R41 text from biasing the Judge.
  */
 export function formatLegacyPatternSpecDossier(spec: Record<string, unknown>): string {
+  if (!hasValidSpecProvenance(spec)) {
+    return '';
+  }
   const payoff =
     typeof spec.changesSomethingForDeveloper === 'string'
       ? spec.changesSomethingForDeveloper.trim()

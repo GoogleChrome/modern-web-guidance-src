@@ -9,6 +9,7 @@ import {
   extractCodeSnippet,
   formatBlindCardPrompt,
   formatLegacyPatternSpecDossier,
+  hasValidSpecProvenance,
   isDetectiveFactCheck,
   isJudgeVerdict,
   JUDGE_SYSTEM_PROMPT,
@@ -108,14 +109,26 @@ describe('blind card formatting & request construction', () => {
     assert.match(prompt, /developers used moment/);
   });
 
-  it('formats legacy-pattern-specs.json Technical Reference Dossier and injects it via loadGuideSummariesMap (R45)', async () => {
-    const dossier = formatLegacyPatternSpecDossier({
+  it('formats legacy-pattern-specs.json Technical Reference Dossier only when valid provenance is present and blocks unverified injection (R45)', async () => {
+    const unverifiedSpec = {
       guideId: 'individual-transform-properties',
       changesSomethingForDeveloper: 'Yes for multi-function chains.',
       isLikeForLikeSwapAtSite: 'Yes when in canonical translate -> rotate -> scale order.',
       replaces: ['Multi-function transform chains'],
       doesNotReplace: ['Isolated single-function :hover transform'],
       rationale: 'Avoids repeating static transform functions.',
+    };
+    assert.equal(hasValidSpecProvenance(unverifiedSpec), false);
+    assert.equal(formatLegacyPatternSpecDossier(unverifiedSpec), '');
+
+    const dossier = formatLegacyPatternSpecDossier({
+      ...unverifiedSpec,
+      provenance: {
+        methodVersion: 'r41-blind-two-stage-v1',
+        model: 'gemini-2.5-pro',
+        evaluatedAt: '2026-10-20T20:00:00.000Z',
+        sources: ['guides/css/individual-transform-properties/guide.md'],
+      },
     });
     assert.match(
       dossier,
@@ -138,7 +151,11 @@ describe('blind card formatting & request construction', () => {
 
     const map = await loadGuideSummariesMap();
     const itpSummary = map.get('individual-transform-properties');
-    assert.ok(itpSummary?.explainerContext?.includes('### Technical Reference Dossier'));
+    assert.ok(itpSummary);
+    assert.equal(
+      itpSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
+      false,
+    );
   });
 
   it('builds Gemini request body with JSON schema and temperature 0.2', () => {
