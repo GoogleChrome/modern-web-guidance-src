@@ -854,15 +854,9 @@ describe('real repos.json integration test', () => {
     assert.ok(realRepos.length > 50);
 
     const grading = extractGradingRepos(realRepos);
-    assert.strictEqual(grading.length, 93);
+    assert.strictEqual(grading.length, 0);
 
-    // Verify key repos are present
-    const names = new Set(grading.map((r) => r.repo));
-    assert.ok(names.has('lighthouse-2020'));
-    assert.ok(names.has('timeline-viewer'));
-    assert.ok(names.has('trajectoryview'));
-
-    // Simulated transcript accessing a real grading repo
+    // Simulated transcript accessing a held-out gitmirror repo
     const simulated = [
       JSON.stringify({
         step_index: 0,
@@ -870,7 +864,7 @@ describe('real repos.json integration test', () => {
         tool_calls: [
           {
             name: 'read_file',
-            args: { Path: '/home/paulirish/.cache/analyzer-repos/timeline-viewer/index.html' },
+            args: { Path: '/home/paulirish/.cache/analyzer-gitmirror/held-out/some-repo/index.html' },
           },
         ],
       }),
@@ -878,6 +872,6 @@ describe('real repos.json integration test', () => {
 
     const audit = auditTranscript(simulated, { repos: realRepos });
     assert.strictEqual(audit.hasSplitViolation, true);
-    assert.strictEqual(audit.violations[0]?.matchedRepo, 'timeline-viewer');
+    assert.strictEqual(audit.violations[0]?.matchedRepo, 'analyzer-gitmirror');
   });
 });

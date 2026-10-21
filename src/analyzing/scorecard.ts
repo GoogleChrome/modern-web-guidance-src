@@ -1009,15 +1009,14 @@ export async function runPilotScorecard(
       readonly split: string;
     }
     const manifestEntries = JSON.parse(gitMirrorManifestRaw) as GitMirrorManifestEntry[];
-    const splitEntries = manifestEntries.filter((e) => {
-      if (split === 'held-out') {
-        return e.split === 'held-out' || e.split === 'final' || e.split === 'tune' || e.split === 'grading-only';
+    for (const entry of manifestEntries) {
+      if (entry.split !== 'rule-writing' && entry.split !== 'held-out') {
+        throw new Error(
+          `GitMirror manifest entry for ${entry.repository}:${entry.filepath} has invalid split "${entry.split}". Must be 'rule-writing' or 'held-out' (D-036).`,
+        );
       }
-      if (split === 'final') {
-        return e.split === 'final' || e.split === 'held-out';
-      }
-      return e.split === 'tune' || e.split === 'grading-only' || e.split === 'held-out';
-    });
+    }
+    const splitEntries = manifestEntries.filter((e) => e.split === split);
 
     // Group files by repository
     const byRepo = new Map<string, { commit: string; files: string[] }>();
@@ -1036,29 +1035,12 @@ export async function runPilotScorecard(
       repoGroup.files.push(entry.filepath);
     }
 
-    let splitDirName = 'held-out';
+    const targetSplitDir = join(gitMirrorDir, split === 'rule-writing' ? 'rule-writing' : 'held-out');
     try {
-      await readdir(join(gitMirrorDir, 'held-out'));
-      splitDirName = 'held-out';
+      await readdir(targetSplitDir);
     } catch (err: unknown) {
-      if (!isEnoent(err)) {
-        throw err;
-      }
-      if (split === 'final') {
-        splitDirName = 'final';
-      } else {
-        try {
-          await readdir(join(gitMirrorDir, 'tune'));
-          splitDirName = 'tune';
-        } catch (innerErr: unknown) {
-          if (!isEnoent(innerErr)) {
-            throw innerErr;
-          }
-          splitDirName = 'grading-only';
-        }
-      }
+      throw new Error(`GitMirror held-out directory missing at ${targetSplitDir} (D-036)`);
     }
-    const targetSplitDir = join(gitMirrorDir, splitDirName);
 
     for (const [repo, group] of byRepo.entries()) {
       const sanitizedRepo = repo.replace('/', '__');
@@ -1069,8 +1051,10 @@ export async function runPilotScorecard(
         try {
           const content = await readFile(fullFilePath, 'utf8');
           fileMap.set(relFile, content);
-        } catch {
-          // File missing or unreadable
+        } catch (fileErr: unknown) {
+          throw new Error(
+            `GitMirror held-out file missing on disk: ${fullFilePath} (${fileErr instanceof Error ? fileErr.message : String(fileErr)}) (D-036)`,
+          );
         }
       }
       if (fileMap.size > 0) {
