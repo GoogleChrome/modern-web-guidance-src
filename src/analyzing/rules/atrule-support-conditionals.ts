@@ -1,6 +1,7 @@
 import {
   Node,
   SyntaxKind,
+  type BinaryExpression,
   type CallExpression,
   type PropertyAccessExpression,
   type SourceFile,
@@ -24,107 +25,26 @@ export const ATRULE_SUPPORT_CONDITIONALS_GUIDE_HASH = 'adca6619584a';
 
 const MODERNIZR_PACKAGES = ['modernizr'] as const;
 
-const MODERNIZR_CSS_METHODS = new Set([
-  'atRule',
-  'testProp',
-  'testAllProps',
-  'prefixed',
-  'prefixedCSS',
-  'prefixedCSSValue',
-  'testStyles',
-]);
-
-const MODERNIZR_CSS_PROPERTIES = new Set([
-  'flexbox',
-  'flexboxlegacy',
-  'flexboxtweener',
-  'flexwrap',
+const MODERNIZR_AT_RULE_PROPERTIES: ReadonlySet<string> = new Set([
   'fontface',
-  'generatedcontent',
   'keyframes',
-  'backdropfilter',
-  'backgroundblendmode',
-  'backgroundcliptext',
-  'backgroundsize',
-  'bgsizecover',
-  'borderimage',
-  'borderradius',
-  'boxshadow',
-  'boxsizing',
-  'checked',
-  'cubicbezierrange',
-  'displaytable',
-  'ellipsis',
-  'filters',
-  'hsla',
-  'hyphens',
-  'lastchild',
   'mediaqueries',
-  'multiplebgs',
-  'nthchild',
-  'objectfit',
-  'opacity',
-  'overflowscrolling',
-  'pointerevents',
-  'positionsticky',
-  'regions',
-  'remunit',
-  'rgba',
-  'scrollsnappoints',
-  'shapes',
-  'siblinggeneral',
-  'subpixelfont',
   'supports',
-  'target',
-  'textalignlast',
-  'textshadow',
-  'transforms',
-  'transforms3d',
-  'transformstylepreserve3d',
-  'transitions',
-  'userselect',
-  'vhunit',
-  'vmaxunit',
-  'vminunit',
-  'vwunit',
-  'willchange',
-  'wrapflow',
 ]);
 
-const MODERNIZR_NON_CSS_APIS = new Set([
-  'webgl',
-  'webglextensions',
-  'canvas',
-  'canvastext',
-  'localstorage',
-  'sessionstorage',
-  'touchevent',
-  'touchevents',
-  'touch',
-  'websockets',
-  'websocketsbinary',
-  'geolocation',
-  'indexeddb',
-  'history',
-  'audio',
-  'video',
-  'webworkers',
-  'serviceworker',
-  'svg',
-  'inlinesvg',
-  'smil',
-  'draganddrop',
-  'hashchange',
-  'postmessage',
-  'applicationcache',
-  'websqldatabase',
-  'webrtc',
-  'notification',
-  'notifications',
-  'fullscreen',
-  'pointerlock',
-  'fetch',
-  'promises',
+const CSS_RULE_AT_RULE_CONSTANTS: ReadonlySet<string> = new Set([
+  'KEYFRAMES_RULE',
+  'WEBKIT_KEYFRAMES_RULE',
+  'MOZ_KEYFRAMES_RULE',
+  'KEYFRAME_RULE',
+  'WEBKIT_KEYFRAME_RULE',
+  'FONT_FACE_RULE',
+  'SUPPORTS_RULE',
+  'COUNTER_STYLE_RULE',
+  'NAMESPACE_RULE',
+  'PAGE_RULE',
+  'MEDIA_RULE',
+  'IMPORT_RULE',
 ]);
 
 function isImportedOrRequiredFrom(
@@ -182,33 +102,59 @@ function isModernizrObject(node: Node): boolean {
   );
 }
 
-function isModernizrCssPropertyName(propName: string): boolean {
-  const lower = propName.toLowerCase();
-  if (MODERNIZR_NON_CSS_APIS.has(lower)) {
+function isAtRuleStringNode(node: Node | undefined): boolean {
+  if (!node) {
     return false;
   }
-  if (lower.startsWith('css')) {
-    return true;
+  const resolved = resolveLocalExpression(node, 2);
+  if (
+    Node.isStringLiteral(resolved) ||
+    Node.isNoSubstitutionTemplateLiteral(resolved)
+  ) {
+    return resolved.getLiteralText().trim().startsWith('@');
   }
-  return MODERNIZR_CSS_PROPERTIES.has(lower);
+  return false;
 }
 
-function matchModernizrMethodCall(callExpr: CallExpression): string | null {
+function isInsideTryBlock(node: Node): boolean {
+  let current: Node | undefined = node.getParent();
+  while (current && !Node.isSourceFile(current)) {
+    if (Node.isTryStatement(current)) {
+      const tryBlock = current.getTryBlock();
+      return node.getStart() >= tryBlock.getStart() && node.getEnd() <= tryBlock.getEnd();
+    }
+    current = current.getParent();
+  }
+  return false;
+}
+
+function matchAtRuleCallExpression(callExpr: CallExpression): string | null {
   const callee = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(callee)) {
     return null;
   }
-  if (!isModernizrObject(callee.getExpression())) {
-    return null;
-  }
+
   const methodName = callee.getName();
-  if (!MODERNIZR_CSS_METHODS.has(methodName)) {
+  const args = callExpr.getArguments();
+  if (args.length === 0) {
     return null;
   }
-  if (callExpr.getArguments().length === 0) {
+
+  if (isModernizrObject(callee.getExpression())) {
+    if (methodName === 'atRule') {
+      return 'Modernizr.atRule() CSS at-rule feature detection in JavaScript can be modernized with native CSS @supports at-rule(@...).';
+    }
+    if (methodName === 'testStyles' && isAtRuleStringNode(args[0])) {
+      return 'Modernizr.testStyles() CSS at-rule feature probe in JavaScript can be modernized with native CSS @supports at-rule(@...).';
+    }
     return null;
   }
-  return `Modernizr.${methodName}() CSS feature detection in JavaScript can be modernized with native CSS @supports and @supports at-rule(@...).`;
+
+  if (methodName === 'insertRule' && isAtRuleStringNode(args[0]) && isInsideTryBlock(callExpr)) {
+    return 'Stylesheet insertRule("@...") try/catch probe for CSS at-rule support can be modernized with native CSS @supports at-rule(@...).';
+  }
+
+  return null;
 }
 
 function isAssignmentTarget(propAccess: PropertyAccessExpression): boolean {
@@ -222,7 +168,7 @@ function isAssignmentTarget(propAccess: PropertyAccessExpression): boolean {
   );
 }
 
-function matchModernizrCssPropertyAccess(
+function matchAtRulePropertyAccess(
   propAccess: PropertyAccessExpression,
 ): string | null {
   const parent = propAccess.getParent();
@@ -236,14 +182,40 @@ function matchModernizrCssPropertyAccess(
   if (isAssignmentTarget(propAccess)) {
     return null;
   }
-  if (!isModernizrObject(propAccess.getExpression())) {
-    return null;
-  }
+
+  const receiver = propAccess.getExpression();
   const propName = propAccess.getName();
-  if (!isModernizrCssPropertyName(propName)) {
+
+  if (isModernizrObject(receiver)) {
+    if (MODERNIZR_AT_RULE_PROPERTIES.has(propName.toLowerCase())) {
+      return `Modernizr.${propName} CSS at-rule check in JavaScript can be modernized with native CSS @supports at-rule(@...).`;
+    }
     return null;
   }
-  return `Modernizr.${propName} CSS feature check in JavaScript can be modernized with native CSS @supports and @supports at-rule(@...).`;
+
+  if (isGlobalReference(receiver, 'CSSRule') && CSS_RULE_AT_RULE_CONSTANTS.has(propName)) {
+    return `CSSRule.${propName} CSS at-rule support check in JavaScript can be modernized with native CSS @supports at-rule(@...).`;
+  }
+
+  return null;
+}
+
+function matchCssRuleInOperator(binaryExpr: BinaryExpression): string | null {
+  if (binaryExpr.getOperatorToken().getKind() !== SyntaxKind.InKeyword) {
+    return null;
+  }
+  const left = unwrapExpression(binaryExpr.getLeft());
+  const right = unwrapExpression(binaryExpr.getRight());
+  if (!isGlobalReference(right, 'CSSRule')) {
+    return null;
+  }
+  if (Node.isStringLiteral(left) || Node.isNoSubstitutionTemplateLiteral(left)) {
+    const ruleConst = left.getLiteralText();
+    if (CSS_RULE_AT_RULE_CONSTANTS.has(ruleConst)) {
+      return `"${ruleConst}" in CSSRule at-rule support check in JavaScript can be modernized with native CSS @supports at-rule(@...).`;
+    }
+  }
+  return null;
 }
 
 export const atruleSupportConditionalsPackageMatcher: DependencyRuleMatcher = {
@@ -262,7 +234,7 @@ export const atruleSupportConditionalsPackageMatcher: DependencyRuleMatcher = {
 
 export const atruleSupportConditionalsJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['Modernizr'],
+  fastTokens: ['Modernizr', 'atRule', 'insertRule', 'CSSRule'],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();
@@ -270,8 +242,7 @@ export const atruleSupportConditionalsJsMatcher: JsRuleMatcher = {
     sourceFile.forEachDescendant((node) => {
       if (
         isProtectedByFeatureGuard(node, [
-          'CSS.supports',
-          'supports',
+          'at-rule(',
           'CSSFunctionRule',
         ])
       ) {
@@ -279,7 +250,7 @@ export const atruleSupportConditionalsJsMatcher: JsRuleMatcher = {
       }
 
       if (Node.isCallExpression(node)) {
-        const msg = matchModernizrMethodCall(node);
+        const msg = matchAtRuleCallExpression(node);
         const line = node.getStartLineNumber();
         if (msg && !visitedLines.has(line)) {
           visitedLines.add(line);
@@ -289,7 +260,17 @@ export const atruleSupportConditionalsJsMatcher: JsRuleMatcher = {
       }
 
       if (Node.isPropertyAccessExpression(node)) {
-        const msg = matchModernizrCssPropertyAccess(node);
+        const msg = matchAtRulePropertyAccess(node);
+        const line = node.getStartLineNumber();
+        if (msg && !visitedLines.has(line)) {
+          visitedLines.add(line);
+          matches.push({ line, message: msg });
+        }
+        return;
+      }
+
+      if (Node.isBinaryExpression(node)) {
+        const msg = matchCssRuleInOperator(node);
         const line = node.getStartLineNumber();
         if (msg && !visitedLines.has(line)) {
           visitedLines.add(line);
@@ -307,15 +288,15 @@ export const atruleSupportConditionalsPackageRule: AnalyzerRule = {
   guideId: 'atrule-support-conditionals',
   guideHash: ATRULE_SUPPORT_CONDITIONALS_GUIDE_HASH,
   summary:
-    'Legacy Modernizr dependency in package.json used for CSS feature conditionals should be modernized with native CSS @supports and @supports at-rule(@...).',
+    'Legacy Modernizr dependency in package.json used for CSS at-rule conditionals should be modernized with native CSS @supports at-rule(@...).',
   matcher: atruleSupportConditionalsPackageMatcher,
   phase2Rubric: {
     keepWhen: [
-      'A project declares modernizr in package.json dependencies to detect CSS property, value, or at-rule support via JS classes on <html>.',
+      'A project declares modernizr in package.json dependencies to detect CSS at-rule support.',
     ],
     dropWhen: [
-      'Modernizr is used exclusively to detect non-CSS browser APIs such as WebGL, Canvas, IndexedDB, LocalStorage, Geolocation, or WebSockets.',
-      'The codebase already uses native CSS @supports and @supports at-rule(@...) or CSS.supports() for CSS conditionals.',
+      'Modernizr is used to detect non-CSS browser APIs (WebGL, Canvas, IndexedDB, LocalStorage) or standard CSS properties rather than CSS at-rules.',
+      'The codebase already uses native CSS @supports at-rule(@...) for at-rule conditionals.',
     ],
   },
 };
@@ -325,21 +306,20 @@ export const atruleSupportConditionalsJsRule: AnalyzerRule = {
   guideId: 'atrule-support-conditionals',
   guideHash: ATRULE_SUPPORT_CONDITIONALS_GUIDE_HASH,
   summary:
-    'JavaScript Modernizr CSS feature checks (Modernizr.testProp, Modernizr.testAllProps, Modernizr.prefixed, Modernizr.css*, Modernizr.flexbox, Modernizr.cssgrid) should be modernized with native CSS @supports and @supports at-rule(@...).',
+    'JavaScript CSS at-rule support probes (Modernizr.atRule, Modernizr.keyframes, Modernizr.fontface, CSSRule.*_RULE, or stylesheet insertRule("@...") try/catch probes) should be modernized with native CSS @supports at-rule(@...).',
   matcher: atruleSupportConditionalsJsMatcher,
   phase2Rubric: {
     keepWhen: [
-      'JavaScript calls Modernizr.testProp(), Modernizr.testAllProps(), or Modernizr.prefixed() to test CSS support or apply conditional styles.',
-      'JavaScript reads Modernizr.css* (such as Modernizr.cssanimations, Modernizr.csstransforms, Modernizr.cssgrid) or Modernizr.flexbox to branch on CSS feature support.',
+      'JavaScript calls Modernizr.atRule() or reads Modernizr.keyframes / Modernizr.fontface to test whether a CSS at-rule is supported.',
+      'JavaScript probes CSSRule.*_RULE constants or executes stylesheet.insertRule("@...") inside a try/catch block to detect CSS at-rule support.',
     ],
     dropWhen: [
-      'JavaScript checks non-CSS HTML5 APIs on Modernizr such as Modernizr.webgl, Modernizr.canvas, Modernizr.localstorage, Modernizr.TouchEvent, or Modernizr.websockets.',
-      'The check is guarded by native CSS.supports() or tests CSSOM rule constructors (e.g. globalThis.CSSFunctionRule) as a progressive enhancement fallback.',
+      'JavaScript checks standard CSS property/value support (such as Modernizr.flexbox, Modernizr.cssgrid, Modernizr.testProp) or non-CSS HTML5 APIs (such as Modernizr.webgl, Modernizr.canvas, Modernizr.localstorage).',
+      'The check is guarded by native CSS.supports("at-rule(@...)") or tests CSSOM rule constructors (e.g. globalThis.CSSFunctionRule) as a progressive enhancement fallback.',
     ],
   },
 };
 
 export const atruleSupportConditionalsRules: readonly AnalyzerRule[] = [
-  atruleSupportConditionalsPackageRule,
   atruleSupportConditionalsJsRule,
 ];

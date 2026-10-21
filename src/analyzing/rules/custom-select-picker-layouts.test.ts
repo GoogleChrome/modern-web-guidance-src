@@ -39,7 +39,7 @@ void test('custom-select-picker-layouts: rule metadata', () => {
     CUSTOM_SELECT_PICKER_LAYOUTS_GUIDE_HASH,
   );
 
-  assert.equal(customSelectPickerLayoutsRules.length, 2);
+  assert.equal(customSelectPickerLayoutsRules.length, 1);
   assert.ok(customSelectPickerLayoutsPackageRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(customSelectPickerLayoutsPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(customSelectPickerLayoutsJsRule.phase2Rubric.keepWhen.length >= 2);

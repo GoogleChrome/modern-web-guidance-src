@@ -39,7 +39,7 @@ void test('lazy-load-video-and-audio: rule metadata', () => {
     LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH,
   );
 
-  assert.equal(lazyLoadVideoAndAudioRules.length, 2);
+  assert.equal(lazyLoadVideoAndAudioRules.length, 1);
   assert.ok(lazyLoadVideoAndAudioPackageRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(lazyLoadVideoAndAudioPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(lazyLoadVideoAndAudioJsRule.phase2Rubric.keepWhen.length >= 1);

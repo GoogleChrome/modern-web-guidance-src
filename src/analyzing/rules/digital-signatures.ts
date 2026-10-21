@@ -234,6 +234,16 @@ function isNaclSignObject(node: Node): boolean {
   return isLibraryReference(unwrapped.getExpression(), 'nacl', ['tweetnacl']);
 }
 
+function isUnsupportedEllipticCurve(args: readonly Node[]): boolean {
+  const firstArg = args[0];
+  if (!firstArg) {
+    return false;
+  }
+  const directText = firstArg.getText();
+  const resolvedText = resolveLocalExpression(firstArg, 2).getText();
+  return /secp256k1/i.test(directText) || /secp256k1/i.test(resolvedText);
+}
+
 function matchSignatureNewExpression(newExpr: NewExpression): string | null {
   const callee = unwrapExpression(newExpr.getExpression());
 
@@ -257,6 +267,9 @@ function matchSignatureNewExpression(newExpr: NewExpression): string | null {
     (callee.getName() === 'ec' || callee.getName() === 'eddsa') &&
     isLibraryReference(callee.getExpression(), 'elliptic', ['elliptic'])
   ) {
+    if (isUnsupportedEllipticCurve(newExpr.getArguments())) {
+      return null;
+    }
     return `new elliptic.${callee.getName()}() signature instance can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).`;
   }
 
@@ -267,6 +280,9 @@ function matchSignatureNewExpression(newExpr: NewExpression): string | null {
       isLibraryReference(callee, 'eddsa', ['elliptic'], false, false) ||
       isLibraryReference(callee, 'EdDSA', ['elliptic'], false, false);
     if (isEllipticCtor) {
+      if (isUnsupportedEllipticCurve(newExpr.getArguments())) {
+        return null;
+      }
       return `new ${callee.getText()}() from elliptic can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).`;
     }
   }
@@ -407,6 +423,5 @@ export const digitalSignaturesJsRule: AnalyzerRule = {
 };
 
 export const digitalSignaturesRules: readonly AnalyzerRule[] = [
-  digitalSignaturesPackageRule,
   digitalSignaturesJsRule,
 ];

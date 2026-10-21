@@ -194,6 +194,5 @@ export const lazyLoadVideoAndAudioJsRule: AnalyzerRule = {
 };
 
 export const lazyLoadVideoAndAudioRules: readonly AnalyzerRule[] = [
-  lazyLoadVideoAndAudioPackageRule,
   lazyLoadVideoAndAudioJsRule,
 ];

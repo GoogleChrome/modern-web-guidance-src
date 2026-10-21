@@ -10,13 +10,28 @@ export const OPTIMIZE_IMAGE_PRIORITY_GUIDE_HASH = '7ae520e19777';
 const HERO_LCP_TOKEN_REGEX =
   /(?:^|[\s_-])(?:hero|lcp)(?:$|[\s_-])/i;
 
+function isHrefReferencedInCssBackground(
+  documentText: string,
+  href: string,
+): boolean {
+  if (!href) {
+    return false;
+  }
+  const escapedHref = href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const bgUrlRegex = new RegExp(
+    `background(?:-image|Image)?\\s*[:=][^;{}]*url\\(\\s*['"]?${escapedHref}['"]?\\s*\\)`,
+    'i',
+  );
+  return bgUrlRegex.test(documentText);
+}
+
 export const optimizeImagePriorityMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'link[rel="preload"][as="image"], img',
   fastTokens: ['preload', 'loading', 'importance', 'hero', 'lcp'],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['fetchpriority', 'fetchPriority'],
-  matchElement: (element: DomElementView, _ctx: DomMatcherContext) => {
+  matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     if (
       element.hasDynamicAttribute?.('fetchpriority') ||
       element.hasDynamicAttribute?.('fetchPriority')
@@ -36,6 +51,13 @@ export const optimizeImagePriorityMatcher: DomRuleMatcher = {
         element.hasAttribute('imagesrcset') ||
         element.hasAttribute('imageSrcSet')
       ) {
+        return null;
+      }
+      if (!/<img\b/i.test(ctx.documentText)) {
+        return null;
+      }
+      const href = (element.getAttribute('href') ?? '').trim();
+      if (isHrefReferencedInCssBackground(ctx.documentText, href)) {
         return null;
       }
       return {

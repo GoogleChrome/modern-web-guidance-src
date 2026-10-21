@@ -23,15 +23,50 @@ void test('optimize-image-priority: rule metadata', () => {
 });
 
 void test('optimize-image-priority DOM matcher', async (t) => {
-  await t.test('flags <link rel="preload" as="image"> without fetchpriority or imagesrcset', () => {
+  await t.test('flags <link rel="preload" as="image"> without fetchpriority or imagesrcset when <img> is present', () => {
     const html = `
       <head>
         <link rel="preload" as="image" href="/hero.jpg">
       </head>
+      <body>
+        <img src="/hero.jpg" alt="Hero">
+      </body>
     `;
     const matches = scanHtml('index.html', html, [optimizeImagePriorityMatcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 3);
+  });
+
+  await t.test('exempts <link rel="preload" as="image"> for CSS background-image or when no <img> exists in document (R50)', () => {
+    const bgHtml = `
+      <head>
+        <link rel="preload" as="image" href="/bg-hero.jpg">
+        <style>
+          .hero { background-image: url('/bg-hero.jpg'); }
+        </style>
+      </head>
+      <body>
+        <div class="hero"></div>
+        <img src="/logo.png" alt="Logo">
+      </body>
+    `;
+    assert.equal(
+      scanHtml('bg.html', bgHtml, [optimizeImagePriorityMatcher]).length,
+      0,
+    );
+
+    const noImgHtml = `
+      <head>
+        <link rel="preload" as="image" href="/hero.jpg">
+      </head>
+      <body>
+        <div class="hero-banner"></div>
+      </body>
+    `;
+    assert.equal(
+      scanHtml('no-img.html', noImgHtml, [optimizeImagePriorityMatcher]).length,
+      0,
+    );
   });
 
   await t.test('flags hero/LCP <img loading="eager"> without fetchpriority="high"', () => {

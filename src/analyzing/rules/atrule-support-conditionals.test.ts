@@ -39,7 +39,7 @@ void test('atrule-support-conditionals: rule metadata', () => {
     ATRULE_SUPPORT_CONDITIONALS_GUIDE_HASH,
   );
 
-  assert.equal(atruleSupportConditionalsRules.length, 2);
+  assert.equal(atruleSupportConditionalsRules.length, 1);
   assert.ok(atruleSupportConditionalsPackageRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(atruleSupportConditionalsPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(atruleSupportConditionalsJsRule.phase2Rubric.keepWhen.length >= 2);
@@ -82,22 +82,25 @@ void test('atrule-support-conditionals dependency matcher', async (t) => {
 });
 
 void test('atrule-support-conditionals JS matcher', async (t) => {
-  await t.test('flags Modernizr.testProp, testAllProps, and prefixed calls', () => {
+  await t.test('flags CSSRule.*_RULE and stylesheet insertRule("@...") try/catch probes', () => {
     const project = createInMemoryProject();
     const code = `
-      const hasPointerEvents = Modernizr.testProp('pointerEvents');
-      const hasBoxSizing = Modernizr.testAllProps('boxSizing', 'border-box', true);
-      const transformProp = Modernizr.prefixed('transform');
+      const hasKeyframesRule = 'KEYFRAMES_RULE' in CSSRule || Boolean(CSSRule.KEYFRAMES_RULE);
+      try {
+        sheet.insertRule('@starting-style { .box { opacity: 0; } }', 0);
+      } catch (e) {
+        enableFallback();
+      }
     `;
     const sourceFile = project.createSourceFile('feature.js', code);
     const matches = atruleSupportConditionalsJsMatcher.matchFile(sourceFile, {
       filePath: 'feature.js',
       fileContent: code,
     });
-    assert.equal(matches.length, 3);
+    assert.equal(matches.length, 2);
   });
 
-  await t.test('flags Modernizr.atRule() and imported Modernizr usage', () => {
+  await t.test('flags Modernizr.atRule() and imported Modernizr at-rule usage', () => {
     const project = createInMemoryProject();
     const code = `
       import Modernizr from 'modernizr';
@@ -113,9 +116,12 @@ void test('atrule-support-conditionals JS matcher', async (t) => {
     assert.match(matches[0]?.message ?? '', /Modernizr\.atRule/);
   });
 
-  await t.test('flags Modernizr.css* and Modernizr.flexbox / Modernizr.cssgrid property checks', () => {
+  await t.test('exempts Modernizr CSS property checks (flexbox, cssgrid, testProp, testAllProps, prefixed) (R50)', () => {
     const project = createInMemoryProject();
     const code = `
+      const hasPointerEvents = Modernizr.testProp('pointerEvents');
+      const hasBoxSizing = Modernizr.testAllProps('boxSizing', 'border-box', true);
+      const transformProp = Modernizr.prefixed('transform');
       if (Modernizr.cssanimations && Modernizr.flexbox && Modernizr.cssgrid) {
         enableGridAnimations();
       }
@@ -125,8 +131,7 @@ void test('atrule-support-conditionals JS matcher', async (t) => {
       filePath: 'layout.js',
       fileContent: code,
     });
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /Modernizr\.cssanimations/);
+    assert.equal(matches.length, 0);
   });
 
   await t.test('exempts non-CSS HTML5 API checks on Modernizr', () => {

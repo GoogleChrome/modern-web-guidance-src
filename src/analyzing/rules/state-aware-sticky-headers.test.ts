@@ -104,4 +104,27 @@ void test('state-aware-sticky-headers JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts arbitrary positive pixel scroll thresholds like scrollY > 100 or scrollTop > 200 (R50)', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const header = document.querySelector('header.sticky');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 100) {
+          header.classList.add('is-sticky');
+        } else {
+          header.classList.remove('is-sticky');
+        }
+      });
+      container.addEventListener('scroll', () => {
+        header.classList.toggle('stuck', container.scrollTop > 200);
+      });
+    `;
+    const sourceFile = project.createSourceFile('pixel-threshold.js', code);
+    const matches = stateAwareStickyHeadersMatcher.matchFile(sourceFile, {
+      filePath: 'pixel-threshold.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
 });

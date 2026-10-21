@@ -39,7 +39,7 @@ void test('position-aware-tooltips: rule metadata', () => {
     POSITION_AWARE_TOOLTIPS_GUIDE_HASH,
   );
 
-  assert.equal(positionAwareTooltipsRules.length, 2);
+  assert.equal(positionAwareTooltipsRules.length, 1);
   assert.ok(positionAwareTooltipsPackageRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(positionAwareTooltipsPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(positionAwareTooltipsJsRule.phase2Rubric.keepWhen.length >= 2);

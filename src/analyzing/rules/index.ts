@@ -131,14 +131,14 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...darkModeRules,
   ...manageRecurringIntervalsRules,
 
-  // Batch 3 Wild-Verified Guides (4 active guides, 7 rules -> 40 rules across 29 feature guides total;
+  // Batch 3 Wild-Verified Guides (4 active guides, 6 rules -> 39 rules across 29 feature guides total;
   // model-partial-time-concepts and custom-select-picker-layouts removed per O69 guide mismatch):
   ...dragRules,
   ...formatHumanReadableDurationsRules,
   ...sanitizeUntrustedHtmlRules,
   ...scrollPositionAwareElementsRules,
 
-  // Batch 4 Empirical GitMirror Guides (6 guides, 8 rules -> 48 rules across 35 feature guides total):
+  // Batch 4 Empirical GitMirror Guides (6 guides, 8 rules -> 47 rules across 35 feature guides total):
   ...autofillHighlightInputsRules,
   ...complexShapesRules,
   ...deliverOptimizedDecorativeImagesRules,
@@ -146,7 +146,7 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...equalWidthTextLinesRules,
   ...lightDismissADialogRules,
 
-  // Wave 3A Guides (9 guides, 16 rules -> 64 rules across 44 feature guides total):
+  // Wave 3A Guides (9 guides, 14 rules -> 61 rules across 44 feature guides total):
   ...detectInitialVisibilityStateRules,
   ...resolutionOptimizedPseudoElementsRules,
   ...atruleSupportConditionalsRules,

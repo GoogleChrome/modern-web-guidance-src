@@ -39,7 +39,7 @@ void test('persistent-toast-notifications: rule metadata', () => {
     PERSISTENT_TOAST_NOTIFICATIONS_GUIDE_HASH,
   );
 
-  assert.equal(persistentToastNotificationsRules.length, 2);
+  assert.equal(persistentToastNotificationsRules.length, 1);
   assert.ok(persistentToastNotificationsPackageRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(persistentToastNotificationsPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(persistentToastNotificationsJsRule.phase2Rubric.keepWhen.length >= 2);

@@ -3,12 +3,21 @@ import test from 'node:test';
 import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
+  sanitizeUntrustedHtmlRules,
   sanitizerDependencyMatcher,
   sanitizerJsMatcher,
 } from './sanitize-untrusted-html.ts';
 
 const depMatcher = sanitizerDependencyMatcher;
 const jsMatcher = sanitizerJsMatcher;
+
+void test('sanitize-untrusted-html default rules array excludes package-sanitizer (R46, R49)', () => {
+  assert.equal(sanitizeUntrustedHtmlRules.length, 1);
+  assert.equal(
+    sanitizeUntrustedHtmlRules[0]?.id,
+    'sanitize-untrusted-html/js-dompurify-innerhtml',
+  );
+});
 
 void test('sanitize-untrusted-html dependency matcher', async (t) => {
   await t.test('exempts dompurify and isomorphic-dompurify as recommended fallbacks (O69)', () => {
@@ -147,7 +156,7 @@ void test('sanitize-untrusted-html JS matcher', async (t) => {
     assert.match(matches[0]?.message ?? '', /html/);
   });
 
-  await t.test('flags React dangerouslySetInnerHTML with DOMPurify.sanitize', () => {
+  await t.test('exempts React dangerouslySetInnerHTML with DOMPurify.sanitize (R49)', () => {
     const project = createInMemoryProject();
     const code = `
       function PostContent({ html }) {
@@ -161,8 +170,7 @@ void test('sanitize-untrusted-html JS matcher', async (t) => {
       filePath: 'Post.tsx',
       fileContent: code,
     });
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /dangerouslySetInnerHTML/);
+    assert.equal(matches.length, 0);
   });
 
   await t.test('exempts when guarded by native setHTML feature check', () => {

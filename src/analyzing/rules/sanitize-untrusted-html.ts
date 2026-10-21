@@ -3,7 +3,6 @@ import {
   SyntaxKind,
   type BinaryExpression,
   type CallExpression,
-  type PropertyAssignment,
   type SourceFile,
 } from 'ts-morph';
 import {
@@ -162,27 +161,6 @@ function matchDomInsertionSink(callExpr: CallExpression): AnalyzerMatch | null {
   return null;
 }
 
-/**
- * Checks whether a property assignment is React's dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(...) }}.
- */
-function matchReactDangerousHtml(propAssign: PropertyAssignment): AnalyzerMatch | null {
-  const name = propAssign.getName();
-  if (name !== '__html') {
-    return null;
-  }
-
-  const init = unwrapExpression(propAssign.getInitializer() ?? propAssign);
-  if (resolvesToSanitizerCall(init)) {
-    return {
-      line: propAssign.getStartLineNumber(),
-      message:
-        'React dangerouslySetInnerHTML with third-party sanitizer output can be modernized using native Sanitizer API and Element.prototype.setHTML().',
-    };
-  }
-
-  return null;
-}
-
 export const sanitizerJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['DOMPurify', 'sanitize', 'sanitizeHtml', 'xss', 'insane', 'innerHTML', 'outerHTML'],
@@ -213,11 +191,6 @@ export const sanitizerJsMatcher: JsRuleMatcher = {
 
       if (Node.isCallExpression(node)) {
         recordMatch(matchDomInsertionSink(node));
-        return;
-      }
-
-      if (Node.isPropertyAssignment(node)) {
-        recordMatch(matchReactDangerousHtml(node));
       }
     });
 
@@ -257,6 +230,5 @@ export const sanitizeUntrustedHtmlJsRule: AnalyzerRule = {
 };
 
 export const sanitizeUntrustedHtmlRules: readonly AnalyzerRule[] = [
-  sanitizeUntrustedHtmlPackageRule,
   sanitizeUntrustedHtmlJsRule,
 ];

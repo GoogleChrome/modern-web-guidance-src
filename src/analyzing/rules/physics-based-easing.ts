@@ -378,6 +378,5 @@ export const physicsBasedEasingJsRule: AnalyzerRule = {
 };
 
 export const physicsBasedEasingRules: readonly AnalyzerRule[] = [
-  physicsBasedEasingPackageRule,
   physicsBasedEasingJsRule,
 ];

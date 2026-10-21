@@ -30,7 +30,7 @@ void test('physics-based-easing: rule metadata', () => {
     PHYSICS_BASED_EASING_GUIDE_HASH,
   );
 
-  assert.equal(physicsBasedEasingRules.length, 2);
+  assert.equal(physicsBasedEasingRules.length, 1);
   assert.ok(physicsBasedEasingPackageRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(physicsBasedEasingPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(physicsBasedEasingJsRule.phase2Rubric.keepWhen.length >= 1);

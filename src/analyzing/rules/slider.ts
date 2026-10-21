@@ -369,6 +369,5 @@ export const sliderJsRule: AnalyzerRule = {
 };
 
 export const sliderRules: readonly AnalyzerRule[] = [
-  sliderPackageRule,
   sliderJsRule,
 ];

@@ -136,4 +136,21 @@ void test('select-menu-interaction JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts Choices, Select2, and TomSelect custom select initializations (R50)', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import Choices from 'choices.js';
+      import TomSelect from 'tom-select';
+      new Choices('#country-select');
+      new TomSelect('#role-select');
+      $('#city-select').select2();
+    `;
+    const sourceFile = project.createSourceFile('custom-select.js', code);
+    const matches = selectMenuInteractionJsMatcher.matchFile(sourceFile, {
+      filePath: 'custom-select.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
 });

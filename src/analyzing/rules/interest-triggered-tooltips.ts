@@ -374,6 +374,5 @@ export const interestTriggeredTooltipsJsRule: AnalyzerRule = {
 };
 
 export const interestTriggeredTooltipsRules: readonly AnalyzerRule[] = [
-  interestTriggeredTooltipsPackageRule,
   interestTriggeredTooltipsJsRule,
 ];

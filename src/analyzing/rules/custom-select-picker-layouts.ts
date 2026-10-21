@@ -534,6 +534,5 @@ export const customSelectPickerLayoutsJsRule: AnalyzerRule = {
 };
 
 export const customSelectPickerLayoutsRules: readonly AnalyzerRule[] = [
-  customSelectPickerLayoutsPackageRule,
   customSelectPickerLayoutsJsRule,
 ];

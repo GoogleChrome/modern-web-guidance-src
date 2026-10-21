@@ -381,6 +381,5 @@ export const persistentToastNotificationsJsRule: AnalyzerRule = {
 };
 
 export const persistentToastNotificationsRules: readonly AnalyzerRule[] = [
-  persistentToastNotificationsPackageRule,
   persistentToastNotificationsJsRule,
 ];

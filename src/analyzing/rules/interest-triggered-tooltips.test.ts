@@ -39,7 +39,7 @@ void test('interest-triggered-tooltips: rule metadata', () => {
     INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH,
   );
 
-  assert.equal(interestTriggeredTooltipsRules.length, 2);
+  assert.equal(interestTriggeredTooltipsRules.length, 1);
   assert.ok(interestTriggeredTooltipsPackageRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(interestTriggeredTooltipsPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(interestTriggeredTooltipsJsRule.phase2Rubric.keepWhen.length >= 2);

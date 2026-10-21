@@ -429,6 +429,5 @@ export const positionAwareTooltipsJsRule: AnalyzerRule = {
 };
 
 export const positionAwareTooltipsRules: readonly AnalyzerRule[] = [
-  positionAwareTooltipsPackageRule,
   positionAwareTooltipsJsRule,
 ];

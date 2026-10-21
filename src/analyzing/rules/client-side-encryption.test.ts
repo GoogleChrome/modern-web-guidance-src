@@ -39,7 +39,7 @@ void test('client-side-encryption: rule metadata', () => {
     CLIENT_SIDE_ENCRYPTION_GUIDE_HASH,
   );
 
-  assert.equal(clientSideEncryptionRules.length, 2);
+  assert.equal(clientSideEncryptionRules.length, 1);
   assert.ok(clientSideEncryptionPackageRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(clientSideEncryptionPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(clientSideEncryptionJsRule.phase2Rubric.keepWhen.length >= 1);

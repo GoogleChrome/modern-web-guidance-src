@@ -32,7 +32,7 @@ const STUCK_CLASS_REGEX =
   /['"`](?:is-stuck|is-pinned|stuck|sticky-active|header-stuck|is-sticky)['"`]/i;
 
 const STICKY_HEADER_TARGET_REGEX =
-  /\b(?:header|navbar|nav|sticky|topBar|topbar|masthead|appBar|banner)\b/i;
+  /(?:header|navbar|\bnav\b|sticky|topBar|topbar|masthead|appBar|banner)/i;
 
 const DIRECTIONAL_HIDE_SHOW_REGEX =
   /\b(?:lastScroll|prevScroll|scrollUp|scrollDown|isHidden|header-hidden|headroom)\b/i;
@@ -96,6 +96,36 @@ function matchStickyIntersectionObserver(newExpr: NewExpression): string | null 
   return 'IntersectionObserver toggling stuck/pinned classes on a sticky header can be modernized with CSS container-type: scroll-state and @container scroll-state(stuck: top).';
 }
 
+const ARBITRARY_PIXEL_SCROLL_THRESHOLD_REGEX =
+  /(?:scrollY|pageYOffset|scrollTop(?:\s*\(\s*\))?)\s*(?:>=?|<=?|===?)\s*[1-9]\d*|[1-9]\d*\s*(?:<=?|>=?|===?)\s*(?:[a-zA-Z0-9_$.]+\.)?(?:scrollY|pageYOffset|scrollTop(?:\s*\(\s*\))?)/;
+
+function hasStickyDockingMeasurement(handlerNode: Node): boolean {
+  const handlerText = handlerNode.getText();
+  if (
+    /getBoundingClientRect\s*\(\s*\)\s*\.top\s*(?:<=?\s*0|===\s*0|<\s*1\b)/.test(
+      handlerText,
+    ) ||
+    /\boffsetTop\b/.test(handlerText)
+  ) {
+    return true;
+  }
+
+  for (const ident of handlerNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
+    const resolved = resolveLocalExpression(ident, 2);
+    if (resolved !== ident) {
+      const resolvedText = resolved.getText();
+      if (
+        /\boffsetTop\b/.test(resolvedText) ||
+        /getBoundingClientRect\s*\(\s*\)/.test(resolvedText)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 function matchStickyScrollListener(callExpr: CallExpression): string | null {
   const listener = matchEventListenerCall(callExpr, ['scroll']);
   if (!listener) {
@@ -116,16 +146,16 @@ function matchStickyScrollListener(callExpr: CallExpression): string | null {
     return null;
   }
 
-  const checksStickyPosition =
-    /getBoundingClientRect\s*\(\s*\)\s*\.top|scrollY|pageYOffset|scrollTop|offsetTop/.test(
-      handlerText,
-    );
+  if (ARBITRARY_PIXEL_SCROLL_THRESHOLD_REGEX.test(handlerText)) {
+    return null;
+  }
+
   const referencesHeaderOrSticky =
     STICKY_HEADER_TARGET_REGEX.test(handlerText) ||
     (listener.targetNode !== undefined &&
       STICKY_HEADER_TARGET_REGEX.test(listener.targetNode.getText()));
 
-  if (!checksStickyPosition && !referencesHeaderOrSticky) {
+  if (!referencesHeaderOrSticky || !hasStickyDockingMeasurement(handlerNode)) {
     return null;
   }
 

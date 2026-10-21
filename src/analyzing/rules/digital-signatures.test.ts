@@ -30,7 +30,7 @@ void test('digital-signatures: rule metadata', () => {
     DIGITAL_SIGNATURES_GUIDE_HASH,
   );
 
-  assert.equal(digitalSignaturesRules.length, 2);
+  assert.equal(digitalSignaturesRules.length, 1);
   assert.ok(digitalSignaturesPackageRule.phase2Rubric.keepWhen.length >= 1);
   assert.ok(digitalSignaturesPackageRule.phase2Rubric.dropWhen.length >= 2);
   assert.ok(digitalSignaturesJsRule.phase2Rubric.keepWhen.length >= 1);
@@ -108,11 +108,14 @@ void test('digital-signatures JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts native crypto.subtle.sign and verify and unimported EC classes', () => {
+  await t.test('exempts native crypto.subtle.sign and verify, secp256k1 curves (R50), and unimported EC classes', () => {
     const project = createInMemoryProject();
     const code = `
+      import elliptic, { ec as ImportedEC } from 'elliptic';
       const signature = await crypto.subtle.sign('Ed25519', privateKey, data);
       const valid = await crypto.subtle.verify('Ed25519', publicKey, signature, data);
+      const btcCurve = new ImportedEC('secp256k1');
+      const ethCurve = new elliptic.ec('secp256k1');
       class EC { constructor(name) { this.name = name; } }
       const localEc = new EC('custom');
     `;

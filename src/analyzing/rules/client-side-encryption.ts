@@ -378,6 +378,5 @@ export const clientSideEncryptionJsRule: AnalyzerRule = {
 };
 
 export const clientSideEncryptionRules: readonly AnalyzerRule[] = [
-  clientSideEncryptionPackageRule,
   clientSideEncryptionJsRule,
 ];
