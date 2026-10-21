@@ -85,7 +85,10 @@ const SHORT_TASK_LABELS = {
  * @type {Record<string, string>}
  */
 const GUIDE_CATEGORY_MAP = {
+    'accessibility': 'accessibility',
     'animate-to-from-top-layer': 'ui-behaviors',
+    'css': 'css',
+    'dark-mode': 'visual-design',
     'declarative-dialog-popover-control': 'ui-behaviors',
     'directional-navigation-transitions': 'ui-behaviors',
     'faster-spa-view-transitions': 'performance',
@@ -95,9 +98,11 @@ const GUIDE_CATEGORY_MAP = {
     'html': 'html',
     'interest-triggered-tooltips': 'ui-behaviors',
     'light-dismiss-a-dialog': 'ui-behaviors',
+    'motion': 'ui-behaviors',
     'move-dom-element-without-losing-state': 'ui-behaviors',
     'optimize-image-priority': 'performance',
     'optimize-preload-priority': 'performance',
+    'performance': 'performance',
     'position-aware-tooltips': 'ui-atoms',
     'same-document-transitions': 'ui-behaviors',
     'scrollspy': 'ui-components',
@@ -141,18 +146,14 @@ const TASK_APPROACH_CONTRAST = {
  * @type {Record<string, Partial< { unguided: string, guided: string } >>}
  */
 const TASK_PAIR_OVERRIDES = {
+    'animate-to-from-top-layer:antigravity_cli': {
+        unguided: 'Applied @starting-style, transition-behavior: allow-discrete, and ::backdrop transitions (8/9), but omitted the prefers-reduced-motion guard.'
+    },
     'animate-to-from-top-layer:codex_cli': {
-        guided: 'Applied @starting-style on <dialog>, transition-behavior: allow-discrete on display/overlay, ::backdrop fade, and prefers-reduced-motion (8/9 — missed only @starting-style on [popover]).'
+        guided: 'Applied @starting-style, transition-behavior: allow-discrete, ::backdrop fade, and prefers-reduced-motion on <dialog> (6/9 — omitted [popover] entry/exit transitions).'
     },
     'flicker-free-client-side-ab-testing:codex_cli': {
         guided: 'Applied <script async blocking="render"> in <head> with feature detection (8/10), but omitted the fallback safety timeout and missed the variant timing check.'
-    },
-    'faster-spa-view-transitions:antigravity_cli': {
-        unguided: 'Passed all 6/6 checks without MWG after 8m and 360k uncached tokens of exploration.',
-        guided: 'Passed all 6/6 checks with MWG (content-visibility: hidden, aria-hidden="true", focus management, and display: none fallback).'
-    },
-    'scrollspy:codex_cli': {
-        guided: 'Applied native scroll-target-group: auto, :target-current, non-color indicators, scrollend ARIA sync, and IntersectionObserver fallback (10/11 — missed only the fallback class selector).'
     }
 };
 

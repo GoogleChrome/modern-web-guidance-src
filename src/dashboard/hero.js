@@ -311,12 +311,16 @@ function renderTakeaways(insights) {
                 short: otherSummary ? `Faster on ${Math.round(winners[0].runtime?.fasterTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks · ${escapeHtml(otherSummary)}` : `Faster on ${Math.round(winners[0].runtime?.fasterTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks`
             }));
         } else {
+            const pcts = others.map(f => roundAbs(rtDelta(f)));
+            const lo = Math.min(...pcts);
+            const hi = Math.max(...pcts);
+            const range = lo === hi ? `+${hi}%` : `+${lo}–${hi}%`;
             cards.push(takeawayCard({
                 metric: 'time',
                 primary: false,
                 label: 'Completion time',
-                figure: '<span class="unit">No speedup</span>',
-                figureText: 'No speedup',
+                figure: `<span class="figure-val">${range}</span><span class="unit"> median time</span>`,
+                figureText: `${range} median completion time`,
                 qualifier: `${othersDetail(others, 'runtime')}.`,
                 short: `${escapeHtml(othersDetail(others, 'runtime'))}`
             }));
@@ -344,13 +348,17 @@ function renderTakeaways(insights) {
                 short: otherSummary ? `Fewer on ${Math.round(winners[0].tokens?.fewerTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks · ${escapeHtml(otherSummary)}` : `Fewer on ${Math.round(winners[0].tokens?.fewerTaskPct || 0)}% of ${escapeHtml(winnerNames)} tasks`
             }));
         } else {
+            const pcts = others.map(f => roundAbs(tokDelta(f)));
+            const lo = Math.min(...pcts);
+            const hi = Math.max(...pcts);
+            const range = lo === hi ? `+${hi}%` : `+${lo}–${hi}%`;
             cards.push(takeawayCard({
                 metric: 'tokens',
                 primary: false,
                 label: 'Uncached tokens',
-                figure: '<span class="unit">No reduction</span>',
-                figureText: 'No reduction',
-                qualifier: `${othersDetail(others, 'tokens')}.`,
+                figure: `<span class="figure-val">${range}</span><span class="unit"> median overhead</span>`,
+                figureText: `${range} median uncached token overhead`,
+                qualifier: `Median per task: ${othersDetail(others, 'tokens')}.`,
                 short: `${escapeHtml(othersDetail(others, 'tokens'))}`
             }));
         }

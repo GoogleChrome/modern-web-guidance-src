@@ -305,8 +305,12 @@ export function selectRecentSuites(suites, options = {}) {
     });
 
     byFamily.forEach((list, family) => {
-        list.sort((a, b) => Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a)));
-        byFamily.set(family, list.slice(0, perAgentRecentN));
+        const hasGemini4 = list.some(s => /^gemini-4\b/i.test(s.model || ''));
+        const preferred = hasGemini4
+            ? list.filter(s => !/^gemini-3\./i.test(s.model || ''))
+            : list;
+        preferred.sort((a, b) => Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a)));
+        byFamily.set(family, preferred.slice(0, perAgentRecentN));
     });
     return byFamily;
 }

@@ -107,6 +107,18 @@ test('selectRecentSuites keeps the latest N nightly suites per family, newest fi
     assert.deepStrictEqual((older.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini1.testId]);
     const withAdhoc = selectRecentSuites(manifest, { perAgentRecentN: 5, nightlyOnly: false });
     assert.ok((withAdhoc.get(AGENT_FAMILIES[0]) ?? []).some(s => s.testId === adhoc.testId));
+
+    // When a family has Gemini 4 suites available, Gemini 3.x suites are excluded rather than pooled.
+    const g38 = suite('nightly-2026-10-19_07-00-02-antigravity_cli', 'antigravity_cli', 'gemini-3.8-flash', '2026-10-19T07:00:02Z', [
+        { name: 'accordion', passed: [1, 2], runtime: [500000, 400000], tokens: [tok(300000, 60000), tok(250000, 50000)] },
+    ]);
+    const g4 = suite('nightly-2026-10-20_18-18-02-antigravity_cli', 'antigravity_cli', 'gemini-4-argon', '2026-10-20T18:18:02Z', [
+        { name: 'accordion', passed: [3, 4], runtime: [110000, 100000], tokens: [tok(140000, 110000), tok(240000, 195000)] },
+    ]);
+    const preferred = selectRecentSuites([g38, g4], { perAgentRecentN: 3 });
+    assert.deepStrictEqual((preferred.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g4.testId]);
+    const fallback38 = selectRecentSuites([g38, g4], { perAgentRecentN: 3, before: '2026-10-20' });
+    assert.deepStrictEqual((fallback38.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g38.testId]);
 });
 
 test('computeHeadlineInsights pools pass rates and a11y from unrounded counts', () => {
