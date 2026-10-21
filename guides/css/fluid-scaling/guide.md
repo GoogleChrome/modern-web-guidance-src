@@ -56,9 +56,7 @@ Use container query units (`cqi`, `cqb`, etc.) to set sizes relative to the cont
 
 To prevent sizes from becoming too small or too large, use the CSS `clamp()` function. This impacts the user's ability to zoom or adjust their base font size. To ensure text meets accessibility guidelines, the maximum size must not be more than 2.5 times the minimum size.
 
-**DO** include a unit tied to the font's length in the preferred value. This ensures the font size increases as the browser zoom increases.
-
-**DON'T** use only a container query or viewport unit alone as the preferred value. There may be instances where the user cannot resize the text to 200% of the orginal size, which will fail against WCAG 1.4.4 Resize Text (AA).
+**DON'T** make the container smaller when zooming in with the browser. This is to ensure that text can be resized to 200% its default size when zooming in using the browser to adhere to WCAG 1.4.4 Resize Text (Level AA).
 
 ```css
 .component-title {
