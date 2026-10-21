@@ -15,7 +15,7 @@ const jsMatcher = brandedSelectStylingJsRule.matcher as JsRuleMatcher;
 void test('branded-select-styling: rule metadata', () => {
   assert.equal(brandedSelectStylingRule.id, 'branded-select-styling');
   assert.equal(brandedSelectStylingJsRule.id, 'branded-select-styling/js');
-  assert.equal(brandedSelectStylingRules.length, 0);
+  assert.equal(brandedSelectStylingRules.length, 1);
 });
 
 void test('branded-select-styling dependency: positive brownfield matches', async (t) => {

@@ -22,7 +22,7 @@ describe('171-landed-guide invariant for analyzer rules', () => {
     const landedGuideIds = new Set(landedFeatureGuides.map((g) => g.name));
 
     const ruleGuideIds = new Set(ALL_RULES.map((r) => r.guideId));
-    assert.strictEqual(ruleGuideIds.size, 31, 'ALL_RULES covers exactly 31 landed feature guides');
+    assert.strictEqual(ruleGuideIds.size, 37, 'ALL_RULES covers exactly 37 landed feature guides');
 
     for (const rule of ALL_RULES) {
       await t.test(`rule ${rule.id} (${rule.guideId}) is a landed feature guide`, () => {

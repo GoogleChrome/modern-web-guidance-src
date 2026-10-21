@@ -375,4 +375,6 @@ export const animateElementEntryExitRule: AnalyzerRule = {
   },
 };
 
-export const animateElementEntryExitRules: readonly AnalyzerRule[] = [];
+export const animateElementEntryExitRules: readonly AnalyzerRule[] = [
+  animateElementEntryExitRule,
+];

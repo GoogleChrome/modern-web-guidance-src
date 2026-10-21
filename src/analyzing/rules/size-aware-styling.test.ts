@@ -10,7 +10,7 @@ import {
 const matcher = sizeAwareStylingRule.matcher as JsRuleMatcher;
 
 void test('size-aware-styling rules array metadata', () => {
-  assert.equal(sizeAwareStylingRules.length, 0);
+  assert.equal(sizeAwareStylingRules.length, 1);
 });
 
 void test('size-aware-styling: positive brownfield matches', async (t) => {

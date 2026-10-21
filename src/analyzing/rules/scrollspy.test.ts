@@ -13,7 +13,7 @@ const domMatcher = scrollspyRule.matcher as DomRuleMatcher;
 const jsMatcher = scrollspyJsRule.matcher as JsRuleMatcher;
 
 void test('scrollspy rules array metadata', () => {
-  assert.equal(scrollspyRules.length, 0);
+  assert.equal(scrollspyRules.length, 1);
 });
 
 void test('scrollspy DOM: positive brownfield matches', async (t) => {

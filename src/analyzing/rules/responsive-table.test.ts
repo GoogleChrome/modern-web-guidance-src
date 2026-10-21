@@ -15,7 +15,7 @@ void test('responsive-table: rule metadata', () => {
   assert.equal(responsiveTableCssRule.guideId, 'responsive-table');
   assert.equal(responsiveTableCssRule.guideHash, RESPONSIVE_TABLE_GUIDE_HASH);
 
-  assert.equal(responsiveTableRules.length, 0);
+  assert.equal(responsiveTableRules.length, 1);
   assert.ok(responsiveTableCssRule.phase2Rubric.keepWhen.length > 0);
   assert.ok(responsiveTableCssRule.phase2Rubric.dropWhen.length >= 2);
 });

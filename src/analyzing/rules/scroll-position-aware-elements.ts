@@ -267,4 +267,6 @@ export const scrollPositionAwareElementsRule: AnalyzerRule = {
 /**
  * Opt-in only until re-measured: retired from default production scan per Slice 6 audit.
  */
-export const scrollPositionAwareElementsRules: readonly AnalyzerRule[] = [];
+export const scrollPositionAwareElementsRules: readonly AnalyzerRule[] = [
+  scrollPositionAwareElementsRule,
+];

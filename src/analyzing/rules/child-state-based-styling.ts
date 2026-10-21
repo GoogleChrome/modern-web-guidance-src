@@ -279,4 +279,6 @@ export const childStateBasedStylingJsParentClassRule: AnalyzerRule = {
   },
 };
 
-export const childStateBasedStylingRules: readonly AnalyzerRule[] = [];
+export const childStateBasedStylingRules: readonly AnalyzerRule[] = [
+  childStateBasedStylingJsParentClassRule,
+];

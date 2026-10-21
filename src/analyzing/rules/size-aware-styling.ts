@@ -194,4 +194,6 @@ export const sizeAwareStylingRule: AnalyzerRule = {
 /**
  * Opt-in only until re-measured: retired from default production scan per Slice 6 audit.
  */
-export const sizeAwareStylingRules: readonly AnalyzerRule[] = [];
+export const sizeAwareStylingRules: readonly AnalyzerRule[] = [
+  sizeAwareStylingRule,
+];

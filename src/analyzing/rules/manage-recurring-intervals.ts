@@ -225,4 +225,6 @@ export const manageRecurringIntervalsRule: AnalyzerRule = {
 /**
  * Opt-in only until re-measured: retired from default production scan per Slice 5 audit.
  */
-export const manageRecurringIntervalsRules: readonly AnalyzerRule[] = [];
+export const manageRecurringIntervalsRules: readonly AnalyzerRule[] = [
+  manageRecurringIntervalsRule,
+];

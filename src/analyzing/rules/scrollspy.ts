@@ -414,4 +414,4 @@ export const scrollspyJsRule: AnalyzerRule = {
 /**
  * Opt-in only until scroll-target-group is Baseline: retired from default production scan per Slice 6 audit.
  */
-export const scrollspyRules: readonly AnalyzerRule[] = [];
+export const scrollspyRules: readonly AnalyzerRule[] = [scrollspyRule];

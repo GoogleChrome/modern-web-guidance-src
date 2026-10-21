@@ -1,52 +1,43 @@
 import type { AnalyzerRule } from '../schema.ts';
 import { adaptScrollbarToContrastPreferencesRules } from './adapt-scrollbar-to-contrast-preferences.ts';
-import { animateElementEntryExitRule } from './animate-element-entry-exit.ts';
-import { animateToIntrinsicSizesRule } from './animate-to-intrinsic-sizes.ts';
+import { animateElementEntryExitRules } from './animate-element-entry-exit.ts';
+import { animateToIntrinsicSizesRules } from './animate-to-intrinsic-sizes.ts';
 import { atruleSupportConditionalsRules } from './atrule-support-conditionals.ts';
 import { autofillAddressFormRules } from './autofill-address-form.ts';
 import { autofillHighlightInputsRules } from './autofill-highlight-inputs.ts';
-import { autofillSignInFormRule } from './autofill-sign-in-form.ts';
-import { brandConsistentFormsRule } from './brand-consistent-forms.ts';
+import { autofillSignInFormRules } from './autofill-sign-in-form.ts';
+import { brandConsistentFormsRules } from './brand-consistent-forms.ts';
 import { brandedSelectStylingRules } from './branded-select-styling.ts';
-import { breakUpLongTasksRule } from './break-up-long-tasks.ts';
-import { calculateEventDifferentialsRule } from './calculate-event-differentials.ts';
+import { breakUpLongTasksRules } from './break-up-long-tasks.ts';
+import { calculateEventDifferentialsRules } from './calculate-event-differentials.ts';
 import { captureLocationAgnosticDataRules } from './capture-location-agnostic-data.ts';
 import { checkboxRules } from './checkbox.ts';
-import {
-  childStateBasedStylingRule,
-  childStateBasedStylingJsParentClassRule,
-} from './child-state-based-styling.ts';
+import { childStateBasedStylingRules } from './child-state-based-styling.ts';
 import { complexShapesRules } from './complex-shapes.ts';
-import { coordinateGlobalEventsRule } from './coordinate-global-events.ts';
-import { customizeScrollbarColorAndThicknessRule } from './customize-scrollbar-color-and-thickness.ts';
+import { coordinateGlobalEventsRules } from './coordinate-global-events.ts';
+import { customizeScrollbarColorAndThicknessRules } from './customize-scrollbar-color-and-thickness.ts';
 import { darkModeRules } from './dark-mode.ts';
-import {
-  declarativeDialogPopoverControlRule,
-  declarativeDialogPopoverControlClickListenerRule,
-} from './declarative-dialog-popover-control.ts';
-import { deferWorkUntilScrollEndsRule } from './defer-work-until-scroll-ends.ts';
+import { declarativeDialogPopoverControlRules } from './declarative-dialog-popover-control.ts';
+import { deferWorkUntilScrollEndsRules } from './defer-work-until-scroll-ends.ts';
 import { deliverOptimizedDecorativeImagesRules } from './deliver-optimized-decorative-images.ts';
 import { detectInitialVisibilityStateRules } from './detect-initial-visibility-state.ts';
 import { dragRules } from './drag.ts';
 import { equalWidthTextLinesRules } from './equal-width-text-lines.ts';
-import { formFieldsAutomaticallyFitContentsRule } from './form-fields-automatically-fit-contents.ts';
+import { formFieldsAutomaticallyFitContentsRules } from './form-fields-automatically-fit-contents.ts';
 import { formatHumanReadableDurationsRules } from './format-human-readable-durations.ts';
 import { highlightTextRangesRules } from './highlight-text-ranges.ts';
-import { imeSafeEnterSubmitRule } from './ime-safe-enter-submit.ts';
+import { imeSafeEnterSubmitRules } from './ime-safe-enter-submit.ts';
 import { improveNextPageLoadPerformanceRules } from './improve-next-page-load-performance.ts';
-import { individualTransformPropertiesRule } from './individual-transform-properties.ts';
+import { individualTransformPropertiesRules } from './individual-transform-properties.ts';
 import { languageDetectionRules } from './language-detection.ts';
 import { lightDismissADialogRules } from './light-dismiss-a-dialog.ts';
 import { manageRecurringIntervalsRules } from './manage-recurring-intervals.ts';
 import { preventPageScrollUnderModalDialogRules } from './prevent-page-scroll-under-modal-dialog.ts';
-import {
-  resilientContextMenusAndNestedDropdownsRule,
-  resilientContextMenusAndNestedDropdownsPositioningRule,
-} from './resilient-context-menus-and-nested-dropdowns.ts';
+import { resilientContextMenusAndNestedDropdownsRules } from './resilient-context-menus-and-nested-dropdowns.ts';
 import { resolutionOptimizedPseudoElementsRules } from './resolution-optimized-pseudo-elements.ts';
 import { responsiveTableRules } from './responsive-table.ts';
 import { sanitizeUntrustedHtmlRules } from './sanitize-untrusted-html.ts';
-import { scheduleTasksByPriorityRule } from './schedule-tasks-by-priority.ts';
+import { scheduleTasksByPriorityRules } from './schedule-tasks-by-priority.ts';
 import { scrollEntryExitEffectsRules } from './scroll-entry-exit-effects.ts';
 import { scrollPositionAwareElementsRules } from './scroll-position-aware-elements.ts';
 import { scrollspyRules } from './scrollspy.ts';
@@ -99,34 +90,31 @@ export * from './size-aware-styling.ts';
 export * from './support-global-calendar-systems.ts';
 
 export const PILOT_RULES: readonly AnalyzerRule[] = [
-  // Pilot Batch 1 & Earlier (14 guides, 17 rules; accessible-error-announcement and stack-drill-down retired per Gate 0 / O38):
-  autofillSignInFormRule,
-  animateToIntrinsicSizesRule,
-  declarativeDialogPopoverControlRule,
-  declarativeDialogPopoverControlClickListenerRule,
-  animateElementEntryExitRule,
-  coordinateGlobalEventsRule,
-  customizeScrollbarColorAndThicknessRule,
-  individualTransformPropertiesRule,
-  childStateBasedStylingRule,
-  childStateBasedStylingJsParentClassRule,
-  breakUpLongTasksRule,
-  imeSafeEnterSubmitRule,
-  calculateEventDifferentialsRule,
-  resilientContextMenusAndNestedDropdownsRule,
-  resilientContextMenusAndNestedDropdownsPositioningRule,
-  formFieldsAutomaticallyFitContentsRule,
-  brandConsistentFormsRule,
+  // Pilot Batch 1 & Earlier (spread *Rules arrays consistently):
+  ...autofillSignInFormRules,
+  ...animateToIntrinsicSizesRules,
+  ...declarativeDialogPopoverControlRules,
+  ...animateElementEntryExitRules,
+  ...coordinateGlobalEventsRules,
+  ...customizeScrollbarColorAndThicknessRules,
+  ...individualTransformPropertiesRules,
+  ...childStateBasedStylingRules,
+  ...breakUpLongTasksRules,
+  ...imeSafeEnterSubmitRules,
+  ...calculateEventDifferentialsRules,
+  ...resilientContextMenusAndNestedDropdownsRules,
+  ...formFieldsAutomaticallyFitContentsRules,
+  ...brandConsistentFormsRules,
 
-  // Batch 2 & Reserve (11 guides, 16 rules -> 33 rules across 25 landed feature guides; shadow-dom retired):
+  // Batch 2 & Reserve:
   ...scrollspyRules,
   ...autofillAddressFormRules,
   ...brandedSelectStylingRules,
   ...adaptScrollbarToContrastPreferencesRules,
   ...checkboxRules,
   ...sizeAwareStylingRules,
-  deferWorkUntilScrollEndsRule,
-  scheduleTasksByPriorityRule,
+  ...deferWorkUntilScrollEndsRules,
+  ...scheduleTasksByPriorityRules,
   ...preventPageScrollUnderModalDialogRules,
   ...darkModeRules,
   ...manageRecurringIntervalsRules,

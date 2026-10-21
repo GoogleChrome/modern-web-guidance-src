@@ -390,4 +390,6 @@ export const breakUpLongTasksRule: AnalyzerRule = {
 /**
  * Opt-in only until re-measured: retired from default production scan.
  */
-export const breakUpLongTasksRules: readonly AnalyzerRule[] = [];
+export const breakUpLongTasksRules: readonly AnalyzerRule[] = [
+  breakUpLongTasksRule,
+];

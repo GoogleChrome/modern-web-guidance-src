@@ -13,12 +13,12 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing 39 rules across the 31 active feature guides (O69, O38 retired 3, D-035 retired shrinking-header-on-scroll)', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 39);
-    assert.strictEqual(ALL_RULES.length, 39);
+  it('exports PILOT_RULES containing 44 rules across the 37 active feature guides', async (t) => {
+    assert.strictEqual(PILOT_RULES.length, 44);
+    assert.strictEqual(ALL_RULES.length, 44);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 31);
+    assert.strictEqual(guideIds.size, 37);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
@@ -27,7 +27,7 @@ describe('rules/index export registry', () => {
         'atrule-support-conditionals',
         'autofill-address-form',
         'autofill-sign-in-form',
-        'brand-consistent-forms',
+        'branded-select-styling',
         'break-up-long-tasks',
         'calculate-event-differentials',
         'capture-location-agnostic-data',
@@ -35,10 +35,12 @@ describe('rules/index export registry', () => {
         'child-state-based-styling',
         'coordinate-global-events',
         'customize-scrollbar-color-and-thickness',
+        'dark-mode',
         'declarative-dialog-popover-control',
         'defer-work-until-scroll-ends',
         'detect-initial-visibility-state',
         'drag',
+        'equal-width-text-lines',
         'form-fields-automatically-fit-contents',
         'format-human-readable-durations',
         'highlight-text-ranges',
@@ -47,11 +49,15 @@ describe('rules/index export registry', () => {
         'individual-transform-properties',
         'language-detection',
         'light-dismiss-a-dialog',
-        'resilient-context-menus-and-nested-dropdowns',
+        'manage-recurring-intervals',
+        'prevent-page-scroll-under-modal-dialog',
         'resolution-optimized-pseudo-elements',
+        'responsive-table',
         'sanitize-untrusted-html',
-        'schedule-tasks-by-priority',
         'scroll-entry-exit-effects',
+        'scroll-position-aware-elements',
+        'scrollspy',
+        'size-aware-styling',
         'support-global-calendar-systems',
       ].sort(),
     );

@@ -273,16 +273,16 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'autofill.css'), autofillCss, 'utf8');
 
-      // 2. Create experimental patterns: jQuery fadeIn -> animate-element-entry-exit, requestIdleCallback -> schedule-tasks-by-priority
+      // 2. Create experimental patterns: jQuery fadeIn -> animate-element-entry-exit, scrollbar styling -> customize-scrollbar-color-and-thickness
       const animateJs = `function showModal() {
   $('#modal').fadeIn(300);
 }`;
       await writeFile(join(testDir, 'animate.js'), animateJs, 'utf8');
 
-      const idleJs = `function runIdleTask() {
-  requestIdleCallback(() => console.log('idle work'));
+      const scrollbarCss = `.panel::-webkit-scrollbar-thumb {
+  background: #888;
 }`;
-      await writeFile(join(testDir, 'task.js'), idleJs, 'utf8');
+      await writeFile(join(testDir, 'custom-scroll.css'), scrollbarCss, 'utf8');
 
       // Default run (QUALIFIED_RULES only - currently empty while all 4 guides are suspended under D-042)
       const resDefault = await runAnalyzeCli([testDir, '--json']);
@@ -310,8 +310,8 @@ describe('runAnalyzeCli', () => {
         'All-rules includes experimental rule animate-element-entry-exit',
       );
       assert.ok(
-        allGuideIds.includes('schedule-tasks-by-priority'),
-        'All-rules includes experimental rule schedule-tasks-by-priority',
+        allGuideIds.includes('customize-scrollbar-color-and-thickness'),
+        'All-rules includes experimental rule customize-scrollbar-color-and-thickness',
       );
 
       // Verify --experimental alias also works
@@ -319,7 +319,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(resExperimental.exitCode, 0);
       const parsedExp = JSON.parse(resExperimental.output) as AnalyzeJsonOutput;
       assert.ok(
-        parsedExp.guides.some((g) => g.guideId === 'schedule-tasks-by-priority'),
+        parsedExp.guides.some((g) => g.guideId === 'customize-scrollbar-color-and-thickness'),
         '--experimental alias enables experimental rules',
       );
     } finally {

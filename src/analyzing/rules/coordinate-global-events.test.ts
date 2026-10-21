@@ -18,7 +18,7 @@ describe('coordinate-global-events rule', () => {
     assert.equal(coordinateGlobalEventsRule.guideHash.length, 12);
     assert.ok(coordinateGlobalEventsRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(coordinateGlobalEventsRule.phase2Rubric.dropWhen.length >= 2);
-    assert.equal(coordinateGlobalEventsRules.length, 0);
+    assert.equal(coordinateGlobalEventsRules.length, 1);
   });
 
   test('flags legacy getTimezoneOffset() calls', () => {

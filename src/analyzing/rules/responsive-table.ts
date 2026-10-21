@@ -83,4 +83,6 @@ export const responsiveTableCssRule: AnalyzerRule = {
 /**
  * Opt-in only until layout context is verifiable: retired from default production scan per Slice 6 audit.
  */
-export const responsiveTableRules: readonly AnalyzerRule[] = [];
+export const responsiveTableRules: readonly AnalyzerRule[] = [
+  responsiveTableCssRule,
+];

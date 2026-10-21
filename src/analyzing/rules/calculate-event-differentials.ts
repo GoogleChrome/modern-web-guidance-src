@@ -296,4 +296,6 @@ export const calculateEventDifferentialsRule: AnalyzerRule = {
 /**
  * Opt-in only until re-measured: retired from default production scan per Slice 5 audit.
  */
-export const calculateEventDifferentialsRules: readonly AnalyzerRule[] = [];
+export const calculateEventDifferentialsRules: readonly AnalyzerRule[] = [
+  calculateEventDifferentialsRule,
+];

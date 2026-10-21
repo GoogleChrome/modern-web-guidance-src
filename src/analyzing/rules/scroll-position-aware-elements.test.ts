@@ -27,7 +27,7 @@ describe('scroll-position-aware-elements rule', () => {
     assert.equal(scrollPositionAwareElementsRule.guideHash.length, 12);
     assert.ok(scrollPositionAwareElementsRule.phase2Rubric.keepWhen.length >= 1);
     assert.ok(scrollPositionAwareElementsRule.phase2Rubric.dropWhen.length >= 2);
-    assert.equal(scrollPositionAwareElementsRules.length, 0);
+    assert.equal(scrollPositionAwareElementsRules.length, 1);
   });
 
   test('flags window scroll listener toggling back-to-top button visibility', () => {

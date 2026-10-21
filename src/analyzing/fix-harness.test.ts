@@ -273,7 +273,7 @@ describe('checkModernFeaturePresent', () => {
 
   it('has explicit Gate 2c validators for all guides in ALL_RULES', () => {
     const allGuideIds = [...new Set(ALL_RULES.map((r) => r.guideId))];
-    assert.strictEqual(allGuideIds.length, 31);
+    assert.strictEqual(allGuideIds.length, 37);
     for (const guideId of allGuideIds) {
       assert.doesNotThrow(
         () => checkModernFeaturePresent(guideId, 'const dummy = 1;'),
@@ -559,10 +559,10 @@ describe('checkStructuralIntegrity', () => {
 
 describe('validateFixPatch (3-Gate Grader)', () => {
   const foundFixture = getSeededSensitivityTestCases().find(
-    (fx) => fx.guideId === 'break-up-long-tasks',
+    (fx) => fx.guideId === 'autofill-sign-in-form',
   );
   if (!foundFixture) {
-    throw new Error('break-up-long-tasks fixture missing from seeded sensitivity cases');
+    throw new Error('autofill-sign-in-form fixture missing from seeded sensitivity cases');
   }
   const testFixture = foundFixture;
 

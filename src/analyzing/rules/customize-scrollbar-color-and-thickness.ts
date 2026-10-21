@@ -131,4 +131,6 @@ export const customizeScrollbarColorAndThicknessRule: AnalyzerRule = {
   },
 };
 
-export const customizeScrollbarColorAndThicknessRules: readonly AnalyzerRule[] = [];
+export const customizeScrollbarColorAndThicknessRules: readonly AnalyzerRule[] = [
+  customizeScrollbarColorAndThicknessRule,
+];

@@ -18,7 +18,7 @@ describe('break-up-long-tasks rule', () => {
     assert.equal(breakUpLongTasksRule.guideHash.length, 12);
     assert.ok(breakUpLongTasksRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(breakUpLongTasksRule.phase2Rubric.dropWhen.length >= 2);
-    assert.equal(breakUpLongTasksRules.length, 0);
+    assert.equal(breakUpLongTasksRules.length, 1);
   });
 
   test('flags new Promise(resolve => setTimeout(resolve, 0)) yielding', () => {
