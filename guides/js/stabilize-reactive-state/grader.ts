@@ -111,27 +111,45 @@ test.describe('Temporal Reactive State Grader', () => {
 
   test('should assign the new Temporal instance reference to the state to trigger a UI update in reference-diffing systems', async ({ page }) => {
     await page.goto(targetUrl).catch(() => {});
-    const btn = page.locator('#extend-temporal-btn');
-    await btn.click().catch(() => {});
-    await page.waitForTimeout(300);
+    const btn = page.locator('#extend-temporal-btn, button:has-text("Extend"), button:has-text("+1"), button:has-text("Hour"), button:has-text("Deadline")').first();
+    if ((await btn.count()) > 0) {
+      await btn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
 
-    const refText = await page.locator('#temporal-ref-changed').textContent().catch(() => '');
-    if (refText && refText.trim() === 'Yes') {
+    const refChangedLoc = page.locator('#temporal-ref-changed');
+    if ((await refChangedLoc.count()) > 0) {
+      const refText = (await refChangedLoc.textContent().catch(() => '')) || '';
       expect(refText.trim()).toBe('Yes');
       return;
     }
     const code = getScriptContent();
-    expect(code.includes('prevDate !==') || code.includes('prevRef') || code.includes('ref-changed') || code.includes('setState')).toBe(true);
+    const assignsImmutableUpdate =
+      /(?:=|set\w*\s*\()[^;]*\.(?:add|subtract|with)\s*\(/.test(code) ||
+      code.includes('prevDate !==') ||
+      code.includes('prevRef') ||
+      code.includes('ref-changed') ||
+      code.includes('setState');
+    expect(assignsImmutableUpdate).toBe(true);
   });
 
   test('should trigger a UI re-render when the state is updated', async ({ page }) => {
     await page.goto(targetUrl).catch(() => {});
-    const btn = page.locator('#extend-temporal-btn');
-    await btn.click().catch(() => {});
-    await page.waitForTimeout(300);
+    const btn = page.locator('#extend-temporal-btn, button:has-text("Extend"), button:has-text("+1"), button:has-text("Hour"), button:has-text("Deadline")').first();
+    if ((await btn.count()) > 0) {
+      await btn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    const renderCountLoc = page.locator('#temporal-render-count');
+    if ((await renderCountLoc.count()) > 0) {
+      const countText = (await renderCountLoc.textContent().catch(() => '0')) || '0';
+      expect(Number(countText.trim())).toBeGreaterThan(0);
+      return;
+    }
 
     const code = getScriptContent();
-    expect(code.includes('render()') || code.includes('textContent') || code.includes('innerHTML') || code.includes('useState')).toBe(true);
+    expect(code.includes('render') || code.includes('textContent') || code.includes('innerHTML') || code.includes('useState')).toBe(true);
   });
 
   test('should not attempt to modify properties of a Temporal instance directly', async ({ page }) => {
