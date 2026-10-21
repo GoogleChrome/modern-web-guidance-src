@@ -33,6 +33,9 @@ describe('file-filter vendored and hashed asset exclusions (R42)', () => {
       'js/chosen.jquery.js',
       'js/select2.js',
       'js/select2.full.js',
+      'css/chui.android.css',
+      'css/chui.ios.css',
+      'styles/chui-3.8.5.css',
     ];
 
     for (const filePath of vendoredFiles) {

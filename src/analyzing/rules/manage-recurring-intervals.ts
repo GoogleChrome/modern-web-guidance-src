@@ -180,6 +180,7 @@ export const manageRecurringIntervalsRule: AnalyzerRule = {
     keepWhen: [
       'Legacy mutable Date calendar-period mutation (such as d.setMonth(d.getMonth() + 1) or d.setFullYear(d.getFullYear() + 1)) used to compute recurring monthly or annual billing/payroll cycles instead of Temporal.PlainDate.prototype.add({ months: 1 }, { overflow: "constrain" }).',
       'Third-party date library recurring month/year interval arithmetic (such as moment(...).add(..., "months") or dayjs(...).add(..., "years")) used for recurring schedule calculation.',
+      'Date prototype extensions or date-wrapper utility methods (e.g., Date#add, addMonths, addYears) that compute recurring month or year arithmetic via setMonth(getMonth() + n) or setFullYear(getFullYear() + n), even when wrapped in a helper returning this',
     ],
     dropWhen: [
       'Simple day or week offsets (such as d.setDate(d.getDate() + 7) or dayjs().add(7, "days")) that do not involve month-end calendar clamping.',

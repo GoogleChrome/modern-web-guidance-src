@@ -969,6 +969,56 @@ export async function loadGuideSummaryFromMarkdown(
 }
 
 /**
+ * Formats a `legacy-pattern-specs.json` entry into a Technical Reference Dossier block
+ * for the Judge prompt (R45).
+ */
+export function formatLegacyPatternSpecDossier(spec: Record<string, unknown>): string {
+  const payoff =
+    typeof spec.changesSomethingForDeveloper === 'string'
+      ? spec.changesSomethingForDeveloper.trim()
+      : '';
+  const callSiteSwap =
+    typeof spec.isLikeForLikeSwapAtSite === 'string'
+      ? spec.isLikeForLikeSwapAtSite.trim()
+      : '';
+  const replaces = Array.isArray(spec.replaces)
+    ? spec.replaces.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+    : [];
+  const doesNotReplace = Array.isArray(spec.doesNotReplace)
+    ? spec.doesNotReplace.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+    : [];
+  const rationale = typeof spec.rationale === 'string' ? spec.rationale.trim() : '';
+  const trapsList = Array.isArray(spec.falsePositiveTraps)
+    ? spec.falsePositiveTraps.filter(
+        (x): x is string => typeof x === 'string' && x.trim().length > 0,
+      )
+    : [];
+  const trapsText = trapsList.length > 0 ? trapsList.join('; ') : rationale;
+
+  const lines: string[] = [
+    '### Technical Reference Dossier (Legacy Pattern & Modern API Boundaries)',
+  ];
+  if (payoff) {
+    lines.push(`- Payoff (changesSomethingForDeveloper): ${payoff}`);
+  }
+  if (callSiteSwap) {
+    lines.push(`- Call-Site Swap (isLikeForLikeSwapAtSite): ${callSiteSwap}`);
+  }
+  if (replaces.length > 0) {
+    lines.push(`- Replaces: ${replaces.join('; ')}`);
+  }
+  if (doesNotReplace.length > 0) {
+    lines.push(
+      `- Does NOT Replace (Leave-It / False-Positive Boundaries): ${doesNotReplace.join('; ')}`,
+    );
+  }
+  if (trapsText) {
+    lines.push(`- Known False-Positive Traps: ${trapsText}`);
+  }
+  return lines.join('\n');
+}
+
+/**
  * Loads guide summaries directly from markdown files into a map indexed by guideId.
  */
 export async function loadGuideSummariesMap(
@@ -1065,6 +1115,31 @@ export async function loadGuideSummariesMap(
     }
   } catch {
     /* ignore missing or unreadable explainers file */
+  }
+
+  // Also inject Technical Reference Dossier from analyzer-internal/legacy-pattern-specs.json (R45)
+  const specsJsonPath = join(ANALYZER_INTERNAL_DIR, 'legacy-pattern-specs.json');
+  try {
+    const specsContent = await readFile(specsJsonPath, 'utf8');
+    const parsedSpecs = JSON.parse(specsContent) as unknown;
+    if (Array.isArray(parsedSpecs)) {
+      for (const item of parsedSpecs) {
+        if (typeof item === 'object' && item !== null) {
+          const rec = item as Record<string, unknown>;
+          const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
+          if (!guideId) continue;
+          const existing = map.get(guideId);
+          if (!existing) continue;
+          const dossier = formatLegacyPatternSpecDossier(rec);
+          const mergedContext = existing.explainerContext
+            ? `${existing.explainerContext}\n\n${dossier}`
+            : dossier;
+          map.set(guideId, { ...existing, explainerContext: mergedContext });
+        }
+      }
+    }
+  } catch {
+    /* ignore missing or unreadable legacy-pattern-specs.json */
   }
 
   return map;

@@ -93,6 +93,8 @@ const VENDORED_MOMENT_FILENAME_RE =
 
 const VENDORED_MODERNIZR_FILENAME_RE = /^modernizr(?:[.-].*)?\.js$/i;
 
+const VENDORED_CHUI_STYLESHEET_RE = /^chui[.-].*\.css$/i;
+
 /**
  * Vendored library directory segments that frequently appear in source trees (R42).
  */
@@ -142,7 +144,8 @@ export function isExcludedCorpusNonAppPath(relPath: string): boolean {
   if (
     VENDORED_LIBRARY_FILENAMES.has(base) ||
     VENDORED_MOMENT_FILENAME_RE.test(base) ||
-    VENDORED_MODERNIZR_FILENAME_RE.test(base)
+    VENDORED_MODERNIZR_FILENAME_RE.test(base) ||
+    VENDORED_CHUI_STYLESHEET_RE.test(base)
   ) {
     return true;
   }

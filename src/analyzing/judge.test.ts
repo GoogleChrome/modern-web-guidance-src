@@ -8,8 +8,11 @@ import {
   evaluateJudgeStability,
   extractCodeSnippet,
   formatBlindCardPrompt,
+  formatLegacyPatternSpecDossier,
   isDetectiveFactCheck,
   isJudgeVerdict,
+  JUDGE_SYSTEM_PROMPT,
+  loadGuideSummariesMap,
   loadGuideSummaryFromMarkdown,
   loadPaulIrishScoredCards,
   parseGuideSummaryMarkdown,
@@ -103,6 +106,39 @@ describe('blind card formatting & request construction', () => {
     assert.match(prompt, /## Modern Web Guidance Guide \(calculate-event-differentials\)/);
     assert.match(prompt, /## Upstream Feature Explainer & Motivation Context \(calculate-event-differentials\)/);
     assert.match(prompt, /developers used moment/);
+  });
+
+  it('formats legacy-pattern-specs.json Technical Reference Dossier and injects it via loadGuideSummariesMap (R45)', async () => {
+    const dossier = formatLegacyPatternSpecDossier({
+      guideId: 'individual-transform-properties',
+      changesSomethingForDeveloper: 'Yes for multi-function chains.',
+      isLikeForLikeSwapAtSite: 'Yes when in canonical translate -> rotate -> scale order.',
+      replaces: ['Multi-function transform chains'],
+      doesNotReplace: ['Isolated single-function :hover transform'],
+      rationale: 'Avoids repeating static transform functions.',
+    });
+    assert.match(
+      dossier,
+      /### Technical Reference Dossier \(Legacy Pattern & Modern API Boundaries\)/,
+    );
+    assert.match(dossier, /Payoff \(changesSomethingForDeveloper\): Yes for multi-function chains\./);
+    assert.match(
+      dossier,
+      /Call-Site Swap \(isLikeForLikeSwapAtSite\): Yes when in canonical translate -> rotate -> scale order\./,
+    );
+    assert.match(dossier, /Replaces: Multi-function transform chains/);
+    assert.match(
+      dossier,
+      /Does NOT Replace \(Leave-It \/ False-Positive Boundaries\): Isolated single-function :hover transform/,
+    );
+    assert.match(dossier, /Known False-Positive Traps: Avoids repeating static transform functions\./);
+
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes('no-op syntax swap'));
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes('non-1:1 library component migration'));
+
+    const map = await loadGuideSummariesMap();
+    const itpSummary = map.get('individual-transform-properties');
+    assert.ok(itpSummary?.explainerContext?.includes('### Technical Reference Dossier'));
   });
 
   it('builds Gemini request body with JSON schema and temperature 0.2', () => {

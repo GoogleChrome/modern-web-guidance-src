@@ -327,10 +327,10 @@ Detective-then-Judge methodology:
 3. \`modern_feature_applies_here\`: Does the modern web platform replacement apply here to modernize this code or eliminate the legacy workaround? (Always assume the modern feature is available).
 4. \`reasoning\`: Concise, objective reasoning explaining your factual analysis.
 5. \`verdict\`: One of the following 5 values strictly aligned with the criteria below:
-   - 'right': The code really is the legacy/"Before" pattern (or legacy library/workaround replaced by this guide), is not an intentional fallback, and the guide's modern way makes sense here.
-   - 'not-old-pattern': The code isn't doing the legacy thing at all (detector mistake / token collision).
-   - 'leave-it': It IS the old pattern, but it should stay: either a deliberate fallback/feature-guard/polyfill, non-browser code, or the guide's modern replacement wouldn't work for this specific use case. Do NOT vote 'leave-it' based on browser support.
-   - 'guide-wrong': The guide itself is wrong to call this pattern a problem.
+   - 'right': Genuine legacy pattern where applying the guide is a clean win (the code really is the legacy/"Before" pattern or legacy library/workaround replaced by this guide, is not an intentional fallback, and the guide's modern way makes sense here).
+   - 'not-old-pattern': Matcher misfired — this code isn't even doing the legacy pattern the guide replaces (detector mistake / token collision).
+   - 'leave-it': Matches the old syntax and the guide is right in general, BUT the code here should be left alone — either because rewriting at this site changes nothing for the developer (no-op syntax swap), or because the code here is doing something extra (deliberate fallback/feature-guard/polyfill, non-browser code, non-1:1 library component migration, custom side effects, order-dependent geometry, or incompatible API contract) that the modern feature does not cover. Do NOT vote 'leave-it' based on browser support.
+   - 'guide-wrong': The guide's advice is bad or overstates what the feature does for this case (the guide itself is wrong to call this pattern a problem).
    - 'unsure': Insufficient context to determine.`;
 
 export const JUDGE_RESPONSE_SCHEMA = {

@@ -203,6 +203,27 @@ describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
     assert.match(formatted, /jquery-ui dialog or bootstrap modal/);
   });
 
+  it('JUDGE_SYSTEM_PROMPT includes R45 leave-it and not-old-pattern criteria', () => {
+    assert.ok(
+      JUDGE_SYSTEM_PROMPT.includes('Genuine legacy pattern where applying the guide is a clean win'),
+    );
+    assert.ok(
+      JUDGE_SYSTEM_PROMPT.includes(
+        "Matcher misfired — this code isn't even doing the legacy pattern the guide replaces",
+      ),
+    );
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes('no-op syntax swap'));
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes('non-1:1 library component migration'));
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes('custom side effects'));
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes('order-dependent geometry'));
+    assert.ok(JUDGE_SYSTEM_PROMPT.includes('incompatible API contract'));
+    assert.ok(
+      JUDGE_SYSTEM_PROMPT.includes(
+        "The guide's advice is bad or overstates what the feature does for this case",
+      ),
+    );
+  });
+
   it('formatFixSimulationPrompt formats fix request cleanly', () => {
     const formatted = formatFixSimulationPrompt({
       guideId: 'dialog',
