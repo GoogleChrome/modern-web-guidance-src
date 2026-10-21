@@ -515,7 +515,7 @@
       "title": "Button group",
       "description": "Build a button group: a set of options (mutually exclusive or not) laid out horizontally and presented as visually connected buttons.",
       "features": [
-        "customizable-select"
+        "tmp-customizable-select-listbox"
       ],
       "demos": [
         {
@@ -3534,6 +3534,7 @@
     "text-wrap-balance",
     "text-wrap-pretty",
     "tmp-cross-origin-storage",
+    "tmp-customizable-select-listbox",
     "tmp-email-verification",
     "tmp-text-decoration-inset",
     "tmp-webcrypto-modern-algos",
