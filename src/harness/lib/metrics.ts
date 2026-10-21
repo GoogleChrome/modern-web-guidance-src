@@ -15,6 +15,8 @@ export interface RunResult {
   runNumber: number;
   results: ScenarioCheck[];
   guidesUsed?: string[];
+  retrievedGuides?: string[];
+  fileReadGuides?: string[];
   guidanceToolsUsed?: string[];
   expectedToolPrefixes?: string[];
   guideName?: string;
@@ -22,6 +24,7 @@ export interface RunResult {
   baseApp?: string;
   prompt?: string;
   targetFile?: string;
+  runtime?: { agentRuntime?: number; graderRuntime?: number } | null;
   tokenUsage?: { total: number; cached: number };
 }
 
