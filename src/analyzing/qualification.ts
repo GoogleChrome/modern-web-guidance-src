@@ -5,6 +5,7 @@
  * from computeRuleSetHash(), ensuring rule-set hashes remain invariant when shipping
  * tiers are updated based on held-out evaluations (O64).
  */
+import { JUDGE_VERSION } from './judge.ts';
 import type { BinomialInterval } from './stats.ts';
 
 export interface GuideScorecardSummary {
@@ -91,22 +92,27 @@ export interface QualifiedJudgeMetadata {
 }
 
 /**
- * Metadata for the previously calibrated Eval Judge (`detective-v6-spec22-c3f54b90`).
- * De-admitted (`admitted: false`) under D-041 and D-042 (O6) because:
- * 1. Judge code and prompts changed in 29b403d05 and 7c6f1a18b (`detective-v7-r45`).
- * 2. Out-of-sample R34 blind check (`_false-positives-check-deck`) failed (AC1 = 0.258 < 0.70, 3-pass stability = 85.0% < 95.0%).
- * 3. R48 showed `deriveJudgeVerdictFromFacts` in v6 forcibly overwrote `leave-it` and `guide-wrong` to `right`, inflating precision.
+ * Metadata for the admitted 7-verdict Eval Judge (`gemini-3.8-flash:detective-v6-spec22-dab7de7f`).
+ * Admitted (`admitted: true`) under D-045 (O9) following re-calibration on decontaminated Cohort B
+ * (`analyzer-internal/findings/2026-10-21-o9-judge-calibration-7verdict.json`):
+ * - Scored nominal Gwet's AC1 = 0.932 >= 0.70 (total Cohort B AC1 = 0.873)
+ * - Scored nominal Krippendorff's alpha = 0.727 >= 0.70 (binary alpha = 0.802)
+ * - 3-Pass Stability = 0.971 (34/35) >= 0.95
+ * - Canary TNR = 1.0 (2/2 human + 3/3 synthetic = 100.0%)
+ * - Calibration count = 35 active-rule Cohort B cards (out of 151 decontaminated cards after D-043 quarantine)
+ *
+ * TERMINAL_QUALIFIED_GUIDE_IDS remains empty ([]) pending post-O9 held-out scorecard run and R35 20-card blind spot-checks complete.
  */
 export const QUALIFIED_JUDGE_METADATA: QualifiedJudgeMetadata = {
-  judgeVersion: 'gemini-3.8-flash:detective-v6-spec22-c3f54b90',
-  admitted: false,
-  gwetsAC1: 0.703,
-  krippendorffAlpha: 0.163,
-  threePassStability: 0.965,
+  judgeVersion: 'gemini-3.8-flash:detective-v6-spec22-dab7de7f',
+  admitted: true,
+  gwetsAC1: 0.932,
+  krippendorffAlpha: 0.727,
+  threePassStability: 0.971,
   canaryTnr: 1.0,
-  calibrationCount: 115,
+  calibrationCount: 35,
   notes:
-    'De-admitted under D-041 & D-042 (O6): superseded by 29b403d05 / 7c6f1a18b, failed R34 blind specificity check (AC1 = 0.258 < 0.70, stability = 85.0% < 95.0%), and contained the R48 deriveJudgeVerdictFromFacts bug that overwrote leave-it/guide-wrong to right. Historical in-sample D-031/D-036 metrics retained for provenance (Canary TNR = 100.0% (2/2)).',
+    'Admitted under D-045 (O9): 7-verdict Eval Judge re-calibration (findings/2026-10-21-o9-judge-calibration-7verdict.json) cleared all admission bars on decontaminated Cohort B (scored nominal AC1 = 0.932 >= 0.70, total nominal AC1 = 0.873, scored nominal alpha = 0.727 >= 0.70, binary alpha = 0.802, 3-pass stability = 97.1% [34/35] >= 95.0%, Canary TNR = 100.0% [2/2 human + 3/3 synthetic]). TERMINAL_QUALIFIED_GUIDE_IDS remains empty ([]) pending post-O9 held-out scorecard run and R35 20-card blind spot-checks complete.',
 };
 
 export interface QualifiedRuleEntry {
@@ -215,8 +221,7 @@ export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] =
 
 /**
  * Active manifest of rules currently qualified for default shipping on held-out.
- * Empty (`[]`) while `QUALIFIED_JUDGE_METADATA.admitted === false` and all 4 prior
- * guides are suspended pending D-041 / D-042 re-validation.
+ * Empty (`[]`) pending post-O9 held-out scorecard evaluation and R35 20-card blind human spot-checks.
  */
 export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [];
 
@@ -263,10 +268,9 @@ export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
 }
 
 /**
- * Production shipping qualified guide lists (D-031, D-036, D-041, D-042, R35, R37, R50).
- * Empty (`[]`) while the Eval Judge is de-admitted and all 4 previously qualified guides
- * are suspended pending O7/O8 remediation, O9 Judge re-calibration, held-out Phase 1
- * Wilson 95% lower bound >= 0.90 at n >= 35 (R37/R50), and 20-card blind human spot-checks (R35).
+ * Production shipping qualified guide lists (D-031, D-036, D-041, D-042, D-045, R35, R37, R50).
+ * Empty (`[]`) pending post-O9 held-out scorecard Phase 1 Wilson 95% lower bound >= 0.90
+ * at n >= 35 (R37/R50) and 20-card blind human spot-checks (R35).
  */
 export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [];
 export const JSON_QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;

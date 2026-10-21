@@ -7,6 +7,7 @@ import {
   evaluateJudgeMetrics,
   evaluateJudgeStability,
   isJudgeVerdict,
+  isPositiveVerdict,
   loadGuideSummariesMap,
   loadPaulIrishScoredCards,
   prepareBlindCards,
@@ -308,7 +309,7 @@ export const CANARY_CONFIG: readonly CanaryCard[] = [
   },
   {
     cardId: 'canary-neg-feature-guarded',
-    expectedVerdict: 'leave-it',
+    expectedVerdict: 'fallback-or-guard',
     description: 'Synthetic negative canary: protected by commandForElement feature guard',
   },
 ];
@@ -1240,7 +1241,7 @@ export async function runPilotScorecard(
       const currentKept = currentSampled.filter((f) => phase2VerdictsMap.get(f.cardId)?.keep);
       let currentRight = 0;
       for (const f of currentKept) {
-        if (consensusVerdicts.get(f.cardId)?.verdict === 'right') {
+        if (isPositiveVerdict(consensusVerdicts.get(f.cardId)?.verdict)) {
           currentRight++;
         }
       }
@@ -1370,7 +1371,7 @@ export async function runPilotScorecard(
   // 7. Verify canaries strictly on Paul's real human-labeled negative cards from grades.paulirish.jsonl (R13)
   const realHumanNegatives: CanaryCard[] = [];
   for (const [cardId, verdict] of humanVerdicts.entries()) {
-    if (verdict !== 'right' && verdict !== 'unsure' && isJudgeVerdict(verdict)) {
+    if (!isPositiveVerdict(verdict) && verdict !== 'unsure' && isJudgeVerdict(verdict)) {
       realHumanNegatives.push({
         cardId,
         expectedVerdict: verdict,
@@ -1407,7 +1408,7 @@ export async function runPilotScorecard(
     scoredCardsByGuide.set(gid, []);
   }
   for (const [cardId, verdict] of humanVerdicts.entries()) {
-    if (verdict === 'right') {
+    if (isPositiveVerdict(verdict)) {
       const card = scoredCards.find((c) => c.cardId === cardId);
       if (card && scoredCardsByGuide.has(card.guideId)) {
         scoredCardsByGuide.get(card.guideId)?.push(cardId);
@@ -1458,7 +1459,7 @@ export async function runPilotScorecard(
     let phase1RightCount = 0;
     for (const f of p1SampledFindings) {
       const res = consensusVerdicts.get(f.cardId);
-      if (res && res.verdict === 'right') {
+      if (res && isPositiveVerdict(res.verdict)) {
         phase1RightCount++;
       }
     }
@@ -1466,7 +1467,7 @@ export async function runPilotScorecard(
     let rightCount = 0;
     for (const f of p2Kept) {
       const res = consensusVerdicts.get(f.cardId);
-      if (res && res.verdict === 'right') {
+      if (res && isPositiveVerdict(res.verdict)) {
         rightCount++;
       }
     }
@@ -1546,7 +1547,7 @@ export async function runPilotScorecard(
       let rRight = 0;
       for (const rf of p2RuleKept) {
         const res = consensusVerdicts.get(rf.cardId);
-        if (res && res.verdict === 'right') rRight++;
+        if (res && isPositiveVerdict(res.verdict)) rRight++;
       }
       const rFp = p2RuleKept.length - rRight;
       const rPrec = p2RuleKept.length > 0 ? Number((rRight / p2RuleKept.length).toFixed(4)) : 0;

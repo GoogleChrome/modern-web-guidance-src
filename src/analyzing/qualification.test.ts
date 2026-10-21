@@ -16,9 +16,10 @@ import {
   TERMINAL_QUALIFIED_GUIDE_IDS,
 } from './qualification.ts';
 
-describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042)', () => {
-  it('suspends all default shipping guide lists while judge is de-admitted and rules await D-041/D-042 re-validation', () => {
-    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, false);
+describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045)', () => {
+  it('maintains empty default shipping guide lists while rules await post-O9 held-out scorecard and R35 validation', () => {
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, true);
+    assert.strictEqual(evaluateJudgeAdmission(QUALIFIED_JUDGE_METADATA).admitted, true);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, []);
     assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, []);
     assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, []);
@@ -218,21 +219,23 @@ describe('Judge Admission (D-031, D-036, D-041, D-042)', () => {
     assert.strictEqual(accepted100.admitted, true);
   });
 
-  it('QUALIFIED_JUDGE_METADATA reflects D-041/D-042 de-admission while preserving D-031/D-036 historical metrics', () => {
-    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, false);
+  it('QUALIFIED_JUDGE_METADATA reflects D-045 admission under O9 7-verdict calibration metrics', () => {
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, true);
     assert.strictEqual(
       QUALIFIED_JUDGE_METADATA.judgeVersion,
-      'gemini-3.8-flash:detective-v6-spec22-c3f54b90',
+      'gemini-3.8-flash:detective-v6-spec22-dab7de7f',
     );
-    assert.strictEqual(QUALIFIED_JUDGE_METADATA.gwetsAC1, 0.703);
-    assert.strictEqual(QUALIFIED_JUDGE_METADATA.krippendorffAlpha, 0.163);
-    assert.strictEqual(QUALIFIED_JUDGE_METADATA.threePassStability, 0.965);
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.gwetsAC1, 0.932);
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.krippendorffAlpha, 0.727);
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.threePassStability, 0.971);
     assert.strictEqual(QUALIFIED_JUDGE_METADATA.canaryTnr, 1.0);
-    assert.strictEqual(QUALIFIED_JUDGE_METADATA.calibrationCount, 115);
-    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-041/);
-    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-042/);
-    assert.match(QUALIFIED_JUDGE_METADATA.notes, /R48/);
-    assert.match(QUALIFIED_JUDGE_METADATA.notes, /\(2\/2\)/);
+    assert.strictEqual(QUALIFIED_JUDGE_METADATA.calibrationCount, 35);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /D-045/);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /O9/);
+    assert.match(QUALIFIED_JUDGE_METADATA.notes, /0\.932/);
+    const evalResult = evaluateJudgeAdmission(QUALIFIED_JUDGE_METADATA);
+    assert.strictEqual(evalResult.admitted, true);
+    assert.deepStrictEqual(evalResult.reasons, []);
   });
 });
 

@@ -20,7 +20,7 @@ import {
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import { scanFiles } from './scanners/index.ts';
 import type { Phase2Verdict } from './phase2.ts';
-import { checkCanaries, type JudgeResult, JUDGE_VERSION } from './judge.ts';
+import { checkCanaries, isPositiveVerdict, type JudgeResult, JUDGE_VERSION } from './judge.ts';
 import { resolveGitMirrorCacheDir } from './paths.ts';
 import { PHASE2_PROMPT_VERSION } from './prompts.ts';
 import { computeTelemetryCacheKey, type CardTelemetryRecord } from './telemetry.ts';
@@ -122,6 +122,7 @@ describe('canary definitions and validation', () => {
     for (const c of CANARY_CONFIG) {
       await t.test(`control card ${c.cardId}`, () => {
         assert.notStrictEqual(c.expectedVerdict, 'right');
+        assert.strictEqual(isPositiveVerdict(c.expectedVerdict), false);
       });
     }
   });
@@ -174,6 +175,27 @@ describe('canary definitions and validation', () => {
       },
       {
         cardId: 'canary-neg-feature-guarded',
+        verdict: 'fallback-or-guard',
+        facts: {
+          matches_before_syntax: true,
+          has_fallback_or_feature_guard: true,
+          modern_feature_applies_here: false,
+          reasoning: 'guarded',
+          verdict: 'fallback-or-guard',
+        },
+      },
+    ];
+
+    const check = checkCanaries(results, CANARY_CONFIG);
+    assert.strictEqual(check.passed, true);
+    assert.strictEqual(check.tnr, 1.0);
+    assert.strictEqual(check.violations.length, 0);
+
+    // Backward-compatible verification that legacy leave-it also passes canary check
+    const legacyGuardedResult: JudgeResult[] = [
+      ...results.slice(0, 4),
+      {
+        cardId: 'canary-neg-feature-guarded',
         verdict: 'leave-it',
         facts: {
           matches_before_syntax: true,
@@ -184,11 +206,9 @@ describe('canary definitions and validation', () => {
         },
       },
     ];
-
-    const check = checkCanaries(results, CANARY_CONFIG);
-    assert.strictEqual(check.passed, true);
-    assert.strictEqual(check.tnr, 1.0);
-    assert.strictEqual(check.violations.length, 0);
+    const legacyCheck = checkCanaries(legacyGuardedResult, CANARY_CONFIG);
+    assert.strictEqual(legacyCheck.passed, true);
+    assert.strictEqual(legacyCheck.tnr, 1.0);
   });
 });
 
@@ -785,6 +805,66 @@ describe('excludeCorpusNonAppDirs scorecard scan filter (R24, O68)', () => {
     });
     assert.strictEqual(findingsWithFilter.length, 1);
     assert.strictEqual(findingsWithFilter[0]?.file, 'src/app.js');
+  });
+});
+
+describe('7-verdict taxonomy scoring and positive verdict counting', () => {
+  function makeFinding(id: string, repo: string, file: string, line: number): AnalyzerFinding {
+    return {
+      cardId: id,
+      ruleId: 'test-rule',
+      guideId: 'test-guide',
+      guideHash: '123456789012',
+      repo,
+      commit: 'abc1234',
+      file,
+      line,
+      message: 'test message',
+      codeSnippet: 'const x = 1;',
+      astSlice: 'const x = 1;',
+    };
+  }
+
+  it('counts legit-modernize-target as positive (judgeRightCount) and 7-verdict negatives as false positives', () => {
+    const findings: AnalyzerFinding[] = [
+      makeFinding('c1', 'repo-a', 'src/file1.ts', 10),
+      makeFinding('c2', 'repo-a', 'src/file2.ts', 20),
+      makeFinding('c3', 'repo-a', 'src/file3.ts', 30),
+      makeFinding('c4', 'repo-a', 'src/file4.ts', 40),
+      makeFinding('c5', 'repo-a', 'src/file5.ts', 50),
+      makeFinding('c6', 'repo-a', 'src/file6.ts', 60),
+      makeFinding('c7', 'repo-a', 'src/file7.ts', 70),
+    ];
+
+    const consensusVerdicts = new Map<string, { verdict: string }>([
+      ['c1', { verdict: 'legit-modernize-target' }],
+      ['c2', { verdict: 'fallback-or-guard' }],
+      ['c3', { verdict: 'loses-behavior' }],
+      ['c4', { verdict: 'no-payoff' }],
+      ['c5', { verdict: 'not-old-pattern' }],
+      ['c6', { verdict: 'guide-wrong' }],
+      ['c7', { verdict: 'unsure' }],
+    ]);
+
+    let judgeRightCount = 0;
+    for (const finding of findings) {
+      const res = consensusVerdicts.get(finding.cardId);
+      if (res && isPositiveVerdict(res.verdict)) {
+        judgeRightCount++;
+      }
+    }
+    const judgeFalsePositiveCount = findings.length - judgeRightCount;
+
+    assert.strictEqual(judgeRightCount, 1);
+    assert.strictEqual(judgeFalsePositiveCount, 6);
+    assert.strictEqual(isPositiveVerdict('legit-modernize-target'), true);
+    assert.strictEqual(isPositiveVerdict('right'), true);
+    assert.strictEqual(isPositiveVerdict('fallback-or-guard'), false);
+    assert.strictEqual(isPositiveVerdict('loses-behavior'), false);
+    assert.strictEqual(isPositiveVerdict('no-payoff'), false);
+    assert.strictEqual(isPositiveVerdict('not-old-pattern'), false);
+    assert.strictEqual(isPositiveVerdict('guide-wrong'), false);
+    assert.strictEqual(isPositiveVerdict('unsure'), false);
   });
 });
 
