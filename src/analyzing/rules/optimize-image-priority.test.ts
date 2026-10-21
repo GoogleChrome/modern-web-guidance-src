@@ -1,0 +1,77 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
+import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import {
+  OPTIMIZE_IMAGE_PRIORITY_GUIDE_HASH,
+  optimizeImagePriorityMatcher,
+  optimizeImagePriorityRule,
+  optimizeImagePriorityRules,
+} from './optimize-image-priority.ts';
+
+void test('optimize-image-priority: rule metadata', () => {
+  assert.equal(optimizeImagePriorityRule.id, 'optimize-image-priority');
+  assert.equal(optimizeImagePriorityRule.guideId, 'optimize-image-priority');
+  assert.equal(
+    optimizeImagePriorityRule.guideHash,
+    OPTIMIZE_IMAGE_PRIORITY_GUIDE_HASH,
+  );
+  assert.equal(OPTIMIZE_IMAGE_PRIORITY_GUIDE_HASH.length, 12);
+  assert.equal(optimizeImagePriorityRules.length, 1);
+  assert.ok(optimizeImagePriorityRule.phase2Rubric.keepWhen.length >= 2);
+  assert.ok(optimizeImagePriorityRule.phase2Rubric.dropWhen.length >= 2);
+});
+
+void test('optimize-image-priority DOM matcher', async (t) => {
+  await t.test('flags <link rel="preload" as="image"> without fetchpriority or imagesrcset', () => {
+    const html = `
+      <head>
+        <link rel="preload" as="image" href="/hero.jpg">
+      </head>
+    `;
+    const matches = scanHtml('index.html', html, [optimizeImagePriorityMatcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 3);
+  });
+
+  await t.test('flags hero/LCP <img loading="eager"> without fetchpriority="high"', () => {
+    const html = `
+      <main>
+        <img src="/banner.webp" class="hero-image" loading="eager" alt="Hero">
+        <img src="/lcp.webp" id="lcp-banner" loading="eager" alt="LCP">
+      </main>
+    `;
+    const matches = scanHtml('hero.html', html, [optimizeImagePriorityMatcher]);
+    assert.equal(matches.length, 2);
+  });
+
+  await t.test('flags JSX hero <img loading="eager"> lacking fetchpriority', () => {
+    const project = createInMemoryProject();
+    const code = `
+      export function HeroSection() {
+        return <img src="/hero.jpg" id="hero-img" loading="eager" alt="Hero" />;
+      }
+    `;
+    const sourceFile = project.createSourceFile('HeroSection.tsx', code);
+    const matches = scanJsx('HeroSection.tsx', sourceFile, [
+      optimizeImagePriorityMatcher,
+    ]);
+    assert.equal(matches.length, 1);
+  });
+
+  await t.test('exempts <link rel="preload" as="image"> with fetchpriority or imagesrcset and <img fetchpriority="high">', () => {
+    const html = `
+      <head>
+        <link rel="preload" as="image" href="/hero.jpg" fetchpriority="high">
+        <link rel="preload" as="image" imagesrcset="/hero-400.jpg 400w, /hero-800.jpg 800w">
+      </head>
+      <body>
+        <img src="/hero.jpg" class="hero-image" loading="eager" fetchpriority="high" alt="Hero">
+        <img src="/thumb.jpg" loading="lazy" alt="Thumb">
+        <img src="/avatar.jpg" loading="eager" class="user-avatar" alt="Avatar">
+      </body>
+    `;
+    const matches = scanHtml('modern.html', html, [optimizeImagePriorityMatcher]);
+    assert.equal(matches.length, 0);
+  });
+});

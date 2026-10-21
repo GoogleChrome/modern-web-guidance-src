@@ -1,0 +1,76 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import {
+  SCROLL_SNAP_REALTIME_FEEDBACK_GUIDE_HASH,
+  scrollSnapRealtimeFeedbackMatcher,
+  scrollSnapRealtimeFeedbackRule,
+  scrollSnapRealtimeFeedbackRules,
+} from './scroll-snap-realtime-feedback.ts';
+
+void test('scroll-snap-realtime-feedback: rule metadata', () => {
+  assert.equal(
+    scrollSnapRealtimeFeedbackRule.id,
+    'scroll-snap-realtime-feedback',
+  );
+  assert.equal(
+    scrollSnapRealtimeFeedbackRule.guideId,
+    'scroll-snap-realtime-feedback',
+  );
+  assert.equal(
+    scrollSnapRealtimeFeedbackRule.guideHash,
+    SCROLL_SNAP_REALTIME_FEEDBACK_GUIDE_HASH,
+  );
+  assert.equal(SCROLL_SNAP_REALTIME_FEEDBACK_GUIDE_HASH.length, 12);
+  assert.equal(scrollSnapRealtimeFeedbackRules.length, 1);
+  assert.ok(scrollSnapRealtimeFeedbackRule.phase2Rubric.keepWhen.length >= 1);
+  assert.ok(scrollSnapRealtimeFeedbackRule.phase2Rubric.dropWhen.length >= 2);
+});
+
+void test('scroll-snap-realtime-feedback JS matcher', async (t) => {
+  await t.test('flags non-debounced scroll listeners computing Math.round(el.scrollLeft / width) or Math.round(el.scrollTop / height)', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const carousel = document.querySelector('.carousel');
+      const dots = document.querySelectorAll('.dot');
+      carousel.addEventListener('scroll', () => {
+        const index = Math.round(carousel.scrollLeft / carousel.clientWidth);
+        dots.forEach((d, i) => d.classList.toggle('active', i === index));
+      });
+    `;
+    const sourceFile = project.createSourceFile('carousel.js', code);
+    const matches = scrollSnapRealtimeFeedbackMatcher.matchFile(sourceFile, {
+      filePath: 'carousel.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+  });
+
+  await t.test('exempts when guarded by "onscrollsnapchanging" in window or when debounced with setTimeout', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const carousel = document.querySelector('.carousel');
+      if (!('onscrollsnapchanging' in window)) {
+        carousel.addEventListener('scroll', () => {
+          const index = Math.round(carousel.scrollLeft / carousel.clientWidth);
+          updatePendingDot(index);
+        });
+      }
+
+      let timer;
+      carousel.addEventListener('scroll', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const index = Math.round(carousel.scrollLeft / carousel.clientWidth);
+          setActiveDot(index);
+        }, 150);
+      });
+    `;
+    const sourceFile = project.createSourceFile('guarded.js', code);
+    const matches = scrollSnapRealtimeFeedbackMatcher.matchFile(sourceFile, {
+      filePath: 'guarded.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+});
