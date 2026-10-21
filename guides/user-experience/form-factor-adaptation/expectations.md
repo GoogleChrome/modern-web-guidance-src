@@ -1,0 +1,11 @@
+- On viewports matching `pointer: coarse`, every visible `button`, `select`, `textarea`, `input` other than checkboxes and radios, `[role="button"]`, and link inside `nav` has a hit area of at least 44×44 CSS pixels, counting any absolutely positioned pseudo-element that extends it.
+- On viewports matching `pointer: fine`, every visible `button`, `select`, `textarea`, `input` other than checkboxes and radios, `[role="button"]`, and link inside `nav` has a hit area of at least 24×24 CSS pixels.
+- For visible checkboxes and radios, the hit area of the input and its associated `label` combined is at least 44×44 CSS pixels on coarse pointers and at least 24×24 CSS pixels on fine pointers.
+- Resizing an element whose computed `container-type` isn't `normal` across one of its container query conditions, with the viewport unchanged, changes at least one descendant's computed style in a way that isn't only a size change (for example its `display`, `grid-template-columns`, or `flex-direction`).
+- Visible `h1`, `h2`, and `h3` headings compute a `text-wrap-style` of `balance`.
+- Visible paragraphs (`p`) compute a `text-wrap-style` of `pretty`.
+- Every visible button or link without visible text has a non-empty accessible name.
+- If the page sets `viewport-fit=cover`, then with a 34px bottom safe-area inset emulated, the buttons and links inside fixed bottom bars end at least 34px above the bottom of the viewport.
+- At a viewport width of 320 CSS pixels, the document doesn't scroll horizontally.
+- At a viewport width of 320 CSS pixels, no visible heading, paragraph, button, or link has content that overflows its own box horizontally or vertically, ignoring any absolutely positioned pseudo-element that extends a control's hit area.
+- No visible button, link, or form control extends outside an ancestor whose computed `overflow` is `hidden` or `clip`.
