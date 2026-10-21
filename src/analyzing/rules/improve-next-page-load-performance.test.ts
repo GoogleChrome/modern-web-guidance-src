@@ -109,6 +109,24 @@ void test('improve-next-page-load-performance JS matcher', async (t) => {
     assert.match(matches[0]?.message ?? '', /Speculation Rules/);
   });
 
+  await t.test('flags imported quicklink default and named imports', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import quicklink, { listen } from 'quicklink';
+      quicklink.prefetch('/pricing');
+      listen();
+    `;
+    const sourceFile = project.createSourceFile('imported-prefetch.js', code);
+    const matches = improveNextPageLoadPerformanceJsMatcher.matchFile(
+      sourceFile,
+      {
+        filePath: 'imported-prefetch.js',
+        fileContent: code,
+      },
+    );
+    assert.equal(matches.length, 2);
+  });
+
   await t.test('exempts when guarded by HTMLScriptElement.supports?.("speculationrules")', () => {
     const project = createInMemoryProject();
     const code = `

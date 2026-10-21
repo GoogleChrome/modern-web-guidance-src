@@ -92,6 +92,21 @@ void test('highlight-text-ranges JS matcher', async (t) => {
     assert.match(matches[0]?.message ?? '', /CSS\.highlights/);
   });
 
+  await t.test('flags imported Mark from mark.js', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import Mark from 'mark.js';
+      const instance = new Mark(document.body);
+      instance.mark('keyword');
+    `;
+    const sourceFile = project.createSourceFile('imported-mark.js', code);
+    const matches = highlightTextRangesJsMatcher.matchFile(sourceFile, {
+      filePath: 'imported-mark.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+  });
+
   await t.test('exempts when guarded by "highlights" in CSS or CSS.highlights', () => {
     const project = createInMemoryProject();
     const code = `

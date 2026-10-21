@@ -109,6 +109,24 @@ void test('language-detection JS matcher', async (t) => {
     assert.equal(matches.length, 4);
   });
 
+  await t.test('flags imported franc, LanguageDetect, and tinyld', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import { franc } from 'franc-min';
+      import LanguageDetect from 'languagedetect';
+      import * as tinyld from 'tinyld';
+      franc('Bonjour tout le monde');
+      new LanguageDetect().detect('Hello world');
+      tinyld.detect('Hola mundo');
+    `;
+    const sourceFile = project.createSourceFile('imported-detect.js', code);
+    const matches = languageDetectionJsMatcher.matchFile(sourceFile, {
+      filePath: 'imported-detect.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 3);
+  });
+
   await t.test('exempts when guarded by "LanguageDetector" in self', () => {
     const project = createInMemoryProject();
     const code = `

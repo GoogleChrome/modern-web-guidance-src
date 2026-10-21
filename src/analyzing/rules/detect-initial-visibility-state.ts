@@ -41,7 +41,13 @@ const STANDARD_FALLBACK_GUARD_TOKENS = [
   'VisibilityStateEntry',
 ] as const;
 
-const INITIAL_VAR_REGEX = /initial|wasHidden|hiddenAtLoad|backgroundLoad|startedHidden/i;
+const EXPLICIT_INITIAL_VISIBILITY_VAR_REGEX =
+  /initial(?:ly)?(?:Visibility(?:State)?|Hidden|Background(?:ed)?)|wasHiddenAtLoad|hiddenAtLoad|backgroundLoad|startedHidden|firstHiddenTime|timeBackgrounded/i;
+
+const AMBIGUOUS_WAS_HIDDEN_VAR_REGEX = /^wasHidden$/i;
+
+const TELEMETRY_CONTEXT_REGEX =
+  /\b(?:performance\.now|PerformanceObserver|timeStamp|sendBeacon|sendMetric|metric|analytics|telemetry|report|fcp|lcp|cls|inp|ttfb|firstHiddenTime|timeBackgrounded)\b/i;
 
 const STANDARD_VISIBILITY_PROPERTIES = new Set(['visibilityState', 'hidden']);
 
@@ -52,6 +58,7 @@ function isDocumentTarget(node: Node): boolean {
     text === 'document' ||
     text === 'window.document' ||
     text === 'globalThis.document' ||
+    text === 'self.document' ||
     text === 'this.document' ||
     text === 'doc' ||
     text === 'd'
@@ -60,6 +67,15 @@ function isDocumentTarget(node: Node): boolean {
 
 function expressionAccessesDocumentVisibility(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
+  if (
+    Node.isObjectLiteralExpression(unwrapped) ||
+    Node.isArrayLiteralExpression(unwrapped) ||
+    Node.isArrowFunction(unwrapped) ||
+    Node.isFunctionExpression(unwrapped)
+  ) {
+    return false;
+  }
+
   if (Node.isPropertyAccessExpression(unwrapped)) {
     if (
       STANDARD_VISIBILITY_PROPERTIES.has(unwrapped.getName()) &&
@@ -69,13 +85,21 @@ function expressionAccessesDocumentVisibility(node: Node): boolean {
     }
   }
 
-  const descendants = unwrapped.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
-  for (const desc of descendants) {
-    if (
-      STANDARD_VISIBILITY_PROPERTIES.has(desc.getName()) &&
-      isDocumentTarget(desc.getExpression())
-    ) {
-      return true;
+  if (
+    Node.isBinaryExpression(unwrapped) ||
+    Node.isConditionalExpression(unwrapped) ||
+    Node.isPrefixUnaryExpression(unwrapped)
+  ) {
+    const descendants = unwrapped.getDescendantsOfKind(
+      SyntaxKind.PropertyAccessExpression,
+    );
+    for (const desc of descendants) {
+      if (
+        STANDARD_VISIBILITY_PROPERTIES.has(desc.getName()) &&
+        isDocumentTarget(desc.getExpression())
+      ) {
+        return true;
+      }
     }
   }
 
@@ -202,13 +226,82 @@ function matchVendorVisibilityListener(callExpr: CallExpression): AnalyzerMatch 
   };
 }
 
+function isInsideEventListenerCallback(node: Node): boolean {
+  let current: Node | undefined = node.getParent();
+  while (current && !Node.isSourceFile(current)) {
+    if (Node.isArrowFunction(current) || Node.isFunctionExpression(current)) {
+      const parent = current.getParent();
+      if (parent && Node.isCallExpression(parent)) {
+        return true;
+      }
+    }
+    current = current.getParent();
+  }
+  return false;
+}
+
+function isReassignedToLiveStateInListener(
+  sourceFile: SourceFile,
+  varName: string,
+): boolean {
+  for (const binExpr of sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+    if (binExpr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
+      continue;
+    }
+    if (!isInsideEventListenerCallback(binExpr)) {
+      continue;
+    }
+    const left = binExpr.getLeft();
+    const targetName = Node.isIdentifier(left)
+      ? left.getText()
+      : Node.isPropertyAccessExpression(left)
+        ? left.getName()
+        : null;
+    if (targetName !== varName) {
+      continue;
+    }
+    const right = unwrapExpression(binExpr.getRight());
+    if (
+      right.getKind() === SyntaxKind.TrueKeyword ||
+      expressionAccessesDocumentVisibility(right)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function matchesInitialVisibilityVariableName(
+  name: string,
+  sourceFile: SourceFile,
+  hasTelemetryContext: boolean,
+): boolean {
+  if (EXPLICIT_INITIAL_VISIBILITY_VAR_REGEX.test(name)) {
+    return !isReassignedToLiveStateInListener(sourceFile, name);
+  }
+  if (AMBIGUOUS_WAS_HIDDEN_VAR_REGEX.test(name)) {
+    return (
+      hasTelemetryContext && !isReassignedToLiveStateInListener(sourceFile, name)
+    );
+  }
+  return false;
+}
+
 function collectInitialVisibilityVarMatches(sourceFile: SourceFile): AnalyzerMatch[] {
   const matches: AnalyzerMatch[] = [];
+  const hasTelemetryContext = TELEMETRY_CONTEXT_REGEX.test(sourceFile.getFullText());
 
   for (const varDecl of sourceFile.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+    if (isInsideEventListenerCallback(varDecl)) {
+      continue;
+    }
     const name = varDecl.getName();
     const init = varDecl.getInitializer();
-    if (INITIAL_VAR_REGEX.test(name) && init && expressionAccessesDocumentVisibility(init)) {
+    if (
+      init &&
+      matchesInitialVisibilityVariableName(name, sourceFile, hasTelemetryContext) &&
+      expressionAccessesDocumentVisibility(init)
+    ) {
       matches.push({
         line: varDecl.getStartLineNumber(),
         message: `Assigning initial document visibility state to '${name}' alongside a 'visibilitychange' listener; use VisibilityStateEntry via performance.getEntriesByType('visibility-state') to reliably detect if the page was loaded in the background.`,
@@ -220,6 +313,9 @@ function collectInitialVisibilityVarMatches(sourceFile: SourceFile): AnalyzerMat
     if (binExpr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
       continue;
     }
+    if (isInsideEventListenerCallback(binExpr)) {
+      continue;
+    }
     const left = binExpr.getLeft();
     const targetName = Node.isIdentifier(left)
       ? left.getText()
@@ -228,7 +324,7 @@ function collectInitialVisibilityVarMatches(sourceFile: SourceFile): AnalyzerMat
         : null;
     if (
       targetName &&
-      INITIAL_VAR_REGEX.test(targetName) &&
+      matchesInitialVisibilityVariableName(targetName, sourceFile, hasTelemetryContext) &&
       expressionAccessesDocumentVisibility(binExpr.getRight())
     ) {
       matches.push({
@@ -239,9 +335,16 @@ function collectInitialVisibilityVarMatches(sourceFile: SourceFile): AnalyzerMat
   }
 
   for (const propAssign of sourceFile.getDescendantsOfKind(SyntaxKind.PropertyAssignment)) {
+    if (isInsideEventListenerCallback(propAssign)) {
+      continue;
+    }
     const name = propAssign.getName();
     const init = propAssign.getInitializer();
-    if (INITIAL_VAR_REGEX.test(name) && init && expressionAccessesDocumentVisibility(init)) {
+    if (
+      init &&
+      matchesInitialVisibilityVariableName(name, sourceFile, hasTelemetryContext) &&
+      expressionAccessesDocumentVisibility(init)
+    ) {
       matches.push({
         line: propAssign.getStartLineNumber(),
         message: `Assigning initial document visibility state to '${name}' alongside a 'visibilitychange' listener; use VisibilityStateEntry via performance.getEntriesByType('visibility-state') to reliably detect if the page was loaded in the background.`,
@@ -252,7 +355,11 @@ function collectInitialVisibilityVarMatches(sourceFile: SourceFile): AnalyzerMat
   for (const propDecl of sourceFile.getDescendantsOfKind(SyntaxKind.PropertyDeclaration)) {
     const name = propDecl.getName();
     const init = propDecl.getInitializer();
-    if (INITIAL_VAR_REGEX.test(name) && init && expressionAccessesDocumentVisibility(init)) {
+    if (
+      init &&
+      matchesInitialVisibilityVariableName(name, sourceFile, hasTelemetryContext) &&
+      expressionAccessesDocumentVisibility(init)
+    ) {
       matches.push({
         line: propDecl.getStartLineNumber(),
         message: `Assigning initial document visibility state to '${name}' alongside a 'visibilitychange' listener; use VisibilityStateEntry via performance.getEntriesByType('visibility-state') to reliably detect if the page was loaded in the background.`,

@@ -7,6 +7,7 @@ import {
 import {
   isGlobalReference,
   isProtectedByFeatureGuard,
+  resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
@@ -162,6 +163,43 @@ function hasQuicklinkNamedImport(sourceFile: SourceFile, name: string): boolean 
   return false;
 }
 
+function isQuicklinkReference(node: Node, sourceFile: SourceFile): boolean {
+  if (isGlobalReference(node, 'quicklink')) {
+    return true;
+  }
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isIdentifier(unwrapped) || unwrapped.getText() !== 'quicklink') {
+    return false;
+  }
+  for (const imp of sourceFile.getImportDeclarations()) {
+    const spec = imp.getModuleSpecifierValue();
+    if (spec !== 'quicklink' && !spec.startsWith('quicklink/')) {
+      continue;
+    }
+    if (
+      imp.getDefaultImport()?.getText() === 'quicklink' ||
+      imp.getNamespaceImport()?.getText() === 'quicklink'
+    ) {
+      return true;
+    }
+  }
+  const resolved = resolveLocalExpression(unwrapped, 2);
+  if (Node.isCallExpression(resolved)) {
+    const callee = unwrapExpression(resolved.getExpression());
+    const firstArg = resolved.getArguments()[0];
+    if (
+      Node.isIdentifier(callee) &&
+      callee.getText() === 'require' &&
+      firstArg &&
+      Node.isStringLiteral(firstArg) &&
+      firstArg.getLiteralText() === 'quicklink'
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function matchQuicklinkCall(
   callExpr: CallExpression,
   sourceFile: SourceFile,
@@ -173,7 +211,7 @@ function matchQuicklinkCall(
     if (methodName !== 'listen' && methodName !== 'prefetch') {
       return null;
     }
-    if (isGlobalReference(callee.getExpression(), 'quicklink')) {
+    if (isQuicklinkReference(callee.getExpression(), sourceFile)) {
       return `quicklink.${methodName}() imperative link prefetching can be modernized with declarative Speculation Rules (<script type="speculationrules">).`;
     }
     return null;

@@ -30,11 +30,59 @@ const HIGHLIGHT_GUARD_TOKENS = [
 
 const MARK_METHODS = new Set(['mark', 'markRegExp', 'markRanges']);
 
+function isMarkConstructorReference(node: Node): boolean {
+  if (isGlobalReference(node, 'Mark')) {
+    return true;
+  }
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isIdentifier(unwrapped) || unwrapped.getText() !== 'Mark') {
+    return false;
+  }
+  const sourceFile = unwrapped.getSourceFile();
+  for (const imp of sourceFile.getImportDeclarations()) {
+    const spec = imp.getModuleSpecifierValue();
+    if (
+      !MARKJS_PACKAGES.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
+    ) {
+      continue;
+    }
+    if (
+      imp.getDefaultImport()?.getText() === 'Mark' ||
+      imp.getNamespaceImport()?.getText() === 'Mark'
+    ) {
+      return true;
+    }
+    for (const named of imp.getNamedImports()) {
+      const local = named.getAliasNode()?.getText() ?? named.getName();
+      if (local === 'Mark') {
+        return true;
+      }
+    }
+  }
+  const resolved = resolveLocalExpression(unwrapped, 2);
+  if (Node.isCallExpression(resolved)) {
+    const callee = unwrapExpression(resolved.getExpression());
+    const firstArg = resolved.getArguments()[0];
+    if (
+      Node.isIdentifier(callee) &&
+      callee.getText() === 'require' &&
+      firstArg &&
+      Node.isStringLiteral(firstArg)
+    ) {
+      const spec = firstArg.getLiteralText();
+      return MARKJS_PACKAGES.some(
+        (pkg) => spec === pkg || spec.startsWith(`${pkg}/`),
+      );
+    }
+  }
+  return false;
+}
+
 function isMarkInstance(node: Node): boolean {
   const resolved = resolveLocalExpression(node, 2);
   if (Node.isNewExpression(resolved)) {
     const callee = unwrapExpression(resolved.getExpression());
-    if (isGlobalReference(callee, 'Mark')) {
+    if (isMarkConstructorReference(callee)) {
       return true;
     }
   }

@@ -97,6 +97,22 @@ void test('atrule-support-conditionals JS matcher', async (t) => {
     assert.equal(matches.length, 3);
   });
 
+  await t.test('flags Modernizr.atRule() and imported Modernizr usage', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import Modernizr from 'modernizr';
+      const hasKeyframes = Modernizr.atRule('@keyframes');
+      const hasFontFace = Modernizr.fontface;
+    `;
+    const sourceFile = project.createSourceFile('atrule.js', code);
+    const matches = atruleSupportConditionalsJsMatcher.matchFile(sourceFile, {
+      filePath: 'atrule.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 2);
+    assert.match(matches[0]?.message ?? '', /Modernizr\.atRule/);
+  });
+
   await t.test('flags Modernizr.css* and Modernizr.flexbox / Modernizr.cssgrid property checks', () => {
     const project = createInMemoryProject();
     const code = `

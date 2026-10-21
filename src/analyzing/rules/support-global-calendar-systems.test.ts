@@ -112,6 +112,25 @@ void test('support-global-calendar-systems JS matcher', async (t) => {
     assert.match(matches[0]?.message ?? '', /Temporal/);
   });
 
+  await t.test('flags imported jalaali-js and persian-date', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import jalaali from 'jalaali-js';
+      import PersianDate from 'persian-date';
+      jalaali.toJalaali(2025, 3, 21);
+      new PersianDate();
+    `;
+    const sourceFile = project.createSourceFile('imported-calendar.js', code);
+    const matches = supportGlobalCalendarSystemsJsMatcher.matchFile(
+      sourceFile,
+      {
+        filePath: 'imported-calendar.js',
+        fileContent: code,
+      },
+    );
+    assert.equal(matches.length, 2);
+  });
+
   await t.test('exempts when guarded by Temporal check', () => {
     const project = createInMemoryProject();
     const code = `

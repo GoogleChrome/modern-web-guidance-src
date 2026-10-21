@@ -87,11 +87,59 @@ function isClientSideDependency(
   return true;
 }
 
+function isLibraryReference(
+  node: Node,
+  identName: string,
+  packages: readonly string[],
+): boolean {
+  if (isGlobalReference(node, identName)) {
+    return true;
+  }
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isIdentifier(unwrapped) || unwrapped.getText() !== identName) {
+    return false;
+  }
+  const sourceFile = unwrapped.getSourceFile();
+  for (const imp of sourceFile.getImportDeclarations()) {
+    const spec = imp.getModuleSpecifierValue();
+    if (!packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))) {
+      continue;
+    }
+    if (
+      imp.getDefaultImport()?.getText() === identName ||
+      imp.getNamespaceImport()?.getText() === identName
+    ) {
+      return true;
+    }
+    for (const named of imp.getNamedImports()) {
+      const local = named.getAliasNode()?.getText() ?? named.getName();
+      if (local === identName) {
+        return true;
+      }
+    }
+  }
+  const resolved = resolveLocalExpression(unwrapped, 2);
+  if (Node.isCallExpression(resolved)) {
+    const callee = unwrapExpression(resolved.getExpression());
+    const firstArg = resolved.getArguments()[0];
+    if (
+      Node.isIdentifier(callee) &&
+      callee.getText() === 'require' &&
+      firstArg &&
+      Node.isStringLiteral(firstArg)
+    ) {
+      const spec = firstArg.getLiteralText();
+      return packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
+    }
+  }
+  return false;
+}
+
 function isLanguageDetectInstance(node: Node): boolean {
   const resolved = resolveLocalExpression(node, 2);
   if (Node.isNewExpression(resolved) || Node.isCallExpression(resolved)) {
     const callee = unwrapExpression(resolved.getExpression());
-    if (isGlobalReference(callee, 'LanguageDetect')) {
+    if (isLibraryReference(callee, 'LanguageDetect', ['languagedetect'])) {
       return true;
     }
   }
@@ -107,7 +155,10 @@ function matchLanguageDetectionCall(callExpr: CallExpression): string | null {
 
   if (Node.isIdentifier(callee)) {
     const name = callee.getText();
-    if (name === 'franc' || name === 'francAll') {
+    if (
+      (name === 'franc' || name === 'francAll') &&
+      isLibraryReference(callee, name, ['franc', 'franc-min', 'franc-all'])
+    ) {
       return `Call to ${name}() client-side language detection library can be modernized with the built-in browser LanguageDetector API (LanguageDetector.create() and detector.detect()).`;
     }
     return null;
@@ -121,7 +172,7 @@ function matchLanguageDetectionCall(callExpr: CallExpression): string | null {
     }
     if (
       (methodName === 'detect' || methodName === 'detectAll') &&
-      isGlobalReference(receiver, 'tinyld')
+      isLibraryReference(receiver, 'tinyld', ['tinyld'])
     ) {
       return `Call to tinyld.${methodName}() can be modernized with the built-in browser LanguageDetector API (LanguageDetector.create() and detector.detect()).`;
     }

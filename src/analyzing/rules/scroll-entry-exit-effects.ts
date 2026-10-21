@@ -34,11 +34,59 @@ const SCROLL_TIMELINE_GUARD_TOKENS = [
   'animation-range',
 ] as const;
 
+function isLibraryReference(
+  node: Node,
+  identName: string,
+  packages: readonly string[],
+): boolean {
+  if (isGlobalReference(node, identName)) {
+    return true;
+  }
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isIdentifier(unwrapped) || unwrapped.getText() !== identName) {
+    return false;
+  }
+  const sourceFile = unwrapped.getSourceFile();
+  for (const imp of sourceFile.getImportDeclarations()) {
+    const spec = imp.getModuleSpecifierValue();
+    if (!packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))) {
+      continue;
+    }
+    if (
+      imp.getDefaultImport()?.getText() === identName ||
+      imp.getNamespaceImport()?.getText() === identName
+    ) {
+      return true;
+    }
+    for (const named of imp.getNamedImports()) {
+      const local = named.getAliasNode()?.getText() ?? named.getName();
+      if (local === identName) {
+        return true;
+      }
+    }
+  }
+  const resolved = resolveLocalExpression(unwrapped, 2);
+  if (Node.isCallExpression(resolved)) {
+    const callee = unwrapExpression(resolved.getExpression());
+    const firstArg = resolved.getArguments()[0];
+    if (
+      Node.isIdentifier(callee) &&
+      callee.getText() === 'require' &&
+      firstArg &&
+      Node.isStringLiteral(firstArg)
+    ) {
+      const spec = firstArg.getLiteralText();
+      return packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
+    }
+  }
+  return false;
+}
+
 function isScrollRevealInstance(node: Node): boolean {
   const resolved = resolveLocalExpression(node, 2);
   if (Node.isCallExpression(resolved) || Node.isNewExpression(resolved)) {
     const callee = unwrapExpression(resolved.getExpression());
-    if (isGlobalReference(callee, 'ScrollReveal')) {
+    if (isLibraryReference(callee, 'ScrollReveal', ['scrollreveal'])) {
       return true;
     }
   }
@@ -49,7 +97,7 @@ function isWowInstance(node: Node): boolean {
   const resolved = resolveLocalExpression(node, 2);
   if (Node.isNewExpression(resolved) || Node.isCallExpression(resolved)) {
     const callee = unwrapExpression(resolved.getExpression());
-    if (isGlobalReference(callee, 'WOW')) {
+    if (isLibraryReference(callee, 'WOW', ['wowjs', 'wow.js'])) {
       return true;
     }
   }
@@ -65,7 +113,7 @@ function matchScrollRevealCall(callExpr: CallExpression): string | null {
   const methodName = callee.getName();
   const receiver = callee.getExpression();
 
-  if (methodName === 'init' && isGlobalReference(receiver, 'AOS')) {
+  if (methodName === 'init' && isLibraryReference(receiver, 'AOS', ['aos'])) {
     return 'AOS.init() scroll reveal initialization can be modernized with CSS Scroll-Driven Animations (animation-timeline: view() and animation-range: entry, exit).';
   }
 

@@ -90,10 +90,52 @@ void test('detect-initial-visibility-state: positive matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /wasHidden/);
   });
+
+  await t.test('flags initiallyBackgrounded and firstHiddenTime load-state tracking', () => {
+    const code = `
+      let initiallyBackgrounded = document.visibilityState === 'hidden';
+      let firstHiddenTime = document.hidden ? 0 : Infinity;
+      document.addEventListener('visibilitychange', (event) => {
+        if (document.visibilityState === 'hidden') {
+          firstHiddenTime = Math.min(firstHiddenTime, event.timeStamp);
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'analytics/rum.js',
+      code,
+      [detectInitialVisibilityStateMatcher],
+      project,
+    );
+    assert.equal(matches.length, 2);
+  });
 });
 
 void test('detect-initial-visibility-state: negative / exempt cases', async (t) => {
   const project = createInMemoryProject();
+
+  await t.test('exempts generic initialState object and live tab-switch wasHidden tracking', () => {
+    const code = `
+      const initialState = {
+        hidden: document.hidden,
+        playing: false,
+      };
+      let wasHidden = document.hidden;
+      document.addEventListener('visibilitychange', () => {
+        if (wasHidden && !document.hidden) {
+          refreshFeed();
+        }
+        wasHidden = document.hidden;
+      });
+    `;
+    const { matches } = scanJsSource(
+      'ui/feed.js',
+      code,
+      [detectInitialVisibilityStateMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
 
   await t.test('exempts vendor-prefixed properties used as fallback behind document.visibilityState or document.hidden', () => {
     const code = `

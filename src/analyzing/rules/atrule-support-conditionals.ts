@@ -8,6 +8,7 @@ import {
 import {
   isGlobalReference,
   isProtectedByFeatureGuard,
+  resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
@@ -24,6 +25,7 @@ export const ATRULE_SUPPORT_CONDITIONALS_GUIDE_HASH = 'adca6619584a';
 const MODERNIZR_PACKAGES = ['modernizr'] as const;
 
 const MODERNIZR_CSS_METHODS = new Set([
+  'atRule',
   'testProp',
   'testAllProps',
   'prefixed',
@@ -39,6 +41,7 @@ const MODERNIZR_CSS_PROPERTIES = new Set([
   'flexwrap',
   'fontface',
   'generatedcontent',
+  'keyframes',
   'backdropfilter',
   'backgroundblendmode',
   'backgroundcliptext',
@@ -116,16 +119,67 @@ const MODERNIZR_NON_CSS_APIS = new Set([
   'applicationcache',
   'websqldatabase',
   'webrtc',
-  ' notification',
+  'notification',
   'notifications',
   'fullscreen',
   'pointerlock',
-  ' fetch',
+  'fetch',
   'promises',
 ]);
 
+function isImportedOrRequiredFrom(
+  identNode: Node,
+  identName: string,
+  packages: readonly string[],
+): boolean {
+  const sourceFile = identNode.getSourceFile();
+  for (const imp of sourceFile.getImportDeclarations()) {
+    const spec = imp.getModuleSpecifierValue();
+    if (!packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))) {
+      continue;
+    }
+    if (imp.getDefaultImport()?.getText() === identName) {
+      return true;
+    }
+    if (imp.getNamespaceImport()?.getText() === identName) {
+      return true;
+    }
+    for (const named of imp.getNamedImports()) {
+      const local = named.getAliasNode()?.getText() ?? named.getName();
+      if (local === identName) {
+        return true;
+      }
+    }
+  }
+
+  const resolved = resolveLocalExpression(identNode, 2);
+  if (Node.isCallExpression(resolved)) {
+    const callee = unwrapExpression(resolved.getExpression());
+    const firstArg = resolved.getArguments()[0];
+    if (
+      Node.isIdentifier(callee) &&
+      callee.getText() === 'require' &&
+      firstArg &&
+      Node.isStringLiteral(firstArg)
+    ) {
+      const spec = firstArg.getLiteralText();
+      return packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
+    }
+  }
+
+  return false;
+}
+
 function isModernizrObject(node: Node): boolean {
-  return isGlobalReference(node, 'Modernizr');
+  if (isGlobalReference(node, 'Modernizr')) {
+    return true;
+  }
+  const unwrapped = unwrapExpression(node);
+  return (
+    Node.isIdentifier(unwrapped) &&
+    unwrapped.getText() === 'Modernizr' &&
+    isImportedOrRequiredFrom(unwrapped, 'Modernizr', MODERNIZR_PACKAGES)
+  );
 }
 
 function isModernizrCssPropertyName(propName: string): boolean {

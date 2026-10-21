@@ -7,6 +7,7 @@ import {
 import {
   isGlobalReference,
   isProtectedByFeatureGuard,
+  resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
@@ -34,6 +35,54 @@ const CALENDAR_GUARD_TOKENS = [
   'supportedValuesOf',
 ] as const;
 
+function isCalendarLibraryRef(
+  node: Node,
+  identName: string,
+  packages: readonly string[],
+): boolean {
+  if (isGlobalReference(node, identName)) {
+    return true;
+  }
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isIdentifier(unwrapped) || unwrapped.getText() !== identName) {
+    return false;
+  }
+  const sourceFile = unwrapped.getSourceFile();
+  for (const imp of sourceFile.getImportDeclarations()) {
+    const spec = imp.getModuleSpecifierValue();
+    if (!packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))) {
+      continue;
+    }
+    if (
+      imp.getDefaultImport()?.getText() === identName ||
+      imp.getNamespaceImport()?.getText() === identName
+    ) {
+      return true;
+    }
+    for (const named of imp.getNamedImports()) {
+      const local = named.getAliasNode()?.getText() ?? named.getName();
+      if (local === identName) {
+        return true;
+      }
+    }
+  }
+  const resolved = resolveLocalExpression(unwrapped, 2);
+  if (Node.isCallExpression(resolved)) {
+    const callee = unwrapExpression(resolved.getExpression());
+    const firstArg = resolved.getArguments()[0];
+    if (
+      Node.isIdentifier(callee) &&
+      callee.getText() === 'require' &&
+      firstArg &&
+      Node.isStringLiteral(firstArg)
+    ) {
+      const spec = firstArg.getLiteralText();
+      return packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
+    }
+  }
+  return false;
+}
+
 function matchJalaaliCall(callExpr: CallExpression): string | null {
   const callee = unwrapExpression(callExpr.getExpression());
   if (Node.isPropertyAccessExpression(callee)) {
@@ -42,7 +91,7 @@ function matchJalaaliCall(callExpr: CallExpression): string | null {
       return null;
     }
     const receiver = unwrapExpression(callee.getExpression());
-    if (Node.isIdentifier(receiver) && receiver.getText() === 'jalaali') {
+    if (isCalendarLibraryRef(receiver, 'jalaali', ['jalaali-js'])) {
       return `jalaali.${methodName}() calendar conversion can be modernized with native Temporal calendar systems (Temporal.PlainDate.prototype.withCalendar() and Intl.DateTimeFormat).`;
     }
   }
@@ -51,7 +100,7 @@ function matchJalaaliCall(callExpr: CallExpression): string | null {
 
 function matchPersianDateNew(newExpr: NewExpression): string | null {
   const callee = unwrapExpression(newExpr.getExpression());
-  if (isGlobalReference(callee, 'PersianDate')) {
+  if (isCalendarLibraryRef(callee, 'PersianDate', ['persian-date'])) {
     return 'new PersianDate() non-Gregorian date instantiation can be modernized with native Temporal calendar systems (Temporal.PlainDate.prototype.withCalendar()).';
   }
   return null;

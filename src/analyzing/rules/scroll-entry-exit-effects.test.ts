@@ -101,6 +101,24 @@ void test('scroll-entry-exit-effects JS matcher', async (t) => {
     assert.equal(matches.length, 4);
   });
 
+  await t.test('flags imported AOS, ScrollReveal, and WOW', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import AOS from 'aos';
+      import ScrollReveal from 'scrollreveal';
+      import { WOW } from 'wowjs';
+      AOS.init();
+      ScrollReveal().reveal('.item');
+      new WOW().init();
+    `;
+    const sourceFile = project.createSourceFile('imported-reveal.js', code);
+    const matches = scrollEntryExitEffectsJsMatcher.matchFile(sourceFile, {
+      filePath: 'imported-reveal.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 3);
+  });
+
   await t.test('exempts when guarded by CSS.supports("animation-timeline", "view()")', () => {
     const project = createInMemoryProject();
     const code = `
