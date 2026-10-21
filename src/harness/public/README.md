@@ -128,7 +128,15 @@ cp src/harness/public/fixtures/nightly-sample.evals.json /tmp/store/nightly-2026
 printf '{"include":["nightly-*"],"exclude":[],"overrides":[],"releasedModels":["example-model"]}' > /tmp/allowlist.json
 pnpm build:public --all --source /tmp/store --allowlist /tmp/allowlist.json --out /tmp/pe
 ls /tmp/pe/public-evals
+
+# Preview allowlist edits without writing anything (gd is bin/gd.ts, run through pnpm)
+pnpm exec gd promote nightly-2026-10-20_20-43-48-codex_cli --dry-run
+pnpm exec gd unpublish nightly-2026-10-20_20-43-48-codex_cli --guide security --dry-run
 ```
+
+The fixture store above has only `evals.json`, so the build writes one file per
+suite. Add `<run>/<guide>/<task>/<mode>/agent.patch` and `modern-web.log` under
+the suite folder to see per-run artifacts come through.
 
 For browser tests, `src/dashboard/public-view.spec.js` shows the pattern:
 build with `buildSuite()` in `beforeAll`, serve `public-evals/**` from the
