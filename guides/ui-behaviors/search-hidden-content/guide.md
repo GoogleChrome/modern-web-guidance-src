@@ -16,7 +16,6 @@ To hide content visually but still allow it to be searchable by users and enable
 For example:
 
 - If you want full control over the styling of the show/hide mechanism.
-- If the UI controls to show/hide the content are in another part of the DOM.
 - If you don't want to support hiding the content after it's shown.
 
 ## How to implement
@@ -70,49 +69,14 @@ When handling mutually exclusive content regions, like an exclusive accordion, u
 
 ### Using `hidden="until-found"` attribute
 
+In the `beforematch` event handler, you MUST synchronize related ARIA states such as setting `aria-expanded="true"` on the controlling button. If you don't intend to support hiding the content, use `aria-disabled` on the trigger control, rather than `disabled`, as to prevent a loss of focus.
+
 ```html
+<button aria-expanded="false">Hidden content</button>
 <!-- The browser automatically removes hidden="until-found" upon a search match -->
 <div class="hidden-container" hidden="until-found">
   <p>This content is visually hidden.</p>
 </div>
-```
-
-#### Custom mutually exclusive disclosures
-
-When handling custom mutually exclusive regions controlled by external buttons, ensure only the matched panel remains visible. In the `beforematch` event handler, you MUST synchronize related ARIA states such as setting `aria-expanded="true"` on the controlling button.
-
-```html
-<div class="custom-accordion">
-  <div class="controls">
-    <button aria-expanded="true" aria-controls="panel-1" id="btn-1">Section 1</button>
-    <button aria-expanded="false" aria-controls="panel-2" id="btn-2">Section 2</button>
-  </div>
-
-  <div id="panel-1" class="panel">
-    <p>Section 1 content (visible)</p>
-  </div>
-
-  <div id="panel-2" class="panel" hidden="until-found">
-    <p>Section 2 content (hidden)</p>
-  </div>
-</div>
-```
-
-```javascript
-const accordion = document.querySelector('.custom-accordion');
-
-accordion.addEventListener('beforematch', (e) => {
-  // Hide all panels and synchronize button states before the browser reveals the matched panel
-  accordion.querySelectorAll('.panel').forEach((panel) => {
-    if (panel !== e.target) {
-      panel.hidden = 'until-found';
-    }
-  });
-  accordion.querySelectorAll('button').forEach((btn) => {
-    const controls = btn.getAttribute('aria-controls');
-    btn.setAttribute('aria-expanded', controls === e.target.id ? 'true' : 'false');
-  });
-});
 ```
 
 ## Best practices for `hidden="until-found"`
