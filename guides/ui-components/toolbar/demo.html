@@ -141,8 +141,8 @@
         position: relative;
         display: grid;
         place-items: center;
-        inline-size: 2.5rem;
-        block-size: 2.5rem;
+        min-inline-size: 2.5rem;
+        min-block-size: 2.5rem;
         padding: 0;
         border: 0;
         border-radius: 0.5rem;
@@ -275,6 +275,10 @@
           inset: auto;
           margin: 0;
         }
+      }
+
+      @media (pointer: coarse) {
+        .btn { min-inline-size: 3rem; min-block-size: 3rem; }
       }
 
       @media (prefers-reduced-motion: no-preference) {

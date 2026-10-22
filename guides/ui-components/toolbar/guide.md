@@ -92,13 +92,16 @@ Choose a vertical toolbar when controls stack along a side edge (a tool palette 
 
 ```js
 const vertical = toolbar.getAttribute("aria-orientation") === "vertical";
-// Vertical toolbars ignore direction: RTL does not flip Up/Down
+// Only horizontal toolbars flip with direction: RTL does not flip Up/Down
+const rtl = getComputedStyle(toolbar).direction === "rtl";
 const steps = vertical
   ? { ArrowDown: 1, ArrowUp: -1 }
   : { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 };
 ```
 
 ## Visible states
+
+* Size each button at least 24×24 CSS px using `min-inline-size`/`min-block-size` (not `inline-size`/`block-size`), so content can grow the target but never shrink it. Enlarge it under `@media (pointer: coarse)`. Values like `2.5rem` and `3rem` are examples.
 
 * Keep a clear `:focus-visible` outline with an offset; never remove it.
 * Style toggled state from the ARIA attribute (`[aria-pressed="true"]`), not a separate class, so visual and accessible state cannot diverge.
