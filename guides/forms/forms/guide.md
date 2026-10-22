@@ -66,7 +66,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 ### Guidelines
 
 - **DO** always associate `<label>` with its input using `for` and `id`.
-- **DO** place labels above text inputs, `<textarea>`, and `<select>` controls to enable faster scanning.
+- **DO** place `<label>` elements before text inputs, `<textarea>`, and `<select>` controls in the DOM and stack them visually above the control for faster scanning.
 - **DO** place `<label>` elements inline immediately after `<input type="checkbox">` and `<input type="radio">` controls for consistent alignment.
 - **DO** use visible labels and keep critical format instructions (e.g., `MM/DD/YYYY`) in the label or persistent helper text; do not rely on `placeholder` alone.
 - **DO** ensure the vertical margin between a label and its input is less than the margin between form groups (**Gestalt Proximity Rule**).
