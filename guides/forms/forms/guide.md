@@ -268,7 +268,6 @@ input {
 - **DO** use `aria-expanded` and `aria-controls` for dynamic UI reveals.
 
 - **DON'T** block page submission if JS fails; ensure server-side fallback.
-- **DON'T** auto-submit forms on `<select>/radio change` events or auto-advance focus to the next input while typing.
 
 ### Code Example
 
