@@ -176,7 +176,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 ### Guidelines
 
 - **DO** use single-column layouts for scanning.
-- **DO** set `font: inherit` and `font-size` on form controls to at least `1rem` (16px) to prevent iOS zoom.
+- **DO** set `font: inherit` and `font-size: max(1rem, 1em)` on form controls to scale with larger containers while staying at least `1rem`(16px) to prevent iOS zoom.
 - **DO** expand clickable areas for mobile tap targets using padding tricks.
 - **DO** ensure tap targets are at least `48px`.
 - **DO** use units relative to root (`rem`) and unitless `line-height` (at least `1.5`).
@@ -198,7 +198,7 @@ label {
 
 input {
   font: inherit;
-  font-size: 1rem;
+  font-size: max(1rem, 1em);
   line-height: 1.5;
   padding: 0.75rem;
   min-height: 48px;
