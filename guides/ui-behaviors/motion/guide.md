@@ -48,38 +48,18 @@ web-feature-ids:
 
 ### Respect reduced motion
 
-Always respect reduced motion preferences. Either start with animations enabled and tone them down for reduced motion using `@media (prefers-reduced-motion: reduce)`, or default to static states to respect reduced motion and opt in to full motion using `@media (prefers-reduced-motion: no-preference)`.
+Always respect reduced motion preferences. Choose between `@media (prefers-reduced-motion: no-preference)` and `@media (prefers-reduced-motion: reduce)` based on whether reduced motion removes the animation entirely or only adjusts its parameters:
+- Use `@media (prefers-reduced-motion: no-preference)` when the reduced-motion strategy is to **not have the animation at all** (apply the animation only where needed rather than declaring it broadly and canceling it with `animation: none`).
+- Use `@media (prefers-reduced-motion: reduce)` when the reduced-motion strategy is to **change animation parameters** (such as slowing down `animation-duration`).
 
-#### Tone down motion with `@media (prefers-reduced-motion: reduce)`
-
-**DO NOT** globally apply `animation-duration: 0.01ms;` as it can cause certain animations to become _more_ jarring. Instead, handle motion preferences on a case-by-case basis by nesting the `@media` query inside the rule so both versions are kept together.
-
-Start with animations enabled by default, and tone them down using `@media (prefers-reduced-motion: reduce)`:
-
-```css
-/* Good: Dampen spin states or slow down animations for reduced motion */
-.spinner {
-  animation: spin 1s linear infinite;
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-    opacity: 0.5;
-  }
-}
-
-progress:not([value]) {
-  animation: slide 1s infinite linear;
-  @media (prefers-reduced-motion: reduce) {
-    animation-duration: 20s;
-  }
-}
-```
+**DO NOT** globally apply `animation-duration: 0.01ms;` as it can cause certain animations to become _more_ jarring. Instead, handle reduced motion on a case-by-case basis by nesting the `@media` query inside the rule so both versions are kept together.
 
 #### Opt in to motion with `@media (prefers-reduced-motion: no-preference)`
 
-Alternatively, start with no animations by default, and enable them using `@media (prefers-reduced-motion: no-preference)`:
+When reduced motion should have no animation at all, default to the static state and enable the animation inside `@media (prefers-reduced-motion: no-preference)` instead of setting `animation` and overriding it with `animation: none`:
 
 ```css
-/* Good: Default to static or gentle states and opt in to full motion */
+/* Good: Default to static state and opt in to full motion */
 .spinner {
   opacity: 0.5;
   @media (prefers-reduced-motion: no-preference) {
@@ -87,11 +67,18 @@ Alternatively, start with no animations by default, and enable them using `@medi
     animation: spin 1s linear infinite;
   }
 }
+```
 
+#### Adjust animation parameters with `@media (prefers-reduced-motion: reduce)`
+
+When the animation should still run under reduced motion with gentler parameters, declare the base animation and override only the changed properties inside `@media (prefers-reduced-motion: reduce)`:
+
+```css
+/* Good: Slow down the animation for reduced motion instead of canceling it */
 progress:not([value]) {
-  animation: slide 20s infinite linear;
-  @media (prefers-reduced-motion: no-preference) {
-    animation-duration: 1s;
+  animation: slide 1s infinite linear;
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 20s;
   }
 }
 ```
