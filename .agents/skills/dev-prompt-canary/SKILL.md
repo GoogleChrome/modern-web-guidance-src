@@ -53,7 +53,7 @@ Regenerate `task.md` across `daily-grind` and `devtools-times` and diff **OLD vs
 
 Passing calibration only proves `grader.ts` passes the 3 golden patches (`claude`, `codex`, `jetski`) that the grader agent had open on disk while authoring the test. To prove it generalizes to unseen agent implementations:
 1. Delete `guides/security/passkey-management/targets/devtools-times/grader.ts` and run `devGuide('guides/security/passkey-management', { test: false, targets: ['devtools-times'] })`.
-2. Confirm calibration passes (`claude=100%`, `codex=100%`, `jetski=100%`, `zero-passrate=0%`) and static AST linting (`src/authoring/check.ts`) reports 0 violations.
+2. Confirm calibration passes (`claude=100%`, `codex=100%`, `jetski=100%`, `zero-passrate=0%`) and static AST linting (`src/core/grader-lint.ts`) reports 0 violations.
 3. Run `runPlaywright` with the newly generated `grader.ts` against a **held-out 4th solution patch** on `devtools-times` that satisfies all `expectations.md` requirements using structural variations not present in the 3 golden patches:
    - Unseen helper/handler function names (`reconcilePasskeyVault`, `revokePasskeyItem`)
    - Options passed via local variables with TypeScript type assertions (`payload as any`, `satisfies`)
