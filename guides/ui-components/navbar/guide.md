@@ -12,13 +12,14 @@ guides:
   - responsive-disclosure
   - icons
   - animate-to-intrinsic-sizes
+  - menu
 ---
 
 # Responsive Site Navigation
 
 Build a site navigation bar that uses one semantic navigation tree at every size, presents a native popover on narrow containers, becomes an inline navigation on wide containers, and identifies the current page.
 
-This guide describes site-navigation integration. It does not define application-menu behaviour. For reusable responsive disclosure behaviour, see {{ GUIDE_REF("responsive-disclosure") }}. For the menu and chevron icons, see {{ GUIDE_REF("icons") }}.
+This guide describes site-navigation integration. It is navigation, not an application menu: links stay in the `Tab` order, with no `focusgroup`, `role="menu"`, `role="menuitem"`, `aria-haspopup="menu"` or arrow-key handling. See {{ GUIDE_REF("menu") }} for shared popover techniques, not its keyboard model. For reusable responsive disclosure behavior, see {{ GUIDE_REF("responsive-disclosure") }}. For the menu and chevron icons, see {{ GUIDE_REF("icons") }}.
 
 For component-driven layouts, fluid sizing, and typographic line-wrapping, see {{ GUIDE_REF("size-aware-styling") }}, {{ GUIDE_REF("fluid-scaling") }}, and {{ GUIDE_REF("improve-text-layout-and-legibility") }}.
 
@@ -63,7 +64,7 @@ Use one `<nav>` landmark for narrow and wide layouts. Wrap it in a semantic `<he
 </header>
 ```
 
-The button declaratively controls the menu with `popovertarget` and `aria-controls`. The `nav` remains the navigation landmark while the menu is closed. The trigger icon is decorative and the visible "Menu" text is the accessible name, so hide the icon from assistive technologies. For how to insert and hide icons, see {{ GUIDE_REF("icons") }}. For the general popover control contract, see {{ GUIDE_REF("declarative-dialog-popover-control") }}.
+The button declaratively controls the menu with `popovertarget` and `aria-controls`. The `nav` remains the navigation landmark while the menu is closed. The trigger icon is decorative and the visible "Menu" text is the accessible name, so hide the icon from assistive technologies. For how to insert and hide icons, see {{ GUIDE_REF("icons") }}. For the general popover control contract, see {{ GUIDE_REF("declarative-dialog-popover-control") }}. Unlike the menu guide, use `popovertarget`: one toggle needs no invoker commands.
 
 ---
 
@@ -134,15 +135,15 @@ On wide containers, hide the narrow-layout trigger and reset the popover present
 }
 ```
 
-CSS changes the presentation, but JavaScript must also synchronise the `popover` attribute with the header's container-query state. Keep the navigation as a popover only in the narrow layout; remove the attribute in the wide layout. Removing it closes an open popover, while restoring it leaves the menu closed until the trigger opens it. Use one shared layout-state function for the initial state and subsequent `ResizeObserver` updates; do not infer the layout from a hidden trigger or maintain a second breakpoint check.
+CSS changes the presentation, but JavaScript must also synchronize the `popover` attribute with the header's container-query state. Keep the navigation as a popover only in the narrow layout; remove the attribute in the wide layout. Removing it closes an open popover, while restoring it leaves the menu closed until the trigger opens it. Use one shared layout-state function for the initial state and subsequent `ResizeObserver` updates; do not infer the layout from a hidden trigger or maintain a second breakpoint check.
 
 ---
 
 ## Nested Site Navigation
 
-Use `<details>` and `<summary>` for nested site navigation, with the submenu represented by a nested list. Keep the submenu inline inside the narrow navigation popover. If the wide layout requires a floating submenu, promote that list to a native `popover="auto"` and synchronise it with the disclosure; keep the reusable disclosure behaviour in {{ GUIDE_REF("responsive-disclosure") }}.
+Use `<details>` and `<summary>` for nested site navigation, with the submenu represented by a nested list. Unlike the menu guide's button and popover, one element must be an inline disclosure when narrow and a floating popover when wide; a top-layer popover cannot render in flow, so `popover` is set only in the wide layout. Keep the submenu inline inside the narrow navigation popover. If the wide layout requires a floating submenu, promote that list to a native `popover="auto"` and synchronize it with the disclosure; keep the reusable disclosure behavior in {{ GUIDE_REF("responsive-disclosure") }}.
 
-Synchronise the `popover` attributes across the container breakpoint and bind the submenu disclosure state:
+Synchronize the `popover` attributes across the container breakpoint and bind the submenu disclosure state:
 
 ```js
 const header = document.querySelector(".site-header");
@@ -184,7 +185,7 @@ const layoutObserver = new ResizeObserver(([entry]) => {
 layoutObserver.observe(header);
 ```
 
-Do not add document-level click-outside, Escape, focus-restoration, or expanded-state handlers. Native disclosure and popover behaviour provide those interactions. Let `<details>` own the summary click: intercepting it can reopen a submenu that light dismiss is trying to close. The `source: summary` option supplies the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
+Do not add document-level click-outside, Escape, focus-restoration, or expanded-state handlers. Native disclosure and popover behavior provide those interactions. Let `<details>` own the summary click: intercepting it can reopen a submenu that light dismiss is trying to close. The `source: summary` option supplies the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
 
 For collision-aware submenu positioning, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 

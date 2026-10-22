@@ -3,6 +3,7 @@
 - The page uses a single semantic `<nav>` element with an explicit accessibility label (e.g., `aria-label="Primary"`) that functions across both mobile and desktop layouts.
 - The mobile navigation trigger is a native `<button>` element with `type="button"` and links to the popover menu element (such as `<ul>`) using declarative `popovertarget` and `aria-controls` attributes.
 - Any decorative SVG icons inside the trigger button have `aria-hidden="true"` and `focusable="false"`.
+- The navigation does not use `focusgroup`, `role="menu"`, `role="menuitem"`, `role="menubar"` or `aria-haspopup="menu"`.
 - The current/active page link inside the navigation panel is indicated using the `aria-current="page"` attribute.
 - The semantic `<header>` element (the component boundary) declares `container-type: inline-size` to support container query layouts on descendants.
 - Spacing, sizing, and positioning of the navigation elements use CSS logical properties (e.g., `inline-size`, `block-size`, `margin-inline`, `padding-block`, `inset-block-start`, `inset-inline-end`) instead of physical coordinates.
