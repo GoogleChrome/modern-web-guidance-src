@@ -412,7 +412,7 @@ form.addEventListener('submit', (e) => {
 ```html
 <nav aria-label="Progress">
   <ol class="progress-tracker">
-    <li class="step-done">Step 1: Account (completed)</span></li>
+    <li class="step-done">Step 1: Account (completed)</li>
     <li class="step-active" aria-current="step">Step 2: Shipping</li>
     <li class="step-todo">Step 3: Payment</li>
   </ol>
