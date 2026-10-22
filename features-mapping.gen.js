@@ -133,7 +133,7 @@ window.__featuresMapping = {
     "customizable-select"
   ],
   "autofill-address-form": [
-    "autofill"
+    "input"
   ],
   "autofill-highlight-inputs": [
     "autofill"

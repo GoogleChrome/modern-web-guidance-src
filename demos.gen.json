@@ -376,7 +376,7 @@
       "title": "Build an address form that follows best practice",
       "description": "Build an address form with correct autocomplete attributes and autofill support.",
       "features": [
-        "autofill"
+        "input"
       ],
       "demos": [
         {
@@ -3463,6 +3463,7 @@
     "indeterminate",
     "individual-transforms",
     "inert",
+    "input",
     "input-email-tel-url",
     "input-range",
     "inputmode",
