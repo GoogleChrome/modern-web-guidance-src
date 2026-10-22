@@ -217,7 +217,7 @@ Use `aria-current="page"` to identify the current page. Set it at build time or 
 
 ## Transitions and Accessibility
 
-If the navigation is animated, use `@starting-style` and `allow-discrete` for popover entry and exit, animate the popover with only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}.
+If the navigation is animated, use `@starting-style` and `allow-discrete` for popover entry and exit, animate the popover with only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}. For a worked popover open and close transition, see {{ GUIDE_REF("menu") }}.
 
 ### Narrow submenu slide-down
 
@@ -239,3 +239,5 @@ Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh`
 {{ FEATURE_FALLBACKS("anchor-positioning") }}
 
 For the mobile menu, put the absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid.
+
+For the wide floating submenu, a popover without anchor positioning falls back to centered viewport placement and detaches from its summary. See the anchor positioning fallbacks in {{ GUIDE_REF("menu") }} for positioning it from script.
