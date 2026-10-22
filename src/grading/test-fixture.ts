@@ -245,7 +245,8 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
       // Exclude <template> elements to avoid extracting inert component template styles as global page styles
       const withoutTemplates = content.replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, '');
       try {
-        const document = parseHtmlDocument(file, withoutTemplates);
+        const document = parseHtmlDocument(file, content);
+        document.querySelectorAll('template').forEach((el: any) => el.remove());
         document.querySelectorAll('style').forEach((style: any) => {
           if (style.textContent) cssBlocks.push(style.textContent);
         });
