@@ -4,6 +4,8 @@ description: Responsively size embedded iframes—such as comment widgets, embed
 web-feature-ids:
   - frame-sizing
   - resize-observer
+draft: blocked
+draft-reason: "frame-sizing locks both ICB axes in Chrome, breaking height updates when iframe width changes (#1611)"
 ---
 
 # Content-sized responsive iframes
