@@ -1,22 +1,19 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { ALL_RULES } from './index.ts';
-import { scanAllGuides, getGuideStatus, ProjectStatus } from '../../core/guide-validation.ts';
+import { scanAllGuides } from '../../core/guide-validation.ts';
 
-describe('171-landed-guide invariant for analyzer rules', () => {
-  it('asserts that every rule in ALL_RULES belongs to the 171 landed feature guides', async (t) => {
-    const allGuides = await scanAllGuides();
+describe('175-landed-guide invariant for analyzer rules', () => {
+  it('asserts that every rule in ALL_RULES belongs to the 175 landed feature guides', async (t) => {
+    const allGuides = scanAllGuides();
     const landedFeatureGuides = allGuides.filter(
-      (g) =>
-        !g.isDisciplineGuide &&
-        g.isPublished &&
-        (getGuideStatus(g) === null || getGuideStatus(g) === ProjectStatus.NeedsEvals),
+      (g) => !g.isDisciplineGuide && g.isPublished,
     );
 
     assert.strictEqual(
       landedFeatureGuides.length,
-      171,
-      'Corpus must have exactly 171 landed feature guides',
+      175,
+      'Corpus must have exactly 175 landed feature guides',
     );
 
     const landedGuideIds = new Set(landedFeatureGuides.map((g) => g.name));

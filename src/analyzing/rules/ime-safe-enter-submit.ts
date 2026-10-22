@@ -3,7 +3,7 @@ import { Node, SyntaxKind, type CallExpression, type JsxAttribute, type SourceFi
 import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 import { unwrapExpression } from '../scanners/ast-helpers.ts';
 
-export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = 'bd5e1488af32';
+export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = '0616906d0788';
 
 const ENTER_CHECK_REGEX =
   /(?:keyCode\s*===?\s*13|13\s*===?\s*keyCode|which\s*===?\s*13|13\s*===?\s*which|key\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*key|code\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*code|case\s+(?:13|['"]Enter['"]))/;
@@ -288,7 +288,7 @@ export const imeSafeEnterSubmitRule: AnalyzerRule = {
   guideId: 'ime-safe-enter-submit',
   guideHash: IME_SAFE_ENTER_SUBMIT_GUIDE_HASH,
   summary:
-    'Flag keydown event listeners intercepting Enter (keyCode 13 or key "Enter") to submit forms, send messages, or trigger actions without checking event.isComposing or event.keyCode === 229, breaking IME input in CJK languages.',
+    'Flag keydown event listeners on inputs or textareas intercepting Enter (keyCode 13 or key "Enter") to submit forms, send messages, or trigger actions without checking event.isComposing or event.keyCode === 229, breaking IME input in CJK languages.',
   matcher: imeSafeEnterSubmitMatcher,
   phase2Rubric: {
     keepWhen: [
@@ -299,6 +299,7 @@ export const imeSafeEnterSubmitRule: AnalyzerRule = {
       'Keyup or keypress event listeners (composition has already ended by keyup).',
       'Handlers that check event.isComposing or event.keyCode === 229.',
       'Handlers strictly requiring modifier keys (Ctrl+Enter or Cmd+Enter) where IME character selection is not triggered.',
+      'Native form submit events or standard inputs inside a form with no custom Enter keydown listener (native Enter submission handles IME automatically).',
       'Global document-level hotkeys for non-text interactions (e.g. game controls, dialog dismissal, modal escape/enter).',
     ],
   },

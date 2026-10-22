@@ -7,7 +7,7 @@ import type {
   DependencyRuleMatcher,
 } from '../schema.ts';
 
-export const RESPONSIVE_TABLE_GUIDE_HASH = 'a39b08ad4b97';
+export const RESPONSIVE_TABLE_GUIDE_HASH = '7e6e38515653';
 
 const RESPONSIVE_TABLE_PACKAGES = [
   'tablesaw',

@@ -2,7 +2,7 @@ import { Node, SyntaxKind, type CallExpression, type SourceFile } from 'ts-morph
 import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 import { isProtectedByFeatureGuard, unwrapExpression } from '../scanners/ast-helpers.ts';
 
-export const COORDINATE_GLOBAL_EVENTS_GUIDE_HASH = '253dec2c89a2';
+export const COORDINATE_GLOBAL_EVENTS_GUIDE_HASH = 'afe9240a1fdf';
 
 const TEMPORAL_GUARD_TOKENS = ['Temporal', '@js-temporal/polyfill'] as const;
 
