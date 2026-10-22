@@ -345,9 +345,7 @@ export function initGoogleAuth(onAuthSuccess) {
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
             authBtn.style.display = 'block';
-            if (accessToken) {
-                authBtn.style.display = 'none';
-            }
+            renderAuthButton(authBtn);
         }
 
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -362,17 +360,48 @@ export function initGoogleAuth(onAuthSuccess) {
                 localStorage.setItem('gcs_access_token', accessToken || '');
                 console.log('Successfully authenticated with Google.');
                 if (authBtn) {
-                    authBtn.style.display = 'none';
+                    renderAuthButton(authBtn);
                 }
                 if (onAuthSuccess) onAuthSuccess();
             },
         });
 
         if (authBtn) {
-            authBtn.addEventListener('click', () => tokenClient.requestAccessToken());
+            authBtn.addEventListener('click', () => {
+                if (accessToken) {
+                    signOut();
+                } else {
+                    tokenClient.requestAccessToken();
+                }
+            });
         }
     };
     init();
+}
+
+/**
+ * Shows "Sign in" when there is no token and "Sign out" when there is one.
+ * @param {HTMLButtonElement} authBtn
+ */
+function renderAuthButton(authBtn) {
+    authBtn.textContent = accessToken ? 'Sign out' : 'Sign in with Google';
+    authBtn.title = accessToken ? 'Forget the Google token and show the public view' : 'Read the private bucket';
+}
+
+/**
+ * Drops the stored token and reloads as an unauthenticated visitor. Reloading (rather than
+ * re-rendering) is deliberate: it clears any private data already on the page.
+ */
+export function signOut() {
+    accessToken = null;
+    localStorage.removeItem('gcs_access_token');
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('source') === 'remote') {
+        params.delete('source');
+        window.location.search = params.toString();
+    } else {
+        window.location.reload();
+    }
 }
 
 /**
@@ -399,7 +428,7 @@ export async function authenticatedFetch(url, options = {}) {
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
             authBtn.style.display = 'block';
-            authBtn.textContent = 'Sign in with Google';
+            renderAuthButton(authBtn);
             authBtn.disabled = false;
             authBtn.style.backgroundColor = '';
             authBtn.style.color = '';

@@ -46,7 +46,8 @@ test.beforeAll(async () => {
  * Serves `public-evals/**` from the built fixture, blocks every Google host at the
  * context level (so popups are covered too), and records what tried to get through.
  * @param {import('@playwright/test').Page} page
- * @param {{ token?: string }} [options]
+ * @param {{ token?: string, manageToken?: boolean }} [options] `manageToken: false` leaves
+ *   localStorage alone so a test can set and clear the token itself.
  * @returns {Promise<{ googleRequests: string[], popupOrigins: string[] }>}
  */
 async function servePublicCopy(page, options = {}) {
@@ -54,11 +55,12 @@ async function servePublicCopy(page, options = {}) {
   const googleRequests = [];
   /** @type {string[]} */
   const popupOrigins = [];
-  const token = options.token;
-  await page.context().addInitScript(t => {
-    if (t) localStorage.setItem('gcs_access_token', t);
-    else localStorage.removeItem('gcs_access_token');
-  }, token ?? '');
+  if (options.manageToken !== false) {
+    await page.context().addInitScript(t => {
+      if (t) localStorage.setItem('gcs_access_token', t);
+      else localStorage.removeItem('gcs_access_token');
+    }, options.token ?? '');
+  }
   await page.context().route(GOOGLE_HOSTS, route => {
     googleRequests.push(route.request().url());
     return route.abort();
@@ -251,6 +253,27 @@ test.describe('Signed-in view', () => {
 
     expect(authHeaders.length).toBeGreaterThan(0);
     expect(authHeaders.every(h => h === 'Bearer googler-token')).toBe(true);
+  });
+
+  test('Sign out forgets the token and returns to the public view', async ({ page }) => {
+    const { googleRequests } = await servePublicCopy(page, { manageToken: false });
+    await page.context().unroute(GOOGLE_HOSTS);
+    await mockPrivateBucket(page);
+
+    // Seed the token once (not via an init script, which would re-add it after sign-out reloads).
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('gcs_access_token', 'googler-token'));
+    await page.goto('/?source=remote');
+    const authBtn = page.locator('#auth-btn');
+    await expect(authBtn).toHaveText('Sign out');
+    await expect(page.locator('.suite-table-row', { hasText: 'codex' }).first()).toContainText('remote');
+
+    await authBtn.click();
+    await page.waitForURL(url => !url.search.includes('source=remote'));
+    expect(await page.evaluate(() => localStorage.getItem('gcs_access_token'))).toBeNull();
+    await expect(page.locator('#auth-btn')).toHaveText('Sign in with Google');
+    await expect(page.locator('.suite-table-row', { hasText: 'codex' }).first()).toContainText('public');
+    expect(googleRequests).toEqual([]);
   });
 
   test('remote manifest keeps its cache-buster', async ({ page }) => {
