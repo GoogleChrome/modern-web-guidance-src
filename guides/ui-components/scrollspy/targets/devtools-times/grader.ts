@@ -150,7 +150,7 @@ test.describe('Scrollspy Target Grader', () => {
     expect(synchronizesOnScrollEnd).toBe(true);
   });
 
-  test('IntersectionObserver fallback applies target-current fallback class for unsupported browsers', () => {
+  test('[unsupported: scroll-target-group] IntersectionObserver fallback applies target-current fallback class for unsupported browsers', () => {
     const project = getJsProject(targetFiles);
     const newExprs = project.getSourceFiles().flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.NewExpression));
 
@@ -163,6 +163,10 @@ test.describe('Scrollspy Target Grader', () => {
     });
 
     expect(hasIntersectionObserver && appliesFallbackClass).toBe(true);
+  });
+
+  test('[supported: scroll-target-group] The implementation relies on native scroll-target-group: auto and :target-current without an IntersectionObserver fallback', () => {
+    // TODO: Populate test assertion when regenerating grader for multi-baseline evaluation
   });
 
 });

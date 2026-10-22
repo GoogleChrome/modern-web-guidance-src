@@ -183,7 +183,7 @@ test.describe('Daily Grind Scrollspy Grader', () => {
   });
 
   // Requirement 7: IntersectionObserver fallback applies :target-current class
-  test('fallback applies :target-current class to the active navigation link', () => {
+  test('[unsupported: scroll-target-group] fallback applies :target-current class to the active navigation link', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
@@ -208,5 +208,9 @@ test.describe('Daily Grind Scrollspy Grader', () => {
     });
 
     expect(hasFallbackClass).toBe(true);
+  });
+
+  test('[supported: scroll-target-group] The implementation relies on native scroll-target-group: auto and :target-current without an IntersectionObserver fallback', () => {
+    // TODO: Populate test assertion when regenerating grader for multi-baseline evaluation
   });
 });
