@@ -372,6 +372,14 @@
         min-block-size: 2.5rem;
         padding-inline: 0.75rem;
       }
+
+      /* Without anchor positioning the script below sets left and top. */
+      @supports not (position-area: block-end) {
+        .dropdown-list {
+          position: fixed;
+          margin: 0;
+        }
+      }
     }
 
     @media (prefers-reduced-motion: no-preference) {
@@ -538,7 +546,24 @@
 
     submenu.addEventListener("toggle", (event) => {
       details.open = event.newState === "open";
+
+      if (event.newState === "open" && !CSS.supports("position-area", "block-end")) {
+        placeSubmenu();
+      }
     });
+
+    // Fallback for browsers without Anchor Positioning: below the summary,
+    // flipped above and clamped to the viewport on overflow.
+    function placeSubmenu() {
+      const anchor = summary.getBoundingClientRect();
+      const size = submenu.getBoundingClientRect();
+      const gap = 8;
+      let top = anchor.bottom + gap;
+      if (top + size.height > innerHeight) top = Math.max(0, anchor.top - gap - size.height);
+      const left = Math.max(0, Math.min(anchor.left, innerWidth - size.width));
+      submenu.style.top = `${top}px`;
+      submenu.style.left = `${left}px`;
+    }
 
     function syncLayoutState(width) {
       const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);

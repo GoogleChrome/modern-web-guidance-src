@@ -23,7 +23,6 @@ This guide describes site-navigation integration. It is navigation, not an appli
 
 For component-driven layouts, fluid sizing, and typographic line-wrapping, see {{ GUIDE_REF("size-aware-styling") }}, {{ GUIDE_REF("fluid-scaling") }}, and {{ GUIDE_REF("improve-text-layout-and-legibility") }}.
 
----
 
 ## Core Markup
 
@@ -64,9 +63,8 @@ Use one `<nav>` landmark for narrow and wide layouts. Wrap it in a semantic `<he
 </header>
 ```
 
-The button declaratively controls the menu with `popovertarget` and `aria-controls`. The `nav` remains the navigation landmark while the menu is closed. The trigger icon is decorative and the visible "Menu" text is the accessible name, so hide the icon from assistive technologies. For how to insert and hide icons, see {{ GUIDE_REF("icons") }}. For the general popover control contract, see {{ GUIDE_REF("declarative-dialog-popover-control") }}. Unlike the menu guide, use `popovertarget`: one toggle needs no invoker commands.
+The button declaratively controls the menu with `popovertarget` and `aria-controls`. The `nav` remains the navigation landmark while the menu is closed. The trigger icon is decorative and the visible "Menu" text is the accessible name, so hide the icon from assistive technologies. For how to insert and hide icons, see {{ GUIDE_REF("icons") }}. For the general popover control contract, see {{ GUIDE_REF("declarative-dialog-popover-control") }}. Unlike the menu guide, use `popovertarget`: one toggle needs no invoker commands. As in the menu guide, place each popover (the menu list, and the submenu list) immediately after its trigger so browsers add no implicit `aria-details`.
 
----
 
 ## Narrow Layout: Popover Navigation
 
@@ -100,7 +98,6 @@ On narrow containers, keep `popover="auto"` on the navigation list. Anchor the f
 
 The first `inset-block-start` declaration is the fallback; the later `anchor()` declaration overrides it where Anchor Positioning is supported. For collision-aware positioning near viewport edges, see {{ GUIDE_REF("viewport-aware-dropdowns") }}.
 
----
 
 ## Wide Layout: Inline Navigation
 
@@ -137,7 +134,6 @@ On wide containers, hide the narrow-layout trigger and reset the popover present
 
 CSS changes the presentation, but JavaScript must also synchronize the `popover` attribute with the header's container-query state. Keep the navigation as a popover only in the narrow layout; remove the attribute in the wide layout. Removing it closes an open popover, while restoring it leaves the menu closed until the trigger opens it. Use one shared layout-state function for the initial state and subsequent `ResizeObserver` updates; do not infer the layout from a hidden trigger or maintain a second breakpoint check.
 
----
 
 ## Nested Site Navigation
 
@@ -207,13 +203,11 @@ Position the wide submenu with CSS Anchor Positioning as described in {{ GUIDE_R
 }
 ```
 
----
 
 ## Indicating the Current Page
 
 Use `aria-current="page"` to identify the current page. Set it at build time or with JavaScript, and use `[aria-current="page"]` as the CSS styling hook. The visual treatment is a design decision; do not assume a particular pseudo-element, border, or orientation.
 
----
 
 ## Transitions and Accessibility
 
@@ -230,7 +224,6 @@ In the narrow layout the submenu is an inline `<details>`, which opens instantly
 
 Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh` for viewport-relative limits, provide visible `:focus-visible` indicators, and adapt custom borders and current-page indicators under `forced-colors: active`.
 
----
 
 ## Fallbacks
 
@@ -240,4 +233,4 @@ Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh`
 
 For the mobile menu, put the absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid.
 
-For the wide floating submenu, a popover without anchor positioning falls back to centered viewport placement and detaches from its summary. See the anchor positioning fallbacks in {{ GUIDE_REF("menu") }} for positioning it from script.
+For the wide floating submenu, a popover without anchor positioning falls back to centered viewport placement and detaches from its summary. As in the anchor positioning fallbacks in {{ GUIDE_REF("menu") }}, position it from script in the submenu's `toggle` handler when it opens: below the summary, flipping above and clamping to the viewport on overflow, using `left` and `top`. Keep the `position: fixed` and `margin: 0` overrides inside `@supports not (position-area: block-end)`.
