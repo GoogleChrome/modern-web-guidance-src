@@ -405,7 +405,7 @@ form.addEventListener('submit', (e) => {
 - **DO** use context-specific `enterkeyhint` values (e.g., `"previous"`, `"next"`) to guide navigation via on-screen keyboards.
 - **DO** design layouts so that the mobile keyboard does not obscure inputs or buttons (e.g., by placing them in the upper half of the viewport when focused or using CSS scroll-padding).
 
-- **DON'T** leave inactive wizard steps in the keyboard `Tab` order or accessibility tree (use `hidden`, `display:none`, or `inert` on non-active steps.
+- **DON'T** leave inactive wizard steps in the keyboard `Tab` order or accessibility tree (use `hidden`, `display: none`, or `inert` on non-active steps).
 
 ### Code Example
 
