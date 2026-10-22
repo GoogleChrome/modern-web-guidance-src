@@ -233,13 +233,19 @@ export const durationJsMatcher: JsRuleMatcher = {
   fastTokens: [
     'humanizeDuration',
     'prettyMs',
-    'humanize',
-    'moment',
-    'dayjs',
-    'duration',
+    'moment.duration',
+    'dayjs.duration',
+    '.humanize(',
     'formatDuration',
+    'prettyDuration',
     'secondsToHms',
+    'secondsToTime',
+    'secondsToDuration',
     'msToTime',
+    'msToDuration',
+    '86400',
+    '3600',
+    '60',
   ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     const fullText = sourceFile.getFullText();

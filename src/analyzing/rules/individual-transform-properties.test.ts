@@ -243,4 +243,28 @@ describe('individualTransformPropertiesRule', () => {
     const matches = scanCss('src/spin.css', css, rules);
     assert.equal(matches.length, 0);
   });
+
+  it('ignores paired rules using the same single transform group, but flags distinct groups across states', () => {
+    const sameGroupCss = `
+      .drawer {
+        transform: translateX(-100%);
+      }
+      .drawer.open {
+        transform: translateX(0);
+      }
+    `;
+    const sameGroupMatches = scanCss('src/drawer.css', sameGroupCss, rules);
+    assert.equal(sameGroupMatches.length, 0);
+
+    const distinctGroupCss = `
+      .card {
+        transform: translateY(-4px);
+      }
+      .card:hover {
+        transform: scale(1.05);
+      }
+    `;
+    const distinctMatches = scanCss('src/card-hover.css', distinctGroupCss, rules);
+    assert.equal(distinctMatches.length, 2);
+  });
 });

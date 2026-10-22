@@ -147,4 +147,32 @@ describe('animate-element-entry-exit rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('ignores temporary toast auto-dismiss notifications (chained .delay or setTimeout)', () => {
+    const codeA = `
+      function showCopied() {
+        $('#copied').fadeIn(100);
+        setTimeout(() => $('#copied').fadeOut(100), 1000);
+      }
+    `;
+    const resA = scanJsSource('ui/toastA.js', codeA, [animateElementEntryExitMatcher], project);
+    assert.equal(resA.matches.length, 0);
+
+    const codeB = `
+      function showToast() {
+        $('.toast').fadeIn().delay(2000).fadeOut();
+      }
+    `;
+    const resB = scanJsSource('ui/toastB.js', codeB, [animateElementEntryExitMatcher], project);
+    assert.equal(resB.matches.length, 0);
+
+    const codeC = `
+      function showModal() {
+        $('#modal').fadeIn(200);
+        $('#modal').fadeOut(200, () => $('#modal').remove());
+      }
+    `;
+    const resC = scanJsSource('ui/modal.js', codeC, [animateElementEntryExitMatcher], project);
+    assert.equal(resC.matches.length, 2);
+  });
 });

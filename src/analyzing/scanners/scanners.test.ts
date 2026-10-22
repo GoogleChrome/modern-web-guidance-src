@@ -26,7 +26,7 @@ import {
   sliceStructuredBlock,
   sliceStructuredContext,
 } from './context-slicer.ts';
-import { scanCss } from './css-scanner.ts';
+import { scanCss, scanCssRules } from './css-scanner.ts';
 import { scanPackageJson } from './dependency-scanner.ts';
 import { scanHtml, scanJsx, tokenizeHtmlTags } from './dom-scanner.ts';
 import {
@@ -905,6 +905,58 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
       { selectorText: '.card', parentAtRule: null },
       { selectorText: '.card', parentAtRule: '@media (width > 600px)' },
     ]);
+  });
+
+  await t.test('scanCssRules executes active rules in single-parse pass', () => {
+    const multiRuleCss = `
+    .btn {
+      color: blue;
+      max-height: 100px;
+    }
+    `;
+
+    const dummyRule1: AnalyzerRule & { matcher: CssRuleMatcher } = {
+      id: 'rule-1',
+      guideId: 'rule-1',
+      guideHash: '111111111111',
+      summary: 'Rule 1',
+      phase2Rubric: { keepWhen: [], dropWhen: [] },
+      matcher: {
+        kind: 'css',
+        fastTokens: ['color'],
+        matchRule: (view) => {
+          if (view.hasProperty('color')) {
+            return { message: 'has-color' };
+          }
+          return null;
+        },
+      },
+    };
+
+    const dummyRule2: AnalyzerRule & { matcher: CssRuleMatcher } = {
+      id: 'rule-2',
+      guideId: 'rule-2',
+      guideHash: '222222222222',
+      summary: 'Rule 2',
+      phase2Rubric: { keepWhen: [], dropWhen: [] },
+      matcher: {
+        kind: 'css',
+        fastTokens: ['max-height'],
+        matchRule: (view) => {
+          if (view.hasProperty('max-height')) {
+            return { message: 'has-max-height' };
+          }
+          return null;
+        },
+      },
+    };
+
+    const results = scanCssRules('button.css', multiRuleCss, [dummyRule1, dummyRule2]);
+    assert.equal(results.length, 2);
+    assert.equal(results[0]?.rule.id, 'rule-1');
+    assert.equal(results[0]?.match.message, 'has-color');
+    assert.equal(results[1]?.rule.id, 'rule-2');
+    assert.equal(results[1]?.match.message, 'has-max-height');
   });
 });
 

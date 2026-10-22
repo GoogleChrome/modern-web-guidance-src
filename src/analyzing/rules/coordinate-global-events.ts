@@ -202,7 +202,16 @@ function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
 
 export const coordinateGlobalEventsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['getTimezoneOffset', 'tz', 'moment', 'utc', 'Temporal'],
+  fastTokens: [
+    'getTimezoneOffset',
+    'moment.tz',
+    'dayjs.tz',
+    '.tz(',
+    'moment.utc',
+    'dayjs.utc',
+    '.utc(',
+    'Date.UTC',
+  ],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
     const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);

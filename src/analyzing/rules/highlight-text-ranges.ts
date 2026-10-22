@@ -123,7 +123,7 @@ export const highlightTextRangesPackageMatcher: DependencyRuleMatcher = {
 
 export const highlightTextRangesJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['Mark', 'mark', 'markRegExp'],
+  fastTokens: ['new Mark', '.mark(', '.markRegExp(', '.unmark(', 'Mark('],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
 

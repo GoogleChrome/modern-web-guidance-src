@@ -175,8 +175,12 @@ export const manageRecurringIntervalsMatcher: JsRuleMatcher = {
     'setUTCMonth',
     'setFullYear',
     'setUTCFullYear',
-    'add',
-    'subtract',
+    '.add(',
+    '.subtract(',
+    'addMonths',
+    'addYears',
+    'subMonths',
+    'subYears',
   ],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];

@@ -248,7 +248,7 @@ function matchMomentDiffCall(callExpr: CallExpression): AnalyzerMatch | null {
 
 export const calculateEventDifferentialsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['86400000', '864e5', 'diff', '1000', '24'],
+  fastTokens: ['86400000', '864e5', '3600000', '36e5', '.diff(', 'differenceIn', 'getTime'],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
 

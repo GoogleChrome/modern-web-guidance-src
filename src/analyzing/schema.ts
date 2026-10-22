@@ -83,6 +83,7 @@ export interface CssRuleView {
 export interface CssMatcherContext {
   readonly filePath: string;
   readonly stylesheetText: string;
+  readonly styleRules?: readonly CssRuleView[];
   stylesheetHasProperty(prop: string): boolean;
   stylesheetHasValue(substr: string): boolean;
 }
