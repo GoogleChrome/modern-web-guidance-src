@@ -220,7 +220,7 @@ input {
 
 - **DO** use `accent-color` for quick branding of native radios/checkboxes.
 - **DO** use `appearance: none` for custom dropdown arrows without breaking semantics.
-- **DO** ensure inputs are clearly visible with adequate border contrast (e.g., `#ccc` or darker on white backgrounds).
+- **DO** ensure inputs are clearly visible with adequate border contrast (e.g., `#767676` or darker on white backgrounds).
 - **DO** maintain a visible `:focus-visible` indicator on all controls. Never disable focus outlines (`outline:none`) without providing a high-contrast alternative.
 - **DO** hide inputs visually using the canonical `.visually-hidden` recipe (`clip-path: inset(50%)` with 1px dimensions) — NOT `display: none`, which removes them from the accessibility tree.
 
