@@ -1400,10 +1400,6 @@
         {
           "id": "demo",
           "path": "guides/performance/optimize-image-priority/demo.html"
-        },
-        {
-          "id": "negative-demo",
-          "path": "guides/performance/optimize-image-priority/negative-demo.html"
         }
       ]
     },
@@ -2075,10 +2071,6 @@
         {
           "id": "demo",
           "path": "guides/ui-behaviors/anchor-positioning-tab-underline/demo.html"
-        },
-        {
-          "id": "negative-demo",
-          "path": "guides/ui-behaviors/anchor-positioning-tab-underline/negative-demo.html"
         }
       ]
     },

@@ -238,7 +238,7 @@
         "daily-grind"
       ],
       "optimize-image-priority": [
-        "task"
+        "daily-grind"
       ],
       "optimize-preload-priority": [
         "task"
@@ -334,7 +334,7 @@
     },
     "ui-behaviors": {
       "anchor-positioning-tab-underline": [
-        "task"
+        "daily-grind"
       ],
       "animate-element-entry-exit": [
         "task"
