@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
-import matter from "gray-matter";
+import matter from "@11ty/gray-matter";
 import { marked } from "marked";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";

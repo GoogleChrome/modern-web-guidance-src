@@ -17,9 +17,8 @@ import path from 'node:path';
 
 import { cBold, cCyan, cDim, cGreen, cRed } from '../core/colors.ts';
 import {
+  classifyGuide,
   scanAllGuides,
-  getGuideStatus,
-  ProjectStatus,
   REPORT_FILE,
   type GuideInventory,
 } from '../core/guide-validation.ts';
@@ -83,7 +82,8 @@ export function planFixes(
   const handledPrs = new Set<number>();
 
   for (const inv of guides) {
-    if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) continue;
+    const status = classifyGuide(inv);
+    if (status !== 'needs-calibration' && status !== 'needs-test') continue;
     const guidePath = `guides/${inv.category}/${inv.name}`;
 
     // `gd pr` titles its PR the same way whichever branch it runs from.

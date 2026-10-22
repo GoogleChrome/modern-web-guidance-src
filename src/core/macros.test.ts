@@ -629,6 +629,12 @@ describe('INCLUDE', () => {
         /Web feature ID "nonexistent-feature" not found/
       );
     });
+
+    it('emits fallbacks without a status line for pending tmp-* features', () => {
+      const result = replaceMacros('{{ FEATURE_FALLBACKS("tmp-customizable-select-listbox") }}', 'test.md');
+      assert.match(result, /^### Fallbacks & browser support for customizable-select-listbox\n\n[^\n]/);
+      assert.doesNotMatch(result, /Browser support for/);
+    });
   });
 
   describe('caching', () => {
