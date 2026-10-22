@@ -70,7 +70,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** place `<label>` elements inline immediately after `<input type="checkbox">` and `<input type="radio">` controls for consistent alignment.
 - **DO** use visible labels and keep critical format instructions (e.g., `3-12 characters`) in the label or persistent helper text; do not rely on `placeholder` alone.
 - **DO** ensure the vertical margin between a label and its input is less than the margin between form groups (**Gestalt Proximity Rule**).
-- **DO** set `aria-invalid="true"` on form controls that fail validation, and clear it once resolved.
+- **DO** set `aria-invalid="true"` on form controls that fail custom validation, and clear it once resolved.
 - **DO** use `aria-describedby` to link inputs with help text or error messages.
 - **DO** define the `lang` attribute on `<html>` for proper device translation.
 - **DO** use non-color visual cues (icons, text) to communicate state (don't rely on color alone).
