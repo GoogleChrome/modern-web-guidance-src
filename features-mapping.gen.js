@@ -845,12 +845,10 @@ window.__featuresMapping = {
     "picture-in-picture"
   ],
   "menu": [
-    "container-scroll-state-queries",
     "popover",
-    "subgrid",
-    "menu",
-    "sticky-positioning",
-    "anchor-positioning"
+    "invoker-commands",
+    "anchor-positioning",
+    "focusgroup"
   ],
   "navbar": [
     "popover"

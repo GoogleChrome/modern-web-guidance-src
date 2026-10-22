@@ -2828,6 +2828,24 @@
       ]
     },
     {
+      "id": "menu",
+      "category": "ui-components",
+      "title": "Build a dropdown menu",
+      "description": "Build a menu component that displays a list of options or actions, with support for nested submenus.",
+      "features": [
+        "popover",
+        "invoker-commands",
+        "anchor-positioning",
+        "focusgroup"
+      ],
+      "demos": [
+        {
+          "id": "demo",
+          "path": "guides/ui-components/menu/demo.html"
+        }
+      ]
+    },
+    {
       "id": "navigation-drawer",
       "category": "ui-components",
       "title": "Navigation Drawer",
@@ -3451,6 +3469,7 @@
     "fetchlater",
     "field-sizing",
     "file-selector-button",
+    "focusgroup",
     "font-size-adjust",
     "form-associated-custom-elements",
     "function",
