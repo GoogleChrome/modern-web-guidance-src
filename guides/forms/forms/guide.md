@@ -140,7 +140,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** use the ValidityState API (`setCustomValidity`) for custom messaging and write clear error messages that explain how to fix the issue.
 - **DO** move focus to the first invalid field (or an error summary) when a form submission fails validation.
 
-- **DON'T** use the raw `:invalid` CSS pseudo-class alone for error styling to ensure empty reqiured fields are not marked as invalid before the user interacts with the form.
+- **DON'T** use the raw `:invalid` CSS pseudo-class alone for error styling to ensure empty required fields are not marked as invalid before the user interacts with the form.
 - **DON'T** disable submit buttons to block validation; let users submit and highlight errors. However, **DO** disable the button *after* a valid submission is clicked to prevent double-posts.
 - **DON'T** trigger validation errors or `aria-live` error announcements on every keystroke while the user is typing (validate on submit or `blur`, and clear errors on `input` once resolved).
 
