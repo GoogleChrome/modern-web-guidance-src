@@ -18,7 +18,7 @@
         -webkit-text-size-adjust: 100%;
       }
 
-      header {
+      h1 {
         display: grid;
         gap: 1.5em;
         padding: 1.5em;
@@ -30,6 +30,21 @@
 
       main {
         min-height: 100vh;
+      }
+
+      /* Hides content visually but keeps it in the accessibility tree.
+         :focus-within / :active opt elements out — useful for skip links and
+         any focusable content wrapped in this class. */
+      .visually-hidden:where(:not(:focus-within, :active)) {
+        position: absolute !important;
+        clip-path: inset(50%) !important;
+        overflow: hidden !important;
+        width: 1px !important;
+        height: 1px !important;
+        margin: -1px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        white-space: nowrap !important;
       }
     }
 
@@ -92,6 +107,32 @@
         visibility: hidden;
       }
 
+      /* Skip the icon pop for users who prefer reduced motion. */
+      @media (prefers-reduced-motion: reduce) {
+        .SwipeableList-item.is-activating::before,
+        .SwipeableList-item.is-activating::after {
+          scale: 1;
+        }
+      }
+
+      /* Forced colors replaces the action background with Canvas, which
+         hides the white icons. Paint the icon shapes in CanvasText instead. */
+      @media (forced-colors: active) {
+        .SwipeableList-item.is-initialized::before,
+        .SwipeableList-item.is-initialized::after {
+          forced-color-adjust: none;
+          background: CanvasText;
+        }
+
+        .SwipeableList-item.is-initialized::before {
+          mask: var(--left-action-icon) center / contain no-repeat;
+        }
+
+        .SwipeableList-item.is-initialized::after {
+          mask: var(--right-action-icon) center / contain no-repeat;
+        }
+      }
+
       .SwipeableList-item.is-initialized .SwipeableList-track {
         display: grid;
         grid-template-columns: 100% 100% 100%;
@@ -138,6 +179,67 @@
         border-bottom: 1px solid #eee;
         background: Canvas;
         padding: 1.5em;
+
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1em;
+      }
+
+      /* Archive and snooze buttons: the same actions as swiping right and
+         left, for keyboard, single-tap and screen reader users. They reuse
+         the swipe colors and icons so the two paths look related. */
+      .SwipeableList-actions {
+        display: flex;
+        gap: 0.5em;
+      }
+
+      .SwipeableList-action {
+        display: grid;
+        place-items: center;
+        /* At least 24x24 CSS pixels so the buttons are easy to hit. */
+        min-width: 24px;
+        min-height: 24px;
+        padding: 0.375em;
+        border: 0;
+        border-radius: 0.25em;
+        background-color: var(--action-color);
+      }
+
+      .SwipeableList-action[data-direction="left"] {
+        --action-color: var(--left-action-color);
+        --action-icon: var(--left-action-icon);
+      }
+
+      .SwipeableList-action[data-direction="right"] {
+        --action-color: var(--right-action-color);
+        --action-icon: var(--right-action-icon);
+      }
+
+      /* The white icon is at least 3:1 against both action colors. */
+      .SwipeableList-action-icon {
+        width: 1.5em;
+        aspect-ratio: 1;
+        background: var(--action-icon) center / contain no-repeat;
+      }
+
+      .SwipeableList-action:focus-visible {
+        outline: 2px solid CanvasText;
+        outline-offset: 2px;
+      }
+
+      /* Forced colors replaces the button color with ButtonFace, which hides
+         the white icon. Paint the icon shape in ButtonText instead. */
+      @media (forced-colors: active) {
+        .SwipeableList-action {
+          border: 1px solid ButtonText;
+        }
+
+        .SwipeableList-action-icon {
+          forced-color-adjust: none;
+          background: ButtonText;
+          mask: var(--action-icon) center / contain no-repeat;
+        }
       }
 
       .SwipeableList-item.is-initialized .SwipeableList-content {
@@ -193,10 +295,46 @@
     });
 
     async function removeItem(item, content, direction, entry) {
-      // In a real application, you could perform a different action based on
-      // the direction passed here (e.g., archive vs. snooze). For this demo,
-      // we remove the item from the list regardless of direction.
-      const opts = {duration: 300, easing: 'ease', fill: 'forwards'};
+      // In a real application, you would perform a different action based on
+      // the direction passed here: archive for 'left' (the user swiped right
+      // or pressed Archive) and snooze for 'right'. For this demo, both
+      // actions remove the item from the list.
+      const action = direction === 'left' ? 'archived' : 'snoozed';
+
+      // Removing or inerting the row drops focus to <body> if focus is
+      // inside it, so move focus to the next row first (or the previous
+      // row, or the list heading when the list is now empty). Rows still
+      // collapsing are skipped. Keep focus on the same kind of element: if
+      // the row itself had focus (some browsers make the track a Tab stop
+      // even when it contains buttons), focus the next row, so the larger
+      // row focus indicator appears where the user expects it; otherwise
+      // focus the next row's first button.
+      const list = item.parentElement;
+      if (item.contains(document.activeElement)) {
+        const rows = [...list.children].filter(
+          (row) => row === item || !row.classList.contains('is-removing'),
+        );
+        const index = rows.indexOf(item);
+        const next = rows[index + 1] ?? rows[index - 1];
+        const listHeading = document.getElementById(list.getAttribute('aria-labelledby'));
+        const firstButton = next?.querySelector('button');
+        const target = document.activeElement.matches('.SwipeableList-track')
+          ? next?.querySelector('.SwipeableList-track')
+          : firstButton;
+        (target ?? listHeading).focus();
+        // Not every browser lets the track take focus; fall back to the button.
+        if (target && document.activeElement !== target) (firstButton ?? listHeading).focus();
+      }
+
+      // A row disappearing isn't announced, so say which item was archived
+      // or snoozed in the page's role="status" element.
+      const label = item.querySelector('.SwipeableList-label').textContent;
+      document.querySelector('.SwipeableList-status').textContent = `${label} ${action}`;
+
+      // Sliding the row off-screen is large movement, so skip it for users
+      // who prefer reduced motion and keep a shorter collapse instead.
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const opts = {duration: reduce ? 150 : 300, easing: 'ease', fill: 'forwards'};
       const rect = entry.boundingClientRect;
       // Content's pixel offset from the track's left edge.
       const x = rect.x - entry.rootBounds.x;
@@ -207,7 +345,7 @@
       // then await the completion of all of them.
       item.classList.add('is-removing');
       item.animate([{height: `${rect.height}px`}, {height: '0px'}], opts);
-      content.animate([{translate: `${translate}px`}], opts);
+      if (!reduce) content.animate([{translate: `${translate}px`}], opts);
       await Promise.allSettled(
         item.getAnimations({subtree: true}).map((a) => a.finished),
       );
@@ -269,10 +407,7 @@
           : 'right';
 
         if (ratio < commitThreshold) {
-          removeItem(item, content, direction, entry);
-          if (needsScrollWorkaround) trackResizeObserver.unobserve(track);
-          viewportObserver.unobserve(item);
-          observer.disconnect();
+          commit(direction, entry);
           return;
         }
 
@@ -290,7 +425,18 @@
         threshold: [commitThreshold, activateThreshold],
       });
 
-      const handle = {observer, content};
+      // The swipe and the action buttons all commit through here, so they
+      // share one removal path. The guard stops a second swipe or click from
+      // removing the row twice.
+      function commit(direction, entry) {
+        if (item.classList.contains('is-removing')) return;
+        removeItem(item, content, direction, entry);
+        if (needsScrollWorkaround) trackResizeObserver.unobserve(track);
+        viewportObserver.unobserve(item);
+        observer.disconnect();
+      }
+
+      const handle = {observer, content, track, commit};
       swipeObservers.set(item, handle);
       return handle;
     }
@@ -319,6 +465,25 @@
           }
         }
       }).observe(list, {childList: true});
+
+      // Each action button runs the same commit as the matching swipe.
+      // Delegate from the list so items added later work too. A keyboard user
+      // can reach a button before its row has scrolled into view, so set the
+      // item up on demand.
+      list.addEventListener('click', (event) => {
+        const button = event.target.closest('.SwipeableList-action');
+        const item = button?.closest('.SwipeableList-item');
+        if (!item) return;
+        const handle = swipeObservers.get(item) ?? setupItem(item);
+        // Commit in the direction of the swipe this button stands in for:
+        // 'left' (archive) reveals the left edge's action when swiping right,
+        // 'right' (snooze) the right edge's. Pass the same measurements an
+        // IntersectionObserver entry carries.
+        handle.commit(button.dataset.direction, {
+          boundingClientRect: handle.content.getBoundingClientRect(),
+          rootBounds: handle.track.getBoundingClientRect(),
+        });
+      });
     }
 
     function init() {
@@ -330,111 +495,234 @@
 </head>
 <body>
   <main>
-    <header>
-      Swipe to remove demo
-    </header>
-    <ul class="SwipeableList">
+    <h1 id="list-heading" tabindex="-1">Swipe to remove demo</h1>
+    <!-- Safari removes list semantics when list-style is none; role="list"
+         restores the item count for screen readers. -->
+    <ul class="SwipeableList" role="list" aria-labelledby="list-heading">
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item One</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item One</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item One</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item One</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Two</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Two</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Two</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Two</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Three</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Three</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Three</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Three</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Four</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Four</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Four</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Four</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Five</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Five</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Five</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Five</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Six</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Six</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Six</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Six</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Seven</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Seven</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Seven</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Seven</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Eight</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Eight</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Eight</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Eight</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Nine</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Nine</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Nine</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Nine</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Ten</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Ten</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Ten</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Ten</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Eleven</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Eleven</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Eleven</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Eleven</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Twelve</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Twelve</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Twelve</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Twelve</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Thirteen</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Thirteen</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Thirteen</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Thirteen</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Fourteen</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Fourteen</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Fourteen</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Fourteen</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Fifteen</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Fifteen</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Fifteen</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Fifteen</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Sixteen</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Sixteen</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Sixteen</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Sixteen</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Seventeen</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Seventeen</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Seventeen</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Seventeen</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Eighteen</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Eighteen</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Eighteen</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Eighteen</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Nineteen</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Nineteen</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Nineteen</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Nineteen</span></button>
+            </div>
+          </div>
         </div>
       </li>
       <li class="SwipeableList-item">
         <div class="SwipeableList-track">
-          <div class="SwipeableList-content">Item Twenty</div>
+          <div class="SwipeableList-content">
+            <span class="SwipeableList-label">Item Twenty</span>
+            <div class="SwipeableList-actions">
+              <button type="button" class="SwipeableList-action" data-direction="left"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Archive Item Twenty</span></button>
+              <button type="button" class="SwipeableList-action" data-direction="right"><span class="SwipeableList-action-icon" aria-hidden="true"></span><span class="visually-hidden">Snooze Item Twenty</span></button>
+            </div>
+          </div>
         </div>
       </li>
     </ul>
+    <!-- Screen readers only announce changes to a live region that was
+         already in the page, so render this empty and fill it on removal. -->
+    <p role="status" class="SwipeableList-status visually-hidden"></p>
   </main>
 </body>
 </html>
