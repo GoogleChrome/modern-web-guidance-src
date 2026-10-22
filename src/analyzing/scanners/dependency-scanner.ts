@@ -61,7 +61,12 @@ function normalizePackageName(pkgName: string): NormalizedPackage {
     raw.startsWith('@') && raw.includes('/')
       ? raw.slice(raw.indexOf('/') + 1)
       : raw;
-  const base = unscoped.endsWith('.js') ? unscoped.slice(0, -3) : unscoped;
+  let base = unscoped;
+  if (base.endsWith('.js')) {
+    base = base.slice(0, -3);
+  } else if (base.endsWith('-js')) {
+    base = base.slice(0, -3);
+  }
   let core = base;
   if (core.startsWith('jquery-') || core.startsWith('jquery.')) {
     core = core.slice(7);
@@ -108,25 +113,118 @@ function buildFilenameCandidates(baseName: string): ReadonlySet<string> {
   return candidates;
 }
 
+const STRICT_SINGLE_WORD_PACKAGES: ReadonlySet<string> = new Set([
+  'chosen',
+  'aos',
+  'countries',
+  'country',
+  'mark',
+  'sal',
+]);
+
+function extractLeadingComment(content: string): string | null {
+  const match = content.match(/^\s*(?:\/\*[\s\S]*?(?:\*\/|$)|(?:\/\/[^\n]*\n)+)/);
+  return match ? match[0] : null;
+}
+
+function stripAuthorAndCopyrightLines(commentText: string): string {
+  return commentText
+    .split('\n')
+    .filter((line) => {
+      const lower = line.toLowerCase();
+      if (
+        lower.includes('copyright') ||
+        lower.includes('@author') ||
+        /\bauthors?\b\s*[:\-]/i.test(line) ||
+        /\(c\)\s*\d{4}/i.test(line)
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .join('\n');
+}
+
 function bannerIdentifiesPackage(bannerSlice: string, pkgName: string): boolean {
   if (bannerSlice.length === 0) {
     return false;
   }
-  const lowerBanner = bannerSlice.toLowerCase();
+
+  const commentBlock = extractLeadingComment(bannerSlice);
+  if (!commentBlock) {
+    return false;
+  }
+
+  const lowerComment = commentBlock.toLowerCase();
   const hasBannerMarker =
-    lowerBanner.includes('/*!') ||
-    lowerBanner.includes('@license') ||
-    lowerBanner.includes('@preserve') ||
-    lowerBanner.includes('@author') ||
-    lowerBanner.includes('@version') ||
-    lowerBanner.includes('copyright') ||
-    lowerBanner.includes('license');
+    lowerComment.includes('/*!') ||
+    lowerComment.includes('@license') ||
+    lowerComment.includes('@preserve') ||
+    lowerComment.includes('@author') ||
+    lowerComment.includes('@version') ||
+    lowerComment.includes('copyright') ||
+    lowerComment.includes('license');
 
   if (!hasBannerMarker) {
     return false;
   }
 
+  const cleanedComment = stripAuthorAndCopyrightLines(commentBlock);
   const pkgNorm = normalizePackageName(pkgName);
+
+  // If the raw package name ends with '.js' (e.g. 'mark.js', 'sal.js'),
+  // strictly require the '.js' suffix in banner matching (or 'markjs' / 'jquery.mark') - never bare '\bmark\b' or '\bsal\b'!
+  if (pkgNorm.raw.endsWith('.js')) {
+    const baseEsc = escapeRegExp(pkgNorm.base);
+    const jsPattern = new RegExp(
+      `\\b(?:(?:jquery|vanilla)[.-])?${baseEsc}(?:\\.[a-z0-9]+)?\\.js\\b|\\b${baseEsc}js\\b|\\bjquery\\.${baseEsc}\\b`,
+      'i',
+    );
+    return jsPattern.test(cleanedComment);
+  }
+
+  // Check if core name is a single-word English name that requires strict qualification
+  // (e.g. 'chosen-js' -> 'chosen', 'aos' -> 'aos', 'countries' -> 'countries')
+  const isStrictSingleWord =
+    STRICT_SINGLE_WORD_PACKAGES.has(pkgNorm.core) ||
+    STRICT_SINGLE_WORD_PACKAGES.has(pkgNorm.base) ||
+    STRICT_SINGLE_WORD_PACKAGES.has(pkgNorm.raw);
+
+  if (isStrictSingleWord) {
+    // If full package name is hyphenated/scoped (like 'chosen-js' or 'i18n-iso-countries'), allow exact full name
+    if (pkgNorm.raw.includes('-') || pkgNorm.raw.includes('.')) {
+      const fullPkgPattern = new RegExp(`\\b${escapeRegExp(pkgNorm.raw)}\\b`, 'i');
+      if (fullPkgPattern.test(cleanedComment)) {
+        return true;
+      }
+    }
+
+    const coreEsc = escapeRegExp(pkgNorm.core);
+    const strictPattern = new RegExp(
+      `\\b(?:(?:jquery|vanilla)[.-])?${coreEsc}(?:\\.[a-z0-9]+)?\\.js\\b|` +
+      `\\b${coreEsc}\\.jquery(?:\\.js)?\\b|` +
+      `\\b${coreEsc}[-_]js\\b|` +
+      `\\b${coreEsc}\\s+v?\\d+(?:\\.\\d+)*\\b|` +
+      `\\b${coreEsc}\\s*\\(\\s*v?\\d+|` +
+      `\\b${coreEsc}\\s*[,:—–\\-]\\s+`,
+      'i',
+    );
+    return strictPattern.test(cleanedComment);
+  }
+
+  // Check if the full package name appears directly in the banner (e.g. 'scrollreveal', 'tablesaw')
+  const fullPkgPattern = new RegExp(`\\b${escapeRegExp(pkgNorm.raw)}\\b`, 'i');
+  if (fullPkgPattern.test(cleanedComment)) {
+    return true;
+  }
+
+  if (pkgNorm.unscoped !== pkgNorm.raw) {
+    const unscopedPattern = new RegExp(`\\b${escapeRegExp(pkgNorm.unscoped)}\\b`, 'i');
+    if (unscopedPattern.test(cleanedComment)) {
+      return true;
+    }
+  }
+
   const wordsToMatch = new Set<string>([
     pkgNorm.raw,
     pkgNorm.unscoped,
@@ -141,14 +239,14 @@ function bannerIdentifiesPackage(bannerSlice: string, pkgName: string): boolean 
   for (const word of wordsToMatch) {
     if (word.length < 3) {
       const shortPattern = new RegExp(`\\b${escapeRegExp(word)}\\.js\\b`, 'i');
-      if (shortPattern.test(lowerBanner)) {
+      if (shortPattern.test(cleanedComment)) {
         return true;
       }
       continue;
     }
 
     const wordPattern = new RegExp(`\\b${escapeRegExp(word)}(?:\\.js)?\\b`, 'i');
-    if (wordPattern.test(lowerBanner)) {
+    if (wordPattern.test(cleanedComment)) {
       return true;
     }
   }

@@ -360,4 +360,114 @@ describe('dependency-scanner R46 runtime & client-side filtering', () => {
       0,
     );
   });
+
+  it('does not false-positive on author names like Mark Otto in Bootstrap copyright headers (regression test)', () => {
+    const markRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['mark.js', 'markjs'],
+    };
+
+    const bootstrapHeader = [
+      '/*!',
+      ' * Bootstrap v4.1.3 (https://getbootstrap.com/)',
+      ' * Copyright 2011-2018 The Bootstrap Authors',
+      ' * Copyright 2011-2018 Twitter, Inc.',
+      ' * Authors: Mark Otto, Jacob Thornton',
+      ' * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)',
+      ' */',
+      '(function (global, factory) {',
+      '  typeof exports === "object" && typeof module !== "undefined" ? factory(exports, require("jquery"), require("popper.js")) :',
+      '  typeof define === "function" && define.amd ? define(["exports", "jquery", "popper.js"], factory) :',
+      '  (factory((global.bootstrap = {}), global.jQuery, global.Popper));',
+      '}(this, (function (exports, $, Popper) {',
+      '})));',
+    ].join('\n');
+
+    const matches = scanVendoredLibraryFile(
+      'vendor/bootstrap.js',
+      bootstrapHeader,
+      [markRule],
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  it('does not false-positive on prose words like "chosen" or "countries" in license text', () => {
+    const chosenRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['chosen-js'],
+    };
+    const countriesRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['i18n-iso-countries', 'countries'],
+    };
+
+    const licenseWithProse = [
+      '/*!',
+      ' * SomeUtility v1.0.0',
+      ' * Licensed under the Apache License, Version 2.0.',
+      ' * Redistribution and use are permitted in all countries.',
+      ' * In any venue chosen by the user, this license applies.',
+      ' */',
+      'function util() {}',
+    ].join('\n');
+
+    assert.equal(
+      scanVendoredLibraryFile('vendor/util.js', licenseWithProse, [chosenRule]).length,
+      0,
+    );
+    assert.equal(
+      scanVendoredLibraryFile('vendor/util.js', licenseWithProse, [countriesRule]).length,
+      0,
+    );
+  });
+
+  it('correctly matches legitimate mark.js and chosen-js library banners', () => {
+    const markRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['mark.js'],
+    };
+    const chosenRule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['chosen-js'],
+    };
+
+    const realMarkJsHeader = [
+      '/*!***************************************************',
+      ' * mark.js v8.11.1',
+      ' * https://github.com/julmot/mark.js',
+      ' * Copyright (c) 2014–2018, Julian Motz',
+      ' * Released under the MIT license https://git.io/vwTVl',
+      ' ***************************************************/',
+      'var Mark = function(){};',
+    ].join('\n');
+
+    const markMatches = scanVendoredLibraryFile(
+      'vendor/custom-highlighter.js',
+      realMarkJsHeader,
+      [markRule],
+    );
+    assert.equal(markMatches.length, 1);
+    assert.equal(markMatches[0]?.line, 1);
+
+    const realChosenHeader = [
+      '/*!',
+      'Chosen, a Select Box Enhancer for jQuery and Prototype',
+      'by Patrick Filler for Harvest, http://getharvest.com',
+      '',
+      'Version 1.8.7',
+      'Full source at https://github.com/harvesthq/chosen',
+      'Copyright (c) 2011-2018 by Harvest',
+      '*/',
+      'var SelectParser = function(){};',
+    ].join('\n');
+
+    const chosenMatches = scanVendoredLibraryFile(
+      'vendor/custom-select.js',
+      realChosenHeader,
+      [chosenRule],
+    );
+    assert.equal(chosenMatches.length, 1);
+    assert.equal(chosenMatches[0]?.line, 1);
+  });
 });
+
