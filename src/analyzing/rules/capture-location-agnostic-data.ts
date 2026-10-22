@@ -337,7 +337,13 @@ function matchIsoDisplayNameCall(callExpr: CallExpression): string | null {
 
 export const captureLocationAgnosticDataJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['countries', 'ISO6391', 'countryList', 'getName'],
+  fastTokens: [
+    'countries.getName',
+    'isoCountries.getName',
+    'countryList.getName',
+    'ISO6391.getName',
+    'iso6391.getName',
+  ],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     if (fileUsesCodeConversionOrValidation(sourceFile)) {
       return [];

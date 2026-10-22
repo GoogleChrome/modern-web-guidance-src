@@ -144,7 +144,7 @@ export const scrollEntryExitEffectsPackageMatcher: DependencyRuleMatcher = {
 
 export const scrollEntryExitEffectsJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['AOS', 'ScrollReveal', 'WOW'],
+  fastTokens: ['AOS.init', 'ScrollReveal', 'new WOW'],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
 
