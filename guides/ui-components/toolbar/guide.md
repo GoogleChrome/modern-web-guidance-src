@@ -107,7 +107,7 @@ const steps = vertical
 
 ## Tooltips for icon-only buttons
 
-Use interest invokers with `popover="hint"`. The browser shows the hint on hover and keyboard focus and wires the tooltip role and `aria-describedby` itself. Do not add `role="tooltip"` or `aria-describedby`. `hint` popovers show without closing an open menu popover.
+Use interest invokers with `popover="hint"`. The browser shows the hint on hover and keyboard focus and wires the tooltip role and `aria-describedby` itself. Do not add `role="tooltip"`, `aria-describedby`, or `aria-details`. `hint` popovers show without closing an open menu popover.
 
 ```html
 <button type="button" aria-label="Bold" interestfor="tip-bold">…</button>
