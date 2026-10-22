@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Text formatting toolbar</title>
+  <script type="module">
+    // Load each polyfill only when native support is missing. CDN URLs are for the demo; prefer bundling.
+    if (!("popover" in HTMLElement.prototype)) {
+      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
+    }
+    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+      await import("https://unpkg.com/interestfor@latest");
+    }
+  </script>
+  <style>
+    @layer reset, tokens, base, component;
+
+    @layer reset {
+      *, *::before, *::after { box-sizing: border-box; }
+      body, p, h1 { margin: 0; }
+      button { font: inherit; color: inherit; }
+    }
+
+    @layer tokens {
+      :root {
+        color-scheme: light dark;
+        --surface: light-dark(#fff, #1e1f24);
+        --ink: light-dark(#1b1b1f, #ececf1);
+        --line: light-dark(#767680, #8e8e99);
+        --accent: light-dark(oklch(0.5 0.2 260), oklch(0.78 0.14 260));
+        --ring: var(--accent);
+
+        /* Icons are defined once as data-URI SVGs and drawn with mask-image so they inherit color */
+        --i-bold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linejoin='round'%3E%3Cpath d='M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z'/%3E%3C/svg%3E");
+        --i-italic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M10 5h8M6 19h8M14 5l-4 14'/%3E%3C/svg%3E");
+        --i-underline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M7 4v7a5 5 0 0 0 10 0V4M5 20h14'/%3E%3C/svg%3E");
+        --i-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 6h16M4 10h10M4 14h16M4 18h10'/%3E%3C/svg%3E");
+        --i-center: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 6h16M7 10h10M4 14h16M7 18h10'/%3E%3C/svg%3E");
+        --i-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 6h16M10 10h10M4 14h16M10 18h10'/%3E%3C/svg%3E");
+        --i-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M5 12h.01M12 12h.01M19 12h.01'/%3E%3C/svg%3E");
+        --i-strike: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 12h16M16 7a4 3 0 0 0-4-2c-2.5 0-4 1-4 2.5S10 10 12 11M8 17a4 3 0 0 0 4 2c2.5 0 4-1 4-2.5'/%3E%3C/svg%3E");
+        --i-super: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19l8-8M12 19l-8-8M16 4h4l-4 5h4'/%3E%3C/svg%3E");
+        --i-clear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+        --i-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='11' height='11' rx='2'/%3E%3Cpath d='M5 15V6a2 2 0 0 1 2-2h8'/%3E%3C/svg%3E");
+        --i-plus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");
+        --i-minus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
+        --i-reset: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12a8 8 0 1 0 3-6.2M4 4v5h5'/%3E%3C/svg%3E");
+        --i-select: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-dasharray='3 3'%3E%3Crect x='4' y='4' width='16' height='16' rx='2'/%3E%3C/svg%3E");
+      }
+    }
+
+    @layer base {
+      body {
+        min-block-size: 100vh;
+        display: grid;
+        place-content: center;
+        gap: 1.5rem;
+        padding: 1rem;
+        font: 1rem/1.6 system-ui, sans-serif;
+        background: var(--surface);
+        color: var(--ink);
+      }
+
+      .demo {
+        inline-size: min(92vw, 36rem);
+        display: grid;
+        gap: 1rem;
+      }
+
+      /* The preview reacts to toolbar state with CSS only */
+      .stage {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.75rem;
+        align-items: start;
+      }
+
+      .preview {
+        font-size: calc(1rem * var(--zoom, 1));
+        padding: 1rem;
+        border: 1px solid var(--line);
+        border-radius: 0.5rem;
+        text-decoration-line: var(--underline,) var(--strike,);
+
+        & span {
+          vertical-align: baseline;
+        }
+      }
+
+      .status {
+        min-block-size: 1.5rem;
+        font-size: 0.875rem;
+      }
+
+      .demo:has([data-style="bold"][aria-pressed="true"]) .preview { font-weight: 700; }
+      .demo:has([data-style="italic"][aria-pressed="true"]) .preview { font-style: italic; }
+      .demo:has([data-style="underline"][aria-pressed="true"]) .preview { --underline: underline; }
+      .demo:has([data-style="strike"][aria-checked="true"]) .preview { --strike: line-through; }
+      .demo:has([data-style="super"][aria-checked="true"]) .preview span { vertical-align: super; font-size: 0.8em; }
+      .demo:has([data-align="center"][aria-pressed="true"]) .preview { text-align: center; }
+      .demo:has([data-align="right"][aria-pressed="true"]) .preview { text-align: end; }
+    }
+
+    @layer component {
+      [role="toolbar"] {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        padding: 0.25rem;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+        background: var(--surface);
+
+        & [role="group"] {
+          display: flex;
+          gap: 0.125rem;
+        }
+
+        /* Vertical toolbar: stack items; the group axis and separator flip with it */
+        &[aria-orientation="vertical"] {
+          flex-direction: column;
+          flex-wrap: nowrap;
+
+          & [role="group"] { flex-direction: column; }
+        }
+
+        & [role="separator"] {
+          inline-size: 1px;
+          block-size: 1.5rem;
+          margin-inline: 0.25rem;
+          background: var(--line);
+        }
+      }
+
+      .btn {
+        --btn-bg: transparent;
+        --icon-color: var(--ink);
+        position: relative;
+        display: grid;
+        place-items: center;
+        inline-size: 2.5rem;
+        block-size: 2.5rem;
+        padding: 0;
+        border: 0;
+        border-radius: 0.5rem;
+        background: var(--btn-bg);
+        cursor: pointer;
+
+        /* The icon: a masked box painted with currentColor-style custom property */
+        &::before {
+          content: "";
+          inline-size: 1.25rem;
+          block-size: 1.25rem;
+          background-color: var(--icon-color);
+          mask: var(--icon) center / contain no-repeat;
+        }
+
+        /* Non-color cue for the toggled-on state */
+        &::after {
+          content: "";
+          position: absolute;
+          inset-block-end: 0.25rem;
+          inset-inline: 0.75rem;
+          block-size: 2px;
+          border-radius: 1px;
+          background: var(--accent);
+          opacity: 0;
+        }
+
+        @media (hover: hover) {
+          &:hover { --btn-bg: color-mix(in oklch, var(--ink) 8%, transparent); }
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--ring);
+          outline-offset: 2px;
+        }
+
+        &:active {
+          --btn-bg: color-mix(in oklch, var(--ink) 16%, transparent);
+          scale: 0.94;
+        }
+
+        &[aria-pressed="true"] {
+          --btn-bg: color-mix(in oklch, var(--accent) 20%, transparent);
+          --icon-color: var(--accent);
+
+          &::after { opacity: 1; }
+        }
+
+        &[aria-disabled="true"] {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+      }
+
+      [data-icon="bold"] { --icon: var(--i-bold); }
+      [data-icon="italic"] { --icon: var(--i-italic); }
+      [data-icon="underline"] { --icon: var(--i-underline); }
+      [data-icon="left"] { --icon: var(--i-left); }
+      [data-icon="center"] { --icon: var(--i-center); }
+      [data-icon="right"] { --icon: var(--i-right); }
+      [data-icon="more"] { --icon: var(--i-more); }
+      [data-icon="strike"] { --icon: var(--i-strike); }
+      [data-icon="super"] { --icon: var(--i-super); }
+      [data-icon="clear"] { --icon: var(--i-clear); }
+      [data-icon="plus"] { --icon: var(--i-plus); }
+      [data-icon="minus"] { --icon: var(--i-minus); }
+      [data-icon="reset"] { --icon: var(--i-reset); }
+      [data-icon="copy"] { --icon: var(--i-copy); }
+      [data-icon="select"] { --icon: var(--i-select); }
+
+      /* Tooltips: interest invokers + popover="hint", anchored to the invoking button */
+      [popover="hint"] {
+        inset: auto;
+        margin: 0.4rem 0;
+        padding: 0.25rem 0.5rem;
+        border: 0;
+        border-radius: 0.375rem;
+        font-size: 0.8125rem;
+        background: var(--ink);
+        color: var(--surface);
+        position-area: block-end;
+        position-try-fallbacks: flip-block;
+      }
+
+      /* The interestfor polyfill reads delays from custom properties, so set them this way */
+      [data-item][interestfor] {
+        --interest-delay-start: 400ms;
+        interest-delay-start: var(--interest-delay-start);
+        --interest-delay-end: 100ms;
+        interest-delay-end: var(--interest-delay-end);
+      }
+
+      /* Overflow popup: top layer, light dismiss, anchored to the More button */
+      #more-menu {
+        inset: auto;
+        margin: 0.4rem 0;
+        padding: 0.25rem;
+        min-inline-size: 12rem;
+        border: 1px solid var(--line);
+        border-radius: 0.5rem;
+        background: var(--surface);
+        color: var(--ink);
+        position-area: block-end span-inline-start;
+        position-try-fallbacks: flip-block, flip-inline;
+
+        & .btn {
+          inline-size: 100%;
+          grid-auto-flow: column;
+          justify-content: start;
+          gap: 0.75rem;
+          padding-inline: 0.75rem;
+          text-align: start;
+
+          &::after { display: none; }
+        }
+
+        & [aria-checked="true"] {
+          --btn-bg: color-mix(in oklch, var(--accent) 20%, transparent);
+          --icon-color: var(--accent);
+          font-weight: 600;
+        }
+      }
+
+      /* Without anchor positioning, popovers center in the viewport: hide tooltips (the buttons have
+         aria-labels) and position the menu from script instead */
+      @supports not (position-area: block-end) {
+        [popover="hint"] { display: none; }
+        #more-menu {
+          position: fixed;
+          inset: auto;
+          margin: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .btn { transition: background-color 0.15s, scale 0.1s; }
+      }
+
+      @media (forced-colors: active) {
+        .btn::before { background-color: ButtonText; }
+        .btn[aria-pressed="true"], #more-menu [aria-checked="true"] { outline: 2px solid Highlight; }
+        .btn[aria-pressed="true"]::after { background: Highlight; }
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="demo">
+    <div role="toolbar" id="text-bar" aria-label="Text formatting" aria-controls="preview">
+      <div role="group" aria-label="Style">
+        <button type="button" class="btn" data-item data-icon="bold" data-style="bold" aria-pressed="false"
+          aria-label="Bold" interestfor="tip-bold"></button>
+        <button type="button" class="btn" data-item data-icon="italic" data-style="italic" aria-pressed="false"
+          aria-label="Italic" interestfor="tip-italic"></button>
+        <button type="button" class="btn" data-item data-icon="underline" data-style="underline" aria-pressed="false"
+          aria-label="Underline" interestfor="tip-underline"></button>
+      </div>
+      <span role="separator" aria-orientation="vertical"></span>
+      <div role="group" aria-label="Alignment">
+        <button type="button" class="btn" data-item data-icon="left" data-align="left" aria-pressed="true"
+          aria-label="Align left" interestfor="tip-left"></button>
+        <button type="button" class="btn" data-item data-icon="center" data-align="center" aria-pressed="false"
+          aria-label="Align center" interestfor="tip-center"></button>
+        <button type="button" class="btn" data-item data-icon="right" data-align="right" aria-pressed="false"
+          aria-label="Align right" interestfor="tip-right"></button>
+      </div>
+      <span role="separator" aria-orientation="vertical"></span>
+      <div role="group" aria-label="Actions">
+        <button type="button" class="btn" data-item data-icon="copy" data-action="copy" aria-label="Copy text"
+          interestfor="tip-copy"></button>
+        <button type="button" class="btn" data-item data-icon="select" data-action="select" aria-label="Select text"
+          interestfor="tip-select"></button>
+      </div>
+      <span role="separator" aria-orientation="vertical"></span>
+      <button type="button" class="btn" data-item data-icon="more" aria-label="More actions" aria-haspopup="menu"
+        aria-expanded="false" popovertarget="more-menu" interestfor="tip-more"></button>
+    </div>
+
+    <div class="stage">
+      <!-- Vertical toolbar: aria-orientation="vertical" and Up/Down arrows instead of Left/Right -->
+      <div role="toolbar" aria-label="Zoom" aria-orientation="vertical" aria-controls="preview">
+        <button type="button" class="btn" data-item data-icon="plus" data-action="zoom-in" aria-label="Zoom in"
+          interestfor="tip-zoom-in"></button>
+        <button type="button" class="btn" data-item data-icon="minus" data-action="zoom-out" aria-label="Zoom out"
+          interestfor="tip-zoom-out"></button>
+        <button type="button" class="btn" data-item data-icon="reset" data-action="zoom-reset" aria-label="Reset zoom"
+          interestfor="tip-zoom-reset"></button>
+      </div>
+
+      <p class="preview" id="preview"><span>The quick brown fox jumps over the lazy dog. Use the toolbar to change how
+          this sample paragraph is styled.</span></p>
+    </div>
+
+    <p class="status" role="status"></p>
+
+    <div id="more-menu" popover role="menu" aria-label="More actions">
+      <button type="button" class="btn" role="menuitemcheckbox" aria-checked="false" data-icon="strike"
+        data-style="strike" tabindex="-1"><span>Strikethrough</span></button>
+      <button type="button" class="btn" role="menuitemcheckbox" aria-checked="false" data-icon="super"
+        data-style="super" tabindex="-1"><span>Superscript</span></button>
+      <button type="button" class="btn" role="menuitem" data-icon="clear" data-clear tabindex="-1"><span>Clear
+          formatting</span></button>
+    </div>
+  </main>
+
+  <div id="tip-bold" popover="hint">Bold</div>
+  <div id="tip-italic" popover="hint">Italic</div>
+  <div id="tip-underline" popover="hint">Underline</div>
+  <div id="tip-left" popover="hint">Align left</div>
+  <div id="tip-center" popover="hint">Align center</div>
+  <div id="tip-right" popover="hint">Align right</div>
+  <div id="tip-copy" popover="hint">Copy text</div>
+  <div id="tip-select" popover="hint">Select text</div>
+  <div id="tip-zoom-in" popover="hint">Zoom in</div>
+  <div id="tip-zoom-out" popover="hint">Zoom out</div>
+  <div id="tip-zoom-reset" popover="hint">Reset zoom</div>
+  <div id="tip-more" popover="hint">More actions</div>
+
+  <script type="module">
+    const bar = document.querySelector("#text-bar");
+    const items = [...bar.querySelectorAll("[data-item]")];
+    const more = items.at(-1);
+    const menu = document.querySelector("#more-menu");
+    const menuItems = [...menu.querySelectorAll("button")];
+    const flag = (el, attr, on) => el.setAttribute(attr, String(on));
+    const move = (list, from, to) => list[(to + list.length) % list.length].focus();
+
+    // Roving tabindex for every toolbar: one tab stop; arrows/Home/End move focus and wrap.
+    // The arrow keys follow aria-orientation, and horizontal Left/Right flip in RTL.
+    for (const toolbar of document.querySelectorAll('[role="toolbar"]')) {
+      const list = [...toolbar.querySelectorAll("[data-item]")];
+      list.forEach((b, i) => (b.tabIndex = i ? -1 : 0));
+      toolbar.addEventListener("focusin", ({ target }) => {
+        if (list.includes(target)) list.forEach((b) => (b.tabIndex = b === target ? 0 : -1));
+      });
+      toolbar.addEventListener("keydown", (e) => {
+        const at = list.indexOf(e.target);
+        const vertical = toolbar.getAttribute("aria-orientation") === "vertical";
+        const rtl = getComputedStyle(toolbar).direction === "rtl";
+        const steps = vertical
+          ? { ArrowDown: 1, ArrowUp: -1 }
+          : { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 };
+        const step = steps[e.key];
+        if (step) move(list, at, at + step);
+        else if (e.key === "Home") move(list, at, 0);
+        else if (e.key === "End") move(list, at, -1);
+        else return;
+        e.preventDefault();
+      });
+    }
+
+    // Plain actions have no pressed state: they run once and report the result in a live region
+    const status = document.querySelector(".status");
+    const preview = document.querySelector("#preview");
+    const say = (text) => {
+      status.textContent = text;
+      setTimeout(() => (status.textContent = ""), 2000);
+    };
+    let zoom = 1;
+    function setZoom(next) {
+      zoom = Math.min(2, Math.max(0.5, next));
+      preview.style.setProperty("--zoom", zoom);
+      say(`Zoom ${Math.round(zoom * 100)}%`);
+    }
+    async function runAction(name) {
+      if (name === "zoom-in") setZoom(zoom + 0.25);
+      else if (name === "zoom-out") setZoom(zoom - 0.25);
+      else if (name === "zoom-reset") setZoom(1);
+      else if (name === "select") {
+        getSelection().selectAllChildren(preview);
+        say("Text selected");
+      } else if (name === "copy") {
+        try {
+          await navigator.clipboard.writeText(preview.textContent.trim());
+          say("Text copied");
+        } catch {
+          say("Copy failed");
+        }
+      }
+    }
+
+    // Toggle state lives in aria-pressed / aria-checked; the preview reads it with :has()
+    document.addEventListener("click", ({ target }) => {
+      const b = target.closest("button");
+      if (!b || b.getAttribute("aria-disabled") === "true") return;
+      if (b.dataset.action) {
+        runAction(b.dataset.action);
+      } else if (b.dataset.align) {
+        items.filter((x) => x.dataset.align).forEach((x) => flag(x, "aria-pressed", x === b));
+      } else if (b.hasAttribute("aria-pressed")) {
+        flag(b, "aria-pressed", b.getAttribute("aria-pressed") !== "true");
+      } else if (b.hasAttribute("aria-checked")) {
+        flag(b, "aria-checked", b.getAttribute("aria-checked") !== "true");
+      } else if ("clear" in b.dataset) {
+        items.filter((x) => x.hasAttribute("aria-pressed")).forEach((x) => flag(x, "aria-pressed", x.dataset.align === "left"));
+        menuItems.filter((x) => x.hasAttribute("aria-checked")).forEach((x) => flag(x, "aria-checked", false));
+      }
+      if (menu.contains(b)) menu.hidePopover();
+    });
+
+    // Overflow popup: aria-expanded follows the popover, focus enters on open; Esc and focus return are native
+    menu.addEventListener("toggle", ({ newState }) => {
+      flag(more, "aria-expanded", newState === "open");
+      if (newState === "open") menuItems[0].focus();
+      if (newState === "open" && !CSS.supports("position-area", "block-end")) placeMenu();
+    });
+    // Fallback: below the trigger, flipped above if it would overflow, clamped to the viewport
+    function placeMenu() {
+      const t = more.getBoundingClientRect();
+      const m = menu.getBoundingClientRect();
+      const below = t.bottom + m.height <= innerHeight;
+      menu.style.top = `${below ? t.bottom : t.top - m.height}px`;
+      menu.style.left = `${Math.max(0, Math.min(t.right - m.width, innerWidth - m.width))}px`;
+    }
+    menu.addEventListener("keydown", (e) => {
+      const at = menuItems.indexOf(document.activeElement);
+      const to = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: -1 }[e.key];
+      if (to === undefined) return;
+      move(menuItems, at, to);
+      e.preventDefault();
+    });
+  </script>
+</body>
+
+</html>

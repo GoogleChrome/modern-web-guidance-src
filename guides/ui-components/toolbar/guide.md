@@ -121,8 +121,13 @@ Use interest invokers with `popover="hint"`. The browser shows the hint on hover
   position-area: block-end;
   position-try-fallbacks: flip-block;
 }
-/* Example delays: show after a pause, hide quickly */
-[interestfor] { interest-delay: 400ms 100ms; }
+/* Example delays, set through custom properties so the interestfor polyfill can read them */
+[interestfor] {
+  --interest-delay-start: 400ms;
+  interest-delay-start: var(--interest-delay-start);
+  --interest-delay-end: 100ms;
+  interest-delay-end: var(--interest-delay-end);
+}
 ```
 
 ## Overflow menu for secondary actions (optional)

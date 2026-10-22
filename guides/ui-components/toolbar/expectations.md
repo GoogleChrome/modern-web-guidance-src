@@ -1,0 +1,12 @@
+- The toolbar container has `role="toolbar"` and a non-empty `aria-label`.
+- Related toolbar controls are wrapped in `role="group"` elements that each have a non-empty `aria-label`.
+- Every toolbar control is a `<button type="button">` and every icon-only button has a non-empty `aria-label`.
+- Exactly one toolbar item has `tabindex="0"` and all other toolbar items have `tabindex="-1"`.
+- In a horizontal toolbar, pressing `ArrowRight` on an item moves focus to the next item, and pressing it on the last item wraps focus to the first item.
+- In a horizontal toolbar, pressing `ArrowLeft` on the first item wraps focus to the last item.
+- Pressing `Home` and `End` moves focus to the first and last toolbar item respectively.
+- After focus moves to a toolbar item, that item has `tabindex="0"` and all other items have `tabindex="-1"`.
+- Clicking a toggle button flips its `aria-pressed` value between `true` and `false`.
+- Each icon-only toolbar button has an `interestfor` attribute whose value is the id of an element with `popover="hint"`.
+- Elements shown through `interestfor` do not set `role="tooltip"`, and their invoker buttons do not set `aria-describedby` or `aria-details`.
+- Toolbar buttons have a visible `:focus-visible` outline.
