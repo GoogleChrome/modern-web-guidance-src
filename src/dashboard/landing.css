@@ -886,3 +886,19 @@
   background-color: #d29922;
   opacity: 0.35;
 }
+/* Public view: agent/model breakdowns are available but collapsed under the guide table. */
+.insights-secondary {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+}
+.insights-secondary > summary {
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 8px 0;
+    user-select: none;
+}
+.insights-secondary[open] > summary {
+    margin-bottom: 8px;
+}

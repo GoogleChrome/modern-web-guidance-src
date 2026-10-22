@@ -163,15 +163,20 @@ test.describe('Public view', () => {
     }
   });
 
-  test('uplift comparisons omit the By Serving panel in public mode', async ({ page }) => {
+  test('uplift comparisons lead with By Guide; By Agent and By Model are collapsed; By Serving is gone', async ({ page }) => {
     await servePublicCopy(page);
     await page.goto('/?source=public');
     await expect(page.locator('.suite-table-row', { hasText: 'codex' }).first()).toBeVisible();
 
     await page.getByText('Uplift Comparisons').click();
     await expect(page.locator('.insights-panel-title', { hasText: 'By Guide' })).toBeVisible();
-    await expect(page.locator('.insights-panel-title', { hasText: 'By Agent' })).toBeVisible();
+    await expect(page.locator('.insights-panel-title', { hasText: 'By Agent' })).toBeHidden();
+    await expect(page.locator('.insights-panel-title', { hasText: 'By Model' })).toBeHidden();
     await expect(page.locator('.insights-panel-title', { hasText: 'By Serving' })).toHaveCount(0);
+
+    await page.locator('.insights-secondary > summary').click();
+    await expect(page.locator('.insights-panel-title', { hasText: 'By Agent' })).toBeVisible();
+    await expect(page.locator('.insights-panel-title', { hasText: 'By Model' })).toBeVisible();
   });
 
   test('a 404 from public-evals shows an error that names no bucket', async ({ page }) => {

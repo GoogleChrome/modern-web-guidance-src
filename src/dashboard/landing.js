@@ -1077,22 +1077,9 @@ function renderPivotInsights() {
 
         const dirArrow = currentGuideSortDir === 'asc' ? '↑' : '↓';
 
-        container.innerHTML = `
-            <div class="insights-top-row">
-                <div class="insights-panel">
-                    <div class="insights-panel-title">By Agent</div>
-                    ${renderPivotTable(grouped.agent, 'agent')}
-                </div>
-                ${isPublicView(resolveDataSource()) ? '' : `
-                <div class="insights-panel">
-                    <div class="insights-panel-title">By Serving</div>
-                    ${renderPivotTable(grouped.serving, 'serving')}
-                </div>`}
-                <div class="insights-panel">
-                    <div class="insights-panel-title">By Model</div>
-                    ${renderPivotTable(grouped.model, 'model')}
-                </div>
-            </div>
+        const publicView = isPublicView(resolveDataSource());
+
+        const guidePanel = `
             <div class="insights-panel insights-panel-full">
                 <div class="insights-panel-header-row">
                     <div class="insights-panel-title" style="margin-bottom: 0;">By Guide</div>
@@ -1107,8 +1094,35 @@ function renderPivotInsights() {
                     </div>
                 </div>
                 ${renderPivotTable(grouped.guide, 'guide')}
-            </div>
-        `;
+            </div>`;
+
+        const comparisonPanels = `
+            <div class="insights-top-row">
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Agent</div>
+                    ${renderPivotTable(grouped.agent, 'agent')}
+                </div>
+                ${publicView ? '' : `
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Serving</div>
+                    ${renderPivotTable(grouped.serving, 'serving')}
+                </div>`}
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Model</div>
+                    ${renderPivotTable(grouped.model, 'model')}
+                </div>
+            </div>`;
+
+        // Publicly the dashboard shows how much guides help, not which agent or model is best, so
+        // the guide view leads and the agent/model breakdowns are collapsed by default.
+        container.innerHTML = publicView
+            ? `${guidePanel}
+            <details class="insights-secondary">
+                <summary>By Agent and By Model</summary>
+                ${comparisonPanels}
+            </details>`
+            : `${comparisonPanels}
+            ${guidePanel}`;
 
         // Attach Event Listeners
         const sortSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById('guide-sort-select'));
