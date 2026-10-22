@@ -17,11 +17,10 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** specify a `name` attribute for every form control to identify data on submission.
 - **DO** use semantic tags like `<button type="submit">`, `<textarea>`, `<select>`, and specific `<input>` types.
 - **DO** explicitly set `type="button"` on secondary or helper buttons so they don't default to type="submit".
-- **DO** use `<fieldset>` and `<legend>` (with `<legend>` as the first child) to group related controls.
+- **DO** use `<fieldset>` and `<legend>` (with `<legend>` as the first child) to group related controls. **DON'T** use `<fieldset>` for visual styling without a `<legend>`
 - **DO** use actionable language on submit buttons (e.g., "Save changes").
 
 - **DON'T** nest `<form>` elements inside other `<form>` elements.
-- **DON'T** use `<fieldset>` for visual styling without a `<legend>`
 - **DON'T** use `GET` for sensitive data (it exposes data in history/logs).
 - **DON'T** use generic `<div>`, `<span>`, or `<a>` elements for form controls.
 - **DON'T** use `type="button"` for primary submission buttons.
