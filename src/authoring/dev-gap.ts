@@ -17,11 +17,9 @@ import path from 'node:path';
 
 import { cBold, cCyan, cDim, cGreen, cRed } from '../core/colors.ts';
 import {
+  classifyGuide,
   scanAllGuides,
-  getGuideStatus,
-  ProjectStatus,
   REPORT_FILE,
-  TARGETS_DIR,
   type GuideInventory,
 } from '../core/guide-validation.ts';
 import { rootDir, getGuideResultsDir } from '../core/paths.ts';
@@ -48,12 +46,21 @@ interface SkippedGap {
   reason: string;
 }
 
+export interface PrReviewContext {
+  branchCommits?: string;
+  branchDiff?: string;
+  comments?: string;
+  rerunMode?: DevPrRerunLabel;
+  threadIds?: string[];
+}
+
 export interface FixEvalGapsOptions {
   dryRun?: boolean;
   limit?: number;
   verbose?: boolean;
   suiteConfig?: SuiteConfig;
   targets?: readonly string[];
+  prContext?: PrReviewContext;
 }
 
 function getRerunMode(pr: OpenPr): DevPrRerunLabel | undefined {
@@ -75,8 +82,9 @@ export function planFixes(
   const handledPrs = new Set<number>();
 
   for (const inv of guides) {
-    if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) continue;
-    const guidePath = path.relative(rootDir, inv.dir);
+    const status = classifyGuide(inv);
+    if (status !== 'needs-calibration' && status !== 'needs-test') continue;
+    const guidePath = `guides/${inv.category}/${inv.name}`;
 
     // `gd pr` titles its PR the same way whichever branch it runs from.
     const pr = openPrs.find(p => p.title === devPrTitle(inv.name) || p.headRefName === devPrBranch(inv.name));
@@ -117,7 +125,7 @@ export function planFixes(
     const inv = guides.find(g => pr.title === devPrTitle(g.name) || pr.headRefName === devPrBranch(g.name));
     if (!inv) continue;
     toFix.push({
-      guidePath: path.relative(rootDir, inv.dir),
+      guidePath: `guides/${inv.category}/${inv.name}`,
       inv,
       prNumber: pr.number,
       branch: pr.headRefName ?? devPrBranch(inv.name),
@@ -169,6 +177,139 @@ export const evalGapFixCli = {
     { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
   )),
   scanGuides: (): GuideInventory[] => scanAllGuides(),
+  getHeadCommitSha: (): string => {
+    return git(['rev-parse', '--short', 'HEAD']);
+  },
+  replyToReviewThread: (threadId: string, message: string): void => {
+    const query = `
+mutation($threadId: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadId, body: $body }) {
+    comment { id }
+  }
+}`;
+    child_process.execFileSync(
+      'gh',
+      ['api', 'graphql', '-F', `threadId=${threadId}`, '-F', `body=${message}`, '-f', `query=${query}`],
+      { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+    );
+  },
+  fetchPrReviewContext: (prNumber: number, _branch?: string): PrReviewContext => {
+    let branchCommits = '';
+    let branchDiff = '';
+    let comments = '';
+    const threadIds: string[] = [];
+
+    try {
+      branchCommits = git(['log', '--oneline', 'origin/main..HEAD']);
+    } catch {}
+
+    try {
+      branchDiff = git(['diff', 'origin/main..HEAD']);
+    } catch {}
+
+    try {
+      const viewJson = JSON.parse(child_process.execFileSync(
+        'gh',
+        ['pr', 'view', String(prNumber), '--json', 'comments,reviews'],
+        { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+      ));
+
+      const commentLines: string[] = [];
+      if (Array.isArray(viewJson.comments)) {
+        for (const c of viewJson.comments) {
+          const author = c.author?.login || 'unknown';
+          const body = (c.body || '').trim();
+          if (body) {
+            commentLines.push(`- **@${author}** commented:\n${body}`);
+          }
+        }
+      }
+      if (Array.isArray(viewJson.reviews)) {
+        for (const r of viewJson.reviews) {
+          const author = r.author?.login || 'unknown';
+          const body = (r.body || '').trim();
+          const state = r.state || 'REVIEW';
+          if (body) {
+            commentLines.push(`- **@${author}** (${state}):\n${body}`);
+          }
+        }
+      }
+
+      // Fetch inline review comments from unresolved review threads via gh api graphql
+      try {
+        const query = `
+query($owner: String!, $repo: String!, $pr: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $pr) {
+      reviewThreads(first: 100) {
+        nodes {
+          id
+          isResolved
+          path
+          line
+          comments(first: 20) {
+            nodes {
+              author { login }
+              body
+            }
+          }
+        }
+      }
+    }
+  }
+}`;
+        const threadData = JSON.parse(child_process.execFileSync(
+          'gh',
+          ['api', 'graphql', '-F', 'owner={owner}', '-F', 'repo={repo}', '-F', `pr=${prNumber}`, '-f', `query=${query}`],
+          { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+        ));
+        const threads = threadData.data?.repository?.pullRequest?.reviewThreads?.nodes || [];
+        for (const t of threads) {
+          if (t.isResolved) continue;
+          if (t.id) threadIds.push(t.id);
+          const file = t.path || 'unknown';
+          const line = t.line || '';
+          const comments = t.comments?.nodes || [];
+          for (const c of comments) {
+            const author = c.author?.login || 'unknown';
+            const body = (c.body || '').trim();
+            if (body) {
+              commentLines.push(`- **@${author}** on \`${file}${line ? `:${line}` : ''}\`:\n${body}`);
+            }
+          }
+        }
+      } catch {
+        // Fallback to REST API if GraphQL query fails
+        try {
+          const reviewCommentsJson = JSON.parse(child_process.execFileSync(
+            'gh',
+            ['api', `repos/{owner}/{repo}/pulls/${prNumber}/comments`],
+            { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+          ));
+          if (Array.isArray(reviewCommentsJson)) {
+            for (const rc of reviewCommentsJson) {
+              const author = rc.user?.login || 'unknown';
+              const file = rc.path || 'unknown';
+              const line = rc.line || rc.original_line || '';
+              const body = (rc.body || '').trim();
+              if (body) {
+                commentLines.push(`- **@${author}** on \`${file}${line ? `:${line}` : ''}\`:\n${body}`);
+              }
+            }
+          }
+        } catch {}
+      }
+
+      comments = commentLines.join('\n\n');
+    } catch {}
+
+    return {
+      branchCommits,
+      branchDiff,
+      comments,
+      threadIds: threadIds.length > 0 ? threadIds : undefined,
+    };
+  },
   runDevGuide: async (inv: GuideInventory, options: FixEvalGapsOptions): Promise<boolean> => {
     const { devGuide } = await import('./dev.ts');
     return devGuide(inv.dir, {
@@ -176,6 +317,7 @@ export const evalGapFixCli = {
       verbose: options.verbose,
       suiteConfig: options.suiteConfig,
       targets: options.targets ?? ['daily-grind'],
+      prContext: options.prContext,
     });
   },
   runDevPr,
@@ -200,33 +342,47 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
 
   let outcome: Outcome;
   try {
+    let prContext = options.prContext;
     if (gap.rerunMode) {
       createdBranch = true;
       evalGapFixCli.checkoutPrBranch(branch);
-      if (gap.rerunMode === 'needs-eval-gen') {
-        for (const t of targets) {
-          fs.rmSync(path.join(inv.dir, TARGETS_DIR, t), { recursive: true, force: true });
-        }
+      if (gap.prNumber) {
+        prContext = evalGapFixCli.fetchPrReviewContext(gap.prNumber, branch);
       }
+      if (!prContext) prContext = {};
+      prContext.rerunMode = gap.rerunMode;
+    } else {
+      evalGapFixCli.createBranch(branch);
+      createdBranch = true;
     }
 
     // Clear guide results so the report can only come from this run.
     const resultsDir = getGuideResultsDir(inv);
     fs.rmSync(resultsDir, { recursive: true, force: true });
 
-    const devOk = await evalGapFixCli.runDevGuide(inv, { ...options, targets });
+    const devOk = await evalGapFixCli.runDevGuide(inv, { ...options, targets, prContext });
     if (!devOk || !fs.existsSync(path.join(resultsDir, REPORT_FILE))) {
       outcome = { gap, status: 'dev-failed', detail: devOk ? `gd dev wrote no ${REPORT_FILE}` : 'gd dev failed' };
     } else {
-      if (!gap.rerunMode) {
-        // Branch off main here so `gd pr` commits to a fresh branch this run owns.
-        evalGapFixCli.createBranch(branch);
-        createdBranch = true;
-      }
       const prUrl = await evalGapFixCli.runDevPr(inv.dir);
       outcome = prUrl
         ? { gap, status: gap.rerunMode ? 'pr-updated' : 'pr-opened', detail: prUrl }
         : { gap, status: 'pr-failed', detail: 'gd pr failed (branch may be on origin; delete it to retry)' };
+
+      if (prUrl && prContext?.threadIds?.length) {
+        try {
+          const sha = evalGapFixCli.getHeadCommitSha();
+          for (const threadId of prContext.threadIds) {
+            try {
+              evalGapFixCli.replyToReviewThread(threadId, `🤖 *[gd dev]* Addressed in ${sha}`);
+            } catch (err) {
+              console.warn(cDim(`Could not reply to review thread ${threadId}: ${(err as Error).message}`));
+            }
+          }
+        } catch (err) {
+          console.warn(cDim(`Could not reply to review threads: ${(err as Error).message}`));
+        }
+      }
     }
   } catch (err) {
     outcome = { gap, status: 'error', detail: (err as Error).message };
