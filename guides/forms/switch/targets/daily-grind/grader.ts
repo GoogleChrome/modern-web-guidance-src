@@ -213,7 +213,7 @@ test.describe('switch Target Grader', () => {
       const sel = rule.selectorText || '';
       const val = rule.style.getPropertyValue('accent-color').trim();
       const targetsSwitch =
-        sel.includes('switch') || sel.includes('input') || sel.includes('checkbox') || sel === '[style]';
+        sel.includes('[switch]') || sel.includes('input') || sel.includes('checkbox') || sel === '[style]';
       return targetsSwitch && val.length > 0 && val !== 'auto' && val !== 'initial' && val !== 'unset';
     });
     expect(hasAccentColor).toBe(true);
@@ -226,7 +226,7 @@ test.describe('switch Target Grader', () => {
       const sel = rule.selectorText || '';
       if (!sel.includes(':focus-visible')) return false;
       const targetsSwitch =
-        sel.includes('switch') || sel.includes('input') || sel.includes('checkbox');
+        sel.includes('[switch]') || sel.includes('input') || sel.includes('checkbox');
       if (!targetsSwitch) return false;
       const outline = rule.style.getPropertyValue('outline').trim();
       const outlineWidth = rule.style.getPropertyValue('outline-width').trim();
