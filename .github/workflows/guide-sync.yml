@@ -13,12 +13,6 @@ on:
       - reopened
     paths:
       - 'guides/**'
-  issues:
-    types:
-      - opened
-      - labeled
-      - closed
-      - reopened
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:
@@ -43,7 +37,6 @@ env:
 
 jobs:
   sync:
-    if: github.event_name != 'issues' || !endsWith(github.actor, '[bot]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

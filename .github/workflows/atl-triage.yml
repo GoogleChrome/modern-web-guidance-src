@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.repository == 'GoogleChrome/modern-web-guidance-src' &&
+      (github.event_name != 'issues' || github.event.issue.state != 'closed') &&
       (!contains(github.event.issue.body, '<!-- no-atl-triage -->') || contains(github.event.issue.body, '`<!-- no-atl-triage -->`')) &&
       (!contains(github.event.pull_request.body, '<!-- no-atl-triage -->') || contains(github.event.pull_request.body, '`<!-- no-atl-triage -->`'))
     steps:
