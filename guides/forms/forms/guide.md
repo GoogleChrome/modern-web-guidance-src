@@ -68,7 +68,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** always associate `<label>` with its input using `for` and `id`.
 - **DO** place `<label>` elements before text inputs, `<textarea>`, and `<select>` controls in the DOM and stack them visually above the control for faster scanning.
 - **DO** place `<label>` elements inline immediately after `<input type="checkbox">` and `<input type="radio">` controls for consistent alignment.
-- **DO** use visible labels and keep critical format instructions (e.g., `MM/DD/YYYY`) in the label or persistent helper text; do not rely on `placeholder` alone.
+- **DO** use visible labels and keep critical format instructions (e.g., `3-12 characters`) in the label or persistent helper text; do not rely on `placeholder` alone.
 - **DO** ensure the vertical margin between a label and its input is less than the margin between form groups (**Gestalt Proximity Rule**).
 - **DO** set `aria-invalid="true"` on form controls that fail validation, and clear it once resolved.
 - **DO** use `aria-describedby` to link inputs with help text or error messages.
