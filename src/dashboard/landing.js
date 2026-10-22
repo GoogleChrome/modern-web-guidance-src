@@ -61,11 +61,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         await loadLocalTests();
-        const source = resolveDataSource(params);
-        if (source === 'public') {
-             await loadManifestTests('public');
-        } else if (getAccessToken()) {
+        // Anyone not signed in sees the published public copy, on the dev server too (if one
+        // has been built). Signed-in Googlers see the private bucket instead.
+        if (getAccessToken() && resolveDataSource(params) !== 'public') {
              await loadManifestTests('remote');
+        } else {
+             await loadManifestTests('public');
         }
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs

@@ -216,6 +216,27 @@ test.describe('Public view', () => {
     await expect(page.locator('.suite-table-row', { hasText: 'codex' }).first()).toBeVisible();
     expect(googleRequests).toEqual([]);
   });
+
+  test('on the dev server with no token, public suites appear next to local ones', async ({ page }) => {
+    const { googleRequests } = await servePublicCopy(page);
+    await page.goto('/');
+
+    await expect(page.locator('.suite-table-row', { hasText: 'codex' }).first()).toContainText('public');
+    await expect(page.locator('.suite-table-row', { hasText: 'example-result' }).first()).toContainText('local');
+    expect(googleRequests).toEqual([]);
+  });
+
+  test('a missing public manifest is not an error', async ({ page }) => {
+    await page.context().addInitScript(() => localStorage.removeItem('gcs_access_token'));
+    await page.context().route('**/public-evals/**', route => route.fulfill({ status: 404, body: '' }));
+    /** @type {string[]} */
+    const errors = [];
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+
+    await page.goto('/');
+    await expect(page.locator('.suite-table-row').first()).toBeVisible();
+    expect(errors.filter(e => e.includes('public suites'))).toEqual([]);
+  });
 });
 
 test.describe('Signed-in view', () => {

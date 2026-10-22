@@ -27,11 +27,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         await loadLocalTests();
-        const source = resolveDataSource();
-        if (source === 'public') {
-            await loadManifestTests('public');
-        } else if (getAccessToken()) {
+        if (getAccessToken() && resolveDataSource() !== 'public') {
             await loadManifestTests('remote');
+        } else {
+            await loadManifestTests('public');
         }
         setupNavigationControls(guideName);
         renderGraphs(guideName);

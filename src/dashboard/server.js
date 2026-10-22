@@ -467,6 +467,10 @@ const server = http.createServer(async (req, res) => {
     filePath = path.join(baseAppsDir, decodedPath.substring(11));
   } else if (decodedPath.startsWith('/guides/')) {
     filePath = path.join(guidesDir, decodedPath.substring(8));
+  } else if (decodedPath.startsWith('/public-evals/')) {
+    // The public builder writes to out/ by default; a copy inside the dashboard dir wins if present.
+    const inDashboard = path.join(dashboardDir, decodedPath.substring(1));
+    filePath = fs.existsSync(inDashboard) ? inDashboard : path.join(outDir, decodedPath.substring(1));
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
     let localEvalViewPath = path.join(dashboardDir, relativePath);
