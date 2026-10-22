@@ -6,7 +6,7 @@ web-feature-ids:
   - indeterminate
   - accent-color
   - masks
-  - tmp-customizable-select-listbox # pending a11y SME
+  # - tmp-customizable-select-listbox # pending a11y SME
 guides:
   - checkbox
 ---
