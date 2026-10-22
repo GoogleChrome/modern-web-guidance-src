@@ -159,19 +159,7 @@
       "coordinate-global-events": [
         "task"
       ],
-      "format-human-readable-durations": [
-        "task"
-      ],
-      "manage-recurring-intervals": [
-        "task"
-      ],
-      "model-partial-time-concepts": [
-        "task"
-      ],
-      "sequence-distributed-events": [
-        "task"
-      ],
-      "stabilize-reactive-state": [
+      "sort-high-precision-timestamps": [
         "task"
       ],
       "support-global-calendar-systems": [

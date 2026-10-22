@@ -826,10 +826,11 @@
     {
       "id": "calculate-event-differentials",
       "category": "js",
-      "title": "Calculating Event Differentials with Temporal",
-      "description": "Calculate the duration and time remaining between dates and times.",
+      "title": "Calculating Event Differentials and Formatting Durations with Temporal",
+      "description": "Calculate elapsed or remaining time between dates and times, balance duration units, and format human-readable localized durations using Temporal.Duration and Intl.DurationFormat.",
       "features": [
-        "temporal"
+        "temporal",
+        "intl-duration-format"
       ],
       "demos": [
         {
@@ -845,8 +846,8 @@
     {
       "id": "capture-location-agnostic-data",
       "category": "js",
-      "title": "Capturing Location-Agnostic Data with Temporal",
-      "description": "Record chronological data that should not change based on a user's location, such as birthdates, recurring alarms, or national holidays.",
+      "title": "Capturing Location-Agnostic Data and Partial Dates with Temporal",
+      "description": "Model location-agnostic calendar dates, wall-clock times, partial dates (recurring birthdays, credit card expirations), and recurring monthly intervals without time zone drift using Temporal Plain types.",
       "features": [
         "temporal"
       ],
@@ -881,98 +882,21 @@
       ]
     },
     {
-      "id": "format-human-readable-durations",
+      "id": "sort-high-precision-timestamps",
       "category": "js",
-      "title": "Formatting Human-Readable Durations with Temporal",
-      "description": "Present elapsed time or durations to users in a readable, localized format, with the flexibility to display either detailed unit breakdowns (e.g., \"1 hour and 30 minutes\") or total unit counts (e.g., \"90 minutes\") depending on context.",
-      "features": [
-        "temporal",
-        "intl-duration-format"
-      ],
-      "demos": [
-        {
-          "id": "demo",
-          "path": "guides/js/format-human-readable-durations/demo.html"
-        },
-        {
-          "id": "negative-demo",
-          "path": "guides/js/format-human-readable-durations/negative-demo.html"
-        }
-      ]
-    },
-    {
-      "id": "manage-recurring-intervals",
-      "category": "js",
-      "title": "Managing Recurring Intervals with Temporal",
-      "description": "Calculate recurring intervals for subscription billings or payroll cycles, automatically adjusting for edge cases such as month-end transitions (e.g., adding one month to January 31st) to ensure accurate period calculations.",
+      "title": "Sorting High-Precision Timestamps with Temporal.Instant",
+      "description": "Parse, sort, and measure intervals between sub-millisecond or nanosecond ISO 8601 timestamps without Date truncation collisions using Temporal.Instant.",
       "features": [
         "temporal"
       ],
       "demos": [
         {
           "id": "demo",
-          "path": "guides/js/manage-recurring-intervals/demo.html"
+          "path": "guides/js/sort-high-precision-timestamps/demo.html"
         },
         {
           "id": "negative-demo",
-          "path": "guides/js/manage-recurring-intervals/negative-demo.html"
-        }
-      ]
-    },
-    {
-      "id": "model-partial-time-concepts",
-      "category": "js",
-      "title": "Modeling Partial Time Concepts with Temporal",
-      "description": "Model date and time concepts that inherently lack a standard component (such as a specific year, day, or date) without using arbitrary placeholder values that introduce calculation errors.",
-      "features": [
-        "temporal"
-      ],
-      "demos": [
-        {
-          "id": "demo",
-          "path": "guides/js/model-partial-time-concepts/demo.html"
-        },
-        {
-          "id": "negative-demo",
-          "path": "guides/js/model-partial-time-concepts/negative-demo.html"
-        }
-      ]
-    },
-    {
-      "id": "sequence-distributed-events",
-      "category": "js",
-      "title": "Sequencing Distributed Events",
-      "description": "Sort timestamped events collected from servers, databases, or log files and measure the intervals between them.",
-      "features": [
-        "temporal"
-      ],
-      "demos": [
-        {
-          "id": "demo",
-          "path": "guides/js/sequence-distributed-events/demo.html"
-        },
-        {
-          "id": "negative-demo",
-          "path": "guides/js/sequence-distributed-events/negative-demo.html"
-        }
-      ]
-    },
-    {
-      "id": "stabilize-reactive-state",
-      "category": "js",
-      "title": "Stabilize Reactive State with Temporal",
-      "description": "Manage task deadlines or schedules in data-driven views without unexpected side effects from shared mutable state.",
-      "features": [
-        "temporal"
-      ],
-      "demos": [
-        {
-          "id": "demo",
-          "path": "guides/js/stabilize-reactive-state/demo.html"
-        },
-        {
-          "id": "negative-demo",
-          "path": "guides/js/stabilize-reactive-state/negative-demo.html"
+          "path": "guides/js/sort-high-precision-timestamps/negative-demo.html"
         }
       ]
     },

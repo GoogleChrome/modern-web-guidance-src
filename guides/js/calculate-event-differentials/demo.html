@@ -230,6 +230,16 @@
             <input type="time" id="endTime" aria-label="End time">
           </div>
         </div>
+        <div class="control-group">
+          <label for="tzSelect">Target Time Zone</label>
+          <select id="tzSelect" style="background: #0f172a; border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.75rem; border-radius: 8px; font-family: inherit; font-size: 1rem;">
+            <option value="">System Default</option>
+            <option value="UTC">UTC</option>
+            <option value="America/New_York">America/New_York</option>
+            <option value="Europe/London">Europe/London</option>
+            <option value="Asia/Tokyo">Asia/Tokyo</option>
+          </select>
+        </div>
       </div>
 
       <div class="results-section">
@@ -250,6 +260,12 @@
           <span id="durationValue" class="result-value">—</span>
         </div>
 
+        <!-- Duration.compare() Demonstration -->
+        <div class="result-item">
+          <span class="result-label">Trial Progress (<code>Duration.compare</code>)</span>
+          <span id="compareValue" class="result-value">-</span>
+        </div>
+
         <!-- Raw Strings -->
         <div class="result-item">
           <span class="result-label">Raw Active String (Since)</span>
@@ -263,9 +279,9 @@
 
       <div class="code-section">
         <div class="code-header">Code Running</div>
-        <pre><span class="comment">// 1. Get current time point and zone</span>
-<span class="keyword">const</span> now = Temporal.Now.zonedDateTimeISO();
-<span class="keyword">const</span> tz = now.timeZoneId;
+        <pre><span class="comment">// 1. Get current time point in the target time zone (or system default)</span>
+<span class="keyword">const</span> tz = selectedTimeZone || Temporal.Now.timeZoneId();
+<span class="keyword">const</span> now = Temporal.Now.zonedDateTimeISO(tz);
 
 <span class="comment">// 2. Parse inputs</span>
 <span class="keyword">const</span> start =
@@ -277,8 +293,9 @@ Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(
 <span class="keyword">const</span> timeActive = now.<span class="method">since</span>(start, { largestUnit: <span class="string">'year'</span>, smallestUnit: <span class="string">'minute'</span> });
 <span class="keyword">const</span> timeRemaining = now.<span class="method">until</span>(end, { largestUnit: <span class="string">'year'</span>, smallestUnit: <span class="string">'minute'</span> });
 
-<span class="comment">// 4. Format for display with toLocaleString()</span>
-timeActive.<span class="method">toLocaleString</span>(<span class="string">'en-US'</span>, { style: <span class="string">'narrow'</span> });</pre>
+<span class="comment">// 4. Format with toLocaleString() (Intl.DurationFormat) and compare with relativeTo</span>
+timeActive.<span class="method">toLocaleString</span>(<span class="string">'en-US'</span>, { style: <span class="string">'narrow'</span> });
+Temporal.Duration.<span class="method">compare</span>(timeActive, timeRemaining, { relativeTo: now });</pre>
       </div>
     </div>
   </div>
@@ -288,10 +305,12 @@ timeActive.<span class="method">toLocaleString</span>(<span class="string">'en-U
     const startTimeInput = document.getElementById('startTime');
     const endDateInput = document.getElementById('endDate');
     const endTimeInput = document.getElementById('endTime');
+    const tzSelect = document.getElementById('tzSelect');
     const activeValue = document.getElementById('activeValue');
     const rawActiveValue = document.getElementById('rawActiveValue');
     const durationValue = document.getElementById('durationValue');
     const rawDurationValue = document.getElementById('rawDurationValue');
+    const compareValue = document.getElementById('compareValue');
     const statusValue = document.getElementById('statusValue');
     const unsupportedBanner = document.getElementById('unsupportedBanner');
 
@@ -299,9 +318,8 @@ timeActive.<span class="method">toLocaleString</span>(<span class="string">'en-U
       // Check Support and load polyfill if needed
       if (typeof Temporal === 'undefined') {
         try {
-          const module = await import("https://esm.sh/@js-temporal/polyfill");
+          const module = await import("https://esm.sh/temporal-polyfill");
           globalThis.Temporal = module.Temporal;
-          initializeDemo();
         } catch (e) {
           console.error("Failed to load Temporal polyfill:", e);
           unsupportedBanner.style.display = 'flex';
@@ -310,10 +328,11 @@ timeActive.<span class="method">toLocaleString</span>(<span class="string">'en-U
           startTimeInput.disabled = true;
           endDateInput.disabled = true;
           endTimeInput.disabled = true;
+          tzSelect.disabled = true;
+          return;
         }
-      } else {
-        initializeDemo();
       }
+      initializeDemo();
     })();
 
     function initializeDemo() {
@@ -334,6 +353,7 @@ timeActive.<span class="method">toLocaleString</span>(<span class="string">'en-U
       startTimeInput.addEventListener('input', calculate);
       endDateInput.addEventListener('input', calculate);
       endTimeInput.addEventListener('input', calculate);
+      tzSelect.addEventListener('change', calculate);
 
       calculate();
     }
@@ -357,8 +377,10 @@ timeActive.<span class="method">toLocaleString</span>(<span class="string">'en-U
 
         if (!startD || !startT || !endD || !endT) return;
 
-        const now = Temporal.Now.zonedDateTimeISO();
-        const tz = now.timeZoneId;
+        // Pass an explicit time zone to zonedDateTimeISO(tz) when the target zone
+        // differs from the system default.
+        const tz = tzSelect.value || Temporal.Now.timeZoneId();
+        const now = Temporal.Now.zonedDateTimeISO(tz);
 
         // Combine Date and Time with Temporal (no manual ISO string interpolation)
         const start = Temporal.PlainDate.from(startD).toPlainDateTime(startT).toZonedDateTime(tz);
@@ -378,16 +400,21 @@ timeActive.<span class="method">toLocaleString</span>(<span class="string">'en-U
           statusValue.style.color = "#f43f5e";
           durationValue.textContent = "—";
           rawDurationValue.textContent = remaining.toString();
+          compareValue.textContent = "Trial ended";
         } else if (isFutureStart) {
           statusValue.textContent = "PENDING";
           statusValue.style.color = "#f59e0b";
           durationValue.textContent = formatDuration(remaining);
           rawDurationValue.textContent = remaining.toString();
+          compareValue.textContent = "Not yet started";
         } else {
           statusValue.textContent = "ACTIVE";
           statusValue.style.color = "var(--accent-secondary)";
           durationValue.textContent = formatDuration(remaining);
           rawDurationValue.textContent = remaining.toString();
+          // Compare durations spanning calendar units/DST using relativeTo
+          const cmp = Temporal.Duration.compare(active, remaining, { relativeTo: now });
+          compareValue.textContent = cmp > 0 ? "Past halfway (active > remaining)" : "First half (remaining >= active)";
         }
 
         // Format Active Duration (Since)
