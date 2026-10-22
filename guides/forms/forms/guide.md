@@ -167,7 +167,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 | **`blur` / `focusout`** | Exiting Field | **Run** check (if edited) and show error. | **Contextual validation**: Validate once the user indicates they are "done" with a field. |
 | **`submit`** | Final Attempt | **Block** and route focus. | **Final gatekeeper**: Intercepts bad payloads and moves keyboard and screen reader focus to the first invalid field or an error summary. |
 
-**Single-Sentence Mental Model**: "Validate on `blur` (after interaction) to avoid premature warnings while typing, and reset error states on `input` as soon as the user fixes the value, and route the focus to the first error or summary on `submit`."
+**Single-Sentence Mental Model**: "Validate on `blur` (if edited) to avoid premature warnings while typing, and reset error states on `input` as soon as the user fixes the value, and route the focus to the first error or summary on `submit`."
 
 **Security vs UX Scale**: Client-side validation is for User Experience; Server-side validation is for Security. Never treat browser constraints as a data integrity defense.
 
