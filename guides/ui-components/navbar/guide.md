@@ -187,7 +187,7 @@ layoutObserver.observe(header);
 
 Do not add document-level click-outside, Escape, focus-restoration, or expanded-state handlers. Native disclosure and popover behavior provide those interactions. Let `<details>` own the summary click: intercepting it can reopen a submenu that light dismiss is trying to close. The `source: summary` option supplies the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
 
-For collision-aware submenu positioning, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
+Position the wide submenu with CSS Anchor Positioning as described in {{ GUIDE_REF("menu") }}, including its viewport-overflow fallbacks. For collision-aware positioning of a plain popover, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. This submenu opens below its summary, so use the top-level `position-area` there, not the menu guide's side-by-side submenu placement. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 
 ```css
 @container (inline-size >= 45rem) {
