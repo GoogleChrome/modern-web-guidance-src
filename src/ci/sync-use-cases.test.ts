@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, REQUIRED_FILES_START, buildRequiredFilesChecklist, preserveTemplateUseCases, reconcileNeedsUseCasesProjectStatus, NEEDS_INVESTIGATION_STATUS } from './sync-use-cases.ts';
+import { getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, REQUIRED_FILES_START, buildRequiredFilesChecklist, preserveTemplateUseCases, reconcileNeedsUseCasesProjectStatus, NEEDS_INVESTIGATION_STATUS, assertSafeNewIssueCount, fetchIssuesByLabel, getProjectDetails } from './sync-use-cases.ts';
 import { ProjectStatus, validateGuide, classifyGuide, processGuideInventory, type GuideInventory } from '../core/guide-validation.ts';
 import { pendingFeatures } from '../core/baseline.ts';
 
@@ -952,4 +952,221 @@ describe('reconcileNeedsUseCasesProjectStatus', () => {
     );
   });
 });
+
+describe('buildUseCaseMaps duplicate resolution', () => {
+  test('always prefers the oldest issue (lowest issue number) regardless of iteration order or template format', () => {
+    const canonical = {
+      number: 263,
+      title: 'Create guide and evals for the carousel-slide-effects use case',
+      body: 'Use case subdir: [guides/motion/carousel-slide-effects](https://github.com/...)',
+    };
+    const duplicate = {
+      number: 2817,
+      title: 'Create guide for the carousel-slide-effects use case',
+      body: 'Use case subdir: [guides/motion/carousel-slide-effects](https://github.com/...)',
+    };
+
+    const newestFirst = buildUseCaseMaps([duplicate, canonical]);
+    assert.strictEqual(newestFirst.nameToIssueMap.get('carousel-slide-effects')?.number, 263);
+    assert.strictEqual(newestFirst.subdirToIssueMap.get('guides/motion/carousel-slide-effects')?.number, 263);
+
+    const oldestFirst = buildUseCaseMaps([canonical, duplicate]);
+    assert.strictEqual(oldestFirst.nameToIssueMap.get('carousel-slide-effects')?.number, 263);
+    assert.strictEqual(oldestFirst.subdirToIssueMap.get('guides/motion/carousel-slide-effects')?.number, 263);
+
+    const templateIssue = {
+      number: 2077,
+      title: '[Use Case] Quick sign-ins',
+      body: '### Category\n\nsecurity\n\n### Use case slug\n\nquick-sign-ins\n',
+    };
+    const botDuplicate = {
+      number: 2555,
+      title: 'Create guide for the quick-sign-ins use case',
+      body: 'Use case subdir: [guides/security/quick-sign-ins](https://github.com/...)',
+    };
+
+    const mixed = buildUseCaseMaps([botDuplicate, templateIssue]);
+    assert.strictEqual(mixed.nameToIssueMap.get('quick-sign-ins')?.number, 2077);
+    assert.strictEqual(mixed.subdirToIssueMap.get('guides/security/quick-sign-ins')?.number, 2077);
+  });
+});
+
+describe('assertSafeNewIssueCount', () => {
+  test('allows creating issues up to the configured per-run limit', () => {
+    assert.doesNotThrow(() => {
+      assertSafeNewIssueCount(252, ['new-guide-a', 'new-guide-b'], 15, false);
+    });
+  });
+
+  test('throws when missing guide count exceeds the per-run limit and allowMassCreate is false', () => {
+    const missing = Array.from({ length: 20 }, (_, i) => `guide-${i + 1}`);
+    assert.throws(
+      () => assertSafeNewIssueCount(252, missing, 15, false),
+      /Refusing to create 20 new use-case issues in a single sync run/
+    );
+  });
+
+  test('allows exceeding the limit when allowMassCreate is true', () => {
+    const missing = Array.from({ length: 222 }, (_, i) => `guide-${i + 1}`);
+    assert.doesNotThrow(() => {
+      assertSafeNewIssueCount(252, missing, 15, true);
+    });
+  });
+});
+
+describe('fetchIssuesByLabel and getProjectDetails pagination resilience', () => {
+  test('fetchIssuesByLabel retries intermittent empty pages and verifies totalCount', async () => {
+    let page2Attempts = 0;
+    const mockGraphql = async (_query: string, variables: Record<string, any>) => {
+      if (!variables.cursor) {
+        return {
+          repository: {
+            issues: {
+              totalCount: 2,
+              pageInfo: { hasNextPage: true, endCursor: 'cursor-1' },
+              nodes: [
+                {
+                  number: 263,
+                  title: 'Create guide for the carousel-slide-effects use case',
+                  body: 'Body 1',
+                  state: 'CLOSED',
+                  milestone: { number: 3 },
+                  labels: { nodes: [{ name: 'new-use-case' }, { name: 'P1' }] },
+                },
+              ],
+            },
+          },
+        };
+      }
+      page2Attempts++;
+      if (page2Attempts === 1) {
+        // Simulate GitHub intermittent empty page response
+        return {
+          repository: {
+            issues: {
+              totalCount: 0,
+              pageInfo: { hasNextPage: false, endCursor: null },
+              nodes: [],
+            },
+          },
+        };
+      }
+      return {
+        repository: {
+          issues: {
+            totalCount: 2,
+            pageInfo: { hasNextPage: false, endCursor: null },
+            nodes: [
+              {
+                number: 226,
+                title: 'Create guide for the animate-to-intrinsic-sizes use case',
+                body: 'Body 2',
+                state: 'OPEN',
+                milestone: null,
+                labels: { nodes: [{ name: 'new-use-case' }] },
+              },
+            ],
+          },
+        },
+      };
+    };
+
+    const issues = await fetchIssuesByLabel(mockGraphql, 'GoogleChrome', 'modern-web-guidance-src', 'new-use-case', {
+      maxRetries: 3,
+      retryDelayMs: 0,
+    });
+
+    assert.strictEqual(page2Attempts, 2);
+    assert.strictEqual(issues.length, 2);
+    assert.strictEqual(issues[0].number, 263);
+    assert.strictEqual(issues[0].state, 'closed');
+    assert.deepStrictEqual(issues[0].milestone, { number: 3 });
+    assert.deepStrictEqual(issues[0].labels, [{ name: 'new-use-case' }, { name: 'P1' }]);
+    assert.strictEqual(issues[1].number, 226);
+    assert.strictEqual(issues[1].state, 'open');
+  });
+
+  test('fetchIssuesByLabel throws if pagination remains truncated below totalCount after retries', async () => {
+    const mockGraphql = async () => ({
+      repository: {
+        issues: {
+          totalCount: 252,
+          pageInfo: { hasNextPage: false, endCursor: null },
+          nodes: [{ number: 2683, title: 'Only 1 issue returned', body: '', state: 'CLOSED', milestone: null, labels: { nodes: [] } }],
+        },
+      },
+    });
+
+    await assert.rejects(
+      () =>
+        fetchIssuesByLabel(mockGraphql, 'GoogleChrome', 'modern-web-guidance-src', 'new-use-case', {
+          maxRetries: 2,
+          retryDelayMs: 0,
+        }),
+      /Truncated pagination for label "new-use-case": fetched 1 of 252 issues/
+    );
+  });
+
+  test('getProjectDetails retries empty page and returns null if truncated after retries', async () => {
+    let attempts = 0;
+    const recoveringGraphql = async (_query: string, variables: Record<string, any>) => {
+      attempts++;
+      if (!variables.cursor && attempts === 1) {
+        return {
+          organization: {
+            projectV2: {
+              id: 'PVT_1',
+              fields: { nodes: [{ id: 'F_1', name: 'Status', options: [{ id: 'O_1', name: 'Needs guidance' }] }] },
+              items: {
+                totalCount: 0,
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [],
+              },
+            },
+          },
+        };
+      }
+      return {
+        organization: {
+          projectV2: {
+            id: 'PVT_1',
+            fields: { nodes: [{ id: 'F_1', name: 'Status', options: [{ id: 'O_1', name: 'Needs guidance' }] }] },
+            items: {
+              totalCount: 1,
+              pageInfo: { hasNextPage: false, endCursor: null },
+              nodes: [
+                {
+                  content: { number: 313, state: 'OPEN' },
+                  fieldValues: { nodes: [{ name: 'Needs guidance', field: { name: 'Status' } }] },
+                },
+              ],
+            },
+          },
+        },
+      };
+    };
+
+    const details = await getProjectDetails('GoogleChrome', 30, recoveringGraphql, { maxRetries: 3, retryDelayMs: 0 });
+    assert.ok(details);
+    assert.strictEqual(details.issueStatusMap.get(313), 'Needs guidance');
+
+    const truncatedGraphql = async () => ({
+      organization: {
+        projectV2: {
+          id: 'PVT_1',
+          fields: { nodes: [{ id: 'F_1', name: 'Status', options: [] }] },
+          items: {
+            totalCount: 200,
+            pageInfo: { hasNextPage: false, endCursor: null },
+            nodes: [{ content: { number: 31, state: 'OPEN' }, fieldValues: { nodes: [] } }],
+          },
+        },
+      },
+    });
+
+    const failedDetails = await getProjectDetails('GoogleChrome', 30, truncatedGraphql, { maxRetries: 2, retryDelayMs: 0 });
+    assert.strictEqual(failedDetails, null);
+  });
+});
+
 

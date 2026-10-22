@@ -45,6 +45,13 @@ interface ProjectDetails {
 }
 
 export const NEEDS_INVESTIGATION_STATUS = 'Needs investigation';
+export const MAX_NEW_ISSUES_PER_RUN = 15;
+
+export interface FetchPaginationOptions {
+  maxRetries?: number;
+  retryDelayMs?: number;
+  expectNonEmpty?: boolean;
+}
 
 interface GitHubData {
   featureIssues: any[];
@@ -296,10 +303,24 @@ export function reconcileNeedsUseCasesProjectStatus(
   return updates;
 }
 
+function shouldPreferIssue<T extends { number?: number }>(existing: T | undefined, candidate: T): boolean {
+  if (!existing) return true;
+  if (
+    typeof existing.number === 'number' &&
+    typeof candidate.number === 'number' &&
+    existing.number !== candidate.number
+  ) {
+    return candidate.number < existing.number;
+  }
+  return true;
+}
+
 /**
  * Builds maps from use case name and subdirectory to their existing GitHub issues.
+ * When duplicate issues match the same use case or subdirectory, always prefers
+ * the oldest canonical issue (lowest issue number).
  */
-export function buildUseCaseMaps<T extends { title: string; body?: string | null }>(
+export function buildUseCaseMaps<T extends { number?: number; title: string; body?: string | null }>(
   issues: T[]
 ): { nameToIssueMap: Map<string, T>; subdirToIssueMap: Map<string, T> } {
   const nameToIssueMap = new Map<string, T>();
@@ -307,11 +328,17 @@ export function buildUseCaseMaps<T extends { title: string; body?: string | null
   for (const issue of issues) {
     const titleMatch = issue.title.match(/Create guide(?: and evals)? for the (.+) use case/i);
     if (titleMatch) {
-      nameToIssueMap.set(titleMatch[1].trim(), issue);
+      const nameKey = titleMatch[1].trim();
+      if (shouldPreferIssue(nameToIssueMap.get(nameKey), issue)) {
+        nameToIssueMap.set(nameKey, issue);
+      }
     }
     const bodyMatch = issue.body?.match(/Use case subdir: \[([^\]]+)\]/);
     if (bodyMatch) {
-      subdirToIssueMap.set(bodyMatch[1].trim(), issue);
+      const subdirKey = bodyMatch[1].trim();
+      if (shouldPreferIssue(subdirToIssueMap.get(subdirKey), issue)) {
+        subdirToIssueMap.set(subdirKey, issue);
+      }
     }
     const templateCategoryMatch = issue.body?.match(/###\s+Category\s*\r?\n+([^\r\n#]+)/i);
     const templateSlugMatch = issue.body?.match(/###\s+Use case slug\s*\r?\n+([^\r\n#]+)/i);
@@ -319,9 +346,12 @@ export function buildUseCaseMaps<T extends { title: string; body?: string | null
       const category = templateCategoryMatch[1].trim().toLowerCase();
       const slug = templateSlugMatch[1].trim().toLowerCase();
       if (category && slug) {
-        if (!nameToIssueMap.has(slug)) nameToIssueMap.set(slug, issue);
-        if (!subdirToIssueMap.has(`guides/${category}/${slug}`)) {
-          subdirToIssueMap.set(`guides/${category}/${slug}`, issue);
+        if (shouldPreferIssue(nameToIssueMap.get(slug), issue)) {
+          nameToIssueMap.set(slug, issue);
+        }
+        const subdirKey = `guides/${category}/${slug}`;
+        if (shouldPreferIssue(subdirToIssueMap.get(subdirKey), issue)) {
+          subdirToIssueMap.set(subdirKey, issue);
         }
       }
     }
@@ -329,10 +359,170 @@ export function buildUseCaseMaps<T extends { title: string; body?: string | null
   return { nameToIssueMap, subdirToIssueMap };
 }
 
+/**
+ * Guards against mass spurious issue creation when a GitHub API response is truncated.
+ */
+export function assertSafeNewIssueCount(
+  totalPreparedGuides: number,
+  missingGuideNames: string[],
+  maxNewIssues: number = MAX_NEW_ISSUES_PER_RUN,
+  allowMassCreate: boolean = false,
+): void {
+  if (allowMassCreate) return;
+  if (missingGuideNames.length > maxNewIssues) {
+    const preview = missingGuideNames.slice(0, 5).join(', ');
+    const suffix = missingGuideNames.length > 5 ? `, ... (${missingGuideNames.length - 5} more)` : '';
+    throw new Error(
+      `Refusing to create ${missingGuideNames.length} new use-case issues in a single sync run ` +
+      `(out of ${totalPreparedGuides} guides; max allowed per run is ${maxNewIssues}: ${preview}${suffix}). ` +
+      `This usually indicates an incomplete GitHub API response. Set ALLOW_MASS_ISSUE_CREATE=true if intentional.`
+    );
+  }
+}
+
 
 // --- GitHub API ---
 
-async function getProjectDetails(org: string, number: number): Promise<ProjectDetails | null> {
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetches all repository issues matching a label via GraphQL cursor pagination,
+ * verifying `totalCount` and retrying if GitHub intermittently returns an empty page.
+ */
+export async function fetchIssuesByLabel(
+  graphqlFn: (query: string, variables: Record<string, any>) => Promise<any>,
+  owner: string,
+  repo: string,
+  label: string,
+  options: FetchPaginationOptions = {}
+): Promise<any[]> {
+  const { maxRetries = 5, retryDelayMs = 500, expectNonEmpty = true } = options;
+  const query = `
+    query($owner: String!, $repo: String!, $label: String!, $cursor: String) {
+      repository(owner: $owner, name: $repo) {
+        issues(
+          first: 100
+          after: $cursor
+          labels: [$label]
+          states: [OPEN, CLOSED]
+          orderBy: { field: CREATED_AT, direction: DESC }
+        ) {
+          totalCount
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            number
+            title
+            body
+            state
+            milestone {
+              number
+            }
+            labels(first: 50) {
+              nodes {
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const results: any[] = [];
+  const seenNumbers = new Set<number>();
+  let rawFetchedCount = 0;
+  let expectedTotal: number | null = null;
+  let cursor: string | null = null;
+
+  do {
+    let pageData: any = null;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await graphqlFn(query, { owner, repo, label, cursor });
+        const issuesConn = response?.repository?.issues;
+        if (!issuesConn) {
+          throw new Error(`Missing repository.issues in GraphQL response for label "${label}"`);
+        }
+
+        const totalCount: number = issuesConn.totalCount ?? 0;
+        const nodes: any[] = issuesConn.nodes ?? [];
+        const hasNextPage: boolean = Boolean(issuesConn.pageInfo?.hasNextPage);
+        const targetTotal = totalCount > 0 ? totalCount : expectedTotal;
+
+        if (expectNonEmpty && rawFetchedCount === 0 && (totalCount === 0 || nodes.length === 0)) {
+          throw new Error(`Empty first page for label "${label}" (totalCount=${totalCount}, nodes=${nodes.length})`);
+        }
+        if (targetTotal !== null && targetTotal > 0 && (totalCount === 0 || nodes.length === 0)) {
+          throw new Error(`Empty page during pagination for label "${label}" at cursor ${cursor} (totalCount=${totalCount}, nodes=${nodes.length})`);
+        }
+        if (targetTotal !== null && !hasNextPage && rawFetchedCount + nodes.length < targetTotal) {
+          throw new Error(
+            `Truncated pagination for label "${label}": fetched ${rawFetchedCount + nodes.length} of ${targetTotal} issues with hasNextPage=false`
+          );
+        }
+
+        pageData = issuesConn;
+        break;
+      } catch (err: any) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < maxRetries && retryDelayMs > 0) {
+          await sleep(retryDelayMs * attempt);
+        }
+      }
+    }
+
+    if (!pageData) {
+      throw lastError ?? new Error(`Failed to fetch issues for label "${label}"`);
+    }
+
+    if (pageData.totalCount > 0) {
+      expectedTotal = pageData.totalCount;
+    } else if (expectedTotal === null) {
+      expectedTotal = 0;
+    }
+
+    const nodes: any[] = pageData.nodes ?? [];
+    rawFetchedCount += nodes.length;
+    for (const node of nodes) {
+      if (!node || typeof node.number !== 'number' || seenNumbers.has(node.number)) continue;
+      seenNumbers.add(node.number);
+      results.push({
+        number: node.number,
+        title: node.title ?? '',
+        body: node.body ?? '',
+        state: String(node.state ?? 'OPEN').toLowerCase(),
+        milestone: node.milestone ? { number: node.milestone.number } : null,
+        labels: (node.labels?.nodes ?? []).map((l: any) => ({ name: l.name })),
+      });
+    }
+
+    const { hasNextPage, endCursor } = pageData.pageInfo ?? {};
+    cursor = hasNextPage ? endCursor : null;
+  } while (cursor);
+
+  if (expectedTotal !== null && rawFetchedCount < expectedTotal) {
+    throw new Error(
+      `Incomplete issue list for label "${label}": expected ${expectedTotal} issues, fetched ${rawFetchedCount}`
+    );
+  }
+
+  return results;
+}
+
+export async function getProjectDetails(
+  org: string,
+  number: number,
+  graphqlFn: (query: string, variables: Record<string, any>) => Promise<any> = (q, v) => projectOctokit.graphql(q, v),
+  options: FetchPaginationOptions = {}
+): Promise<ProjectDetails | null> {
+  const { maxRetries = 5, retryDelayMs = 500, expectNonEmpty = true } = options;
   console.log(`Fetching project details for ${org} project #${number}...`);
   const query = `
     query($org: String!, $number: Int!, $cursor: String) {
@@ -352,6 +542,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
             }
           }
           items(first: 100, after: $cursor) {
+            totalCount
             pageInfo {
               hasNextPage
               endCursor
@@ -388,10 +579,51 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
     let projectId: string | null = null;
     let statusFieldId: string | null = null;
     let statusOptions: any[] = [];
+    let rawFetchedCount = 0;
+    let expectedTotal: number | null = null;
 
     do {
-      const response = await projectOctokit.graphql(query, { org, number, cursor }) as any;
-      const project = response.organization.projectV2;
+      let project: any = null;
+      let lastError: Error | null = null;
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await graphqlFn(query, { org, number, cursor });
+          const proj = response?.organization?.projectV2;
+          if (!proj?.items) {
+            throw new Error('Missing organization.projectV2.items in GraphQL response');
+          }
+
+          const totalCount: number = proj.items.totalCount ?? 0;
+          const nodes: any[] = proj.items.nodes ?? [];
+          const hasNextPage: boolean = Boolean(proj.items.pageInfo?.hasNextPage);
+          const targetTotal = totalCount > 0 ? totalCount : expectedTotal;
+
+          if (expectNonEmpty && rawFetchedCount === 0 && (totalCount === 0 || nodes.length === 0)) {
+            throw new Error(`Empty first page for project #${number} items (totalCount=${totalCount}, nodes=${nodes.length})`);
+          }
+          if (targetTotal !== null && targetTotal > 0 && (totalCount === 0 || nodes.length === 0)) {
+            throw new Error(`Empty page during project #${number} pagination at cursor ${cursor} (totalCount=${totalCount}, nodes=${nodes.length})`);
+          }
+          if (targetTotal !== null && !hasNextPage && rawFetchedCount + nodes.length < targetTotal) {
+            throw new Error(
+              `Truncated project #${number} items pagination: fetched ${rawFetchedCount + nodes.length} of ${targetTotal} items with hasNextPage=false`
+            );
+          }
+
+          project = proj;
+          break;
+        } catch (err: any) {
+          lastError = err instanceof Error ? err : new Error(String(err));
+          if (attempt < maxRetries && retryDelayMs > 0) {
+            await sleep(retryDelayMs * attempt);
+          }
+        }
+      }
+
+      if (!project) {
+        throw lastError ?? new Error(`Failed to fetch project #${number} items`);
+      }
 
       if (!projectId) {
         projectId = project.id;
@@ -401,7 +633,15 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
         statusOptions = statusField.options;
       }
 
-      for (const item of project.items.nodes) {
+      if (project.items.totalCount > 0) {
+        expectedTotal = project.items.totalCount;
+      } else if (expectedTotal === null) {
+        expectedTotal = 0;
+      }
+
+      const nodes: any[] = project.items.nodes ?? [];
+      rawFetchedCount += nodes.length;
+      for (const item of nodes) {
         const issueNumber = item.content?.number;
         if (!issueNumber || item.content?.state === 'CLOSED') continue;
         const statusValue = item.fieldValues.nodes.find((v: any) => v.field?.name === 'Status');
@@ -486,12 +726,12 @@ async function fetchGitHubData(): Promise<GitHubData> {
 
     console.log('Fetching "new-feature" issues...');
     try {
-      featureIssues = await octokit.paginate(octokit.rest.issues.listForRepo, {
-        owner: ORG,
-        repo: REPO,
-        labels: 'new-feature',
-        state: 'all'
-      });
+      featureIssues = await fetchIssuesByLabel(
+        (q, v) => octokit.graphql(q, v),
+        ORG,
+        REPO,
+        'new-feature'
+      );
       featureToIssueMap = buildFeatureToIssueMap(featureIssues);
       console.log(`Found ${featureToIssueMap.size} features with issues.`);
     } catch (err: any) {
@@ -501,12 +741,12 @@ async function fetchGitHubData(): Promise<GitHubData> {
 
     console.log('Fetching existing "new-use-case" issues...');
     try {
-      allUseCases = await octokit.paginate(octokit.rest.issues.listForRepo, {
-        owner: ORG,
-        repo: REPO,
-        labels: 'new-use-case',
-        state: 'all'
-      });
+      allUseCases = await fetchIssuesByLabel(
+        (q, v) => octokit.graphql(q, v),
+        ORG,
+        REPO,
+        'new-use-case'
+      );
       ({ nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(allUseCases));
     } catch (err: any) {
       console.warn('⚠️ Could not fetch existing "new-use-case" issues. Issue creation/updates will be skipped.');
@@ -653,6 +893,18 @@ async function processUseCases(
     // the use case directory exists, it's just missing some required files.
     const partialIssue = subdirToIssueMap.get(relativeSubdir);
     if (partialIssue) activeIssueNumbers.add(partialIssue.number);
+  }
+
+  if (GITHUB_TOKEN || !IS_DRY_RUN) {
+    const missingGuideNames = preparedGuides
+      .filter(({ name, relativeSubdir }) => !nameToIssueMap.get(name) && !subdirToIssueMap.get(relativeSubdir))
+      .map(({ name }) => name);
+    assertSafeNewIssueCount(
+      preparedGuides.length,
+      missingGuideNames,
+      MAX_NEW_ISSUES_PER_RUN,
+      parseBooleanEnv(process.env.ALLOW_MASS_ISSUE_CREATE, false)
+    );
   }
 
   for (const { name, description, featureIds, relativeSubdir, statusName } of preparedGuides) {
