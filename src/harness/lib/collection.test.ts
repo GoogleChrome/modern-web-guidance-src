@@ -158,6 +158,57 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
         isEarlyFailure: true,
       }]);
     });
+
+    await t.test('omits skipped Playwright specs from scenario results instead of counting them as failed', () => {
+      const genFail = path.join(tempDir, 'generation_failed.json');
+      if (fs.existsSync(genFail)) fs.unlinkSync(genFail);
+
+      const resultsJsonPath = path.join(tempDir, 'skipped_results.json');
+      fs.writeFileSync(
+        resultsJsonPath,
+        JSON.stringify({
+          suites: [
+            {
+              title: 'Target Grader',
+              specs: [
+                {
+                  id: 'spec-1',
+                  title: 'Universal check passes',
+                  ok: true,
+                  tests: [{ status: 'expected', results: [{ status: 'passed' }] }],
+                },
+                {
+                  id: 'spec-2',
+                  title: '[baseline: limited] Skipped under widely',
+                  ok: true,
+                  tests: [{ status: 'skipped', results: [{ status: 'skipped' }] }],
+                },
+                {
+                  id: 'spec-3',
+                  title: '[baseline: widely] Widely check fails',
+                  ok: false,
+                  tests: [{ status: 'unexpected', results: [{ status: 'failed', errors: [{ message: 'Expected fallback' }] }] }],
+                },
+              ],
+            },
+          ],
+        })
+      );
+
+      const res = evaluateScenarioResults(
+        tempDir,
+        'test-guide',
+        graderPath,
+        resultsJsonPath,
+        true,
+        path.join(tempDir, 'index.html')
+      );
+      assert.strictEqual(res.length, 2);
+      assert.strictEqual(res[0].id, 'spec-1');
+      assert.strictEqual(res[0].passed, true);
+      assert.strictEqual(res[1].id, 'spec-3');
+      assert.strictEqual(res[1].passed, false);
+    });
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }

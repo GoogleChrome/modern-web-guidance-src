@@ -472,7 +472,17 @@ async function runAgentTest(
         return;
       }
 
-      const results: Record<string, { passed: number; total: number }> = {};
+      const taskVariants = Array.from(taskMap.entries())
+        .filter(([key, info]) => key.startsWith(`${guideName}/`) && info.baseApp === baseApp && info.guideDir === targetDir)
+        .map(([key, info]) => ({
+          taskKey: key,
+          taskName: key.split('/')[1]!,
+          baselineTarget: info.baselineTarget || 'widely',
+        }));
+
+      const tasksToRun = taskVariants.length > 0
+        ? taskVariants
+        : [{ taskKey, taskName: baseApp, baselineTarget: taskInfo.baselineTarget || 'widely' }];
 
       // 1. Grade base app (with zero-passrate baseline applied)
       const relGuidePath = path.relative(guidesDir, targetDir);
@@ -483,18 +493,19 @@ async function runAgentTest(
         baseApp,
         targetsDir,
         targetGraderPath,
-        zeroPassratePatch
+        zeroPassratePatch,
+        undefined,
+        'widely'
       );
-      if (preResults) results['pre'] = preResults;
 
-      // 2. Run agent suite
+      // 2. Run agent suite across all baseline variants for this target
       const { runSuite } = await import('../harness/run-suite.ts');
       const testOutputDir = path.join(guideResultsDir, baseApp);
       const agent = getDefaultSolutionAgent();
       await runSuite({
         name: `${guideName}-${baseApp}`,
         outputDir: testOutputDir,
-        tasks: [taskKey],
+        tasks: tasksToRun.map(v => v.taskKey),
         numRuns: 1,
         guidedOnly,
         suiteConfig: {
@@ -503,30 +514,40 @@ async function runAgentTest(
         },
       });
 
-      // 3. Grade agent output (unguided + guided)
+      // 3. Grade agent output (unguided + guided) across variants
       const runTypes = guidedOnly ? ['guided'] : ['unguided', 'guided'];
-      for (const runType of runTypes) {
-        const resultDir = path.join(testOutputDir, '1', guideName, baseApp, runType);
-        if (!fs.existsSync(resultDir)) continue;
-        const patchFile = path.join(resultDir, 'agent.patch');
-        const gradeResults = await gradeOutput(
-          runType,
-          resultDir,
-          targetGraderPath,
-          patchFile,
-          zeroPassratePatch
-        );
-        if (gradeResults) results[runType] = gradeResults;
-      }
+      for (const variant of tasksToRun) {
+        const isDefaultVariant = variant.taskName === baseApp;
+        const variantResults: Record<string, { passed: number; total: number }> =
+          isDefaultVariant && preResults ? { pre: preResults } : {};
 
-      let guidesConsumed: string[] = [];
-      const guidedDir = path.join(testOutputDir, '1', guideName, baseApp, 'guided');
-      if (fs.existsSync(guidedDir)) {
-        const usage = await collectGuidesUsed(guidedDir);
-        guidesConsumed = [...new Set([...usage.retrievedGuides, ...usage.fileReadGuides])];
-      }
+        for (const runType of runTypes) {
+          const resultDir = path.join(testOutputDir, '1', guideName, variant.taskName, runType);
+          if (!fs.existsSync(resultDir)) continue;
+          const patchFile = path.join(resultDir, 'agent.patch');
+          const label = isDefaultVariant ? runType : `${variant.taskName} (${runType})`;
+          const gradeResults = await gradeOutput(
+            label,
+            resultDir,
+            targetGraderPath,
+            patchFile,
+            zeroPassratePatch,
+            variant.baselineTarget
+          );
+          if (gradeResults) {
+            variantResults[runType] = gradeResults;
+          }
+        }
 
-      printTestComparison(results, guidesConsumed, baseApp);
+        const guidedDir = path.join(testOutputDir, '1', guideName, variant.taskName, 'guided');
+        let guidesConsumed: string[] = [];
+        if (fs.existsSync(guidedDir)) {
+          const usage = await collectGuidesUsed(guidedDir);
+          guidesConsumed = Array.from(new Set([...usage.retrievedGuides, ...usage.fileReadGuides]));
+        }
+
+        printTestComparison(variantResults, guidesConsumed, variant.taskName);
+      }
     })
   );
 }
@@ -536,12 +557,13 @@ async function gradeOutput(
   appDir: string,
   graderPath: string,
   patchFile?: string,
-  zeroPassrateFile?: string
+  zeroPassrateFile?: string,
+  baselineTarget?: string
 ): Promise<{ passed: number; total: number } | null> {
   console.log(cYellow(`\nGrading ${label}...`));
 
   try {
-    const gradeResults = await runPlaywright(appDir, graderPath, 'pipe', patchFile, zeroPassrateFile);
+    const gradeResults = await runPlaywright(appDir, graderPath, 'pipe', patchFile, zeroPassrateFile, undefined, baselineTarget);
     const passed = gradeResults.stats?.expected || 0;
     const failed = gradeResults.stats?.unexpected || 0;
     const total = passed + failed;

@@ -468,6 +468,29 @@ export function getStatus(
 }
 
 /**
+ * Resolves the Baseline status ('high', 'low', or false) for a web-features ID,
+ * pending `tmp-*` feature ID, BCD key, or `feature-id:bcd.key` pair.
+ * Returns `undefined` if the token is not a recognized feature or BCD key.
+ */
+export function resolveFeatureOrBcdBaseline(token: string): 'high' | 'low' | false | undefined {
+  const trimmed = token.trim();
+  if (!trimmed) return undefined;
+
+  if (trimmed.includes(':') || trimmed.includes('.')) {
+    const [featureId, bcdKey] = trimmed.includes(':') ? trimmed.split(':', 2) : [undefined, trimmed];
+    if (!bcdKey) return undefined;
+    if (featureId && !validateFeature(featureId).isValid) return undefined;
+    const compat = getStatus(featureId, bcdKey);
+    return compat ? compat.baseline : undefined;
+  }
+
+  const validation = validateFeature(trimmed);
+  if (!validation.isValid) return undefined;
+  if (trimmed.startsWith('tmp-')) return false;
+  return getFeatureStatus(trimmed)?.baseline;
+}
+
+/**
  * Subtracts a specified number of months from a date string.
  * @param dateStr - The date string in the format "YYYY-MM-DD"
  * @param months - The number of months to subtract

@@ -20,6 +20,7 @@ export interface PlaywrightOptions {
   jsonOutputName?: string;
   patchFile?: string;
   stdio?: 'inherit' | 'ignore' | 'pipe';
+  baselineTarget?: string;
 }
 
 async function stageGradingWorkspace(
@@ -54,6 +55,7 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     TARGET_FILE: opts.targetPathAbs,
+    BASELINE_TARGET: opts.baselineTarget || process.env.BASELINE_TARGET || 'widely',
   };
 
   if (opts.patchFile) {
@@ -84,7 +86,8 @@ export async function runPlaywright(
   stdio: 'inherit' | 'ignore' | 'pipe' = 'inherit',
   patchFile?: string,
   zeroPassrateFile?: string,
-  testResultsDir?: string
+  testResultsDir?: string,
+  baselineTarget?: string
 ): Promise<any> {
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
 
@@ -113,7 +116,8 @@ export async function runPlaywright(
       testResultsDir: resolvedTestResultsDir,
       jsonOutputName: tmpJson,
       patchFile: patchFile,
-      stdio: stdio === 'ignore' ? 'pipe' : stdio
+      stdio: stdio === 'ignore' ? 'pipe' : stdio,
+      baselineTarget
     });
 
     if (child.stderr) {
@@ -170,13 +174,27 @@ async function runPlaywrightCalibration(
 
 export interface PlaywrightSuite {
   title: string;
-  specs?: Array<{ title: string; ok: boolean }>;
+  specs?: Array<{
+    title: string;
+    ok: boolean;
+    tests?: Array<{ status?: string; results?: Array<{ status?: string }> }>;
+  }>;
   suites?: PlaywrightSuite[];
 }
 
-function collectSpecs(suite: PlaywrightSuite, ok: boolean, prefix = ''): string[] {
+export function isSpecSkipped(spec: {
+  tests?: Array<{ status?: string; results?: Array<{ status?: string }> }>;
+}): boolean {
+  if (!spec.tests || spec.tests.length === 0) return false;
+  return spec.tests.every(
+    t => t.status === 'skipped' || (t.results && t.results.length > 0 && t.results.every(r => r.status === 'skipped'))
+  );
+}
+
+export function collectSpecs(suite: PlaywrightSuite, ok: boolean, prefix = ''): string[] {
   const results: string[] = [];
   for (const spec of suite.specs || []) {
+    if (isSpecSkipped(spec)) continue;
     if (spec.ok === ok) results.push(`${prefix}${spec.title}`);
   }
   for (const child of suite.suites || []) {
@@ -188,6 +206,7 @@ function collectSpecs(suite: PlaywrightSuite, ok: boolean, prefix = ''): string[
 export function printFailingSpecs(suite: PlaywrightSuite, prefix = ''): void {
   const specs = suite.specs || [];
   for (const spec of specs) {
+    if (isSpecSkipped(spec)) continue;
     if (!spec.ok) {
       console.log(cRed(`  - Failed: ${prefix}${spec.title}`));
     }
@@ -202,6 +221,7 @@ export function printFailingSpecs(suite: PlaywrightSuite, prefix = ''): void {
 export function printPassingSpecs(suite: PlaywrightSuite, prefix = ''): void {
   const specs = suite.specs || [];
   for (const spec of specs) {
+    if (isSpecSkipped(spec)) continue;
     if (spec.ok) {
       console.log(cRed(`  - Passed (should have failed): ${prefix}${spec.title}`));
     }

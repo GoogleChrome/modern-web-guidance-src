@@ -4,7 +4,7 @@ import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from './macros.ts';
-import { validateFeature, resolveFeatureId } from './baseline.ts';
+import { validateFeature, resolveFeatureId, resolveFeatureOrBcdBaseline } from './baseline.ts';
 import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
@@ -364,7 +364,150 @@ export function validateGuide(filePath: string): ValidationResult {
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
+  const expectationsPath = path.join(path.dirname(filePath), EXPECTATIONS_FILE);
+  if (fs.existsSync(expectationsPath)) {
+    const expectationsContent = readFileSafe(expectationsPath);
+    const relativeExpectationsPath = path.relative(REPO_ROOT, expectationsPath);
+    errors.push(...validateExpectationsBaselineTags(expectationsContent, relativeExpectationsPath));
+  }
+
   return { errors, data, body, filePath };
+}
+
+export const BASELINE_TARGETS = ['widely', 'newly', 'limited'] as const;
+export type BaselineTarget = (typeof BASELINE_TARGETS)[number];
+export type ExpectationSupportMode = 'supported' | 'unsupported';
+
+/**
+ * Parses an optional leading `[supported: <features>]` or `[unsupported: <features>]` tag
+ * from an expectation bullet or test title.
+ */
+export function parseExpectationBaselineTag(bullet: string): {
+  mode?: ExpectationSupportMode;
+  features?: string[];
+  targets?: BaselineTarget[];
+  text: string;
+  invalidTokens?: string[];
+  rawTag?: string;
+} {
+  const trimmed = bullet.trim();
+  const match = trimmed.match(/^\[(supported|unsupported):\s*([^\]]*)\]\s*(.*)$/i);
+  if (!match) {
+    const unknownTagMatch = trimmed.match(/^(\[[a-z-]+:\s*[^\]]*\])\s*(.*)$/i);
+    if (unknownTagMatch) {
+      return {
+        text: unknownTagMatch[2].trim(),
+        invalidTokens: [unknownTagMatch[1].trim()],
+        rawTag: unknownTagMatch[1].trim(),
+      };
+    }
+    return { text: trimmed };
+  }
+
+  const mode = match[1].toLowerCase() as ExpectationSupportMode;
+  const rawTokens = match[2]
+    .split(',')
+    .map(t => t.trim())
+    .filter(Boolean);
+  const text = match[3].trim();
+
+  if (rawTokens.length === 0) {
+    return { mode, text, invalidTokens: ['(empty)'], rawTag: match[0].trim() };
+  }
+
+  const validFeatures: string[] = [];
+  const invalidTokens: string[] = [];
+  const tokenBaselines: Array<'high' | 'low' | false> = [];
+
+  for (const token of rawTokens) {
+    const baseline = resolveFeatureOrBcdBaseline(token);
+    if (baseline !== undefined) {
+      if (!validFeatures.includes(token)) {
+        validFeatures.push(token);
+        tokenBaselines.push(baseline);
+      }
+    } else {
+      invalidTokens.push(token);
+    }
+  }
+
+  let targets: BaselineTarget[] | undefined;
+  if (validFeatures.length > 0 && invalidTokens.length === 0) {
+    const isSupportedAt = (b: 'high' | 'low' | false, target: BaselineTarget): boolean => {
+      if (target === 'limited') return true;
+      if (target === 'newly') return b === 'high' || b === 'low';
+      return b === 'high';
+    };
+    targets = BASELINE_TARGETS.filter(target =>
+      mode === 'supported'
+        ? tokenBaselines.every(b => isSupportedAt(b, target))
+        : tokenBaselines.some(b => !isSupportedAt(b, target))
+    );
+  }
+
+  return {
+    mode,
+    features: validFeatures.length > 0 ? validFeatures : undefined,
+    targets,
+    text,
+    invalidTokens: invalidTokens.length > 0 ? invalidTokens : undefined,
+    rawTag: `[${mode}: ${rawTokens.join(', ')}]`,
+  };
+}
+
+/**
+ * Validates that any `[supported: ...]` or `[unsupported: ...]` tags in `expectations.md`
+ * reference valid `web-features` IDs or BCD keys.
+ */
+export function validateExpectationsBaselineTags(content: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const parsed = parseExpectations(content);
+  const allBullets = [...parsed.mustPass, ...parsed.mustFail, ...parsed.appAgnostic];
+
+  for (const bullet of allBullets) {
+    const tagInfo = parseExpectationBaselineTag(bullet);
+    if (tagInfo.invalidTokens && tagInfo.invalidTokens.length > 0) {
+      errors.push(
+        `Invalid feature or BCD key(s) ${tagInfo.invalidTokens.map(t => `"${t}"`).join(', ')} in ${relativePath}: "${bullet}". Use [supported: <feature-id>] or [unsupported: <feature-id>] with a valid web-features ID or BCD key.`
+      );
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Computes all unique non-`widely` Baseline targets (`newly`, `limited`) needed to evaluate
+ * the `[supported: ...]` / `[unsupported: ...]` feature tags in `expectations.md`
+ * (accepts either raw markdown content or a file path).
+ */
+export function getBaselineTargetsForExpectations(
+  expectationsContentOrPath: string
+): Exclude<BaselineTarget, 'widely'>[] {
+  const content =
+    !expectationsContentOrPath.includes('\n') && fs.existsSync(expectationsContentOrPath)
+      ? readFileSafe(expectationsContentOrPath)
+      : expectationsContentOrPath;
+  if (!content) return [];
+
+  const parsed = parseExpectations(content);
+  const allBullets = [...parsed.mustPass, ...parsed.mustFail, ...parsed.appAgnostic];
+  const nonWidely = new Set<Exclude<BaselineTarget, 'widely'>>();
+
+  for (const bullet of allBullets) {
+    const { features: tagFeatures } = parseExpectationBaselineTag(bullet);
+    if (!tagFeatures) continue;
+    for (const token of tagFeatures) {
+      const baseline = resolveFeatureOrBcdBaseline(token);
+      if (baseline === 'low') {
+        nonWidely.add('newly');
+      } else if (baseline === false) {
+        nonWidely.add('limited');
+      }
+    }
+  }
+
+  return (['newly', 'limited'] as const).filter(t => nonWidely.has(t));
 }
 
 /**
@@ -600,6 +743,15 @@ export interface TaskInfo {
   baseApp: string;
   prompt: string;
   guideDir: string;
+  baselineTarget?: BaselineTarget;
+}
+
+export function resolveTaskGraderPath(taskInfo: Pick<TaskInfo, 'guideDir' | 'baseApp'>, taskName: string): string {
+  const targetGraderPath = path.join(taskInfo.guideDir, TARGETS_DIR, taskName, GRADER_FILE);
+  if (fs.existsSync(targetGraderPath)) return targetGraderPath;
+  const baseAppGraderPath = path.join(taskInfo.guideDir, TARGETS_DIR, taskInfo.baseApp, GRADER_FILE);
+  if (fs.existsSync(baseAppGraderPath)) return baseAppGraderPath;
+  return path.join(taskInfo.guideDir, GRADER_FILE);
 }
 
 /**
@@ -629,6 +781,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: data?.base_app || 'daily-grind',
         prompt: prompt,
         guideDir: guideDir,
+        baselineTarget: 'widely',
       };
 
       taskMap.set(`${guideName}/${taskName}`, info);
@@ -637,6 +790,10 @@ export function getTaskMap(): Map<string, TaskInfo> {
 
   function processBaseAppTasks(guideName: string, targetsDir: string, guideDir: string) {
     const supportedBaseApps = getSupportedBaseApps();
+    const expectationsPath = path.join(guideDir, EXPECTATIONS_FILE);
+    const extraBaselineTargets = fs.existsSync(expectationsPath)
+      ? getBaselineTargetsForExpectations(expectationsPath)
+      : [];
 
     for (const entry of fs.readdirSync(targetsDir, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name.startsWith('.') || !supportedBaseApps.includes(entry.name)) continue;
@@ -654,9 +811,19 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: baseAppName,
         prompt: prompt,
         guideDir: guideDir,
+        baselineTarget: 'widely',
       };
 
       taskMap.set(`${guideName}/${baseAppName}`, info);
+
+      for (const target of extraBaselineTargets) {
+        taskMap.set(`${guideName}/${baseAppName}-${target}`, {
+          baseApp: baseAppName,
+          prompt: prompt,
+          guideDir: guideDir,
+          baselineTarget: target,
+        });
+      }
     }
   }
 

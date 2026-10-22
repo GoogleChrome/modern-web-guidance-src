@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { baseAppsDir, suitesDir } from '../core/paths.ts';
-import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
+import { getTaskMap, resolveTaskGraderPath, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
 import { ensureFreshHostCodexAuth } from './agents/codex-cli-agent.ts';
@@ -19,6 +19,16 @@ let logStream: fs.WriteStream | null = null;
 
 
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+
+export function formatBaselineTargetPromptSuffix(baselineTarget?: string): string {
+  if (baselineTarget === 'newly') {
+    return '\n\nTarget Baseline status: Newly available.';
+  }
+  if (baselineTarget === 'limited') {
+    return '\n\nTarget Baseline status: Limited availability.';
+  }
+  return '';
+}
 
 export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
@@ -150,22 +160,18 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           continue;
         }
 
-        let promptContent = taskInfo.prompt;
+        let promptContent = taskInfo.prompt + formatBaselineTargetPromptSuffix(taskInfo.baselineTarget);
         promptContent += COMMON_APPEND_PROMPT;
         const agentScript = getAgentScript(agent);
 
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
         const guideFolder = path.join(runDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
-        let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-        const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
-        if (fs.existsSync(targetGraderPath)) {
-          graderPath = targetGraderPath;
-        }
+        const graderPath = resolveTaskGraderPath(taskInfo, taskName);
 
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp);
+          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp, taskInfo.baselineTarget);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -393,14 +399,15 @@ export function generateTransientPackage(
   taskName: string,
   guideName: string,
   graderPath: string,
-  _baseApp: string = 'daily-grind'
+  _baseApp: string = 'daily-grind',
+  baselineTarget?: string
 ) {
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
   // Generate grade.mjs using shared function
-  const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName);
+  const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName, baselineTarget);
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
   // Generate runner script

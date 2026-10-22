@@ -10,7 +10,7 @@ import {
   type TargetEvalSummary,
 } from './dev-report.ts';
 import { getGuideResultsDir } from '../core/paths.ts';
-import { findSharedFailingTests } from '../grading/run-grader.ts';
+import { findSharedFailingTests, collectSpecs, isSpecSkipped } from '../grading/run-grader.ts';
 import { Agents } from '../harness/config.ts';
 
 test('computeDevReportFlag enforces strict priority ordering', () => {
@@ -278,3 +278,87 @@ test('findSharedFailingTests extracts intersection of failing tests across activ
   // Case 4: No active agents
   assert.deepStrictEqual(findSharedFailingTests({}, []), []);
 });
+
+test('collectSpecs ignores skipped Playwright tests during calibration reporting', () => {
+  const suite = {
+    title: 'Target Grader',
+    specs: [
+      {
+        title: 'Passing test',
+        ok: true,
+        tests: [{ status: 'expected', results: [{ status: 'passed' }] }],
+      },
+      {
+        title: '[baseline: limited] Skipped test',
+        ok: true,
+        tests: [{ status: 'skipped', results: [{ status: 'skipped' }] }],
+      },
+      {
+        title: 'Failing test',
+        ok: false,
+        tests: [{ status: 'unexpected', results: [{ status: 'failed' }] }],
+      },
+    ],
+  };
+
+  assert.strictEqual(isSpecSkipped(suite.specs[1]!), true);
+  assert.strictEqual(isSpecSkipped(suite.specs[0]!), false);
+  assert.deepStrictEqual(collectSpecs(suite, true), ['Passing test']);
+  assert.deepStrictEqual(collectSpecs(suite, false), ['Failing test']);
+});
+
+test('computeTargetSummary flags target when any baseline variant drops below 90% guided pass rate', (t) => {
+  const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-dev-report-multi-baseline-'));
+  const tmpDir = path.join(rootTmp, 'switch');
+  const category = 'forms';
+  const name = 'switch';
+  const guideResultsDir = getGuideResultsDir({ category, name });
+  const testResultsDir = path.join(guideResultsDir, 'daily-grind');
+  fs.mkdirSync(testResultsDir, { recursive: true });
+
+  const mockEvalsJson = {
+    summary: {
+      guidedPassRate: 92, // Aggregate looks healthy (11/12), but daily-grind-limited is 80% (4/5)
+      unguidedPassRate: 50,
+      guidedEarlyFailures: 0,
+    },
+    stats: {
+      'daily-grind - switch - guided': { medianPassRate: 100 },
+      'daily-grind - switch - unguided': { medianPassRate: 50 },
+      'daily-grind-limited - switch - guided': { medianPassRate: 80 },
+      'daily-grind-limited - switch - unguided': { medianPassRate: 50 },
+    },
+    results: {
+      'daily-grind - switch - guided': [
+        {
+          results: [{ passed: true, message: 'Check 1' }],
+          guidanceToolsUsed: ['modern-web-guidance'],
+          guidesUsed: ['switch'],
+        },
+      ],
+      'daily-grind-limited - switch - guided': [
+        {
+          results: [
+            { passed: true, message: 'Check 1' },
+            { passed: false, message: '[baseline: limited] Check 2' },
+          ],
+          guidanceToolsUsed: ['modern-web-guidance'],
+          guidesUsed: ['switch'],
+        },
+      ],
+    },
+  };
+
+  fs.writeFileSync(path.join(testResultsDir, 'evals.json'), JSON.stringify(mockEvalsJson));
+
+  t.after(() => {
+    fs.rmSync(rootTmp, { recursive: true, force: true });
+    fs.rmSync(guideResultsDir, { recursive: true, force: true });
+  });
+
+  const summary = computeTargetSummary(tmpDir, 'daily-grind', { category, name });
+  assert.ok(summary !== null);
+  assert.strictEqual(summary?.flag, 'LOW_GUIDED_PASS_RATE');
+  assert.strictEqual(summary?.guidedPassRate, 80);
+});
+
