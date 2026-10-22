@@ -83,7 +83,6 @@ On narrow containers, keep `popover="auto"` on the navigation list. Anchor the f
   .site-menu {
     position: fixed;
     inset: auto;
-    inset-block-start: 4.75rem; /* fallback */
     inset-block-start: anchor(--menu-button bottom);
     inset-inline-end: 1rem;
     inline-size: 80dvw;
@@ -96,7 +95,7 @@ On narrow containers, keep `popover="auto"` on the navigation list. Anchor the f
 }
 ```
 
-The first `inset-block-start` declaration is the fallback; the later `anchor()` declaration overrides it where Anchor Positioning is supported. For collision-aware positioning near viewport edges, see {{ GUIDE_REF("viewport-aware-dropdowns") }}.
+The `anchor()` declaration places the menu below the button; see Fallbacks for browsers without Anchor Positioning. For collision-aware positioning near viewport edges, see {{ GUIDE_REF("viewport-aware-dropdowns") }}.
 
 
 ## Wide Layout: Inline Navigation
@@ -215,16 +214,16 @@ Use `aria-current="page"` to identify the current page. Set it at build time or 
 
 ## Transitions and Accessibility
 
-If the navigation is animated, use `@starting-style` and `allow-discrete` for popover entry and exit, animate the popover with only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}. For a worked popover open and close transition, see {{ GUIDE_REF("menu") }}; use it for the wide floating submenu too.
+If the navigation is animated (optional; add it when the abrupt open and close feels out of place), use `@starting-style` and `allow-discrete` for popover entry and exit, animate the popover with only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}. For a worked popover open and close transition, see {{ GUIDE_REF("menu") }}; use it for the wide floating submenu too.
 
 ### Narrow submenu slide-down
 
-In the narrow layout the submenu is an inline `<details>`, which opens instantly by default. To slide it open and closed:
+Optional. In the narrow layout the submenu is an inline `<details>`, which opens instantly by default and is fully functional that way. Add a slide when you want the disclosure to feel continuous with the popover's own transition. To slide it open and closed:
 
 - Animate `details::details-content` between `block-size: 0` and `auto`, with `interpolate-size: allow-keywords` and `overflow: clip`.
 - Include `content-visibility` with `allow-discrete` in the transition so the content stays rendered until the close finishes.
 - Scope it to the narrow container query and `prefers-reduced-motion: no-preference`. In the wide layout the submenu is a popover and must not be clipped.
-- Browsers without `interpolate-size` or `::details-content` support open and close the submenu instantly. For the general technique, see {{ GUIDE_REF("animate-to-intrinsic-sizes") }}.
+- For the general technique, see {{ GUIDE_REF("animate-to-intrinsic-sizes") }}.
 
 Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh` for viewport-relative limits, provide visible `:focus-visible` indicators, and adapt custom borders and current-page indicators under `forced-colors: active`.
 
@@ -235,6 +234,25 @@ Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh`
 
 {{ FEATURE_FALLBACKS("anchor-positioning") }}
 
-For the mobile menu, put the absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid.
+For the mobile menu, put an absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid. Without Anchor Positioning the menu still opens as a popover at a fixed offset from the top of the viewport.
 
-For the wide floating submenu, a popover without anchor positioning falls back to centered viewport placement and detaches from its summary. Position it from script as described in the anchor positioning fallbacks in {{ GUIDE_REF("menu") }}, with the overrides inside `@supports not (position-area: block-end)`.
+```css
+@container (inline-size < 45rem) {
+  .site-menu {
+    /* Example-only offset: use roughly your header height. Browsers without anchor() keep this one. */
+    inset-block-start: 4.75rem;
+    inset-block-start: anchor(--menu-button bottom);
+  }
+}
+```
+
+The wide floating submenu is different: without Anchor Positioning a popover falls back to centered viewport placement and detaches from its summary, which a single declaration cannot fix. Position it from script instead, and gate the overrides with `@supports not (position-area: block-end)` so browsers with Anchor Positioning are unaffected:
+
+- In the submenu's `toggle` handler, when it opens and `CSS.supports("position-area", "block-end")` is false, place it below the summary, flipping above and clamping to the viewport when it would overflow.
+- Apply the result as `left` and `top`, with `position: fixed`, `inset: auto` and `margin: 0` so the coordinates are viewport-relative.
+
+{{ BASELINE_STATUS("interpolate-size") }}
+
+{{ BASELINE_STATUS("details-content") }}
+
+Without `interpolate-size` or `::details-content`, the optional narrow submenu slide-down is skipped and the submenu opens and closes instantly, which is progressive enhancement and fully functional.
