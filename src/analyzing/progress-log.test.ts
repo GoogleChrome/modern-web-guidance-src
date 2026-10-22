@@ -490,12 +490,12 @@ describe('file operations and hashes', () => {
       );
     });
 
-    it('renders Table 1 full 171-guide O7 catalog screening summary', () => {
+    it('renders Table 1 full 175-guide post-origin/main catalog screening summary', () => {
       const markdown = formatProgressLogMarkdown(HISTORICAL_DETECTION_FUNNEL_ROWS);
       assert.ok(markdown.includes('### Legacy Pattern Spec & Catalog Screening Summary'));
-      assert.ok(markdown.includes('171 published guides audited -> 45 statically detectable'));
-      assert.ok(markdown.includes('13 `clean-1-to-1` + 32 `needs-care`'));
-      assert.ok(markdown.includes('126 `do-not-write-a-rule`'));
+      assert.ok(markdown.includes('175 published feature guides audited (132 in `legacy-pattern-specs.json` + 43 Gate 0 non-detectable) -> 47 statically detectable'));
+      assert.ok(markdown.includes('13 `clean-1-to-1` + 34 `needs-care`'));
+      assert.ok(markdown.includes('128 `do-not-write-a-rule`'));
       assert.ok(markdown.includes('37 active guides (49 rules, including 10 single-purpose `package.json` + whole-file `vendored-library` rules) wired in `ALL_RULES`'));
     });
 
@@ -506,6 +506,9 @@ describe('file operations and hashes', () => {
       assert.ok(markdown.includes('Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`)'));
       assert.ok(markdown.includes('TERMINAL_QUALIFIED_GUIDE_IDS = []'));
       assert.ok(markdown.includes('35-card human spot-checks'));
+      assert.ok(markdown.includes('Completed `R43` blind side-by-side comparison on `2,980` fresh unseen held-out files'));
+      assert.ok(markdown.includes('Completed `D-046` Judge Triage & Top-3 35-Card Blind Spot-Check Deck Staging'));
+      assert.ok(markdown.includes('_d046-customize-scrollbar-color-and-thickness-35-deck'));
     });
 
     it('appends and updates judge calibration row via appendJudgeCalibrationToProgressLog', async () => {

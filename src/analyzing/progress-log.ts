@@ -841,7 +841,7 @@ export function formatProgressLogMarkdown(
     } else if (isBatch4Suspended) {
       lines.push('');
       lines.push(
-        '> **Notice (2026-10-21 / D-042 / D-046):** Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`) (`TERMINAL_QUALIFIED_GUIDE_IDS = []`). Under `D-046`, the Eval Judge (`admitted: false`) ranks and triages candidate rules but does not gate qualification. Rules qualify for default shipping directly from human blind spot-checks (35 cards per rule on unseen `held-out`, Wilson 95% lower bound >= 0.90). New rule authoring is paused until 3 rules qualify via 35-card human spot-checks.',
+        '> **Notice (2026-10-21 / D-042 / D-046):** Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`) (`TERMINAL_QUALIFIED_GUIDE_IDS = []`). Under `D-046`, the Eval Judge (`admitted: false`) ranks and triages candidate rules but does not gate qualification. Rules qualify for default shipping directly from human blind spot-checks (35 cards per rule on unseen `held-out`, Wilson 95% lower bound >= 0.90). New rule authoring is paused until 3 rules qualify via 35-card human spot-checks. Completed `R43` blind side-by-side comparison on `2,980` fresh unseen held-out files (`shards 4000..4799`, `56`-card `_r43-side-by-side-deck`). Completed `D-046` Judge Triage & Top-3 35-Card Blind Spot-Check Deck Staging: `_d046-customize-scrollbar-color-and-thickness-35-deck`, `_d046-animate-element-entry-exit-35-deck`, and `_d046-responsive-table-35-deck` (each `35/35 = 100.0%` Judge triage precision on unseen `held-out`) staged at the top of `http://localhost:3456/` for human qualification grading.',
       );
       lines.push('');
     }
@@ -898,9 +898,9 @@ export function formatProgressLogMarkdown(
   }
 
   lines.push('');
-  lines.push('### Legacy Pattern Spec & Catalog Screening Summary (`legacy-pattern-specs.json`, `dc6f9af` / `D-044` / `D-045`)');
+  lines.push('### Legacy Pattern Spec & Catalog Screening Summary (`legacy-pattern-specs.json`, `934ecdf22` / `25a7d7f` / `D-044` / `D-045`)');
   lines.push('');
-  lines.push('- **Full Catalog Audit (O7 / D-044 / D-045):** 171 published guides audited -> 45 statically detectable (13 `clean-1-to-1` + 32 `needs-care`) and 126 `do-not-write-a-rule`; 37 active guides (49 rules, including 10 single-purpose `package.json` + whole-file `vendored-library` rules) wired in `ALL_RULES`.');
+  lines.push('- **Full Catalog Audit (O7 / D-044 / D-045):** 175 published feature guides audited (132 in `legacy-pattern-specs.json` + 43 Gate 0 non-detectable) -> 47 statically detectable (13 `clean-1-to-1` + 34 `needs-care`) and 128 `do-not-write-a-rule`; 37 active guides (49 rules, including 10 single-purpose `package.json` + whole-file `vendored-library` rules) wired in `ALL_RULES`.');
   lines.push('- **Initial 11-Guide Screening Funnel (`2026-10-19-legacy-pattern-specs.md`):** 11 candidate guides evaluated across 4,000 GitMirror shards (2.7M files across 327k repos) + 115 local `rule-writing` repos:');
   lines.push('  - **`CLEAN 1-TO-1` (4 guides):** `autofill-highlight-inputs` (494 repos / 635 files), `complex-shapes` (373 repos / 464 files), `responsive-table` (316 repos / 376 files), `deliver-optimized-decorative-images` (96 repos / 155 files) — unblocked for rule authoring & held-out qualification.');
   lines.push('  - **`NEEDS CARE` (3 guides):** `shrinking-header-on-scroll` (543 repos / 953 files), `equal-width-text-lines` (38 repos / 46 files), `light-dismiss-a-dialog` (19 repos / 22 files) — high noise or experimental platform support.');
