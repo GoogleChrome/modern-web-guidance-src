@@ -285,7 +285,7 @@ form.addEventListener('submit', (e) => {
 
 - **DO** use `autocomplete="new-password"` for sign-up and `autocomplete="current-password"` for sign-in.
 - **DO** allow pasting into password fields.
-- **DO** provide an accessible toggle `<button type="button>` with `aria-pressed` allowing users to unmask password input.
+- **DO** provide an accessible toggle `<button type="button">` with `aria-pressed` allowing users to unmask password input.
 - **DO** indicate exact amounts on pay buttons (e.g., "Pay $100").
 - **DO** use `autocomplete="cc-number"`, `cc-exp`, `cc-csc`.
 - **DO** use HTTPS for all pages.
