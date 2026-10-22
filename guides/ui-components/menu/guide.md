@@ -189,7 +189,7 @@ Implement the behaviors above for your own markup. Arrow, `Home`/`End`, wrap-aro
    * Stop after about 300 ms, when the pointer reaches an item in the submenu, or when the submenu closes. Remove the listener and the attribute. Nothing runs after that.
    * CSS gives the submenu a `::before` clipped to a triangle from the pointer to the near-edge corners. It sits over the sibling items on the pointer's path, so they never receive the hover that would close the submenu. `clip-path` also limits hit testing, so the rest of the parent menu stays interactive.
    * The submenu needs `overflow: visible` (a popover clips by default), and the pseudo-element extends past it, so offset the shape's points by that extent.
-   * Follow-up: a curved path (`shape()` curve commands) follows real pointer arcs better than a straight triangle. Pointer-driven animations ([CSS Pointer Animations](https://drafts.csswg.org/pointer-animations-1/)) may later remove the script.
+   * Follow-up: a curved path (`shape()` curve commands) follows real pointer arcs better than a straight triangle. {# Pointer-driven animations ([CSS Pointer Animations](https://drafts.csswg.org/pointer-animations-1/)) may later remove the script. #}
 
 ```css
 [popover] [popover] {
