@@ -69,6 +69,21 @@ function hasPolyfillOrAppearanceFallback(): boolean {
   return hasPolyfillImport || hasAppearanceNone;
 }
 
+function hasCustomSwitchDimensionOverride(rule: CSSStyleRule): boolean {
+  const sel = rule.selectorText || '';
+  const targetsSwitch =
+    sel.includes('[switch]') ||
+    sel.includes('type="checkbox"') ||
+    sel.includes("type='checkbox'");
+  if (!targetsSwitch) return false;
+  if (sel.includes('.no-native-switch') || sel.includes('[data-polyfill]')) return false;
+  const props = ['width', 'height', 'inline-size', 'block-size'];
+  return props.some((prop) => {
+    const val = rule.style.getPropertyValue(prop).trim();
+    return val.length > 0 && val !== 'auto' && val !== 'initial' && val !== 'unset';
+  });
+}
+
 test.describe('switch Target Grader', () => {
   // --- STATIC ASSERTIONS (FAST) ---
 
@@ -186,8 +201,9 @@ test.describe('switch Target Grader', () => {
         r.style.getPropertyValue('appearance') || r.style.getPropertyValue('-webkit-appearance');
       return appearance.trim() === 'none';
     });
+    const hasDimensionOverride = styleRules.some((r) => hasCustomSwitchDimensionOverride(r));
 
-    expect(hasSwitchInput && !hasPolyfillImport && !hasAppearanceNone).toBe(true);
+    expect(hasSwitchInput && !hasPolyfillImport && !hasAppearanceNone && !hasDimensionOverride).toBe(true);
   });
 
   test('The switch input sets a custom accent-color in CSS', () => {
@@ -209,6 +225,9 @@ test.describe('switch Target Grader', () => {
     const hasFocusVisibleOutline = styleRules.some((rule) => {
       const sel = rule.selectorText || '';
       if (!sel.includes(':focus-visible')) return false;
+      const targetsSwitch =
+        sel.includes('switch') || sel.includes('input') || sel.includes('checkbox');
+      if (!targetsSwitch) return false;
       const outline = rule.style.getPropertyValue('outline').trim();
       const outlineWidth = rule.style.getPropertyValue('outline-width').trim();
       const outlineStyle = rule.style.getPropertyValue('outline-style').trim();
