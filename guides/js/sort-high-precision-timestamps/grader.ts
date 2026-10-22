@@ -64,8 +64,8 @@ test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
 
   // 7. Fallback strategy
   test('A fallback strategy MUST be provided for environments lacking native support', async () => {
-    const hasPolyfill = allSourceContent.includes('@js-temporal/polyfill');
-    const hasPolyfillBinding = /(globalThis|window)\.Temporal\s*=|\b(?:const|let|var)\s+\w+\s*=[\s\S]*?@js-temporal\/polyfill|\bimport\s*\(\s*['"]@js-temporal\/polyfill['"]\s*\)/.test(scriptContent);
+    const hasPolyfill = allSourceContent.includes('temporal-polyfill') || allSourceContent.includes('@js-temporal/polyfill');
+    const hasPolyfillBinding = /(globalThis|window)\.Temporal\s*=|\b(?:const|let|var)\s+\w+\s*=[\s\S]*?(?:temporal-polyfill|@js-temporal\/polyfill)|\bimport\s*\(\s*['"][^'"]*(?:temporal-polyfill|@js-temporal\/polyfill)['"]\s*\)/.test(scriptContent);
     const hasGracefulDegradation = /unsupported|not supported/i.test(allSourceContent);
     expect((hasPolyfill && hasPolyfillBinding) || hasGracefulDegradation).toBe(true);
   });

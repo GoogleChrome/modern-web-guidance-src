@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sequencing Distributed Events: Temporal.Instant vs Date</title>
+  <title>Sorting High-Precision Timestamps: Temporal.Instant vs Date</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -286,12 +286,13 @@
 
   <div class="container">
     <header>
-      <h1>Sequence Distributed Events</h1>
+      <h1>Sort High-Precision Timestamps</h1>
       <p class="description">
-        Load a trace of events stamped by a central tracing backend with nanosecond-precision ISO 8601
+        Parse a trace of events stamped by a server clock with nanosecond-precision ISO 8601
         timestamps. Compare how parsing them with the legacy <code>Date</code> object truncates to milliseconds
-        and causes sorting collisions, while <code>Temporal.Instant</code> preserves the recorded precision and
-        keeps the events in their true order.
+        and causes sorting collisions, while <code>Temporal.Instant.from()</code> preserves the recorded nanosecond
+        precision (note: in browsers, <code>Temporal.Now.instant()</code> is clamped for Spectre mitigation, so
+        sub-millisecond local client intervals should use <code>performance.now()</code>).
       </p>
     </header>
 
@@ -382,7 +383,7 @@
         loadBtn.style.cursor = 'not-allowed';
 
         try {
-          const module = await import('https://esm.sh/@js-temporal/polyfill');
+          const module = await import('https://esm.sh/temporal-polyfill');
           // The polyfill does not install a global, so assign it explicitly.
           globalThis.Temporal = module.Temporal;
 

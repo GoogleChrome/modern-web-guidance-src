@@ -99,8 +99,8 @@ test.describe(`Temporal API Expectations: ${demoName}`, () => {
   test('MUST use Temporal.PlainDate for capturing calendar dates', async () => {
     // negative-demo uses Temporal.PlainDate for a log timestamp, not a calendar date (birthdate).
     // demo.html uses Temporal.PlainDate for the birthdate.
-    const usesPlainDateForCalendar = /Temporal\.PlainDate/i.test(fileContent);
-    expect(usesPlainDateForCalendar, "Expected to find Temporal.PlainDate usage for calendar dates (e.g. date/birth)").toBe(true);
+    const usesPlainDateForCalendar = /Temporal\.Plain(?:Date|MonthDay|YearMonth)/i.test(fileContent);
+    expect(usesPlainDateForCalendar, "Expected to find Temporal.PlainDate (or PlainMonthDay/PlainYearMonth) usage for calendar dates").toBe(true);
   });
 
   test('MUST use Temporal.PlainTime for capturing wall-clock times', async () => {

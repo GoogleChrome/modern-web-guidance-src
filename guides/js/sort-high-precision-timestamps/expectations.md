@@ -4,5 +4,5 @@
 - The implementation MUST calculate the interval between consecutive events with `Temporal.Instant.prototype.since()` (or `.until()`) and keep the result as a `Temporal.Duration`.
 - The implementation MUST format intervals for display with `Temporal.Duration.prototype.toLocaleString()` and MUST NOT use `duration.total('nanoseconds')` or `epochNanoseconds` arithmetic for display.
 - The implementation MUST include explicit feature detection for `Temporal` support (e.g., `typeof Temporal !== 'undefined'`).
-- A fallback strategy MUST be provided for environments lacking native support, such as conditionally loading a polyfill (e.g., `@js-temporal/polyfill`). Because `@js-temporal/polyfill` does not auto-install globally, the implementation MUST ensure `Temporal` is available after loading (e.g., by assigning `globalThis.Temporal = module.Temporal`).
+- A fallback strategy MUST be provided for environments lacking native support, such as conditionally loading a polyfill (e.g., `temporal-polyfill`). Because `temporal-polyfill` does not auto-install globally, the implementation MUST ensure `Temporal` is available after loading (e.g., by assigning `globalThis.Temporal = module.Temporal`).
 - The implementation MUST NOT use static `Temporal.Instant.compare(a, b) === 0` to check instant equivalence; it MUST use the native `a.equals(b)` instance method instead.
