@@ -7,6 +7,7 @@ import type { EvalsReport } from '../lib/metrics.ts';
 import { NotPublishableError, PUBLIC_ASSERTION_FIELDS, PUBLIC_RUN_FIELDS, PUBLIC_SUITE_FIELDS } from './allowlists.ts';
 import { rebuildEvals } from './rebuild-evals.ts';
 import { findLeaks, LeakError } from './scrub.ts';
+import { CLOUDTOP_HOST, FAKE_LDAP, REPO_CHECKOUT } from './fixtures/leak-samples.ts';
 
 const FIXTURE_PATH = path.join(import.meta.dirname, 'fixtures', 'nightly-sample.evals.json');
 const RELEASED = ['example-model'];
@@ -162,8 +163,7 @@ describe('rebuildEvals: scrubbing', () => {
   test('rewrites injected repo paths to repo-relative', () => {
     const raw = loadFixture();
     const firstKey = Object.keys(raw.results)[0];
-    raw.results[firstKey][0].results[0].error =
-      'at /usr/local/google/home/travenr/code/modern-web-guidance-src/guides/x/grader.ts:10';
+    raw.results[firstKey][0].results[0].error = `at ${REPO_CHECKOUT}/guides/x/grader.ts:10`;
     const out = build(raw);
     assert.equal(out.results[firstKey][0].results[0].error, 'at guides/x/grader.ts:10');
   });
@@ -171,15 +171,15 @@ describe('rebuildEvals: scrubbing', () => {
   test('throws instead of returning output that still identifies a machine', () => {
     const raw = loadFixture();
     const firstKey = Object.keys(raw.results)[0];
-    raw.results[firstKey][0].results[0].browserErrors = 'failed to reach travenr.c.googlers.com';
+    raw.results[firstKey][0].results[0].browserErrors = `failed to reach ${CLOUDTOP_HOST}`;
     assert.throws(() => build(raw), (err: unknown) => err instanceof LeakError && err.leaks[0].name === 'googlers hostname');
   });
 
   test('throws when a forbidden token appears anywhere', () => {
     const raw = loadFixture();
     const firstKey = Object.keys(raw.results)[0];
-    raw.results[firstKey][0].prompt = 'Ask travenr for the design doc.';
-    assert.throws(() => build(raw, { forbiddenTokens: ['travenr'] }), LeakError);
+    raw.results[firstKey][0].prompt = `Ask ${FAKE_LDAP} for the design doc.`;
+    assert.throws(() => build(raw, { forbiddenTokens: [FAKE_LDAP] }), LeakError);
     build(raw);
   });
 });

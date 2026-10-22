@@ -9,6 +9,7 @@ import { buildSelectedSuites, buildSuite, runRelativePath, writeManifest } from 
 import type { BuildOptions } from './builder.ts';
 import type { PublicEvals } from './rebuild-evals.ts';
 import { LocalSuiteStore } from './suite-store.ts';
+import { CLOUDTOP_HOST, OTHER_FAKE_LDAP, REPO_CHECKOUT } from './fixtures/leak-samples.ts';
 
 const FIXTURE_PATH = path.join(import.meta.dirname, 'fixtures', 'nightly-sample.evals.json');
 const SUITE = 'nightly-2026-10-20_20-43-48-codex_cli';
@@ -34,8 +35,8 @@ function makeStore(): { root: string; baseApps: string } {
     'diff --git a/src/app.ts b/src/app.ts\n--- a/src/app.ts\n+++ b/src/app.ts\n@@ -0,0 +1 @@\n+ok\n' +
       'diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml\n--- a/pnpm-lock.yaml\n+++ b/pnpm-lock.yaml\n@@ -0,0 +1 @@\n+lock\n',
   );
-  write(path.join(suite, SECURITY_RUN, 'modern-web.log'), 'GET /guides/security from /usr/local/google/home/someone/code/modern-web-guidance-src/guides\n');
-  write(path.join(suite, SECURITY_RUN, 'agent_stderr.log'), 'at /usr/local/google/home/someone/secret.ts\n');
+  write(path.join(suite, SECURITY_RUN, 'modern-web.log'), `GET /guides/security from ${REPO_CHECKOUT}/guides\n`);
+  write(path.join(suite, SECURITY_RUN, 'agent_stderr.log'), `at /usr/local/google/home/${OTHER_FAKE_LDAP}/secret.ts\n`);
   write(path.join(suite, SECURITY_RUN, 'session-1.html'), '<html>trajectory</html>');
   write(path.join(suite, PASSKEY_RUN, 'index.html'), '<p>agent version</p>\n');
   write(path.join(suite, PASSKEY_RUN, 'modern-web.log'), 'GET /guides/passkeys\n');
@@ -142,7 +143,7 @@ describe('buildSuite', () => {
 
   test('skips and removes partial output when an artifact still leaks', async () => {
     const options = makeOptions();
-    write(path.join(options.storeRoot, SUITE, PASSKEY_RUN, 'modern-web.log'), 'host travenr.c.googlers.com\n');
+    write(path.join(options.storeRoot, SUITE, PASSKEY_RUN, 'modern-web.log'), `host ${CLOUDTOP_HOST}\n`);
 
     const result = await buildSuite(SUITE, options);
     assert.equal(result.status, 'skipped');
