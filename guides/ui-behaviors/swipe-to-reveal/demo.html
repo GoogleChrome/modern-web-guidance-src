@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swipe to reveal demo</title>
+  <style>
+    @layer base {
+      :root {
+        color-scheme: light dark;
+        --bg: light-dark(#f8fafc, #0f172a);
+        --surface: light-dark(#ffffff, #1e293b);
+        --surface-alt: light-dark(#f1f5f9, #334155);
+        --border: light-dark(#e2e8f0, #334155);
+        --text: light-dark(#0f172a, #f8fafc);
+        --text-muted: light-dark(#475569, #94a3b8);
+        --pin-bg: hsl(215 75% 48%);
+        --read-bg: hsl(199 84% 38%);
+        --star-bg: hsl(38 88% 44%);
+        --archive-bg: hsl(150 55% 36%);
+        --delete-bg: hsl(0 68% 50%);
+        --menu-bg: light-dark(#1e293b, #020617);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font: 1rem/1.5 system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-block-size: 180dvh;
+        padding: 2rem 1rem 6rem;
+      }
+
+      main {
+        max-inline-size: 42rem;
+        margin-inline: auto;
+        display: grid;
+        gap: 2.5rem;
+      }
+
+      header {
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      header p,
+      section > p {
+        color: var(--text-muted);
+      }
+
+      section {
+        display: grid;
+        gap: 0.875rem;
+      }
+
+      .status-log {
+        font-size: 0.9rem;
+        padding: 0.625rem 0.875rem;
+        border-radius: 0.5rem;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+      }
+    }
+
+    @layer demo {
+      /* Shared swipe-to-reveal mechanics */
+      .SwipeReveal {
+        display: grid;
+        grid-template-columns: 100% max-content;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+        overscroll-behavior: chain;
+      }
+
+      .SwipeReveal:has(> .SwipeReveal-panel:first-child) {
+        grid-template-columns: max-content 100%;
+      }
+
+      .SwipeReveal:has(> .SwipeReveal-panel:first-child):has(> .SwipeReveal-panel:last-child) {
+        grid-template-columns: max-content 100% max-content;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .SwipeReveal {
+          scroll-behavior: smooth;
+        }
+      }
+      .SwipeReveal::-webkit-scrollbar {
+        display: none;
+      }
+
+      .SwipeReveal-content {
+        scroll-snap-align: start;
+        scroll-initial-target: nearest;
+        background: var(--surface);
+        padding: 1rem 1.25rem;
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .SwipeReveal-content.is-scrollable {
+        block-size: 16rem;
+        overflow: auto;
+        padding: 1.25rem;
+        gap: 0.75rem;
+      }
+
+      .SwipeReveal-content:focus-visible {
+        outline: 2px solid var(--pin-bg);
+        outline-offset: -2px;
+      }
+
+      .SwipeReveal-panel {
+        scroll-snap-align: end;
+        display: flex;
+
+        &:first-child {
+          scroll-snap-align: start;
+        }
+      }
+
+      /* Example 1 & 2 styling: Lists with revealable action buttons */
+      .SwipeRevealList {
+        list-style: none;
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        overflow: clip;
+        background: var(--surface);
+      }
+
+      .SwipeRevealList-item + .SwipeRevealList-item {
+        border-block-start: 1px solid var(--border);
+      }
+
+      .SwipeRevealList .SwipeReveal-content p {
+        color: var(--text-muted);
+        font-size: 0.925rem;
+      }
+
+      .SwipeRevealList .SwipeReveal-panel {
+        align-items: stretch;
+      }
+
+      .SwipeRevealList .SwipeReveal-panel button {
+        border: 0;
+        padding-inline: 1.15rem;
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .SwipeRevealList .SwipeReveal-panel button:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: -5px;
+      }
+
+      .action-pin {
+        background: var(--pin-bg);
+      }
+
+      .action-read {
+        background: var(--read-bg);
+      }
+
+      .action-star {
+        background: var(--star-bg);
+      }
+
+      .action-archive {
+        background: var(--archive-bg);
+      }
+
+      .action-delete {
+        background: var(--delete-bg);
+      }
+
+      /* Example 3 styling: Scrollable pane with revealable side menu */
+      .SwipeReveal--menu {
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        background: var(--menu-bg);
+      }
+
+      .SwipeReveal--menu .SwipeReveal-panel {
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1.25rem 1.5rem;
+        min-inline-size: 11rem;
+        background: var(--menu-bg);
+        color: #f8fafc;
+      }
+
+      .SwipeReveal--menu .SwipeReveal-panel a {
+        color: inherit;
+        text-decoration: none;
+        font-weight: 500;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+      }
+
+      .SwipeReveal--menu .SwipeReveal-panel a:hover,
+      .SwipeReveal--menu .SwipeReveal-panel a:focus-visible {
+        background: rgb(255 255 255 / 14%);
+        outline: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <header>
+      <h1>Swipe to reveal</h1>
+      <p>Swipe horizontally on any item below to reveal contextual actions or a side menu without automatically triggering an action.</p>
+    </header>
+
+    <output class="status-log" id="statusLog" aria-live="polite">Last action: None (swipe a row to reveal buttons)</output>
+
+    <section aria-labelledby="actions-heading">
+      <h2 id="actions-heading">1. Swipe-to-reveal row actions (trailing side)</h2>
+      <p>Swiping left snaps the action buttons into view without committing them. Tap or click a revealed button to run its action, or swipe right to close.</p>
+
+      <ul class="SwipeRevealList">
+        <li class="SwipeRevealList-item" data-title="Q3 Architecture RFC">
+          <div class="SwipeReveal">
+            <div class="SwipeReveal-content">
+              <strong><a href="#">Q3 Architecture RFC</a></strong>
+              <p>Review comments on nested scroll container handoff.</p>
+            </div>
+            <div class="SwipeReveal-panel" role="group" aria-label="Actions for Q3 Architecture RFC">
+              <button type="button" class="action-pin" data-action="Pinned">Pin</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
+            </div>
+          </div>
+        </li>
+
+        <li class="SwipeRevealList-item" data-title="Release v2.14 Checklist">
+          <div class="SwipeReveal">
+            <div class="SwipeReveal-content">
+              <strong><a href="#">Release v2.14 Checklist</a></strong>
+              <p>All smoke tests and accessibility checks passed.</p>
+            </div>
+            <div class="SwipeReveal-panel" role="group" aria-label="Actions for Release v2.14 Checklist">
+              <button type="button" class="action-pin" data-action="Pinned">Pin</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
+            </div>
+          </div>
+        </li>
+
+        <li class="SwipeRevealList-item" data-title="Design Token Audit">
+          <div class="SwipeReveal">
+            <div class="SwipeReveal-content">
+              <strong><a href="#">Design Token Audit</a></strong>
+              <p>Verify contrast ratios for dark mode action surfaces.</p>
+            </div>
+            <div class="SwipeReveal-panel" role="group" aria-label="Actions for Design Token Audit">
+              <button type="button" class="action-pin" data-action="Pinned">Pin</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="leading-actions-heading">
+      <h2 id="leading-actions-heading">2. Swipe-to-reveal with overflow actions on the left</h2>
+      <p>These rows place a <code>.SwipeReveal-panel</code> before <code>.SwipeReveal-content</code> (as well as after it). Applying <code>scroll-initial-target: nearest</code> to <code>.SwipeReveal-content</code> ensures the scroll container initially rests on the main content column with the left-side actions hidden off-screen.</p>
+
+      <ul class="SwipeRevealList">
+        <li class="SwipeRevealList-item" data-title="Weekly Sync Notes">
+          <div class="SwipeReveal">
+            <div class="SwipeReveal-panel" role="group" aria-label="Leading actions for Weekly Sync Notes">
+              <button type="button" class="action-read" data-action="Marked read">Mark read</button>
+              <button type="button" class="action-star" data-action="Starred">Star</button>
+            </div>
+            <div class="SwipeReveal-content">
+              <strong><a href="#">Weekly Sync Notes</a></strong>
+              <p>Swipe right to reveal leading actions on the left, or swipe left for trailing actions.</p>
+            </div>
+            <div class="SwipeReveal-panel" role="group" aria-label="Trailing actions for Weekly Sync Notes">
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
+            </div>
+          </div>
+        </li>
+
+        <li class="SwipeRevealList-item" data-title="Customer Feedback Digest">
+          <div class="SwipeReveal">
+            <div class="SwipeReveal-panel" role="group" aria-label="Leading actions for Customer Feedback Digest">
+              <button type="button" class="action-read" data-action="Marked read">Mark read</button>
+              <button type="button" class="action-star" data-action="Starred">Star</button>
+            </div>
+            <div class="SwipeReveal-content">
+              <strong><a href="#">Customer Feedback Digest</a></strong>
+              <p>Top feature requests and usability notes from the beta cohort.</p>
+            </div>
+            <div class="SwipeReveal-panel" role="group" aria-label="Trailing actions for Customer Feedback Digest">
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="menu-heading">
+      <h2 id="menu-heading">3. Swipe-to-reveal side menu on a scrollable pane</h2>
+      <p>The outer horizontal wrapper (<code>.SwipeReveal</code>) uses <code>overscroll-behavior: chain</code> so scroll chains into the parent scroller (the document) without the menu bouncing, while the inner content pane keeps the default <code>auto</code> behavior so its own vertical bounce still happens.</p>
+
+      <div class="SwipeReveal SwipeReveal--menu" role="region" aria-labelledby="menu-heading">
+        <div class="SwipeReveal-content is-scrollable" tabindex="0">
+          <h3>Scrollable Article Preview</h3>
+          <p>Scroll up and down inside this pane, or swipe from the right to reveal the contextual side menu.</p>
+          <p>The inner content container (<code>.SwipeReveal-content.is-scrollable</code>) keeps the default <code>overscroll-behavior: auto</code> so it retains its normal bounce effect and chains horizontal swipes out to <code>.SwipeReveal</code> to reveal the menu.</p>
+          <p>The outer horizontal wrapper (<code>.SwipeReveal</code>) sets <code>overscroll-behavior: chain</code> so that once the menu reaches its scroll boundary, excess scroll chains into the parent scroller (here, the document) without the menu bouncing.</p>
+          <p>In browsers that do not yet support the <code>chain</code> keyword, the property falls back to its initial <code>auto</code> value as a progressive enhancement, preserving scroll chaining across all engines.</p>
+        </div>
+        <nav class="SwipeReveal-panel" aria-label="Article actions">
+          <a href="#share" data-menu-item="Share article">Share article</a>
+          <a href="#bookmark" data-menu-item="Bookmark">Bookmark</a>
+          <a href="#export" data-menu-item="Export PDF">Export PDF</a>
+        </nav>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    const statusLog = document.getElementById('statusLog');
+
+    for (const list of document.querySelectorAll('.SwipeRevealList')) {
+      list.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+
+        const item = button.closest('.SwipeRevealList-item');
+        const content = item.querySelector('.SwipeReveal-content');
+        const title = item.dataset.title;
+        const action = button.dataset.action;
+
+        statusLog.textContent = `Last action: ${action} "${title}"`;
+        content.scrollIntoView({
+          block: 'nearest',
+          inline: 'start',
+        });
+      });
+    }
+
+    document.querySelector('.SwipeReveal--menu .SwipeReveal-panel').addEventListener('click', (event) => {
+      const link = event.target.closest('a[data-menu-item]');
+      if (!link) return;
+      event.preventDefault();
+      statusLog.textContent = `Last action: Selected "${link.dataset.menuItem}" from side menu`;
+    });
+
+    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
+      content.addEventListener('focusin', (event) => {
+        if (event.target.matches(':focus-visible')) {
+          content.scrollIntoView({
+            block: 'nearest',
+            inline: 'start',
+          });
+        }
+      });
+    }
+
+    if (!CSS.supports('scroll-initial-target', 'nearest')) {
+      window.addEventListener('load', () => {
+        for (const content of document.querySelectorAll('.SwipeReveal-content:not(:first-child)')) {
+          content.parentElement.scrollTo({
+            left: content.previousElementSibling.offsetWidth,
+            behavior: 'instant',
+          });
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>

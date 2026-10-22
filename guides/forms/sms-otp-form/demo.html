@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMS OTP form verification demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      color: #1f1f1f;
+      background-color: #f8fafd;
+    }
+
+    body {
+      max-width: 32rem;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #c4c7c5;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-block: 0 0.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      margin-block-end: 1.25rem;
+    }
+
+    label {
+      font-weight: 600;
+      margin-block-end: 0.25rem;
+    }
+
+    .field-hint {
+      font-size: 0.9375rem;
+      color: #444746;
+      margin-block: 0 0.5rem;
+    }
+
+    #otp-input {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 1.25rem;
+      letter-spacing: 0.35em;
+      min-height: 48px;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #747775;
+      border-radius: 0.5rem;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    #otp-input:focus-visible,
+    button:focus-visible {
+      outline: 3px solid #0b57d0;
+      outline-offset: 2px;
+    }
+
+    #otp-input:invalid:user-invalid {
+      border-color: #b3261e;
+    }
+
+    button[type="submit"] {
+      min-height: 48px;
+      padding: 0.625rem 1.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #ffffff;
+      background-color: #0b57d0;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    button[type="submit"]:hover {
+      background-color: #0842a0;
+    }
+
+    .status-message {
+      margin-block-start: 1rem;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+    }
+
+    .status-message:empty {
+      display: none;
+    }
+
+    .status-message.verified {
+      background-color: #e6f4ea;
+      color: #137333;
+      border: 1px solid #ceead6;
+    }
+
+    .sms-preview {
+      margin-block-start: 1.5rem;
+      padding: 1rem;
+      background-color: #f1f3f4;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .sms-preview pre {
+      margin: 0.5rem 0 0;
+      padding: 0.75rem;
+      background: #ffffff;
+      border: 1px solid #dadce0;
+      border-radius: 0.375rem;
+      font-family: ui-monospace, monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Verify your phone number</h1>
+
+    <form id="otp-form" action="/verify-otp" method="POST">
+      <div class="form-group">
+        <label for="otp-input">Verification code</label>
+        <p id="otp-format-hint" class="field-hint">
+          Enter the 6-digit code sent to your phone.
+        </p>
+        <input
+          type="text"
+          id="otp-input"
+          name="otp"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          pattern="\d{6}"
+          maxlength="6"
+          aria-describedby="otp-format-hint"
+          required>
+      </div>
+      <button type="submit" id="verify-btn">Verify code</button>
+    </form>
+
+    <div id="verification-status" class="status-message" role="status" aria-live="polite"></div>
+
+    <aside class="sms-preview" aria-label="Example origin-bound SMS format">
+      <strong>Origin-bound SMS message format:</strong>
+      <pre>Your verification code is 123456.
+
+@example.com #123456</pre>
+    </aside>
+  </main>
+
+  <script type="module">
+    const otpForm = document.getElementById('otp-form');
+    const otpInput = document.getElementById('otp-input');
+    const statusEl = document.getElementById('verification-status');
+
+    let otpAbortController = null;
+
+    function stopSmsOtpListener() {
+      if (otpAbortController) {
+        otpAbortController.abort();
+        otpAbortController = null;
+      }
+    }
+
+    async function startSmsOtpListener() {
+      if (!otpInput || !('OTPCredential' in window)) {
+        return;
+      }
+
+      stopSmsOtpListener();
+      const ac = new AbortController();
+      otpAbortController = ac;
+
+      try {
+        const otp = await navigator.credentials.get({
+          otp: { transport: ['sms'] },
+          signal: ac.signal,
+        });
+
+        if (!otp) return;
+        otpInput.value = otp.code;
+        if (otpForm) {
+          otpForm.requestSubmit();
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          return;
+        }
+        console.error('WebOTP verification error:', err);
+      }
+    }
+
+    if (otpForm) {
+      otpForm.addEventListener('submit', (event) => {
+        stopSmsOtpListener();
+        event.preventDefault();
+        statusEl.textContent = `Verified code: ${otpInput.value}`;
+        statusEl.classList.add('verified');
+      });
+    }
+
+    startSmsOtpListener();
+  </script>
+</body>
+</html>

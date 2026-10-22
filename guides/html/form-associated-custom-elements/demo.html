@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form-Associated Custom Elements: a custom control in a form</title>
+  <style>
+    rating-input:not(:defined) {
+      opacity: 0;
+      animation: defined-fallback 0.2s 2s forwards;
+    }
+    @keyframes defined-fallback { to { opacity: 1; } }
+    rating-input { display: inline-flex; gap: .25rem; }
+    rating-input:invalid { outline: 2px solid crimson; }
+    rating-input:disabled { opacity: 0.5; cursor: not-allowed; }
+    rating-input::part(star) { background: none; border: 0; padding: 0; cursor: pointer; font-size: 1.5rem; line-height: 1; }
+  </style>
+</head>
+<body>
+  <form id="review">
+    <label for="score">Rating (required)</label>
+    <rating-input id="score" name="rating" required></rating-input>
+    <button type="submit">Submit</button>
+  </form>
+  <output id="result"></output>
+
+  <script>
+    class RatingInput extends HTMLElement {
+      // MANDATORY: opt in, or the attachInternals() form APIs are unavailable.
+      static formAssociated = true;
+
+      #internals;
+      #value = '';
+      #disabled = false;
+
+      constructor() {
+        super();
+        this.#internals = this.attachInternals();
+        this.attachShadow({ mode: 'open', delegatesFocus: true });
+        this.shadowRoot.innerHTML = [1, 2, 3, 4, 5]
+          .map(n => `<button type="button" part="star" data-value="${n}" tabindex="${n === 1 ? 0 : -1}">★</button>`)
+          .join('');
+        this.shadowRoot.addEventListener('click', (e) => {
+          if (this.#disabled) return;
+          const star = e.target.closest('[data-value]');
+          if (star) this.value = star.dataset.value;
+        });
+      }
+
+      connectedCallback() {
+        this.#validate();
+      }
+
+      get value() { return this.#value; }
+      set value(v) {
+        this.#value = v;
+        this.#internals.setFormValue(v);        // submits without a hidden input
+        this.#validate();
+      }
+
+      #validate() {
+        if (this.hasAttribute('required') && !this.#value) {
+          this.#internals.setValidity(
+            { valueMissing: true },
+            'Please choose a rating.',
+            this.shadowRoot.querySelector('[data-value]'),
+          );
+        } else {
+          this.#internals.setValidity({}); // clear
+        }
+      }
+
+      formResetCallback() { this.value = ''; }
+      formDisabledCallback(disabled) {
+        this.#disabled = disabled;
+        for (const star of this.shadowRoot.querySelectorAll('button')) {
+          star.disabled = disabled;
+        }
+      }
+      formStateRestoreCallback(state) { this.value = state; }
+    }
+
+    customElements.define('rating-input', RatingInput);
+
+    document.getElementById('review').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = new FormData(e.target);
+      document.getElementById('result').textContent = `Submitted rating: ${data.get('rating')}`;
+    });
+  </script>
+</body>
+</html>

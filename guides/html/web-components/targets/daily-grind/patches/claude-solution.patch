@@ -1,0 +1,142 @@
+===================================================================
+--- a/index.html
++++ b/index.html
+@@ -153,6 +153,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./src/coffee-favorite.js"></script>
+ </head>
+ 
+ <body>
+@@ -182,16 +183,19 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <coffee-favorite product-name="Maple Oat Latte"></coffee-favorite>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <coffee-favorite product-name="Dark Roast Espresso"></coffee-favorite>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <coffee-favorite product-name="Cold Brew"></coffee-favorite>
+         </div>
+       </div>
+     </section>
+===================================================================
+--- /dev/null
++++ b/src/coffee-favorite.js
+@@ -0,0 +1,107 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      margin-top: 12px;
++    }
++    button {
++      font: inherit;
++      color: var(--primary, #4e342e);
++      background: transparent;
++      border: 1px solid currentColor;
++      border-radius: 5px;
++      padding: 8px 14px;
++      cursor: pointer;
++      transition: background-color 0.2s, color 0.2s;
++    }
++    button[aria-pressed="true"] {
++      background: var(--secondary, #d7ccc8);
++    }
++    button:hover {
++      background: var(--secondary, #d7ccc8);
++    }
++    button:focus-visible {
++      outline: 3px solid var(--primary, #4e342e);
++      outline-offset: 2px;
++    }
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++  </style>
++  <button type="button" aria-pressed="false" aria-describedby="favorite-desc">Save favorite</button>
++  <span id="favorite-desc" class="sr-only">Toggle favorite status for this coffee</span>
++`;
++
++export class CoffeeFavorite extends HTMLElement {
++  static observedAttributes = ['favorite', 'product-name'];
++  #button;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.appendChild(template.content.cloneNode(true));
++    this.#button = root.querySelector('button');
++  }
++
++  get favorite() {
++    return this.hasAttribute('favorite');
++  }
++
++  set favorite(value) {
++    this.toggleAttribute('favorite', Boolean(value));
++  }
++
++  get productName() {
++    return this.getAttribute('product-name') || '';
++  }
++
++  set productName(value) {
++    if (value) {
++      this.setAttribute('product-name', value);
++    } else {
++      this.removeAttribute('product-name');
++    }
++  }
++
++  connectedCallback() {
++    this.#button?.addEventListener('click', this.#toggle);
++    this.#render();
++  }
++
++  disconnectedCallback() {
++    this.#button?.removeEventListener('click', this.#toggle);
++  }
++
++  attributeChangedCallback() {
++    this.#render();
++  }
++
++  #toggle = () => {
++    this.favorite = !this.favorite;
++    this.dispatchEvent(
++      new CustomEvent('change', {
++        bubbles: true,
++        composed: true,
++        detail: { favorite: this.favorite },
++      })
++    );
++  };
++
++  #render() {
++    if (!this.#button) return;
++    const isFav = this.favorite;
++    this.#button.setAttribute('aria-pressed', String(isFav));
++    this.#button.textContent = isFav ? 'Saved favorite' : 'Save favorite';
++  }
++}
++
++customElements.define('coffee-favorite', CoffeeFavorite);

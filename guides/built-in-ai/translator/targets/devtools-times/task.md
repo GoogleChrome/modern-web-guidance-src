@@ -1,1 +1,1 @@
-- Implement a feature to translate text between languages in the application.
+- Add an on-device article translation control to The DevTools Times so readers can translate news articles and teasers between languages directly in the browser.

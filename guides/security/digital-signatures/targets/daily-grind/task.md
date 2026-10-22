@@ -1,0 +1,1 @@
+- Add digital signing and verification for coffee order receipts and gift vouchers on the Daily Grind homepage using classical or quantum-resistant asymmetric keys in the browser to guarantee authenticity and integrity.

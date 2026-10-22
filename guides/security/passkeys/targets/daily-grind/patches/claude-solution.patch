@@ -1,0 +1,334 @@
+diff --git a/index.html b/index.html
+index 66c9173..e42f704 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,66 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .passkey-entry {
++      display: none;
++    }
++
++    .passkey-btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 8px 16px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.9rem;
++      font-weight: 600;
++      transition: opacity 0.3s;
++    }
++
++    .passkey-btn:hover {
++      opacity: 0.85;
++    }
++
++    .passkey-section {
++      margin-top: 30px;
++      text-align: center;
++    }
++
++    .passkey-credentials-list {
++      list-style: none;
++      max-width: 500px;
++      margin: 15px auto;
++    }
++
++    .passkey-credentials-list li {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px;
++      background: white;
++      border-radius: 6px;
++      margin-bottom: 8px;
++      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
++    }
++
++    .passkey-provider-info {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .passkey-provider-info img {
++      width: 20px;
++      height: 20px;
++    }
++
++    .passkey-status {
++      text-align: center;
++      margin-top: 10px;
++      font-size: 0.9rem;
++      min-height: 1.4em;
++    }
+   </style>
+ </head>
+ 
+@@ -165,6 +225,7 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="passkey-entry"><button class="passkey-btn" onclick="authenticateWithPasskey()">Sign in with Passkey</button></li>
+     </ul>
+   </nav>
+ 
+@@ -175,6 +236,16 @@
+   </header>
+ 
+   <main class="container">
++    <section class="passkey-section passkey-entry">
++      <h2>Your Passkeys</h2>
++      <p>Manage your passkeys for fast, secure sign-in.</p>
++      <div>
++        <button class="passkey-btn" onclick="registerPasskey()">Register a Passkey</button>
++      </div>
++      <p class="passkey-status" id="passkey-status"></p>
++      <ul class="passkey-credentials-list" id="passkey-credentials-list"></ul>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +278,237 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    async function isPasskeySupported() {
++      if (!('PublicKeyCredential' in window)) {
++        return false;
++      }
++      if (typeof PublicKeyCredential.isConditionalMediationAvailable === 'function') {
++        try {
++          return await PublicKeyCredential.isConditionalMediationAvailable();
++        } catch {
++          return false;
++        }
++      }
++      return true;
++    }
++
++    async function initPasskeys() {
++      var supported = await isPasskeySupported();
++      var entries = document.querySelectorAll('.passkey-entry');
++      for (var i = 0; i < entries.length; i++) {
++        entries[i].style.display = supported ? '' : 'none';
++      }
++    }
++
++    function setStatus(msg) {
++      var el = document.getElementById('passkey-status');
++      if (el) el.textContent = msg;
++    }
++
++    async function registerPasskey() {
++      try {
++        var optionsRes = await fetch('/api/webauthn/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' }
++        });
++        var optionsJSON = await optionsRes.json();
++
++        var options = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++
++        var credential = await navigator.credentials.create({ publicKey: options });
++
++        var credentialJSON = credential.toJSON();
++        var verifyRes = await fetch('/api/webauthn/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(credentialJSON)
++        });
++        var result = await verifyRes.json();
++
++        if (result.verified) {
++          setStatus('Passkey registered successfully.');
++          if (typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function') {
++            await PublicKeyCredential.signalAllAcceptedCredentials({
++              rpId: result.rpId,
++              userId: result.userId,
++              allAcceptedCredentialIds: result.allCredentialIds
++            });
++          }
++          await loadPasskeyList();
++        }
++
++        return result;
++      } catch (error) {
++        if (error.name === 'NotAllowedError') {
++          setStatus('Registration cancelled.');
++        } else if (error.name === 'AbortError') {
++          setStatus('Registration was aborted.');
++        } else {
++          setStatus('Registration failed. Please try again.');
++          console.error('Registration error:', error);
++        }
++      }
++    }
++
++    async function authenticateWithPasskey() {
++      try {
++        var optionsRes = await fetch('/api/webauthn/authenticate/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' }
++        });
++        var optionsJSON = await optionsRes.json();
++
++        var options = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++        var credential = await navigator.credentials.get({ publicKey: options });
++
++        var credentialJSON = credential.toJSON();
++        var verifyRes = await fetch('/api/webauthn/authenticate/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(credentialJSON)
++        });
++        var result = await verifyRes.json();
++
++        if (result.unknownCredential) {
++          if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: result.rpId,
++              credentialId: credentialJSON.id
++            });
++          }
++          setStatus('Credential not recognized. Please try another passkey.');
++          return result;
++        }
++
++        if (result.authenticated) {
++          window.location.href = '/account';
++        }
++
++        return result;
++      } catch (error) {
++        if (error.name === 'NotAllowedError') {
++          setStatus('Authentication cancelled.');
++        } else if (error.name === 'AbortError') {
++          setStatus('Authentication was aborted.');
++        } else {
++          setStatus('Authentication failed. Please try again.');
++          console.error('Authentication error:', error);
++        }
++      }
++    }
++
++    async function deletePasskey(credentialId) {
++      try {
++        var res = await fetch('/api/webauthn/credentials/delete', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ credentialId: credentialId })
++        });
++        var result = await res.json();
++
++        if (typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function') {
++          await PublicKeyCredential.signalAllAcceptedCredentials({
++            rpId: result.rpId,
++            userId: result.userId,
++            allAcceptedCredentialIds: result.remainingCredentialIds
++          });
++        }
++
++        setStatus('Passkey removed.');
++        await loadPasskeyList();
++        return result;
++      } catch (error) {
++        setStatus('Failed to remove passkey.');
++        console.error('Delete passkey error:', error);
++      }
++    }
++
++    async function updateUserDetails(userId, username, displayName) {
++      try {
++        var res = await fetch('/api/user/update', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ userId: userId, username: username, displayName: displayName })
++        });
++        var result = await res.json();
++
++        if (typeof PublicKeyCredential.signalCurrentUserDetails === 'function') {
++          await PublicKeyCredential.signalCurrentUserDetails({
++            rpId: result.rpId,
++            userId: result.userId,
++            name: result.username,
++            displayName: result.displayName
++          });
++        }
++
++        return result;
++      } catch (error) {
++        console.error('Update user details error:', error);
++      }
++    }
++
++    function getPasskeyProviderInfo(aaguid) {
++      var providers = {
++        'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4': { name: 'Google Password Manager', icon: null },
++        'adce0002-35bc-c60a-648b-0b25f1f05503': { name: 'Chrome on Mac', icon: null },
++        'dd4ec2ec-1062-d1f0-e4d0-c4e2fb8a4400': { name: 'iCloud Keychain', icon: null },
++        '531126d6-e717-415c-9320-3d9aa6981239': { name: '1Password', icon: null },
++        'b5397e21-1c4d-d3a1-e920-2a5c96df0655': { name: 'Dashlane', icon: null },
++        'bada5566-a7aa-401f-bd96-45619a55120d': { name: 'Bitwarden', icon: null }
++      };
++      return providers[aaguid] || { name: 'Passkey', icon: null };
++    }
++
++    async function loadPasskeyList() {
++      var list = document.getElementById('passkey-credentials-list');
++      if (!list) return;
++      try {
++        var res = await fetch('/api/webauthn/credentials', {
++          method: 'GET',
++          headers: { 'Content-Type': 'application/json' }
++        });
++        var data = await res.json();
++
++        list.innerHTML = '';
++        if (data.credentials && data.credentials.length > 0) {
++          data.credentials.forEach(function (cred) {
++            var li = document.createElement('li');
++
++            var providerDiv = document.createElement('div');
++            providerDiv.className = 'passkey-provider-info';
++            var provider = getPasskeyProviderInfo(cred.aaguid);
++            if (provider.icon) {
++              var img = document.createElement('img');
++              img.src = provider.icon;
++              img.alt = provider.name;
++              providerDiv.appendChild(img);
++            }
++            var nameSpan = document.createElement('span');
++            nameSpan.textContent = cred.displayName || provider.name;
++            providerDiv.appendChild(nameSpan);
++
++            var deleteBtn = document.createElement('button');
++            deleteBtn.className = 'passkey-btn';
++            deleteBtn.textContent = 'Remove';
++            deleteBtn.onclick = function () { deletePasskey(cred.id); };
++
++            li.appendChild(providerDiv);
++            li.appendChild(deleteBtn);
++            list.appendChild(li);
++          });
++        }
++      } catch (error) {
++        // Credential list not available
++      }
++    }
++
++    document.addEventListener('DOMContentLoaded', function () {
++      initPasskeys();
++      loadPasskeyList();
++    });
++  </script>
+ </body>
+ 
+ </html>

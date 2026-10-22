@@ -1,0 +1,469 @@
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..229b9bd 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -17,6 +17,13 @@ export default defineConfig({
+     mode: "standalone",
+   }),
+   output: "server",
++  session: {
++    cookie: {
++      name: "astro-session",
++      sameSite: "lax",
++      secure: true,
++    },
++  },
+ 
+   image: {
+     service: {
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..c913d3d 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,4 +1,3 @@
+-
+ import React, { useState, useEffect } from 'react';
+ 
+ interface Article {
+@@ -48,18 +47,59 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     fetchReadingList();
+   };
+ 
++  const handleClearAll = async () => {
++    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++      method: 'DELETE',
++    });
++    setReadingList([]);
++  };
++
++  const handleExport = () => {
++    const exportData = {
++      exportedAt: new Date().toISOString(),
++      readingList: readingListArticles,
++    };
++    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
++    const url = URL.createObjectURL(blob);
++    const a = document.createElement('a');
++    a.href = url;
++    a.download = 'reading-list-export.json';
++    document.body.appendChild(a);
++    a.click();
++    document.body.removeChild(a);
++    URL.revokeObjectURL(url);
++  };
++
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
+   return (
+     <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+       <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
++        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10" aria-label="Close reading list">
+           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+           </svg>
+         </button>
+-        <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++        <div className="p-4 flex justify-between items-center border-b border-gray-100">
++          <h3 className="text-lg font-semibold text-gray-800">Your Reading List</h3>
++          {readingListArticles.length > 0 && (
++            <div className="flex space-x-2">
++              <button
++                onClick={handleExport}
++                className="text-xs px-2.5 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 flex items-center"
++                title="Export your reading list data as JSON"
++              >
++                Export Data
++              </button>
++              <button
++                onClick={handleClearAll}
++                className="text-xs px-2.5 py-1.5 border border-red-200 text-red-600 rounded hover:bg-red-50 flex items-center"
++                title="Delete all items from your reading list"
++              >
++                Clear All
++              </button>
++            </div>
++          )}
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+@@ -72,7 +112,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+                   <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                   <p className="text-sm text-gray-600">{article.summary}</p>
+                 </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
++                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400" aria-label={`Remove ${article.title}`}>
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                     </svg>
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..208aa81 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -25,12 +25,10 @@ export default function SignInForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        // Session tokens and credentials MUST NOT be stored in localStorage or sessionStorage
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -65,9 +63,13 @@ export default function SignInForm() {
+             id="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
++            aria-describedby="signin-username-help"
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="signin-username-help" className="text-xs text-gray-500 mt-1">
++            Your registered username to authenticate and access your account.
++          </p>
+         </div>
+         
+         <div>
+@@ -79,20 +81,34 @@ export default function SignInForm() {
+             id="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
++            aria-describedby="signin-password-help"
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="signin-password-help" className="text-xs text-gray-500 mt-1">
++            Your confidential password used exclusively to verify your identity.
++          </p>
+         </div>
+ 
+         <button
+           type="submit"
+           disabled={loading}
++          data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+         >
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
++
++        <div className="mt-4 pt-4 border-t border-gray-200 text-center">
++          <a
++            href={import.meta.env.BASE_URL}
++            className="text-sm text-gray-600 hover:text-gray-900 underline"
++          >
++            Continue as Guest
++          </a>
++        </div>
+       </form>
+     </div>
+   );
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..b090a3e 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -25,8 +25,6 @@ export default function SignUpForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Registration failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
+@@ -66,9 +64,13 @@ export default function SignUpForm() {
+             id="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
++            aria-describedby="signup-username-help"
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="signup-username-help" className="text-xs text-gray-500 mt-1">
++            We collect your username to create and identify your account profile.
++          </p>
+         </div>
+         
+         <div>
+@@ -80,11 +82,12 @@ export default function SignUpForm() {
+             id="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
++            aria-describedby="signup-password-help"
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <p id="signup-password-help" className="text-xs text-gray-500 mt-1">
++            Used to secure your account. Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+ 
+@@ -98,6 +101,15 @@ export default function SignUpForm() {
+         >
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
++
++        <div className="mt-4 pt-4 border-t border-gray-200 text-center">
++          <a
++            href={import.meta.env.BASE_URL}
++            className="text-sm text-gray-600 hover:text-gray-900 underline"
++          >
++            Continue as Guest
++          </a>
++        </div>
+       </form>
+     </div>
+   );
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..c2a5c3c 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -19,6 +19,7 @@ const baseUrl = import.meta.env.BASE_URL;
+   <head>
+     <meta charset="UTF8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+@@ -30,7 +31,7 @@ const baseUrl = import.meta.env.BASE_URL;
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!-- Third-party tracking SDK removed in accordance with privacy guidelines -->
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..410962e 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,4 +1,3 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
+ export const onRequest = defineMiddleware(async (context, next) => {
+@@ -9,5 +8,50 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  const response = await next();
++
++  // Set restrictive Permissions-Policy header to disable unused powerful features by default
++  response.headers.set(
++    'Permissions-Policy',
++    'geolocation=(), camera=(), microphone=(), accelerometer=()'
++  );
++
++  // Set privacy-preserving Referrer-Policy header
++  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++
++  // Handle logout / signout flows with Clear-Site-Data header
++  const pathname = context.url.pathname.toLowerCase();
++  if (pathname.includes('logout') || pathname.includes('signout')) {
++    response.headers.set('Clear-Site-Data', '"cookies", "storage", "cache"');
++  }
++
++  // Ensure security and privacy attributes on all Set-Cookie headers
++  const setCookies = typeof response.headers.getSetCookie === 'function'
++    ? response.headers.getSetCookie()
++    : (response.headers.get('set-cookie') ? [response.headers.get('set-cookie')!] : []);
++
++  if (setCookies.length > 0) {
++    response.headers.delete('Set-Cookie');
++    for (let cookie of setCookies) {
++      if (!/;\s*HttpOnly/i.test(cookie)) {
++        cookie += '; HttpOnly';
++      }
++      if (!/;\s*Secure/i.test(cookie)) {
++        cookie += '; Secure';
++      }
++      if (/;\s*SameSite=None/i.test(cookie)) {
++        // Enforce Partitioned for cross-site CHIPS cookies
++        if (!/;\s*Partitioned/i.test(cookie)) {
++          cookie += '; Partitioned';
++        }
++      } else if (!/;\s*SameSite=/i.test(cookie)) {
++        // Default first-party session cookies to SameSite=Lax
++        cookie += '; SameSite=Lax';
++      }
++      response.headers.append('Set-Cookie', cookie);
++    }
++  }
++
++  return response;
+ });
+diff --git a/src/pages/api/reading-list.json.ts b/src/pages/api/reading-list.json.ts
+index 3084fe3..fb1a136 100644
+--- a/src/pages/api/reading-list.json.ts
++++ b/src/pages/api/reading-list.json.ts
+@@ -29,3 +29,11 @@ export const GET: APIRoute = async ({ session }) => {
+     headers: { 'Content-Type': 'application/json' },
+   });
+ };
++
++export const DELETE: APIRoute = async ({ session }) => {
++  await session?.set('readingList', []);
++
++  return new Response(JSON.stringify({ readingList: [] }), {
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..754eeb3 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -33,6 +33,13 @@ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
++
++const shareUrl = Astro.url.href;
++const shareTitle = article.data.title;
++const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
++const xShareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(shareTitle)}&url=${encodeURIComponent(shareUrl)}`;
++const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareTitle} ${shareUrl}`)}`;
++const mailShareUrl = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareUrl)}`;
+ ---
+ 
+ <Layout title={article.data.title}>
+@@ -67,7 +74,7 @@ const isBookmarked = readingList.includes(article.slug);
+                     width="1200"
+                     height="675"
+                     class="w-full h-auto"
+-                    crossorigin="use-credentials"
++                    crossorigin="anonymous"
+                 />
+             ) : (
+                 <Image 
+@@ -88,15 +95,15 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+-            <!-- Social Share Icons (Placeholders) -->
++            <!-- Social Share Icons (Privacy-preserving static links without tracking SDKs) -->
+             <div class="flex space-x-3 items-center">
+                 <span class="text-sm font-semibold text-gray-800">Share:</span>
+-                <a href="#" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
++                <a href={facebookShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
++                <a href={xShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on X" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
++                <a href={whatsappShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share via WhatsApp" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
+                 </a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
++                <a href={mailShareUrl} aria-label="Share via Email" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+                 <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..651be00 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -13,5 +13,8 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
+     
+     <h2>3. Recording of data on our website</h2>
+     <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. First-party session cookies are strictly secured using HttpOnly, Secure, and SameSite=Lax flags. We do not store sensitive authentication tokens or credentials in unencrypted client storage such as localStorage or sessionStorage.</p>
++
++    <h2>4. Your rights regarding your data (Access, Export, and Deletion)</h2>
++    <p>You have the right at any time to receive information free of charge about the origin, recipient, and purpose of your stored personal data. You also have the right to request the correction, export, or deletion of this data. If you have stored items in your reading list or preferences, self-service controls are provided within the Reading List flyout allowing you to export or delete your stored data at any time.</p>
+ </LegalLayout>
+diff --git a/src/utils/privacy.ts b/src/utils/privacy.ts
+new file mode 100644
+index 0000000..8d9f0af
+--- /dev/null
++++ b/src/utils/privacy.ts
+@@ -0,0 +1,79 @@
++/**
++ * Privacy utilities for data handling and PII scrubbing.
++ */
++
++// Common regex patterns for Personally Identifiable Information (PII)
++const EMAIL_REGEX = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
++const PHONE_REGEX = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g;
++const TOKEN_PATTERNS = [
++  /bearer\s+[A-Za-z0-9\-._~+/]+=*/gi,
++  /(?:token|access_token|refresh_token|api_key|apikey|secret|password)[=:\s]+["']?([A-Za-z0-9\-._~+/]{6,}=*)["']?/gi,
++];
++
++/**
++ * Scrubs or masks Personally Identifiable Information (PII) such as emails,
++ * phone numbers, and tokens from strings or nested objects before outputting
++ * to logs or analytics payloads.
++ */
++export function scrubPII<T>(data: T): T {
++  if (data === null || data === undefined) {
++    return data;
++  }
++
++  if (typeof data === 'string') {
++    let result = data;
++    result = result.replace(EMAIL_REGEX, '[REDACTED_EMAIL]');
++    result = result.replace(PHONE_REGEX, '[REDACTED_PHONE]');
++    for (const pattern of TOKEN_PATTERNS) {
++      result = result.replace(pattern, (match) => {
++        if (/bearer/i.test(match)) {
++          return 'Bearer [REDACTED_TOKEN]';
++        }
++        const separator = match.includes(':') ? ': ' : '=';
++        const key = match.split(/[:=]/)[0];
++        return `${key}${separator}[REDACTED_TOKEN]`;
++      });
++    }
++    return result as unknown as T;
++  }
++
++  if (Array.isArray(data)) {
++    return data.map((item) => scrubPII(item)) as unknown as T;
++  }
++
++  if (typeof data === 'object') {
++    const scrubbedObj: Record<string, any> = {};
++    for (const [key, value] of Object.entries(data)) {
++      const lowerKey = key.toLowerCase();
++      if (
++        lowerKey.includes('password') ||
++        lowerKey.includes('secret') ||
++        lowerKey.includes('token') ||
++        lowerKey.includes('auth') ||
++        lowerKey.includes('apikey') ||
++        lowerKey.includes('api_key')
++      ) {
++        scrubbedObj[key] = '[REDACTED_TOKEN]';
++      } else if (lowerKey.includes('email')) {
++        scrubbedObj[key] = typeof value === 'string' ? scrubPII(value) : '[REDACTED_EMAIL]';
++      } else if (lowerKey.includes('phone')) {
++        scrubbedObj[key] = typeof value === 'string' ? scrubPII(value) : '[REDACTED_PHONE]';
++      } else {
++        scrubbedObj[key] = scrubPII(value);
++      }
++    }
++    return scrubbedObj as unknown as T;
++  }
++
++  return data;
++}
++
++/**
++ * Privacy-safe console logging that automatically scrubs PII from all arguments.
++ */
++export const safeLogger = {
++  log: (...args: any[]) => console.log(...args.map(scrubPII)),
++  warn: (...args: any[]) => console.warn(...args.map(scrubPII)),
++  error: (...args: any[]) => console.error(...args.map(scrubPII)),
++  info: (...args: any[]) => console.info(...args.map(scrubPII)),
++};

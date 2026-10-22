@@ -1,0 +1,480 @@
+diff --git a/index.html b/index.html
+index 66c9173..3894332 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,7 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --muted: #6d4c41;
+     }
+ 
+     * {
+@@ -100,24 +101,131 @@
+       padding: 0 20px;
+     }
+ 
++    .layout {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 40px;
++      align-items: start;
++    }
++
++    @media (min-width: 900px) {
++      .layout {
++        grid-template-columns: minmax(0, 1fr) 280px;
++      }
++    }
++
++    .section-title {
++      text-align: center;
++      margin-bottom: 8px;
++    }
++
++    .section-note {
++      text-align: center;
++      color: var(--muted);
++      font-size: 0.9rem;
++      margin-bottom: 20px;
++    }
++
++    .stack {
++      display: grid;
++      gap: 40px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    .sidebar h2 {
++      font-size: 1.25rem;
++      margin-bottom: 4px;
++    }
++
++    .sidebar .section-note {
++      text-align: left;
++    }
++
++    .sidebar .stack {
++      gap: 20px;
++    }
++
++    /* ------------------------------------------------------------------
++       Size-aware product card.
++
++       The wrapper is the measured container; the card inside adapts to the
++       wrapper's inline size, not the viewport. That means the exact same
++       markup works in the wide main column, in the narrow sidebar, and in
++       the resizable playground below.
++       ------------------------------------------------------------------ */
++    .card-container {
++      container-type: inline-size;
++      container-name: card;
++    }
++
+     .card {
++      /* Safe default for every browser: a stacked, vertical layout. */
++      display: flex;
++      flex-direction: column;
++      gap: 1rem;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
++      padding: 20px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      height: 100%;
++    }
++
++    .card-image {
++      display: block;
++      width: 100%;
++      height: 180px;
++      flex: none;
++      object-fit: cover;
++      border-radius: 6px;
++      background: var(--secondary);
++    }
++
++    .card-body {
++      display: flex;
++      flex: 1;
++      flex-direction: column;
++      align-items: center;
++      gap: 8px;
++      min-width: 0;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
++      line-height: 1.3;
++    }
++
++    .card-price {
++      font-weight: bold;
++      color: var(--muted);
++    }
++
++    .card-details {
++      /* Extra detail is hidden until the card has room for it. */
++      display: none;
++      font-size: 0.9rem;
++      color: var(--muted);
++    }
++
++    .card-tags {
++      display: none;
++      list-style: none;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .card-tags li {
++      background: var(--secondary);
++      color: var(--text);
++      border-radius: 999px;
++      padding: 2px 10px;
++      font-size: 0.75rem;
+     }
+ 
+     .btn {
+@@ -135,6 +243,141 @@
+       background: #3e2723;
+     }
+ 
++    .card .btn {
++      margin-top: 4px;
++      align-self: center;
++    }
++
++    .btn-hint {
++      /* Helper text inside the call-to-action, revealed in roomy cards. */
++      display: none;
++      font-weight: normal;
++      opacity: 0.85;
++    }
++
++    /* ------------------------------------------------------------------
++       Fallback for browsers without container query support.
++
++       Those browsers keep the stacked layout above and are enhanced with a
++       viewport media query instead. It only targets the containers we know
++       are full width, since a media query cannot tell how much room the
++       card itself actually has.
++
++       The `:where()` keeps these selectors at the same specificity as the
++       @container rules further down, so plain source order decides the
++       winner rather than a specificity arms race.
++       ------------------------------------------------------------------ */
++    @media (min-width: 900px) {
++      :where(.card-container--wide) .card {
++        flex-direction: row;
++        align-items: center;
++        text-align: left;
++      }
++
++      :where(.card-container--wide) .card-image {
++        width: 150px;
++        height: 150px;
++      }
++
++      :where(.card-container--wide) .card-body {
++        align-items: flex-start;
++      }
++
++      :where(.card-container--wide) .card .btn {
++        align-self: flex-start;
++      }
++    }
++
++    @supports (container-type: inline-size) {
++
++      /* Undo the media query fallback: @container is now the only authority
++         on layout, and it is declared after this block so it always wins. */
++      @media (min-width: 900px) {
++        :where(.card-container--wide) .card {
++          flex-direction: column;
++          text-align: center;
++        }
++
++        :where(.card-container--wide) .card-image {
++          width: 100%;
++          height: 180px;
++        }
++
++        :where(.card-container--wide) .card-body {
++          align-items: center;
++        }
++
++        :where(.card-container--wide) .card .btn {
++          align-self: center;
++        }
++      }
++
++      /* Wider container: switch from stacked to side-by-side. */
++      @container card (min-width: 400px) {
++        .card {
++          flex-direction: row;
++          align-items: center;
++          text-align: left;
++        }
++
++        .card-image {
++          width: 150px;
++          height: 150px;
++        }
++
++        .card-body {
++          align-items: flex-start;
++        }
++
++        .card .btn {
++          align-self: flex-start;
++        }
++      }
++
++      /* Roomier still: reveal the supporting detail and tags. */
++      @container card (min-width: 600px) {
++        .card {
++          gap: 1.5rem;
++          padding: 24px;
++        }
++
++        .card-image {
++          width: 240px;
++          height: 200px;
++        }
++
++        .card-details {
++          display: block;
++        }
++
++        .card-tags {
++          display: flex;
++        }
++
++        .btn-hint {
++          display: inline;
++        }
++      }
++    }
++
++    /* Resizable demo so the container-driven breakpoints are visible. */
++    .playground {
++      border: 2px dashed var(--secondary);
++      border-radius: 10px;
++      padding: 16px;
++      overflow: auto;
++      resize: horizontal;
++      min-width: 260px;
++      max-width: 100%;
++      width: 100%;
++    }
++
++    .playground-hint {
++      color: var(--muted);
++      font-size: 0.85rem;
++      margin-top: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,26 +418,171 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++    <div class="layout">
++      <div class="stack">
++
++        <section>
++          <h2 class="section-title">Brew of the Month</h2>
++          <p class="section-note">A full-width card: the container is roomy, so the card goes side-by-side and shows
++            every detail.</p>
++          <div class="card-container card-container--wide">
++            <article class="card">
++              <img class="card-image"
++                src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++                alt="A pour-over coffee being brewed" loading="lazy" width="600" height="400">
++              <div class="card-body">
++                <h3>Ethiopia Yirgacheffe</h3>
++                <p class="card-price">$18.00 / 12 oz</p>
++                <p>Bright and floral, with notes of jasmine, bergamot and stone fruit.</p>
++                <p class="card-details">Washed process, harvested at 2,000m and roasted light on Tuesdays. Best as a
++                  pour-over with water just off the boil.</p>
++                <ul class="card-tags">
++                  <li>Light roast</li>
++                  <li>Single origin</li>
++                  <li>Filter</li>
++                </ul>
++                <a href="/menu/yirgacheffe" class="btn">Order <span class="btn-hint">— ships free over $25</span></a>
++              </div>
++            </article>
++          </div>
++        </section>
++
++        <section>
++          <h2 class="section-title">Seasonal Favorites</h2>
++          <p class="section-note">The same card component in a grid. Each one measures its own column, not the window.
++          </p>
++          <div class="grid">
++            <div class="card-container">
++              <article class="card">
++                <img class="card-image"
++                  src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++                  alt="A latte with maple syrup" loading="lazy" width="600" height="400">
++                <div class="card-body">
++                  <h3>Maple Oat Latte</h3>
++                  <p class="card-price">$5.75</p>
++                  <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                  <p class="card-details">Double shot of our house espresso, steamed oat milk and a maple drizzle
++                    finished with cinnamon sugar.</p>
++                  <ul class="card-tags">
++                    <li>Seasonal</li>
++                    <li>Dairy free</li>
++                  </ul>
++                  <a href="/menu/seasonal" class="btn">Order <span class="btn-hint">— ready in 4 min</span></a>
++                </div>
++              </article>
++            </div>
++            <div class="card-container">
++              <article class="card">
++                <img class="card-image"
++                  src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80"
++                  alt="An espresso shot pulling into a cup" loading="lazy" width="600" height="400">
++                <div class="card-body">
++                  <h3>Dark Roast Espresso</h3>
++                  <p class="card-price">$3.50</p>
++                  <p>Bold, smokey, and perfect for a morning boost.</p>
++                  <p class="card-details">A blend of Brazilian and Sumatran beans pulled at 9 bars for a thick, syrupy
++                    crema.</p>
++                  <ul class="card-tags">
++                    <li>Dark roast</li>
++                    <li>Espresso</li>
++                  </ul>
++                  <a href="/menu/espresso" class="btn">Order <span class="btn-hint">— ready in 2 min</span></a>
++                </div>
++              </article>
++            </div>
++            <div class="card-container">
++              <article class="card">
++                <img class="card-image"
++                  src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++                  alt="A glass of cold brew coffee over ice" loading="lazy" width="600" height="400">
++                <div class="card-body">
++                  <h3>Cold Brew</h3>
++                  <p class="card-price">$4.25</p>
++                  <p>Steeped for 18 hours for maximum smoothness.</p>
++                  <p class="card-details">Coarse ground, steeped cold overnight and cut with filtered water for a low
++                    acidity finish.</p>
++                  <ul class="card-tags">
++                    <li>Iced</li>
++                    <li>Low acidity</li>
++                  </ul>
++                  <a href="/menu/cold-brew" class="btn">Order <span class="btn-hint">— ready in 1 min</span></a>
++                </div>
++              </article>
++            </div>
++          </div>
++        </section>
++
++        <section>
++          <h2 class="section-title">See It Adapt</h2>
++          <p class="section-note">Drag the bottom-right corner of the dashed box. The card re-lays itself out at 400px
++            and reveals its details at 600px — the window never changes.</p>
++          <div class="playground">
++            <div class="card-container card-container--wide">
++              <article class="card">
++                <img class="card-image"
++                  src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80"
++                  alt="A cup of coffee on a wooden table" loading="lazy" width="600" height="400">
++                <div class="card-body">
++                  <h3>House Drip</h3>
++                  <p class="card-price">$2.95</p>
++                  <p>Our everyday medium roast, brewed fresh every twenty minutes.</p>
++                  <p class="card-details">Chocolate and toasted almond, with a clean finish. Free refills for rewards
++                    members.</p>
++                  <ul class="card-tags">
++                    <li>Medium roast</li>
++                    <li>Free refills</li>
++                  </ul>
++                  <a href="/menu/house-drip" class="btn">Order <span class="btn-hint">— ready now</span></a>
++                </div>
++              </article>
++            </div>
++          </div>
++          <p class="playground-hint">Resize the box, not the browser.</p>
++        </section>
++
+       </div>
+-    </section>
++
++      <aside class="sidebar">
++        <h2>Also Popular</h2>
++        <p class="section-note">Same component, narrow container — it stays stacked and trims the extras.</p>
++        <div class="stack">
++          <div class="card-container">
++            <article class="card">
++              <img class="card-image"
++                src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80"
++                alt="A flat white in a ceramic cup" loading="lazy" width="600" height="400">
++              <div class="card-body">
++                <h3>Flat White</h3>
++                <p class="card-price">$4.50</p>
++                <p>Velvety microfoam over a ristretto base.</p>
++                <p class="card-details">Served at 60°C so you can drink it straight away.</p>
++                <ul class="card-tags">
++                  <li>Classic</li>
++                </ul>
++                <a href="/menu/flat-white" class="btn">Order <span class="btn-hint">— ready in 3 min</span></a>
++              </div>
++            </article>
++          </div>
++          <div class="card-container">
++            <article class="card">
++              <img class="card-image"
++                src="https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&q=80"
++                alt="A chai latte topped with spices" loading="lazy" width="600" height="400">
++              <div class="card-body">
++                <h3>Masala Chai</h3>
++                <p class="card-price">$4.00</p>
++                <p>Black tea simmered with cardamom and ginger.</p>
++                <p class="card-details">Spices ground in house each morning.</p>
++                <ul class="card-tags">
++                  <li>Caffeine light</li>
++                </ul>
++                <a href="/menu/chai" class="btn">Order <span class="btn-hint">— ready in 5 min</span></a>
++              </div>
++            </article>
++          </div>
++        </div>
++      </aside>
++    </div>
+   </main>
+ 
+   <footer>

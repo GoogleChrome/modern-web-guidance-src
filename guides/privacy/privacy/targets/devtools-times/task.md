@@ -1,0 +1,1 @@
+- Audit and update The DevTools Times across its sign-in and sign-up forms, third-party scripts in the page layout, and document headers to follow privacy by design, data minimization, and user transparency.

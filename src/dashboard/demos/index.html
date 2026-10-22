@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>guide demos</title>
+  <link rel="stylesheet" href="../dashboard.css">
+  <link rel="stylesheet" href="demos.css">
+</head>
+<body>
+  <header class="demos-header">
+    <h1 title="scroll to top">guide demos</h1>
+    <div class="header-filters">
+      <input type="search" id="demo-filter" placeholder="filter…" autocomplete="off" aria-label="Filter guides">
+      <input type="search" id="feature-filter" list="features-datalist" placeholder="web-feature…" autocomplete="off" aria-label="Filter by web feature">
+      <datalist id="features-datalist"></datalist>
+    </div>
+    <a href="../" class="muted">← evals</a>
+  </header>
+
+  <nav id="toc" class="toc" aria-label="Table of Contents">
+    <div id="toc-grid" class="toc-grid"></div>
+  </nav>
+
+  <main id="demos"></main>
+  <div id="no-results" class="no-results" hidden>no matching demos</div>
+  <script type="module" src="demos.js"></script>
+</body>
+</html>

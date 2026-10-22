@@ -1,0 +1,245 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..4b811a6 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,44 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++
++    <script is:inline>
++      function switchToView(viewId) {
++        // Hide all views
++        document.querySelectorAll('.spa-view').forEach(view => {
++          view.classList.add('inactive');
++          view.setAttribute('aria-hidden', 'true');
++        });
++        
++        // Show the target view
++        const activeView = typeof viewId === 'string'
++          ? (document.getElementById(viewId) || (viewId.startsWith('#') ? document.querySelector(viewId) : null))
++          : viewId;
++
++        if (activeView) {
++          activeView.classList.remove('inactive');
++          activeView.setAttribute('aria-hidden', 'false');
++          
++          // MANDATORY: Move focus to the new view to ensure a logical tab-order
++          activeView.focus();
++        }
++
++        // Update any tab buttons matching the view
++        document.querySelectorAll('[data-view-target]').forEach(tab => {
++          const targetId = tab.getAttribute('data-view-target');
++          const isTarget = targetId === (typeof viewId === 'string' ? viewId.replace(/^#/, '') : activeView?.id);
++          tab.setAttribute('aria-selected', isTarget ? 'true' : 'false');
++          if (isTarget) {
++            tab.classList.add('border-gray-900', 'text-gray-900', 'font-bold');
++            tab.classList.remove('border-transparent', 'text-gray-500', 'font-semibold');
++          } else {
++            tab.classList.remove('border-gray-900', 'text-gray-900', 'font-bold');
++            tab.classList.add('border-transparent', 'text-gray-500', 'font-semibold');
++          }
++        });
++      }
++      window.switchToView = switchToView;
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..5f1dd2e 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -9,6 +9,8 @@ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
++const reports = await getCollection('reports');
++const multimedia = await getCollection('multimedia');
+ 
+ // Slicing articles for different sections
+ const topArticle = articles[0];
+@@ -54,31 +56,129 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    <!-- View Navigation Tabs -->
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
++        <nav class="flex space-x-4 border-b border-gray-300" role="tablist" aria-label="Views">
++            <button
++                role="tab"
++                aria-selected="true"
++                aria-controls="view-news"
++                data-view-target="view-news"
++                onclick="switchToView('view-news')"
++                class="px-4 py-2 font-bold border-b-2 border-gray-900 text-gray-900 text-sm focus:outline-none cursor-pointer"
++            >
++                Top News
++            </button>
++            <button
++                role="tab"
++                aria-selected="false"
++                aria-controls="view-reports"
++                data-view-target="view-reports"
++                onclick="switchToView('view-reports')"
++                class="px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-900 text-sm focus:outline-none cursor-pointer"
++            >
++                Special Reports
++            </button>
++            <button
++                role="tab"
++                aria-selected="false"
++                aria-controls="view-multimedia"
++                data-view-target="view-multimedia"
++                onclick="switchToView('view-multimedia')"
++                class="px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-900 text-sm focus:outline-none cursor-pointer"
++            >
++                Multimedia
++            </button>
++            <button
++                role="tab"
++                aria-selected="false"
++                aria-controls="view-politics"
++                data-view-target="view-politics"
++                onclick="switchToView('view-politics')"
++                class="px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-900 text-sm focus:outline-none cursor-pointer"
++            >
++                Politics
++            </button>
++        </nav>
++    </div>
++
++    <!-- Main Views Container -->
++    <div class="relative min-h-[600px]">
++        <!-- View 1: Top News (Active) -->
++        <div id="view-news" class="spa-view w-full" tabindex="-1" role="tabpanel" aria-hidden="false">
++            <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++                <ArticleTeaser article={topArticle} large={true} />
++            </main>
+ 
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++            <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
+ 
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++                <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++                <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
+ 
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
++                <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++            </div>
++        </div>
++
++        <!-- View 2: Special Reports (Inactive) -->
++        <div id="view-reports" class="spa-view inactive w-full" tabindex="-1" role="tabpanel" aria-hidden="true">
++            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
++                <h2 class="text-3xl font-brand font-bold text-gray-900 mb-6 pb-2 border-b-2">Special Reports</h2>
++                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
++                    {reports.map(report => (
++                        <div class="border border-gray-200 p-6 rounded shadow-sm hover:shadow-md transition">
++                            <span class="text-xs font-semibold uppercase tracking-wider text-amber-600">{report.data.category}</span>
++                            <h3 class="text-xl font-bold text-gray-900 mt-2 mb-3 hover:text-amber-500">
++                                <a href={`${import.meta.env.BASE_URL}reports/${report.slug}`}>{report.data.title}</a>
++                            </h3>
++                            <p class="text-gray-600 text-sm">{report.data.description}</p>
++                            <a href={`${import.meta.env.BASE_URL}reports/${report.slug}`} class="inline-block mt-4 text-xs font-bold text-gray-900 uppercase tracking-wider hover:underline">
++                                Read Report &rarr;
++                            </a>
++                        </div>
++                    ))}
++                </div>
++            </div>
++        </div>
++
++        <!-- View 3: Multimedia (Inactive) -->
++        <div id="view-multimedia" class="spa-view inactive w-full" tabindex="-1" role="tabpanel" aria-hidden="true">
++            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
++                <h2 class="text-3xl font-brand font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia Coverage</h2>
++                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
++                    {multimedia.map(item => (
++                        <div class="border border-gray-200 p-6 rounded shadow-sm hover:shadow-md transition">
++                            <span class="text-xs font-semibold uppercase tracking-wider text-blue-600">{item.data.category}</span>
++                            <h3 class="text-xl font-bold text-gray-900 mt-2 mb-3 hover:text-blue-500">
++                                <a href={`${import.meta.env.BASE_URL}multimedia/${item.slug}`}>{item.data.title}</a>
++                            </h3>
++                            <p class="text-gray-600 text-sm">{item.data.description}</p>
++                            <a href={`${import.meta.env.BASE_URL}multimedia/${item.slug}`} class="inline-block mt-4 text-xs font-bold text-gray-900 uppercase tracking-wider hover:underline">
++                                Watch / Listen &rarr;
++                            </a>
++                        </div>
++                    ))}
++                </div>
++            </div>
++        </div>
++
++        <!-- View 4: Politics (Inactive) -->
++        <div id="view-politics" class="spa-view inactive w-full" tabindex="-1" role="tabpanel" aria-hidden="true">
++            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
++                <h2 class="text-3xl font-brand font-bold text-gray-900 mb-6 pb-2 border-b-2">Politics & Policy</h2>
++                <TopStoryTeaserGrid title="Latest in Politics" articles={politicsArticles} />
++            </div>
++        </div>
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..9a65124 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,26 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++.spa-view {
++  content-visibility: visible;
++}
++
++.spa-view:focus {
++  outline: none;
++}
++
++.spa-view.inactive {
++  /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++  content-visibility: hidden;
++  
++  /* Optional: Prevent hidden views from taking up physical space in layout flow */
++  position: absolute;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
+ }
+\ No newline at end of file

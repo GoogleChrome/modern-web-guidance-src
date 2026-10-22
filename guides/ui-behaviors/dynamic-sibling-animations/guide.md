@@ -18,7 +18,7 @@ Use the `sibling-index()` property on the `animation-delay` property so that the
   --stagger-time: 0.1s;
   /* Define the animation first */
   animation: fade-in 0.4s;
-  /* Set the `animation-delay` to a time multipled by the `sibling-index()` */
+  /* Set the `animation-delay` to a time multiplied by the `sibling-index()` */
   animation-delay: calc(sibling-index() * var(--stagger-time))
 }
 ```
