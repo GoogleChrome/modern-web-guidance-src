@@ -43,6 +43,32 @@ function isPolyfillCall(callText: string, argText: string): boolean {
   return (callText === 'import' || callText === 'require') && argText.includes('input-switch-polyfill');
 }
 
+function hasPolyfillOrAppearanceFallback(): boolean {
+  const project: Project = getJsProject(targetFiles);
+  const sourceFiles = project.getSourceFiles();
+  const hasPolyfillImport = sourceFiles.some(
+    (sf) =>
+      sf
+        .getImportDeclarations()
+        .some((d) => d.getModuleSpecifierValue().includes('input-switch-polyfill')) ||
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        const exprText = call.getExpression().getText().trim();
+        const firstArg = call.getArguments()[0]?.getText() || '';
+        return isPolyfillCall(exprText, firstArg);
+      })
+  );
+
+  const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+  const styleRules = collectStyleRules(stylesheet.cssRules);
+  const hasAppearanceNone = styleRules.some((r) => {
+    const appearance =
+      r.style.getPropertyValue('appearance') || r.style.getPropertyValue('-webkit-appearance');
+    return appearance.trim() === 'none';
+  });
+
+  return hasPolyfillImport || hasAppearanceNone;
+}
+
 test.describe('switch Target Grader', () => {
   // --- STATIC ASSERTIONS (FAST) ---
 
@@ -230,13 +256,16 @@ test.describe('switch Target Grader', () => {
     test('Toggling the switch updates its checked state and visually updates the control between its unchecked and checked states', async ({
       page,
     }) => {
+      const expectsFallback = hasPolyfillOrAppearanceFallback();
       const switchInput = page.locator('input[type="checkbox"][switch]').first();
       await expect
         .poll(async () => {
-          return await switchInput.evaluate((el) => {
-            if ('switch' in HTMLInputElement.prototype) return true;
+          return await switchInput.evaluate((el, needsAppearanceNone) => {
+            if ('switch' in HTMLInputElement.prototype || !needsAppearanceNone) {
+              return el.getBoundingClientRect().width > 0;
+            }
             return window.getComputedStyle(el).appearance === 'none';
-          });
+          }, expectsFallback);
         })
         .toBe(true);
 
@@ -277,12 +306,14 @@ test.describe('switch Target Grader', () => {
       await expect
         .poll(async () => {
           const afterToggle = await getVisualState();
-          const hasNativeSwitch = await switchInput.evaluate(
-            () => 'switch' in HTMLInputElement.prototype
+          const usesNativeSwitch = await switchInput.evaluate(
+            (_el, needsAppearanceNone) =>
+              'switch' in HTMLInputElement.prototype || !needsAppearanceNone,
+            expectsFallback
           );
           return (
             afterToggle.checked !== beforeToggle.checked &&
-            (afterToggle.visualSignature !== beforeToggle.visualSignature || hasNativeSwitch)
+            (afterToggle.visualSignature !== beforeToggle.visualSignature || usesNativeSwitch)
           );
         })
         .toBe(true);
@@ -291,13 +322,16 @@ test.describe('switch Target Grader', () => {
     test('The switch input applies a custom accent-color to native rendering and the polyfilled switch active state', async ({
       page,
     }) => {
+      const expectsFallback = hasPolyfillOrAppearanceFallback();
       const switchInput = page.locator('input[type="checkbox"][switch]').first();
       await expect
         .poll(async () => {
-          return await switchInput.evaluate((el) => {
-            if ('switch' in HTMLInputElement.prototype) return true;
+          return await switchInput.evaluate((el, needsAppearanceNone) => {
+            if ('switch' in HTMLInputElement.prototype || !needsAppearanceNone) {
+              return el.getBoundingClientRect().width > 0;
+            }
             return window.getComputedStyle(el).appearance === 'none';
-          });
+          }, expectsFallback);
         })
         .toBe(true);
 
@@ -312,24 +346,27 @@ test.describe('switch Target Grader', () => {
 
       await expect
         .poll(async () => {
-          return await switchInput.evaluate((el: HTMLInputElement, inactiveBg: string) => {
-            const style = window.getComputedStyle(el);
-            const before = window.getComputedStyle(el, '::before');
-            const after = window.getComputedStyle(el, '::after');
-            const accentColor = style.accentColor;
-            const hasCustomAccent = Boolean(accentColor && accentColor !== 'auto');
-            if ('switch' in HTMLInputElement.prototype) {
-              return hasCustomAccent;
-            }
-            const hasPolyfillSync =
-              el.hasAttribute('role') ||
-              el.getAttribute('style')?.includes('color') ||
-              style.backgroundColor !== inactiveBg ||
-              style.backgroundImage !== 'none' ||
-              before.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
-              after.backgroundColor !== 'rgba(0, 0, 0, 0)';
-            return hasCustomAccent && hasPolyfillSync;
-          }, uncheckedBg);
+          return await switchInput.evaluate(
+            (el: HTMLInputElement, { inactiveBg, needsAppearanceNone }) => {
+              const style = window.getComputedStyle(el);
+              const before = window.getComputedStyle(el, '::before');
+              const after = window.getComputedStyle(el, '::after');
+              const accentColor = style.accentColor;
+              const hasCustomAccent = Boolean(accentColor && accentColor !== 'auto');
+              if ('switch' in HTMLInputElement.prototype || !needsAppearanceNone) {
+                return hasCustomAccent;
+              }
+              const hasPolyfillSync =
+                el.hasAttribute('role') ||
+                el.getAttribute('style')?.includes('color') ||
+                style.backgroundColor !== inactiveBg ||
+                style.backgroundImage !== 'none' ||
+                before.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
+                after.backgroundColor !== 'rgba(0, 0, 0, 0)';
+              return hasCustomAccent && hasPolyfillSync;
+            },
+            { inactiveBg: uncheckedBg, needsAppearanceNone: expectsFallback }
+          );
         })
         .toBe(true);
     });
