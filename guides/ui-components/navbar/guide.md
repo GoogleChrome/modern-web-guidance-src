@@ -183,6 +183,10 @@ layoutObserver.observe(header);
 
 Do not add document-level click-outside, Escape, focus-restoration, or expanded-state handlers. Native disclosure and popover behavior provide those interactions. Let `<details>` own the summary click: intercepting it can reopen a submenu that light dismiss is trying to close. The `source: summary` option supplies the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
 
+### Hover preview
+
+As well as click and keyboard opening, preview the submenu on hover in the wide layout. Set `details.open` on `pointerenter` and close it on `pointerleave`. Keep any margin between the summary and the submenu hoverable with a transparent `::before` that fills it (the submenu needs `overflow: visible`, since a popover clips by default), so the pointer never leaves the `<details>` while crossing and no close delay is needed. Run it only when `matchMedia("(hover: hover)").matches` and the submenu is a popover, ignore touch pointers, and close only a submenu the hover opened. Do not preview on focus: keyboard users open the submenu with `Enter` or `Space` on the `<summary>`.
+
 Position the wide submenu with CSS Anchor Positioning as described in {{ GUIDE_REF("menu") }}, including its viewport-overflow fallbacks. For collision-aware positioning of a plain popover, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. This submenu opens below its summary, so use the top-level `position-area` there, not the menu guide's side-by-side submenu placement. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 
 ```css
@@ -211,7 +215,7 @@ Use `aria-current="page"` to identify the current page. Set it at build time or 
 
 ## Transitions and Accessibility
 
-If the navigation is animated, use `@starting-style` and `allow-discrete` for popover entry and exit, animate the popover with only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}. For a worked popover open and close transition, see {{ GUIDE_REF("menu") }}.
+If the navigation is animated, use `@starting-style` and `allow-discrete` for popover entry and exit, animate the popover with only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}. For a worked popover open and close transition, see {{ GUIDE_REF("menu") }}; use it for the wide floating submenu too.
 
 ### Narrow submenu slide-down
 
@@ -233,4 +237,4 @@ Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh`
 
 For the mobile menu, put the absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid.
 
-For the wide floating submenu, a popover without anchor positioning falls back to centered viewport placement and detaches from its summary. As in the anchor positioning fallbacks in {{ GUIDE_REF("menu") }}, position it from script in the submenu's `toggle` handler when it opens: below the summary, flipping above and clamping to the viewport on overflow, using `left` and `top`. Keep the `position: fixed` and `margin: 0` overrides inside `@supports not (position-area: block-end)`.
+For the wide floating submenu, a popover without anchor positioning falls back to centered viewport placement and detaches from its summary. Position it from script as described in the anchor positioning fallbacks in {{ GUIDE_REF("menu") }}, with the overrides inside `@supports not (position-area: block-end)`.

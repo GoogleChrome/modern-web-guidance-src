@@ -358,6 +358,7 @@
         justify-self: start;
         margin-block-start: 0.5rem;
         padding: 0.5rem;
+        overflow: visible; /* Popovers clip by default, which would hide the hover bridge below. */
         border: 1px solid var(--border);
         border-radius: 0.5rem;
         background: var(--surface-raised);
@@ -366,6 +367,15 @@
 
       .dropdown-list:popover-open {
         display: grid;
+      }
+
+      /* Fills the margin above the submenu so the pointer stays inside the <details>. */
+      .dropdown-list::before {
+        content: "";
+        position: absolute;
+        inset-inline: 0;
+        inset-block-end: 100%;
+        block-size: 0.5rem;
       }
 
       .dropdown-list .menu-link {
@@ -383,6 +393,28 @@
     }
 
     @media (prefers-reduced-motion: no-preference) {
+      @container (inline-size >= 45rem) {
+        .dropdown-list[popover] {
+          opacity: 0;
+          transform: translateY(-0.25rem);
+          transition:
+            opacity 150ms,
+            transform 150ms,
+            display 150ms allow-discrete,
+            overlay 150ms allow-discrete;
+        }
+
+        .dropdown-list[popover]:popover-open {
+          opacity: 1;
+          transform: none;
+
+          @starting-style {
+            opacity: 0;
+            transform: translateY(-0.25rem);
+          }
+        }
+      }
+
       @container (inline-size < 45rem) {
         .site-menu {
           transition:
@@ -564,6 +596,31 @@
       submenu.style.top = `${top}px`;
       submenu.style.left = `${left}px`;
     }
+
+    // Hover preview: wide layout and hover-capable pointers only. A submenu
+    // opened by click or keyboard is never closed by the pointer leaving.
+    const canHover = matchMedia("(hover: hover)");
+    let previewing = false;
+
+    details.addEventListener("pointerenter", (event) => {
+      if (event.pointerType === "touch" || !canHover.matches) return;
+      if (!submenu.matches("[popover]") || details.open) return;
+      previewing = true;
+      details.open = true;
+    });
+
+    details.addEventListener("pointerleave", () => {
+      if (!previewing) return;
+      details.open = false;
+    });
+
+    details.addEventListener("toggle", () => {
+      if (!details.open) previewing = false;
+    });
+
+    summary.addEventListener("click", () => {
+      previewing = false;
+    });
 
     function syncLayoutState(width) {
       const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);

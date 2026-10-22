@@ -14,10 +14,11 @@
 - Under wide layouts (`@container (inline-size >= 45rem)`), the mobile trigger button is hidden (`display: none`), and the popover element is transformed into a static horizontal inline layout by resetting its styles (including `position: static`, `display: block` or `display: flex`, and `::backdrop { display: none }`).
 - JavaScript synchronizes the outer navigation's `popover` attribute with the header's responsive layout so the navigation is a native popover only in the narrow layout and becomes a normal inline element in the wide layout.
 - The current page link uses `[aria-current="page"]` as its styling hook, and the attribute is set at build time or via JavaScript.
-- If popover open/close transitions on mobile layouts are animated, they use `@starting-style` and `transition` with `allow-discrete` (animating only `opacity` and `transform`) and are disabled or dampened under `@media (prefers-reduced-motion: reduce)`.
+- If popover open/close transitions (the mobile menu or the wide submenu) are animated, they use `@starting-style` and `transition` with `allow-discrete` (animating only `opacity` and `transform`) and are disabled or dampened under `@media (prefers-reduced-motion: reduce)`.
 - The CSS Anchor Positioning declarations for the narrow menu include a declaration-level fallback before the `anchor()` declaration for browsers that do not support CSS Anchor Positioning.
 - Second-level navigation items use native `<details class="nav-dropdown">` and `<summary>` elements for disclosure semantics, and their nested list is promoted to a popover only in the wide layout.
 - On narrow layouts, the sub-navigation expands vertically inline inside the popover navigation panel, pushing other sibling list links down.
 - On wide layouts, each nested submenu is a top-layer popover positioned relative to its `<summary>` source using CSS Anchor Positioning.
 - On wide layouts, each nested submenu synchronizes its native `<details>` state with a `popover="auto"` state so the browser provides light dismiss, Escape handling, focus restoration, and expanded-state semantics.
+- On wide layouts with a hover-capable pointer, hovering a submenu's `<summary>` previews its submenu, and the submenu still opens by click and keyboard (`Enter`/`Space`). Focus alone does not open it.
 - High-contrast system support is provided under a `@media (forced-colors: active)` query to adapt custom borders, boundaries, and active-state visual indicators (e.g., using values like `CanvasText` and `Highlight`).
