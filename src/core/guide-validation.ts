@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from './macros.ts';
@@ -169,12 +169,26 @@ export type DraftState = 'stub' | 'wip' | 'blocked';
 const DRAFT_STATES: readonly DraftState[] = ['stub', 'wip', 'blocked'];
 
 /** Parses `draft` / `draft-reason`, throwing on anything else so a bad value can't publish a guide. */
-function parseDraft(data: GuideData, where: string): { draft?: DraftState; draftReason?: string } {
-  const { draft, 'draft-reason': draftReason } = data;
+export function parseDraft(data: GuideData, where: string, allowLegacy = false): { draft?: DraftState; draftReason?: string } {
+  let { draft } = data;
+  const { 'draft-reason': draftReason } = data;
+  
   if (draft === undefined) return {};
+  if (allowLegacy) {
+    if (draft === true) draft = 'wip';
+    if (draft === false) return {};
+  }
+  
   const state = DRAFT_STATES.find(s => s === draft);
-  if (!state) throw new Error(`${where}: draft must be one of ${DRAFT_STATES.join(', ')} (got ${JSON.stringify(draft)}). Omit it to publish.`);
-  if (state === 'blocked' && !draftReason?.trim()) throw new Error(`${where}: draft: blocked needs a draft-reason.`);
+  if (!state) {
+    if (allowLegacy) return {};
+    throw new Error(`${where}: draft must be one of ${DRAFT_STATES.join(', ')} (got ${JSON.stringify(draft)}). Omit it to publish.`);
+  }
+  
+  if (state === 'blocked' && !draftReason?.trim()) {
+    if (allowLegacy) return { draft: state, draftReason: 'legacy missing reason' };
+    throw new Error(`${where}: draft: blocked needs a draft-reason.`);
+  }
   return { draft: state, draftReason };
 }
 
@@ -190,36 +204,102 @@ interface ValidationResult {
 }
 
 /**
- * Determines the project status name for a use case based on its completeness.
- * Returns null when the use case is complete.
- * @param guidance The guide body, or a precomputed has-guidance flag.
+ * Evaluates a guide's project status from raw `guide.md` content and the set of relative
+ * file paths present in the guide directory (e.g. from a git tree).
  */
-export function getStatusName(
-  guidance: string | boolean,
-  hasGrader: boolean,
-  hasTask: boolean,
-  isDraft: boolean = false,
-  hasExpectations: boolean = true
-): ProjectStatus | null {
-  const hasGuidance = typeof guidance === 'string' ? guidance.trim().length > 0 : guidance;
-  if (!hasGuidance || isDraft || !hasExpectations) {
-    return ProjectStatus.NeedsGuidance;
-  }
-  if (!hasGrader || !hasTask) {
-    return ProjectStatus.NeedsEvals;
-  }
-  return null;
+export interface GuideMetadata {
+  hasGuide: boolean;
+  isStub: boolean;
+  draft?: DraftState;
+  draftReason?: string;
+  featureIds: string[];
 }
 
-/** The project status of an inventoried guide; see getStatusName. */
-export function getGuideStatus(inv: GuideInventory): ProjectStatus | null {
-  return getStatusName(
-    inv.hasGuide,
-    inv.hasGrader,
-    inv.hasTask,
-    Boolean(inv.draft),
-    inv.hasExpectations && !inv.expectationsEmpty
-  );
+export function parseGuideMetadata(
+  guideContent: string | null | undefined,
+  filePath: string = GUIDE_FILE,
+  allowLegacyDraft = false
+): GuideMetadata {
+  const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
+  const hasFrontmatter = Object.keys(data).length > 0 || (guideContent || '').startsWith('---');
+  const hasContent = stripAllComments(content).trim().length > 0;
+  
+  const { draft, draftReason } = parseDraft(data as GuideData, filePath, allowLegacyDraft);
+  
+  const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
+  const hasGuide = hasContent && !isDraftStub(draft);
+  const featureIds = Array.isArray(data['web-feature-ids']) ? data['web-feature-ids'] : [];
+
+  return { hasGuide, isStub, draft, draftReason, featureIds };
+}
+
+export function detectEvals(filePaths: Iterable<string>): { hasGrader: boolean; hasTask: boolean } {
+  const relativeFiles = new Set(filePaths);
+  const supportedApps = new Set<string>(SUPPORTED_BASE_APPS);
+  const targetApps = new Set<string>();
+  let hasTasksDir = false;
+  for (const file of relativeFiles) {
+    if (file.startsWith('tasks/')) hasTasksDir = true;
+    const app = /^targets\/([^/]+)\//.exec(file)?.[1];
+    if (app && supportedApps.has(app)) targetApps.add(app);
+  }
+  if (targetApps.size > 0 && !hasTasksDir) {
+    const apps = Array.from(targetApps);
+    return {
+      hasGrader: apps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${GRADER_FILE}`)),
+      hasTask: apps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${TASK_FILE}`)),
+    };
+  }
+  return {
+    hasGrader: relativeFiles.has(GRADER_FILE),
+    hasTask: relativeFiles.has(`tasks/${TASK_FILE}`),
+  };
+}
+
+export function isEvalFile(relPath: string): boolean {
+  return relPath === GRADER_FILE || relPath.startsWith('tasks/') || relPath.startsWith(`${TARGETS_DIR}/`);
+}
+
+/**
+ * Evaluates whether a pending change to a guide supplies work for its current pipeline stage
+ * (`Needs guidance` or `Needs evals`), comparing the guide's inventory on `main` against its
+ * state after the pending change.
+ */
+export function getPendingGuideStage(
+  inv: GuideInventory | undefined,
+  touchedRelFiles: readonly string[],
+  guideMetaAfter?: Pick<GuideMetadata, 'hasGuide' | 'draft'>
+): ProjectStatus | null {
+  const status = inv ? classifyGuide(inv) : 'stub';
+  if (status === 'complete') return null;
+
+  if (status === 'needs-calibration' || status === 'needs-test') {
+    return touchedRelFiles.some(isEvalFile) ? ProjectStatus.NeedsEvals : null;
+  }
+
+  const hasGuideBefore = inv?.hasGuide ?? false;
+  const draftBefore = inv?.draft;
+  const hasExpectationsBefore = Boolean(inv?.hasExpectations && !inv?.expectationsEmpty);
+
+  let hasGuideAfter = hasGuideBefore;
+  let draftAfter = draftBefore;
+  if (guideMetaAfter) {
+    hasGuideAfter = guideMetaAfter.hasGuide;
+    draftAfter = guideMetaAfter.draft;
+  } else if (touchedRelFiles.includes(GUIDE_FILE)) {
+    hasGuideAfter = true;
+    if (draftBefore === 'wip') draftAfter = undefined;
+  }
+  const hasExpectationsAfter = hasExpectationsBefore || touchedRelFiles.includes(EXPECTATIONS_FILE);
+
+  const writesGuide = !hasGuideBefore && hasGuideAfter;
+  const unblocksGuide = draftBefore === 'blocked' && draftAfter !== 'blocked';
+  const advancesWipGuide = draftBefore === 'wip' && touchedRelFiles.includes(GUIDE_FILE) && hasGuideAfter;
+  const addsMissingExpectations = !hasExpectationsBefore && hasExpectationsAfter && hasGuideAfter;
+
+  return writesGuide || unblocksGuide || advancesWipGuide || addsMissingExpectations
+    ? ProjectStatus.NeedsGuidance
+    : null;
 }
 
 /**
@@ -383,11 +463,13 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
     const isIncomplete = !hasGuide && !inv.isStub;
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
-    const hasExpectations = inv.hasExpectations && !inv.expectationsEmpty;
-    const isContentComplete = guideBody.trim().length > 0 && !inv.draft && hasExpectations;
-    const statusName = !isIncomplete && guideErrors.length === 0 && !isContentComplete
-      ? ProjectStatus.NeedsGuidance
-      : null;
+    const status = classifyGuide({ ...inv, hasGuide: guideBody.trim().length > 0 && !isDraftStub(inv.draft) });
+    const statusName =
+      !isIncomplete &&
+      guideErrors.length === 0 &&
+      (status === 'stub' || status === 'incomplete' || status === 'needs-expectations')
+        ? ProjectStatus.NeedsGuidance
+        : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
@@ -613,15 +695,13 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
 
   const guideFilePath = path.join(dir, GUIDE_FILE);
   const guideContent = readFileSafe(guideFilePath);
-
-  const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
-  const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
-  const hasContent = stripAllComments(content).trim().length > 0;
-
-  const { draft, draftReason } = parseDraft(data, guideFilePath);
-  const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
-  const hasGuide = hasContent && !isDraftStub(draft);
-  const isPublished = hasGuide && !draft;
+  const meta = parseGuideMetadata(guideContent, guideFilePath);
+  const isStub = meta.isStub;
+  const hasGuide = meta.hasGuide;
+  const isPublished = hasGuide && !meta.draft;
+  const draft = meta.draft;
+  const draftReason = meta.draftReason;
+  const featureIds = meta.featureIds;
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();
@@ -681,12 +761,12 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     isStub,
     hasDemo,
     hasExpectations,
-    expectationsEmpty: hasExpectations && expectationsContent.length === 0,
+    expectationsEmpty: hasExpectations && expectationsContent.trim().length === 0,
     hasNegativeDemo,
     hasGrader,
     hasTask,
     isDisciplineGuide: isDisciplineGuide(name, category),
-    featureIds: data['web-feature-ids'] || [],
+    featureIds,
     draft,
     draftReason,
     isPublished,
@@ -694,29 +774,26 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   };
 }
 
-export type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
+export type GuideStatus = 'complete' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
-export function classifyGuide(inv: GuideInventory): GuideStatus {
+export function classifyGuide(
+  inv: Pick<GuideInventory, 'hasGuide'> & Partial<Omit<GuideInventory, 'hasGuide'>>
+): GuideStatus {
   if (inv.isStub) return 'stub';
-  if (!inv.hasGuide) return 'incomplete';
+  if (!inv.hasGuide || inv.draft) return 'incomplete';
   if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
 
+  // Gen 2 guides store per-app eval artifacts under targets/<base_app>/; require all targets to be complete.
   if (inv.targets && inv.targets.length > 0) {
-    const allHaveSolutions = inv.targets.every(t => t.hasSolution);
-    const allHaveZeroPassrate = inv.targets.every(t => t.hasZeroPassrate);
-    const allHaveGraders = inv.targets.every(t => t.hasGrader);
-    const allHaveTasks = inv.targets.every(t => t.hasTask);
-
-    if (!allHaveSolutions) return 'incomplete';
-    if (!allHaveZeroPassrate || !allHaveGraders) return 'needs-calibration';
-    if (!allHaveTasks) return 'needs-test';
-    return 'eval-ready';
-  } else {
-    if (!inv.hasDemo) return 'incomplete';
-    if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
-    if (!inv.hasTask) return 'needs-test';
-    return 'eval-ready';
+    if (!inv.targets.every(t => t.hasSolution && t.hasZeroPassrate && t.hasGrader)) return 'needs-calibration';
+    if (!inv.targets.every(t => t.hasTask)) return 'needs-test';
+    return 'complete';
   }
+
+  // Gen 1 guides store root grader.ts and tasks/task.md (or pre-aggregated booleans from detectEvals).
+  if (!inv.hasGrader) return 'needs-calibration';
+  if (!inv.hasTask) return 'needs-test';
+  return 'complete';
 }
 
 export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {

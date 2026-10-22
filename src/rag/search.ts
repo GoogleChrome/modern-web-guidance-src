@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import zlib from "zlib";
 import { TfjsEmbedder } from "./tfjs-embedder.ts";
 import { logToolResult } from "./logger.ts";
+import { buildBm25Index, rankBm25, reciprocalRankFusion, type Bm25Index } from "./bm25.ts";
 
 export interface UseCaseResult {
   id: string;
@@ -21,57 +22,18 @@ export interface UseCaseVector {
   featuresUsed: string[];
   tokenCount: number;
   vector: number[];
+  /** Markdown text of the chunk this vector embeds; feeds the lexical (BM25) index. */
+  chunkContent: string;
 }
 
 export interface EmbedderLike {
   embed(text: string): Promise<number[]>;
 }
 
-// Cosine-similarity gates for all-MiniLM-L6-v2 against the current corpus. Re-tune whenever the embedding
-// model or chunking changes: replay src/rag/benchmarks/data/eval-queries-pool.json for recall and a set of
-// out-of-scope queries for false positives.
-/** Per-chunk floor applied before per-guide max-pooling. */
-export const DEFAULT_MIN_SIMILARITY = 0.35;
-/** Below this top-1 score the query is treated as out of scope and `[]` is returned. */
-export const DEFAULT_TOP1_MIN_SIMILARITY = 0.38;
-/** Secondary results at or above this score are kept regardless of their distance from top-1. */
-export const DEFAULT_HIGH_CONFIDENCE_SIMILARITY = 0.42;
-/** Secondary results below the high-confidence score are kept only within this distance of top-1. */
-export const DEFAULT_MAX_DROP_FROM_TOP1 = 0.12;
+/** Query-level cosine floor: if no chunk in the corpus reaches this similarity, `[]` is returned. */
+export const DEFAULT_MIN_SIMILARITY = 0.3;
 
-export interface SearchOptions {
-  /** Set to `-Infinity` to disable the top-1 gate (e.g., for raw-ranking benchmarks). */
-  top1MinSimilarity?: number;
-  highConfidenceSimilarity?: number;
-  /** Set to `Infinity` to disable tail pruning. */
-  maxDropFromTop1?: number;
-}
-
-/**
- * Two-stage similarity gate over per-guide best matches sorted by similarity (descending):
- * 1. If the top-1 result is below `top1MinSimilarity`, nothing in the corpus is a confident match: return `[]`.
- * 2. Otherwise keep top-1 plus every result that is either a high-confidence match on its own or within
- *    `maxDropFromTop1` of the top-1 score, so compound queries keep their secondary guides while weak tails are pruned.
- */
-export function applySimilarityGates<T extends { similarity: number }>(
-  sorted: T[],
-  {
-    top1MinSimilarity = DEFAULT_TOP1_MIN_SIMILARITY,
-    highConfidenceSimilarity = DEFAULT_HIGH_CONFIDENCE_SIMILARITY,
-    maxDropFromTop1 = DEFAULT_MAX_DROP_FROM_TOP1,
-  }: SearchOptions = {}
-): T[] {
-  const top1 = sorted[0];
-  if (!top1 || top1.similarity < top1MinSimilarity) return [];
-  return sorted.filter(
-    (r, idx) =>
-      idx === 0 ||
-      r.similarity >= highConfidenceSimilarity ||
-      top1.similarity - r.similarity <= maxDropFromTop1
-  );
-}
-
-let cachedVectors: UseCaseVector[] | null = null;
+let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
 
 const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -91,7 +53,7 @@ function resolveSkillsCliDataDir(): string {
   return BUNDLE_DIR;
 }
 
-function dotProduct(a: number[], b: number[]): number {
+export function dotProduct(a: number[], b: number[]): number {
   let sum = 0;
   for (let i = 0; i < a.length; i++) {
     sum += a[i] * b[i];
@@ -109,57 +71,63 @@ function loadVectors(): UseCaseVector[] {
   const items: UseCaseVector[] = JSON.parse(jsonContent);
 
   for (const item of items) {
-    if (!item.id || !Array.isArray(item.vector) || item.vector.length === 0) {
-      throw new Error(`Corrupt vector entry in ${VECTORS_FILE}: missing id or vector`);
+    if (!item.id || !Array.isArray(item.vector) || item.vector.length === 0 || typeof item.chunkContent !== "string") {
+      throw new Error(`Corrupt vector entry in ${VECTORS_FILE}: missing id, vector, or chunkContent`);
     }
   }
   return items;
 }
 
+/**
+ * Hybrid retrieval: guides are ranked by their best-matching chunk (dense cosine) and by per-chunk max-pooled BM25,
+ * then merged with reciprocal rank fusion. `minSimilarity` gates the query, not individual guides: if no
+ * chunk in the corpus reaches it, nothing is returned; otherwise lexical matches with weaker cosine can surface.
+ * The reported `similarity` is still the guide's best dense cosine.
+ */
 export async function searchUseCases(
   query: string,
   limit = 5,
   minSimilarity = DEFAULT_MIN_SIMILARITY,
-  embedder?: EmbedderLike,
-  options?: SearchOptions
+  embedder?: EmbedderLike
 ): Promise<UseCaseResult[]> {
   const actualEmbedder = embedder ?? TfjsEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
 
-  if (!cachedVectors) {
-    cachedVectors = loadVectors();
+  if (!cachedCorpus) {
+    const vectors = loadVectors();
+    cachedCorpus = { vectors, bm25: buildBm25Index(vectors.map((v) => ({ id: v.id, text: `${v.description}\n\n${v.chunkContent}` }))) };
   }
-
-  const resultsMap = new Map<string, { item: UseCaseVector; similarity: number }>();
 
   // Both query and corpus vectors are L2-normalized unit vectors, so cosine similarity is dot product
-  for (const item of cachedVectors) {
+  const best = new Map<string, { item: UseCaseVector; similarity: number }>();
+  for (const item of cachedCorpus.vectors) {
     const sim = dotProduct(queryVector, item.vector);
-    if (sim < minSimilarity) continue;
-
-    const existing = resultsMap.get(item.id);
+    const existing = best.get(item.id);
     if (!existing || sim > existing.similarity) {
-      resultsMap.set(item.id, { item, similarity: sim });
+      best.set(item.id, { item, similarity: sim });
     }
   }
+  const dense = [...best.values()].sort((a, b) => b.similarity - a.similarity);
+  if (dense.length === 0 || dense[0].similarity < minSimilarity) {
+    logToolResult("search_use_cases", []);
+    return [];
+  }
 
-  const results = Array.from(resultsMap.values());
+  const fused = reciprocalRankFusion([dense.map((r) => r.item.id), rankBm25(cachedCorpus.bm25, query).map((r) => r.id)]);
 
-  // Sort by similarity descending
-  results.sort((a, b) => b.similarity - a.similarity);
+  const limitedResults = fused.slice(0, limit).map(({ id }) => {
+    const r = best.get(id);
+    if (!r) throw new Error(`BM25 returned guide "${id}" that has no vectors`);
+    return {
+      id: r.item.id,
+      description: r.item.description,
+      category: r.item.category,
+      featuresUsed: r.item.featuresUsed.length > 0 ? r.item.featuresUsed : undefined,
+      tokenCount: r.item.tokenCount,
+      similarity: parseFloat(r.similarity.toFixed(4))
+    };
+  });
 
-  const filteredResults = applySimilarityGates(results, options);
-
-  const limitedResults = filteredResults.slice(0, limit).map(r => ({
-    id: r.item.id,
-    description: r.item.description,
-    category: r.item.category,
-    featuresUsed: r.item.featuresUsed.length > 0 ? r.item.featuresUsed : undefined,
-    tokenCount: r.item.tokenCount,
-    similarity: parseFloat(r.similarity.toFixed(4))
-  }));
-
-  // Log the result
   logToolResult("search_use_cases", limitedResults.map(r => ({ id: r.id, similarity: r.similarity })));
 
   return limitedResults;
