@@ -311,7 +311,8 @@
       item.getAnimations().forEach((animation) => animation.finish());
       const to = item.getBoundingClientRect();
       const done = () => {
-        item.classList.remove('pointer-dragging');
+        // A new drag of this item may already be running; don't clear its placeholder state.
+        if (item !== pointerItem) item.classList.remove('pointer-dragging');
         preview.remove();
       };
       if (reduceMotion.matches) {
@@ -398,6 +399,7 @@
       pointerOffsetY = event.clientY - rect.top;
 
       pointerPreview = pointerItem.cloneNode(true);
+      pointerPreview.classList.remove('pointer-dragging');
       pointerPreview.classList.add('drag-preview');
       pointerPreview.setAttribute('aria-hidden', 'true');
       pointerPreview.inert = true;
