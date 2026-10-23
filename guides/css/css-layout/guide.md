@@ -191,7 +191,7 @@ Query the size (or computed style) of an ancestor container rather than the view
 **Do:**
 
 - Establish a containment context with `container-type: inline-size` (width-only queries) or `container-type: size` (both axes) on a wrapper before its descendants can be queried.
-- Name containers with `container-name` (or the `container` shorthand: `container: inline-size card`) when nested contexts could collide.
+- Name containers with `container-name` (or the `container` shorthand: `container: card / inline-size`) when nested contexts could collide.
 - Include container query units in calculating fluid type and spacing: `cqi`/`cqb` (logical inline/block), `cqw`/`cqh` (physical), `cqmin`/`cqmax`.
 - Give the container a definite `block-size` whenever `container-type: size` is used — without one, descendants collapse because size containment forces the container to ignore its content.
 
@@ -205,7 +205,7 @@ Query the size (or computed style) of an ancestor container rather than the view
 
 ```css
 .card-wrapper {
-  container: inline-size / card; /* shorthand for container-type + container-name */
+  container: card / inline-size; /* shorthand for container-name / container-type */
 }
 
 @container card (inline-size > 400px) {
@@ -242,7 +242,7 @@ Query the size (or computed style) of an ancestor container rather than the view
 - Don't mix physical and logical keywords in a single `position-area` value — pick one coordinate system.
 - Feature-detect with `@supports (anchor-name: --x)` and provide an absolute-position fallback.
 
-> For full implementation detail, polyfill strategies, and `popover` value reference, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("position-aware-tooltips") }}. For anchor positioning applied to menus and tab indicators, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }} and {{ GUIDE_REF("anchor-positioning-tab-underline") }}.
+> For full implementation detail, polyfill strategies, and `popover` value reference, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("position-aware-tooltips") }}. For anchor positioning applied to dropdowns, flyouts, and tab indicators, see {{ GUIDE_REF("viewport-aware-dropdowns") }} and {{ GUIDE_REF("anchor-positioning-tab-underline") }}.
 
 ## 6 Overflow tracking and layout stability
 

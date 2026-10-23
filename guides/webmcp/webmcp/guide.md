@@ -17,10 +17,12 @@ Currently, WebMCP **only supports Tools**. It does not support the "Resources" o
 
 - **Imperative API**: Use `document.modelContext.registerTool()` for complex logic and dynamic interactions.
 - **Declarative API**: Annotate standard HTML `<form>` elements with `toolname` and `tooldescription` to turn them into tools.
+- **Frameworks (MANDATORY)**: React uses `useWebMCP` from `use-webmcp-tool`. Angular uses `provideExperimentalWebMcpTools` / `declareExperimentalWebMcpTool` from `@angular/core`. Vue uses `useWebMCP` from `@vueuse/core`. **DO NOT** call `registerTool()` from components.
 
 ## Best Practices
 
 * **Naming and Semantics**: Use specific verbs describing exact behavior (e.g. `create-event` vs `start-event-creation-process`). Favor positive descriptions over listing limitations.
+* **Descriptions**: Say what the tool does and when to use it. Do not repeat parameter names, types, enum values, defaults, or limits: the agent already receives them in the input schema (your `inputSchema`, or the one the browser builds from a form's controls). Put those details in the schema, and explain a non-obvious value in that parameter's own description.
 * **Schema Design**: Accept raw user input (avoid agent math/calculation). Ensure all parameters have specific types and explain the purpose of options.
 * **Reliability**: Validate constraints in code and return descriptive errors for retries. Handle rate limiting gracefully. Ensure the function returns *after* UI state updates for consistency.
 * **Tool Strategy**: Tools should be atomic, composable, and distinct. Do not force flow control instructions ("Don't call B after A") — let the agent decide. Register/unregister tools dynamically depending on the current page context. Use `annotations: { readOnlyHint: true }` (placed after `execute`) for tools that do not modify state to inform the agent of safe execution.

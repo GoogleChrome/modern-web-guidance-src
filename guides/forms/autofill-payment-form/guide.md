@@ -107,6 +107,16 @@ Make sure to add appropriate `autocomplete` values in payment card forms. Withou
        inputmode="numeric" maxlength="4" pattern="[0-9]{3,4}" required>
 ```
 
+### Show format hints above the input
+
+Where a field has a required format (for example the `MM/YY` expiry date), put the hint in a visible element **above** the input and link the two with `aria-describedby`, as in the `cc-exp` example above. Hints that sit below an input are easily hidden by the mobile keyboard or by the autofill popover at the moment the user needs them.
+
+Don't rely on the `placeholder` attribute as the only format hint, and never use it instead of a `<label>`: placeholder text is hidden as soon as the user starts typing, so it can't be checked against while editing. A placeholder is fine as an extra cue alongside the label and the persistent hint.
+
+### Don't mask the security code
+
+Use `type="text"` with `inputmode="numeric"` for the card security code, not `type="password"`. Users can't check a masked three- or four-digit code for typos, so a mistyped digit isn't caught until the payment is declined, and masking adds little protection because the code is printed on the card the user is holding.
+
 ### Use a single input for payment card and phone numbers
 
 For payment card and phone numbers use a single input: don't split the number into parts. That makes it easier for users to enter data, makes validation simpler, and enables browsers to autofill. Consider doing the same for other numeric data such as PIN and bank codes.

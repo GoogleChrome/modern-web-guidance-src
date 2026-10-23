@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 
 export function assertSearchResults(output: string) {
     const results = JSON.parse(output);
