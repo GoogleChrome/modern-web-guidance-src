@@ -1,0 +1,211 @@
+diff --git a/index.html b/index.html
+index 66c9173..7b834aa 100644
+--- a/index.html
++++ b/index.html
+@@ -7,11 +7,95 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
++      color-scheme: light dark;
++
++      /* Single base brand color; all tints and shades derive from it */
++      --brand: #4e342e;
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++
++      --nav-bg: var(--brand);
++      --nav-text: color-mix(in oklab, var(--brand), white 97%);
++      --surface: color-mix(in oklab, var(--brand), white 96%);
++      --surface-raised: color-mix(in oklab, var(--brand), white 99%);
++      --border: color-mix(in oklab, var(--brand), white 45%);
++      --text: color-mix(in oklab, var(--brand), black 40%);
++      --heading: var(--brand);
++      --btn-bg: var(--brand);
++      --btn-bg-hover: color-mix(in oklab, var(--brand), black 40%);
++      --btn-text: color-mix(in oklab, var(--brand), white 97%);
++      --footer-bg: color-mix(in oklab, var(--brand), white 80%);
++      --footer-text: color-mix(in oklab, var(--brand), black 40%);
++      --hero-overlay: color-mix(in oklab, var(--brand), black 60%);
++      --hero-text: white;
++      --focus: var(--brand);
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --nav-bg: color-mix(in oklab, var(--brand), black 40%);
++        --nav-text: color-mix(in oklab, var(--brand), white 92%);
++        --surface: color-mix(in oklab, var(--brand), black 70%);
++        --surface-raised: color-mix(in oklab, var(--brand), black 50%);
++        --border: color-mix(in oklab, var(--brand), white 40%);
++        --text: color-mix(in oklab, var(--brand), white 88%);
++        --heading: color-mix(in oklab, var(--brand), white 80%);
++        --btn-bg: color-mix(in oklab, var(--brand), white 75%);
++        --btn-bg-hover: color-mix(in oklab, var(--brand), white 88%);
++        --btn-text: color-mix(in oklab, var(--brand), black 60%);
++        --footer-bg: color-mix(in oklab, var(--brand), black 55%);
++        --footer-text: color-mix(in oklab, var(--brand), white 88%);
++        --focus: color-mix(in oklab, var(--brand), white 80%);
++      }
++    }
++
++    @media (prefers-contrast: more) {
++      :root {
++        --border: var(--text);
++      }
++    }
++
++    @media (forced-colors: active) {
++      :root {
++        --nav-bg: Canvas;
++        --nav-text: CanvasText;
++        --surface: Canvas;
++        --surface-raised: Canvas;
++        --border: CanvasText;
++        --text: CanvasText;
++        --heading: CanvasText;
++        --btn-bg: ButtonFace;
++        --btn-bg-hover: Highlight;
++        --btn-text: ButtonText;
++        --footer-bg: Canvas;
++        --footer-text: CanvasText;
++        --hero-text: CanvasText;
++        --accent: LinkText;
++        --focus: Highlight;
++      }
++
++      nav {
++        border-bottom: 1px solid CanvasText;
++      }
++
++      .hero {
++        border-bottom: 1px solid CanvasText;
++      }
++
++      .btn {
++        border: 1px solid ButtonText;
++      }
++
++      .btn:hover {
++        color: HighlightText;
++      }
++
++      nav a:hover {
++        color: Highlight;
++      }
++
++      footer {
++        border-top: 1px solid CanvasText;
++      }
+     }
+ 
+     * {
+@@ -24,13 +108,13 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--surface);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,7 +140,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -75,7 +159,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(color-mix(in oklab, var(--hero-overlay) 70%, transparent), color-mix(in oklab, var(--hero-overlay) 70%, transparent)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +167,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -108,22 +192,23 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface-raised);
++      border: 1px solid var(--border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px color-mix(in oklab, var(--brand), transparent 80%);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,11 +217,22 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
++    }
++
++    a:focus-visible {
++      outline: 2px solid var(--focus);
++      outline-offset: 2px;
++    }
++
++    nav a:focus-visible,
++    .hero .btn:focus-visible {
++      outline-color: var(--accent);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -148,7 +244,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
