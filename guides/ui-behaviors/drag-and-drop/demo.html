@@ -112,6 +112,18 @@
       outline: none;
     }
 
+    /* A fill, not an outline, so it does not read as a second focus ring next to the item outline. */
+    .drag-handle:is(:hover, :focus-visible) {
+      border-radius: 4px;
+      background: var(--canvas);
+    }
+
+    .drag-handle[aria-pressed="true"] {
+      border-radius: 4px;
+      background: color-mix(in oklch, var(--accent) 20%, transparent);
+      color: var(--accent);
+    }
+
     .task-controls {
       display: flex;
       gap: 0.25rem;
