@@ -75,10 +75,18 @@ test.describe('daily-grind Target Grader', () => {
 
     let tabIndexValid = false;
     if (classes.length > 0) {
-      const interactiveClasses = classes.filter(cls => {
+      const isInteractiveHostClass = (cls: any) => {
         const text = cls.getText();
-        return text.includes('attachInternals');
-      });
+        return (
+          text.includes('attachInternals') &&
+          !text.includes('delegatesFocus: true') &&
+          !text.includes('delegatesFocus:true') &&
+          (/\.role\s*=|setHostRole\s*\(/.test(text) ||
+            /\.aria(Checked|Pressed|Expanded)\s*=|setHostAria(Checked|Pressed|Expanded)\s*\(/.test(text))
+        );
+      };
+
+      const interactiveClasses = classes.filter(isInteractiveHostClass);
 
       const allInteractiveValid = interactiveClasses.length > 0 && interactiveClasses.every(cls => {
         const constructor = cls.getConstructors()[0];
@@ -90,10 +98,7 @@ test.describe('daily-grind Target Grader', () => {
         return !constructorSetsTabIndex && connectedSetsTabIndex;
       });
 
-      const staticClasses = classes.filter(cls => {
-        const text = cls.getText();
-        return !text.includes('attachInternals');
-      });
+      const staticClasses = classes.filter(cls => !isInteractiveHostClass(cls));
       const staticDoNotSetTabIndex = staticClasses.every(cls => !cls.getText().includes('this.tabIndex'));
 
       tabIndexValid = allInteractiveValid && staticDoNotSetTabIndex;
@@ -148,11 +153,16 @@ test.describe('daily-grind Target Grader', () => {
 
         const elements = await page.evaluate(() => {
           const els = Array.from(document.querySelectorAll('*')).filter(el => el.tagName.includes('-'));
-          return els.map((el, idx) => ({
-            tagName: el.tagName.toLowerCase(),
-            id: el.id,
-            selector: el.id ? `#${el.id}` : `${el.tagName.toLowerCase()}:nth-of-type(${idx + 1})`
-          }));
+          return els.map((el, idx) => {
+            if (!el.id) {
+              el.setAttribute('data-grader-idx', String(idx));
+            }
+            return {
+              tagName: el.tagName.toLowerCase(),
+              id: el.id,
+              selector: el.id ? `#${el.id}` : `${el.tagName.toLowerCase()}[data-grader-idx="${idx}"]`,
+            };
+          });
         });
 
         for (const item of elements) {
