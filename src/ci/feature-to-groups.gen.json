@@ -856,6 +856,9 @@
   "resolution-compat": [
     "css"
   ],
+  "revert-rule": [
+    "css"
+  ],
   "revert-value": [
     "css"
   ],
@@ -938,6 +941,10 @@
   "scroll-to-text-fragment": [
     "scrolling"
   ],
+  "scroll-triggered-animations": [
+    "animation",
+    "scrolling"
+  ],
   "scrollbar-color": [
     "scrolling"
   ],
@@ -1016,6 +1023,9 @@
     "css"
   ],
   "system-color": [
+    "css"
+  ],
+  "system-color-accentcolor": [
     "css"
   ],
   "tab-size": [
@@ -1132,13 +1142,6 @@
   ],
   "tmp-resizable": [
     "css"
-  ],
-  "tmp-revert-rule": [
-    "css"
-  ],
-  "tmp-scroll-triggered-animations": [
-    "animation",
-    "scrolling"
   ],
   "tmp-text-decoration-inset": [
     "css"

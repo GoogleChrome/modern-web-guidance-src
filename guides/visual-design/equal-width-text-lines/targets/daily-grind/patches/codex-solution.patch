@@ -1,0 +1,194 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..d66dca6 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,14 +85,35 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
++    .lockup {
++      inline-size: min(100%, 30rem);
++      font-size: clamp(1rem, 8vw, 3rem);
++      text-fit: grow per-line-all 300%;
++      line-height: 1;
++      text-transform: uppercase;
++      display: flex;
++      flex-direction: column;
++      gap: 0.75rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .lockup > span {
++      display: block;
++      white-space: nowrap;
++      text-box: trim-both cap alphabetic;
++    }
++
++    @supports not (text-fit: grow) {
++      .lockup > span {
++        width: fit-content;
++        align-self: center;
++        font-size: min(var(--text-fit-scale, 1) * 1em, 300%);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,7 +190,7 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="lockup"><span>Wake Up</span> <span>Your Senses</span></h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +228,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/text-fit.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..039c47f 100644
+--- a/package.json
++++ b/package.json
+@@ -2,8 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "tsc -p tsconfig.json && vite build",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
++  "devDependencies": {
++    "typescript": "^5.9.3",
++    "vite": "^6.4.1"
++  },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+   }
+diff --git a/text-fit.js b/text-fit.js
+new file mode 100644
+index 0000000..844b1df
+--- /dev/null
++++ b/text-fit.js
+@@ -0,0 +1,74 @@
++// @ts-check
++
++if (!CSS.supports('text-fit', 'grow per-line-all 300%')) {
++  const lockups = [...document.querySelectorAll('.lockup')]
++    .filter((element) => element instanceof HTMLElement);
++  /** @type {Set<HTMLElement>} */
++  const pending = new Set();
++  /** @type {WeakMap<HTMLElement, number>} */
++  const widths = new WeakMap();
++  let frame = 0;
++
++  /** @param {HTMLElement} lockup */
++  function schedule(lockup) {
++    pending.add(lockup);
++    if (frame) return;
++    frame = requestAnimationFrame(() => {
++      frame = 0;
++      const groups = [...pending].map((heading) => ({
++        heading,
++        lines: [...heading.querySelectorAll(':scope > span')]
++          .filter((element) => element instanceof HTMLElement),
++      }));
++      pending.clear();
++
++      // Reset every line before measuring; never measure a previous fit.
++      for (const { lines } of groups) {
++        for (const line of lines) line.style.removeProperty('--text-fit-scale');
++      }
++
++      // Batch all layout reads across every heading before writing any scales.
++      const measurements = groups.map(({ heading, lines }) => {
++        const width = heading.getBoundingClientRect().width;
++        return lines.map((line) => {
++          const lineWidth = line.getBoundingClientRect().width;
++          const scale = width > 0 && lineWidth > 0
++            ? Math.min(3, Math.max(1, width / lineWidth))
++            : 1;
++          return { line, scale };
++        });
++      });
++
++      for (const lines of measurements) {
++        for (const { line, scale } of lines) {
++          line.style.setProperty('--text-fit-scale', String(scale));
++        }
++      }
++    });
++  }
++
++  const resizeObserver = new ResizeObserver((entries) => {
++    for (const entry of entries) {
++      if (!(entry.target instanceof HTMLElement)) continue;
++      // Fitting changes height. Only inline-size changes need another fit.
++      const width = entry.contentRect.width;
++      if (widths.get(entry.target) === width) continue;
++      widths.set(entry.target, width);
++      schedule(entry.target);
++    }
++  });
++
++  for (const lockup of lockups) {
++    resizeObserver.observe(lockup);
++    new MutationObserver(() => schedule(lockup)).observe(lockup, {
++      childList: true,
++      characterData: true,
++      subtree: true,
++    });
++    schedule(lockup);
++  }
++
++  const refitAll = () => lockups.forEach(schedule);
++  void document.fonts.ready.then(refitAll);
++  document.fonts.addEventListener('loadingdone', refitAll);
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..2d23ed1
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,13 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "noEmit": true,
++    "strict": true,
++    "types": [],
++    "target": "ES2022",
++    "module": "ESNext",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"]
++  },
++  "include": ["text-fit.js"]
++}

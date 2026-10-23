@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { createTwoFilesPatch } from 'diff';
 
 const MAX_BUFFER = 50 * 1024 * 1024; // 50MB buffer to handle large diffs/assets
 
-const LOCKFILE_RE = /(?:^|\/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$/;
+const EXCLUDED_FILES_RE = /(?:^|\/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|guide\.md|expectations\.md|task\.md|pnpm-workspace\.yaml)$/;
 
 const EXCLUDED_PATCH_PATHSPECS = [
   ':(exclude)package-lock.json',
@@ -17,11 +18,19 @@ const EXCLUDED_PATCH_PATHSPECS = [
   ':(exclude)**/bun.lockb',
   ':(exclude)bun.lock',
   ':(exclude)**/bun.lock',
+  ':(exclude)guide.md',
+  ':(exclude)**/guide.md',
+  ':(exclude)expectations.md',
+  ':(exclude)**/expectations.md',
+  ':(exclude)task.md',
+  ':(exclude)**/task.md',
+  ':(exclude)pnpm-workspace.yaml',
+  ':(exclude)**/pnpm-workspace.yaml',
 ];
 
 /**
  * Extracts target modified file paths directly from unified diff headers (+++ b/<path>).
- * Ignores deleted files (/dev/null) and package manager lockfiles.
+ * Ignores deleted files (/dev/null), package manager lockfiles, and authoring metadata files.
  */
 export function extractTargetFilesFromPatch(patchPath: string): string[] {
   try {
@@ -30,7 +39,7 @@ export function extractTargetFilesFromPatch(patchPath: string): string[] {
     const matches = Array.from(content.matchAll(/^\+\+\+ (?:b\/)?(.+)$/gm));
     return matches
       .map((m) => m[1].trim())
-      .filter((f) => f && f !== '/dev/null' && !LOCKFILE_RE.test(f));
+      .filter((filePath) => filePath && filePath !== '/dev/null' && !EXCLUDED_FILES_RE.test(filePath));
   } catch (e) {
     console.warn(`Failed to extract target files from patch ${patchPath}: ${e}`);
     return [];
@@ -117,4 +126,25 @@ export function initGitRepo(workDir: string): void {
   } catch (err) {
     console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
   }
+}
+
+/**
+ * Generates an aligned unified diff of two strings for LLM context and file comparison.
+ */
+export function generateUnifiedDiff(
+  oldText: string,
+  newText: string,
+  oldLabel = 'Old',
+  newLabel = 'New',
+  contextLines = 3
+): string {
+  if (oldText === newText) {
+    return 'No differences detected.';
+  }
+
+  const patch = createTwoFilesPatch(oldLabel, newLabel, oldText, newText, undefined, undefined, { context: contextLines });
+  if (!patch.includes('@@')) {
+    return 'No differences detected.';
+  }
+  return patch.trim();
 }

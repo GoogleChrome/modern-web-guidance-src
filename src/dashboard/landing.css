@@ -97,12 +97,13 @@
   border-radius: 50%;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 2;
 }
 
 .insight-dumbbell-track .dot.unguided,
 .suite-dumbbell-track .dot.unguided {
   border: 1.5px solid #8b949e;
-  background: transparent;
+  background: var(--color-surface-container-lowest, #161b22);
 }
 
 .insight-dumbbell-track .dot.guided,
@@ -116,6 +117,7 @@
   background: var(--color-primary);
   top: 50%;
   transform: translateY(-50%);
+  z-index: 1;
 }
 
 .insight-dumbbell-track .dot.unguided {
@@ -850,8 +852,9 @@
   color: var(--color-primary);
 }
 
-/* Variance / Noisiness Visualization Bands */
-.insight-dumbbell-track .variance-band {
+/* Variance / Noisiness & Manski Error Uncertainty Bands */
+.insight-dumbbell-track .variance-band,
+.suite-dumbbell-track .variance-band {
   position: absolute;
   height: 12px;
   top: 50%;
@@ -861,12 +864,25 @@
   z-index: 0;
 }
 
-.insight-dumbbell-track .variance-band.unguided {
-  background-color: var(--text-secondary);
-  opacity: 0.22;
+.suite-dumbbell-track .variance-band {
+  height: 10px;
+  border-radius: 5px;
 }
 
-.insight-dumbbell-track .variance-band.guided {
+.insight-dumbbell-track .variance-band.unguided,
+.suite-dumbbell-track .variance-band.unguided {
+  background-color: var(--text-secondary);
+  opacity: 0.25;
+}
+
+.insight-dumbbell-track .variance-band.guided,
+.suite-dumbbell-track .variance-band.guided {
   background-color: var(--color-primary);
   opacity: 0.26;
+}
+
+.insight-dumbbell-track .variance-band.guided.has-err,
+.suite-dumbbell-track .variance-band.guided.has-err {
+  background-color: #d29922;
+  opacity: 0.35;
 }

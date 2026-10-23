@@ -44,8 +44,11 @@ class MyCard extends HTMLElement {
       this.attachShadow({ mode: 'open' });
       this.shadowRoot.append(template.content.cloneNode(true));
     }
-    // Otherwise hydrate in place: wire up listeners against existing markup,
-    // and do NOT re-render; that would discard the server's DOM and flash.
+    // Hydrate in place: attach listeners once against existing markup (not unguarded
+    // in connectedCallback, which re-runs if the element moves in the DOM), and do
+    // NOT re-render; that would discard the server's DOM and flash.
+    this.shadowRoot.getElementById('toggle')
+      ?.addEventListener('click', () => this.toggleAttribute('open'));
   }
 }
 ```
@@ -64,4 +67,4 @@ DSD renders correctly on first paint only if styles ship inside the declarative 
 
 {{ BASELINE_STATUS("declarative-shadow-dom") }}
 
-In engines that don't parse `shadowrootmode`, the template is inert and its content is not attached as a shadow root. Detect this (`HTMLTemplateElement.prototype.hasOwnProperty('shadowRootMode')`) and, if absent, attach the shadow root imperatively from the same markup during upgrade so the component still renders.
+In engines that don't parse `shadowrootmode`, the template is inert and its content is not attached as a shadow root. Detect this (`Object.hasOwn(HTMLTemplateElement.prototype, 'shadowRootMode')`) and, if absent, attach the shadow root imperatively from the same markup during upgrade so the component still renders.

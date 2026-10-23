@@ -1,0 +1,433 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..1af96dc 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,19 @@
+       background: #3e2723;
+     }
+ 
++    .signature-panel { margin-top: 40px; padding: 24px; background: white; border: 1px solid var(--secondary); border-radius: 8px; }
++    .signature-panel label { display: block; font-weight: 600; margin-top: 16px; }
++    .signature-panel input, .signature-panel textarea { display: block; width: 100%; padding: 10px; border: 1px solid #9e8279; border-radius: 4px; font: inherit; }
++    .signature-panel textarea { resize: vertical; min-height: 90px; }
++    .signature-panel .encoded { font-family: monospace; overflow-wrap: anywhere; }
++    .signature-panel button { border: 0; font: inherit; cursor: pointer; margin-right: 8px; }
++    .signature-panel button:disabled { opacity: .5; cursor: not-allowed; }
++    #signature-status { margin-top: 20px; padding: 12px; background: #f1ece9; border-radius: 4px; }
++    #signature-status[data-state="valid"] { background: #e3f3e6; color: #18562a; }
++    #signature-status[data-state="invalid"], #signature-status[data-state="error"] { background: #fde9e7; color: #92291d; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    @media (max-width: 640px) { nav { flex-wrap: wrap; gap: 12px; } nav ul { flex-wrap: wrap; gap: 12px; } nav ul li { margin-left: 0; } .hero h1 { font-size: 2.2rem; } }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +208,27 @@
+         </div>
+       </div>
+     </section>
++    <section class="signature-panel" aria-labelledby="signature-heading">
++      <h2 id="signature-heading">Sign &amp; Verify a Coffee Receipt</h2>
++      <p>Generate a signing key, sign your receipt, then check its integrity. Edit the receipt or context to test verification.</p>
++      <p>Private keys stay in memory and cannot be exported. Reloading clears the keys.</p>
++      <button class="btn" id="generate-keys" type="button">Generate Key Pair</button>
++      <p id="active-algorithm">No key pair generated. ML-DSA-65 is preferred when supported.</p>
++      <label for="signature-payload">Payload</label>
++      <textarea id="signature-payload" spellcheck="false">{"shop":"The Daily Grind","item":"Maple Oat Latte","quantity":1}</textarea>
++      <label for="signature-context">Domain-separation context</label>
++      <input id="signature-context" value="daily-grind-receipt-v1" aria-describedby="context-count">
++      <small id="context-count">22 / 255 UTF-8 bytes</small>
++      <div>
++        <button class="btn" id="sign-payload" type="button" disabled>Sign Payload</button>
++        <button class="btn" id="verify-payload" type="button" disabled>Verify Signature</button>
++      </div>
++      <label for="public-key">Verification public key (Base64)</label>
++      <textarea class="encoded" id="public-key" spellcheck="false" placeholder="Generate a key pair to export its public key"></textarea>
++      <label for="signature">Signature (Base64)</label>
++      <textarea class="encoded" id="signature" spellcheck="false" placeholder="Sign the payload to create a signature"></textarea>
++      <p id="signature-status" role="status" aria-live="polite" aria-atomic="true">Generate a key pair to begin.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +241,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/src/main.ts"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..13fe68a 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,16 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "tsc --noEmit && vite build",
++    "test": "vitest run"
++  },
++  "devDependencies": {
++    "typescript": "^5.9.3",
++    "vite": "^7.1.0",
++    "vitest": "^3.2.0"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/src/main.ts b/src/main.ts
+new file mode 100644
+index 0000000..3ba74bd
+--- /dev/null
++++ b/src/main.ts
+@@ -0,0 +1,95 @@
++import { encodeContext, fromBase64, generateSigningKeyPair, signPayload, toBase64, verifyPayload,
++  type SigningIdentity } from './signatures';
++
++function element<T extends HTMLElement>(id: string, constructor: { new(): T }): T {
++  const value = document.getElementById(id);
++  if (!(value instanceof constructor)) throw new Error(`Missing element: ${id}`);
++  return value;
++}
++const generate = element('generate-keys', HTMLButtonElement);
++const sign = element('sign-payload', HTMLButtonElement);
++const verify = element('verify-payload', HTMLButtonElement);
++const payload = element('signature-payload', HTMLTextAreaElement);
++const context = element('signature-context', HTMLInputElement);
++const publicKey = element('public-key', HTMLTextAreaElement);
++const signature = element('signature', HTMLTextAreaElement);
++const algorithm = element('active-algorithm', HTMLElement);
++const status = element('signature-status', HTMLElement);
++const contextCount = element('context-count', HTMLElement);
++let identity: SigningIdentity | undefined;
++let busy = false;
++
++function setStatus(message: string, state = 'neutral'): void {
++  status.textContent = message;
++  status.dataset.state = state;
++}
++function updateButtons(): void {
++  generate.disabled = busy;
++  sign.disabled = busy || !identity;
++  verify.disabled = busy || !identity || !signature.value.trim() || !publicKey.value.trim();
++}
++async function run(action: () => Promise<void>): Promise<void> {
++  if (busy) return;
++  busy = true;
++  updateButtons();
++  // Prevent edits while an operation reads the current payload and key material.
++  for (const field of [payload, context, publicKey, signature]) field.disabled = true;
++  try { await action(); }
++  catch (error) { setStatus(error instanceof Error ? error.message : 'The cryptographic operation failed.', 'error'); }
++  finally {
++    busy = false;
++    for (const field of [payload, context, publicKey, signature]) field.disabled = false;
++    updateButtons();
++  }
++}
++
++generate.addEventListener('click', () => void run(async () => {
++  setStatus('Generating a signing key pair…');
++  const next = await generateSigningKeyPair();
++  identity = next;
++  publicKey.value = toBase64(next.publicKeyBytes);
++  signature.value = '';
++  algorithm.textContent = `${next.suite} · ${next.keyFormat} · ${next.publicKeyBytes.byteLength} public key bytes`;
++  setStatus(next.suite === 'ML-DSA-65'
++    ? 'Post-quantum key pair ready. Sign your payload.'
++    : `Classical ${next.suite} fallback ready. Sign your payload.`);
++}));
++sign.addEventListener('click', () => void run(async () => {
++  if (!identity) throw new Error('Generate a key pair first.');
++  // A failed signing attempt must not leave an older signature looking current.
++  signature.value = '';
++  setStatus('Signing payload…');
++  const bytes = await signPayload(identity, payload.value, context.value);
++  publicKey.value = toBase64(identity.publicKeyBytes);
++  signature.value = toBase64(bytes);
++  const valid = await verifyPayload(identity.suite, identity.publicKeyBytes, bytes, payload.value, context.value);
++  setStatus(valid ? `Signature verified — valid (${bytes.byteLength} signature bytes).`
++    : 'Signature verification failed — invalid.', valid ? 'valid' : 'invalid');
++}));
++verify.addEventListener('click', () => void run(async () => {
++  if (!identity) throw new Error('Generate a key pair first.');
++  setStatus('Verifying signature…');
++  const valid = await verifyPayload(identity.suite, fromBase64(publicKey.value),
++    fromBase64(signature.value), payload.value, context.value);
++  setStatus(valid ? 'Signature verified — valid.'
++    : 'Signature verification failed — invalid. The payload, context, signature, or key does not match.',
++  valid ? 'valid' : 'invalid');
++}));
++for (const field of [payload, context, publicKey, signature]) {
++  field.addEventListener('input', () => {
++    setStatus('Input changed. Verify again to check the current data.');
++    updateButtons();
++  });
++}
++context.addEventListener('input', () => {
++  const size = new TextEncoder().encode(context.value).byteLength;
++  contextCount.textContent = `${size} / 255 UTF-8 bytes`;
++  try { encodeContext(context.value); context.setCustomValidity(''); }
++  catch { context.setCustomValidity('Context must not exceed 255 UTF-8 bytes.'); }
++});
++contextCount.textContent = `${new TextEncoder().encode(context.value).byteLength} / 255 UTF-8 bytes`;
++updateButtons();
++if (!globalThis.crypto?.subtle) {
++  generate.disabled = true;
++  setStatus('WebCrypto is unavailable. Open this page over HTTPS or localhost.', 'error');
++}
+diff --git a/src/signatures.ts b/src/signatures.ts
+new file mode 100644
+index 0000000..993978f
+--- /dev/null
++++ b/src/signatures.ts
+@@ -0,0 +1,123 @@
++export type Suite = 'ML-DSA-65' | 'Ed25519' | 'ECDSA';
++export interface SigningIdentity {
++  suite: Suite;
++  keyFormat: 'raw-public' | 'raw';
++  keyPair: CryptoKeyPair;
++  publicKeyBytes: Uint8Array<ArrayBuffer>;
++}
++
++// The modern WebCrypto formats are not yet in TypeScript's DOM declarations.
++type ModernSubtleCrypto = SubtleCrypto & {
++  generateKey(algorithm: 'ML-DSA-65', extractable: boolean, usages: KeyUsage[]): Promise<CryptoKeyPair>;
++  exportKey(format: 'raw-public', key: CryptoKey): Promise<ArrayBuffer>;
++  importKey(format: 'raw-public', data: BufferSource, algorithm: AlgorithmIdentifier,
++    extractable: boolean, usages: KeyUsage[]): Promise<CryptoKey>;
++};
++type ModernConstructor = typeof SubtleCrypto & {
++  supports?: (operation: string, algorithm: AlgorithmIdentifier) => boolean;
++};
++const encoder = new TextEncoder();
++
++export function supportsPostQuantumSignatures(): boolean {
++  const constructor = globalThis.SubtleCrypto as ModernConstructor | undefined;
++  if (typeof constructor?.supports !== 'function') return false;
++  try {
++    return ['generateKey', 'sign', 'verify', 'importKey', 'exportKey'].every(
++      operation => constructor.supports!(operation, 'ML-DSA-65'),
++    );
++  } catch {
++    return false;
++  }
++}
++
++function subtle(): ModernSubtleCrypto {
++  if (!globalThis.crypto?.subtle) {
++    throw new Error('WebCrypto is unavailable. Open this page over HTTPS or localhost.');
++  }
++  return globalThis.crypto.subtle as ModernSubtleCrypto;
++}
++
++export async function generateSigningKeyPair(): Promise<SigningIdentity> {
++  const api = subtle();
++  let suite: Suite;
++  let keyPair: CryptoKeyPair;
++  if (supportsPostQuantumSignatures()) {
++    suite = 'ML-DSA-65';
++    keyPair = await api.generateKey('ML-DSA-65', false, ['sign', 'verify']);
++  } else {
++    try {
++      suite = 'Ed25519';
++      keyPair = await api.generateKey('Ed25519', false, ['sign', 'verify']);
++    } catch (error) {
++      if (!(error instanceof Error) || error.name !== 'NotSupportedError') throw error;
++      suite = 'ECDSA';
++      keyPair = await api.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign', 'verify']);
++    }
++  }
++  const keyFormat = suite === 'ML-DSA-65' ? 'raw-public' : 'raw';
++  const exported = keyFormat === 'raw-public'
++    ? await api.exportKey('raw-public', keyPair.publicKey)
++    : await api.exportKey('raw', keyPair.publicKey);
++  return { suite, keyFormat, keyPair, publicKeyBytes: new Uint8Array(exported) };
++}
++
++export function encodeContext(context: string): Uint8Array<ArrayBuffer> {
++  const bytes = encoder.encode(context);
++  if (bytes.byteLength > 255) {
++    throw new DOMException('Context must not exceed 255 UTF-8 bytes.', 'OperationError');
++  }
++  return bytes;
++}
++
++function frameFallbackInput(payload: Uint8Array<ArrayBuffer>, context: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
++  const framed = new Uint8Array(1 + context.byteLength + payload.byteLength);
++  framed[0] = context.byteLength;
++  framed.set(context, 1);
++  framed.set(payload, 1 + context.byteLength);
++  return framed;
++}
++
++function operation(suite: Suite, context: Uint8Array<ArrayBuffer>): AlgorithmIdentifier | EcdsaParams {
++  if (suite === 'ML-DSA-65') return { name: suite, context } as Algorithm & { context: BufferSource };
++  if (suite === 'ECDSA') return { name: suite, hash: 'SHA-256' };
++  return suite;
++}
++
++export async function signPayload(identity: SigningIdentity, payload: string, context = ''): Promise<Uint8Array<ArrayBuffer>> {
++  const contextBytes = encodeContext(context);
++  const payloadBytes = encoder.encode(payload);
++  const data = identity.suite === 'ML-DSA-65' ? payloadBytes : frameFallbackInput(payloadBytes, contextBytes);
++  const signature = new Uint8Array(await subtle().sign(
++    operation(identity.suite, contextBytes), identity.keyPair.privateKey, data,
++  ));
++  if (signature.byteLength === 0) throw new Error('WebCrypto returned an empty signature.');
++  return signature;
++}
++
++export async function verifyPayload(suite: Suite, publicKeyBytes: Uint8Array<ArrayBuffer>,
++  signature: Uint8Array<ArrayBuffer>, payload: string, context = ''): Promise<boolean> {
++  const contextBytes = encodeContext(context);
++  const api = subtle();
++  // Import the shared public bytes with verify-only usage, independently of the signing key.
++  const key = suite === 'ML-DSA-65'
++    ? await api.importKey('raw-public', publicKeyBytes, suite, true, ['verify'])
++    : await api.importKey('raw', publicKeyBytes,
++      suite === 'ECDSA' ? { name: suite, namedCurve: 'P-256' } : suite, true, ['verify']);
++  const payloadBytes = encoder.encode(payload);
++  const data = suite === 'ML-DSA-65' ? payloadBytes : frameFallbackInput(payloadBytes, contextBytes);
++  return api.verify(operation(suite, contextBytes), key, signature, data);
++}
++
++export function toBase64(bytes: Uint8Array<ArrayBuffer>): string {
++  return btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(''));
++}
++
++export function fromBase64(value: string): Uint8Array<ArrayBuffer> {
++  const normalized = value.replace(/\s/g, '');
++  if (!normalized || normalized.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)) {
++    throw new Error('Enter valid, non-empty Base64 data.');
++  }
++  const bytes = Uint8Array.from(atob(normalized), character => character.charCodeAt(0));
++  if (toBase64(bytes) !== normalized) throw new Error('Enter canonical Base64 data.');
++  return bytes;
++}
+diff --git a/tests/signatures.test.ts b/tests/signatures.test.ts
+new file mode 100644
+index 0000000..08df6ef
+--- /dev/null
++++ b/tests/signatures.test.ts
+@@ -0,0 +1,89 @@
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import { encodeContext, fromBase64, generateSigningKeyPair, signPayload,
++  supportsPostQuantumSignatures, toBase64, verifyPayload } from '../src/signatures';
++
++afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
++
++describe('WebCrypto signatures', () => {
++  it('falls back when the static supports method is absent and round-trips exported public bytes', async () => {
++    vi.stubGlobal('SubtleCrypto', undefined);
++    expect(supportsPostQuantumSignatures()).toBe(false);
++    const identity = await generateSigningKeyPair();
++    expect(identity.suite).toBe('Ed25519');
++    expect(identity.keyFormat).toBe('raw');
++    expect(identity.keyPair.privateKey.extractable).toBe(false);
++    expect(identity.keyPair.privateKey.usages).toEqual(['sign']);
++    const signature = await signPayload(identity, 'coffee receipt', 'receipt-v1');
++    expect(signature.byteLength).toBeGreaterThan(0);
++    expect(await verifyPayload(identity.suite, identity.publicKeyBytes, signature, 'coffee receipt', 'receipt-v1')).toBe(true);
++    expect(await verifyPayload(identity.suite, identity.publicKeyBytes, signature, 'edited receipt', 'receipt-v1')).toBe(false);
++    expect(await verifyPayload(identity.suite, identity.publicKeyBytes, signature, 'coffee receipt', 'other-domain')).toBe(false);
++    const tampered = signature.slice();
++    tampered[0] ^= 1;
++    expect(await verifyPayload(identity.suite, identity.publicKeyBytes, tampered, 'coffee receipt', 'receipt-v1')).toBe(false);
++    const other = await generateSigningKeyPair();
++    expect(await verifyPayload(identity.suite, other.publicKeyBytes, signature, 'coffee receipt', 'receipt-v1')).toBe(false);
++  });
++
++  it('uses ECDSA P-256 with SHA-256 if Ed25519 is unsupported', async () => {
++    vi.stubGlobal('SubtleCrypto', { supports: () => false });
++    const generate = vi.spyOn(crypto.subtle, 'generateKey')
++      .mockRejectedValueOnce(new DOMException('Unsupported', 'NotSupportedError'));
++    const identity = await generateSigningKeyPair();
++    expect(identity.suite).toBe('ECDSA');
++    expect(generate).toHaveBeenLastCalledWith({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign', 'verify']);
++    const signature = await signPayload(identity, 'receipt', 'domain');
++    expect(await verifyPayload(identity.suite, identity.publicKeyBytes, signature, 'receipt', 'domain')).toBe(true);
++    expect(await verifyPayload(identity.suite, identity.publicKeyBytes, signature, 'receipt', 'different')).toBe(false);
++  });
++
++  it('checks the constructor and uses modern key formats and ContextParams for ML-DSA', async () => {
++    // Browser support varies; the modern branch is checked at the WebCrypto boundary.
++    const pair = await crypto.subtle.generateKey('Ed25519', false, ['sign', 'verify']);
++    const supports = vi.fn(() => true);
++    vi.stubGlobal('SubtleCrypto', { supports });
++    const generate = vi.spyOn(crypto.subtle, 'generateKey').mockResolvedValue(pair);
++    const exported = new Uint8Array(1952);
++    const exportKey = vi.spyOn(crypto.subtle, 'exportKey').mockResolvedValue(exported.buffer);
++    const importKey = vi.spyOn(crypto.subtle, 'importKey').mockResolvedValue(pair.publicKey);
++    const sign = vi.spyOn(crypto.subtle, 'sign').mockResolvedValue(new Uint8Array(3309).buffer);
++    const verify = vi.spyOn(crypto.subtle, 'verify').mockResolvedValue(true);
++    const identity = await generateSigningKeyPair();
++    expect(supports).toHaveBeenCalledWith('sign', 'ML-DSA-65');
++    expect(generate).toHaveBeenCalledWith('ML-DSA-65', false, ['sign', 'verify']);
++    expect(exportKey).toHaveBeenCalledWith('raw-public', pair.publicKey);
++    const signature = await signPayload(identity, 'receipt', 'receipt-v1');
++    const params = { name: 'ML-DSA-65', context: new TextEncoder().encode('receipt-v1') };
++    expect(sign).toHaveBeenCalledWith(params, pair.privateKey, new TextEncoder().encode('receipt'));
++    expect(await verifyPayload(identity.suite, identity.publicKeyBytes, signature, 'receipt', 'receipt-v1')).toBe(true);
++    expect(importKey).toHaveBeenCalledWith('raw-public', exported, 'ML-DSA-65', true, ['verify']);
++    expect(verify).toHaveBeenCalledWith(params, pair.publicKey, signature, new TextEncoder().encode('receipt'));
++  });
++
++  it('limits contexts by UTF-8 bytes and allows empty and 255-byte contexts', async () => {
++    vi.stubGlobal('SubtleCrypto', undefined);
++    expect(encodeContext('')).toHaveLength(0);
++    expect(encodeContext('a'.repeat(255))).toHaveLength(255);
++    expect(() => encodeContext('é'.repeat(128))).toThrow('255 UTF-8 bytes');
++    const identity = await generateSigningKeyPair();
++    for (const context of ['', 'a'.repeat(255)]) {
++      const signature = await signPayload(identity, '', context);
++      expect(await verifyPayload(identity.suite, identity.publicKeyBytes, signature, '', context)).toBe(true);
++    }
++    await expect(signPayload(identity, 'receipt', 'a'.repeat(256))).rejects.toThrow('255 UTF-8 bytes');
++    await expect(verifyPayload(identity.suite, identity.publicKeyBytes, new Uint8Array(64), 'receipt', 'a'.repeat(256))).rejects.toThrow('255 UTF-8 bytes');
++  });
++
++  it('round-trips Base64 and rejects malformed or empty input', () => {
++    const bytes = new Uint8Array([0, 1, 127, 128, 255]);
++    expect(fromBase64(toBase64(bytes))).toEqual(bytes);
++    for (const value of ['', '???=', 'A===', 'YR==']) expect(() => fromBase64(value)).toThrow();
++  });
++
++  it('rejects an empty signature returned by the provider', async () => {
++    vi.stubGlobal('SubtleCrypto', undefined);
++    const identity = await generateSigningKeyPair();
++    vi.spyOn(crypto.subtle, 'sign').mockResolvedValue(new ArrayBuffer(0));
++    await expect(signPayload(identity, 'receipt')).rejects.toThrow('empty signature');
++  });
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..b8af9c6
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM"],
++    "strict": true,
++    "noEmit": true,
++    "skipLibCheck": true
++  },
++  "include": ["src/**/*.ts"]
++}

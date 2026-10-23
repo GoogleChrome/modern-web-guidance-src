@@ -1,0 +1,1 @@
+- Measure the time it takes for user interactions and client-side navigations to render new contentful updates on screen.
