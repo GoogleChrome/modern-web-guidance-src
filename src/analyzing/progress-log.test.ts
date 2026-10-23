@@ -507,7 +507,9 @@ describe('file operations and hashes', () => {
       assert.ok(markdown.includes('TERMINAL_QUALIFIED_GUIDE_IDS = []'));
       assert.ok(markdown.includes('35-card human spot-checks'));
       assert.ok(markdown.includes('Completed `R43` blind side-by-side comparison on `2,980` fresh unseen held-out files'));
-      assert.ok(markdown.includes('Completed `D-046` Judge Triage & Top-3 35-Card Blind Spot-Check Deck Staging'));
+      assert.ok(markdown.includes('Completed `D-046` Judge Triage across all 35 active guides on unseen `held-out`'));
+      assert.ok(markdown.includes('5 guides achieved 35/35 = 100.0% precision'));
+      assert.ok(markdown.includes('Completed local-repos precision audit (517 findings across 66/212 repos'));
       assert.ok(markdown.includes('_d046-customize-scrollbar-color-and-thickness-35-deck'));
     });
 
