@@ -235,6 +235,7 @@
     let pointerPreview = null;
     let pointerOffsetX = 0;
     let pointerOffsetY = 0;
+    let activePointerId = null;
     let pointerX = 0;
     let pointerY = 0;
     function getPosition(item) {
@@ -301,13 +302,20 @@
       }
       pointerItem = null;
       pointerPreview = null;
+      activePointerId = null;
       cancelAnimationFrame(scrollFrame);
       document.removeEventListener('pointermove', movePointerItem);
-      document.removeEventListener('pointerup', finishPointerReorder);
-      document.removeEventListener('pointercancel', finishPointerReorder);
+      document.removeEventListener('pointerup', endPointerReorder);
+      document.removeEventListener('pointercancel', endPointerReorder);
+    }
+
+    // Only the pointer that started the drag may move or end it; a stray second touch is ignored.
+    function endPointerReorder(event) {
+      if (event.pointerId === activePointerId) finishPointerReorder();
     }
 
     function movePointerItem(event) {
+      if (event.pointerId !== activePointerId) return;
       pointerX = event.clientX;
       pointerY = event.clientY;
       pointerPreview.style.left = `${pointerX - pointerOffsetX}px`;
@@ -347,10 +355,11 @@
     }
 
     list.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || activePointerId !== null) return;
       const handle = event.target.closest('.drag-handle');
       if (!handle) return;
       event.preventDefault();
+      activePointerId = event.pointerId;
       pointerItem = handle.closest('.task');
       const rect = pointerItem.getBoundingClientRect();
       pointerOffsetX = event.clientX - rect.left;
@@ -370,8 +379,8 @@
       lastFrame = 0;
       scrollFrame = requestAnimationFrame(autoScroll);
       document.addEventListener('pointermove', movePointerItem);
-      document.addEventListener('pointerup', finishPointerReorder);
-      document.addEventListener('pointercancel', finishPointerReorder);
+      document.addEventListener('pointerup', endPointerReorder);
+      document.addEventListener('pointercancel', endPointerReorder);
     });
 
     function moveKeyboardItem(item, direction) {
