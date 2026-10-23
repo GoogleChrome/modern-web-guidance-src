@@ -1,0 +1,1 @@
+- Add a passkey management UI to the "My Account" section of the Daily Grind site where signed-in customers can view their registered passkeys, rename them, or delete keys they no longer use while keeping their browser authenticator in sync.

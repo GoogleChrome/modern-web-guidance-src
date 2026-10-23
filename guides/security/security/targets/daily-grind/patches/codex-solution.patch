@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+index 66c9173..f3aec23 100644
+--- a/index.html
++++ b/index.html
+@@ -94,6 +94,9 @@
+     }
+ 
+     /* Content Sections */
++    .section-heading {
++      text-align: center;
++    }
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -176,7 +179,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/package.json b/package.json
+index 2bd4d77..608e9d5 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node statikk.config.mjs",
++    "build": "node --check statikk.config.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/statikk.config.mjs b/statikk.config.mjs
+new file mode 100644
+index 0000000..af7771e
+--- /dev/null
++++ b/statikk.config.mjs
+@@ -0,0 +1,85 @@
++import http from 'node:http';
++import { createHash, randomBytes } from 'node:crypto';
++import { readFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++
++const root = fileURLToPath(new URL('.', import.meta.url));
++const html = await readFile(new URL('index.html', import.meta.url), 'utf8');
++const styles = [...html.matchAll(/<style>([sS]*?)<\/style>/g)].map((match) =>
++  `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`,
++);
++
++const reportingEndpoint = process.env.REPORTING_ENDPOINT || '/';
++if (reportingEndpoint !== '/') {
++  const endpoint = new URL(reportingEndpoint);
++  if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password ||
++      endpoint.hash || endpoint.search || /["\r\n\\]/.test(reportingEndpoint)) {
++    throw new Error('REPORTING_ENDPOINT must be an HTTPS URL without credentials, query, or fragment.');
++  }
++}
++
++const server = http.createServer((request, response) => {
++  const nonce = randomBytes(16).toString('base64');
++  response.setHeader('Content-Security-Policy', [
++    "default-src 'none'",
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    `style-src ${styles.join(' ')}`,
++    "img-src https://images.unsplash.com",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'self'",
++    "form-action 'self'",
++    "require-trusted-types-for 'script'",
++    "trusted-types 'none'",
++    'report-to default',
++  ].join('; '));
++  response.setHeader('Reporting-Endpoints', `default="${reportingEndpoint}"`);
++  response.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
++  response.setHeader('X-Frame-Options', 'SAMEORIGIN');
++  response.setHeader('X-Content-Type-Options', 'nosniff');
++  response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++  response.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), focus-without-user-activation=()');
++  response.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  response.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++  response.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++
++  function finish(status, message) {
++    response.statusCode = status;
++    response.setHeader('Content-Type', 'text/plain; charset=utf-8');
++    response.end(message);
++  }
++
++  const site = request.headers['sec-fetch-site'];
++  const mode = request.headers['sec-fetch-mode'];
++  const destination = request.headers['sec-fetch-dest'];
++  if (site && site !== 'same-origin' && site !== 'none' &&
++      !(site === 'cross-site' && mode === 'navigate' &&
++        request.method === 'GET' && destination === 'document')) {
++    finish(403, 'Forbidden');
++    return;
++  }
++
++  let pathname;
++  try {
++    pathname = new URL(request.url || '/', 'http://localhost').pathname;
++  } catch {
++    finish(400, 'Invalid URL');
++    return;
++  }
++  if (pathname === '/logout' || pathname === '/logout/') {
++    response.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
++    response.setHeader('Cache-Control', 'no-store');
++  }
++
++  if (pathname !== '/' && pathname !== '/index.html' && pathname !== '/logout' && pathname !== '/logout/') {
++    finish(404, 'Not Found');
++    return;
++  }
++  response.setHeader('Content-Type', 'text/html; charset=utf-8');
++  response.end(html);
++});
++
++const port = process.env.PORT || 11222;
++server.listen(port, () => {
++  console.info(`The Daily Grind: http://localhost:${port}`);
++});

@@ -1,5 +1,7 @@
 ---
 name: load-shared-resources-declaratively
+draft: blocked
+draft-reason: "Cross-Origin Storage isn't shipped, in an origin trial, or TAG-reviewed (#1598)"
 description: Serve popular, unmodified scripts, stylesheets, and JavaScript modules from a shared cross-origin cache using markup or import syntax alone, without writing custom caching logic.
 web-feature-ids:
   - tmp-cross-origin-storage

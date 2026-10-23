@@ -1,0 +1,1699 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..a4e0f80 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,6 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++test-results/
++playwright-report/
+diff --git a/README.md b/README.md
+index 4479b53..1bcbdc1 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,26 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Local connections
++
++Open **Local connections** in the footer (`/devtools-times/local-connections`).
++The page reads JSON status from a LAN device or a loopback companion app using
++separate permissions. Replace the example URLs with your service's status URL.
++No companion service is bundled with this application.
++
++Serve the application over HTTPS (for example, behind a TLS reverse proxy).
++The controls intentionally refuse to connect from HTTP, including HTTP localhost.
++The device or companion service must allow the application's origin through
++standard CORS response headers. No deprecated private-network preflight headers
++are needed. A browser without permission-query support still requires a click.
++
++Run the browser regression tests with `npx playwright install chromium` followed
++by `npm run test:lna`. To use an existing Chrome installation, set
++`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its executable path instead.
++The tests build and serve the app, then exercise it under an HTTPS test origin
++with mocked device responses and permission states. Testing actual browser
++permission prompts requires an HTTPS public origin and a running local service.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/package.json b/package.json
+index 5e71a8a..2e95ba4 100644
+--- a/package.json
++++ b/package.json
+@@ -6,24 +6,27 @@
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
++    "test:lna": "npm run build && playwright test",
+     "preview": "astro preview",
+     "astro": "astro"
+   },
+   "dependencies": {
+-    "@astrojs/node": "^11.0.2",
+-    "@astrojs/react": "^5.0.4",
++    "@astrojs/node": "^11.1.6",
++    "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
+     "@tailwindcss/vite": "^4.2.4",
+     "@types/react": "^19.2.14",
+     "@types/react-dom": "^19.2.3",
+-    "astro": "^7.2.8",
++    "astro": "^7.3.5",
+     "react": "^19.2.5",
+     "react-dom": "^19.2.5",
+     "sharp": "^0.35.0",
+     "tailwindcss": "^4.2.4"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.19"
++    "@playwright/test": "^1.58.0",
++    "@tailwindcss/typography": "^0.5.19",
++    "typescript": "^5.9.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/playwright.config.ts b/playwright.config.ts
+new file mode 100644
+index 0000000..437bea9
+--- /dev/null
++++ b/playwright.config.ts
+@@ -0,0 +1,16 @@
++import { defineConfig } from '@playwright/test';
++
++export default defineConfig({
++  testDir: './tests',
++  use: {
++    browserName: 'chromium',
++    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
++      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
++      : {},
++  },
++  webServer: {
++    command: 'PORT=4398 npm run start',
++    url: 'http://127.0.0.1:4398/devtools-times/local-connections',
++    reuseExistingServer: false,
++  },
++});
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index ab0416c..f59d85c 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -9,11 +9,11 @@ importers:
+   .:
+     dependencies:
+       '@astrojs/node':
+-        specifier: ^11.0.2
+-        version: 11.0.2(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))
++        specifier: ^11.1.6
++        version: 11.1.6(astro@7.3.5(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))
+       '@astrojs/react':
+-        specifier: ^5.0.4
+-        version: 5.0.4(@types/node@25.5.0)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(jiti@2.6.1)(lightningcss@1.32.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)(yaml@2.8.3)
++        specifier: ^5.0.7
++        version: 5.0.7(@types/node@25.5.0)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(jiti@2.6.1)(lightningcss@1.32.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)(yaml@2.8.3)
+       '@heroicons/react':
+         specifier: ^2.2.0
+         version: 2.2.0(react@19.2.5)
+@@ -27,8 +27,8 @@ importers:
+         specifier: ^19.2.3
+         version: 19.2.3(@types/react@19.2.14)
+       astro:
+-        specifier: ^7.2.8
+-        version: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
++        specifier: ^7.3.5
++        version: 7.3.5(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
+       react:
+         specifier: ^19.2.5
+         version: 19.2.5
+@@ -42,100 +42,109 @@ importers:
+         specifier: ^4.2.4
+         version: 4.2.4
+     devDependencies:
++      '@playwright/test':
++        specifier: ^1.58.0
++        version: 1.63.0
+       '@tailwindcss/typography':
+         specifier: ^0.5.19
+         version: 0.5.19(tailwindcss@4.2.4)
++      typescript:
++        specifier: ^5.9.3
++        version: 5.9.3
+ 
+ packages:
+ 
+-  '@astrojs/compiler-binding-darwin-arm64@0.4.0':
+-    resolution: {integrity: sha512-ZVUwHundaQyFNjE6uoa0usaC0WOCitDCLS/4mdb4rOiJXwVUuKJBMxI5WMzXLWmamsXtK/Z//ifLXvV5Yeh4Hw==}
++  '@astrojs/compiler-binding-android-arm64@0.5.1':
++    resolution: {integrity: sha512-nMb2nMIJtcWLNH+fV75Enmi+jp4tIOYOfsv4XtpgdOWkqc9P4uSSdK5u1xb340AzrXo5V18SxLl/nc3vcqtamQ==}
++    engines: {node: ^20.19.0 || >=22.12.0}
++    cpu: [arm64]
++    os: [android]
++
++  '@astrojs/compiler-binding-darwin-arm64@0.5.1':
++    resolution: {integrity: sha512-5k4+nZ/WRt+dcVow4z7rBuI7iv9A58h/uQ91YJe1PrTivbcCkq3u2Ynx/AZJwII4CsZawBCeGpojkFjutZBhBQ==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+     cpu: [arm64]
+     os: [darwin]
+ 
+-  '@astrojs/compiler-binding-darwin-x64@0.4.0':
+-    resolution: {integrity: sha512-FI6G8AY8u6fR1SI/QRR5yGMwtvZwP34CDmZpZ5HwJGa50UM1VISTLhqkhV4a476pmgd25X1Aur2dqw6hUnrlKA==}
++  '@astrojs/compiler-binding-darwin-x64@0.5.1':
++    resolution: {integrity: sha512-0Buw+YST9Ff2EqQyhRMQujuFq/dijLw3zXWhsvI0dJ2pGrT38iVoxTEca2eBX/PfhlwkVWSRJEKO5gMqKHyeHg==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+     cpu: [x64]
+     os: [darwin]
+ 
+-  '@astrojs/compiler-binding-linux-arm64-gnu@0.4.0':
+-    resolution: {integrity: sha512-lB9gLFJK7m82EnjaU8nlRBEfcwGNeHidW3sSjODTUjMNaoewVuUz9fwwdY5M4jiSXIqWLH3yl6TX8FTDKA74Sw==}
++  '@astrojs/compiler-binding-linux-arm64-gnu@0.5.1':
++    resolution: {integrity: sha512-x5LRpyCoMKuu3INr18cn42YhwSOaRpp9b5Ny3eJJ/sWVeejC16Zeshu1JlvlSmEZACLeWxU5JM0RX6T6nI+YyA==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+     cpu: [arm64]
+     os: [linux]
+     libc: [glibc]
+ 
+-  '@astrojs/compiler-binding-linux-arm64-musl@0.4.0':
+-    resolution: {integrity: sha512-HPbvWqbxFxyaoQJhLxCaSjtYBx9KBo7JGVzEFZCmMl968a2PsSH0UfiODYgYPXofTOIsIH2aoCcrHXML0IA3ig==}
++  '@astrojs/compiler-binding-linux-arm64-musl@0.5.1':
++    resolution: {integrity: sha512-mL7tQEuDk3rGfaKmrO63nw6WBy1TPVioQGmVyjcAr+C+a/k3SVMYBytNSMqH9mZPT/Swj30JaZ2N842Z1NnOEQ==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+     cpu: [arm64]
+     os: [linux]
+     libc: [musl]
+ 
+-  '@astrojs/compiler-binding-linux-x64-gnu@0.4.0':
+-    resolution: {integrity: sha512-tQKolMxoJ/+0AmLWm1PmJ/i+z3i10ZU1bNuVjEDulCf48azEMtUNjTZgHJ5MPtpYRNc7dlETr8QujUfduzoC7Q==}
++  '@astrojs/compiler-binding-linux-x64-gnu@0.5.1':
++    resolution: {integrity: sha512-uLGc9jtxwiDe4cQyhNPQim4ECiB/YzbWlXssfLAv8r374kArfTwBHjwR2+j+XVyF71yCx5mF9YNRclRqdNBgeg==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+     cpu: [x64]
+     os: [linux]
+     libc: [glibc]
+ 
+-  '@astrojs/compiler-binding-linux-x64-musl@0.4.0':
+-    resolution: {integrity: sha512-5v5YymudsxMHp3NBLCS8BUlu5CRqeLtWD9cKS/4nIhIEHCbpz9okmVV6I0HWqmBAPhWYcDa3vw/vltYPrOQCTA==}
++  '@astrojs/compiler-binding-linux-x64-musl@0.5.1':
++    resolution: {integrity: sha512-G0cywinaQUc8v1MrytvYKUX7svTDMmYtOCZfxjwKPbJi59zIqM+Ll0rWgO0GQWLZH3XoPYo19ZwlP3Xt9ep9YA==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+     cpu: [x64]
+     os: [linux]
+     libc: [musl]
+ 
+-  '@astrojs/compiler-binding-wasm32-wasi@0.4.0':
+-    resolution: {integrity: sha512-m/phuH3x3PREvv1OnkM44NoPh4MatUadix1fB1u5SvMLCyDTUZykDJbKnWf1cjnYmHdlB8HcjTjl6JrCqAIXcw==}
+-    engines: {node: '>=14.0.0'}
++  '@astrojs/compiler-binding-wasm32-wasi@0.5.1':
++    resolution: {integrity: sha512-yMhLL8asmLydoAdnEZxAw6eLfNDs3YJl6jqn0pjPt6zrb2U5qIDLnii4/twThpIFODKkQ6YDpBRTOz/vSfZCxw==}
++    engines: {node: ^20.19.0 || >=22.12.0}
+     cpu: [wasm32]
+ 
+-  '@astrojs/compiler-binding-win32-arm64-msvc@0.4.0':
+-    resolution: {integrity: sha512-B9zYf3okEY83kM8gydlpH2BHP00w4ifxPqlYlWrgTwuD6wnkrJDCwBlgy1q31cERjCJRXN1lrE2VmkLvFjv/6g==}
++  '@astrojs/compiler-binding-win32-arm64-msvc@0.5.1':
++    resolution: {integrity: sha512-aClIG6poFt3Wf/bZykrEAX2nAnKvBHW6RXiKUa69QjBtWH0/FOlOAjnFcxRNlhej2AMWNYFx0o+LGjwMcH8P7Q==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+     cpu: [arm64]
+     os: [win32]
+ 
+-  '@astrojs/compiler-binding-win32-x64-msvc@0.4.0':
+-    resolution: {integrity: sha512-zB0Nrv0dGc0zZWPGDRmmETTPhDRqyZjAjk+gWMlVrJX5U89obpB3VUUE1ZiHxOCN5LQojeLK6O8L/dnoHolvNQ==}
++  '@astrojs/compiler-binding-win32-x64-msvc@0.5.1':
++    resolution: {integrity: sha512-/E6uBCagY70YpWqssBC+/FuniNSloeQPRgj7l3LDWiqjxIyTLnIgX1sTt18FU7jrigetpSnC9cHAM6b6IxSgPw==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+     cpu: [x64]
+     os: [win32]
+ 
+-  '@astrojs/compiler-binding@0.4.0':
+-    resolution: {integrity: sha512-x2RjDUuWfwLNtc3mjAdSRInwqh/rqbLar9cm/5FOMbHvmYZB7yfKewzSclAxWjIZsypJDXv1lhaP2WG+P8TK3g==}
++  '@astrojs/compiler-binding@0.5.1':
++    resolution: {integrity: sha512-oczyolLUl9mNrtuBuNjuvn5thpHrFLXAHAWGTRg0JDHQ8cGVsVeFekOu2uSoQGgainJIi+A3/9m0DyYwz3Nlnw==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+ 
+-  '@astrojs/compiler-rs@0.4.0':
+-    resolution: {integrity: sha512-koVikeon1kreEy+/JzLQRy3vzHHQVOjycs4degg4vFufKApZOwMZvSSAEztYNhmcQVfNVsVZZI4cEge3cexAbQ==}
++  '@astrojs/compiler-rs@0.5.1':
++    resolution: {integrity: sha512-1k1acnX7DepIiea9U9/Y+d1hdAFfylu1ZQQkkYgRSwBOBAsXInolyZuh/2tax+83vu/A+hOYP6P3+265RvMTvw==}
+     engines: {node: '>=22.12.0'}
+ 
+-  '@astrojs/internal-helpers@0.10.1':
+-    resolution: {integrity: sha512-5phcroT/vmOOrYuuAxtkbPixy5hePtlz9i8K4OeDv3dNK6/UQRuXPOSRTxIOBbUY5Sonw2UaxjbuVc43Mcir6Q==}
++  '@astrojs/internal-helpers@0.10.0':
++    resolution: {integrity: sha512-Ry2R3VPeIN4uPCSA4xQc+e+vsJXkalKpEbDc07hV+a/o5Bs2N/s/uDcPJH/05L19DKh9tAy7e6JM3YZ6Cxfezw==}
+ 
+   '@astrojs/internal-helpers@0.11.0':
+     resolution: {integrity: sha512-3rzxJ+xbo0+8YyqOzLziIN32wmsHdCjEVz2sGOpRxJ+Ben/KiLph4ItxBy1abEL+E8fkRzqjg0rfXmaHJGw9JA==}
+ 
+-  '@astrojs/internal-helpers@0.9.0':
+-    resolution: {integrity: sha512-GdYkzR26re8izmyYlBqf4z2s7zNngmWLFuxw0UKiPNqHraZGS6GKWIwSHgS22RDlu2ePFJ8bzmpBcUszut/SDg==}
+-
+-  '@astrojs/markdown-satteri@0.4.1':
+-    resolution: {integrity: sha512-EniHbFNa6SQHDih7JnpPos3NWXO6hdt4raBcOosfGmlfc3gP9CI/sESA3VOf1PgJZ7SFfewlZW9Livn0JugEZg==}
++  '@astrojs/markdown-satteri@0.4.2':
++    resolution: {integrity: sha512-g4QehXnB/MzxQWnSf17NciFInMqEJy9948p8cc7zGg/r7995m0Ln5PMr3Xlnj24iey1LchaoZ3SzTOa3D4P/3w==}
+ 
+-  '@astrojs/node@11.0.2':
+-    resolution: {integrity: sha512-/ijULxT+A5Cm8wSwWZ2vgqfim1b05D6B8n/a9l6MMA4FCotIH73g7fL7y76XojKXpTe75FVvQH92OxsMqea9kQ==}
++  '@astrojs/node@11.1.6':
++    resolution: {integrity: sha512-jNZ10/vAT+HuXkX0E/tITsIYCSn3BmAvsooVAN1OjagG+FEzelpUWToy1bA3x6Irmu0VaknWRfReY+1twd35sQ==}
+     peerDependencies:
+-      astro: ^7.0.0
++      astro: ^7.2.1
+ 
+   '@astrojs/prism@4.0.2':
+     resolution: {integrity: sha512-KTivpmnz6lDsC6o9H4+DNm2SrE/GHzw8cNAvEJwAvUT+eoaEnn/4NtbDNfRRaxaJHdp15gf+tfHAWiXR4wB3BA==}
+     engines: {node: '>=22.12.0'}
+ 
+-  '@astrojs/react@5.0.4':
+-    resolution: {integrity: sha512-yDNE4VnKOzCjH9dCBi7pT4F6kpI3M9TkS+uxnCB0sGIS6t5vKonOY+Hs/UUnSajJGT5jeBRfpI9IQp+r/n1fBA==}
++  '@astrojs/react@5.0.7':
++    resolution: {integrity: sha512-N9cCoxvnLWaP+AK1Fv4e5Mc7ktnVTpSo2nWLwvD9Ohr1dJKygwrTSm9yatqoahgb1A5Kwjg/rT2shRiIVdn3aw==}
+     engines: {node: '>=22.12.0'}
+     peerDependencies:
+       '@types/react': ^17.0.50 || ^18.0.21 || ^19.0.0
+@@ -294,6 +303,9 @@ packages:
+   '@emnapi/core@1.11.1':
+     resolution: {integrity: sha512-RSvbQmHzdKzNsLYa/wHrbc3KN4sYLKAdPZxqiM2HATqv/SBk2/ENSHpvXGaLOMcsAyz0poEGqkmmKYG3OWiJEQ==}
+ 
++  '@emnapi/core@1.11.3':
++    resolution: {integrity: sha512-zLpS5asjEb7lq8jYLq37N6XKaE41DIexlY1rF/z4/tIl3wo13Sqm28fRyfIsKZD+NZ8mM5RoKkpW/rBcuoSZSg==}
++
+   '@emnapi/runtime@1.11.1':
+     resolution: {integrity: sha512-vgj7R3y3Wgx24IQaGPA/R6YFXLHVMOZ0uVEyIQPaWs+rd1AzfEMXlAC22FYwO1XkKR6NPsq7mUandH8oIRdZFw==}
+ 
+@@ -303,6 +315,9 @@ packages:
+   '@emnapi/wasi-threads@1.2.2':
+     resolution: {integrity: sha512-c95qOXkHdydNKhscBTebqEC1CVAZpyqOfVfBzQ1qgzyl3gfeldUjIggDbIZgDKsHLgnsM+igH7TJ/eAasaVuMA==}
+ 
++  '@emnapi/wasi-threads@1.2.3':
++    resolution: {integrity: sha512-ELEBe8PsLvvJ6QMr0zLt8ffvOHW/dc1m3CEzNMg7aJUv3bMaoDtw2TXyDAwkYBuroxxuHEwhRTLJSe5sya547g==}
++
+   '@esbuild/aix-ppc64@0.27.4':
+     resolution: {integrity: sha512-cQPwL2mp2nSmHHJlCyoXgHGhbEPMrEEU5xhkcy3Hs/O7nGZqEpZ2sUtLaL9MORLtDfRvVl2/3PAuEkYZH0Ty8Q==}
+     engines: {node: '>=18'}
+@@ -978,94 +993,93 @@ packages:
+   '@oxc-project/types@0.139.0':
+     resolution: {integrity: sha512-r9gHphtCs+1M7J0pw6Sn/hh/Wpa/iQrOOkrNAlVLF/gHq+/CJmHIWKKUUhdWjcD6CIa8idarspCsASiXCXvFUw==}
+ 
+-  '@parcel/watcher-android-arm64@2.5.6':
+-    resolution: {integrity: sha512-YQxSS34tPF/6ZG7r/Ih9xy+kP/WwediEUsqmtf0cuCV5TPPKw/PQHRhueUo6JdeFJaqV3pyjm0GdYjZotbRt/A==}
++  '@parcel/watcher-android-arm64@2.6.0':
++    resolution: {integrity: sha512-trgpLSCKRC/huFjXX/Smh+0sWe4+YtKfktIToiMl59ghz7z+qkH6kMvNnUbLyRs9N11t8l4svSCs1+5B3rOAhA==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [arm64]
+     os: [android]
+ 
+-  '@parcel/watcher-darwin-arm64@2.5.6':
+-    resolution: {integrity: sha512-Z2ZdrnwyXvvvdtRHLmM4knydIdU9adO3D4n/0cVipF3rRiwP+3/sfzpAwA/qKFL6i1ModaabkU7IbpeMBgiVEA==}
++  '@parcel/watcher-darwin-arm64@2.6.0':
++    resolution: {integrity: sha512-Y3QV0gl7Q1zbfueunkWIERICbEojQFCgpyG7YqOGNFLsckXyI1xu9mAIUpKY9QBYzBtSkN8dBPwd3yiAO9ovMw==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [arm64]
+     os: [darwin]
+ 
+-  '@parcel/watcher-darwin-x64@2.5.6':
+-    resolution: {integrity: sha512-HgvOf3W9dhithcwOWX9uDZyn1lW9R+7tPZ4sug+NGrGIo4Rk1hAXLEbcH1TQSqxts0NYXXlOWqVpvS1SFS4fRg==}
++  '@parcel/watcher-darwin-x64@2.6.0':
++    resolution: {integrity: sha512-Ohv6OpzhUfKYD7Beb8kDvG0jbIxORCYY1JRdZnaBtnjjkJxgD7ZVL0nw2sCYd0yTMKTvz3nnTnOF3cDifK+kvw==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [x64]
+     os: [darwin]
+ 
+-  '@parcel/watcher-freebsd-x64@2.5.6':
+-    resolution: {integrity: sha512-vJVi8yd/qzJxEKHkeemh7w3YAn6RJCtYlE4HPMoVnCpIXEzSrxErBW5SJBgKLbXU3WdIpkjBTeUNtyBVn8TRng==}
++  '@parcel/watcher-freebsd-x64@2.6.0':
++    resolution: {integrity: sha512-5HmXvDgs8VK+74jF9y9/2FE3/OnlcKmc56tjmSrEuZjpSZOGL+fvAu+HKJBdPs9uwoP2hE6TlSUpXZ/C5jUFmQ==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [x64]
+     os: [freebsd]
+ 
+-  '@parcel/watcher-linux-arm-glibc@2.5.6':
+-    resolution: {integrity: sha512-9JiYfB6h6BgV50CCfasfLf/uvOcJskMSwcdH1PHH9rvS1IrNy8zad6IUVPVUfmXr+u+Km9IxcfMLzgdOudz9EQ==}
++  '@parcel/watcher-linux-arm-glibc@2.6.0':
++    resolution: {integrity: sha512-Ps/hui3A+vMbjdqlqAowK2ZL8+BO8dBjxeWXj6npTBs3jx4wWmbPpaLuqwrQrSqIVMCnpWo238bJ1U37GhQOYg==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [arm]
+     os: [linux]
+     libc: [glibc]
+ 
+-  '@parcel/watcher-linux-arm-musl@2.5.6':
+-    resolution: {integrity: sha512-Ve3gUCG57nuUUSyjBq/MAM0CzArtuIOxsBdQ+ftz6ho8n7s1i9E1Nmk/xmP323r2YL0SONs1EuwqBp2u1k5fxg==}
++  '@parcel/watcher-linux-arm-musl@2.6.0':
++    resolution: {integrity: sha512-9c6AUHgHoG+IY88MRIHupztQiQnrbqHYQjkM2btA+Bf/wQnQMuiD0Wfk1EVv3TlNT3x41uU71rn6E4xh/+zvkw==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [arm]
+     os: [linux]
+     libc: [musl]
+ 
+-  '@parcel/watcher-linux-arm64-glibc@2.5.6':
+-    resolution: {integrity: sha512-f2g/DT3NhGPdBmMWYoxixqYr3v/UXcmLOYy16Bx0TM20Tchduwr4EaCbmxh1321TABqPGDpS8D/ggOTaljijOA==}
++  '@parcel/watcher-linux-arm64-glibc@2.6.0':
++    resolution: {integrity: sha512-yHRqS2owEXe6Hic9z6Mh1ECsCd+ODVOGvZDyciqRd21+v+o+DnXMOrw50DSpIG2sb8GPEaPPmfeCAWKPJdq46g==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [arm64]
+     os: [linux]
+     libc: [glibc]
+ 
+-  '@parcel/watcher-linux-arm64-musl@2.5.6':
+-    resolution: {integrity: sha512-qb6naMDGlbCwdhLj6hgoVKJl2odL34z2sqkC7Z6kzir8b5W65WYDpLB6R06KabvZdgoHI/zxke4b3zR0wAbDTA==}
++  '@parcel/watcher-linux-arm64-musl@2.6.0':
++    resolution: {integrity: sha512-WhB2e/V7rqdHHWZusBSPuy5Ei8S6lSz6FE5TKKQz5h3a0O+C+mhY7vxU9b/stqvMb8beLnPY82ZrFTLKs+SrKA==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [arm64]
+     os: [linux]
+     libc: [musl]
+ 
+-  '@parcel/watcher-linux-x64-glibc@2.5.6':
+-    resolution: {integrity: sha512-kbT5wvNQlx7NaGjzPFu8nVIW1rWqV780O7ZtkjuWaPUgpv2NMFpjYERVi0UYj1msZNyCzGlaCWEtzc+exjMGbQ==}
++  '@parcel/watcher-linux-x64-glibc@2.6.0':
++    resolution: {integrity: sha512-ulGE6x6Oz6iAwg75T8YQSoguBWasniIbX+QWpaYPcCnDOpdWX3k+4xbEYPZVLxOuoJI+svJJPD3sEj8G7lrQ3A==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [x64]
+     os: [linux]
+     libc: [glibc]
+ 
+-  '@parcel/watcher-linux-x64-musl@2.5.6':
+-    resolution: {integrity: sha512-1JRFeC+h7RdXwldHzTsmdtYR/Ku8SylLgTU/reMuqdVD7CtLwf0VR1FqeprZ0eHQkO0vqsbvFLXUmYm/uNKJBg==}
++  '@parcel/watcher-linux-x64-musl@2.6.0':
++    resolution: {integrity: sha512-tkBYKt7YQrjIJWYDnto2YgO8MRkjlMTSNoRHzsXinBqbLdeOM3L32wPZJvIZxqaLMfSlS/4sUjH/6STVP/XDLw==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [x64]
+     os: [linux]
+     libc: [musl]
+ 
+-  '@parcel/watcher-win32-arm64@2.5.6':
+-    resolution: {integrity: sha512-3ukyebjc6eGlw9yRt678DxVF7rjXatWiHvTXqphZLvo7aC5NdEgFufVwjFfY51ijYEWpXbqF5jtrK275z52D4Q==}
++  '@parcel/watcher-win32-arm64@2.6.0':
++    resolution: {integrity: sha512-gIZAP23jaHjGWasY/TY6yL7NHFClf0Ga7FN+iINvk+KN94rhm94lYZhFsbYFNcA04/onvGD9kKmiJLJB2HbNwQ==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [arm64]
+     os: [win32]
+ 
+-  '@parcel/watcher-win32-ia32@2.5.6':
+-    resolution: {integrity: sha512-k35yLp1ZMwwee3Ez/pxBi5cf4AoBKYXj00CZ80jUz5h8prpiaQsiRPKQMxoLstNuqe2vR4RNPEAEcjEFzhEz/g==}
+-    engines: {node: '>= 10.0.0'}
+-    cpu: [ia32]
+-    os: [win32]
+-
+-  '@parcel/watcher-win32-x64@2.5.6':
+-    resolution: {integrity: sha512-hbQlYcCq5dlAX9Qx+kFb0FHue6vbjlf0FrNzSKdYK2APUf7tGfGxQCk2ihEREmbR6ZMc0MVAD5RIX/41gpUzTw==}
++  '@parcel/watcher-win32-x64@2.6.0':
++    resolution: {integrity: sha512-cA+/pXV2YkfxlIcXOQ5fSWqAzzPyD78/x5qbK/I0vUkrlYHA8TIz+MXjAbGouguKVSI4bOmkTSJ1/poVSsgt+A==}
+     engines: {node: '>= 10.0.0'}
+     cpu: [x64]
+     os: [win32]
+ 
+-  '@parcel/watcher@2.5.6':
+-    resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
++  '@parcel/watcher@2.6.0':
++    resolution: {integrity: sha512-7FNeNl8NCE7aINx7WXiKQrPYZWC/hvrTsmk6zmxbI7LTXE7hVek/n8AfVgpe2y82zl3w0HvCHN0bVKMBoJcC0w==}
+     engines: {node: '>= 10.0.0'}
+ 
++  '@playwright/test@1.63.0':
++    resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
++    engines: {node: '>=20'}
++    hasBin: true
++
+   '@rolldown/binding-android-arm64@1.1.5':
+     resolution: {integrity: sha512-lZg8fqIv2v7FF237bwMgzGZEJvGL79/s5knJ/i6FmsGF4XXlzccZ4jb+TrFIxtSSxFtIpdsgrPZeMk1I9AFcyQ==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+@@ -1309,30 +1323,58 @@ packages:
+     resolution: {integrity: sha512-hxT0YF4ExEqB8G/qFdtJvpmHXBYJ2lWW7qTHDarVkIudPFE6iCIrqdgWxGn5s+ppkGXI0aEGlibI0PAyzP3zlw==}
+     engines: {node: '>=20'}
+ 
++  '@shikijs/core@4.4.3':
++    resolution: {integrity: sha512-QCR4q2ZO/ILJEuwiBMel4wdcTDb1JGwfjKTxPDF6x8ixOaluPrVqIn06C99AcRPhmYlBR56d/Fb+GN58GzExpg==}
++    engines: {node: '>=20'}
++
+   '@shikijs/engine-javascript@4.0.2':
+     resolution: {integrity: sha512-7PW0Nm49DcoUIQEXlJhNNBHyoGMjalRETTCcjMqEaMoJRLljy1Bi/EGV3/qLBgLKQejdspiiYuHGQW6dX94Nag==}
+     engines: {node: '>=20'}
+ 
++  '@shikijs/engine-javascript@4.4.3':
++    resolution: {integrity: sha512-FbOjFJp9VLdo1Wevs10BBtVxiTWwNLqZh5Gkhjgda/ioL15YOgeSl9n+6XMa3qRlPQzfhFNe641SrynFHYG0nQ==}
++    engines: {node: '>=20'}
++
+   '@shikijs/engine-oniguruma@4.0.2':
+     resolution: {integrity: sha512-UpCB9Y2sUKlS9z8juFSKz7ZtysmeXCgnRF0dlhXBkmQnek7lAToPte8DkxmEYGNTMii72zU/lyXiCB6StuZeJg==}
+     engines: {node: '>=20'}
+ 
++  '@shikijs/engine-oniguruma@4.4.3':
++    resolution: {integrity: sha512-EcOQkxdxGQrc1Row/cC2c96/v1dbZqGnEVu1qTuT/MJmp6+cXCvQussowVmCv5Tqr3KuY3c7IbM6HTW3LJ1k9w==}
++    engines: {node: '>=20'}
++
+   '@shikijs/langs@4.0.2':
+     resolution: {integrity: sha512-KaXby5dvoeuZzN0rYQiPMjFoUrz4hgwIE+D6Du9owcHcl6/g16/yT5BQxSW5cGt2MZBz6Hl0YuRqf12omRfUUg==}
+     engines: {node: '>=20'}
+ 
++  '@shikijs/langs@4.4.3':
++    resolution: {integrity: sha512-ePic0yfAJGOF83D5wBHK/00EjK65oahBYxFk5epgq33WRv7X9UuxLEV8PtR0szC0z8dl7INIpIodB99JRFlR+A==}
++    engines: {node: '>=20'}
++
+   '@shikijs/primitive@4.0.2':
+     resolution: {integrity: sha512-M6UMPrSa3fN5ayeJwFVl9qWofl273wtK1VG8ySDZ1mQBfhCpdd8nEx7nPZ/tk7k+TYcpqBZzj/AnwxT9lO+HJw==}
+     engines: {node: '>=20'}
+ 
++  '@shikijs/primitive@4.4.3':
++    resolution: {integrity: sha512-m0wBeLDQDeIxRdUmrCPdQqfuUamDwRL5isCfYbguKD6NiaKpVbsv+3J81DyIKgNW5h4WAIIr8T4EkgQrBBxvaQ==}
++    engines: {node: '>=20'}
++
+   '@shikijs/themes@4.0.2':
+     resolution: {integrity: sha512-mjCafwt8lJJaVSsQvNVrJumbnnj1RI8jbUKrPKgE6E3OvQKxnuRoBaYC51H4IGHePsGN/QtALglWBU7DoKDFnA==}
+     engines: {node: '>=20'}
+ 
++  '@shikijs/themes@4.4.3':
++    resolution: {integrity: sha512-w8UHjeUnIR965KMWJHUPXOc2mNJUnK3vpVLYLvw5IYU2mnTTJ89E24OrJDBNiJDQ0qzb0tc4l7mrIXx5cFeIyw==}
++    engines: {node: '>=20'}
++
+   '@shikijs/types@4.0.2':
+     resolution: {integrity: sha512-qzbeRooUTPnLE+sHD/Z8DStmaDgnbbc/pMrU203950aRqjX/6AFHeDYT+j00y2lPdz0ywJKx7o/7qnqTivtlXg==}
+     engines: {node: '>=20'}
+ 
++  '@shikijs/types@4.4.3':
++    resolution: {integrity: sha512-UEJxmRR++MAGR6hugn0vgVS2W/6lWAts84FFSrnlH9sP0LNol7E5+NQ792pH8liWUhyMyjhTgSUH3k7iD7tc5g==}
++    engines: {node: '>=20'}
++
+   '@shikijs/vscode-textmate@10.0.2':
+     resolution: {integrity: sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg==}
+ 
+@@ -1438,6 +1480,9 @@ packages:
+   '@tybys/wasm-util@0.10.3':
+     resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
+ 
++  '@tybys/wasm-util@0.10.4':
++    resolution: {integrity: sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A==}
++
+   '@types/babel__core@7.20.5':
+     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
+ 
+@@ -1456,6 +1501,9 @@ packages:
+   '@types/estree@1.0.8':
+     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
+ 
++  '@types/estree@1.0.9':
++    resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
++
+   '@types/hast@3.0.4':
+     resolution: {integrity: sha512-WPs+bbQw5aCj+x6laNGWLH3wviHtoCv/P3+otBhbOhJgG8qtpdAMlTCxLtsTWA7LH1Oh/bFCHsBn0TPS5m30EQ==}
+ 
+@@ -1507,8 +1555,8 @@ packages:
+     resolution: {integrity: sha512-COROpnaoap1E2F000S62r6A60uHZnmlvomhfyT2DlTcrY1OrBKn2UhH7qn5wTC9zMvD0AY7csdPSNwKP+7WiQw==}
+     engines: {node: '>= 0.4'}
+ 
+-  astro@7.3.2:
+-    resolution: {integrity: sha512-ysTcdpGP61XZpHoMRYC/CK19DQ94qkBvzXMtXEo0gEqPNkmOU/Tv++CtWmzaI4nF2Ck8RXFdiWvdlTWa2oOr9w==}
++  astro@7.3.5:
++    resolution: {integrity: sha512-1p/ernaq/RuESbM5NMjWzbO6SiebMGrGcYlGjMfBhzzgM+n/X7AUmVyw8BqW2QYCdivpsHwJBcD1fqmlTZjZHg==}
+     engines: {node: '>=22.12.0', npm: '>=9.6.5', pnpm: '>=7.1.0'}
+     hasBin: true
+     peerDependencies:
+@@ -1589,8 +1637,8 @@ packages:
+   crossws@0.3.5:
+     resolution: {integrity: sha512-ojKiDvcmByhwa8YYqbQI/hg7MEU0NC03+pSdEq4ZUnZR9xXpwk7E43SMNGkn+JxJGPFtNvQ48+vV2p+P1ml5PA==}
+ 
+-  css-select@5.2.2:
+-    resolution: {integrity: sha512-TizTzUddG/xYLA3NXodFM0fSbNizXjOKhqiQQwvhlspadZokn1KDy0NZFS0wuEubIYAV5/c1/lAr0TaaFXEXzw==}
++  css-select@6.0.0:
++    resolution: {integrity: sha512-rZZVSLle8v0+EY8QAkDWrKhpgt6SA5OtHsgBnsj6ZaLb5dmDVOWUDtQitd9ydxxvEjhewNudS6eTVU7uOyzvXw==}
+ 
+   css-tree@2.2.1:
+     resolution: {integrity: sha512-OA0mILzGc1kCOCSJerOeqDxDQ4HOh+G8NbOJFOTgOCzpw7fCBubk0fEyxp8AgOL/jvLgYA/uV0cMbe43ElF1JA==}
+@@ -1600,8 +1648,8 @@ packages:
+     resolution: {integrity: sha512-X7sjQzceUhu1u7Y/ylrRZFU2FS6LRiFVp6rKLPg23y3x3c3DOKAwuXGDp+PAGjh6CSnCjYeAul8pcT8bAl+lSA==}
+     engines: {node: ^10 || ^12.20.0 || ^14.13.0 || >=15.0.0}
+ 
+-  css-what@6.2.2:
+-    resolution: {integrity: sha512-u/O3vwbptzhMs3L1fQE82ZSLHQQfto5gyZzwteVIEyeaY5Fc7R4dapF/BvRoSYFeqfBk4m0V1Vafq5Pjv25wvA==}
++  css-what@7.0.0:
++    resolution: {integrity: sha512-wD5oz5xibMOPHzy13CyGmogB3phdvcDaB5t0W/Nr5Z2O/agcB8YwOz6e2Lsp10pNDzBoDO9nVa3RGs/2BttpHQ==}
+     engines: {node: '>= 6'}
+ 
+   cssesc@3.0.0:
+@@ -1643,12 +1691,12 @@ packages:
+     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
+     engines: {node: '>=8'}
+ 
+-  devalue@5.6.4:
+-    resolution: {integrity: sha512-Gp6rDldRsFh/7XuouDbxMH3Mx8GMCcgzIb1pDTvNyn8pZGQ22u+Wa+lGV9dQCltFQ7uVw0MhRyb8XDskNFOReA==}
+-
+   devalue@5.8.1:
+     resolution: {integrity: sha512-4CXDYRBGqN+57wVJkuXBYmpAVUSg3L6JAQa/DFqm238G73E1wuyc/JhGQJzN7vUf/CMphYau2zXbfWzDR5aTEw==}
+ 
++  devalue@5.9.4:
++    resolution: {integrity: sha512-sPAT4pztbu6586/hrhOnMKS17IJrvg12mXiSPSS3W5qDeN2RGgvZ0diZCm31dBbnevfVmujNO3IM2wrS4Y2Rhg==}
++
+   devlop@1.1.0:
+     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
+ 
+@@ -1739,8 +1787,8 @@ packages:
+       picomatch:
+         optional: true
+ 
+-  find-proc@0.1.0:
+-    resolution: {integrity: sha512-OaOpEYv2PiQ7SQ5LIrl+deA1XaWcxEjnpM6VuWXTUvn+teIXxeFTLDmu18/zDQpFmHN4o3oDBX+BT0AGwEhemg==}
++  find-proc@0.2.0:
++    resolution: {integrity: sha512-a6h2nTrgB3g5Wrn4au9Ux4kMk7IJtyF6oA8uGn+mk3weLZssUtc1cp6meHIzzuW2o1srrBAxzkmXLbqjRkgB6w==}
+     engines: {node: ^20.19.0 || >=22.12.0}
+ 
+   flattie@1.1.1:
+@@ -1799,8 +1847,8 @@ packages:
+     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
+     engines: {node: '>= 0.8'}
+ 
+-  immutable@5.1.5:
+-    resolution: {integrity: sha512-t7xcm2siw+hlUM68I+UEOK+z84RzmN59as9DZ7P1l0994DKUWV7UXBMQZVxaoMSRQ+PBZbHCOoBt7a2wxOMt+A==}
++  immutable@5.1.9:
++    resolution: {integrity: sha512-m8nVez3rwrgmWxtLMt1ZYXB2Lv7OKYn/disyxAlSDYAlKSlFoPPfIAmAM/M5xqL4m4C/wAPw7S2/CNaUii1Hxg==}
+ 
+   inherits@2.0.4:
+     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
+@@ -1832,10 +1880,6 @@ packages:
+   js-tokens@4.0.0:
+     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
+ 
+-  js-yaml@4.1.1:
+-    resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
+-    hasBin: true
+-
+   js-yaml@4.3.2:
+     resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
+     hasBin: true
+@@ -2018,8 +2062,9 @@ packages:
+   nth-check@2.1.1:
+     resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
+ 
+-  obug@2.1.1:
+-    resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
++  obug@3.0.0:
++    resolution: {integrity: sha512-5vvB5+W7ePv+p3uqxi+RcW1XAzLW0/hxt3/4X4Lc4qHudzOhmBiBwOY6DRob4WnanAEGvNcLjF+KNOufrUoEQw==}
++    engines: {node: '>=12.20.0'}
+ 
+   ofetch@1.5.1:
+     resolution: {integrity: sha512-2W4oUZlVaqAPAil6FUg/difl6YhqhUR7x2eZY4bQCko22UXg3hptq9KLQdqFClV+Wu85UX7hNtdGTngi/1BxcA==}
+@@ -2034,9 +2079,15 @@ packages:
+   oniguruma-parser@0.12.1:
+     resolution: {integrity: sha512-8Unqkvk1RYc6yq2WBYRj4hdnsAxVze8i7iPfQr8e4uSP3tRv0rpZcbGUDvxfQQcdwHt/e9PrMvGCsa8OqG9X3w==}
+ 
++  oniguruma-parser@0.12.2:
++    resolution: {integrity: sha512-6HVa5oIrgMC6aA6WF6XyyqbhRPJrKR02L20+2+zpDtO5QAzGHAUGw5TKQvwi5vctNnRHkJYmjAhRVQF2EKdTQw==}
++
+   oniguruma-to-es@4.3.5:
+     resolution: {integrity: sha512-Zjygswjpsewa0NLTsiizVuMQZbp0MDyM6lIt66OxsF21npUDlzpHi1Mgb/qhQdkb+dWFTzJmFbEWdvZgRho8eQ==}
+ 
++  oniguruma-to-es@4.3.6:
++    resolution: {integrity: sha512-csuQ9x3Yr0cEIs/Zgx/OEt9iBw9vqIunAPQkx19R/fiMq2oGVTgcMqO/V3Ybqefr1TBvosI6jU539ksaBULJyA==}
++
+   p-limit@7.3.0:
+     resolution: {integrity: sha512-7cIXg/Z0M5WZRblrsOla88S4wAK+zOQQWeBYfV3qJuJXMr+LnbYjaadrFaS0JILfEDPVqHyKnZ1Z/1d6J9VVUw==}
+     engines: {node: '>=20'}
+@@ -2070,6 +2121,20 @@ packages:
+     resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
+     engines: {node: '>=12'}
+ 
++  picomatch@4.0.7:
++    resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
++    engines: {node: '>=12'}
++
++  playwright-core@1.63.0:
++    resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
++    engines: {node: '>=20'}
++    hasBin: true
++
++  playwright@1.63.0:
++    resolution: {integrity: sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==}
++    engines: {node: '>=20'}
++    hasBin: true
++
+   postcss-selector-parser@6.0.10:
+     resolution: {integrity: sha512-IQ7TZdoaqbT+LCpShg46jnZVlhWD2w6iQYAcYXfHARZ7X1t/UGhhceQDs5X0cGqKvYlHNOuv7Oa1xmb0oQuA3w==}
+     engines: {node: '>=4'}
+@@ -2154,8 +2219,8 @@ packages:
+   satteri@0.10.5:
+     resolution: {integrity: sha512-Ao1LKpAEa9Wdg0otgbVKViZHEq9ebdXe4DMrp3s9vQAU0HNIuHnFEuMuOcm0ZIXyV0Yzxj91NvhLpvXZJO/5ZQ==}
+ 
+-  sax@1.6.0:
+-    resolution: {integrity: sha512-6R3J5M4AcbtLUdZmRv2SygeVaM7IhrLXu9BmnOGmmACak8fiUtOsYNWUS4uK7upbmHIBbLBeFeI//477BKLBzA==}
++  sax@1.6.1:
++    resolution: {integrity: sha512-42tBVwLWnaQvW5zc4HbZrTuWccECCZfBi92FDuwtqxasH+JbPB3/FOKb1m222K42R4WxuxzzMsTswfzgtSu64Q==}
+     engines: {node: '>=11.0.0'}
+ 
+   scheduler@0.27.0:
+@@ -2202,11 +2267,15 @@ packages:
+     resolution: {integrity: sha512-eAVKTMedR5ckPo4xne/PjYQYrU3qx78gtJZ+sHlXEg5IHhhoQhMfZVzetTYuaJS0L2Ef3AcCRzCHV8T0WI6nIQ==}
+     engines: {node: '>=20'}
+ 
++  shiki@4.4.3:
++    resolution: {integrity: sha512-Mb/GvXPHBAXdgGIcnfU5L3ldpn1XcxrGkPHwqgRx17/I2XRfqlFKk2vGkHWINn1kdXvzJZeuO3is6I9KLPFm0g==}
++    engines: {node: '>=20'}
++
+   sisteransi@1.0.5:
+     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
+ 
+-  smol-toml@1.6.1:
+-    resolution: {integrity: sha512-dWUG8F5sIIARXih1DTaQAX4SsiTXhInKf1buxdY9DIg4ZYPZK5nGM1VRIYmEbDbsHt7USo99xSLFu5Q1IqTmsg==}
++  smol-toml@1.9.0:
++    resolution: {integrity: sha512-hpd+HLON7HdZXqYchMM/+LaTTbdK0AU3NngIJ4KVyWbY9bfQqdL9cD+4yf6dUoU2Ap4VsU0JkQi6FxAI1B2mXQ==}
+     engines: {node: '>= 18'}
+ 
+   source-map-js@1.2.1:
+@@ -2223,8 +2292,8 @@ packages:
+   stringify-entities@4.0.4:
+     resolution: {integrity: sha512-IwfBptatlO+QCJUo19AqvrPNqlVMpW9YEL2LIVY+Rpv2qsjCGxaDLNRgeGsQWJhfItebuJhsGSLjaBbNSQ+ieg==}
+ 
+-  svgo@4.0.1:
+-    resolution: {integrity: sha512-XDpWUOPC6FEibaLzjfe0ucaV0YrOjYotGJO1WpF0Zd+n6ZGEQUsSugaoLq9QkEZtAfQIxT42UChcssDVPP3+/w==}
++  svgo@4.1.0:
++    resolution: {integrity: sha512-bkxnTg1kSU0guhIBmibA6UUhrQmPVA1XsQLN+ylCd+UWzbnLkySOcXpyk1mrl05f+pcaCx2eHb+sp6BgMZWX+Q==}
+     engines: {node: '>=16'}
+     hasBin: true
+ 
+@@ -2238,8 +2307,8 @@ packages:
+   tiny-inflate@1.0.3:
+     resolution: {integrity: sha512-pkY1fj1cKHb2seWDy0B16HeWyczlJA9/WW3u3c4z/NiWDsO3DOU5D7nhTLE9CF0yXv/QZFY7sEJmj24dK+Rrqw==}
+ 
+-  tinyclip@0.1.12:
+-    resolution: {integrity: sha512-Ae3OVUqifDw0wBriIBS7yVaW44Dp6eSHQcyq4Igc7eN2TJH/2YsicswaW+J/OuMvhpDPOKEgpAZCjkb4hpoyeA==}
++  tinyclip@1.0.3:
++    resolution: {integrity: sha512-nTv2raKFMzGG6JJp0lpNDsRPdfFE6UHlu2rVEjXo8vkx1ZS3LW2CVXqIaLu8xZlu+6tbFs9V58Qc/Jmk/Ii7wA==}
+     engines: {node: ^16.14.0 || >= 17.3.0}
+ 
+   tinyexec@1.0.4:
+@@ -2267,6 +2336,11 @@ packages:
+   tslib@2.8.1:
+     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
+ 
++  typescript@5.9.3:
++    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
++    engines: {node: '>=14.17'}
++    hasBin: true
++
+   ufo@1.6.3:
+     resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==}
+ 
+@@ -2375,6 +2449,10 @@ packages:
+   util-deprecate@1.0.2:
+     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
+ 
++  verkit@0.4.1:
++    resolution: {integrity: sha512-mMVzj0TXExtVdlDEq+Mzp0eyOuyznNpFobNM3uAqe3HVm/Ps2c+u17BligMkZjZCA6EiXpoon8iRTer3iu40SQ==}
++    engines: {node: '>=18.12.0'}
++
+   vfile-message@4.0.3:
+     resolution: {integrity: sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==}
+ 
+@@ -2499,69 +2577,66 @@ packages:
+ 
+ snapshots:
+ 
+-  '@astrojs/compiler-binding-darwin-arm64@0.4.0':
++  '@astrojs/compiler-binding-android-arm64@0.5.1':
++    optional: true
++
++  '@astrojs/compiler-binding-darwin-arm64@0.5.1':
+     optional: true
+ 
+-  '@astrojs/compiler-binding-darwin-x64@0.4.0':
++  '@astrojs/compiler-binding-darwin-x64@0.5.1':
+     optional: true
+ 
+-  '@astrojs/compiler-binding-linux-arm64-gnu@0.4.0':
++  '@astrojs/compiler-binding-linux-arm64-gnu@0.5.1':
+     optional: true
+ 
+-  '@astrojs/compiler-binding-linux-arm64-musl@0.4.0':
++  '@astrojs/compiler-binding-linux-arm64-musl@0.5.1':
+     optional: true
+ 
+-  '@astrojs/compiler-binding-linux-x64-gnu@0.4.0':
++  '@astrojs/compiler-binding-linux-x64-gnu@0.5.1':
+     optional: true
+ 
+-  '@astrojs/compiler-binding-linux-x64-musl@0.4.0':
++  '@astrojs/compiler-binding-linux-x64-musl@0.5.1':
+     optional: true
+ 
+-  '@astrojs/compiler-binding-wasm32-wasi@0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)':
++  '@astrojs/compiler-binding-wasm32-wasi@0.5.1':
+     dependencies:
+-      '@napi-rs/wasm-runtime': 1.2.4(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)
+-    transitivePeerDependencies:
+-      - '@emnapi/core'
+-      - '@emnapi/runtime'
++      '@emnapi/core': 1.11.3
++      '@emnapi/runtime': 1.11.3
++      '@napi-rs/wasm-runtime': 1.2.4(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)
+     optional: true
+ 
+-  '@astrojs/compiler-binding-win32-arm64-msvc@0.4.0':
++  '@astrojs/compiler-binding-win32-arm64-msvc@0.5.1':
+     optional: true
+ 
+-  '@astrojs/compiler-binding-win32-x64-msvc@0.4.0':
++  '@astrojs/compiler-binding-win32-x64-msvc@0.5.1':
+     optional: true
+ 
+-  '@astrojs/compiler-binding@0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)':
++  '@astrojs/compiler-binding@0.5.1':
+     optionalDependencies:
+-      '@astrojs/compiler-binding-darwin-arm64': 0.4.0
+-      '@astrojs/compiler-binding-darwin-x64': 0.4.0
+-      '@astrojs/compiler-binding-linux-arm64-gnu': 0.4.0
+-      '@astrojs/compiler-binding-linux-arm64-musl': 0.4.0
+-      '@astrojs/compiler-binding-linux-x64-gnu': 0.4.0
+-      '@astrojs/compiler-binding-linux-x64-musl': 0.4.0
+-      '@astrojs/compiler-binding-wasm32-wasi': 0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)
+-      '@astrojs/compiler-binding-win32-arm64-msvc': 0.4.0
+-      '@astrojs/compiler-binding-win32-x64-msvc': 0.4.0
+-    transitivePeerDependencies:
+-      - '@emnapi/core'
+-      - '@emnapi/runtime'
++      '@astrojs/compiler-binding-android-arm64': 0.5.1
++      '@astrojs/compiler-binding-darwin-arm64': 0.5.1
++      '@astrojs/compiler-binding-darwin-x64': 0.5.1
++      '@astrojs/compiler-binding-linux-arm64-gnu': 0.5.1
++      '@astrojs/compiler-binding-linux-arm64-musl': 0.5.1
++      '@astrojs/compiler-binding-linux-x64-gnu': 0.5.1
++      '@astrojs/compiler-binding-linux-x64-musl': 0.5.1
++      '@astrojs/compiler-binding-wasm32-wasi': 0.5.1
++      '@astrojs/compiler-binding-win32-arm64-msvc': 0.5.1
++      '@astrojs/compiler-binding-win32-x64-msvc': 0.5.1
+ 
+-  '@astrojs/compiler-rs@0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)':
++  '@astrojs/compiler-rs@0.5.1':
+     dependencies:
+-      '@astrojs/compiler-binding': 0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)
+-    transitivePeerDependencies:
+-      - '@emnapi/core'
+-      - '@emnapi/runtime'
++      '@astrojs/compiler-binding': 0.5.1
+ 
+-  '@astrojs/internal-helpers@0.10.1':
++  '@astrojs/internal-helpers@0.10.0':
+     dependencies:
+-      '@types/hast': 3.0.4
++      '@types/hast': 3.0.5
+       '@types/mdast': 4.0.4
+-      js-yaml: 4.1.1
+-      picomatch: 4.0.5
++      js-yaml: 4.3.2
++      picomatch: 4.0.7
+       retext-smartypants: 6.2.0
+-      shiki: 4.0.2
+-      smol-toml: 1.6.1
++      shiki: 4.4.3
++      smol-toml: 1.9.0
+       unified: 11.0.5
+ 
+   '@astrojs/internal-helpers@0.11.0':
+@@ -2572,24 +2647,20 @@ snapshots:
+       picomatch: 4.0.5
+       retext-smartypants: 6.2.0
+       shiki: 4.0.2
+-      smol-toml: 1.6.1
++      smol-toml: 1.9.0
+       unified: 11.0.5
+ 
+-  '@astrojs/internal-helpers@0.9.0':
+-    dependencies:
+-      picomatch: 4.0.4
+-
+-  '@astrojs/markdown-satteri@0.4.1':
++  '@astrojs/markdown-satteri@0.4.2':
+     dependencies:
+       '@astrojs/internal-helpers': 0.11.0
+       '@astrojs/prism': 4.0.2
+       github-slugger: 2.0.0
+       satteri: 0.10.5
+ 
+-  '@astrojs/node@11.0.2(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))':
++  '@astrojs/node@11.1.6(astro@7.3.5(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))':
+     dependencies:
+-      '@astrojs/internal-helpers': 0.10.1
+-      astro: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
++      '@astrojs/internal-helpers': 0.11.0
++      astro: 7.3.5(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
+       send: 1.2.1
+       server-destroy: 1.0.1
+     transitivePeerDependencies:
+@@ -2599,13 +2670,13 @@ snapshots:
+     dependencies:
+       prismjs: 1.30.0
+ 
+-  '@astrojs/react@5.0.4(@types/node@25.5.0)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(jiti@2.6.1)(lightningcss@1.32.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)(yaml@2.8.3)':
++  '@astrojs/react@5.0.7(@types/node@25.5.0)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(jiti@2.6.1)(lightningcss@1.32.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)(yaml@2.8.3)':
+     dependencies:
+-      '@astrojs/internal-helpers': 0.9.0
++      '@astrojs/internal-helpers': 0.10.0
+       '@types/react': 19.2.14
+       '@types/react-dom': 19.2.3(@types/react@19.2.14)
+       '@vitejs/plugin-react': 5.2.0(vite@7.3.2(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.8.3))
+-      devalue: 5.6.4
++      devalue: 5.9.4
+       react: 19.2.5
+       react-dom: 19.2.5(react@19.2.5)
+       ultrahtml: 1.6.0
+@@ -2796,6 +2867,12 @@ snapshots:
+       tslib: 2.8.1
+     optional: true
+ 
++  '@emnapi/core@1.11.3':
++    dependencies:
++      '@emnapi/wasi-threads': 1.2.3
++      tslib: 2.8.1
++    optional: true
++
+   '@emnapi/runtime@1.11.1':
+     dependencies:
+       tslib: 2.8.1
+@@ -2811,6 +2888,11 @@ snapshots:
+       tslib: 2.8.1
+     optional: true
+ 
++  '@emnapi/wasi-threads@1.2.3':
++    dependencies:
++      tslib: 2.8.1
++    optional: true
++
+   '@esbuild/aix-ppc64@0.27.4':
+     optional: true
+ 
+@@ -3213,81 +3295,81 @@ snapshots:
+     dependencies:
+       '@emnapi/core': 1.11.1
+       '@emnapi/runtime': 1.11.1
+-      '@tybys/wasm-util': 0.10.3
++      '@tybys/wasm-util': 0.10.4
+     optional: true
+ 
+-  '@napi-rs/wasm-runtime@1.2.4(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)':
++  '@napi-rs/wasm-runtime@1.2.4(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)':
+     dependencies:
+-      '@emnapi/core': 1.11.1
++      '@emnapi/core': 1.11.3
+       '@emnapi/runtime': 1.11.3
+-      '@tybys/wasm-util': 0.10.3
++      '@tybys/wasm-util': 0.10.4
+     optional: true
+ 
+   '@oslojs/encoding@1.1.0': {}
+ 
+   '@oxc-project/types@0.139.0': {}
+ 
+-  '@parcel/watcher-android-arm64@2.5.6':
++  '@parcel/watcher-android-arm64@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-darwin-arm64@2.5.6':
++  '@parcel/watcher-darwin-arm64@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-darwin-x64@2.5.6':
++  '@parcel/watcher-darwin-x64@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-freebsd-x64@2.5.6':
++  '@parcel/watcher-freebsd-x64@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-linux-arm-glibc@2.5.6':
++  '@parcel/watcher-linux-arm-glibc@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-linux-arm-musl@2.5.6':
++  '@parcel/watcher-linux-arm-musl@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-linux-arm64-glibc@2.5.6':
++  '@parcel/watcher-linux-arm64-glibc@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-linux-arm64-musl@2.5.6':
++  '@parcel/watcher-linux-arm64-musl@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-linux-x64-glibc@2.5.6':
++  '@parcel/watcher-linux-x64-glibc@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-linux-x64-musl@2.5.6':
++  '@parcel/watcher-linux-x64-musl@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-win32-arm64@2.5.6':
++  '@parcel/watcher-win32-arm64@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-win32-ia32@2.5.6':
++  '@parcel/watcher-win32-x64@2.6.0':
+     optional: true
+ 
+-  '@parcel/watcher-win32-x64@2.5.6':
+-    optional: true
+-
+-  '@parcel/watcher@2.5.6':
++  '@parcel/watcher@2.6.0':
+     dependencies:
+       detect-libc: 2.1.2
+       is-glob: 4.0.3
+       node-addon-api: 7.1.1
+-      picomatch: 4.0.5
++      picomatch: 4.0.7
+     optionalDependencies:
+-      '@parcel/watcher-android-arm64': 2.5.6
+-      '@parcel/watcher-darwin-arm64': 2.5.6
+-      '@parcel/watcher-darwin-x64': 2.5.6
+-      '@parcel/watcher-freebsd-x64': 2.5.6
+-      '@parcel/watcher-linux-arm-glibc': 2.5.6
+-      '@parcel/watcher-linux-arm-musl': 2.5.6
+-      '@parcel/watcher-linux-arm64-glibc': 2.5.6
+-      '@parcel/watcher-linux-arm64-musl': 2.5.6
+-      '@parcel/watcher-linux-x64-glibc': 2.5.6
+-      '@parcel/watcher-linux-x64-musl': 2.5.6
+-      '@parcel/watcher-win32-arm64': 2.5.6
+-      '@parcel/watcher-win32-ia32': 2.5.6
+-      '@parcel/watcher-win32-x64': 2.5.6
++      '@parcel/watcher-android-arm64': 2.6.0
++      '@parcel/watcher-darwin-arm64': 2.6.0
++      '@parcel/watcher-darwin-x64': 2.6.0
++      '@parcel/watcher-freebsd-x64': 2.6.0
++      '@parcel/watcher-linux-arm-glibc': 2.6.0
++      '@parcel/watcher-linux-arm-musl': 2.6.0
++      '@parcel/watcher-linux-arm64-glibc': 2.6.0
++      '@parcel/watcher-linux-arm64-musl': 2.6.0
++      '@parcel/watcher-linux-x64-glibc': 2.6.0
++      '@parcel/watcher-linux-x64-musl': 2.6.0
++      '@parcel/watcher-win32-arm64': 2.6.0
++      '@parcel/watcher-win32-x64': 2.6.0
+     optional: true
+ 
++  '@playwright/test@1.63.0':
++    dependencies:
++      playwright: 1.63.0
++
+   '@rolldown/binding-android-arm64@1.1.5':
+     optional: true
+ 
+@@ -3424,36 +3506,74 @@ snapshots:
+       '@types/hast': 3.0.4
+       hast-util-to-html: 9.0.5
+ 
++  '@shikijs/core@4.4.3':
++    dependencies:
++      '@shikijs/primitive': 4.4.3
++      '@shikijs/types': 4.4.3
++      '@shikijs/vscode-textmate': 10.0.2
++      '@types/hast': 3.0.5
++      hast-util-to-html: 9.0.5
++
+   '@shikijs/engine-javascript@4.0.2':
+     dependencies:
+       '@shikijs/types': 4.0.2
+       '@shikijs/vscode-textmate': 10.0.2
+       oniguruma-to-es: 4.3.5
+ 
++  '@shikijs/engine-javascript@4.4.3':
++    dependencies:
++      '@shikijs/types': 4.4.3
++      '@shikijs/vscode-textmate': 10.0.2
++      oniguruma-to-es: 4.3.6
++
+   '@shikijs/engine-oniguruma@4.0.2':
+     dependencies:
+       '@shikijs/types': 4.0.2
+       '@shikijs/vscode-textmate': 10.0.2
+ 
++  '@shikijs/engine-oniguruma@4.4.3':
++    dependencies:
++      '@shikijs/types': 4.4.3
++      '@shikijs/vscode-textmate': 10.0.2
++
+   '@shikijs/langs@4.0.2':
+     dependencies:
+       '@shikijs/types': 4.0.2
+ 
++  '@shikijs/langs@4.4.3':
++    dependencies:
++      '@shikijs/types': 4.4.3
++
+   '@shikijs/primitive@4.0.2':
+     dependencies:
+       '@shikijs/types': 4.0.2
+       '@shikijs/vscode-textmate': 10.0.2
+       '@types/hast': 3.0.4
+ 
++  '@shikijs/primitive@4.4.3':
++    dependencies:
++      '@shikijs/types': 4.4.3
++      '@shikijs/vscode-textmate': 10.0.2
++      '@types/hast': 3.0.5
++
+   '@shikijs/themes@4.0.2':
+     dependencies:
+       '@shikijs/types': 4.0.2
+ 
++  '@shikijs/themes@4.4.3':
++    dependencies:
++      '@shikijs/types': 4.4.3
++
+   '@shikijs/types@4.0.2':
+     dependencies:
+       '@shikijs/vscode-textmate': 10.0.2
+       '@types/hast': 3.0.4
+ 
++  '@shikijs/types@4.4.3':
++    dependencies:
++      '@shikijs/vscode-textmate': 10.0.2
++      '@types/hast': 3.0.5
++
+   '@shikijs/vscode-textmate@10.0.2': {}
+ 
+   '@tailwindcss/node@4.2.4':
+@@ -3534,6 +3654,11 @@ snapshots:
+       tslib: 2.8.1
+     optional: true
+ 
++  '@tybys/wasm-util@0.10.4':
++    dependencies:
++      tslib: 2.8.1
++    optional: true
++
+   '@types/babel__core@7.20.5':
+     dependencies:
+       '@babel/parser': 7.29.2
+@@ -3557,10 +3682,12 @@ snapshots:
+ 
+   '@types/estree-jsx@1.0.5':
+     dependencies:
+-      '@types/estree': 1.0.8
++      '@types/estree': 1.0.9
+ 
+   '@types/estree@1.0.8': {}
+ 
++  '@types/estree@1.0.9': {}
++
+   '@types/hast@3.0.4':
+     dependencies:
+       '@types/unist': 3.0.3
+@@ -3619,11 +3746,11 @@ snapshots:
+ 
+   aria-query@5.3.2: {}
+ 
+-  astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3):
++  astro@7.3.5(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3):
+     dependencies:
+-      '@astrojs/compiler-rs': 0.4.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)
++      '@astrojs/compiler-rs': 0.5.1
+       '@astrojs/internal-helpers': 0.11.0
+-      '@astrojs/markdown-satteri': 0.4.1
++      '@astrojs/markdown-satteri': 0.4.2
+       '@astrojs/telemetry': 3.3.3
+       '@capsizecss/unpack': 4.0.0
+       '@clack/prompts': 1.3.0
+@@ -3640,7 +3767,7 @@ snapshots:
+       dset: 3.1.4
+       es-module-lexer: 2.1.0
+       esbuild: 0.28.1
+-      find-proc: 0.1.0
++      find-proc: 0.2.0
+       flattie: 1.1.1
+       fontace: 0.4.1
+       get-tsconfig: 5.0.0-beta.4
+@@ -3653,22 +3780,22 @@ snapshots:
+       magicast: 0.5.2
+       mrmime: 2.0.1
+       neotraverse: 1.0.1
+-      obug: 2.1.1
++      obug: 3.0.0
+       p-limit: 7.3.0
+       p-queue: 9.2.0
+       package-manager-detector: 1.6.0
+       piccolore: 0.1.3
+       picomatch: 4.0.5
+-      semver: 7.8.5
+       shiki: 4.0.2
+-      smol-toml: 1.6.1
+-      svgo: 4.0.1
+-      tinyclip: 0.1.12
++      smol-toml: 1.9.0
++      svgo: 4.1.0
++      tinyclip: 1.0.3
+       tinyexec: 1.0.4
+       tinyglobby: 0.2.17
+       ultrahtml: 1.6.0
+       unifont: 0.7.5
+       unstorage: 1.17.5
++      verkit: 0.4.1
+       vite: 8.1.5(@types/node@25.5.0)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
+       vitefu: 1.1.3(vite@8.1.5(@types/node@25.5.0)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))
+       xxhash-wasm: 1.1.0
+@@ -3685,8 +3812,6 @@ snapshots:
+       - '@azure/storage-blob'
+       - '@capacitor/preferences'
+       - '@deno/kv'
+-      - '@emnapi/core'
+-      - '@emnapi/runtime'
+       - '@netlify/blobs'
+       - '@planetscale/database'
+       - '@types/node'
+@@ -3763,10 +3888,10 @@ snapshots:
+     dependencies:
+       uncrypto: 0.1.3
+ 
+-  css-select@5.2.2:
++  css-select@6.0.0:
+     dependencies:
+       boolbase: 1.0.0
+-      css-what: 6.2.2
++      css-what: 7.0.0
+       domhandler: 5.0.3
+       domutils: 3.2.2
+       nth-check: 2.1.1
+@@ -3781,7 +3906,7 @@ snapshots:
+       mdn-data: 2.27.1
+       source-map-js: 1.2.1
+ 
+-  css-what@6.2.2: {}
++  css-what@7.0.0: {}
+ 
+   cssesc@3.0.0: {}
+ 
+@@ -3805,10 +3930,10 @@ snapshots:
+ 
+   detect-libc@2.1.2: {}
+ 
+-  devalue@5.6.4: {}
+-
+   devalue@5.8.1: {}
+ 
++  devalue@5.9.4: {}
++
+   devlop@1.1.0:
+     dependencies:
+       dequal: 2.0.3
+@@ -3936,7 +4061,7 @@ snapshots:
+     optionalDependencies:
+       picomatch: 4.0.5
+ 
+-  find-proc@0.1.0: {}
++  find-proc@0.2.0: {}
+ 
+   flattie@1.1.1: {}
+ 
+@@ -4007,7 +4132,7 @@ snapshots:
+       statuses: 2.0.2
+       toidentifier: 1.0.1
+ 
+-  immutable@5.1.5:
++  immutable@5.1.9:
+     optional: true
+ 
+   inherits@2.0.4: {}
+@@ -4030,10 +4155,6 @@ snapshots:
+ 
+   js-tokens@4.0.0: {}
+ 
+-  js-yaml@4.1.1:
+-    dependencies:
+-      argparse: 2.0.1
+-
+   js-yaml@4.3.2:
+     dependencies:
+       argparse: 2.0.1
+@@ -4181,7 +4302,7 @@ snapshots:
+     dependencies:
+       boolbase: 1.0.0
+ 
+-  obug@2.1.1: {}
++  obug@3.0.0: {}
+ 
+   ofetch@1.5.1:
+     dependencies:
+@@ -4197,12 +4318,20 @@ snapshots:
+ 
+   oniguruma-parser@0.12.1: {}
+ 
++  oniguruma-parser@0.12.2: {}
++
+   oniguruma-to-es@4.3.5:
+     dependencies:
+       oniguruma-parser: 0.12.1
+       regex: 6.1.0
+       regex-recursion: 6.0.2
+ 
++  oniguruma-to-es@4.3.6:
++    dependencies:
++      oniguruma-parser: 0.12.2
++      regex: 6.1.0
++      regex-recursion: 6.0.2
++
+   p-limit@7.3.0:
+     dependencies:
+       yocto-queue: 1.2.2
+@@ -4226,6 +4355,14 @@ snapshots:
+ 
+   picomatch@4.0.5: {}
+ 
++  picomatch@4.0.7: {}
++
++  playwright-core@1.63.0: {}
++
++  playwright@1.63.0:
++    dependencies:
++      playwright-core: 1.63.0
++
+   postcss-selector-parser@6.0.10:
+     dependencies:
+       cssesc: 3.0.0
+@@ -4340,10 +4477,10 @@ snapshots:
+   sass@1.99.0:
+     dependencies:
+       chokidar: 4.0.3
+-      immutable: 5.1.5
++      immutable: 5.1.9
+       source-map-js: 1.2.1
+     optionalDependencies:
+-      '@parcel/watcher': 2.5.6
++      '@parcel/watcher': 2.6.0
+     optional: true
+ 
+   satteri@0.10.5:
+@@ -4363,7 +4500,7 @@ snapshots:
+       '@bruits/satteri-win32-arm64-msvc': 0.10.5
+       '@bruits/satteri-win32-x64-msvc': 0.10.5
+ 
+-  sax@1.6.0: {}
++  sax@1.6.1: {}
+ 
+   scheduler@0.27.0: {}
+ 
+@@ -4469,9 +4606,20 @@ snapshots:
+       '@shikijs/vscode-textmate': 10.0.2
+       '@types/hast': 3.0.4
+ 
++  shiki@4.4.3:
++    dependencies:
++      '@shikijs/core': 4.4.3
++      '@shikijs/engine-javascript': 4.4.3
++      '@shikijs/engine-oniguruma': 4.4.3
++      '@shikijs/langs': 4.4.3
++      '@shikijs/themes': 4.4.3
++      '@shikijs/types': 4.4.3
++      '@shikijs/vscode-textmate': 10.0.2
++      '@types/hast': 3.0.5
++
+   sisteransi@1.0.5: {}
+ 
+-  smol-toml@1.6.1: {}
++  smol-toml@1.9.0: {}
+ 
+   source-map-js@1.2.1: {}
+ 
+@@ -4484,15 +4632,15 @@ snapshots:
+       character-entities-html4: 2.1.0
+       character-entities-legacy: 3.0.0
+ 
+-  svgo@4.0.1:
++  svgo@4.1.0:
+     dependencies:
+       commander: 11.1.0
+-      css-select: 5.2.2
++      css-select: 6.0.0
+       css-tree: 3.2.1
+-      css-what: 6.2.2
++      css-what: 7.0.0
+       csso: 5.0.5
+       picocolors: 1.1.1
+-      sax: 1.6.0
++      sax: 1.6.1
+ 
+   tailwindcss@4.2.4: {}
+ 
+@@ -4500,7 +4648,7 @@ snapshots:
+ 
+   tiny-inflate@1.0.3: {}
+ 
+-  tinyclip@0.1.12: {}
++  tinyclip@1.0.3: {}
+ 
+   tinyexec@1.0.4: {}
+ 
+@@ -4523,6 +4671,8 @@ snapshots:
+   tslib@2.8.1:
+     optional: true
+ 
++  typescript@5.9.3: {}
++
+   ufo@1.6.3: {}
+ 
+   ultrahtml@1.6.0: {}
+@@ -4592,6 +4742,8 @@ snapshots:
+ 
+   util-deprecate@1.0.2: {}
+ 
++  verkit@0.4.1: {}
++
+   vfile-message@4.0.3:
+     dependencies:
+       '@types/unist': 3.0.3
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..3089766 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -90,6 +90,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
+             <span>© 2025 The DevTools Times Company</span>
+             <a href="#" class="hover:underline">Contact Us</a>
++            <a href={`${baseUrl}local-connections`} class="hover:underline">Local connections</a>
+             <a href="#" class="hover:underline">Work with us</a>
+             <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+             <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+diff --git a/src/components/LocalConnections.tsx b/src/components/LocalConnections.tsx
+new file mode 100644
+index 0000000..224b578
+--- /dev/null
++++ b/src/components/LocalConnections.tsx
+@@ -0,0 +1,128 @@
++import { useEffect, useRef, useState } from 'react';
++import { fetchNetworkStatus, queryNetworkPermission, requireHttps, type AddressSpace } from '../utils/local-network';
++
++function Connection({ space, title, initialUrl }: { space: AddressSpace; title: string; initialUrl: string }) {
++  const [url, setUrl] = useState(initialUrl);
++  const [permission, setPermission] = useState<PermissionState | 'checking'>('checking');
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  const [result, setResult] = useState<string | null>(null);
++  const [secure, setSecure] = useState(false);
++  const currentUrl = useRef(url);
++  const state = useRef<PermissionState | 'checking'>('checking');
++  const active = useRef(false);
++  const request = useRef<AbortController | null>(null);
++  const permissionLabel = space === 'local' ? 'Local network' : 'Loopback network';
++  const recovery = space === 'local'
++    ? 'Check that the device is powered on and connected to the same network. In browser Site settings, allow Local network access, then retry.'
++    : 'Check that your companion app is running at this address. In browser Site settings, allow Loopback network access, then retry.';
++
++  async function connect(userGesture: boolean) {
++    if (request.current || state.current === 'checking' || state.current === 'denied' ||
++      (state.current !== 'granted' && !userGesture)) return;
++    const controller = new AbortController();
++    request.current = controller;
++    setBusy(true);
++    setError('');
++    setResult(null);
++    const timeout = window.setTimeout(() => controller.abort(), 10000);
++    try {
++      const data = await fetchNetworkStatus(currentUrl.current, space, controller.signal);
++      if (active.current && request.current === controller) {
++        setResult(JSON.stringify(data, null, 2) ?? 'Connected.');
++      }
++    } catch (cause: unknown) {
++      if (active.current && request.current === controller) {
++        const detail = controller.signal.aborted ? 'The connection timed out.'
++          : cause instanceof Error ? cause.message : 'The connection failed.';
++        setError(`${detail} ${recovery} If access is allowed, check the address and the service’s CORS configuration.`);
++        const status = await queryNetworkPermission(space);
++        if (active.current && request.current === controller && status) {
++          state.current = status.state;
++          setPermission(status.state);
++        }
++      }
++    } finally {
++      window.clearTimeout(timeout);
++      if (active.current && request.current === controller) {
++        request.current = null;
++        setBusy(false);
++      }
++    }
++  }
++
++  useEffect(() => {
++    active.current = true;
++    let disposed = false;
++    let status: PermissionStatus | null = null;
++    const sync = () => {
++      if (disposed) return;
++      const next = status?.state ?? 'prompt';
++      state.current = next;
++      setPermission(next);
++      if (next !== 'granted') {
++        request.current?.abort();
++        request.current = null;
++        setBusy(false);
++        setResult(null);
++      }
++      if (next === 'denied') setError(recovery);
++      else setError('');
++    };
++    async function initialize() {
++      try {
++        requireHttps();
++        setSecure(true);
++        status = await queryNetworkPermission(space);
++        if (disposed) return;
++        status?.addEventListener('change', sync);
++        sync();
++        // Only a pre-existing grant permits automatic connection.
++        if (state.current === 'granted') await connect(false);
++      } catch (cause: unknown) {
++        if (!disposed) {
++          setError(cause instanceof Error ? cause.message : 'Unable to initialize local connections.');
++          setPermission('prompt');
++        }
++      }
++    }
++    void initialize();
++    return () => {
++      disposed = true;
++      active.current = false;
++      status?.removeEventListener('change', sync);
++      request.current?.abort();
++      request.current = null;
++    };
++  }, [space]);
++
++  return (
++    <section className="border border-gray-300 rounded-lg p-5 space-y-4" aria-labelledby={`${space}-heading`}>
++      <h2 id={`${space}-heading`} className="text-2xl font-brand">{title}</h2>
++      <p className="text-sm text-gray-700">
++        {space === 'local' ? 'Read status from a device on your local network.' : 'Read status from a companion app running on this computer.'}
++        {' '}Connecting may ask your browser for {permissionLabel.toLowerCase()} permission. Use a service you trust.
++      </p>
++      <form onSubmit={(event) => { event.preventDefault(); void connect(true); }} className="space-y-3">
++        <label htmlFor={`${space}-url`} className="block text-sm font-semibold">Service status URL</label>
++        <input id={`${space}-url`} type="url" required value={url} disabled={busy}
++          onChange={(event) => { setUrl(event.target.value); currentUrl.current = event.target.value; setResult(null); }}
++          className="border border-gray-400 rounded p-2 w-full" />
++        <p className="text-sm" aria-live="polite">{permissionLabel} permission: {permission}</p>
++        <button type="submit" disabled={!secure || busy || permission === 'checking' || permission === 'denied'}
++          className="bg-gray-900 text-white rounded px-4 py-2 disabled:opacity-50">
++          {busy ? 'Connecting…' : `Connect to ${space === 'local' ? 'device' : 'companion app'}`}
++        </button>
++      </form>
++      {error && <p role="alert" className="text-red-800 bg-red-50 p-3 rounded">{error}</p>}
++      {result !== null && <div role="status"><p className="font-semibold">Connected successfully</p><pre className="overflow-auto text-sm bg-gray-100 p-3 mt-2">{result}</pre></div>}
++    </section>
++  );
++}
++
++export default function LocalConnections() {
++  return <div className="grid gap-6 md:grid-cols-2">
++    <Connection space="local" title="Local network device" initialUrl="http://192.168.1.100:8080/api/status" />
++    <Connection space="loopback" title="Companion app" initialUrl="http://127.0.0.1:45678/health" />
++  </div>;
++}
+diff --git a/src/pages/local-connections.astro b/src/pages/local-connections.astro
+new file mode 100644
+index 0000000..e179f8b
+--- /dev/null
++++ b/src/pages/local-connections.astro
+@@ -0,0 +1,12 @@
++---
++import Layout from '../layouts/Layout.astro';
++import LocalConnections from '../components/LocalConnections';
++---
++<Layout title="Local connections | The DevTools Times">
++  <div class="max-w-5xl mx-auto px-4 py-10 space-y-6">
++    <h1 class="text-4xl font-brand">Local connections</h1>
++    <p>Connect to your own device or companion app to view its status. Enter its status endpoint below; the example addresses may need to be changed for your setup.</p>
++    <LocalConnections client:load />
++    <noscript>Enable JavaScript to connect to a local service.</noscript>
++  </div>
++</Layout>
+diff --git a/src/utils/local-network.ts b/src/utils/local-network.ts
+new file mode 100644
+index 0000000..0397472
+--- /dev/null
++++ b/src/utils/local-network.ts
+@@ -0,0 +1,59 @@
++export type AddressSpace = 'local' | 'loopback';
++export type NetworkPermission = 'local-network' | 'loopback-network';
++
++export const permissionFor = (space: AddressSpace): NetworkPermission =>
++  space === 'local' ? 'local-network' : 'loopback-network';
++
++// These granular names are not yet included in every TypeScript DOM library.
++export async function queryNetworkPermission(space: AddressSpace): Promise<PermissionStatus | null> {
++  try {
++    if (!navigator.permissions?.query) return null;
++    return await navigator.permissions.query({
++      name: permissionFor(space) as PermissionName,
++    });
++  } catch {
++    // Unsupported permission queries must still require a user gesture.
++    return null;
++  }
++}
++
++export function requireHttps(): void {
++  if (!window.isSecureContext || window.location.protocol !== 'https:') {
++    throw new Error('Open this page over HTTPS to connect to a local device or companion app.');
++  }
++}
++
++export function validateEndpoint(value: string, space: AddressSpace): URL {
++  const url = new URL(value);
++  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
++    throw new Error('Enter an HTTP or HTTPS address without embedded credentials.');
++  }
++  const host = url.hostname.toLowerCase().replace(/\.$/, '');
++  const loopback = host === 'localhost' || host.endsWith('.localhost') ||
++    host === '[::1]' || /^127\./.test(host);
++  if (space === 'loopback' && !loopback) {
++    throw new Error('Use localhost, a 127.x.x.x address, or [::1] for the companion app.');
++  }
++  if (space === 'local' && loopback) {
++    throw new Error('Use the companion app control for loopback addresses.');
++  }
++  // Custom LAN hostnames are allowed. The browser verifies their resolved space.
++  return url;
++}
++
++export async function fetchNetworkStatus(value: string, space: AddressSpace, signal: AbortSignal): Promise<unknown> {
++  requireHttps();
++  const url = validateEndpoint(value, space);
++  const options: RequestInit & { targetAddressSpace: AddressSpace } = {
++    method: 'GET',
++    mode: 'cors',
++    credentials: 'omit',
++    redirect: 'error',
++    cache: 'no-store',
++    targetAddressSpace: space,
++    signal,
++  };
++  const response = await fetch(url.href, options);
++  if (!response.ok) throw new Error(`The service returned HTTP ${response.status}.`);
++  return response.json();
++}
+diff --git a/tests/local-network.spec.mjs b/tests/local-network.spec.mjs
+new file mode 100644
+index 0000000..f9b1d31
+--- /dev/null
++++ b/tests/local-network.spec.mjs
+@@ -0,0 +1,102 @@
++import { test, expect } from '@playwright/test';
++
++// Serve the actual app under an HTTPS test origin. Local service responses and
++// experimental permission names are mocked, so no real device is required.
++async function openConnections(page, { state = 'prompt', unsupported = false, failure = false, insecure = false } = {}) {
++  const errors = [];
++  page.on('pageerror', error => errors.push(error.message));
++  await page.addInitScript(({ state, unsupported, failure }) => {
++    window.networkTest = { queries: [], requests: [], statuses: {} };
++    Object.defineProperty(navigator, 'permissions', { value: {
++      async query({ name }) {
++        window.networkTest.queries.push(name);
++        if (unsupported) throw new TypeError('Unknown permission name');
++        const status = new EventTarget();
++        status.state = state;
++        window.networkTest.statuses[name] = status;
++        return status;
++      },
++    } });
++    const originalFetch = window.fetch;
++    window.fetch = async (url, options) => {
++      if (options?.targetAddressSpace) {
++        window.networkTest.requests.push({ url, targetAddressSpace: options.targetAddressSpace });
++        if (failure) throw new TypeError('Failed to fetch');
++        return new Response(JSON.stringify({ status: 'ready' }), { headers: { 'Content-Type': 'application/json' } });
++      }
++      return originalFetch(url, options);
++    };
++  }, { state, unsupported, failure });
++  await page.route('**/*', async route => {
++    const url = new URL(route.request().url());
++    if (url.hostname === 'times.test') {
++      const response = await route.fetch({ url: `http://127.0.0.1:4398${url.pathname}${url.search}` });
++      await route.fulfill({ response });
++    } else if (url.hostname === '127.0.0.1') await route.continue();
++    else await route.abort();
++  });
++  await page.goto(insecure ? 'http://127.0.0.1:4398/devtools-times/local-connections' : 'https://times.test/devtools-times/local-connections');
++  await expect(page.getByText(/permission: checking/)).toHaveCount(0);
++  return errors;
++}
++
++for (const unsupported of [false, true]) {
++  test(`prompt requires a click${unsupported ? ' when permission queries are unsupported' : ''}`, async ({ page }) => {
++    const errors = await openConnections(page, { unsupported });
++    await expect(page.getByRole('button', { name: 'Connect to device' })).toBeEnabled();
++    expect(await page.evaluate(() => window.networkTest.requests)).toEqual([]);
++    expect(await page.evaluate(() => window.networkTest.queries)).toEqual(['local-network', 'loopback-network']);
++    await page.getByRole('button', { name: 'Connect to device' }).click();
++    await expect(page.getByText('Connected successfully')).toHaveCount(1);
++    await page.getByRole('button', { name: 'Connect to companion app' }).click();
++    await expect(page.getByText('Connected successfully')).toHaveCount(2);
++    expect(await page.evaluate(() => window.networkTest.requests.map(request => request.targetAddressSpace))).toEqual(['local', 'loopback']);
++    expect(errors).toEqual([]);
++  });
++}
++
++test('granted permissions connect automatically', async ({ page }) => {
++  await openConnections(page, { state: 'granted' });
++  await expect(page.getByText('Connected successfully')).toHaveCount(2);
++  expect(await page.evaluate(() => window.networkTest.requests.length)).toBe(2);
++});
++
++test('denial shows remediation and changing site settings updates the control', async ({ page }) => {
++  await openConnections(page, { state: 'denied' });
++  await expect(page.getByRole('alert')).toHaveCount(2);
++  await expect(page.getByRole('button', { name: 'Connect to device' })).toBeDisabled();
++  expect(await page.evaluate(() => window.networkTest.requests)).toEqual([]);
++  await page.evaluate(() => {
++    const status = window.networkTest.statuses['local-network'];
++    status.state = 'prompt';
++    status.dispatchEvent(new Event('change'));
++  });
++  await expect(page.getByRole('button', { name: 'Connect to device' })).toBeEnabled();
++  expect(await page.evaluate(() => window.networkTest.requests)).toEqual([]);
++  await page.getByRole('button', { name: 'Connect to device' }).click();
++  await expect(page.getByText('Connected successfully')).toHaveCount(1);
++});
++
++test('connection rejection has visible recovery without unhandled errors', async ({ page }) => {
++  const errors = await openConnections(page, { failure: true });
++  await page.getByRole('button', { name: 'Connect to device' }).click();
++  await expect(page.getByRole('alert')).toContainText('Site settings');
++  await expect(page.getByRole('alert')).toContainText('Failed to fetch');
++  await expect(page.getByRole('button', { name: 'Connect to device' })).toBeEnabled();
++  expect(errors).toEqual([]);
++});
++
++test('HTTP pages cannot initiate local requests even with a grant', async ({ page }) => {
++  await openConnections(page, { state: 'granted', insecure: true });
++  await expect(page.getByRole('alert').first()).toContainText('HTTPS');
++  await expect(page.getByRole('button', { name: 'Connect to device' })).toBeDisabled();
++  expect(await page.evaluate(() => window.networkTest.requests)).toEqual([]);
++});
++
++test('loopback endpoints cannot be requested using the LAN permission', async ({ page }) => {
++  await openConnections(page);
++  await page.locator('#local-url').fill('http://localhost:45678/health');
++  await page.getByRole('button', { name: 'Connect to device' }).click();
++  await expect(page.getByRole('alert')).toContainText('companion app control');
++  expect(await page.evaluate(() => window.networkTest.requests)).toEqual([]);
++});

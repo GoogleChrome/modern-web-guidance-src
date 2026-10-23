@@ -1,3 +1,4 @@
+// Note: no grader change required for expectations typo fix.
 import { test, expect } from '@playwright/test';
 
 // Ensure TARGET_FILE is defined

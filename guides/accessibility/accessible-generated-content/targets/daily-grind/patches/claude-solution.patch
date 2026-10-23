@@ -1,0 +1,20 @@
+diff --git a/index.html b/index.html
+index 66c9173..e5e71ac 100644
+--- a/index.html
++++ b/index.html
+@@ -131,6 +131,15 @@
+       transition: background 0.3s;
+     }
+ 
++    /* Decorative glyphs: silenced for screen readers via empty alt text */
++    .btn::after {
++      content: " →" / "";
++    }
++
++    .card h3::before {
++      content: "☕ " / "";
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }

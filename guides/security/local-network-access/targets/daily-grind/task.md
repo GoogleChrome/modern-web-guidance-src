@@ -1,0 +1,1 @@
+- Enable the web application to access resources on a user's local network or loopback interface.
