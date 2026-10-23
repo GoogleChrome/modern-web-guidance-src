@@ -1695,7 +1695,7 @@
       "id": "trusted-types",
       "category": "security",
       "title": "Prevent DOM-based XSS attacks with Trusted Types",
-      "description": "Help prevent DOM-based XSS attacks by locking down dangerous DOM sinks so they reject raw strings and only accept policy-validated HTML.",
+      "description": "Prevent DOM-based XSS attacks by defining a Trusted Types policy to sanitize untrusted HTML, using the policy when writing to DOM sinks like innerHTML, and enforcing Trusted Types via Content Security Policy.",
       "features": [
         "trusted-types"
       ],
