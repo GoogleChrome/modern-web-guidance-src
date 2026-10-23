@@ -32,7 +32,7 @@ test.describe('shadow-dom Target Grader', () => {
       const firstArg = args[0];
       if (!firstArg.isKind(SyntaxKind.ObjectLiteralExpression)) return false;
 
-      return firstArg.getProperties().some((prop) => {
+      const hasModeOpen = firstArg.getProperties().some((prop) => {
         if (!prop.isKind(SyntaxKind.PropertyAssignment)) return false;
         const propName = prop.getName().replace(/['"`]/g, '');
         const initializer = prop.getInitializer();
@@ -40,6 +40,16 @@ test.describe('shadow-dom Target Grader', () => {
         const val = initializer.getText().replace(/['"`]/g, '');
         return val === 'open';
       });
+
+      const hasDelegatesFocus = firstArg.getProperties().some((prop) => {
+        if (!prop.isKind(SyntaxKind.PropertyAssignment)) return false;
+        const propName = prop.getName().replace(/['"`]/g, '');
+        const initializer = prop.getInitializer();
+        if (propName !== 'delegatesFocus' || !initializer) return false;
+        return initializer.getKind() === SyntaxKind.TrueKeyword;
+      });
+
+      return hasModeOpen && hasDelegatesFocus;
     });
 
     expect(hasOpenShadowRoot).toBe(true);
@@ -133,6 +143,7 @@ test.describe('shadow-dom Target Grader', () => {
         const cards = Array.from(grid.children);
         return cards.every((card) => {
           if (!card.tagName.includes('-') || !card.shadowRoot) return false;
+          if (!card.shadowRoot.delegatesFocus) return false;
           const slots = Array.from(card.shadowRoot.querySelectorAll('slot'));
           if (slots.length === 0) return false;
           const totalAssigned = slots.reduce(
