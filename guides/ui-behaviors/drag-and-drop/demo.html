@@ -6,11 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reorder Tasks</title>
   <style>
-    @property --icon-start {
-      syntax: "<image>";
-      inherits: false;
-    }
-
     :root {
       color-scheme: light dark;
       --canvas: #edf3ee;
@@ -39,21 +34,35 @@
       color: var(--ink);
     }
 
+    /* Base list. The classes below vary layout and scrolling; the script reads them to pick the axis. */
     .task-list {
       position: relative; /* makes the list the offsetParent for layout-position math */
       display: grid;
       gap: 0.75rem;
       max-width: 32rem;
-      max-height: 22rem;
       padding: 1rem;
-      overflow-y: auto;
       list-style: none;
+    }
+
+    .task-list.scrollable {
+      max-block-size: 22rem;
+      overflow: auto;
+    }
+
+    .task-list.horizontal {
+      grid-auto-flow: column;
+      grid-auto-columns: 14rem;
+    }
+
+    .task-list.grid {
+      grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
     }
 
     .task {
       scroll-margin: 1rem;
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-auto-flow: column;
+      grid-template-columns: auto minmax(0, 1fr);
       gap: 0.75rem;
       align-items: center;
       padding: 0.75rem;
@@ -202,55 +211,112 @@
 <body>
   <main>
     <h1>Tasks</h1>
-    <p>Drag an item with its handle, press <kbd>Space</kbd> on a focused handle to grab it, move it with <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd>, then press <kbd>Space</kbd> to drop or <kbd>Escape</kbd> to cancel, or use the movement buttons.</p>
+    <p>Four layouts driven by the same reordering code; the container's classes select scrolling, axis, and wrapping. A real implementation ships <em>one</em> keyboard mechanism per list.</p>
 
-    <ol class="task-list" id="taskList">
-      <li class="task" data-reorder-item data-label="Outline project">
-        <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project"
-          style="--icon: var(--icon-grip);"></button>
-        <label>Outline project <input value="Write the first draft"></label>
-        <div class="task-controls">
-          <button class="move-up-button" type="button" aria-label="Move Outline project up" title="Move up">
-            <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
-          </button>
-          <button class="move-down-button" type="button" aria-label="Move Outline project down" title="Move down">
-            <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
-          </button>
-        </div>
-      </li>
-      <li class="task" data-reorder-item data-label="Review research">
-        <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research"
-          style="--icon: var(--icon-grip);"></button>
-        <label>Review research <input value="Collect source notes"></label>
-        <div class="task-controls">
-          <button class="move-up-button" type="button" aria-label="Move Review research up" title="Move up">
-            <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
-          </button>
-          <button class="move-down-button" type="button" aria-label="Move Review research down" title="Move down">
-            <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
-          </button>
-        </div>
-      </li>
-      <li class="task" data-reorder-item data-label="Schedule review">
-        <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review"
-          style="--icon: var(--icon-grip);"></button>
-        <label>Schedule review <input value="Invite the team"></label>
-        <div class="task-controls">
-          <button class="move-up-button" type="button" aria-label="Move Schedule review up" title="Move up">
-            <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
-          </button>
-          <button class="move-down-button" type="button" aria-label="Move Schedule review down" title="Move down">
-            <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
-          </button>
-        </div>
-      </li>
-    </ol>
+    <section aria-labelledby="handle-heading">
+      <h2 id="handle-heading">Vertical, scrollable, grabbable handle</h2>
+      <p>Drag an item with its handle, or press <kbd>Space</kbd> on a focused handle to grab it, move it with <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd>, then press <kbd>Space</kbd> to drop or <kbd>Escape</kbd> to cancel. Dragging past the list's edge scrolls it.</p>
+      <ol class="task-list scrollable" aria-labelledby="handle-heading">
+        <li class="task" data-reorder-item data-label="Outline project">
+          <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project" style="--icon: var(--icon-grip);"></button>
+          <label>Outline project <input value="Write the first draft"></label>
+        </li>
+        <li class="task" data-reorder-item data-label="Review research">
+          <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research" style="--icon: var(--icon-grip);"></button>
+          <label>Review research <input value="Collect source notes"></label>
+        </li>
+        <li class="task" data-reorder-item data-label="Schedule review">
+          <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review" style="--icon: var(--icon-grip);"></button>
+          <label>Schedule review <input value="Invite the team"></label>
+        </li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="buttons-heading">
+      <h2 id="buttons-heading">Vertical, move buttons</h2>
+      <p>Drag an item by its handle, or use its <em>Move up</em> and <em>Move down</em> buttons. The handle is pointer-only.</p>
+      <ol class="task-list" aria-labelledby="buttons-heading">
+        <li class="task" data-reorder-item data-label="Outline project">
+          <span class="drag-handle icon" aria-hidden="true" title="Drag to reorder Outline project" style="--icon: var(--icon-grip);"></span>
+          <label>Outline project <input value="Write the first draft"></label>
+          <div class="task-controls">
+            <button class="move-up-button" type="button" aria-label="Move Outline project up" title="Move up">
+              <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
+            </button>
+            <button class="move-down-button" type="button" aria-label="Move Outline project down" title="Move down">
+              <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
+            </button>
+          </div>
+        </li>
+        <li class="task" data-reorder-item data-label="Review research">
+          <span class="drag-handle icon" aria-hidden="true" title="Drag to reorder Review research" style="--icon: var(--icon-grip);"></span>
+          <label>Review research <input value="Collect source notes"></label>
+          <div class="task-controls">
+            <button class="move-up-button" type="button" aria-label="Move Review research up" title="Move up">
+              <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
+            </button>
+            <button class="move-down-button" type="button" aria-label="Move Review research down" title="Move down">
+              <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
+            </button>
+          </div>
+        </li>
+        <li class="task" data-reorder-item data-label="Schedule review">
+          <span class="drag-handle icon" aria-hidden="true" title="Drag to reorder Schedule review" style="--icon: var(--icon-grip);"></span>
+          <label>Schedule review <input value="Invite the team"></label>
+          <div class="task-controls">
+            <button class="move-up-button" type="button" aria-label="Move Schedule review up" title="Move up">
+              <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
+            </button>
+            <button class="move-down-button" type="button" aria-label="Move Schedule review down" title="Move down">
+              <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
+            </button>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="horizontal-heading">
+      <h2 id="horizontal-heading">Horizontal, scrollable, grabbable handle</h2>
+      <p>Same as the first list, along the inline axis: <kbd>ArrowLeft</kbd> and <kbd>ArrowRight</kbd> move a grabbed item, and dragging past the list's edge scrolls it.</p>
+      <ol class="task-list horizontal scrollable" aria-labelledby="horizontal-heading">
+        <li class="task" data-reorder-item data-label="Outline project">
+          <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project" style="--icon: var(--icon-grip);"></button>
+          <label>Outline project <input value="Write the first draft"></label>
+        </li>
+        <li class="task" data-reorder-item data-label="Review research">
+          <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research" style="--icon: var(--icon-grip);"></button>
+          <label>Review research <input value="Collect source notes"></label>
+        </li>
+        <li class="task" data-reorder-item data-label="Schedule review">
+          <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review" style="--icon: var(--icon-grip);"></button>
+          <label>Schedule review <input value="Invite the team"></label>
+        </li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="grid-heading">
+      <h2 id="grid-heading">Grid, grabbable handle</h2>
+      <p>Items wrap into rows. <kbd>ArrowLeft</kbd> and <kbd>ArrowRight</kbd> move a grabbed item one place in reading order; <kbd>ArrowUp</kbd> and <kbd>ArrowDown</kbd> move it one row.</p>
+      <ol class="task-list grid" aria-labelledby="grid-heading">
+        <li class="task" data-reorder-item data-label="Outline project">
+          <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project" style="--icon: var(--icon-grip);"></button>
+          <label>Outline project <input value="Write the first draft"></label>
+        </li>
+        <li class="task" data-reorder-item data-label="Review research">
+          <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research" style="--icon: var(--icon-grip);"></button>
+          <label>Review research <input value="Collect source notes"></label>
+        </li>
+        <li class="task" data-reorder-item data-label="Schedule review">
+          <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review" style="--icon: var(--icon-grip);"></button>
+          <label>Schedule review <input value="Invite the team"></label>
+        </li>
+      </ol>
+    </section>
 
     <p class="status" id="reorderStatus" role="status" aria-live="polite" aria-atomic="true"></p>
   </main>
 
   <script>
-    const list = document.getElementById('taskList');
     const status = document.getElementById('reorderStatus');
     let pointerItem = null;
     let pointerPreview = null;
@@ -262,8 +328,9 @@
     let isMoving = false;
     let pointerX = 0;
     let pointerY = 0;
+
     function getPosition(item) {
-      return [...list.children].indexOf(item) + 1;
+      return [...item.parentElement.children].indexOf(item) + 1;
     }
 
     // Delay so the announcement isn't swallowed when the move blurs and refocuses the handle (the before() fallback).
@@ -274,7 +341,7 @@
       announceTimer = setTimeout(() => { status.textContent = message; }, 500);
     }
 
-    function updateDisabledStates() {
+    function updateDisabledStates(list) {
       const items = [...list.children];
       items.forEach((item, index) => {
         const upBtn = item.querySelector('.move-up-button');
@@ -288,8 +355,9 @@
 
     // FLIP: measure, move, then animate each sibling from its old position.
     function moveItem(item, before, reveal = false) {
-      const first = new Map([...list.children].map((el) => [el, el.getBoundingClientRect().top]));
-      const scrollBefore = list.scrollTop;
+      const list = item.parentElement;
+      const first = new Map([...list.children].map((el) => [el, el.getBoundingClientRect()]));
+      const scrollBefore = { left: list.scrollLeft, top: list.scrollTop };
       // The before() fallback can blur the moved handle; flag it so that blur isn't treated as leaving.
       isMoving = true;
       if ('moveBefore' in Element.prototype) {
@@ -305,18 +373,22 @@
         pointerHandle.setPointerCapture(activePointerId);
       }
       // Scroll before animating so the item's layout position is used, not its animated offset.
-      if (reveal) item.scrollIntoView({ block: 'nearest' });
+      if (reveal) item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       if (reduceMotion.matches) return;
-      const scrolled = list.scrollTop - scrollBefore;
-      for (const [el, top] of first) {
-        const dy = top - scrolled - el.getBoundingClientRect().top;
-        if (dy) el.animate({ translate: [`0 ${dy}px`, '0 0'] }, { duration: 200, easing: 'ease-out' });
+      const scrolledX = list.scrollLeft - scrollBefore.left;
+      const scrolledY = list.scrollTop - scrollBefore.top;
+      for (const [el, old] of first) {
+        const now = el.getBoundingClientRect();
+        const dx = old.left - scrolledX - now.left;
+        const dy = old.top - scrolledY - now.top;
+        if (dx || dy) el.animate({ translate: [`${dx}px ${dy}px`, '0 0'] }, { duration: 200, easing: 'ease-out' });
       }
     }
 
     function finishPointerReorder(cancelled = false) {
       if (!pointerItem) return;
-      updateDisabledStates();
+      const list = pointerItem.parentElement;
+      updateDisabledStates(list);
       const label = pointerItem.dataset.label;
       const position = getPosition(pointerItem);
       if (cancelled) {
@@ -385,14 +457,24 @@
       updateDropTarget();
     }
 
+    const isRtl = (list) => getComputedStyle(list).direction === 'rtl';
+
     // Compare the pointer, clamped to the list, with layout midpoints. Layout positions ignore
     // in-flight FLIP translates, and a pointer past either edge still resolves to the first or last place.
+    // The list's classes pick the axis: `horizontal` compares inline positions, `grid` checks the row first.
     function updateDropTarget() {
+      const list = pointerItem.parentElement;
       const bounds = list.getBoundingClientRect();
-      const clamped = Math.min(Math.max(pointerY, bounds.top), bounds.bottom);
-      const y = clamped - bounds.top - list.clientTop + list.scrollTop;
+      const x = Math.min(Math.max(pointerX, bounds.left), bounds.right) - bounds.left - list.clientLeft + list.scrollLeft;
+      const y = Math.min(Math.max(pointerY, bounds.top), bounds.bottom) - bounds.top - list.clientTop + list.scrollTop;
+      const rtl = isRtl(list);
+      const beforeInline = (item) => rtl ? x > item.offsetLeft + item.offsetWidth / 2 : x < item.offsetLeft + item.offsetWidth / 2;
+      const beforeBlock = (item) => y < item.offsetTop + item.offsetHeight / 2;
+      const isBefore = list.classList.contains('horizontal') ? beforeInline
+        : list.classList.contains('grid') ? (item) => y < item.offsetTop || (y < item.offsetTop + item.offsetHeight && beforeInline(item))
+        : beforeBlock;
       const before = [...list.querySelectorAll(':scope > .task')]
-        .find((item) => item !== pointerItem && y < item.offsetTop + item.offsetHeight / 2) ?? null;
+        .find((item) => item !== pointerItem && isBefore(item)) ?? null;
       if (before === pointerItem.nextElementSibling) return;
       moveItem(pointerItem, before);
     }
@@ -402,21 +484,28 @@
     let scrollFrame = 0;
     let lastFrame = 0;
 
+    function edgeSpeed(position, start, end) {
+      const into = position < start + EDGE_ZONE ? start + EDGE_ZONE - position
+        : position > end - EDGE_ZONE ? end - EDGE_ZONE - position : 0;
+      return Math.min(Math.abs(into) / EDGE_ZONE, 2) * MAX_SPEED * Math.sign(-into);
+    }
+
+    // Scroll on whichever axis the list can scroll; the other assignment is a no-op.
     function autoScroll(now) {
+      const list = pointerItem.parentElement;
       const bounds = list.getBoundingClientRect();
-      const into = pointerY < bounds.top + EDGE_ZONE ? bounds.top + EDGE_ZONE - pointerY
-        : pointerY > bounds.bottom - EDGE_ZONE ? bounds.bottom - EDGE_ZONE - pointerY : 0;
-      const speed = Math.min(Math.abs(into) / EDGE_ZONE, 2) * MAX_SPEED * Math.sign(-into);
-      if (speed && lastFrame) {
-        const before = list.scrollTop;
-        list.scrollTop += speed * (now - lastFrame) / 1000;
-        if (list.scrollTop !== before) updateDropTarget();
+      if (lastFrame) {
+        const seconds = (now - lastFrame) / 1000;
+        const { scrollLeft, scrollTop } = list;
+        list.scrollTop += edgeSpeed(pointerY, bounds.top, bounds.bottom) * seconds;
+        list.scrollLeft += edgeSpeed(pointerX, bounds.left, bounds.right) * seconds;
+        if (list.scrollTop !== scrollTop || list.scrollLeft !== scrollLeft) updateDropTarget();
       }
       lastFrame = now;
       scrollFrame = requestAnimationFrame(autoScroll);
     }
 
-    list.addEventListener('pointerdown', (event) => {
+    document.addEventListener('pointerdown', (event) => {
       if (event.button !== 0 || activePointerId !== null) return;
       const handle = event.target.closest('.drag-handle');
       if (!handle) return;
@@ -454,39 +543,48 @@
       document.addEventListener('keydown', cancelPointerReorder);
     });
 
-    function moveKeyboardItem(item, direction) {
-      const sibling = direction === 'up'
-        ? item.previousElementSibling
-        : item.nextElementSibling;
-      if (!sibling) return;
+    // Move an item `delta` places in DOM order, clamped to the ends.
+    function moveKeyboardItem(item, delta) {
+      const siblings = [...item.parentElement.children];
+      const index = siblings.indexOf(item);
+      const target = Math.max(0, Math.min(siblings.length - 1, index + delta));
+      if (target === index) return;
 
       const activeElement = document.activeElement;
       const wasUpFocused = activeElement?.classList.contains('move-up-button');
       const wasDownFocused = activeElement?.classList.contains('move-down-button');
 
-      moveItem(item, direction === 'up' ? sibling : sibling.nextElementSibling, true);
-      updateDisabledStates();
+      moveItem(item, delta < 0 ? siblings[target] : siblings[target].nextElementSibling, true);
+      updateDisabledStates(item.parentElement);
 
       // Restore focus without scrolling: moveItem() already revealed the item
-      if (direction === 'up' && wasUpFocused) {
+      if (wasUpFocused) {
         const upBtn = item.querySelector('.move-up-button');
-        if (upBtn.disabled) {
-          item.querySelector('.move-down-button').focus({ preventScroll: true });
-        } else {
-          upBtn.focus({ preventScroll: true });
-        }
-      } else if (direction === 'down' && wasDownFocused) {
+        (upBtn.disabled ? item.querySelector('.move-down-button') : upBtn).focus({ preventScroll: true });
+      } else if (wasDownFocused) {
         const downBtn = item.querySelector('.move-down-button');
-        if (downBtn.disabled) {
-          item.querySelector('.move-up-button').focus({ preventScroll: true });
-        } else {
-          downBtn.focus({ preventScroll: true });
-        }
+        (downBtn.disabled ? item.querySelector('.move-up-button') : downBtn).focus({ preventScroll: true });
       } else {
         activeElement?.focus({ preventScroll: true });
       }
 
-      announce(`${item.dataset.label} moved ${direction}. Position ${getPosition(item)} of ${list.children.length}.`);
+      announce(`${item.dataset.label} moved to position ${getPosition(item)} of ${siblings.length}.`);
+    }
+
+    // How far an arrow key moves an item in this list: one place along its axis, or one row in a grid.
+    function keyDelta(list, key) {
+      const rtl = isRtl(list);
+      const previous = rtl ? 'ArrowRight' : 'ArrowLeft';
+      const next = rtl ? 'ArrowLeft' : 'ArrowRight';
+      if (list.classList.contains('horizontal')) {
+        return key === previous ? -1 : key === next ? 1 : 0;
+      }
+      if (list.classList.contains('grid')) {
+        const items = [...list.children];
+        const columns = items.filter((item) => item.offsetTop === items[0].offsetTop).length;
+        return key === previous ? -1 : key === next ? 1 : key === 'ArrowUp' ? -columns : key === 'ArrowDown' ? columns : 0;
+      }
+      return key === 'ArrowUp' ? -1 : key === 'ArrowDown' ? 1 : 0;
     }
 
     let grabbedHandle = null;
@@ -497,10 +595,11 @@
       grabbedHandle = null;
     }
 
-    list.addEventListener('keydown', (event) => {
+    document.addEventListener('keydown', (event) => {
       const handle = event.target.closest('.drag-handle');
       if (!handle) return;
       const item = handle.closest('.task');
+      const list = item.parentElement;
 
       if (event.key === ' ' || event.key === 'Enter') {
         event.preventDefault();
@@ -518,58 +617,54 @@
       } else if (event.key === 'Escape') {
         event.preventDefault();
         moveItem(item, grabbedNext, true);
-        updateDisabledStates();
+        updateDisabledStates(list);
         handle.focus({ preventScroll: true });
         releaseHandle();
         announce(`Cancelled. ${item.dataset.label} returned to position ${getPosition(item)} of ${list.children.length}.`);
-      } else if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
+      } else {
+        const delta = keyDelta(list, event.key);
+        if (!delta) return;
         event.preventDefault();
-        moveKeyboardItem(item, event.key === 'ArrowUp' ? 'up' : 'down');
+        moveKeyboardItem(item, delta);
       }
     });
 
     // Show the whole item (and its focus ring) when keyboard focus enters it. Skip mid-animation items:
     // a move already revealed them, and an in-flight translate would skew the scroll position.
-    list.addEventListener('focusin', (event) => {
+    document.addEventListener('focusin', (event) => {
       const item = event.target.closest('.task');
       if (!item || !event.target.matches(':focus-visible') || item.getAnimations().length) return;
-      item.scrollIntoView({ block: 'nearest' });
+      item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
 
-    list.addEventListener('focusout', (event) => {
+    document.addEventListener('focusout', (event) => {
       if (!isMoving && grabbedHandle && event.target === grabbedHandle) releaseHandle();
     });
 
-    list.addEventListener('click', (event) => {
+    document.addEventListener('click', (event) => {
       const upBtn = event.target.closest('.move-up-button');
       const downBtn = event.target.closest('.move-down-button');
       if (!upBtn && !downBtn) return;
-
-      const item = (upBtn || downBtn).closest('.task');
-      if (upBtn) {
-        moveKeyboardItem(item, 'up');
-      } else {
-        moveKeyboardItem(item, 'down');
-      }
+      moveKeyboardItem((upBtn || downBtn).closest('.task'), upBtn ? -1 : 1);
     });
 
-    // Add enough items for the list to scroll.
-    for (let i = 4; i <= 10; i++) {
-      const item = list.firstElementChild.cloneNode(true);
-      const label = `Task ${i}`;
-      item.dataset.label = label;
-      const handle = item.querySelector('.drag-handle');
-      handle.setAttribute('aria-label', `Reorder ${label}`);
-      handle.title = `Drag to reorder ${label}`;
-      item.querySelector('.move-up-button').setAttribute('aria-label', `Move ${label} up`);
-      item.querySelector('.move-down-button').setAttribute('aria-label', `Move ${label} down`);
-      item.querySelector('label').firstChild.textContent = `${label} `;
-      item.querySelector('input').value = '';
-      list.append(item);
+    // Add enough items for the scrollable lists to scroll and the grid to wrap.
+    for (const list of document.querySelectorAll('.task-list')) {
+      for (let i = 4; i <= 8; i++) {
+        const item = list.firstElementChild.cloneNode(true);
+        const label = `Task ${i}`;
+        item.dataset.label = label;
+        const handle = item.querySelector('.drag-handle');
+        if (handle.hasAttribute('aria-label')) handle.setAttribute('aria-label', `Reorder ${label}`);
+        handle.title = `Drag to reorder ${label}`;
+        item.querySelector('.move-up-button')?.setAttribute('aria-label', `Move ${label} up`);
+        item.querySelector('.move-down-button')?.setAttribute('aria-label', `Move ${label} down`);
+        item.querySelector('label').firstChild.textContent = `${label} `;
+        item.querySelector('input').value = '';
+        list.append(item);
+      }
+      updateDisabledStates(list);
     }
-
-    // Initialize disabled states
-    updateDisabledStates();
   </script>
 </body>
 
