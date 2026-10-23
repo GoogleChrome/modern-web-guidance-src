@@ -41,9 +41,16 @@ function getRulesWithMedia(
   for (const rule of rules) {
     if (rule instanceof CSSMediaRule) {
       if (mediaPredicate(rule.conditionText.toLowerCase())) {
-        result.push(... getRulesWithMedia(rule.cssRules, mediaPredicate));
+        result.push(...getRulesWithMedia(rule.cssRules, mediaPredicate));
       }
     } else {
+      if (rule instanceof CSSStyleRule) {
+        const bg = rule.style.getPropertyValue('background').trim();
+        const bgColor = rule.style.getPropertyValue('background-color').trim();
+        if (bg && !bgColor && !bg.includes('url(') && !bg.includes('gradient(')) {
+          rule.style.setProperty('background-color', bg);
+        }
+      }
       result.push(rule);
     }
   }
