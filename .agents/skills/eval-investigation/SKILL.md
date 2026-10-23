@@ -43,7 +43,7 @@ Artifacts generated during an evaluation run that log success rates, agent traje
 
 - **Eval Test Results** (`evals.json`)
   - **Path**: `results/suites/<suite_id>/evals.json`
-  - **Purpose**: Reference to check overall pass rates, verify the success of individual test checks, and confirm which tools or skills were activated during guided runs to ensure the agent properly utilized the corresponding guide.
+  - **Purpose**: Reference to check overall pass rates, verify the success of individual test checks, and inspect inline diagnostics on failed checks (`error`, `errorLocation`, `pageSnapshot`, and `browserErrors`). Also confirms which tools or skills were activated during guided runs to ensure the agent properly utilized the corresponding guide.
 
 - **Agent Trajectory** (`session-<timestamp>.json`)
   - **Path**: `results/suites/<suite_id>/<run_number>/<use-case>/task/guided/session-<timestamp>.json`
