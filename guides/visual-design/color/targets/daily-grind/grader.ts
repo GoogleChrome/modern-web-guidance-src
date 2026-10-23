@@ -13,9 +13,11 @@ import {
 import {
   getCascadedStyle,
   CSSMediaRule,
+  CSSNestedDeclarations,
   CSSStyleRule,
+  CSSStyleSheet,
+  CSSSupportsRule,
   type CSSRule,
-  type CSSStyleSheet,
 } from 'cssomnom';
 import type { Document } from 'linkedom';
 
@@ -35,23 +37,44 @@ function collectAllRules(rules: Iterable<CSSRule>): CSSRule[] {
 
 function getRulesWithMedia(
   rules: Iterable<CSSRule>,
-  mediaPredicate: (conditionText: string) => boolean
+  mediaPredicate: (conditionText: string) => boolean,
+  parentSelector = ''
 ): CSSRule[] {
   const result: CSSRule[] = [];
   for (const rule of rules) {
     if (rule instanceof CSSMediaRule) {
       if (mediaPredicate(rule.conditionText.toLowerCase())) {
-        result.push(...getRulesWithMedia(rule.cssRules, mediaPredicate));
+        result.push(...getRulesWithMedia(rule.cssRules, mediaPredicate, parentSelector));
+      }
+    } else if (rule instanceof CSSSupportsRule) {
+      result.push(...getRulesWithMedia(rule.cssRules, mediaPredicate, parentSelector));
+    } else if (rule instanceof CSSNestedDeclarations) {
+      if (parentSelector) {
+        const tempSheet = new CSSStyleSheet();
+        tempSheet.replaceSync(`${parentSelector} { ${rule.style.cssText} }`);
+        result.push(...getRulesWithMedia(tempSheet.cssRules, mediaPredicate));
       }
     } else {
       if (rule instanceof CSSStyleRule) {
+        const sel = parentSelector
+          ? rule.selectorText.replace(/&/g, parentSelector)
+          : rule.selectorText;
         const bg = rule.style.getPropertyValue('background').trim();
         const bgColor = rule.style.getPropertyValue('background-color').trim();
         if (bg && !bgColor && !bg.includes('url(') && !bg.includes('gradient(')) {
           rule.style.setProperty('background-color', bg);
         }
+        const tempSheet = new CSSStyleSheet();
+        tempSheet.replaceSync(`${sel} { ${rule.style.cssText} }`);
+        if (tempSheet.cssRules[0]) {
+          result.push(tempSheet.cssRules[0]);
+        }
+        if (rule.cssRules && rule.cssRules.length > 0) {
+          result.push(...getRulesWithMedia(rule.cssRules, mediaPredicate, sel));
+        }
+      } else {
+        result.push(rule);
       }
-      result.push(rule);
     }
   }
   return result;
@@ -308,7 +331,7 @@ test.describe('color Target Grader', () => {
 
     const hasLightDarkFn = allRules.some(
       (r) =>
-        r instanceof CSSStyleRule &&
+        (r instanceof CSSStyleRule || r instanceof CSSNestedDeclarations) &&
         r.style.cssText.toLowerCase().includes('light-dark(')
     );
 
@@ -328,7 +351,8 @@ test.describe('color Target Grader', () => {
 
     const usesSystemColorsInForcedMode = forcedColorsMediaRules.some((mediaRule) => {
       const nestedStyleRules = collectAllRules(mediaRule.cssRules).filter(
-        (r): r is CSSStyleRule => r instanceof CSSStyleRule
+        (r): r is CSSStyleRule | CSSNestedDeclarations =>
+          r instanceof CSSStyleRule || r instanceof CSSNestedDeclarations
       );
       return nestedStyleRules.some((sr) => containsSystemColor(sr.style.cssText));
     });
