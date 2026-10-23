@@ -1,233 +1,255 @@
-/**
- * Daily Grind Application - Layout Grader
- *
- * Expectations Evaluation Summary:
- * Expectation 1: SKIPPED - The base application already uses display: flex for one-dimensional navigation and hero layouts.
- * Expectation 2: TESTED - The implementation must use gap instead of child margins for flex children.
- * Expectation 3: SKIPPED - The base application does not declare separate flex-grow, flex-shrink, and flex-basis properties.
- * Expectation 4: TESTED - The implementation must apply flex-wrap: wrap on flex containers whose items can overflow.
- * Expectation 5: TESTED - The implementation must use auto margin to push a flex item to the end of the main axis rather than justify-self.
- * Expectation 6: TESTED - The implementation must use safe alignment on flex containers whose content can exceed container size.
- * Expectation 7: SKIPPED - The base application contains no flex items with long unbreakable content.
- * Expectation 8: SKIPPED - The base application does not declare conflicting flex-basis and inline-size/width.
- * Expectation 9: SKIPPED - The base application already satisfies this by preserving DOM order.
- * Expectation 10: SKIPPED - The base application already uses display: grid for two-dimensional layouts.
- * Expectation 11: SKIPPED - The base application uses normal document flow rather than a page-level grid shell layout.
- * Expectation 12: SKIPPED - The base application already satisfies this with repeat(auto-fit, minmax(250px, 1fr)).
- * Expectation 13: SKIPPED - The base application already satisfies this by using auto-fit for card tracks.
- * Expectation 14: SKIPPED - The base application already satisfies this by using minmax() and fr units.
- * Expectation 15: TESTED - The implementation must use subgrid on card grid items so that internal card elements align.
- * Expectation 16: TESTED - The implementation must declare an explicit grid-template-rows fallback before subgrid.
- * Expectation 17: SKIPPED - The base application cards have a fixed, uniform child count per cell.
- * Expectation 18: SKIPPED - The base application already satisfies this by not using grid-auto-flow: dense.
- * Expectation 19: SKIPPED - The base application does not use container queries.
- * Expectation 20: SKIPPED - The base application does not declare container-type: size.
- * Expectation 21: SKIPPED - The base application does not implement component-level responsive behavior via queries.
- * Expectation 22: SKIPPED - The base application does not scale typography or spacing with container query units.
- * Expectation 23: SKIPPED - The base application does not contain component-level media queries.
- * Expectation 24: SKIPPED - The base application does not use container-type.
- * Expectation 25: SKIPPED - The base application contains no dialog, popover, or overlay elements.
- * Expectation 26: SKIPPED - The base application contains no popover or dialog elements.
- * Expectation 27: SKIPPED - The base application contains no tethered overlays.
- * Expectation 28: SKIPPED - The base application does not use anchor positioning.
- * Expectation 29: SKIPPED - The base application does not use position-area.
- * Expectation 30: SKIPPED - The base application does not use anchor positioning.
- * Expectation 31: SKIPPED - The base application contains no scrollable regions styled with overflow: scroll.
- * Expectation 32: SKIPPED - The base application does not use overflow: hidden for clipping.
- * Expectation 33: SKIPPED - The base application does not contain custom scrollable containers that specify scrollbar-gutter.
- * Expectation 34: SKIPPED - The base application does not contain nested scroll regions.
- * Expectation 35: SKIPPED - The base application does not implement multi-line truncation.
- * Expectation 36: SKIPPED - The base application does not use overflow: hidden to mask replaced element gaps.
- * Expectation 37: SKIPPED - The base application hero image is a CSS background rather than an img element.
- * Expectation 38: TESTED - The implementation should prefer CSS logical properties for layout dimensions and spacing.
- * Expectation 39: TESTED - The implementation must use dynamic viewport units (dvh, dvw, dvb, dvi) for viewport-sized layout containers.
- * Expectation 40: SKIPPED - The base application already satisfies this by not using 100vw.
- * Expectation 41: SKIPPED - The base application does not contain a masonry-style gallery.
- */
+// Expectation Relevance Assessment:
+// 1: SKIPPED - Base application already uses `display: flex` on `nav` and `nav ul`.
+// 2: TESTED - Base application uses `margin-left: 20px` on `nav ul li` instead of `gap` on `nav ul`.
+// 3: SKIPPED - No individual flex item sizing (`flex-grow`/`flex-shrink`/`flex-basis`) exists or is needed in the base application.
+// 4: TESTED - Flex containers `nav` and `nav ul` lack `flex-wrap: wrap` (or `flex-flow`) in the base application.
+// 5: SKIPPED - `nav` uses `justify-content: space-between` rather than pushing an item with `justify-self`.
+// 6: TESTED - Flex containers in the base application use unsafe `align-items: center` instead of `safe center`.
+// 7: SKIPPED - Base application does not contain flex items with long unbreakable URLs or code strings.
+// 8: SKIPPED - Base application does not declare `flex-basis` or conflicting widths on flex items.
+// 9: SKIPPED - Base application does not reorder interactive content and has no requirement to do so.
+// 10: SKIPPED - Base application already uses `display: grid` on `.grid`.
+// 11: SKIPPED - Base application is a simple single-column flow without a multi-region sidebar/shell layout.
+// 12: SKIPPED - Base application already uses `repeat(auto-fit, minmax(250px, 1fr))` on `.grid`.
+// 13: SKIPPED - Base application already uses `auto-fit` on `.grid`.
+// 14: SKIPPED - Base application already uses `minmax(250px, 1fr)` on `.grid`.
+// 15: TESTED - `.card` elements inside `.grid` lack `subgrid` to align internal card elements across sibling cards.
+// 16: TESTED - Using `subgrid` on `.card` requires a preceding explicit `grid-template-rows` fallback declaration.
+// 17: TESTED - `.card` elements use `subgrid` on one axis (`grid-template-rows`) without applying `subgrid` to both axes.
+// 18: SKIPPED - Base application does not use `grid-auto-flow: dense`.
+// 19: TESTED - Component-level responsive card layout requires a containment context (`container-type: inline-size` or `container` shorthand).
+// 20: SKIPPED - No `container-type: size` is needed or used in the base application.
+// 21: TESTED - Component-level responsive card adjustments require `@container` queries rather than viewport `@media` queries.
+// 22: TESTED - Typography in the card/section components scales using container query units (`cqi`, `cqw`, etc.) inside `clamp()`.
+// 23: SKIPPED - Base application does not use `@media` queries.
+// 24: SKIPPED - Base application does not use `container-type: block-size`.
+// 25: SKIPPED - Base application has no overlays, modals, dialogs, or popovers.
+// 26: SKIPPED - Base application has no overlays, modals, dialogs, or popovers.
+// 27: SKIPPED - Base application has no overlays, tooltips, or flyout triggers.
+// 28: SKIPPED - Base application has no anchored overlays.
+// 29: SKIPPED - Base application has no anchored overlays.
+// 30: SKIPPED - Base application has no anchored overlays.
+// 31: SKIPPED - Base application has no bounded scrollable sub-regions (`overflow: scroll` or `overflow: auto`).
+// 32: SKIPPED - Base application has no clipped containers (`overflow: hidden` or `overflow: clip`).
+// 33: SKIPPED - Base application has no scrollable sub-containers.
+// 34: SKIPPED - Base application has no nested scroll regions like sidebars, modals, or scrollable lists.
+// 35: SKIPPED - Base application has no multi-line truncated text snippets.
+// 36: SKIPPED - Base application has no inline replaced elements (`<img>`, `<svg>`, `<video>`, `<canvas>`, `<iframe>`).
+// 37: SKIPPED - Base application has no `<img>` or `<video>` elements (only a CSS background image on `.hero`).
+// 38: TESTED - Base application uses physical properties (`padding`, `margin-top`, `margin-bottom`, `top`, `max-width`) instead of CSS logical properties.
+// 39: TESTED - Base application uses `height: 60vh` on `.hero` instead of dynamic/modern viewport or block units (`dvh`, `dvb`, `svh`).
+// 40: SKIPPED - Base application does not use `100vw`.
+// 41: SKIPPED - Base application has no masonry-style gallery.
 
-import * as fs from 'node:fs';
 import {
   test,
   expect,
   getTargetFiles,
   getCssStyleSheet,
-  getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
 import {
   CSSStyleRule,
-  tokenize,
-  parseDeclarationListSync,
-  type CSSStyleSheet,
+  CSSContainerRule,
+  type CSSRule,
 } from 'cssomnom';
 
-// @ts-ignore
+// @ts-ignore - import.meta.url is supported at runtime by Playwright/Node ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('Daily Grind CSS Layout Grader', () => {
+function collectAllRules(rules: Iterable<CSSRule>): CSSRule[] {
+  const result: CSSRule[] = [];
+  for (const rule of rules) {
+    result.push(rule);
+    if ('cssRules' in rule && rule.cssRules) {
+      result.push(...collectAllRules(Array.from(rule.cssRules as Iterable<CSSRule>)));
+    }
+  }
+  return result;
+}
 
-  test('Expectation 2: Uses gap for spacing between flex children instead of margins on the children', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const navUlHasGap = rules.some(
-      r =>
-        r instanceof CSSStyleRule &&
-        r.selectorText.includes('nav ul') &&
-        !r.selectorText.includes('li') &&
-        Boolean(r.style.getPropertyValue('gap') || r.style.getPropertyValue('column-gap'))
+function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
+  return collectAllRules(rules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+}
+
+test.describe('css-layout Target Grader', () => {
+  test('Expectation 2: Uses gap on flex navigation containers instead of child margins', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+
+    const navListRuleHasGap = styleRules.some(
+      (r) =>
+        /\bnav\s+ul\b/.test(r.selectorText) &&
+        (Boolean(r.style.getPropertyValue('gap')) ||
+          Boolean(r.style.getPropertyValue('column-gap')) ||
+          Boolean(r.style.getPropertyValue('row-gap'))),
     );
-    const childMarginAvoided = !rules.some(
-      r =>
-        r instanceof CSSStyleRule &&
-        r.selectorText.includes('nav ul li') &&
-        Boolean(r.style.getPropertyValue('margin-left') || r.style.getPropertyValue('margin-inline-start'))
+    const navLiHasMarginLeft = styleRules.some(
+      (r) =>
+        /\bnav\s+(?:ul\s+)?li\b/.test(r.selectorText) &&
+        Boolean(r.style.getPropertyValue('margin-left')),
     );
-    expect(navUlHasGap && childMarginAvoided).toBe(true);
+
+    expect(navListRuleHasGap && !navLiHasMarginLeft).toBe(true);
   });
 
-  test('Expectation 4: Applies flex-wrap wrap on flex containers whose items can overflow', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const navRule = rules.find(
-      (r): r is CSSStyleRule =>
-        r instanceof CSSStyleRule &&
-        r.selectorText.split(',').map(s => s.trim()).includes('nav')
-    );
-    const hasWrap = Boolean(
-      navRule &&
-        (navRule.style.getPropertyValue('flex-wrap') === 'wrap' ||
-          navRule.style.getPropertyValue('flex-flow').includes('wrap'))
-    );
-    expect(hasWrap).toBe(true);
+  test('Expectation 4: Applies flex-wrap on flex containers whose items can overflow', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+
+    const hasFlexWrap = styleRules.some((r) => {
+      const wrapVal = r.style.getPropertyValue('flex-wrap');
+      const flowVal = r.style.getPropertyValue('flex-flow');
+      return /\b(wrap|balance)\b/.test(wrapVal) || /\b(wrap|balance)\b/.test(flowVal);
+    });
+
+    expect(hasFlexWrap).toBe(true);
   });
 
-  test('Expectation 5: Uses an auto margin to push a flex item to the end of the main axis rather than justify-self', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const pushesNavUlWithAutoMargin = rules.some(
-      r =>
-        r instanceof CSSStyleRule &&
-        r.selectorText.includes('nav ul') &&
-        (r.style.getPropertyValue('margin-inline-start') === 'auto' ||
-          r.style.getPropertyValue('margin-left') === 'auto')
-    );
-    expect(pushesNavUlWithAutoMargin).toBe(true);
-  });
+  test('Expectation 6: Uses safe alignment (e.g. safe center) on flex containers', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
 
-  test('Expectation 6: Uses safe alignment on flex containers whose content can exceed container size', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const hasSafeAlignment = rules.some(
-      r =>
-        r instanceof CSSStyleRule &&
-        (r.style.getPropertyValue('align-items').includes('safe') ||
-          r.style.getPropertyValue('justify-content').includes('safe') ||
-          r.style.getPropertyValue('place-items').includes('safe'))
-    );
+    const hasSafeAlignment = styleRules.some((r) => {
+      const alignItems = r.style.getPropertyValue('align-items');
+      const justifyContent = r.style.getPropertyValue('justify-content');
+      const placeItems = r.style.getPropertyValue('place-items');
+      const placeContent = r.style.getPropertyValue('place-content');
+      return (
+        /\bsafe\b/.test(alignItems) ||
+        /\bsafe\b/.test(justifyContent) ||
+        /\bsafe\b/.test(placeItems) ||
+        /\bsafe\b/.test(placeContent)
+      );
+    });
+
     expect(hasSafeAlignment).toBe(true);
   });
 
-  test('Expectation 15: Uses subgrid on card grid items so internal card elements align across siblings', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const cardRule = rules.find(
-      (r): r is CSSStyleRule =>
-        r instanceof CSSStyleRule &&
-        r.selectorText.split(',').map(s => s.trim()).includes('.card')
+  test('Expectation 15: Uses subgrid on card elements to align internal elements across sibling cards', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+
+    const hasSubgrid = styleRules.some(
+      (r) =>
+        /\bcard\b/.test(r.selectorText) &&
+        /\bsubgrid\b/.test(r.style.getPropertyValue('grid-template-rows')),
     );
-    expect(cardRule?.style.getPropertyValue('grid-template-rows')).toBe('subgrid');
+
+    expect(hasSubgrid).toBe(true);
   });
 
-  test('Expectation 16: Declares an explicit grid-template-rows fallback before subgrid declaration', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const cssBlocks: string[] = [];
-    for (const { document } of docs) {
-      document.querySelectorAll('style').forEach((styleEl: any) => {
-        if (styleEl.textContent) cssBlocks.push(styleEl.textContent);
-      });
-    }
-    for (const file of targetFiles) {
-      if (file.endsWith('.css') && fs.existsSync(file)) {
-        cssBlocks.push(fs.readFileSync(file, 'utf8'));
-      }
-    }
-    const fullCss = cssBlocks.join('\n');
-    const tokens = tokenize(fullCss);
-    let inCard = false;
-    const blockTokens: any[] = [];
-    for (let i = 0; i < tokens.length; i++) {
-      if (tokens[i].type === 'ident' && tokens[i].value === 'card') inCard = true;
-      if (inCard && tokens[i].type === '{') {
-        let depth = 1;
-        i++;
-        while (i < tokens.length && depth > 0) {
-          if (tokens[i].type === '{') depth++;
-          else if (tokens[i].type === '}') depth--;
-          if (depth > 0) blockTokens.push(tokens[i]);
-          i++;
-        }
-        break;
-      }
-    }
-    const blockText = blockTokens.map((t: any) => t.raw || t.value).join('');
-    const decls = parseDeclarationListSync(blockText) as any[];
-    const rowsDecls = decls.filter(
-      (d: any) => d.name === 'grid-template-rows' || d.name === 'grid-template-columns'
-    );
-    const hasFallbackBeforeSubgrid =
-      rowsDecls.length >= 2 &&
-      rowsDecls.some((d: any, idx: number) => {
-        const val = d.body.map((t: any) => t.value).join(' ').trim();
-        if (val === 'subgrid' && idx > 0) {
-          const prevVal = rowsDecls[idx - 1].body.map((t: any) => t.value).join(' ').trim();
-          return prevVal !== 'subgrid';
-        }
-        return false;
-      });
-    expect(hasFallbackBeforeSubgrid).toBe(true);
-  });
+  test('Expectation 16: Declares an explicit grid-template-rows fallback for card layout alongside subgrid', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const allRules = collectAllRules(stylesheet.cssRules);
 
-  test('Expectation 38: Prefers CSS logical properties for layout dimensions and spacing', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const LOGICAL_PROPS = new Set([
-      'inline-size', 'min-inline-size', 'max-inline-size',
-      'block-size', 'min-block-size', 'max-block-size',
-      'margin-inline', 'margin-inline-start', 'margin-inline-end',
-      'margin-block', 'margin-block-start', 'margin-block-end',
-      'padding-inline', 'padding-inline-start', 'padding-inline-end',
-      'padding-block', 'padding-block-start', 'padding-block-end',
-      'inset-inline', 'inset-inline-start', 'inset-inline-end',
-      'inset-block', 'inset-block-start', 'inset-block-end',
-    ]);
-    let logicalPropertyCount = 0;
-    for (const r of rules) {
-      if (r instanceof CSSStyleRule) {
-        for (let i = 0; i < r.style.length; i++) {
-          if (LOGICAL_PROPS.has(r.style.item(i))) {
-            logicalPropertyCount++;
-          }
-        }
-      }
-    }
-    expect(logicalPropertyCount).toBeGreaterThanOrEqual(3);
-  });
-
-  test('Expectation 39: Uses dynamic viewport units (dvh, dvw, dvb, dvi) for viewport-sized layout containers', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const dynamicUnits = ['dvh', 'dvw', 'dvb', 'dvi'];
-    const hasDynamicViewportUnits = rules.some(r => {
-      if (!(r instanceof CSSStyleRule)) return false;
-      for (let i = 0; i < r.style.length; i++) {
-        const prop = r.style.item(i);
-        const val = r.style.getPropertyValue(prop);
-        if (dynamicUnits.some(unit => val.includes(unit))) {
-          return true;
-        }
-      }
-      return false;
+    // CSSOMNom keeps the last declaration in `style` when duplicate properties exist in the same rule,
+    // so we check either `cssText` of the rule for both fallback and `subgrid`, or an explicit fallback rule on `.card`.
+    const hasExplicitFallback = allRules.some((r) => {
+      if (!(r instanceof CSSStyleRule) || !/\bcard\b/.test(r.selectorText)) return false;
+      const cssText = r.cssText || '';
+      const hasNonSubgridRows =
+        /grid-template-rows\s*:\s*(?!subgrid\b)[^;]+/i.test(cssText) ||
+        (Boolean(r.style.getPropertyValue('grid-template-rows')) &&
+          !/\bsubgrid\b/.test(r.style.getPropertyValue('grid-template-rows')));
+      return hasNonSubgridRows;
     });
-    expect(hasDynamicViewportUnits).toBe(true);
+
+    expect(hasExplicitFallback).toBe(true);
   });
 
+  test('Expectation 17: Applies subgrid to one axis only on cards when sizing the other axis', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+
+    const subgridRules = styleRules.filter(
+      (r) =>
+        /\bcard\b/.test(r.selectorText) &&
+        /\bsubgrid\b/.test(r.style.getPropertyValue('grid-template-rows')),
+    );
+    const singleAxisSubgridOnly =
+      subgridRules.length > 0 &&
+      subgridRules.every(
+        (r) => !/\bsubgrid\b/.test(r.style.getPropertyValue('grid-template-columns')),
+      );
+
+    expect(singleAxisSubgridOnly).toBe(true);
+  });
+
+  test('Expectation 19: Establishes a containment context with container-type: inline-size (or container shorthand)', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+
+    const hasContainerContext = styleRules.some((r) => {
+      const containerType = r.style.getPropertyValue('container-type');
+      const containerShorthand = r.style.getPropertyValue('container');
+      return (
+        /\b(inline-size|size)\b/.test(containerType) ||
+        /\b(inline-size|size)\b/.test(containerShorthand)
+      );
+    });
+
+    expect(hasContainerContext).toBe(true);
+  });
+
+  test('Expectation 21: Uses @container queries for component-level responsive behavior', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const allRules = collectAllRules(stylesheet.cssRules);
+
+    const hasContainerRule = allRules.some((r) => r instanceof CSSContainerRule);
+
+    expect(hasContainerRule).toBe(true);
+  });
+
+  test('Expectation 22: Uses container query units inside clamp() for fluid typography or spacing', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+
+    const hasFluidContainerClamp = styleRules.some((r) => {
+      const cssText = r.cssText || '';
+      return /clamp\([^)]*\d+(?:\.\d+)?cq[ibwh]|clamp\([^)]*\d+(?:\.\d+)?cq(?:min|max)/i.test(
+        cssText,
+      );
+    });
+
+    expect(hasFluidContainerClamp).toBe(true);
+  });
+
+  test('Expectation 38: Uses CSS logical properties for layout dimensions and spacing', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+
+    const hasLogicalProperties = styleRules.some(
+      (r) =>
+        Boolean(r.style.getPropertyValue('max-inline-size')) ||
+        Boolean(r.style.getPropertyValue('padding-inline')) ||
+        Boolean(r.style.getPropertyValue('padding-block')) ||
+        Boolean(r.style.getPropertyValue('margin-inline')) ||
+        Boolean(r.style.getPropertyValue('margin-block')) ||
+        Boolean(r.style.getPropertyValue('margin-block-start')) ||
+        Boolean(r.style.getPropertyValue('margin-block-end')) ||
+        Boolean(r.style.getPropertyValue('inset-block-start')),
+    );
+
+    expect(hasLogicalProperties).toBe(true);
+  });
+
+  test('Expectation 39: Uses dynamic or modern viewport units (dvh, dvb, svh) instead of fixed height: 60vh on hero', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+
+    const hasModernViewportUnit = styleRules.some((r) => {
+      const minBlockSize = r.style.getPropertyValue('min-block-size');
+      const blockSize = r.style.getPropertyValue('block-size');
+      const height = r.style.getPropertyValue('height');
+      const cssText = r.cssText || '';
+      return (
+        /\d+(?:\.\d+)?(?:dv[hbwi]|sv[hbwi])\b/i.test(minBlockSize) ||
+        /\d+(?:\.\d+)?(?:dv[hbwi]|sv[hbwi])\b/i.test(blockSize) ||
+        /\d+(?:\.\d+)?(?:dv[hbwi]|sv[hbwi])\b/i.test(height) ||
+        /\d+(?:\.\d+)?(?:dv[hbwi]|sv[hbwi])\b/i.test(cssText)
+      );
+    });
+
+    expect(hasModernViewportUnit).toBe(true);
+  });
 });

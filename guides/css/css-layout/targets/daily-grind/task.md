@@ -1,1 +1,1 @@
-- Update the page layouts and UI components to use modern responsive layouts.
+- Refactor the page layout and UI components in `index.html`—including the navigation bar, hero section, and Seasonal Favorites drink cards—so the cards align their headings, descriptions, and action buttons cleanly across the row, adapt their layout based on available space, and size themselves naturally to their content.

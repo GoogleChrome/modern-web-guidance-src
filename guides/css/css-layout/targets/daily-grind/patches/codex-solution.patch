@@ -6,42 +6,28 @@ index 0000000..849ddff
 @@ -0,0 +1 @@
 +dist/
 diff --git a/index.html b/index.html
-index 66c9173..4f41d67 100644
+index 66c9173..ccddc02 100644
 --- a/index.html
 +++ b/index.html
-@@ -20,7 +20,17 @@
-       padding: 0;
-     }
- 
-+    html {
-+      overflow: auto;
-+      scrollbar-gutter: stable;
-+    }
-+
-     body {
-+      display: grid;
-+      grid-template-columns: minmax(0, 1fr);
-+      grid-template-rows: auto auto 1fr auto;
-+      grid-template-areas: "navigation" "hero" "main" "footer";
-+      min-block-size: 100dvb;
-       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+@@ -25,22 +25,27 @@
        line-height: 1.6;
        color: var(--text);
-@@ -29,18 +39,24 @@
+       background-color: var(--light);
++      overflow-wrap: anywhere;
+     }
  
      /* Navigation */
      nav {
-+      grid-area: navigation;
        background: var(--primary);
        color: white;
 -      padding: 1rem 5%;
 +      padding-block: 1rem;
 +      padding-inline: 5%;
        display: flex;
--      justify-content: space-between;
--      align-items: center;
 +      flex-wrap: wrap;
 +      gap: 1rem 2rem;
+       justify-content: space-between;
+-      align-items: center;
 +      align-items: safe center;
        position: sticky;
 -      top: 0;
@@ -50,81 +36,76 @@ index 66c9173..4f41d67 100644
      }
  
      .logo {
-+      flex: 0 1 auto;
 +      min-inline-size: 0;
-+      overflow-wrap: anywhere;
        font-size: 1.5rem;
        font-weight: bold;
        letter-spacing: 1px;
-@@ -48,14 +64,23 @@
+@@ -48,14 +53,21 @@
  
      nav ul {
        display: flex;
-+      flex: 0 1 auto;
 +      flex-wrap: wrap;
++      flex-wrap: balance;
++      gap: 0.75rem 1.25rem;
 +      align-items: safe center;
-+      gap: 0.75rem 20px;
 +      min-inline-size: 0;
 +      margin-inline-start: auto;
        list-style: none;
      }
  
-     nav ul li {
+-    nav ul li {
 -      margin-left: 20px;
-+      flex: 0 1 auto;
++    nav li {
 +      min-inline-size: 0;
      }
  
      nav a {
 +      display: block;
-+      overflow-wrap: anywhere;
        color: white;
        text-decoration: none;
        font-size: 0.9rem;
-@@ -68,46 +93,68 @@
+@@ -68,13 +80,15 @@
  
      .logout-link {
        border: 1px solid var(--accent);
 -      padding: 5px 12px;
-+      padding-block: 5px;
-+      padding-inline: 12px;
++      padding-block: 0.3125rem;
++      padding-inline: 0.75rem;
        border-radius: 4px;
      }
  
      /* Hero Section */
      .hero {
 -      height: 60vh;
-+      grid-area: hero;
-+      min-block-size: 60dvb;
++      min-block-size: 60vh;
++      min-block-size: 60svh;
        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
-       background-position: center;
+@@ -82,52 +96,97 @@
        display: flex;
        flex-direction: column;
--      justify-content: center;
+       justify-content: center;
 -      align-items: center;
-+      flex-wrap: wrap;
-+      gap: 1rem;
-+      justify-content: safe center;
 +      align-items: safe center;
++      gap: 1rem;
        color: white;
        text-align: center;
 -      padding: 0 20px;
-+      padding-block: 2rem;
-+      padding-inline: 20px;
-+    }
-+
-+    .hero > * {
-+      flex: 0 1 auto;
-+      min-inline-size: 0;
-+      max-inline-size: 100%;
-+      overflow-wrap: anywhere;
++      padding-block: clamp(2rem, 8vi, 5rem);
++      padding-inline: 1.25rem;
      }
  
      .hero h1 {
-       font-size: 3rem;
+-      font-size: 3rem;
 -      margin-bottom: 1rem;
++      font-size: clamp(2rem, 5vi, 3rem);
++      line-height: 1.2;
++      max-inline-size: 22ch;
++    }
++
++    .hero p {
++      max-inline-size: 60ch;
      }
  
      /* Content Sections */
@@ -132,36 +113,40 @@ index 66c9173..4f41d67 100644
 -      max-width: 1100px;
 -      margin: 40px auto;
 -      padding: 0 20px;
-+      grid-area: main;
-+      inline-size: min(100%, 1100px);
-+      min-inline-size: 0;
-+      justify-self: center;
-+      padding-block: 40px;
-+      padding-inline: 20px;
++      max-inline-size: 68.75rem;
++      margin-block: 2.5rem;
++      margin-inline: auto;
++      padding-inline: 1.25rem;
++      container: favorites / inline-size;
++    }
++
++    .section-title {
++      text-align: center;
++      font-size: 1.5rem;
++      font-size: clamp(1.5rem, 4cqi, 2rem);
      }
  
      .grid {
        display: grid;
 -      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
-+      grid-auto-rows: auto;
-       gap: 20px;
+-      gap: 20px;
 -      margin-top: 20px;
-+      margin-block-start: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.625rem), 1fr));
++      gap: 1.25rem;
++      margin-block-start: 1.25rem;
      }
  
      .card {
-+      display: grid;
-+      grid-row: span 3;
-+      grid-template-rows: auto 1fr auto;
-+      grid-template-rows: subgrid;
-+      gap: 15px;
 +      min-inline-size: 0;
-+      overflow-wrap: anywhere;
++      display: grid;
++      grid-template-rows: auto 1fr auto;
++      gap: 0.75rem;
        background: white;
-       padding: 20px;
+-      padding: 20px;
++      padding: 1.25rem;
        border-radius: 8px;
-@@ -116,7 +163,6 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
      }
  
      .card h3 {
@@ -169,68 +154,82 @@ index 66c9173..4f41d67 100644
        color: var(--primary);
      }
  
-@@ -124,30 +170,54 @@
++    .card .btn {
++      align-self: start;
++    }
++
++    /* Share each row's content tracks without imposing fixed card heights. */
++    @supports (grid-template-rows: subgrid) {
++      .card {
++        grid-row: span 3;
++        grid-template-rows: auto 1fr auto;
++        grid-template-rows: subgrid;
++      }
++    }
++
++    @container favorites (inline-size < 34rem) {
++      .grid {
++        gap: 1rem;
++      }
++
++      .card .btn {
++        justify-self: stretch;
++        inline-size: auto;
++      }
++    }
++
+     .btn {
        display: inline-block;
++      inline-size: fit-content;
++      max-inline-size: 100%;
++      justify-self: center;
        background: var(--primary);
        color: white;
 -      padding: 10px 20px;
-+      padding-block: 10px;
-+      padding-inline: 20px;
++      padding-block: 0.625rem;
++      padding-inline: 1.25rem;
        text-decoration: none;
        border-radius: 5px;
 -      margin-top: 15px;
        transition: background 0.3s;
      }
  
-+    .card .btn {
-+      justify-self: center;
-+      align-self: end;
-+      max-inline-size: 100%;
-+    }
-+
-     .btn:hover {
-       background: #3e2723;
-     }
- 
+@@ -138,16 +197,21 @@
      footer {
-+      grid-area: footer;
-+      display: flex;
-+      flex-direction: column;
-+      flex-wrap: wrap;
-+      align-items: safe center;
-+      gap: 20px;
        background: var(--secondary);
        text-align: center;
 -      padding: 40px 20px;
 -      margin-top: 40px;
-+      padding-block: 40px;
-+      padding-inline: 20px;
-+    }
-+
-+    footer > * {
-+      flex: 0 1 auto;
-+      min-inline-size: 0;
-+      max-inline-size: 100%;
-+      overflow-wrap: anywhere;
++      padding-block: 2.5rem;
++      padding-inline: 1.25rem;
++      margin-block-start: 2.5rem;
      }
  
      .footer-links {
 -      margin-bottom: 20px;
 +      display: flex;
 +      flex-wrap: wrap;
-+      align-items: safe center;
++      flex-wrap: balance;
 +      justify-content: safe center;
-+      gap: 10px 20px;
++      gap: 0.5rem 1.25rem;
++      margin-block-end: 1.25rem;
      }
  
      .footer-links a {
 -      margin: 0 10px;
-+      flex: 0 1 auto;
-+      min-inline-size: 0;
        color: var(--text);
        text-decoration: none;
        font-size: 0.85rem;
-@@ -199,9 +269,9 @@
+@@ -176,7 +240,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -199,9 +263,9 @@
  
    <footer>
      <div class="footer-links">
