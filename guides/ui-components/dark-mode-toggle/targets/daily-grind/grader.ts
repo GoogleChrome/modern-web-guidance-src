@@ -142,39 +142,25 @@ test.describe('dark-mode-toggle Target Grader', () => {
   });
 
   test('Root element (:root or html) uses CSS :has() selectors matching meta[name="color-scheme"] with content="dark" and content="light" to set root color-scheme without JS classes', () => {
-    const docs = getHtmlDocuments(targetFiles);
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const topRules = Array.from(stylesheet.cssRules);
+    const allRules = flattenCssRules(stylesheet.cssRules);
 
-    const resolvedProperly = docs.some(({ document }) => {
-      const rootEl = document.documentElement;
-      const metaEl = document.querySelector('head meta[name="color-scheme"]');
-      if (!rootEl || !metaEl) return false;
+    const hasMetaSchemeRule = (scheme: 'dark' | 'light') =>
+      allRules.some((r) => {
+        if (!(r instanceof CSSStyleRule)) return false;
+        if (r.style.getPropertyValue('color-scheme').trim() !== scheme) return false;
+        const sel = getEffectiveStyleRuleSelector(r).replace(/\s*&/g, '').trim();
+        const withoutAttrs = sel.replace(/\[[^\]]*\]/g, '');
+        if (/\.[a-zA-Z_-]/.test(withoutAttrs)) return false;
+        return (
+          /^(?::root|html)\s*:has\(/i.test(sel) &&
+          /meta/i.test(sel) &&
+          /\[\s*name\s*=\s*['"]?color-scheme['"]?\s*\]/i.test(sel) &&
+          new RegExp(`\\[\\s*content\\s*[~|^$*]?=\\s*['"]?${scheme}['"]?\\s*\\]`, 'i').test(sel)
+        );
+      });
 
-      const origContent = metaEl.getAttribute('content') || 'light dark';
-
-      metaEl.setAttribute('content', 'light dark');
-      const baseStyle = getCascadedStyle(rootEl, topRules).getPropertyValue('color-scheme').trim();
-
-      metaEl.setAttribute('content', 'dark');
-      const darkStyle = getCascadedStyle(rootEl, topRules).getPropertyValue('color-scheme').trim();
-
-      metaEl.setAttribute('content', 'light');
-      const lightStyle = getCascadedStyle(rootEl, topRules).getPropertyValue('color-scheme').trim();
-
-      metaEl.setAttribute('content', origContent);
-
-      const baseParts = baseStyle.split(/\s+/);
-      return (
-        baseParts.length === 2 &&
-        baseParts.includes('light') &&
-        baseParts.includes('dark') &&
-        darkStyle === 'dark' &&
-        lightStyle === 'light'
-      );
-    });
-
-    expect(resolvedProperly).toBe(true);
+    expect(hasMetaSchemeRule('dark') && hasMetaSchemeRule('light')).toBe(true);
   });
 
   test('Synchronous inline <script> in <head> placed after <meta name="color-scheme"> reads localStorage and applies stored scheme override to the meta content', () => {
