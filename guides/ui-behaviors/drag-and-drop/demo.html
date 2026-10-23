@@ -307,6 +307,8 @@
       const item = pointerItem;
       const preview = pointerPreview;
       const from = preview.getBoundingClientRect();
+      // Finish the item's in-flight FLIP animation so the target is its real layout position.
+      item.getAnimations().forEach((animation) => animation.finish());
       const to = item.getBoundingClientRect();
       const done = () => {
         item.classList.remove('pointer-dragging');
