@@ -245,6 +245,7 @@
     let pointerOffsetX = 0;
     let pointerOffsetY = 0;
     let activePointerId = null;
+    let pointerHandle = null;
     let pointerStartNext = null;
     let isMoving = false;
     let pointerX = 0;
@@ -287,6 +288,10 @@
         list.append(item);
       }
       isMoving = false;
+      // before() clears pointer capture along with the removed handle, so re-establish it.
+      if (pointerHandle && !pointerHandle.hasPointerCapture(activePointerId)) {
+        pointerHandle.setPointerCapture(activePointerId);
+      }
       // Scroll before animating so the item's layout position is used, not its animated offset.
       if (reveal) item.scrollIntoView({ block: 'nearest' });
       if (reduceMotion.matches) return;
@@ -330,6 +335,8 @@
       pointerItem = null;
       pointerPreview = null;
       activePointerId = null;
+      pointerHandle?.removeEventListener('lostpointercapture', onLostPointerCapture);
+      pointerHandle = null;
       document.documentElement.classList.remove('is-dragging');
       cancelAnimationFrame(scrollFrame);
       document.removeEventListener('pointermove', movePointerItem);
@@ -341,6 +348,13 @@
     // Only the pointer that started the drag may move or end it; a stray second touch is ignored.
     function endPointerReorder(event) {
       if (event.pointerId === activePointerId) finishPointerReorder();
+    }
+
+    // Capture lost for any reason other than the before() fallback (which re-captures) ends the drag.
+    function onLostPointerCapture(event) {
+      if (event.pointerId === activePointerId && !pointerHandle?.hasPointerCapture(event.pointerId)) {
+        finishPointerReorder();
+      }
     }
 
     function cancelPointerReorder(event) {
@@ -396,6 +410,9 @@
       if (!handle) return;
       event.preventDefault();
       activePointerId = event.pointerId;
+      pointerHandle = handle;
+      handle.setPointerCapture(event.pointerId);
+      handle.addEventListener('lostpointercapture', onLostPointerCapture);
       pointerItem = handle.closest('.task');
       pointerStartNext = pointerItem.nextElementSibling;
       const rect = pointerItem.getBoundingClientRect();
