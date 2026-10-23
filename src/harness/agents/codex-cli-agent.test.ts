@@ -607,3 +607,26 @@ test('parseCodexTrajectory parses code-mode patch calls as write_file', () => {
   assert.strictEqual((summary.steps[0].action?.params as any)?.path, 'src/App.tsx');
   assert.strictEqual(summary.steps[0].outcome?.status, 'success');
 });
+
+test('parseCodexTrajectory extracts token usage from token_usage_record entries', () => {
+  const rollout = [
+    {
+      type: 'token_usage_record',
+      payload: {
+        thread_id: 'thread_1',
+        turn_id: 'turn_1',
+        session_id: 'sess_1',
+        thread_token_usage: {
+          input_tokens: 400,
+          cached_input_tokens: 150,
+          output_tokens: 50,
+          reasoning_output_tokens: 10,
+          total_tokens: 450
+        }
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.deepStrictEqual(summary.tokenUsage, { total: 450, cached: 150 });
+});

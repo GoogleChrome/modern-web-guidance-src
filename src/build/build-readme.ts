@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import matter from "gray-matter";
+import matter from "@11ty/gray-matter";
 import { features, groups } from "web-features";
 import { scanAllGuides } from "../core/guide-validation.ts";
 import { getFeatureName } from "../core/baseline.ts";

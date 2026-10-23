@@ -1,23 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import * as path from 'path';
-import * as fs from 'fs';
 import { outDir, guidesDir } from '../core/paths.ts';
-
-function shouldIncludeTrace(): boolean {
-  const configEnv = process.env.GD_SUITE_CONFIG;
-  if (!configEnv) return false;
-  try {
-    let content = configEnv;
-    if (!configEnv.trim().startsWith('{') && fs.existsSync(configEnv)) {
-      content = fs.readFileSync(configEnv, 'utf8');
-    }
-    return !!JSON.parse(content).includeTrace;
-  } catch {
-    return false;
-  }
-}
-
-const includeTrace = shouldIncludeTrace();
 
 export default defineConfig({
   timeout: 5000,
@@ -33,7 +16,7 @@ export default defineConfig({
   reporter: 'list',
   outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR || path.join(outDir, 'test-results'),
   use: {
-    trace: includeTrace ? 'retain-on-failure' : 'off',
+    trace: 'off',
   },
   projects: [
     {
