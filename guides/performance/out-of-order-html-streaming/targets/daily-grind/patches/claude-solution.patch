@@ -1,75 +1,64 @@
 diff --git a/index.html b/index.html
-index 66c9173..cbfcf90 100644
+index 66c9173..a68ba99 100644
 --- a/index.html
 +++ b/index.html
-@@ -177,7 +177,8 @@
+@@ -177,26 +177,60 @@
    <main class="container">
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
-+      <div class="grid" id="seasonal-grid" aria-live="polite" style="min-height: 12rem;">
-+        <?start name="seasonal-cards">
++      <div class="grid" id="seasonal-grid" aria-live="polite">
          <div class="card">
++          <?start name="card-maple-oat-latte">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-@@ -193,10 +194,62 @@
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <?end>
+         </div>
+         <div class="card">
++          <?start name="card-dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <?end>
+         </div>
+         <div class="card">
++          <?start name="card-cold-brew">
+           <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
            <a href="/menu/cold-brew" class="btn">View Details</a>
++          <?end>
          </div>
-+        <?end>
++        <?marker name="seasonal-extra">
        </div>
      </section>
    </main>
  
-+  <!-- Streamed later in the same document: patches the Seasonal Favorites range.
-+       It re-declares the range so further template updates remain possible. -->
-+  <template for="seasonal-cards">
-+    <?start name="seasonal-cards">
++  <!-- Content streamed later in the same document patches the markers above -->
++  <template for="seasonal-extra">
 +    <div class="card">
-+      <h3>Maple Oat Latte</h3>
-+      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+      <a href="/menu/seasonal" class="btn">View Details</a>
++      <h3>Pumpkin Spice Cortado</h3>
++      <p>Smooth espresso with roasted pumpkin and warm autumn spices.</p>
++      <a href="/menu/pumpkin-cortado" class="btn">View Details</a>
 +    </div>
-+    <div class="card">
-+      <h3>Dark Roast Espresso</h3>
-+      <p>Bold, smokey, and perfect for a morning boost.</p>
-+      <a href="/menu/espresso" class="btn">View Details</a>
-+    </div>
-+    <div class="card">
-+      <h3>Cold Brew</h3>
-+      <p>Steeped for 18 hours for maximum smoothness.</p>
-+      <a href="/menu/cold-brew" class="btn">View Details</a>
-+    </div>
-+    <?end>
 +  </template>
 +
 +  <script>
-+    // Imperative update of Seasonal Favorites using the built-in HTML setter APIs.
-+    // Falls back to innerHTML-free DOM construction where setHTML is unsupported.
-+    window.updateSeasonalFavorites = async function (html) {
-+      const grid = document.getElementById('seasonal-grid');
-+      if (typeof grid.setHTML === 'function') {
-+        grid.setHTML(html);
-+      } else if (typeof grid.setHTMLUnsafe === 'function') {
-+        grid.setHTMLUnsafe(html);
++    // Imperative update of a card in place. Uses the native setter when available.
++    function updateSeasonalCard(index, { title, description, href }) {
++      const card = document.querySelectorAll('#seasonal-grid .card')[index];
++      if (!card) return;
++      const html = `<h3></h3><p></p><a class="btn">View Details</a>`;
++      if (typeof card.setHTMLUnsafe === 'function') {
++        card.setHTMLUnsafe(html);
 +      } else {
-+        const doc = new DOMParser().parseFromString(html, 'text/html');
-+        grid.replaceChildren(...doc.body.childNodes);
++        card.innerHTML = html;
 +      }
-+    };
-+
-+    // Stream a fetched HTML fragment into the grid incrementally.
-+    window.streamSeasonalFavorites = async function (url) {
-+      const grid = document.getElementById('seasonal-grid');
-+      const response = await fetch(url);
-+      if (typeof grid.streamHTML === 'function') {
-+        await response.body
-+          .pipeThrough(new TextDecoderStream())
-+          .pipeTo(grid.streamHTML());
-+      } else {
-+        await window.updateSeasonalFavorites(await response.text());
-+      }
-+    };
++      card.querySelector('h3').textContent = title;
++      card.querySelector('p').textContent = description;
++      card.querySelector('a').href = href;
++    }
++    window.updateSeasonalCard = updateSeasonalCard;
 +  </script>
 +
    <footer>

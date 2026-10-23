@@ -1,49 +1,93 @@
 diff --git a/index.html b/index.html
-index 66c9173..5a9495e 100644
+index 66c9173..32a56e3 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,40 @@
+@@ -152,7 +152,84 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
 +
-+    .skeleton {
-+      min-height: 150px;
++    .skeleton-card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      min-height: 170px;
 +      display: flex;
 +      flex-direction: column;
 +      justify-content: center;
 +      align-items: center;
-+      color: #777;
-+      background: linear-gradient(90deg, #f5f5f5 25%, #eeeeee 50%, #f5f5f5 75%);
-+      background-size: 200% 100%;
++      gap: 12px;
 +    }
 +
-+    .section-header {
++    .skeleton-line {
++      height: 18px;
++      width: 75%;
++      background: linear-gradient(90deg, #efebe9 25%, #d7ccc8 50%, #efebe9 75%);
++      background-size: 200% 100%;
++      animation: shimmer 1.5s infinite;
++      border-radius: 4px;
++    }
++
++    .skeleton-line.title {
++      height: 24px;
++      width: 55%;
++    }
++
++    .skeleton-btn {
++      height: 40px;
++      width: 120px;
++      background: #d7ccc8;
++      border-radius: 5px;
++      margin-top: 8px;
++    }
++
++    @keyframes shimmer {
++      0% {
++        background-position: 200% 0;
++      }
++      100% {
++        background-position: -200% 0;
++      }
++    }
++
++    .section-controls {
 +      display: flex;
 +      justify-content: center;
-+      align-items: center;
-+      gap: 15px;
++      gap: 12px;
++      margin-top: 15px;
 +      flex-wrap: wrap;
 +    }
 +
-+    .btn-secondary {
-+      background: var(--accent);
-+      color: var(--text);
-+      border: none;
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 2px solid var(--primary);
 +      cursor: pointer;
-+      font-weight: bold;
 +      font-family: inherit;
 +      font-size: 0.9rem;
 +      margin-top: 0;
 +    }
 +
-+    .btn-secondary:hover {
-+      background: #ff9100;
++    .btn-outline:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.9rem;
 +    }
    </style>
++  <script type="module" src="https://unpkg.com/template-for-polyfill"></script>
++  <script type="module" src="https://unpkg.com/html-setters-polyfill"></script>
  </head>
  
-@@ -175,24 +209,31 @@
+ <body>
+@@ -175,24 +252,40 @@
    </header>
  
    <main class="container">
@@ -64,43 +108,81 @@ index 66c9173..5a9495e 100644
 -          <h3>Cold Brew</h3>
 -          <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
--        </div>
 +    <section id="seasonal-favorites" aria-live="polite">
-+      <div class="section-header">
++      <?start name="seasonal-favorites">
 +        <h2 style="text-align: center;">Seasonal Favorites</h2>
-+        <button id="refresh-seasonal-btn" type="button" class="btn btn-secondary">Refresh Favorites</button>
-+      </div>
-+      <div class="grid" id="seasonal-cards-grid">
-+        <?start name="seasonal-card-1">
-+          <div class="card skeleton" id="seasonal-card-1">
-+            <h3>Loading seasonal favorite...</h3>
-+            <p>Preparing fresh recommendations...</p>
-+          </div>
-+        <?end>
-+        <?start name="seasonal-card-2">
-+          <div class="card skeleton" id="seasonal-card-2">
-+            <h3>Loading seasonal favorite...</h3>
-+            <p>Preparing fresh recommendations...</p>
-+          </div>
-+        <?end>
-+        <?start name="seasonal-card-3">
-+          <div class="card skeleton" id="seasonal-card-3">
-+            <h3>Loading seasonal favorite...</h3>
-+            <p>Preparing fresh recommendations...</p>
-+          </div>
-+        <?end>
-+        <?marker name="seasonal-cards-extra">
++        <div class="grid" id="seasonal-grid">
++          <?start name="card-maple-oat-latte">
++            <div class="card skeleton-card" aria-busy="true">
++              <div class="skeleton-line title"></div>
++              <div class="skeleton-line"></div>
++              <div class="skeleton-btn"></div>
++              <span style="font-size: 0.8rem; color: #795548;">Loading Maple Oat Latte...</span>
++            </div>
++          <?end>
++          <?start name="card-dark-roast-espresso">
++            <div class="card skeleton-card" aria-busy="true">
++              <div class="skeleton-line title"></div>
++              <div class="skeleton-line"></div>
++              <div class="skeleton-btn"></div>
++              <span style="font-size: 0.8rem; color: #795548;">Loading Dark Roast Espresso...</span>
++            </div>
++          <?end>
++          <?start name="card-cold-brew">
++            <div class="card skeleton-card" aria-busy="true">
++              <div class="skeleton-line title"></div>
++              <div class="skeleton-line"></div>
++              <div class="skeleton-btn"></div>
++              <span style="font-size: 0.8rem; color: #795548;">Loading Cold Brew...</span>
++            </div>
++          <?end>
++          <?marker name="additional-seasonal-cards">
+         </div>
++      <?end>
++      <div class="section-controls">
++        <button type="button" id="refresh-seasonal-btn" class="btn btn-outline">Stream Seasonal Update</button>
++        <button type="button" id="add-special-btn" class="btn btn-outline">Add Roaster's Special</button>
        </div>
      </section>
    </main>
-@@ -207,6 +248,182 @@
+@@ -207,6 +300,199 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <!-- Out-of-Order Declarative HTML Streaming Fragments -->
-+  <template for="seasonal-card-1">
-+    <?start name="seasonal-card-1">
-+      <div class="card" id="seasonal-card-1" data-seasonal-card="1">
++  <!-- Out-of-Order (OOO) Streamed Content Patching -->
++  <template for="seasonal-favorites">
++    <?start name="seasonal-favorites">
++      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="grid" id="seasonal-grid">
++        <?start name="card-maple-oat-latte">
++          <div class="card skeleton-card" aria-busy="true">
++            <div class="skeleton-line title"></div>
++            <div class="skeleton-line"></div>
++            <div class="skeleton-btn"></div>
++          </div>
++        <?end>
++        <?start name="card-dark-roast-espresso">
++          <div class="card skeleton-card" aria-busy="true">
++            <div class="skeleton-line title"></div>
++            <div class="skeleton-line"></div>
++            <div class="skeleton-btn"></div>
++          </div>
++        <?end>
++        <?start name="card-cold-brew">
++          <div class="card skeleton-card" aria-busy="true">
++            <div class="skeleton-line title"></div>
++            <div class="skeleton-line"></div>
++            <div class="skeleton-btn"></div>
++          </div>
++        <?end>
++        <?marker name="additional-seasonal-cards">
++      </div>
++    <?end>
++  </template>
++
++  <template for="card-maple-oat-latte">
++    <?start name="card-maple-oat-latte">
++      <div class="card" id="card-maple-oat-latte" data-card="maple-oat-latte">
 +        <h3>Maple Oat Latte</h3>
 +        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 +        <a href="/menu/seasonal" class="btn">View Details</a>
@@ -108,9 +190,9 @@ index 66c9173..5a9495e 100644
 +    <?end>
 +  </template>
 +
-+  <template for="seasonal-card-2">
-+    <?start name="seasonal-card-2">
-+      <div class="card" id="seasonal-card-2" data-seasonal-card="2">
++  <template for="card-dark-roast-espresso">
++    <?start name="card-dark-roast-espresso">
++      <div class="card" id="card-dark-roast-espresso" data-card="dark-roast-espresso">
 +        <h3>Dark Roast Espresso</h3>
 +        <p>Bold, smokey, and perfect for a morning boost.</p>
 +        <a href="/menu/espresso" class="btn">View Details</a>
@@ -118,9 +200,9 @@ index 66c9173..5a9495e 100644
 +    <?end>
 +  </template>
 +
-+  <template for="seasonal-card-3">
-+    <?start name="seasonal-card-3">
-+      <div class="card" id="seasonal-card-3" data-seasonal-card="3">
++  <template for="card-cold-brew">
++    <?start name="card-cold-brew">
++      <div class="card" id="card-cold-brew" data-card="cold-brew">
 +        <h3>Cold Brew</h3>
 +        <p>Steeped for 18 hours for maximum smoothness.</p>
 +        <a href="/menu/cold-brew" class="btn">View Details</a>
@@ -128,151 +210,138 @@ index 66c9173..5a9495e 100644
 +    <?end>
 +  </template>
 +
-+  <script type="module">
-+    const grid = document.getElementById('seasonal-cards-grid');
-+    const refreshBtn = document.getElementById('refresh-seasonal-btn');
-+
++  <script>
 +    /**
-+     * Updates an individual seasonal card or the seasonal grid statically using the native setHTML() API.
++     * Imperative updates for the Seasonal Favorites section and individual coffee cards
++     * using the native HTML setters and streaming setters APIs.
 +     */
-+    export function updateSeasonalCardHTML(cardSelectorOrElement, htmlContent, options = {}) {
-+      const target = typeof cardSelectorOrElement === 'string'
-+        ? document.querySelector(cardSelectorOrElement)
-+        : cardSelectorOrElement;
-+      if (!target) return;
++    const seasonalSection = document.getElementById('seasonal-favorites');
 +
-+      if (typeof target.setHTML === 'function') {
-+        target.setHTML(htmlContent, options);
-+      } else if (typeof target.setHTMLUnsafe === 'function') {
-+        target.setHTMLUnsafe(htmlContent, options);
-+      } else {
-+        target.innerHTML = htmlContent;
++    // Update an individual coffee card in-place using setHTML / replaceWithHTML or streamHTML
++    async function updateCoffeeCard(cardSelector, htmlOrStream, options = {}) {
++      const card = document.querySelector(cardSelector);
++      if (!card) return;
++
++      if (typeof htmlOrStream === 'string') {
++        if (options.replace) {
++          if (options.unsafe) {
++            card.replaceWithHTMLUnsafe(htmlOrStream, options);
++          } else {
++            card.replaceWithHTML(htmlOrStream, options);
++          }
++        } else {
++          if (options.unsafe) {
++            card.setHTMLUnsafe(htmlOrStream, options);
++          } else {
++            card.setHTML(htmlOrStream, options);
++          }
++        }
++      } else if (htmlOrStream && typeof htmlOrStream.pipeTo === 'function') {
++        const writable = options.replace
++          ? (options.unsafe ? card.streamReplaceWithHTMLUnsafe(options) : card.streamReplaceWithHTML(options))
++          : (options.unsafe ? card.streamHTMLUnsafe(options) : card.streamHTML(options));
++        await htmlOrStream.pipeTo(writable);
 +      }
 +    }
 +
-+    /**
-+     * Replaces a seasonal card element using the native replaceWithHTML() API.
-+     */
-+    export function replaceSeasonalCardHTML(cardSelectorOrElement, htmlContent, options = {}) {
-+      const target = typeof cardSelectorOrElement === 'string'
-+        ? document.querySelector(cardSelectorOrElement)
-+        : cardSelectorOrElement;
-+      if (!target) return;
-+
-+      if (typeof target.replaceWithHTML === 'function') {
-+        target.replaceWithHTML(htmlContent, options);
-+      } else if (typeof target.replaceWithHTMLUnsafe === 'function') {
-+        target.replaceWithHTMLUnsafe(htmlContent, options);
-+      } else {
-+        target.outerHTML = htmlContent;
-+      }
-+    }
-+
-+    /**
-+     * Appends new seasonal card HTML to the grid using the native appendHTML() API.
-+     */
-+    export function appendSeasonalCardHTML(htmlContent, options = {}) {
++    // Stream or set updates into the Seasonal Favorites grid or section
++    async function streamSeasonalFavorites(urlOrChunks, options = {}) {
++      const grid = document.getElementById('seasonal-grid') || seasonalSection;
 +      if (!grid) return;
-+      if (typeof grid.appendHTML === 'function') {
-+        grid.appendHTML(htmlContent, options);
-+      } else if (typeof grid.appendHTMLUnsafe === 'function') {
-+        grid.appendHTMLUnsafe(htmlContent, options);
-+      } else {
-+        grid.insertAdjacentHTML('beforeend', htmlContent);
-+      }
-+    }
 +
-+    /**
-+     * Dynamically streams HTML updates into a target element (or the seasonal grid)
-+     * using the browser's built-in streamHTML() / streamHTMLUnsafe() APIs.
-+     */
-+    export async function streamSeasonalUpdates(urlOrResponse, target = grid, options = {}) {
-+      if (!target) return;
-+      const response = typeof urlOrResponse === 'string'
-+        ? await fetch(urlOrResponse)
-+        : urlOrResponse;
-+
-+      const getWritable = () => {
-+        if (options.runScripts && typeof target.streamHTMLUnsafe === 'function') {
-+          return target.streamHTMLUnsafe(options);
-+        }
-+        if (typeof target.streamHTML === 'function') {
-+          return target.streamHTML(options);
-+        }
-+        if (typeof target.streamHTMLUnsafe === 'function') {
-+          return target.streamHTMLUnsafe(options);
-+        }
-+        return null;
-+      };
-+
-+      const writable = getWritable();
-+      if (writable) {
++      if (typeof urlOrChunks === 'string') {
++        const response = await fetch(urlOrChunks);
 +        if (typeof response.textStream === 'function') {
-+          await response.textStream().pipeTo(writable);
++          await response.textStream().pipeTo(
++            options.unsafe ? grid.streamHTMLUnsafe(options) : grid.streamHTML(options)
++          );
 +        } else if (response.body) {
 +          await response.body
 +            .pipeThrough(new TextDecoderStream())
-+            .pipeTo(writable);
++            .pipeTo(options.unsafe ? grid.streamHTMLUnsafe(options) : grid.streamHTML(options));
 +        }
-+      } else {
-+        const html = await response.text();
-+        updateSeasonalCardHTML(target, html, options);
++        return;
++      }
++
++      if (Array.isArray(urlOrChunks)) {
++        const stream = new ReadableStream({
++          async start(controller) {
++            for (const chunk of urlOrChunks) {
++              controller.enqueue(chunk);
++            }
++            controller.close();
++          }
++        });
++        await stream.pipeTo(
++          options.unsafe ? grid.streamHTMLUnsafe(options) : grid.streamHTML(options)
++        );
 +      }
 +    }
 +
-+    // Expose helpers on window for imperative updates
-+    window.seasonalFavorites = {
-+      updateSeasonalCardHTML,
-+      replaceSeasonalCardHTML,
-+      appendSeasonalCardHTML,
-+      streamSeasonalUpdates,
-+    };
++    // Append a new coffee card to the seasonal grid using appendHTML / streamAppendHTML
++    async function appendCoffeeCard(htmlOrStream, options = {}) {
++      const grid = document.getElementById('seasonal-grid');
++      if (!grid) return;
 +
-+    if (refreshBtn && grid) {
-+      refreshBtn.addEventListener('click', async () => {
-+        try {
-+          const response = await fetch('/api/seasonal-favorites');
-+          if (response.ok) {
-+            await streamSeasonalUpdates(response, grid);
-+            return;
-+          }
-+        } catch {
-+          // Fallback to local simulated stream if endpoint is not available
-+        }
-+
-+        const updatedCardsHTML = `
-+          <div class="card" id="seasonal-card-1" data-seasonal-card="1">
-+            <h3>Spiced Pumpkin Cold Foam</h3>
-+            <p>Velvety cold brew topped with house-made pumpkin spice sweet cream.</p>
-+            <a href="/menu/seasonal" class="btn">View Details</a>
-+          </div>
-+          <div class="card" id="seasonal-card-2" data-seasonal-card="2">
-+            <h3>Toasted Chestnut Cortado</h3>
-+            <p>Equal parts rich espresso and steamed milk infused with roasted chestnut.</p>
-+            <a href="/menu/espresso" class="btn">View Details</a>
-+          </div>
-+          <div class="card" id="seasonal-card-3" data-seasonal-card="3">
-+            <h3>Cardamom Honey Latte</h3>
-+            <p>Fragrant ground cardamom and wildflower honey balanced with smooth espresso.</p>
-+            <a href="/menu/seasonal" class="btn">View Details</a>
-+          </div>
-+        `;
-+
-+        if (typeof grid.streamHTML === 'function') {
-+          const stream = new ReadableStream({
-+            start(controller) {
-+              controller.enqueue(updatedCardsHTML);
-+              controller.close();
-+            }
-+          });
-+          await stream.pipeTo(grid.streamHTML());
++      if (typeof htmlOrStream === 'string') {
++        if (options.unsafe) {
++          grid.appendHTMLUnsafe(htmlOrStream, options);
 +        } else {
-+          updateSeasonalCardHTML(grid, updatedCardsHTML);
++          grid.appendHTML(htmlOrStream, options);
 +        }
-+      });
++      } else if (htmlOrStream && typeof htmlOrStream.pipeTo === 'function') {
++        const writable = options.unsafe
++          ? grid.streamAppendHTMLUnsafe(options)
++          : grid.streamAppendHTML(options);
++        await htmlOrStream.pipeTo(writable);
++      }
 +    }
-+  </script>
 +
++    // Wire up interactive controls for imperative updates
++    document.getElementById('refresh-seasonal-btn')?.addEventListener('click', async () => {
++      const chunks = [
++        `<div class="card" id="card-maple-oat-latte" data-card="maple-oat-latte">
++          <h3>Spiced Maple Oat Latte</h3>
++          <p>Creamy oat milk infused with Vermont maple syrup and warm autumn spices.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>`,
++        `<div class="card" id="card-dark-roast-espresso" data-card="dark-roast-espresso">
++          <h3>Single-Origin Dark Espresso</h3>
++          <p>Bold, smokey notes of dark chocolate for the ultimate morning boost.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>`,
++        `<div class="card" id="card-cold-brew" data-card="cold-brew">
++          <h3>Vanilla Bean Cold Brew</h3>
++          <p>Steeped for 18 hours and finished with Madagascar vanilla bean.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>`
++      ];
++      await streamSeasonalFavorites(chunks);
++    });
++
++    document.getElementById('add-special-btn')?.addEventListener('click', async () => {
++      const existingSpecial = document.getElementById('card-roasters-special');
++      const specialHTML = `
++        <div class="card" id="card-roasters-special" data-card="roasters-special">
++          <h3>Cardamom Honey Cortado</h3>
++          <p>Equal parts rich espresso and steamed milk with wildflower honey.</p>
++          <a href="/menu/specials" class="btn">View Details</a>
++        </div>
++      `;
++      if (existingSpecial) {
++        await updateCoffeeCard('#card-roasters-special', specialHTML, { replace: true });
++      } else {
++        await appendCoffeeCard(specialHTML);
++      }
++    });
++
++    // Expose imperative update helpers for programmatic usage
++    window.dailyGrindUpdates = {
++      updateCoffeeCard,
++      streamSeasonalFavorites,
++      appendCoffeeCard
++    };
++  </script>
  </body>
  
  </html>
