@@ -15,6 +15,16 @@ guides:
 
 A checkbox group lets users pick any number of options, and a master checkbox selects or clears all of them at once. When only some options are checked, the master shows the mixed (indeterminate) state. For the checkbox styling itself (icons, animation, `accent-color`), follow the `checkbox` guide's approach; this guide covers the group structure, the master behavior, and the layout.
 
+## Choosing the pattern
+
+MANDATORY: Default to a `<fieldset>` of `<label>`s with nested `<input type="checkbox">`, as described below. It has the best assistive technology support, needs no ARIA, works without JavaScript, and is the only pattern with native indeterminate support for a master checkbox. Use it when:
+
+* The group has a small to moderate number of options (provisionally about 12 or fewer) that users scan and compare at once.
+* The group has a master checkbox.
+* Options carry secondary metadata that should align in columns.
+
+A customizable `<select multiple>` listbox may suit long, height-bounded lists that need type-ahead or compact form space, but this guidance is pending a11y SME review. The 12-option figure is a provisional heuristic, not an established rule. DO NOT choose the listbox pattern; use labelled checkboxes unless the use case explicitly requires a listbox.
+
 ## 1. Group with `<fieldset>` and `<legend>`
 
 MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive technology announces the group name. Put the master checkbox before the option list, inside the fieldset. Every checkbox, including the master, needs an associated `<label>` with a hit target of at least 44px.
@@ -53,7 +63,7 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
 
 * Keep the master's label stable ("Select all ..."). Do not list checked or unchecked items in it.
 * Optionally add `aria-controls` on the master listing the option IDs; screen reader support is limited, so never rely on it.
-* Use an `<output>` (a live region) for a short summary such as "2 of 4 available units active". It is optional; add it when the group is long enough that users benefit from a running count.
+* Include an `<output>` (a live region) with a short summary such as "2 of 4 available units active" whenever the group has a master checkbox. Without it, a bulk change from select-all is silent to screen reader users. Update its text in `sync()`.
 
 ## 2. Master checkbox behavior
 
@@ -61,6 +71,7 @@ MANDATORY: Derive the master's state from the options whenever any option change
 
 ```js
 const master = document.querySelector('#select-all');
+const summary = document.querySelector('fieldset output');
 // Exclude disabled options; they must never be changed by select-all.
 const items = [...document.querySelectorAll('input[name="robot"]:not(:disabled)')];
 
@@ -69,6 +80,8 @@ function sync() {
   master.checked = checked === items.length;
   // Mixed only when some, but not all, options are checked.
   master.indeterminate = checked > 0 && checked < items.length;
+  // Announce the running count so bulk changes are not silent.
+  summary.textContent = `${checked} of ${items.length} available units active`;
 }
 
 master.addEventListener('change', () => {
@@ -80,6 +93,23 @@ sync(); // Reflect options that are checked on page load.
 ```
 
 Clicking an indeterminate master resolves to checked (all options selected), because the browser clears `indeterminate` and toggles `checked`.
+
+### When and how to include a master checkbox
+
+The master is a convenience control. The options remain the source of truth, and the master's state is always derived from them.
+
+* Include a master only when the group has 4 or more options and selecting all or none is a plausible task. Omit it for 2-3 options.
+* DO NOT add a master when selecting everything is destructive or risky (for example deleting items or granting permissions).
+* Place the master first inside the `<fieldset>`, before the options, and separate it visually (for example a divider or heavier font weight) so it reads as a control over the group, not as another option.
+* Keep the label static ("Select all ..."). A label that flips between "Select all" and "Deselect all" is announced as a change in meaning to screen reader users, while the checked and mixed states already convey the current status.
+* Give the master no `name` attribute so it is not submitted with the form. Only the options carry `name` and `value`.
+* If there are no enabled options, set `disabled` on the master.
+* For filtered or paginated lists, the master applies to the visible, enabled options only. Name that scope in the label (for example "Select all 12 shown") and recompute the master's state whenever the visible set changes.
+
+```js
+// After filtering or when the enabled set changes, rebuild `items` and re-sync.
+master.disabled = items.length === 0;
+```
 
 ## 3. Styling
 
