@@ -1,4 +1,5 @@
 - Dragging an item with a pointer—preferably from a dedicated drag handle—changes the item's DOM and visible position within the collection.
+- Pressing `Escape` during a pointer drag cancels it and restores the item to its original position.
 - Reordering moves the existing DOM element rather than recreating it, preserving state in controls inside that item.
 - Each item provides an accessible keyboard reordering mechanism, such as an appropriately named, focusable drag handle that supports `ArrowUp` and `ArrowDown`, or separate movement buttons (or an options menu containing them).
 - The keyboard reordering mechanism moves the item up in the collection.

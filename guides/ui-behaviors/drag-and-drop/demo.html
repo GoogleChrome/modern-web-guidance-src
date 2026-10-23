@@ -236,6 +236,7 @@
     let pointerOffsetX = 0;
     let pointerOffsetY = 0;
     let activePointerId = null;
+    let pointerStartNext = null;
     let isMoving = false;
     let pointerX = 0;
     let pointerY = 0;
@@ -287,10 +288,14 @@
       }
     }
 
-    function finishPointerReorder() {
+    function finishPointerReorder(cancelled = false) {
       if (!pointerItem) return;
       updateDisabledStates();
-      announce(`Moved ${pointerItem.dataset.label} to position ${getPosition(pointerItem)}.`);
+      const label = pointerItem.dataset.label;
+      const position = getPosition(pointerItem);
+      announce(cancelled
+        ? `Cancelled. ${label} returned to position ${position} of ${list.children.length}.`
+        : `Moved ${label} to position ${position}.`);
       const item = pointerItem;
       const preview = pointerPreview;
       const from = preview.getBoundingClientRect();
@@ -315,11 +320,19 @@
       document.removeEventListener('pointermove', movePointerItem);
       document.removeEventListener('pointerup', endPointerReorder);
       document.removeEventListener('pointercancel', endPointerReorder);
+      document.removeEventListener('keydown', cancelPointerReorder);
     }
 
     // Only the pointer that started the drag may move or end it; a stray second touch is ignored.
     function endPointerReorder(event) {
       if (event.pointerId === activePointerId) finishPointerReorder();
+    }
+
+    function cancelPointerReorder(event) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      moveItem(pointerItem, pointerStartNext, true);
+      finishPointerReorder(true);
     }
 
     function movePointerItem(event) {
@@ -369,6 +382,7 @@
       event.preventDefault();
       activePointerId = event.pointerId;
       pointerItem = handle.closest('.task');
+      pointerStartNext = pointerItem.nextElementSibling;
       const rect = pointerItem.getBoundingClientRect();
       pointerOffsetX = event.clientX - rect.left;
       pointerOffsetY = event.clientY - rect.top;
@@ -389,6 +403,7 @@
       document.addEventListener('pointermove', movePointerItem);
       document.addEventListener('pointerup', endPointerReorder);
       document.addEventListener('pointercancel', endPointerReorder);
+      document.addEventListener('keydown', cancelPointerReorder);
     });
 
     function moveKeyboardItem(item, direction) {
