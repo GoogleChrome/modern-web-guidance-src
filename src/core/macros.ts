@@ -1,13 +1,12 @@
-import path from "node:path";
-import { validateFeature, getStatusMessage, getFeatureName } from "./baseline.ts";
-import { getGuidesMap, getGuideMarkdownPath } from "./guide-validation.ts";
+import { validateFeature, getStatusMessage, getFeatureName, pendingFeatures } from "./baseline.ts";
+import { getGuidesMap } from "./guide-validation.ts";
 import { resolveInclude } from "./include.ts";
 import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, stripComments, maskComments } from "./macro-parsing.ts";
 
 // Re-exported for convenience; the implementations live in the dependency-free ./macro-parsing.ts
 export { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, stripComments, maskComments };
 
-export type BuildTarget = 'skills-cli' | 'local-dev' | 'static-site';
+export type BuildTarget = 'skills-cli' | 'static-site';
 
 type MacroHandler = (args: string[], filePath: string, options?: { target?: BuildTarget }) => string;
 
@@ -55,18 +54,11 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
       throw new MacroError(`Guide "${guideId}" not found (referenced in GUIDE_REF macro in ${filePath}).`);
     }
 
-    const target = options?.target || 'local-dev';
-
-    if (target === 'static-site') {
+    if (options?.target === 'static-site') {
       return `[${formatTitle(guideInfo.name)}](../${guideInfo.category}/${guideInfo.name}.md)`;
     }
 
-    if (target === 'skills-cli') {
-      return `\`${guideId}\` (via \`npx -y modern-web-guidance@latest retrieve "${guideId}"\`)`;
-    }
-
-    const relativePath = path.relative(path.dirname(filePath), getGuideMarkdownPath(guideInfo));
-    return `\`${relativePath}\``;
+    return `\`${guideId}\` (via \`npx -y modern-web-guidance@latest retrieve "${guideId}"\`)`;
   }
 };
 
@@ -113,7 +105,8 @@ defineFeatureMacro("FEATURE_FALLBACKS", {
         throw e;
       }
     }
-    const baselineStatus = MACRO_HANDLERS.BASELINE_STATUS([featureId], filePath, options);
+    // Pending `tmp-*` features have no upstream status yet (#2004), so only their fallbacks are emitted.
+    const baselineStatus = featureId in pendingFeatures ? "" : MACRO_HANDLERS.BASELINE_STATUS([featureId], filePath, options);
     if (!fallbacks) {
       return baselineStatus;
     }
@@ -122,7 +115,7 @@ defineFeatureMacro("FEATURE_FALLBACKS", {
       `### Fallbacks & browser support for ${getFeatureName(featureId)}`,
       baselineStatus,
       fallbacks
-    ].join("\n\n");
+    ].filter(Boolean).join("\n\n");
   }
 });
 

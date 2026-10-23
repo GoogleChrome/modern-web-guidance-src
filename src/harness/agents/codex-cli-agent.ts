@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url';
 import {
   cleanupIsolatedHome,
   parseAgentArgs,
-  watchLogFile,
   runCliAgentCommand,
   setupIsolatedWorkDir,
   parseJsonlFile,
@@ -13,12 +12,13 @@ import {
   type GuideUsage
 } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
 import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractRetrievedGuidesFromCommand,
+  extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
   truncateMessage,
@@ -80,7 +80,7 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
 
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -93,12 +93,7 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
-    let stopWatchingMcpLog = () => { };
-
     try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
       await runCliAgentCommand(
         command,
         commandArgs,
@@ -108,7 +103,6 @@ async function run() {
         runType
       );
     } finally {
-      stopWatchingMcpLog();
       exportCodexTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, userPrompt);
     }
@@ -254,7 +248,8 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
       if (typeof entry.payload?.model === 'string') {
         modelCounts[entry.payload.model] = (modelCounts[entry.payload.model] || 0) + 1;
       }
-      const info = (entry.type === 'token_count' ? entry : entry.payload)?.info?.total_token_usage;
+      const info = (entry.type === 'token_count' ? entry : entry.payload)?.info?.total_token_usage
+        || (entry.type === 'token_usage_record' ? entry.payload?.thread_token_usage : undefined);
       if (info) {
         lastTotal = info.total_tokens || 0;
         lastCached = info.cached_input_tokens || 0;
@@ -377,12 +372,10 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
             toolsUsed.add(match[1]);
           }
         }
-        if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
-          const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-          if (match) {
-            for (const g of match[1].split(',').map((s: string) => s.trim())) {
-              retrievedGuides.add(g);
-            }
+        const extractedGuides = extractRetrievedGuidesFromCommand(command);
+        if (extractedGuides.length > 0) {
+          for (const g of extractedGuides) {
+            retrievedGuides.add(g);
           }
         } else if (command.includes('.agents/skills/') && command.includes('guide.md')) {
           const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
@@ -462,7 +455,7 @@ export function loadCodexLogs(dir: string): { logData: any[]; subagentsMap: Reco
   }
 
   for (const file of subFiles) {
-    const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+    const subId = extractSubagentIdFromFilename(file);
     subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
   }
 

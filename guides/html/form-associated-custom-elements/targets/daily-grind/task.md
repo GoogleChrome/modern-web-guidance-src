@@ -1,0 +1,1 @@
+- Make a custom control participate natively in forms, submitting its own value, integrating with constraint validation, and reacting to reset, disable, and state-restore.

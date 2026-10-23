@@ -193,7 +193,6 @@ describe('replaceMacros (Functional with real data)', () => {
       const content = 'Visible {# secret #} text';
       assert.strictEqual(replaceMacros(content, 'test.md', { target: 'static-site' }), 'Visible text');
       assert.strictEqual(replaceMacros(content, 'test.md', { target: 'skills-cli' }), 'Visible text');
-      assert.strictEqual(replaceMacros(content, 'test.md', { target: 'local-dev' }), 'Visible text');
     });
 
     describe('whitespace edge cases', () => {
@@ -389,20 +388,6 @@ describe('replaceMacros (Functional with real data)', () => {
           const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'skills-cli' });
           const expected = '`break-up-long-tasks` (via `npx -y modern-web-guidance@latest retrieve "break-up-long-tasks"`)\n\n`forms` (via `npx -y modern-web-guidance@latest retrieve "forms"`)';
           assert.strictEqual(result, expected);
-        });
-      });
-
-      describe('local-dev', () => {
-        it('normalizes consecutive BASELINE_STATUS with 0 blank lines', () => {
-          const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
-          const result = replaceMacros(content, 'test.md', { target: 'local-dev' });
-          assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
-        });
-
-        it('normalizes consecutive BASELINE_STATUS with 2+ blank lines', () => {
-          const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
-          const result = replaceMacros(content, 'test.md', { target: 'local-dev' });
-          assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
         });
       });
     });
@@ -644,6 +629,12 @@ describe('INCLUDE', () => {
         /Web feature ID "nonexistent-feature" not found/
       );
     });
+
+    it('emits fallbacks without a status line for pending tmp-* features', () => {
+      const result = replaceMacros('{{ FEATURE_FALLBACKS("tmp-customizable-select-listbox") }}', 'test.md');
+      assert.match(result, /^### Fallbacks & browser support for customizable-select-listbox\n\n[^\n]/);
+      assert.doesNotMatch(result, /Browser support for/);
+    });
   });
 
   describe('caching', () => {
@@ -668,16 +659,10 @@ describe('INCLUDE', () => {
   });
 
   describe('GUIDE_REF', () => {
-    it('replaces macro with guide path', () => {
+    it('replaces macro with retrieve command by default (skills-cli)', () => {
       const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
       const result = replaceMacros(content, path.join(rootDir, 'test.md'));
-      assert.equal(result, '`guides/performance/break-up-long-tasks/guide.md`');
-    });
-
-    it('replaces macro with forms skill path', () => {
-      const content = '{{ GUIDE_REF("forms") }}';
-      const result = replaceMacros(content, path.join(rootDir, 'test.md'));
-      assert.equal(result, '`guides/forms/forms/guide.md`');
+      assert.equal(result, '`break-up-long-tasks` (via `npx -y modern-web-guidance@latest retrieve "break-up-long-tasks"`)');
     });
 
     it('replaces macro with category-level skill command for skills-cli', () => {

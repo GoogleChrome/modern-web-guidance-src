@@ -1,5 +1,5 @@
 import { describe, it } from "node:test";
-import assert from "node:assert";
+import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
@@ -44,5 +44,21 @@ describe("searchUseCases", () => {
     };
     const results = await searchUseCases("test query", 5, 0.0, mockEmbedder);
     assert.ok(Array.isArray(results));
+  });
+
+  it("returns empty array when no chunk meets minSimilarity", async () => {
+    const mockEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 384 }, () => 0),
+    };
+    const results = await searchUseCases("test query", 5, 0.3, mockEmbedder);
+    assert.strictEqual(results.length, 0);
+  });
+
+  it("keeps sibling guides on a cluster query", async () => {
+    const ids = (await searchUseCases("tooltip on hover")).map((r) => r.id);
+    assert.ok(
+      ids.includes("hovercard") && ids.includes("interest-triggered-tooltips"),
+      `Expected both tooltip siblings, got: ${ids.join(", ")}`
+    );
   });
 });

@@ -1,4 +1,4 @@
-import { getRunStats, parseResultKey, calculateChartData } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData } from './utils.js';
 
 /**
  * @typedef {Object} GuideSummary
@@ -25,6 +25,9 @@ import { getRunStats, parseResultKey, calculateChartData } from './utils.js';
  * @property {{ passed: number, total: number }} guidedStats
  * @property {{ passed: number, total: number }} unguidedStats
  * @property {number} earlyFailureRate
+ * @property {number} [guidedErrorRate]
+ * @property {number} [unguidedErrorRate]
+ * @property {number} [unguidedLeakRate]
  * @property {Record<string, GuideSummary>} guides
  * @property {ReturnType<typeof calculateChartData>} chartData
  */
@@ -33,7 +36,7 @@ import { getRunStats, parseResultKey, calculateChartData } from './utils.js';
  * Extracts a compact summary object from an evals.json payload.
  *
  * @param {string} testId
- * @param {import('../harness/lib/metrics.ts').EvalsReport & { enableSkills?: boolean }} evalsData
+ * @param {Partial<import('../harness/lib/metrics.ts').EvalsReport> & { enableSkills?: boolean }} evalsData
  * @param {string|null} [forcedTimestamp=null]
  * @returns {SuiteSummary|null}
  */
@@ -49,12 +52,19 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
     const results = evalsData.results || {};
     const scenarioKeys = Object.keys(results);
+    const eligibleScenarios = getEligibleScenarioIds(results);
 
     let guidedPassed = 0;
     let guidedTotal = 0;
     let unguidedPassed = 0;
     let unguidedTotal = 0;
     let maxRuns = 1;
+    let totalAllRuns = 0;
+    let guidedTotalRuns = 0;
+    let guidedEarlyFailures = 0;
+    let unguidedTotalRuns = 0;
+    let unguidedEarlyFailures = 0;
+    let unguidedLeaks = 0;
 
     const distinctScenarios = new Set();
     /** @type {Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>} */
@@ -68,6 +78,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     scenarioKeys.forEach(key => {
         const parsedKey = parseResultKey(key);
         const runs = results[key] || [];
+        totalAllRuns += runs.length;
         if (runs.length > maxRuns) maxRuns = runs.length;
 
         const isGuided = key.endsWith(' - guided');
@@ -91,8 +102,23 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             }
         }
 
+        const isEligibleScenario = parsedKey ? eligibleScenarios.has(`${parsedKey.task} - ${parsedKey.guide}`) : true;
+
+        if (isGuided) guidedTotalRuns += runs.length;
+        else if (isUnguided) unguidedTotalRuns += runs.length;
+
         runs.forEach(run => {
+            if (isEarlyFailureRun(run.results)) {
+                if (isGuided) guidedEarlyFailures++;
+                else if (isUnguided) unguidedEarlyFailures++;
+            }
+            if (isUnguided && isUnguidedLeakRun(run, parsedKey?.guide)) {
+                unguidedLeaks++;
+            }
+            if (!isEligibleScenario) return;
+
             const s = getRunStats(run.results);
+
             if (isGuided) {
                 guidedPassed += s.passed;
                 guidedTotal += s.total;
@@ -156,12 +182,15 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     });
 
     const taskCount = evalsData.summary && evalsData.summary.taskCount ? evalsData.summary.taskCount : distinctScenarios.size;
-    const totalEarlyFailures = (evalsData.summary?.unguidedEarlyFailures || 0) + (evalsData.summary?.guidedEarlyFailures || 0);
-    let totalAllRuns = 0;
-    scenarioKeys.forEach(k => { totalAllRuns += (results[k] || []).length; });
-    const earlyFailureRate = totalAllRuns > 0 ? Math.round((totalEarlyFailures / totalAllRuns) * 100) : 0;
+    const gFailures = evalsData.summary?.guidedEarlyFailures ?? guidedEarlyFailures;
+    const uFailures = evalsData.summary?.unguidedEarlyFailures ?? unguidedEarlyFailures;
+    const summaryEarlyFailures = gFailures + uFailures;
+    const earlyFailureRate = totalAllRuns > 0 ? Math.round((summaryEarlyFailures / totalAllRuns) * 100) : 0;
+    const guidedErrorRate = guidedTotalRuns > 0 ? Math.round((gFailures / guidedTotalRuns) * 100) : 0;
+    const unguidedErrorRate = unguidedTotalRuns > 0 ? Math.round((uFailures / unguidedTotalRuns) * 100) : 0;
+    const unguidedLeakRate = unguidedTotalRuns > 0 ? Math.round((unguidedLeaks / unguidedTotalRuns) * 100) : 0;
 
-    const chartData = calculateChartData(results);
+    const chartData = calculateChartData(results, eligibleScenarios);
 
     return {
         testId: testId,
@@ -174,6 +203,9 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         guidedStats: { passed: guidedPassed, total: guidedTotal },
         unguidedStats: { passed: unguidedPassed, total: unguidedTotal },
         earlyFailureRate: earlyFailureRate,
+        guidedErrorRate: guidedErrorRate,
+        unguidedErrorRate: unguidedErrorRate,
+        ...(unguidedLeakRate > 0 ? { unguidedLeakRate } : {}),
         guides: guidesFormatted,
         chartData: chartData
     };
