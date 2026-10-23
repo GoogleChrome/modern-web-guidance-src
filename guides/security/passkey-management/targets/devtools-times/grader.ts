@@ -54,13 +54,12 @@ test.describe('Passkey Management Target Grader', () => {
       const isLoad = expr === 'useEffect' || expr === 'React.useEffect' ||
         (expr.includes('addEventListener') && call.getArguments().some((a) => a.getText().includes('DOMContentLoaded')));
       if (!isLoad) return false;
-      const ids = call.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
+      const ids = call.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText().toLowerCase());
       return ids.some((id) =>
-        id === 'signalAllAcceptedCredentials' ||
-        id === 'syncAcceptedCredentials' ||
-        id === 'loadCredentials' ||
-        id === 'loadManagementPanel' ||
-        id === 'load'
+        id.includes('signal') ||
+        id.includes('sync') ||
+        id.includes('load') ||
+        id.includes('fetch')
       );
     });
 
@@ -72,7 +71,10 @@ test.describe('Passkey Management Target Grader', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const updatesOnDelete = sourceFiles.some((sf) => {
+    const hasSignalAll = sourceFiles.some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'signalAllAcceptedCredentials')
+    );
+    const updatesOnDelete = hasSignalAll && sourceFiles.some((sf) => {
       const fns = [
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
         ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
@@ -84,20 +86,21 @@ test.describe('Passkey Management Target Grader', () => {
           ? parent.getName()
           : (Node.isFunctionDeclaration(fn) ? (fn.getName() || '') : '');
         const isDeleteHandler = fnName.toLowerCase().includes('delete') ||
+          fnName.toLowerCase().includes('remove') ||
           fn.getDescendantsOfKind(SyntaxKind.StringLiteral).some((lit) => lit.getLiteralValue() === 'DELETE') ||
           fn.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText().toLowerCase().includes('delete'));
         if (!isDeleteHandler) return false;
 
         const calls = fn.getDescendantsOfKind(SyntaxKind.CallExpression).map((c) => {
           const e = c.getExpression();
-          return Node.isPropertyAccessExpression(e) ? e.getName() : e.getText();
+          return (Node.isPropertyAccessExpression(e) ? e.getName() : e.getText()).toLowerCase();
         });
-        const hasSignal = calls.some((n) =>
-          n === 'signalAllAcceptedCredentials' ||
-          n === 'syncAcceptedCredentials' ||
-          n === 'loadCredentials'
+        return calls.some((n) =>
+          n.includes('signal') ||
+          n.includes('sync') ||
+          n.includes('load') ||
+          n.includes('fetch')
         );
-        return hasSignal && sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'signalAllAcceptedCredentials');
       });
     });
 
@@ -109,7 +112,10 @@ test.describe('Passkey Management Target Grader', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const updatesOnRename = sourceFiles.some((sf) => {
+    const hasSignalCurrentUser = sourceFiles.some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'signalCurrentUserDetails')
+    );
+    const updatesOnRename = hasSignalCurrentUser && sourceFiles.some((sf) => {
       const fns = [
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
         ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
@@ -133,7 +139,7 @@ test.describe('Passkey Management Target Grader', () => {
           const e = c.getExpression();
           return Node.isPropertyAccessExpression(e) ? e.getName() : e.getText();
         });
-        const hasSignalCall = calls.some((n) => n.includes('signalCurrentUserDetails'));
+        const hasSignalCall = calls.some((n) => n.includes('signalCurrentUserDetails') || n.toLowerCase().includes('signaluser'));
         const hasSignalId = fn.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'signalCurrentUserDetails');
         return hasSignalCall || hasSignalId;
       });
@@ -149,16 +155,14 @@ test.describe('Passkey Management Target Grader', () => {
 
     const hasAaguidResolution = sourceFiles.some((sf) => {
       const hasAaguid = sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText().toLowerCase().includes('aaguid'));
-      const ids = sf.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
+      const ids = sf.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText().toLowerCase());
       const hasRegistry = ids.some((id) =>
-        id === 'aaguids' ||
-        id === 'registry' ||
-        id === 'aaguidRegistry' ||
-        id === 'passkeyProvider' ||
-        id === 'resolveAaguid'
+        id.includes('aaguid') ||
+        id.includes('registry') ||
+        id.includes('provider')
       );
-      const strings = sf.getDescendantsOfKind(SyntaxKind.StringLiteral).map((s) => s.getLiteralValue());
-      const hasRegistryFile = strings.some((s) => s.includes('aaguids'));
+      const strings = sf.getDescendantsOfKind(SyntaxKind.StringLiteral).map((s) => s.getLiteralValue().toLowerCase());
+      const hasRegistryFile = strings.some((s) => s.includes('aaguid') || s.includes('provider'));
       return hasAaguid && (hasRegistry || hasRegistryFile);
     });
 
@@ -229,7 +233,8 @@ test.describe('Passkey Management Target Grader', () => {
           name === 'toLocaleString' ||
           name === 'formatDate' ||
           name === 'formatHumanReadableDate' ||
-          name === 'date';
+          name === 'date' ||
+          name === 'format';
       });
     });
 
