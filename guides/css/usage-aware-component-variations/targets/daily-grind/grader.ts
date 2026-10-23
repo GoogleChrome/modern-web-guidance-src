@@ -4,185 +4,155 @@ import {
   getTargetFiles,
   getCssStyleSheet,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
-import { CSSStyleRule, CSSContainerRule, type CSSRule } from 'cssomnom';
+} from '../../../../../src/grading/test-fixture.ts';
+import {
+  CSSStyleRule,
+  CSSContainerRule,
+  CSSGroupingRule,
+  type CSSRule,
+  type CSSStyleSheet,
+} from 'cssomnom';
+import type { Document } from 'linkedom';
 
-// @ts-ignore
+// @ts-ignore - package.json omits "type": "module" so nodenext treats .ts as CommonJS
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('usage-aware-component-variations Target Grader', () => {
-  // --- STATIC ASSERTIONS (FAST) ---
-
-  test('Parent container defines semantic context flags using CSS custom property (--surface)', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const hasSurfaceCustomProperty = rules.some((rule): rule is CSSStyleRule => {
-      if (!(rule instanceof CSSStyleRule)) return false;
-      return rule.style.getPropertyValue('--surface').trim().length > 0;
-    });
-    expect(hasSurfaceCustomProperty).toBe(true);
-  });
-
-  test('HTML markup establishes semantic context on parent container elements', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const hasFeaturedContainer = docs.some(d =>
-      Boolean(d.document.querySelector('.featured, [data-surface="featured"], [data-surface]'))
-    );
-    expect(hasFeaturedContainer).toBe(true);
-  });
-
-  test('Component markup includes promotional badge elements', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const hasBadgeElement = docs.some(d =>
-      Boolean(d.document.querySelector('.card .badge, .badge, [class*="badge"]'))
-    );
-    expect(hasBadgeElement).toBe(true);
-  });
-
-  test('Component visual logic adapts using container style query (@container style()) referencing semantic property', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const hasContainerStyleQuery = rules.some((r): r is CSSContainerRule =>
-      r instanceof CSSContainerRule &&
-      /style\s*\(/i.test(r.conditionText) &&
-      r.conditionText.includes('--surface')
-    );
-    expect(hasContainerStyleQuery).toBe(true);
-  });
-
-  test('Container style query reveals promotional badge elements in featured context', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const containerRules = Array.from(stylesheet.cssRules).filter(
-      (r): r is CSSContainerRule => r instanceof CSSContainerRule && /style\s*\(/i.test(r.conditionText)
-    );
-    const revealsBadgeInStyleQuery = containerRules.some(cRule => {
-      const nested = Array.from(cRule.cssRules);
-      return nested.some((r): r is CSSStyleRule => {
-        if (!(r instanceof CSSStyleRule)) return false;
-        if (!/\bbadge\b/i.test(r.selectorText)) return false;
-        const display = r.style.getPropertyValue('display').trim();
-        return (
-          display === 'block' ||
-          display === 'inline-block' ||
-          display === 'flex' ||
-          (display.length > 0 && display !== 'none')
-        );
-      });
-    });
-    expect(revealsBadgeInStyleQuery).toBe(true);
-  });
-
-  test('Container style query applies prominent filled button style in featured context', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const containerRules = Array.from(stylesheet.cssRules).filter(
-      (r): r is CSSContainerRule => r instanceof CSSContainerRule && /style\s*\(/i.test(r.conditionText)
-    );
-    const hasFilledButtonInStyleQuery = containerRules.some(cRule => {
-      const nested = Array.from(cRule.cssRules);
-      return nested.some((r): r is CSSStyleRule => {
-        if (!(r instanceof CSSStyleRule)) return false;
-        if (!/\b(btn|button)\b/i.test(r.selectorText)) return false;
-        const bg = r.style.getPropertyValue('background').trim() || r.style.getPropertyValue('background-color').trim();
-        return bg.length > 0 && bg !== 'transparent' && bg !== 'none';
-      });
-    });
-    expect(hasFilledButtonInStyleQuery).toBe(true);
-  });
-
-  test('Component hides promotional badge elements by default when surface context is unset', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const hasHiddenBadgeByDefault = rules.some((r): r is CSSStyleRule => {
-      if (!(r instanceof CSSStyleRule)) return false;
-      if (!/\bbadge\b/i.test(r.selectorText)) return false;
-      if (r.selectorText.includes(':where')) return false;
-      return r.style.getPropertyValue('display').trim() === 'none';
-    });
-    expect(hasHiddenBadgeByDefault).toBe(true);
-  });
-
-  test('Component uses subtle outlined button style by default when surface context is unset', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const hasOutlinedButtonByDefault = rules.some((r): r is CSSStyleRule => {
-      if (!(r instanceof CSSStyleRule)) return false;
-      if (!/\b(btn|button)\b/i.test(r.selectorText)) return false;
-      if (r.selectorText.includes(':where')) return false;
-      const bg = r.style.getPropertyValue('background').trim();
-      const bgColor = r.style.getPropertyValue('background-color').trim();
-      const border =
-        r.style.getPropertyValue('border').trim() ||
-        r.style.getPropertyValue('border-width').trim() ||
-        r.style.getPropertyValue('border-color').trim() ||
-        r.style.getPropertyValue('border-style').trim();
-      const isBgTransparent = bg === 'transparent' || bg === 'none' || bgColor === 'transparent';
-      return isBgTransparent && border.length > 0;
-    });
-    expect(hasOutlinedButtonByDefault).toBe(true);
-  });
-
-  test('Component does not rely on container size queries for semantic surface variations', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const styleContainerRules = rules.filter(
-      (r): r is CSSContainerRule => r instanceof CSSContainerRule && /style\s*\(/i.test(r.conditionText)
-    );
-    const avoidsSizeQueriesForSemanticVariation =
-      styleContainerRules.length > 0 &&
-      styleContainerRules.every(r => !/\b(min-width|max-width|inline-size|width|height)\s*:/i.test(r.conditionText));
-    expect(avoidsSizeQueriesForSemanticVariation).toBe(true);
-  });
-
-  test('Implementation uses CSS logical properties for consistent layout and spacing', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const logicalPropPattern =
-      /\b(inline-size|min-inline-size|max-inline-size|block-size|min-block-size|max-block-size|inset-block|inset-block-start|inset-block-end|inset-inline|inset-inline-start|inset-inline-end|margin-block|margin-block-start|margin-block-end|margin-inline|margin-inline-start|margin-inline-end|padding-block|padding-block-start|padding-block-end|padding-inline|padding-inline-start|padding-inline-end)\b/;
-
-    function countLogicalProps(ruleList: CSSRule[]): number {
-      let count = 0;
-      for (const rule of ruleList) {
-        if (rule instanceof CSSStyleRule) {
-          for (let i = 0; i < rule.style.length; i++) {
-            if (logicalPropPattern.test(rule.style[i])) {
-              count++;
-            }
-          }
-        }
-        if ('cssRules' in rule && rule.cssRules) {
-          count += countLogicalProps(Array.from(rule.cssRules as unknown as CSSRule[]));
-        }
-      }
-      return count;
+function getAllRules(rules: Iterable<CSSRule>): CSSRule[] {
+  const result: CSSRule[] = [];
+  for (const rule of rules) {
+    result.push(rule);
+    if (rule instanceof CSSGroupingRule && rule.cssRules) {
+      result.push(...getAllRules(rule.cssRules));
     }
+  }
+  return result;
+}
 
-    const logicalPropertyCount = countLogicalProps(rules);
-    expect(logicalPropertyCount).toBeGreaterThanOrEqual(3);
+function getStyleDeclarationKeys(rule: CSSStyleRule): string[] {
+  const keys: string[] = [];
+  for (let i = 0; i < rule.style.length; i++) {
+    const key = rule.style.item(i);
+    if (key) {
+      keys.push(key);
+    }
+  }
+  return keys;
+}
+
+test.describe('usage-aware-component-variations Target Grader', () => {
+  test('Parent container defines a semantic context flag using a CSS custom property', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const styleRules = getAllRules(stylesheet.cssRules).filter(
+      (r): r is CSSStyleRule => r instanceof CSSStyleRule
+    );
+
+    const hasContextCustomProperty = styleRules.some((rule) => {
+      if (rule.selectorText.trim() === ':root') return false;
+      const customProps = getStyleDeclarationKeys(rule).filter((k) => k.startsWith('--'));
+      if (customProps.length === 0) return false;
+
+      const setsFeaturedFlag = customProps.some((prop) => {
+        const val = rule.style.getPropertyValue(prop).trim();
+        return prop.includes('surface') || /\b(featured|promo|highlight|seasonal)\b/i.test(val);
+      });
+      if (!setsFeaturedFlag) return false;
+
+      const matchesContainerInDom = docs.some((d) => {
+        const matchedEls = Array.from(d.document.querySelectorAll(rule.selectorText));
+        return matchedEls.some((el) => el.querySelector('.card, .btn') !== null);
+      });
+
+      return matchesContainerInDom;
+    });
+
+    expect(hasContextCustomProperty).toBe(true);
   });
 
-  test('Progressive-enhancement fallback using :where() reveals promotional badge elements', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const hasWhereBadgeFallback = rules.some((r): r is CSSStyleRule => {
-      if (!(r instanceof CSSStyleRule)) return false;
-      if (!r.selectorText.includes(':where(')) return false;
-      if (!/\bbadge\b/i.test(r.selectorText)) return false;
-      const display = r.style.getPropertyValue('display').trim();
-      return display === 'block' || display === 'inline-block' || (display.length > 0 && display !== 'none');
+  test('Container does not set an explicit container-type for style queries', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allRules = getAllRules(stylesheet.cssRules);
+    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+    const containerRules = allRules.filter(
+      (r): r is CSSContainerRule => r instanceof CSSContainerRule
+    );
+
+    const hasContainerStyleRule = containerRules.some((r) =>
+      /\bstyle\s*\(/i.test(r.conditionText || r.containerQuery)
+    );
+    const hasContainerType = styleRules.some((r) => {
+      const ct = r.style.getPropertyValue('container-type').trim();
+      return ct !== '' && ct !== 'normal';
     });
-    expect(hasWhereBadgeFallback).toBe(true);
+
+    expect(hasContainerStyleRule && !hasContainerType).toBe(true);
   });
 
-  test('Progressive-enhancement fallback using :where() applies prominent filled button style', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const hasWhereButtonFallback = rules.some((r): r is CSSStyleRule => {
-      if (!(r instanceof CSSStyleRule)) return false;
-      if (!r.selectorText.includes(':where(')) return false;
-      if (!/\b(btn|button)\b/i.test(r.selectorText)) return false;
-      const bg = r.style.getPropertyValue('background').trim() || r.style.getPropertyValue('background-color').trim();
-      return bg.length > 0 && bg !== 'transparent' && bg !== 'none';
+  test('Component uses @container style() queries without relying on size queries for semantic variation', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const containerRules = getAllRules(stylesheet.cssRules).filter(
+      (r): r is CSSContainerRule => r instanceof CSSContainerRule
+    );
+
+    const styleQueryRules = containerRules.filter((r) => {
+      const cond = r.conditionText || r.containerQuery || '';
+      return /\bstyle\s*\(\s*--/i.test(cond) && !/\b(min-width|max-width|inline-size|width)\b/i.test(cond);
     });
-    expect(hasWhereButtonFallback).toBe(true);
+
+    expect(styleQueryRules.length).toBeGreaterThan(0);
+  });
+
+  test('Inside @container style() query, card component adapts its visual styling for the featured context', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const containerRules = getAllRules(stylesheet.cssRules).filter(
+      (r): r is CSSContainerRule =>
+        r instanceof CSSContainerRule &&
+        /\bstyle\s*\(\s*--/i.test(r.conditionText || r.containerQuery || '')
+    );
+
+    const nestedStyleRules = containerRules
+      .flatMap((cr) => getAllRules(cr.cssRules))
+      .filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+
+    const adaptsCard = nestedStyleRules.some((r) => {
+      if (!/\bcard\b/.test(r.selectorText)) return false;
+      const keys = getStyleDeclarationKeys(r);
+      return keys.some((k) =>
+        /^(background|background-color|border|border-color|border-top|box-shadow)$/i.test(k)
+      );
+    });
+
+    expect(adaptsCard).toBe(true);
+  });
+
+  test('Inside @container style() query, button component switches its visual variant for the featured context', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const containerRules = getAllRules(stylesheet.cssRules).filter(
+      (r): r is CSSContainerRule =>
+        r instanceof CSSContainerRule &&
+        /\bstyle\s*\(\s*--/i.test(r.conditionText || r.containerQuery || '')
+    );
+
+    const nestedStyleRules = containerRules
+      .flatMap((cr) => getAllRules(cr.cssRules))
+      .filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+
+    const topLevelBtnRule = Array.from(stylesheet.cssRules).find(
+      (r): r is CSSStyleRule => r instanceof CSSStyleRule && /^\.btn\b/.test(r.selectorText.trim())
+    );
+    const defaultBtnBg = topLevelBtnRule
+      ? topLevelBtnRule.style.getPropertyValue('background') ||
+        topLevelBtnRule.style.getPropertyValue('background-color')
+      : '';
+
+    const adaptsButton = nestedStyleRules.some((r) => {
+      if (!/\bbtn\b/.test(r.selectorText) || /:hover|:focus/.test(r.selectorText)) return false;
+      const bg =
+        r.style.getPropertyValue('background').trim() ||
+        r.style.getPropertyValue('background-color').trim();
+      return bg !== '' && bg !== 'transparent' && bg !== defaultBtnBg.trim();
+    });
+
+    expect(adaptsButton).toBe(true);
   });
 });

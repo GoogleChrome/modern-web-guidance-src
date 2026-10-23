@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+index 66c9173..01270cd 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,10 @@
+       padding: 0 20px;
+     }
+ 
++    .featured {
++      --surface: featured;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -111,6 +115,7 @@
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
++      border: 1px solid transparent;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+@@ -120,19 +125,88 @@
+       color: var(--primary);
+     }
+ 
++    .badge {
++      display: none;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      margin-bottom: 10px;
++    }
++
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid currentColor;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, color 0.3s, border-color 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
++      color: white;
++    }
++
++    .hero .btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++    }
++
++    /* Selector-based contextual fallback — broad browser support */
++    :where(.featured) .card {
++      background: #fff8f0;
++      border-color: var(--accent);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
++    }
++
++    :where(.featured) .btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      font-weight: 600;
++    }
++
++    :where(.featured) .btn:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    :where(.featured) .badge {
++      display: inline-block;
++    }
++
++    /* Progressive enhancement: style queries override when supported */
++    @container style(--surface: featured) {
++      .card {
++        background: #fff8f0;
++        border-color: var(--accent);
++        box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
++      }
++
++      .btn {
++        background: var(--accent);
++        color: var(--text);
++        border: none;
++        font-weight: 600;
++      }
++
++      .btn:hover {
++        background: var(--primary);
++        color: white;
++      }
++
++      .badge {
++        display: inline-block;
++      }
+     }
+ 
+     footer {
+@@ -175,20 +249,23 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="featured">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="badge">Featured</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="badge">Featured</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="badge">Featured</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
