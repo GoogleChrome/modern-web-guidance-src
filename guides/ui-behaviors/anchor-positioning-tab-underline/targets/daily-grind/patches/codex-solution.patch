@@ -1,0 +1,96 @@
+diff --git a/index.html b/index.html
+index 66c9173..2d7fbf9 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,43 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
++    }
++
++    nav ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active-nav-item;
++      inset-block-start: calc(anchor(bottom) + 0.1lh);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: 3px;
++      background: var(--accent);
++      pointer-events: none;
++    }
++
++    nav li.active {
++      anchor-name: --active-nav-item;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul::before {
++        transition: inset 0.2s ease;
++      }
++    }
++
++    @supports not (position-anchor: auto) {
++      nav ul::before {
++        content: none;
++      }
++
++      nav li {
++        border-bottom: 3px solid transparent;
++      }
++
++      nav li.active {
++        border-bottom-color: var(--accent);
++      }
+     }
+ 
+     nav ul li {
+@@ -157,10 +194,10 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -207,6 +244,34 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigationLinks = document.querySelectorAll('nav a:not(.logout-link)');
++
++    function selectNavigationLink(selectedLink) {
++      navigationLinks.forEach((link) => {
++        const isSelected = link === selectedLink;
++        link.parentElement.classList.toggle('active', isSelected);
++        if (isSelected) {
++          link.setAttribute('aria-current', 'page');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++    }
++
++    const currentLink = Array.from(navigationLinks).find(
++      (link) => new URL(link.href).pathname === window.location.pathname
++    );
++    if (currentLink) selectNavigationLink(currentLink);
++
++    navigationLinks.forEach((link) => {
++      link.addEventListener('click', (event) => {
++        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        event.preventDefault();
++        selectNavigationLink(link);
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

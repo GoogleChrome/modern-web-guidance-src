@@ -1,0 +1,1 @@
+- Server-render a custom element, then hydrate it in place without re-rendering or a flash of unstyled content.

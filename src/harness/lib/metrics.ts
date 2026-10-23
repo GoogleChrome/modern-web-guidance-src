@@ -1,8 +1,14 @@
 export interface ScenarioCheck {
-  id: string;
+  id?: string;
+  testId?: string;
   passed: boolean;
   message: string;
   isEarlyFailure?: boolean;
+  failureReason?: string;
+  error?: string;
+  errorLocation?: string;
+  pageSnapshot?: string;
+  browserErrors?: string;
 }
 
 export interface RunResult {
@@ -76,8 +82,11 @@ export interface EvalsReport {
   cliVersion?: string;
 }
 
+export function isEarlyFailureRun(checks?: ScenarioCheck[] | null): boolean {
+  return !!(checks && checks.some(c => c.isEarlyFailure));
+}
+
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {
-  // Dynamic sorting: Tasks alphabetically, then Guides alphabetically, then Run Type (unguided first if present)
   const runTypeOrder: Record<string, number> = { 'unguided': 1, 'guided': 2 };
 
   const sortedKeys = Object.keys(allResults).sort((a, b) => {
@@ -91,7 +100,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       return guideNameA.localeCompare(guideNameB);
     }
 
-    // Sort known run types first, others alphabetically
     const orderA = runTypeOrder[runTypeA] || 99;
     const orderB = runTypeOrder[runTypeB] || 99;
 
@@ -109,23 +117,29 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let totalChecks = 0;
 
     let earlyFailures = 0;
-    const passRates = runs.map(run => {
+    const passRates: number[] = [];
+    for (const run of runs) {
       const checks = run.results;
-      const isEarlyFailure = checks.some(c => c.isEarlyFailure);
-      if (isEarlyFailure) {
+      if (isEarlyFailureRun(checks)) {
         earlyFailures++;
+        continue;
       }
       const passCount = checks.filter(c => c.passed).length;
       const totalCount = checks.length;
       passedChecks += passCount;
       totalChecks += totalCount;
-      return totalCount > 0 ? (passCount / totalCount) * 100 : 0;
-    }).sort((a, b) => a - b);
+      if (totalCount > 0) {
+        passRates.push((passCount / totalCount) * 100);
+      }
+    }
+    passRates.sort((a, b) => a - b);
 
     const mid = Math.floor(passRates.length / 2);
-    const median = passRates.length % 2 === 0
-      ? (passRates[mid - 1] + passRates[mid]) / 2
-      : passRates[mid];
+    const median = passRates.length === 0 ? 0 : (
+      passRates.length % 2 === 0
+        ? (passRates[mid - 1] + passRates[mid]) / 2
+        : passRates[mid]
+    );
 
     let guideUsageCount = 0;
     let toolActivationCount = 0;
@@ -133,7 +147,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
 
     if (runType === 'guided') {
       runs.forEach(run => {
-        if (run.results.some(c => c.isEarlyFailure)) {
+        if (isEarlyFailureRun(run.results)) {
           return;
         }
         const guidesUsed = run.guidesUsed || [];
@@ -177,16 +191,13 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     };
   }
 
-  const calcSummary = (keys: string[]) => {
-    const medians = keys.map(k => testStats[k].medianPassRate);
+  const uniqueTasks = new Set<string>();
+  for (const name of sortedKeys) {
+    uniqueTasks.add(name.replace(/ - (guided|unguided)$/, ''));
+  }
 
-    const sortedMedians = [...medians].sort((a, b) => a - b);
-    const mid = Math.floor(sortedMedians.length / 2);
-    const median = sortedMedians.length === 0 ? 0 :
-      (sortedMedians.length % 2 === 0
-        ? (sortedMedians[mid - 1] + sortedMedians[mid]) / 2
-        : sortedMedians[mid]);
-
+  const calcSummary = (runType: 'guided' | 'unguided') => {
+    const medians: number[] = [];
     let passed = 0;
     let total = 0;
     let guideUsageCount = 0;
@@ -199,30 +210,43 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let cachedTokens = 0;
     let configsWithTokenData = 0;
 
-    keys.forEach(k => {
-      const [, , runType] = k.split(' - ');
+    for (const prefix of uniqueTasks) {
+      const k = `${prefix} - ${runType}`;
+      const otherKey = `${prefix} - ${runType === 'guided' ? 'unguided' : 'guided'}`;
       const stats = testStats[k];
+      if (!stats) continue;
 
-      if (stats) {
+      const otherStats = testStats[otherKey];
+      const validPair = stats.totalChecks > 0 && (!otherStats || otherStats.totalChecks > 0);
+
+      if (validPair) {
         passed += stats.passedChecks;
         total += stats.totalChecks;
-        earlyFailures += stats.earlyFailures || 0;
-        totalRuns += stats.runCount || 0;
-
-        if (stats.avgTokens) {
-          totalTokens += stats.avgTokens.total * (stats.runCount || 1);
-          cachedTokens += stats.avgTokens.cached * (stats.runCount || 1);
-          configsWithTokenData++;
-        }
-
-        if (runType === 'guided') {
-          guideUsageCount += stats.runsUsingGuide || 0;
-          toolActivationCount += stats.runsWithToolActivation || 0;
-          totalGuidedRuns += stats.runCount || 0;
-          guidedEarlyFailures += stats.earlyFailures || 0;
-        }
+        medians.push(stats.medianPassRate);
       }
-    });
+      earlyFailures += stats.earlyFailures || 0;
+      totalRuns += stats.runCount || 0;
+
+      if (stats.avgTokens) {
+        totalTokens += stats.avgTokens.total * (stats.runCount || 1);
+        cachedTokens += stats.avgTokens.cached * (stats.runCount || 1);
+        configsWithTokenData++;
+      }
+
+      if (runType === 'guided') {
+        guideUsageCount += stats.runsUsingGuide || 0;
+        toolActivationCount += stats.runsWithToolActivation || 0;
+        totalGuidedRuns += stats.runCount || 0;
+        guidedEarlyFailures += stats.earlyFailures || 0;
+      }
+    }
+
+    const sortedMedians = [...medians].sort((a, b) => a - b);
+    const mid = Math.floor(sortedMedians.length / 2);
+    const median = sortedMedians.length === 0 ? 0 :
+      (sortedMedians.length % 2 === 0
+        ? (sortedMedians[mid - 1] + sortedMedians[mid]) / 2
+        : sortedMedians[mid]);
 
     const completedGuidedRuns = totalGuidedRuns - guidedEarlyFailures;
 
@@ -243,14 +267,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     };
   };
 
-  const uStats = calcSummary(sortedKeys.filter(k => k.includes(' - unguided')));
-  const gStats = calcSummary(sortedKeys.filter(k => k.includes(' - guided')));
+  const uStats = calcSummary('unguided');
+  const gStats = calcSummary('guided');
 
-  const uniqueTasks = new Set<string>();
-  Object.keys(allResults).forEach(key => {
-    const [taskName, guideName] = key.split(' - ');
-    uniqueTasks.add(`${taskName} - ${guideName}`);
-  });
   const numberOfTasks = uniqueTasks.size;
   const expectedTotalRuns = numberOfTasks * runsPerTest;
 

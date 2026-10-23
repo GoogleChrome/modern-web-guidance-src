@@ -23,6 +23,8 @@
  * @property {number} gTokens
  * @property {boolean} uFailed
  * @property {boolean} gFailed
+ * @property {number} uErr
+ * @property {number} gErr
  * @property {number} originalIndex
  */
 
@@ -32,6 +34,7 @@
  * @property {number[]} data
  * @property {number[]} [tokens]
  * @property {boolean[]} [failed]
+ * @property {number[]} [errRate]
  * @property {(index: number, label: string) => void} [onClick]
  */
 
@@ -135,6 +138,8 @@ export class DumbbellChart {
         const gTokens = guidedSet.tokens ? (guidedSet.tokens[i] || 0) : 0;
         const uFailed = unguidedSet.failed ? !!unguidedSet.failed[i] : false;
         const gFailed = guidedSet.failed ? !!guidedSet.failed[i] : false;
+        const uErr = unguidedSet.errRate ? (unguidedSet.errRate[i] || 0) : 0;
+        const gErr = guidedSet.errRate ? (guidedSet.errRate[i] || 0) : 0;
         
         if (this.options.hideZeros && uVal === 0 && gVal === 0) return;
 
@@ -148,6 +153,8 @@ export class DumbbellChart {
             gTokens,
             uFailed,
             gFailed,
+            uErr,
+            gErr,
             originalIndex: i
         });
     });
@@ -346,7 +353,7 @@ export class DumbbellChart {
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
         text.setAttribute("x", (scale(100) + 15).toString());
         text.setAttribute("y", rowY.toString());
-        text.setAttribute("fill", hasFailure ? "var(--color-accent-failure, #da3633)" : "var(--color-outline)");
+        text.setAttribute("fill", hasFailure ? "#d29922" : "var(--color-outline)");
         text.setAttribute("font-size", "11");
         text.setAttribute("font-family", "var(--font-sans)");
         text.setAttribute("font-weight", hasFailure ? "bold" : "600");
@@ -374,6 +381,25 @@ export class DumbbellChart {
           const isPositive = gVal >= uVal;
           const lineColor = isPositive ? "var(--color-primary)" : "var(--color-accent-failure)";
 
+          // Manski Error Uncertainty Pills ([R * (1 - e), R * (1 - e) + e])
+          const bands = [
+              { val: uVal, err: item.uErr, fill: "#8b949e", opacity: "0.25" },
+              { val: gVal, err: item.gErr, fill: "#d29922", opacity: "0.35" }
+          ];
+          for (const b of bands) {
+              if (b.err <= 0) continue;
+              const pill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+              const minVal = b.val * (1 - b.err / 100);
+              pill.setAttribute("x", scale(minVal).toString());
+              pill.setAttribute("y", (y - 4).toString());
+              pill.setAttribute("width", ((b.err / 100) * chartWidth).toString());
+              pill.setAttribute("height", "8");
+              pill.setAttribute("rx", "4");
+              pill.setAttribute("fill", b.fill);
+              pill.setAttribute("opacity", b.opacity);
+              svg.appendChild(pill);
+          }
+
           // Connecting Line (The Delta)
           const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
           line.setAttribute("x1", uX.toString());
@@ -392,7 +418,7 @@ export class DumbbellChart {
           uDot.setAttribute("cy", y.toString());
           uDot.setAttribute("r", "3");
           uDot.setAttribute("fill", "var(--color-surface-container-lowest)");
-          uDot.setAttribute("stroke", item.uFailed ? "var(--color-accent-failure, #da3633)" : "var(--color-primary)");
+          uDot.setAttribute("stroke", item.uFailed ? "#d29922" : "var(--color-primary)");
           uDot.setAttribute("stroke-width", "1.5");
           svg.appendChild(uDot);
 
@@ -401,7 +427,7 @@ export class DumbbellChart {
           gDot.setAttribute("cx", gX.toString());
           gDot.setAttribute("cy", y.toString());
           gDot.setAttribute("r", "3");
-          gDot.setAttribute("fill", item.gFailed ? "var(--color-accent-failure, #da3633)" : "var(--color-primary)");
+          gDot.setAttribute("fill", item.gFailed ? "#d29922" : "var(--color-primary)");
           svg.appendChild(gDot);
 
           // Hit area for tooltip (covers the specific sub-line)
@@ -434,7 +460,7 @@ export class DumbbellChart {
                 <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 280px; color: var(--color-on-surface);">
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                         <div style="font-weight: bold; font-size: 14px; white-space: nowrap; color: ${item.uFailed || item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
+                         <div style="font-weight: bold; font-size: 14px; white-space: nowrap; color: ${item.uFailed || item.gFailed ? '#d29922' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
                           <div style="font-size: 11px; color: var(--color-outline);">feature: ${featureName}</div>
                          ${uTokens > 0 || gTokens > 0 ? `
                          <div style="font-size: 11px; color: #8b949e; margin-top: 8px;">
@@ -449,8 +475,8 @@ export class DumbbellChart {
                     <!-- Right Column -->
                     <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 12px;">
                          <div style="font-weight: bold; color: ${deltaColor}; font-size: 14px;">Uplift: ${deltaSign}${delta}%</div>
-                         <div style="white-space: nowrap; color: ${item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">Guided: ${Math.round(gVal)}% ${item.gFailed ? '(Failed)' : ''}</div>
-                         <div style="white-space: nowrap; color: ${item.uFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">Unguided: ${Math.round(uVal)}% ${item.uFailed ? '(Failed)' : ''}</div>
+                         <div style="white-space: nowrap; color: ${item.gFailed ? '#d29922' : 'inherit'};">Guided: ${Math.round(gVal)}% ${item.gErr > 0 ? `(${Math.round(gVal * (1 - item.gErr / 100))}%–${Math.round(gVal * (1 - item.gErr / 100) + item.gErr)}%, ${item.gErr}% err)` : (item.gFailed ? '(Infra Error excluded)' : '')}</div>
+                         <div style="white-space: nowrap; color: ${item.uFailed ? '#d29922' : 'inherit'};">Unguided: ${Math.round(uVal)}% ${item.uErr > 0 ? `(${Math.round(uVal * (1 - item.uErr / 100))}%–${Math.round(uVal * (1 - item.uErr / 100) + item.uErr)}%, ${item.uErr}% err)` : (item.uFailed ? '(Infra Error excluded)' : '')}</div>
                      </div>
                 </div>
             `;
