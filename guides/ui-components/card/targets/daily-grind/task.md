@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites cards in index.html so that each card component dynamically adjusts its layout and styling based on the space available to the card itself as well as the specific content elements it contains.

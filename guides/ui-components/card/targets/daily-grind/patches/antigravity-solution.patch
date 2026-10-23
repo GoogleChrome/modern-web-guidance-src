@@ -1,0 +1,209 @@
+diff --git a/index.html b/index.html
+index 66c9173..2fafc3d 100644
+--- a/index.html
++++ b/index.html
+@@ -108,18 +108,145 @@
+     }
+ 
+     .card {
++      container-type: inline-size;
++      display: grid;
++      grid-row: span 4;
++      grid-template-rows: subgrid;
++      gap: 10px;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
++      border: 2px solid transparent;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      align-items: start;
++      transition: box-shadow 0.3s, border-color 0.3s;
++    }
++
++    .card:has(> :checked) {
++      border-color: var(--accent);
++    }
++
++    .card > :is(img, picture, video, svg, .media) {
++      grid-row: 1;
++    }
++
++    .card > :is(img, picture, video) {
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      display: block;
++      border-radius: 4px;
++    }
++
++    .card > picture > img {
++      width: 100%;
++      height: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      display: block;
++      border-radius: 4px;
++    }
++
++    .card > .media {
++      aspect-ratio: 16 / 9;
++    }
++
++    .card > :is(h1, h2, h3, h4, h5, h6, hgroup, header) {
++      grid-row: 2;
++    }
++
++    .card > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer, input) {
++      grid-row: 3;
++    }
++
++    .card > footer {
++      grid-row: 4;
++      align-self: end;
++      background: transparent;
++      padding: 0;
++      margin-top: 0;
++    }
++
++    .card:has(> :is(img, picture, video, svg, .media)) {
++      grid-auto-columns: minmax(140px, 1fr) 2fr;
++    }
++
++    @container (min-width: 400px) {
++      .card:has(> :is(img, picture, video, svg, .media)) {
++        grid-template-columns: minmax(140px, 1fr) 2fr;
++      }
++
++      .card:has(> :is(img, picture, video, svg, .media)) > :is(img, picture, video, svg, .media) {
++        grid-column: 1;
++        grid-row: 1 / -1;
++        height: 100%;
++      }
++
++      .card:has(> :is(img, picture, video, svg, .media)) > :not(img, picture, video, svg, .media) {
++        grid-column: 2;
++      }
++
++      .card > :is(h1, h2, h3, h4, h5, h6, hgroup, header),
++      .card > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer, input),
++      .card > footer {
++        text-align: start;
++        justify-self: start;
++      }
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 0;
+       color: var(--primary);
+     }
+ 
++    .card:has(a.card-link) {
++      position: relative;
++    }
++
++    .card a.card-link {
++      color: inherit;
++      text-decoration: none;
++    }
++
++    .card a.card-link::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      border-radius: inherit;
++    }
++
++    .card a.card-link:focus-visible {
++      outline: none;
++    }
++
++    .card:has(a.card-link:focus-visible) {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .card:has(a.card-link:hover) {
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++    }
++
++    .card:has(a.card-link) :is(a:not(.card-link), button, input, select, textarea, x-button) {
++      position: relative;
++      z-index: 1;
++    }
++
++    .visually-hidden,
++    .card footer a span {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -127,7 +254,7 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      margin-top: 5px;
+       transition: background 0.3s;
+     }
+ 
+@@ -135,7 +262,7 @@
+       background: #3e2723;
+     }
+ 
+-    footer {
++    body > footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -178,21 +305,27 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <article class="card">
++          <h3><a href="/menu/seasonal" class="card-link">Maple Oat Latte</a></h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <footer>
++            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <h3><a href="/menu/espresso" class="card-link">Dark Roast Espresso</a></h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <footer>
++            <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <h3><a href="/menu/cold-brew" class="card-link">Cold Brew</a></h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span></a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>
