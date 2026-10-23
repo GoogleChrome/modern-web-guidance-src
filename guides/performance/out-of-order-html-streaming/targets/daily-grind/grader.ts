@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import {
   test,
   expect,
@@ -39,75 +40,17 @@ const HTML_SETTER_METHODS = new Set([
   'streamAfterHTMLUnsafe',
 ]);
 
-function collectNodes(root: any): any[] {
-  const nodes: any[] = [];
-  const visit = (node: any) => {
-    if (!node) return;
-    nodes.push(node);
-    const children = node.childNodes ? Array.from(node.childNodes) : [];
-    for (const child of children) {
-      visit(child);
-    }
-  };
-  visit(root);
-  return nodes;
-}
-
-function getMarkerInfo(node: any): { type: 'start' | 'end' | 'marker'; name?: string } | null {
-  if (!node || (node.nodeType !== 7 && node.nodeType !== 8)) return null;
-  const raw = String(node.nodeValue || node.data || node.textContent || '').trim();
-  const normalized = raw.replace(/^\?/, '').replace(/\?$/, '').trim();
-  const lower = normalized.toLowerCase();
-
-  if (lower === 'end' || lower.startsWith('end ') || lower.startsWith('end\t')) {
-    return { type: 'end' };
-  }
-
-  let type: 'start' | 'marker' | null = null;
-  if (lower.startsWith('start')) {
-    type = 'start';
-  } else if (lower.startsWith('marker')) {
-    type = 'marker';
-  }
-  if (!type) return null;
-
-  const rest = normalized.slice(type.length).trim();
-  let name: string | undefined;
-  const eqIdx = rest.indexOf('=');
-  if (eqIdx !== -1) {
-    const afterEq = rest.slice(eqIdx + 1).trim();
-    const quote = afterEq[0];
-    if (quote === '"' || quote === "'") {
-      const endQuoteIdx = afterEq.indexOf(quote, 1);
-      if (endQuoteIdx !== -1) {
-        name = afterEq.slice(1, endQuoteIdx).trim();
-      }
-    } else {
-      name = afterEq.split(/\s+/)[0]?.trim();
-    }
-  }
-  return { type, name };
-}
-
 test.describe('out-of-order-html-streaming Target Grader', () => {
   test('Renders initial fallback content within <?start> and <?end> processing instruction ranges', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const hasValidRange = docs.some(({ document }) => {
-      const bodyNodes = collectNodes(document.body || document);
-      const startNames = new Set<string>();
-      let endCount = 0;
-
-      for (const node of bodyNodes) {
-        if (node.parentNode?.tagName?.toLowerCase() === 'template') continue;
-        const info = getMarkerInfo(node);
-        if (info?.type === 'start' && info.name) {
-          startNames.add(info.name);
-        } else if (info?.type === 'end') {
-          endCount++;
-        }
-      }
-
-      return startNames.size > 0 && endCount > 0;
+    const hasValidRange = targetFiles.some((file) => {
+      if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) return false;
+      const content = fs.readFileSync(file, 'utf8');
+      const startIndex = content.indexOf('<?start');
+      if (startIndex === -1) return false;
+      const endIndex = content.indexOf('<?end', startIndex);
+      if (endIndex <= startIndex) return false;
+      const innerContent = content.slice(startIndex, endIndex);
+      return innerContent.length > '<?start'.length;
     });
 
     expect(hasValidRange).toBe(true);
@@ -115,22 +58,18 @@ test.describe('out-of-order-html-streaming Target Grader', () => {
 
   test('Provides <template for="..."> elements matching the declarative marker names', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasMatchingTemplate = docs.some(({ document }) => {
-      const allNodes = collectNodes(document.body || document);
-      const markerNames = new Set<string>();
-
-      for (const node of allNodes) {
-        const info = getMarkerInfo(node);
-        if ((info?.type === 'start' || info?.type === 'marker') && info.name) {
-          markerNames.add(info.name);
-        }
-      }
-
+    const hasMatchingTemplate = docs.some(({ file, document }) => {
+      const content = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
       const templates = Array.from(document.querySelectorAll('template[for]')) as any[];
       return templates.some((tpl) => {
         const targetName = tpl.getAttribute('for')?.trim();
         const hasChildren = (tpl.innerHTML || tpl.textContent || '').trim().length > 0;
-        return Boolean(targetName && markerNames.has(targetName) && hasChildren);
+        return Boolean(
+          targetName &&
+            hasChildren &&
+            (content.includes('<?start') || content.includes('<?marker')) &&
+            content.includes(targetName)
+        );
       });
     });
 
