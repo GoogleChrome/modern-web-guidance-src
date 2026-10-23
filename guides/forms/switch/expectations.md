@@ -2,7 +2,6 @@
 - Each switch input is associated with a `<label>` element (either by wrapping the `<input>` inside the `<label>` or via matching `for` and `id` attributes).
 - [unsupported: switch-control] Native switch support is feature-detected via `'switch' in HTMLInputElement.prototype`, and `input-switch-polyfill` is conditionally loaded only when native support is missing.
 - [unsupported: switch-control] When native switch support is missing, the checkbox input uses `appearance: none` to render switch styling while remaining visible and interactive (not visually hidden or clipped).
-- [supported: switch-control] The implementation relies on native `<input type="checkbox" switch>` without loading `input-switch-polyfill` or applying an `appearance: none` fallback.
 - Toggling the switch updates its `checked` state and visually updates the control's track styling between its unchecked and checked states.
 - The switch input sets a custom `accent-color` that applies to both native switch rendering and the polyfilled switch's active state.
 - Focusing the switch input via keyboard navigation (`:focus-visible`) displays a visible focus outline on the input itself.
