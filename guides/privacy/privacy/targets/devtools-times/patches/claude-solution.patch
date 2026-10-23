@@ -1,0 +1,283 @@
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..03343ac 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -18,6 +18,16 @@ export default defineConfig({
+   }),
+   output: "server",
+ 
++  session: {
++    driver: 'fs',
++    cookie: {
++      name: 'astro-session',
++      httpOnly: true,
++      secure: true,
++      sameSite: 'lax',
++    },
++  },
++
+   image: {
+     service: {
+        entrypoint: 'astro/assets/services/sharp',
+diff --git a/pnpm-workspace.yaml b/pnpm-workspace.yaml
+new file mode 100644
+index 0000000..24a72ca
+--- /dev/null
++++ b/pnpm-workspace.yaml
+@@ -0,0 +1,3 @@
++allowBuilds:
++  '@parcel/watcher': true
++  esbuild: true
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..32dc390 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -48,6 +48,28 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     fetchReadingList();
+   };
+ 
++  const handleClearAll = async () => {
++    for (const slug of readingList) {
++      await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ slug }),
++      });
++    }
++    fetchReadingList();
++  };
++
++  const handleExport = () => {
++    const exportData = JSON.stringify({ readingList, exportedAt: new Date().toISOString() }, null, 2);
++    const blob = new Blob([exportData], { type: 'application/json' });
++    const url = URL.createObjectURL(blob);
++    const a = document.createElement('a');
++    a.href = url;
++    a.download = 'reading-list-export.json';
++    a.click();
++    URL.revokeObjectURL(url);
++  };
++
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
+   return (
+@@ -58,8 +80,14 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+           </svg>
+         </button>
+-        <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++        <div className="p-4 flex items-center justify-between">
++          <h3 className="text-lg font-semibold text-gray-800">Your Reading List</h3>
++          {readingList.length > 0 && (
++            <div className="flex space-x-2">
++              <button onClick={handleExport} className="text-xs text-gray-600 hover:text-gray-900 underline">Export</button>
++              <button onClick={handleClearAll} className="text-xs text-red-600 hover:text-red-800 underline">Delete All</button>
++            </div>
++          )}
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..be56661 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -25,12 +25,9 @@ export default function SignInForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -57,36 +54,45 @@ export default function SignInForm() {
+ 
+       <form onSubmit={handleSubmit} className="space-y-4">
+         <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
++          <label htmlFor="signin-username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+           </label>
+           <input
+             type="text"
+-            id="username"
++            id="signin-username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            aria-describedby="signin-username-help"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="signin-username-help" className="text-xs text-gray-500 mt-1">
++            Your credentials are sent securely and are not stored in the browser.
++          </p>
+         </div>
+-        
++
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
++          <label htmlFor="signin-password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+           </label>
+           <input
+             type="password"
+-            id="password"
++            id="signin-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            aria-describedby="signin-password-help"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="signin-password-help" className="text-xs text-gray-500 mt-1">
++            Your password is transmitted over an encrypted connection and never logged.
++          </p>
+         </div>
+ 
+         <button
+           type="submit"
+           disabled={loading}
++          data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..affc101 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -58,33 +58,38 @@ export default function SignUpForm() {
+ 
+       <form onSubmit={handleSubmit} className="space-y-4">
+         <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
++          <label htmlFor="signup-username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+           </label>
+           <input
+             type="text"
+-            id="username"
++            id="signup-username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            aria-describedby="signup-username-help"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="signup-username-help" className="text-xs text-gray-500 mt-1">
++            Your username is used only for authentication and is never shared publicly.
++          </p>
+         </div>
+-        
++
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
++          <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+           </label>
+           <input
+             type="password"
+-            id="password"
++            id="signup-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            aria-describedby="signup-password-help"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <p id="signup-password-help" className="text-xs text-gray-500 mt-1">
++             Must be at least 8 characters and contain a number. Your password is securely hashed and never stored in plain text.
+           </p>
+         </div>
+ 
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..5be942a 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -30,7 +30,6 @@ const baseUrl = import.meta.env.BASE_URL;
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..d82a14b 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -3,11 +3,13 @@ import { defineMiddleware } from 'astro:middleware';
+ 
+ export const onRequest = defineMiddleware(async (context, next) => {
+   if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+     const readingList = await context.session.get('readingList');
+     if (readingList === undefined) {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  response.headers.set('Permissions-Policy', 'geolocation=(), camera=(), microphone=(), accelerometer=()');
++  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++  return response;
+ });
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..098ec8d 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -86,22 +86,20 @@ const isBookmarked = readingList.includes(article.slug);
+             )}
+         </figure>
+ 
+-        <!-- Share Buttons & Comments -->
++        <!-- Share Buttons — static links, no third-party SDKs -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+-            <!-- Social Share Icons (Placeholders) -->
+             <div class="flex space-x-3 items-center">
+                 <span class="text-sm font-semibold text-gray-800">Share:</span>
+-                <a href="#" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
++                <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(Astro.url.href)}`} rel="noopener" target="_blank" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
++                <a href={`https://x.com/intent/tweet?text=${encodeURIComponent(article.data.title)}&url=${encodeURIComponent(Astro.url.href)}`} rel="noopener" target="_blank" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
++                <a href={`https://api.whatsapp.com/send?text=${encodeURIComponent(article.data.title + ' ' + Astro.url.href)}`} rel="noopener" target="_blank" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
+                 </a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
++                <a href={`mailto:?subject=${encodeURIComponent(article.data.title)}&body=${encodeURIComponent(Astro.url.href)}`} class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+                 <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+             </div>
+-
+         </div>
+ 
+         <!-- Article Body Content -->
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..625e926 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -1,10 +1,16 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
++const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+ <Layout title="Sign Up | The DevTools Times">
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
++    <div class="max-w-md mx-auto mt-4 text-center">
++      <a href={baseUrl} class="text-sm text-gray-600 hover:text-gray-900 underline">
++        Continue as guest
++      </a>
++    </div>
+   </div>
+ </Layout>

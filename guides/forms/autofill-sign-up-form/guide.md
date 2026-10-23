@@ -2,6 +2,7 @@
 name: autofill-sign-up-form
 description: Build a sign-up form with correct autocomplete values and autofill support.
 web-feature-ids:
+  - autocorrect
   - input-email-tel-url
   - inputmode
 ---
@@ -36,6 +37,8 @@ Make it easy for users to enter data, by using the appropriate `<input>` element
 Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
 
 Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
+
+Username and email inputs hold identifiers, not prose. Add `spellcheck="false"` so the browser does not rewrite them into something the account does not match. `autocorrect` and `autocapitalize` are always disabled for `input type="email"`, but are required for non-email usernames.
 
 ### Make buttons helpful
 
@@ -100,9 +103,9 @@ You can help browsers store data correctly and autofill inputs, so users don't h
 1.  The `autocomplete`, `name`, `id`, and `type` attributes help browsers understand the role of inputs in order to store data that can later be used for autofill. To allow data to be stored for autofill, modern browsers also require inputs to have a stable `name` or `id` value (not randomly generated on each page load or site deployment), and to be in a `<form>` element with a `submit` button.
 1.  The `autocomplete` attribute helps browsers correctly autofill inputs using stored data.
 
-For email inputs use `autocomplete="username"`, since `username` is recognized by password managers in modern browsers—even though you should use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` and `id` values to help browsers differentiate between new and current passwords.
+For email inputs use `autocomplete="username"`, since `username` is recognized by password managers in modern browsers—even though you should use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` value to help browsers differentiate between new and current passwords.
 
-### Use autocomplete="new-password" and id="new-password" for a new password
+### Use autocomplete="new-password" for a new password
 
 MANDATORY: For a sign-up form, use `autocomplete="new-password"`.
 
@@ -147,5 +150,6 @@ Also make sure to use `autocomplete="username"` for usernames.
 
 {{ BASELINE_STATUS("input-email-tel-url") }}
 {{ BASELINE_STATUS("inputmode") }}
+{{ BASELINE_STATUS("autocorrect") }}
 
 Autofill is a progressive enhancement. In browsers that do not support autofill, users will simply need to manually enter their sign-up credentials. The semantic HTML constraints (such as `type`, `inputmode`, and `required`) will still function appropriately to validate user input and provide the correct virtual keyboards.

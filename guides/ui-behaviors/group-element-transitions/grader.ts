@@ -1,12 +1,68 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
-const url = `file://${process.env.TARGET_FILE}`;
+const targetFile = process.env.TARGET_FILE || '';
+const targetDir = path.dirname(targetFile);
+const url = `http://localhost/${path.basename(targetFile)}`;
+
+test.beforeEach(async ({ page }) => {
+  await page.route('http://localhost/**', async (route) => {
+    const reqUrl = new URL(route.request().url());
+    const relPath = decodeURIComponent(reqUrl.pathname).replace(/^\/+/, '');
+    const filePath = path.resolve(targetDir, relPath || path.basename(targetFile));
+
+    if (!filePath.startsWith(targetDir) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+      await route.abort();
+      return;
+    }
+
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypeMap: Record<string, string> = {
+      '.html': 'text/html; charset=utf-8',
+      '.js': 'text/javascript; charset=utf-8',
+      '.mjs': 'text/javascript; charset=utf-8',
+      '.css': 'text/css; charset=utf-8',
+      '.json': 'application/json; charset=utf-8',
+      '.svg': 'image/svg+xml',
+    };
+
+    await route.fulfill({
+      status: 200,
+      contentType: contentTypeMap[ext] || 'application/octet-stream',
+      body: fs.readFileSync(filePath),
+    });
+  });
+});
+
+async function clickAddButton(page: Page) {
+  const exactBtn = page.locator('button:has-text("Add Item")').first();
+  if ((await exactBtn.count()) > 0 && (await exactBtn.isVisible())) {
+    await exactBtn.click();
+    return;
+  }
+  const semanticBtn = page
+    .locator(
+      'button:not(.nav-cta):not(.btn-primary):not(.btn-ghost):not(.card-btn):not(dialog button)',
+    )
+    .filter({ hasText: /\badd\b|\+/i })
+    .first();
+  if ((await semanticBtn.count()) > 0 && (await semanticBtn.isVisible())) {
+    await semanticBtn.click();
+    return;
+  }
+  await exactBtn.click();
+}
 
 test('1. Multiple elements on the page have a view-transition-class property set to the same value', async ({ page }) => {
   await page.goto(url);
   const values = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll('.item')).map(el => 
-      window.getComputedStyle(el).getPropertyValue('view-transition-class')
+    const withClass = Array.from(document.querySelectorAll('*'))
+      .map(el => window.getComputedStyle(el).getPropertyValue('view-transition-class').trim())
+      .filter(v => v && v !== 'none');
+    if (withClass.length > 0) return withClass;
+    return Array.from(document.querySelectorAll('.item')).map(el =>
+      window.getComputedStyle(el).getPropertyValue('view-transition-class').trim()
     );
   });
   expect(values.length > 1 && values.every(v => v && v !== 'none' && v === values[0])).toBe(true);
@@ -17,8 +73,8 @@ test('2. Every element with a view-transition-class also has a unique view-trans
   const elementsInfo = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('*'))
       .map(el => ({
-        className: window.getComputedStyle(el).getPropertyValue('view-transition-class'),
-        name: window.getComputedStyle(el).getPropertyValue('view-transition-name')
+        className: window.getComputedStyle(el).getPropertyValue('view-transition-class').trim(),
+        name: window.getComputedStyle(el).getPropertyValue('view-transition-name').trim()
       }))
       .filter(info => info.className && info.className !== 'none');
   });
@@ -32,7 +88,7 @@ test('3. There are no repeated view-transition-name values', async ({ page }) =>
   await page.goto(url);
   const names = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('*'))
-      .map(el => window.getComputedStyle(el).getPropertyValue('view-transition-name'))
+      .map(el => window.getComputedStyle(el).getPropertyValue('view-transition-name').trim())
       .filter(name => name && name !== 'none');
   });
   const namesUnique = names.length > 0 && (new Set(names).size === names.length);
@@ -42,8 +98,11 @@ test('3. There are no repeated view-transition-name values', async ({ page }) =>
 test('4. The stylesheet contains a ::view-transition-group rule targeting that class name', async ({ page }) => {
   await page.goto(url);
   const hasGroupRule = await page.evaluate(() => {
-    const items = Array.from(document.querySelectorAll('.item'));
-    const className = items.length > 0 ? window.getComputedStyle(items[0]).getPropertyValue('view-transition-class') : '';
+    const firstWithClass = Array.from(document.querySelectorAll('*')).find(el => {
+      const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+      return c && c !== 'none';
+    }) || document.querySelector('.item');
+    const className = firstWithClass ? window.getComputedStyle(firstWithClass).getPropertyValue('view-transition-class').trim() : '';
     if (!className || className === 'none') return false;
 
     for (const sheet of Array.from(document.styleSheets)) {
@@ -66,8 +125,11 @@ test('4. The stylesheet contains a ::view-transition-group rule targeting that c
 test('5. The animation-duration for the ::view-transition-group targeting that class is a time', async ({ page }) => {
   await page.goto(url);
   const duration = await page.evaluate(() => {
-    const items = Array.from(document.querySelectorAll('.item'));
-    const className = items.length > 0 ? window.getComputedStyle(items[0]).getPropertyValue('view-transition-class') : '';
+    const firstWithClass = Array.from(document.querySelectorAll('*')).find(el => {
+      const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+      return c && c !== 'none';
+    }) || document.querySelector('.item');
+    const className = firstWithClass ? window.getComputedStyle(firstWithClass).getPropertyValue('view-transition-class').trim() : '';
     if (!className || className === 'none') return null;
 
     for (const sheet of Array.from(document.styleSheets)) {
@@ -91,8 +153,11 @@ test('5. The animation-duration for the ::view-transition-group targeting that c
 test('6. The animation-timing-function for the ::view-transition-group targeting that class is ease-in-out', async ({ page }) => {
   await page.goto(url);
   const tf = await page.evaluate(() => {
-    const items = Array.from(document.querySelectorAll('.item'));
-    const className = items.length > 0 ? window.getComputedStyle(items[0]).getPropertyValue('view-transition-class') : '';
+    const firstWithClass = Array.from(document.querySelectorAll('*')).find(el => {
+      const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+      return c && c !== 'none';
+    }) || document.querySelector('.item');
+    const className = firstWithClass ? window.getComputedStyle(firstWithClass).getPropertyValue('view-transition-class').trim() : '';
     if (!className || className === 'none') return null;
 
     for (const sheet of Array.from(document.styleSheets)) {
@@ -170,8 +235,11 @@ test('7. A prefers-reduced-motion rule sets the animation to none', async ({ pag
 test('8. New elements (entering) are transitioned using ::view-transition-new:only-child', async ({ page }) => {
   await page.goto(url);
   const hasNewEnteringRule = await page.evaluate(() => {
-    const items = Array.from(document.querySelectorAll('.item'));
-    const className = items.length > 0 ? window.getComputedStyle(items[0]).getPropertyValue('view-transition-class') : '';
+    const firstWithClass = Array.from(document.querySelectorAll('*')).find(el => {
+      const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+      return c && c !== 'none';
+    }) || document.querySelector('.item');
+    const className = firstWithClass ? window.getComputedStyle(firstWithClass).getPropertyValue('view-transition-class').trim() : '';
     if (!className || className === 'none') return false;
 
     for (const sheet of Array.from(document.styleSheets)) {
@@ -194,8 +262,11 @@ test('8. New elements (entering) are transitioned using ::view-transition-new:on
 test('9. Removed elements (exiting) are transitioned using ::view-transition-old:only-child', async ({ page }) => {
   await page.goto(url);
   const hasOldExitingRule = await page.evaluate(() => {
-    const items = Array.from(document.querySelectorAll('.item'));
-    const className = items.length > 0 ? window.getComputedStyle(items[0]).getPropertyValue('view-transition-class') : '';
+    const firstWithClass = Array.from(document.querySelectorAll('*')).find(el => {
+      const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+      return c && c !== 'none';
+    }) || document.querySelector('.item');
+    const className = firstWithClass ? window.getComputedStyle(firstWithClass).getPropertyValue('view-transition-class').trim() : '';
     if (!className || className === 'none') return false;
 
     for (const sheet of Array.from(document.styleSheets)) {
@@ -227,7 +298,7 @@ test('10. DOM updates that change the list are wrapped in a document.startViewTr
     }
   });
   await page.goto(url);
-  await page.click('button:has-text("Add Item")');
+  await clickAddButton(page);
   const called = await page.evaluate(() => (window as any).__startViewTransitionCalled);
   expect(called).toBe(true);
 });
@@ -244,19 +315,25 @@ test('11. If document.startViewTransition is not defined, the DOM updates are ma
     });
   });
   await page.goto(url);
-  
-  const hasTransitionClass = await page.evaluate(() => {
-    const first = document.querySelector('.item');
-    if (!first) return false;
-    const vtClass = window.getComputedStyle(first).getPropertyValue('view-transition-class');
-    return vtClass && vtClass !== 'none';
-  });
 
-  const initialCount = await page.locator('.item').count();
-  await page.click('button:has-text("Add Item")');
-  const finalCount = await page.locator('.item').count();
-  
-  expect(hasTransitionClass && finalCount === initialCount + 1).toBe(true);
+  const countTransitioned = async () => {
+    return await page.evaluate(() => {
+      const withClass = Array.from(document.querySelectorAll('*')).filter(el => {
+        const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+        return c && c !== 'none';
+      });
+      return {
+        hasTransitionClass: withClass.length > 0,
+        count: withClass.length > 0 ? withClass.length : document.querySelectorAll('.item').length,
+      };
+    });
+  };
+
+  const before = await countTransitioned();
+  await clickAddButton(page);
+  const after = await countTransitioned();
+
+  expect(before.hasTransitionClass && after.count === before.count + 1).toBe(true);
 });
 
 test('12. The Add button is interactive during the transition', async ({ page }) => {
@@ -289,11 +366,26 @@ test('12. The Add button is interactive during the transition', async ({ page })
     return hasPointerEventsNone && hasRootNone;
   });
 
-  await page.click('button:has-text("Add Item")');
+  const initialCount = await page.evaluate(() => {
+    const withClass = Array.from(document.querySelectorAll('*')).filter(el => {
+      const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+      return c && c !== 'none';
+    });
+    return withClass.length > 0 ? withClass.length : document.querySelectorAll('.item').length;
+  });
+
+  await clickAddButton(page);
   await page.waitForTimeout(200);
-  await page.click('button:has-text("Add Item")');
+  await clickAddButton(page);
   
-  await page.waitForFunction(() => document.querySelectorAll('.item').length === 5);
+  await page.waitForFunction((expectedMin: number) => {
+    const withClass = Array.from(document.querySelectorAll('*')).filter(el => {
+      const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+      return c && c !== 'none';
+    });
+    const count = withClass.length > 0 ? withClass.length : document.querySelectorAll('.item').length;
+    return count >= expectedMin;
+  }, initialCount + 2);
   expect(hasTransitionStyles).toBe(true);
 });
 

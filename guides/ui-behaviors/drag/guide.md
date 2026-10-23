@@ -1,6 +1,91 @@
 ---
 name: drag
-description: Support dragging to move a certain overlay element (e.g. a dialog) around the page.
+description: Support dragging to move a floating element around the page.
 web-feature-ids:
+  - pointer-events-api
+  - touch-action
   - user-select
 ---
+
+# Build a Draggable Element
+
+Add dragging to an existing floating element such as a panel, palette, toolbar, inspector, or dialog. Dragging does not determine how the element is displayed, dismissed, stacked, or focused.
+
+## Use a dedicated handle
+
+Start dragging from a dedicated handle when the element contains selectable text, buttons, inputs, or links. This keeps its normal contents usable. Make the handle focusable for keyboard movement and give it an accessible name that mentions the arrow-key interaction.
+
+Do not apply `role="application"` to the handle. It unnecessarily changes assistive-technology interaction.
+
+Apply `cursor: grab`/`grabbing`, `touch-action: none`, and both `user-select: none` and `-webkit-user-select: none` to the handle—not the entire draggable element—so text outside it remains selectable and touch gestures retain their usual behavior:
+
+```css
+.drag-handle {
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.drag-handle.dragging {
+  cursor: grabbing;
+}
+```
+
+## Preserve pointer position and reachability
+
+Use a viewport-relative positioning model such as `position: fixed` when clamping movement to the viewport.
+
+- Start a drag only for the primary pointer button (`event.button === 0`).
+- Record the pointer offset on `pointerdown` and use it on every move so the element does not jump when grabbed away from its corner.
+- Keep the drag active after the pointer leaves the handle. Default to `setPointerCapture()` and clear the dragging state on `lostpointercapture`. If the handle may be removed or re-rendered mid-drag, use document-level `pointermove`, `pointerup`, and `pointercancel` listeners instead, since capture is lost in that case.
+- Optionally, wait for roughly 4px of movement before entering the dragging state, so a click on the handle does not trigger drag styling.
+
+With pointer capture, the movement listeners can remain on the handle:
+
+```js
+handle.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0 || event.target.closest('button, input, select, textarea, a')) return;
+
+  const rect = draggable.getBoundingClientRect();
+  offsetX = event.clientX - rect.left;
+  offsetY = event.clientY - rect.top;
+  handle.setPointerCapture(event.pointerId);
+});
+
+handle.addEventListener('pointermove', (event) => {
+  if (!handle.hasPointerCapture(event.pointerId)) return;
+  handle.classList.add('dragging');
+  moveTo(event.clientX - offsetX, event.clientY - offsetY);
+});
+
+handle.addEventListener('lostpointercapture', () => {
+  handle.classList.remove('dragging');
+});
+
+function moveTo(left, top) {
+  const maxLeft = Math.max(0, window.innerWidth - draggable.offsetWidth);
+  const maxTop = Math.max(0, window.innerHeight - draggable.offsetHeight);
+
+  draggable.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
+  draggable.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
+}
+```
+
+Clamp every pointer and keyboard position through the same helper so the element stays reachable. Re-clamp its current position after viewport or element-size changes. For layout-heavy elements, consider translating during the drag to avoid per-frame layout, then commit the final position to `left` and `top` on release.
+
+## Provide keyboard movement
+
+When the handle has focus, move the element with the arrow keys and call `preventDefault()` for those keys. Use the same clamped positioning helper as pointer movement. A 15px increment is a reasonable starting point; adapt it to the component's size and precision needs.
+
+## Dialog-specific note
+
+A `<dialog>` or `[popover]` can use this mechanism with its header as the handle. Set `margin: 0` before assigning `left` and `top`, because the browser's default margins interfere with manual positioning. For dialog and popover opening, closing, focus, and dismissal behavior, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("platform-controls-dismiss-dialog") }}.
+
+## Fallback strategies
+
+When dragging only repositions a component, treat it as progressive enhancement: without JavaScript, keep the element, its content, and its controls visible, readable, and functional in a sensible default position. Do not expose a non-functional drag handle: if the handle is a standalone grip control, hide it by default and reveal it when JavaScript initializes; if a header doubles as the handle, attach its drag affordances when JavaScript initializes.
+
+{{ FEATURE_FALLBACKS("user-select") }}
+
+Include `-webkit-user-select: none` before `user-select: none` so text selection stays suppressed during dragging in Safari.

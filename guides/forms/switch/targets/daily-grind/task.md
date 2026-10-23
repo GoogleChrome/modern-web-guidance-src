@@ -1,0 +1,1 @@
+- Build an accessible switch in the application.

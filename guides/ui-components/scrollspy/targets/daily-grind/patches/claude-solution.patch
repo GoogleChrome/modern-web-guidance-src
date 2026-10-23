@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+index 66c9173..bbd0a5d 100644
+--- a/index.html
++++ b/index.html
+@@ -38,6 +38,8 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      /* MANDATORY: The container of the scrollspy markers must opt in to tracking. */
++      scroll-target-group: auto;
+     }
+ 
+     .logo {
+@@ -59,13 +61,34 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding-bottom: 4px;
++      border-bottom: 2px solid transparent;
++      transition: color 0.3s, border-color 0.3s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    /* MANDATORY: highlight the link whose target section is in view.
++       :is() combines the native pseudo-class with the IntersectionObserver
++       fallback class so a browser that doesn't understand :target-current
++       doesn't throw out the whole rule. */
++    nav .nav-links a:is(:target-current, .\:target-current) {
++      color: var(--accent);
++      font-weight: bold;
++      border-bottom-color: var(--accent);
++    }
++
++    .nav-account {
++      display: flex;
++      align-items: center;
++    }
++
++    .nav-account a {
++      margin-left: 20px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -100,6 +123,25 @@
+       padding: 0 20px;
+     }
+ 
++    section {
++      /* Offset anchored scrolling so content isn't hidden behind the sticky nav. */
++      scroll-margin-top: 90px;
++      min-height: 70vh;
++      padding: 40px 0;
++    }
++
++    section h2 {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .section-intro {
++      max-width: 650px;
++      margin: 0 auto 20px;
++      text-align: center;
++      color: var(--primary);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -159,13 +201,18 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++    <ul class="nav-links">
++      <!-- Fragment links whose hrefs match the section ids in <main>. -->
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#story">Our Story</a></li>
++      <li><a href="#contact">Contact</a></li>
+     </ul>
++    <div class="nav-account">
++      <a href="/account">My Account</a>
++      <a href="/logout" class="logout-link">Logout</a>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+@@ -175,8 +222,9 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu">
++      <h2>Seasonal Favorites</h2>
++      <p class="section-intro">Small-batch drinks crafted around what's fresh this season.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +243,62 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations">
++      <h2>Find Us</h2>
++      <p class="section-intro">Stop by one of our roasteries for a cup made just for you.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>128 Main Street<br>Open daily, 6am &ndash; 7pm</p>
++        </div>
++        <div class="card">
++          <h3>Riverside Café</h3>
++          <p>42 Riverside Drive<br>Open daily, 7am &ndash; 6pm</p>
++        </div>
++        <div class="card">
++          <h3>Uptown Bar</h3>
++          <p>900 Highland Ave<br>Open daily, 6:30am &ndash; 8pm</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards">
++      <h2>Daily Grind Rewards</h2>
++      <p class="section-intro">Earn a free drink for every ten you buy, plus early access to seasonal releases.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn Points</h3>
++          <p>Collect a star with every purchase, in-store or online.</p>
++        </div>
++        <div class="card">
++          <h3>Free Refills</h3>
++          <p>Members get complimentary drip coffee refills while in-café.</p>
++        </div>
++        <div class="card">
++          <h3>Birthday Treat</h3>
++          <p>A free drink of your choice during your birthday month.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="story">
++      <h2>Our Story</h2>
++      <p class="section-intro">
++        The Daily Grind started in 2011 as a single cart in a farmers market. Today we roast
++        our own beans, source directly from growers we know by name, and still believe the
++        best cup of coffee is the one shared with someone else.
++      </p>
++    </section>
++
++    <section id="contact">
++      <h2>Get In Touch</h2>
++      <p class="section-intro">
++        Questions, catering requests, or just want to say hi? Reach us at
++        <a href="mailto:hello@dailygrind.example">hello@dailygrind.example</a>
++        or call (555) 018-2024.
++      </p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +311,42 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const supportsScrollTargetGroup = CSS.supports('scroll-target-group: auto');
++    const navLinks = document.querySelectorAll('.nav-links a');
++
++    if (supportsScrollTargetGroup) {
++      const syncAriaCurrent = () => {
++        const currentLink = document.querySelector('.nav-links a:target-current');
++        navLinks.forEach(link => {
++          link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
++        });
++      };
++      // Sync on initial load (this script is a module, so it already runs after parsing).
++      syncAriaCurrent();
++      // Re-sync once scrolling has settled.
++      document.addEventListener('scrollend', syncAriaCurrent);
++    } else {
++      // Fallback for browsers without native scroll-target-group support.
++      const sections = document.querySelectorAll('main section');
++
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach(entry => {
++          if (entry.isIntersecting) {
++            const id = entry.target.getAttribute('id');
++            navLinks.forEach(link => {
++              const isActive = link.getAttribute('href') === `#${id}`;
++              link.classList.toggle('\:target-current', isActive);
++              link.setAttribute('aria-current', isActive ? 'true' : 'false');
++            });
++          }
++        });
++      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
++
++      sections.forEach(section => observer.observe(section));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

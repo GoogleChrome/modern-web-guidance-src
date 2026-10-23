@@ -1,0 +1,8 @@
+- The OTP verification control MUST be wrapped in a semantic `<form>` element that includes an explicit `<button type="submit">` with actionable text.
+- The OTP code MUST be collected using a single `<input>` element rather than splitting individual digits across multiple `<input>` elements.
+- The OTP `<input>` element MUST use `type="text"`, `inputmode="numeric"`, and `autocomplete="one-time-code"` (and MUST NOT use `type="number"` or `type="tel"`).
+- The OTP `<input>` element MUST include native validation attributes (`required` and `pattern` or `maxlength`) and a `name` attribute.
+- The OTP `<input>` element MUST be programmatically associated with a visible `<label>` via matching `for` and `id` attributes, and any format hint linked via `aria-describedby` MUST be positioned visually above the `<input>` element.
+- When `OTPCredential` is available on `window`, the client MUST invoke `navigator.credentials.get` with `otp: { transport: ['sms'] }` and an `AbortSignal` from an `AbortController`.
+- Submitting the `<form>` manually MUST call `abort()` on the active `AbortController` to cancel any pending `navigator.credentials.get` WebOTP request.
+- When `navigator.credentials.get` resolves with an OTP credential object (`{ code }`), the client MUST populate the OTP `<input>` value with `code` and trigger the application's form submission flow (e.g., via `form.requestSubmit()` rather than `form.submit()`, so `submit` event handlers and validation execute).

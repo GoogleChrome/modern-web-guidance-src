@@ -1,0 +1,3 @@
+- The implementation MUST use `@container` queries (`container-type: inline-size`) for component-level responsive layouts rather than relying exclusively on viewport `@media` queries.
+- The implementation MUST use dynamic viewport units (`dvh`, `dvw`) instead of static `vh` or `vw` units for full-viewport sizing.
+- The implementation MUST apply `aspect-ratio` to media containers or responsive `<img>` and `<video>` elements to prevent Cumulative Layout Shift (CLS).
