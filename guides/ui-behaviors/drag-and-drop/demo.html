@@ -242,8 +242,12 @@
       return [...list.children].indexOf(item) + 1;
     }
 
+    // Delay so the announcement isn't swallowed when the move blurs and refocuses the handle (the before() fallback).
+    let announceTimer = 0;
     function announce(message) {
-      status.textContent = message;
+      clearTimeout(announceTimer);
+      status.textContent = '';
+      announceTimer = setTimeout(() => { status.textContent = message; }, 500);
     }
 
     function updateDisabledStates() {
