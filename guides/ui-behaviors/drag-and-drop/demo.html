@@ -75,7 +75,8 @@
       box-shadow: 0 12px 28px rgb(25 52 45 / 28%);
     }
 
-    .task:has(.drag-handle:focus-visible) {
+    .task:not(.pointer-dragging):has(.drag-handle:focus-visible),
+    .drag-preview.has-focus {
       outline: 3px solid var(--accent);
       outline-offset: 2px;
     }
@@ -403,6 +404,8 @@
 
       pointerPreview = pointerItem.cloneNode(true);
       pointerPreview.classList.remove('pointer-dragging');
+      // A clone never matches :focus-visible, so carry the keyboard focus ring over to the preview.
+      pointerPreview.classList.toggle('has-focus', handle.matches(':focus-visible'));
       pointerPreview.classList.add('drag-preview');
       pointerPreview.setAttribute('aria-hidden', 'true');
       pointerPreview.inert = true;
