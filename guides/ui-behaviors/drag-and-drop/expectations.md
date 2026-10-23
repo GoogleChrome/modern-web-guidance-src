@@ -10,6 +10,7 @@
 - Reordering is animated: displaced siblings and a released drag preview travel to their new positions instead of jumping, and the animation is skipped under `prefers-reduced-motion: reduce`.
 - When the items are in a scrollable container, holding a dragged item near or beyond the container's top or bottom edge scrolls the container, and the item can still be dropped at the first or last position.
 - Reordering actions are announced in a live region with the item's new position.
+- Releasing a drag without changing the item's position (such as a plain click on the handle) does not announce a move.
 - A grabbed item is dropped, and its `aria-pressed` reset, when its handle loses focus.
 - After a keyboard move or an `Escape` cancel, the moved item is scrolled into view within its scrollable container.
 - The collection renders its items in a readable and usable default DOM order before any reordering interaction occurs.

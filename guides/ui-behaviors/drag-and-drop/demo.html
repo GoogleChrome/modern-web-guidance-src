@@ -299,9 +299,11 @@
       updateDisabledStates();
       const label = pointerItem.dataset.label;
       const position = getPosition(pointerItem);
-      announce(cancelled
-        ? `Cancelled. ${label} returned to position ${position} of ${list.children.length}.`
-        : `Moved ${label} to position ${position}.`);
+      if (cancelled) {
+        announce(`Cancelled. ${label} returned to position ${position} of ${list.children.length}.`);
+      } else if (pointerItem.nextElementSibling !== pointerStartNext) {
+        announce(`Moved ${label} to position ${position}.`);
+      }
       const item = pointerItem;
       const preview = pointerPreview;
       const from = preview.getBoundingClientRect();
