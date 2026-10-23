@@ -60,6 +60,45 @@ describe('extractTargetFilesFromPatch', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('ignores task.md, expectations.md, guide.md, and pnpm-workspace.yaml in patch headers', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-exclude-test-'));
+    const patchPath = path.join(tmpDir, 'demo.patch');
+    const patchContent = `--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1 +1 @@
+-old
++new
+--- /dev/null
++++ b/guide.md
+@@ -0,0 +1 @@
++# Guide
+--- /dev/null
++++ b/expectations.md
+@@ -0,0 +1 @@
++# Expectations
+--- /dev/null
++++ b/task.md
+@@ -0,0 +1 @@
++# Task
+--- /dev/null
++++ b/targets/daily-grind/task.md
+@@ -0,0 +1 @@
++# Target Task
+--- /dev/null
++++ b/pnpm-workspace.yaml
+@@ -0,0 +1 @@
++packages: []
+`;
+    fs.writeFileSync(patchPath, patchContent);
+
+    try {
+      const files = extractTargetFilesFromPatch(patchPath);
+      assert.deepStrictEqual(files, ['src/App.tsx']);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('applyPatchSync', () => {
@@ -125,6 +164,43 @@ describe('capturePatchFromGit', () => {
     }
   });
 
+  test('excludes task.md, expectations.md, guide.md, and pnpm-workspace.yaml from captured patch', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capture-patch-exclusions-'));
+    const repoDir = path.join(tmpDir, 'repo');
+    const patchDest = path.join(tmpDir, 'out', 'change.patch');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'existing.txt'), 'hello\n');
+      execSync('git add . && git commit -m "init"', { cwd: repoDir, stdio: 'ignore' });
+
+      // Create valid modifications and excluded files
+      fs.writeFileSync(path.join(repoDir, 'valid.txt'), 'valid content\n');
+      fs.writeFileSync(path.join(repoDir, 'guide.md'), '# Guide\n');
+      fs.writeFileSync(path.join(repoDir, 'expectations.md'), '# Expectations\n');
+      fs.writeFileSync(path.join(repoDir, 'task.md'), '# Task\n');
+      fs.writeFileSync(path.join(repoDir, 'pnpm-workspace.yaml'), 'packages: []\n');
+
+      const nestedDir = path.join(repoDir, 'sub');
+      fs.mkdirSync(nestedDir, { recursive: true });
+      fs.writeFileSync(path.join(nestedDir, 'guide.md'), '# Sub Guide\n');
+      fs.writeFileSync(path.join(nestedDir, 'task.md'), '# Sub Task\n');
+
+      const result = capturePatchFromGit(repoDir, patchDest);
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(fs.existsSync(patchDest), true);
+      const patchContent = fs.readFileSync(patchDest, 'utf8');
+      assert.match(patchContent, /valid\.txt/);
+      assert.doesNotMatch(patchContent, /guide\.md/);
+      assert.doesNotMatch(patchContent, /expectations\.md/);
+      assert.doesNotMatch(patchContent, /task\.md/);
+      assert.doesNotMatch(patchContent, /pnpm-workspace\.yaml/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   test('captures changes even when agent commits them to git', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capture-committed-'));
     const repoDir = path.join(tmpDir, 'repo');
@@ -170,6 +246,47 @@ describe('capturePatchFromGit', () => {
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('generateUnifiedDiff', () => {
+  test('returns "No differences detected." for identical content', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    assert.strictEqual(generateUnifiedDiff('const a = 1;\n', 'const a = 1;\n'), 'No differences detected.');
+    assert.strictEqual(generateUnifiedDiff('', ''), 'No differences detected.');
+  });
+
+  test('generates unified diff for modified lines with custom labels', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    const oldText = 'line 1\nline 2\nline 3';
+    const newText = 'line 1\nline 2 modified\nline 3';
+    const diff = generateUnifiedDiff(oldText, newText, 'OldFile', 'NewFile');
+
+    assert.match(diff, /^--- OldFile/m);
+    assert.match(diff, /^\+\+\+ NewFile/m);
+    assert.match(diff, /^@@ -\d+,\d+ \+\d+,\d+ @@/m);
+    assert.match(diff, /^-line 2/m);
+    assert.match(diff, /^\+line 2 modified/m);
+  });
+
+  test('handles insertions at beginning, middle, and end correctly with prefix/suffix trimming', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    const oldText = 'header\nshared 1\nshared 2\nfooter';
+    const newText = 'top new\nheader\nshared 1\nmiddle inserted\nshared 2\nfooter\nbottom new';
+    const diff = generateUnifiedDiff(oldText, newText);
+
+    assert.match(diff, /^\+top new/m);
+    assert.match(diff, /^\+middle inserted/m);
+    assert.match(diff, /^\+bottom new/m);
+  });
+
+  test('handles empty string edge cases correctly', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    const diffFromEmpty = generateUnifiedDiff('', 'new content\n');
+    assert.match(diffFromEmpty, /^\+new content/m);
+
+    const diffToEmpty = generateUnifiedDiff('old content\n', '');
+    assert.match(diffToEmpty, /^-old content/m);
   });
 });
 

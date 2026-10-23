@@ -7,7 +7,7 @@ import { getTranscludedFeatureIds } from '../core/macro-parsing.ts';
 import { guidesDir, rootDir } from '../core/paths.ts';
 
 // Define content file name constants inline to avoid importing from 'src/core/guide-validation.ts'
-// which would transitively require external packages (like 'gray-matter' and 'marked')
+// which would transitively require external packages (like '@11ty/gray-matter' and 'marked')
 // in the GitHub Actions runner, slowing down the triage job.
 export const GUIDE_FILE = 'guide.md';
 export const SKILL_FILE = 'SKILL.md';
@@ -98,10 +98,16 @@ export function isSmeContentFile(file: string): boolean {
     normalized = path.relative(rootDir, normalized);
   }
   const parts = normalized.split(/[/\\]/);
+  if (parts.some(p => p === '..')) {
+    return false;
+  }
   if (parts[0] === 'features' && parts.length === 2 && (file.endsWith('.md') || file.endsWith('.json'))) {
     return true;
   }
-  if (parts[0] !== 'guides' || parts.length < 3 || parts.some(p => p === '..')) {
+  if (parts[0] === 'skills-src' && parts.length >= 3) {
+    return true;
+  }
+  if (parts[0] !== 'guides' || parts.length < 3) {
     return false;
   }
   const filename = parts[parts.length - 1];
@@ -148,7 +154,11 @@ export function normalizeLabel(label: string): string {
   if (clean.startsWith('guides:')) {
     clean = clean.slice('guides:'.length);
   }
-  return clean.trim();
+  clean = clean.trim();
+  if (clean === 'extensions') {
+    return 'chrome-extensions';
+  }
+  return clean;
 }
 
 export function isContentRelatedIssue(
@@ -170,8 +180,8 @@ export function isContentRelatedIssue(
     if (label.startsWith('category:') || label.startsWith('guide:') || label.startsWith('guides:')) return true;
   }
 
-  // Check description for use case subdir
-  if (/Use case subdir:\s*\[guides\/([^/\]]+)/i.test(issueDescription)) {
+  // Check description for use case subdir or template Category field
+  if (/Use case subdir:\s*\[guides\/([^/\]]+)/i.test(issueDescription) || /###\s+Category\s*\r?\n+([^\r\n#]+)/i.test(issueDescription)) {
     return true;
   }
 
@@ -405,7 +415,7 @@ export const githubApi = {
   getIssueBody(issueNumber: number): string {
     return child_process.execFileSync(
       'gh',
-      ['issue', 'view', String(issueNumber), '--json', 'body', '--jq', '.body'],
+      ['issue', 'view', String(issueNumber), '--json', 'body', '--jq', '.body // ""'],
       { encoding: 'utf8' }
     ).trim();
   },
@@ -546,8 +556,50 @@ export const githubApi = {
       { encoding: 'utf8' }
     ).trim();
     return output === 'true';
+  },
+
+  getPrBody(prNumber: number): string {
+    return child_process.execFileSync(
+      'gh',
+      ['pr', 'view', String(prNumber), '--json', 'body', '--jq', '.body // ""'],
+      { encoding: 'utf8' }
+    ).trim();
+  },
+
+  updatePrBody(prNumber: number, body: string): void {
+    child_process.execFileSync(
+      'gh',
+      ['pr', 'edit', String(prNumber), '--body-file', '-'],
+      { input: body, stdio: ['pipe', 'ignore', 'inherit'] }
+    );
   }
 };
+
+const PREVIEW_START = '<!-- mwg-demo-preview:start -->';
+const PREVIEW_END = '<!-- mwg-demo-preview:end -->';
+const PREVIEW_BLOB_BASE = 'https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob';
+
+export function upsertDemoPreviewInBody(headRef: string, currentBody: string, files: string[]): string {
+  const links = files
+    .filter(f => /^guides\/[^/.][^/]*\/[^/.][^/]*\/demo(?:-.+)?\.html$/.test(f))
+    .sort()
+    .map(f => `[\`${f.replace(/^guides\/|\/demo\.html$/g, '')}\`](${PREVIEW_BLOB_BASE}/${headRef}/${f})`);
+
+  const list = links.length === 1 ? links[0] : links.map(l => `\n- ${l}`).join('');
+  const section = links.length ? `${PREVIEW_START}\n---\n🎨 **Demo preview:** ${list}\n${PREVIEW_END}` : '';
+  const stripped = currentBody.replace(/\s*<!-- mwg-demo-preview:start -->[\s\S]*?<!-- mwg-demo-preview:end -->/g, '').trimEnd();
+  return [stripped, section].filter(Boolean).join('\n\n');
+}
+
+export function hasNoAtlTriageDirective(body?: string | null): boolean {
+  if (!body) return false;
+  // Strip fenced code blocks (``` or ~~~) and inline code spans (`...`)
+  // so prose mentions like `<!-- no-atl-triage -->` do not trigger the directive.
+  const withoutCode = body
+    .replace(/^(?:`{3,}|~{3,})[\s\S]*?^(?:`{3,}|~{3,})/gm, '')
+    .replace(/`+[^`]*`+/g, '');
+  return /<!--\s*no-atl-triage\s*-->/i.test(withoutCode);
+}
 
 export interface HandleIssueOptions {
   dryRun?: boolean;
@@ -564,6 +616,11 @@ export function handleIssue(
 ): string[] {
   const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
   console.log(`Triaging issue #${issueNumber} with labels: ${labels.join(', ')}`);
+
+  if (hasNoAtlTriageDirective(issueDescription)) {
+    console.log(`Issue #${issueNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+    return [];
+  }
   
   const assignedAtls = new Set<string>();
   
@@ -592,13 +649,15 @@ export function handleIssue(
     descriptionAtls.forEach(a => assignedAtls.add(a));
   }
 
-  // 3. Check issue description for use case category
-  const categoryMatch = issueDescription.match(/Use case subdir:\s*\[guides\/([^/\]]+)/i);
+  // 3. Check issue description for use case category (subdir link or issue template Category field)
+  const categoryMatch =
+    issueDescription.match(/Use case subdir:\s*\[guides\/([^/\]]+)/i) ||
+    issueDescription.match(/###\s+Category\s*\r?\n+([^\r\n#]+)/i);
   if (categoryMatch) {
     const category = categoryMatch[1].trim().toLowerCase();
     if (atlConfig.default[category]) {
       const atls = Array.isArray(atlConfig.default[category]) ? atlConfig.default[category] : [atlConfig.default[category]];
-      console.log(`Found category "${category}" from use case subdir in description. ATL: ${atls.join(', ')}`);
+      console.log(`Found category "${category}" from description. ATL: ${atls.join(', ')}`);
       atls.forEach(a => assignedAtls.add(a));
     }
   }
@@ -791,6 +850,8 @@ export function findGuidesTranscludingFeature(
 export interface HandlePrOptions {
   dryRun?: boolean;
   isDraft?: boolean;
+  prBody?: string;
+  headRef?: string;
 }
 
 export function handlePR(
@@ -805,6 +866,29 @@ export function handlePR(
   const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
   console.log(`Triaging PR #${prNumber} by author: @${prAuthor}`);
 
+  if (hasNoAtlTriageDirective(options?.prBody)) {
+    console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+    return [];
+  }
+
+  if (options?.isDraft) {
+    console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
+    return [];
+  }
+
+  let prBody = options?.prBody;
+  if (prBody === undefined && !mockFiles) {
+    try {
+      prBody = githubApi.getPrBody(prNumber);
+    } catch (err) {
+      console.warn(`Failed to fetch body for PR #${prNumber}:`, err);
+    }
+    if (hasNoAtlTriageDirective(prBody)) {
+      console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+      return [];
+    }
+  }
+
   let isDraft = options?.isDraft;
   if (isDraft === undefined && !mockFiles) {
     try {
@@ -812,11 +896,10 @@ export function handlePR(
     } catch (err) {
       console.warn(`Failed to check if PR #${prNumber} is draft:`, err);
     }
-  }
-
-  if (isDraft) {
-    console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
-    return [];
+    if (isDraft) {
+      console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
+      return [];
+    }
   }
   
   let files: string[] = [];
@@ -832,8 +915,23 @@ export function handlePR(
   }
 
   console.log(`PR modified ${files.length} files.`);
+
+  if (!mockFiles && prBody !== undefined && options?.headRef) {
+    const nextBody = upsertDemoPreviewInBody(options.headRef, prBody, files);
+    if (nextBody !== prBody) {
+      if (isDryRun) {
+        console.log(`[DRY RUN] Would update demo preview links in PR #${prNumber} description.`);
+      } else {
+        try {
+          githubApi.updatePrBody(prNumber, nextBody);
+          console.log(`Updated demo preview links in PR #${prNumber} description.`);
+        } catch (err) {
+          console.error(`Failed to update description for PR #${prNumber}:`, err);
+        }
+      }
+    }
+  }
   
-  const isContentLabelled = labels.includes('content') || labels.includes('gd-dev-content');
   const matchedAtls = new Set<string>();
   const allResolvedAtls = new Set<string>();
   let hasEvaluatedContent = false;
@@ -855,7 +953,7 @@ export function handlePR(
       }
       const guideName = parts[2];
       const filename = parts[parts.length - 1];
-      if (SME_CONTENT_FILENAMES.has(filename) || isContentLabelled) {
+      if (SME_CONTENT_FILENAMES.has(filename)) {
         hasEvaluatedContent = true;
         const relativeGuidePath = `guides/${category}/${guideName}/${GUIDE_FILE}`;
         const guideDir = path.join(guidesRootDir, category, guideName);
@@ -890,7 +988,19 @@ export function handlePR(
       }
     }
 
-    // 2. Feature definition files (features/<feature-id>.md)
+    // 2. Standalone skill files under skills-src/<skill-name>/...
+    if (parts[0] === 'skills-src' && parts.length >= 3 && !parts.some(p => p === '..')) {
+      const skillName = parts[1].toLowerCase();
+      hasEvaluatedContent = true;
+      const skillAtls = resolveAtl(skillName, [], atlConfig);
+      for (const a of skillAtls) {
+        console.log(`File "${file}" is in standalone skill "${skillName}". ATL: @${a}`);
+        matchedAtls.add(a);
+        allResolvedAtls.add(a);
+      }
+    }
+
+    // 3. Feature definition files (features/<feature-id>.md)
     if (parts[0] === 'features' && file.endsWith('.md')) {
       hasEvaluatedContent = true;
       const featureId = path.basename(file, '.md');
@@ -1070,7 +1180,10 @@ export function main() {
       const prAuthor = event.pull_request.user.login;
       const prLabels = (event.pull_request.labels || []).map((l: any) => l.name);
       const isDraft = Boolean(event.pull_request.draft);
-      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft });
+      const prBody = event.pull_request.body || '';
+      const isSameRepo = event.pull_request.head?.repo?.full_name?.toLowerCase() === 'googlechrome/modern-web-guidance-src';
+      const headRef = (isSameRepo && event.pull_request.head?.ref) || event.pull_request.head?.sha || 'main';
+      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft, prBody, headRef });
     } 
     else {
       console.log('Event is neither an issue nor a pull request event. Skipping.');

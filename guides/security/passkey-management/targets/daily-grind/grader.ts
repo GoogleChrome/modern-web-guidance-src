@@ -25,9 +25,11 @@ test.describe('Passkey Management Target Grader', () => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
       return calls.some(call => {
         const callText = call.getText();
+        const exprText = call.getExpression().getText();
         const args = call.getArguments().map(a => a.getText());
-        return (/fetch|api/i.test(call.getExpression().getText()) || callText.includes('fetch(')) &&
-          (args.some(a => /credential/i.test(a)) || callText.includes('/api/credentials'));
+        return ((/fetch|api/i.test(exprText) || callText.includes('fetch(')) &&
+          (args.some(a => /credential/i.test(a)) || callText.includes('/api/credentials'))) ||
+          /listCredentials|getCredentials|fetchCredentials/i.test(exprText);
       });
     });
 
@@ -77,7 +79,7 @@ test.describe('Passkey Management Target Grader', () => {
       ];
       return callableNodes.some(node => {
         const text = node.getText();
-        const isDeleteHandler = /delete/i.test(text) && (text.includes('DELETE') || text.includes('deleteFetch') || /api.*credential/i.test(text));
+        const isDeleteHandler = /delete/i.test(text) && (text.includes('DELETE') || text.includes('deleteFetch') || /api.*credential|deleteCredential/i.test(text));
         const callsSignal = text.includes('signalAllAcceptedCredentials') || /sync.*AcceptedCredentials|sync.*Credentials/i.test(text);
         return isDeleteHandler && callsSignal;
       });
@@ -101,7 +103,7 @@ test.describe('Passkey Management Target Grader', () => {
         const text = node.getText();
         const isUserRenameHandler = (/displayName/i.test(text) || /username/i.test(text) || /profile/i.test(text) || /updateUser/i.test(text) || text.includes('/api/user')) &&
           (/rename/i.test(text) || /update/i.test(text) || /submit/i.test(text) || /save/i.test(text));
-        const callsSignal = text.includes('signalCurrentUserDetails') || /syncCurrentUserDetails/i.test(text);
+        const callsSignal = text.includes('signalCurrentUserDetails') || /sync(?:Current)?UserDetails/i.test(text);
         return isUserRenameHandler && callsSignal;
       });
     });

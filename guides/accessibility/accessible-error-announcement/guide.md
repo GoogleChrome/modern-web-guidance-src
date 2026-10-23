@@ -3,6 +3,11 @@ name: accessible-error-announcement
 description: Synchronize programmatic accessibility states (like aria-invalid) with the visual :user-invalid state to ensure screen reader users receive error feedback only after interaction, mirroring the visual experience.
 web-feature-ids:
   - user-pseudos
+# NOTE: Unlike most guides (which replace legacy JS with a modern declarative feature),
+# this guide exists solely to teach a JS bridge syncing CSS `:user-invalid` to `aria-invalid`
+# due to cross-browser HTML-AAM gaps (Firefox/Safari exposing `required` as invalid on initial load;
+# Chromium crbug.com/564679025 keeping empty `required` text fields valid in AXTree even after interaction).
+# Under active a11y SME review in #1890 (see also #1638, #1780, #1836).
 ---
 
 # Accessible Error Announcement
