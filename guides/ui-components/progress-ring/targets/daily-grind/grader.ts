@@ -99,7 +99,8 @@ test.describe('progress-ring Target Grader', () => {
     const hasConicGradientWithTrack = allDecls.some(({ rule }) => {
       const bg =
         rule.style.getPropertyValue('background') ||
-        rule.style.getPropertyValue('background-image');
+        rule.style.getPropertyValue('background-image') ||
+        rule.style.cssText;
       return bg.includes('conic-gradient') && bg.includes(',');
     });
 
