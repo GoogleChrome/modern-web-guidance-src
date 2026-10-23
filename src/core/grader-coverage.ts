@@ -3,6 +3,7 @@ import path from 'node:path';
 // Native ONNX (onnxruntime-node). TfjsEmbedder exists for the published bundle, which can't ship
 // native binaries, but its pure-JS CPU backend is ~100x slower here.
 import { Embedder } from '../rag/transformers-embedder.ts';
+import { parseExpectationBaselineTag } from './expectation-tags.ts';
 
 const embedCache = new Map<string, number[]>();
 
@@ -30,22 +31,15 @@ export function cosineSimilarity(vectorA: number[], vectorB: number[]): number {
 }
 
 export function extractBaselineTag(text: string): string | null {
-  const match = text.trim().match(/^\[(supported|unsupported):\s*([^\]]+)\]/i);
-  if (!match) return null;
-  const mode = match[1].toLowerCase();
-  const tokens = match[2]
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean)
-    .sort()
-    .join(',');
-  return `${mode}:${tokens}`;
+  const parsed = parseExpectationBaselineTag(text);
+  if (!parsed.mode || !parsed.features || parsed.features.length === 0) return null;
+  return `${parsed.mode}:${[...parsed.features].sort().join(',')}`;
 }
 
 export function cleanText(text: string): string {
-  return text
-    .replace(/^\s*(?:\d+[.)]|-|\*)\s*/, '') // Remove list bullets/numbering
-    .replace(/^\[(?:supported|unsupported):[^\]]+\]\s*/i, '') // Strip leading [supported/unsupported: ...] tag
+  const withoutBullet = text.replace(/^\s*(?:\d+[.)]|-|\*)\s*/, ''); // Remove list bullets/numbering
+  const { text: withoutTag } = parseExpectationBaselineTag(withoutBullet); // Strip leading [unsupported: ...] tag
+  return withoutTag
     .replace(/^should\s+/i, '')              // Remove "should" prefix
     .replace(/[`"']/g, '')                   // Strip backticks/quotes
     .replace(/\s+/g, ' ')

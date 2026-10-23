@@ -80,15 +80,26 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   });
 }
 
+export interface RunPlaywrightOptions {
+  stdio?: 'inherit' | 'ignore' | 'pipe';
+  patchFile?: string;
+  zeroPassrateFile?: string;
+  testResultsDir?: string;
+  baselineTarget?: string;
+}
+
 export async function runPlaywright(
   targetPathAbs: string,
   graderPath: string,
-  stdio: 'inherit' | 'ignore' | 'pipe' = 'inherit',
-  patchFile?: string,
-  zeroPassrateFile?: string,
-  testResultsDir?: string,
-  baselineTarget?: string
+  options: RunPlaywrightOptions = {}
 ): Promise<any> {
+  const {
+    stdio = 'inherit',
+    patchFile,
+    zeroPassrateFile,
+    testResultsDir,
+    baselineTarget,
+  } = options;
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
 
   const isDir = fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory();
@@ -153,7 +164,12 @@ async function runPlaywrightCalibration(
   zeroPassrateFile?: string,
   testResultsDir?: string
 ): Promise<any> {
-  const results = await runPlaywright(targetPathAbs, graderPath, 'ignore', patchFile, zeroPassrateFile, testResultsDir)
+  const results = await runPlaywright(targetPathAbs, graderPath, {
+    stdio: 'ignore',
+    patchFile,
+    zeroPassrateFile,
+    testResultsDir,
+  })
     .catch(err => {
       result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
       return null;

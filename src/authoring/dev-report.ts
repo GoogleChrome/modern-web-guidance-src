@@ -187,7 +187,9 @@ export function computeTargetSummary(
   const json = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
   const results = json.results || {};
   const stats = json.stats || {};
-  const guidedKeys = Object.keys(results).filter(k => k.includes(baseApp) && k.endsWith('- guided'));
+  const guidedKeys = Object.keys(results).filter(
+    k => (k.startsWith(`${baseApp} - `) || k.startsWith(`${baseApp}-`)) && k.endsWith(' - guided')
+  );
 
   if (guidedKeys.length === 0) {
     return null;
@@ -199,12 +201,13 @@ export function computeTargetSummary(
     const guidedRun = results[guidedKey]?.[0];
     if (!guidedRun) continue;
 
+    const variantName = guidedKey.split(' - ')[0]!;
     const unguidedKey = guidedKey.replace(/ - guided$/, ' - unguided');
     const guidedPassRate = stats[guidedKey]?.medianPassRate ?? json.summary?.guidedPassRate ?? 0;
     const unguidedPassRate = stats[unguidedKey]?.medianPassRate ?? json.summary?.unguidedPassRate ?? null;
     const earlyFailureCheck = guidedRun.results?.find((c: any) => c.isEarlyFailure);
 
-    const { flag, flagDetails } = computeDevReportFlag({
+    const { flag, flagDetails: rawFlagDetails } = computeDevReportFlag({
       guideName,
       hasEarlyFailure: Boolean(earlyFailureCheck || stats[guidedKey]?.earlyFailures || json.summary?.guidedEarlyFailures),
       earlyFailureMessage: earlyFailureCheck?.message,
@@ -213,6 +216,10 @@ export function computeTargetSummary(
       guidedPassRate,
       unguidedPassRate,
     });
+    const flagDetails =
+      flag !== 'HEALTHY' && variantName !== baseApp
+        ? `[${variantName}] ${rawFlagDetails}`
+        : rawFlagDetails;
 
     const summary: TargetEvalSummary = {
       baseApp,

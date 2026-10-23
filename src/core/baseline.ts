@@ -130,7 +130,7 @@ export function checkBaseline(target: string, featureId: string): boolean {
     return true;
   }
 
-  const baselineStatus = getFeatureStatus(featureId);
+  const baselineStatus = getFeatureOrBcdStatus(featureId);
   if (!baselineStatus) {
     return false;
   }
@@ -467,12 +467,9 @@ export function getStatus(
   }
 }
 
-/**
- * Resolves the Baseline status ('high', 'low', or false) for a web-features ID,
- * pending `tmp-*` feature ID, BCD key, or `feature-id:bcd.key` pair.
- * Returns `undefined` if the token is not a recognized feature or BCD key.
- */
-export function resolveFeatureOrBcdBaseline(token: string): 'high' | 'low' | false | undefined {
+function getFeatureOrBcdStatus(
+  token: string
+): { baseline: 'high' | 'low' | false; baseline_low_date?: string } | undefined {
   const trimmed = token.trim();
   if (!trimmed) return undefined;
 
@@ -481,13 +478,33 @@ export function resolveFeatureOrBcdBaseline(token: string): 'high' | 'low' | fal
     if (!bcdKey) return undefined;
     if (featureId && !validateFeature(featureId).isValid) return undefined;
     const compat = getStatus(featureId, bcdKey);
-    return compat ? compat.baseline : undefined;
+    return compat ? { baseline: compat.baseline, baseline_low_date: compat.baseline_low_date } : undefined;
   }
 
-  const validation = validateFeature(trimmed);
-  if (!validation.isValid) return undefined;
-  if (trimmed.startsWith('tmp-')) return false;
-  return getFeatureStatus(trimmed)?.baseline;
+  if (trimmed.startsWith('tmp-')) {
+    return validateFeature(trimmed).isValid ? { baseline: false } : undefined;
+  }
+
+  const featureStatus = getFeatureStatus(trimmed);
+  if (!featureStatus) return undefined;
+  return {
+    baseline: featureStatus.baseline,
+    baseline_low_date: featureStatus.baseline_low_date,
+  };
+}
+
+/**
+ * Resolves the Baseline status ('high', 'low', or false) for a web-features ID,
+ * pending `tmp-*` feature ID, BCD key, or `feature-id:bcd.key` pair.
+ * Returns `undefined` if the token is not a recognized feature or BCD key.
+ */
+export function resolveFeatureOrBcdBaseline(token: string): 'high' | 'low' | false | undefined {
+  const trimmed = token.trim();
+  if (!trimmed) return undefined;
+  if (!trimmed.includes(':') && !trimmed.includes('.') && !validateFeature(trimmed).isValid) {
+    return undefined;
+  }
+  return getFeatureOrBcdStatus(trimmed)?.baseline;
 }
 
 /**
