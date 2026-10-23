@@ -40,6 +40,7 @@
     }
 
     .task-list {
+      position: relative; /* makes the list the offsetParent for layout-position math */
       display: grid;
       gap: 0.75rem;
       max-width: 32rem;
@@ -314,17 +315,15 @@
       updateDropTarget();
     }
 
-    // Hit-test with the pointer clamped to the list so dragging past an edge still targets its end items.
+    // Compare the pointer, clamped to the list, with layout midpoints. Layout positions ignore
+    // in-flight FLIP translates, and a pointer past either edge still resolves to the first or last place.
     function updateDropTarget() {
       const bounds = list.getBoundingClientRect();
-      const x = Math.min(Math.max(pointerX, bounds.left + 1), bounds.right - 1);
-      const y = Math.min(Math.max(pointerY, bounds.top + 1), bounds.bottom - 1);
-      const target = document.elementFromPoint(x, y)?.closest('.task');
-      if (!target || target.parentElement !== list || target === pointerItem) return;
-
-      const rect = target.getBoundingClientRect();
-      const before = y < rect.top + rect.height / 2 ? target : target.nextElementSibling;
-      if (before === pointerItem || before === pointerItem.nextElementSibling) return;
+      const clamped = Math.min(Math.max(pointerY, bounds.top), bounds.bottom);
+      const y = clamped - bounds.top - list.clientTop + list.scrollTop;
+      const before = [...list.querySelectorAll(':scope > .task')]
+        .find((item) => item !== pointerItem && y < item.offsetTop + item.offsetHeight / 2) ?? null;
+      if (before === pointerItem.nextElementSibling) return;
       moveItem(pointerItem, before);
     }
 
