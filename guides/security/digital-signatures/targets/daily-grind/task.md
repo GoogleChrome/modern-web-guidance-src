@@ -1,1 +1,1 @@
-- Implement signing and verification of messages, tokens, or artifacts in the browser using classical or quantum-resistant (post-quantum) asymmetric keys to ensure data integrity and authenticity.
+- Add digital signing and verification for coffee order receipts and gift vouchers on the Daily Grind homepage using classical or quantum-resistant asymmetric keys in the browser to guarantee authenticity and integrity.

@@ -1,4 +1,4 @@
 ---
 base_app: daily-grind
 ---
-- replace the rewards link in the navbar with a button that toggles a popup card popover with id rewards-popover showing membership tiers, benefits, and current points (styled with a dark brown header). Protect page load performance and avoid loading unnecessary scripts by managing conditional async dependencies appropriately so polyfills are only loaded when needed.
+- Conditionally load and initialize async module dependencies on the Daily Grind homepage so a polyfill for missing web features is imported without complex async orchestration across scripts before dependent module code runs, supporting a "Rewards" navbar button that opens a rewards popover card.

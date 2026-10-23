@@ -253,7 +253,7 @@ async function setupNativePage(page: any, targetUrl?: string): Promise<{ stats: 
 
   await page.route('**/*', async (route: any) => {
     const url = route.request().url();
-    if (url.includes('@js-temporal/polyfill') || url.includes('cdn.jsdelivr.net/npm/@js-temporal/polyfill')) {
+    if (url.includes('temporal-polyfill') || url.includes('@js-temporal/polyfill')) {
       polyfillRequested = true;
     }
     await route.continue();
@@ -451,6 +451,9 @@ test.describe('Temporal API Support Grader', () => {
 
   test('should not use legacy Date object for non-Gregorian calculations', async ({ page, TARGET_URL }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
+    const code = getTargetCode();
+    const usesTemporal = stats.temporalUsed || /\bTemporal\./.test(code);
+    expect(usesTemporal).toBe(true);
     expect(stats.legacyDateConstructorCalledWithArgs).toBe(false);
   });
 
@@ -462,13 +465,10 @@ test.describe('Temporal API Support Grader', () => {
     await page.waitForTimeout(300);
 
     const japaneseCardExists = await page.locator(':text("Japanese")').count() > 0;
-    if (japaneseCardExists) {
-      const bodyText = await page.textContent('body') || '';
-      const code = getTargetCode();
-      const hasEra = /Reiwa|Heisei|Showa|Taisho|Meiji/i.test(bodyText) || /era:\s*['"]long['"]/i.test(code) || /eraYear\b/.test(code);
-      expect(hasEra).toBe(true);
-    } else {
-      expect(true).toBe(true);
-    }
+    expect(japaneseCardExists).toBe(true);
+    const bodyText = await page.textContent('body') || '';
+    const code = getTargetCode();
+    const hasEra = /Reiwa|Heisei|Showa|Taisho|Meiji/i.test(bodyText) || /era:\s*['"]long['"]/i.test(code) || /eraYear\b/.test(code);
+    expect(hasEra).toBe(true);
   });
 });
