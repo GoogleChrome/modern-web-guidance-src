@@ -4,11 +4,12 @@ import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
-import { rootDir, baseAppsDir, suitesDir } from '../core/paths.ts';
+import { baseAppsDir, suitesDir } from '../core/paths.ts';
 import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
 import { copyBaseAppToWorkspace } from './lib/utils.ts';
+import { determineAgent } from '../cli/telemetry/detect-agent.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -16,7 +17,7 @@ const RUN_TYPES = ['guided', 'unguided'];
 let logStream: fs.WriteStream | null = null;
 
 
-const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
 export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
@@ -180,7 +181,11 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         fs.writeFileSync(pnpmWorkspacePath, yamlContent);
 
         try {
+          const isAgentOrNonInteractive = Boolean(process.env.CI) || !process.stdout.isTTY || determineAgent().isAgent;
           const pnpmArgs = ['-r', '--no-bail'];
+          if (isAgentOrNonInteractive) {
+            pnpmArgs.push('--reporter=append-only');
+          }
           if (suiteConfig.workerCount) {
             pnpmArgs.push('--workspace-concurrency', suiteConfig.workerCount.toString());
           }
@@ -396,23 +401,6 @@ export function generateTransientPackage(
   const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName);
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
-  // Create npx wrapper to intercept modern-web-guidance calls during evals
-  const templatePath = path.join(import.meta.dirname, 'npx-intercept.template.ts');
-  const localCliPath = path.join(rootDir, 'dist', 'skills-cli', 'skills/modern-web-guidance/modern-web.mjs');
-
-  if (fs.existsSync(templatePath)) {
-    let templateContent = fs.readFileSync(templatePath, 'utf8');
-    templateContent = templateContent.replace('__LOCAL_CLI_PATH__', localCliPath);
-
-    for (const binName of ['npx', 'pnpx', 'pnpm']) {
-      const wrapperPath = path.join(targetDir, binName);
-      fs.writeFileSync(wrapperPath, templateContent);
-      fs.chmodSync(wrapperPath, 0o755); // Make executable
-    }
-  } else {
-    console.warn(`Warning: npx-intercept.template.ts not found at ${templatePath}`);
-  }
-
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
   // we trick pnpm into thinking each test run is a package in a pnpm workspace.
@@ -433,14 +421,12 @@ const args = [
 ])}
 ];
 
-// Intercept npx by prepending targetDir to PATH
 const env = { ...process.env };
-env.PATH = \`${targetDir}:\${env.PATH}\`;
 
 const start = Date.now();
 let result;
 let attempts = 0;
-const maxAttempts = 3; // 1 initial attempt + 2 retries with exponential backoff
+const maxAttempts = 2; // 1 initial attempt + 1 retry with exponential backoff
 const baseDelay = 15000; // 15 seconds base delay
 const targetDirPath = ${JSON.stringify(targetDir)};
 const failureFile = path.join(targetDirPath, 'generation_failed.json');
@@ -456,7 +442,7 @@ while (attempts < maxAttempts) {
   // Assign the isolated HOME here so it is removed even if the timeout kills the agent
   // wrapper before its own cleanup runs.
   const isolatedHome = '/tmp/ghh-' + ${JSON.stringify(path.basename(agentScript).replace(/-agent\.ts$/, ''))} + '-' + randomUUID().slice(0, 8);
-  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env: { ...env, ${ISOLATED_HOME_ENV}: isolatedHome } });
+  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 900000, env: { ...env, ${ISOLATED_HOME_ENV}: isolatedHome } });
   try {
     fs.rmSync(isolatedHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   } catch (cleanupErr) {
@@ -497,9 +483,9 @@ if (result.status === 0) {
   const timedOut = result.error?.code === 'ETIMEDOUT';
   fs.writeFileSync(failureFile, JSON.stringify({
     agentName: path.basename(${JSON.stringify(agentScript)}),
-    exitCode: timedOut ? 'TIMEOUT (10m)' : result.status,
+    exitCode: timedOut ? 'TIMEOUT (15m)' : result.status,
     stderr: timedOut
-      ? 'Agent timed out after 10 minutes'
+      ? 'Agent timed out after 15 minutes'
       : 'Agent execution failed unexpectedly during setup or wrapper invocation',
     stdout: ''
   }, null, 2));

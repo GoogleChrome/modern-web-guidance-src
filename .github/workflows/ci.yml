@@ -44,6 +44,13 @@ jobs:
       - name: Verify publish-skills (Dry Run)
         run: pnpm run publish-skills --dry-run
 
+      - name: RAG Benchmark (Public Datasets)
+        run: |
+          pnpm run benchmark:rag --ci --markdown /tmp/rag-bench-ci.md
+          if [ -f /tmp/rag-bench-ci.md ]; then
+            cat /tmp/rag-bench-ci.md >> $GITHUB_STEP_SUMMARY
+          fi
+
 
       - name: Compare built (post-macro) guides 
         env:

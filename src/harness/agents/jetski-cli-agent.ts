@@ -6,7 +6,6 @@ import config, { Agents } from '../config.ts';
 import {
   cleanupIsolatedHome,
   parseAgentArgs,
-  watchLogFile,
   exportTrajectories,
   runCliAgentCommand,
   createTrustedFolders,
@@ -15,10 +14,10 @@ import {
   isEnoent,
   type GuideUsage
 } from '../lib/agent-shared.ts';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import {
   type StandardizedStep,
   type TrajectorySummary,
+  extractRetrievedGuidesFromCommand,
   extractTimestamp,
   truncateMessage,
   finalizeTrajectorySummary,
@@ -96,7 +95,7 @@ function exportJetskiTrajectories(workDir: string, targetDir: string): void {
 
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.JETSKI_CLI, templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.JETSKI_CLI, templateDir, runType);
 
   if (!workDir) {
     throw new Error('Failed to initialize working directory');
@@ -109,12 +108,7 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
-    let stopWatchingMcpLog = () => { };
-
     try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
       await runCliAgentCommand(
         command,
         commandArgs,
@@ -124,7 +118,6 @@ async function run() {
         runType
       );
     } finally {
-      stopWatchingMcpLog();
       exportJetskiTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, userPrompt);
     }
@@ -338,10 +331,6 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
         step_payload?: Uint8Array;
       }>;
 
-      let fileInput = 0;
-      let fileCached = 0;
-      let fileOutput = 0;
-      let fileHasTokens = false;
 
       for (const row of rows) {
         let rowTimestamp: string | undefined;
@@ -355,10 +344,9 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
             const output = (usageNode[USAGE_TAG_OUTPUT] && typeof usageNode[USAGE_TAG_OUTPUT][0] === 'number') ? usageNode[USAGE_TAG_OUTPUT][0] : 0;
             const cached = (usageNode[USAGE_TAG_CACHED] && typeof usageNode[USAGE_TAG_CACHED][0] === 'number') ? usageNode[USAGE_TAG_CACHED][0] : 0;
             if (input > 0 || output > 0 || cached > 0) {
-              fileInput += input;
-              fileCached += cached;
-              fileOutput += output;
-              fileHasTokens = true;
+              totalTokens += input + cached + output;
+              totalCached += cached;
+              hasTokens = true;
             }
           }
         }
@@ -434,16 +422,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
 
           for (const text of strings) {
             // Shell commands & guide retrieval
-            if (text.includes('modern-web-guidance') && text.includes('retrieve')) {
-              const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
-              if (match && match[1]) {
-                const parts = match[1]
-                  .split(',')
-                  .map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, ''))
-                  .filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
-                retrievedGuides.push(...parts);
-              }
-            }
+            retrievedGuides.push(...extractRetrievedGuidesFromCommand(text));
 
             if (text.includes('/skills/') && text.endsWith('/guide.md')) {
               const match = text.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
@@ -459,12 +438,6 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
             }
           }
         }
-      }
-
-      if (fileHasTokens) {
-        totalTokens += (fileInput + fileCached + fileOutput);
-        totalCached += fileCached;
-        hasTokens = true;
       }
 
       try {
