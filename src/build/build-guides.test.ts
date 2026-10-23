@@ -30,17 +30,23 @@ Text under first heading.`;
     assert.ok(chunks[1].includes('First heading'));
   });
 
-  it('handles multiple headings without content correctly', () => {
+  it('merges consecutive headings without intervening body content into a single chunk', () => {
     const input = `# Heading 1
 ## Heading 2
-### Heading 3`;
+### Heading 3
+Body paragraph under Heading 3.
+
+## Heading 4
+Body paragraph under Heading 4.`;
     
-    // Each heading creates a new chunk based on the current implementation
     const chunks = chunkMarkdown(input);
-    assert.strictEqual(chunks.length, 3);
-    assert.strictEqual(chunks[0], '# Heading 1\n');
-    assert.strictEqual(chunks[1], '## Heading 2\n');
-    assert.strictEqual(chunks[2], '### Heading 3');
+    assert.strictEqual(chunks.length, 2);
+    assert.ok(chunks[0].includes('# Heading 1'));
+    assert.ok(chunks[0].includes('## Heading 2'));
+    assert.ok(chunks[0].includes('### Heading 3'));
+    assert.ok(chunks[0].includes('Body paragraph under Heading 3.'));
+    assert.ok(chunks[1].includes('## Heading 4'));
+    assert.ok(chunks[1].includes('Body paragraph under Heading 4.'));
   });
 
   it('returns empty array for empty string', () => {

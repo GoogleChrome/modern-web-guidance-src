@@ -1,0 +1,185 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..883b9cc 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,10 @@
+       color: var(--primary);
+     }
+ 
++    coffee-favorite:not(:defined) {
++      display: none;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -182,16 +186,19 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <coffee-favorite product-name="Maple Oat Latte"></coffee-favorite>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <coffee-favorite product-name="Dark Roast Espresso"></coffee-favorite>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <coffee-favorite product-name="Cold Brew"></coffee-favorite>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +214,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/src/coffee-favorite.ts"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..0a1d82a 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,17 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "tsc --noEmit && vite build",
++    "preview": "vite preview --host 0.0.0.0"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "typescript": "~5.8.3",
++    "vite": "^7.0.6"
+   }
+ }
+diff --git a/src/coffee-favorite.ts b/src/coffee-favorite.ts
+new file mode 100644
+index 0000000..cb837ca
+--- /dev/null
++++ b/src/coffee-favorite.ts
+@@ -0,0 +1,86 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: block; margin-top: 12px; }
++    button {
++      font: inherit;
++      color: var(--primary, #4e342e);
++      background: transparent;
++      border: 1px solid currentColor;
++      border-radius: 5px;
++      padding: 8px 14px;
++      cursor: pointer;
++    }
++    button[aria-pressed="true"] { background: var(--secondary, #d7ccc8); }
++    button:hover { background: var(--secondary, #d7ccc8); }
++    button:focus-visible { outline: 3px solid var(--primary, #4e342e); outline-offset: 3px; }
++  </style>
++  <button type="button" aria-pressed="false" part="button">Save favorite</button>
++`;
++
++/** A latched favorite state; user changes emit a bubbling, composed change event. */
++export class CoffeeFavorite extends HTMLElement {
++  static observedAttributes = ['favorite', 'product-name'];
++
++  readonly #button: HTMLButtonElement;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.append(template.content.cloneNode(true));
++    this.#button = root.querySelector('button')!;
++  }
++
++  get favorite(): boolean {
++    return this.hasAttribute('favorite');
++  }
++
++  set favorite(value: boolean) {
++    this.toggleAttribute('favorite', Boolean(value));
++  }
++
++  connectedCallback(): void {
++    // Preserve state assigned by a consumer before the custom element upgraded.
++    if (Object.prototype.hasOwnProperty.call(this, 'favorite')) {
++      const value = this.favorite;
++      Reflect.deleteProperty(this, 'favorite');
++      this.favorite = value;
++    }
++    this.#render();
++    this.#button.addEventListener('click', this.#toggle);
++  }
++
++  disconnectedCallback(): void {
++    this.#button.removeEventListener('click', this.#toggle);
++  }
++
++  attributeChangedCallback(): void {
++    this.#render();
++  }
++
++  #toggle = (): void => {
++    this.favorite = !this.favorite;
++    this.dispatchEvent(new CustomEvent<{ favorite: boolean }>('change', {
++      bubbles: true,
++      composed: true,
++      detail: { favorite: this.favorite },
++    }));
++  };
++
++  #render(): void {
++    const name = this.getAttribute('product-name')?.trim() || 'this coffee';
++    this.#button.setAttribute('aria-pressed', String(this.favorite));
++    this.#button.setAttribute('aria-label', `Favorite ${name}`);
++    this.#button.textContent = this.favorite ? 'Saved favorite' : 'Save favorite';
++  }
++}
++
++if (!customElements.get('coffee-favorite')) {
++  customElements.define('coffee-favorite', CoffeeFavorite);
++}
++
++declare global {
++  interface HTMLElementTagNameMap {
++    'coffee-favorite': CoffeeFavorite;
++  }
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..9e1d9b9
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,13 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM"],
++    "strict": true,
++    "noEmit": true,
++    "isolatedModules": true,
++    "skipLibCheck": true
++  },
++  "include": ["src/**/*.ts"]
++}

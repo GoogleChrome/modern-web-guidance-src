@@ -1,6 +1,6 @@
 ---
 name: trusted-types
-description: Help prevent DOM-based XSS attacks by locking down dangerous DOM sinks so they reject raw strings and only accept policy-validated HTML.
+description: Prevent DOM-based XSS attacks by defining a Trusted Types policy to sanitize untrusted HTML, using the policy when writing to DOM sinks like innerHTML, and enforcing Trusted Types via Content Security Policy.
 web-feature-ids:
   - trusted-types
 ---
@@ -33,7 +33,20 @@ const myPolicy = trustedTypes.createPolicy('sanitize-html', {
     // Example using DOMPurify:
     DOMPurify.sanitize(input, { RETURN_TRUSTED_TYPE: false }),
 });
+
+// Example using HTML escaping (for environments without third-party sanitizers):
+const escapePolicy = trustedTypes.createPolicy('escape-html', {
+  createHTML: (input) =>
+    String(input)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;'),
+});
 ```
+
+> **Warning:** Character-level HTML escaping (`escapePolicy`) converts all markup into plain text and is **not** a context-aware HTML sanitizer. If you only need plain text, prefer `element.textContent` (which is not a Trusted Types sink). Never interpolate `escapePolicy.createHTML()` output into another HTML template string—such as an unquoted attribute (`<img src=${escaped}>`) or a URL attribute (`<a href="${escaped}">`, where `javascript:` URLs are not neutralized by entity escaping). Use a full HTML sanitizer (`DOMPurify` or `element.setHTML()`, covered in {{ GUIDE_REF("sanitize-untrusted-html") }}) whenever accepting HTML markup or attributes.
 
 ### 2. Using the Policy
 
@@ -96,10 +109,10 @@ Trusted Types should be rolled out incrementally to avoid breaking your applicat
     Content-Security-Policy: require-trusted-types-for 'script';
     ```
 
-You can also restrict which policies are allowed to be created (include `dompurify` if your policy delegates to `DOMPurify.sanitize()`, which internally creates a `dompurify` policy, and `default` if you register a default policy during migration):
+You can also restrict which policies are allowed to be created (list your policy names such as `sanitize-html` or `escape-html`, include `dompurify` if your policy delegates to `DOMPurify.sanitize()`—which internally creates a `dompurify` policy—and include `default` if you register a default policy during migration):
 
 ```http
-Content-Security-Policy: require-trusted-types-for 'script'; trusted-types sanitize-html dompurify;
+Content-Security-Policy: require-trusted-types-for 'script'; trusted-types sanitize-html escape-html dompurify;
 ```
 
 With this CSP in place, any writes to a sink that don't use Trusted Types will throw an error. In addition, attempting to create a Trusted Type policy with a name not listed in `trusted-types` will throw an error.
@@ -110,7 +123,7 @@ You can also set this CSP as a `<meta>` tag in your document's `<head>`, althoug
 <!-- First child of `<head>`, as earlier tags will not enforce this CSP. -->
 <meta
   http-equiv="Content-Security-Policy"
-  content="require-trusted-types-for 'script'; trusted-types sanitize-html dompurify;"
+  content="require-trusted-types-for 'script'; trusted-types sanitize-html escape-html dompurify;"
 />
 ```
 
