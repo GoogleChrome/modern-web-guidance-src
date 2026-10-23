@@ -1,1 +1,1 @@
-- Update The Daily Grind homepage to dynamically render the Seasonal Favorites cards from HTML strings while preventing DOM-based XSS attacks by defining a browser sanitization policy for untrusted HTML before inserting it into the DOM and enforcing it through the page's Content Security Policy.
+- Update The Daily Grind homepage to dynamically render the Seasonal Favorites cards from HTML strings while protecting the page's DOM insertion sinks against Cross-Site Scripting (XSS) attacks.
