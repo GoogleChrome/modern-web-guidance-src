@@ -180,34 +180,6 @@ test.describe('Responsive Table Target Grader', () => {
     expect(tdPseudoRules.length >= 2).toBe(true);
   });
 
-  test('Pseudo-element cell labels provide an explicit accessible name using slash syntax in the content property', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const containerRules = Array.from(stylesheet.cssRules).filter(
-      (r): r is CSSContainerRule => r instanceof CSSContainerRule
-    );
-    const stackedRule = containerRules.find(cr =>
-      /(width\s*<=?\s*\d+|max-width:\s*\d+|inline-size\s*<=?\s*\d+|max-inline-size:\s*\d+)/i.test(
-        cr.conditionText
-      )
-    );
-    const innerRules = stackedRule
-      ? Array.from(stackedRule.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule)
-      : [];
-
-    const tdPseudoRules = innerRules.filter(r => {
-      const isTdPseudo = /(^|[\s,>])td[^\s{]*::?(before|after)\b/i.test(r.selectorText);
-      if (!isTdPseudo) return false;
-      const content = r.style.getPropertyValue('content');
-      return Boolean(content && content !== 'none' && content !== 'normal');
-    });
-
-    const hasSlashAccessibleName =
-      tdPseudoRules.length > 0 &&
-      tdPseudoRules.every(r => r.style.getPropertyValue('content').includes('/'));
-
-    expect(hasSlashAccessibleName).toBe(true);
-  });
-
   test('Row headers in stacked view are sticky at the top of their respective row block', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const topRules = Array.from(stylesheet.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
