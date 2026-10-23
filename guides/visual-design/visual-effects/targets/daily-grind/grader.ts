@@ -60,17 +60,17 @@ test.describe('visual-effects Target Grader', () => {
         if (!gradientOrColorMixPattern.test(val)) {
           continue;
         }
-        if (directPerceptualPattern.test(val)) {
+        const usesPerceptualVar = Array.from(perceptualVarNames).some((varName) =>
+          val.includes(`var(${varName}`),
+        );
+        const usesColorMixOrPerceptualVar =
+          /\bcolor-mix\s*\([^;{}]*\bin\s+(?:oklch|oklab)\b/i.test(val) || usesPerceptualVar;
+        if (directPerceptualPattern.test(val) && usesColorMixOrPerceptualVar) {
           hasPerceptualGradientOrColorMix = true;
           break;
         }
-        for (const varName of perceptualVarNames) {
-          if (val.includes(`var(${varName}`)) {
-            hasPerceptualGradientOrColorMix = true;
-            break;
-          }
-        }
-        if (hasPerceptualGradientOrColorMix) {
+        if (usesPerceptualVar) {
+          hasPerceptualGradientOrColorMix = true;
           break;
         }
       }
