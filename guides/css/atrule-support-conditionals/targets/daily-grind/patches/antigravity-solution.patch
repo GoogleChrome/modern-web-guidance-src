@@ -1,65 +1,77 @@
-diff --git a/.gitignore b/.gitignore
-new file mode 100644
-index 0000000..1eae0cf
---- /dev/null
-+++ b/.gitignore
-@@ -0,0 +1,2 @@
-+dist/
-+node_modules/
 diff --git a/index.html b/index.html
-index 66c9173..dc03580 100644
+index 66c9173..834733f 100644
 --- a/index.html
 +++ b/index.html
-@@ -14,6 +14,16 @@
-       --light: #fafafa;
+@@ -28,6 +28,18 @@
      }
  
-+    /* Detects @property support: the var() fallback below only applies when this is registered */
-+    @property --supports-atproperty {
-+      syntax: "*";
+     /* Navigation */
++    @property --nav-gradient-angle {
++      syntax: "<angle>";
 +      inherits: false;
++      initial-value: 90deg;
 +    }
 +
-+    :root {
-+      --supports-atproperty: ;
++    @keyframes shift-gradient {
++      to {
++        --nav-gradient-angle: 450deg;
++      }
 +    }
 +
-     * {
-       box-sizing: border-box;
-       margin: 0;
-@@ -113,6 +123,8 @@
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -38,6 +50,11 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++
++      @supports at-rule(@property) {
++        background-image: linear-gradient(var(--nav-gradient-angle), var(--primary), #3e2723, var(--primary));
++        animation: shift-gradient 10s linear infinite;
++      }
+     }
+ 
+     .logo {
+@@ -93,6 +110,27 @@
+       margin-bottom: 1rem;
+     }
+ 
++    @supports at-rule(@starting-style) {
++      .hero {
++        transition: opacity 0.6s ease-out;
++      }
++
++      .hero h1 {
++        transition: transform 0.6s ease-out, opacity 0.6s ease-out;
++      }
++    }
++
++    @starting-style {
++      .hero {
++        opacity: 0;
++      }
++
++      .hero h1 {
++        opacity: 0;
++        transform: translateY(15px);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -113,6 +151,13 @@
        border-radius: 8px;
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
        text-align: center;
-+      /* Accent top border only if @property is supported */
-+      border-top: var(--supports-atproperty, 4px solid var(--accent));
++
++      @supports at-rule(@container) {
++        container-type: inline-size;
++        display: flex;
++        flex-direction: column;
++        justify-content: space-between;
++      }
      }
  
      .card h3 {
-diff --git a/package.json b/package.json
-index 2bd4d77..28acf96 100644
---- a/package.json
-+++ b/package.json
-@@ -2,6 +2,7 @@
-   "name": "daily-grind",
-   "version": "1.0.0",
-   "scripts": {
-+    "build": "node scripts/build.mjs",
-     "start": "pnpm dlx statikk --port ${PORT:-11222}"
-   },
-   "pnpm": {
-diff --git a/scripts/build.mjs b/scripts/build.mjs
-new file mode 100644
-index 0000000..057ef6c
---- /dev/null
-+++ b/scripts/build.mjs
-@@ -0,0 +1,9 @@
-+import { copyFile, mkdir } from 'node:fs/promises';
-+
-+const root = new URL('../', import.meta.url);
-+const output = new URL('dist/', root);
-+
-+await mkdir(output, { recursive: true });
-+await copyFile(new URL('index.html', root), new URL('index.html', output));
-+
-+console.log('Built static application in dist/');

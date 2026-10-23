@@ -1,99 +1,47 @@
 diff --git a/.gitignore b/.gitignore
 new file mode 100644
-index 0000000..1eae0cf
+index 0000000..849ddff
 --- /dev/null
 +++ b/.gitignore
-@@ -0,0 +1,2 @@
+@@ -0,0 +1 @@
 +dist/
-+node_modules/
 diff --git a/index.html b/index.html
-index 66c9173..8a0333a 100644
+index 66c9173..386b1a1 100644
 --- a/index.html
 +++ b/index.html
-@@ -6,6 +6,15 @@
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>The Daily Grind | Artisanal Coffee</title>
-   <style>
-+    /* Registration supplies the optional animation only in browsers that
-+       support @property. Without registration, var() uses the static fallback.
-+       No at-rule() query is needed for this widely supported at-rule. */
-+    @property --hero-glow-animation {
-+      syntax: "*";
-+      inherits: false;
-+      initial-value: hero-glow 8s ease-in-out infinite;
-+    }
-+
-     :root {
-       --primary: #4e342e;
-       --secondary: #d7ccc8;
-@@ -74,6 +83,9 @@
- 
-     /* Hero Section */
-     .hero {
-+      position: relative;
-+      isolation: isolate;
-+      overflow: hidden;
-       height: 60vh;
-       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
-@@ -88,6 +100,33 @@
-       padding: 0 20px;
+@@ -152,6 +152,23 @@
+       text-decoration: none;
+       font-size: 0.85rem;
      }
++
++    /* @media is guaranteed in browsers that support at-rule() queries.
++       Use it to gate these enhancements; the base styles above remain the fallback. */
++    @supports at-rule(@media) {
++      nav {
++        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
++      }
++
++      .hero h1 {
++        text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
++      }
++
++      .card {
++        border-top: 3px solid var(--accent);
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      }
++    }
+   </style>
+ </head>
  
-+    .hero::before {
-+      content: "";
-+      position: absolute;
-+      inset: 0;
-+      z-index: -1;
-+      pointer-events: none;
-+      background: radial-gradient(ellipse at 50% 70%, var(--accent), transparent 70%);
-+      opacity: 0.12;
-+      animation: var(--hero-glow-animation, none);
-+    }
-+
-+    @keyframes hero-glow {
-+      0%, 100% {
-+        opacity: 0.12;
-+      }
-+
-+      50% {
-+        opacity: 0.24;
-+      }
-+    }
-+
-+    @media (prefers-reduced-motion: reduce) {
-+      .hero::before {
-+        animation: none;
-+      }
-+    }
-+
-     .hero h1 {
-       font-size: 3rem;
-       margin-bottom: 1rem;
 diff --git a/package.json b/package.json
-index 2bd4d77..28acf96 100644
+index 2bd4d77..6ea870f 100644
 --- a/package.json
 +++ b/package.json
 @@ -2,6 +2,7 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
-+    "build": "node scripts/build.mjs",
++    "build": "node --input-type=module -e \"import { mkdirSync, copyFileSync } from 'node:fs'; mkdirSync('dist', { recursive: true }); copyFileSync('index.html', 'dist/index.html');\"",
      "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {
-diff --git a/scripts/build.mjs b/scripts/build.mjs
-new file mode 100644
-index 0000000..057ef6c
---- /dev/null
-+++ b/scripts/build.mjs
-@@ -0,0 +1,9 @@
-+import { copyFile, mkdir } from 'node:fs/promises';
-+
-+const root = new URL('../', import.meta.url);
-+const output = new URL('dist/', root);
-+
-+await mkdir(output, { recursive: true });
-+await copyFile(new URL('index.html', root), new URL('index.html', output));
-+
-+console.log('Built static application in dist/');

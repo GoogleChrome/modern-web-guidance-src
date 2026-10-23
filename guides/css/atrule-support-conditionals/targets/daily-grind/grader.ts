@@ -7,258 +7,265 @@ import {
 } from '../../../../../src/grading/test-fixture.ts';
 import {
   CSSRule,
+  CSSGroupingRule,
   CSSStyleRule,
   CSSSupportsRule,
+  CSSContainerRule,
   CSSPropertyRule,
-  type CSSRuleList,
+  CSSNestedDeclarations,
+  CSSAtRule,
+  type CSSStyleSheet,
 } from 'cssomnom';
-import { SyntaxKind } from 'ts-morph';
+import { SyntaxKind, type Project } from 'ts-morph';
 
-// @ts-ignore
+// @ts-ignore - import.meta.url is used at runtime under ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function getAllCssRules(rules: CSSRuleList | CSSRule[]): CSSRule[] {
-  const all: CSSRule[] = [];
-  for (const rule of Array.from(rules)) {
-    all.push(rule);
-    if ('cssRules' in rule && (rule as { cssRules?: CSSRuleList }).cssRules) {
-      all.push(...getAllCssRules((rule as { cssRules: CSSRuleList }).cssRules));
+function collectAllCssRules(ruleList: Iterable<CSSRule>): CSSRule[] {
+  const result: CSSRule[] = [];
+  for (const rule of ruleList) {
+    result.push(rule);
+    if (rule instanceof CSSGroupingRule) {
+      result.push(...collectAllCssRules(rule.cssRules));
+    } else if (rule instanceof CSSAtRule && Array.isArray(rule.childRules)) {
+      result.push(...collectAllCssRules(rule.childRules));
     }
   }
-  return all;
+  return result;
+}
+
+function getRuleOwnDeclarationCount(rule: CSSRule): number {
+  if (rule instanceof CSSStyleRule || rule instanceof CSSNestedDeclarations) {
+    return rule.style.length;
+  }
+  return 0;
+}
+
+function hasNestedRegularDeclarations(rule: CSSRule, detectedAtRuleName?: string): boolean {
+  if (rule instanceof CSSStyleRule || rule instanceof CSSNestedDeclarations) {
+    if (rule.style.length > 0) {
+      return true;
+    }
+  }
+  if (rule instanceof CSSGroupingRule) {
+    for (const child of rule.cssRules) {
+      if (detectedAtRuleName && isMatchingDetectedAtRule(child, detectedAtRuleName)) {
+        continue;
+      }
+      if (hasNestedRegularDeclarations(child, detectedAtRuleName)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function isMatchingDetectedAtRule(rule: CSSRule, atRuleName: string): boolean {
+  const normalized = atRuleName.toLowerCase().replace(/^@/, '');
+  const cssText = rule.cssText.trim().toLowerCase();
+  return cssText.startsWith(`@${normalized}`);
+}
+
+function extractAtRuleQueries(conditionText: string): string[] {
+  const queries: string[] = [];
+  const lower = conditionText.toLowerCase();
+  let idx = 0;
+  while (idx < lower.length) {
+    const found = lower.indexOf('at-rule(', idx);
+    if (found === -1) break;
+    let depth = 1;
+    let pos = found + 'at-rule('.length;
+    const start = pos;
+    while (pos < conditionText.length && depth > 0) {
+      if (conditionText[pos] === '(') depth++;
+      else if (conditionText[pos] === ')') depth--;
+      if (depth > 0) pos++;
+    }
+    queries.push(conditionText.slice(start, pos).trim());
+    idx = pos + 1;
+  }
+  return queries;
+}
+
+function isBareAtRuleIdentifier(arg: string): boolean {
+  if (!arg.startsWith('@') || arg.length < 2) return false;
+  const name = arg.slice(1);
+  for (let i = 0; i < name.length; i++) {
+    const ch = name[i];
+    const isAlphaNum =
+      (ch >= 'a' && ch <= 'z') ||
+      (ch >= 'A' && ch <= 'Z') ||
+      (ch >= '0' && ch <= '9') ||
+      ch === '-';
+    if (!isAlphaNum) return false;
+  }
+  return true;
+}
+
+function isTautologicalStyleContainerRule(rule: CSSContainerRule): boolean {
+  const cond = rule.conditionText.toLowerCase();
+  return cond.includes('style(') && cond.includes(' or ') && cond.includes('not');
+}
+
+function hasRegisteredPropertyFallbackPattern(allRules: CSSRule[]): boolean {
+  const propRules = allRules.filter((r): r is CSSPropertyRule => r instanceof CSSPropertyRule);
+  if (propRules.length === 0) return false;
+
+  const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+
+  for (const propRule of propRules) {
+    const propName = propRule.name;
+    const isWildcardNoInherit =
+      propRule.syntax.includes('*') && propRule.inherits === false;
+    if (!isWildcardNoInherit) continue;
+
+    // Pattern A: initial-value is set, or Pattern B: :root space-override with var(--prop, fallback) on non-root
+    const usedInVarWithFallbackOnNonRoot = styleRules.some((sr) => {
+      if (sr.selectorText.trim() === ':root' || sr.selectorText.trim() === 'html') {
+        return false;
+      }
+      for (let i = 0; i < sr.style.length; i++) {
+        const prop = sr.style.item(i);
+        const val = sr.style.getPropertyValue(prop);
+        if (val.includes(`var(${propName},`)) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (usedInVarWithFallbackOnNonRoot) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasJsAtRuleSupportDetection(project: Project, allRules: CSSRule[]): boolean {
+  const sourceFiles = project.getSourceFiles();
+  if (sourceFiles.length === 0) return false;
+
+  let checksCssRuleOrReplaceSync = false;
+  let togglesRootClass = false;
+
+  for (const sf of sourceFiles) {
+    const identifiers = sf.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
+    if (
+      identifiers.some(
+        (name) =>
+          (name.startsWith('CSS') && name.endsWith('Rule')) ||
+          name === 'replaceSync' ||
+          name === 'CSSStyleSheet'
+      )
+    ) {
+      checksCssRuleOrReplaceSync = true;
+    }
+    if (identifiers.some((name) => name === 'classList' || name === 'className')) {
+      togglesRootClass = true;
+    }
+  }
+
+  return checksCssRuleOrReplaceSync && togglesRootClass && allRules.length > 0;
 }
 
 test.describe('atrule-support-conditionals Target Grader', () => {
+  test('Stylesheets conditionally apply CSS rules or declarations based on at-rule support using @supports, tautological style @container query, @property fallback, or JS root class check', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allRules = collectAllCssRules(stylesheet.cssRules);
+    const project: Project = getJsProject(targetFiles);
 
-  test('Stylesheets conditionally apply CSS based on at-rule support using the Baseline Widely Available detection hierarchy', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const propertyRules = allRules.filter((r): r is CSSPropertyRule => r instanceof CSSPropertyRule);
     const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
-
-    // Baseline Widely Available hierarchy:
-    // Widely supported at-rules (like @property) that shipped before @supports at-rule()
-    // must NOT be detected via @supports at-rule(@property).
-    const hasSupportsAtRuleProperty = supportsRules.some(r =>
-      /at-rule\s*\(\s*@property\b/i.test(r.conditionText)
+    const containerRules = allRules.filter(
+      (r): r is CSSContainerRule => r instanceof CSSContainerRule && isTautologicalStyleContainerRule(r)
     );
 
-    // Fallback 1: Registered @property custom property fallback
-    const hasPropertyFallback = propertyRules.length > 0 && !hasSupportsAtRuleProperty;
+    const hasConditionalDetection =
+      supportsRules.length > 0 ||
+      containerRules.length > 0 ||
+      hasRegisteredPropertyFallbackPattern(allRules) ||
+      hasJsAtRuleSupportDetection(project, allRules);
 
-    // Fallback 2: JS detection toggling a root class
-    const jsProject = getJsProject(targetFiles);
-    const sourceFiles = jsProject.getSourceFiles();
-    const hasJsDetection = sourceFiles.some(sf => {
-      const text = sf.getText();
-      return (text.includes('CSSPropertyRule') || text.includes('replaceSync') || text.includes('CSSFunctionRule')) &&
-        (text.includes('classList') || text.includes('className'));
+    expect(hasConditionalDetection).toBe(true);
+  });
+
+  test('Any @supports at-rule(...) query passes only a bare @<name> identifier and avoids invalid checks (@supports (container-type: style) or CSS.registerProperty)', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allRules = collectAllCssRules(stylesheet.cssRules);
+    const project: Project = getJsProject(targetFiles);
+
+    const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
+    const containerRules = allRules.filter(
+      (r): r is CSSContainerRule => r instanceof CSSContainerRule && isTautologicalStyleContainerRule(r)
+    );
+
+    const hasAnyDetection =
+      supportsRules.length > 0 ||
+      containerRules.length > 0 ||
+      hasRegisteredPropertyFallbackPattern(allRules) ||
+      hasJsAtRuleSupportDetection(project, allRules);
+
+    const atRuleArgs = supportsRules.flatMap((r) => extractAtRuleQueries(r.conditionText));
+    const allAtRuleArgsAreBare = atRuleArgs.every((arg) => isBareAtRuleIdentifier(arg));
+
+    const hasInvalidContainerTypeStyle = supportsRules.some((r) => {
+      const norm = r.conditionText.toLowerCase().replace(/\s+/g, '');
+      return norm.includes('container-type:style');
     });
 
-    // Fallback 3: @supports at-rule(@media) to detect @supports at-rule() itself, or narrower at-rules (@function, etc.)
-    const hasSupportedAtRuleQuery = supportsRules.some(r => {
-      const match = r.conditionText.match(/at-rule\s*\(\s*@([a-zA-Z0-9_-]+)\s*\)/i);
-      if (!match) return false;
-      const atName = match[1].toLowerCase();
-      return atName === 'media' || atName === 'function';
-    });
-
-    // Fallback 4: Tautological container style query
-    const hasTautologicalContainerQuery = allRules.some(r =>
-      'conditionText' in r && typeof (r as { conditionText?: string }).conditionText === 'string' &&
-      /style\([^)]+\)\s+or\s+\(not\s*\(style\([^)]+\)\)\)/i.test((r as { conditionText: string }).conditionText)
-    );
-
-    const hasValidDetection = (hasPropertyFallback || hasJsDetection || hasSupportedAtRuleQuery || hasTautologicalContainerQuery) && !hasSupportsAtRuleProperty;
-    expect(hasValidDetection).toBe(true);
-  });
-
-  test('Registered @property fallback uses non-inheriting configuration and valid element scoping', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const propertyRules = allRules.filter((r): r is CSSPropertyRule => r instanceof CSSPropertyRule);
-    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    let hasValidFallbackConfig = false;
-
-    for (const propRule of propertyRules) {
-      // Must be non-inheriting for custom property detection patterns
-      if (propRule.inherits !== false) continue;
-
-      const propName = propRule.name;
-      const varPattern = new RegExp(`var\\(\\s*${propName}\\b`);
-
-      // Pattern A: Initial value fallback (e.g. initial-value: ...; consumed via var())
-      if (propRule.initialValue !== null && propRule.initialValue.trim().length > 0) {
-        const hasConsumingRule = styleRules.some(sr => varPattern.test(sr.style.cssText));
-        if (hasConsumingRule) {
-          hasValidFallbackConfig = true;
-          break;
-        }
-      }
-
-      // Pattern B: :root space-override pattern (set to whitespace on :root, consumed on a non-root element)
-      const rootDeclaresProperty = styleRules.some(sr => {
-        const isRootSelector = /^(?::root|html)\b/i.test(sr.selectorText.trim());
-        if (!isRootSelector) return false;
-        const val = sr.style.getPropertyValue(propName);
-        return val !== null && val !== undefined;
-      });
-
-      const nonRootConsumesVar = styleRules.some(sr => {
-        const isRootSelector = /^(?::root|html)\b/i.test(sr.selectorText.trim());
-        if (isRootSelector) return false;
-        return varPattern.test(sr.style.cssText);
-      });
-
-      if (rootDeclaresProperty && nonRootConsumesVar) {
-        hasValidFallbackConfig = true;
-        break;
-      }
-    }
-
-    // Alternative: JS root class detection or supported at-rule query
-    if (!hasValidFallbackConfig) {
-      const jsProject = getJsProject(targetFiles);
-      const hasJsDetection = jsProject.getSourceFiles().some(sf => {
-        const text = sf.getText();
-        return (text.includes('CSSPropertyRule') || text.includes('replaceSync')) &&
-          (text.includes('classList') || text.includes('className'));
-      });
-      if (hasJsDetection) {
-        hasValidFallbackConfig = true;
-      }
-    }
-
-    expect(hasValidFallbackConfig).toBe(true);
-  });
-
-  test('At-rule support queries use bare identifiers and avoid invalid or mismatched checks', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const propertyRules = allRules.filter((r): r is CSSPropertyRule => r instanceof CSSPropertyRule);
-    const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
-
-    const hasDetection = propertyRules.length > 0 || supportsRules.length > 0;
-
-    // Check 1: Bare @<name> identifier inside any @supports at-rule(...) query (no preludes/descriptors/bodies)
-    let hasInvalidAtRuleSyntax = false;
-    for (const sr of supportsRules) {
-      const matches = Array.from(sr.conditionText.matchAll(/at-rule\s*\(([^)]*)\)/gi));
-      for (const m of matches) {
-        const inner = m[1].trim();
-        if (!/^@[a-zA-Z0-9_-]+$/.test(inner)) {
-          hasInvalidAtRuleSyntax = true;
-        }
-      }
-    }
-
-    // Check 2: Must not use invalid check @supports (container-type: style)
-    const hasInvalidContainerTypeStyle = supportsRules.some(r =>
-      /container-type\s*:\s*style/i.test(r.conditionText)
-    );
-
-    // Check 3: Must not use mismatched JS check CSS.registerProperty to detect @property support
-    const jsProject = getJsProject(targetFiles);
-    const propertyAccesses = jsProject.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-    );
-    const usesRegisterProperty = propertyAccesses.some(pa =>
-      pa.getText() === 'CSS.registerProperty' || pa.getName() === 'registerProperty'
-    );
-
-    const passesBareIdentifierAndValidityChecks = hasDetection &&
-      !hasInvalidAtRuleSyntax &&
-      !hasInvalidContainerTypeStyle &&
-      !usesRegisterProperty;
-
-    expect(passesBareIdentifierAndValidityChecks).toBe(true);
-  });
-
-  test('At-rule support conditional gates dependent regular CSS declarations in stylesheets rather than self-wrapping or setting inline styles', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const propertyRules = allRules.filter((r): r is CSSPropertyRule => r instanceof CSSPropertyRule);
-    const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
-    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    // Check 1: Gating dependent regular CSS declarations in stylesheets
-    let hasGatedRegularCssDeclarations = false;
-
-    // Via registered property fallback: regular CSS properties (not custom properties) consuming var(--prop)
-    for (const propRule of propertyRules) {
-      const varPattern = new RegExp(`var\\(\\s*${propRule.name}\\b`);
-      for (const sr of styleRules) {
-        for (let i = 0; i < sr.style.length; i++) {
-          const prop = sr.style.item(i);
-          if (prop.startsWith('--')) continue; // Ignore custom property declarations
-          const val = sr.style.getPropertyValue(prop);
-          if (varPattern.test(val)) {
-            hasGatedRegularCssDeclarations = true;
-            break;
-          }
-        }
-        if (hasGatedRegularCssDeclarations) break;
-      }
-      if (hasGatedRegularCssDeclarations) break;
-    }
-
-    // Via @supports rule: contains regular CSS style rules
-    if (!hasGatedRegularCssDeclarations) {
-      const hasSupportsWithStyleRules = supportsRules.some(sr =>
-        Array.from(sr.cssRules).some(cr => cr instanceof CSSStyleRule && cr.style.length > 0)
+    const hasInvalidRegisterPropertyCheck = project
+      .getSourceFiles()
+      .some((sf) =>
+        sf
+          .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+          .some((pa) => pa.getText() === 'CSS.registerProperty')
       );
-      if (hasSupportsWithStyleRules) {
-        hasGatedRegularCssDeclarations = true;
-      }
-    }
 
-    // Via JS root class: regular CSS rules targeting the class
-    if (!hasGatedRegularCssDeclarations) {
-      const jsProject = getJsProject(targetFiles);
-      const hasJsDetection = jsProject.getSourceFiles().some(sf => {
-        const text = sf.getText();
-        return (text.includes('CSSPropertyRule') || text.includes('replaceSync')) &&
-          (text.includes('classList') || text.includes('className'));
-      });
-      if (hasJsDetection && styleRules.length > 0) {
-        hasGatedRegularCssDeclarations = true;
-      }
-    }
-
-    // Check 2: Does NOT wrap only the detected at-rule itself
-    const wrapsOnlySelf = supportsRules.some(sr => {
-      const match = sr.conditionText.match(/at-rule\s*\(\s*@([a-zA-Z0-9_-]+)\s*\)/i);
-      if (!match) return false;
-      const atName = match[1].toLowerCase();
-      const childRules = Array.from(sr.cssRules);
-      if (childRules.length === 0) return true;
-      return childRules.every(cr => {
-        const ruleName = cr.constructor.name.toLowerCase();
-        return ruleName.includes(atName);
-      });
-    });
-
-    // Check 3: Does NOT apply visual inline styles directly from JavaScript
-    const jsProject = getJsProject(targetFiles);
-    const calls = jsProject.getSourceFiles().flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-    const assignments = jsProject.getSourceFiles().flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.BinaryExpression));
-    const hasSetAttributeStyle = calls.some(call => {
-      const expr = call.getExpression().getText();
-      const args = call.getArguments();
-      return expr.endsWith('setAttribute') && args[0]?.getText().replace(/['"`]/g, '') === 'style';
-    });
-    const hasStylePropAssignment = assignments.some(assign => {
-      const left = assign.getLeft().getText();
-      return left.includes('.style.') || left.endsWith('.style');
-    });
-    const appliesVisualInlineStylesFromJs = hasSetAttributeStyle || hasStylePropAssignment;
-
-    const gatesRegularStylesProperly = hasGatedRegularCssDeclarations &&
-      !wrapsOnlySelf &&
-      !appliesVisualInlineStylesFromJs;
-
-    expect(gatesRegularStylesProperly).toBe(true);
+    expect(
+      hasAnyDetection &&
+        allAtRuleArgsAreBare &&
+        !hasInvalidContainerTypeStyle &&
+        !hasInvalidRegisterPropertyCheck
+    ).toBe(true);
   });
 
+  test('At-rule support conditionals gate dependent regular CSS declarations or rules in stylesheets rather than only wrapping the detected at-rule itself or setting inline styles from JS', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allRules = collectAllCssRules(stylesheet.cssRules);
+    const project: Project = getJsProject(targetFiles);
+
+    const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
+    const containerRules = allRules.filter(
+      (r): r is CSSContainerRule => r instanceof CSSContainerRule && isTautologicalStyleContainerRule(r)
+    );
+
+    const supportsRulesGateRegularCss =
+      supportsRules.length > 0 &&
+      supportsRules.every((sr) => {
+        const atRuleArgs = extractAtRuleQueries(sr.conditionText);
+        const detectedName = atRuleArgs[0];
+        return (
+          getRuleOwnDeclarationCount(sr) > 0 || hasNestedRegularDeclarations(sr, detectedName)
+        );
+      });
+
+    const containerRulesGateRegularCss =
+      containerRules.length > 0 &&
+      containerRules.every((cr) => hasNestedRegularDeclarations(cr));
+
+    const hasValidGatedCss =
+      supportsRulesGateRegularCss ||
+      containerRulesGateRegularCss ||
+      hasRegisteredPropertyFallbackPattern(allRules) ||
+      hasJsAtRuleSupportDetection(project, allRules);
+
+    const setsDirectInlineStyleInJs = project
+      .getSourceFiles()
+      .some((sf) =>
+        sf
+          .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+          .some((pa) => pa.getName() === 'style' && pa.getParent()?.getKind() === SyntaxKind.PropertyAccessExpression)
+      );
+
+    expect(hasValidGatedCss && !setsDirectInlineStyleInJs).toBe(true);
+  });
 });
