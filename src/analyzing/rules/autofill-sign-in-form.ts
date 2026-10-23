@@ -189,7 +189,7 @@ const autofillSignInFormMatcher: DomRuleMatcher = {
 export const autofillSignInFormRule: AnalyzerRule = {
   id: 'autofill-sign-in-form',
   guideId: 'autofill-sign-in-form',
-  guideHash: '93a1df14cafc',
+  guideHash: '6b56be1d16b8',
   summary:
     'Password input in sign-in or credential form should specify autocomplete="current-password" or autocomplete="new-password".',
   matcher: autofillSignInFormMatcher,

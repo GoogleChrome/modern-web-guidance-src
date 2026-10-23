@@ -8,7 +8,7 @@ import {
 import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 import { isProtectedByFeatureGuard, unwrapExpression } from '../scanners/ast-helpers.ts';
 
-export const CALCULATE_EVENT_DIFFERENTIALS_GUIDE_HASH = 'b6d8722f6b03';
+export const CALCULATE_EVENT_DIFFERENTIALS_GUIDE_HASH = '77481d042afa';
 
 const TEMPORAL_GUARD_TOKENS = ['Temporal', '@js-temporal/polyfill'] as const;
 

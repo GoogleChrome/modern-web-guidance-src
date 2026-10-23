@@ -13,7 +13,7 @@ describe('manage-recurring-intervals rule', () => {
 
   test('has correct metadata and 12-char guideHash', () => {
     assert.equal(manageRecurringIntervalsRule.id, 'manage-recurring-intervals');
-    assert.equal(manageRecurringIntervalsRule.guideId, 'manage-recurring-intervals');
+    assert.equal(manageRecurringIntervalsRule.guideId, 'capture-location-agnostic-data');
     assert.equal(manageRecurringIntervalsRule.guideHash, MANAGE_RECURRING_INTERVALS_GUIDE_HASH);
     assert.equal(manageRecurringIntervalsRule.guideHash.length, 12);
     assert.ok(manageRecurringIntervalsRule.phase2Rubric.keepWhen.length >= 2);

@@ -18,7 +18,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const POSITION_AWARE_TOOLTIPS_GUIDE_HASH = '4ba438faeb7a';
+export const POSITION_AWARE_TOOLTIPS_GUIDE_HASH = '9081ca694c81';
 
 const ANCHOR_GUARD_TOKENS = [
   'anchor-name',

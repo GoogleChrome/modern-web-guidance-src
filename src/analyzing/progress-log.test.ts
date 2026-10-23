@@ -490,13 +490,13 @@ describe('file operations and hashes', () => {
       );
     });
 
-    it('renders Table 1 full 175-guide post-origin/main catalog screening summary', () => {
+    it('renders Table 1 full 172-guide post-origin/main catalog screening summary', () => {
       const markdown = formatProgressLogMarkdown(HISTORICAL_DETECTION_FUNNEL_ROWS);
       assert.ok(markdown.includes('### Legacy Pattern Spec & Catalog Screening Summary'));
-      assert.ok(markdown.includes('175 published feature guides audited (132 in `legacy-pattern-specs.json` + 43 Gate 0 non-detectable) -> 47 statically detectable'));
-      assert.ok(markdown.includes('13 `clean-1-to-1` + 34 `needs-care`'));
-      assert.ok(markdown.includes('128 `do-not-write-a-rule`'));
-      assert.ok(markdown.includes('37 active guides (49 rules, including 10 single-purpose `package.json` + whole-file `vendored-library` rules) wired in `ALL_RULES`'));
+      assert.ok(markdown.includes('172 published feature guides audited (130 in `legacy-pattern-specs.json` + 42 Gate 0 non-detectable) -> 46 statically detectable'));
+      assert.ok(markdown.includes('13 `clean-1-to-1` + 33 `needs-care`'));
+      assert.ok(markdown.includes('126 `do-not-write-a-rule`'));
+      assert.ok(markdown.includes('35 active guides (49 rules, including 10 single-purpose `package.json` + whole-file `vendored-library` rules) wired in `ALL_RULES`'));
     });
 
     it('annotates Current Verified Benchmark when 5653484 is current benchmark (D-042 / D-046)', () => {

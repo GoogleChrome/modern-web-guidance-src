@@ -17,7 +17,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH = 'c743791fe3e1';
+export const FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH = '77481d042afa';
 
 const DURATION_PACKAGES = [
   'humanize-duration',
@@ -299,7 +299,7 @@ export const durationJsMatcher: JsRuleMatcher = {
 
 export const formatHumanReadableDurationsPackageRule: AnalyzerRule = {
   id: 'format-human-readable-durations/package-duration-formatter',
-  guideId: 'format-human-readable-durations',
+  guideId: 'calculate-event-differentials',
   guideHash: FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH,
   summary:
     'Legacy duration formatting packages (humanize-duration, pretty-ms, moment-duration-format) can be modernized with native Temporal.Duration and Intl.DurationFormat.',
@@ -320,7 +320,7 @@ export const formatHumanReadableDurationsPackageRule: AnalyzerRule = {
 
 export const formatHumanReadableDurationsJsRule: AnalyzerRule = {
   id: 'format-human-readable-durations/js-duration-formatter',
-  guideId: 'format-human-readable-durations',
+  guideId: 'calculate-event-differentials',
   guideHash: FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH,
   summary:
     'Custom duration formatting logic or libraries (humanizeDuration, prettyMs, moment.duration().humanize()) can be modernized with native Temporal.Duration and Intl.DurationFormat.',

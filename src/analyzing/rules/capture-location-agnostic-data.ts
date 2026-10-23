@@ -20,7 +20,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const CAPTURE_LOCATION_AGNOSTIC_DATA_GUIDE_HASH = '0d07f947a04e';
+export const CAPTURE_LOCATION_AGNOSTIC_DATA_GUIDE_HASH = '321007015288';
 
 const ISO_LOOKUP_PACKAGES = [
   'i18n-iso-countries',

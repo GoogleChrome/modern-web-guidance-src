@@ -7,7 +7,7 @@ import {
 import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 import { isProtectedByFeatureGuard, unwrapExpression } from '../scanners/ast-helpers.ts';
 
-export const MANAGE_RECURRING_INTERVALS_GUIDE_HASH = '70de814bc3cc';
+export const MANAGE_RECURRING_INTERVALS_GUIDE_HASH = '321007015288';
 
 const TEMPORAL_GUARD_TOKENS = ['Temporal', '@js-temporal/polyfill'] as const;
 
@@ -205,7 +205,7 @@ export const manageRecurringIntervalsMatcher: JsRuleMatcher = {
 
 export const manageRecurringIntervalsRule: AnalyzerRule = {
   id: 'manage-recurring-intervals',
-  guideId: 'manage-recurring-intervals',
+  guideId: 'capture-location-agnostic-data',
   guideHash: MANAGE_RECURRING_INTERVALS_GUIDE_HASH,
   summary:
     'Flag legacy mutable Date monthly/annual calendar-period mutation (d.setMonth(d.getMonth() + 1), d.setFullYear(d.getFullYear() + 1)) or moment/dayjs month/year .add()/.subtract() calls instead of Temporal.PlainDate.prototype.add().',

@@ -21,7 +21,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const SUPPORT_GLOBAL_CALENDAR_SYSTEMS_GUIDE_HASH = 'a081f11823da';
+export const SUPPORT_GLOBAL_CALENDAR_SYSTEMS_GUIDE_HASH = 'da915a6c2463';
 
 const CALENDAR_PACKAGES = [
   'moment-hijri',

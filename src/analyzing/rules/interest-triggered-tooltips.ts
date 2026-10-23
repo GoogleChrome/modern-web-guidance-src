@@ -19,7 +19,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH = '7285e209e32e';
+export const INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH = '332c95d0cbc9';
 
 const INTEREST_GUARD_TOKENS = [
   'interestfor',

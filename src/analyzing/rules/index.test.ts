@@ -13,12 +13,12 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing 49 rules across the 37 active feature guides', async (t) => {
+  it('exports PILOT_RULES containing 49 rules across the 35 active feature guides', async (t) => {
     assert.strictEqual(PILOT_RULES.length, 49);
     assert.strictEqual(ALL_RULES.length, 49);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 37);
+    assert.strictEqual(guideIds.size, 35);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
@@ -42,14 +42,12 @@ describe('rules/index export registry', () => {
         'drag',
         'equal-width-text-lines',
         'form-fields-automatically-fit-contents',
-        'format-human-readable-durations',
         'highlight-text-ranges',
         'ime-safe-enter-submit',
         'improve-next-page-load-performance',
         'individual-transform-properties',
         'language-detection',
         'light-dismiss-a-dialog',
-        'manage-recurring-intervals',
         'prevent-page-scroll-under-modal-dialog',
         'resolution-optimized-pseudo-elements',
         'responsive-table',
