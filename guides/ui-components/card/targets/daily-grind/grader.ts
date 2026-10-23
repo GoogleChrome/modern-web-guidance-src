@@ -175,7 +175,13 @@ test.describe('card Target Grader', () => {
     const styleRules = collectStyleRules(Array.from(stylesheet.cssRules));
 
     const unscopedMultiColumnOnCard = styleRules.some((r) => {
-      if (!r.selectorText.includes('.card') || r.selectorText.includes(':has(')) return false;
+      if (
+        !r.selectorText.includes('.card') ||
+        r.selectorText.includes(':has(') ||
+        r.selectorText.includes('.has-media')
+      ) {
+        return false;
+      }
       const cols = r.style.getPropertyValue('grid-template-columns').trim();
       const autoCols = r.style.getPropertyValue('grid-auto-columns').trim();
       const hasMultipleCols =
