@@ -1,78 +1,111 @@
 diff --git a/index.html b/index.html
-index 66c9173..23323e0 100644
+index 66c9173..acb05b8 100644
 --- a/index.html
 +++ b/index.html
-@@ -4,6 +4,7 @@
+@@ -2,6 +2,10 @@
+ <html lang="en">
+ 
  <head>
++  <meta
++    http-equiv="Content-Security-Policy"
++    content="require-trusted-types-for 'script'; trusted-types sanitize-html escape-html dompurify;"
++  />
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-+  <meta http-equiv="Content-Security-Policy" content="require-trusted-types-for 'script'; trusted-types sanitize-html;">
    <title>The Daily Grind | Artisanal Coffee</title>
-   <style>
-     :root {
-@@ -204,9 +205,51 @@
-       <a href="/contact">Contact Us</a> |
-       <a href="/privacy-policy">Privacy</a>
-     </div>
-+    <p id="special-note"></p>
+@@ -177,23 +181,7 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <div class="grid" id="seasonal-favorites"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +195,70 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script>
-+    // Tinyfill fallback for browsers without Trusted Types support.
 +    if (!window.trustedTypes) {
 +      window.trustedTypes = {
 +        createPolicy: (name, rules) => rules,
 +      };
-+    } else if (typeof window.trustedTypes.createPolicy !== 'function') {
-+      window.trustedTypes.createPolicy = (name, rules) => rules;
 +    }
 +
-+    function sanitizeHTML(input) {
-+      let html = String(input);
-+      // Strip executable script and embedding tags
-+      html = html.replace(/<(script|iframe|style|object|embed|svg|base)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
-+      html = html.replace(/<(script|iframe|style|object|embed|svg|base)\b[^>]*\/?>/gi, '');
-+      // Strip inline event handler attributes (e.g. onerror, onclick)
-+      html = html.replace(/\s+on[a-z0-9_-]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-+      // Neutralize javascript: and dangerous data: URLs
-+      html = html.replace(/\b(href|src)\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*'|javascript:[^\s>]+)/gi, '$1="#"');
-+      html = html.replace(/\b(href|src)\s*=\s*(?:"data:text\/html[^"]*"|'data:text\/html[^']*'|data:text\/html[^\s>]+)/gi, '$1="#"');
-+      return html;
-+    }
-+
-+    // createPolicy() wraps the returned string in a TrustedHTML object.
-+    const sanitizePolicy = window.trustedTypes.createPolicy('sanitize-html', {
-+      createHTML: (input) => sanitizeHTML(input),
++    const myPolicy = trustedTypes.createPolicy('sanitize-html', {
++      createHTML: (input) => {
++        if (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function') {
++          return DOMPurify.sanitize(String(input), { RETURN_TRUSTED_TYPE: false });
++        }
++        return String(input)
++          .replace(/<(script|iframe|object|embed|applet|style|svg|math|form|base|meta|link)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
++          .replace(/<\/?(script|iframe|object|embed|applet|style|svg|math|form|base|meta|link)\b[^>]*\/?>/gi, '')
++          .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)/gi, '')
++          .replace(/\s+srcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)/gi, '')
++          .replace(
++            /\s+(href|src|xlink:href|action|formaction)\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi,
++            (match, attr, fullVal, dqVal, sqVal, uqVal) => {
++              const rawVal = dqVal ?? sqVal ?? uqVal ?? '';
++              const decoded = rawVal
++                .replace(/&#x([0-9a-f]+);?/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
++                .replace(/&#([0-9]+);?/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
++                .replace(/[\s\u0000-\u001f]+/g, '')
++                .toLowerCase();
++              if (
++                decoded.startsWith('javascript:') ||
++                decoded.startsWith('vbscript:') ||
++                decoded.startsWith('data:')
++              ) {
++                return '';
++              }
++              return match;
++            }
++          );
++      },
 +    });
 +
-+    window.sanitizePolicy = sanitizePolicy;
++    const seasonalFavorites = [
++      `<div class="card">
++        <h3>Maple Oat Latte</h3>
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <a href="/menu/seasonal" class="btn">View Details</a>
++      </div>`,
++      `<div class="card">
++        <h3>Dark Roast Espresso</h3>
++        <p>Bold, smokey, and perfect for a morning boost.</p>
++        <a href="/menu/espresso" class="btn">View Details</a>
++      </div>`,
++      `<div class="card">
++        <h3>Cold Brew</h3>
++        <p>Steeped for 18 hours for maximum smoothness.</p>
++        <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>`,
++    ];
 +
-+    // Untrusted content goes through the policy before reaching the sink.
-+    const searchParams = new URLSearchParams(window.location.search);
-+    const untrustedInput = searchParams.get('note') ||
-+      searchParams.get('name') ||
-+      '<strong>Today\'s special:</strong> Maple Oat Latte <img src="x" onerror="alert(1)"><script>alert(2)<\/script>';
-+    const noteEl = document.getElementById('special-note');
-+    if (noteEl) {
-+      noteEl.innerHTML = sanitizePolicy.createHTML(untrustedInput);
++    const grid = document.querySelector('.grid');
++    if (grid) {
++      const cleanHTML = myPolicy.createHTML(seasonalFavorites.join('\n'));
++      grid.innerHTML = cleanHTML;
 +    }
 +  </script>
 +
  </body>
  
  </html>
-diff --git a/package.json b/package.json
-index 2bd4d77..bb70d39 100644
---- a/package.json
-+++ b/package.json
-@@ -2,7 +2,8 @@
-   "name": "daily-grind",
-   "version": "1.0.0",
-   "scripts": {
--    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "start": "pnpm dlx statikk --port ${PORT:-11222}",
-+    "build": "echo 'Build successful'"
-   },
-   "pnpm": {
-     "onlyBuiltDependencies": []

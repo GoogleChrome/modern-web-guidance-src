@@ -1,1 +1,1 @@
-- Help prevent DOM-based XSS attacks in the application by locking down dangerous DOM sinks so they reject raw strings and only accept policy-validated HTML.
+- Update The Daily Grind homepage to dynamically render the Seasonal Favorites cards from HTML strings while preventing DOM-based XSS attacks by defining a browser sanitization policy for untrusted HTML before inserting it into the DOM and enforcing it through the page's Content Security Policy.
