@@ -11,16 +11,24 @@ const _targetFiles: string[] = process.env.PATCH_FILE ? getTargetFiles(import.me
 function getOutputContainer(page: Page): Locator {
   return page
     .locator(
-      '#output, #sanitizedDisplay, #preview, [role="region"]:not(:has(textarea)), .review-card:has(.review-meta:has-text("Anonymous")) .review-body, #reviews-list .review-card:first-child .review-body, .review-body'
+      '#output, #sanitizedDisplay, #preview, #review-preview, #live-preview, [role="region"]:not(:has(textarea)), .review-card:has(.review-meta:has-text("Anonymous")) .review-body, #reviews-list .review-card:first-child .review-body, #reviews-list .review-item:first-child .review-content, .review-body, .review-content'
     )
     .first();
 }
 
 async function renderUntrustedHtml(page: Page, html: string, markerSelector: string): Promise<Locator> {
+  const textInputs = page.locator('form input[type="text"], form input:not([type])');
+  const textInputCount = await textInputs.count();
+  for (let i = 0; i < textInputCount; i++) {
+    const textInput = textInputs.nth(i);
+    if ((await textInput.isVisible()) && !(await textInput.inputValue())) {
+      await textInput.fill('Anonymous', { timeout: 1000 });
+    }
+  }
   const input = page.locator('textarea').first();
   await input.fill(html, { timeout: 2000 });
   const submitButton = page
-    .locator('form button, button[type="submit"], button#btnDisplay, button#btn-run, button:has-text("Display"), button:has-text("Preview"), button:has-text("Render"), button:has-text("Post"), button.btn')
+    .locator('form button[type="submit"], button[type="submit"], form button:not([type="button"]), button#btnDisplay, button#btn-run, button:has-text("Display"), button:has-text("Preview"), button:has-text("Render"), button:has-text("Post"), button.btn')
     .first();
   await submitButton.click({ timeout: 2000 });
   const output = getOutputContainer(page);
