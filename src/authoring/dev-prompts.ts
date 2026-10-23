@@ -191,16 +191,16 @@ Write only one assertion per \`test('...', ...)\` block across both static and b
 - **Flexible Pattern Matching**: Avoid exact-string equality for dynamic names or classes. Use loose matches, inclusion checks, and word boundaries (e.g., \`/\\bname\\b/\`) to avoid substring false positives.
 - **No Vacuous Guards or \`test.skip()\`**: Never use \`test.skip()\`. Never wrap \`expect(...)\` inside \`if (items.length > 0)\` without first asserting \`expect(items.length).toBeGreaterThan(0)\`. Every \`test()\` block must execute a real, non-trivial assertion that fails when the requirement is absent.
 - **No Swallowed Errors**: Do not wrap assertions in generic try/catch blocks that swallow exceptions.
-- **Feature-Scoped Expectations (\`[supported: <feature>]\` / \`[unsupported: <feature>]\`)**: Only when a bullet in \`${opts.expectationsFile}\` begins with \`[supported: <feature>]\` or \`[unsupported: <feature>]\` (where \`<feature>\` is a \`web-features\` ID or BCD key, such as \`switch-control\`):
+- **Fallback Expectations (\`[unsupported: <feature>]\`)**: Expectations assume all features are supported by default, and only fallback/polyfill bullets in \`${opts.expectationsFile}\` begin with \`[unsupported: <feature>]\` (where \`<feature>\` is a \`web-features\` ID or BCD key, such as \`switch-control\`):
   - **Untagged bullets** are universal and run across all Baseline targets; write standard \`test('...', ...)\` blocks and do NOT import or call \`skipUnless\`.
-  - **Tagged bullets**: Include the exact \`[supported: <feature>]\` or \`[unsupported: <feature>]\` prefix at the start of the \`test\` title AND call \`skipUnless({ supported: '<feature>' });\` or \`skipUnless({ unsupported: '<feature>' });\` (imported from \`test-fixture.ts\`) as the first statement of the test body:
+  - **Tagged bullets (\`[unsupported: <feature>]\`)**: Include the exact \`[unsupported: <feature>]\` prefix at the start of the \`test\` title AND call \`skipUnless({ unsupported: '<feature>' });\` (imported from \`test-fixture.ts\`) as the first statement of the test body:
     \`\`\`ts
     test('[unsupported: switch-control] ...', () => {
       skipUnless({ unsupported: 'switch-control' });
       // ...assertion...
     });
     \`\`\`
-  - Note: Golden solution patches and \`zero-passrate.patch\` are generated under the default \`widely\` target, so calibration executes untagged and \`[unsupported: <feature>]\` tests (for Newly/Limited features) while automatically skipping \`[supported: <feature>]\` tests until live evaluation runs. Still write complete, accurate static or browser assertions for \`[supported: <feature>]\` expectations.
+  - Note: Golden solution patches and \`zero-passrate.patch\` are generated under the default \`widely\` target, so calibration executes both untagged and \`[unsupported: <feature>]\` tests (for Newly/Limited features), while live evaluation runs on higher targets (\`newly\` / \`limited\`) automatically skip \`[unsupported: <feature>]\` tests when \`<feature>\` is supported.
 
 ## 5. Dependencies & Sandbox Constraints
 Do not install any npm packages or execute application dev, build, or test commands in your workspace. However, you MUST verify that your generated grader code compiles cleanly and passes linting. Run ONLY these verification commands in your workspace and fix any errors before ending your turn:

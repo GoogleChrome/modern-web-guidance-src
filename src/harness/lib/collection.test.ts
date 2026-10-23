@@ -179,13 +179,13 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
                 },
                 {
                   id: 'spec-2',
-                  title: '[baseline: limited] Skipped under widely',
+                  title: '[unsupported: switch-control] Skipped under limited',
                   ok: true,
                   tests: [{ status: 'skipped', results: [{ status: 'skipped' }] }],
                 },
                 {
                   id: 'spec-3',
-                  title: '[baseline: widely] Widely check fails',
+                  title: '[unsupported: switch-control] Fallback check fails',
                   ok: false,
                   tests: [{ status: 'unexpected', results: [{ status: 'failed', errors: [{ message: 'Expected fallback' }] }] }],
                 },
@@ -208,6 +208,38 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
       assert.strictEqual(res[0].passed, true);
       assert.strictEqual(res[1].id, 'spec-3');
       assert.strictEqual(res[1].passed, false);
+    });
+
+    await t.test('returns empty array when every spec in the file is skipped for a baseline target', () => {
+      const allSkippedJsonPath = path.join(tempDir, 'all_skipped_results.json');
+      fs.writeFileSync(
+        allSkippedJsonPath,
+        JSON.stringify({
+          suites: [
+            {
+              title: 'Target Grader',
+              specs: [
+                {
+                  id: 'spec-1',
+                  title: '[unsupported: switch-control] Skipped fallback check',
+                  ok: true,
+                  tests: [{ status: 'skipped', results: [{ status: 'skipped' }] }],
+                },
+              ],
+            },
+          ],
+        })
+      );
+
+      const res = evaluateScenarioResults(
+        tempDir,
+        'test-guide',
+        graderPath,
+        allSkippedJsonPath,
+        true,
+        path.join(tempDir, 'index.html')
+      );
+      assert.deepStrictEqual(res, []);
     });
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });

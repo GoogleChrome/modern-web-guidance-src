@@ -514,7 +514,12 @@ async function gradeOutput(
   console.log(cYellow(`\nGrading ${label}...`));
 
   try {
-    const gradeResults = await runPlaywright(appDir, graderPath, 'pipe', patchFile, zeroPassrateFile, undefined, baselineTarget);
+    const gradeResults = await runPlaywright(appDir, graderPath, {
+      stdio: 'pipe',
+      patchFile,
+      zeroPassrateFile,
+      baselineTarget,
+    });
     const passed = gradeResults.stats?.expected || 0;
     const failed = gradeResults.stats?.unexpected || 0;
     const total = passed + failed;

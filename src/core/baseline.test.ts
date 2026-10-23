@@ -236,6 +236,11 @@ describe('baseline data', () => {
       assert.strictEqual(checkBaseline('Baseline Widely available on 2025-01-01', 'non-existent-feature'), false);
     });
 
+    it('supports BCD keys and feature:bcdKey tokens across standard and date targets', () => {
+      assert.strictEqual(checkBaseline('widely', 'css.properties.grid-template-columns'), true);
+      assert.strictEqual(checkBaseline('Baseline 2017', 'grid:css.properties.grid-template-columns'), true);
+      assert.strictEqual(checkBaseline('Baseline 2016', 'grid:css.properties.grid-template-columns'), false);
+    });
   });
 });
 

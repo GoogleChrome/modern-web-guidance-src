@@ -290,7 +290,7 @@ test('collectSpecs ignores skipped Playwright tests during calibration reporting
         tests: [{ status: 'expected', results: [{ status: 'passed' }] }],
       },
       {
-        title: '[baseline: limited] Skipped test',
+        title: '[unsupported: switch-control] Skipped test',
         ok: true,
         tests: [{ status: 'skipped', results: [{ status: 'skipped' }] }],
       },
@@ -341,7 +341,7 @@ test('computeTargetSummary flags target when any baseline variant drops below 90
         {
           results: [
             { passed: true, message: 'Check 1' },
-            { passed: false, message: '[baseline: limited] Check 2' },
+            { passed: false, message: '[unsupported: switch-control] Check 2' },
           ],
           guidanceToolsUsed: ['modern-web-guidance'],
           guidesUsed: ['switch'],
@@ -361,5 +361,6 @@ test('computeTargetSummary flags target when any baseline variant drops below 90
   assert.ok(summary !== null);
   assert.strictEqual(summary?.flag, 'LOW_GUIDED_PASS_RATE');
   assert.strictEqual(summary?.guidedPassRate, 80);
+  assert.ok(summary?.flagDetails.startsWith('[daily-grind-limited] '));
 });
 

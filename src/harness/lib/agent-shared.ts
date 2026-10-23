@@ -857,11 +857,12 @@ async function run() {
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
-      'inherit',
-      patchFile,
-      zeroPassrateFile,
-      undefined,
-      ${JSON.stringify(resolvedBaselineTarget)}
+      {
+        stdio: 'inherit',
+        patchFile,
+        zeroPassrateFile,
+        baselineTarget: ${JSON.stringify(resolvedBaselineTarget)},
+      }
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {

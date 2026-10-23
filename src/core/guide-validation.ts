@@ -4,7 +4,16 @@ import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from './macros.ts';
-import { validateFeature, resolveFeatureId, resolveFeatureOrBcdBaseline } from './baseline.ts';
+import { validateFeature, resolveFeatureId } from './baseline.ts';
+import {
+  BASELINE_TARGETS,
+  type BaselineTarget,
+  type ExpectationSupportMode,
+  parseExpectations,
+  parseExpectationBaselineTag,
+  validateExpectationsBaselineTags,
+  getBaselineTargetsForExpectations,
+} from './expectation-tags.ts';
 import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
@@ -375,185 +384,15 @@ export function validateGuide(filePath: string): ValidationResult {
   return { errors, data, body, filePath };
 }
 
-export const BASELINE_TARGETS = ['widely', 'newly', 'limited'] as const;
-export type BaselineTarget = (typeof BASELINE_TARGETS)[number];
-export type ExpectationSupportMode = 'supported' | 'unsupported';
-
-/**
- * Parses an optional leading `[supported: <features>]` or `[unsupported: <features>]` tag
- * from an expectation bullet or test title.
- */
-export function parseExpectationBaselineTag(bullet: string): {
-  mode?: ExpectationSupportMode;
-  features?: string[];
-  targets?: BaselineTarget[];
-  text: string;
-  invalidTokens?: string[];
-  rawTag?: string;
-} {
-  const trimmed = bullet.trim();
-  const match = trimmed.match(/^\[(supported|unsupported):\s*([^\]]*)\]\s*(.*)$/i);
-  if (!match) {
-    const unknownTagMatch = trimmed.match(/^(\[[a-z-]+:\s*[^\]]*\])\s*(.*)$/i);
-    if (unknownTagMatch) {
-      return {
-        text: unknownTagMatch[2].trim(),
-        invalidTokens: [unknownTagMatch[1].trim()],
-        rawTag: unknownTagMatch[1].trim(),
-      };
-    }
-    return { text: trimmed };
-  }
-
-  const mode = match[1].toLowerCase() as ExpectationSupportMode;
-  const rawTokens = match[2]
-    .split(',')
-    .map(t => t.trim())
-    .filter(Boolean);
-  const text = match[3].trim();
-
-  if (rawTokens.length === 0) {
-    return { mode, text, invalidTokens: ['(empty)'], rawTag: match[0].trim() };
-  }
-
-  const validFeatures: string[] = [];
-  const invalidTokens: string[] = [];
-  const tokenBaselines: Array<'high' | 'low' | false> = [];
-
-  for (const token of rawTokens) {
-    const baseline = resolveFeatureOrBcdBaseline(token);
-    if (baseline !== undefined) {
-      if (!validFeatures.includes(token)) {
-        validFeatures.push(token);
-        tokenBaselines.push(baseline);
-      }
-    } else {
-      invalidTokens.push(token);
-    }
-  }
-
-  let targets: BaselineTarget[] | undefined;
-  if (validFeatures.length > 0 && invalidTokens.length === 0) {
-    const isSupportedAt = (b: 'high' | 'low' | false, target: BaselineTarget): boolean => {
-      if (target === 'limited') return true;
-      if (target === 'newly') return b === 'high' || b === 'low';
-      return b === 'high';
-    };
-    targets = BASELINE_TARGETS.filter(target =>
-      mode === 'supported'
-        ? tokenBaselines.every(b => isSupportedAt(b, target))
-        : tokenBaselines.some(b => !isSupportedAt(b, target))
-    );
-  }
-
-  return {
-    mode,
-    features: validFeatures.length > 0 ? validFeatures : undefined,
-    targets,
-    text,
-    invalidTokens: invalidTokens.length > 0 ? invalidTokens : undefined,
-    rawTag: `[${mode}: ${rawTokens.join(', ')}]`,
-  };
-}
-
-/**
- * Validates that any `[supported: ...]` or `[unsupported: ...]` tags in `expectations.md`
- * reference valid `web-features` IDs or BCD keys.
- */
-export function validateExpectationsBaselineTags(content: string, relativePath: string): string[] {
-  const errors: string[] = [];
-  const parsed = parseExpectations(content);
-  const allBullets = [...parsed.mustPass, ...parsed.mustFail, ...parsed.appAgnostic];
-
-  for (const bullet of allBullets) {
-    const tagInfo = parseExpectationBaselineTag(bullet);
-    if (tagInfo.invalidTokens && tagInfo.invalidTokens.length > 0) {
-      errors.push(
-        `Invalid feature or BCD key(s) ${tagInfo.invalidTokens.map(t => `"${t}"`).join(', ')} in ${relativePath}: "${bullet}". Use [supported: <feature-id>] or [unsupported: <feature-id>] with a valid web-features ID or BCD key.`
-      );
-    }
-  }
-
-  return errors;
-}
-
-/**
- * Computes all unique non-`widely` Baseline targets (`newly`, `limited`) needed to evaluate
- * the `[supported: ...]` / `[unsupported: ...]` feature tags in `expectations.md`
- * (accepts either raw markdown content or a file path).
- */
-export function getBaselineTargetsForExpectations(
-  expectationsContentOrPath: string
-): Exclude<BaselineTarget, 'widely'>[] {
-  const content =
-    !expectationsContentOrPath.includes('\n') && fs.existsSync(expectationsContentOrPath)
-      ? readFileSafe(expectationsContentOrPath)
-      : expectationsContentOrPath;
-  if (!content) return [];
-
-  const parsed = parseExpectations(content);
-  const allBullets = [...parsed.mustPass, ...parsed.mustFail, ...parsed.appAgnostic];
-  const nonWidely = new Set<Exclude<BaselineTarget, 'widely'>>();
-
-  for (const bullet of allBullets) {
-    const { features: tagFeatures } = parseExpectationBaselineTag(bullet);
-    if (!tagFeatures) continue;
-    for (const token of tagFeatures) {
-      const baseline = resolveFeatureOrBcdBaseline(token);
-      if (baseline === 'low') {
-        nonWidely.add('newly');
-      } else if (baseline === false) {
-        nonWidely.add('limited');
-      }
-    }
-  }
-
-  return (['newly', 'limited'] as const).filter(t => nonWidely.has(t));
-}
-
-/**
- * Parses expectations.md content into structured sections.
- * Supports both the legacy flat bullet format (all items treated as mustPass)
- * and the new structured format with ## Must pass / ## Must fail / ## App-agnostic rules sections.
- */
-export function parseExpectations(content: string): {
-  mustPass: string[];
-  mustFail: string[];
-  appAgnostic: string[];
-} {
-  const hasStructuredHeadings = /^##\s+(Must pass|Must fail|App-agnostic rules)/im.test(content);
-
-  if (!hasStructuredHeadings) {
-    // Legacy format: treat all bullet items as mustPass
-    const bullets = content
-      .split('\n')
-      .map(l => l.trim())
-      .filter(l => l.startsWith('- '))
-      .map(l => l.slice(2).trim());
-    return { mustPass: bullets, mustFail: [], appAgnostic: [] };
-  }
-
-  const extract = (heading: string): string[] => {
-    const pattern = new RegExp(`^##\\s+${heading}\\s*$`, 'im');
-    const match = pattern.exec(content);
-    if (!match) return [];
-    const start = match.index + match[0].length;
-    const rest = content.slice(start);
-    const nextHeading = /^##\s/m.exec(rest);
-    const section = nextHeading ? rest.slice(0, nextHeading.index) : rest;
-    return section
-      .split('\n')
-      .map(l => l.trim())
-      .filter(l => l.startsWith('- '))
-      .map(l => l.slice(2).trim());
-  };
-
-  return {
-    mustPass: extract('Must pass'),
-    mustFail: extract('Must fail'),
-    appAgnostic: extract('App-agnostic rules'),
-  };
-}
+export {
+  BASELINE_TARGETS,
+  type BaselineTarget,
+  type ExpectationSupportMode,
+  parseExpectations,
+  parseExpectationBaselineTag,
+  validateExpectationsBaselineTags,
+  getBaselineTargetsForExpectations,
+};
 
 /**
  * Processes guide inventory entries: validates frontmatter, checks for missing
