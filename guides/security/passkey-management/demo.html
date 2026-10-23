@@ -8,6 +8,11 @@
   <div class="card">
     <h2>Manage Your Passkeys</h2>
     <p>Sync state with your password manager in real-time.</p>
+
+    <div id="profile-section" style="margin-bottom: 1rem;">
+      <span id="user-display-name" data-testid="user-display-name">Ada Lovelace (user@example.com)</span>
+      <button id="rename-user-btn" data-testid="rename-user-button" type="button">Edit Profile Name</button>
+    </div>
     
     <div id="list-container" class="credential-list" data-testid="credential-list">
       <!-- Managed Credential items will load here -->
@@ -99,7 +104,7 @@
           `;
           
           // Wire action buttons
-          item.querySelector('.rename-btn').addEventListener('click', () => performRename(cred.id));
+          item.querySelector('.rename-btn').addEventListener('click', () => performCredentialRename(cred.id));
           item.querySelector('.delete-btn').addEventListener('click', () => performDelete(cred.id));
           
           container.appendChild(item);
@@ -114,12 +119,12 @@
       }
     }
 
-    async function performRename(id) {
-      const newName = prompt('Enter a custom name:');
+    async function performCredentialRename(id) {
+      const newName = prompt('Enter a custom passkey name:');
       if (!newName) return;
       
       const statusEl = document.getElementById('status');
-      statusEl.textContent = 'Renaming...';
+      statusEl.textContent = 'Renaming passkey...';
 
       try {
         const response = await fetch(`/api/credential/${id}`, {
@@ -130,18 +135,42 @@
         
         if (response.ok) {
           statusEl.textContent = 'Passkey Renamed';
-          // Sync on successful renaming details
+          await loadManagementUI();
+        } else {
+          throw new Error('Rename failed on server');
+        }
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    async function performUserRename() {
+      const updatedDisplayName = prompt('Enter your updated display name:');
+      if (!updatedDisplayName) return;
+
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Updating profile...';
+
+      try {
+        const response = await fetch('/api/user', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'user@example.com', displayName: updatedDisplayName })
+        });
+
+        if (response.ok) {
+          statusEl.textContent = 'Profile Updated';
           if (window.PublicKeyCredential && PublicKeyCredential.signalCurrentUserDetails) {
             await PublicKeyCredential.signalCurrentUserDetails({
               rpId: window.location.hostname,
               userId: base64UrlUserId,
               name: 'user@example.com',
-              displayName: newName
+              displayName: updatedDisplayName
             });
           }
-          await loadManagementUI();
         } else {
-          throw new Error('Rename failed on server');
+          throw new Error('User profile update failed on server');
         }
       } catch (e) {
         console.error(e);
@@ -191,6 +220,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('rename-user-btn')?.addEventListener('click', performUserRename);
       gateCreatePasskeyButton();
       loadManagementUI();
     });

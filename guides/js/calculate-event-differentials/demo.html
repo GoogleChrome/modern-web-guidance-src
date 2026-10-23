@@ -217,18 +217,28 @@
     <div class="calculator-card">
       <div class="controls">
         <div class="control-group">
-          <label>Start (Trial Activation)</label>
+          <label id="startLabel">Start (Trial Activation)</label>
           <div style="display: flex; gap: 0.5rem;">
-            <input type="date" id="startDate" style="width: 130px;">
-            <input type="time" id="startTime">
+            <input type="date" id="startDate" style="width: 130px;" aria-label="Start date">
+            <input type="time" id="startTime" aria-label="Start time">
           </div>
         </div>
         <div class="control-group">
-          <label>End (Expiration)</label>
+          <label id="endLabel">End (Expiration)</label>
           <div style="display: flex; gap: 0.5rem;">
-            <input type="date" id="endDate" style="width: 130px;">
-            <input type="time" id="endTime">
+            <input type="date" id="endDate" style="width: 130px;" aria-label="End date">
+            <input type="time" id="endTime" aria-label="End time">
           </div>
+        </div>
+        <div class="control-group">
+          <label for="tzSelect">Target Time Zone</label>
+          <select id="tzSelect" style="background: #0f172a; border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.75rem; border-radius: 8px; font-family: inherit; font-size: 1rem;">
+            <option value="">System Default</option>
+            <option value="UTC">UTC</option>
+            <option value="America/New_York">America/New_York</option>
+            <option value="Europe/London">Europe/London</option>
+            <option value="Asia/Tokyo">Asia/Tokyo</option>
+          </select>
         </div>
       </div>
 
@@ -241,13 +251,19 @@
         <!-- .since() Demonstration -->
         <div class="result-item">
           <span class="result-label">Time Active (Since Activation)</span>
-          <span id="activeValue" class="result-value">0y 0m 0d 0h 0m</span>
+          <span id="activeValue" class="result-value">—</span>
         </div>
 
         <!-- .until() Demonstration -->
         <div class="result-item">
           <span class="result-label">Time Remaining (Until Expiration)</span>
-          <span id="durationValue" class="result-value">0y 0m 0d 0h 0m</span>
+          <span id="durationValue" class="result-value">—</span>
+        </div>
+
+        <!-- Duration.compare() Demonstration -->
+        <div class="result-item">
+          <span class="result-label">Trial Progress (<code>Duration.compare</code>)</span>
+          <span id="compareValue" class="result-value">-</span>
         </div>
 
         <!-- Raw Strings -->
@@ -263,17 +279,23 @@
 
       <div class="code-section">
         <div class="code-header">Code Running</div>
-        <pre><span class="comment">// 1. Get current time point and zone</span>
-<span class="keyword">const</span> now = Temporal.Now.zonedDateTimeISO();
-<span class="keyword">const</span> tz = now.timeZoneId;
+        <pre><span class="comment">// 1. Get current time point in the target time zone (or system default)</span>
+<span class="keyword">const</span> tz = selectedTimeZone || Temporal.Now.timeZoneId();
+<span class="keyword">const</span> now = Temporal.Now.zonedDateTimeISO(tz);
 
 <span class="comment">// 2. Parse inputs</span>
-<span class="keyword">const</span> start = Temporal.PlainDateTime.from(<span class="string">"..."</span>).toZonedDateTime(tz);
-<span class="keyword">const</span> end = Temporal.PlainDateTime.from(<span class="string">"..."</span>).toZonedDateTime(tz);
+<span class="keyword">const</span> start =
+Temporal.PlainDate.from(startDateStr).toPlainDateTime(startTimeStr).toZonedDateTime(tz);
+<span class="keyword">const</span> end =
+Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(tz);
 
 <span class="comment">// 3. Calculate with .since() and .until()</span>
-<span class="keyword">const</span> timeActive = now.<span class="method">since</span>(start, { largestUnit: <span class="string">'year'</span> });
-<span class="keyword">const</span> timeRemaining = now.<span class="method">until</span>(end, { largestUnit: <span class="string">'year'</span> });</pre>
+<span class="keyword">const</span> timeActive = now.<span class="method">since</span>(start, { largestUnit: <span class="string">'year'</span>, smallestUnit: <span class="string">'minute'</span> });
+<span class="keyword">const</span> timeRemaining = now.<span class="method">until</span>(end, { largestUnit: <span class="string">'year'</span>, smallestUnit: <span class="string">'minute'</span> });
+
+<span class="comment">// 4. Format with toLocaleString() (Intl.DurationFormat) and compare with relativeTo</span>
+timeActive.<span class="method">toLocaleString</span>(<span class="string">'en-US'</span>, { style: <span class="string">'narrow'</span> });
+Temporal.Duration.<span class="method">compare</span>(timeActive, timeRemaining, { relativeTo: now });</pre>
       </div>
     </div>
   </div>
@@ -283,10 +305,12 @@
     const startTimeInput = document.getElementById('startTime');
     const endDateInput = document.getElementById('endDate');
     const endTimeInput = document.getElementById('endTime');
+    const tzSelect = document.getElementById('tzSelect');
     const activeValue = document.getElementById('activeValue');
     const rawActiveValue = document.getElementById('rawActiveValue');
     const durationValue = document.getElementById('durationValue');
     const rawDurationValue = document.getElementById('rawDurationValue');
+    const compareValue = document.getElementById('compareValue');
     const statusValue = document.getElementById('statusValue');
     const unsupportedBanner = document.getElementById('unsupportedBanner');
 
@@ -294,9 +318,8 @@
       // Check Support and load polyfill if needed
       if (typeof Temporal === 'undefined') {
         try {
-          const module = await import("https://esm.sh/@js-temporal/polyfill");
+          const module = await import("https://esm.sh/temporal-polyfill");
           globalThis.Temporal = module.Temporal;
-          initializeDemo();
         } catch (e) {
           console.error("Failed to load Temporal polyfill:", e);
           unsupportedBanner.style.display = 'flex';
@@ -305,10 +328,11 @@
           startTimeInput.disabled = true;
           endDateInput.disabled = true;
           endTimeInput.disabled = true;
+          tzSelect.disabled = true;
+          return;
         }
-      } else {
-        initializeDemo();
       }
+      initializeDemo();
     })();
 
     function initializeDemo() {
@@ -317,26 +341,31 @@
       // Randomize start in past
       const daysInPast = Math.floor(Math.random() * 14) + 1;
       const start = now.subtract({ days: daysInPast });
-
-      const startDateStr = start.toPlainDate().toString();
-      const startTimeStr = start.toPlainTime().toString().slice(0, 5); // HH:MM
-
       const end = start.add({ days: 30 });
-      const endDateStr = end.toPlainDate().toString();
-      const endTimeStr = end.toPlainTime().toString().slice(0, 5);
 
-      startDateInput.value = startDateStr;
-      startTimeInput.value = startTimeStr;
-      endDateInput.value = endDateStr;
-      endTimeInput.value = endTimeStr;
+      startDateInput.value = start.toPlainDate().toString();
+      startTimeInput.value = start.toPlainTime().toString({ smallestUnit: 'minute' });
+      endDateInput.value = end.toPlainDate().toString();
+      endTimeInput.value = end.toPlainTime().toString({ smallestUnit: 'minute' });
 
       // Event Listeners
       startDateInput.addEventListener('input', calculate);
       startTimeInput.addEventListener('input', calculate);
       endDateInput.addEventListener('input', calculate);
       endTimeInput.addEventListener('input', calculate);
+      tzSelect.addEventListener('change', calculate);
 
       calculate();
+    }
+
+    function formatDuration(dur) {
+      if (!dur) {
+        return '-';
+      }
+      // Temporal.Duration.prototype.toLocaleString() delegates to Intl.DurationFormat,
+      // so there is no need to hand-assemble "Xd Yh" strings.
+      // undefined locale = the user's locale, so the output is localized automatically.
+      return dur.toLocaleString(undefined, { style: 'narrow' });
     }
 
     function calculate() {
@@ -348,43 +377,44 @@
 
         if (!startD || !startT || !endD || !endT) return;
 
-        const now = Temporal.Now.zonedDateTimeISO();
-        const tz = now.timeZoneId;
+        // Pass an explicit time zone to zonedDateTimeISO(tz) when the target zone
+        // differs from the system default.
+        const tz = tzSelect.value || Temporal.Now.timeZoneId();
+        const now = Temporal.Now.zonedDateTimeISO(tz);
 
-        // Combine Date and Time with Temporal
-        const startDate = Temporal.PlainDate.from(startD);
-        const startTime = Temporal.PlainTime.from(startT);
-        const start = startDate.toPlainDateTime(startTime).toZonedDateTime(tz);
+        // Combine Date and Time with Temporal (no manual ISO string interpolation)
+        const start = Temporal.PlainDate.from(startD).toPlainDateTime(startT).toZonedDateTime(tz);
+        const end = Temporal.PlainDate.from(endD).toPlainDateTime(endT).toZonedDateTime(tz);
 
-        const endDate = Temporal.PlainDate.from(endD);
-        const endTime = Temporal.PlainTime.from(endT);
-        const end = endDate.toPlainDateTime(endTime).toZonedDateTime(tz);
+        // Calculate Since (Active Time) and Until (Remaining Time)
+        // Round to minutes so toLocaleString() does not print seconds and sub-second noise
+        const active = now.since(start, { largestUnit: 'year', smallestUnit: 'minute' });
+        const remaining = now.until(end, { largestUnit: 'year', smallestUnit: 'minute' });
 
-        // Calculate Since (Active Time)
-        const active = now.since(start, { largestUnit: 'year' });
-
-        // Calculate Until (Remaining Time)
-        const remaining = now.until(end, { largestUnit: 'year' });
-
-        // Update Status
-        const isPast = Temporal.ZonedDateTime.compare(now, end) > 0;
-        const isFutureStart = Temporal.ZonedDateTime.compare(now, start) < 0;
+        // Update Status by leveraging the native .sign property of Temporal.Duration
+        const isPast = remaining.sign < 0;
+        const isFutureStart = active.sign < 0;
 
         if (isPast) {
           statusValue.textContent = "EXPIRED";
           statusValue.style.color = "#f43f5e";
-          durationValue.textContent = "0y 0m 0d 0h 0m";
+          durationValue.textContent = "—";
           rawDurationValue.textContent = remaining.toString();
+          compareValue.textContent = "Trial ended";
         } else if (isFutureStart) {
           statusValue.textContent = "PENDING";
           statusValue.style.color = "#f59e0b";
-          durationValue.textContent = `${remaining.years}y ${remaining.months}m ${remaining.days}d ${remaining.hours}h ${remaining.minutes}m`;
+          durationValue.textContent = formatDuration(remaining);
           rawDurationValue.textContent = remaining.toString();
+          compareValue.textContent = "Not yet started";
         } else {
           statusValue.textContent = "ACTIVE";
           statusValue.style.color = "var(--accent-secondary)";
-          durationValue.textContent = `${remaining.years}y ${remaining.months}m ${remaining.days}d ${remaining.hours}h ${remaining.minutes}m`;
+          durationValue.textContent = formatDuration(remaining);
           rawDurationValue.textContent = remaining.toString();
+          // Compare durations spanning calendar units/DST using relativeTo
+          const cmp = Temporal.Duration.compare(active, remaining, { relativeTo: now });
+          compareValue.textContent = cmp > 0 ? "Past halfway (active > remaining)" : "First half (remaining >= active)";
         }
 
         // Format Active Duration (Since)
@@ -392,7 +422,7 @@
           activeValue.textContent = "Not Started";
           rawActiveValue.textContent = "-";
         } else {
-          activeValue.textContent = `${active.years}y ${active.months}m ${active.days}d ${active.hours}h ${active.minutes}m`;
+          activeValue.textContent = formatDuration(active);
           rawActiveValue.textContent = active.toString();
         }
 

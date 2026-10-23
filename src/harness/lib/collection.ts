@@ -1,0 +1,593 @@
+import { glob } from "glob";
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import { stripVTControlCharacters } from 'util';
+import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
+import { type SuiteConfig } from '../config.ts';
+import { getTaskMap } from '../../core/guide-validation.ts';
+import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
+import { rootDir } from '../../core/paths.ts';
+import { extractTestTitles } from '../../core/grader-coverage.ts';
+import { type ScenarioCheck } from './metrics.ts';
+
+function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
+  return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
+}
+
+export function extractModelFromResults(resultsDir: string): string {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  try {
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    if (summary.model && summary.model !== 'unknown') {
+      return summary.model;
+    }
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
+  }
+  return 'unknown';
+}
+
+export function extractTokenUsageFromResults(resultsDir: string): { total: number; cached: number } | null {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  try {
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    if (summary.tokenUsage) {
+      return summary.tokenUsage;
+    }
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
+  }
+  return null;
+}
+
+export function parseResultPath(relPath: string): { guide: string, taskName: string, runType: string } | null {
+  const parts = relPath.split(/[/\\]/).filter(Boolean);
+  let guide: string, taskName: string, runType: string;
+  
+  if (parts.length === 2) {
+    // [Legacy Fallback] Old structure: {taskName}/{runType}
+    taskName = 'task';
+    runType = parts[1];
+    guide = parts[0].replace(/-task(-negative)?$/, '');
+  } else if (parts.length >= 3) {
+    [guide, taskName, runType] = parts.slice(-3);
+  } else {
+    return null;
+  }
+  
+  return { guide, taskName, runType };
+}
+
+function getAppFiles(currentDir: string, base = ''): string[] {
+  let results: string[] = [];
+  const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (
+      entry.name === 'node_modules' ||
+      entry.name === 'dist' ||
+      entry.name === 'test-results' ||
+      entry.name === 'grade-report' ||
+      entry.name === 'traces' ||
+      entry.name.startsWith('.')
+    ) {
+      continue;
+    }
+    const relPath = base ? `${base}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      results.push(...getAppFiles(path.join(currentDir, entry.name), relPath));
+    } else {
+      results.push(relPath);
+    }
+  }
+  return results;
+}
+
+export function extractTargetModifiedFile(dir: string, prompt?: string): string | undefined {
+  if (fs.existsSync(path.join(dir, 'agent.patch'))) {
+    return 'agent.patch';
+  }
+  try {
+    const appFiles = getAppFiles(dir).filter(f => {
+      if (
+        f === 'npx' ||
+        f === 'node_modules' ||
+        f.startsWith('.') ||
+        f.endsWith('.log') ||
+        f.endsWith('.txt') ||
+        f.endsWith('.mjs') ||
+        f.endsWith('.json') ||
+        f.endsWith('.jsonl') ||
+        f.endsWith('.yaml') ||
+        f.endsWith('.svg')
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    if (prompt) {
+      const promptTarget = appFiles.find(
+        f => prompt.includes(f) || prompt.includes(f.split('/').pop()!)
+      );
+      if (promptTarget) return promptTarget;
+    }
+
+    const chatLogPath = path.join(dir, 'chat_log.txt');
+    if (fs.existsSync(chatLogPath)) {
+      try {
+        const chatLog = fs.readFileSync(chatLogPath, 'utf-8');
+        const modifiedFile = appFiles.find(
+          f => chatLog.includes(f) || chatLog.includes(f.split('/').pop()!)
+        );
+        if (modifiedFile) return modifiedFile;
+      } catch (e) {}
+    }
+
+    const standardCandidates = ['src/App.jsx', 'src/App.js', 'src/main.jsx', 'src/main.js', 'index.html'];
+    for (const candidate of standardCandidates) {
+      if (appFiles.includes(candidate)) {
+        return candidate;
+      }
+    }
+  } catch (e) {
+    console.error(`Error calculating targetModifiedFile for ${dir}:`, e);
+  }
+  return undefined;
+}
+
+function getRunNumberDirs(resultsDir: string): string[] {
+  const runDirs = fs.readdirSync(resultsDir)
+    .filter(name => {
+      const fullPath = path.join(resultsDir, name);
+      return fs.statSync(fullPath).isDirectory() && /^\d+$/.test(name);
+    })
+    .sort((a, b) => parseInt(a) - parseInt(b));
+
+  if (runDirs.length === 0) {
+    throw new Error('No test runs found!');
+  }
+  return runDirs;
+}
+
+function getTaskRunDirs(runPath: string): string[] {
+  // Support both legacy (*/guided) and new (*/*/guided) structures.
+  // Avoid greedy **/guided to prevent matching nested folders generated by agents.
+  return [
+    ...glob.sync('*/guided', { cwd: runPath, absolute: true }),
+    ...glob.sync('*/*/guided', { cwd: runPath, absolute: true }),
+    ...glob.sync('*/unguided', { cwd: runPath, absolute: true }),
+    ...glob.sync('*/*/unguided', { cwd: runPath, absolute: true })
+  ];
+}
+
+interface TaskRunContext {
+  guide: string;
+  taskName: string;
+  runType: string;
+  taskInfo: any;
+  targetModifiedFile: string | undefined;
+  targetFile: string;
+  targetPkgJson: string;
+  graderPath: string;
+  graderResults: string;
+  targetAppExists: boolean;
+}
+
+function getTaskRunContext(
+  dir: string,
+  runPath: string,
+  taskMap: Map<string, any>,
+  warnIfMissing = false
+): TaskRunContext | null {
+  const relPath = path.relative(runPath, dir);
+  const parsed = parseResultPath(relPath);
+  if (!parsed) return null;
+  const { guide, taskName, runType } = parsed;
+  if (runType === 'base_app') return null; // Skip the base app setup folder
+
+  const taskInfo = taskMap.get(`${guide}/${taskName}`);
+  if (!taskInfo) {
+    if (warnIfMissing) {
+      console.warn(`Skipping grading: Task ${guide} not found in task map`);
+    }
+    return null;
+  }
+
+  const targetModifiedFile = extractTargetModifiedFile(dir, taskInfo.prompt);
+  const targetFile = path.join(dir, targetModifiedFile || 'index.html');
+  const targetPkgJson = path.join(dir, 'package.json');
+  const targetPatchFile = path.join(dir, 'agent.patch');
+  let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+  const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
+  if (fs.existsSync(targetGraderPath)) {
+    graderPath = targetGraderPath;
+  }
+  const graderResults = path.join(dir, `${guide}_results.json`);
+  const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson, targetPatchFile);
+
+  return {
+    guide,
+    taskName,
+    runType,
+    taskInfo,
+    targetModifiedFile,
+    targetFile,
+    targetPkgJson,
+    graderPath,
+    graderResults,
+    targetAppExists,
+  };
+}
+
+function getTaskDirsForRuns(resultsDir: string, runDirs: string[]): { dir: string; runPath: string; runDir: string }[] {
+  const items: { dir: string; runPath: string; runDir: string }[] = [];
+  for (const runDir of runDirs) {
+    const runPath = path.join(resultsDir, runDir);
+    for (const dir of getTaskRunDirs(runPath)) {
+      items.push({ dir, runPath, runDir });
+    }
+  }
+  return items;
+}
+
+function setupGraderForTask(
+  dir: string,
+  runPath: string,
+  resultsDir: string,
+  taskMap: Map<string, any>
+): string | null {
+  const ctx = getTaskRunContext(dir, runPath, taskMap);
+  if (!ctx) return null;
+
+  const failureFile = path.join(dir, 'generation_failed.json');
+  if (!fs.existsSync(ctx.graderPath) || fs.existsSync(failureFile) || !ctx.targetAppExists || fs.existsSync(ctx.graderResults)) {
+    return null;
+  }
+
+  const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide);
+  const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
+  fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
+
+  let pkgJsonObj: any = {
+    name: `${ctx.guide.substring(0, 30)}-${ctx.runType}-grader`,
+    type: "module",
+    scripts: {}
+  };
+  if (fs.existsSync(ctx.targetPkgJson)) {
+    try {
+      pkgJsonObj = JSON.parse(fs.readFileSync(ctx.targetPkgJson, 'utf-8'));
+      if (!pkgJsonObj.scripts) pkgJsonObj.scripts = {};
+    } catch (e) {
+      console.warn("Failed to parse existing package.json, overwriting...");
+    }
+  }
+  pkgJsonObj.scripts["run-grader"] = `node grade.mjs --id ${relativeId}`;
+  fs.writeFileSync(ctx.targetPkgJson, JSON.stringify(pkgJsonObj, null, 2));
+
+  return relativeId;
+}
+
+async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages: string[]): Promise<void> {
+  if (pnpmWorkspacePackages.length === 0) return;
+
+  const { spawnSync } = await import('child_process');
+  const rootPkgJsonPath = path.join(resultsDir, 'package.json');
+  let wroteRootPkgJson = false;
+  if (!fs.existsSync(rootPkgJsonPath)) {
+    fs.writeFileSync(rootPkgJsonPath, JSON.stringify({
+      name: "evaluation-suite-workspace",
+      private: true
+    }, null, 2));
+    wroteRootPkgJson = true;
+  }
+
+  const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
+  // List only the tasks prepared above. A '**' glob would also re-run every task that was graded before
+  // (their run-grader scripts linger), using whatever checkout their grade.mjs points at.
+  fs.writeFileSync(pnpmWorkspacePath, ['packages:', ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)].join('\n') + '\n');
+
+  try {
+    console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
+    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
+
+    console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
+    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
+  } finally {
+    if (fs.existsSync(pnpmWorkspacePath)) {
+      fs.unlinkSync(pnpmWorkspacePath);
+    }
+    if (wroteRootPkgJson && fs.existsSync(rootPkgJsonPath)) {
+      fs.unlinkSync(rootPkgJsonPath);
+    }
+  }
+  console.log(`✅ Completed parallel grading pass\n`);
+}
+
+async function collectGuideUsage(dir: string, runType: string, guideName: string) {
+  let guidesUsedResult: string[] = [];
+  let retrievedGuides: string[] = [];
+  let fileReadGuides: string[] = [];
+  let guidanceToolsUsedResult: string[] = [];
+
+  if (runType === 'guided') {
+    const usage = await collectGuidesUsed(dir);
+    retrievedGuides = usage.retrievedGuides;
+    fileReadGuides = usage.fileReadGuides;
+    guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides])];
+    guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir);
+  } else if (runType === 'unguided' && hasTrajectoryGuideLeak(dir, guideName)) {
+    const usage = await collectGuidesUsed(dir);
+    retrievedGuides = usage.retrievedGuides;
+    fileReadGuides = usage.fileReadGuides;
+    guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides, guideName])];
+    const tools = await collectGuidanceToolsUsed(dir);
+    guidanceToolsUsedResult = [...new Set([...tools, 'modern-web-guidance'])];
+  }
+
+  return { guidesUsedResult, retrievedGuides, fileReadGuides, guidanceToolsUsedResult };
+}
+
+export function evaluateScenarioResults(
+  dir: string,
+  guide: string,
+  graderPath: string,
+  graderResults: string,
+  targetAppExists: boolean,
+  _targetFile?: string
+): ScenarioCheck[] {
+  const makeInfraError = (reason: string): ScenarioCheck[] => [{
+    id: 'early-failure-1',
+    passed: false,
+    message: reason,
+    isEarlyFailure: true,
+  }];
+
+  const makeAgentFailures = (reason: string): ScenarioCheck[] => {
+    const titles = extractTestTitles(graderPath);
+    if (titles.length === 0) {
+      return [{
+        id: 'agent-failure-1',
+        passed: false,
+        message: reason,
+        failureReason: reason,
+      }];
+    }
+    return titles.map((title, idx) => ({
+      id: `agent-failure-${idx + 1}`,
+      passed: false,
+      message: title,
+      failureReason: reason,
+    }));
+  };
+
+  if (!fs.existsSync(graderPath)) {
+    console.warn(`Grader not found for ${guide} at ${graderPath}`);
+    return makeInfraError('Grader not found');
+  }
+  const failureFile = path.join(dir, 'generation_failed.json');
+  try {
+    const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
+    return makeInfraError(`Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`);
+  } catch (err) {
+    if (!isEnoent(err)) {
+      return makeInfraError('Generation failed (could not parse failure info)');
+    }
+  }
+  if (!targetAppExists) {
+    return makeAgentFailures('Target app missing');
+  }
+
+  try {
+    const json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
+
+    if (Array.isArray(json?.suites) && json.suites.length > 0) {
+      const specs: any[] = [];
+      const traverse = (suite: any) => {
+        if (suite.specs) specs.push(...suite.specs);
+        if (suite.suites) suite.suites.forEach(traverse);
+      };
+      json.suites.forEach(traverse);
+
+      if (specs.length > 0) {
+        return specs.map((spec: any) => {
+          const lastResult = spec.tests?.[0]?.results?.at(-1);
+          if (lastResult?.status === 'passed') {
+            return { id: spec.id, passed: true, message: spec.title };
+          }
+
+          // Strip ANSI colors and local paths (repo root, temp grading dir, home) so diagnostics are portable and shareable.
+          const clean = (text: string) => stripVTControlCharacters(text)
+            .replaceAll(rootDir + path.sep, '')
+            .replace(/\/tmp\/grade-run-[^/]+\//g, '')
+            .replaceAll(os.homedir(), '~')
+            .trim();
+          // A timeout reports "Test timeout exceeded" first (no location) and the action that was cut off second.
+          const errors: { message?: string; location?: { file: string; line: number } }[] = lastResult?.errors ?? [];
+          const rawError = errors.map(e => e.message).filter(Boolean).join('\n\n');
+          const errorMsg = rawError ? clean(rawError) : undefined;
+
+          const loc = lastResult?.errorLocation ?? errors.find(e => e.location)?.location;
+          const errorLocation = loc ? `${path.relative(rootDir, loc.file)}:${loc.line}` : undefined;
+
+          const snapshotAtt = lastResult?.attachments?.find((a: any) => a.name === 'page-snapshot');
+          const pageSnapshot = snapshotAtt?.body ? Buffer.from(snapshotAtt.body, 'base64').toString('utf8') : undefined;
+
+          const browserErrorsAtt = lastResult?.attachments?.find((a: any) => a.name === 'browser-errors');
+          const browserErrors = browserErrorsAtt?.body ? clean(Buffer.from(browserErrorsAtt.body, 'base64').toString('utf8')) : undefined;
+
+          return {
+            id: spec.id,
+            passed: false,
+            message: spec.title,
+            ...(errorMsg ? { error: errorMsg } : {}),
+            ...(errorLocation ? { errorLocation } : {}),
+            ...(pageSnapshot ? { pageSnapshot } : {}),
+            ...(browserErrors ? { browserErrors } : {}),
+          };
+        });
+      }
+    }
+
+    return makeAgentFailures('Playwright test runner failed or produced no test results');
+  } catch (err: any) {
+    if (isEnoent(err)) {
+      return makeAgentFailures('Playwright test runner failed to produce a results file');
+    }
+    console.error(`Error processing results for ${dir}:`, err);
+    return makeAgentFailures(err.message || 'System Error');
+  }
+}
+
+function readRuntimeData(dir: string): any | undefined {
+  const runtimeJsonPath = path.join(dir, 'runtime.json');
+  if (fs.existsSync(runtimeJsonPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(runtimeJsonPath, 'utf-8'));
+    } catch (e) {
+      console.error(`Error parsing runtime.json for ${dir}:`, e);
+    }
+  }
+  return undefined;
+}
+
+function estimateTotalRuntime(resultsDir: string): number | undefined {
+  const evalsJsonPath = path.join(resultsDir, 'evals.json');
+  if (!fs.existsSync(evalsJsonPath)) {
+    return undefined;
+  }
+
+  try {
+    const evalsContent = fs.readFileSync(evalsJsonPath, 'utf-8');
+    const timestampMatch = evalsContent.match(/"timestamp":\s*"([^"]+)"/);
+
+    let startTimestamp: Date | null = null;
+    if (timestampMatch) {
+      startTimestamp = new Date(timestampMatch[1]);
+    } else {
+      const logPath = path.join(resultsDir, 'test_suite.log');
+      if (fs.existsSync(logPath)) {
+        const logContent = fs.readFileSync(logPath, 'utf-8');
+        const firstLineMatch = logContent.match(/\[LOG\s([^\]]+)\]/);
+        if (firstLineMatch) {
+          startTimestamp = new Date(firstLineMatch[1]);
+        }
+      }
+    }
+
+    if (startTimestamp) {
+      const endTimestamp = fs.statSync(evalsJsonPath).mtime;
+      return endTimestamp.getTime() - startTimestamp.getTime();
+    }
+  } catch (e) {
+    console.error('Failed to estimate runtime during collection:', e);
+  }
+
+  return undefined;
+}
+
+function prepareGradersForRuns(
+  resultsDir: string,
+  runDirs: string[],
+  taskMap: Map<string, any>
+): string[] {
+  const pnpmWorkspacePackages: string[] = [];
+  for (const { dir, runPath } of getTaskDirsForRuns(resultsDir, runDirs)) {
+    const pkgId = setupGraderForTask(dir, runPath, resultsDir, taskMap);
+    if (pkgId) {
+      pnpmWorkspacePackages.push(pkgId);
+    }
+  }
+  return pnpmWorkspacePackages;
+}
+
+async function collectTaskRunEntry(
+  dir: string,
+  runPath: string,
+  runNumber: number,
+  taskMap: Map<string, any>
+): Promise<{ testName: string; payload: any } | null> {
+  const ctx = getTaskRunContext(dir, runPath, taskMap, true);
+  if (!ctx) return null;
+
+  const usage = await collectGuideUsage(dir, ctx.runType, ctx.guide);
+
+  const taskCategory = path.basename(path.dirname(ctx.taskInfo.guideDir));
+  const expectedToolPrefixes = ['modern-web'];
+
+  const scenarioResults = evaluateScenarioResults(
+    dir,
+    ctx.guide,
+    ctx.graderPath,
+    ctx.graderResults,
+    ctx.targetAppExists,
+    ctx.targetFile
+  );
+
+  const testName = `${ctx.taskName} - ${ctx.guide} - ${ctx.runType}`;
+  const tokenUsage = extractTokenUsageFromResults(dir);
+  const runtimeData = readRuntimeData(dir);
+
+  const payload = {
+    runNumber,
+    results: scenarioResults,
+    guidesUsed: usage.guidesUsedResult,
+    retrievedGuides: usage.retrievedGuides,
+    fileReadGuides: usage.fileReadGuides,
+    guidanceToolsUsed: usage.guidanceToolsUsedResult,
+    discipline: taskCategory,
+    expectedToolPrefixes,
+    guideName: ctx.guide,
+    baseApp: ctx.taskInfo.baseApp,
+    taskName: ctx.taskName,
+    prompt: ctx.taskInfo.prompt,
+    targetFile: ctx.targetModifiedFile,
+    files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
+    runtime: runtimeData,
+    tokenUsage,
+  };
+
+  return { testName, payload };
+}
+
+async function collectAllResults(
+  resultsDir: string,
+  runDirs: string[],
+  taskMap: Map<string, any>
+): Promise<{ allResults: Record<string, any[]>; model: string }> {
+  const allResults: Record<string, any[]> = {};
+  let model = 'unknown';
+
+  for (const { dir, runPath, runDir } of getTaskDirsForRuns(resultsDir, runDirs)) {
+    if (model === 'unknown') {
+      const extracted = extractModelFromResults(dir);
+      if (extracted !== 'unknown') {
+        model = extracted;
+      }
+    }
+
+    const entry = await collectTaskRunEntry(dir, runPath, parseInt(runDir), taskMap);
+    if (!entry) continue;
+
+    if (!allResults[entry.testName]) {
+      allResults[entry.testName] = [];
+    }
+    allResults[entry.testName].push(entry.payload);
+  }
+
+  return { allResults, model };
+}
+
+export async function collectResults(resultsDir: string, _suiteConfig?: SuiteConfig) {
+  const taskMap = getTaskMap();
+  const runDirs = getRunNumberDirs(resultsDir);
+
+  const graderPackages = prepareGradersForRuns(resultsDir, runDirs, taskMap);
+  await executeParallelGrading(resultsDir, graderPackages);
+  const { allResults, model } = await collectAllResults(resultsDir, runDirs, taskMap);
+
+  const estimatedRuntime = estimateTotalRuntime(resultsDir);
+
+  return { allResults, numRuns: runDirs.length, model, totalRuntime: estimatedRuntime };
+}
+

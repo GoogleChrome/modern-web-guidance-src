@@ -150,11 +150,16 @@
           outCustom.setHTML(rawHTML, { sanitizer: customConfig });
         } else {
           const DOMPurify = await loadDOMPurify();
-          outSet.innerHTML = DOMPurify.sanitize(rawHTML);
+          outSet.innerHTML = DOMPurify.sanitize(rawHTML, {
+            ALLOW_ARIA_ATTR: false,
+            ALLOW_DATA_ATTR: false,
+          });
           outCustom.innerHTML = DOMPurify.sanitize(rawHTML, {
             ALLOWED_TAGS: [...customConfig.elements, "#text"],
             ALLOWED_ATTR: customConfig.attributes,
-            // Match the native Sanitizer: remove disallowed elements with their content
+            // Match the native Sanitizer: strip aria-*/data-* and disallowed element content
+            ALLOW_ARIA_ATTR: false,
+            ALLOW_DATA_ATTR: false,
             KEEP_CONTENT: false,
           });
         }
@@ -165,7 +170,13 @@
           outParsed.replaceChildren(...doc.body.childNodes);
         } else {
           const DOMPurify = await loadDOMPurify();
-          outParsed.replaceChildren(DOMPurify.sanitize(rawHTML, { RETURN_DOM_FRAGMENT: true }));
+          outParsed.replaceChildren(
+            DOMPurify.sanitize(rawHTML, {
+              ALLOW_ARIA_ATTR: false,
+              ALLOW_DATA_ATTR: false,
+              RETURN_DOM_FRAGMENT: true,
+            })
+          );
         }
       });
     </script>

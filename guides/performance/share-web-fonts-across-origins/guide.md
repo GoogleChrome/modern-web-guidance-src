@@ -1,5 +1,7 @@
 ---
 name: share-web-fonts-across-origins
+draft: blocked
+draft-reason: "Cross-Origin Storage isn't shipped, in an origin trial, or TAG-reviewed (#1598)"
 description: Serve large, popular web fonts from a shared cross-origin cache instead of re-downloading them from a font CDN on every site that references them.
 web-feature-ids:
   - tmp-cross-origin-storage

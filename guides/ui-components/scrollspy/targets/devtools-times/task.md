@@ -1,0 +1,1 @@
+- Highlight the currently visible section of a page in a navigation menu.

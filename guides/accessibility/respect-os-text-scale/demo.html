@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,14 +14,11 @@
   <title>Respect OS text scale preference</title>
   <style>
     /*
-      The :root font-size is left at the default. Authors should NOT override
-      it with calc(1rem * env(preferred-text-scale)) when the meta tag is set,
-      or the page will scale twice.
+      Do not combine the text-scale meta opt-in with env(preferred-text-scale)
+      to apply OS text scaling manually, or the page may scale twice.
     */
     body {
       font-family: system-ui, sans-serif;
-      /* rem follows the scaled root font-size. */
-      font-size: 1rem;
       line-height: 1.5;
       max-width: 40rem;
       margin: 2rem auto;
@@ -59,11 +57,12 @@
     }
   </style>
 </head>
+
 <body>
   <h1 data-testid="page-heading">Respecting OS text scale</h1>
 
   <p data-testid="scaled-paragraph">
-    This paragraph inherits its size from <code>body</code>, which is declared
+    This paragraph inherits its size from the root element, which is expressed
     in <code>rem</code>, so it follows the user's operating system text scale
     preference.
   </p>
@@ -83,4 +82,5 @@
     </article>
   </div>
 </body>
+
 </html>

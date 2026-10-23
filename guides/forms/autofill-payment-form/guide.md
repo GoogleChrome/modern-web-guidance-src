@@ -46,9 +46,9 @@ Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate
 
 ### Make buttons helpful
 
-Use `<button>` for buttons. You can also use `<input type="submit">`, but don't use a `div` or some other random element acting as a button. Button elements provide accessible behaviour, built-in form submission functionality, and can easily be styled.
+Use `<button>` for buttons. You can also use `<input type="submit">`, but don't use a `div` or some other random element acting as a button. Button elements provide accessible behavior, built-in form submission functionality, and can easily be styled.
 
-Give each form submit button a value that says what it does. For each step towards checkout, use a descriptive call-to-action that shows progress and makes the next step obvious. For example, label the submit button on your delivery address form **Proceed to Payment** rather than **Continue** or **Save**.
+Give each form submit button a value that says what it does. For each step toward checkout, use a descriptive call-to-action that shows progress and makes the next step obvious. For example, label the submit button on your delivery address form **Proceed to Payment** rather than **Continue** or **Save**.
 
 ### Use a single name input where possible
 
@@ -68,15 +68,16 @@ By default, set the billing address to be the same as the delivery address. Redu
 
 Use appropriate autocomplete values for the billing address, just as you do for shipping address, so the user doesn't have to enter data more than once. Add a prefix word to autocomplete attributes if you have different values for inputs with the same name in different sections. For example:
 
-```
-<input autocomplete="shipping address-line-1" ...>
+```html
+<!-- Prefix with shipping or billing; note that the valid token is address-line1 (no hyphen before the digit) -->
+<input autocomplete="shipping address-line1" ...>
 ...
-<input autocomplete="billing address-line-1" ...>
+<input autocomplete="billing address-line1" ...>
 ```
 
 ### Show checkout progress
 
-For each step towards payment, use page headings and descriptive button values that make it clear what needs to be done now, and what checkout step is next.
+For each step toward payment, use page headings and descriptive button values that make it clear what needs to be done now, and what checkout step is next.
 
 Use the `enterkeyhint` attribute on form inputs to set the mobile keyboard enter key label. For example, use `enterkeyhint="previous"` and `enterkeyhint="next"` within a multi-page form, `enterkeyhint="done"` for the final input in the form, and `enterkeyhint="search"` for a search input.
 
@@ -105,6 +106,16 @@ Make sure to add appropriate `autocomplete` values in payment card forms. Withou
 <input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc"
        inputmode="numeric" maxlength="4" pattern="[0-9]{3,4}" required>
 ```
+
+### Show format hints above the input
+
+Where a field has a required format (for example the `MM/YY` expiry date), put the hint in a visible element **above** the input and link the two with `aria-describedby`, as in the `cc-exp` example above. Hints that sit below an input are easily hidden by the mobile keyboard or by the autofill popover at the moment the user needs them.
+
+Don't rely on the `placeholder` attribute as the only format hint, and never use it instead of a `<label>`: placeholder text is hidden as soon as the user starts typing, so it can't be checked against while editing. A placeholder is fine as an extra cue alongside the label and the persistent hint.
+
+### Don't mask the security code
+
+Use `type="text"` with `inputmode="numeric"` for the card security code, not `type="password"`. Users can't check a masked three- or four-digit code for typos, so a mistyped digit isn't caught until the payment is declined, and masking adds little protection because the code is printed on the card the user is holding.
 
 ### Use a single input for payment card and phone numbers
 

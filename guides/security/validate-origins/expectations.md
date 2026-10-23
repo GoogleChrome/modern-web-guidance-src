@@ -1,0 +1,8 @@
+- The application accepts cross-window messages or URLs that match the trusted reference origin, including URLs with paths or explicit default ports (such as `:443` on `https:`).
+- The application rejects cross-origin inputs that spoof the trusted domain as a hostname prefix (such as `https://app.trusted-origin.example.attacker.example`).
+- When enforcing same-origin validation, the application rejects URLs on a different subdomain of the same registrable domain.
+- When validating same-site redirects or links, the application accepts URLs on subdomains that share both the scheme and the registrable domain.
+- When validating same-site redirects or links, the application rejects scheme downgrades from `https:` to `http:` on the same domain.
+- The application rejects malformed URL strings and unpinned opaque origins (such as `data:` URLs or `"null"` origin strings) without throwing uncaught exceptions.
+- When pinning a sandboxed iframe sender, subsequent messages from that same sandboxed iframe are accepted while messages from a different sandboxed iframe on the page are rejected.
+- When `globalThis.Origin` is removed before the page's scripts run, the application still accepts trusted inputs and rejects spoofed, scheme-downgraded, or `"null"` inputs via a `URL`-based fallback.

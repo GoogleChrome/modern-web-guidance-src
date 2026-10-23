@@ -94,6 +94,37 @@ await document.modelContext.registerTool({
 });
 ```
 
+## Writing Tool and Parameter Descriptions
+
+The agent already receives the full `inputSchema`, so the `description` only needs to say what the tool does and when to use it. **DO NOT** repeat parameter names, types, `enum` values, defaults, or limits in it; declare them in the schema (`enum`, `default`, `minimum`/`maximum`) instead. Parameter descriptions follow the same rule: say what the value means, not its type or allowed values.
+
+The browser does not validate arguments against `inputSchema` or apply `default` values, so do both in `execute`.
+
+```javascript
+const SORT_ORDERS = ["newest", "price_low_to_high"];
+
+await document.modelContext.registerTool({
+  name: "search_products",
+  // Don't list the sort orders here, even via SORT_ORDERS: `enum` already does.
+  description: "Searches the product catalog by keyword. Use when the user wants to find or compare products.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: { type: "string", description: "Words to search for." },
+      sort: { type: "string", enum: SORT_ORDERS, default: "newest", description: "Order of the results." },
+    },
+    required: ["query"],
+  },
+  async execute({ query, sort = "newest" }, { signal }) {
+    if (typeof query !== "string" || !SORT_ORDERS.includes(sort)) {
+      return { error: "Pass a search query and a supported sort order.", sortOrders: SORT_ORDERS };
+    }
+    return await productService.search({ query, sort }, { signal });
+  },
+  annotations: { readOnlyHint: true },
+});
+```
+
 ## Execution Patterns
 
 The `execute` callback always receives two arguments: the input object, and an options object carrying an `AbortSignal` — `execute(inputObject, { signal })`.
@@ -121,6 +152,26 @@ execute(input) {
   return input.items.filter(item => item.active);
 }
 ```
+
+### Handling errors in `execute`
+
+When `execute` throws (or returns a rejected promise), the agent receives only a generic execution failure. The error message is not forwarded to the agent. If your tool encounters an actionable or recoverable error (such as invalid input, missing items, or a failed HTTP status), **DO NOT** `throw new Error(...)`. Instead, return a structured error payload via the tool's normal return value so the AI agent receives the diagnostic details and can self-correct or retry:
+
+```javascript
+execute({ itemName }) {
+  const item = menuItems.find((entry) => entry.name.toLowerCase() === itemName.toLowerCase());
+  if (!item) {
+    // Return the error as a value instead of throwing, so the agent receives the message:
+    return {
+      error: `Menu item "${itemName}" not found.`,
+      availableItems: menuItems.map((entry) => entry.name),
+    };
+  }
+  return item;
+}
+```
+
+Only re-throw when the execution was cancelled (`signal.aborted` is `true`).
 
 ### Cancelling in-flight executions
 
@@ -151,14 +202,22 @@ await document.modelContext.registerTool({
     try {
       // Passing `signal` aborts the network request the moment execution is cancelled.
       const response = await fetch(url, { priority, signal });
+      if (!response.ok) {
+        output.textContent = "";
+        return { error: `Request failed with status ${response.status}` };
+      }
       const text = await response.text();
       output.textContent = text;
       return text;
     } catch (err) {
       // Roll back the UI state this execution set, so a cancelled run leaves no trace.
       output.textContent = "";
-      // Re-throw, including AbortError: it carries the caller's cancellation reason.
-      throw err;
+      if (signal.aborted) {
+        // The execution was cancelled: re-throw instead of returning an error value.
+        throw err;
+      }
+      // Return other errors as a value instead of throwing, so the agent receives the message.
+      return { error: err instanceof Error ? err.message : String(err) };
     }
   },
   annotations: { readOnlyHint: true }
@@ -308,6 +367,40 @@ export function createInventoryTool(inventoryManager) {
 }
 ```
 
+## TypeScript Types
+
+In TypeScript projects, **DO NOT** hand-write declarations for `document.modelContext`. Install the official `webmcp-types` package (`npm install --save-dev webmcp-types`) and add it to `tsconfig.json`, since it is not picked up automatically:
+
+```jsonc
+{
+  "compilerOptions": {
+    "types": ["webmcp-types"]
+  }
+}
+```
+
+* `document.modelContext` is typed as optional, so guard it with `if (document.modelContext)` before use.
+* With an inline `inputSchema`, the `execute` input type is inferred from the schema.
+* Named types such as `WebMCP.ModelContextTool` are global (no import needed), useful for typing tool factories.
+
+## Framework support
+
+**MANDATORY:** If the app uses React, Angular, or Vue, register tools through that framework's official WebMCP integration, listed below. **DO NOT** call `document.modelContext.registerTool()` from components or write your own lifecycle wrapper. Each integration already handles feature detection, `AbortSignal` cleanup, and scoping tools to the component or injector lifecycle. These APIs are experimental, so before writing code, look up the current signature in the package's types or docs.
+
+| Framework | Package | API | Docs |
+|---|---|---|---|
+| React 18+ | `use-webmcp-tool` | `useWebMCP(options)`: one call per tool | npmjs.com/package/use-webmcp-tool |
+| Angular | `@angular/core`, `@angular/forms/signals` | `provideExperimentalWebMcpTools([...])` (app or route providers), `declareExperimentalWebMcpTool(...)` (inside services), `provideExperimentalWebMcpForms()` + the `experimentalWebMcpTool` option on Signal Forms | angular.dev/ai/webmcp |
+| Vue | `@vueuse/core` | `useWebMCP(options)` composable | vueuse.org/core/usewebmcp |
+
+All the rules in this guide still apply when you use these integrations:
+* Keep the tool definition shape the same: `name`, `description`, `inputSchema`, `execute(input, { signal })`, and `annotations`.
+* Follow the rules for descriptions and annotations.
+* Validate input and apply defaults inside `execute`.
+* Pass `signal` to long-running work.
+* To offer a tool only some of the time, pass `enabled` (React, Vue). **DO NOT** wrap the hook or composable call in a condition.
+* Integrations may wrap results and errors (for example as `{ content, isError }`). Check the integration's docs before relying on how errors reach the agent.
+
 ## API Notes
 
 *   **annotations**: (Optional) A dictionary for tool metadata.
@@ -320,7 +413,7 @@ export function createInventoryTool(inventoryManager) {
     *   **exposedTo**: (Optional) An array of secure origin strings controlling which documents in the document tree are allowed to discover and execute the tool across frame boundaries.
 *   **Tool Discovery Options (`ModelContextGetToolOptions`)**:
     *   **fromOrigins**: (Optional) An array of secure origin strings to query in accessible frames. Calling `getTools()` without `fromOrigins` queries only same-origin documents.
-*   **Return Format**: The `execute` function can return any value (object, array, string, number, boolean). Select a structure that best serves your specific use case while ensuring the content is optimized for the LLM to process. The output may encompass raw data, specific error logs, or direct instructions to influence the agent's next action.
+*   **Return Format**: The `execute` function can return any JSON-serializable value (object, array, string, number, boolean). The message of an exception thrown from `execute` is not forwarded to the agent, so return actionable errors as structured error payloads (e.g. `{ error: "..." }`) via the tool's return value so the agent can read and act on them.
 *   **Secure Context**: WebMCP requires HTTPS. All origins in `exposedTo` and `fromOrigins` must also be potentially trustworthy.
 *   **Deprecated/Removed**: `navigator.modelContext` (deprecated in Chromium 150), `unregisterTool()`, `provideContext()`, and `clearContext()` are no longer supported.
 

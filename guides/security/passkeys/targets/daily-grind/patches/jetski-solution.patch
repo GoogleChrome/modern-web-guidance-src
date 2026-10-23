@@ -1,0 +1,549 @@
+diff --git a/.well-known/apple-app-site-association b/.well-known/apple-app-site-association
+new file mode 100644
+index 0000000..7865108
+--- /dev/null
++++ b/.well-known/apple-app-site-association
+@@ -0,0 +1,7 @@
++{
++  "webcredentials": {
++    "apps": [
++      "A1B2C3D4E5.com.dailygrind.coffee"
++    ]
++  }
++}
+diff --git a/.well-known/assetlinks.json b/.well-known/assetlinks.json
+new file mode 100644
+index 0000000..a899212
+--- /dev/null
++++ b/.well-known/assetlinks.json
+@@ -0,0 +1,15 @@
++[
++  {
++    "relation": [
++      "delegate_permission/common.handle_all_urls",
++      "delegate_permission/common.get_login_creds"
++    ],
++    "target": {
++      "namespace": "android_app",
++      "package_name": "com.dailygrind.coffee",
++      "sha256_cert_fingerprints": [
++        "14:6D:E9:D6:0F:4B:D7:72:49:54:E6:8D:11:53:C9:90:97:5D:8E:40:9E:C0:0F:7D:6D:2A:B2:D6:70:E0:41:82"
++      ]
++    }
++  }
++]
+diff --git a/.well-known/webauthn b/.well-known/webauthn
+new file mode 100644
+index 0000000..3c1432b
+--- /dev/null
++++ b/.well-known/webauthn
+@@ -0,0 +1,7 @@
++{
++  "origins": [
++    "https://dailygrind.coffee",
++    "https://order.dailygrind.coffee",
++    "https://account.dailygrind.coffee"
++  ]
++}
+diff --git a/index.html b/index.html
+index 66c9173..090b20d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,95 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .passkey-entry {
++      display: none;
++    }
++
++    .passkey-btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 8px 16px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.9rem;
++      font-weight: 600;
++      transition: opacity 0.3s;
++    }
++
++    .passkey-btn:hover {
++      opacity: 0.85;
++    }
++
++    .passkey-section {
++      margin-top: 30px;
++      padding: 25px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .passkey-container {
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .passkey-credentials-list {
++      list-style: none;
++      max-width: 500px;
++      margin: 15px auto;
++    }
++
++    .passkey-credentials-list li {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 12px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      margin-bottom: 8px;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
++    }
++
++    .passkey-provider-info {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      text-align: left;
++    }
++
++    .passkey-provider-info img,
++    .passkey-provider-icon {
++      width: 24px;
++      height: 24px;
++      object-fit: contain;
++    }
++
++    .passkey-details {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .passkey-name {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .passkey-last-used {
++      font-size: 0.8rem;
++      color: #757575;
++    }
++
++    .passkey-status {
++      text-align: center;
++      margin: 15px 0;
++      font-size: 0.95rem;
++      min-height: 1.4em;
++      color: var(--primary);
++      font-weight: 500;
++    }
+   </style>
+ </head>
+ 
+@@ -165,6 +254,7 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="passkey-entry" data-passkey-entry><button id="signInPasskeyBtn" class="passkey-btn" onclick="authenticateWithPasskey()">Sign in with Passkey</button></li>
+     </ul>
+   </nav>
+ 
+@@ -175,6 +265,36 @@
+   </header>
+ 
+   <main class="container">
++    <section class="passkey-section passkey-entry" data-passkey-entry id="passkey-management-section">
++      <h2 style="text-align: center; color: var(--primary);">Passkey Security &amp; Credentials</h2>
++      <p style="text-align: center; margin-bottom: 15px;">Fast, secure sign-in with your biometric passkey.</p>
++      <div style="text-align: center; margin-bottom: 20px;">
++        <button id="createPasskeyBtn" class="btn passkey-btn" onclick="registerPasskey()">Create Passkey</button>
++      </div>
++
++      <div id="passkey-status" class="passkey-status" aria-live="polite"></div>
++
++      <div class="passkey-container">
++        <h3 style="margin-bottom: 10px; color: var(--primary);">Saved Passkeys</h3>
++        <ul id="passkey-credentials-list" class="passkey-credentials-list"></ul>
++      </div>
++
++      <div class="user-profile-section" style="margin-top: 30px; text-align: center;">
++        <h3 style="margin-bottom: 10px; color: var(--primary);">Update Account Profile</h3>
++        <form id="profileForm" onsubmit="handleProfileUpdate(event)" style="display: inline-block; text-align: left; margin-top: 10px;">
++          <div style="margin-bottom: 10px;">
++            <label for="displayNameInput">Display Name: </label>
++            <input type="text" id="displayNameInput" name="displayName" value="Coffee Lover" style="padding: 6px; border: 1px solid var(--secondary); border-radius: 4px;" />
++          </div>
++          <div style="margin-bottom: 10px;">
++            <label for="usernameInput">Username: </label>
++            <input type="text" id="usernameInput" name="username" value="coffeelover@dailygrind.coffee" autocomplete="username" style="padding: 6px; border: 1px solid var(--secondary); border-radius: 4px;" />
++          </div>
++          <button type="submit" class="btn" style="padding: 8px 16px;">Save Profile</button>
++        </form>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +327,344 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const currentRpId = typeof window !== 'undefined' && window.location && window.location.hostname
++      ? window.location.hostname
++      : 'dailygrind.coffee';
++    const currentUserId = 'dg-user-4281';
++
++    // AAGUID registry for UX hints (provider icon, name) only.
++    // Relying Parties MUST use AAGUID exclusively for UX hints and MUST NOT use it for authorization decisions.
++    const AAGUID_REGISTRY = {
++      'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4': {
++        name: 'Google Password Manager',
++        icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjNDI4NUY0IiBkPSJNMjMuNzQ1IDEyLjI3YyAgMC0uNy0uMDYtMS40LS4xOS0yLjA3SDExLjk5NnY0LjI4aDYuNjZjLS4yOSAxLjUtMS4xMyAyLjc4LTIuNCAzLjYzdjIuOTFoMy44N2MyLjI3LTIuMDkgMy41OC01LjE2IDMuNTgtOC43NXoiLz48cGF0aCBmaWxsPSIjMzRBODUzIiBkPSJNMTIuMDA0IDI0YyAzLjI0IDAgNS45NS0xLjA4IDcuOTMtMi45MWwtMy44Ny0yLjkxYy0xLjA4LjcyLTIuNDYgMS4xNi00LjA2IDEuMTYtMy4xMyAwLTUuNzgtMi4xMS02LjczLTQuOTZIMy4zMXYyLjk5QzUuMjggMjEuMzcgOC4zNyAyNCAxMi4wMDQgMjR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNSIgZD0iTTUuMjc0IDE0LjM4Yy0uMjQtLjcyLS4zOC0xLjQ5LS4zOC0yLjI4IDAtLjc5LjE0LTEuNTYuMzgtMi4yOFYzLjkxSDMuMzFBMTIuMDU1IDEyLjA1NSAwIDAgMCAyLjAzOSAxMmMgMCAxLjk0LjQ3IDMuNzcgMS4yNyA1LjM3bDMuOTYtMi45OXoiLz48cGF0aCBmaWxsPSIjRUExNDMxIiBkPSJNMTIuMDA0IDQuNzVjMS43NiAwIDMuMzUuNiA0LjYgMS44bDMuNDUtMy40NUMxNy45NSAxLjE5IDE1LjI0IDAgMTIuMDA0IDBDOC4zNyAwIDUuMjggMi42MyAzLjMxIDYuOTFsMy45NiAyLjk5Yy45NS0yLjg1IDMuNi00Ljk1IDYuNzMtNC45NXoiLz48L3N2Zz4='
++      },
++      'b5397666-4885-aa6b-cebf-e52262a439a2': {
++        name: 'iCloud Keychain',
++        icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNzAgMTcwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiPjxwYXRoIGZpbGw9IiMwMDdBRkYiIGQ9Ik0xNTAgODVjMCAzNS44OTktMjkuMTAxIDY1LTY1IDY1UzIwIDEyMC44OTkgMjAgODVzMjkuMTAxLTY1IDY1LTY1IDY1IDI5LjEwMSA2NSA2NXoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNTIuNSA5OGExNy41IDE3LjUgMCAwIDEtMy40LTM0LjdBNTIuNSAyNSAwIDAgMSA5NS41IDU1YTI3LjUgMjcuNSAwIDAgMSAzNS41IDM4LjVhMTcuNSAxNy41IDAgMCAxLTIuNSA1LjVINTIuNXoiLz48L3N2Zz4='
++      },
++      'dd4ec2ec-1062-d1f0-e4d0-c4e2fb8a4400': {
++        name: 'iCloud Keychain',
++        icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNzAgMTcwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiPjxwYXRoIGZpbGw9IiMwMDdBRkYiIGQ9Ik0xNTAgODVjMCAzNS44OTktMjkuMTAxIDY1LTY1IDY1UzIwIDEyMC44OTkgMjAgODVzMjkuMTAxLTY1IDY1LTY1IDY1IDI5LjEwMSA2NSA2NXoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNTIuNSA5OGExNy41IDE3LjUgMCAwIDEtMy40LTM0LjdBNTIuNSAyNSAwIDAgMSA5NS41IDU1YTI3LjUgMjcuNSAwIDAgMSAzNS41IDM4LjVhMTcuNSAxNy41IDAgMCAxLTIuNSA1LjVINTIuNXoiLz48L3N2Zz4='
++      },
++      '607b04d6-4346-4c02-6104-c1350477e0ae': {
++        name: 'Windows Hello',
++        icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjMDBBNEVGIiBkPSJNMTAuOTcgMTEuMjloLTguOTRWMi4zNGg4Ljk0djguOTV6bTEwLjY5IDBIMTIuNzJWMi4zNGg4Ljk0djguOTV6bS0xMC42OSA5LjM3aC04Ljk0di04Ljk1aDguOTR2OC45NXptMTAuNjkgMEgxMi43MnYtOC45NWg4Ljk0djguOTV6Ii8+PC9zdmc+'
++      },
++      '531126d6-e717-415c-9320-3d9aa6981239': {
++        name: '1Password',
++        icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiMwMjk0RkYiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIgNmMtMy4zMSAwLTYgMi42OS02IDZzMi42OSA2IDYgNiA2LTIuNjkgNi02LTIuNjktNi02LTZ6bTAgOWMtMS42NiAwLTMtMS4zNC0zLTNzMS4zNC0zIDMtMyAzIDEuMzQgMyAzLTEuMzQgMy0zIDN6Ii8+PC9zdmc+'
++      },
++      'b8b39922-38e9-4e4b-9721-7f938d2ed1f6': {
++        name: '1Password',
++        icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiIgcj0iMTAiIGZpbGw9IiMwMjk0RkYiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIgNmMtMy4zMSAwLTYgMi42OS02IDZzMi42OSA2IDYgNiA2LTIuNjkgNi02LTIuNjktNi02LTZ6bTAgOWMtMS42NiAwLTMtMS4zNC0zLTNzMS4zNC0zIDMtMyAzIDEuMzQgMyAzLTEuMzQgMy0zIDN6Ii8+PC9zdmc+'
++      },
++      'bada5566-a7aa-401f-bd96-45619a55120d': {
++        name: 'Bitwarden',
++        icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBmaWxsPSIjMTc1RERDIiBkPSJNMTIgMi41TDQgNXY3YyAgNS41IDguNSAxMC41IDggMTEuNSAyLjUtMS04LTZ6Ii8+PC9zdmc+'
++      },
++      'ee882879-721c-4916-ad4e-57c7f157f3ee': {
++        name: 'YubiKey 5 Series',
++        icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cmVjdCB3aWR0aD0iMTgiIGhlaWdodD0iMjAiIHg9IjMiIHk9IjIiIHJ4PSI0IiBmaWxsPSIjNUNBMDAyIi8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTEyIDVhMiAyIDAgMSAwIDAgNCAyIDIgMCAwIDAgMC00em0wIDZhMyAzIDAgMCAwLTMgM3YyaDZ2LTJhMyAzIDAgMCAwLTMtM3oiLz48L3N2Zz4='
++      }
++    };
++
++    function getPasskeyProviderInfo(aaguid) {
++      if (aaguid && AAGUID_REGISTRY[aaguid]) {
++        return AAGUID_REGISTRY[aaguid];
++      }
++      return { name: 'Passkey Authenticator', icon: null };
++    }
++
++    function setStatus(msg) {
++      const el = document.getElementById('passkey-status');
++      if (el) el.textContent = msg;
++    }
++
++    async function isPasskeySupported() {
++      if (typeof window === 'undefined' || !('PublicKeyCredential' in window)) {
++        return false;
++      }
++      if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
++        try {
++          await PublicKeyCredential.getClientCapabilities();
++        } catch (e) {}
++      }
++      if (typeof PublicKeyCredential.isConditionalMediationAvailable === 'function') {
++        try {
++          return await PublicKeyCredential.isConditionalMediationAvailable();
++        } catch (e) {
++          return false;
++        }
++      }
++      return true;
++    }
++
++    async function initPasskeys() {
++      const supported = await isPasskeySupported();
++      const entries = document.querySelectorAll('.passkey-entry, [data-passkey-entry], #createPasskeyBtn, #signInPasskeyBtn');
++      entries.forEach(entry => {
++        if (!supported) {
++          entry.style.display = 'none';
++          entry.setAttribute('hidden', '');
++        } else {
++          entry.style.display = '';
++          entry.removeAttribute('hidden');
++        }
++      });
++    }
++
++    async function registerPasskey() {
++      try {
++        setStatus('Fetching registration options from server...');
++        const optionsRes = await fetch('/api/webauthn/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ userId: currentUserId, rpId: currentRpId })
++        });
++        const optionsJSON = await optionsRes.json();
++
++        const options = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++
++        setStatus('Please verify your biometric or security key...');
++        const credential = await navigator.credentials.create({ publicKey: options });
++
++        if (!credential) {
++          throw new Error('Credential creation returned null');
++        }
++
++        const credentialJSON = credential.toJSON();
++        const verifyRes = await fetch('/api/webauthn/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(credentialJSON)
++        });
++        const result = await verifyRes.json();
++
++        if (result.verified) {
++          setStatus('Passkey registered successfully.');
++          if (typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function') {
++            await PublicKeyCredential.signalAllAcceptedCredentials({
++              rpId: result.rpId || currentRpId,
++              userId: result.userId || currentUserId,
++              allAcceptedCredentialIds: result.allAcceptedCredentialIds || [credentialJSON.id]
++            });
++          }
++          await loadPasskeyList();
++        } else {
++          setStatus('Passkey registration failed verification.');
++        }
++
++        return result;
++      } catch (error) {
++        if (error.name === 'NotAllowedError') {
++          setStatus('Registration cancelled by user.');
++        } else if (error.name === 'AbortError') {
++          setStatus('Registration was aborted.');
++        } else {
++          setStatus('Registration error: ' + (error.message || 'unknown error'));
++          console.error('Registration error:', error);
++        }
++      }
++    }
++
++    async function authenticateWithPasskey() {
++      try {
++        setStatus('Fetching authentication challenge from server...');
++        const optionsRes = await fetch('/api/webauthn/authenticate/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ rpId: currentRpId })
++        });
++        const optionsJSON = await optionsRes.json();
++
++        const options = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++        setStatus('Please authenticate with your passkey...');
++        const credential = await navigator.credentials.get({ publicKey: options });
++
++        if (!credential) {
++          throw new Error('Credential assertion returned null');
++        }
++
++        const credentialJSON = credential.toJSON();
++        const verifyRes = await fetch('/api/webauthn/authenticate/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(credentialJSON)
++        });
++        const result = await verifyRes.json();
++
++        if (result.unknownCredential) {
++          if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: result.rpId || currentRpId,
++              credentialId: credentialJSON.id
++            });
++          }
++          setStatus('Passkey not recognized. Please try another sign-in method.');
++          return result;
++        }
++
++        if (result.authenticated) {
++          setStatus('Authentication successful! Welcome back.');
++          window.location.href = '/account';
++        } else {
++          setStatus('Authentication failed verification.');
++        }
++
++        return result;
++      } catch (error) {
++        if (error.name === 'NotAllowedError') {
++          setStatus('Authentication cancelled by user.');
++        } else if (error.name === 'AbortError') {
++          setStatus('Authentication was aborted.');
++        } else {
++          setStatus('Authentication error: ' + (error.message || 'unknown error'));
++          console.error('Authentication error:', error);
++        }
++      }
++    }
++
++    async function deletePasskey(credentialId) {
++      try {
++        const res = await fetch('/api/webauthn/credentials/delete', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ credentialId: credentialId, rpId: currentRpId, userId: currentUserId })
++        });
++        const result = await res.json();
++
++        if (typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function') {
++          await PublicKeyCredential.signalAllAcceptedCredentials({
++            rpId: result.rpId || currentRpId,
++            userId: result.userId || currentUserId,
++            allAcceptedCredentialIds: result.remainingCredentialIds || []
++          });
++        }
++
++        setStatus('Passkey removed successfully.');
++        await loadPasskeyList();
++        return result;
++      } catch (error) {
++        setStatus('Failed to delete passkey.');
++        console.error('Delete passkey error:', error);
++      }
++    }
++
++    async function updateUserDetails(userId, username, displayName) {
++      try {
++        const res = await fetch('/api/user/update', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ userId: userId, username: username, displayName: displayName, rpId: currentRpId })
++        });
++        const result = await res.json();
++
++        if (typeof PublicKeyCredential.signalCurrentUserDetails === 'function') {
++          await PublicKeyCredential.signalCurrentUserDetails({
++            rpId: result.rpId || currentRpId,
++            userId: result.userId || userId,
++            name: result.username || username,
++            displayName: result.displayName || displayName
++          });
++        }
++
++        setStatus('Profile updated and passkey provider notified.');
++        return result;
++      } catch (error) {
++        setStatus('Failed to update profile.');
++        console.error('Update user details error:', error);
++      }
++    }
++
++    async function handleProfileUpdate(event) {
++      event.preventDefault();
++      const form = event.target;
++      const username = form.username.value;
++      const displayName = form.displayName.value;
++      await updateUserDetails(currentUserId, username, displayName);
++    }
++
++    async function loadPasskeyList() {
++      const list = document.getElementById('passkey-credentials-list');
++      if (!list) return;
++
++      try {
++        const res = await fetch('/api/webauthn/credentials', {
++          method: 'GET',
++          headers: { 'Content-Type': 'application/json' }
++        });
++        const data = await res.json();
++
++        list.innerHTML = '';
++        const credentials = data.credentials || [];
++        if (credentials.length === 0) {
++          const emptyLi = document.createElement('li');
++          emptyLi.textContent = 'No passkeys registered yet.';
++          emptyLi.style.justifyContent = 'center';
++          emptyLi.style.color = '#757575';
++          list.appendChild(emptyLi);
++          return;
++        }
++
++        credentials.forEach(cred => {
++          const li = document.createElement('li');
++
++          const providerDiv = document.createElement('div');
++          providerDiv.className = 'passkey-provider-info';
++
++          const provider = getPasskeyProviderInfo(cred.aaguid);
++          if (provider.icon) {
++            const img = document.createElement('img');
++            img.src = provider.icon;
++            img.alt = provider.name;
++            img.className = 'passkey-provider-icon';
++            providerDiv.appendChild(img);
++          }
++
++          const detailsDiv = document.createElement('div');
++          detailsDiv.className = 'passkey-details';
++
++          const nameSpan = document.createElement('span');
++          nameSpan.className = 'passkey-name';
++          nameSpan.textContent = cred.name || provider.name;
++          detailsDiv.appendChild(nameSpan);
++
++          if (cred.lastUsedAt) {
++            const lastUsedSpan = document.createElement('span');
++            lastUsedSpan.className = 'passkey-last-used';
++            const formattedDate = new Date(cred.lastUsedAt).toLocaleDateString(undefined, {
++              year: 'numeric',
++              month: 'short',
++              day: 'numeric'
++            });
++            lastUsedSpan.textContent = 'Last used: ' + formattedDate;
++            detailsDiv.appendChild(lastUsedSpan);
++          }
++
++          providerDiv.appendChild(detailsDiv);
++
++          const deleteBtn = document.createElement('button');
++          deleteBtn.className = 'passkey-btn';
++          deleteBtn.textContent = 'Delete';
++          deleteBtn.onclick = () => deletePasskey(cred.id);
++
++          li.appendChild(providerDiv);
++          li.appendChild(deleteBtn);
++          list.appendChild(li);
++        });
++      } catch (error) {
++        // Fallback or static display
++      }
++    }
++
++    document.addEventListener('DOMContentLoaded', () => {
++      initPasskeys();
++      loadPasskeyList();
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..01a6505 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "echo 'Build complete'",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

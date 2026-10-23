@@ -1,0 +1,222 @@
+diff --git a/src/components/ScrollSpyNav.astro b/src/components/ScrollSpyNav.astro
+new file mode 100644
+index 0000000..33c5475
+--- /dev/null
++++ b/src/components/ScrollSpyNav.astro
+@@ -0,0 +1,110 @@
++---
++export interface Section {
++  id: string;
++  label: string;
++}
++
++export interface Props {
++  sections: Section[];
++}
++
++const { sections } = Astro.props;
++---
++
++<nav
++  data-scrollspy-nav
++  aria-label="Page sections"
++  class="scrollspy-nav sticky top-0 z-20 flex flex-wrap gap-x-6 gap-y-1 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-sm md:px-6"
++>
++  {
++    sections.map((section, index) => (
++      <a
++        href={`#${section.id}`}
++        aria-current={index === 0 ? "true" : "false"}
++        class="scrollspy-nav__link border-b-2 border-transparent pb-1 text-sm font-semibold text-gray-600 transition-colors hover:text-amber-500"
++      >
++        {section.label}
++      </a>
++    ))
++  }
++</nav>
++
++<script>
++  function initScrollSpy() {
++    const nav = document.querySelector<HTMLElement>('[data-scrollspy-nav]');
++    if (!nav) return;
++
++    const navLinks = Array.from(nav.querySelectorAll<HTMLAnchorElement>('a'));
++    const supportsScrollTargetGroup =
++      typeof CSS !== 'undefined' &&
++      typeof CSS.supports === 'function' &&
++      CSS.supports('scroll-target-group: auto');
++
++    if (supportsScrollTargetGroup) {
++      const syncAriaCurrent = () => {
++        const currentLink = nav.querySelector<HTMLAnchorElement>('a:target-current') ?? navLinks[0];
++        navLinks.forEach((link) => {
++          link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
++        });
++      };
++
++      // Sync once on load, then keep in sync once scrolling settles.
++      syncAriaCurrent();
++      document.addEventListener('scrollend', syncAriaCurrent);
++      let scrollTimer: ReturnType<typeof setTimeout> | undefined;
++      window.addEventListener('scroll', () => {
++        clearTimeout(scrollTimer);
++        scrollTimer = setTimeout(syncAriaCurrent, 100);
++      }, { passive: true });
++    } else {
++      // Fallback for browsers without native scroll-target-group support.
++      const sections = navLinks
++        .map((link) => document.getElementById(link.getAttribute('href')?.slice(1) ?? ''))
++        .filter((el): el is HTMLElement => el !== null);
++
++      const observer = new IntersectionObserver(
++        (entries) => {
++          entries.forEach((entry) => {
++            if (entry.isIntersecting) {
++              const id = entry.target.getAttribute('id');
++              if (!id) return;
++              navLinks.forEach((link) => {
++                const isActive = link.getAttribute('href') === `#${id}`;
++                link.classList.toggle('\:target-current', isActive);
++                link.setAttribute('aria-current', isActive ? 'true' : 'false');
++              });
++            }
++          });
++        },
++        { rootMargin: '-50% 0px -50% 0px', threshold: 0 }
++      );
++
++      sections.forEach((section) => observer.observe(section));
++    }
++  }
++
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', initScrollSpy);
++  } else {
++    initScrollSpy();
++  }
++  document.addEventListener('astro:page-load', initScrollSpy);
++</script>
++
++<style>
++  /* MANDATORY: The container of markers must have scroll-target-group: auto */
++  nav,
++  .scrollspy-nav {
++    scroll-target-group: auto;
++  }
++
++  /* MANDATORY: Use :is() so unsupported browsers don't drop the whole rule,
++     and mirror the fallback ":target-current" class applied by the
++     IntersectionObserver fallback script. */
++  nav a:is(:target-current, .\:target-current),
++  .scrollspy-nav__link:is(:target-current, .\:target-current) {
++    color: var(--accent, #b45309);
++    border-bottom-color: currentColor;
++    font-weight: 700;
++  }
++</style>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..453e084 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,12 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-20">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..cf822ec 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -8,9 +8,10 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-20">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..fbed0be 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,8 +5,16 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import ScrollSpyNav from '../components/ScrollSpyNav.astro';
+ import type { RenderResult } from 'astro:content';
+ 
++const sections = [
++  { id: 'top-story', label: 'Top Story' },
++  { id: 'top-news', label: 'Top News' },
++  { id: 'world', label: 'World' },
++  { id: 'politics', label: 'Politics' },
++];
++
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+ 
+@@ -54,10 +62,13 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
++    <!-- Scrollspy navigation for the sections below -->
++    <ScrollSpyNav sections={sections} />
++
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <section id="top-story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6 scroll-mt-20">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -65,20 +76,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file
