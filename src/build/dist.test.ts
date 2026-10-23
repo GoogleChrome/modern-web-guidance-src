@@ -87,6 +87,20 @@ test('Codex Plugin Config in Dist', async () => {
   const resolvedLogo = path.join(STAGING_DIR, pluginJson.interface.logo);
   await assert.doesNotReject(fs.access(resolvedLogo), 'logo must resolve to an existing file');
 
+  // Directory listing URLs. The OpenAI submission portal flags missing support, privacy policy,
+  // and terms URLs as findings, so keep all four present, HTTPS, and within the 1,024-char
+  // final-submission limit (https://developers.openai.com/plugins/deploy/submission-errors).
+  for (const urlField of ['websiteURL', 'supportURL', 'privacyPolicyURL', 'termsOfServiceURL']) {
+    const url = pluginJson.interface[urlField];
+    assert.ok(typeof url === 'string' && url.length > 0, `plugin.json must define interface.${urlField}`);
+    assert.ok(url.startsWith('https://'), `interface.${urlField} must be an HTTPS URL (was ${url})`);
+    assert.ok(url.length <= 1024, `interface.${urlField} must be 1,024 characters or fewer`);
+  }
+  assert.ok(pluginJson.interface.defaultPrompt.length <= 3, 'interface.defaultPrompt must contain at most three prompts');
+  for (const prompt of pluginJson.interface.defaultPrompt) {
+    assert.ok(prompt.length <= 128, `defaultPrompt entries must be 128 characters or fewer (was ${prompt.length}: ${prompt})`);
+  }
+
   // Codex Marketplace config validation
   const marketplaceJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.agents/plugins/marketplace.json'), 'utf8');
   const marketplaceJson = JSON.parse(marketplaceJsonRaw);
