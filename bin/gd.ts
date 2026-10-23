@@ -7,7 +7,7 @@ import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
 import { resolveSuiteConfig } from '../src/harness/config.ts';
-import { rootDir, guidesDir, baseAppsDir } from '../src/core/paths.ts';
+import { rootDir, guidesDir, baseAppsDir, resultsDir } from '../src/core/paths.ts';
 import { getTaskMap, SUPPORTED_BASE_APPS } from '../src/core/guide-validation.ts';
 
 // Load environment variables (Node 20.12+)
@@ -27,7 +27,6 @@ const ALL_OPTIONS = {
   'gen-grader': { type: 'boolean', desc: 'Generate a new grader script' },
   guided: { type: 'boolean', desc: 'Skip calibration, run guided agent test only' },
   verbose: { type: 'boolean', desc: 'Show additional output' },
-  usecases: { type: 'boolean', desc: 'Group by usecases rather than features' },
   config: { type: 'string', desc: 'Custom config file (defaults to root config.ts)' },
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
@@ -40,7 +39,6 @@ const ALL_OPTIONS = {
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
-  audit: { desc: 'Show status of all guides', flags: ['usecases'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
   'dev-gap': { desc: 'Run dev + pr for each guide missing evals or PR labeled for rerun', flags: ['dry-run', 'limit', 'targets'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
@@ -51,6 +49,7 @@ const COMMAND_METADATA = {
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
   pr: { desc: 'Push branch and create or update GitHub PR from dev report', flags: [] },
+  compare: { desc: 'Compare two evaluation runs to diagnose performance variance', flags: [] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
@@ -88,15 +87,25 @@ const completion = omelette('gd <command> <arg1> <arg2> <arg3> <arg4> <arg5>');
 
 completion.on('command', ({ reply }) => reply(COMMANDS));
 
+function listResultsRunDirs(): string[] {
+  try {
+    return fs.readdirSync(resultsDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name);
+  } catch {
+    return [];
+  }
+}
+
 completion.on('arg1', ({ before, line, reply }) => {
   const flags = getFlagsForLine(line);
   if (before === 'eval') {
     const tasks = Array.from(getTaskMap().keys());
     reply(['suite', ...tasks, ...listGuideDirs(), ...flags]);
+  } else if (before === 'compare') {
+    reply([...listResultsRunDirs(), ...flags]);
   } else if (before === 'gen') {
     reply(['grader']);
-  } else if (before === 'audit') {
-    reply(flags);
   } else if (['dev', 'test', 'grade', 'pr'].includes(before)) {
     reply([...listGuideDirs(), ...flags]);
   } else {
@@ -108,6 +117,8 @@ completion.on('arg2', ({ before, line, reply }) => {
   const flags = getFlagsForLine(line);
   if (line.includes('gd eval')) {
     reply(flags);
+  } else if (line.includes('gd compare')) {
+    reply([...listResultsRunDirs(), ...flags]);
   } else if (line.includes('gd dev') && before.startsWith('guides/')) {
     reply(flags);
   } else if (before === 'run') {
@@ -183,12 +194,12 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'pr', 'dev-gap', 'audit'],
+      commands: ['dev', 'pr', 'dev-gap'],
     },
 
     {
       title: 'Evaluation & Dashboard',
-      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill'],
+      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill', 'compare'],
     },
     {
       title: 'Utilities & Setup',
@@ -213,7 +224,7 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
@@ -242,6 +253,20 @@ async function main() {
   }
 
   switch (command) {
+    case 'compare': {
+      const runDirA = requireArg(positionals[1], 'gd compare <runDirA> <runDirB>');
+      const runDirB = requireArg(positionals[2], 'gd compare <runDirA> <runDirB>');
+      const { runComparison } = await import('../src/harness/lib/compare-evals.ts');
+      try {
+        await runComparison(runDirA, runDirB);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Comparison failed: ${msg}`);
+        process.exit(1);
+      }
+      break;
+    }
+
     case 'setup-completion': {
       completion.setupShellInitFile();
       console.log('Auto-completion installed. Restart your terminal to apply.');
@@ -297,12 +322,6 @@ async function main() {
     case 'dev-all': {
       const { devAll } = await import('../src/authoring/dev.ts');
       await devAll({ verbose: !!values.verbose });
-      break;
-    }
-
-    case 'audit': {
-      const { auditGuides } = await import('../src/authoring/dev.ts');
-      auditGuides({ groupByUsecases: !!values.usecases });
       break;
     }
 

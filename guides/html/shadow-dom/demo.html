@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shadow DOM: template, slots, and a shared stylesheet</title>
   <style>
-    my-card:not(:defined) { visibility: hidden; }
+    my-card:not(:defined) {
+      opacity: 0;
+      animation: defined-fallback 0.2s 2s forwards;
+    }
+    @keyframes defined-fallback { to { opacity: 1; } }
   </style>
 </head>
 <body>

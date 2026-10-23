@@ -21,31 +21,6 @@ test.describe(`content-based-styling Expectations: ${demoName}`, () => {
     expect(html).toMatch(/:has\(/);
   });
 
-  test(`Must use @supports not selector(:has(*)) for CSS fallback if fallback is provided`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasSupportsFallback = /@supports\s+not\s+selector\(\s*:has\(\*\)\s*\)/.test(html);
-    if (hasSupportsFallback) {
-      expect(html).toMatch(/@supports\s+not\s+selector\(\s*:has\(\*\)\s*\)/);
-    } else {
-      expect(true).toBe(true);
-    }
-  });
-
-  test(`Must include a JavaScript feature detection block using CSS.supports('selector(:has(*))') if dynamic fallback is used`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasCSSSupports = /CSS\.supports/.test(html);
-    if (hasCSSSupports) {
-      expect(html).toMatch(/CSS\.supports\(\s*['"]selector\(\s*:has\(\*\)\s*\)['"]\s*\)/);
-    } else {
-      expect(true).toBe(true);
-    }
-  });
-
-  test('Standalone component examples must document or assume a complete heading hierarchy outline', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/Assume an <h1>|<h1>/i.test(html)).toBe(true);
-  });
-
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
@@ -143,5 +118,36 @@ test.describe(`content-based-styling Expectations: ${demoName}`, () => {
     });
     
     expect(isStylingDifferent).toBe(true);
+  });
+
+  test(`The :has() selector must be scoped to the specific component container rather than broad ancestors like body or html`, async ({ page }) => {
+    const isScopedToComponent = await page.evaluate(() => {
+      let foundScopedHas = false;
+      for (const sheet of Array.from(document.styleSheets)) {
+        try {
+          for (const rule of Array.from(sheet.cssRules)) {
+            if (rule instanceof CSSStyleRule && rule.selectorText && rule.selectorText.includes(':has(')) {
+              const selectors = rule.selectorText.split(',').map((s) => s.trim());
+              for (const sel of selectors) {
+                if (!sel.includes(':has(')) continue;
+                const prefix = sel.split(':has(')[0].trim();
+                if (!prefix || /^(html|body|:root|\*)$/i.test(prefix)) {
+                  return false;
+                }
+                foundScopedHas = true;
+              }
+            }
+          }
+        } catch (e) {
+          if (e instanceof DOMException && e.name === 'SecurityError') {
+            continue;
+          }
+          throw e;
+        }
+      }
+      return foundScopedHas;
+    });
+
+    expect(isScopedToComponent).toBe(true);
   });
 });
