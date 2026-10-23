@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+index 66c9173..dd2f3d4 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,81 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Order progress */
++    .order-progress {
++      max-width: 600px;
++      margin: 0 auto 40px;
++    }
++
++    .order-progress .progress-item {
++      margin-bottom: 16px;
++    }
++
++    .order-progress label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    progress {
++      appearance: none;
++      border: 0 solid;
++      overflow: clip;
++      inline-size: 100%;
++      block-size: 14px;
++      --progress-bar-radius: 1e5px;
++      border-radius: var(--progress-bar-radius);
++      background: var(--progress-bar-track, var(--secondary));
++      box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
++      accent-color: var(--primary);
++      container-type: inline-size;
++      --progress-bar-fill: var(--primary);
++      --progress-bar-indeterminate-size: 30%;
++      --progress-bar-indeterminate-animation-duration: 1.5s;
++
++      @media (prefers-reduced-motion: reduce) {
++        --progress-bar-indeterminate-animation-duration: 10s;
++      }
++    }
++
++    progress:indeterminate {
++      --progress-bar-animation: var(
++        --progress-bar-indeterminate-animation,
++        progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear
++      );
++    }
++
++    progress:dir(rtl) {
++      --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
++    }
++
++    progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    progress::-webkit-progress-value {
++      background: var(--progress-bar-fill, var(--accent));
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    progress::-moz-progress-bar {
++      background: var(--progress-bar-fill, var(--accent));
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    @keyframes progress-bar-indeterminate {
++      from, to {
++        inline-size: var(--progress-bar-indeterminate-size);
++        margin-right: auto;
++      }
++      from { translate: -100%; }
++      to { translate: 100cqi; }
++    }
+   </style>
+ </head>
+ 
+@@ -175,6 +250,17 @@
+   </header>
+ 
+   <main class="container">
++    <section class="order-progress" aria-labelledby="order-progress-title">
++      <h2 id="order-progress-title" style="text-align: center;">Your Order Progress</h2>
++      <div class="progress-item">
++        <label for="order-status">Order preparation: 65%</label>
++        <progress id="order-status" value="65" max="100"></progress>
++      </div>
++      <div class="progress-item">
++        <label for="order-pending">Confirming your order…</label>
++        <progress id="order-pending"></progress>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
