@@ -1,11 +1,11 @@
-- Dragging an item with a pointer—preferably from a dedicated drag handle—changes the item's DOM and visible position within the collection.
+- Dragging an item with a pointer, either from a dedicated drag handle or from the item itself, changes the item's DOM and visible position within the collection.
 - Pressing `Escape` during a pointer drag cancels it and restores the item to its original position.
 - Reordering moves the existing DOM element rather than recreating it, preserving state in controls inside that item.
 - Each item provides an accessible keyboard reordering mechanism, such as an appropriately named, focusable drag handle that supports `ArrowUp` and `ArrowDown`, or separate movement buttons (or an options menu containing them).
-- The keyboard reordering mechanism moves the item up in the collection.
-- The keyboard reordering mechanism moves the item down in the collection.
+- Moving an item up with the keyboard mechanism (`ArrowUp` on its focused or grabbed handle, or activating its "move up" control) places it immediately before its previous sibling in the DOM.
+- Moving an item down with the keyboard mechanism (`ArrowDown` on its focused or grabbed handle, or activating its "move down" control) places it immediately after its next sibling in the DOM.
 - Focus remains on the keyboard reordering mechanism after reordering, shifting to an alternative control on the same item when necessary to prevent focus loss.
-- The keyboard reordering mechanism prevents movement beyond the first and last items.
+- Moving the first item up or the last item down with the keyboard mechanism leaves the DOM order unchanged.
 - If the keyboard mechanism is a drag handle, `Space` or `Enter` toggles a grabbed state exposed with `aria-pressed`, arrow keys move the item only while grabbed, and `Escape` restores the item's original position.
 - Reordering is animated: displaced siblings and a released drag preview travel to their new positions instead of jumping, and the animation is skipped under `prefers-reduced-motion: reduce`.
 - When the items are in a scrollable container, holding a dragged item near or beyond the container's top or bottom edge scrolls the container, and the item can still be dropped at the first or last position.
