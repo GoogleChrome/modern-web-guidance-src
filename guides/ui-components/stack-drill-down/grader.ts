@@ -1,33 +1,101 @@
 /// <reference types="node" />
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const targetFile = process.env.TARGET_FILE || path.join(__dirname, 'demo.html');
-const targetUrl = `file://${targetFile}`;
+const targetDir = path.dirname(targetFile);
+const targetUrl = `http://localhost/${path.basename(targetFile)}`;
+
+const STACK_SEL = '.Stack, .stack';
+const VIEW_SEL = '.Stack-view, .stack-view';
+const VIEW_CONTENT_SEL = '.Stack-viewContent, .stack-view-content, .view-content';
+const BACK_SEL = '.icon-back, .back, [class*="back" i], button[aria-label*="Back" i]';
+
+test.beforeEach(async ({ page }) => {
+  await page.route('http://localhost/**', async (route) => {
+    const reqUrl = new URL(route.request().url());
+    const relPath = decodeURIComponent(reqUrl.pathname).replace(/^\/+/, '');
+    let filePath = path.resolve(targetDir, relPath || path.basename(targetFile));
+
+    if (!filePath.startsWith(targetDir) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+      // Support pathname-based routing (e.g. /menu, /view/1) by serving targetFile
+      if (!path.extname(relPath)) {
+        filePath = targetFile;
+      } else {
+        await route.abort();
+        return;
+      }
+    }
+
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypeMap: Record<string, string> = {
+      '.html': 'text/html; charset=utf-8',
+      '.js': 'text/javascript; charset=utf-8',
+      '.mjs': 'text/javascript; charset=utf-8',
+      '.css': 'text/css; charset=utf-8',
+      '.json': 'application/json; charset=utf-8',
+      '.svg': 'image/svg+xml',
+    };
+
+    await route.fulfill({
+      status: 200,
+      contentType: contentTypeMap[ext] || 'text/html; charset=utf-8',
+      body: fs.readFileSync(filePath),
+    });
+  });
+});
+
+const ITEM_LINK_SEL =
+  '.Stack-view:not([inert]) a.item, .Stack-view:not([inert]) .item, .stack-view:not([inert]) a.item, .stack-view:not([inert]) .item';
+const MAIN_DRILL_LINK_SEL =
+  '.Stack-view:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"]), .stack-view:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])';
+const FALLBACK_DRILL_LINK_SEL =
+  '.Stack-view:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"]), .stack-view:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])';
+
+const getActiveDrillLink = async (page: any) => {
+  for (const sel of [ITEM_LINK_SEL, MAIN_DRILL_LINK_SEL, FALLBACK_DRILL_LINK_SEL]) {
+    const loc = page.locator(sel).first();
+    if ((await loc.count()) > 0 && (await loc.isVisible())) {
+      return loc;
+    }
+  }
+  return page.locator('a.item, .item, main a[href], .Stack-view a[href], .stack-view a[href]').first();
+};
 
 // Helper to click a link inside the currently active (non-inert) view
 const clickActiveLink = async (page: any) => {
-  const activeLink = page.locator('.Stack-view:not([inert]) a.item, .Stack-view:not([inert]) .item').first();
-  if (await activeLink.isVisible()) {
-    await activeLink.click({ force: true });
-  } else {
-    const fallbackLink = page.locator('a.item, .item').first();
-    await fallbackLink.click({ force: true });
-  }
+  const link = await getActiveDrillLink(page);
+  await link.click({ force: true });
 };
 
 // Helper to click the Back trigger on active view
 const clickBackButton = async (page: any) => {
-  const backBtn = page.locator('.Stack-view:not([inert]) .icon-back, .Stack-view:not([inert]) .back, .Stack-view:not([inert]) button[aria-label="Back"]');
-  if (await backBtn.first().isVisible()) {
+  const backBtn = page.locator(
+    `.Stack-view:not([inert]) .icon-back, .Stack-view:not([inert]) .back, .Stack-view:not([inert]) [class*="back" i], .Stack-view:not([inert]) button[aria-label*="Back" i], .stack-view:not([inert]) .icon-back, .stack-view:not([inert]) .back, .stack-view:not([inert]) [class*="back" i], .stack-view:not([inert]) button[aria-label*="Back" i]`
+  );
+  if ((await backBtn.count()) > 0 && (await backBtn.first().isVisible())) {
     await backBtn.first().click({ force: true });
   } else {
     // Try click the header if no button (fallback for negative demo structure)
-    const activeHeader = page.locator('.Stack-view:not([inert]) header, .Stack-view:last-child header');
+    const activeHeader = page.locator('.Stack-view:not([inert]) header, .Stack-view:last-child header, .stack-view:not([inert]) header, .stack-view:last-child header');
     await activeHeader.first().click({ force: true });
   }
+};
+
+// Helper to discover a valid deep-link URL from the root view
+const getDeepLinkUrl = async (page: any): Promise<string> => {
+  await page.goto(targetUrl);
+  const link = await getActiveDrillLink(page);
+  const href = (await link.count()) > 0 ? await link.getAttribute('href') : null;
+  await page.goto('about:blank');
+  if (href) {
+    if (href.startsWith('#')) return `${targetUrl}${href}`;
+    if (href.startsWith('/')) return `http://localhost${href}`;
+  }
+  return `${targetUrl}#/view/1`;
 };
 
 test.describe('Stack Drill Down', () => {
@@ -36,37 +104,37 @@ test.describe('Stack Drill Down', () => {
 
   test('Stack container uses CSS scroll-snap mandatory', async ({ page }) => {
     await page.goto(targetUrl);
-    const snapType = await page.evaluate(() => {
-      const stack = document.querySelector('.Stack');
+    const snapType = await page.evaluate((sel) => {
+      const stack = document.querySelector(sel);
       return stack ? window.getComputedStyle(stack).scrollSnapType : '';
-    });
+    }, STACK_SEL);
     expect(snapType).toContain('mandatory');
   });
 
   test('Stack container has overflow-x auto or scroll', async ({ page }) => {
     await page.goto(targetUrl);
-    const overflowX = await page.evaluate(() => {
-      const stack = document.querySelector('.Stack');
+    const overflowX = await page.evaluate((sel) => {
+      const stack = document.querySelector(sel);
       return stack ? window.getComputedStyle(stack).overflowX : '';
-    });
+    }, STACK_SEL);
     expect(['auto', 'scroll']).toContain(overflowX);
   });
 
   test('Each view has width equal to stack width and is not absolutely positioned', async ({ page }) => {
     await page.goto(targetUrl);
-    const viewPosition = await page.evaluate(() => {
-      const view = document.querySelector('.Stack-view');
+    const viewPosition = await page.evaluate((sel) => {
+      const view = document.querySelector(sel);
       return view ? window.getComputedStyle(view).position : '';
-    });
+    }, VIEW_SEL);
     expect(viewPosition).not.toBe('absolute');
   });
 
   test('The stack uses overscroll-behavior-x: none', async ({ page }) => {
     await page.goto(targetUrl);
-    const overscroll = await page.evaluate(() => {
-      const stack = document.querySelector('.Stack');
+    const overscroll = await page.evaluate((sel) => {
+      const stack = document.querySelector(sel);
       return stack ? window.getComputedStyle(stack).overscrollBehaviorX : '';
-    });
+    }, STACK_SEL);
     expect(overscroll).toBe('none');
   });
 
@@ -91,7 +159,7 @@ test.describe('Stack Drill Down', () => {
 
       return Array.from(document.styleSheets).some(sheet => {
         return findCSSRules(sheet).some(rule => {
-          if (rule instanceof CSSStyleRule && rule.selectorText.includes('.Stack')) {
+          if (rule instanceof CSSStyleRule && rule.selectorText.toLowerCase().includes('.stack')) {
             const h = rule.style.height || '';
             return h.replace(/\s+/g, '') === '100dvh';
           }
@@ -104,19 +172,19 @@ test.describe('Stack Drill Down', () => {
 
   test('Each view applies scroll-snap-align: start', async ({ page }) => {
     await page.goto(targetUrl);
-    const align = await page.evaluate(() => {
-      const view = document.querySelector('.Stack-view');
+    const align = await page.evaluate((sel) => {
+      const view = document.querySelector(sel);
       return view ? window.getComputedStyle(view).scrollSnapAlign : '';
-    });
+    }, VIEW_SEL);
     expect(align).toContain('start');
   });
 
   test('Each view applies scroll-snap-stop: always', async ({ page }) => {
     await page.goto(targetUrl);
-    const stop = await page.evaluate(() => {
-      const view = document.querySelector('.Stack-view');
+    const stop = await page.evaluate((sel) => {
+      const view = document.querySelector(sel);
       return view ? window.getComputedStyle(view).scrollSnapStop : '';
-    });
+    }, VIEW_SEL);
     expect(stop).toBe('always');
   });
 
@@ -175,10 +243,11 @@ test.describe('Stack Drill Down', () => {
       for (const sheet of Array.from(document.styleSheets)) {
         for (const rule of findCSSRules(sheet)) {
           if (rule instanceof CSSStyleRule) {
-            if (rule.selectorText === '.Stack-view' && (rule.style.transform || rule.style.animation || rule.style.transition)) {
+            const sel = rule.selectorText.toLowerCase();
+            if (sel === '.stack-view' && (rule.style.transform || rule.style.animation || rule.style.transition)) {
               bad = true;
             }
-            if (rule.selectorText.includes('.Stack-viewContent') && (rule.style.transform || rule.style.animation || rule.style.animationName)) {
+            if ((sel.includes('.stack-viewcontent') || sel.includes('.stack-view-content') || sel.includes('.view-content')) && (rule.style.transform || rule.style.animation || rule.style.animationName)) {
               good = true;
             }
           }
@@ -246,11 +315,14 @@ test.describe('Stack Drill Down', () => {
 
       for (const sheet of Array.from(document.styleSheets)) {
         for (const rule of findCSSRules(sheet)) {
-          if (rule instanceof CSSStyleRule && rule.selectorText.includes('.Stack-viewContent')) {
-            const timeline = (rule.style as any).animationTimeline || '';
-            const range = (rule.style as any).animationRange || '';
-            if (timeline.includes('view(inline)') && range.includes('exit')) {
-              return true;
+          if (rule instanceof CSSStyleRule) {
+            const sel = rule.selectorText.toLowerCase();
+            if (sel.includes('.stack-viewcontent') || sel.includes('.stack-view-content') || sel.includes('.view-content')) {
+              const timeline = (rule.style as any).animationTimeline || '';
+              const range = (rule.style as any).animationRange || '';
+              if (timeline.includes('view(inline)') && range.includes('exit')) {
+                return true;
+              }
             }
           }
         }
@@ -262,23 +334,23 @@ test.describe('Stack Drill Down', () => {
 
   test('Drop-shadow is applied to drill-down views but NOT to the root view', async ({ page }) => {
     await page.goto(targetUrl);
-    const rootShadow = await page.evaluate(() => {
-      const view = document.querySelector('.Stack-view');
+    const rootShadow = await page.evaluate(({ viewSel, contentSel }) => {
+      const view = document.querySelector(viewSel);
       if (!view) return 'none';
-      const target = view.querySelector('.Stack-viewContent') || view;
+      const target = view.querySelector(contentSel) || view;
       return window.getComputedStyle(target).boxShadow;
-    });
+    }, { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL });
     
     // Drill down to get a drill down view
     await clickActiveLink(page);
     await page.waitForTimeout(100);
     
-    const drillDownShadow = await page.evaluate(() => {
-      const views = document.querySelectorAll('.Stack-view');
+    const drillDownShadow = await page.evaluate(({ viewSel, contentSel }) => {
+      const views = document.querySelectorAll(viewSel);
       if (views.length < 2) return 'none';
-      const target = views[1].querySelector('.Stack-viewContent') || views[1];
+      const target = views[1].querySelector(contentSel) || views[1];
       return window.getComputedStyle(target).boxShadow;
-    });
+    }, { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL });
 
     const rootHasNoShadow = rootShadow === 'none' || rootShadow.includes('rgba(0, 0, 0, 0)') || rootShadow.includes('0px 0px 0px');
     const drillDownHasShadow = drillDownShadow !== 'none' && !drillDownShadow.includes('rgba(0, 0, 0, 0)') && !drillDownShadow.includes('0px 0px 0px');
@@ -312,7 +384,7 @@ test.describe('Stack Drill Down', () => {
 
       for (const sheet of Array.from(document.styleSheets)) {
         for (const rule of findCSSRules(sheet)) {
-          if (rule instanceof CSSStyleRule && rule.selectorText.includes('.Stack')) {
+          if (rule instanceof CSSStyleRule && rule.selectorText.toLowerCase().includes('.stack')) {
             if (rule.style.scrollBehavior === 'smooth') {
               let isMedia = false;
               let currentParent = rule.parentRule;
@@ -379,15 +451,15 @@ test.describe('Stack Drill Down', () => {
     await clickActiveLink(page);
     // Wait for layout and transition to settle
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    const result = await page.evaluate(() => {
-      const stack = document.querySelector('.Stack');
-      const views = document.querySelectorAll('.Stack-view');
+    const result = await page.evaluate(({ stackSel, viewSel }) => {
+      const stack = document.querySelector(stackSel);
+      const views = document.querySelectorAll(viewSel);
       if (!stack || views.length < 2) return { beforeInert: false, afterNotInert: false };
       
       const firstView = views[0];
@@ -400,7 +472,7 @@ test.describe('Stack Drill Down', () => {
       
       const afterNotInert = !firstView.hasAttribute('inert');
       return { beforeInert, afterNotInert };
-    });
+    }, { stackSel: STACK_SEL, viewSel: VIEW_SEL });
     
     expect(result.beforeInert && result.afterNotInert).toBe(true);
   });
@@ -420,12 +492,12 @@ test.describe('Stack Drill Down', () => {
     
     await page.goto(targetUrl);
     
-    const observerConfig = await page.evaluate(() => {
+    const observerConfig = await page.evaluate((stackSel) => {
       const calls = (window as any).__intersectionObserverCalls || [];
-      const stack = document.querySelector('.Stack');
+      const stack = document.querySelector(stackSel);
       const matched = calls.find((c: any) => c.options?.root === stack && c.options?.threshold === 1);
       return !!matched;
-    });
+    }, STACK_SEL);
     
     expect(observerConfig).toBe(true);
   });
@@ -436,27 +508,27 @@ test.describe('Stack Drill Down', () => {
     await page.goto(targetUrl);
     
     // Initially at root
-    const rootInertState = await page.evaluate(() => {
-      const views = document.querySelectorAll('.Stack-view');
+    const rootInertState = await page.evaluate((viewSel) => {
+      const views = document.querySelectorAll(viewSel);
       if (views.length !== 1) return null;
       return views[0].hasAttribute('inert');
-    });
+    }, VIEW_SEL);
     
     // Drill down
     await clickActiveLink(page);
     // Wait for layout and transition to settle
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    const drillInertStates = await page.evaluate(() => {
-      const views = document.querySelectorAll('.Stack-view');
+    const drillInertStates = await page.evaluate((viewSel) => {
+      const views = document.querySelectorAll(viewSel);
       if (views.length < 2) return null;
       return Array.from(views).map(v => v.hasAttribute('inert'));
-    });
+    }, VIEW_SEL);
 
     expect(rootInertState === false && drillInertStates !== null && drillInertStates[0] === true && drillInertStates[1] === false).toBe(true);
   });
@@ -468,18 +540,17 @@ test.describe('Stack Drill Down', () => {
     await clickActiveLink(page);
     // Wait for layout and transition to settle
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    const focusOnBack = await page.evaluate(() => {
+    const focusOnBack = await page.evaluate((backSel) => {
       const active = document.activeElement;
       if (!active) return false;
-      const isBackButton = active.classList.contains('icon-back') || active.classList.contains('back') || active.getAttribute('aria-label') === 'Back';
-      return isBackButton;
-    });
+      return active.matches(backSel);
+    }, BACK_SEL);
     
     expect(focusOnBack).toBe(true);
   });
@@ -488,18 +559,16 @@ test.describe('Stack Drill Down', () => {
     await page.goto(targetUrl);
     
     // Click first link to drill down
-    const firstLinkText = await page.evaluate(() => {
-      const firstLink = document.querySelector('a.item, .item');
-      return firstLink ? firstLink.textContent : '';
-    });
+    const firstLink = await getActiveDrillLink(page);
+    const firstLinkText = ((await firstLink.textContent()) || '').trim();
     
     await clickActiveLink(page);
     // Wait for layout and transition to settle
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
     // Now click back
@@ -507,15 +576,15 @@ test.describe('Stack Drill Down', () => {
     
     // Wait for back transition to settle
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 1 && !views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
     const focusOnOriginalLink = await page.evaluate((expectedText) => {
       const active = document.activeElement;
-      return active ? active.textContent === expectedText : false;
+      return active ? (active.textContent || '').trim() === expectedText : false;
     }, firstLinkText);
     
     expect(focusOnOriginalLink).toBe(true);
@@ -540,10 +609,10 @@ test.describe('Stack Drill Down', () => {
     await clickActiveLink(page);
     // Wait for layout and transition to settle
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
     const focusPreventScroll = await page.evaluate(() => {
@@ -588,30 +657,30 @@ test.describe('Stack Drill Down', () => {
     await clickActiveLink(page);
     // Wait for layout and transition to settle
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    const initiallyAtDrillDown = await page.evaluate(() => {
-      const views = document.querySelectorAll('.Stack-view');
+    const initiallyAtDrillDown = await page.evaluate((viewSel) => {
+      const views = document.querySelectorAll(viewSel);
       return views.length === 2 && !views[1].hasAttribute('inert');
-    });
+    }, VIEW_SEL);
     
     await page.goBack();
     // Wait for back transition to settle
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 1 && !views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    const returnedToRoot = await page.evaluate(() => {
-      const views = document.querySelectorAll('.Stack-view');
+    const returnedToRoot = await page.evaluate((viewSel) => {
+      const views = document.querySelectorAll(viewSel);
       return views.length >= 1 && !views[0].hasAttribute('inert');
-    });
+    }, VIEW_SEL);
     
     expect(initiallyAtDrillDown && returnedToRoot).toBe(true);
   });
@@ -632,15 +701,15 @@ test.describe('Stack Drill Down', () => {
     await clickActiveLink(page);
     // Wait for layout and transition to settle
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    const goCalled = await page.evaluate(() => {
-      const stack = document.querySelector('.Stack');
-      const views = document.querySelectorAll('.Stack-view');
+    const goCalled = await page.evaluate(({ stackSel, viewSel }) => {
+      const stack = document.querySelector(stackSel);
+      const views = document.querySelectorAll(viewSel);
       if (!stack || views.length < 2) return false;
       
       const event = new Event('scrollsnapchange');
@@ -649,12 +718,14 @@ test.describe('Stack Drill Down', () => {
       
       const calls = (window as any).__goCalls || [];
       return calls.includes(-1);
-    });
+    }, { stackSel: STACK_SEL, viewSel: VIEW_SEL });
     
     expect(goCalled).toBe(true);
   });
 
   test('Deep links are handled on initial load and depth-0 is seeded with replaceState', async ({ page }) => {
+    const deepLinkUrl = await getDeepLinkUrl(page);
+
     await page.addInitScript(() => {
       (window as any).__replaceCalls = [];
       const originalReplace = history.replaceState;
@@ -664,41 +735,42 @@ test.describe('Stack Drill Down', () => {
       };
     });
     
-    await page.goto(`${targetUrl}#/view/1`);
+    await page.goto(deepLinkUrl);
     await page.waitForTimeout(100);
     
-    const deepLinkHandled = await page.evaluate(() => {
-      const views = document.querySelectorAll('.Stack-view');
+    const deepLinkHandled = await page.evaluate((viewSel) => {
+      const views = document.querySelectorAll(viewSel);
       const onlyOneView = views.length === 1;
       
       const calls = (window as any).__replaceCalls || [];
       const seededDepth0 = calls.some((c: any) => c.state?.depth === 0);
       
       return onlyOneView && seededDepth0;
-    });
+    }, VIEW_SEL);
     
     expect(deepLinkHandled).toBe(true);
   });
 
   test('Synthesizes a root entry when Back is clicked from a deep-linked entry with no in-app history', async ({ page }) => {
-    await page.goto(`${targetUrl}#/view/1`);
+    const deepLinkUrl = await getDeepLinkUrl(page);
+    await page.goto(deepLinkUrl);
     await page.waitForTimeout(100);
     
     await clickBackButton(page);
     // Wait for synthesized view to settle
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && !views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    const synthesized = await page.evaluate(() => {
-      const views = document.querySelectorAll('.Stack-view');
+    const synthesized = await page.evaluate((viewSel) => {
+      const views = document.querySelectorAll(viewSel);
       const hasMultipleViews = views.length >= 2;
       const rootVisible = !views[0].hasAttribute('inert');
       return hasMultipleViews && rootVisible;
-    });
+    }, VIEW_SEL);
     
     expect(synthesized).toBe(true);
   });
@@ -708,11 +780,14 @@ test.describe('Stack Drill Down', () => {
   test('Drill-down triggers are real anchor elements with href attributes', async ({ page }) => {
     await page.goto(targetUrl);
     
-    const realAnchors = await page.evaluate(() => {
+    const realAnchors = await page.evaluate((viewSel) => {
       const items = document.querySelectorAll('.item');
-      if (items.length === 0) return false;
-      return Array.from(items).every(item => item.tagName === 'A' && item.hasAttribute('href'));
-    });
+      if (items.length > 0) {
+        return Array.from(items).every(item => item.tagName === 'A' && item.hasAttribute('href'));
+      }
+      const viewAnchors = document.querySelectorAll(`${viewSel} a[href]`);
+      return viewAnchors.length > 0;
+    }, VIEW_SEL);
     
     expect(realAnchors).toBe(true);
   });
@@ -729,7 +804,7 @@ test.describe('Stack Drill Down', () => {
     
     await page.goto(targetUrl);
     
-    const link = page.locator('.Stack-view:not([inert]) a.item, .Stack-view:not([inert]) .item, a.item, .item').first();
+    const link = await getActiveDrillLink(page);
     if (await link.isVisible()) {
       await link.click({ modifiers: ['Shift'], force: true });
       await page.waitForTimeout(100);
@@ -739,10 +814,11 @@ test.describe('Stack Drill Down', () => {
       return (window as any).__preventDefaultCalled === false;
     });
     
-    const isAnchor = await page.evaluate(() => {
+    const isAnchor = await page.evaluate((viewSel) => {
       const item = document.querySelector('.item');
-      return item ? item.tagName === 'A' : false;
-    });
+      if (item) return item.tagName === 'A';
+      return document.querySelectorAll(`${viewSel} a[href]`).length > 0;
+    }, VIEW_SEL);
     
     expect(isAnchor && preventDefaultPreserved).toBe(true);
   });
@@ -767,8 +843,8 @@ test.describe('Stack Drill Down', () => {
     
     await page.goto(targetUrl);
     
-    await page.evaluate(() => {
-      const firstView = document.querySelector('.Stack-view');
+    await page.evaluate((viewSel) => {
+      const firstView = document.querySelector(viewSel);
       if (firstView) {
         const externalLink = document.createElement('a');
         externalLink.className = 'external-item';
@@ -776,7 +852,7 @@ test.describe('Stack Drill Down', () => {
         externalLink.textContent = 'External Link';
         firstView.appendChild(externalLink);
       }
-    });
+    }, VIEW_SEL);
     
     const link = page.locator('.external-item');
     if (await link.isVisible()) {
@@ -791,10 +867,10 @@ test.describe('Stack Drill Down', () => {
       return (window as any).__preventDefaultCalled === false;
     });
     
-    const isScrollSnap = await page.evaluate(() => {
-      const stack = document.querySelector('.Stack');
+    const isScrollSnap = await page.evaluate((stackSel) => {
+      const stack = document.querySelector(stackSel);
       return stack ? window.getComputedStyle(stack).scrollSnapType !== 'none' : false;
-    });
+    }, STACK_SEL);
 
     expect(preventDefaultNotCalled && isScrollSnap).toBe(true);
   });
@@ -804,22 +880,22 @@ test.describe('Stack Drill Down', () => {
   test('Drill-down views have an explicit back button, but root view does not', async ({ page }) => {
     await page.goto(targetUrl);
     
-    const rootHasBack = await page.evaluate(() => {
-      const root = document.querySelector('.Stack-view');
+    const rootHasBack = await page.evaluate(({ viewSel, backSel }) => {
+      const root = document.querySelector(viewSel);
       if (!root) return false;
-      const back = root.querySelector('.icon-back, .back, button[aria-label="Back"]');
+      const back = root.querySelector(backSel);
       return !!back;
-    });
+    }, { viewSel: VIEW_SEL, backSel: BACK_SEL });
     
     await clickActiveLink(page);
     await page.waitForTimeout(100);
     
-    const drillDownHasBack = await page.evaluate(() => {
-      const views = document.querySelectorAll('.Stack-view');
+    const drillDownHasBack = await page.evaluate(({ viewSel, backSel }) => {
+      const views = document.querySelectorAll(viewSel);
       if (views.length < 2) return false;
-      const back = views[1].querySelector('.icon-back, .back, button[aria-label="Back"]');
+      const back = views[1].querySelector(backSel);
       return !!back;
-    });
+    }, { viewSel: VIEW_SEL, backSel: BACK_SEL });
     
     expect(!rootHasBack && drillDownHasBack).toBe(true);
   });
@@ -842,28 +918,28 @@ test.describe('Stack Drill Down', () => {
     await clickActiveLink(page);
     // Wait for layout and transition to settle (first view becomes inert)
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
     await page.goBack();
     // Wait for back scroll to settle (first view loses inert)
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 1 && !views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
     await page.goForward();
     // Wait for forward scroll to settle (first view becomes inert again)
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
     const behaviors = await page.evaluate(() => {
@@ -883,38 +959,38 @@ test.describe('Stack Drill Down', () => {
     await clickActiveLink(page);
     // Wait for first view to become inert
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
     await clickActiveLink(page);
     // Wait for second view to become inert
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 3 && views[1].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    const threeViewsInDOM = await page.evaluate(() => {
-      return document.querySelectorAll('.Stack-view').length === 3;
-    });
+    const threeViewsInDOM = await page.evaluate((viewSel) => {
+      return document.querySelectorAll(viewSel).length === 3;
+    }, VIEW_SEL);
     
     await page.goBack();
     await page.waitForTimeout(100);
     await page.goBack();
     // Wait for actual pruning to complete (views after root removed)
     try {
-      await page.waitForFunction(() => {
-        return document.querySelectorAll('.Stack-view').length === 1;
-      }, { timeout: 2000 });
+      await page.waitForFunction((viewSel: string) => {
+        return document.querySelectorAll(viewSel).length === 1;
+      }, VIEW_SEL, { timeout: 2000 });
     } catch (e) {}
     
-    const viewsPruned = await page.evaluate(() => {
-      return document.querySelectorAll('.Stack-view').length === 1;
-    });
+    const viewsPruned = await page.evaluate((viewSel) => {
+      return document.querySelectorAll(viewSel).length === 1;
+    }, VIEW_SEL);
     
     expect(threeViewsInDOM && viewsPruned).toBe(true);
   });
@@ -925,41 +1001,48 @@ test.describe('Stack Drill Down', () => {
     await clickActiveLink(page);
     // Wait for first view to become inert
     try {
-      await page.waitForFunction(() => {
-        const views = document.querySelectorAll('.Stack-view');
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
         return views.length >= 2 && views[0].hasAttribute('inert');
-      }, { timeout: 1500 });
+      }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    const firstDrillDownText = await page.evaluate(() => {
-      const headers = document.querySelectorAll('.Stack-view h2');
-      return headers.length > 0 ? headers[headers.length - 1].textContent : '';
-    });
+    const firstDrillDownText = await page.evaluate((viewSel) => {
+      const views = document.querySelectorAll(viewSel);
+      if (views.length < 2) return '';
+      const lastView = views[views.length - 1];
+      const heading = lastView.querySelector('h2, h1, h3, header');
+      return heading ? heading.textContent?.trim() || '' : '';
+    }, VIEW_SEL);
     
     await page.goBack();
     // Wait for pruning to settle (only 1 view left in DOM)
     try {
-      await page.waitForFunction(() => {
-        return document.querySelectorAll('.Stack-view').length === 1;
-      }, { timeout: 2000 });
+      await page.waitForFunction((viewSel: string) => {
+        return document.querySelectorAll(viewSel).length === 1;
+      }, VIEW_SEL, { timeout: 2000 });
     } catch (e) {}
     
-    const isPruned = await page.evaluate(() => {
-      return document.querySelectorAll('.Stack-view').length === 1;
-    });
+    const isPruned = await page.evaluate((viewSel) => {
+      return document.querySelectorAll(viewSel).length === 1;
+    }, VIEW_SEL);
     
     await page.goForward();
-    // Wait for view to be rebuilt and h2 to be rendered
+    // Wait for view to be rebuilt and heading to be rendered
     try {
-      await page.waitForFunction(() => {
-        return document.querySelectorAll('.Stack-view h2').length > 0;
-      }, { timeout: 2000 });
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
+        return views.length >= 2 && !!views[views.length - 1].querySelector('h2, h1, h3, header');
+      }, VIEW_SEL, { timeout: 2000 });
     } catch (e) {}
     
-    const rebuiltText = await page.evaluate(() => {
-      const headers = document.querySelectorAll('.Stack-view h2');
-      return headers.length > 0 ? headers[headers.length - 1].textContent : '';
-    });
+    const rebuiltText = await page.evaluate((viewSel) => {
+      const views = document.querySelectorAll(viewSel);
+      if (views.length < 2) return '';
+      const lastView = views[views.length - 1];
+      const heading = lastView.querySelector('h2, h1, h3, header');
+      return heading ? heading.textContent?.trim() || '' : '';
+    }, VIEW_SEL);
     
     expect(isPruned && rebuiltText === firstDrillDownText && rebuiltText !== '').toBe(true);
   });

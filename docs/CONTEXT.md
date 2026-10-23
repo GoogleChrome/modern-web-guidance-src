@@ -71,26 +71,45 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 
 ### Discipline guides
 
-Most guides are task-based use cases. Discipline guides are the orientation "hubs" for a category and link to its use-case guides via `{{ GUIDE_REF("guide-slug") }}`. A guide is a discipline guide if it is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements, and are reported as bundled core guides by `src/build/audit-build.ts`.
+Most guides are task-based use cases. Discipline guides are the orientation "hubs" for a category and link to its use-case guides via `{{ GUIDE_REF("guide-slug") }}`. A guide is a discipline guide if it is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `src/core/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements, and are reported as bundled core guides by `src/build/audit-build.ts`. Discipline orientation guides are currently excluded from the progress counts, progress bar, and pipeline trend counts; this policy may change in the future.
 
-### Guide Development Stages
+### Eval Architecture: Gen 1 vs Gen 2
 
-A guide progresses through three main stages:
+Evaluation harnesses for guides exist in two generational formats:
+
+- **Gen 1 (Legacy root format)**: A single root `grader.ts` located in the guide directory paired with `tasks/task.md`. Gen 1 evals target only a single base application (typically `daily-grind`).
+- **Gen 2 (Modern multi-target format)**: Per-target directories under `targets/<base_app>/` (such as `targets/daily-grind/` and `targets/devtools-times/`). Each target directory contains its own `grader.ts`, `task.md`, solution patches (`jetski-solution.patch`, `claude-solution.patch`, `codex-solution.patch`), and baseline `zero-passrate.patch`. Gen 2 enables dual-target evaluation across realistic applications.
+
+### Guide Development Stages & Pipeline Tracking
+
+A guide progresses through three stages before its evals land, tracked canonically in GitHub issue #1815 via `src/ci/sync-pipeline-issue.ts`:
 
 1. **Stage 1: Identifying use cases (Needs use cases)**
-   - **Goal**: Translate a web platform feature into distinct use cases.
-   - **Artifacts**: Directory structure, `guide.md` with only YAML frontmatter (stub), and a basic `demo.html`.
-   - SME contributes via PR for review.
+   - **Goal**: Intake backlog of open `new-feature` issues representing platform features that need use cases defined.
+   - **Artifacts**: Initial directory structure or issue tracking feature candidate.
 
 2. **Stage 2: Authoring guidance (Needs guidance)**
-   - **Goal**: Flesh out the guidance and define testable expectations.
+   - **Goal**: Flesh out the guidance content and define testable expectations.
    - **Artifacts**: Full `guide.md` content (DO/DO NOT directives, snippets, fallbacks), completed `demo.html`, and `expectations.md`.
-   - SME creates these files after use case approval.
+   - **Guide PRs**: Open PRs introducing or editing guides whose content hasn't landed on `main` yet.
+   - **Not started**: Open `new-use-case` issues without an active PR.
 
 3. **Stage 3: Evaluating guidance (Needs evals)**
    - **Goal**: Generate evaluation capsules, calibrate graders, run evaluations, and generate reports.
    - **Artifacts**: `targets/<base_app>/`, `grader.ts`, `patches/`, `task.md`, and `results/guides/<category>/<slug>/report.md`.
-   - Handled automatically by `gd dev`.
+   - **Eval PRs**: Open PRs (`gd-dev/*` branch or `grader updates:` title) adding graders for guides whose content has landed.
+   - **Ready for evals**: Guides on `main` that have non-draft guidance and expectations but lack a grader.
+
+4. **Evals landed**: Non-draft guides on `main` that have expectations and a grader. This checks that the files exist, not that the grader passes; stale graders are flagged separately.
+
+The tracker's two progress rows use the same vocabulary:
+
+- **Guides landed**: non-draft `guide.md` with content plus `expectations.md` on `main` (stages 3 and 4).
+- **Evals landed**: guides landed that also have a grader (stage 4).
+
+Both rows count from the **2026-07-22** snapshot (127 guides with evals, discipline hubs excluded), one column per guide. Discipline orientation hubs don't currently require a grader and are excluded from all tracker counts.
+
+A `draft` in a guide's frontmatter withholds it from distribution. It must be `stub` (placeholder, next step: write it), `wip` (next step: finish it), or `blocked` (held back by the platform or spec, with a required `draft-reason`; next step: revisit when that changes). Anything else fails the guide scan.
 
 ---
 
@@ -112,7 +131,6 @@ pnpm link --global && gd setup-completion
 
 | Command | What it does |
 |---|---|
-| `gd audit` | Prints a matrix of all guides across maturity stages. |
 | `gd dev <dir>` | The main pipeline command. Takes a guide from "has guide.md + expectations.md" through target generation, calibration, agent tests, and report creation (`--targets <apps>`). |
 | `gd dev <dir> --test-grader` | Run calibration check across target apps (golden patches should pass 100%, zero-passrate should fail 100%). |
 | `gd pr <dir>` | Opens a GitHub Pull Request with auto-labeled classification and `report.md` body. |
@@ -232,8 +250,6 @@ An evolving list of guides organized across multiple categories.
 | **Stage 2** | Needs guidance (stub) | 4 | YAML frontmatter only, no guide content yet |
 | **Stage 1** | Needs use cases (incomplete) | 0 | Missing guide.md or demo.html |
 
-See `gd audit` for the full list of eval-ready guides covering performance, css-layout, overlays, accessibility, and security features.
-
 ### Open PRs (representative)
 
 - **#217** (bramus): Scroll-driven animations use cases — SME contribution, multiple use cases
@@ -256,7 +272,6 @@ To prevent SMEs from investing time writing full guides for use cases that might
 - Writes `guide.md` with **only YAML frontmatter** (name, description, web-feature-ids) — this is a stub
 - Creates a basic `demo.html` showing the concept
 - Opens a PR for review — the team validates that the use cases are well-chosen, distinct, and don't overlap with existing guides
-- `gd audit` shows these as "stub" status
 
 **Checkpoint 2 — Implementation and evaluation:**
 - After use cases are approved, SME fleshes out `guide.md` with full content (DO/DO NOT directives, code snippets, fallback strategies)
@@ -264,7 +279,6 @@ To prevent SMEs from investing time writing full guides for use cases that might
 - Completes `demo.html` as a gold-standard implementation
 - Runs `gd dev <dir>` to auto-generate negative-demo, grader, calibrate, and run agent tests
 - Opens a follow-up PR with all artifacts
-- `gd audit` should show these as "eval-ready" after the pipeline succeeds
 
 ### Writing guide.md
 
