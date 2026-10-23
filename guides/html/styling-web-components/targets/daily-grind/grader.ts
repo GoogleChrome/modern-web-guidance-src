@@ -33,9 +33,7 @@ function flattenRules(rules: Iterable<CSSRule>): CSSRule[] {
 function getShadowCssRules(files: string[]): CSSRule[] {
   const rules: CSSRule[] = [];
 
-  const project = getJsProject(files);
-  for (const sf of project.getSourceFiles()) {
-    const text = sf.getFullText();
+  const extractStyleTagRules = (text: string) => {
     const styleMatches = text.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
     if (styleMatches) {
       for (const m of styleMatches) {
@@ -44,20 +42,34 @@ function getShadowCssRules(files: string[]): CSSRule[] {
         rules.push(...flattenRules(sheet.cssRules));
       }
     }
+  };
+
+  const extractConstructableRules = (text: string) => {
+    const replaceMatches = text.matchAll(/\.replace(?:Sync)?\s*\(\s*(`(?:\\[\s\S]|[^`])*`|'(?:\\[\s\S]|[^'])*'|"(?:\\[\s\S]|[^"])*")\s*\)/g);
+    for (const m of replaceMatches) {
+      const css = m[1].slice(1, -1);
+      const sheet: CSSStyleSheet = parse(css);
+      rules.push(...flattenRules(sheet.cssRules));
+    }
+  };
+
+  const project = getJsProject(files);
+  for (const sf of project.getSourceFiles()) {
+    const text = sf.getFullText();
+    extractStyleTagRules(text);
+    extractConstructableRules(text);
   }
 
   const docs = getHtmlDocuments(files);
   for (const { document } of docs) {
     document.querySelectorAll('template').forEach((tmpl: any) => {
       const templateHtml = tmpl.innerHTML || tmpl.content?.innerHTML || tmpl.textContent || '';
-      const matches = templateHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-      if (matches) {
-        for (const m of matches) {
-          const css = m.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, '');
-          const sheet: CSSStyleSheet = parse(css);
-          rules.push(...flattenRules(sheet.cssRules));
-        }
-      }
+      extractStyleTagRules(templateHtml);
+    });
+    document.querySelectorAll('script').forEach((script: any) => {
+      const scriptText = script.textContent || script.innerHTML || '';
+      extractStyleTagRules(scriptText);
+      extractConstructableRules(scriptText);
     });
   }
 
