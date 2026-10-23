@@ -1,7 +1,7 @@
 - The implementation MUST place all page content within semantic HTML landmarks (e.g., `<header>`, `<nav>`, `<main>`, `<aside>`, `<footer>`).
 - The implementation MUST maintain a sequential heading hierarchy (`<h1>` through `<h6>`) without skipping heading levels.
 - The implementation MUST use semantic list elements (`<ul>` or `<ol>`) for repeated, contiguous groups of items.
-- The implementation MUST provide a skip link before repeated content (e.g., a site header with navigation or a long list of focusable items) that targets a focusable element following that content (e.g., `<main id="content" tabindex="-1">`).
+- The implementation MUST provide a skip link before repeated content (e.g., a site header with navigation or a long list of focusable items) that targets either the container following that content (e.g., `<main id="content">`) or its first meaningful element made programmatically focusable (e.g., `<h1 id="content" tabindex="-1">`), rather than placing `tabindex="-1"` on a container that holds focusable elements.
 - The implementation MUST use `<caption>` and `<th scope="col">` or `<th scope="row">` for data tables.
 - The implementation MUST NOT style generic `<div>` or `<span>` elements to act as headings without standard `<h1>`–`<h6>` tags.
 - The implementation MUST NOT place heading elements (`<h1>`–`<h6>`) inside `<summary>` elements.
@@ -9,8 +9,8 @@
 - The implementation MUST use native interactive HTML elements (`<button>`, `<a>`, `<input>`) instead of generic elements with `role="button"`.
 - The implementation MUST NOT add redundant ARIA roles or attributes that duplicate native HTML semantics (such as `<nav role="navigation">` or `<input required aria-required="true">`), except for `role="list"` on `<ul>` or `<ol>` elements styled with `list-style: none`, `display: flex`, or `display: grid`.
 - The implementation MUST explicitly associate every `<label>` with its form control using matching `for` and `id` attributes.
-- When a landmark, dialog, or group has a visible heading or label element in the DOM, the implementation MUST reference it with `aria-labelledby` rather than duplicating its text in `aria-label`.
-- The implementation MUST disambiguate identical-looking interactive controls in a view (such as multiple "Edit" or "Delete" buttons) using visually hidden text or `aria-labelledby`.
+- When a dialog, group, or one of multiple landmarks of the same type (e.g., several `<nav>` or `<section>` elements) has a visible heading or label element in the DOM, the implementation MUST reference it with `aria-labelledby` rather than duplicating its text in `aria-label`.
+- The implementation MUST disambiguate identical-looking interactive controls in a view (such as multiple "Edit" or "Delete" buttons) using visually hidden text, `aria-label`, `aria-labelledby`, or `aria-describedby`.
 - The implementation MUST NOT apply `aria-label` or `aria-labelledby` to generic `<div>` or `<span>` elements that lack an explicit ARIA `role`.
 - The implementation MUST NOT include the element's role word (such as "navigation" or "button") inside its accessible name.
 - The implementation MUST NOT rely on `title` or `placeholder` attributes as the accessible name for interactive controls.
