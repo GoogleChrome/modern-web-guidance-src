@@ -1,1 +1,1 @@
-- Refactor the cards into a component that encapsulates its DOM and styles, constructs the tree efficiently, and projects consumer content.
+- Refactor the Seasonal Favorites cards (Maple Oat Latte, Dark Roast Espresso, and Cold Brew) in `index.html` into a reusable native custom web component with isolated internal markup and scoped styles, built from a reusable declarative HTML blueprint that projects each drink's title, description, and action link from the page into dedicated placeholders.

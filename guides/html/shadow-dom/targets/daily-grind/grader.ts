@@ -6,389 +6,157 @@ import {
   getJsProject,
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import { SyntaxKind, type Project } from 'ts-morph';
+import { SyntaxKind, type Project, type CallExpression } from 'ts-morph';
+import type { Document } from 'linkedom';
 import { CSSStyleRule, type CSSStyleSheet } from 'cssomnom';
-import { parseHTML } from 'linkedom';
 
-// @ts-ignore - TS1470 in nodenext when package.json lacks type: module
+// @ts-ignore - import.meta.url is valid in Playwright's ESM runner even when package.json lacks "type": "module"
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function hasCustomElementDefinition(project: Project): boolean {
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const call of calls) {
-      const exprText = call.getExpression().getText();
-      if (exprText === 'customElements.define' || exprText.endsWith('.customElements.define')) {
-        const args = call.getArguments();
-        if (args.length >= 2) {
-          const firstArg = args[0].getText().replace(/['"`]/g, '');
-          if (firstArg.includes('-')) {
-            return true;
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
+test.describe('shadow-dom Target Grader', () => {
+  test('Custom element attaches an open shadow root via attachShadow({ mode: "open" })', () => {
+    const project: Project = getJsProject(targetFiles);
+    const callExpressions = project.getSourceFiles().flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
+    );
 
-function attachesOpenShadowRoot(project: Project): boolean {
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const call of calls) {
-      const exprText = call.getExpression().getText();
-      if (exprText === 'this.attachShadow' || exprText.endsWith('.attachShadow')) {
-        const args = call.getArguments();
-        if (args.length > 0 && args[0].getKind() === SyntaxKind.ObjectLiteralExpression) {
-          const obj = args[0].asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
-          const modeProp = obj.getProperty('mode');
-          if (modeProp && modeProp.getKind() === SyntaxKind.PropertyAssignment) {
-            const propAssign = modeProp.asKindOrThrow(SyntaxKind.PropertyAssignment);
-            const initText = propAssign.getInitializer()?.getText().replace(/['"`]/g, '');
-            if (initText === 'open') {
-              return true;
-            }
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
+    const hasOpenShadowRoot = callExpressions.some((call: CallExpression) => {
+      const expr = call.getExpression();
+      const isAttachShadow =
+        expr.isKind(SyntaxKind.PropertyAccessExpression) &&
+        expr.getName() === 'attachShadow';
+      if (!isAttachShadow) return false;
 
-function definesTemplateOutsideConstructor(project: Project, docs: Array<{ file: string; document: any }>): boolean {
-  for (const doc of docs) {
-    if (doc.document.querySelector('template')) {
-      return true;
-    }
-  }
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const call of calls) {
-      const exprText = call.getExpression().getText();
-      if (exprText === 'document.createElement' || exprText.endsWith('.createElement')) {
-        const args = call.getArguments();
-        if (args.length > 0 && args[0].getText().replace(/['"`]/g, '').toLowerCase() === 'template') {
-          const insideConstructor = call.getFirstAncestorByKind(SyntaxKind.Constructor);
-          if (!insideConstructor) {
-            return true;
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
+      const args = call.getArguments();
+      if (args.length === 0) return false;
+      const firstArg = args[0];
+      if (!firstArg.isKind(SyntaxKind.ObjectLiteralExpression)) return false;
 
-function clonesTemplateContent(project: Project): boolean {
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const call of calls) {
-      const exprText = call.getExpression().getText();
-      if (exprText.endsWith('.cloneNode')) {
-        const args = call.getArguments();
-        if (args.length > 0 && args[0].getText() === 'true') {
-          return true;
-        }
-      }
-      if (exprText === 'document.importNode' || exprText.endsWith('.importNode')) {
-        const args = call.getArguments();
-        if (args.length >= 2 && args[1].getText() === 'true') {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
+      return firstArg.getProperties().some((prop) => {
+        if (!prop.isKind(SyntaxKind.PropertyAssignment)) return false;
+        const propName = prop.getName().replace(/['"`]/g, '');
+        const initializer = prop.getInitializer();
+        if (propName !== 'mode' || !initializer) return false;
+        const val = initializer.getText().replace(/['"`]/g, '');
+        return val === 'open';
+      });
+    });
 
-function hasNoInnerHTMLInConstructor(project: Project): boolean {
-  let foundConstructor = false;
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const classes = sf.getClasses();
-    for (const cls of classes) {
-      const ctors = cls.getConstructors();
-      for (const ctor of ctors) {
-        const ctorText = ctor.getText();
-        if (ctorText.includes('attachShadow') || ctorText.includes('super()')) {
-          foundConstructor = true;
-          const binExprs = ctor.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-          for (const be of binExprs) {
-            if (be.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
-              const leftText = be.getLeft().getText();
-              if (leftText.endsWith('innerHTML')) {
-                return false;
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return foundConstructor;
-}
-
-function hasSlottedLightDomChildren(docs: Array<{ file: string; document: any }>): boolean {
-  for (const doc of docs) {
-    const elements = Array.from(doc.document.querySelectorAll('*'));
-    for (const el of elements as any[]) {
-      if (el.tagName && el.tagName.includes('-')) {
-        const slottedChildren = el.querySelectorAll('[slot]');
-        if (slottedChildren.length > 0) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-function hasUnslottedLightDomChildren(docs: Array<{ file: string; document: any }>): boolean {
-  for (const doc of docs) {
-    const elements = Array.from(doc.document.querySelectorAll('*'));
-    for (const el of elements as any[]) {
-      if (el.tagName && el.tagName.includes('-')) {
-        const children = Array.from(el.children);
-        const unslotted = children.filter((c: any) => !c.hasAttribute('slot'));
-        if (unslotted.length > 0) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-function getTemplateDocuments(project: Project, docs: Array<{ file: string; document: any }>): any[] {
-  const templateDocs: any[] = [];
-  for (const doc of docs) {
-    const tmpl = doc.document.querySelector('template');
-    if (tmpl) {
-      templateDocs.push(parseHTML(tmpl.innerHTML || tmpl.content?.toString() || '').document);
-    }
-  }
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const binExprs = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-    for (const be of binExprs) {
-      if (be.getOperatorToken().getKind() === SyntaxKind.EqualsToken && be.getLeft().getText().includes('innerHTML')) {
-        const right = be.getRight();
-        const text = right.getText();
-        const rawHtml = text.replace(/^[`'"]|[`'"]$/g, '');
-        if (rawHtml.includes('<slot')) {
-          templateDocs.push(parseHTML(rawHtml).document);
-        }
-      }
-    }
-  }
-  return templateDocs;
-}
-
-function templateHasNamedAndDefaultSlots(project: Project, docs: Array<{ file: string; document: any }>): boolean {
-  const tmplDocs = getTemplateDocuments(project, docs);
-  if (tmplDocs.length === 0) return false;
-  return tmplDocs.some((doc) => {
-    const namedSlots = doc.querySelectorAll('slot[name]');
-    const defaultSlots = doc.querySelectorAll('slot:not([name])');
-    return namedSlots.length > 0 && defaultSlots.length > 0;
-  });
-}
-
-function listensForSlotChange(project: Project): boolean {
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const call of calls) {
-      const exprText = call.getExpression().getText();
-      if (exprText.endsWith('addEventListener')) {
-        const args = call.getArguments();
-        if (args.length > 0 && args[0].getText().replace(/['"`]/g, '') === 'slotchange') {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-function filtersAssignedContent(project: Project): boolean {
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-    const usesAssignedElements = calls.some((c) => c.getExpression().getText().endsWith('assignedElements'));
-    if (usesAssignedElements) return true;
-
-    const usesAssignedNodes = calls.some((c) => c.getExpression().getText().endsWith('assignedNodes'));
-    if (usesAssignedNodes) {
-      const sfText = sf.getText();
-      if (
-        sfText.includes('trim()') ||
-        sfText.includes('ELEMENT_NODE') ||
-        sfText.includes('nodeType === 1') ||
-        sfText.includes('nodeType === 3')
-      ) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function updatesComponentStateOnSlotChange(project: Project): boolean {
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const call of calls) {
-      const exprText = call.getExpression().getText();
-      if (exprText.endsWith('toggleAttribute') || exprText.endsWith('setAttribute')) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function hasShadowRootStyles(project: Project, docs: Array<{ file: string; document: any }>): boolean {
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const propAccesses = sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
-    if (propAccesses.some((pa) => pa.getName() === 'adoptedStyleSheets')) {
-      return true;
-    }
-    const sfText = sf.getText();
-    if (sfText.includes('shadowRoot') && sfText.includes('<style>')) {
-      return true;
-    }
-  }
-  for (const doc of docs) {
-    const tmpl = doc.document.querySelector('template');
-    if (tmpl && (tmpl.innerHTML.includes('<style') || tmpl.innerHTML.includes('<link rel="stylesheet"'))) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function usesConstructedOrShadowStyleSheet(project: Project): boolean {
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const newExprs = sf.getDescendantsOfKind(SyntaxKind.NewExpression);
-    for (const ne of newExprs) {
-      if (ne.getExpression().getText() === 'CSSStyleSheet') {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function hasNoGlobalCardStyleRule(stylesheet: CSSStyleSheet): boolean {
-  const rules = Array.from(stylesheet.cssRules || []) as CSSStyleRule[];
-  const hasCard = rules.some((r) => {
-    if (r instanceof CSSStyleRule && r.selectorText) {
-      const selectors = r.selectorText.split(',').map((s) => s.trim());
-      return selectors.some((s) => s === '.card' || s.startsWith('.card ') || s.startsWith('.card:'));
-    }
-    return false;
-  });
-  return !hasCard;
-}
-
-function hasEncapsulatedCardStyles(project: Project): boolean {
-  for (const sf of project.getSourceFiles()) {
-    if (sf.getFilePath().includes('.spec.') || sf.getFilePath().includes('.test.')) continue;
-    const sfText = sf.getText();
-    if (
-      sfText.includes('.card') &&
-      (sfText.includes('replaceSync') || sfText.includes('CSSStyleSheet') || sfText.includes('<style>'))
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-test.describe('daily-grind Target Grader', () => {
-  test('Requirement 1: Custom element is registered via customElements.define', () => {
-    const project = getJsProject(targetFiles);
-    expect(hasCustomElementDefinition(project)).toBe(true);
+    expect(hasOpenShadowRoot).toBe(true);
   });
 
-  test('Requirement 1: Component attaches an open shadow root (mode: open)', () => {
-    const project = getJsProject(targetFiles);
-    expect(attachesOpenShadowRoot(project)).toBe(true);
+  test('Component clones a <template> content (cloneNode or importNode) when building its shadow tree', () => {
+    const project: Project = getJsProject(targetFiles);
+    const callExpressions = project.getSourceFiles().flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
+    );
+
+    const hasTemplateClone = callExpressions.some((call: CallExpression) => {
+      const expr = call.getExpression();
+      if (!expr.isKind(SyntaxKind.PropertyAccessExpression)) return false;
+      const methodName = expr.getName();
+      if (methodName !== 'cloneNode' && methodName !== 'importNode') return false;
+
+      const args = call.getArguments();
+      return args.some((arg) => arg.getKind() === SyntaxKind.TrueKeyword);
+    });
+
+    expect(hasTemplateClone).toBe(true);
   });
 
-  test('Requirement 2: Component defines a template once outside the constructor', () => {
-    const project = getJsProject(targetFiles);
-    const docs = getHtmlDocuments(targetFiles);
-    expect(definesTemplateOutsideConstructor(project, docs)).toBe(true);
+  test('Template and custom elements use named slots and matching Light DOM slot attributes', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const project: Project = getJsProject(targetFiles);
+
+    const hasLightDomSlottedElements = docs.some((d) =>
+      Boolean(d.document.querySelector('.grid [slot], main [slot]'))
+    );
+
+    const hasTemplateSlotsInHtml = docs.some((d) => {
+      const templates = Array.from(d.document.querySelectorAll('template'));
+      return templates.some((tmpl: any) => {
+        const root = tmpl.content || tmpl;
+        return Boolean(root.querySelector && root.querySelector('slot'));
+      });
+    });
+
+    const hasTemplateSlotsInJs = project.getSourceFiles().some((sf) => {
+      const literals = [
+        ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
+        ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+        ...sf.getDescendantsOfKind(SyntaxKind.TemplateExpression),
+      ];
+      return literals.some((lit) => lit.getText().includes('<slot'));
+    });
+
+    expect(hasLightDomSlottedElements && (hasTemplateSlotsInHtml || hasTemplateSlotsInJs)).toBe(true);
   });
 
-  test('Requirement 2: Shadow root is built by cloning template content with cloneNode or importNode', () => {
-    const project = getJsProject(targetFiles);
-    expect(clonesTemplateContent(project)).toBe(true);
+  test('Component styles are encapsulated inside the shadow root rather than global .card styles', () => {
+    const globalStylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const globalRules = Array.from(globalStylesheet.cssRules);
+    const hasGlobalCardRule = globalRules.some(
+      (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.trim() === '.card'
+    );
+
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const hasTemplateStyle = docs.some((d) => {
+      const templates = Array.from(d.document.querySelectorAll('template'));
+      return templates.some((tmpl: any) => {
+        const root = tmpl.content || tmpl;
+        return Boolean(
+          root.querySelector && root.querySelector('style, link[rel="stylesheet"]')
+        );
+      });
+    });
+
+    const project: Project = getJsProject(targetFiles);
+    const hasConstructedStyleSheet = project.getSourceFiles().some((sf) => {
+      const propAccesses = sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
+      return propAccesses.some(
+        (pa) => pa.getName() === 'adoptedStyleSheets' || pa.getName() === 'replaceSync'
+      );
+    });
+
+    expect(!hasGlobalCardRule && (hasTemplateStyle || hasConstructedStyleSheet)).toBe(true);
   });
 
-  test('Requirement 2: Component constructor does not assign innerHTML per instance', () => {
-    const project = getJsProject(targetFiles);
-    expect(hasNoInnerHTMLInConstructor(project)).toBe(true);
-  });
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
+    });
 
-  test('Requirement 3: Light DOM markup specifies slot attributes for projection into named slots', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    expect(hasSlottedLightDomChildren(docs)).toBe(true);
-  });
+    test('Seasonal cards render with an open shadowRoot containing projected slot elements', async ({ page }) => {
+      const isShadowRenderedAndProjected = await page.evaluate(() => {
+        const grid = document.querySelector('.grid');
+        if (!grid || grid.children.length === 0) return false;
+        const cards = Array.from(grid.children);
+        return cards.every((card) => {
+          if (!card.tagName.includes('-') || !card.shadowRoot) return false;
+          const slots = Array.from(card.shadowRoot.querySelectorAll('slot'));
+          if (slots.length === 0) return false;
+          const totalAssigned = slots.reduce(
+            (count, slot) => count + slot.assignedElements().length,
+            0
+          );
+          return totalAssigned > 0;
+        });
+      });
 
-  test('Requirement 3: Light DOM markup includes unslotted elements for the default slot', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    expect(hasUnslottedLightDomChildren(docs)).toBe(true);
-  });
+      expect(isShadowRenderedAndProjected).toBe(true);
+    });
 
-  test('Requirement 3: Component template defines both named slots and a default slot', () => {
-    const project = getJsProject(targetFiles);
-    const docs = getHtmlDocuments(targetFiles);
-    expect(templateHasNamedAndDefaultSlots(project, docs)).toBe(true);
-  });
+    test('Light DOM element with .card class outside the component does not receive encapsulated card styles', async ({ page }) => {
+      const externalCardBg = await page.evaluate(() => {
+        const probe = document.createElement('div');
+        probe.className = 'card';
+        document.body.appendChild(probe);
+        const bg = window.getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return bg;
+      });
 
-  test('Requirement 4: Component registers a slotchange event listener on slots', () => {
-    const project = getJsProject(targetFiles);
-    expect(listensForSlotChange(project)).toBe(true);
-  });
-
-  test('Requirement 4: Whitespace-only text is ignored using assignedElements or filtering assignedNodes', () => {
-    const project = getJsProject(targetFiles);
-    expect(filtersAssignedContent(project)).toBe(true);
-  });
-
-  test('Requirement 4: Component updates state or attributes when slot content changes', () => {
-    const project = getJsProject(targetFiles);
-    expect(updatesComponentStateOnSlotChange(project)).toBe(true);
-  });
-
-  test('Requirement 5: Component styles are encapsulated in the shadow root', () => {
-    const project = getJsProject(targetFiles);
-    const docs = getHtmlDocuments(targetFiles);
-    expect(hasShadowRootStyles(project, docs)).toBe(true);
-  });
-
-  test('Requirement 5: Component utilizes a constructed CSSStyleSheet or shadow stylesheet', () => {
-    const project = getJsProject(targetFiles);
-    expect(usesConstructedOrShadowStyleSheet(project)).toBe(true);
-  });
-
-  test('Requirement 6: Global page stylesheet does not contain styles for .card', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    expect(hasNoGlobalCardStyleRule(stylesheet)).toBe(true);
-  });
-
-  test('Requirement 6: Component internal .card styles are encapsulated in component styles', () => {
-    const project = getJsProject(targetFiles);
-    expect(hasEncapsulatedCardStyles(project)).toBe(true);
+      expect(externalCardBg).toBe('rgba(0, 0, 0, 0)');
+    });
   });
 });
