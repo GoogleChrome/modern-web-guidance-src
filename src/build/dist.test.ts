@@ -274,7 +274,7 @@ test.skip('THIRD_PARTY_NOTICES validation', async () => {
   assert.ok(content.includes('-------------------- DEPENDENCY DIVIDER --------------------'), 'Should contain dividers');
 });
 
-test('packaged dist contains tokenizer files and no .cache', async () => {
+test('packaged dist contains static-model files and no .cache', async () => {
   const packJson = execSync('npm pack --dry-run --json', { encoding: 'utf8', cwd: STAGING_DIR });
   const parsed = JSON.parse(packJson);
   const pkgInfo = Array.isArray(parsed) ? parsed[0] : parsed;

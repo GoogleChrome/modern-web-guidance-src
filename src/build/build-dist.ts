@@ -208,7 +208,10 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     const staticModelDir = path.join(rootDir, "src/rag/static-model");
     const destStaticModelDir = path.join(DIST_DIR, "static-model");
     if (fs.existsSync(staticModelDir)) {
-      fs.cpSync(staticModelDir, destStaticModelDir, { recursive: true });
+      fs.mkdirSync(destStaticModelDir, { recursive: true });
+      for (const file of ["words.json", "words.i8", "words.scale.f32"]) {
+        fs.copyFileSync(path.join(staticModelDir, file), path.join(destStaticModelDir, file));
+      }
     }
 
     try {

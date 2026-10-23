@@ -30,6 +30,7 @@ export interface UseCaseVector {
 
 export interface EmbedderLike {
   embed(text: string): Promise<number[]>;
+  countTokens?(text: string): number | Promise<number>;
 }
 
 /** Query-level cosine floor: if no chunk in the corpus reaches this similarity, `[]` is returned.
@@ -58,10 +59,12 @@ function resolveSkillsCliDataDir(): string {
   return BUNDLE_DIR;
 }
 
-export function dotProduct(a: number[], b: number[]): number {
-  const len = Math.min(a.length, b.length);
+export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
+  if (a.length !== b.length) {
+    throw new Error(`Vector dimension mismatch in dotProduct: ${a.length} !== ${b.length}`);
+  }
   let sum = 0;
-  for (let i = 0; i < len; i++) {
+  for (let i = 0; i < a.length; i++) {
     sum += a[i] * b[i];
   }
   return sum;

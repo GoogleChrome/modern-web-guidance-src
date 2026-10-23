@@ -32,6 +32,7 @@ import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
 import { rootDir, outDir } from "../core/paths.ts";
 import { toDevsiteMarkdown } from "./devsite-markdown.ts";
+import type { EmbedderLike } from "../rag/search.ts";
 
 const WORKSPACE_ROOT = rootDir;
 
@@ -76,26 +77,6 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
     cachedManifest: path.join(cacheDir, "manifest.json"),
     cachedGuides: path.join(cacheDir, "guides"),
   };
-}
-
-function getTransformersVersion(): string {
-  try {
-    const entry = fileURLToPath(import.meta.resolve("@huggingface/transformers"));
-    let dir = path.dirname(entry);
-    while (dir !== path.dirname(dir)) {
-      const pkgPath = path.join(dir, "package.json");
-      if (fs.existsSync(pkgPath)) {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-        if (pkg.name === "@huggingface/transformers" && typeof pkg.version === "string") {
-          return pkg.version;
-        }
-      }
-      dir = path.dirname(dir);
-    }
-    throw new Error("Could not find package.json with name '@huggingface/transformers'");
-  } catch (err) {
-    throw new Error(`Failed to extract @huggingface/transformers version for pipeline hash: ${(err as Error).message}`);
-  }
 }
 
 async function computePipelineHash(
@@ -220,17 +201,19 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   const storeUseCases: StoreUseCase[] = [];
   const staticSiteGuides: StaticSiteGuideMetadata[] = [];
 
-  let embedder: any = null;
+  let embedder: EmbedderLike | undefined;
   if (TARGET !== 'static-site') {
     if (modelName) {
       console.log(`Using custom embedding model: ${modelName}`);
       const { Embedder } = await import("../rag/transformers-embedder.ts");
-      embedder = Embedder.getInstance(modelName);
-      await embedder.init();
+      const inst = Embedder.getInstance(modelName);
+      await inst.init();
+      embedder = inst;
     } else {
       const { StaticEmbedder } = await import("../rag/static-embedder.ts");
-      embedder = StaticEmbedder.getInstance();
-      embedder.init();
+      const inst = StaticEmbedder.getInstance();
+      inst.init();
+      embedder = inst;
     }
   }
 
@@ -324,7 +307,7 @@ async function processSingleGuideFile(
   id: string,
   useCases: UseCase[],
   storeUseCases: StoreUseCase[],
-  embedder?: any,
+  embedder?: EmbedderLike,
   staticSiteGuides?: StaticSiteGuideMetadata[],
   modelName?: string
 ) {
@@ -376,9 +359,12 @@ web-feature-ids: ${JSON.stringify(featureIds)}
     return;
   }
 
+  if (!embedder) {
+    throw new Error(`Embedder is required for target ${TARGET}`);
+  }
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
-  const tokenCount = await embedder.countTokens(processedMarkdown);
+  const tokenCount = embedder.countTokens ? await embedder.countTokens(processedMarkdown) : 0;
 
   useCases.push({
     id,
