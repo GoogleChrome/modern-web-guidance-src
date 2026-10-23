@@ -404,23 +404,23 @@
       moveItem(item, direction === 'up' ? sibling : sibling.nextElementSibling, true);
       updateDisabledStates();
 
-      // Restore focus to the moved item's active button or shift to prevent focus loss
+      // Restore focus without scrolling: moveItem() already revealed the item
       if (direction === 'up' && wasUpFocused) {
         const upBtn = item.querySelector('.move-up-button');
         if (upBtn.disabled) {
-          item.querySelector('.move-down-button').focus();
+          item.querySelector('.move-down-button').focus({ preventScroll: true });
         } else {
-          upBtn.focus();
+          upBtn.focus({ preventScroll: true });
         }
       } else if (direction === 'down' && wasDownFocused) {
         const downBtn = item.querySelector('.move-down-button');
         if (downBtn.disabled) {
-          item.querySelector('.move-up-button').focus();
+          item.querySelector('.move-up-button').focus({ preventScroll: true });
         } else {
-          downBtn.focus();
+          downBtn.focus({ preventScroll: true });
         }
       } else {
-        activeElement?.focus();
+        activeElement?.focus({ preventScroll: true });
       }
 
       announce(`${item.dataset.label} moved ${direction}. Position ${getPosition(item)} of ${list.children.length}.`);
@@ -454,9 +454,9 @@
         return;
       } else if (event.key === 'Escape') {
         event.preventDefault();
-        moveItem(item, grabbedNext);
+        moveItem(item, grabbedNext, true);
         updateDisabledStates();
-        handle.focus();
+        handle.focus({ preventScroll: true });
         releaseHandle();
         announce(`Cancelled. ${item.dataset.label} returned to position ${getPosition(item)} of ${list.children.length}.`);
       } else if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
