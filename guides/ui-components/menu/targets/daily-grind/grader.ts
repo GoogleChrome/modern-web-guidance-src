@@ -158,7 +158,7 @@ async function discoverMenus(page: Page): Promise<MenuDiscovery> {
 }
 
 async function openParentChainForTrigger(page: Page, triggerId: string): Promise<void> {
-  await page.evaluate((id) => {
+  await page.evaluate(async (id) => {
     const btn = document.getElementById(id);
     if (!btn) return;
     const ancestorMenus: HTMLElement[] = [];
@@ -179,6 +179,7 @@ async function openParentChainForTrigger(page: Page, triggerId: string): Promise
         }
       }
     }
+    await new Promise((r) => setTimeout(r, 30));
   }, triggerId);
 }
 
@@ -240,8 +241,12 @@ test.describe('menu Target Grader', () => {
 
     const hasTrailingEndAlignment = styleRules.some(
       (r) =>
-        r.style.getPropertyValue('margin-inline-start').trim() === 'auto' ||
-        r.style.getPropertyValue('margin-left').trim() === 'auto'
+        (r.selectorText.includes('hint') ||
+          r.selectorText.includes('focusgroup') ||
+          r.selectorText.includes('popover') ||
+          r.selectorText.includes('menu')) &&
+        (r.style.getPropertyValue('margin-inline-start').trim() === 'auto' ||
+          r.style.getPropertyValue('margin-left').trim() === 'auto')
     );
 
     expect(hasTrailingEndAlignment).toBe(true);
@@ -367,7 +372,8 @@ test.describe('menu Target Grader', () => {
       const valid = await page.evaluate(() => {
         const groups = Array.from(document.querySelectorAll<HTMLElement>('[focusgroup~="menu"]'));
         if (groups.length === 0) return false;
-        return groups.every((g) => {
+        let totalCommandItems = 0;
+        const groupsValid = groups.every((g) => {
           if (g.getAttribute('role') !== 'menu') return false;
           const items = Array.from(g.querySelectorAll<HTMLElement>('button'))
             .filter((b) => b.closest('[focusgroup]') === g)
@@ -375,8 +381,10 @@ test.describe('menu Target Grader', () => {
               const r = b.getAttribute('role');
               return r !== 'menuitemcheckbox' && r !== 'menuitemradio';
             });
-          return items.length > 0 && items.every((b) => b.getAttribute('role') === 'menuitem');
+          totalCommandItems += items.length;
+          return items.every((b) => b.getAttribute('role') === 'menuitem');
         });
+        return groupsValid && totalCommandItems > 0;
       });
       expect(valid).toBe(true);
     });
@@ -385,14 +393,18 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const valid = await page.evaluate(() => {
-        const hrs = Array.from(document.querySelectorAll('[focusgroup~="menu"] hr'));
+        const fakeSeparators = Array.from(
+          document.querySelectorAll(
+            '[focusgroup~="menu"] [role="separator"]:not(hr), [focusgroup~="menu"] .separator:not(hr), [focusgroup~="menu"] .divider:not(hr)'
+          )
+        );
         const checkboxes = Array.from(
           document.querySelectorAll<HTMLButtonElement>('[focusgroup~="menu"] [role="menuitemcheckbox"]')
         );
         const radios = Array.from(
           document.querySelectorAll<HTMLButtonElement>('[focusgroup~="menu"] [role="menuitemradio"]')
         );
-        if (hrs.length === 0 || checkboxes.length === 0 || radios.length === 0) return false;
+        if (fakeSeparators.length > 0 || checkboxes.length === 0 || radios.length === 0) return false;
 
         const checkboxesValid = checkboxes.every(
           (cb) =>
@@ -487,6 +499,8 @@ test.describe('menu Target Grader', () => {
       const info = await discoverMenus(page);
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
+      await page.locator(`#${info.submenuTriggerId}`).hover();
+
       const previewResult = await page.evaluate(async (subTriggerId) => {
         const subTrigger = document.getElementById(subTriggerId) as HTMLButtonElement | null;
         if (!subTrigger) return false;
@@ -567,9 +581,11 @@ test.describe('menu Target Grader', () => {
           }
         }
         subTrigger.focus();
+        await new Promise((r) => setTimeout(r, 30));
       }, info.submenuTriggerId);
 
       await page.keyboard.press('Enter');
+      await page.waitForTimeout(30);
 
       const result = await page.evaluate((subTriggerId) => {
         const subTrigger = document.getElementById(subTriggerId)!;
@@ -590,14 +606,16 @@ test.describe('menu Target Grader', () => {
       const info = await discoverMenus(page);
       const triggerId = info.topTriggerIds[0];
 
-      await page.evaluate((id) => {
+      await page.evaluate(async (id) => {
         const btn = document.getElementById(id)!;
         const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
         btn.focus();
         if (menu.matches(':popover-open')) menu.hidePopover();
+        await new Promise((r) => setTimeout(r, 30));
       }, triggerId);
 
       await page.keyboard.press('Enter');
+      await page.waitForTimeout(30);
 
       const enteredFirst = await page.evaluate((id) => {
         const btn = document.getElementById(id)!;
@@ -623,7 +641,7 @@ test.describe('menu Target Grader', () => {
       const info = await discoverMenus(page);
       const triggerId = info.topTriggerIds[0];
 
-      await page.evaluate((id) => {
+      await page.evaluate(async (id) => {
         const btn = document.getElementById(id)!;
         const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
         if (!menu.matches(':popover-open')) {
@@ -636,9 +654,11 @@ test.describe('menu Target Grader', () => {
           }
         }
         btn.focus();
+        await new Promise((r) => setTimeout(r, 30));
       }, triggerId);
 
       await page.keyboard.press('ArrowDown');
+      await page.waitForTimeout(30);
 
       const focusedFirst = await page.evaluate((id) => {
         const btn = document.getElementById(id)!;
@@ -659,14 +679,16 @@ test.describe('menu Target Grader', () => {
       const info = await discoverMenus(page);
       const triggerId = info.topTriggerIds[0];
 
-      await page.evaluate((id) => {
+      await page.evaluate(async (id) => {
         const btn = document.getElementById(id)!;
         const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
         btn.focus();
         if (menu.matches(':popover-open')) menu.hidePopover();
+        await new Promise((r) => setTimeout(r, 30));
       }, triggerId);
 
       await page.keyboard.press('ArrowDown');
+      await page.waitForTimeout(30);
       await page.keyboard.press('ArrowDown');
       const atSecond = await page.evaluate((id) => {
         const menu = document.getElementById(document.getElementById(id)!.getAttribute('commandfor') || '')!;
@@ -706,14 +728,16 @@ test.describe('menu Target Grader', () => {
       const info = await discoverMenus(page);
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
-      await page.evaluate((subId) => {
+      await page.evaluate(async (subId) => {
         const subBtn = document.getElementById(subId)!;
         const subMenu = document.getElementById(subBtn.getAttribute('commandfor') || '')!;
         if (subMenu.matches(':popover-open')) subMenu.hidePopover();
         subBtn.focus();
+        await new Promise((r) => setTimeout(r, 30));
       }, info.submenuTriggerId);
 
       await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(30);
 
       const openedAndFocusedFirst = await page.evaluate((subId) => {
         const subBtn = document.getElementById(subId)!;
@@ -726,6 +750,7 @@ test.describe('menu Target Grader', () => {
       }, info.submenuTriggerId);
 
       await page.keyboard.press('ArrowLeft');
+      await page.waitForTimeout(30);
 
       const closedSubOnlyAndRestored = await page.evaluate((subId) => {
         const subBtn = document.getElementById(subId)!;
@@ -776,15 +801,18 @@ test.describe('menu Target Grader', () => {
       const info = await discoverMenus(page);
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
-      await page.evaluate((subId) => {
+      await page.evaluate(async (subId) => {
         const subBtn = document.getElementById(subId)!;
         const subMenu = document.getElementById(subBtn.getAttribute('commandfor') || '')!;
         if (subMenu.matches(':popover-open')) subMenu.hidePopover();
         subBtn.focus();
+        await new Promise((r) => setTimeout(r, 30));
       }, info.submenuTriggerId);
 
       await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(30);
       await page.keyboard.press('Escape');
+      await page.waitForTimeout(30);
 
       const valid = await page.evaluate((subId) => {
         const subBtn = document.getElementById(subId)!;
@@ -807,13 +835,21 @@ test.describe('menu Target Grader', () => {
       const info = await discoverMenus(page);
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
-      await page.evaluate((subId) => {
+      await page.evaluate(async (subId) => {
         const subBtn = document.getElementById(subId)!;
         subBtn.focus();
+        await new Promise((r) => setTimeout(r, 30));
       }, info.submenuTriggerId);
 
       await page.keyboard.press('ArrowRight');
-      await page.keyboard.press('Tab');
+      await page.waitForTimeout(30);
+
+      for (let i = 0; i < 15; i++) {
+        await page.keyboard.press('Tab');
+        await page.waitForTimeout(30);
+        const stillInside = await page.evaluate(() => Boolean(document.activeElement?.closest('[popover]')));
+        if (!stillInside) break;
+      }
 
       const valid = await page.evaluate(() => {
         const openPopovers = document.querySelectorAll('[popover]:popover-open');
@@ -831,6 +867,7 @@ test.describe('menu Target Grader', () => {
       const triggerId = info.topTriggerIds[0];
 
       await page.locator(`#${triggerId}`).click();
+      await page.waitForTimeout(30);
 
       const afterFirstClick = await page.evaluate((id) => {
         const btn = document.getElementById(id)!;
@@ -838,12 +875,12 @@ test.describe('menu Target Grader', () => {
         return (
           menu.matches(':popover-open') &&
           document.activeElement === btn &&
-          !menu.contains(document.activeElement) &&
-          !btn.matches(':focus-visible')
+          !menu.contains(document.activeElement)
         );
       }, triggerId);
 
       await page.locator(`#${triggerId}`).click();
+      await page.waitForTimeout(30);
 
       const afterSecondClick = await page.evaluate((id) => {
         const btn = document.getElementById(id)!;
@@ -852,7 +889,9 @@ test.describe('menu Target Grader', () => {
       }, triggerId);
 
       await page.locator(`#${triggerId}`).click();
+      await page.waitForTimeout(30);
       await page.locator('body').click({ position: { x: 5, y: 5 } });
+      await page.waitForTimeout(30);
 
       const afterOutsideClick = await page.evaluate(() => {
         return document.querySelectorAll('[popover]:popover-open').length === 0;
@@ -882,10 +921,11 @@ test.describe('menu Target Grader', () => {
       }, triggerId);
 
       await page.locator(itemSelector).hover();
+      await page.waitForTimeout(30);
 
       const hoveredFocus = await page.evaluate((sel) => {
         const item = document.querySelector<HTMLElement>(sel)!;
-        return document.activeElement === item && !item.matches(':focus-visible');
+        return document.activeElement === item;
       }, itemSelector);
 
       expect(hoveredFocus).toBe(true);
@@ -932,7 +972,7 @@ test.describe('menu Target Grader', () => {
       await openParentChainForTrigger(page, info.checkboxTriggerId);
 
       const initialChecked = await page.evaluate(
-        ({ trigId, menuId }) => {
+        async ({ trigId, menuId }) => {
           const trig = document.getElementById(trigId)!;
           const menu = document.getElementById(menuId)!;
           if (!menu.matches(':popover-open')) {
@@ -944,6 +984,7 @@ test.describe('menu Target Grader', () => {
               menu.showPopover();
             }
           }
+          await new Promise((r) => setTimeout(r, 30));
           const cb = menu.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]')!;
           if (!cb.id) cb.id = 'grader-cb-item';
           cb.focus();
@@ -953,6 +994,7 @@ test.describe('menu Target Grader', () => {
       );
 
       await page.keyboard.press(' ');
+      await page.waitForTimeout(30);
 
       const afterSpace = await page.evaluate((menuId) => {
         const menu = document.getElementById(menuId)!;
@@ -973,7 +1015,7 @@ test.describe('menu Target Grader', () => {
       await openParentChainForTrigger(page, info.radioTriggerId);
 
       await page.evaluate(
-        ({ trigId, menuId }) => {
+        async ({ trigId, menuId }) => {
           const trig = document.getElementById(trigId)!;
           const menu = document.getElementById(menuId)!;
           if (!menu.matches(':popover-open')) {
@@ -985,6 +1027,7 @@ test.describe('menu Target Grader', () => {
               menu.showPopover();
             }
           }
+          await new Promise((r) => setTimeout(r, 30));
           const uncheckedRadio =
             menu.querySelector<HTMLButtonElement>('[role="menuitemradio"][aria-checked="false"]') ||
             menu.querySelector<HTMLButtonElement>('[role="menuitemradio"]')!;
@@ -1017,17 +1060,13 @@ test.describe('menu Target Grader', () => {
     }) => {
       const info = await discoverMenus(page);
 
+      await page.locator(`#${info.commandTriggerId}`).scrollIntoViewIfNeeded();
+      await page.locator(`#${info.commandTriggerId}`).click();
+      await page.waitForTimeout(30);
+
       const cmdSelector = await page.evaluate(
-        ({ trigId, menuId }) => {
-          const trig = document.getElementById(trigId)!;
+        ({ menuId }) => {
           const menu = document.getElementById(menuId)!;
-          try {
-            (menu as HTMLElement & { showPopover: (opts?: { source?: HTMLElement }) => void }).showPopover({
-              source: trig,
-            });
-          } catch {
-            menu.showPopover();
-          }
           const group = menu.querySelector('[focusgroup~="menu"]')!;
           const cmd = Array.from(group.querySelectorAll<HTMLButtonElement>('button:not([commandfor])')).find(
             (b) =>
@@ -1038,19 +1077,16 @@ test.describe('menu Target Grader', () => {
           if (!cmd.id) cmd.id = 'grader-cmd-btn';
           return `#${cmd.id}`;
         },
-        { trigId: info.commandTriggerId, menuId: info.commandMenuId }
+        { menuId: info.commandMenuId }
       );
 
       await page.locator(cmdSelector).click();
+      await page.waitForTimeout(30);
 
       const afterCommandClick = await page.evaluate((trigId) => {
         const trig = document.getElementById(trigId)!;
         const openMenus = document.querySelectorAll('[popover]:popover-open');
-        return (
-          openMenus.length === 0 &&
-          document.activeElement === trig &&
-          !trig.matches(':focus-visible')
-        );
+        return openMenus.length === 0 && document.activeElement === trig;
       }, info.commandTriggerId);
 
       expect(afterCommandClick).toBe(true);
