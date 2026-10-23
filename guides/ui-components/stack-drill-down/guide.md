@@ -7,6 +7,7 @@ web-feature-ids:
   - scroll-driven-animations
   - scroll-snap
   - scroll-snap-events
+  - system-color
 ---
 
 # Stack Drill Down
@@ -45,7 +46,9 @@ Each view is a `.Stack-view` direct child of `.Stack` (the snap target) with a `
        of this section of the app. No back button — there is nothing
        behind the root in the stack. -->
   <div class="Stack-view" inert>
-    <div class="Stack-viewContent">
+    <!-- tabindex="-1" lets focus move to the root's content when there is
+         no link or back button to focus (step 7). -->
+    <div class="Stack-viewContent" tabindex="-1">
       <!-- Root content; includes <a href> links that drill in. -->
     </div>
   </div>
@@ -55,10 +58,12 @@ Each view is a `.Stack-view` direct child of `.Stack` (the snap target) with a `
   <div class="Stack-view" inert>
     <div class="Stack-viewContent">
       <header>
-        <!-- DO include a back button. The swipe gesture only works on
-             touch — keyboard and pointer users need an explicit control. -->
-        <button class="back" aria-label="Back"></button>
-        <!-- Title / breadcrumb / etc. -->
+        <!-- DO include a back button. The swipe gesture is not
+             discoverable or available to all users, so keyboard and
+             pointer users need an explicit control. Name it after the
+             view it returns to (step 7). -->
+        <button class="back" aria-label="Back to Inbox"></button>
+        <h2>Message</h2>
       </header>
       <main>
         <!-- View content; may include further drill-down <a href> links. -->
@@ -71,8 +76,8 @@ Each view is a `.Stack-view` direct child of `.Stack` (the snap target) with a `
   <div class="Stack-view">
     <div class="Stack-viewContent">
       <header>
-        <button class="back" aria-label="Back"></button>
-        <!-- ... -->
+        <button class="back" aria-label="Back to Message"></button>
+        <h2><!-- ... --></h2>
       </header>
       <main><!-- ... --></main>
     </div>
@@ -146,7 +151,10 @@ The stack is a horizontal grid where each child view is exactly the width of the
 .Stack-viewContent {
   width: 100%;
   height: 100%;
-  background-color: #fff;
+  /* Set the text color with the background color so the pair keeps its
+     contrast when the page uses a dark color scheme. */
+  background-color: Canvas;
+  color: CanvasText;
   /* Each view scrolls its own content vertically, independent of the
      stack's horizontal scroll. */
   overflow-y: auto;
@@ -262,7 +270,9 @@ function createRootView() {
   const view = document.createElement('div');
   view.className = 'Stack-view';
   view.innerHTML = `
-    <div class="Stack-viewContent">
+    <!-- tabindex="-1" lets step 7 focus the root's content when there is
+         no link to return focus to. -->
+    <div class="Stack-viewContent" tabindex="-1">
       <!-- Root content. Include <a href> elements pointing at URL paths
            that resolveUrl() accepts, to enable drill-down from here. -->
     </div>
@@ -273,16 +283,17 @@ function createRootView() {
 // Build a drill-down view DOM element from the resolved route data.
 // Customize the inner content freely, but DO preserve the .Stack-view
 // / .Stack-viewContent wrapper structure and DO include a back button
-// (the swipe gesture only works on touch).
+// (the swipe gesture is not discoverable or available to all users).
 function createDrillDownView(routeData) {
   const view = document.createElement('div');
   view.className = 'Stack-view';
   view.innerHTML = `
     <div class="Stack-viewContent">
       <header>
+        <!-- Step 7 names this button after the view it returns to. -->
         <button class="back" aria-label="Back"></button>
-        <!-- Title, breadcrumb, or other view chrome derived from
-             routeData. -->
+        <h2></h2>
+        <!-- Breadcrumb or other view chrome derived from routeData. -->
       </header>
       <main>
         <!-- View body, also from routeData. Include further <a href>
@@ -291,6 +302,9 @@ function createDrillDownView(routeData) {
       </main>
     </div>
   `;
+  // Set the title as text so it can't inject markup. (`title` is an
+  // example field; use whatever your routeData provides.)
+  view.querySelector('h2').textContent = routeData.title;
   return view;
 }
 
@@ -499,6 +513,11 @@ The handler is extracted into a standalone `onActiveViewChanged` function so the
 
 ```js
 function onActiveViewChanged(currentView) {
+  // Note whether focus is in the stack before views are made inert or
+  // removed, so the focus fallback below only moves focus that would
+  // otherwise be lost, and never moves it on page load.
+  const focusWasInStack = stack.contains(document.activeElement);
+
   // Walk the stack in DOM order to update each view's role:
   //  - Views at or before currentView stay in the DOM but get
   //    `inert` (except currentView) so focus, pointer events, and
@@ -538,6 +557,24 @@ function onActiveViewChanged(currentView) {
     history.go(currentViewDepth - currentDepth);
   }
 
+  // Name the active view in the title, and use the app name alone for the
+  // root. Each drill-down adds a history entry, and the title is what the
+  // history list, the tab and screen readers use to tell them apart.
+  // ('Mail' is an example app name.)
+  const viewTitle = currentView.querySelector('h2')?.textContent;
+  document.title = viewTitle ? `${viewTitle} | Mail` : 'Mail';
+
+  // Name the back button after the view it returns to: the previous view
+  // in the stack, or the root view after a deep link. Focus lands on it
+  // after a drill-down, so "Back" alone tells screen reader users nothing
+  // about where they are. ('Inbox' is the example root title.)
+  const back = currentView.querySelector('.back');
+  if (back) {
+    const parentTitle =
+      currentView.previousElementSibling?.querySelector('h2')?.textContent ?? 'Inbox';
+    back.setAttribute('aria-label', `Back to ${parentTitle}`);
+  }
+
   // Restore focus on the now-active view:
   //  - If we recorded which link the user activated to drill out
   //    of this view, return focus there so a swipe-back lands them
@@ -548,11 +585,17 @@ function onActiveViewChanged(currentView) {
   //    snap container to bring the focused element into view, which
   //    fights the snap and can land the user mid-snap.
   const stored = returnFocus.get(currentView);
-  if (stored) {
+  if (stored?.isConnected) {
     stored.focus({preventScroll: true});
     returnFocus.delete(currentView);
   } else if (currentView !== rootView) {
     currentView.querySelector('.back')?.focus({preventScroll: true});
+  } else if (focusWasInStack && !currentView.contains(document.activeElement)) {
+    // The root has no back button, and after a deep link or a pruned view
+    // there is no stored link either, so focus the root's content. Otherwise
+    // focus would stay in a removed or inert view and fall to <body>, and
+    // keyboard and screen reader users would restart from the top of the page.
+    currentView.querySelector('.Stack-viewContent')?.focus({preventScroll: true});
   }
 }
 
@@ -602,12 +645,14 @@ updateFromHistoryState(history.state, 'instant');
 - **DO** push a history entry on every drill-down and handle `popstate` so the OS-level Back gesture and the browser back/forward buttons work. This is what makes the pattern feel like a native app.
 - **DO** reconcile history from the active-view-changed handler when a swipe-back lands on a view whose depth doesn't match `currentDepth`. Without this, a subsequent OS Back returns the user somewhere unexpected because the browser's history cursor is out of sync with what's on screen.
 - **DO** prune views the user swiped past from the DOM. A long drill-down session can otherwise accumulate dozens of detached subtrees. The cached URL path in `entriesByDepth` is enough to rebuild any view if forward navigation returns to it.
+- **DO** make sure focus ends up inside the active view after every active-view change, including Back from a deep link and jumps to the root. If there is no stored link and no back button, focus the view's `.Stack-viewContent` (given `tabindex="-1"`). Focus left in a removed or `inert` view falls to `<body>`.
+- **DO** update `document.title` to name the active view on every active-view change. Each drill-down adds a history entry, and the title is what the browser's history list, the tab and screen readers use to tell those entries apart.
 - **DO** call `.focus({preventScroll: true})` when restoring focus inside the stack. The default `preventScroll: false` makes the browser scroll the focus target into view, which fights the snap container and can land the user mid-snap.
 - **DO** preserve cmd/ctrl/middle-click on internal links so URLs remain shareable and openable in a new tab.
 - **DO** use `behavior: 'instant'` for multi-step history jumps AND for spatial-forward popstate transitions (`toIdx > fromIdx`). Multi-step jumps would otherwise fire `scrollsnapchange` at every intermediate snap and do N rounds of inert/focus/history work. Forward popstates are often spurious — iOS Safari treats edge swipes as browser forward even with `overscroll-behavior-x: none` set, and an instant swap is much less misleading than animating a "drilldown" the user didn't initiate. The user-initiated drill-down path (`drillDown`) is unaffected because it scrolls directly, not via `popstate`.
 - **DO** respect `prefers-reduced-motion`: declare `scroll-behavior: smooth` only inside `@media (prefers-reduced-motion: no-preference)` and call `scrollTo` / `scrollBy` with `behavior: 'auto'` (not `'smooth'`) so the OS-level preference takes effect without per-call JS branching. Hard-coding `behavior: 'smooth'` bypasses the user's setting.
 - **DO** render real `<a href>` elements as drill-down triggers, not `<button onclick>` or `<div>`. Real anchors get URL preview on hover, shareability, middle-click, screen-reader role, and SEO for free.
-- **DO** include an explicit back button in every drill-down view. The swipe gesture only works on touch — keyboard, pointer, and desktop users need a visible affordance.
+- **DO** include an explicit back button in every drill-down view. The swipe gesture is not discoverable or available to all users — keyboard, pointer, and desktop users need a visible affordance. Horizontal arrow keys and trackpad swipes can also scroll the stack.
 - **DO NOT** call `history.pushState` from the `popstate` handler — that pushes *new* entries while the user is trying to go back and breaks the browser back button.
 - **DO NOT** drive the parallax with a `scroll` event listener when scroll-driven animations are available. The CSS path runs on the compositor; a JS scroll listener runs on the main thread and will visibly drop frames during the gesture.
 - **DO NOT** mutate views you removed from the DOM after a swipe-back. Treat `entriesByDepth` as the canonical record: a pruned entry has `view: null` and is rebuilt on demand in `updateFromHistoryState`.
