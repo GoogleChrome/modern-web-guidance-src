@@ -1,1 +1,1 @@
-- Establish shared secrets using public-key encapsulation or key agreement—including hybrid and post-quantum protection—and encrypt sensitive data in the browser with authenticated encryption.
+- Add an encrypted delivery notes feature to the Daily Grind homepage that establishes shared secrets using public-key encapsulation or key agreement (including hybrid and post-quantum protection) and encrypts sensitive customer notes in the browser with authenticated encryption.

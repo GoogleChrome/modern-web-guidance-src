@@ -1,1 +1,1 @@
-- Verify that a user owns an email address during account creation, sign-in, or recovery without sending a one-time passcode or magic link email.
+- Build a new rewards account sign-up form on the Daily Grind homepage (with a server verification endpoint) that uses browser-assisted email ownership verification to verify that the customer owns their email address during registration without sending a one-time passcode or magic link email.
