@@ -94,6 +94,37 @@ await document.modelContext.registerTool({
 });
 ```
 
+## Writing Tool and Parameter Descriptions
+
+The agent already receives the full `inputSchema`, so the `description` only needs to say what the tool does and when to use it. **DO NOT** repeat parameter names, types, `enum` values, defaults, or limits in it; declare them in the schema (`enum`, `default`, `minimum`/`maximum`) instead. Parameter descriptions follow the same rule: say what the value means, not its type or allowed values.
+
+The browser does not validate arguments against `inputSchema` or apply `default` values, so do both in `execute`.
+
+```javascript
+const SORT_ORDERS = ["newest", "price_low_to_high"];
+
+await document.modelContext.registerTool({
+  name: "search_products",
+  // Don't list the sort orders here, even via SORT_ORDERS: `enum` already does.
+  description: "Searches the product catalog by keyword. Use when the user wants to find or compare products.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: { type: "string", description: "Words to search for." },
+      sort: { type: "string", enum: SORT_ORDERS, default: "newest", description: "Order of the results." },
+    },
+    required: ["query"],
+  },
+  async execute({ query, sort = "newest" }, { signal }) {
+    if (typeof query !== "string" || !SORT_ORDERS.includes(sort)) {
+      return { error: "Pass a search query and a supported sort order.", sortOrders: SORT_ORDERS };
+    }
+    return await productService.search({ query, sort }, { signal });
+  },
+  annotations: { readOnlyHint: true },
+});
+```
+
 ## Execution Patterns
 
 The `execute` callback always receives two arguments: the input object, and an options object carrying an `AbortSignal` — `execute(inputObject, { signal })`.
@@ -335,6 +366,40 @@ export function createInventoryTool(inventoryManager) {
   };
 }
 ```
+
+## TypeScript Types
+
+In TypeScript projects, **DO NOT** hand-write declarations for `document.modelContext`. Install the official `webmcp-types` package (`npm install --save-dev webmcp-types`) and add it to `tsconfig.json`, since it is not picked up automatically:
+
+```jsonc
+{
+  "compilerOptions": {
+    "types": ["webmcp-types"]
+  }
+}
+```
+
+* `document.modelContext` is typed as optional, so guard it with `if (document.modelContext)` before use.
+* With an inline `inputSchema`, the `execute` input type is inferred from the schema.
+* Named types such as `WebMCP.ModelContextTool` are global (no import needed), useful for typing tool factories.
+
+## Framework support
+
+**MANDATORY:** If the app uses React, Angular, or Vue, register tools through that framework's official WebMCP integration, listed below. **DO NOT** call `document.modelContext.registerTool()` from components or write your own lifecycle wrapper. Each integration already handles feature detection, `AbortSignal` cleanup, and scoping tools to the component or injector lifecycle. These APIs are experimental, so before writing code, look up the current signature in the package's types or docs.
+
+| Framework | Package | API | Docs |
+|---|---|---|---|
+| React 18+ | `use-webmcp-tool` | `useWebMCP(options)`: one call per tool | npmjs.com/package/use-webmcp-tool |
+| Angular | `@angular/core`, `@angular/forms/signals` | `provideExperimentalWebMcpTools([...])` (app or route providers), `declareExperimentalWebMcpTool(...)` (inside services), `provideExperimentalWebMcpForms()` + the `experimentalWebMcpTool` option on Signal Forms | angular.dev/ai/webmcp |
+| Vue | `@vueuse/core` | `useWebMCP(options)` composable | vueuse.org/core/usewebmcp |
+
+All the rules in this guide still apply when you use these integrations:
+* Keep the tool definition shape the same: `name`, `description`, `inputSchema`, `execute(input, { signal })`, and `annotations`.
+* Follow the rules for descriptions and annotations.
+* Validate input and apply defaults inside `execute`.
+* Pass `signal` to long-running work.
+* To offer a tool only some of the time, pass `enabled` (React, Vue). **DO NOT** wrap the hook or composable call in a condition.
+* Integrations may wrap results and errors (for example as `{ content, isError }`). Check the integration's docs before relying on how errors reach the agent.
 
 ## API Notes
 

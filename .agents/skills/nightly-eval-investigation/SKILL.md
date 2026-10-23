@@ -122,7 +122,7 @@ Follow this linear playbook for each flagged task:
    The script `investigate.ts` automatically extracts and intersects the failed assertions across all three agents, writing them directly into the report.
    - **Omission Rule**: This section is only populated if the task triggered the `LOW_GUIDED_PASS_RATE` flag. For all other flags, it is completely omitted.
    - Only assertions that failed across all three agents are included.
-   - Review these common failures to analyze their root causes.
+   - Review these common failures to analyze their root causes. Each failed check in `evals.json` includes inline diagnostics (`error`, `errorLocation`, `pageSnapshot`, and `browserErrors`).
 
 3. **Map Flags to Diagnostic Explanations**
    Analyze the source files based on the specific flags that were triggered, and write a diagnostic summary explaining why the task was flagged under each active flag.

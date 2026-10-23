@@ -15,5 +15,4 @@ export default mergeSuiteConfig({
   numRuns: 1,  // Single run for faster feedback
   tasks: [],   // Empty = run all tasks, or specify: ['forms/light-dismiss-dialog/task']
   skillsToEnable: ['modern-web-guidance'],
-  includeTrace: false,
 });
