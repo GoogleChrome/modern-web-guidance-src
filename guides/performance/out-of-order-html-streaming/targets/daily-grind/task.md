@@ -1,1 +1,1 @@
-- Declaratively update the page with content streamed later into the same HTML document or via imperative JavaScript APIs.
+- Update the Seasonal Favorites section in index.html so its cards can be declaratively populated or updated by HTML fragments streamed later in the same document, as well as updated dynamically using the browser's built-in JavaScript APIs.
