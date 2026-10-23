@@ -19,7 +19,10 @@ const CHECKED_PSEUDO_ICON_REGEX =
   /:checked\s*[+~]\s*(?:label|span)::(?:before|after)\b/i;
 
 const NON_CHECKBOX_SELECTOR_REGEX =
-  /\b(?:radio|rating|star|slider|switch|toggle|onoff|nav|menu|panel|accordion)\b/i;
+  /\b(?:radio|rating|rate|star|slider|switch|toggle|onoff|nav|menu|panel|accordion)\b/i;
+
+const STAR_CONTENT_REGEX = /(?:★|☆|\\2605|\\2606|\\f005|\\f006)/i;
+const STAR_OR_RATING_SELECTOR_REGEX = /\b(?:star|rating|rate)\b/i;
 
 const SR_ONLY_REGEX = /\.(?:sr-only|visually-hidden)\b/i;
 
@@ -69,7 +72,16 @@ export const checkboxCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // 4. Case A: Custom checkmark icon on sibling pseudo-elements
+    // 4. Skip star rating widgets (.star, .rating, .rate, or Unicode star content)
+    if (STAR_OR_RATING_SELECTOR_REGEX.test(styleRule.selectorText)) {
+      return null;
+    }
+    const contentProperty = styleRule.getPropertyValue('content') ?? '';
+    if (STAR_CONTENT_REGEX.test(contentProperty)) {
+      return null;
+    }
+
+    // 5. Case A: Custom checkmark icon on sibling pseudo-elements
     if (CHECKED_PSEUDO_ICON_REGEX.test(styleRule.selectorText)) {
       if (NON_CHECKBOX_SELECTOR_REGEX.test(styleRule.selectorText)) {
         return null;

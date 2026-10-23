@@ -222,4 +222,99 @@ describe('ime-safe-enter-submit rule', () => {
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
   });
+
+  test('ignores Enter handlers that only call preventDefault, stopPropagation, or return false without submission', () => {
+    const code = `
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+        }
+      });
+      textarea.addEventListener('keydown', (e) => {
+        if (e.keyCode === 13) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      });
+      input2.addEventListener('keydown', (e) => {
+        switch (e.keyCode) {
+          case 13:
+            e.preventDefault();
+            break;
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'chat/suppress-only.js',
+      code,
+      [imeSafeEnterSubmitMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores custom ARIA role="button" elements with keydown activation', () => {
+    const code = `
+      const btn = document.getElementById('custom-btn');
+      btn.setAttribute('role', 'button');
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          btn.click();
+        }
+      });
+
+      const tab = document.getElementById('tab-1');
+      tab.role = 'tab';
+      tab.onkeydown = (e) => {
+        if (e.keyCode === 13) {
+          e.preventDefault();
+          tab.click();
+        }
+      };
+
+      $('[role="button"]').on('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          $(this).click();
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'ui/aria-button.js',
+      code,
+      [imeSafeEnterSubmitMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores JSX elements with role="button" handling Enter', () => {
+    const code = `
+      export function CustomButton({ onClick }) {
+        return (
+          <div
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onClick();
+              }
+            }}
+          >
+            Click me
+          </div>
+        );
+      }
+    `;
+    const { matches } = scanJsSource(
+      'components/CustomButton.tsx',
+      code,
+      [imeSafeEnterSubmitMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
 });

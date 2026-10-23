@@ -126,6 +126,89 @@ function hasMultiTimezoneContext(callExpr: CallExpression): boolean {
   return false;
 }
 
+function isTimezoneArithmeticUsage(callExpr: CallExpression): boolean {
+  const directParent = callExpr.getParent();
+  if (directParent && Node.isReturnStatement(directParent)) {
+    return false;
+  }
+
+  if (directParent && Node.isPropertyAssignment(directParent)) {
+    return false;
+  }
+
+  if (directParent && Node.isBinaryExpression(directParent)) {
+    if (
+      directParent.getOperatorToken().getKind() === SyntaxKind.EqualsToken &&
+      directParent.getRight() === callExpr
+    ) {
+      return false;
+    }
+  }
+
+  let currentNode: Node | undefined = callExpr;
+  while (currentNode && !Node.isStatement(currentNode)) {
+    const parentExpression = currentNode.getParent();
+    if (parentExpression && Node.isBinaryExpression(parentExpression)) {
+      const operatorKind = parentExpression.getOperatorToken().getKind();
+      if (
+        operatorKind === SyntaxKind.AsteriskToken ||
+        operatorKind === SyntaxKind.PlusToken ||
+        operatorKind === SyntaxKind.MinusToken ||
+        operatorKind === SyntaxKind.SlashToken
+      ) {
+        return true;
+      }
+    }
+    if (parentExpression && Node.isCallExpression(parentExpression)) {
+      const calleeText = unwrapExpression(parentExpression.getExpression()).getText();
+      if (
+        calleeText.includes('setMinutes') ||
+        calleeText.includes('setHours') ||
+        calleeText.includes('setTime') ||
+        calleeText.includes('Date.UTC')
+      ) {
+        return true;
+      }
+    }
+    currentNode = parentExpression;
+  }
+
+  if (
+    directParent &&
+    Node.isVariableDeclaration(directParent) &&
+    directParent.getInitializer() === callExpr
+  ) {
+    const varName = directParent.getName();
+    let scopeNode: Node | undefined = directParent.getParent();
+    while (
+      scopeNode &&
+      !Node.isFunctionDeclaration(scopeNode) &&
+      !Node.isFunctionExpression(scopeNode) &&
+      !Node.isArrowFunction(scopeNode) &&
+      !Node.isSourceFile(scopeNode)
+    ) {
+      scopeNode = scopeNode.getParent();
+    }
+    if (scopeNode) {
+      const scopeText = scopeNode.getText();
+      const arithmeticRegex = new RegExp(
+        `\\b${varName}\\s*(?:\\*|\\/|\\+|\\-)|(?:\\*|\\/|\\+|\\-)\\s*\\b${varName}\\b`,
+      );
+      if (arithmeticRegex.test(scopeText)) {
+        return true;
+      }
+      const dateMethodRegex = new RegExp(
+        `\\.(?:setMinutes|setHours|setTime|Date\\.UTC)\\s*\\([^)]*\\b${varName}\\b`,
+      );
+      if (dateMethodRegex.test(scopeText)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(expr)) {
@@ -139,6 +222,9 @@ function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
   // 1. getTimezoneOffset()
   if (methodName === 'getTimezoneOffset') {
     if (isProtectedByFeatureGuard(callExpr, TEMPORAL_GUARD_TOKENS)) {
+      return null;
+    }
+    if (!isTimezoneArithmeticUsage(callExpr)) {
       return null;
     }
     if (!hasMultiTimezoneContext(callExpr)) {

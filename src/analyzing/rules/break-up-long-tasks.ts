@@ -89,6 +89,51 @@ function isSchedulerYieldGuarded(node: Node): boolean {
   return false;
 }
 
+const DOM_DEFERRED_METHODS = new Set([
+  'focus',
+  'select',
+  'blur',
+  'scrollIntoView',
+]);
+
+function isDomDeferredMethodCall(callNode: Node): boolean {
+  if (Node.isCallExpression(callNode)) {
+    const callee = unwrapExpression(callNode.getExpression());
+    if (Node.isPropertyAccessExpression(callee)) {
+      return DOM_DEFERRED_METHODS.has(callee.getName());
+    }
+  }
+  return false;
+}
+
+function isDomDeferredOnlyExecutor(executorNode: Node, resolveParamName: string): boolean {
+  const calls = executorNode.getDescendantsOfKind(SyntaxKind.CallExpression);
+  let hasDomDeferredCall = false;
+
+  for (const call of calls) {
+    const callee = unwrapExpression(call.getExpression());
+    const calleeName = Node.isIdentifier(callee)
+      ? callee.getText()
+      : Node.isPropertyAccessExpression(callee)
+        ? callee.getName()
+        : '';
+
+    if (calleeName === 'setTimeout' || calleeName === 'setImmediate') {
+      continue;
+    }
+    if (resolveParamName && calleeName === resolveParamName) {
+      continue;
+    }
+    if (isDomDeferredMethodCall(call)) {
+      hasDomDeferredCall = true;
+      continue;
+    }
+    return false;
+  }
+
+  return hasDomDeferredCall;
+}
+
 /**
  * Checks whether an argument to setTimeout is the executor's resolve function.
  */
@@ -137,6 +182,24 @@ function matchPromiseYield(newExpr: NewExpression): AnalyzerMatch | null {
   const executorParams = executor.getParameters();
   const resolveParamName = executorParams.length > 0 ? executorParams[0].getName() : '';
 
+  if (isDomDeferredOnlyExecutor(executor, resolveParamName)) {
+    return null;
+  }
+
+  const parentNode = newExpr.getParent();
+  if (parentNode && Node.isPropertyAccessExpression(parentNode) && parentNode.getName() === 'then') {
+    const grandParent = parentNode.getParent();
+    if (grandParent && Node.isCallExpression(grandParent)) {
+      const thenArgs = grandParent.getArguments();
+      if (thenArgs.length > 0) {
+        const thenCallback = unwrapExpression(thenArgs[0]);
+        if (isDomDeferredOnlyExecutor(thenCallback, '')) {
+          return null;
+        }
+      }
+    }
+  }
+
   const calls = executor.getDescendantsOfKind(SyntaxKind.CallExpression);
   for (const call of calls) {
     // Skip if call is inside a nested Promise constructor
@@ -165,8 +228,14 @@ function matchPromiseYield(newExpr: NewExpression): AnalyzerMatch | null {
 
     if (calleeName === 'setTimeout') {
       const callArgs = call.getArguments();
-      if (callArgs.length > 0 && resolveParamName && !isResolveCallback(callArgs[0], resolveParamName)) {
-        continue;
+      if (callArgs.length > 0) {
+        const firstArg = unwrapExpression(callArgs[0]);
+        if (isDomDeferredOnlyExecutor(firstArg, resolveParamName)) {
+          return null;
+        }
+        if (resolveParamName && !isResolveCallback(firstArg, resolveParamName)) {
+          continue;
+        }
       }
       if (isZeroOrOmittedDelay(callArgs)) {
         return {
@@ -262,6 +331,30 @@ function matchSetImmediateYield(callExpr: CallExpression): AnalyzerMatch | null 
 }
 
 /**
+ * Checks whether MessageChannel ports are transferred via postMessage
+ * or if port2.postMessage is never invoked within the local scope (RPC / IPC pattern).
+ */
+function isMessageChannelTransferredOrRpc(newExpr: NewExpression, scopeNode: Node): boolean {
+  const scopeText = scopeNode.getText();
+
+  if (
+    /\[\s*(?:\w+\.)?port[12]\s*\]/.test(scopeText) ||
+    /postMessage\s*\([^,]+,[^,]*\[\s*(?:\w+\.)?port[12]/.test(scopeText) ||
+    /worker\s*\.\s*postMessage/i.test(scopeText) ||
+    /serviceWorker/i.test(scopeText) ||
+    /contentWindow\s*\.\s*postMessage/i.test(scopeText)
+  ) {
+    return true;
+  }
+
+  if (!/(?:\.port2|\.port1)\s*\.\s*postMessage\s*\(/.test(scopeText)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Checks whether MessageChannel is instantiated as a task-yielding workaround.
  */
 function matchMessageChannelYield(newExpr: NewExpression): AnalyzerMatch | null {
@@ -279,6 +372,22 @@ function matchMessageChannelYield(newExpr: NewExpression): AnalyzerMatch | null 
     return null;
   }
 
+  let scopeNode: Node | undefined = newExpr.getParent();
+  while (
+    scopeNode &&
+    !Node.isFunctionDeclaration(scopeNode) &&
+    !Node.isMethodDeclaration(scopeNode) &&
+    !Node.isClassDeclaration(scopeNode) &&
+    !Node.isSourceFile(scopeNode)
+  ) {
+    scopeNode = scopeNode.getParent();
+  }
+
+  const enclosingScope = scopeNode ?? newExpr.getSourceFile();
+  if (isMessageChannelTransferredOrRpc(newExpr, enclosingScope)) {
+    return null;
+  }
+
   // Check if enclosing scope or loop uses postMessage to yield tasks
   if (isInsideLoopOrChunkProcessor(newExpr)) {
     return {
@@ -288,24 +397,16 @@ function matchMessageChannelYield(newExpr: NewExpression): AnalyzerMatch | null 
     };
   }
 
-  // Also check if the enclosing function or statements setup channel port yielding
-  let scope: Node | undefined = newExpr.getParent();
-  while (scope && !Node.isFunctionDeclaration(scope) && !Node.isSourceFile(scope)) {
-    scope = scope.getParent();
-  }
-
-  if (scope) {
-    const scopeText = scope.getText();
-    if (
-      scopeText.includes('.port1.onmessage') &&
-      scopeText.includes('.port2.postMessage')
-    ) {
-      return {
-        line: newExpr.getStartLineNumber(),
-        message:
-          'MessageChannel zero-delay task-yielding workaround used instead of await scheduler.yield()',
-      };
-    }
+  const scopeText = enclosingScope.getText();
+  if (
+    scopeText.includes('.port1.onmessage') &&
+    scopeText.includes('.port2.postMessage')
+  ) {
+    return {
+      line: newExpr.getStartLineNumber(),
+      message:
+        'MessageChannel zero-delay task-yielding workaround used instead of await scheduler.yield()',
+    };
   }
 
   return null;

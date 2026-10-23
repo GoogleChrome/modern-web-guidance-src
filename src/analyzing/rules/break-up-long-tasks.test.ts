@@ -192,4 +192,73 @@ describe('break-up-long-tasks rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('ignores MessageChannel when port is passed in transfer list to worker', () => {
+    const code = `
+      function createWorkerRpc(worker) {
+        const channel = new MessageChannel();
+        worker.postMessage({ type: 'HANDSHAKE' }, [channel.port2]);
+        channel.port1.onmessage = (e) => {
+          handleResponse(e.data);
+        };
+      }
+    `;
+    const { matches } = scanJsSource(
+      'rpc/worker.js',
+      code,
+      [breakUpLongTasksMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores MessageChannel when port2.postMessage is never invoked locally', () => {
+    const code = `
+      function getChannel() {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = (e) => console.log(e);
+        return channel;
+      }
+    `;
+    const { matches } = scanJsSource(
+      'rpc/channel.js',
+      code,
+      [breakUpLongTasksMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('ignores new Promise with setTimeout only invoking .focus(), .select(), or .scrollIntoView()', () => {
+    const code = `
+      function focusInputDeferred(input) {
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            input.focus();
+            resolve();
+          }, 0);
+        });
+      }
+
+      function selectInputDeferred(input) {
+        return new Promise((resolve) => {
+          input.select();
+          setTimeout(resolve, 0);
+        });
+      }
+
+      function scrollPanelDeferred(panel) {
+        return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+          panel.scrollIntoView();
+        });
+      }
+    `;
+    const { matches } = scanJsSource(
+      'ui/dom-defer.js',
+      code,
+      [breakUpLongTasksMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
 });

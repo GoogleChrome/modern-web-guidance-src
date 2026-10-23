@@ -111,4 +111,39 @@ describe('drag rules', () => {
     const { matches } = scanJsSource('src/focus.js', code, [dragJsMatcher], project);
     assert.equal(matches.length, 0);
   });
+
+  test('exempts empty/no-op mousedown handler', () => {
+    const code = `
+      handle.addEventListener('mousedown', () => {});
+      panel.addEventListener('touchstart', (e) => {
+        // no-op comment
+      });
+    `;
+    const { matches } = scanJsSource('src/noop.js', code, [dragJsMatcher], project);
+    assert.equal(matches.length, 0);
+  });
+
+  test('exempts mousedown handler with only preventDefault even if enclosing scope contains coordinate tracking', () => {
+    const code = `
+      class WindowManager {
+        init() {
+          this.header.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            return false;
+          });
+        }
+
+        trackGlobalMouse(e) {
+          this.lastX = e.clientX;
+          this.lastY = e.clientY;
+          this.container.style.left = e.pageX + 'px';
+          document.addEventListener('mousemove', (moveEvent) => {
+            console.log(moveEvent.clientX);
+          });
+        }
+      }
+    `;
+    const { matches } = scanJsSource('src/scope-drag.js', code, [dragJsMatcher], project);
+    assert.equal(matches.length, 0);
+  });
 });

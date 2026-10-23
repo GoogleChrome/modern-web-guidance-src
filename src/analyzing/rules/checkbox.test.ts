@@ -160,6 +160,21 @@ void test('checkbox: negative / exempt cases', async (t) => {
       .star-rating input:checked + label::before {
         content: "★";
       }
+      .rate-widget input:checked + label::before {
+        content: "\\2605";
+      }
+      input[type="checkbox"]:checked + label.star::before {
+        content: "\\f005";
+      }
+      input[type="checkbox"]:checked + label::before {
+        content: "☆";
+      }
+      .rate-bar input[type="checkbox"] {
+        opacity: 0;
+      }
+      .rate-bar input[type="checkbox"] + label {
+        display: inline-block;
+      }
     `;
     const matches = scanCss('radio-star.css', css, [matcher]);
     assert.equal(matches.length, 0);

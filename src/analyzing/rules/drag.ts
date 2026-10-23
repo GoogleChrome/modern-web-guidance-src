@@ -36,7 +36,22 @@ const POINTER_GUARD_TOKENS = [
 
 const DRAG_START_EVENTS = ['mousedown', 'touchstart'] as const;
 const DRAG_MOVE_EVENTS = ['mousemove', 'touchmove', 'mouseup', 'touchend'] as const;
-const COORDINATE_PROPERTIES = new Set(['clientX', 'clientY', 'pageX', 'pageY']);
+const COORDINATE_PROPERTIES = new Set([
+  'clientX',
+  'clientY',
+  'pageX',
+  'pageY',
+  'screenX',
+  'screenY',
+  'offsetX',
+  'offsetY',
+  'touches',
+  'changedTouches',
+  'movementX',
+  'movementY',
+  'deltaX',
+  'deltaY',
+]);
 const POSITION_STYLE_PROPERTIES = new Set(['left', 'top', 'transform']);
 
 function hasCoordinateAccess(scopeNode: Node): boolean {
@@ -140,6 +155,40 @@ function hasMoveOrEndListener(scopeNode: Node): boolean {
   return found;
 }
 
+function isNoOpOrPreventDefaultOnlyHandler(handlerNode: Node): boolean {
+  if (hasCoordinateAccess(handlerNode)) {
+    return false;
+  }
+  if (hasPositionStyleMutation(handlerNode)) {
+    return false;
+  }
+  if (hasMoveOrEndListener(handlerNode)) {
+    return false;
+  }
+
+  let bodyNode: Node | undefined;
+  if (
+    Node.isArrowFunction(handlerNode) ||
+    Node.isFunctionExpression(handlerNode) ||
+    Node.isFunctionDeclaration(handlerNode)
+  ) {
+    bodyNode = handlerNode.getBody();
+  }
+
+  if (!bodyNode) {
+    return true;
+  }
+
+  const bodyText = bodyNode.getText();
+  const stripped = bodyText
+    .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
+    .replace(/(?:e|event|evt)\s*\.\s*(?:preventDefault|stopPropagation|stopImmediatePropagation)\s*\(\s*\)/g, '')
+    .replace(/\breturn\s*(?:false|true)?\s*;?/g, '')
+    .replace(/[{};,\s]/g, '');
+
+  return stripped.length === 0;
+}
+
 export const dragDependencyMatcher: DependencyRuleMatcher = {
   kind: 'dependency',
   packages: TARGET_DRAG_PACKAGES,
@@ -187,6 +236,10 @@ export const dragJsMatcher: JsRuleMatcher = {
       }
 
       if (isProtectedByFeatureGuard(node, POINTER_GUARD_TOKENS)) {
+        return;
+      }
+
+      if (isNoOpOrPreventDefaultOnlyHandler(dragStartMatch.handlerNode)) {
         return;
       }
 

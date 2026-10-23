@@ -8,8 +8,62 @@ export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = '0616906d0788';
 const ENTER_CHECK_REGEX =
   /(?:keyCode\s*===?\s*13|13\s*===?\s*keyCode|which\s*===?\s*13|13\s*===?\s*which|key\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*key|code\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*code|case\s+(?:13|['"]Enter['"]))/;
 
-const ACTION_OR_PREVENT_REGEX =
-  /(?:preventDefault|submit|requestSubmit|click\(|\.click|send|search|save|handleEnter|onEnter)/i;
+const ACTION_TOKENS_REGEX =
+  /(?:submit|requestSubmit|click|dispatchEvent|trigger|fetch|axios|ajax|send|search|save|handleEnter|onEnter|add|create|post)/i;
+
+const ARIA_BUTTON_ROLES = new Set([
+  'button',
+  'menuitem',
+  'tab',
+  'link',
+  'switch',
+  'checkbox',
+  'option',
+]);
+
+/**
+ * Checks if a branch contains only event suppression calls (preventDefault, stopPropagation)
+ * and control returns, with no submission or action invocations.
+ */
+function isSuppressOnlyBranch(branchText: string): boolean {
+  if (ACTION_TOKENS_REGEX.test(branchText)) {
+    return false;
+  }
+  const stripped = branchText
+    .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
+    .replace(/(?:e|event|evt)\s*\.\s*(?:preventDefault|stopPropagation|stopImmediatePropagation)\s*\(\s*\)/g, '')
+    .replace(/\breturn\s*(?:false|true)?\s*;?/g, '')
+    .replace(/\bbreak\s*;?/g, '')
+    .replace(/case\s+(?:13|['"]Enter['"])\s*:/g, '')
+    .replace(/[{};,\s]/g, '');
+  return stripped.length === 0;
+}
+
+/**
+ * Checks if an element has been configured with an ARIA button role
+ * via setAttribute('role', ...) or .role = ... in the enclosing scope.
+ */
+function hasAriaButtonRoleAssignment(targetNode: Node, variableName: string): boolean {
+  let currentScope: Node | undefined = targetNode.getParent();
+  while (
+    currentScope &&
+    !Node.isSourceFile(currentScope) &&
+    !Node.isFunctionDeclaration(currentScope) &&
+    !Node.isBlock(currentScope)
+  ) {
+    currentScope = currentScope.getParent();
+  }
+  const scopeNode = currentScope ?? targetNode.getSourceFile();
+  const fullScopeText = scopeNode.getText();
+  if (!fullScopeText.includes('role') && !fullScopeText.includes('Role')) {
+    return false;
+  }
+  const roleRegex = new RegExp(
+    `\\b${variableName}\\s*(?:\\.\\s*setAttribute\\s*\\(\\s*['"]role['"]\\s*,\\s*['"](?:button|menuitem|tab|link|switch|checkbox|option)['"]|\\.\\s*role\\s*=\\s*['"](?:button|menuitem|tab|link|switch|checkbox|option)['"])`,
+    'i',
+  );
+  return roleRegex.test(fullScopeText);
+}
 
 /**
  * Checks if a condition strictly requires Ctrl or Cmd (Meta) modifier key,
@@ -58,7 +112,7 @@ function checkHandlerForUnsafeEnter(
       }
 
       const branchText = ifStmt.getThenStatement().getText();
-      if (ACTION_OR_PREVENT_REGEX.test(branchText)) {
+      if (!isSuppressOnlyBranch(branchText) && ACTION_TOKENS_REGEX.test(branchText)) {
         return {
           line: ifStmt.getStartLineNumber(),
           message:
@@ -79,7 +133,7 @@ function checkHandlerForUnsafeEnter(
           const caseExprText = clause.getExpression().getText();
           if (caseExprText === '13' || caseExprText === "'Enter'" || caseExprText === '"Enter"') {
             const clauseText = clause.getText();
-            if (ACTION_OR_PREVENT_REGEX.test(clauseText)) {
+            if (!isSuppressOnlyBranch(clauseText) && ACTION_TOKENS_REGEX.test(clauseText)) {
               return {
                 line: clause.getStartLineNumber(),
                 message:
@@ -146,6 +200,26 @@ function resolveHandlerFunction(fnExpr: Node): Node | null {
 function matchKeydownCall(callExpr: CallExpression): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
 
+  if (Node.isPropertyAccessExpression(expr)) {
+    const receiver = unwrapExpression(expr.getExpression());
+    if (Node.isIdentifier(receiver)) {
+      if (hasAriaButtonRoleAssignment(receiver, receiver.getText())) {
+        return null;
+      }
+    } else if (Node.isCallExpression(receiver)) {
+      const callArgs = receiver.getArguments();
+      if (callArgs.length > 0) {
+        const firstArg = unwrapExpression(callArgs[0]);
+        if (Node.isStringLiteral(firstArg)) {
+          const selectorText = firstArg.getLiteralValue().toLowerCase();
+          if (/role\s*=\s*['"]?(?:button|menuitem|tab|link|switch|checkbox|option)\b/i.test(selectorText)) {
+            return null;
+          }
+        }
+      }
+    }
+  }
+
   // 1. addEventListener('keydown', handler)
   if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'addEventListener') {
     const args = callExpr.getArguments();
@@ -201,6 +275,20 @@ function matchJsxKeydown(jsxAttr: JsxAttribute): AnalyzerMatch | null {
     return null;
   }
 
+  const attributesContainer = jsxAttr.getParent();
+  if (attributesContainer) {
+    for (const siblingAttr of attributesContainer.getChildrenOfKind(SyntaxKind.JsxAttribute)) {
+      if (siblingAttr.getNameNode().getText() === 'role') {
+        const init = siblingAttr.getInitializer();
+        if (init && Node.isStringLiteral(init)) {
+          if (ARIA_BUTTON_ROLES.has(init.getLiteralValue().toLowerCase())) {
+            return null;
+          }
+        }
+      }
+    }
+  }
+
   const init = jsxAttr.getInitializer();
   if (!init || !Node.isJsxExpression(init)) {
     return null;
@@ -232,6 +320,12 @@ function matchOnKeydownAssignment(sourceFile: SourceFile): AnalyzerMatch[] {
     }
     const left = unwrapExpression(assign.getLeft());
     if (Node.isPropertyAccessExpression(left) && left.getName() === 'onkeydown') {
+      const receiver = unwrapExpression(left.getExpression());
+      if (Node.isIdentifier(receiver)) {
+        if (hasAriaButtonRoleAssignment(receiver, receiver.getText())) {
+          continue;
+        }
+      }
       const right = unwrapExpression(assign.getRight());
       const handler = resolveHandlerFunction(right);
       if (handler) {

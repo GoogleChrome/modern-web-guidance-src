@@ -200,4 +200,23 @@ describe('coordinate-global-events rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('ignores bare telemetry assignment or direct return of getTimezoneOffset', () => {
+    const code = `
+      function collectTelemetry(params) {
+        params.tz_offset = new Date().getTimezoneOffset();
+        const payload = {
+          timezone_offset: new Date().getTimezoneOffset(),
+        };
+        return new Date().getTimezoneOffset();
+      }
+    `;
+    const { matches } = scanJsSource(
+      'analytics/telemetry.js',
+      code,
+      [coordinateGlobalEventsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
 });

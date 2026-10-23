@@ -166,4 +166,37 @@ void test('animate-to-intrinsic-sizes: negative / exempt cases', async (t) => {
     const matches = scanCss('unrelated.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts rules where max-height is percentage-only', () => {
+    const css = `
+      .sidebar {
+        max-height: 100%;
+        transition: max-height 0.3s ease;
+      }
+    `;
+    const matches = scanCss('percent.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts rules where max-height is viewport-unit only (vh, dvh, svh)', () => {
+    const css = `
+      .modal-dialog {
+        max-height: 80vh;
+        transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+    `;
+    const matches = scanCss('viewport.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts small fixed ceiling <= 50px without 0 declared', () => {
+    const css = `
+      .small-bar {
+        max-height: 30px;
+        transition: max-height 0.2s ease;
+      }
+    `;
+    const matches = scanCss('small.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
 });

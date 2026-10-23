@@ -5,6 +5,65 @@ import type {
   CssRuleView,
 } from '../schema.ts';
 
+function isIntrinsicSizeMaxHeight(styleRule: CssRuleView, stylesheetText: string): boolean {
+  const maxHeightRegex = /(?:^|[;{}]\s*)max-height\s*:\s*([^;!}]+)/gi;
+  const declaredValues: string[] = [];
+  let execMatch: RegExpExecArray | null;
+  while ((execMatch = maxHeightRegex.exec(stylesheetText)) !== null) {
+    declaredValues.push(execMatch[1].trim().toLowerCase());
+  }
+
+  if (declaredValues.length === 0) {
+    const ruleValue = (styleRule.getPropertyValue('max-height') ?? '').trim().toLowerCase();
+    if (ruleValue) {
+      declaredValues.push(ruleValue);
+    }
+  }
+
+  const nonZeroValues: string[] = [];
+  let hasZeroDeclared = false;
+
+  for (const rawValue of declaredValues) {
+    const trimmedValue = rawValue.trim().toLowerCase();
+    if (trimmedValue === '0' || trimmedValue === '0px') {
+      hasZeroDeclared = true;
+    } else if (
+      trimmedValue !== 'none' &&
+      trimmedValue !== 'initial' &&
+      trimmedValue !== 'inherit' &&
+      trimmedValue !== 'unset'
+    ) {
+      nonZeroValues.push(trimmedValue);
+    }
+  }
+
+  if (nonZeroValues.length > 0) {
+    const allPercentOrViewport = nonZeroValues.every((valueText) =>
+      /^\d+(?:\.\d+)?(?:%|vh|dvh|svh|lvh|vw|dvw|svw|lvw|vi|vb)$/i.test(valueText),
+    );
+    if (allPercentOrViewport) {
+      return false;
+    }
+  }
+
+  if (hasZeroDeclared) {
+    return true;
+  }
+
+  for (const valueText of nonZeroValues) {
+    const pxMatch = /^(\d+(?:\.\d+)?)px$/i.exec(valueText);
+    if (pxMatch && parseFloat(pxMatch[1]) > 50) {
+      return true;
+    }
+    const remMatch = /^(\d+(?:\.\d+)?)(?:rem|em|ch)$/i.exec(valueText);
+    if (remMatch && parseFloat(remMatch[1]) > 3) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 const animateToIntrinsicSizesCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: ['max-height'],
@@ -52,6 +111,11 @@ const animateToIntrinsicSizesCssMatcher: CssRuleMatcher = {
         styleRule.hasProperty('max-height'));
 
     if (!transitionsMaxHeight) {
+      return null;
+    }
+
+    // 5. Require intrinsic size animation characteristics (exclude % and viewport-only transitions)
+    if (!isIntrinsicSizeMaxHeight(styleRule, ctx.stylesheetText)) {
       return null;
     }
 
