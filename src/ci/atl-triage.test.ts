@@ -11,6 +11,7 @@ import {
   KNOWN_CATEGORIES,
   extractFeatureIdsFromContent,
   hasNoAtlTriageDirective,
+  upsertDemoPreviewInBody,
   featureGroups,
   githubApi
 } from './atl-triage.ts';
@@ -465,6 +466,12 @@ Affected web-feature IDs: [canvas-html](https://webstatus.dev/features/canvas-ht
     assert.deepStrictEqual(result.sort(), ['malchata', 'override-issue-reviewer'].sort());
   });
 
+  it('assigns the category ATL when new-use-case issue uses the issue template ### Category format', () => {
+    const description = `### Use case slug\n\nsome-use-case\n\n### Category\n\ncss-layout\n`;
+    const result = handleIssue(123, ['new-use-case'], description, mockConfig);
+    assert.deepStrictEqual(result, ['malchata']);
+  });
+
   it('skips auto-assigning ATLs who have previously been unassigned from the issue', () => {
     unassignedMock.mock.mockImplementation(() => ['RVISCOMI']); // Test mixed-case matching
 
@@ -707,7 +714,7 @@ describe('handlePR', () => {
     assert.deepStrictEqual(handlePR(99999, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-eval']), []);
   });
 
-  it('assigns corresponding ATL when gd-dev-content label is present even if only target eval files were touched', () => {
+  it('does NOT request Content ATL review when gd-dev-content label is present if only target eval files were touched', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/grader.ts',
       'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/patches/zero-passrate.patch',
@@ -715,12 +722,24 @@ describe('handlePR', () => {
     ];
 
     const result = handlePR(99999, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-content']);
-    // 'deliver-optimized-decorative-images' has 'image-set' -> override-pr-reviewer + rviscomi, paulirish (performance)
-    // 'carousel-slide-effects' -> philipwalton (motion)
-    assert.deepStrictEqual(
-      result.sort(),
-      ['override-pr-reviewer', 'rviscomi', 'paulirish', 'philipwalton'].sort()
+    assert.deepStrictEqual(result, []);
+  });
+
+  it('requests review from configured skill owners when skills-src/<skill>/** is modified', () => {
+    const configWithExtensions = {
+      ...mockConfig,
+      default: {
+        ...mockConfig.default,
+        'chrome-extensions': ['oliverdunk', 'patrickkettner']
+      }
+    };
+    const result = handlePR(
+      99999,
+      'some-contributor',
+      configWithExtensions,
+      ['skills-src/chrome-extensions/SKILL.md']
     );
+    assert.deepStrictEqual(result.sort(), ['oliverdunk', 'patrickkettner'].sort());
   });
 
   it('filters out already requested and reviewed ATLs case-insensitively', () => {
@@ -1383,6 +1402,28 @@ description: Some description
   it('returns empty array when frontmatter or web-feature-ids are missing', () => {
     assert.deepStrictEqual(extractFeatureIdsFromContent('# Just Markdown'), []);
     assert.deepStrictEqual(extractFeatureIdsFromContent('---\nname: foo\n---\n'), []);
+  });
+});
+
+describe('upsertDemoPreviewInBody', () => {
+  it('formats single and multiple demo links cleanly and updates idempotently', () => {
+    const body = '## Summary\n\nImproves dialog demo.';
+
+    const single = upsertDemoPreviewInBody('guides/ui-components/dialog', body, ['guides/ui-components/dialog/demo.html']);
+    assert.ok(single.includes('🎨 **Demo preview:** [`ui-components/dialog`](https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob/guides/ui-components/dialog/guides/ui-components/dialog/demo.html)'));
+
+    // Idempotent on second run
+    assert.strictEqual(upsertDemoPreviewInBody('guides/ui-components/dialog', single, ['guides/ui-components/dialog/demo.html']), single);
+
+    // Multiple demos / variants
+    const multi = upsertDemoPreviewInBody('1687-css-grid-lanes', body, [
+      'guides/css/grid-lanes/demo.html',
+      'guides/css/grid-lanes/demo-vertical.html'
+    ]);
+    assert.ok(multi.includes('🎨 **Demo preview:** \n- [`css/grid-lanes/demo-vertical.html`](https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob/1687-css-grid-lanes/guides/css/grid-lanes/demo-vertical.html)\n- [`css/grid-lanes`](https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob/1687-css-grid-lanes/guides/css/grid-lanes/demo.html)'));
+
+    // Removes block if subsequent commit drops demo changes
+    assert.strictEqual(upsertDemoPreviewInBody('guides/ui-components/dialog', single, ['README.md']), body);
   });
 });
 

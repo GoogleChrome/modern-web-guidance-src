@@ -27,11 +27,6 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     expect(/aria-invalid/i.test(html)).toBe(true);
   });
 
-  test('The visual error state must utilize multiple visual indicators', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/border|icon/i.test(html)).toBe(true);
-  });
-
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
@@ -84,6 +79,7 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
   test('On page load, all required fields must appear neutral', async ({ page }) => {
     const inputs = page.locator('form input[required]');
     const count = await inputs.count();
+    expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i++) {
       const style = await getStyling(inputs.nth(i));
       expect(style.hasUserInvalid).toBe(false);
@@ -153,49 +149,46 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     expect(isEnabled && allTriggered).toBe(true);
   });
 
-  test('"Force Fallback Mode" must replicate this exact behavior', async ({ page }) => {
-    const fallbackCheckbox = page.locator('#force-fallback');
-    const hasFallback = await fallbackCheckbox.count() > 0;
-    
-    if (!hasFallback) {
-      expect(true).toBe(true);
-      return;
-    }
-    
-    let success = false;
-    await fallbackCheckbox.check();
-    
-    const inputs = page.locator('form input[required]');
-    const count = await inputs.count();
-    const initialStyles: any[] = [];
-    for (let i = 0; i < count; i++) {
-      initialStyles.push(await getStyling(inputs.nth(i)));
-    }
-    
-    const firstInput = inputs.first();
-    await firstInput.focus();
+  test('The visual error state must utilize multiple visual indicators', async ({ page }) => {
+    const input = page.locator('form input[required]').first();
+    expect(await input.count()).toBeGreaterThan(0);
+    const initialStyle = await getStyling(input);
+
+    await input.focus();
     await page.keyboard.press('Space');
     await page.keyboard.press('Backspace');
-    await firstInput.blur();
-    const blurStyle = await getStyling(firstInput);
-    const blurRed = differs(initialStyles[0], blurStyle) || blurStyle.hasUserInvalid;
-    
-    await firstInput.focus();
-    await page.keyboard.press('a');
-    const typeStyle = await getStyling(firstInput);
-    const typeNeutral = !differs(initialStyles[0], typeStyle) || !typeStyle.hasUserInvalid || differs(blurStyle, typeStyle);
-    
-    await page.keyboard.press('Backspace');
-    const submitBtn = page.locator('button[type="submit"]');
-    await submitBtn.click();
-    const finalStyles = [];
-    for (let i = 0; i < count; i++) {
-      finalStyles.push(await getStyling(inputs.nth(i)));
-    }
-    const allRed = finalStyles.every((style, index) => differs(initialStyles[index], style) || style.hasUserInvalid);
-    
-    success = blurRed && typeNeutral && allRed;
-    
-    expect(success).toBe(true);
+    await input.blur();
+
+    const errorStyle = await getStyling(input);
+    const hasInputStyleChange = differs(initialStyle, errorStyle) || errorStyle.hasUserInvalid;
+
+    const hasVisibleErrorMsg = await input.evaluate((el: HTMLElement) => {
+      const isVisible = (node: Element | null) => {
+        if (!node) return false;
+        const s = window.getComputedStyle(node);
+        return (
+          s.display !== 'none' &&
+          s.visibility !== 'hidden' &&
+          s.opacity !== '0' &&
+          (node.textContent || '').trim().length > 0
+        );
+      };
+
+      const errId = el.getAttribute('aria-errormessage') || el.getAttribute('aria-describedby');
+      if (errId && isVisible(document.getElementById(errId))) return true;
+
+      if (el.nextElementSibling && isVisible(el.nextElementSibling)) return true;
+
+      const container = el.parentElement || el.closest('form');
+      if (container) {
+        const candidates = Array.from(
+          container.querySelectorAll('.error-msg, [class*="error"], [role="alert"], [id*="error"]')
+        );
+        if (candidates.some(isVisible)) return true;
+      }
+      return false;
+    });
+
+    expect(hasInputStyleChange && hasVisibleErrorMsg).toBe(true);
   });
 });

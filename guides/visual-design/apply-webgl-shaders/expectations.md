@@ -1,7 +1,10 @@
 - Feature detection for HTML-in-Canvas MUST be conducted before using the HTML-in-Canvas API.
-- The `<canvas>` element MUST include the `layoutsubtree` attribute to allow descendant HTML elements to be exposed to browser features.
-- Canvas rendering MUST be executed inside an `onpaint` event handler attached to the canvas element to trigger re-rendering when descendant HTML elements change.
-- The rendering logic MUST use `texElementImage2D` to draw HTML elements onto the canvas.
-- The CSS `transform` property of the descendant HTML element MUST be updated based on the transform matrix calculated during rendering.
+- The `<canvas>` element MUST include the `content="drawable"` attribute to allow descendant HTML elements to be exposed to browser features.
+- Every HTML element that needs to be individually drawn into the canvas MUST include the `drawable` attribute. Direct canvas children of the `<canvas>` element MUST include the `drawable` attribute.
+- HTML texture updates MUST be executed inside a `paint` event handler attached to the canvas element to trigger re-rendering when descendant HTML elements change.
+- The rendering logic MUST use `texElementSubImage2D` to upload HTML elements into a WebGL texture.
+- Before `texElementSubImage2D` uploads into it, the WebGL texture MUST be allocated with `texImage2D()` at the element's size in canvas grid pixels (from `canvas.captureElementImage()`, rounded up).
+- The WebGL texture MUST only be reallocated with `texImage2D()` when the element's size changes, not on every paint, because reallocating clears the texture.
+- Each drawn HTML element MUST be registered with `canvas.updateElementGeometry()`, passing a `canvasTransform` that maps the element's border box to its rendered location on the canvas, in CSS pixels, so its DOM position, hit testing, and accessibility bounds match the rendered content.
 - A `ResizeObserver` MUST be used to observe the canvas size and update its dimensions to prevent blurriness.
 - A fallback UI strategy MUST be implemented for browsers that do not support HTML-in-Canvas.
