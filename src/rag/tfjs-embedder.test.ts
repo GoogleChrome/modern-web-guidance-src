@@ -7,7 +7,7 @@ import { memory } from "@tensorflow/tfjs-core";
 import { BertTokenizer } from "@huggingface/transformers";
 import { Tokenizer } from "@huggingface/tokenizers";
 import { TfjsEmbedder } from "./tfjs-embedder.ts";
-import { rootDir } from "../core/paths.ts";
+import { loadPublicDataset } from "./benchmarks/dataset.ts";
 
 function cosineSimilarity(a: number[], b: number[]): number {
   let dot = 0;
@@ -119,9 +119,10 @@ describe("TfjsEmbedder", () => {
     const refTokenizer = new BertTokenizer(tokJson, tokCfg);
     const newTokenizer = new Tokenizer(tokJson, tokCfg);
 
-    const poolFile = path.join(rootDir, "src/rag/benchmarks/data/eval-queries-pool.json");
-    const poolData: Array<{ query: string }> = JSON.parse(fs.readFileSync(poolFile, "utf8"));
-    const queries = poolData.map((q) => q.query);
+    const queries = [
+      ...loadPublicDataset("harness").queries.map((q) => q.query),
+      ...loadPublicDataset("oos").queries.map((q) => q.query),
+    ];
 
     const edgeCases = [
       "",
@@ -133,7 +134,7 @@ describe("TfjsEmbedder", () => {
     ];
     queries.push(...edgeCases);
 
-    let mismatches = 0;
+    const mismatches: { query: string; expectedIds: number[]; actualIds: number[] }[] = [];
     const maxLen = tokCfg.model_max_length ?? 512;
 
     for (const q of queries) {
@@ -156,11 +157,11 @@ describe("TfjsEmbedder", () => {
         JSON.stringify(newMask) !== JSON.stringify(refMask) ||
         JSON.stringify(newTypes) !== JSON.stringify(refTypes)
       ) {
-        mismatches++;
+        mismatches.push({ query: q.slice(0, 80), expectedIds: refIds, actualIds: newIds });
       }
     }
 
-    assert.strictEqual(mismatches, 0, `Expected 0 tokenizer mismatches, found ${mismatches}`);
+    assert.deepStrictEqual(mismatches, []);
   });
 
   test("query embedding parity against reference embedder achieves cosine similarity >= 0.95", async () => {

@@ -31,3 +31,19 @@ export async function collectGuidanceToolsUsed(dir: string): Promise<string[]> {
   return [];
 }
 
+/**
+ * Checks whether a trajectory contains both `modern-web-guidance` and the expected `guideName`.
+ */
+export function hasTrajectoryGuideLeak(dir: string, guideName: string): boolean {
+  if (!guideName) return false;
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  try {
+    const raw = fs.readFileSync(summaryPath, 'utf8');
+    return raw.includes('modern-web-guidance') && raw.includes(guideName);
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
+    return false;
+  }
+}
+
+
