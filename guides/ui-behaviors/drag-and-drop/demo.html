@@ -496,6 +496,14 @@
       }
     });
 
+    // Show the whole item (and its focus ring) when keyboard focus enters it. Skip mid-animation items:
+    // a move already revealed them, and an in-flight translate would skew the scroll position.
+    list.addEventListener('focusin', (event) => {
+      const item = event.target.closest('.task');
+      if (!item || !event.target.matches(':focus-visible') || item.getAnimations().length) return;
+      item.scrollIntoView({ block: 'nearest' });
+    });
+
     list.addEventListener('focusout', (event) => {
       if (!isMoving && grabbedHandle && event.target === grabbedHandle) releaseHandle();
     });
