@@ -236,6 +236,7 @@
     let pointerOffsetX = 0;
     let pointerOffsetY = 0;
     let activePointerId = null;
+    let isMoving = false;
     let pointerX = 0;
     let pointerY = 0;
     function getPosition(item) {
@@ -266,6 +267,8 @@
     function moveItem(item, before, reveal = false) {
       const first = new Map([...list.children].map((el) => [el, el.getBoundingClientRect().top]));
       const scrollBefore = list.scrollTop;
+      // The before() fallback can blur the moved handle; flag it so that blur isn't treated as leaving.
+      isMoving = true;
       if ('moveBefore' in Element.prototype) {
         list.moveBefore(item, before);
       } else if (before) {
@@ -273,6 +276,7 @@
       } else {
         list.append(item);
       }
+      isMoving = false;
       // Scroll before animating so the item's layout position is used, not its animated offset.
       if (reveal) item.scrollIntoView({ block: 'nearest' });
       if (reduceMotion.matches) return;
@@ -462,7 +466,7 @@
     });
 
     list.addEventListener('focusout', (event) => {
-      if (grabbedHandle && event.target === grabbedHandle && !list.contains(event.relatedTarget)) releaseHandle();
+      if (!isMoving && grabbedHandle && event.target === grabbedHandle) releaseHandle();
     });
 
     list.addEventListener('click', (event) => {
