@@ -247,4 +247,78 @@ test('exciseOldEvalArtifacts handles directory when old artifacts do not exist',
   assert.strictEqual(fs.existsSync(path.join(tmpDir, 'guide.md')), true);
 });
 
+test('devCli.commitStepArtifacts commits modified guide files when on a feature branch', async (t) => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const { execSync } = await import('node:child_process');
+  const { devCli } = await import('./dev.ts');
+
+  const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-step-repo-'));
+  const origCwd = process.cwd();
+
+  t.after(() => {
+    process.chdir(origCwd);
+    fs.rmSync(tmpRepo, { recursive: true, force: true });
+  });
+
+  process.chdir(tmpRepo);
+  execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { stdio: 'ignore' });
+  execSync('git commit --allow-empty -m "initial commit"', { stdio: 'ignore' });
+  execSync('git checkout -b gd-dev/sample-guide', { stdio: 'ignore' });
+
+  const guideDir = path.join(tmpRepo, 'guides', 'css', 'sample-guide');
+  fs.mkdirSync(guideDir, { recursive: true });
+  fs.writeFileSync(path.join(guideDir, 'guide.md'), '# Initial Guide\n');
+
+  // Commits newly created files
+  const committed = devCli.commitStepArtifacts(guideDir, 'feat(guide): generate sample-guide evaluations and artifacts');
+  assert.strictEqual(committed, true);
+
+  const log = execSync('git log -1 --pretty=%B', { encoding: 'utf-8' }).trim();
+  assert.strictEqual(log, 'feat(guide): generate sample-guide evaluations and artifacts');
+
+  // Does not create empty commit when nothing changed
+  const committedAgain = devCli.commitStepArtifacts(guideDir, 'fix(guide): post-report recommendations');
+  assert.strictEqual(committedAgain, false);
+
+  // Commits post-report edits when files are modified
+  fs.writeFileSync(path.join(guideDir, 'guide.md'), '# Updated Guide\n');
+  const committedEdits = devCli.commitStepArtifacts(guideDir, 'fix(guide): apply post-evaluation report recommendations for sample-guide');
+  assert.strictEqual(committedEdits, true);
+
+  const secondLog = execSync('git log -1 --pretty=%B', { encoding: 'utf-8' }).trim();
+  assert.strictEqual(secondLog, 'fix(guide): apply post-evaluation report recommendations for sample-guide');
+});
+
+test('devCli.commitStepArtifacts returns false when not on a gd-dev/ branch', async (t) => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const { execSync } = await import('node:child_process');
+  const { devCli } = await import('./dev.ts');
+
+  const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-step-non-dev-repo-'));
+  const origCwd = process.cwd();
+
+  t.after(() => {
+    process.chdir(origCwd);
+    fs.rmSync(tmpRepo, { recursive: true, force: true });
+  });
+
+  process.chdir(tmpRepo);
+  execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { stdio: 'ignore' });
+  execSync('git commit --allow-empty -m "initial commit"', { stdio: 'ignore' });
+  execSync('git checkout -b feat/my-feature', { stdio: 'ignore' });
+
+  const guideDir = path.join(tmpRepo, 'guides', 'css', 'sample-guide');
+  fs.mkdirSync(guideDir, { recursive: true });
+  fs.writeFileSync(path.join(guideDir, 'guide.md'), '# Initial Guide\n');
+
+  const committed = devCli.commitStepArtifacts(guideDir, 'feat(guide): test commit');
+  assert.strictEqual(committed, false);
+});
+
+
+
 

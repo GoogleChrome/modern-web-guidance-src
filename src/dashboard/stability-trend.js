@@ -1,5 +1,5 @@
 import { ApiClient } from './api.js';
-import { getRunStats, getColor } from './utils.js';
+import { getRunStats, isEarlyFailureRun, getColor } from './utils.js';
 
 const api = new ApiClient();
 
@@ -44,9 +44,9 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                 const currentData = await currentRes.json();
                 const guidedKey = `${scenarioName} - guided`;
                 const unguidedKey = `${scenarioName} - unguided`;
-                const currentRunResults = currentData.results[guidedKey] || currentData.results[unguidedKey];
-                if (currentRunResults && currentRunResults[0]) {
-                    currentAssertions = currentRunResults[0].results.map(r => r.message).sort();
+                const currentValidRun = [...(currentData.results[guidedKey] || []), ...(currentData.results[unguidedKey] || [])].find(r => !isEarlyFailureRun(r.results));
+                if (currentValidRun) {
+                    currentAssertions = currentValidRun.results.map(r => r.message).sort();
                 }
             }
             
@@ -87,6 +87,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
 
                 if (guidedRun) {
                     for (const run of guidedRun) {
+                        if (isEarlyFailureRun(run.results)) continue;
                         const historyAssertions = run.results.map(r => r.message).sort();
                         if (currentAssertions.length > 0 && currentAssertions.join('|') !== historyAssertions.join('|')) {
                              console.log(`[StabilityTrend] Skipping runs in suite ${suite.id} - Grader checks differ.`);
@@ -98,6 +99,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
 
                 if (unguidedRun) {
                     for (const run of unguidedRun) {
+                        if (isEarlyFailureRun(run.results)) continue;
                         unguidedTrials.push(getRunStats(run.results).rate);
                     }
                 }

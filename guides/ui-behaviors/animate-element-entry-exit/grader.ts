@@ -103,10 +103,9 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
 
   test(`smoothly transitions properties from @starting-style values when display changes from none to visible`, async ({ page }) => {
     const toggleCard = page.locator('#toggleCard');
-    if (await toggleCard.isVisible({ timeout: 2000 })) {
-      await page.click('#toggleBtn', { timeout: 2000 });
-      await expect(toggleCard).toBeHidden({ timeout: 2000 });
-    }
+    await expect(toggleCard).toBeVisible({ timeout: 2000 });
+    await page.click('#toggleBtn', { timeout: 2000 });
+    await expect(toggleCard).toBeHidden({ timeout: 2000 });
 
     await waitForAnimationSpy(page, async () => {
       await page.click('#toggleBtn', { timeout: 2000 });

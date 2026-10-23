@@ -9,7 +9,7 @@ web-feature-ids:
   - sticky-positioning
   - anchor-positioning
 guides:
-  - resilient-context-menus-and-nested-dropdowns
+  - viewport-aware-dropdowns
 ---
 
 <!-- Baseline best practices to be referenced by any guide that involves a popup menu (dropdown menus, context menus, overflow menus, etc)
