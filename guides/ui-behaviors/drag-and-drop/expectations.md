@@ -13,3 +13,4 @@
 - A grabbed item is dropped, and its `aria-pressed` reset, when its handle loses focus.
 - After a keyboard move or an `Escape` cancel, the moved item is scrolled into view within its scrollable container.
 - The collection renders its items in a readable and usable default DOM order before any reordering interaction occurs.
+- At a 320 px viewport width, the items and their movement controls fit without horizontal scrolling.

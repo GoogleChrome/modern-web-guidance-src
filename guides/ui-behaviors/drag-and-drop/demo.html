@@ -33,7 +33,7 @@
       max-width: 42rem;
       min-height: 100vh;
       margin: 0;
-      padding: 2rem;
+      padding: 1rem;
       font-family: Georgia, serif;
       background: var(--canvas);
       color: var(--ink);
@@ -45,7 +45,7 @@
       gap: 0.75rem;
       max-width: 32rem;
       max-height: 22rem;
-      padding: 0.5rem;
+      padding: 0.5rem 0;
       overflow-y: auto;
       list-style: none;
     }
@@ -53,7 +53,7 @@
     .task {
       scroll-margin: 0.5rem;
       display: grid;
-      grid-template-columns: auto 1fr auto;
+      grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 0.75rem;
       align-items: center;
       padding: 0.75rem;
@@ -149,6 +149,12 @@
     .task label {
       display: grid;
       gap: 0.25rem;
+    }
+
+    .task input {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
     }
 
     .status {
