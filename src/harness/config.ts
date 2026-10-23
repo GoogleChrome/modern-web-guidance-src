@@ -57,7 +57,6 @@ export const defaultSuiteConfig: SuiteConfig = {
   skillsToEnable: ['modern-web-guidance'],
   agent: Agents.ANTIGRAVITY_CLI,
   workerCount: undefined,
-  includeTrace: false,
 };
 
 export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
@@ -107,7 +106,6 @@ export interface SuiteConfig {
   skillsToEnable: string[];
   agent: string;
   workerCount?: number;
-  includeTrace?: boolean;
 }
 
 export const config = {

@@ -62,7 +62,7 @@ The following steps are REQUIRED for creating a new use case:
 
   Some categories are named after a technology domain (`css`, `html`, `canvas`) because they are anchored by a comprehensive reference guide for that technology (e.g. `html/html/guide.md`). These are valid homes for use cases genuinely about that technology, or that don't yet have enough siblings to form a use-case cluster.
 
-  **File by primary goal; cover cross-cutting concerns inline.** Performance, accessibility, privacy, security, and UX are *verticals* nearly every guide touches. File a guide by what it is primarily trying to accomplish and address secondary concerns in the `guide.md` body, not via category. A scroll-driven animation with a rendering cost still belongs in `motion` or `scroll`, with its performance notes in the guide, not in `performance`. (This is why the catch-all `user-experience` category was removed: UX is a vertical every guide addresses, not a bucket of its own.)
+  **File by primary goal; cover cross-cutting concerns inline.** Performance, accessibility, privacy, security, and UX are *verticals* nearly every guide touches. File a guide by what it is primarily trying to accomplish and address secondary concerns in the `guide.md` body, not via category. A scroll-driven animation with a rendering cost still belongs in `motion` or `scroll`, with its performance notes in the guide, not in `performance`. For example, `user-experience` holds only the holistic UX pillar guides rather than acting as a catch-all: individual components and behaviors belong in their own categories, such as `ui-components`, `ui-behaviors`, or `ui-atoms`.
 
 * **Step 3: Create the use case subdirectory**
 
@@ -94,20 +94,12 @@ The following steps are REQUIRED for creating a new use case:
   ---
   ```
 
-* **Step 5: Create the `expectations.md` stub**
+* **Step 5: Validate the use case**
 
-  Create an `expectations.md` file in the new subdirectory outlining the must-pass verification criteria for any application implementing this guidance.
+  Run `pnpm test` to validate the use case directory structure and frontmatter metadata.
 
-* **Step 6: Generate base-app evaluation capsules**
+* **Step 6: Get the use case approved**
 
-  Once `guide.md` and `expectations.md` are authored, run `gd dev guides/<category>/<guide>` to automatically generate and calibrate the evaluation capsules across `SUPPORTED_BASE_APPS` under `targets/<base_app>/`.
+  Submit the use case for review by creating a Pull Request with the `guide.md` stub (or by filing a [new-use-case issue](../../../.github/ISSUE_TEMPLATE/new-use-case.yml)).
 
-* **Step 7: Validate the use case**
-
-  Run `pnpm test` to validate the use case structure and target integrity.
-
-* **Step 8: Get the use case approved**
-
-  Submit the use case for review by creating a Pull Request containing the authored `guide.md` and `expectations.md` along with the generated `targets/` directory.
-
-After the use case is approved, you can proceed to refining the guidance and expectations as needed. Additional guidance for these stages is provided by the `project-guides` and `project-evals` skills.
+After the use case is approved, proceed to Stage 2 (`project-guides` skill) to author the full `guide.md`, `expectations.md`, and `demo.html`.

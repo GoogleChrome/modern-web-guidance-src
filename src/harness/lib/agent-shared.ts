@@ -3,6 +3,7 @@ import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents, type SuiteConfig } from '../config.ts';
 import { ZERO_PASSRATE_PATCH_FILE } from '../../core/guide-validation.ts';
+import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { rootDir, guidesDir } from '../../core/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../core/patch-utils.ts';
 import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
@@ -57,13 +58,30 @@ export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command
   }
 }
 
+export function setupInterceptorShims(homeDir: string, runType: string = 'guided'): string {
+  const shimDir = path.join(homeDir, '.gd-bin');
+  fs.mkdirSync(shimDir, { recursive: true });
+  const templatePath = path.join(import.meta.dirname, '..', 'npx-intercept.template.ts');
+  const localCliPath = runType === 'guided'
+    ? path.join(rootDir, 'dist', 'skills-cli', 'skills/modern-web-guidance/modern-web.mjs')
+    : '';
+  const templateContent = fs.readFileSync(templatePath, 'utf8').replace('__LOCAL_CLI_PATH__', localCliPath);
+  for (const binName of ['npx', 'pnpx', 'pnpm']) {
+    const wrapperPath = path.join(shimDir, binName);
+    fs.writeFileSync(wrapperPath, templateContent, { mode: 0o755 });
+    fs.chmodSync(wrapperPath, 0o755);
+  }
+  return shimDir;
+}
+
 export function setupIsolatedWorkDir(
   agent: Agents,
   templateDir: string,
-  runType: string,
-  targetDir?: string
+  runType: string
 ): string {
-  const tempHome = createIsolatedHome(`ghh-${agent}`, targetDir);
+  const tempHome = createIsolatedHome(`ghh-${agent}`);
+  const shimDir = setupInterceptorShims(tempHome, runType);
+  setupIsolatedShellProfiles(tempHome, shimDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
   setupAgentCredentials(agent, tempHome);
@@ -123,14 +141,14 @@ export function spawnAsync(command: string, args: string[], options: SpawnOption
 
 /**
  * Sets up shell profile files (.bashrc, .bash_profile, .zshrc, .zprofile, .profile) in the isolated HOME directory
- * to ensure that targetDir (containing our npx interceptor shim) remains at the front of PATH even if
+ * to ensure that shimDir (containing our npx interceptor shim) remains at the front of PATH even if
  * an external binary or login shell invokes /usr/libexec/path_helper and resets PATH.
  * @param homeDir Path to the isolated HOME directory
- * @param targetDir Path to the directory containing our intercepted binaries (like npx)
+ * @param shimDir Path to the directory containing our intercepted binaries (like npx)
  */
-export function setupIsolatedShellProfiles(homeDir: string, targetDir: string): void {
+export function setupIsolatedShellProfiles(homeDir: string, shimDir: string): void {
   try {
-    const profileContent = `export PATH="${targetDir}:$PATH"\n`;
+    const profileContent = `export PATH="${shimDir}:$PATH"\n`;
     const profileFiles = ['.bashrc', '.bash_profile', '.zshrc', '.zprofile', '.profile'];
     for (const file of profileFiles) {
       fs.writeFileSync(path.join(homeDir, file), profileContent, 'utf8');
@@ -580,16 +598,36 @@ export async function runCliAgentCommand(
   agentName: string,
   runType: string
 ): Promise<void> {
-  const sanitizedEnv = {
-    ...process.env,
-    PWD: workDir,
-    PWTEST_CACHE_DIR: path.join(process.env.HOME || workDir, '.cache', 'playwright-transform'),
-  };
+  const tempHome = path.dirname(workDir);
+  const shimDir = path.join(tempHome, '.gd-bin');
+  const resultsRoot = path.join(rootDir, 'results');
+  const sanitizedEnv = Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([k]) => !/^(npm_|PNPM_|pnpm_|GD_SUITE_CONFIG$|MODERN_WEB_LOG_DIR$|INIT_CWD$|NODE_PATH$|OLDPWD$)/.test(k)
+    )
+  ) as NodeJS.ProcessEnv;
+  sanitizedEnv.PWD = workDir;
+  sanitizedEnv.PATH = [
+    shimDir,
+    ...(process.env.PATH || '')
+      .split(path.delimiter)
+      .filter(p => p && p !== targetDir && !p.startsWith(targetDir + path.sep) && !p.startsWith(resultsRoot + path.sep)),
+  ].join(path.delimiter);
+  sanitizedEnv.PWTEST_CACHE_DIR = path.join(process.env.HOME || workDir, '.cache', 'playwright-transform');
+
+  const isolatedLogPath = path.join(tempHome, MODERN_WEB_LOG_FILE);
+  let stopWatchingMcpLog = () => {};
+  if (runType === 'guided') {
+    sanitizedEnv.MODERN_WEB_LOG_DIR = tempHome;
+    sanitizedEnv.ENABLE_FILE_LOGGING = 'true';
+    stopWatchingMcpLog = watchLogFile(isolatedLogPath);
+  }
+
   // Hide the repo from the agent so it can't read guides/expectations/graders.
-  const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(targetDir, runType));
+  const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(tempHome, runType));
   const child = spawn(sandboxed.command, sandboxed.commandArgs, {
     cwd: workDir,
-    env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
+    env: sanitizedEnv,
     stdio: ['ignore', 'pipe', 'pipe'], // 'pipe' captures output for log files but does NOT print to terminal natively
     detached: true
   });
@@ -672,11 +710,11 @@ export async function runCliAgentCommand(
     }
 
     if (timedOut || exitCode !== 0) {
-      throw new Error(`${agentName} exited with code ${timedOut ? 'TIMEOUT (10m)' : exitCode}`);
+      throw new Error(`${agentName} exited with code ${timedOut ? 'TIMEOUT (15m)' : exitCode}`);
     }
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
-    const finalExitCode = timedOut ? 'TIMEOUT (10m)' : recordedExit;
+    const finalExitCode = timedOut ? 'TIMEOUT (15m)' : recordedExit;
     
     // Save generation failure info so results collector registers early failure
     try {
@@ -685,7 +723,7 @@ export async function runCliAgentCommand(
         agentName,
         exitCode: finalExitCode,
         stderr: (timedOut && !stderrData)
-          ? 'Agent timed out after 10 minutes'
+          ? 'Agent timed out after 15 minutes'
           : (stderrData || err.message || String(err)),
         stdout: stdoutData
       }, null, 2));
@@ -705,6 +743,10 @@ export async function runCliAgentCommand(
     
     throw err; // Re-throw to propagate failure
   } finally {
+    stopWatchingMcpLog();
+    if (runType === 'guided' && fs.existsSync(isolatedLogPath)) {
+      copyFileIfExists(isolatedLogPath, path.join(targetDir, MODERN_WEB_LOG_FILE));
+    }
     process.off('SIGTERM', onSigTerm);
   }
 }
@@ -799,7 +841,6 @@ export function getGraderScriptContent(
 ): string {
   const runGraderModulePath = path.join(rootDir, 'src/grading/run-grader.ts');
   const targetFile = path.join(targetDir, 'index.html');
-  const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
   const agentPatch = path.join(targetDir, 'agent.patch');
   const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
@@ -814,7 +855,6 @@ async function run() {
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
-      ${JSON.stringify(gradeReportDir)},
       'inherit',
       patchFile,
       zeroPassrateFile

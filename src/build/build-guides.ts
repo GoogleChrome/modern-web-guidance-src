@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
-import matter from "gray-matter";
+import matter from "@11ty/gray-matter";
 import { marked } from "marked";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
@@ -259,16 +259,21 @@ export function chunkMarkdown(markdown: string): string[] {
   const tokens = marked.lexer(markdown);
   const chunks: string[] = [];
   let currentChunk: string[] = [];
+  let hasNonHeadingContent = false;
 
   for (const token of tokens) {
     if (token.type === 'heading') {
-      if (currentChunk.length > 0) {
+      if (currentChunk.length > 0 && hasNonHeadingContent) {
         chunks.push(currentChunk.join("\n\n"));
         currentChunk = [];
+        hasNonHeadingContent = false;
       }
       currentChunk.push(token.raw);
     } else {
       currentChunk.push(token.raw);
+      if (token.type !== 'space') {
+        hasNonHeadingContent = true;
+      }
     }
   }
 
@@ -334,9 +339,13 @@ category: ${category}
     tokenCount,
   });
 
+  const h1Title = extractH1Heading(processedMarkdown);
+  const title = h1Title || data.title || formatTitle(id);
+  const summaryChunk = `# ${title}\n\n${data.description}`;
+
   const chunks = IS_NO_CHUNKING
-    ? [`${frontmatter}\n\n${processedMarkdown}`]
-    : [...chunkMarkdown(processedMarkdown), frontmatter];
+    ? [`${summaryChunk}\n\n${processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "")}`]
+    : [...chunkMarkdown(processedMarkdown), summaryChunk];
 
   for (const chunk of chunks) {
     const embeddingText = `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`;
