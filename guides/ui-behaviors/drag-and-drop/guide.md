@@ -15,7 +15,7 @@ guides:
 
 Add reordering to an existing list, grid, or board. Reorder the real children in the DOM (not via CSS `order` or `flex-direction: *-reverse`) so visual, keyboard, and reading order stay aligned. For free-form 2D repositioning of a floating element such as a dialog or toolbar, see {{ GUIDE_REF("drag") }}.
 
-When items contain interactive controls or selectable text, provide a dedicated drag handle rather than making the entire item draggable. Start pointer drags only for the primary button (`event.button === 0`), record the initial pointer offset (`event.clientX - rect.left`, `event.clientY - rect.top`), and apply `cursor: grab`/`grabbing`, `touch-action: none`, and `user-select: none` to the handle so item text remains selectable and page scrolling works outside the handle.
+When items contain interactive controls or selectable text, provide a dedicated drag handle rather than making the entire item draggable. Start pointer drags only for the primary button (`event.button === 0`), record the initial pointer offset (`event.clientX - rect.left`, `event.clientY - rect.top`), and apply `cursor: grab`/`grabbing`, `touch-action: none`, and `user-select: none` to the handle so item text remains selectable and page scrolling works outside the handle. Because the pointer leaves the handle as soon as the drag moves, `:active` on the handle isn't enough to keep the grabbing cursor: toggle a class on the root element for the length of the drag (removed in the drag-end cleanup) and set `cursor: grabbing` on it and its descendants.
 
 ## Keep movement active while reordering
 

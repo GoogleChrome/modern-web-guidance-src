@@ -101,7 +101,9 @@
       -webkit-user-select: none;
     }
 
-    .drag-handle:active {
+    .drag-handle:active,
+    .is-dragging,
+    .is-dragging * {
       cursor: grabbing;
     }
 
@@ -327,6 +329,7 @@
       pointerItem = null;
       pointerPreview = null;
       activePointerId = null;
+      document.documentElement.classList.remove('is-dragging');
       cancelAnimationFrame(scrollFrame);
       document.removeEventListener('pointermove', movePointerItem);
       document.removeEventListener('pointerup', endPointerReorder);
@@ -408,6 +411,7 @@
       pointerPreview.style.top = `${rect.top}px`;
       document.body.append(pointerPreview);
       pointerItem.classList.add('pointer-dragging');
+      document.documentElement.classList.add('is-dragging');
       pointerX = event.clientX;
       pointerY = event.clientY;
       lastFrame = 0;
