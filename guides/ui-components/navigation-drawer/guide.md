@@ -15,7 +15,7 @@ web-feature-ids:
 
 ## Overview
 
-A navigation drawer is a panel that slides in from the edge of the viewport over the page content, dimming everything behind it. It is opened from a trigger button and dismissed by swiping the panel off-screen, tapping the dimmed backdrop, or pressing Escape.
+A navigation drawer is a panel that slides in from the edge of the viewport over the page content, dimming everything behind it. It is opened from a trigger button and dismissed by swiping the panel off-screen, tapping the dimmed backdrop, activating an explicit Close button inside the panel, or pressing Escape.
 
 This guide implements the drawer as:
 
@@ -34,12 +34,19 @@ The drawer is a single popover containing a horizontal scroller, which contains 
 
 ```html
 <!-- popover="manual" is REQUIRED. Do not use popover="auto" or "hint". -->
-<div class="Drawer" id="drawer" popover="manual">
+<!-- MANDATORY: Apply role="dialog" to the container so that the drawer is exposed as a dialog
+     to assistive technologies. Use the aria-label attribute to provide an accessible name for the dialog or, if there is already text within the drawer that can act as its accessible name, use the aria-labelledby attribute instead. --> 
+<div class="Drawer" id="drawer" popover="manual" role="dialog" aria-label="Navigation drawer">
   <div class="Drawer-scroller">
+    <!-- tabindex="-1" makes the sheet programmatically focusable so we
+         can move focus into it when the drawer opens, without adding it
+         to the natural tab order. -->
     <nav class="Drawer-sheet" tabindex="-1">
-      <!-- tabindex="-1" makes the sheet programmatically focusable so we
-           can move focus into it when the drawer opens, without adding it
-           to the natural tab order. -->
+      <!-- Close button that can be used to dismiss the drawer -->
+      <button id="drawer-close" aria-label="Close menu">
+        <!-- MANDATORY: Inline decorative SVGs MUST define aria-hidden="true" -->
+        <svg aria-hidden="true" viewBox="0 0 24 24">...</svg>
+      </button>
       <ul>
         <li><a href="/page-1">Page 1</a></li>
         <li><a href="/page-2">Page 2</a></li>
@@ -210,6 +217,7 @@ const drawer = document.getElementById('drawer');
 const openBtn = document.getElementById('drawer-open');
 const scroller = drawer.querySelector('.Drawer-scroller');
 const sheet = drawer.querySelector('.Drawer-sheet');
+const closeBtn = document.getElementById('drawer-close');
 
 function openDrawer() {
   // Show the popover first so the element is in the top layer before
@@ -255,6 +263,7 @@ function onDrawerClosed() {
   drawer.hidePopover();
   document.querySelector('main').inert = false;
   openBtn.setAttribute('aria-expanded', 'false');
+  openBtn.focus();
 }
 
 // Treat "any pixel of the sheet visible inside the popover root" as
@@ -284,6 +293,9 @@ observer.observe(sheet);
 ```js
 // Open trigger.
 openBtn.addEventListener('click', openDrawer);
+
+// Close trigger.
+closeBtn.addEventListener('click', closeDrawer());
 
 // Light-dismiss: a tap on the dimmed area (anywhere inside the
 // popover but outside the sheet) closes the drawer. We implement

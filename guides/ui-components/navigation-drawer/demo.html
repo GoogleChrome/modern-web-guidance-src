@@ -175,6 +175,7 @@
     const openBtn = document.getElementById('drawer-open');
     const scroller = drawer.querySelector('.Drawer-scroller');
     const sheet = drawer.querySelector('.Drawer-sheet');
+    const closeBtn = document.getElementById('drawer-close');
 
     async function openDrawer() {
       // Promote to the top layer before scrolling.
@@ -207,10 +208,12 @@
       drawer.hidePopover();
       main.inert = false;
       openBtn.setAttribute('aria-expanded', 'false');
+      openBtn.focus();
     }
 
     function observeButtonClicks() {
       openBtn.addEventListener('click', () => openDrawer());
+      closeBtn.addEventListener('click', () => closeDrawer());
     }
 
     function observeLightDismiss() {
@@ -275,10 +278,17 @@
   </script>
 </head>
 <body>
-  <div class="Drawer" id="drawer" popover="manual">
+  <div class="Drawer" id="drawer" popover="manual" role="dialog" aria-labelledby="drawer-title">
     <div class="Drawer-scroller">
       <nav class="Drawer-sheet" tabindex="-1">
-        <header>Swipe to close</header>
+        <header>
+          <h1 id="drawer-title">Swipe to close</h1>
+          <button id="drawer-close" aria-label="Close menu">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="#fff" viewBox="0 -960 960 960" aria-hidden="true">
+              <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
+            </svg>
+          </button>
+        </header>
         <ul>
           <li><a href="#">Lorem ipsum est</a></li>
           <li><a href="#">dolor sit amet</a></li>
