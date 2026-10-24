@@ -52,6 +52,24 @@ const FUNCTION_GROUPS: Readonly<Record<string, TransformGroup>> = {
 const SINGLE_AXIS_TRANSLATE = new Set(['translatex', 'translatey', 'translatez']);
 const SINGLE_AXIS_SCALE = new Set(['scalex', 'scaley', 'scalez']);
 
+export type IndividualTransformSubPattern =
+  | 'multi-function-chain'
+  | 'paired-state-composition'
+  | 'repeating-keyframe-step'
+  | 'single-function-state';
+
+export const ITP_ACTIVE_SUB_PATTERNS: readonly IndividualTransformSubPattern[] = [
+  'multi-function-chain',
+  'paired-state-composition',
+  'repeating-keyframe-step',
+  'single-function-state',
+];
+
+export const ITP_DEFERRED_SUB_PATTERNS: readonly IndividualTransformSubPattern[] = [];
+
+const STATE_PSEUDO_TEST_RE =
+  /:(?:hover|focus-visible|focus-within|focus|active|visited|checked|disabled|target|open|popover-open|modal)\b/i;
+
 /**
  * Parse a `transform` property value into an ordered list of function calls.
  * Returns `null` if the value is a global keyword, contains unsupported
@@ -381,6 +399,72 @@ function referencesTransformKeyframes(
   return false;
 }
 
+function matchSingleFunctionStateRule(
+  styleRule: CssRuleView,
+  ctx: CssMatcherContext,
+): { message: string } | null {
+  if (
+    ctx.stylesheetHasProperty('scale') ||
+    ctx.stylesheetHasProperty('rotate') ||
+    ctx.stylesheetHasProperty('translate')
+  ) {
+    return null;
+  }
+
+  const transformVal = styleRule.getPropertyValue('transform');
+  if (!transformVal) return null;
+
+  const parsedCalls = parseValidTransformSequence(transformVal);
+  if (!parsedCalls) return null;
+
+  if (isKeyframeAtRule(styleRule.parentAtRule) || isKeyframeStepSelector(styleRule.selectorText)) {
+    return null;
+  }
+
+  const transVal =
+    styleRule.getPropertyValue('transition') ?? styleRule.getPropertyValue('transition-property');
+  if (transVal && /\btransform\b/i.test(transVal)) {
+    return null;
+  }
+
+  if (!STATE_PSEUDO_TEST_RE.test(styleRule.selectorText)) {
+    return null;
+  }
+
+  const distinctGroups = new Set(parsedCalls.map((c) => c.group));
+  if (distinctGroups.size !== 1) {
+    return null;
+  }
+
+  const analysis = analyzeStylesheet(ctx);
+  const currentBaseSelectors = extractBaseSelectors(styleRule.selectorText);
+
+  for (const other of analysis.normalRules) {
+    if (
+      other.transitionsTransform &&
+      sharesBaseSelector(currentBaseSelectors, other.baseSelectors)
+    ) {
+      return null;
+    }
+    if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
+      continue;
+    }
+    if (sharesBaseSelector(currentBaseSelectors, other.baseSelectors)) {
+      return null;
+    }
+  }
+
+  const ownAnimation =
+    styleRule.getPropertyValue('animation') ?? styleRule.getPropertyValue('animation-name');
+  if (referencesTransformKeyframes(ownAnimation, analysis.keyframeNamesWithTransform)) {
+    return null;
+  }
+
+  return {
+    message: `CSS rule \`${styleRule.selectorText}\` sets an isolated single-function \`transform: ${transformVal}\` on a state selector; consider using the individual property directly.`,
+  };
+}
+
 export const individualTransformPropertiesMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: ['transform'],
@@ -463,12 +547,16 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
       };
     }
 
+    if (ITP_ACTIVE_SUB_PATTERNS.includes('single-function-state')) {
+      const stateMatch = matchSingleFunctionStateRule(styleRule, ctx);
+      if (stateMatch) {
+        return stateMatch;
+      }
+    }
+
     return null;
   },
 };
-
-const STATE_PSEUDO_TEST_RE =
-  /:(?:hover|focus-visible|focus-within|focus|active|visited|checked|disabled|target|open|popover-open|modal)\b/i;
 
 export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher = {
   kind: 'css',
@@ -555,66 +643,7 @@ export const individualTransformPropertiesSingleFunctionStateMatcher: CssRuleMat
   kind: 'css',
   fastTokens: ['transform'],
   matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
-    if (
-      ctx.stylesheetHasProperty('scale') ||
-      ctx.stylesheetHasProperty('rotate') ||
-      ctx.stylesheetHasProperty('translate')
-    ) {
-      return null;
-    }
-
-    const transformVal = styleRule.getPropertyValue('transform');
-    if (!transformVal) return null;
-
-    const parsedCalls = parseValidTransformSequence(transformVal);
-    if (!parsedCalls) return null;
-
-    if (isKeyframeAtRule(styleRule.parentAtRule) || isKeyframeStepSelector(styleRule.selectorText)) {
-      return null;
-    }
-
-    const transVal =
-      styleRule.getPropertyValue('transition') ?? styleRule.getPropertyValue('transition-property');
-    if (transVal && /\btransform\b/i.test(transVal)) {
-      return null;
-    }
-
-    if (!STATE_PSEUDO_TEST_RE.test(styleRule.selectorText)) {
-      return null;
-    }
-
-    const distinctGroups = new Set(parsedCalls.map((c) => c.group));
-    if (distinctGroups.size !== 1) {
-      return null;
-    }
-
-    const analysis = analyzeStylesheet(ctx);
-    const currentBaseSelectors = extractBaseSelectors(styleRule.selectorText);
-
-    for (const other of analysis.normalRules) {
-      if (
-        other.transitionsTransform &&
-        sharesBaseSelector(currentBaseSelectors, other.baseSelectors)
-      ) {
-        return null;
-      }
-      if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
-        continue;
-      }
-      if (sharesBaseSelector(currentBaseSelectors, other.baseSelectors)) {
-        return null;
-      }
-    }
-
-    const ownAnimation =
-      styleRule.getPropertyValue('animation') ?? styleRule.getPropertyValue('animation-name');
-    if (referencesTransformKeyframes(ownAnimation, analysis.keyframeNamesWithTransform)) {
-      return null;
-    }
-
-    return {
-      message: `CSS rule \`${styleRule.selectorText}\` sets an isolated single-function \`transform: ${transformVal}\` on a state selector; consider using the individual property directly.`,
-    };
+    return matchSingleFunctionStateRule(styleRule, ctx);
   },
 };
 
@@ -648,12 +677,13 @@ export const individualTransformPropertiesRule: AnalyzerRule = {
       'A CSS rule combines multiple `translate*()`, `rotate*()`, and/or `scale*()` functions in canonical `translate -> rotate -> scale` order without `transition: transform`.',
       'A CSS rule pairs a base transform with a `:hover`/`:focus`/state rule or `@keyframes` animation where individual `translate`, `rotate`, and `scale` properties avoid repeating static transform components.',
       'An `@keyframes` block repeats a static `translate*()`, `rotate*()`, or `scale*()` function across multiple keyframe steps while animating another transform property.',
+      'An isolated CSS state rule (:hover, :focus, :active) sets a single-function transform when no paired base rule sets transform or transition: transform.',
     ],
     dropWhen: [
       'The `transform` list applies `rotate` or `scale` before `translate` (e.g. `rotate(45deg) translateX(20px)` where rewriting changes geometry).',
       'The `transform` value uses `skew*()`, `matrix*()`, `perspective()`, or `var()`.',
       'The rule or a paired base selector declares `transition: transform` or `transition-property: transform` (where changing properties breaks the transition).',
-      'The rule is an isolated single-function transform (e.g. `.btn:hover { transform: scale(1.05) }`) with no independent composition across states or keyframes.',
+      'The rule is an isolated multi-function transform without paired state selectors or keyframes (covered by opt-in standalone-chain rule).',
     ],
   },
 };

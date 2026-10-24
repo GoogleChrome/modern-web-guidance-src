@@ -148,7 +148,7 @@ describe('animate-element-entry-exit rule', () => {
     assert.equal(matches.length, 0);
   });
 
-  test('ignores temporary toast auto-dismiss notifications (chained .delay or setTimeout)', () => {
+  test('flags toast and alert notifications using jQuery animations (no artificial auto-dismiss exclusion)', () => {
     const codeA = `
       function showCopied() {
         $('#copied').fadeIn(100);
@@ -156,7 +156,7 @@ describe('animate-element-entry-exit rule', () => {
       }
     `;
     const resA = scanJsSource('ui/toastA.js', codeA, [animateElementEntryExitMatcher], project);
-    assert.equal(resA.matches.length, 0);
+    assert.equal(resA.matches.length, 2);
 
     const codeB = `
       function showToast() {
@@ -164,7 +164,7 @@ describe('animate-element-entry-exit rule', () => {
       }
     `;
     const resB = scanJsSource('ui/toastB.js', codeB, [animateElementEntryExitMatcher], project);
-    assert.equal(resB.matches.length, 0);
+    assert.equal(resB.matches.length, 2);
 
     const codeC = `
       function showModal() {

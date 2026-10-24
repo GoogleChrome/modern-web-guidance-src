@@ -3,6 +3,8 @@ import { describe, it } from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
 import type { CssRuleMatcher } from '../schema.ts';
 import {
+  ITP_ACTIVE_SUB_PATTERNS,
+  ITP_DEFERRED_SUB_PATTERNS,
   individualTransformPropertiesMatcher,
   individualTransformPropertiesRule,
   individualTransformPropertiesSingleFunctionStateMatcher,
@@ -34,6 +36,8 @@ describe('individualTransformPropertiesRule', () => {
       individualTransformPropertiesSingleFunctionStateRule.id,
       'individual-transform-properties/single-function-state',
     );
+    assert.ok(ITP_ACTIVE_SUB_PATTERNS.includes('single-function-state'));
+    assert.equal(ITP_DEFERRED_SUB_PATTERNS.length, 0);
   });
 
   it('ignores standalone multi-function transform in default rule (Pattern C), flagged by opt-in standalone rule', () => {
@@ -64,8 +68,26 @@ describe('individualTransformPropertiesRule', () => {
     assert.equal(optInMatches[0]?.line, 2);
   });
 
-  it('ignores isolated :hover single-function transform in default rule (Pattern D), flagged by opt-in state rule', () => {
+  it('flags isolated :hover single-function transform in default rule (Pattern D is active by default)', () => {
     const css = `
+      .btn:hover {
+        transform: scale(1.05);
+      }
+    `;
+    const defaultMatches = scanCss('src/btn.css', css, rules);
+    assert.equal(defaultMatches.length, 1);
+    assert.equal(defaultMatches[0]?.line, 2);
+
+    const optInMatches = scanCss('src/btn.css', css, singleFunctionStateRules);
+    assert.equal(optInMatches.length, 1);
+    assert.equal(optInMatches[0]?.line, 2);
+  });
+
+  it('skips isolated :hover single-function transform when coupled with transition: transform in stylesheet', () => {
+    const css = `
+      .btn {
+        transition: transform 0.2s ease;
+      }
       .btn:hover {
         transform: scale(1.05);
       }
@@ -74,8 +96,7 @@ describe('individualTransformPropertiesRule', () => {
     assert.equal(defaultMatches.length, 0);
 
     const optInMatches = scanCss('src/btn.css', css, singleFunctionStateRules);
-    assert.equal(optInMatches.length, 1);
-    assert.equal(optInMatches[0]?.line, 2);
+    assert.equal(optInMatches.length, 0);
   });
 
   it('ignores transform with unsupported skew function', () => {
