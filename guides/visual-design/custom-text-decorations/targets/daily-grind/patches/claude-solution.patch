@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+index 66c9173..cfa9aaf 100644
+--- a/index.html
++++ b/index.html
+@@ -57,7 +57,6 @@
+ 
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -149,9 +148,91 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Text decorations */
++    :where(nav a:not(.logout-link), .footer-links a) {
++      text-decoration: underline solid currentColor max(1px, 0.08em);
++      text-underline-offset: 0.25em;
++      text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
++    }
++
++    :where(nav a, .footer-links a):is(:hover, :focus-visible) {
++      text-decoration-color: currentColor;
++      text-decoration-thickness: max(1px, 0.12em);
++    }
++
++    .logout-link {
++      text-decoration: none;
++    }
++
++    nav a:not(.logout-link) {
++      text-decoration-skip-ink: all;
++    }
++
++    .footer-links a {
++      text-decoration-skip-ink: all;
++      text-underline-offset: 0.2em;
++    }
++
++    /* Hero heading: decorative accent overline (not link-like) */
++    .hero h1 {
++      text-decoration: overline solid var(--accent) max(2px, 0.06em);
++      text-decoration-skip-ink: none;
++    }
++
++    /* Card headings: strikethrough-free overline plus a drawn squiggle */
++    .card h3 {
++      position: relative;
++      display: inline-block;
++      padding-block-end: 0.5em;
++      text-decoration: overline solid var(--accent) max(1px, 0.1em);
++      text-decoration-skip-ink: none;
++    }
++
++    .card h3::after {
++      content: "";
++      position: absolute;
++      inset: auto 0 0 0;
++      pointer-events: none;
++      border-block-end: max(2px, 0.08em) solid var(--accent);
++    }
++
++    @supports (border-shape: circle(50%)) {
++      .card h3::after {
++        border-block-end: 0;
++        block-size: 0.4em;
++        border: max(2px, 0.08em) solid var(--accent);
++        border-shape: shape(from 0% 50%,
++          curve to 20% 50% with 5% 0% / 15% 100%,
++          smooth to 40% 50% with 35% 100%,
++          smooth to 60% 50% with 55% 100%,
++          smooth to 80% 50% with 75% 100%,
++          smooth to 100% 50% with 95% 100%);
++      }
++    }
++
++    /* Reveal animations only when motion is acceptable */
++    @media (prefers-reduced-motion: no-preference) {
++      :where(nav a:not(.logout-link), .footer-links a) {
++        text-decoration-inset: 0 100%;
++        transition: text-decoration-inset 0.25s ease-out, color 0.3s;
++      }
++
++      :where(nav a:not(.logout-link), .footer-links a):is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0;
++      }
++
++      .card h3::after {
++        clip-path: inset(-1em 100% -1em 0);
++        transition: clip-path 0.6s ease-out;
++      }
++
++      .card:is(:hover, :focus-within) h3::after {
++        clip-path: inset(-1em 0 -1em 0);
++      }
++    }
+   </style>
+ </head>
+ 

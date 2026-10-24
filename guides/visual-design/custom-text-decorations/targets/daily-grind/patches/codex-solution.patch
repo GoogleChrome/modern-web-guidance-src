@@ -1,0 +1,215 @@
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..9b62c40
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,5 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const outputDirectory = new URL('./dist/', import.meta.url);
++await mkdir(outputDirectory, { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('index.html', outputDirectory));
+diff --git a/index.html b/index.html
+index 66c9173..0b1766f 100644
+--- a/index.html
++++ b/index.html
+@@ -57,12 +57,10 @@
+ 
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:is(:hover, :focus-visible) {
+       color: var(--accent);
+     }
+ 
+@@ -91,6 +89,7 @@
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      line-height: 1.5;
+     }
+ 
+     /* Content Sections */
+@@ -125,13 +124,11 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+-      text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:is(:hover, :focus-visible) {
+       background: #3e2723;
+     }
+ 
+@@ -149,9 +146,132 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native lines follow wrapped text and retain the font's ink skipping. */
++    :where(nav a, .btn, .footer-links a) {
++      text-decoration: underline solid currentColor max(1px, 0.07em);
++      text-underline-offset: 0.22em;
++      text-decoration-inset: 0.08em;
++    }
++
++    :where(a:focus-visible) {
++      outline: 2px solid currentColor;
++      outline-offset: 5px;
++    }
++
++    :where(.hero h1) {
++      text-decoration: underline wavy var(--accent) max(2px, 0.06em);
++      text-underline-offset: 0.18em;
++      text-decoration-inset: -0.08em;
++      /* Keep this ornamental line continuous beneath the heading. */
++      text-decoration-skip-ink: none;
++    }
++
++    :where(.card h3) {
++      text-decoration: underline double #98633d max(1px, 0.06em);
++      text-underline-offset: 0.24em;
++      text-decoration-inset: 0.12em 0.2em;
++    }
++
++    .card:nth-child(2) h3 {
++      text-decoration-line: overline;
++      text-decoration-style: solid;
++    }
++
++    .card:nth-child(3) h3 {
++      text-decoration-style: dotted;
++      text-underline-offset: 0.3em;
++      /* Falls back to the browser's normal descender skipping. */
++      text-decoration-skip-ink: all;
++    }
++
++    .seasonal-note {
++      margin-top: 0.75rem;
++      font-size: 0.85rem;
++    }
++
++    :where(.seasonal-note s) {
++      text-decoration: line-through solid #98633d max(1px, 0.08em);
++      text-decoration-skip-ink: none;
++    }
++
++    /* A hand-drawn flourish needs a shape beyond native line styles. */
++    .footer-links .draw {
++      position: relative;
++      display: inline-block;
++      padding-block-end: 0.45em;
++      text-decoration: none;
++    }
++
++    .draw::after {
++      content: "";
++      position: absolute;
++      inset: auto 0.1em 0 0.1em;
++      border-block-end: max(1px, 0.08em) solid currentColor;
++      pointer-events: none;
++    }
++
++    @supports (border-shape: circle(50%)) {
++      .draw::after {
++        block-size: 0.4em;
++        border: max(1px, 0.08em) solid currentColor;
++        border-shape: shape(from 0% 50%,
++          curve to 25% 50% with 8% 0% / 17% 100%,
++          smooth to 50% 50% with 42% 0%,
++          smooth to 75% 50% with 67% 100%,
++          smooth to 100% 50% with 92% 0%);
++      }
++    }
++
++    /* Unsupported inset leaves a complete underline. Reduced motion does too. */
++    @media (prefers-reduced-motion: no-preference) {
++      :where(nav a, .btn, .footer-links a:not(.draw)) {
++        text-decoration-inset: 0 100%;
++        transition: text-decoration-inset 0.25s ease-out,
++          color 0.25s ease-out, background-color 0.25s ease-out;
++      }
++
++      :where(nav a, .btn, .footer-links a:not(.draw)):is(:hover, :focus-visible) {
++        text-decoration-inset: 0.08em;
++      }
++
++      .draw::after {
++        clip-path: inset(-1em 100% -1em 0);
++        transition: clip-path 0.6s ease-out;
++      }
++
++      .draw:is(:hover, :focus-visible)::after {
++        clip-path: inset(-1em 0 -1em 0);
++      }
++    }
++
++    @media (max-width: 600px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 1rem;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 0.75rem 1rem;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .hero {
++        height: auto;
++        min-height: 60vh;
++        padding-block: 2rem;
++      }
++
++      .hero h1 {
++        font-size: 2.25rem;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -181,6 +301,7 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p class="seasonal-note"><s>Ordinary mornings.</s> A seasonal twist.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+@@ -199,7 +320,7 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
++      <a href="/about" class="draw">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
