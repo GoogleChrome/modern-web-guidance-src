@@ -41,11 +41,10 @@ void test('precise-text-alignment: rule metadata', () => {
 });
 
 void test('precise-text-alignment dependency matcher', async (t) => {
-  await t.test('flags @capsizecss/core and capsize', () => {
+  await t.test('flags capsize package', () => {
     const pkg = JSON.stringify(
       {
         dependencies: {
-          '@capsizecss/core': '^3.1.0',
           capsize: '^1.2.0',
         },
       },
@@ -55,7 +54,7 @@ void test('precise-text-alignment dependency matcher', async (t) => {
     const matches = scanPackageJson('package.json', pkg, [
       preciseTextAlignmentPackageMatcher,
     ]);
-    assert.equal(matches.length, 2);
+    assert.equal(matches.length, 1);
   });
 
   await t.test('exempts unrelated packages', () => {

@@ -25,13 +25,16 @@ export const REQUIRED_FIELD_FEEDBACK_GUIDE_HASH = '7772788421b6';
 const REQUIRED_INVALID_SELECTOR_REGEX =
   /(?:^|[\s>+~,])(?:input|textarea|[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*(?::required|\[required(?:=[^\]]*)?\])(?:[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*:invalid\b|(?:^|[\s>+~,])(?:input|textarea|[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*:invalid(?:[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*(?::required|\[required(?:=[^\]]*)?\])/i;
 
+const TOUCHED_DIRTY_INVALID_SELECTOR_REGEX =
+  /(?:[.#[][a-zA-Z0-9_-]*\b(?:is-|ng-|data-)?(?:touched|dirty|interacted|was-validated)\b[^,]*:invalid\b)|(?::invalid\b[^,]*[.#[][a-zA-Z0-9_-]*\b(?:is-|ng-|data-)?(?:touched|dirty|interacted|was-validated)\b)/i;
+
 const USER_INVALID_GUARD_TOKENS = [
   ':user-invalid',
   'user-invalid',
 ] as const;
 
 const DIRTY_TOUCHED_CLASS_REGEX =
-  /['"`](?:is-)?(?:touched|dirty|interacted|was-validated)['"`]/i;
+  /['"`](?:is-|ng-)?(?:touched|dirty|interacted|was-validated)['"`]/i;
 
 function isSelectOnlyTargetNode(targetNode: Node | undefined): boolean {
   if (!targetNode) {
@@ -103,8 +106,18 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    if (!REQUIRED_INVALID_SELECTOR_REGEX.test(selectorWithoutNot)) {
+    const hasRequiredInvalid = REQUIRED_INVALID_SELECTOR_REGEX.test(selectorWithoutNot);
+    const hasTouchedDirtyInvalid = TOUCHED_DIRTY_INVALID_SELECTOR_REGEX.test(selectorWithoutNot);
+
+    if (!hasRequiredInvalid && !hasTouchedDirtyInvalid) {
       return null;
+    }
+
+    if (hasTouchedDirtyInvalid) {
+      return {
+        message:
+          'CSS selector pairs :invalid with a touched/dirty class (e.g. .was-validated, .touched) to gate invalid styling until user interaction; modernize with native :user-invalid.',
+      };
     }
 
     return {
@@ -147,11 +160,11 @@ export const requiredFieldFeedbackCssRule: AnalyzerRule = {
   guideId: 'required-field-feedback',
   guideHash: REQUIRED_FIELD_FEEDBACK_GUIDE_HASH,
   summary:
-    'CSS :required:invalid and [required]:invalid selectors without :user-invalid should be modernized with :user-invalid so required inputs only show error styles after user interaction.',
+    'CSS :required:invalid, [required]:invalid, and touched/dirty :invalid selectors without :user-invalid should be modernized with :user-invalid so form fields only show error styles after user interaction.',
   matcher: requiredFieldFeedbackCssMatcher,
   phase2Rubric: {
     keepWhen: [
-      'A CSS rule uses :required:invalid or [required]:invalid without :user-invalid to style required form fields.',
+      'A CSS rule uses :required:invalid, [required]:invalid, or pairs :invalid with a touched/dirty class (.was-validated, .touched, .dirty) without :user-invalid to style form fields.',
     ],
     dropWhen: [
       'The stylesheet already uses :user-invalid or guards :invalid inside @supports not selector(:user-invalid).',

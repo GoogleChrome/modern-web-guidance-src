@@ -82,6 +82,42 @@ void test('required-field-feedback CSS matcher', async (t) => {
     ]);
     assert.equal(modernMatches.length, 0);
   });
+
+  await t.test('flags touched / dirty paired :invalid selectors (e.g. Bootstrap .was-validated)', () => {
+    const css = `
+      .was-validated .form-control:invalid {
+        border-color: #dc3545;
+      }
+      input.is-touched:invalid {
+        border-color: #d93025;
+      }
+      .dirty input:invalid {
+        box-shadow: 0 0 0 1px red;
+      }
+    `;
+    const matches = scanCss('bootstrap-feedback.css', css, [
+      requiredFieldFeedbackCssMatcher,
+    ]);
+    assert.equal(matches.length, 3);
+  });
+
+  await t.test('exempts bare :invalid without required or touched/dirty class', () => {
+    const css = `
+      input:invalid {
+        color: red;
+      }
+      textarea:invalid {
+        border-color: orange;
+      }
+      .container :invalid {
+        outline: none;
+      }
+    `;
+    const matches = scanCss('bare-invalid.css', css, [
+      requiredFieldFeedbackCssMatcher,
+    ]);
+    assert.equal(matches.length, 0);
+  });
 });
 
 void test('required-field-feedback JS matcher', async (t) => {

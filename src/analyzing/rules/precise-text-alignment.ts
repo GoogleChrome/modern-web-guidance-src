@@ -31,6 +31,10 @@ const CAPSIZE_PACKAGES = [
   'capsize',
 ] as const;
 
+const CAPSIZE_DEPENDENCY_PACKAGES = [
+  'capsize',
+] as const;
+
 const TEXT_BOX_GUARD_TOKENS = [
   'text-box',
   'text-box-trim',
@@ -290,7 +294,7 @@ function matchCapsizeCall(callExpr: CallExpression): string | null {
 
 export const preciseTextAlignmentPackageMatcher: DependencyRuleMatcher = {
   kind: 'dependency',
-  packages: CAPSIZE_PACKAGES,
+  packages: CAPSIZE_DEPENDENCY_PACKAGES,
   matchPackage: (
     pkgName: string,
     versionRange: string,
@@ -360,11 +364,11 @@ export const preciseTextAlignmentPackageRule: AnalyzerRule = {
   guideId: 'precise-text-alignment',
   guideHash: PRECISE_TEXT_ALIGNMENT_GUIDE_HASH,
   summary:
-    'Capsize leading-trim packages (@capsizecss/core, capsize) should be modernized with CSS text-box-trim and text-box-edge.',
+    'Capsize leading-trim package (capsize) should be modernized with CSS text-box-trim and text-box-edge.',
   matcher: preciseTextAlignmentPackageMatcher,
   phase2Rubric: {
     keepWhen: [
-      'A project declares @capsizecss/core, @capsizecss/vanilla-extract, or capsize in package.json dependencies to trim font leading above cap-height and below the alphabetic baseline.',
+      'A project declares capsize in package.json dependencies to trim font leading above cap-height and below the alphabetic baseline.',
     ],
     dropWhen: [
       'The project already uses native CSS text-box, text-box-trim, and text-box-edge.',
