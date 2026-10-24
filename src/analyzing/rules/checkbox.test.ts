@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
-import { checkboxCssMatcher, checkboxRule } from './checkbox.ts';
+import { checkboxCssMatcher } from './checkbox.ts';
 
 const matcher = checkboxCssMatcher;
 

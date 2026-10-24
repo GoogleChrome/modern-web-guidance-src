@@ -80,7 +80,7 @@ function requiresCtrlOrMetaModifier(condText: string): boolean {
  */
 function checkHandlerForUnsafeEnter(
   handler: Node,
-  fallbackLine: number,
+  _fallbackLine: number,
 ): AnalyzerMatch | null {
   const handlerText = handler.getText();
 

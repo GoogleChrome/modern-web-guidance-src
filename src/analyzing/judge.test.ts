@@ -10,7 +10,6 @@ import {
   formatBlindCardPrompt,
   formatLegacyPatternSpecDossier,
   hasValidSpecProvenance,
-  isDetectiveFactCheck,
   isJudgeVerdict,
   isPositiveVerdict,
   normalizeJudgeVerdict,
@@ -27,7 +26,6 @@ import {
   type BlindCardPayload,
   type CalibrationDeckItem,
   type CanaryCard,
-  type DetectiveFactCheck,
   type GuideSummaryInfo,
   type JudgeResult,
 } from './judge.ts';

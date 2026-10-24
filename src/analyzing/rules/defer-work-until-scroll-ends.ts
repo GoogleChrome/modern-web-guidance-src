@@ -79,7 +79,7 @@ function isDebounceCall(node: Node): boolean {
       if (text.includes('leading: true') && text.includes('trailing: false')) {
         return false;
       }
-      if (text.includes('leading:\s*true') && !text.includes('trailing:\s*true')) {
+      if (/leading:\s*true/.test(text) && !/trailing:\s*true/.test(text)) {
         return false;
       }
     }

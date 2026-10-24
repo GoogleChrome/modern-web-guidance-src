@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { DetectiveFactCheck, JudgeResult, JudgeVerdict } from './judge.ts';
+import type { DetectiveFactCheck, JudgeVerdict } from './judge.ts';
 import { WORKTREE_ROOT } from './paths.ts';
-import type { Phase2Confidence, Phase2Verdict } from './phase2.ts';
-import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
+import type { Phase2Confidence } from './phase2.ts';
+import type { AnalyzerRule } from './schema.ts';
 
 export const CARD_TELEMETRY_PATH = join(
   WORKTREE_ROOT,

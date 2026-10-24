@@ -135,7 +135,7 @@ function stripAuthorAndCopyrightLines(commentText: string): string {
       if (
         lower.includes('copyright') ||
         lower.includes('@author') ||
-        /\bauthors?\b\s*[:\-]/i.test(line) ||
+        /\bauthors?\b\s*[:-]/i.test(line) ||
         /\(c\)\s*\d{4}/i.test(line)
       ) {
         return false;

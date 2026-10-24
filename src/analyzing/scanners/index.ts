@@ -13,7 +13,7 @@ import type {
 } from '../schema.ts';
 import { computeCardId } from '../stats.ts';
 import { sliceStructuredContext } from './context-slicer.ts';
-import { scanCss, scanCssRules } from './css-scanner.ts';
+import { scanCssRules } from './css-scanner.ts';
 import {
   scanPackageJson,
   scanVendoredLibraryFile,
