@@ -120,7 +120,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
   });
 
   // 8. Check for state-changing URLs
-  test('Do not speculate URLs that likely trigger state changes (e.g., /logout)', async () => {
+  test('URLs that likely trigger state changes (such as "/logout") are not speculated', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
@@ -129,6 +129,10 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
       for (const set of ruleSets) {
         if (set.urls) {
           expect(set.urls.some((url: string) => url.toLowerCase().includes('logout'))).toBe(false);
+        }
+        if (set.where) {
+          const positiveWhere = JSON.stringify(set.where, (key, value) => (key === 'not' ? undefined : value));
+          expect(positiveWhere.toLowerCase().includes('logout')).toBe(false);
         }
       }
     } else {
