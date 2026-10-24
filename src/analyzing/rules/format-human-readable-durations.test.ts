@@ -5,6 +5,8 @@ import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import {
   durationDependencyMatcher,
   durationJsMatcher,
+  formatHumanReadableDurationsJsRule,
+  formatHumanReadableDurationsPackageRule,
   formatHumanReadableDurationsRules,
 } from './format-human-readable-durations.ts';
 
@@ -12,9 +14,9 @@ const depMatcher = durationDependencyMatcher;
 const jsMatcher = durationJsMatcher;
 
 void test('format-human-readable-durations rules array metadata', () => {
-  assert.equal(formatHumanReadableDurationsRules.length, 2);
-  assert.equal(formatHumanReadableDurationsRules[0].id, 'format-human-readable-durations/package-duration-formatter');
-  assert.equal(formatHumanReadableDurationsRules[1].id, 'format-human-readable-durations/js-duration-formatter');
+  assert.equal(formatHumanReadableDurationsRules.length, 0);
+  assert.equal(formatHumanReadableDurationsPackageRule.id, 'format-human-readable-durations/package-duration-formatter');
+  assert.equal(formatHumanReadableDurationsJsRule.id, 'format-human-readable-durations/js-duration-formatter');
 });
 
 void test('format-human-readable-durations dependency matcher', async (t) => {

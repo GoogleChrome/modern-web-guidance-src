@@ -15,7 +15,7 @@ void test('complex-shapes: rule metadata', () => {
   assert.equal(complexShapesRule.guideId, 'complex-shapes');
   assert.equal(complexShapesRule.guideHash, COMPLEX_SHAPES_GUIDE_HASH);
   assert.equal(COMPLEX_SHAPES_GUIDE_HASH.length, 12);
-  assert.equal(complexShapesRules.length, 0);
+  assert.equal(complexShapesRules.length, 1);
   assert.ok(complexShapesRule.phase2Rubric.keepWhen.length > 0);
   assert.ok(complexShapesRule.phase2Rubric.dropWhen.length >= 2);
 });

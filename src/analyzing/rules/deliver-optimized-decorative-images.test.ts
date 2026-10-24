@@ -15,7 +15,7 @@ void test('deliver-optimized-decorative-images: rule metadata', () => {
   assert.equal(deliverOptimizedDecorativeImagesRule.guideId, 'deliver-optimized-decorative-images');
   assert.equal(deliverOptimizedDecorativeImagesRule.guideHash, DELIVER_OPTIMIZED_DECORATIVE_IMAGES_GUIDE_HASH);
   assert.equal(DELIVER_OPTIMIZED_DECORATIVE_IMAGES_GUIDE_HASH.length, 12);
-  assert.equal(deliverOptimizedDecorativeImagesRules.length, 0);
+  assert.equal(deliverOptimizedDecorativeImagesRules.length, 1);
   assert.ok(deliverOptimizedDecorativeImagesRule.phase2Rubric.keepWhen.length > 0);
   assert.ok(deliverOptimizedDecorativeImagesRule.phase2Rubric.dropWhen.length >= 2);
 });

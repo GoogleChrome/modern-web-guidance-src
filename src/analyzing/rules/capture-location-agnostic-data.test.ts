@@ -39,7 +39,7 @@ void test('capture-location-agnostic-data: rule metadata', () => {
     CAPTURE_LOCATION_AGNOSTIC_DATA_GUIDE_HASH,
   );
 
-  assert.equal(captureLocationAgnosticDataRules.length, 2);
+  assert.equal(captureLocationAgnosticDataRules.length, 3);
   assert.ok(
     captureLocationAgnosticDataPackageRule.phase2Rubric.keepWhen.length >= 1,
   );

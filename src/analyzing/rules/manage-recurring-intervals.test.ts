@@ -18,7 +18,7 @@ describe('manage-recurring-intervals rule', () => {
     assert.equal(manageRecurringIntervalsRule.guideHash.length, 12);
     assert.ok(manageRecurringIntervalsRule.phase2Rubric.keepWhen.length >= 2);
     assert.ok(manageRecurringIntervalsRule.phase2Rubric.dropWhen.length >= 2);
-    assert.equal(manageRecurringIntervalsRules.length, 1);
+    assert.equal(manageRecurringIntervalsRules.length, 0);
   });
 
   test('flags d.setMonth(d.getMonth() + 1) recurring month advance', () => {
