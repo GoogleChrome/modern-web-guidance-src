@@ -510,6 +510,7 @@ describe('file operations and hashes', () => {
       assert.ok(markdown.includes('5 guides achieved 35/35 judge votes'));
       assert.ok(markdown.includes('Historical Background Context (Pre-D-042 / Pre-D-046; de-admitted Judge)'));
       assert.ok(markdown.includes('Cohort A: 61/64 = 95.3% judge votes across 22 guides'));
+      assert.ok(markdown.includes('Completed `R46` candidate deck rebuild'));
       assert.ok(markdown.includes('Provenance (R50):'));
     });
 
