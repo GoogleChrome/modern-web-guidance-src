@@ -90,7 +90,7 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     }
   });
 
-  test('Clicking into a required field and clicking out (blur) WITHOUT typing MUST trigger the error state (red border)', async ({ page }) => {
+  test('Interacting with a required field (such as typing and deleting a character) and clicking out (blur) MUST trigger the error state (red border)', async ({ page }) => {
     const input = page.locator('form input[required]').first();
     const initialStyle = await getStyling(input);
     

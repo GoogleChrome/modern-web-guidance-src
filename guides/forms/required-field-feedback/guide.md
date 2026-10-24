@@ -117,4 +117,3 @@ form.addEventListener('input', (e) => {
 
 1.  **Asterisks**: It is still best practice to indicate required fields visually (e.g., with an asterisk `*`) in the label, so users know what to expect *before* they interact.
 2.  **Submit Buttons**: Unlike `disabled` buttons, keep your submit button enabled. If the user clicks it, the browser will automatically trigger `:user-invalid` on all empty required fields and focus the first one. This is excellent for accessibility and UX.
-3.  **Accessibility**: {{ FEATURE("user-pseudos", "aria-invalid") }}
