@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Automaton Workshop: Checkbox Group</title>
+
+  <style>
+    :root {
+      --brand-primary: #1a73e8;
+      --border-color: #74777f;
+      --border-color-hover: #43474e;
+      --surface: #ffffff;
+      --text-color: #1f1f1f;
+      --text-muted: #5e6064;
+      --text-disabled: #8e9196;
+
+      --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
+      --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      max-inline-size: 640px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: var(--text-color);
+      background-color: #fcfcfd;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+    }
+
+    fieldset {
+      margin: 1.5rem 0 0;
+      padding: 1rem 1.5rem 1.5rem;
+      background-color: var(--surface);
+      border: 1px solid #e1e2e4;
+      border-radius: 8px;
+    }
+
+    legend {
+      padding-inline: 0.5rem;
+      font-weight: 600;
+    }
+
+    /* The list is the grid; each row subgrids so columns align across rows. */
+    .options {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      column-gap: 0.75rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .options li {
+      display: grid;
+      grid-template-columns: subgrid;
+      grid-column: 1 / -1;
+      align-items: center;
+      border-block-start: 1px solid #ececee;
+    }
+
+    .options li:first-child {
+      border-block-start: 0;
+    }
+
+    .options label {
+      display: grid;
+      grid-template-columns: subgrid;
+      grid-column: 1 / -1;
+      align-items: center;
+      min-block-size: 44px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .model {
+      color: var(--text-muted);
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+    }
+
+    .master {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-block-size: 44px;
+      margin-block-end: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Default: native rendering, branded with accent-color. */
+    .checkbox {
+      inline-size: 1.25em;
+      aspect-ratio: 1;
+      margin: 0;
+      accent-color: var(--brand-primary);
+      cursor: pointer;
+    }
+
+    .checkbox:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    /* Fallback: browsers without accent-color get the custom icon styling. */
+    @supports not (accent-color: auto) {
+      .checkbox {
+        --checkbox-size: 1.25em;
+        --checkbox-icon-size: 0.7em;
+
+        appearance: none;
+        display: inline-grid;
+        place-content: center;
+        inline-size: var(--checkbox-size);
+        color: #ffffff;
+        background-color: var(--surface);
+        border: 2px solid var(--border-color);
+        border-radius: 4px;
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+      }
+
+      .checkbox:hover:not(:disabled) {
+        border-color: var(--border-color-hover);
+      }
+
+      .checkbox:focus-visible {
+        outline-color: var(--brand-primary);
+      }
+
+      .checkbox::before {
+        content: "";
+        inline-size: var(--checkbox-icon-size);
+        aspect-ratio: 1;
+        background-color: currentColor;
+        mask: var(--checkbox-icon) no-repeat center / contain;
+        scale: 0;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .checkbox::before {
+          transition: scale 150ms ease;
+        }
+      }
+
+      @media (forced-colors: active) {
+        .checkbox::before {
+          background-color: CanvasText;
+        }
+      }
+
+      .checkbox:checked {
+        --checkbox-icon: var(--icon-check);
+      }
+
+      .checkbox:indeterminate {
+        --checkbox-icon: var(--icon-dash);
+      }
+
+      .checkbox:is(:checked, :indeterminate) {
+        background-color: var(--brand-primary);
+        border-color: var(--brand-primary);
+      }
+
+      .checkbox:is(:checked, :indeterminate)::before {
+        scale: 1;
+      }
+    }
+
+    label:has(:disabled) {
+      color: var(--text-disabled);
+      cursor: not-allowed;
+    }
+
+    output {
+      display: block;
+      margin-block-start: 1rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Automaton Workshop</h1>
+    <p class="subtitle">Choose which robots to activate for tonight's shift.</p>
+  </header>
+
+  <main>
+    <form>
+      <fieldset>
+        <legend>Active automatons</legend>
+
+        <label class="master">
+          <input type="checkbox" id="select-all" class="checkbox" aria-controls="robot-1 robot-2 robot-3 robot-4" />
+          Select all automatons
+        </label>
+
+        <ul class="options" id="options">
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork" />
+              <span>Clockwork Courier</span>
+              <span class="model">CW-01</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="robot-2" name="robot" value="brass" checked />
+              <span>Brass Barista</span>
+              <span class="model">BB-220</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="robot-3" name="robot" value="sentinel" />
+              <span>Sentinel Gatekeeper</span>
+              <span class="model">SG-7</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="robot-4" name="robot" value="gardener" checked />
+              <span>Gardener Drone</span>
+              <span class="model">GD-3000</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="robot-5" name="robot" value="rustbucket" disabled />
+              <span>Rust Bucket (offline)</span>
+              <span class="model">RB-0</span>
+            </label>
+          </li>
+        </ul>
+
+        <output id="status" aria-live="polite"></output>
+      </fieldset>
+    </form>
+  </main>
+
+  <script>
+    const master = document.querySelector('#select-all');
+    // Disabled (offline) robots are excluded from select-all and the count.
+    const items = [...document.querySelectorAll('input[name="robot"]:not(:disabled)')];
+    const status = document.querySelector('#status');
+
+    // Derive the master state from the options; indeterminate is JS-only.
+    function sync() {
+      const checked = items.filter((item) => item.checked).length;
+      master.checked = checked === items.length;
+      master.indeterminate = checked > 0 && checked < items.length;
+      status.textContent = `${checked} of ${items.length} available units active`;
+    }
+
+    master.addEventListener('change', () => {
+      items.forEach((item) => (item.checked = master.checked));
+      sync();
+    });
+    items.forEach((item) => item.addEventListener('change', sync));
+    sync();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,12 @@
+- The options and the master checkbox are grouped inside a `<fieldset>` that has a `<legend>` child.
+- Every checkbox, including the master checkbox, is a native `<input type="checkbox">` associated with a `<label>` (nested or via matching `for` and `id`).
+- The master checkbox is checked and not indeterminate when all enabled option checkboxes are checked.
+- The master checkbox has its `indeterminate` property set to true when some, but not all, enabled option checkboxes are checked.
+- The master checkbox is unchecked and not indeterminate when no enabled option checkboxes are checked.
+- Clicking the master checkbox changes every enabled option checkbox to match the master's checked state.
+- A disabled option checkbox keeps its checked state when the master checkbox is clicked and is not counted when deriving the master's state.
+- The master checkbox state reflects the initially checked options on page load.
+- Checkboxes are styled with the CSS `accent-color` property.
+- A `@supports not (accent-color: auto)` rule applies `appearance: none` and a `mask`-based `::before` indicator with an `:indeterminate` dash icon to checkboxes as the fallback.
+- The option list uses a grid layout whose rows use `grid-template-columns: subgrid`.
+- Disabled checkboxes have `cursor: not-allowed` and reduced opacity.
