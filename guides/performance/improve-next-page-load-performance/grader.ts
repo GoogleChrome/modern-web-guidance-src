@@ -128,12 +128,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
       expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
         if (set.urls) {
-          expect(set.urls.some((url: string) => url.includes('logout'))).toBe(false);
-        }
-        if (set.where) {
-          // Simplistic check for /logout in where clause
-          const whereStr = JSON.stringify(set.where);
-          expect(whereStr.includes('logout')).toBe(false);
+          expect(set.urls.some((url: string) => url.toLowerCase().includes('logout'))).toBe(false);
         }
       }
     } else {

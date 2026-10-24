@@ -75,7 +75,9 @@ A `tag` can also be used, either at a global level or on a per-rule basis. When 
       "where": {
         "and": [
           { "href_matches": "/*" },
-          { "not": {"href_matches": "/wp-admin"}},
+          { "not": {"href_matches": "/logout"}},
+          { "not": {"href_matches": "/logout/*"}},
+          { "not": {"href_matches": "/wp-admin/*"}},
           { "not": {"href_matches": "/*\\?*(^|&)add-to-cart=*"}},
           { "not": {"selector_matches": ".do-not-prerender"}},
           { "not": {"selector_matches": "[rel~=nofollow]"}}
@@ -116,7 +118,7 @@ This example shows a rule set that prefetches all links eagerly, and then goes f
 - **DO** consider the trade-offs between prefetch and prerender, and choose the appropriate one for your use case. Prerender is more expensive than prefetch and can cause more unintended side effects in complex applications that display dynamic state, but provides a better user experience. Ask the developer for their preference if unsure.
 - **DO** consider the trade-offs between the different `eagerness` levels, and choose the appropriate one for your use case. More eager speculation provides a better user experience but uses more resources and can cause more unintended side effects in complex applications that display dynamic state. Ask the developer for their preference if unsure.
 - **DO NOT** overuse speculation rules, for example, to speculate every link on the page. Browsers have limits (2 speculations for non-eager speculations). `immediate` should only be used for a very small number of links.
-- **DO NOT** speculate URLs that likely trigger state changes, like `/logout` or `/add-to-cart`, and explicitly exclude them from your speculation rules if they are likely to be included in document rules.
+- **DO NOT** speculate URLs that likely trigger state changes, like `/logout` or `/add-to-cart`, and explicitly exclude them from your speculation rules if they are likely to be included in document rules (for example, excluding `"/logout"`, `"/logout/*"`, and `"/wp-admin/*"` using wildcards to prevent nested subpaths from being speculated).
 - **DO NOT** use speculation rules on Single Page Applications (SPAs). Speculation rules are designed for multi-page applications (MPAs) where the browser navigates to a new document on each navigation. In SPAs, the browser does not navigate to a new document on each navigation, so speculation rules will not work as expected.
 
 ## Browser support and fallback strategies
