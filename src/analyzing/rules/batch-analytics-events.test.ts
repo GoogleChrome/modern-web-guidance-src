@@ -76,4 +76,24 @@ void test('batch-analytics-events JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('flags onunload assignment and named listener functions sending telemetry', () => {
+    const project = createInMemoryProject();
+    const code = `
+      function sendTelemetry() {
+        navigator.sendBeacon('/log', JSON.stringify({ event: 'exit' }));
+      }
+      window.addEventListener('unload', sendTelemetry);
+
+      window.onunload = () => {
+        navigator.sendBeacon('/onunload-log', payload);
+      };
+    `;
+    const sourceFile = project.createSourceFile('named-handler.js', code);
+    const matches = batchAnalyticsEventsMatcher.matchFile(sourceFile, {
+      filePath: 'named-handler.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 2);
+  });
 });

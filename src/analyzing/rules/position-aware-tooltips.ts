@@ -247,16 +247,15 @@ function hasTooltipContext(callExpr: CallExpression): boolean {
     const argText = arg.getText();
     const resolvedText = resolveLocalExpression(arg, 2).getText();
     if (
-      TOOLTIP_CONTEXT_REGEX.test(argText) ||
-      TOOLTIP_CONTEXT_REGEX.test(resolvedText)
-    ) {
-      return true;
-    }
-    if (
       NON_TOOLTIP_WIDGET_REGEX.test(argText) ||
       NON_TOOLTIP_WIDGET_REGEX.test(resolvedText)
     ) {
       hasNonTooltipWidgetArg = true;
+    } else if (
+      TOOLTIP_CONTEXT_REGEX.test(argText) ||
+      TOOLTIP_CONTEXT_REGEX.test(resolvedText)
+    ) {
+      return true;
     }
   }
 
@@ -274,11 +273,11 @@ function hasTooltipContext(callExpr: CallExpression): boolean {
       Node.isClassDeclaration(current)
     ) {
       const nameText = current.getName() ?? '';
-      if (TOOLTIP_CONTEXT_REGEX.test(nameText)) {
-        return true;
-      }
       if (NON_TOOLTIP_WIDGET_REGEX.test(nameText)) {
         return false;
+      }
+      if (TOOLTIP_CONTEXT_REGEX.test(nameText)) {
+        return true;
       }
     }
     current = current.getParent();

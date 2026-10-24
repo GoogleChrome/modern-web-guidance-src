@@ -143,4 +143,21 @@ void test('interactions-in-complex-layouts JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('flags fastdom extended instances', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import fastdom from 'fastdom';
+      const customFastdom = fastdom.extend({});
+      customFastdom.mutate(() => {
+        element.style.transform = 'scale(1.1)';
+      });
+    `;
+    const sourceFile = project.createSourceFile('extend.js', code);
+    const matches = interactionsInComplexLayoutsJsMatcher.matchFile(sourceFile, {
+      filePath: 'extend.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+  });
 });

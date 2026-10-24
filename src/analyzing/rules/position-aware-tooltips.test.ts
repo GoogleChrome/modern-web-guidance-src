@@ -106,4 +106,27 @@ void test('position-aware-tooltips JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts when non-tooltip widget keywords take precedence over tooltip naming in compound contexts', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import { createPopper } from '@popperjs/core';
+      const trigger = document.querySelector('#menu-btn');
+      const tooltipDropdownMenu = document.querySelector('#tooltip-dropdown-menu');
+      createPopper(trigger, tooltipDropdownMenu, { placement: 'bottom-start' });
+
+      class TooltipDropdownMenuController {
+        render() {
+          const popup = document.querySelector('#popup');
+          createPopper(trigger, popup);
+        }
+      }
+    `;
+    const sourceFile = project.createSourceFile('compound.js', code);
+    const matches = positionAwareTooltipsJsMatcher.matchFile(sourceFile, {
+      filePath: 'compound.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
 });

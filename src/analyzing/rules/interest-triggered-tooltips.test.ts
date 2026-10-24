@@ -102,4 +102,27 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts tippy calls with plugin options or render callbacks', () => {
+    const project = createInMemoryProject();
+    const code = `
+      import tippy from 'tippy.js';
+      tippy('#btn-plugin', {
+        content: 'Plugins',
+        plugins: [somePlugin],
+      });
+      tippy('#btn-render', {
+        render(instance) {
+          const popper = document.createElement('div');
+          return { popper };
+        },
+      });
+    `;
+    const sourceFile = project.createSourceFile('plugins.js', code);
+    const matches = interestTriggeredTooltipsJsMatcher.matchFile(sourceFile, {
+      filePath: 'plugins.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
 });

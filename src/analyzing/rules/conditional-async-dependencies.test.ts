@@ -171,4 +171,21 @@ void test('conditional-async-dependencies JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts script elements without src or without async load handlers', () => {
+    const project = createInMemoryProject();
+    const code = `
+      function insertRawScript() {
+        const script = document.createElement('script');
+        script.textContent = 'window.__INITIAL_DATA__ = {}';
+        document.body.appendChild(script);
+      }
+    `;
+    const sourceFile = project.createSourceFile('raw-script.js', code);
+    const matches = conditionalAsyncDependenciesJsMatcher.matchFile(sourceFile, {
+      filePath: 'raw-script.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
 });

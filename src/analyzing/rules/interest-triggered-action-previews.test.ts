@@ -165,4 +165,23 @@ void test('interest-triggered-action-previews JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('flags focusin listener with setTimeout action preview delay', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const trigger = document.querySelector('.card-trigger');
+      const actionCard = document.querySelector('#action-card');
+      trigger.addEventListener('focusin', () => {
+        setTimeout(() => {
+          actionCard.classList.add('visible');
+        }, 300);
+      });
+    `;
+    const sourceFile = project.createSourceFile('focus-preview.js', code);
+    const matches = interestTriggeredActionPreviewsJsMatcher.matchFile(sourceFile, {
+      filePath: 'focus-preview.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+  });
 });
