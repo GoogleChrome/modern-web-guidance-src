@@ -143,15 +143,39 @@ export const progressRingDomMatcher: DomRuleMatcher = {
 
     const elementClass = element.getAttribute('class') ?? '';
     const elementId = element.getAttribute('id') ?? '';
-    const combined = `${elementClass} ${elementId} ${ctx.documentText}`.toLowerCase();
+    const ariaLabel = element.getAttribute('aria-label') ?? '';
+    const role = element.getAttribute('role') ?? '';
 
-    const isProgressContext =
-      combined.includes('progress') ||
-      combined.includes('ring') ||
-      combined.includes('gauge') ||
-      combined.includes('circular');
+    // Check circle element attributes for progress context
+    const elementAttrs = `${elementClass} ${elementId} ${ariaLabel} ${role}`.toLowerCase();
+    let isProgress =
+      elementAttrs.includes('progress') ||
+      elementAttrs.includes('gauge') ||
+      elementAttrs.includes('meter') ||
+      (elementAttrs.includes('ring') && !elementAttrs.includes('spring'));
 
-    if (!isProgressContext) {
+    if (!isProgress) {
+      // Check enclosing <svg> tag attributes (up to 20 lines before circle)
+      const lines = ctx.documentText.split('\n');
+      for (let i = element.line - 1; i >= 0 && i >= element.line - 20; i--) {
+        const line = lines[i] ?? '';
+        if (/<svg\b/i.test(line)) {
+          const svgTag = line.slice(line.lastIndexOf('<svg'));
+          const lowerSvg = svgTag.toLowerCase();
+          if (
+            lowerSvg.includes('progress') ||
+            lowerSvg.includes('gauge') ||
+            lowerSvg.includes('meter') ||
+            lowerSvg.includes('ring')
+          ) {
+            isProgress = true;
+          }
+          break;
+        }
+      }
+    }
+
+    if (!isProgress) {
       return null;
     }
 

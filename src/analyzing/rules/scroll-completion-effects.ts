@@ -100,10 +100,14 @@ function isScrollCallAwaited(call: CallExpression): boolean {
 /**
  * Checks whether a function or block contains a setTimeout intended to fire after scrolling completes.
  */
-function findPostScrollSetTimeout(scope: Node): CallExpression | null {
+function findPostScrollSetTimeout(scope: Node, minStartPos: number): CallExpression | null {
   const callExpressions = scope.getDescendantsOfKind(SyntaxKind.CallExpression);
 
   for (const call of callExpressions) {
+    if (call.getStart() <= minStartPos) {
+      continue;
+    }
+
     const expr = unwrapExpression(call.getExpression());
     let fnName = '';
 
@@ -210,7 +214,7 @@ export const scrollCompletionEffectsJsMatcher: JsRuleMatcher = {
         continue;
       }
 
-      const timeoutCall = findPostScrollSetTimeout(currentScope);
+      const timeoutCall = findPostScrollSetTimeout(currentScope, call.getEnd());
       if (timeoutCall) {
         if (isProtectedByFeatureGuard(timeoutCall, SCROLL_PROMISE_FEATURE_TOKENS)) {
           continue;

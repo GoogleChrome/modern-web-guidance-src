@@ -100,6 +100,19 @@ void test('progress-ring: negative / exempt cases', async (suiteContext) => {
     assert.equal(matches.length, 0);
   });
 
+  await suiteContext.test('exempts decorative circle with stroke-dashoffset when document mentions progress elsewhere', () => {
+    const html = `
+      <header><h1>Progress Report</h1></header>
+      <main>
+        <svg width="100" height="100">
+          <circle cx="50" cy="50" r="40" stroke-dashoffset="10" stroke-dasharray="20" class="decorative-border" />
+        </svg>
+      </main>
+    `;
+    const matches = scanHtml('report.html', html, [domMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await suiteContext.test('exempts test and fixture files', () => {
     const code = `
       function testRing(circle: SVGCircleElement) {

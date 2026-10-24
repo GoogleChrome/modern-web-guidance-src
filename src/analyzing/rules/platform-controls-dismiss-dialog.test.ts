@@ -154,6 +154,23 @@ void test('platform-controls-dismiss-dialog: negative / exempt cases', async (t)
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts Escape key listener closing websocket or audio context', () => {
+    const project = createInMemoryProject();
+    const code = `
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          socket.close();
+        }
+      });
+    `;
+    const sourceFile = project.createSourceFile('websocket.js', code);
+    const matches = platformControlsDismissDialogJsMatcher.matchFile(sourceFile, {
+      filePath: 'websocket.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts popstate listener for page routing without modal dismiss', () => {
     const project = createInMemoryProject();
     const code = `

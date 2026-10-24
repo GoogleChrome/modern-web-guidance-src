@@ -97,6 +97,22 @@ void test('scroll-completion-effects: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts setTimeout preceding smooth scroll', () => {
+    const project = createInMemoryProject();
+    const code = `
+      function init() {
+        setTimeout(() => console.log('ready'), 500);
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    `;
+    const sourceFile = project.createSourceFile('init.js', code);
+    const matches = scrollCompletionEffectsJsMatcher.matchFile(sourceFile, {
+      filePath: 'init.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts scroll guarded by scroll promise feature detection', () => {
     const project = createInMemoryProject();
     const code = `

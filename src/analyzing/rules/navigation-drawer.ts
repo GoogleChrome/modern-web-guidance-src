@@ -139,11 +139,15 @@ export const navigationDrawerDomMatcher: DomRuleMatcher = {
     const combinedIdentifiers = `${elementClass} ${elementId}`.toLowerCase();
 
     const isDrawerContainer =
-      /\b(?:drawer|sidenav|offcanvas|side-nav|sidebar-nav)\b/i.test(
+      /\b(?:drawer|sidenav|offcanvas|side-nav)\b/i.test(
         combinedIdentifiers,
       );
 
     if (!isDrawerContainer) {
+      return null;
+    }
+
+    if (combinedIdentifiers.includes('sidebar-nav')) {
       return null;
     }
 

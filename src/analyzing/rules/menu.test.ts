@@ -71,6 +71,12 @@ void test('menu: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts test and fixture files in DOM matcher', () => {
+    const html = `<div role="menu"><ul><li>Item</li></ul></div>`;
+    const matches = scanHtml('tests/fixtures/menu.html', html, [menuDomMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts non-menu arrow navigation (e.g. game controls)', () => {
     const project = createInMemoryProject();
     const code = `

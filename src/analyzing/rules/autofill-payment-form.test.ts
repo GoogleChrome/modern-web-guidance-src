@@ -203,6 +203,17 @@ void test('autofill-payment-form: negative / exempt cases', async (suiteContext)
     assert.equal(matches.length, 0);
   });
 
+  await suiteContext.test('exempts non-card numbers such as bank routing and account numbers', () => {
+    const html = `
+      <form>
+        <input name="bank_account_number" type="text" />
+        <input name="routing_number" type="text" />
+      </form>
+    `;
+    const matches = scanHtml('checkout.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await suiteContext.test('exempts test and fixture files', () => {
     const html = `
       <form action="/checkout">

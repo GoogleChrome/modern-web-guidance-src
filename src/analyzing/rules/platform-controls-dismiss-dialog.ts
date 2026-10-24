@@ -28,8 +28,14 @@ const CLOSEDBY_FEATURE_TOKENS = [
 const MODAL_IDENTIFIER_REGEX =
   /\b(?:dialog|dlg|modal|drawer|overlay|popup|sheet|lightbox)\b/i;
 
-const DISMISS_METHOD_REGEX =
-  /\b(?:close|closeModal|closeDialog|hide|hideModal|dismiss|dismissModal|hidePopover)\b/i;
+const NON_MODAL_RECEIVER_REGEX =
+  /\b(?:window|self|document|ws|socket|stream|conn|connection|db|file|reader|writer|port|channel|context|audioCtx|peer)\b/i;
+
+const EXPLICIT_MODAL_DISMISS_METHOD_REGEX =
+  /\b(?:closeModal|closeDialog|hideModal|dismissModal|closeDrawer|hideDrawer)\b/i;
+
+const GENERIC_DISMISS_METHOD_REGEX =
+  /\b(?:close|hide|dismiss|hidePopover)\b/i;
 
 const DISMISS_CLASS_REGEX =
   /\b(?:active|open|show|is-active|is-open|modal-open|dialog-open)\b/i;
@@ -45,21 +51,25 @@ function isModalDismissCallOrMutation(node: Node): boolean {
       const receiver = unwrapExpression(expr.getExpression());
       const receiverText = receiver.getText().trim();
 
-      // Native dialog.close() or popover.hidePopover()
-      if (methodName === 'close' || methodName === 'hidePopover') {
+      if (NON_MODAL_RECEIVER_REGEX.test(receiverText)) {
+        return false;
+      }
+
+      // Explicit modal dismissal method like modal.closeModal(), modal.closeDialog()
+      if (EXPLICIT_MODAL_DISMISS_METHOD_REGEX.test(methodName)) {
+        return true;
+      }
+
+      // Native dialog.close(), popover.hidePopover(), or generic dismiss with modal receiver
+      if (GENERIC_DISMISS_METHOD_REGEX.test(methodName)) {
         if (
-          receiverText === 'this' ||
           MODAL_IDENTIFIER_REGEX.test(receiverText) ||
+          receiverText === 'this' ||
           receiverText.endsWith('.target') ||
           receiverText.endsWith('.current')
         ) {
           return true;
         }
-      }
-
-      // Helper function call like modal.closeModal(), modal.hide(), modal.dismiss()
-      if (DISMISS_METHOD_REGEX.test(methodName)) {
-        return true;
       }
 
       // classList.remove('active' | 'open' | ...) on a modal
@@ -82,7 +92,7 @@ function isModalDismissCallOrMutation(node: Node): boolean {
       }
     } else if (Node.isIdentifier(expr)) {
       const fnName = expr.getText();
-      if (DISMISS_METHOD_REGEX.test(fnName)) {
+      if (EXPLICIT_MODAL_DISMISS_METHOD_REGEX.test(fnName)) {
         return true;
       }
     }

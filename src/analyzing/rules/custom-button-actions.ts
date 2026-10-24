@@ -48,7 +48,15 @@ function referencesTargetElement(node: Node): boolean {
 
     if (Node.isIdentifier(child)) {
       const name = child.getText();
-      if (TARGET_IDENTIFIER_REGEX.test(name)) {
+      const parent = child.getParent();
+      if (
+        Node.isPropertyAccessExpression(parent) &&
+        (parent.getExpression().getText() === 'e' || parent.getExpression().getText() === 'event') &&
+        name === 'target'
+      ) {
+        return;
+      }
+      if (TARGET_IDENTIFIER_REGEX.test(name) && name !== 'btn' && name !== 'button') {
         found = true;
         return;
       }
@@ -80,8 +88,17 @@ function triggersCustomAction(node: Node): boolean {
         if (methodName === 'toggle' || methodName === 'add' || methodName === 'remove') {
           const receiver = unwrapExpression(expr.getExpression());
           if (Node.isPropertyAccessExpression(receiver) && receiver.getName() === 'classList') {
-            found = true;
-            return;
+            const classListTarget = unwrapExpression(receiver.getExpression()).getText();
+            if (
+              classListTarget !== 'this' &&
+              classListTarget !== 'e.target' &&
+              classListTarget !== 'event.target' &&
+              classListTarget !== 'btn' &&
+              classListTarget !== 'button'
+            ) {
+              found = true;
+              return;
+            }
           }
         }
       }

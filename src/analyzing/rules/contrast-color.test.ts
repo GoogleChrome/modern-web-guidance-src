@@ -93,6 +93,23 @@ void test('contrast-color: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts canvas image processing luminance calculations', () => {
+    const project = createInMemoryProject();
+    const code = `
+      function getPixelLuminance(ctx, x, y) {
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        const lum = 0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2];
+        return lum > 128 ? 'white' : 'black';
+      }
+    `;
+    const sourceFile = project.createSourceFile('canvasProcessor.js', code);
+    const matches = contrastColorJsMatcher.matchFile(sourceFile, {
+      filePath: 'canvasProcessor.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts CSS declaring standard colors', () => {
     const css = `
       .badge {

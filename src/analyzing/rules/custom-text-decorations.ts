@@ -95,6 +95,13 @@ export const customTextDecorationsCssMatcher: CssRuleMatcher = {
       styleRule.hasProperty('padding-bottom') ||
       styleRule.hasProperty('padding');
 
+    // Underline simulation requires removing standard underline (text-decoration: none)
+    // or having explicit .underline class naming
+    const isExplicitUnderline = /\.underline\b/i.test(selector);
+    if (!hasTextDecNone && !isExplicitUnderline) {
+      return null;
+    }
+
     if (hasTextDecNone || hasPaddingBottom) {
       return {
         message:

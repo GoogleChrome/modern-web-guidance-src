@@ -145,6 +145,18 @@ export const menuDomMatcher: DomRuleMatcher = {
   selector: '[role="menu"]',
   fastTokens: ['role="menu"'] as const,
   matchElement(element: DomElementView, _ctx: DomMatcherContext): { message: string } | null {
+    const lowerPath = _ctx.filePath.toLowerCase();
+    if (
+      lowerPath.includes('/test/') ||
+      lowerPath.includes('/tests/') ||
+      lowerPath.includes('/test/data/') ||
+      lowerPath.includes('/fixtures/') ||
+      lowerPath.includes('/fixture/') ||
+      lowerPath.includes('__tests__')
+    ) {
+      return null;
+    }
+
     // If element already declares focusgroup, exempt
     if (element.hasAttribute('focusgroup')) {
       return null;

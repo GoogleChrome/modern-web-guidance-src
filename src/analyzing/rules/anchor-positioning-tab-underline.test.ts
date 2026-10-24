@@ -106,6 +106,17 @@ void test('anchor-positioning-tab-underline: negative / exempt cases', async (su
     assert.equal(matches.length, 0);
   });
 
+  await suiteContext.test('exempts map marker position calculation', () => {
+    const code = `
+      function updateMapMarker(marker: HTMLElement, point: any) {
+        marker.style.left = \`\${point.x}px\`;
+        marker.style.top = \`\${point.y}px\`;
+      }
+    `;
+    const { matches } = scanJsSource('map.ts', code, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await suiteContext.test('exempts test and fixture files', () => {
     const code = `
       function updateTab(tab: HTMLElement, indicator: HTMLElement) {

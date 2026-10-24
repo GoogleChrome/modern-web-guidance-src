@@ -93,6 +93,21 @@ void test('custom-button-actions: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts button toggling its own active class', () => {
+    const project = createInMemoryProject();
+    const code = `
+      button.addEventListener('click', () => {
+        button.classList.toggle('active');
+      });
+    `;
+    const sourceFile = project.createSourceFile('self-toggle.js', code);
+    const matches = customButtonActionsJsMatcher.matchFile(sourceFile, {
+      filePath: 'self-toggle.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts button managing simple internal counter with no target element', () => {
     const project = createInMemoryProject();
     const code = `

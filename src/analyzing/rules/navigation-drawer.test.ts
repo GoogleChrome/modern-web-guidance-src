@@ -123,6 +123,16 @@ void test('navigation-drawer: negative / exempt cases', async (suiteContext) => 
     assert.equal(matches.length, 0);
   });
 
+  await suiteContext.test('exempts static admin sidebar-nav', () => {
+    const html = `
+      <nav class="sidebar-nav">
+        <ul><li><a href="/home">Home</a></li></ul>
+      </nav>
+    `;
+    const matches = scanHtml('admin.html', html, [domMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await suiteContext.test('exempts test and fixture files', () => {
     const html = `
       <div class="drawer"><p>Menu</p></div>

@@ -69,7 +69,10 @@ const VALID_PAYMENT_AUTOCOMPLETE_TOKENS: ReadonlySet<string> = new Set([
 ]);
 
 const CARD_NUMBER_REGEX =
-  /(?:card[-_]?num(?:ber)?|cc[-_]?num(?:ber)?|credit[-_]?card|card[-_]?no|\bpan\b|account[-_]?number)/i;
+  /(?:card[-_]?num(?:ber)?|cc[-_]?num(?:ber)?|credit[-_]?card|card[-_]?no|\bpan\b|(?:card|cc)[-_]?account[-_]?number)/i;
+
+const NON_CARD_IDENTIFIERS_REGEX =
+  /(?:bank|routing|iban|swift|gift[-_]?card|loyalty|phone|ssn)/i;
 
 const CARD_EXPIRATION_REGEX =
   /(?:cc[-_]?exp(?:ir(?:y|ation))?|card[-_]?exp|exp[-_]?date|exp[-_]?month|exp[-_]?year|\bexpiry\b|\bexpiration\b)/i;
@@ -208,6 +211,11 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
     const placeholder = element.getAttribute('placeholder') ?? '';
     const ariaLabel = element.getAttribute('aria-label') ?? '';
     const combinedIdentifiers = `${name} ${id} ${placeholder} ${ariaLabel}`.toLowerCase();
+
+    // Skip non-card numbers such as bank accounts, routing, IBAN, gift cards
+    if (NON_CARD_IDENTIFIERS_REGEX.test(combinedIdentifiers)) {
+      return null;
+    }
 
     // 7. Check existing autocomplete attribute value
     const autocompleteAttr =

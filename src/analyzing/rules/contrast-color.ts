@@ -82,6 +82,16 @@ export const contrastColorJsMatcher: JsRuleMatcher = {
       return matches;
     }
 
+    const lowerPath = ctx.filePath.toLowerCase();
+    if (
+      lowerPath.includes('canvas') ||
+      lowerPath.includes('webgl') ||
+      lowerPath.includes('shader') ||
+      lowerPath.includes('image-process')
+    ) {
+      return matches;
+    }
+
     const functions = [
       ...sourceFile.getFunctions(),
       ...sourceFile.getDescendantsOfKind(SyntaxKind.FunctionExpression),
@@ -90,6 +100,15 @@ export const contrastColorJsMatcher: JsRuleMatcher = {
     ];
 
     for (const fn of functions) {
+      const fnText = fn.getText();
+      if (
+        fnText.includes('getImageData') ||
+        fnText.includes('getContext') ||
+        fnText.includes('HTMLCanvasElement')
+      ) {
+        continue;
+      }
+
       if (!isLuminanceOrYiqCalculation(fn)) {
         continue;
       }

@@ -100,6 +100,17 @@ void test('custom-text-decorations: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts inline spans with padding and border-bottom that do not declare text-decoration: none', () => {
+    const css = `
+      span.tag {
+        padding: 4px;
+        border-bottom: 1px solid #ccc;
+      }
+    `;
+    const matches = scanCss('tags.css', css, [customTextDecorationsCssMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts elements with multiple borders (box outline, not text underline)', () => {
     const css = `
       .box {

@@ -23,10 +23,13 @@ const FEATURE_TOKENS: readonly string[] = [
 ] as const;
 
 const TAB_INDICATOR_IDENTIFIER_REGEX =
-  /(?:indicator|underline|glider|tab[-_]?line|slider|marker|active[-_]?bar|tab[-_]?bar)/i;
+  /(?:indicator|underline|glider|tab[-_]?line|active[-_]?bar|tab[-_]?bar|tab[-_]?slider)/i;
 
 const TAB_CONTEXT_REGEX =
-  /(?:tab|nav[-_]?item|menu[-_]?item|active[-_]?tab|tab[-_]?list)/i;
+  /(?:tab|nav[-_]?item|menu[-_]?item|active[-_]?tab|tab[-_]?list|segmented)/i;
+
+const NON_TAB_CONTEXT_REGEX =
+  /(?:carousel|map|leaflet|google\.maps|chart|slider|range)/i;
 
 function isTabGeometryMeasurement(node: Node): boolean {
   if (Node.isPropertyAccessExpression(node)) {
@@ -108,9 +111,13 @@ export const anchorPositioningTabUnderlineMatcher: JsRuleMatcher = {
       const scopeText = scopeNode.getText();
 
       if (
-        !TAB_CONTEXT_REGEX.test(scopeText) &&
+        !TAB_CONTEXT_REGEX.test(scopeText) ||
         !TAB_INDICATOR_IDENTIFIER_REGEX.test(scopeText)
       ) {
+        return;
+      }
+
+      if (NON_TAB_CONTEXT_REGEX.test(scopeText) && !/tab/i.test(scopeText)) {
         return;
       }
 
