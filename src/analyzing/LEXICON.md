@@ -69,6 +69,29 @@ Offline evaluation harness that asks an LLM to modernize a flagged code window u
 * _Reference_: `src/analyzing/fix-harness.ts#evaluateAgentFix`
 * _Avoid_: `Milestone 4`, `Gate 1 / Gate 2 / Gate 3`
 
+## Detection Hierarchy
+
+### Guide (`guideId`)
+
+A published feature guide in `guides/<guideId>/guide.md` representing one modern web platform capability.
+
+* _Reference_: `guides/modern-web-guidance/SKILL.md#step-1-learn-what-the-guide-teaches`
+* _Avoid_: `Feature`, `Article`, `Standard`
+
+### Rule (`ruleId`)
+
+A **Static Matcher** entry (`AnalyzerRule`) targeting a specific language or scanner layer (JS/TS AST, CSS, HTML/JSX DOM, or `package.json`) for a given `guideId`. A single guide may have multiple rules across layers (e.g., a `package.json` dependency rule plus a JS AST rule).
+
+* _Reference_: `src/analyzing/schema.ts#AnalyzerRule`, `src/analyzing/rules/index.ts#ALL_RULES`
+* _Avoid_: `Detector`, `Check`, `Linter Rule`
+
+### Sub-Pattern (`subPattern`)
+
+A distinct syntactic or payoff variant within a single `Rule` (for example, individual transform function variants in `individual-transform-properties.ts`). A **Deferred Sub-Pattern** (`ITP_DEFERRED_SUB_PATTERNS`) is a sub-pattern held back from default execution because its precision or payoff profile differs from the rule's active sub-patterns.
+
+* _Reference_: `src/analyzing/rules/individual-transform-properties.ts#ITP_DEFERRED_SUB_PATTERNS`
+* _Avoid_: `Sub-Rule`, `Rule Variant`, `Branch`
+
 ## Corpus Splits
 
 ### `rule-writing` split
@@ -101,6 +124,20 @@ Independent authoring of a **Static Matcher** from `guide.md` and upstream expla
 * _Reference_: `analyzer-internal/DECISIONS.md#d-040`, `analyzer-internal/DECISIONS.md#d-047`
 * _Avoid_: `Dual Coding`, `Parallel Implementation`
 
+### Precision
+
+The proportion of evaluated findings graded `legit-modernize-target` ($\text{legit-modernize-target} / n$), measuring whether applying the guide to the flagged code is a genuine win.
+
+* _Reference_: `src/analyzing/qualification.ts`
+* _Avoid_: `Strict Precision`, `Raw Precision`, `Detector Accuracy`
+
+### Matcher Misfire Rate
+
+The proportion of evaluated findings graded `not-old-pattern` ($\text{not-old-pattern} / n$), measuring how often a **Static Matcher** fires on code that is not attempting the legacy pattern. Its complement ($1 - \text{Matcher Misfire Rate}$, or **Non-Misfire Rate**) is used only when plotting alongside **Precision** on a `0–100%` chart axis.
+
+* _Reference_: `analyzer-internal/DECISIONS.md#d-048`, `src/analyzing/qualification.ts`
+* _Avoid_: `False Positive Rate`, `Error Rate`
+
 ## Rule Lifecycle States
 
 ### Experimental Rule
@@ -112,9 +149,9 @@ An active rule in `ALL_RULES` available behind `--experimental` (`--all-rules`) 
 
 ### Qualified Rule
 
-A rule in `QUALIFIED_GUIDE_IDS` shipped by default in `npx modern-web-guidance analyze` after clearing the project's qualification criteria.
+A rule in `QUALIFIED_GUIDE_IDS` shipped by default in `npx modern-web-guidance analyze` after clearing the project's qualification criteria. Rules qualify under one of three objective **Qualification Tiers** (`Tier A` human-verified $\ge 90\%$, `Tier B` **Eval Judge** $\ge 90\%$ at $n \ge 35$, or `Tier C` **Matcher Misfire Rate** $\le 10\%$ or deterministic swap).
 
-* _Reference_: `src/analyzing/qualification.ts#QUALIFIED_GUIDE_IDS`
+* _Reference_: `src/analyzing/qualification.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/qualification.ts#QualificationTier`
 * _Avoid_: `Default Rule`, `Tier 1 Rule`, `Graduated Rule`
 
 ### Suspended Rule
@@ -123,6 +160,13 @@ A previously qualified rule in `SUSPENDED_QUALIFIED_GUIDE_IDS` whose default shi
 
 * _Reference_: `src/analyzing/qualification.ts#SUSPENDED_QUALIFIED_GUIDE_IDS`
 * _Avoid_: `Quarantined Rule`, `Disabled Rule`
+
+### Unwired Module
+
+A rule module in `src/analyzing/rules/*.ts` with unit tests on disk that is not yet imported into `src/analyzing/rules/index.ts`. Distinct from a registered **Experimental Rule** or **Qualified Rule**.
+
+* _Reference_: `analyzer-internal/scripts/rule-inventory.ts`
+* _Avoid_: `Orphaned Rule`, `Unreferenced File`
 
 ### Retired Guide
 
