@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+index 66c9173..bd38006 100644
+--- a/index.html
++++ b/index.html
+@@ -88,9 +88,69 @@
+       padding: 0 20px;
+     }
+ 
++    .hero {
++      isolation: isolate;
++      background:
++        linear-gradient(160deg in oklch, oklch(35% 0.08 50 / 0.85), oklch(30% 0.1 30 / 0.55) 55%, oklch(75% 0.15 70 / 0.45)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: #3e2723;
++      background-size: cover;
++      background-position: center;
++      background-blend-mode: multiply, normal;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
++    }
++
++    /* Seasonal cards */
++    .card {
++      --stripe-1: #fff;
++      --stripe-2: #fbf6f3;
++      background: repeating-linear-gradient(-45deg, var(--stripe-1) 0 10px, var(--stripe-2) 0 20px);
++      box-shadow:
++        0 1px 1px rgba(62, 39, 35, 0.12),
++        0 2px 2px rgba(62, 39, 35, 0.12),
++        0 4px 4px rgba(62, 39, 35, 0.12),
++        0 8px 8px rgba(62, 39, 35, 0.1),
++        0 16px 16px rgba(62, 39, 35, 0.08);
++    }
++
++    .card:nth-child(2) {
++      background:
++        radial-gradient(circle, rgba(78, 52, 46, 0.12) 1.5px, transparent 2.5px) 0 0 / 14px 14px,
++        white;
++    }
++
++    .card:nth-child(3) {
++      background: repeating-conic-gradient(#fff 0 25%, #f6efec 0 50%) 0 / 20px 20px;
++    }
++
++    .pie {
++      --p: 50%;
++      width: 60px;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      margin: 0 auto 12px;
++      background: conic-gradient(var(--accent) var(--p), transparent 0%) var(--secondary);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    footer {
++      background:
++        repeating-linear-gradient(-45deg, transparent 0 12px, color-mix(in oklab, var(--primary) 8%, transparent) 0 24px),
++        var(--secondary);
+     }
+ 
+     /* Content Sections */
+@@ -179,21 +239,35 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="pie" style="--p: 40%" aria-hidden="true"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="pie" style="--p: 90%" aria-hidden="true"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="pie" style="--p: 70%" aria-hidden="true"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <table class="sr-only">
++        <caption>Coffee strength of each seasonal favorite</caption>
++        <thead>
++          <tr><th scope="col">Drink</th><th scope="col">Strength</th></tr>
++        </thead>
++        <tbody>
++          <tr><th scope="row">Maple Oat Latte</th><td>40%</td></tr>
++          <tr><th scope="row">Dark Roast Espresso</th><td>90%</td></tr>
++          <tr><th scope="row">Cold Brew</th><td>70%</td></tr>
++        </tbody>
++      </table>
+     </section>
+   </main>
+ 

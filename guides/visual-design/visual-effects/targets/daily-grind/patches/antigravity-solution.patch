@@ -1,0 +1,331 @@
+diff --git a/index.html b/index.html
+index 66c9173..068d0c6 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,22 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --in-oklab: ;
++      --in-oklch: ;
++    }
++
++    @supports (linear-gradient(in oklab, white, black)) {
++      :root {
++        --in-oklab: in oklab;
++        --in-oklch: in oklch;
++      }
++    }
++
++    @supports (background: linear-gradient(in oklab, white, black)) {
++      :root {
++        --in-oklab: in oklab;
++        --in-oklch: in oklch;
++      }
+     }
+ 
+     * {
+@@ -27,9 +43,21 @@
+       background-color: var(--light);
+     }
+ 
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: linear-gradient(to right var(--in-oklab), var(--primary), color-mix(in oklab, var(--primary) 80%, black));
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -38,12 +66,16 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow:
++        0 1px 2px rgba(62, 39, 35, 0.15),
++        0 4px 12px rgba(62, 39, 35, 0.2);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+     }
+ 
+     nav ul {
+@@ -75,8 +107,13 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      position: relative;
++      isolation: isolate;
++      background-image:
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80'),
++        linear-gradient(to bottom var(--in-oklab), var(--primary), color-mix(in oklch, var(--primary) 65%, var(--accent)));
++      background-blend-mode: soft-light, normal;
++      background-color: var(--primary);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -88,9 +125,20 @@
+       padding: 0 20px;
+     }
+ 
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: radial-gradient(circle at center var(--in-oklab), color-mix(in oklab, var(--accent) 25%, transparent), rgba(30, 15, 10, 0.75));
++      mix-blend-mode: multiply;
++      z-index: -1;
++      pointer-events: none;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+     }
+ 
+     /* Content Sections */
+@@ -103,16 +151,59 @@
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      gap: 24px;
++      margin-top: 24px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      --color-1: color-mix(in oklab, var(--secondary) 22%, white);
++      --color-2: #ffffff;
++      background-color: var(--color-2);
++      background: repeating-linear-gradient(-45deg, var(--color-1) 0 1em, var(--color-2) 0 2em);
++      padding: 28px 20px;
++      border-radius: 12px;
++      box-shadow:
++        0 1px 2px rgba(62, 39, 35, 0.06),
++        0 4px 8px rgba(62, 39, 35, 0.08),
++        0 12px 24px rgba(62, 39, 35, 0.1),
++        0 24px 48px rgba(62, 39, 35, 0.06);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      transition: transform 0.3s ease, box-shadow 0.3s ease;
++    }
++
++    .card:hover {
++      transform: translateY(-4px);
++      box-shadow:
++        0 2px 4px rgba(62, 39, 35, 0.08),
++        0 8px 16px rgba(62, 39, 35, 0.1),
++        0 16px 32px rgba(62, 39, 35, 0.14),
++        0 32px 64px rgba(62, 39, 35, 0.1);
++    }
++
++    /* Subtle geometric background textures per card */
++    .card--stripes {
++      --color-1: color-mix(in oklab, var(--secondary) 20%, white);
++      --color-2: #ffffff;
++      background: repeating-linear-gradient(-45deg, var(--color-1) 0 1em, var(--color-2) 0 2em);
++    }
++
++    .card--dots {
++      --color-1: color-mix(in oklab, var(--secondary) 35%, white);
++      --color-2: #ffffff;
++      --distance: 2em;
++      --radius: 0.5em;
++      --polka: radial-gradient(circle, var(--color-1) var(--radius), transparent calc(var(--radius) + 1px));
++      background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance) var(--color-2);
++      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
++    }
++
++    .card--checkerboard {
++      --color-1: color-mix(in oklab, var(--secondary) 18%, white);
++      --color-2: #ffffff;
++      background: repeating-conic-gradient(var(--color-1) 0 25%, var(--color-2) 0 50%) 0 / 2em 2em;
+     }
+ 
+     .card h3 {
+@@ -120,26 +211,64 @@
+       color: var(--primary);
+     }
+ 
++    /* Gradient-only Pie Chart Indicators */
++    .pie-indicator {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      margin: 14px 0 8px;
++    }
++
++    .pie {
++      --p: 80%;
++      --color-1: var(--primary);
++      --color-2: color-mix(in oklab, var(--secondary) 65%, white);
++      width: 60px;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      background: conic-gradient(var(--color-1) var(--p), transparent 0%) var(--color-2);
++      filter: drop-shadow(0 2px 4px rgba(62, 39, 35, 0.18));
++      margin-bottom: 6px;
++    }
++
++    .pie-label {
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: var(--primary);
++      letter-spacing: 0.02em;
++    }
++
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: linear-gradient(to bottom var(--in-oklab), color-mix(in oklab, var(--primary) 85%, var(--accent)), var(--primary));
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      box-shadow:
++        0 1px 2px rgba(62, 39, 35, 0.2),
++        0 4px 8px rgba(62, 39, 35, 0.15);
++      transition: background 0.3s, transform 0.2s, box-shadow 0.2s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: linear-gradient(to bottom var(--in-oklab), var(--primary), #3e2723);
++      transform: translateY(-1px);
++      box-shadow:
++        0 2px 4px rgba(62, 39, 35, 0.25),
++        0 6px 12px rgba(62, 39, 35, 0.2);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      --color-1: color-mix(in oklab, var(--secondary) 88%, var(--primary));
++      --color-2: var(--secondary);
++      background: linear-gradient(to right, var(--color-1) 50%, var(--color-2) 0) 0 / 2em;
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      border-top: 4px solid color-mix(in oklab, var(--primary) 30%, var(--secondary));
++      box-shadow: inset 0 4px 10px rgba(62, 39, 35, 0.08);
+     }
+ 
+     .footer-links {
+@@ -178,19 +307,88 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card card--stripes">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="pie-indicator">
++            <div class="pie" style="--p: 65%;" aria-hidden="true"></div>
++            <span class="pie-label">Roast Intensity: 65%</span>
++            <table class="sr-only">
++              <caption>Maple Oat Latte Profile</caption>
++              <thead>
++                <tr>
++                  <th scope="col">Metric</th>
++                  <th scope="col">Percentage</th>
++                </tr>
++              </thead>
++              <tbody>
++                <tr>
++                  <th scope="row">Roast Intensity</th>
++                  <td>65%</td>
++                </tr>
++                <tr>
++                  <th scope="row">Milk &amp; Maple Balance</th>
++                  <td>35%</td>
++                </tr>
++              </tbody>
++            </table>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card card--dots">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div class="pie-indicator">
++            <div class="pie" style="--p: 90%;" aria-hidden="true"></div>
++            <span class="pie-label">Roast Intensity: 90%</span>
++            <table class="sr-only">
++              <caption>Dark Roast Espresso Profile</caption>
++              <thead>
++                <tr>
++                  <th scope="col">Metric</th>
++                  <th scope="col">Percentage</th>
++                </tr>
++              </thead>
++              <tbody>
++                <tr>
++                  <th scope="row">Roast Intensity</th>
++                  <td>90%</td>
++                </tr>
++                <tr>
++                  <th scope="row">Crema &amp; Acidity</th>
++                  <td>10%</td>
++                </tr>
++              </tbody>
++            </table>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card card--checkerboard">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <div class="pie-indicator">
++            <div class="pie" style="--p: 80%;" aria-hidden="true"></div>
++            <span class="pie-label">Roast Intensity: 80%</span>
++            <table class="sr-only">
++              <caption>Cold Brew Profile</caption>
++              <thead>
++                <tr>
++                  <th scope="col">Metric</th>
++                  <th scope="col">Percentage</th>
++                </tr>
++              </thead>
++              <tbody>
++                <tr>
++                  <th scope="row">Roast Intensity</th>
++                  <td>80%</td>
++                </tr>
++                <tr>
++                  <th scope="row">Smoothness Reserve</th>
++                  <td>20%</td>
++                </tr>
++              </tbody>
++            </table>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
