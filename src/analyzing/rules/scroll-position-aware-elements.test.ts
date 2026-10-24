@@ -123,4 +123,107 @@ describe('scroll-position-aware-elements rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('flags window.onscroll assignment toggling header sticky class', () => {
+    const code = `
+      window.onscroll = function() {
+        if (window.pageYOffset > 80) {
+          header.classList.add('sticky');
+        } else {
+          header.classList.remove('sticky');
+        }
+      };
+    `;
+    const { matches } = scanJsSource(
+      'src/onscroll.js',
+      code,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /scroll-state/);
+  });
+
+  test('flags scroll handler changing header size or logo dimensions', () => {
+    const code = `
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 50) {
+          document.getElementById('logo').style.width = '100px';
+        } else {
+          document.getElementById('logo').style.width = '200px';
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'src/logo-shrink.js',
+      code,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /scroll-state/);
+  });
+
+  test('flags scroll handler calling same-file helper function', () => {
+    const code = `
+      window.onscroll = function() { scrollFunction(); };
+      function scrollFunction() {
+        if (document.documentElement.scrollTop > 100) {
+          navbar.classList.add('nav-fixed');
+        } else {
+          navbar.classList.remove('nav-fixed');
+        }
+      }
+    `;
+    const { matches } = scanJsSource(
+      'src/named-helper.js',
+      code,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /scroll-state/);
+  });
+
+  test('flags jQuery scroll handler comparing position variable on navbar', () => {
+    const code = `
+      $(window).scroll(function() {
+        var scrollPos = $(window).scrollTop();
+        if (scrollPos >= 80) {
+          $('#site-header').addClass('nav-fixed');
+        } else {
+          $('#site-header').removeClass('nav-fixed');
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'src/jquery-navbar.js',
+      code,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /scroll-state/);
+  });
+
+  test('exempts scroll listeners dynamically registered inside touch/click interaction listeners', () => {
+    const code = `
+      $('body').on('touchstart', function() {
+        $(window).scroll(function() {
+          if ($(window).scrollTop() > 200) {
+            $('#topIcon').removeClass('Hide');
+          } else {
+            $('#topIcon').addClass('Hide');
+          }
+        });
+      });
+    `;
+    const { matches } = scanJsSource(
+      'src/nested-touch.js',
+      code,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
 });

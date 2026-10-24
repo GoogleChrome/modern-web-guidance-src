@@ -35,8 +35,8 @@ function handlerCallsCloseOnDialog(handlerNode: Node, targetNode?: Node): boolea
           if (
             receiverText === 'this' ||
             receiverText.endsWith('.target') ||
-            /\bdialog\b/i.test(receiverText) ||
-            /\bdlg\b/i.test(receiverText) ||
+            /\b(?:dialog|dlg|modal)\b/i.test(receiverText) ||
+            receiverText.endsWith('.current') ||
             (targetNode && receiverText === targetNode.getText().trim())
           ) {
             callsClose = true;
@@ -67,7 +67,7 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
       const expr = unwrapExpression(child.getExpression());
       if (Node.isPropertyAccessExpression(expr)) {
         const methodName = expr.getName();
-        // matches('dialog') is valid backdrop check; closest('dialog') is inside check (opposite!)
+        // matches('dialog') is valid backdrop check
         if (methodName === 'matches') {
           const args = child.getArguments();
           if (args.length > 0) {
@@ -78,6 +78,51 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
             ) {
               found = true;
               return;
+            }
+          }
+        }
+
+        // !dialog.contains(event.target) or !modal.contains(event.target) outside click check
+        if (methodName === 'contains') {
+          const callerText = unwrapExpression(expr.getExpression()).getText().trim();
+          const args = child.getArguments();
+          if (args.length > 0) {
+            const firstArg = unwrapExpression(args[0]);
+            if (isEventTargetExpression(firstArg)) {
+              if (
+                callerText === 'this' ||
+                /\b(?:dialog|dlg|modal)\b/i.test(callerText) ||
+                (targetNode && callerText === targetNode.getText().trim())
+              ) {
+                found = true;
+                return;
+              }
+            }
+          }
+        }
+
+        // !e.target.closest('dialog') outside click check
+        if (methodName === 'closest') {
+          const args = child.getArguments();
+          if (args.length > 0) {
+            const firstArg = unwrapExpression(args[0]);
+            if (
+              Node.isStringLiteral(firstArg) &&
+              firstArg.getLiteralText().toLowerCase() === 'dialog'
+            ) {
+              const parent = child.getParent();
+              if (
+                (parent &&
+                  Node.isPrefixUnaryExpression(parent) &&
+                  parent.getOperatorToken() === SyntaxKind.ExclamationToken) ||
+                (parent &&
+                  Node.isBinaryExpression(parent) &&
+                  (parent.getRight().getText() === 'null' ||
+                    parent.getLeft().getText() === 'null'))
+              ) {
+                found = true;
+                return;
+              }
             }
           }
         }
@@ -111,8 +156,7 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
       if (
         otherText === 'this' ||
         otherText.endsWith('.currentTarget') ||
-        /\bdialog\b/i.test(otherText) ||
-        /\bdlg\b/i.test(otherText) ||
+        /\b(?:dialog|dlg|modal)\b/i.test(otherText) ||
         (targetNode && otherText === targetNode.getText())
       ) {
         found = true;
@@ -128,7 +172,11 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
       if (strNode.getLiteralText().toUpperCase() === 'DIALOG') {
         if (Node.isPropertyAccessExpression(otherExpr)) {
           const propName = otherExpr.getName().toLowerCase();
-          if (propName === 'tagname' || propName === 'nodename') {
+          if (
+            propName === 'tagname' ||
+            propName === 'nodename' ||
+            propName === 'localname'
+          ) {
             found = true;
             return;
           }
@@ -153,8 +201,7 @@ function hasBoundingRectCoordinateCheck(handlerNode: Node, targetNode?: Node): b
       ) {
         const callerText = unwrapExpression(expr.getExpression()).getText();
         if (
-          /\bdialog\b/i.test(callerText) ||
-          /\bdlg\b/i.test(callerText) ||
+          /\b(?:dialog|dlg|modal)\b/i.test(callerText) ||
           callerText === 'this' ||
           (targetNode && callerText === targetNode.getText())
         ) {

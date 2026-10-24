@@ -106,6 +106,60 @@ void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {
     });
     assert.equal(matches.length, 1);
   });
+
+  await t.test('flags outside click check using !dialog.contains(e.target)', () => {
+    const project = createInMemoryProject();
+    const code = `
+      document.addEventListener('click', (event) => {
+        if (!dialog.contains(event.target)) {
+          dialog.close();
+        }
+      });
+    `;
+    const sourceFile = project.createSourceFile('contains.js', code);
+    const matches = lightDismissADialogJsMatcher.matchFile(sourceFile, {
+      filePath: 'contains.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /closedby="any"/);
+  });
+
+  await t.test('flags outside click check using !e.target.closest("dialog")', () => {
+    const project = createInMemoryProject();
+    const code = `
+      document.addEventListener('click', (event) => {
+        if (!event.target.closest('dialog')) {
+          modal.close();
+        }
+      });
+    `;
+    const sourceFile = project.createSourceFile('closest-negated.js', code);
+    const matches = lightDismissADialogJsMatcher.matchFile(sourceFile, {
+      filePath: 'closest-negated.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /closedby="any"/);
+  });
+
+  await t.test('flags modal.close() with event.target === modal', () => {
+    const project = createInMemoryProject();
+    const code = `
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+          modal.close();
+        }
+      });
+    `;
+    const sourceFile = project.createSourceFile('modal-backdrop.js', code);
+    const matches = lightDismissADialogJsMatcher.matchFile(sourceFile, {
+      filePath: 'modal-backdrop.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /closedby="any"/);
+  });
 });
 
 void test('light-dismiss-a-dialog: negative / exempt cases', async (t) => {
