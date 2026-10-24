@@ -1,0 +1,1 @@
+- Update the color styling across The Daily Grind landing page—including the navigation bar, hero banner, seasonal favorites cards, buttons, and footer—to derive our tints and shades from a single base coffee brand color, support both light and dark themes, meet accessible contrast requirements, and adapt cleanly when users have forced colors enabled.

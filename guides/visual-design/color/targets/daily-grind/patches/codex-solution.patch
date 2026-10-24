@@ -1,0 +1,252 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..fbf2114 100644
+--- a/index.html
++++ b/index.html
+@@ -7,11 +7,50 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      --coffee: #4e342e;
++      --paper: color-mix(in oklab, var(--coffee) 3%, white);
++      --cream: color-mix(in oklab, var(--coffee) 12%, white);
++      --latte: color-mix(in oklab, var(--coffee) 25%, white);
++      --roast: color-mix(in oklab, var(--coffee) 75%, white);
++      --espresso: color-mix(in oklab, var(--coffee) 65%, black);
++      --ink: color-mix(in oklab, var(--coffee) 35%, black);
++      --page: var(--cream);
++      --surface: var(--paper);
++      --text: var(--espresso);
++      --heading: var(--coffee);
++      --border: var(--roast);
++      --nav: var(--coffee);
++      --on-nav: var(--paper);
++      --nav-hover: var(--latte);
++      --hero: var(--ink);
++      --on-hero: var(--paper);
++      --hero-overlay: color-mix(in srgb, var(--ink) 85%, transparent);
++      --button: var(--coffee);
++      --button-hover: var(--espresso);
++      --on-button: var(--paper);
++      --button-border: var(--button);
++      --hero-button: var(--paper);
++      --hero-button-hover: var(--latte);
++      --on-hero-button: var(--espresso);
++      --footer: var(--latte);
++      --focus: var(--coffee);
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --page: var(--ink);
++        --surface: var(--espresso);
++        --text: var(--cream);
++        --heading: var(--paper);
++        --border: var(--latte);
++        --nav: var(--espresso);
++        --button: var(--cream);
++        --button-hover: var(--latte);
++        --on-button: var(--ink);
++        --footer: var(--espresso);
++        --focus: var(--paper);
++      }
+     }
+ 
+     * {
+@@ -24,13 +63,15 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--page);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav);
++      color: var(--on-nav);
++      border-bottom: 1px solid var(--border);
++      --focus: var(--on-nav);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,18 +97,20 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--on-nav);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-hover);
++      text-decoration: underline;
++      text-underline-offset: 0.2em;
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid currentColor;
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -75,7 +118,8 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background-color: var(--hero);
++      background-image: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +127,8 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--on-hero);
++      --focus: var(--on-hero);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -108,22 +153,23 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--border);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--button);
++      color: var(--on-button);
++      border: 2px solid var(--button-border);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,11 +178,26 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--button-hover);
++      text-decoration: underline;
++      text-underline-offset: 0.2em;
++    }
++
++    .hero .btn {
++      --button: var(--hero-button);
++      --button-hover: var(--hero-button-hover);
++      --on-button: var(--on-hero-button);
++      --button-border: var(--hero-button);
++    }
++
++    a:focus-visible {
++      outline: 3px solid var(--focus);
++      outline-offset: 4px;
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer);
++      border-top: 1px solid var(--border);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -149,9 +210,50 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
++      text-decoration: underline;
++      text-underline-offset: 0.2em;
+       font-size: 0.85rem;
+     }
++
++    @media (forced-colors: active) {
++      :root {
++        --page: Canvas;
++        --surface: Canvas;
++        --text: CanvasText;
++        --heading: CanvasText;
++        --border: CanvasText;
++        --nav: Canvas;
++        --on-nav: LinkText;
++        --nav-hover: LinkText;
++        --hero: Canvas;
++        --on-hero: CanvasText;
++        --button: ButtonFace;
++        --button-hover: ButtonFace;
++        --on-button: ButtonText;
++        --button-border: ButtonText;
++        --hero-button: ButtonFace;
++        --hero-button-hover: ButtonFace;
++        --on-hero-button: ButtonText;
++        --footer: Canvas;
++        --focus: Highlight;
++      }
++
++      nav, .hero {
++        --focus: Highlight;
++      }
++
++      .hero {
++        background-image: none;
++      }
++
++      .hero .btn {
++        --button-border: ButtonText;
++      }
++
++      .footer-links a {
++        color: LinkText;
++      }
++    }
+   </style>
+ </head>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..43e7284 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"const fs = require('node:fs'); fs.mkdirSync('dist', { recursive: true }); fs.copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
