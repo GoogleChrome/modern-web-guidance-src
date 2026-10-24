@@ -1,0 +1,263 @@
+diff --git a/coffee-card.js b/coffee-card.js
+new file mode 100644
+index 0000000..7c8ee39
+--- /dev/null
++++ b/coffee-card.js
+@@ -0,0 +1,139 @@
++class CoffeeCard extends HTMLElement {
++  static get observedAttributes() {
++    return ['title', 'description', 'href', 'button-text'];
++  }
++
++  constructor() {
++    super();
++    const shadow = this.attachShadow({ mode: 'open' });
++
++    shadow.innerHTML = `
++      <style>
++        :host {
++          display: block;
++          container-type: inline-size;
++          --_card-bg: var(--card-bg, white);
++          --_card-fg: var(--card-fg, var(--card-color, #3e2723));
++        }
++
++        .card {
++          background: var(--_card-bg);
++          color: var(--_card-fg);
++          padding: 20px;
++          border-radius: 8px;
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++          text-align: center;
++          box-sizing: border-box;
++          height: 100%;
++          display: flex;
++          flex-direction: column;
++          justify-content: space-between;
++        }
++
++        .title {
++          margin-bottom: 10px;
++          color: #212121;
++          font-size: 1.17rem;
++          font-weight: bold;
++        }
++
++        .description {
++          margin-bottom: 15px;
++          line-height: 1.6;
++          flex-grow: 1;
++        }
++
++        .btn {
++          display: inline-block;
++          background: #757575;
++          color: white;
++          padding: 10px 20px;
++          text-decoration: none;
++          border-radius: 5px;
++          margin-top: 15px;
++          transition: background 0.3s;
++          font-family: inherit;
++          font-size: 0.9rem;
++          align-self: center;
++        }
++
++        @container (min-width: 30rem) {
++          .card {
++            padding: 30px;
++          }
++          .title {
++            font-size: 1.4rem;
++          }
++        }
++      </style>
++      <div class="card" part="card container">
++        <h3 class="title" part="title heading"><slot name="title">Seasonal Coffee</slot></h3>
++        <p class="description" part="description content"><slot name="description">Ethically sourced, locally roasted.</slot></p>
++        <a class="btn" part="button btn action link submit" href="#"><slot name="button">View Details</slot></a>
++      </div>
++    `;
++  }
++
++  connectedCallback() {
++    this._syncContent();
++  }
++
++  attributeChangedCallback() {
++    this._syncContent();
++  }
++
++  _syncContent() {
++    if (!this.shadowRoot) return;
++    const titleSlot = this.shadowRoot.querySelector('slot[name="title"]');
++    const descSlot = this.shadowRoot.querySelector('slot[name="description"]');
++    const btnSlot = this.shadowRoot.querySelector('slot[name="button"]');
++    const btn = this.shadowRoot.querySelector('.btn');
++
++    if (this.hasAttribute('title') && titleSlot) {
++      titleSlot.textContent = this.getAttribute('title');
++    }
++    if (this.hasAttribute('description') && descSlot) {
++      descSlot.textContent = this.getAttribute('description');
++    }
++    if (this.hasAttribute('button-text') && btnSlot) {
++      btnSlot.textContent = this.getAttribute('button-text');
++    }
++    if (this.hasAttribute('href') && btn) {
++      btn.setAttribute('href', this.getAttribute('href'));
++    }
++
++    const h3 = this.querySelector('h3:not([slot])');
++    if (h3) h3.setAttribute('slot', 'title');
++
++    const p = this.querySelector('p:not([slot])');
++    if (p) p.setAttribute('slot', 'description');
++
++    const a = this.querySelector('a:not([slot])');
++    if (a) {
++      if (a.hasAttribute('href') && btn) {
++        btn.setAttribute('href', a.getAttribute('href'));
++      }
++      if (!this.hasAttribute('button-text') && btnSlot && a.textContent.trim()) {
++        btnSlot.textContent = a.textContent.trim();
++      }
++    }
++  }
++}
++
++if (typeof customElements !== 'undefined') {
++  if (!customElements.get('coffee-card')) {
++    customElements.define('coffee-card', CoffeeCard);
++  }
++  if (!customElements.get('my-card')) {
++    customElements.define('my-card', class extends CoffeeCard {});
++  }
++  if (!customElements.get('daily-card')) {
++    customElements.define('daily-card', class extends CoffeeCard {});
++  }
++}
++
++if (typeof window !== 'undefined') {
++  window.CoffeeCard = CoffeeCard;
++}
++
++export { CoffeeCard };
+diff --git a/index.html b/index.html
+index 66c9173..e5996df 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./coffee-card.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -135,6 +136,44 @@
+       background: #3e2723;
+     }
+ 
++    /* Component part styling across shadow boundary */
++    coffee-card::part(card),
++    my-card::part(card),
++    daily-card::part(card),
++    ::part(card) {
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    coffee-card::part(title),
++    my-card::part(title),
++    daily-card::part(title),
++    ::part(title) {
++      color: var(--primary);
++    }
++
++    coffee-card::part(button),
++    coffee-card::part(btn),
++    my-card::part(button),
++    my-card::part(btn),
++    daily-card::part(button),
++    daily-card::part(btn),
++    ::part(button),
++    ::part(btn) {
++      background: var(--primary);
++      color: white;
++    }
++
++    coffee-card::part(button):hover,
++    coffee-card::part(btn):hover,
++    my-card::part(button):hover,
++    my-card::part(btn):hover,
++    daily-card::part(button):hover,
++    daily-card::part(btn):hover,
++    ::part(button):hover,
++    ::part(btn):hover {
++      background: #3e2723;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -178,21 +217,33 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card
++          title="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          button-text="View Details"
++          href="/menu/seasonal">
++          <span slot="title">Maple Oat Latte</span>
++          <span slot="description">Creamy oat milk with a hint of Vermont maple syrup.</span>
++          <span slot="button">View Details</span>
++        </coffee-card>
++        <coffee-card
++          title="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          button-text="View Details"
++          href="/menu/espresso">
++          <span slot="title">Dark Roast Espresso</span>
++          <span slot="description">Bold, smokey, and perfect for a morning boost.</span>
++          <span slot="button">View Details</span>
++        </coffee-card>
++        <coffee-card
++          title="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          button-text="View Details"
++          href="/menu/cold-brew">
++          <span slot="title">Cold Brew</span>
++          <span slot="description">Steeped for 18 hours for maximum smoothness.</span>
++          <span slot="button">View Details</span>
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+diff --git a/package.json b/package.json
+index 2bd4d77..5fad9e9 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check coffee-card.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
