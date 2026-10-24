@@ -1,0 +1,1 @@
+- Refactor the Seasonal Favorites cards (Maple Oat Latte, Dark Roast Espresso, and Cold Brew) in `index.html` into a reusable card component so each drink's title, description, and action link can be supplied from the page while keeping the card layout and styles isolated from global CSS.

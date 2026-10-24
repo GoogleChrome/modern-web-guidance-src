@@ -1,0 +1,183 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..657b69b
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,9 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const output = new URL('./dist/', import.meta.url);
++await mkdir(output, { recursive: true });
++await Promise.all(
++  ['index.html', 'seasonal-card.js'].map((file) =>
++    copyFile(new URL(file, import.meta.url), new URL(file, output)),
++  ),
++);
+diff --git a/index.html b/index.html
+index 66c9173..e564bb0 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -157,6 +144,61 @@
+ 
+ <body>
+ 
++  <template id="seasonal-card-template">
++    <style>
++      :host {
++        display: block;
++      }
++
++      article {
++        box-sizing: border-box;
++        height: 100%;
++        background: white;
++        padding: 20px;
++        border-radius: 8px;
++        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++        text-align: center;
++      }
++
++      ::slotted(*) {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
++
++      ::slotted([slot="title"]) {
++        margin-bottom: 10px;
++        color: var(--primary, #4e342e);
++      }
++
++      ::slotted(a[slot="action"]) {
++        display: inline-block;
++        background: var(--primary, #4e342e);
++        color: white;
++        padding: 10px 20px;
++        text-decoration: none;
++        border-radius: 5px;
++        margin-top: 15px;
++        transition: background 0.3s;
++      }
++
++      ::slotted(a[slot="action"]:hover) {
++        background: #3e2723;
++      }
++
++      ::slotted(a[slot="action"]:focus-visible) {
++        outline: 2px solid var(--primary, #4e342e);
++        outline-offset: 3px;
++      }
++    </style>
++    <article>
++      <slot name="title"></slot>
++      <slot name="description"></slot>
++      <slot name="action"></slot>
++    </article>
++  </template>
++  <script type="module" src="./seasonal-card.js"></script>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -178,21 +220,21 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <seasonal-card>
++          <h3 slot="title">Maple Oat Latte</h3>
++          <p slot="description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a slot="action" href="/menu/seasonal">View Details</a>
++        </seasonal-card>
++        <seasonal-card>
++          <h3 slot="title">Dark Roast Espresso</h3>
++          <p slot="description">Bold, smokey, and perfect for a morning boost.</p>
++          <a slot="action" href="/menu/espresso">View Details</a>
++        </seasonal-card>
++        <seasonal-card>
++          <h3 slot="title">Cold Brew</h3>
++          <p slot="description">Steeped for 18 hours for maximum smoothness.</p>
++          <a slot="action" href="/menu/cold-brew">View Details</a>
++        </seasonal-card>
+       </div>
+     </section>
+   </main>
+diff --git a/package.json b/package.json
+index 2bd4d77..cabcfcd 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check seasonal-card.js && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/seasonal-card.js b/seasonal-card.js
+new file mode 100644
+index 0000000..023b903
+--- /dev/null
++++ b/seasonal-card.js
+@@ -0,0 +1,20 @@
++// @ts-check
++
++const template = document.getElementById('seasonal-card-template');
++
++if (!(template instanceof HTMLTemplateElement)) {
++  throw new Error('The seasonal-card template is missing.');
++}
++
++// Capture the parsed blueprint once; every instance receives independent nodes.
++const blueprint = template.content;
++
++class SeasonalCard extends HTMLElement {
++  constructor() {
++    super();
++    const shadow = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    shadow.append(blueprint.cloneNode(true));
++  }
++}
++
++customElements.define('seasonal-card', SeasonalCard);
