@@ -57,7 +57,7 @@ describe("searchUseCases", () => {
   it("keeps sibling guides on a cluster query", async () => {
     const ids = (await searchUseCases("tooltip on hover")).map((r) => r.id);
     assert.ok(
-      ids.includes("hovercard") && ids.includes("interest-triggered-tooltips"),
+      ids.includes("hovercard") && ids.includes("tooltip"),
       `Expected both tooltip siblings, got: ${ids.join(", ")}`
     );
   });

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Interest-Triggered Tooltips</title>
+    <title>Tooltip</title>
     <script type="module">
       if(!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")){
         await import("https://unpkg.com/interestfor@latest");
@@ -14,7 +14,7 @@
       }
     </script>
     <script type="module">
-      if (!("anchorName" in document.documentElement.style)) {
+      if (!CSS.supports("anchor-name: --a")) {
         await import("https://unpkg.com/@oddbird/css-anchor-positioning");
       }
     </script>
@@ -52,7 +52,7 @@
         /* Use `anchor()` functions rather than `position-area`, as the anchor positioning polyfill doesn't support `position-area` on popovers. */
         inset-block-start: anchor(end);
         inset-inline-start: anchor(end);
-        position-try: flip-inline;
+        position-try-fallbacks: flip-inline;
         margin: unset;
       }
       /* These tooltips adds an explicit anchor-name, as the anchor positioning polyfill does not support implicit anchors. */
@@ -71,7 +71,7 @@
     </style>
   </head>
   <body>
-    <h1>Interest-Triggered Tooltips</h1>
+    <h1>Tooltip</h1>
     <p>
       The document <button interestfor="tooltip-dom">DOM</button> is a tree
       structure that represents the content of a web page. Each node in the tree

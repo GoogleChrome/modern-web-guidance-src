@@ -10,7 +10,7 @@ web-feature-ids:
   - blocking-render
   - link-rel-expect
 guides:
-  - interest-triggered-tooltips
+  - tooltip
   - consistent-cross-document-transitions
   - cross-document-transitions
 ---
@@ -19,7 +19,7 @@ guides:
 
 Hovercards provide an interactive preview of content when a user expresses interest in a link (via hover or focus). This is shown to users before they navigate, and either provides the user with the content they need or helps verify that the link will contain the content they are looking for.
 
-If you need plain-text, non-interactive tooltips rather than structured link previews, see {{ GUIDE_REF("interest-triggered-tooltips") }}.
+If you need plain-text, non-interactive tooltips rather than structured link previews, see {{ GUIDE_REF("tooltip") }}.
 
 ## 1. Triggering the hovercard
 
