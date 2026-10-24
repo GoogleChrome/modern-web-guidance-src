@@ -29,9 +29,23 @@ export function cosineSimilarity(vectorA: number[], vectorB: number[]): number {
   return dotProduct(vectorA, vectorB) / (normA * normB);
 }
 
+export function extractBaselineTag(text: string): string | null {
+  const match = text.trim().match(/^\[(supported|unsupported):\s*([^\]]+)\]/i);
+  if (!match) return null;
+  const mode = match[1].toLowerCase();
+  const tokens = match[2]
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .sort()
+    .join(',');
+  return `${mode}:${tokens}`;
+}
+
 export function cleanText(text: string): string {
   return text
     .replace(/^\s*(?:\d+[.)]|-|\*)\s*/, '') // Remove list bullets/numbering
+    .replace(/^\[(?:supported|unsupported):[^\]]+\]\s*/i, '') // Strip leading [supported/unsupported: ...] tag
     .replace(/^should\s+/i, '')              // Remove "should" prefix
     .replace(/[`"']/g, '')                   // Strip backticks/quotes
     .replace(/\s+/g, ' ')
@@ -158,11 +172,13 @@ export async function validateGraderExpectationCoverage(
 
   const rawTestVectors = await Promise.all(testTitles.map(getVec));
   const cleanedTestVectors = await Promise.all(testTitles.map(t => getVec(cleanText(t))));
+  const testTags = testTitles.map(extractBaselineTag);
 
   const expectationEntries = expectations.map(exp => {
     const firstSentence = exp.split(/[.!?]\s+/)[0];
     return {
       exp,
+      tag: extractBaselineTag(exp),
       cleanedClause: cleanText(firstSentence),
     };
   });
@@ -175,11 +191,15 @@ export async function validateGraderExpectationCoverage(
   for (let eIdx = 0; eIdx < expectations.length; eIdx++) {
     const rawExpVec = rawExpVectors[eIdx];
     const cleanedExpVec = cleanedExpVectors[eIdx];
+    const expTag = expectationEntries[eIdx].tag;
 
-    let bestScore = -1;
+    let bestScore = 0;
     let bestTestTitle = '';
 
     for (let i = 0; i < testTitles.length; i++) {
+      if (expTag !== testTags[i]) {
+        continue;
+      }
       const rawSim = cosineSimilarity(rawExpVec, rawTestVectors[i]);
       const cleanedSim = cosineSimilarity(cleanedExpVec, cleanedTestVectors[i]);
       const currentScore = Math.max(rawSim, cleanedSim);

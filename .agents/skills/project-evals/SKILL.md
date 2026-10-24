@@ -39,6 +39,7 @@ Write a natural-language, bulleted list of assertions that must be true if an ag
 * **Avoid untestable conditional expectations** — Avoid `"If the implementation uses X, then Y"` expectations when valid solutions may omit `X` entirely; if a golden solution patch has zero instances of `X`, the grader cannot assert `Y` without writing a vacuous guard.
 * **No external links** — The grader generator cannot resolve them.
 * **Avoid over-constraining** — Describe required outcomes, API contracts, or structural invariants rather than prescribing incidental implementation details (specific variable names, helper names, or file paths).
+* **Feature-scoped expectations (`[supported: <feature>]` / `[unsupported: <feature>]`)** — Evaluations run with `BASELINE_TARGET=widely` by default, and **untagged bullets run on every target** (`widely`, `newly`, `limited`). When a guide covers a Newly or Limited availability feature with a fallback, tag fallback/polyfill expectations with `[unsupported: <feature-id>]` (runs when the target Baseline does not support `<feature-id>`) and pair them with a `[supported: <feature-id>]` bullet asserting the implementation relies on the native feature without the fallback/polyfill (where `<feature-id>` is a `web-features` ID or BCD key). The harness automatically determines which Baseline targets (`newly`, `limited`) to evaluate from the feature's current Baseline status.
 
 ---
 
@@ -88,6 +89,7 @@ The 3 golden solution patches (`claude`, `codex`, `jetski`) are generated from `
 - **Single assertion per `test()` block**: Write one assertion per `test('...', ...)` block for clear failure diagnostics.
 - **No vacuous guards**: Never write `if (items.length > 0) { expect(...); }`, `hasFeature && (items.length === 0 || ...)`, or `if (files.length === 0) { expect(false).toBe(true); return; }`. Always assert `expect(items.length).toBeGreaterThan(0)` before asserting `.every(...)` or item properties.
 - **Never use `test.skip()`** or wrap assertions in `try/catch` blocks that swallow errors.
+- **Feature-scoped tests (`skipUnless`)**: For any expectation prefixed with `[supported: <feature>]` or `[unsupported: <feature>]` in `expectations.md`, prefix the `test('[supported: <feature>] ...', () => { ... })` title with the exact tag and call `skipUnless({ supported: '<feature>' })` or `skipUnless({ unsupported: '<feature>' })` (imported from `test-fixture.ts`) as the first line of the test body. Do not call `skipUnless` for untagged expectations.
 
 ---
 

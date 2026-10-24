@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import { spawn, spawnSync } from 'child_process';
 import { createWorkDir, getGraderScriptContent, runCliAgentCommand } from './agent-shared.ts';
+import { formatBaselineTargetPromptSuffix } from '../run-suite.ts';
 import { initGitRepo } from '../../core/patch-utils.ts';
 import { UNSAFE_NO_SANDBOX_ENV } from './sandbox.ts';
 
@@ -36,6 +37,19 @@ describe('getGraderScriptContent', () => {
         fs.unlinkSync(tempFile);
       }
     }
+  });
+
+  test('passes baselineTarget to runPlaywright in generated script and formats prompt suffix', () => {
+    const scriptLimited = getGraderScriptContent('/path/to/cwd', '/path/to/grader.ts', 'dummy-guide', 'limited');
+    assert.ok(scriptLimited.includes('"limited"'));
+
+    const scriptDefault = getGraderScriptContent('/path/to/cwd', '/path/to/grader.ts', 'dummy-guide');
+    assert.ok(scriptDefault.includes('"widely"'));
+
+    assert.strictEqual(formatBaselineTargetPromptSuffix(undefined), '');
+    assert.strictEqual(formatBaselineTargetPromptSuffix('widely'), '');
+    assert.strictEqual(formatBaselineTargetPromptSuffix('newly'), '\n\nTarget Baseline status: Newly available.');
+    assert.strictEqual(formatBaselineTargetPromptSuffix('limited'), '\n\nTarget Baseline status: Limited availability.');
   });
 });
 

@@ -7,9 +7,60 @@ import { fileURLToPath } from 'url';
 import { parseHTML } from 'linkedom';
 import { Project } from 'ts-morph';
 import { parse, CSSStyleSheet } from 'cssomnom';
+import { features } from 'web-features';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
 
 export { expect } from '@playwright/test';
+
+function resolveTokenBaseline(token: string): 'high' | 'low' | false {
+  if (token.startsWith('tmp-')) return false;
+  if (token.includes(':') || token.includes('.')) {
+    const [featureId, bcdKey] = token.includes(':') ? token.split(':', 2) : [undefined, token];
+    if (featureId) {
+      const f = (features as Record<string, any>)[featureId];
+      const compat = f?.status?.by_compat_key?.[bcdKey!];
+      return compat ? compat.baseline : false;
+    }
+    for (const f of Object.values(features) as any[]) {
+      const compat = f?.status?.by_compat_key?.[bcdKey!];
+      if (compat) return compat.baseline;
+    }
+    return false;
+  }
+  const f = (features as Record<string, any>)[token];
+  if (!f) return false;
+  if (f.kind === 'moved' && f.redirect_target) {
+    return resolveTokenBaseline(f.redirect_target);
+  }
+  if (f.kind === 'split' && Array.isArray(f.redirect_targets)) {
+    const statuses = f.redirect_targets.map(resolveTokenBaseline);
+    if (statuses.includes(false)) return false;
+    if (statuses.includes('low')) return 'low';
+    return 'high';
+  }
+  return f.status?.baseline ?? false;
+}
+
+function isTokenSupported(token: string, target: string): boolean {
+  if (target === 'limited') return true;
+  const baseline = resolveTokenBaseline(token);
+  if (target === 'newly') return baseline === 'high' || baseline === 'low';
+  return baseline === 'high';
+}
+
+export function skipUnless(conditions: { supported?: string; unsupported?: string }): void {
+  const current = (process.env.BASELINE_TARGET || 'widely').trim().toLowerCase();
+  if (conditions.supported) {
+    const tokens = conditions.supported.split(',').map(s => s.trim()).filter(Boolean);
+    const allSupported = tokens.every(t => isTokenSupported(t, current));
+    base.skip(!allSupported, `Requires supported: ${conditions.supported} (current target: ${current})`);
+  }
+  if (conditions.unsupported) {
+    const tokens = conditions.unsupported.split(',').map(s => s.trim()).filter(Boolean);
+    const anyUnsupported = tokens.some(t => !isTokenSupported(t, current));
+    base.skip(!anyUnsupported, `Requires unsupported: ${conditions.unsupported} (current target: ${current})`);
+  }
+}
 
 export type ServerWorkerFixtures = {
   TARGET_URL: string;
