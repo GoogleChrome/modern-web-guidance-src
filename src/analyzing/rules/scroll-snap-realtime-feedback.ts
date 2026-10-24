@@ -25,7 +25,7 @@ const SNAP_CHANGING_GUARD_TOKENS = [
 ] as const;
 
 const SNAP_ROUND_MATH_REGEX =
-  /Math\.round\s*\(\s*[^)]*\b(?:scrollLeft|scrollTop)\b[^)]*\/|Math\.abs\s*\(\s*[^)]*\b(?:offsetLeft|offsetTop)\b[^)]*-\s*[^)]*\b(?:scrollLeft|scrollTop)\b|Math\.abs\s*\(\s*[^)]*\b(?:scrollLeft|scrollTop)\b[^)]*-\s*[^)]*\b(?:offsetLeft|offsetTop)\b/;
+  /Math\.(?:round|floor)\s*\(\s*[^)]*\b(?:scrollLeft|scrollTop)\b[^)]*\/|Math\.abs\s*\(\s*[^)]*\b(?:offsetLeft|offsetTop)\b[^)]*-\s*[^)]*\b(?:scrollLeft|scrollTop)\b|Math\.abs\s*\(\s*[^)]*\b(?:scrollLeft|scrollTop)\b[^)]*-\s*[^)]*\b(?:offsetLeft|offsetTop)\b/;
 
 const SNAP_CONTEXT_REGEX =
   /\b(?:snap|carousel|slider|slide|slides|gallery|pager|pagination|dot|dots|indicator|indicators|card|cards|panel|panels|index|idx|active|current|pending|selected)\b/i;
@@ -91,7 +91,7 @@ function matchRealtimeSnapScrollListener(callExpr: CallExpression): string | nul
 
 export const scrollSnapRealtimeFeedbackMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['scroll', 'scrollLeft', 'scrollTop', 'Math.round'],
+  fastTokens: ['Math.round', 'Math.abs'],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
 

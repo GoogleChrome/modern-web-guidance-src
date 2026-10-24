@@ -88,4 +88,21 @@ void test('scrollability-affordance-hints JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('flags ResizeObserver comparing scrollWidth and clientWidth to toggle scroll-shadow', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const table = document.querySelector('.responsive-table');
+      const resizeObserver = new ResizeObserver(() => {
+        table.classList.toggle('scroll-shadow', table.scrollWidth > table.clientWidth);
+      });
+      resizeObserver.observe(table);
+    `;
+    const sourceFile = project.createSourceFile('ro-affordance.js', code);
+    const matches = scrollabilityAffordanceHintsMatcher.matchFile(sourceFile, {
+      filePath: 'ro-affordance.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+  });
 });

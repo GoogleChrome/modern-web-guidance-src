@@ -85,7 +85,7 @@ function matchStickyIntersectionObserver(newExpr: NewExpression): string | null 
     optionsText,
   );
   const checksRatioOrIntersecting =
-    /intersectionRatio\s*<\s*1|!\s*[a-zA-Z0-9_$.]+\.isIntersecting/.test(
+    /intersectionRatio\s*<\s*1|!\s*[a-zA-Z0-9_$.]+\.isIntersecting|[a-zA-Z0-9_$.]+\.isIntersecting\s*===?\s*false/.test(
       callbackText,
     );
 
@@ -102,7 +102,7 @@ const ARBITRARY_PIXEL_SCROLL_THRESHOLD_REGEX =
 function hasStickyDockingMeasurement(handlerNode: Node): boolean {
   const handlerText = handlerNode.getText();
   if (
-    /getBoundingClientRect\s*\(\s*\)\s*\.top\s*(?:<=?\s*0|===\s*0|<\s*1\b)/.test(
+    /getBoundingClientRect\s*\(\s*\)\s*\.(?:top|y)\s*(?:<=?\s*0|===\s*0|<\s*1\b)/.test(
       handlerText,
     ) ||
     /\boffsetTop\b/.test(handlerText)
@@ -165,12 +165,12 @@ function matchStickyScrollListener(callExpr: CallExpression): string | null {
 export const stateAwareStickyHeadersMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    'IntersectionObserver',
-    'scroll',
     'is-stuck',
     'is-pinned',
     'stuck',
     'sticky-active',
+    'header-stuck',
+    'is-sticky',
   ],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];

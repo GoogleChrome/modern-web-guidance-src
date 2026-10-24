@@ -82,4 +82,60 @@ void test('scroll-target-on-load JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts nested interactive event listeners inside DOMContentLoaded and load handlers', () => {
+    const project = createInMemoryProject();
+    const code = `
+      document.addEventListener('DOMContentLoaded', () => {
+        const backToTop = document.querySelector('#back-to-top');
+        backToTop.addEventListener('click', () => {
+          window.scrollTo(0, 0);
+        });
+
+        const navLinks = document.querySelectorAll('.nav-anchor');
+        navLinks.forEach((anchor) => {
+          anchor.addEventListener('click', (event) => {
+            const target = document.querySelector(event.target.hash);
+            target?.scrollIntoView();
+          });
+        });
+      });
+
+      window.addEventListener('load', () => {
+        const jumpButton = document.getElementById('jump-btn');
+        jumpButton.onclick = () => {
+          window.scrollTo(0, 200);
+        };
+      });
+    `;
+    const sourceFile = project.createSourceFile('nested-interactive.js', code);
+    const matches = scrollTargetOnLoadMatcher.matchFile(sourceFile, {
+      filePath: 'nested-interactive.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('flags initial load scroll even when sibling nested event listeners are present', () => {
+    const project = createInMemoryProject();
+    const code = `
+      document.addEventListener('DOMContentLoaded', () => {
+        if (window.location.hash) {
+          const initialTarget = document.querySelector(window.location.hash);
+          initialTarget?.scrollIntoView();
+        }
+
+        const backToTop = document.querySelector('#back-to-top');
+        backToTop.addEventListener('click', () => {
+          window.scrollTo(0, 0);
+        });
+      });
+    `;
+    const sourceFile = project.createSourceFile('mixed-handlers.js', code);
+    const matches = scrollTargetOnLoadMatcher.matchFile(sourceFile, {
+      filePath: 'mixed-handlers.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+  });
 });

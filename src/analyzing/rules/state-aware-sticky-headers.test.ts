@@ -127,4 +127,31 @@ void test('state-aware-sticky-headers JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('flags IntersectionObserver with isIntersecting === false and getBoundingClientRect().y <= 0 docking checks', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const sentinel = document.querySelector('.sentinel');
+      const header = document.querySelector('.site-header');
+      const observer = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting === false) {
+          header.classList.add('header-stuck');
+        } else {
+          header.classList.remove('header-stuck');
+        }
+      });
+      observer.observe(sentinel);
+
+      window.addEventListener('scroll', () => {
+        const rect = header.getBoundingClientRect();
+        header.classList.toggle('is-pinned', rect.y <= 0);
+      });
+    `;
+    const sourceFile = project.createSourceFile('sentinel-y.js', code);
+    const matches = stateAwareStickyHeadersMatcher.matchFile(sourceFile, {
+      filePath: 'sentinel-y.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 2);
+  });
 });

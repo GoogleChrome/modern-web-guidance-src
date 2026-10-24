@@ -8,6 +8,7 @@ import {
   isProtectedByFeatureGuard,
   matchEventListenerCall,
   resolveCallableNode,
+  unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
   AnalyzerMatch,
@@ -45,6 +46,67 @@ function isGuardedByScrollInitialTarget(node: Node): boolean {
   return false;
 }
 
+function isInsideNestedEventListener(callNode: Node, rootBoundary: Node): boolean {
+  let current: Node | undefined = callNode.getParent();
+  while (current && current !== rootBoundary) {
+    if (Node.isCallExpression(current)) {
+      const callee = unwrapExpression(current.getExpression());
+      if (Node.isPropertyAccessExpression(callee)) {
+        const propName = callee.getName();
+        if (
+          propName === 'addEventListener' ||
+          propName === 'addListener' ||
+          propName === 'attachEvent' ||
+          propName === 'on' ||
+          propName === 'one' ||
+          propName === 'bind' ||
+          propName === 'delegate' ||
+          propName === 'live'
+        ) {
+          return true;
+        }
+      }
+    } else if (Node.isBinaryExpression(current)) {
+      if (current.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
+        const leftText = current.getLeft().getText();
+        if (/\.on[a-zA-Z]+$/.test(leftText)) {
+          return true;
+        }
+      }
+    }
+    current = current.getParent();
+  }
+  return false;
+}
+
+function isCandidateScrollCall(node: Node): boolean {
+  if (!Node.isCallExpression(node)) {
+    return false;
+  }
+  const callee = unwrapExpression(node.getExpression());
+  if (Node.isPropertyAccessExpression(callee)) {
+    const propName = callee.getName();
+    return propName === 'scrollIntoView' || propName === 'scrollTo';
+  }
+  if (Node.isIdentifier(callee)) {
+    return callee.getText() === 'scrollTo';
+  }
+  return false;
+}
+
+function isSmoothScrollCall(callExpr: CallExpression): boolean {
+  return /behavior\s*:\s*['"`]smooth['"`]/i.test(callExpr.getText());
+}
+
+function hasCustomOffsetCalculation(callExpr: CallExpression): boolean {
+  const text = callExpr.getText();
+  return (
+    /(?:offsetTop|getBoundingClientRect\s*\(\s*\)\s*\.(?:top|y)|scrollY|pageYOffset)\s*[-+]/.test(
+      text,
+    ) || /[-+]\s*(?:header|nav|offset)/i.test(text)
+  );
+}
+
 function matchScrollTargetOnLoadListener(callExpr: CallExpression): string | null {
   const listener = matchEventListenerCall(callExpr, ['DOMContentLoaded', 'load']);
   if (!listener) {
@@ -60,32 +122,41 @@ function matchScrollTargetOnLoadListener(callExpr: CallExpression): string | nul
     return null;
   }
 
-  const callsScrollIntoView = /\.scrollIntoView\s*\(/.test(handlerText);
-  const callsWindowScrollTo = /\b(?:window\.)?scrollTo\s*\(/.test(handlerText);
-  if (!callsScrollIntoView && !callsWindowScrollTo) {
+  const candidateCalls = handlerNode
+    .getDescendantsOfKind(SyntaxKind.CallExpression)
+    .filter((candidate) => isCandidateScrollCall(candidate));
+
+  if (candidateCalls.length === 0) {
     return null;
   }
 
-  if (/behavior\s*:\s*['"`]smooth['"`]/i.test(handlerText)) {
-    return null;
-  }
+  const validScrollCalls = candidateCalls.filter((candidate) => {
+    if (isInsideNestedEventListener(candidate, handlerNode)) {
+      return false;
+    }
+    if (isSmoothScrollCall(candidate)) {
+      return false;
+    }
+    if (hasCustomOffsetCalculation(candidate)) {
+      return false;
+    }
+    if (isGuardedByScrollInitialTarget(candidate)) {
+      return false;
+    }
+    return true;
+  });
 
-  if (
-    callsWindowScrollTo &&
-    (/(?:offsetTop|getBoundingClientRect\s*\(\s*\)\s*\.\s*top|scrollY|pageYOffset)\s*[-+]/.test(
-      handlerText,
-    ) ||
-      /[-+]\s*(?:header|nav|offset)/i.test(handlerText))
-  ) {
+  if (validScrollCalls.length === 0) {
     return null;
   }
 
   const readsLocationHash = /\blocation\.hash\b/.test(handlerText);
-  const queriesTargetForScrollIntoView =
-    callsScrollIntoView &&
-    /\b(?:querySelector|getElementById)\s*\(/.test(handlerText);
+  const queriesTargetForScroll =
+    /\b(?:querySelector|getElementById|getElementsByClassName)\s*\(/.test(
+      handlerText,
+    );
 
-  if (!readsLocationHash && !queriesTargetForScrollIntoView) {
+  if (!readsLocationHash && !queriesTargetForScroll) {
     return null;
   }
 
@@ -94,7 +165,7 @@ function matchScrollTargetOnLoadListener(callExpr: CallExpression): string | nul
 
 export const scrollTargetOnLoadMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['DOMContentLoaded', 'load', 'scrollIntoView', 'scrollTo'],
+  fastTokens: ['scrollIntoView', 'scrollTo'],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
 

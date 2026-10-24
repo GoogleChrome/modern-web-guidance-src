@@ -71,4 +71,22 @@ void test('scroll-snap-state-sync JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('flags scroll listeners debounced using lodash debounce helper', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const gallery = document.querySelector('.gallery-snap');
+      const onScrollDebounced = debounce(() => {
+        const activeIdx = Math.floor(gallery.scrollLeft / gallery.clientWidth);
+        syncGalleryState(activeIdx);
+      }, 200);
+      gallery.addEventListener('scroll', onScrollDebounced);
+    `;
+    const sourceFile = project.createSourceFile('lodash-debounce.js', code);
+    const matches = scrollSnapStateSyncMatcher.matchFile(sourceFile, {
+      filePath: 'lodash-debounce.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+  });
 });

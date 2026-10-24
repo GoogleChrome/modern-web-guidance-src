@@ -66,14 +66,14 @@ function computesScrollProgressRatio(text: string): boolean {
 
 function updatesProgressStyle(text: string): boolean {
   const setsStyleWidth = /\.style\.width\s*=/.test(text);
-  const setsScaleX =
-    /\.style\.transform\s*=[\s\S]*?scaleX\s*\(/.test(text);
+  const setsScale =
+    /\.style\.(?:transform|scale)\s*=[\s\S]*?scale(?:X|3d)?\s*\(/.test(text);
   const setsProgressCustomProp =
     /\.style\.setProperty\s*\(\s*['"`]--[a-zA-Z0-9_-]*(?:scroll|progress)[a-zA-Z0-9_-]*['"`]/.test(
       text,
     );
 
-  return setsStyleWidth || setsScaleX || setsProgressCustomProp;
+  return setsStyleWidth || setsScale || setsProgressCustomProp;
 }
 
 function matchScrollProgressListener(callExpr: CallExpression): string | null {
@@ -98,7 +98,7 @@ function matchScrollProgressListener(callExpr: CallExpression): string | null {
 
 export const scrollProgressIndicatorMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['scroll', 'scrollHeight'],
+  fastTokens: ['scrollHeight', 'documentHeight', 'offsetHeight'],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
 

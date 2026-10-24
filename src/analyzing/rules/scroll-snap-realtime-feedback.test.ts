@@ -35,7 +35,7 @@ void test('scroll-snap-realtime-feedback JS matcher', async (t) => {
       const dots = document.querySelectorAll('.dot');
       carousel.addEventListener('scroll', () => {
         const index = Math.round(carousel.scrollLeft / carousel.clientWidth);
-        dots.forEach((d, i) => d.classList.toggle('active', i === index));
+        dots.forEach((dotItem, indexNum) => dotItem.classList.toggle('active', indexNum === index));
       });
     `;
     const sourceFile = project.createSourceFile('carousel.js', code);
@@ -78,5 +78,32 @@ void test('scroll-snap-realtime-feedback JS matcher', async (t) => {
       fileContent: code,
     });
     assert.equal(matches.length, 0);
+  });
+
+  await t.test('flags non-debounced scroll listeners computing active slide via Math.abs offset distance minimization', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const slider = document.querySelector('.slider-container');
+      const slides = slider.querySelectorAll('.slide');
+      slider.addEventListener('scroll', () => {
+        const currentScroll = slider.scrollLeft;
+        let closestIndex = 0;
+        let minDistance = Infinity;
+        slides.forEach((slideItem, slideIndex) => {
+          const distance = Math.abs(slideItem.offsetLeft - slider.scrollLeft);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestIndex = slideIndex;
+          }
+        });
+        updateCarouselDots(closestIndex);
+      });
+    `;
+    const sourceFile = project.createSourceFile('distance-snap.js', code);
+    const matches = scrollSnapRealtimeFeedbackMatcher.matchFile(sourceFile, {
+      filePath: 'distance-snap.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
   });
 });

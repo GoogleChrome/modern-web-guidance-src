@@ -73,4 +73,24 @@ void test('scroll-progress-indicator JS matcher', async (t) => {
     });
     assert.equal(matches.length, 0);
   });
+
+  await t.test('flags progress bar updates using scale3d transform', () => {
+    const project = createInMemoryProject();
+    const code = `
+      const indicator = document.querySelector('.reading-progress');
+      window.addEventListener('scroll', () => {
+        const docHeight = document.documentElement.scrollHeight;
+        const viewHeight = window.innerHeight;
+        const scrolled = window.pageYOffset;
+        const ratio = scrolled / (docHeight - viewHeight);
+        indicator.style.transform = \`scale3d(\${ratio}, 1, 1)\`;
+      });
+    `;
+    const sourceFile = project.createSourceFile('scale3d.js', code);
+    const matches = scrollProgressIndicatorMatcher.matchFile(sourceFile, {
+      filePath: 'scale3d.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 1);
+  });
 });

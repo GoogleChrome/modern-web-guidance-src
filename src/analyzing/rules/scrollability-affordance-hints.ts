@@ -28,7 +28,7 @@ const SCROLL_STATE_GUARD_TOKENS = [
 ] as const;
 
 const AFFORDANCE_CLASS_REGEX =
-  /['"`](?:has-scroll-left|has-scroll-right|has-scroll-top|has-scroll-bottom|is-scrollable|can-scroll|can-scroll-left|can-scroll-right|can-scroll-up|can-scroll-down|has-overflow|scrolled-down|scroll-shadow|overflow-left|overflow-right|overflow-top|overflow-bottom)['"`]/i;
+  /['"`](?:has-scroll|has-scroll-left|has-scroll-right|has-scroll-top|has-scroll-bottom|is-scrollable|can-scroll|can-scroll-left|can-scroll-right|can-scroll-up|can-scroll-down|has-overflow|scrolled-down|scroll-shadow|overflow-left|overflow-right|overflow-top|overflow-bottom|overflowing|scrollable)['"`]/i;
 
 function isGuardedByScrollState(node: Node): boolean {
   if (isProtectedByFeatureGuard(node, SCROLL_STATE_GUARD_TOKENS)) {
@@ -109,7 +109,7 @@ function matchScrollabilityResizeObserver(newExpr: NewExpression): string | null
 
 export const scrollabilityAffordanceHintsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['scrollWidth', 'scrollHeight', 'scrollLeft', 'scrollTop'],
+  fastTokens: ['scrollWidth', 'scrollHeight'],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
 
