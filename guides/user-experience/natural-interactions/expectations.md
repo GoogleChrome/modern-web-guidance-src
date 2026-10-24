@@ -1,0 +1,10 @@
+- Hovering a button changes at least one of its computed `background-color`, `color`, `border-color`, `box-shadow`, `transform`, `scale`, or other individual transform property values.
+- Pressing the mouse button down on a button, before releasing it, changes at least one of its computed `background-color`, `box-shadow`, `transform`, `scale`, or other individual transform property values compared with its hover state.
+- Moving keyboard focus to a button or link with the Tab key gives it either the browser's native focus ring (a computed `outline-style` of `auto`), or a custom outline or `box-shadow` that differs from its unfocused state, in a color with a contrast ratio of at least 3:1 against the page background.
+- Clicking a button with the mouse does not give it the keyboard focus outline.
+- Shortly after a menu or popover starts opening, its computed `transform`, `scale`, or other individual transform property differs from its final settled value.
+- A menu or popover that scales open computes a `transform-origin` that lies on its edge nearest its trigger button.
+- A menu or popover opening animation or transition uses a `linear()` timing function with at least one output value above 1.
+- Every carousel or gallery (a horizontally scrollable row of repeated items) computes a `scroll-snap-type` on the `x` or `inline` axis, and its items compute a `scroll-snap-align` other than `none`.
+- Content revealed by hovering over an element also appears when that element, or an element inside it, receives keyboard focus.
+- With `prefers-reduced-motion: reduce` emulated, opening a menu or popover doesn't animate its `transform`, `scale`, or other individual transform properties.
