@@ -1,0 +1,1 @@
+- Update `index.html` in the Daily Grind app so that the "Seasonal Favorites" section and its coffee cards can be declaratively updated in-place using native browser capabilities, supporting both content streamed later within the same HTML document and imperative updates triggered via JavaScript.
