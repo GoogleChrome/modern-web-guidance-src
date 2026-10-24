@@ -1,7 +1,7 @@
 - Each list item MUST contain a horizontal scroll container ("track") that holds three full-width snap points: a leading spacer, the visible content element, and a trailing spacer. The spacers MAY be implemented as `::before`/`::after` pseudo-elements on the track or as real elements.
 - The track MUST have `scroll-snap-type: x mandatory` (not `proximity`) so the row always rests on a snap point and is never partially scrolled.
 - The track MUST have `overscroll-behavior-x: none` to prevent the swipe from chaining into the page scroll or the browser's back-navigation gesture.
-- The track MUST hide its scrollbar (e.g., `scrollbar-width: none`) so the gesture itself is the only affordance.
+- The track hides its scrollbar (for example with `scrollbar-width: none`).
 - The two spacer snap points MUST have `scroll-snap-align` set so they are valid snap targets (e.g., `scroll-snap-align: end` or `scroll-snap-align: start`).
 - The content element MUST have `scroll-snap-align` set (e.g., `scroll-snap-align: start`) so it is the resting snap target in the middle of the track.
 - The content element MUST have `scroll-initial-target: nearest` applied so the track renders scrolled to the content on first paint, hiding the leading spacer off-screen without a JS scroll jump.
@@ -21,3 +21,10 @@
 - The implementation MUST work around a Safari scroll-latching bug when committing: detect Safari (e.g., `globalThis.GestureEvent`) and, after the WAAPI collapse animation completes, defer the actual `item.remove()` until after the swipe momentum has settled (e.g., via `setTimeout` with a conservative delay). On non-Safari browsers, the node MAY be removed immediately after the animation finishes. The row is already visually collapsed at this point, so the deferred removal is not visible.
 - The implementation MUST observe each list (the `<ul>`) with a `MutationObserver` configured for `{childList: true}` so that list items added to the list at runtime are wired up for swipe detection the same way as the initial items. This handles real-world scenarios where items arrive after page load (initial render after data loads, infinite scroll, server push).
 - When the `scroll-initial-target` fallback is in use, the implementation MUST also handle Safari resetting snap-container scroll position whenever the track resizes (URL-bar show/hide, viewport resize, container queries, etc.): gated on the same `CSS.supports('scroll-initial-target', 'nearest')` check being false, the implementation MUST attach a `ResizeObserver` to each track that re-scrolls it to its content column (e.g., `track.scrollLeft = track.clientWidth`) whenever its size changes. The implementation MUST unobserve the track in the commit handler before `removeItem` runs, otherwise the row's height-collapse animation will retrigger the resize callback during removal. When `scroll-initial-target` is supported, no such workaround is needed — the browser handles it.
+- Each list item contains a `<button>` for every swipe action.
+- Activating a list item's button performs the same action as the swipe it stands in for.
+- Activating a list item's button with the Enter key removes that item.
+- Each list item's button has an accessible name that includes the item's text.
+- After the item containing focus is removed, focus is on an element inside the list or on the list's heading, not on `<body>`.
+- After an item is removed, an element with `role="status"` contains text naming the removed item.
+- The `<ul>` has `role="list"`.
