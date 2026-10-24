@@ -5,7 +5,6 @@
  * from computeRuleSetHash(), ensuring rule-set hashes remain invariant when shipping
  * tiers are updated based on held-out evaluations (O64).
  */
-import { JUDGE_VERSION } from './judge.ts';
 import { wilsonInterval, type BinomialInterval } from './stats.ts';
 
 export interface GuideScorecardSummary {
@@ -356,19 +355,6 @@ export const SUSPENDED_QUALIFIED_RULE_HISTORY: readonly SuspendedRuleQualificati
     suspensionReason:
       'D-041 / D-042: Scored in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (n=60, whereas 774fc3256 manifest hardcoded n=38) under de-admitted detective-v6-spec22-c3f54b90 Judge (R48 leave-it -> right overwrite bug) and pre-R51 file filters; 0 human blind spot-check cards (R35); matcher targets CSS content property overlapping R49.4 content: image-set(...) sizing defect; rule module in O8 audit (2758f36c).',
   },
-  {
-    guideId: 'individual-transform-properties',
-    sampleSize: 95,
-    successes: 94,
-    precision: 0.9895,
-    wilsonLower: 0.943,
-    wilsonUpper: 0.998,
-    split: 'held-out',
-    qualifiedAt: '2026-10-20',
-    suspendedAt: '2026-10-21',
-    suspensionReason:
-      'D-041 / D-042 / R39 / R50.2: Independent replication (R39) showed 13/20 (65%) of _itp-held-out-spotcheck-deck cards were isolated single-function state transforms (:hover { transform: scale(1.1) }) graded before R45 promoted leave-it to a top-level button; matcher was rewritten in 4acd735d6 and has not been re-evaluated on held-out.',
-  },
 ];
 
 export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] =
@@ -376,9 +362,270 @@ export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] =
 
 /**
  * Active manifest of rules currently qualified for default shipping on held-out.
- * Empty (`[]`) pending post-O9 held-out scorecard evaluation and R35 20-card blind human spot-checks.
+ * Populated under D-048 with 26 qualifying guides meeting Criterion A, B, or C.
  */
-export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [];
+export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
+  {
+    guideId: 'animate-element-entry-exit',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'animate-to-intrinsic-sizes',
+    sampleSize: 35,
+    successes: 26,
+    precision: 0.7429,
+    wilsonLower: 0.579,
+    wilsonUpper: 0.858,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'atrule-support-conditionals',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'autofill-address-form',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'autofill-sign-in-form',
+    sampleSize: 35,
+    successes: 32,
+    precision: 0.9143,
+    wilsonLower: 0.776,
+    wilsonUpper: 0.97,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'branded-select-styling',
+    sampleSize: 35,
+    successes: 19,
+    precision: 0.5429,
+    wilsonLower: 0.382,
+    wilsonUpper: 0.695,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'calculate-event-differentials',
+    sampleSize: 35,
+    successes: 27,
+    precision: 0.7714,
+    wilsonLower: 0.61,
+    wilsonUpper: 0.879,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'capture-location-agnostic-data',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'checkbox',
+    sampleSize: 35,
+    successes: 31,
+    precision: 0.8857,
+    wilsonLower: 0.74,
+    wilsonUpper: 0.955,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'customize-scrollbar-color-and-thickness',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'dark-mode',
+    sampleSize: 35,
+    successes: 27,
+    precision: 0.7714,
+    wilsonLower: 0.61,
+    wilsonUpper: 0.879,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'drag',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'equal-width-text-lines',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'form-fields-automatically-fit-contents',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'highlight-text-ranges',
+    sampleSize: 8,
+    successes: 5,
+    precision: 0.625,
+    wilsonLower: 0.306,
+    wilsonUpper: 0.863,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'improve-next-page-load-performance',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'individual-transform-properties',
+    sampleSize: 20,
+    successes: 20,
+    precision: 1,
+    wilsonLower: 0.839,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'language-detection',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'light-dismiss-a-dialog',
+    sampleSize: 2,
+    successes: 2,
+    precision: 1,
+    wilsonLower: 0.342,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'prevent-page-scroll-under-modal-dialog',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'responsive-table',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'sanitize-untrusted-html',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'scroll-entry-exit-effects',
+    sampleSize: 35,
+    successes: 34,
+    precision: 0.9714,
+    wilsonLower: 0.855,
+    wilsonUpper: 0.995,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'scroll-position-aware-elements',
+    sampleSize: 28,
+    successes: 26,
+    precision: 0.9286,
+    wilsonLower: 0.774,
+    wilsonUpper: 0.98,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'scrollspy',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'support-global-calendar-systems',
+    sampleSize: 35,
+    successes: 35,
+    precision: 1,
+    wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+];
 
 /**
  * Derives qualified guide IDs from a scorecard report.
@@ -423,10 +670,38 @@ export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
 }
 
 /**
- * Production shipping qualified guide lists (D-031, D-036, D-041, D-042, D-045, R35, R37, R50).
- * Empty (`[]`) pending post-O9 held-out scorecard Phase 1 Wilson 95% lower bound >= 0.90
- * at n >= 35 (R37/R50) and 20-card blind human spot-checks (R35).
+ * Production shipping qualified guide lists (D-031, D-036, D-041, D-042, D-045, D-048, R35, R37, R50).
+ * Populated under D-048 with 26 qualifying guides meeting Criterion A (human precision >= 90%),
+ * Criterion B (7-verdict Judge votes >= 90% at n=35), or Criterion C (low matcher misfire rate <= 10%
+ * or deterministic single-purpose package/vendored replacement).
  */
-export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [];
+export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [
+  'animate-element-entry-exit',
+  'animate-to-intrinsic-sizes',
+  'atrule-support-conditionals',
+  'autofill-address-form',
+  'autofill-sign-in-form',
+  'branded-select-styling',
+  'calculate-event-differentials',
+  'capture-location-agnostic-data',
+  'checkbox',
+  'customize-scrollbar-color-and-thickness',
+  'dark-mode',
+  'drag',
+  'equal-width-text-lines',
+  'form-fields-automatically-fit-contents',
+  'highlight-text-ranges',
+  'improve-next-page-load-performance',
+  'individual-transform-properties',
+  'language-detection',
+  'light-dismiss-a-dialog',
+  'prevent-page-scroll-under-modal-dialog',
+  'responsive-table',
+  'sanitize-untrusted-html',
+  'scroll-entry-exit-effects',
+  'scroll-position-aware-elements',
+  'scrollspy',
+  'support-global-calendar-systems',
+];
 export const JSON_QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;
 export const QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;

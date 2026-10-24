@@ -74,17 +74,16 @@ describe('rules/index export registry', () => {
     }
   });
 
-  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES empty while guides are suspended pending D-041/D-042 re-validation (O6, R32.5, R33)', async () => {
-    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 0);
-    assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, []);
+  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 26 qualified guides and 39 rules (D-048)', async () => {
+    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 26);
+    assert.strictEqual(QUALIFIED_RULES.length, 39);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
     assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_RULES, QUALIFIED_RULES);
     assert.deepStrictEqual(JSON_QUALIFIED_RULES, QUALIFIED_RULES);
-    assert.strictEqual(QUALIFIED_RULES.length, 0);
 
     const qualifiedGuideSet = new Set(QUALIFIED_GUIDE_IDS);
-    assert.strictEqual(qualifiedGuideSet.size, 0);
+    assert.strictEqual(qualifiedGuideSet.size, 26);
   });
 
   it('exports POST_SELECTION_TUNED_GUIDE_IDS', () => {

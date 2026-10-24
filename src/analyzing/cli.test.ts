@@ -30,15 +30,15 @@ describe('runAnalyzeCli', () => {
     assert.match(parsed.error ?? '', /Target directory not found/);
   });
 
-  it('reports suspended default guides honestly instead of "No modernization opportunities found" when qualified set is empty (O6, D-042)', async () => {
+  it('reports suspended default guides honestly when default qualified set is active alongside suspended guides (O6, D-042, D-048)', async () => {
     const emptyDir = await mkdtemp(join(tmpdir(), 'analyzer-empty-test-'));
     try {
-      // Default mode with empty qualified set explains that guides are suspended and points to --all-rules
+      // Default mode with 26 qualified guides and 3 suspended guides
       const resDefault = await runAnalyzeCli([emptyDir]);
       assert.equal(resDefault.exitCode, 0);
-      assert.match(resDefault.output, /suspended pending re-validation/);
+      assert.match(resDefault.output, /0 findings from 26 active qualified guides/);
+      assert.match(resDefault.output, /3 guides are suspended pending re-validation/);
       assert.match(resDefault.output, /--all-rules/);
-      assert.doesNotMatch(resDefault.output, /No modernization opportunities found/);
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
       assert.equal(resDefaultJson.exitCode, 0);
@@ -46,11 +46,12 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.targetDir, emptyDir);
-      assert.equal(parsedDefault.activeRuleCount, 0);
-      assert.equal(parsedDefault.activeGuideCount, 0);
+      assert.equal(parsedDefault.activeRuleCount, 39);
+      assert.equal(parsedDefault.activeGuideCount, 26);
       assert.ok(Array.isArray(parsedDefault.suspendedGuides));
-      assert.equal(parsedDefault.suspendedGuides.length, 4);
-      assert.match(parsedDefault.statusNotice ?? '', /suspended pending re-validation/);
+      assert.equal(parsedDefault.suspendedGuides.length, 3);
+      assert.match(parsedDefault.statusNotice ?? '', /3 previously qualified guides are currently suspended/);
+      assert.match(parsedDefault.statusNotice ?? '', /only 26 qualified guides were scanned/);
       assert.match(parsedDefault.statusNotice ?? '', /--all-rules/);
 
       // With --all-rules on an actually empty directory, reports no modernization opportunities found
@@ -148,7 +149,7 @@ describe('runAnalyzeCli', () => {
       assert.match(res.output, /Found \d+ modernization opportunities across \d+ guides:/);
 
       // Check guide grouping, retrieve command, and keepWhen/dropWhen (D-032)
-      assert.match(res.output, /\* \[experimental\] autofill-sign-in-form \(\d+ finding[s]?\)/);
+      assert.match(res.output, /\* \[qualified\] autofill-sign-in-form \(\d+ finding[s]?\)/);
       assert.match(res.output, /Retrieve: npx modern-web-guidance retrieve autofill-sign-in-form/);
       assert.match(res.output, /Summary:/);
       assert.match(res.output, /Keep when:/);
@@ -157,7 +158,7 @@ describe('runAnalyzeCli', () => {
 
       assert.match(
         res.output,
-        /\* \[experimental\] animate-to-intrinsic-sizes \(\d+ finding[s]?\)/,
+        /\* \[qualified\] animate-to-intrinsic-sizes \(\d+ finding[s]?\)/,
       );
       assert.match(res.output, /Retrieve: npx modern-web-guidance retrieve animate-to-intrinsic-sizes/);
       assert.match(res.output, /- accordion\.css:\d+:/);
@@ -189,7 +190,7 @@ describe('runAnalyzeCli', () => {
       assert.ok(guide.phase2Rubric, 'Expected phase2Rubric in guide JSON output (R17)');
       assert.ok(guide.phase2Rubric.keepWhen.length >= 1);
       assert.ok(guide.phase2Rubric.dropWhen.length >= 1);
-      assert.equal(guide.tier, 'experimental');
+      assert.equal(guide.tier, 'qualified');
       assert.equal(guide.retrieveCommand, 'npx modern-web-guidance retrieve autofill-sign-in-form');
       assert.ok(guide.summary.length > 0);
       assert.equal(guide.count, guide.findings.length);
@@ -264,7 +265,7 @@ describe('runAnalyzeCli', () => {
     }
   });
 
-  it('gates CLI to QUALIFIED_RULES by default (suspended under D-042) and includes experimental rules with --all-rules', async () => {
+  it('gates CLI to QUALIFIED_RULES by default (graduated under D-048) and includes experimental rules with --all-rules', async () => {
     const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
     try {
       // 1. Create a pattern from a suspended guide: autofill-highlight-inputs
@@ -273,29 +274,27 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'autofill.css'), autofillCss, 'utf8');
 
-      // 2. Create experimental patterns: jQuery fadeIn -> animate-element-entry-exit, scrollbar styling -> customize-scrollbar-color-and-thickness
-      const animateJs = `function showModal() {
-  $('#modal').fadeIn(300);
-}`;
-      await writeFile(join(testDir, 'animate.js'), animateJs, 'utf8');
+      // 2. Create experimental patterns: break-up-long-tasks, coordinate-global-events
+      const yieldJs = `const yieldToMain = () => new Promise(r => setTimeout(r));`;
+      await writeFile(join(testDir, 'yield.js'), yieldJs, 'utf8');
 
-      const scrollbarCss = `.panel::-webkit-scrollbar-thumb {
-  background: #888;
+      const timezoneJs = `function getLocalTimezoneOffset() {
+  const offsetMinutes = new Date().getTimezoneOffset();
+  return offsetMinutes * 60 * 1000;
 }`;
-      await writeFile(join(testDir, 'custom-scroll.css'), scrollbarCss, 'utf8');
+      await writeFile(join(testDir, 'timezone.js'), timezoneJs, 'utf8');
 
-      // Default run (QUALIFIED_RULES only - currently empty while all 4 guides are suspended under D-042)
+      // Default run (QUALIFIED_RULES only - 26 guides active under D-048; neither suspended nor experimental patterns match default)
       const resDefault = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resDefault.exitCode, 0);
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
-      assert.equal(parsedDefault.activeRuleCount, 0);
+      assert.equal(parsedDefault.activeRuleCount, 39);
       assert.deepEqual(parsedDefault.suspendedGuides, [
         'autofill-highlight-inputs',
         'complex-shapes',
         'deliver-optimized-decorative-images',
-        'individual-transform-properties',
       ]);
       assert.match(parsedDefault.statusNotice ?? '', /--all-rules/);
 
@@ -306,12 +305,12 @@ describe('runAnalyzeCli', () => {
       const allGuideIds = parsedAll.guides.map((g) => g.guideId);
 
       assert.ok(
-        allGuideIds.includes('animate-element-entry-exit'),
-        'All-rules includes experimental rule animate-element-entry-exit',
+        allGuideIds.includes('break-up-long-tasks'),
+        'All-rules includes experimental rule break-up-long-tasks',
       );
       assert.ok(
-        allGuideIds.includes('customize-scrollbar-color-and-thickness'),
-        'All-rules includes experimental rule customize-scrollbar-color-and-thickness',
+        allGuideIds.includes('coordinate-global-events'),
+        'All-rules includes experimental rule coordinate-global-events',
       );
 
       // Verify --experimental alias also works
@@ -319,7 +318,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(resExperimental.exitCode, 0);
       const parsedExp = JSON.parse(resExperimental.output) as AnalyzeJsonOutput;
       assert.ok(
-        parsedExp.guides.some((g) => g.guideId === 'customize-scrollbar-color-and-thickness'),
+        parsedExp.guides.some((g) => g.guideId === 'break-up-long-tasks'),
         '--experimental alias enables experimental rules',
       );
     } finally {

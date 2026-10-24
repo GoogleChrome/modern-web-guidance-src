@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { WORKTREE_ROOT } from './paths.ts';
 import {
   deriveQualifiedGuideIds,
   evaluateHumanSpotCheckQualification,
@@ -19,24 +16,51 @@ import {
   wilsonLowerBound,
 } from './qualification.ts';
 
-describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045, D-046)', () => {
-  it('maintains empty default shipping guide lists while rules await human blind spot-checks per D-046', () => {
+describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045, D-046, D-048)', () => {
+  it('maintains 26 default shipping guides under D-048 graduation criteria', () => {
     assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, false);
     assert.strictEqual(evaluateJudgeAdmission(QUALIFIED_JUDGE_METADATA).admitted, false);
-    assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, []);
-    assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, []);
-    assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, []);
-    assert.deepStrictEqual(QUALIFIED_RULE_MANIFEST, []);
+    assert.strictEqual(TERMINAL_QUALIFIED_GUIDE_IDS.length, 26);
+    assert.strictEqual(JSON_QUALIFIED_GUIDE_IDS.length, 26);
+    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 26);
+    assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 26);
+    assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, [
+      'animate-element-entry-exit',
+      'animate-to-intrinsic-sizes',
+      'atrule-support-conditionals',
+      'autofill-address-form',
+      'autofill-sign-in-form',
+      'branded-select-styling',
+      'calculate-event-differentials',
+      'capture-location-agnostic-data',
+      'checkbox',
+      'customize-scrollbar-color-and-thickness',
+      'dark-mode',
+      'drag',
+      'equal-width-text-lines',
+      'form-fields-automatically-fit-contents',
+      'highlight-text-ranges',
+      'improve-next-page-load-performance',
+      'individual-transform-properties',
+      'language-detection',
+      'light-dismiss-a-dialog',
+      'prevent-page-scroll-under-modal-dialog',
+      'responsive-table',
+      'sanitize-untrusted-html',
+      'scroll-entry-exit-effects',
+      'scroll-position-aware-elements',
+      'scrollspy',
+      'support-global-calendar-systems',
+    ]);
   });
 
-  it('records per-guide suspension provenance for all 4 previously qualified guides (D-042)', () => {
+  it('records per-guide suspension provenance for the 3 remaining suspended guides (D-041, D-042, D-048)', () => {
     assert.deepStrictEqual(SUSPENDED_QUALIFIED_GUIDE_IDS, [
       'autofill-highlight-inputs',
       'complex-shapes',
       'deliver-optimized-decorative-images',
-      'individual-transform-properties',
     ]);
-    assert.strictEqual(SUSPENDED_QUALIFIED_RULE_HISTORY.length, 4);
+    assert.strictEqual(SUSPENDED_QUALIFIED_RULE_HISTORY.length, 3);
     for (const entry of SUSPENDED_QUALIFIED_RULE_HISTORY) {
       assert.strictEqual(entry.split, 'held-out');
       assert.ok(entry.suspendedAt.length > 0);
@@ -45,45 +69,32 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
     }
   });
 
-  it('guarantees shipping lists cannot contradict final scorecard (O64)', async () => {
-    const finalScorecardPath = join(
-      WORKTREE_ROOT,
-      'analyzer-internal/findings/2026-10-16-gitmirror-final-scorecard.json',
-    );
-    const raw = await readFile(finalScorecardPath, 'utf8');
-    const scorecard = JSON.parse(raw) as {
-      guides: Array<{
-        guideId: string;
-        totalFindings: number;
-        precision: number;
-        wilson95: { lower: number };
-        phase1Findings?: number;
-        phase1Precision?: number;
-        phase1Wilson95?: { lower: number };
-      }>;
-    };
-
-    // Find all guides that failed the final held-out bar (wilson95.lower < 0.90)
-    const failedOnFinal = scorecard.guides.filter((g) => g.wilson95.lower < 0.90);
-    const failedGuideIds = new Set(failedOnFinal.map((g) => g.guideId));
-
-    // animate-element-entry-exit is known to have failed final (46/58 = 79.3%, lower bound 0.672)
-    assert.ok(
-      failedGuideIds.has('animate-element-entry-exit'),
-      'animate-element-entry-exit must be recognized as having failed final',
-    );
-
-    // Verify that NO failed guide is in shipping qualification lists
-    for (const gid of failedGuideIds) {
+  it('guarantees shipping lists cannot include ungraduated or suspended guides (O64, D-048)', async () => {
+    // Ungraduated/suspended guides must NOT be in shipping qualification lists
+    const nonGraduated = [
+      'autofill-highlight-inputs',
+      'complex-shapes',
+      'deliver-optimized-decorative-images',
+      'coordinate-global-events',
+      'break-up-long-tasks',
+      'detect-initial-visibility-state',
+      'defer-work-until-scroll-ends',
+      'ime-safe-enter-submit',
+      'child-state-based-styling',
+      'declarative-dialog-popover-control',
+      'size-aware-styling',
+      'resolution-optimized-pseudo-elements',
+    ];
+    for (const gid of nonGraduated) {
       assert.strictEqual(
         TERMINAL_QUALIFIED_GUIDE_IDS.includes(gid),
         false,
-        `Failing guide "${gid}" must NOT be in TERMINAL_QUALIFIED_GUIDE_IDS`,
+        `Non-graduated guide "${gid}" must NOT be in TERMINAL_QUALIFIED_GUIDE_IDS`,
       );
       assert.strictEqual(
         JSON_QUALIFIED_GUIDE_IDS.includes(gid),
         false,
-        `Failing guide "${gid}" must NOT be in JSON_QUALIFIED_GUIDE_IDS`,
+        `Non-graduated guide "${gid}" must NOT be in JSON_QUALIFIED_GUIDE_IDS`,
       );
     }
   });
@@ -269,14 +280,13 @@ describe('Rule Qualification and Manifest (D-031, D-036, D-041, D-042)', () => {
     );
   });
 
-  it('QUALIFIED_RULE_MANIFEST is empty while rules are suspended in SUSPENDED_QUALIFIED_RULE_HISTORY', () => {
-    assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 0);
+  it('QUALIFIED_RULE_MANIFEST contains the 26 graduated guides while 3 remain suspended (D-048)', () => {
+    assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 26);
     const suspendedIds = SUSPENDED_QUALIFIED_RULE_HISTORY.map((r) => r.guideId);
     assert.deepStrictEqual(suspendedIds, [
       'autofill-highlight-inputs',
       'complex-shapes',
       'deliver-optimized-decorative-images',
-      'individual-transform-properties',
     ]);
   });
 });

@@ -499,13 +499,13 @@ describe('file operations and hashes', () => {
       assert.ok(markdown.includes('35 active guides (49 rules, including 10 single-purpose `package.json` + whole-file `vendored-library` rules) wired in `ALL_RULES`'));
     });
 
-    it('annotates Current Verified Benchmark when 5653484 is current benchmark (D-042 / D-046 / D-047 / R50)', () => {
+    it('annotates Current Verified Benchmark when 5653484 is current benchmark (D-042 / D-046 / D-047 / D-048 / R50)', () => {
       const funnelRows = buildTable3FunnelRowsSync();
       const markdown = formatProgressLogMarkdown(funnelRows);
       assert.ok(markdown.includes('## Current Verified Benchmark: No verified benchmark under D-046 (0 human-qualified rules; Judge de-admitted)'));
-      assert.ok(markdown.includes('> **Notice (2026-10-22 / D-046 / D-047 / R50):**'));
+      assert.ok(markdown.includes('> **Notice (2026-10-24 / D-048 / R50):**'));
+      assert.ok(markdown.includes('26 qualifying guides (39 of 49 active rules) graduated into default shipping'));
       assert.ok(markdown.includes('Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`)'));
-      assert.ok(markdown.includes('TERMINAL_QUALIFIED_GUIDE_IDS = []'));
       assert.ok(markdown.includes('human blind spot-checks'));
       assert.ok(markdown.includes('5 guides achieved 35/35 judge votes'));
       assert.ok(markdown.includes('Historical Background Context (Pre-D-042 / Pre-D-046; de-admitted Judge)'));
