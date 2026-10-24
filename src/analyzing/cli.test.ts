@@ -302,6 +302,8 @@ describe('runAnalyzeCli', () => {
       const resAll = await runAnalyzeCli([testDir, '--all-rules', '--json']);
       assert.equal(resAll.exitCode, 0);
       const parsedAll = JSON.parse(resAll.output) as AnalyzeJsonOutput;
+      assert.equal(parsedAll.activeRuleCount, 57);
+      assert.equal(parsedAll.activeGuideCount, 42);
       const allGuideIds = parsedAll.guides.map((g) => g.guideId);
 
       assert.ok(

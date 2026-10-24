@@ -84,6 +84,11 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
       'declarative-dialog-popover-control',
       'size-aware-styling',
       'resolution-optimized-pseudo-elements',
+      'soft-edge-content-fade',
+      'switch',
+      'optimize-image-priority',
+      'select-menu-interaction',
+      'lazy-load-video-and-audio',
     ];
     for (const gid of nonGraduated) {
       assert.strictEqual(
