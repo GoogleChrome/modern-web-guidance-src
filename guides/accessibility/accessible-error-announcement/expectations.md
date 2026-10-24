@@ -2,5 +2,5 @@
 - Tabbing through a field without typing (focus then blur) should NOT trigger `aria-invalid="true"` (unless the browser implementation of `:user-invalid` triggers here, which it typically doesn't for empty required fields until interaction happens).
 - Typing an invalid value (e.g., "bad-email") and blurring MUST set `aria-invalid="true"`.
 - Correcting the value to a valid format MUST remove the `aria-invalid` attribute (or set it to `false`) immediately (on input).
-- When constraint validation blocks submission, the implementation must set `aria-invalid="true"` on every invalid field, not only the first field the browser focuses.
+- When constraint validation blocks submission, `aria-invalid="true"` is set on every invalid field, not only the first field the browser focuses.
 - The visual error message visibility must match the `aria-invalid` state.
