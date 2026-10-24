@@ -13,20 +13,24 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing 57 rules across the 42 active feature guides', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 57);
-    assert.strictEqual(ALL_RULES.length, 57);
+  it('exports PILOT_RULES containing 98 rules across the 71 active feature guides', async (t) => {
+    assert.strictEqual(PILOT_RULES.length, 98);
+    assert.strictEqual(ALL_RULES.length, 98);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 42);
+    assert.strictEqual(guideIds.size, 71);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
+        'anchor-positioning-tab-underline',
         'animate-element-entry-exit',
+        'animate-to-from-top-layer',
         'animate-to-intrinsic-sizes',
         'atrule-support-conditionals',
         'autofill-address-form',
+        'autofill-payment-form',
         'autofill-sign-in-form',
+        'batch-analytics-events',
         'branded-select-styling',
         'break-up-long-tasks',
         'calculate-event-differentials',
@@ -34,7 +38,12 @@ describe('rules/index export registry', () => {
         'checkbox',
         'child-state-based-styling',
         'complex-shapes',
+        'conditional-async-dependencies',
+        'contrast-color',
         'coordinate-global-events',
+        'custom-button-actions',
+        'custom-select-picker-layouts',
+        'custom-text-decorations',
         'customize-scrollbar-color-and-thickness',
         'dark-mode',
         'declarative-dialog-popover-control',
@@ -43,25 +52,45 @@ describe('rules/index export registry', () => {
         'detect-initial-visibility-state',
         'drag',
         'equal-width-text-lines',
+        'export-html-media-from-canvas',
         'form-fields-automatically-fit-contents',
         'highlight-text-ranges',
         'ime-safe-enter-submit',
         'improve-next-page-load-performance',
+        'improve-text-layout-and-legibility',
         'individual-transform-properties',
+        'interactions-in-complex-layouts',
+        'interest-triggered-action-previews',
+        'interest-triggered-tooltips',
         'language-detection',
         'lazy-load-video-and-audio',
         'light-dismiss-a-dialog',
+        'menu',
+        'navigation-drawer',
         'optimize-image-priority',
+        'platform-controls-dismiss-dialog',
+        'position-aware-tooltips',
+        'precise-text-alignment',
         'prevent-page-scroll-under-modal-dialog',
+        'progress-ring',
+        'required-field-feedback',
         'resolution-optimized-pseudo-elements',
         'responsive-table',
         'sanitize-untrusted-html',
+        'scroll-completion-effects',
         'scroll-entry-exit-effects',
         'scroll-position-aware-elements',
+        'scroll-progress-indicator',
+        'scroll-snap-realtime-feedback',
+        'scroll-snap-state-sync',
+        'scroll-target-on-load',
+        'scrollability-affordance-hints',
         'scrollspy',
         'select-menu-interaction',
         'size-aware-styling',
         'soft-edge-content-fade',
+        'state-aware-sticky-headers',
+        'styling-web-components',
         'support-global-calendar-systems',
         'switch',
       ].sort(),
