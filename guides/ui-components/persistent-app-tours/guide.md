@@ -64,33 +64,9 @@ tourStep.querySelector('button').focus();
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-#### anchor-positioning
+{{ FEATURE_FALLBACKS("anchor-positioning") }}
 
-{{ BASELINE_STATUS("anchor-positioning") }}
-
-To support browsers without anchor positioning, you can choose between using a polyfill or a pure CSS fallback.
-
-##### Option 1: Polyfill Fallback
-The `@oddbird/css-anchor-positioning` polyfill can be used to emulate anchor positioning. It does not support implicit anchors, so you MUST add explicit anchor names to the trigger. Additionally, `position-area` is not supported on popovers by the polyfill, so you MUST use `anchor()` on the desired insets instead of `position-area`.
-
-```html
-<script type="module">
-  if (!CSS.supports('anchor-name: --foo')) {
-    await import("https://unpkg.com/@oddbird/css-anchor-positioning");
-  }
-</script>
-```
-
-```css
-#tour-step {
-  /* If using the anchor positioning polyfill with a popover, DO use `anchor()` functions instead of `position-area`. */
-  left: anchor(right);
-  top: anchor(top);
-}
-```
-
-##### Option 2: Non-Polyfill CSS Fallback
-If you prefer not to use a polyfill, you can default the tooltip to a fixed position at the bottom of the viewport using `@supports not`.
+If you prefer not to use a polyfill, you can default the tour step to a fixed position at the bottom of the viewport using `@supports not`.
 
 ```css
 @supports not (anchor-name: --foo) {
