@@ -499,18 +499,18 @@ describe('file operations and hashes', () => {
       assert.ok(markdown.includes('35 active guides (49 rules, including 10 single-purpose `package.json` + whole-file `vendored-library` rules) wired in `ALL_RULES`'));
     });
 
-    it('annotates Current Verified Benchmark when 5653484 is current benchmark (D-042 / D-046)', () => {
+    it('annotates Current Verified Benchmark when 5653484 is current benchmark (D-042 / D-046 / D-047 / R50)', () => {
       const funnelRows = buildTable3FunnelRowsSync();
       const markdown = formatProgressLogMarkdown(funnelRows);
-      assert.ok(markdown.includes('> **Notice (2026-10-21 / D-042 / D-046):**'));
+      assert.ok(markdown.includes('## Current Verified Benchmark: No verified benchmark under D-046 (0 human-qualified rules; Judge de-admitted)'));
+      assert.ok(markdown.includes('> **Notice (2026-10-22 / D-046 / D-047 / R50):**'));
       assert.ok(markdown.includes('Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`)'));
       assert.ok(markdown.includes('TERMINAL_QUALIFIED_GUIDE_IDS = []'));
-      assert.ok(markdown.includes('35-card human spot-checks'));
-      assert.ok(markdown.includes('Completed `R43` blind side-by-side comparison on `2,980` fresh unseen held-out files'));
-      assert.ok(markdown.includes('Completed `D-046` Judge Triage across all 35 active guides on unseen `held-out`'));
-      assert.ok(markdown.includes('5 guides achieved 35/35 = 100.0% precision'));
-      assert.ok(markdown.includes('Completed local-repos precision audit (517 findings across 66/212 repos'));
-      assert.ok(markdown.includes('_d046-customize-scrollbar-color-and-thickness-35-deck'));
+      assert.ok(markdown.includes('human blind spot-checks'));
+      assert.ok(markdown.includes('5 guides achieved 35/35 judge votes'));
+      assert.ok(markdown.includes('Historical Background Context (Pre-D-042 / Pre-D-046; de-admitted Judge)'));
+      assert.ok(markdown.includes('Cohort A: 61/64 = 95.3% judge votes across 22 guides'));
+      assert.ok(markdown.includes('Provenance (R50):'));
     });
 
     it('appends and updates judge calibration row via appendJudgeCalibrationToProgressLog', async () => {
