@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reorder Tasks</title>
+  <style>
+    @property --icon-start {
+      syntax: "<image>";
+      inherits: false;
+    }
+
+    :root {
+      color-scheme: light dark;
+      --canvas: #edf3ee;
+      --surface: #fffdf8;
+      --ink: #19342d;
+      --line: #a9bdb1;
+      --accent: #007d69;
+
+      /* SVG Icon Variables */
+      --icon-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='5' r='1'/%3E%3Ccircle cx='9' cy='12' r='1'/%3E%3Ccircle cx='9' cy='19' r='1'/%3E%3Ccircle cx='15' cy='5' r='1'/%3E%3Ccircle cx='15' cy='12' r='1'/%3E%3Ccircle cx='15' cy='19' r='1'/%3E%3C/svg%3E");
+      --icon-chevron-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='18 15 12 9 6 15'/%3E%3C/svg%3E");
+      --icon-chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      max-width: 42rem;
+      min-height: 100vh;
+      margin: 0;
+      padding: 1rem;
+      font-family: Georgia, serif;
+      background: var(--canvas);
+      color: var(--ink);
+    }
+
+    .task-list {
+      position: relative; /* makes the list the offsetParent for layout-position math */
+      display: grid;
+      gap: 0.75rem;
+      max-width: 32rem;
+      max-height: 22rem;
+      padding: 1rem;
+      overflow-y: auto;
+      list-style: none;
+    }
+
+    .task {
+      scroll-margin: 1rem;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+
+    .task.pointer-dragging {
+      opacity: 0.35;
+    }
+
+    .drag-preview {
+      position: fixed;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.9;
+      transform: scale(1.02);
+      box-shadow: 0 12px 28px rgb(25 52 45 / 28%);
+    }
+
+    .task:not(.pointer-dragging):has(.drag-handle:focus-visible),
+    .drag-preview.has-focus {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .task:has(.drag-handle[aria-pressed="true"]) {
+      transform: scale(1.02);
+      box-shadow: 0 12px 28px rgb(25 52 45 / 28%);
+    }
+
+    .drag-handle {
+      display: grid;
+      width: 2.25rem;
+      height: 2.25rem;
+      place-items: center;
+      cursor: grab;
+      touch-action: none;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .drag-handle:active,
+    .is-dragging,
+    .is-dragging * {
+      cursor: grabbing;
+    }
+
+    .drag-handle:focus-visible {
+      outline: none;
+    }
+
+    /* A fill, not an outline, so it does not read as a second focus ring next to the item outline. */
+    .drag-handle:is(:hover, :focus-visible) {
+      border-radius: 4px;
+      background: var(--canvas);
+    }
+
+    .drag-handle[aria-pressed="true"] {
+      border-radius: 4px;
+      background: color-mix(in oklch, var(--accent) 20%, transparent);
+      color: var(--accent);
+    }
+
+    .task-controls {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .move-up-button,
+    .move-down-button {
+      display: grid;
+      width: 2rem;
+      height: 2rem;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .move-up-button:hover,
+    .move-down-button:hover {
+      background: var(--canvas);
+    }
+
+    .move-up-button:disabled,
+    .move-down-button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      background: transparent;
+      border-color: transparent;
+    }
+
+    .move-up-button:focus-visible,
+    .move-down-button:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .task label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .task input {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .status {
+      min-height: 1.5rem;
+      font-weight: bold;
+    }
+
+    .icon {
+      display: inline-block;
+      width: var(--icon-size, 1.25em);
+      height: var(--icon-size, 1.25em);
+      vertical-align: middle;
+      flex-shrink: 0;
+      color: inherit;
+    }
+
+    .icon:empty::before {
+      content: "";
+      display: inline-block;
+      width: var(--icon-size, 1.25em);
+      height: var(--icon-size, 1.25em);
+      background-color: currentColor;
+      mask: var(--icon) no-repeat center / contain;
+      -webkit-mask: var(--icon) no-repeat center / contain;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Tasks</h1>
+    <p>Drag an item with its handle, press <kbd>Space</kbd> on a focused handle to grab it, move it with <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd>, then press <kbd>Space</kbd> to drop or <kbd>Escape</kbd> to cancel, or use the movement buttons.</p>
+
+    <ol class="task-list" id="taskList">
+      <li class="task" data-reorder-item data-label="Outline project">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Outline project <input value="Write the first draft"></label>
+        <div class="task-controls">
+          <button class="move-up-button" type="button" aria-label="Move Outline project up" title="Move up">
+            <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
+          </button>
+          <button class="move-down-button" type="button" aria-label="Move Outline project down" title="Move down">
+            <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
+          </button>
+        </div>
+      </li>
+      <li class="task" data-reorder-item data-label="Review research">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Review research <input value="Collect source notes"></label>
+        <div class="task-controls">
+          <button class="move-up-button" type="button" aria-label="Move Review research up" title="Move up">
+            <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
+          </button>
+          <button class="move-down-button" type="button" aria-label="Move Review research down" title="Move down">
+            <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
+          </button>
+        </div>
+      </li>
+      <li class="task" data-reorder-item data-label="Schedule review">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Schedule review <input value="Invite the team"></label>
+        <div class="task-controls">
+          <button class="move-up-button" type="button" aria-label="Move Schedule review up" title="Move up">
+            <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
+          </button>
+          <button class="move-down-button" type="button" aria-label="Move Schedule review down" title="Move down">
+            <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
+          </button>
+        </div>
+      </li>
+    </ol>
+
+    <p class="status" id="reorderStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+  </main>
+
+  <script>
+    const list = document.getElementById('taskList');
+    const status = document.getElementById('reorderStatus');
+    let pointerItem = null;
+    let pointerPreview = null;
+    let pointerOffsetX = 0;
+    let pointerOffsetY = 0;
+    let activePointerId = null;
+    let pointerHandle = null;
+    let pointerStartNext = null;
+    let isMoving = false;
+    let pointerX = 0;
+    let pointerY = 0;
+    function getPosition(item) {
+      return [...list.children].indexOf(item) + 1;
+    }
+
+    // Delay so the announcement isn't swallowed when the move blurs and refocuses the handle (the before() fallback).
+    let announceTimer = 0;
+    function announce(message) {
+      clearTimeout(announceTimer);
+      status.textContent = '';
+      announceTimer = setTimeout(() => { status.textContent = message; }, 500);
+    }
+
+    function updateDisabledStates() {
+      const items = [...list.children];
+      items.forEach((item, index) => {
+        const upBtn = item.querySelector('.move-up-button');
+        const downBtn = item.querySelector('.move-down-button');
+        if (upBtn) upBtn.disabled = (index === 0);
+        if (downBtn) downBtn.disabled = (index === items.length - 1);
+      });
+    }
+
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+    // FLIP: measure, move, then animate each sibling from its old position.
+    function moveItem(item, before, reveal = false) {
+      const first = new Map([...list.children].map((el) => [el, el.getBoundingClientRect().top]));
+      const scrollBefore = list.scrollTop;
+      // The before() fallback can blur the moved handle; flag it so that blur isn't treated as leaving.
+      isMoving = true;
+      if ('moveBefore' in Element.prototype) {
+        list.moveBefore(item, before);
+      } else if (before) {
+        before.before(item);
+      } else {
+        list.append(item);
+      }
+      isMoving = false;
+      // before() clears pointer capture along with the removed handle, so re-establish it.
+      if (pointerHandle && !pointerHandle.hasPointerCapture(activePointerId)) {
+        pointerHandle.setPointerCapture(activePointerId);
+      }
+      // Scroll before animating so the item's layout position is used, not its animated offset.
+      if (reveal) item.scrollIntoView({ block: 'nearest' });
+      if (reduceMotion.matches) return;
+      const scrolled = list.scrollTop - scrollBefore;
+      for (const [el, top] of first) {
+        const dy = top - scrolled - el.getBoundingClientRect().top;
+        if (dy) el.animate({ translate: [`0 ${dy}px`, '0 0'] }, { duration: 200, easing: 'ease-out' });
+      }
+    }
+
+    function finishPointerReorder(cancelled = false) {
+      if (!pointerItem) return;
+      updateDisabledStates();
+      const label = pointerItem.dataset.label;
+      const position = getPosition(pointerItem);
+      if (cancelled) {
+        announce(`Cancelled. ${label} returned to position ${position} of ${list.children.length}.`);
+      } else if (pointerItem.nextElementSibling !== pointerStartNext) {
+        announce(`Moved ${label} to position ${position}.`);
+      }
+      const item = pointerItem;
+      const preview = pointerPreview;
+      const from = preview.getBoundingClientRect();
+      // Finish the item's in-flight FLIP animation so the target is its real layout position.
+      item.getAnimations().forEach((animation) => animation.finish());
+      const to = item.getBoundingClientRect();
+      const done = () => {
+        // A new drag of this item may already be running; don't clear its placeholder state.
+        if (item !== pointerItem) item.classList.remove('pointer-dragging');
+        preview.remove();
+      };
+      if (reduceMotion.matches) {
+        done();
+      } else {
+        const snap = preview.animate(
+          { translate: [`0 0`, `${to.left - from.left}px ${to.top - from.top}px`] },
+          { duration: 200, easing: 'ease-out', fill: 'forwards' }
+        );
+        snap.finished.then(done, done);
+      }
+      pointerItem = null;
+      pointerPreview = null;
+      activePointerId = null;
+      pointerHandle?.removeEventListener('lostpointercapture', onLostPointerCapture);
+      pointerHandle = null;
+      document.documentElement.classList.remove('is-dragging');
+      cancelAnimationFrame(scrollFrame);
+      document.removeEventListener('pointermove', movePointerItem);
+      document.removeEventListener('pointerup', endPointerReorder);
+      document.removeEventListener('pointercancel', endPointerReorder);
+      document.removeEventListener('keydown', cancelPointerReorder);
+    }
+
+    // Only the pointer that started the drag may move or end it; a stray second touch is ignored.
+    function endPointerReorder(event) {
+      if (event.pointerId === activePointerId) finishPointerReorder();
+    }
+
+    // Capture lost for any reason other than the before() fallback (which re-captures) ends the drag.
+    function onLostPointerCapture(event) {
+      if (event.pointerId === activePointerId && !pointerHandle?.hasPointerCapture(event.pointerId)) {
+        finishPointerReorder();
+      }
+    }
+
+    function cancelPointerReorder(event) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      moveItem(pointerItem, pointerStartNext, true);
+      finishPointerReorder(true);
+    }
+
+    function movePointerItem(event) {
+      if (event.pointerId !== activePointerId) return;
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      pointerPreview.style.left = `${pointerX - pointerOffsetX}px`;
+      pointerPreview.style.top = `${pointerY - pointerOffsetY}px`;
+      updateDropTarget();
+    }
+
+    // Compare the pointer, clamped to the list, with layout midpoints. Layout positions ignore
+    // in-flight FLIP translates, and a pointer past either edge still resolves to the first or last place.
+    function updateDropTarget() {
+      const bounds = list.getBoundingClientRect();
+      const clamped = Math.min(Math.max(pointerY, bounds.top), bounds.bottom);
+      const y = clamped - bounds.top - list.clientTop + list.scrollTop;
+      const before = [...list.querySelectorAll(':scope > .task')]
+        .find((item) => item !== pointerItem && y < item.offsetTop + item.offsetHeight / 2) ?? null;
+      if (before === pointerItem.nextElementSibling) return;
+      moveItem(pointerItem, before);
+    }
+
+    const EDGE_ZONE = 56;
+    const MAX_SPEED = 700; // px per second at the edge, up to 2x beyond it
+    let scrollFrame = 0;
+    let lastFrame = 0;
+
+    function autoScroll(now) {
+      const bounds = list.getBoundingClientRect();
+      const into = pointerY < bounds.top + EDGE_ZONE ? bounds.top + EDGE_ZONE - pointerY
+        : pointerY > bounds.bottom - EDGE_ZONE ? bounds.bottom - EDGE_ZONE - pointerY : 0;
+      const speed = Math.min(Math.abs(into) / EDGE_ZONE, 2) * MAX_SPEED * Math.sign(-into);
+      if (speed && lastFrame) {
+        const before = list.scrollTop;
+        list.scrollTop += speed * (now - lastFrame) / 1000;
+        if (list.scrollTop !== before) updateDropTarget();
+      }
+      lastFrame = now;
+      scrollFrame = requestAnimationFrame(autoScroll);
+    }
+
+    list.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0 || activePointerId !== null) return;
+      const handle = event.target.closest('.drag-handle');
+      if (!handle) return;
+      event.preventDefault();
+      activePointerId = event.pointerId;
+      pointerHandle = handle;
+      handle.setPointerCapture(event.pointerId);
+      handle.addEventListener('lostpointercapture', onLostPointerCapture);
+      pointerItem = handle.closest('.task');
+      pointerStartNext = pointerItem.nextElementSibling;
+      const rect = pointerItem.getBoundingClientRect();
+      pointerOffsetX = event.clientX - rect.left;
+      pointerOffsetY = event.clientY - rect.top;
+
+      pointerPreview = pointerItem.cloneNode(true);
+      pointerPreview.classList.remove('pointer-dragging');
+      // A clone never matches :focus-visible, so carry the keyboard focus ring over to the preview.
+      pointerPreview.classList.toggle('has-focus', handle.matches(':focus-visible'));
+      pointerPreview.classList.add('drag-preview');
+      pointerPreview.setAttribute('aria-hidden', 'true');
+      pointerPreview.inert = true;
+      pointerPreview.style.width = `${rect.width}px`;
+      pointerPreview.style.left = `${rect.left}px`;
+      pointerPreview.style.top = `${rect.top}px`;
+      document.body.append(pointerPreview);
+      pointerItem.classList.add('pointer-dragging');
+      document.documentElement.classList.add('is-dragging');
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      lastFrame = 0;
+      scrollFrame = requestAnimationFrame(autoScroll);
+      document.addEventListener('pointermove', movePointerItem);
+      document.addEventListener('pointerup', endPointerReorder);
+      document.addEventListener('pointercancel', endPointerReorder);
+      document.addEventListener('keydown', cancelPointerReorder);
+    });
+
+    function moveKeyboardItem(item, direction) {
+      const sibling = direction === 'up'
+        ? item.previousElementSibling
+        : item.nextElementSibling;
+      if (!sibling) return;
+
+      const activeElement = document.activeElement;
+      const wasUpFocused = activeElement?.classList.contains('move-up-button');
+      const wasDownFocused = activeElement?.classList.contains('move-down-button');
+
+      moveItem(item, direction === 'up' ? sibling : sibling.nextElementSibling, true);
+      updateDisabledStates();
+
+      // Restore focus without scrolling: moveItem() already revealed the item
+      if (direction === 'up' && wasUpFocused) {
+        const upBtn = item.querySelector('.move-up-button');
+        if (upBtn.disabled) {
+          item.querySelector('.move-down-button').focus({ preventScroll: true });
+        } else {
+          upBtn.focus({ preventScroll: true });
+        }
+      } else if (direction === 'down' && wasDownFocused) {
+        const downBtn = item.querySelector('.move-down-button');
+        if (downBtn.disabled) {
+          item.querySelector('.move-up-button').focus({ preventScroll: true });
+        } else {
+          downBtn.focus({ preventScroll: true });
+        }
+      } else {
+        activeElement?.focus({ preventScroll: true });
+      }
+
+      announce(`${item.dataset.label} moved ${direction}. Position ${getPosition(item)} of ${list.children.length}.`);
+    }
+
+    let grabbedHandle = null;
+    let grabbedNext = null;
+
+    function releaseHandle() {
+      grabbedHandle.setAttribute('aria-pressed', 'false');
+      grabbedHandle = null;
+    }
+
+    list.addEventListener('keydown', (event) => {
+      const handle = event.target.closest('.drag-handle');
+      if (!handle) return;
+      const item = handle.closest('.task');
+
+      if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        if (grabbedHandle === handle) {
+          releaseHandle();
+          announce(`Dropped ${item.dataset.label} at position ${getPosition(item)} of ${list.children.length}.`);
+        } else {
+          grabbedHandle = handle;
+          grabbedNext = item.nextElementSibling;
+          handle.setAttribute('aria-pressed', 'true');
+          announce(`Grabbed ${item.dataset.label}, position ${getPosition(item)} of ${list.children.length}. Use arrow keys to move, Space to drop, Escape to cancel.`);
+        }
+      } else if (grabbedHandle !== handle) {
+        return;
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        moveItem(item, grabbedNext, true);
+        updateDisabledStates();
+        handle.focus({ preventScroll: true });
+        releaseHandle();
+        announce(`Cancelled. ${item.dataset.label} returned to position ${getPosition(item)} of ${list.children.length}.`);
+      } else if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
+        event.preventDefault();
+        moveKeyboardItem(item, event.key === 'ArrowUp' ? 'up' : 'down');
+      }
+    });
+
+    // Show the whole item (and its focus ring) when keyboard focus enters it. Skip mid-animation items:
+    // a move already revealed them, and an in-flight translate would skew the scroll position.
+    list.addEventListener('focusin', (event) => {
+      const item = event.target.closest('.task');
+      if (!item || !event.target.matches(':focus-visible') || item.getAnimations().length) return;
+      item.scrollIntoView({ block: 'nearest' });
+    });
+
+    list.addEventListener('focusout', (event) => {
+      if (!isMoving && grabbedHandle && event.target === grabbedHandle) releaseHandle();
+    });
+
+    list.addEventListener('click', (event) => {
+      const upBtn = event.target.closest('.move-up-button');
+      const downBtn = event.target.closest('.move-down-button');
+      if (!upBtn && !downBtn) return;
+
+      const item = (upBtn || downBtn).closest('.task');
+      if (upBtn) {
+        moveKeyboardItem(item, 'up');
+      } else {
+        moveKeyboardItem(item, 'down');
+      }
+    });
+
+    // Add enough items for the list to scroll.
+    for (let i = 4; i <= 10; i++) {
+      const item = list.firstElementChild.cloneNode(true);
+      const label = `Task ${i}`;
+      item.dataset.label = label;
+      const handle = item.querySelector('.drag-handle');
+      handle.setAttribute('aria-label', `Reorder ${label}`);
+      handle.title = `Drag to reorder ${label}`;
+      item.querySelector('.move-up-button').setAttribute('aria-label', `Move ${label} up`);
+      item.querySelector('.move-down-button').setAttribute('aria-label', `Move ${label} down`);
+      item.querySelector('label').firstChild.textContent = `${label} `;
+      item.querySelector('input').value = '';
+      list.append(item);
+    }
+
+    // Initialize disabled states
+    updateDisabledStates();
+  </script>
+</body>
+
+</html>
