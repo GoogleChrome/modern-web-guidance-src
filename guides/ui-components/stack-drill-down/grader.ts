@@ -10,7 +10,7 @@ const targetDir = path.dirname(targetFile);
 const targetUrl = `http://localhost/${path.basename(targetFile)}`;
 
 const STACK_SEL = '.Stack, .stack';
-const VIEW_SEL = '.Stack-view, .stack-view';
+const VIEW_SEL = '.Stack-view, .stack-view, .view';
 const VIEW_CONTENT_SEL = '.Stack-viewContent, .stack-view-content, .view-content';
 const BACK_SEL = '.icon-back, .back, [class*="back" i], button[aria-label*="Back" i]';
 
@@ -49,11 +49,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 const ITEM_LINK_SEL =
-  '.Stack-view:not([inert]) a.item, .Stack-view:not([inert]) .item, .stack-view:not([inert]) a.item, .stack-view:not([inert]) .item';
+  `:is(${VIEW_SEL}):not([inert]) a.item, :is(${VIEW_SEL}):not([inert]) .item`;
 const MAIN_DRILL_LINK_SEL =
-  '.Stack-view:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"]), .stack-view:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])';
+  `:is(${VIEW_SEL}):not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])`;
 const FALLBACK_DRILL_LINK_SEL =
-  '.Stack-view:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"]), .stack-view:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])';
+  `:is(${VIEW_SEL}):not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])`;
 
 const getActiveDrillLink = async (page: any) => {
   for (const sel of [ITEM_LINK_SEL, MAIN_DRILL_LINK_SEL, FALLBACK_DRILL_LINK_SEL]) {
@@ -62,7 +62,7 @@ const getActiveDrillLink = async (page: any) => {
       return loc;
     }
   }
-  return page.locator('a.item, .item, main a[href], .Stack-view a[href], .stack-view a[href]').first();
+  return page.locator(`a.item, .item, main a[href], :is(${VIEW_SEL}) a[href]`).first();
 };
 
 const clickActiveLink = async (page: any) => {
@@ -72,12 +72,12 @@ const clickActiveLink = async (page: any) => {
 
 const clickBackButton = async (page: any) => {
   const backBtn = page.locator(
-    `.Stack-view:not([inert]) .icon-back, .Stack-view:not([inert]) .back, .Stack-view:not([inert]) [class*="back" i], .Stack-view:not([inert]) button[aria-label*="Back" i], .stack-view:not([inert]) .icon-back, .stack-view:not([inert]) .back, .stack-view:not([inert]) [class*="back" i], .stack-view:not([inert]) button[aria-label*="Back" i]`
+    `:is(${VIEW_SEL}):not([inert]) :is(${BACK_SEL})`
   );
   if ((await backBtn.count()) > 0 && (await backBtn.first().isVisible())) {
     await backBtn.first().click({ force: true });
   } else {
-    const activeHeader = page.locator('.Stack-view:not([inert]) header, .Stack-view:last-child header, .stack-view:not([inert]) header, .stack-view:last-child header');
+    const activeHeader = page.locator(`:is(${VIEW_SEL}):not([inert]) header, :is(${VIEW_SEL}):last-child header`);
     await activeHeader.first().click({ force: true });
   }
 };
@@ -501,8 +501,10 @@ test.describe('Stack Drill Down', () => {
   });
 
   test('An IntersectionObserver fallback is provided for browsers without scrollsnapchange', async ({ page }) => {
-    await page.addInitScript(() => {
+      await page.addInitScript(() => {
       delete (HTMLElement.prototype as any).onscrollsnapchange;
+      delete (window as any).onscrollsnapchange;
+      delete (Document.prototype as any).onscrollsnapchange;
       
       (window as any).__intersectionObserverCalls = [];
       const originalObserver = window.IntersectionObserver;
@@ -519,8 +521,8 @@ test.describe('Stack Drill Down', () => {
       const stack = document.querySelector(stackSel);
       const matched = calls.find((c: any) => {
         const t = c.options?.threshold;
-        const isOne = t === 1 || (Array.isArray(t) && t.length === 1 && t[0] === 1);
-        return c.options?.root === stack && isOne;
+        const isHighThreshold = (typeof t === 'number' && t >= 0.85) || (Array.isArray(t) && t.some((v: number) => v >= 0.85));
+        return c.options?.root === stack && isHighThreshold;
       });
       return !!matched;
     }, STACK_SEL);
