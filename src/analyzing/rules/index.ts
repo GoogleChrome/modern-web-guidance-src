@@ -30,8 +30,10 @@ import { imeSafeEnterSubmitRules } from './ime-safe-enter-submit.ts';
 import { improveNextPageLoadPerformanceRules } from './improve-next-page-load-performance.ts';
 import { individualTransformPropertiesRules } from './individual-transform-properties.ts';
 import { languageDetectionRules } from './language-detection.ts';
+import { lazyLoadVideoAndAudioRules } from './lazy-load-video-and-audio.ts';
 import { lightDismissADialogRules } from './light-dismiss-a-dialog.ts';
 import { manageRecurringIntervalsRules } from './manage-recurring-intervals.ts';
+import { optimizeImagePriorityRules } from './optimize-image-priority.ts';
 import { preventPageScrollUnderModalDialogRules } from './prevent-page-scroll-under-modal-dialog.ts';
 import { resilientContextMenusAndNestedDropdownsRules } from './resilient-context-menus-and-nested-dropdowns.ts';
 import { resolutionOptimizedPseudoElementsRules } from './resolution-optimized-pseudo-elements.ts';
@@ -41,8 +43,11 @@ import { scheduleTasksByPriorityRules } from './schedule-tasks-by-priority.ts';
 import { scrollEntryExitEffectsRules } from './scroll-entry-exit-effects.ts';
 import { scrollPositionAwareElementsRules } from './scroll-position-aware-elements.ts';
 import { scrollspyRules } from './scrollspy.ts';
+import { selectMenuInteractionRules } from './select-menu-interaction.ts';
 import { sizeAwareStylingRules } from './size-aware-styling.ts';
+import { softEdgeContentFadeRules } from './soft-edge-content-fade.ts';
 import { supportGlobalCalendarSystemsRules } from './support-global-calendar-systems.ts';
+import { switchRules } from './switch.ts';
 
 export * from './adapt-scrollbar-to-contrast-preferences.ts';
 export * from './animate-element-entry-exit.ts';
@@ -75,8 +80,10 @@ export * from './ime-safe-enter-submit.ts';
 export * from './improve-next-page-load-performance.ts';
 export * from './individual-transform-properties.ts';
 export * from './language-detection.ts';
+export * from './lazy-load-video-and-audio.ts';
 export * from './light-dismiss-a-dialog.ts';
 export * from './manage-recurring-intervals.ts';
+export * from './optimize-image-priority.ts';
 export * from './prevent-page-scroll-under-modal-dialog.ts';
 export * from './resilient-context-menus-and-nested-dropdowns.ts';
 export * from './resolution-optimized-pseudo-elements.ts';
@@ -86,8 +93,11 @@ export * from './schedule-tasks-by-priority.ts';
 export * from './scroll-entry-exit-effects.ts';
 export * from './scroll-position-aware-elements.ts';
 export * from './scrollspy.ts';
+export * from './select-menu-interaction.ts';
 export * from './size-aware-styling.ts';
+export * from './soft-edge-content-fade.ts';
 export * from './support-global-calendar-systems.ts';
+export * from './switch.ts';
 
 export const PILOT_RULES: readonly AnalyzerRule[] = [
   // Pilot Batch 1 & Earlier (spread *Rules arrays consistently):
@@ -144,6 +154,13 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...highlightTextRangesRules,
   ...supportGlobalCalendarSystemsRules,
   ...captureLocationAgnosticDataRules,
+
+  // Wave 4A & 4B Ready Guides (5 guides, 6 rules -> 55 rules across 40 feature guides total):
+  ...softEdgeContentFadeRules,
+  ...switchRules,
+  ...optimizeImagePriorityRules,
+  ...selectMenuInteractionRules,
+  ...lazyLoadVideoAndAudioRules,
 ];
 
 export const ALL_RULES: readonly AnalyzerRule[] = PILOT_RULES;

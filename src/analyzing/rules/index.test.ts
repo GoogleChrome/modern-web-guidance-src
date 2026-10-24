@@ -13,12 +13,12 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing 49 rules across the 35 active feature guides', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 49);
-    assert.strictEqual(ALL_RULES.length, 49);
+  it('exports PILOT_RULES containing 55 rules across the 40 active feature guides', async (t) => {
+    assert.strictEqual(PILOT_RULES.length, 55);
+    assert.strictEqual(ALL_RULES.length, 55);
 
     const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 35);
+    assert.strictEqual(guideIds.size, 40);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
@@ -47,7 +47,9 @@ describe('rules/index export registry', () => {
         'improve-next-page-load-performance',
         'individual-transform-properties',
         'language-detection',
+        'lazy-load-video-and-audio',
         'light-dismiss-a-dialog',
+        'optimize-image-priority',
         'prevent-page-scroll-under-modal-dialog',
         'resolution-optimized-pseudo-elements',
         'responsive-table',
@@ -55,8 +57,11 @@ describe('rules/index export registry', () => {
         'scroll-entry-exit-effects',
         'scroll-position-aware-elements',
         'scrollspy',
+        'select-menu-interaction',
         'size-aware-styling',
+        'soft-edge-content-fade',
         'support-global-calendar-systems',
+        'switch',
       ].sort(),
     );
 

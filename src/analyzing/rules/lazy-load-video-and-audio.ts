@@ -193,7 +193,11 @@ export const lazyLoadVideoAndAudioJsRule: AnalyzerRule = {
   },
 };
 
+/**
+ * Package dependency matching for lozad / vanilla-lazyload was retired from default
+ * production rules per R46/D-044 because ~98% of package.json occurrences are for <img>
+ * rather than <video>/<audio>. Only the AST JS matcher is enabled by default.
+ */
 export const lazyLoadVideoAndAudioRules: readonly AnalyzerRule[] = [
-  lazyLoadVideoAndAudioPackageRule,
   lazyLoadVideoAndAudioJsRule,
 ];
