@@ -73,37 +73,60 @@ Offline evaluation harness that asks an LLM to modernize a flagged code window u
 
 ### `rule-writing` split
 
-Repositories (`208` local repositories in `analyzer-internal/repos.json` plus `7,048` files across `5,320` repositories in `~/.cache/analyzer-gitmirror/rule-writing/`, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 0`) that engineers and agents freely inspect to discover legacy patterns, author rules, and debug matchers.
+The partition of repositories that engineers and agents freely inspect to discover legacy patterns, author rules, and debug matchers. Distinct from the **`held-out` split**, which is never inspected during rule development.
 
 * _Reference_: `analyzer-internal/repos.json`, `analyzer-internal/scripts/sample-gitmirror.ts`
 * _Avoid_: `build` split, `dev` split
 
 ### `held-out` split
 
-Repositories (`7,137` files across `5,258` repositories in `~/.cache/analyzer-gitmirror/held-out/`, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 1`) reserved strictly for precision and recall evaluation (`scorecard.ts`). Never inspected when authoring or debugging rules, ensuring zero tuning leakage.
+The partition of repositories reserved strictly for offline precision and recall evaluation. Never inspected when authoring or debugging rules, ensuring zero tuning leakage.
 
 * _Reference_: `analyzer-internal/scripts/sample-gitmirror.ts`
 * _Avoid_: `grading-only` split, `tune` split, `final` split, `local-93`, `gitmirror-grading-only`
+
+## Evaluation & Calibration
+
+### Blind Card
+
+An evaluation finding packaged for unbiased grading (enclosing code slice, file location, and guide context), presented to human raters and the **Eval Judge** stripped of rule rubrics, author commentary, and prior labels.
+
+* _Reference_: `src/analyzing/judge.ts#BlindCardPayload`, `src/analyzing/prompts.ts#formatBlindCardPrompt`
+* _Avoid_: `Test Case`, `Evaluation Finding`
+
+### Blind Replication
+
+Independent authoring of a **Static Matcher** from `guide.md` and upstream explainers alone without inspecting existing rule code, used to discover author blind spots and benchmark recall overlap on **`held-out` split** code.
+
+* _Reference_: `analyzer-internal/DECISIONS.md#d-040`, `analyzer-internal/DECISIONS.md#d-047`
+* _Avoid_: `Dual Coding`, `Parallel Implementation`
 
 ## Rule Lifecycle States
 
 ### Experimental Rule
 
-An active rule in `ALL_RULES` (`36` guides / `50` rules) available behind `--experimental` (`--all-rules`) that has not yet cleared the default shipping precision bar (`wilson95.lower >= 0.90` at $n \ge 35$).
+An active rule in `ALL_RULES` available behind `--experimental` (`--all-rules`) that has not yet cleared the qualification criteria for default shipping.
 
 * _Reference_: `src/analyzing/rules/index.ts#ALL_RULES`
 * _Avoid_: `Active Rule`, `Unqualified Rule`, `Stage 1`
 
 ### Qualified Rule
 
-A rule in `QUALIFIED_GUIDE_IDS` shipped by default in `npx modern-web-guidance analyze` after clearing `wilson95.lower >= 0.90` at $n \ge 35$ on held-out evaluation.
+A rule in `QUALIFIED_GUIDE_IDS` shipped by default in `npx modern-web-guidance analyze` after clearing the project's qualification criteria.
 
-* _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`
-* _Avoid_: `Default Rule`, `Tier 1 Rule`
+* _Reference_: `src/analyzing/qualification.ts#QUALIFIED_GUIDE_IDS`
+* _Avoid_: `Default Rule`, `Tier 1 Rule`, `Graduated Rule`
+
+### Suspended Rule
+
+A previously qualified rule in `SUSPENDED_QUALIFIED_GUIDE_IDS` whose default shipping was temporarily halted pending evaluation-harness remediation or fresh **`held-out` split** re-verification. Distinct from an **Experimental Rule** (never qualified) and a **Retired Guide** (permanently removed from active scanning).
+
+* _Reference_: `src/analyzing/qualification.ts#SUSPENDED_QUALIFIED_GUIDE_IDS`
+* _Avoid_: `Quarantined Rule`, `Disabled Rule`
 
 ### Retired Guide
 
-A guide for which a rule was prototyped and subsequently removed from `ALL_RULES` (`shadow-dom`, `accessible-error-announcement`, `stack-drill-down`, `detect-initial-visibility-state`, `model-partial-time-concepts`, `custom-select-picker-layouts`) because **Guide Triage**, **Legacy Pattern Spec**, or human review determined it is a multi-part UI recipe, has no 1-to-1 legacy equivalent, or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding.
+A guide for which a rule was prototyped and subsequently removed or emptied from `ALL_RULES` because **Guide Triage**, **Legacy Pattern Spec**, or human review determined it is a multi-part UI recipe, has no 1-to-1 legacy equivalent, or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding, or a **Suspended Rule**.
 
 * _Reference_: `src/analyzing/README.md`
 * _Avoid_: `Dropped Rule`
