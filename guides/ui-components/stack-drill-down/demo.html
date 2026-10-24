@@ -49,6 +49,26 @@
         background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>');
       }
 
+      /* Forced colors: the arrow is drawn in ButtonText through a mask, so it
+         follows the user's theme. The background image is always black,
+         because an SVG used as an image can't use currentColor. The mask is
+         on ::before so it doesn't clip the button's focus outline. */
+      @media (forced-colors: active) {
+        .icon-back {
+          background-image: none;
+        }
+
+        .icon-back::before {
+          content: "";
+          display: block;
+          width: 100%;
+          height: 100%;
+          forced-color-adjust: none;
+          background: ButtonText;
+          mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>') center / contain no-repeat;
+        }
+      }
+
 
       .item {
         display: block;
@@ -181,6 +201,8 @@
       const id = Number(match[1]);
       return `
         <header>
+          <!-- onActiveViewChanged names this button after the view it
+               returns to. -->
           <button class="icon icon-back" aria-label="Back"></button>
           Post
         </header>
@@ -233,7 +255,11 @@
     }
 
     function createRootView() {
-      return makeView(renderDemoRoot());
+      const view = makeView(renderDemoRoot());
+      // tabindex="-1" lets onActiveViewChanged focus the root's content
+      // when there is no link to return focus to.
+      view.querySelector('.Stack-viewContent').tabIndex = -1;
+      return view;
     }
 
     function createDrillDownView(routeData) {
@@ -374,6 +400,11 @@
     // click, or a programmatic scroll. Putting all state transitions
     // here is what keeps the swipe, click, and popstate paths coherent.
     function onActiveViewChanged(currentView) {
+      // Note whether focus is in the stack before views are made inert or
+      // removed, so the focus fallback below only moves focus that would
+      // otherwise be lost, and never moves it on page load.
+      const focusWasInStack = stack.contains(document.activeElement);
+
       // Walk the stack in DOM order to update each view's role relative to
       // the now-visible currentView:
       // - Views at or before currentView stay in the DOM. Non-current ones
@@ -402,6 +433,24 @@
         history.go(currentViewDepth - currentDepth);
       }
 
+      // Name the active view in the title, and use the page name alone for
+      // the root. Each drill-down adds a history entry, and the title is
+      // what the history list, the tab and screen readers use to tell them
+      // apart.
+      const viewTitle = currentView.querySelector('h2')?.textContent;
+      document.title = viewTitle ? `${viewTitle} | Drilldown` : 'Drilldown';
+
+      // Name the back button after the view it returns to: the previous
+      // view in the stack, or the root view after a deep link. Focus lands
+      // on it after a drill-down, so "Back" alone tells screen reader users
+      // nothing about where they are.
+      const back = currentView.querySelector('.icon-back');
+      if (back) {
+        const parentTitle =
+          currentView.previousElementSibling?.querySelector('h2')?.textContent ?? 'Feed';
+        back.setAttribute('aria-label', `Back to ${parentTitle}`);
+      }
+
       // Restore focus on the now-active view. If we recorded which link
       // the user activated to drill out of this view, return focus there
       // so a back gesture lands them where they left off. Otherwise (a
@@ -409,11 +458,17 @@
       // keyboard users have an obvious next action. preventScroll keeps
       // .focus() from fighting the snap container's scroll position.
       const stored = returnFocus.get(currentView);
-      if (stored) {
+      if (stored?.isConnected) {
         stored.focus({preventScroll: true});
         returnFocus.delete(currentView);
       } else if (currentView !== rootView) {
         currentView.querySelector('.icon-back')?.focus({preventScroll: true});
+      } else if (focusWasInStack && !currentView.contains(document.activeElement)) {
+        // The root has no back button, and after a deep link or a pruned
+        // view there is no stored link either, so focus the root's content.
+        // Otherwise focus would stay in a removed or inert view and fall to
+        // <body>.
+        currentView.querySelector('.Stack-viewContent')?.focus({preventScroll: true});
       }
     }
 
