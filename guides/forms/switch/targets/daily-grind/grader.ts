@@ -35,7 +35,7 @@ test.describe('Switch Target Grader', () => {
     expect(allAssociatedWithLabel).toBe(true);
   });
 
-  test('Native switch support is feature-detected and input-switch-polyfill is conditionally loaded only when unsupported', () => {
+  test('[unsupported: switch-control] Native switch support is feature-detected and input-switch-polyfill is conditionally loaded only when unsupported', () => {
     const project = getJsProject(targetFiles);
     const binaryExpressions = project.getSourceFiles().flatMap(sf =>
       sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)
@@ -65,7 +65,7 @@ test.describe('Switch Target Grader', () => {
     expect(featureDetectedAndConditionallyLoaded).toBe(true);
   });
 
-  test('When native switch support is missing, the checkbox input uses appearance: none while remaining visible and interactive', () => {
+  test('[unsupported: switch-control] When native switch support is missing, the checkbox input uses appearance: none while remaining visible and interactive', () => {
     const docs = getHtmlDocuments(targetFiles);
     const switchInputs = docs.flatMap(d => Array.from(d.document.querySelectorAll('input[type="checkbox"][switch]')));
     const stylesheet = getCssStyleSheet(targetFiles);
@@ -176,5 +176,9 @@ test.describe('Switch Target Grader', () => {
 
     const displaysFocusOutline = switchInputs.length > 0 && (hasFocusVisibleOutlineRule || hasUtilityFocusVisible);
     expect(displaysFocusOutline).toBe(true);
+  });
+
+  test('[supported: switch-control] The implementation relies on native <input type="checkbox" switch> without loading input-switch-polyfill or applying an appearance: none fallback', () => {
+    // TODO: Populate test assertion when regenerating grader for multi-baseline evaluation
   });
 });

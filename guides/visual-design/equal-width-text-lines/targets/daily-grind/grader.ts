@@ -204,7 +204,7 @@ test.describe('Equal-Width Text Lines Target Grader', () => {
     expect(lineRule?.style.getPropertyValue('width')).toBe('fit-content');
   });
 
-  test('@supports fallback scales font-size using min() with custom property and percentage limit', () => {
+  test('[unsupported: text-fit] @supports fallback scales font-size using min() with custom property and percentage limit', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const supportsRules = getSupportsRules(Array.from(stylesheet.cssRules));
     const r = supportsRules.find(s => /\bnot\b/.test(s.conditionText) && s.conditionText.includes('text-fit'));
@@ -254,7 +254,7 @@ test.describe('Equal-Width Text Lines Target Grader', () => {
     expect(hasScaleReset).toBe(true);
   });
 
-  test('Fallback script batch-reads container or line width dimensions before writing property values', () => {
+  test('[unsupported: text-fit] Fallback script batch-reads container or line width dimensions before writing property values', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
     const callExpressions = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
@@ -276,5 +276,9 @@ test.describe('Equal-Width Text Lines Target Grader', () => {
       return exprText.endsWith('.setProperty') && args[0]?.includes('--') && args.length >= 2;
     });
     expect(hasSetProperty).toBe(true);
+  });
+
+  test('[supported: text-fit] The implementation relies on native text-fit without an @supports not (text-fit: ...) CSS fallback rule or a ResizeObserver scaling fallback script', () => {
+    // TODO: Populate test assertion when regenerating grader for multi-baseline evaluation
   });
 });
