@@ -1,0 +1,91 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..67f2c50
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,6 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const outputDirectory = new URL('./dist/', import.meta.url);
++
++await mkdir(outputDirectory, { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('index.html', outputDirectory));
+diff --git a/index.html b/index.html
+index 66c9173..df31a7a 100644
+--- a/index.html
++++ b/index.html
+@@ -107,8 +107,14 @@
+       margin-top: 20px;
+     }
+ 
++    /* Context producers only declare meaning; components choose their variants. */
++    .seasonal-favorites {
++      --surface: featured;
++    }
++
+     .card {
+       background: white;
++      border: 1px solid transparent;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -135,6 +141,31 @@
+       background: #3e2723;
+     }
+ 
++    /* Inherited context reaches both cards and their nested buttons.
++       Browsers without style queries keep the default component styles above. */
++    @container style(--surface: featured) {
++      .card {
++        background: #fff8ed;
++        border-color: var(--accent);
++        box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
++      }
++
++      .btn {
++        background: var(--accent);
++        color: var(--text);
++        font-weight: 600;
++      }
++
++      .btn:hover {
++        background: #ff9800;
++      }
++
++      .btn:focus-visible {
++        outline: 2px solid var(--primary);
++        outline-offset: 3px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,7 +206,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

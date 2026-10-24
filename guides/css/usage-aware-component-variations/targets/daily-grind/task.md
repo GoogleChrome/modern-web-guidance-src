@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites coffee cards and their inner buttons on the homepage so that their visual styling automatically adapts purely through CSS based on the semantic context or theme state applied to their parent container.

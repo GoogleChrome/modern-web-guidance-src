@@ -1,0 +1,56 @@
+diff --git a/index.html b/index.html
+index 66c9173..2418f07 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,42 @@
+       background: #3e2723;
+     }
+ 
++    /* Semantic context flag: components below react to it */
++    .featured {
++      --surface: featured;
++    }
++
++    /* Selector-based fallback (same specificity as the style query, which wins when supported) */
++    :where(.featured) .card {
++      background: #fff8e1;
++      border-top: 4px solid var(--accent);
++    }
++
++    :where(.featured) .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    :where(.featured) .btn:hover {
++      background: #ff9100;
++    }
++
++    @container style(--surface: featured) {
++      .card {
++        background: #fff8e1;
++        border-top: 4px solid var(--accent);
++      }
++
++      .btn {
++        background: var(--accent);
++        color: var(--text);
++      }
++
++      .btn:hover {
++        background: #ff9100;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,7 +211,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="featured">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
