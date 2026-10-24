@@ -74,6 +74,26 @@ test.describe(`Accessible Error Announcement Expectations: ${demoName}`, () => {
     expect(isBeforeInvalid && isAfterValid).toBe(true);
   });
 
+  test(`Submitting a form with multiple invalid fields must synchronize aria-invalid on all of them`, async ({ page }) => {
+    const username = page.locator('#username');
+    const email = page.locator('#email');
+
+    // Before submission, neither field may be marked invalid.
+    expect(['false', null]).toContain(await username.getAttribute('aria-invalid'));
+    expect(['false', null]).toContain(await email.getAttribute('aria-invalid'));
+
+    // The demo ships with novalidate; strip it so clicking submit runs
+    // native constraint validation.
+    await page.evaluate(() => {
+      document.querySelectorAll('form[novalidate]').forEach(form => form.removeAttribute('novalidate'));
+    });
+
+    await page.click('button[type="submit"]');
+
+    await expect(username).toHaveAttribute('aria-invalid', 'true');
+    await expect(email).toHaveAttribute('aria-invalid', 'true');
+  });
+
   test(`The visual error message visibility must match the aria-invalid state`, async ({ page }) => {
     const input = page.locator('input[type="email"], input[name="email"], #email').first();
     
