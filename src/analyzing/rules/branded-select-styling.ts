@@ -1,6 +1,5 @@
 import {
   Node,
-  SyntaxKind,
   type SourceFile,
 } from 'ts-morph';
 import {
@@ -41,48 +40,7 @@ const TARGET_JS_METHODS: ReadonlySet<string> = new Set([
 ]);
 
 const SEARCH_OR_COMPLEX_OPTIONS_REGEX =
-  /\b(?:multiple\s*:\s*true|ajax\s*:|tags\s*:|query\s*:|matcher\s*:|minimumInputLength\s*:|maximumSelectionLength\s*:|tokenizer\s*:|createTag\s*:|data\s*:|liveSearch\s*:)/i;
-
-const CHOSEN_COMPLEX_OPTIONS = new Set([
-  'disable_search_threshold',
-  'search_contains',
-  'enable_split_word_search',
-  'max_selected_options',
-  'allow_single_deselect',
-]);
-
-function isChosenExcluded(firstArg: Node): boolean {
-  if (!Node.isObjectLiteralExpression(firstArg)) {
-    return false;
-  }
-  let hasDisableSearchTrue = false;
-  let hasComplexOption = false;
-
-  for (const prop of firstArg.getProperties()) {
-    if (Node.isPropertyAssignment(prop)) {
-      const name = prop.getName().replace(/['"]/g, '');
-      if (name === 'disable_search') {
-        const init = unwrapExpression(prop.getInitializer() ?? prop);
-        if (init.getKind() === SyntaxKind.TrueKeyword || init.getText() === 'true') {
-          hasDisableSearchTrue = true;
-        }
-      }
-      if (CHOSEN_COMPLEX_OPTIONS.has(name)) {
-        hasComplexOption = true;
-      }
-    } else if (Node.isShorthandPropertyAssignment(prop)) {
-      const name = prop.getName();
-      if (CHOSEN_COMPLEX_OPTIONS.has(name)) {
-        hasComplexOption = true;
-      }
-    }
-  }
-
-  if (hasDisableSearchTrue) {
-    return false;
-  }
-  return hasComplexOption;
-}
+  /\b(?:multiple\s*:\s*true|ajax\s*:|tags\s*:|query\s*:|matcher\s*:|minimumInputLength\s*:|liveSearch\s*:|search_contains\s*:)/i;
 
 const brandedSelectStylingDependencyMatcher: DependencyRuleMatcher = {
   kind: 'dependency',
@@ -137,12 +95,6 @@ const brandedSelectStylingJsMatcher: JsRuleMatcher = {
       // Exclude multi-select, remote ajax search, or tag-creation options in AST
       const args = node.getArguments();
       if (args.length > 0) {
-        const firstArg = args[0] ? unwrapExpression(args[0]) : undefined;
-        if (methodName === 'chosen' && firstArg && Node.isObjectLiteralExpression(firstArg)) {
-          if (isChosenExcluded(firstArg)) {
-            return;
-          }
-        }
         const argText = args[0]?.getText() ?? '';
         if (SEARCH_OR_COMPLEX_OPTIONS_REGEX.test(argText)) {
           return;

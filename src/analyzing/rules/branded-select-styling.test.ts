@@ -193,31 +193,17 @@ void test('branded-select-styling JS: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts chosen with searchable combobox or multi-select options', () => {
+  await t.test('flags chosen combobox initialization (R48)', () => {
     const project = createInMemoryProject();
     const code = `
       $('.chzn-select').chosen({ disable_search_threshold: 10 });
-      $('select').chosen({ search_contains: true });
     `;
-    const sourceFile = project.createSourceFile('chosen-complex.js', code);
+    const sourceFile = project.createSourceFile('chosen.js', code);
     const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'chosen-complex.js',
+      filePath: 'chosen.js',
       fileContent: code,
     });
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('flags chosen without complex options or with disable_search: true', () => {
-    const project = createInMemoryProject();
-    const code = `
-      $('select.a').chosen();
-      $('select.b').chosen({ disable_search: true, width: '100%' });
-    `;
-    const sourceFile = project.createSourceFile('chosen-simple.js', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'chosen-simple.js',
-      fileContent: code,
-    });
-    assert.equal(matches.length, 2);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /chosen/);
   });
 });

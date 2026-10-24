@@ -227,7 +227,6 @@ interface AnalyzedStylesheet {
   readonly normalRules: readonly AnalyzedStyleRule[];
   readonly keyframeGroups: ReadonlyMap<string, readonly AnalyzedStyleRule[]>;
   readonly keyframeNamesWithTransform: ReadonlySet<string>;
-  readonly keyframeTransformGroups: ReadonlyMap<string, ReadonlySet<TransformGroup>>;
 }
 
 const stylesheetCache = new WeakMap<CssMatcherContext, AnalyzedStylesheet>();
@@ -246,7 +245,6 @@ function analyzeStylesheet(ctx: CssMatcherContext): AnalyzedStylesheet {
   const normalRules: AnalyzedStyleRule[] = [];
   const keyframeMap = new Map<string, AnalyzedStyleRule[]>();
   const keyframeNamesWithTransform = new Set<string>();
-  const keyframeTransformGroups = new Map<string, Set<TransformGroup>>();
 
   try {
     const styleRuleViews: Iterable<CssRuleView> =
@@ -280,23 +278,10 @@ function analyzeStylesheet(ctx: CssMatcherContext): AnalyzedStylesheet {
         existing.push(analyzed);
         keyframeMap.set(key, existing);
 
-        if (parentAtRule) {
+        if (transformValue !== null && parentAtRule) {
           const kfNameMatch = parentAtRule.match(/^@(?:-webkit-|-moz-|-o-)?keyframes\s+([^\s{]+)/i);
           if (kfNameMatch?.[1]) {
-            const kfName = kfNameMatch[1].toLowerCase();
-            if (transformValue !== null) {
-              keyframeNamesWithTransform.add(kfName);
-            }
-            if (analyzed.parsedTransform) {
-              let groupSet = keyframeTransformGroups.get(kfName);
-              if (!groupSet) {
-                groupSet = new Set<TransformGroup>();
-                keyframeTransformGroups.set(kfName, groupSet);
-              }
-              for (const call of analyzed.parsedTransform) {
-                groupSet.add(call.group);
-              }
-            }
+            keyframeNamesWithTransform.add(kfNameMatch[1].toLowerCase());
           }
         }
       } else {
@@ -311,7 +296,6 @@ function analyzeStylesheet(ctx: CssMatcherContext): AnalyzedStylesheet {
     normalRules,
     keyframeGroups: keyframeMap,
     keyframeNamesWithTransform,
-    keyframeTransformGroups,
   };
   stylesheetCache.set(ctx, result);
   lastRawStylesheetText = ctx.stylesheetText;
@@ -453,26 +437,6 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
     // e) State and keyframe composition check on normal style rules:
     // Only match when composed across paired rules sharing the same base selector
     // or when paired with an own transform keyframe animation.
-    const addKeyframeGroups = (animVal: string | null, targetSet: Set<TransformGroup>) => {
-      if (!animVal || analysis.keyframeTransformGroups.size === 0) return;
-      const tokens = animVal
-        .toLowerCase()
-        .split(/[\s,]+/)
-        .map((token) => token.trim())
-        .filter(Boolean);
-      for (const token of tokens) {
-        const groups = analysis.keyframeTransformGroups.get(token);
-        if (groups) {
-          for (const group of groups) {
-            targetSet.add(group);
-          }
-        }
-      }
-    };
-
-    const ownAnimation =
-      styleRule.getPropertyValue('animation') ?? styleRule.getPropertyValue('animation-name');
-
     for (const other of analysis.normalRules) {
       if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
         continue;
@@ -485,37 +449,18 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
         other.hasIndividualTransformProp ||
         referencesTransformKeyframes(other.animationValue, analysis.keyframeNamesWithTransform)
       ) {
-        if (other.hasIndividualTransformProp) {
-          return {
-            message: `CSS rule \`${styleRule.selectorText}\` composes \`transform: ${transformVal}\` across paired state selectors; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
-          };
-        }
-
-        const combinedGroups = new Set<TransformGroup>(parsedCalls.map((call) => call.group));
-        if (other.parsedTransform) {
-          for (const call of other.parsedTransform) {
-            combinedGroups.add(call.group);
-          }
-        }
-        addKeyframeGroups(other.animationValue, combinedGroups);
-        addKeyframeGroups(ownAnimation, combinedGroups);
-
-        if (combinedGroups.size >= 2) {
-          return {
-            message: `CSS rule \`${styleRule.selectorText}\` composes \`transform: ${transformVal}\` across paired state selectors; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
-          };
-        }
+        return {
+          message: `CSS rule \`${styleRule.selectorText}\` composes \`transform: ${transformVal}\` across paired state selectors; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
+        };
       }
     }
 
+    const ownAnimation =
+      styleRule.getPropertyValue('animation') ?? styleRule.getPropertyValue('animation-name');
     if (referencesTransformKeyframes(ownAnimation, analysis.keyframeNamesWithTransform)) {
-      const combinedGroups = new Set<TransformGroup>(parsedCalls.map((call) => call.group));
-      addKeyframeGroups(ownAnimation, combinedGroups);
-      if (combinedGroups.size >= 2) {
-        return {
-          message: `CSS rule \`${styleRule.selectorText}\` pairs \`transform: ${transformVal}\` with a transform keyframe animation; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
-        };
-      }
+      return {
+        message: `CSS rule \`${styleRule.selectorText}\` pairs \`transform: ${transformVal}\` with a transform keyframe animation; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
+      };
     }
 
     return null;

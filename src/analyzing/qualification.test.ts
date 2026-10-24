@@ -5,8 +5,10 @@ import { describe, it } from 'node:test';
 import { WORKTREE_ROOT } from './paths.ts';
 import {
   deriveQualifiedGuideIds,
+  evaluateHumanSpotCheckQualification,
   evaluateJudgeAdmission,
   evaluateRuleQualification,
+  evaluateTwoStageHumanQualification,
   JSON_QUALIFIED_GUIDE_IDS,
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_JUDGE_METADATA,
@@ -14,6 +16,7 @@ import {
   SUSPENDED_QUALIFIED_GUIDE_IDS,
   SUSPENDED_QUALIFIED_RULE_HISTORY,
   TERMINAL_QUALIFIED_GUIDE_IDS,
+  wilsonLowerBound,
 } from './qualification.ts';
 
 describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045, D-046)', () => {
@@ -275,5 +278,131 @@ describe('Rule Qualification and Manifest (D-031, D-036, D-041, D-042)', () => {
       'deliver-optimized-decorative-images',
       'individual-transform-properties',
     ]);
+  });
+});
+
+describe('R47 Two-Stage Human Qualification Bar (D-046)', () => {
+  it('qualifies at Stage 1 when all 35 cards are legit (35/35, 0 misses)', () => {
+    const result = evaluateTwoStageHumanQualification({
+      legitModernizeTarget: 35,
+      negativeCount: 0,
+      unsureCount: 0,
+    });
+    assert.strictEqual(result.humanSpotCheckQualified, true);
+    assert.strictEqual(result.qualificationStage, 'stage1-qualified');
+    assert.strictEqual(result.totalEvaluated, 35);
+    assert.strictEqual(result.misses, 0);
+    assert.ok(result.wilsonLower >= 0.90, `Wilson LB ${result.wilsonLower} must be >= 0.90`);
+    assert.strictEqual(Number(result.wilsonLower.toFixed(3)), 0.901);
+    assert.deepStrictEqual(result.reasons, []);
+
+    // Alias verification
+    const aliasResult = evaluateHumanSpotCheckQualification({
+      legitModernizeTarget: 35,
+      negativeCount: 0,
+    });
+    assert.strictEqual(aliasResult.humanSpotCheckQualified, true);
+    assert.strictEqual(aliasResult.qualificationStage, 'stage1-qualified');
+  });
+
+  it('requires Stage 2 (+25 cards) when 1 negative is observed at 35 cards (34/35)', () => {
+    const result = evaluateTwoStageHumanQualification({
+      legitModernizeTarget: 34,
+      negativeCount: 1,
+      unsureCount: 0,
+    });
+    assert.strictEqual(result.humanSpotCheckQualified, false);
+    assert.strictEqual(result.qualificationStage, 'stage2-needed');
+    assert.strictEqual(result.totalEvaluated, 35);
+    assert.strictEqual(result.misses, 1);
+    assert.strictEqual(result.stage2CardsRemaining, 25);
+    assert.ok(result.reasons.some((r) => r.includes('+25 cards to reach 60 total')));
+  });
+
+  it('counts unsure as 1 miss and requires Stage 2 when 1 unsure occurs at 35 cards (34/35)', () => {
+    const result = evaluateTwoStageHumanQualification({
+      legitModernizeTarget: 34,
+      negativeCount: 0,
+      unsureCount: 1,
+    });
+    assert.strictEqual(result.humanSpotCheckQualified, false);
+    assert.strictEqual(result.qualificationStage, 'stage2-needed');
+    assert.strictEqual(result.totalEvaluated, 35);
+    assert.strictEqual(result.misses, 1);
+    assert.strictEqual(result.stage2CardsRemaining, 25);
+    assert.ok(result.reasons.some((r) => r.includes('+25 cards to reach 60 total')));
+  });
+
+  it('qualifies at Stage 2 when 59/60 cards are legit (misses <= 1)', () => {
+    const resultWithNegative = evaluateTwoStageHumanQualification({
+      legitModernizeTarget: 59,
+      negativeCount: 1,
+      unsureCount: 0,
+    });
+    assert.strictEqual(resultWithNegative.humanSpotCheckQualified, true);
+    assert.strictEqual(resultWithNegative.qualificationStage, 'stage2-qualified');
+    assert.strictEqual(resultWithNegative.totalEvaluated, 60);
+    assert.strictEqual(resultWithNegative.misses, 1);
+    assert.ok(
+      resultWithNegative.wilsonLower >= 0.90,
+      `Wilson LB ${resultWithNegative.wilsonLower} must be >= 0.90`,
+    );
+    assert.strictEqual(Number(resultWithNegative.wilsonLower.toFixed(3)), 0.911);
+    assert.deepStrictEqual(resultWithNegative.reasons, []);
+
+    const resultWithUnsure = evaluateTwoStageHumanQualification({
+      legitModernizeTarget: 59,
+      negativeCount: 0,
+      unsureCount: 1,
+    });
+    assert.strictEqual(resultWithUnsure.humanSpotCheckQualified, true);
+    assert.strictEqual(resultWithUnsure.qualificationStage, 'stage2-qualified');
+  });
+
+  it('fails qualification when 2 or more misses occur (33/35, 58/60)', () => {
+    const failed35 = evaluateTwoStageHumanQualification({
+      legitModernizeTarget: 33,
+      negativeCount: 2,
+      unsureCount: 0,
+    });
+    assert.strictEqual(failed35.humanSpotCheckQualified, false);
+    assert.strictEqual(failed35.qualificationStage, 'failed');
+    assert.strictEqual(failed35.misses, 2);
+    assert.ok(failed35.reasons.some((r) => r.includes('2 misses')));
+
+    const failed35WithUnsure = evaluateTwoStageHumanQualification({
+      legitModernizeTarget: 33,
+      negativeCount: 1,
+      unsureCount: 1,
+    });
+    assert.strictEqual(failed35WithUnsure.humanSpotCheckQualified, false);
+    assert.strictEqual(failed35WithUnsure.qualificationStage, 'failed');
+    assert.strictEqual(failed35WithUnsure.misses, 2);
+
+    const failed60 = evaluateTwoStageHumanQualification({
+      legitModernizeTarget: 58,
+      negativeCount: 2,
+      unsureCount: 0,
+    });
+    assert.strictEqual(failed60.humanSpotCheckQualified, false);
+    assert.strictEqual(failed60.qualificationStage, 'failed');
+    assert.strictEqual(failed60.misses, 2);
+  });
+
+  it('rejects qualification when evaluated sample size is under 35', () => {
+    const insufficient = evaluateTwoStageHumanQualification({
+      legitModernizeTarget: 20,
+      negativeCount: 0,
+      unsureCount: 0,
+    });
+    assert.strictEqual(insufficient.humanSpotCheckQualified, false);
+    assert.strictEqual(insufficient.qualificationStage, 'insufficient-sample');
+    assert.strictEqual(insufficient.totalEvaluated, 20);
+    assert.ok(insufficient.reasons.some((r) => r.includes('< Stage 1 minimum of 35 cards')));
+  });
+
+  it('wilsonLowerBound helper computes expected lower bound', () => {
+    assert.strictEqual(Number(wilsonLowerBound(35, 35).toFixed(3)), 0.901);
+    assert.strictEqual(Number(wilsonLowerBound(59, 60).toFixed(3)), 0.911);
   });
 });

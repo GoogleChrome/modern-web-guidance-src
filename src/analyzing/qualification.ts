@@ -6,7 +6,7 @@
  * tiers are updated based on held-out evaluations (O64).
  */
 import { JUDGE_VERSION } from './judge.ts';
-import type { BinomialInterval } from './stats.ts';
+import { wilsonInterval, type BinomialInterval } from './stats.ts';
 
 export interface GuideScorecardSummary {
   readonly guideId: string;
@@ -172,6 +172,147 @@ export function evaluateRuleQualification(entry: {
     reasons,
   };
 }
+
+export type HumanQualificationStage =
+  | 'stage1-qualified'
+  | 'stage2-needed'
+  | 'stage2-qualified'
+  | 'failed'
+  | 'insufficient-sample';
+
+export interface HumanSpotCheckInput {
+  readonly legitModernizeTarget: number;
+  readonly negativeCount: number;
+  readonly unsureCount?: number;
+  readonly totalEvaluated?: number;
+}
+
+export interface HumanSpotCheckEvaluation {
+  readonly humanSpotCheckQualified: boolean;
+  readonly qualificationStage: HumanQualificationStage;
+  readonly totalEvaluated: number;
+  readonly legitModernizeTarget: number;
+  readonly misses: number;
+  readonly wilsonLower: number;
+  readonly stage2CardsRemaining?: number;
+  readonly reasons: readonly string[];
+}
+
+export function wilsonLowerBound(successes: number, total: number): number {
+  return wilsonInterval(successes, total).lower;
+}
+
+/**
+ * Evaluates whether a candidate rule passes human blind spot-check qualification
+ * under the two-stage human bar (R47, D-046).
+ *
+ * Rules:
+ * - Unsure handling: An unsure verdict counts as a miss unless Paul re-grades it in the same session.
+ *   Therefore, unsure is included in the denominator:
+ *   totalEvaluated = legitModernizeTarget + negativeCount + unsureCount,
+ *   and misses = negativeCount + unsureCount.
+ * - Stage 1 (35 cards): If totalEvaluated >= 35 and misses === 0 (35/35, Wilson 95% LB 0.901 >= 0.90),
+ *   the rule qualifies (humanSpotCheckQualified: true, qualificationStage: 'stage1-qualified').
+ * - Stage 2 (60 cards total, i.e. +25 cards):
+ *   - If totalEvaluated >= 35 and totalEvaluated < 60 and misses === 1, the rule does NOT qualify yet
+ *     (humanSpotCheckQualified: false, qualificationStage: 'stage2-needed') with stage2CardsRemaining: 60 - totalEvaluated.
+ *   - If totalEvaluated >= 60 and misses <= 1 (59/60 gives Wilson 95% LB 0.911 >= 0.90, and
+ *     wilsonLowerBound(legitModernizeTarget, totalEvaluated) >= 0.90), the rule qualifies
+ *     (humanSpotCheckQualified: true, qualificationStage: 'stage2-qualified').
+ * - Failure (misses >= 2): Two or more misses (negativeCount + unsureCount >= 2) means the rule does not qualify
+ *   (humanSpotCheckQualified: false, qualificationStage: 'failed').
+ */
+export function evaluateTwoStageHumanQualification(
+  input: HumanSpotCheckInput,
+): HumanSpotCheckEvaluation {
+  const unsure = input.unsureCount ?? 0;
+  const totalEvaluated =
+    input.totalEvaluated ?? (input.legitModernizeTarget + input.negativeCount + unsure);
+  const misses = input.negativeCount + unsure;
+  const wilsonLower = wilsonInterval(input.legitModernizeTarget, totalEvaluated).lower;
+
+  if (misses >= 2) {
+    return {
+      humanSpotCheckQualified: false,
+      qualificationStage: 'failed',
+      totalEvaluated,
+      legitModernizeTarget: input.legitModernizeTarget,
+      misses,
+      wilsonLower,
+      reasons: [
+        `Rule failed human spot-check: ${misses} misses (${input.negativeCount} negative, ${unsure} unsure; max allowed: 1)`,
+      ],
+    };
+  }
+
+  if (totalEvaluated < 35) {
+    return {
+      humanSpotCheckQualified: false,
+      qualificationStage: 'insufficient-sample',
+      totalEvaluated,
+      legitModernizeTarget: input.legitModernizeTarget,
+      misses,
+      wilsonLower,
+      reasons: [`Sample size (${totalEvaluated}) < Stage 1 minimum of 35 cards`],
+    };
+  }
+
+  if (misses === 0) {
+    return {
+      humanSpotCheckQualified: true,
+      qualificationStage: 'stage1-qualified',
+      totalEvaluated,
+      legitModernizeTarget: input.legitModernizeTarget,
+      misses: 0,
+      wilsonLower,
+      reasons: [],
+    };
+  }
+
+  // misses === 1
+  if (totalEvaluated < 60) {
+    const stage2CardsRemaining = 60 - totalEvaluated;
+    return {
+      humanSpotCheckQualified: false,
+      qualificationStage: 'stage2-needed',
+      totalEvaluated,
+      legitModernizeTarget: input.legitModernizeTarget,
+      misses: 1,
+      wilsonLower,
+      stage2CardsRemaining,
+      reasons: [
+        `1 miss observed at ${totalEvaluated} cards: requires Stage 2 evaluation (+${stage2CardsRemaining} cards to reach 60 total)`,
+      ],
+    };
+  }
+
+  // totalEvaluated >= 60 and misses === 1
+  if (wilsonLower >= 0.90) {
+    return {
+      humanSpotCheckQualified: true,
+      qualificationStage: 'stage2-qualified',
+      totalEvaluated,
+      legitModernizeTarget: input.legitModernizeTarget,
+      misses: 1,
+      wilsonLower,
+      reasons: [],
+    };
+  }
+
+  return {
+    humanSpotCheckQualified: false,
+    qualificationStage: 'failed',
+    totalEvaluated,
+    legitModernizeTarget: input.legitModernizeTarget,
+    misses: 1,
+    wilsonLower,
+    reasons: [
+      `Wilson 95% lower bound (${(wilsonLower * 100).toFixed(1)}%) below 90.0% bar at ${totalEvaluated} cards`,
+    ],
+  };
+}
+
+export const evaluateHumanSpotCheckQualification = evaluateTwoStageHumanQualification;
 
 /**
  * Audit record of the 4 guides previously in TERMINAL_QUALIFIED_GUIDE_IDS that are

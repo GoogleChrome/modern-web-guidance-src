@@ -244,7 +244,7 @@ describe('individualTransformPropertiesRule', () => {
     assert.equal(matches.length, 0);
   });
 
-  it('ignores paired rules using the same single transform group, but flags distinct groups across states', () => {
+  it('flags paired rules composing transforms across state selectors (Option 1)', () => {
     const sameGroupCss = `
       .drawer {
         transform: translateX(-100%);
@@ -254,7 +254,7 @@ describe('individualTransformPropertiesRule', () => {
       }
     `;
     const sameGroupMatches = scanCss('src/drawer.css', sameGroupCss, rules);
-    assert.equal(sameGroupMatches.length, 0);
+    assert.equal(sameGroupMatches.length, 2);
 
     const distinctGroupCss = `
       .card {
