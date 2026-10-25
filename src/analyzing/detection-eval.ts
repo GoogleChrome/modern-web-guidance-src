@@ -1326,7 +1326,7 @@ export async function loadGuideSummariesMap(
           if (!guideId) continue;
           const existing = map.get(guideId);
           if (!existing) continue;
-          const dossier = formatLegacyPatternSpecDossier(rec);
+          const dossier = formatGuideTriageDossier(rec);
           if (!dossier) continue;
           const mergedContext = existing.explainerContext
             ? `${existing.explainerContext}\n\n${dossier}`
